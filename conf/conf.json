@@ -1,0 +1,13 @@
+{
+  "conf":{
+    "etcd":{
+      "address": ["http://127.0.0.1:2379"]
+    },
+    "k8sAuth":{
+      "file": "/path/to/k8s/config/file"
+    },
+    "syslog":{
+      "host": "localhost"
+    }
+  }
+}
