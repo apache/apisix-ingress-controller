@@ -3,6 +3,7 @@ package conf
 import (
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	restclient "k8s.io/client-go/rest"
+	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/informers"
@@ -61,6 +62,8 @@ var EtcdConfig etcdConfig
 var K8sAuth k8sAuth
 var Syslog syslog
 
+var config *restclient.Config
+
 func init() {
 	// 获取当前环境
 	setEnvironment()
@@ -108,7 +111,7 @@ func GetURL() string{
 	if ADMIN_URL != "" {
 		return ADMIN_URL
 	} else {
-		return "http://172.16.20.90:32537/apisix/admin"
+		return "http://172.16.20.90:30116/apisix/admin"
 	}
 }
 
@@ -122,6 +125,30 @@ func GetSvcInformer() coreinformers.ServiceInformer{
 
 func GetNsInformer() coreinformers.NamespaceInformer{
 	return nsInformer
+}
+
+func InitKubeClient() kubernetes.Interface {
+	var err error
+	if ENV == LOCAL {
+		clientConfig, err := clientcmd.LoadFromFile(K8sAuth.file)
+		ExceptNilErr(err)
+
+		config, err = clientcmd.NewDefaultClientConfig(*clientConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
+		ExceptNilErr(err)
+	} else {
+		config, err = restclient.InClusterConfig()
+		ExceptNilErr(err)
+	}
+
+	k8sClient, err := kubernetes.NewForConfig(config)
+	ExceptNilErr(err)
+	return k8sClient
+}
+
+func InitApisixRoute() clientSet.Interface{
+	apisixRouteClientset, err:= clientSet.NewForConfig(config)
+	ExceptNilErr(err)
+	return apisixRouteClientset
 }
 
 func InitInformer() (coreinformers.PodInformer, coreinformers.ServiceInformer, coreinformers.NamespaceInformer){
