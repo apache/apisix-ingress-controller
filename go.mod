@@ -10,7 +10,7 @@ require (
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/google/uuid v1.1.1 // indirect
 	github.com/gxthrj/apisix-ingress-types v0.0.2
-	github.com/gxthrj/apisix-types v0.0.6 // indirect
+	github.com/gxthrj/apisix-types v0.0.8 // indirect
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/pkg/errors v0.8.1
 	github.com/sirupsen/logrus v1.4.2

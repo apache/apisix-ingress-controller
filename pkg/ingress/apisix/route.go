@@ -8,9 +8,7 @@ import (
 
 const DefaultLBType = "roundrobin"
 
-type ApisixRoute struct {
-	ingress.ApisixRoute
-}
+type ApisixRoute ingress.ApisixRoute
 
 // Convert convert to  apisix.Route from ingress.ApisixRoute CRD
 func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.Upstream, error) {
