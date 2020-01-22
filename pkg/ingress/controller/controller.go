@@ -16,6 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"time"
+	"github.com/iresty/ingress-controller/pkg/ingress/apisix"
+	"github.com/gxthrj/seven/state"
 )
 
 var logger = log.GetLogger()
@@ -100,7 +102,8 @@ func (c *Controller) syncHandler(key string) error {
 		logger.Error("invalid resource key: %s", key)
 		return fmt.Errorf("invalid resource key: %s", key)
 	}
-	apisixRoute, err := c.apisixRouteList.ApisixRoutes(namespace).Get(name)
+
+	apisixIngressRoute, err := c.apisixRouteList.ApisixRoutes(namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err){
 			logger.Info("apisixRoute %s is removed", key)
@@ -111,16 +114,20 @@ func (c *Controller) syncHandler(key string) error {
 	}
 	logger.Info(namespace)
 	logger.Info(name)
+	apisixRoute := apisix.ApisixRoute(*apisixIngressRoute)
+	routes, services, upstreams, _ := apisixRoute.Convert()
+	comb := state.ApisixCombination{Routes: routes, Services: services, Upstreams: upstreams}
+	_, err = comb.Solver()
 	// 命名规则 host + path +
-	for _, rule := range apisixRoute.Spec.Rules {
-		logger.Info(rule.Http.Paths)
-		for _, path := range rule.Http.Paths {
-			logger.Info(rule.Host + path.Path)
-			logger.Info(path.Backend.ServiceName)
-			logger.Info(path.Backend.ServicePort)
-		}
-	}
-	return nil
+	//for _, rule := range apisixRoute.Spec.Rules {
+	//	logger.Info(rule.Http.Paths)
+	//	for _, path := range rule.Http.Paths {
+	//		logger.Info(rule.Host + path.Path)
+	//		logger.Info(path.Backend.ServiceName)
+	//		logger.Info(path.Backend.ServicePort)
+	//	}
+	//}
+	return err
 }
 
 func (c *Controller) addFunc(obj interface{}){

@@ -18,6 +18,7 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 	routes := make([]*apisix.Route, 0)
 	services := make([]*apisix.Service, 0)
 	upstreams := make([]*apisix.Upstream, 0)
+	rv := ar.ObjectMeta.ResourceVersion
 	for _, r := range rules {
 		host := r.Host
 		paths := r.Http.Paths
@@ -35,6 +36,7 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 
 			// routes
 			route := &apisix.Route{
+				ResourceVersion: &rv,
 				Name: &apisixRouteName,
 				Host: &host,
 				Path: &uri,
@@ -45,11 +47,14 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 			// services
 			service := &apisix.Service{
 				Name: &apisixSvcName,
+				UpstreamName:  &apisixUpstreamName,
+				ResourceVersion: &rv,
 			}
 			services = append(services, service)
 			// upstreams
 			LBType := DefaultLBType
 			upstream := &apisix.Upstream{
+				ResourceVersion: &rv,
 				Name: &apisixUpstreamName,
 				Type: &LBType,
 			}
