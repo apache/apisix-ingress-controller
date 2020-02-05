@@ -118,15 +118,6 @@ func (c *Controller) syncHandler(key string) error {
 	routes, services, upstreams, _ := apisixRoute.Convert()
 	comb := state.ApisixCombination{Routes: routes, Services: services, Upstreams: upstreams}
 	_, err = comb.Solver()
-	// 命名规则 host + path +
-	//for _, rule := range apisixRoute.Spec.Rules {
-	//	logger.Info(rule.Http.Paths)
-	//	for _, path := range rule.Http.Paths {
-	//		logger.Info(rule.Host + path.Path)
-	//		logger.Info(path.Backend.ServiceName)
-	//		logger.Info(path.Backend.ServicePort)
-	//	}
-	//}
 	return err
 }
 

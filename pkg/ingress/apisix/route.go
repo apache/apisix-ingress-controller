@@ -4,6 +4,7 @@ import (
 	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	apisix "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"strconv"
+	"github.com/iresty/ingress-controller/pkg/ingress/endpoint"
 )
 
 const DefaultLBType = "roundrobin"
@@ -27,7 +28,7 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 			svcName := p.Backend.ServiceName
 			svcPort := strconv.FormatInt(p.Backend.ServicePort, 10)
 			// apisix route name = host + path
-			apisixRouteName := host + "/" + uri
+			apisixRouteName := host + uri
 			// apisix service name = namespace_svcName_svcPort
 			apisixSvcName := ns + "_" + svcName + "_" + svcPort
 			// apisix route name = namespace_svcName_svcPort = apisix service name
@@ -53,10 +54,13 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 			services = append(services, service)
 			// upstreams
 			LBType := DefaultLBType
+			port, _:= strconv.Atoi(svcPort)
+			nodes := endpoint.BuildEps(ns, svcName, port)
 			upstream := &apisix.Upstream{
 				ResourceVersion: &rv,
 				Name: &apisixUpstreamName,
 				Type: &LBType,
+				Nodes: nodes,
 			}
 			upstreams = append(upstreams, upstream)
 		}

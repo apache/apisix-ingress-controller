@@ -8,9 +8,11 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20180511133405-39ca1b05acc7 // indirect
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
+	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/google/uuid v1.1.1 // indirect
 	github.com/gxthrj/apisix-ingress-types v0.0.2
-	github.com/gxthrj/seven v0.0.1 // indirect
+	github.com/gxthrj/apisix-types v0.0.9
+	github.com/gxthrj/seven v0.0.5
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/pkg/errors v0.8.1
 	github.com/sirupsen/logrus v1.4.2
@@ -23,3 +25,5 @@ require (
 	k8s.io/apimachinery v0.0.0-20190817020851-f2f3a405f61d
 	k8s.io/client-go v0.0.0-20190819141724-e14f31a72a77
 )
+
+replace github.com/gxthrj/seven v0.0.5 => /Users/jinwei/go/src/github.com/gxthrj/seven

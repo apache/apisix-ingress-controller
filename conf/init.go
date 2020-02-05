@@ -25,6 +25,7 @@ var (
 	podInformer coreinformers.PodInformer
 	svcInformer coreinformers.ServiceInformer
 	nsInformer coreinformers.NamespaceInformer
+	EndpointsInformer coreinformers.EndpointsInformer
 	IsLeader = false
 	etcdClient client.Client
 )
