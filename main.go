@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"github.com/iresty/ingress-controller/pkg"
 	"github.com/iresty/ingress-controller/log"
+	ingress "github.com/iresty/ingress-controller/pkg/ingress/controller"
 )
 
 func main(){
@@ -28,6 +29,9 @@ func main(){
 	go sharedInformerFactory.Start(stop)
 	// endpoint informer
 	conf.EndpointsInformer = coreSharedInformerFactory.Core().V1().Endpoints()
+	// watch endpoint
+	ingress.Watch()
+	// list endpoint
 	go conf.EndpointsInformer.Informer().Run(stop)
 
 	if err != nil {
