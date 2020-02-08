@@ -2,8 +2,10 @@ package controller
 
 import (
 	"github.com/iresty/ingress-controller/conf"
-	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
+	"strconv"
+	"github.com/gxthrj/seven/apisix"
+	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 )
 
 const ADD = "ADD"
@@ -33,9 +35,38 @@ func (c *controller) run() {
 func (c *controller) process(obj interface{}) {
 	qo, _ := obj.(*queueObj)
 	ep, _ := qo.Obj.(*v1.Endpoints)
-	if ep.Namespace != "kube-system"{
-		glog.Info(ep.Name)
-		glog.Info(qo.OpeType)
+	if ep.Namespace != "kube-system"{ // todo here is some ignore namespaces
+		for _, s := range ep.Subsets{
+			// if upstream need to watch
+			// ips
+			ips := make([]string, 0)
+			for _, address := range s.Addresses{
+				ips = append(ips, address.IP)
+			}
+			// ports
+			for _, port := range s.Ports{
+				upstreamName := ep.Namespace + "_" + ep.Name + "_" + strconv.Itoa(int(port.Port))
+				// find upstreamName is in apisix
+				upstreams, err :=  apisix.ListUpstream()
+				if err == nil {
+					for _, upstream := range upstreams {
+						if *(upstream.Name) == upstreamName {
+							nodes := make([]*apisixType.Node, 0)
+							for _, ip := range ips {
+								ipAddress := ip
+								p := int(port.Port)
+								weight := 100
+								node := &apisixType.Node{IP: &ipAddress, Port: &p, Weight: &weight}
+								nodes = append(nodes, node)
+							}
+							upstream.Nodes = nodes
+							// update upstream nodes
+							apisix.UpdateUpstream(upstream)
+						}
+					}
+				}
+			}
+		}
 	}
 }
 
