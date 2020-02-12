@@ -5,15 +5,33 @@ import (
 	apisix "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"strconv"
 	"github.com/iresty/ingress-controller/pkg/ingress/endpoint"
+	seven "github.com/gxthrj/seven/apisix"
 )
 
-const DefaultLBType = "roundrobin"
+const (
+	DefaultLBType = "roundrobin"
+	SSLREDIRECT = "k8s.apisix.apache.org/ssl-redirect"
+	WHITELIST = "k8s.apisix.apache.org/whitelist-source-range"
+)
 
 type ApisixRoute ingress.ApisixRoute
 
 // Convert convert to  apisix.Route from ingress.ApisixRoute CRD
 func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.Upstream, error) {
 	ns := ar.Namespace
+	// meta
+	plugins := make(apisix.Plugins)
+	for k, v := range ar.Annotations{
+		if k == SSLREDIRECT {
+			if b, err := strconv.ParseBool(v); err == nil && b {
+				//add ssl-redirect plugin
+			}
+		}
+		if k == WHITELIST {
+			ipRestriction := seven.BuildIpRestriction(&v, nil)
+			plugins["ip-restriction"] = ipRestriction
+		}
+	}
 	// Host
 	rules := ar.Spec.Rules
 	routes := make([]*apisix.Route, 0)
@@ -50,6 +68,7 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 				Name: &apisixSvcName,
 				UpstreamName:  &apisixUpstreamName,
 				ResourceVersion: &rv,
+				Plugins: &plugins,
 			}
 			services = append(services, service)
 			// upstreams
