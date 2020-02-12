@@ -18,6 +18,7 @@ import (
 	"time"
 	"github.com/iresty/ingress-controller/pkg/ingress/apisix"
 	"github.com/gxthrj/seven/state"
+	"github.com/golang/glog"
 )
 
 var logger = log.GetLogger()
@@ -67,8 +68,15 @@ func (c *Controller) runWorker(){
 	for c.processNextWorkItem() {}
 }
 
+// recover any exception
+func recoverException(){
+	if err:=recover();err!=nil{
+		glog.Error(err)
+	}
+}
 
 func (c *Controller) processNextWorkItem() bool {
+	defer recoverException()
 	obj, shutdown := c.workqueue.Get()
 	if shutdown {
 		return false
