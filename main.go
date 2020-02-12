@@ -14,7 +14,6 @@ import (
 
 func main(){
 	var logger = log.GetLogger()
-	fmt.Println("123")
 	//election.Elect()
 	kubeClient := conf.InitKubeClient()
 	apisixRouteClientset := conf.InitApisixRoute()
