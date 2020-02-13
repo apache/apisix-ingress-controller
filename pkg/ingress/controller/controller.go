@@ -6,7 +6,6 @@ import (
 	"github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
 	"github.com/iresty/ingress-controller/log"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/util/workqueue"
 )
 
 var logger = log.GetLogger()
@@ -23,7 +22,6 @@ type Api6Controller struct {
 	Api6RouteClientSet    clientSet.Interface
 	SharedInformerFactory externalversions.SharedInformerFactory
 	Stop                  chan struct{}
-	workqueue             workqueue.RateLimitingInterface
 }
 
 func (api6 *Api6Controller) ApisixRoute() {
