@@ -26,7 +26,7 @@ func main(){
 	// ApisixRoute
 	c.ApisixRoute()
 	// ApisixUpstream
-	//c.ApisixUpstream()
+	c.ApisixUpstream()
 
 	go sharedInformerFactory.Start(stop)
 

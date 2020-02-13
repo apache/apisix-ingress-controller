@@ -112,8 +112,8 @@ func (c *ApisixUpstreamController) syncHandler(key string) error {
 	}
 	logger.Info(namespace)
 	logger.Info(name)
-	apisixRoute := apisix.ApisixUpstreamCRD(*apisixUpstreamYaml)
-	upstreams, _ := apisixRoute.Convert()
+	apisixUpstream := apisix.ApisixUpstreamCRD(*apisixUpstreamYaml)
+	upstreams, _ := apisixUpstream.Convert()
 	comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
 	_, err = comb.Solver()
 	return err

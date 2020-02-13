@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	RR    = "roundrobin"
-	CHASH = "chash"
+	RR             = "roundrobin"
+	CHASH          = "chash"
+	ApisixUpstream = "ApisixUpstream"
 )
 
 type ApisixUpstreamCRD ingress.ApisixUpstream
@@ -29,10 +30,12 @@ func (ar *ApisixUpstreamCRD) Convert() ([]*apisix.Upstream, error) {
 		lb := r.Loadbalancer
 
 		nodes := endpoint.BuildEps(ns, name, int(port))
+		fromKind := ApisixUpstream
 		upstream := &apisix.Upstream{
 			ResourceVersion: &rv,
 			Name:            &apisixUpstreamName,
 			Nodes:           nodes,
+			FromKind:        &fromKind,
 		}
 		lbType := lb["type"].(string)
 		switch {
