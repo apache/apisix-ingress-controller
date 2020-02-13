@@ -63,6 +63,8 @@ github.com/gxthrj/apisix-types v0.0.8 h1:W52dQS5Y6i06Hw2nloT7GUFIYQfCk3a7JAweR2P
 github.com/gxthrj/apisix-types v0.0.8/go.mod h1:STdHATWxqIeJhUEXt6dZTd6z0To0qO70K/1mnfBtlC0=
 github.com/gxthrj/apisix-types v0.0.9 h1:/DnilSdFEBdlKjCKoIfwks1SAY1kLEWiw2hUzCQXR4g=
 github.com/gxthrj/apisix-types v0.0.9/go.mod h1:STdHATWxqIeJhUEXt6dZTd6z0To0qO70K/1mnfBtlC0=
+github.com/gxthrj/apisix-types v0.0.10 h1:BsXHiCdDmIN7DuG9j6GQc/D97jFe0LEEk/PuUVHeiFI=
+github.com/gxthrj/apisix-types v0.0.10/go.mod h1:STdHATWxqIeJhUEXt6dZTd6z0To0qO70K/1mnfBtlC0=
 github.com/gxthrj/seven v0.0.1 h1:BSKvGa+Wz0aEoKwoClR0DkVkr3SPwUfStCqejVoulGo=
 github.com/gxthrj/seven v0.0.1/go.mod h1:srqcwsIT4d4CxCUNI9ZY8KJLON7OR0HbMqXWsJRHmrc=
 github.com/gxthrj/seven v0.0.2 h1:S41FUf1Ub8nZSJtKVxL8rPgSQJGJ//sfDOKYQzuqX18=

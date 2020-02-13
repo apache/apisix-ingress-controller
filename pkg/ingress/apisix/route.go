@@ -51,7 +51,7 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 			apisixSvcName := ns + "_" + svcName + "_" + svcPort
 			// apisix route name = namespace_svcName_svcPort = apisix service name
 			apisixUpstreamName := ns + "_" + svcName + "_" + svcPort
-			// todo plugins
+			// todo plugins in the level of route
 
 			// routes
 			route := &apisix.Route{

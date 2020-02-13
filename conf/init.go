@@ -146,7 +146,7 @@ func InitKubeClient() kubernetes.Interface {
 	return k8sClient
 }
 
-func InitApisixRoute() clientSet.Interface{
+func InitApisixClient() clientSet.Interface{
 	apisixRouteClientset, err:= clientSet.NewForConfig(config)
 	ExceptNilErr(err)
 	return apisixRouteClientset
