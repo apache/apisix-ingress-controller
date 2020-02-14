@@ -12,6 +12,10 @@ const (
 	DefaultLBType = "roundrobin"
 	SSLREDIRECT = "k8s.apisix.apache.org/ssl-redirect"
 	WHITELIST = "k8s.apisix.apache.org/whitelist-source-range"
+	ENABLE_CORS = "k8s.apisix.apache.org/enable-cors"
+	CORS_ALLOW_ORIGIN = "k8s.apisix.apache.org/cors-allow-origin"
+	CORS_ALLOW_HEADERS = "k8s.apisix.apache.org/cors-allow-headers"
+	CORS_ALLOW_METHODS = "k8s.apisix.apache.org/cors-allow-methods"
 )
 
 type ApisixRoute ingress.ApisixRoute
@@ -22,17 +26,30 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 	// meta
 	// annotation
 	plugins := make(apisix.Plugins)
+	cors := &CorsYaml{}
 	for k, v := range ar.Annotations{
-		if k == SSLREDIRECT {
+		switch{
+		case k == SSLREDIRECT:
 			if b, err := strconv.ParseBool(v); err == nil && b {
-				//add ssl-redirect plugin
+				// todo add ssl-redirect plugin
 			}
-		}
-		if k == WHITELIST {
+		case k == WHITELIST:
 			ipRestriction := seven.BuildIpRestriction(&v, nil)
 			plugins["ip-restriction"] = ipRestriction
+		case k == ENABLE_CORS:
+			cors.SetEnable(v)
+		case k == CORS_ALLOW_ORIGIN:
+			cors.SetOrigin(v)
+		case k == CORS_ALLOW_HEADERS:
+			cors.SetHeaders(v)
+		case k == CORS_ALLOW_METHODS:
+			cors.SetMethods(v)
+		default:
+			// do nothing
 		}
 	}
+	// build CORS plugin
+	plugins["aispeech-cors"] = cors.Build()
 	// Host
 	rules := ar.Spec.Rules
 	routes := make([]*apisix.Route, 0)
