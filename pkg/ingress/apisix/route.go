@@ -20,6 +20,7 @@ type ApisixRoute ingress.ApisixRoute
 func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.Upstream, error) {
 	ns := ar.Namespace
 	// meta
+	// annotation
 	plugins := make(apisix.Plugins)
 	for k, v := range ar.Annotations{
 		if k == SSLREDIRECT {
@@ -61,6 +62,7 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 				Path: &uri,
 				ServiceName: &apisixSvcName,
 				UpstreamName: &apisixUpstreamName,
+				Plugins: &plugins,
 			}
 			routes = append(routes, route)
 			// services
@@ -68,7 +70,6 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 				Name: &apisixSvcName,
 				UpstreamName:  &apisixUpstreamName,
 				ResourceVersion: &rv,
-				Plugins: &plugins,
 			}
 			services = append(services, service)
 			// upstreams
