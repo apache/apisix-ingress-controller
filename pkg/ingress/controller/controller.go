@@ -19,7 +19,7 @@ func recoverException() {
 
 type Api6Controller struct {
 	KubeClientSet         kubernetes.Interface
-	Api6RouteClientSet    clientSet.Interface
+	Api6ClientSet    clientSet.Interface
 	SharedInformerFactory externalversions.SharedInformerFactory
 	Stop                  chan struct{}
 }
@@ -27,7 +27,7 @@ type Api6Controller struct {
 func (api6 *Api6Controller) ApisixRoute() {
 	arc := BuildApisixRouteController(
 		api6.KubeClientSet,
-		api6.Api6RouteClientSet,
+		api6.Api6ClientSet,
 		api6.SharedInformerFactory.Apisix().V1().ApisixRoutes())
 	arc.Run(api6.Stop)
 }
@@ -35,7 +35,15 @@ func (api6 *Api6Controller) ApisixRoute() {
 func (api6 *Api6Controller) ApisixUpstream() {
 	auc := BuildApisixUpstreamController(
 		api6.KubeClientSet,
-		api6.Api6RouteClientSet,
+		api6.Api6ClientSet,
 		api6.SharedInformerFactory.Apisix().V1().ApisixUpstreams())
+	auc.Run(api6.Stop)
+}
+
+func (api6 *Api6Controller) ApisixService() {
+	auc := BuildApisixServiceController(
+		api6.KubeClientSet,
+		api6.Api6ClientSet,
+		api6.SharedInformerFactory.Apisix().V1().ApisixServices())
 	auc.Run(api6.Stop)
 }

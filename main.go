@@ -19,7 +19,7 @@ func main(){
 	stop := make(chan struct{})
 	c := &controller.Api6Controller{
 		KubeClientSet: kubeClientSet,
-		Api6RouteClientSet: apisixClientset,
+		Api6ClientSet: apisixClientset,
 		SharedInformerFactory: sharedInformerFactory,
 		Stop: stop,
 	}
@@ -27,6 +27,8 @@ func main(){
 	c.ApisixRoute()
 	// ApisixUpstream
 	c.ApisixUpstream()
+	// ApisixService
+	c.ApisixService()
 
 	go sharedInformerFactory.Start(stop)
 
