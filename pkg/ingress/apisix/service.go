@@ -1,9 +1,10 @@
 package apisix
+
 import (
 	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	apisix "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"strconv"
 	"github.com/iresty/ingress-controller/pkg/ingress/endpoint"
+	"strconv"
 )
 
 const (
@@ -21,7 +22,7 @@ func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, er
 	rv := as.ObjectMeta.ResourceVersion
 	port := as.Spec.Port
 	upstreamName := as.Spec.Upstream
-	// apisix upstream name = namespace_svcName_svcPort = apisix service name
+	// apisix upstream name = namespace_upstreamName_svcPort
 	apisixUpstreamName := ns + "_" + upstreamName + "_" + strconv.Itoa(int(port))
 	apisixServiceName := ns + "_" + name + "_" + strconv.Itoa(int(port))
 	fromKind := ApisixService
@@ -36,9 +37,9 @@ func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, er
 	service := &apisix.Service{
 		ResourceVersion: &rv,
 		Name:            &apisixServiceName,
-		UpstreamName: &apisixUpstreamName,
+		UpstreamName:    &apisixUpstreamName,
 		FromKind:        &fromKind,
-		Plugins: pluginRet,
+		Plugins:         pluginRet,
 	}
 	services = append(services, service)
 	// upstream
@@ -46,10 +47,10 @@ func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, er
 	nodes := endpoint.BuildEps(ns, upstreamName, int(port))
 	upstream := &apisix.Upstream{
 		ResourceVersion: &rv,
-		Name: &apisixUpstreamName,
-		Type: &LBType,
-		Nodes: nodes,
-		FromKind: &fromKind,
+		Name:            &apisixUpstreamName,
+		Type:            &LBType,
+		Nodes:           nodes,
+		FromKind:        &fromKind,
 	}
 	upstreams = append(upstreams, upstream)
 	return services, upstreams, nil

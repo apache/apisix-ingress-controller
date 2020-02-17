@@ -6,11 +6,16 @@ import (
 	"strconv"
 	"github.com/gxthrj/seven/apisix"
 	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
+	"github.com/gxthrj/seven/state"
+	"github.com/golang/glog"
 )
 
-const ADD = "ADD"
-const UPDATE = "UPDATE"
-const DELETE = "DELETE"
+const (
+	ADD = "ADD"
+	UPDATE = "UPDATE"
+	DELETE = "DELETE"
+	WatchFromKind = "watch"
+)
 
 func Watch(){
 	c := &controller{
@@ -61,7 +66,15 @@ func (c *controller) process(obj interface{}) {
 							}
 							upstream.Nodes = nodes
 							// update upstream nodes
-							apisix.UpdateUpstream(upstream)
+							// add to seven solver queue
+							//apisix.UpdateUpstream(upstream)
+							fromKind := WatchFromKind
+							upstream.FromKind = &fromKind
+							upstreams := []*apisixType.Upstream{upstream}
+							comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
+							if _, err = comb.Solver(); err != nil {
+								glog.Errorf(err.Error())
+							}
 						}
 					}
 				}
