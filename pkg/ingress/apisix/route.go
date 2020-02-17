@@ -69,7 +69,18 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 			apisixSvcName := ns + "_" + svcName + "_" + svcPort
 			// apisix route name = namespace_svcName_svcPort = apisix service name
 			apisixUpstreamName := ns + "_" + svcName + "_" + svcPort
-			// todo plugins in the level of route
+			// plugins defined in Route Level
+			pls := p.Plugins
+			pluginRet := make(apisix.Plugins)
+			for _, p := range pls {
+				if p.Enable {
+					pluginRet[p.Name] = p.Config
+				}
+			}
+			// add annotation plugins
+			for k, v := range plugins {
+				pluginRet[k] = v
+			}
 
 			// routes
 			route := &apisix.Route{
@@ -79,7 +90,7 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 				Path: &uri,
 				ServiceName: &apisixSvcName,
 				UpstreamName: &apisixUpstreamName,
-				Plugins: &plugins,
+				Plugins: &pluginRet,
 			}
 			routes = append(routes, route)
 			// services
