@@ -27,6 +27,12 @@ type ApisixRouteController struct{
 	workqueue workqueue.RateLimitingInterface
 }
 
+type RouteQueueObj struct {
+	Key string `json:"key"`
+	OldObj *api6V1.ApisixRoute `json:"old_obj"`
+	Ope string `json:"ope"` // add / update / delete
+}
+
 func BuildApisixRouteController(
 	kubeclientset kubernetes.Interface,
 	api6RouteClientset clientSet.Interface,
@@ -56,7 +62,8 @@ func (c *ApisixRouteController) addFunc(obj interface{}){
 		runtime.HandleError(err)
 		return
 	}
-	c.workqueue.AddRateLimited(key)
+	rqo := &RouteQueueObj{Key: key, OldObj: nil, Ope:ADD}
+	c.workqueue.AddRateLimited(rqo)
 }
 
 func (c *ApisixRouteController) updateFunc(oldObj, newObj interface{}){
@@ -65,7 +72,15 @@ func (c *ApisixRouteController) updateFunc(oldObj, newObj interface{}){
 	if oldRoute.ResourceVersion == newRoute.ResourceVersion {
 		return
 	}
-	c.addFunc(newObj)
+	//c.addFunc(newObj)
+	var key string
+	var err error
+	if key, err = cache.MetaNamespaceKeyFunc(newObj); err != nil {
+		runtime.HandleError(err)
+		return
+	}
+	rqo := &RouteQueueObj{Key: key, OldObj: oldRoute, Ope: UPDATE}
+	c.workqueue.AddRateLimited(rqo)
 }
 
 func (c *ApisixRouteController) deleteFunc(obj interface{}){
@@ -76,7 +91,8 @@ func (c *ApisixRouteController) deleteFunc(obj interface{}){
 		runtime.HandleError(err)
 		return
 	}
-	c.workqueue.AddRateLimited(key)
+	rqo := &RouteQueueObj{Key: key, OldObj: nil, Ope: DELETE}
+	c.workqueue.AddRateLimited(rqo)
 }
 
 func (c *ApisixRouteController) Run(stop <-chan struct{}) error {
@@ -104,13 +120,13 @@ func (c *ApisixRouteController) processNextWorkItem() bool {
 		defer c.workqueue.Done(obj)
 		var key string
 		var ok bool
-
-		if key, ok = obj.(string); !ok {
+		var rqo *RouteQueueObj
+		if rqo, ok = obj.(*RouteQueueObj); !ok {
 			c.workqueue.Forget(obj)
-			return fmt.Errorf("expected string in workqueue but got %#v", obj)
+			return fmt.Errorf("expected RouteQueueObj in workqueue but got %#v", obj)
 		}
 		// 在syncHandler中处理业务
-		if err := c.syncHandler(key); err != nil {
+		if err := c.syncHandler(rqo); err != nil {
 			return fmt.Errorf("error syncing '%s': %s", key, err.Error())
 		}
 
@@ -123,7 +139,29 @@ func (c *ApisixRouteController) processNextWorkItem() bool {
 	return true
 }
 
-func (c *ApisixRouteController) syncHandler(key string) error {
+func (c *ApisixRouteController) syncHandler(rqo *RouteQueueObj) error {
+	key := rqo.Key
+	switch {
+	case rqo.Ope == ADD:
+		return c.add(key)
+	case rqo.Ope == UPDATE:
+		// 1.first add new route config
+		if err := c.add(key); err != nil {
+			// log error
+			return err
+		} else {
+			// 2.then delete routes not exist
+			return c.sync(rqo)
+		}
+	case rqo.Ope == DELETE:
+		return c.sync(rqo)
+	default:
+		// log error
+		return fmt.Errorf("RouteQueueObj is not expected")
+	}
+}
+
+func (c *ApisixRouteController) add(key string) error{
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		logger.Error("invalid resource key: %s", key)
@@ -139,11 +177,48 @@ func (c *ApisixRouteController) syncHandler(key string) error {
 		runtime.HandleError(fmt.Errorf("failed to list apisixRoute %s/%s", key, err.Error()))
 		return err
 	}
-	logger.Info(namespace)
-	logger.Info(name)
 	apisixRoute := apisix.ApisixRoute(*apisixIngressRoute)
 	routes, services, upstreams, _ := apisixRoute.Convert()
 	comb := state.ApisixCombination{Routes: routes, Services: services, Upstreams: upstreams}
 	_, err = comb.Solver()
 	return err
+}
+// sync
+// 1.diff routes between old and new objs
+// 2.delete routes not exist
+func (c *ApisixRouteController) sync(rqo *RouteQueueObj) error{
+	key := rqo.Key
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		logger.Error("invalid resource key: %s", key)
+		return fmt.Errorf("invalid resource key: %s", key)
+	}
+
+	apisixIngressRoute, err := c.apisixRouteList.ApisixRoutes(namespace).Get(name)
+	if err != nil {
+		if errors.IsNotFound(err){
+			logger.Info("apisixRoute %s is removed", key)
+			return nil
+		}
+		runtime.HandleError(fmt.Errorf("failed to list apisixRoute %s/%s", key, err.Error()))
+		return err
+	}
+	switch {
+	case rqo.Ope == UPDATE :
+		oldApisixRoute := apisix.ApisixRoute(*rqo.OldObj)
+		oldRoutes, _, _, _ := oldApisixRoute.Convert()
+
+		newApisixRoute := apisix.ApisixRoute(*apisixIngressRoute)
+		newRoutes, _, _, _ := newApisixRoute.Convert()
+
+		rc := &state.RouteCompare{OldRoutes: oldRoutes, NewRoutes: newRoutes}
+		return rc.Sync()
+	case rqo.Ope == DELETE :
+		apisixRoute := apisix.ApisixRoute(*apisixIngressRoute)
+		routes, _, _, _ := apisixRoute.Convert()
+		rc := &state.RouteCompare{OldRoutes: routes, NewRoutes: nil}
+		return rc.Sync()
+	default:
+		return fmt.Errorf("not expected in (ApisixRouteController) sync")
+	}
 }
