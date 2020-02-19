@@ -17,6 +17,9 @@ type ApisixServiceCRD ingress.ApisixService
 func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, error) {
 	ns := as.Namespace
 	name := as.Name
+	// meta annotation
+	pluginsInAnnotation, group := BuildAnnotation(as.Annotations)
+
 	services := make([]*apisix.Service, 0)
 	upstreams := make([]*apisix.Upstream, 0)
 	rv := as.ObjectMeta.ResourceVersion
@@ -29,12 +32,19 @@ func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, er
 	// plugins
 	plugins := as.Spec.Plugins
 	pluginRet := &apisix.Plugins{}
+	// 1.from annotations
+	for k, v := range pluginsInAnnotation {
+		(*pluginRet)[k] = v
+	}
+	// 2.from service plugins
 	for _, p := range plugins {
 		if p.Enable {
 			(*pluginRet)[p.Name] = p.Config
 		}
 	}
+
 	service := &apisix.Service{
+		Group:           &group,
 		ResourceVersion: &rv,
 		Name:            &apisixServiceName,
 		UpstreamName:    &apisixUpstreamName,
@@ -46,6 +56,7 @@ func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, er
 	LBType := DefaultLBType
 	nodes := endpoint.BuildEps(ns, upstreamName, int(port))
 	upstream := &apisix.Upstream{
+		Group:           &group,
 		ResourceVersion: &rv,
 		Name:            &apisixUpstreamName,
 		Type:            &LBType,

@@ -184,7 +184,7 @@ func (c *ApisixRouteController) add(key string) error{
 	return err
 }
 // sync
-// 1.diff routes between old and new objs
+// 1.diff routes between old and new objects
 // 2.delete routes not exist
 func (c *ApisixRouteController) sync(rqo *RouteQueueObj) error{
 	key := rqo.Key

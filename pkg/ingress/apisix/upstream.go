@@ -19,6 +19,9 @@ type ApisixUpstreamCRD ingress.ApisixUpstream
 func (ar *ApisixUpstreamCRD) Convert() ([]*apisix.Upstream, error) {
 	ns := ar.Namespace
 	name := ar.Name
+	// meta annotation
+	_, group := BuildAnnotation(ar.Annotations)
+
 	upstreams := make([]*apisix.Upstream, 0)
 	rv := ar.ObjectMeta.ResourceVersion
 	Ports := ar.Spec.Ports
@@ -32,6 +35,7 @@ func (ar *ApisixUpstreamCRD) Convert() ([]*apisix.Upstream, error) {
 		nodes := endpoint.BuildEps(ns, name, int(port))
 		fromKind := ApisixUpstream
 		upstream := &apisix.Upstream{
+			Group:           &group,
 			ResourceVersion: &rv,
 			Name:            &apisixUpstreamName,
 			Nodes:           nodes,

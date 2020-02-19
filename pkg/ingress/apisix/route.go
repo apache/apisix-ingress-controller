@@ -3,19 +3,20 @@ package apisix
 import (
 	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	apisix "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"strconv"
 	"github.com/iresty/ingress-controller/pkg/ingress/endpoint"
-	seven "github.com/gxthrj/seven/apisix"
+	"strconv"
 )
 
 const (
-	DefaultLBType = "roundrobin"
-	SSLREDIRECT = "k8s.apisix.apache.org/ssl-redirect"
-	WHITELIST = "k8s.apisix.apache.org/whitelist-source-range"
-	ENABLE_CORS = "k8s.apisix.apache.org/enable-cors"
-	CORS_ALLOW_ORIGIN = "k8s.apisix.apache.org/cors-allow-origin"
+	DefaultLBType      = "roundrobin"
+	DefaultGroup       = "default"
+	SSLREDIRECT        = "k8s.apisix.apache.org/ssl-redirect"
+	WHITELIST          = "k8s.apisix.apache.org/whitelist-source-range"
+	ENABLE_CORS        = "k8s.apisix.apache.org/enable-cors"
+	CORS_ALLOW_ORIGIN  = "k8s.apisix.apache.org/cors-allow-origin"
 	CORS_ALLOW_HEADERS = "k8s.apisix.apache.org/cors-allow-headers"
 	CORS_ALLOW_METHODS = "k8s.apisix.apache.org/cors-allow-methods"
+	INGRESS_CLASS      = "k8s.apisix.apache.org/ingress.class"
 )
 
 type ApisixRoute ingress.ApisixRoute
@@ -23,33 +24,8 @@ type ApisixRoute ingress.ApisixRoute
 // Convert convert to  apisix.Route from ingress.ApisixRoute CRD
 func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.Upstream, error) {
 	ns := ar.Namespace
-	// meta
-	// annotation
-	plugins := make(apisix.Plugins)
-	cors := &CorsYaml{}
-	for k, v := range ar.Annotations{
-		switch{
-		case k == SSLREDIRECT:
-			if b, err := strconv.ParseBool(v); err == nil && b {
-				// todo add ssl-redirect plugin
-			}
-		case k == WHITELIST:
-			ipRestriction := seven.BuildIpRestriction(&v, nil)
-			plugins["ip-restriction"] = ipRestriction
-		case k == ENABLE_CORS:
-			cors.SetEnable(v)
-		case k == CORS_ALLOW_ORIGIN:
-			cors.SetOrigin(v)
-		case k == CORS_ALLOW_HEADERS:
-			cors.SetHeaders(v)
-		case k == CORS_ALLOW_METHODS:
-			cors.SetMethods(v)
-		default:
-			// do nothing
-		}
-	}
-	// build CORS plugin
-	plugins["aispeech-cors"] = cors.Build()
+	// meta annotation
+	plugins, group := BuildAnnotation(ar.Annotations)
 	// Host
 	rules := ar.Spec.Rules
 	routes := make([]*apisix.Route, 0)
@@ -72,46 +48,50 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 			// plugins defined in Route Level
 			pls := p.Plugins
 			pluginRet := make(apisix.Plugins)
+			// 1.add annotation plugins
+			for k, v := range plugins {
+				pluginRet[k] = v
+			}
+			// 2.add route plugins
 			for _, p := range pls {
 				if p.Enable {
 					pluginRet[p.Name] = p.Config
 				}
 			}
-			// add annotation plugins
-			for k, v := range plugins {
-				pluginRet[k] = v
-			}
 
 			// routes
 			route := &apisix.Route{
+				Group:           &group,
 				ResourceVersion: &rv,
-				Name: &apisixRouteName,
-				Host: &host,
-				Path: &uri,
-				ServiceName: &apisixSvcName,
-				UpstreamName: &apisixUpstreamName,
-				Plugins: &pluginRet,
+				Name:            &apisixRouteName,
+				Host:            &host,
+				Path:            &uri,
+				ServiceName:     &apisixSvcName,
+				UpstreamName:    &apisixUpstreamName,
+				Plugins:         &pluginRet,
 			}
 			routes = append(routes, route)
 			// services
 			service := &apisix.Service{
-				Name: &apisixSvcName,
-				UpstreamName:  &apisixUpstreamName,
+				Group:           &group,
+				Name:            &apisixSvcName,
+				UpstreamName:    &apisixUpstreamName,
 				ResourceVersion: &rv,
 			}
 			services = append(services, service)
 			// upstreams
 			LBType := DefaultLBType
-			port, _:= strconv.Atoi(svcPort)
+			port, _ := strconv.Atoi(svcPort)
 			nodes := endpoint.BuildEps(ns, svcName, port)
 			upstream := &apisix.Upstream{
+				Group:           &group,
 				ResourceVersion: &rv,
-				Name: &apisixUpstreamName,
-				Type: &LBType,
-				Nodes: nodes,
+				Name:            &apisixUpstreamName,
+				Type:            &LBType,
+				Nodes:           nodes,
 			}
 			upstreams = append(upstreams, upstream)
 		}
 	}
-	return routes, services, upstreams,nil
+	return routes, services, upstreams, nil
 }
