@@ -5,11 +5,12 @@ import (
 	apisix "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"github.com/iresty/ingress-controller/pkg/ingress/endpoint"
 	"strconv"
+	"github.com/gxthrj/seven/conf"
 )
 
 const (
 	DefaultLBType      = "roundrobin"
-	DefaultGroup       = "default"
+	DefaultGroup       = "apisix.cloud.svc.cluster.local:9180"
 	SSLREDIRECT        = "k8s.apisix.apache.org/ssl-redirect"
 	WHITELIST          = "k8s.apisix.apache.org/whitelist-source-range"
 	ENABLE_CORS        = "k8s.apisix.apache.org/enable-cors"
@@ -26,6 +27,7 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 	ns := ar.Namespace
 	// meta annotation
 	plugins, group := BuildAnnotation(ar.Annotations)
+	conf.AddGroup(group)
 	// Host
 	rules := ar.Spec.Rules
 	routes := make([]*apisix.Route, 0)

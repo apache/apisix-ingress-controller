@@ -5,6 +5,7 @@ import (
 	apisix "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"github.com/iresty/ingress-controller/pkg/ingress/endpoint"
 	"strconv"
+	"github.com/gxthrj/seven/conf"
 )
 
 const (
@@ -21,6 +22,7 @@ func (ar *ApisixUpstreamCRD) Convert() ([]*apisix.Upstream, error) {
 	name := ar.Name
 	// meta annotation
 	_, group := BuildAnnotation(ar.Annotations)
+	conf.AddGroup(group)
 
 	upstreams := make([]*apisix.Upstream, 0)
 	rv := ar.ObjectMeta.ResourceVersion
