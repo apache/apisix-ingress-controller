@@ -11,7 +11,7 @@ func BuildAnnotation(annotations map[string]string) (apisix.Plugins, string){
 	plugins := make(apisix.Plugins)
 	cors := &CorsYaml{}
 	// ingress.class
-	group := DefaultGroup
+	group := ""
 	for k, v := range annotations {
 		switch {
 		case k == SSLREDIRECT:
@@ -36,6 +36,8 @@ func BuildAnnotation(annotations map[string]string) (apisix.Plugins, string){
 		}
 	}
 	// build CORS plugin
-	plugins["aispeech-cors"] = cors.Build()
+	if cors.Enable {
+		plugins["aispeech-cors"] = cors.Build()
+	}
 	return plugins, group
 }

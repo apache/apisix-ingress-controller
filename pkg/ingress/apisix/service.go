@@ -3,9 +3,9 @@ package apisix
 import (
 	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	apisix "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
+	"github.com/gxthrj/seven/conf"
 	"github.com/iresty/ingress-controller/pkg/ingress/endpoint"
 	"strconv"
-	"github.com/gxthrj/seven/conf"
 )
 
 const (
@@ -43,8 +43,14 @@ func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, er
 			(*pluginRet)[p.Name] = p.Config
 		}
 	}
+	// fullServiceName
+	fullServiceName := apisixServiceName
+	if group != "" {
+		fullServiceName = group + "_" + apisixServiceName
+	}
 
 	service := &apisix.Service{
+		FullName:        &fullServiceName,
 		Group:           &group,
 		ResourceVersion: &rv,
 		Name:            &apisixServiceName,
@@ -54,9 +60,15 @@ func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, er
 	}
 	services = append(services, service)
 	// upstream
+	// fullUpstreamName
+	fullUpstreamName := apisixUpstreamName
+	if group != "" {
+		fullUpstreamName = group + "_" + apisixUpstreamName
+	}
 	LBType := DefaultLBType
 	nodes := endpoint.BuildEps(ns, upstreamName, int(port))
 	upstream := &apisix.Upstream{
+		FullName:        &fullUpstreamName,
 		Group:           &group,
 		ResourceVersion: &rv,
 		Name:            &apisixUpstreamName,
