@@ -6,25 +6,22 @@ import (
 	"io"
 	"encoding/json"
 	"io/ioutil"
+	"github.com/iresty/ingress-controller/log"
 )
+
+var logger = log.GetLogger()
 
 func Route() *httprouter.Router{
 	router := httprouter.New()
 	router.GET("/healthz", Healthz)
 	router.GET("/apisix/healthz", Healthz)
-	router.GET("/apisix/sync/upstream/:name", syncPodWithUpstream)
+	//router.GET("/apisix/sync/upstream/:name", syncPodWithUpstream)
 	return router
 }
 
 func Healthz(w http.ResponseWriter, req *http.Request, _ httprouter.Params){
 	io.WriteString(w, "ok")
 }
-
-func syncPodWithUpstream(w http.ResponseWriter, req *http.Request, p httprouter.Params){
-	svcName := p.ByName("name")
-	SyncTargetWithUpstream(svcName)
-}
-
 
 type CheckResponse struct{
 	Ok bool `json:"ok"`

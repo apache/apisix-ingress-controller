@@ -12,7 +12,6 @@ import (
 
 func main(){
 	var logger = log.GetLogger()
-	//election.Elect()
 	kubeClientSet := conf.InitKubeClient()
 	apisixClientset := conf.InitApisixClient()
 	sharedInformerFactory := api6Informers.NewSharedInformerFactory(apisixClientset, 0)
