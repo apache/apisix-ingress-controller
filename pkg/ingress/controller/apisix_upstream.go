@@ -18,6 +18,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"time"
+	"github.com/iresty/ingress-controller/pkg/ingress/endpoint"
 )
 
 type ApisixUpstreamController struct {
@@ -112,8 +113,9 @@ func (c *ApisixUpstreamController) syncHandler(key string) error {
 	}
 	logger.Info(namespace)
 	logger.Info(name)
-	apisixUpstream := apisix.ApisixUpstreamCRD(*apisixUpstreamYaml)
-	upstreams, _ := apisixUpstream.Convert()
+	//apisixUpstream := apisix.ApisixUpstreamCRD(*apisixUpstreamYaml)
+	aub := apisix.ApisixUpstreamBuilder{CRD: apisixUpstreamYaml, Ep: &endpoint.EndpointRequest{}}
+	upstreams, _ := aub.Convert()
 	comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
 	_, err = comb.Solver()
 	return err

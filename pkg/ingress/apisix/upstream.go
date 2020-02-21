@@ -14,10 +14,16 @@ const (
 	ApisixUpstream = "ApisixUpstream"
 )
 
-type ApisixUpstreamCRD ingress.ApisixUpstream
+//type ApisixUpstreamCRD ingress.ApisixUpstream
+
+type ApisixUpstreamBuilder struct{
+	CRD *ingress.ApisixUpstream
+	Ep endpoint.Endpoint
+}
 
 // Convert convert to  apisix.Route from ingress.ApisixRoute CRD
-func (ar *ApisixUpstreamCRD) Convert() ([]*apisix.Upstream, error) {
+func (aub *ApisixUpstreamBuilder) Convert() ([]*apisix.Upstream, error) {
+	ar := aub.CRD
 	ns := ar.Namespace
 	name := ar.Name
 	// meta annotation
@@ -34,7 +40,8 @@ func (ar *ApisixUpstreamCRD) Convert() ([]*apisix.Upstream, error) {
 
 		lb := r.Loadbalancer
 
-		nodes := endpoint.BuildEps(ns, name, int(port))
+		//nodes := endpoint.BuildEps(ns, name, int(port))
+		nodes := aub.Ep.BuildEps(ns, name, int(port))
 		fromKind := ApisixUpstream
 
 		// fullName

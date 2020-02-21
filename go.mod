@@ -16,12 +16,20 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/pkg/errors v0.8.1
 	github.com/sirupsen/logrus v1.4.2
+	github.com/stretchr/testify v1.4.0
 	github.com/tidwall/gjson v1.3.5
 	go.uber.org/zap v1.13.0 // indirect
 	google.golang.org/genproto v0.0.0-20191205163323-51378566eb59 // indirect
 	google.golang.org/grpc v1.25.1 // indirect
 	gopkg.in/resty.v1 v1.12.0
+	gopkg.in/yaml.v2 v2.2.4
 	k8s.io/api v0.0.0-20190819141258-3544db3b9e44
 	k8s.io/apimachinery v0.0.0-20190817020851-f2f3a405f61d
 	k8s.io/client-go v0.0.0-20190819141724-e14f31a72a77
+)
+
+replace (
+	github.com/gxthrj/apisix-ingress-types v0.1.0 => /Users/jinwei/go/src/github.com/gxthrj/apisix-ingress-types
+	github.com/gxthrj/apisix-types v0.1.0 => /Users/jinwei/go/src/github.com/gxthrj/apisix-types
+	github.com/gxthrj/seven v0.1.1 => /Users/jinwei/go/src/github.com/gxthrj/seven
 )
