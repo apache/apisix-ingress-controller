@@ -8,6 +8,9 @@
     },
     "syslog":{
       "host": "localhost"
+    },
+    "apisix":{
+      "base_url": "http://172.16.20.90:30116/apisix/admin"
     }
   }
 }

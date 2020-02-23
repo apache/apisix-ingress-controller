@@ -4,6 +4,7 @@ import (
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	restclient "k8s.io/client-go/rest"
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
+	seven "github.com/gxthrj/seven/conf"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/informers"
@@ -82,6 +83,10 @@ func init() {
 			addresses = append(addresses, address.String())
 		}
 		EtcdConfig.Addresses = addresses
+		// apisix baseUrl
+		apisixConf := configuration.Get("conf.apisix")
+		apisixBaseUrl := apisixConf.Get("base_url").String()
+		seven.SetBaseUrl(apisixBaseUrl)
 		// k8sAuth conf
 		k8sAuthConf := configuration.Get("conf.k8sAuth")
 		K8sAuth.file = k8sAuthConf.Get("file").String()
