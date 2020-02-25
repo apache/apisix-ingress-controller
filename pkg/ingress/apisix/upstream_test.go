@@ -6,8 +6,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"reflect"
+	"fmt"
 )
 func TestApisixUpstreamCRD_Convert(t *testing.T) {
 	assert := assert.New(t)
@@ -25,21 +24,31 @@ func TestApisixUpstreamCRD_Convert(t *testing.T) {
 		}else {
 			// equals or deepCompare
 			upstreamExpect := buildExpectUpstream()
-			b := reflect.DeepEqual(upstreams, []*v1.Upstream{upstreamExpect})
+			//upstreamsExpect := []*v1.Upstream{upstreamExpect}
+			b := equals(upstreams[0], upstreamExpect)
+			//b := reflect.DeepEqual(upstreams, []*v1.Upstream{upstreamExpect})
 			if !b {
 				assert.True(b, "convert upstream not expected")
-				//assert.Error(fmt.Errorf("convert upstream not expect"))
+				assert.Error(fmt.Errorf("convert upstream not expect"))
 			}
+			t.Log("[upstream convert] ok")
 		}
 	}
 }
 
-type ApisixUpstream2 struct {
-	metav1.TypeMeta   `json:",inline" yaml:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-	//Spec              *ApisixUpstreamSpec `json:"spec,omitempty"`
+func equals(s, d *v1.Upstream) bool{
+	if *s.Name != *d.Name || *s.FullName != *d.FullName || *s.Group != *d.Group{
+		return false
+	}
+
+	if *s.FromKind != *d.FromKind || *s.Type != *d.Type || *s.Key != *d.Key || *s.HashOn != *d.HashOn {
+		return false
+	}
+
+	return true
 }
 
+// mock BuildEps
 type EndpointRequestTest struct {}
 
 func (epr *EndpointRequestTest) BuildEps(ns, name string, port int) []*v1.Node {
@@ -66,9 +75,8 @@ func buildExpectUpstream() *v1.Upstream{
 
 
 var upstreamYaml = `
-aPIVersion: apisix.apache.org/v1
-apiVersion: apisix.apache.org/v1
 kind: ApisixUpstream
+apiVersion: apisix.apache.org/v1
 metadata:
   annotations:
     kubectl.kubernetes.io/last-applied-configuration: |
