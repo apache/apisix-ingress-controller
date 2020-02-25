@@ -53,6 +53,8 @@ github.com/gxthrj/apisix-ingress-types v0.0.2 h1:rTaSQmX+f+1gPvjReAY6a1C70bgVNQn
 github.com/gxthrj/apisix-ingress-types v0.0.2/go.mod h1:n2xe6mmDm4XFmEyLhlDdd8ub5kAvU+nCVPeFm1ekAvQ=
 github.com/gxthrj/apisix-ingress-types v0.1.0 h1:SY3H7HPUllb+TKxCQVqnAiT9XaNAMTNXVrs+WYcJEJo=
 github.com/gxthrj/apisix-ingress-types v0.1.0/go.mod h1:xWuHLSHGN4/JZjz9b0ftKgtE3yZ7NehkJAiTyZ+KoPA=
+github.com/gxthrj/apisix-ingress-types v0.1.1 h1:8ptQkJjOLcu+73wJaP6XQf5wSGkM/76m2b9F47PQs8U=
+github.com/gxthrj/apisix-ingress-types v0.1.1/go.mod h1:xWuHLSHGN4/JZjz9b0ftKgtE3yZ7NehkJAiTyZ+KoPA=
 github.com/gxthrj/apisix-types v0.0.1 h1:COF9zxOlXafCbcyOt0jVGo/6vWu+hBoC1PEcrCu+rvc=
 github.com/gxthrj/apisix-types v0.0.1/go.mod h1:UQVCuDiPDkg8mcMfEDE62l2vh9ewdsyNvK6eU7hhOgA=
 github.com/gxthrj/apisix-types v0.0.3 h1:X2iD5YhuzdGb8rD2M7tQZMXCgclSVzROfltyljHcMkQ=
@@ -81,6 +83,8 @@ github.com/gxthrj/seven v0.0.5 h1:6WJuH8ivlT69yddMsk5DANDPYZRxeIMK2qNZpwKE5D8=
 github.com/gxthrj/seven v0.0.5/go.mod h1:1JluEfcrblSyK/4mKy/BnGZYd5o08aFrNgt5bSTX0c0=
 github.com/gxthrj/seven v0.1.1 h1:eZB/YydOjutGjkRMr9phGVd5VQaqZkra6igCROeWjcc=
 github.com/gxthrj/seven v0.1.1/go.mod h1:epDVCYT1ibfV6fgaeM918QAer9u0/M2LXW6OcIRdfQc=
+github.com/gxthrj/seven v0.1.2 h1:+bcSpKPmmc9OtzETSqVopPqb5SNDSlxDP4UuyFT6MLc=
+github.com/gxthrj/seven v0.1.2/go.mod h1:epDVCYT1ibfV6fgaeM918QAer9u0/M2LXW6OcIRdfQc=
 github.com/hashicorp/go-immutable-radix v1.1.0 h1:vN9wG1D6KG6YHRTWr8512cxGOVgTMEfgEdSj/hr8MPc=
 github.com/hashicorp/go-immutable-radix v1.1.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
 github.com/hashicorp/go-memdb v1.0.4 h1:sIdJHAEtV3//iXcUb4LumSQeorYos5V0ptvqvQvFgDA=
