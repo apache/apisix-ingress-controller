@@ -8,5 +8,8 @@
     },
     "syslog":{
       "host": "#syslogAddress#"
+    },
+    "apisix":{
+      "base_url": "http://apisix.cloud.svc.cluster.local:9180/apisix/admin"
     }
 }
