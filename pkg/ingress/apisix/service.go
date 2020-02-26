@@ -40,7 +40,13 @@ func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, er
 	// 2.from service plugins
 	for _, p := range plugins {
 		if p.Enable {
-			(*pluginRet)[p.Name] = p.Config
+			if p.Config != nil {
+				(*pluginRet)[p.Name] = p.Config
+			} else if p.ConfigSet != nil {
+				(*pluginRet)[p.Name] = p.ConfigSet
+			} else {
+				(*pluginRet)[p.Name] = make(map[string]interface{})
+			}
 		}
 	}
 	// fullServiceName

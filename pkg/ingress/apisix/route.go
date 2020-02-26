@@ -56,7 +56,13 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 			// 2.add route plugins
 			for _, p := range pls {
 				if p.Enable {
-					pluginRet[p.Name] = p.Config
+					if p.Config != nil {
+						pluginRet[p.Name] = p.Config
+					} else if p.ConfigSet != nil {
+						pluginRet[p.Name] = p.ConfigSet
+					} else {
+						pluginRet[p.Name] = make(map[string]interface{})
+					}
 				}
 			}
 			// fullRouteName
