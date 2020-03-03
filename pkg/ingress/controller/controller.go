@@ -6,6 +6,7 @@ import (
 	"github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
 	"github.com/iresty/ingress-controller/log"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/informers"
 )
 
 var logger = log.GetLogger()
@@ -21,6 +22,7 @@ type Api6Controller struct {
 	KubeClientSet         kubernetes.Interface
 	Api6ClientSet    clientSet.Interface
 	SharedInformerFactory externalversions.SharedInformerFactory
+	CoreSharedInformerFactory informers.SharedInformerFactory
 	Stop                  chan struct{}
 }
 
@@ -45,5 +47,11 @@ func (api6 *Api6Controller) ApisixService() {
 		api6.KubeClientSet,
 		api6.Api6ClientSet,
 		api6.SharedInformerFactory.Apisix().V1().ApisixServices())
+	auc.Run(api6.Stop)
+}
+
+func (api6 *Api6Controller) Endpoint() {
+	auc := BuildEndpointController(api6.KubeClientSet)
+	//conf.EndpointsInformer)
 	auc.Run(api6.Stop)
 }

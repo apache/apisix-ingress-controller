@@ -29,6 +29,8 @@ var (
 	EndpointsInformer coreinformers.EndpointsInformer
 	IsLeader = false
 	etcdClient client.Client
+	kubeClient kubernetes.Interface
+	CoreSharedInformerFactory informers.SharedInformerFactory
 )
 const PROD = "prod"
 const HBPROD = "hb-prod"
@@ -133,18 +135,22 @@ func GetNsInformer() coreinformers.NamespaceInformer{
 	return nsInformer
 }
 
-func InitKubeClient() kubernetes.Interface {
-	var err error
-	if ENV == LOCAL {
-		clientConfig, err := clientcmd.LoadFromFile(K8sAuth.file)
-		ExceptNilErr(err)
+func GetKubeClient() kubernetes.Interface{
+	return kubeClient
+}
 
-		config, err = clientcmd.NewDefaultClientConfig(*clientConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
-		ExceptNilErr(err)
-	} else {
-		config, err = restclient.InClusterConfig()
-		ExceptNilErr(err)
-	}
+func InitKubeClient() kubernetes.Interface {
+	//var err error
+	//if ENV == LOCAL {
+	//	clientConfig, err := clientcmd.LoadFromFile(K8sAuth.file)
+	//	ExceptNilErr(err)
+	//
+	//	config, err = clientcmd.NewDefaultClientConfig(*clientConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
+	//	ExceptNilErr(err)
+	//} else {
+	//	config, err = restclient.InClusterConfig()
+	//	ExceptNilErr(err)
+	//}
 
 	k8sClient, err := kubernetes.NewForConfig(config)
 	ExceptNilErr(err)
@@ -157,9 +163,9 @@ func InitApisixClient() clientSet.Interface{
 	return apisixRouteClientset
 }
 
-func InitInformer() (coreinformers.PodInformer, coreinformers.ServiceInformer, coreinformers.NamespaceInformer){
+func InitInformer() {
 	// 生成一个k8s client
-	var config *restclient.Config
+	//var config *restclient.Config
 	var err error
 	if ENV == LOCAL {
 		clientConfig, err := clientcmd.LoadFromFile(K8sAuth.file)
@@ -172,17 +178,20 @@ func InitInformer() (coreinformers.PodInformer, coreinformers.ServiceInformer, c
 		ExceptNilErr(err)
 	}
 
-	k8sClient, err := kubernetes.NewForConfig(config)
+	//k8sClient, err := kubernetes.NewForConfig(config)
+	kubeClient = InitKubeClient()
 	ExceptNilErr(err)
 
 	// 创建一个informerFactory
-	sharedInformerFactory := informers.NewSharedInformerFactory(k8sClient, 0)
+	//sharedInformerFactory := informers.NewSharedInformerFactory(k8sClient, 0)
+	// 创建一个informerFactory
+	CoreSharedInformerFactory = informers.NewSharedInformerFactory(kubeClient, 0)
 
 	// 创建 informers
-	podInformer = sharedInformerFactory.Core().V1().Pods()
-	svcInformer = sharedInformerFactory.Core().V1().Services()
-	nsInformer = sharedInformerFactory.Core().V1().Namespaces()
-	return podInformer, svcInformer, nsInformer
+	podInformer = CoreSharedInformerFactory.Core().V1().Pods()
+	svcInformer = CoreSharedInformerFactory.Core().V1().Services()
+	nsInformer = CoreSharedInformerFactory.Core().V1().Namespaces()
+	//return podInformer, svcInformer, nsInformer
 }
 
 func ExceptNilErr(err error)  {
