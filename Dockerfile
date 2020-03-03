@@ -1,9 +1,11 @@
-FROM golang:1.13
+FROM golang:1.13.8
 MAINTAINER gxthrj@163.com
 
 WORKDIR /go/src/github.com/iresty/ingress-controller
 COPY . .
 RUN mkdir /root/ingress-controller \
+    && go env -w GOPROXY=https://goproxy.io,direct \
+    && export GOPROXY=https://goproxy.io \
     && go build -o /root/ingress-controller/ingress-controller \
     && mv /go/src/github.com/iresty/ingress-controller/build.sh /root/ingress-controller/ \
     && mv /go/src/github.com/iresty/ingress-controller/conf.json /root/ingress-controller/ \
