@@ -31,7 +31,9 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 	rules := ar.Spec.Rules
 	routes := make([]*apisix.Route, 0)
 	services := make([]*apisix.Service, 0)
+	serviceMap := make(map[string]*apisix.Service)
 	upstreams := make([]*apisix.Upstream, 0)
+	upstreamMap := make(map[string]*apisix.Upstream)
 	rv := ar.ObjectMeta.ResourceVersion
 	for _, r := range rules {
 		host := r.Host
@@ -98,7 +100,8 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 				UpstreamName:    &apisixUpstreamName,
 				ResourceVersion: &rv,
 			}
-			services = append(services, service)
+			serviceMap[*service.FullName] = service
+
 			// upstreams
 			// fullServiceName
 			fullUpstreamName := apisixUpstreamName
@@ -116,8 +119,14 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 				Type:            &LBType,
 				Nodes:           nodes,
 			}
-			upstreams = append(upstreams, upstream)
+			upstreamMap[*upstream.FullName] = upstream
 		}
+	}
+	for _, s := range serviceMap {
+		services = append(services, s)
+	}
+	for _, u := range upstreamMap {
+		upstreams = append(upstreams, u)
 	}
 	return routes, services, upstreams, nil
 }
