@@ -124,34 +124,66 @@ func (c *EndpointController) process(ep *CoreV1.Endpoints) {
 			for _, port := range s.Ports{
 				upstreamName := ep.Namespace + "_" + ep.Name + "_" + strconv.Itoa(int(port.Port))
 				// find upstreamName is in apisix
+				// default
+				syncWithGroup("", upstreamName, ips, port)
 				// sync with all apisix group
-				for k, _ := range sevenConf.UrlGroup {
-					upstreams, err :=  apisix.ListUpstream(k)
-					if err == nil {
-						for _, upstream := range upstreams {
-							if *(upstream.Name) == upstreamName {
-								nodes := make([]*apisixType.Node, 0)
-								for _, ip := range ips {
-									ipAddress := ip
-									p := int(port.Port)
-									weight := 100
-									node := &apisixType.Node{IP: &ipAddress, Port: &p, Weight: &weight}
-									nodes = append(nodes, node)
-								}
-								upstream.Nodes = nodes
-								// update upstream nodes
-								// add to seven solver queue
-								//apisix.UpdateUpstream(upstream)
-								fromKind := WatchFromKind
-								upstream.FromKind = &fromKind
-								upstreams := []*apisixType.Upstream{upstream}
-								comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
-								if _, err = comb.Solver(); err != nil {
-									glog.Errorf(err.Error())
-								}
-							}
-						}
-					}
+				for g, _ := range sevenConf.UrlGroup {
+					syncWithGroup(g, upstreamName, ips, port)
+					//upstreams, err :=  apisix.ListUpstream(k)
+					//if err == nil {
+					//	for _, upstream := range upstreams {
+					//		if *(upstream.Name) == upstreamName {
+					//			nodes := make([]*apisixType.Node, 0)
+					//			for _, ip := range ips {
+					//				ipAddress := ip
+					//				p := int(port.Port)
+					//				weight := 100
+					//				node := &apisixType.Node{IP: &ipAddress, Port: &p, Weight: &weight}
+					//				nodes = append(nodes, node)
+					//			}
+					//			upstream.Nodes = nodes
+					//			// update upstream nodes
+					//			// add to seven solver queue
+					//			//apisix.UpdateUpstream(upstream)
+					//			fromKind := WatchFromKind
+					//			upstream.FromKind = &fromKind
+					//			upstreams := []*apisixType.Upstream{upstream}
+					//			comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
+					//			if _, err = comb.Solver(); err != nil {
+					//				glog.Errorf(err.Error())
+					//			}
+					//		}
+					//	}
+					//}
+				}
+			}
+		}
+	}
+}
+
+func syncWithGroup(group, upstreamName string, ips []string, port CoreV1.EndpointPort) {
+	upstreams, err := apisix.ListUpstream(group)
+	if err == nil {
+		for _, upstream := range upstreams {
+			if *(upstream.Name) == upstreamName {
+				nodes := make([]*apisixType.Node, 0)
+				for _, ip := range ips {
+					ipAddress := ip
+					p := int(port.Port)
+					weight := 100
+					node := &apisixType.Node{IP: &ipAddress, Port: &p, Weight: &weight}
+					nodes = append(nodes, node)
+				}
+				upstream.Nodes = nodes
+				// update upstream nodes
+				// add to seven solver queue
+				//apisix.UpdateUpstream(upstream)
+				fromKind := WatchFromKind
+				upstream.FromKind = &fromKind
+				upstreams := []*apisixType.Upstream{upstream}
+				comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
+				if _, err = comb.Solver(); err != nil {
+					glog.Errorf(err.Error())
 				}
 			}
 		}
