@@ -57,7 +57,10 @@ func (aub *ApisixUpstreamBuilder) Convert() ([]*apisix.Upstream, error) {
 			Nodes:           nodes,
 			FromKind:        &fromKind,
 		}
-		lbType := lb["type"].(string)
+		lbType := RR
+		if lb != nil {
+			lbType = lb["type"].(string)
+		}
 		switch {
 		case lbType == CHASH:
 			upstream.Type = &lbType
