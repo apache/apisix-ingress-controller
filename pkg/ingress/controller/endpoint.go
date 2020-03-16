@@ -61,7 +61,7 @@ func (c *EndpointController) processNextWorkItem() bool {
 	defer recoverException()
 	obj, shutdown := c.workqueue.Get()
 	if shutdown {
-		glog.Info("shutdown")
+		glog.V(2).Info("shutdown")
 		return false
 	}
 	err := func(obj interface{}) error {
@@ -90,7 +90,7 @@ func (c *EndpointController) processNextWorkItem() bool {
 func (c *EndpointController) syncHandler(key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if name == "cinfoserver" || name == "file-resync2-server" {
-		glog.Infof("find endpoint %s/%s", namespace, name)
+		glog.V(2).Infof("find endpoint %s/%s", namespace, name)
 	}
 	if err != nil {
 		logger.Error("invalid resource key: %s", key)

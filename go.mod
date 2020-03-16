@@ -12,7 +12,7 @@ require (
 	github.com/google/uuid v1.1.1 // indirect
 	github.com/gxthrj/apisix-ingress-types v0.1.2
 	github.com/gxthrj/apisix-types v0.1.0
-	github.com/gxthrj/seven v0.1.6
+	github.com/gxthrj/seven v0.1.7
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/pkg/errors v0.8.1
 	github.com/sirupsen/logrus v1.4.2
