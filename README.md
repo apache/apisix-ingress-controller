@@ -48,7 +48,7 @@ apisix ingress for K8s
 ![调用流程](https://github.com/iresty/ingress-controller/blob/master/doc/imgs/flow.png)
 
 ### 开发文档
-[开发文档](doc/dev/evelop.md)
+[开发文档](doc/dev/develop.md)
 
 ### 集群部署 (文档待补充)
 - 1.下载RBAC；
