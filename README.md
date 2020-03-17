@@ -1,5 +1,5 @@
 # ingress-controller
-apisix ingress for K8s
+Apache APISIX ingress for K8s
 
 ### 目标
 
