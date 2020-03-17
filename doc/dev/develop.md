@@ -106,6 +106,11 @@ EOF
 以apisix反向代理httpserver服务为例（你可以选择任意测试项目部署），基本格式如下，可以copy执行
 ##### 定义 ApisixRoute
 事实上，为了减少ingress迁移带来的麻烦，我们在ApisixRoute的结构上尽量保持与原生ingress一致。
+
+    与nginx-ingress的配置差异点在：
+    1.apiVersion 和 kind 不同；
+    2.path加了通配符； 例如：path: /hello*
+
 ```
 kubectl apply -f - <<EOF
 apiVersion: apisix.apache.org/v1
