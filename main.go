@@ -8,9 +8,13 @@ import (
 	"github.com/iresty/ingress-controller/pkg"
 	"github.com/iresty/ingress-controller/log"
 	"time"
+	"flag"
+	"github.com/golang/glog"
 )
 
 func main(){
+	flag.Parse()
+	defer glog.Flush()
 	var logger = log.GetLogger()
 	kubeClientSet := conf.GetKubeClient()
 	apisixClientset := conf.InitApisixClient()

@@ -99,7 +99,7 @@ EOF
 
 3.在ingress-controller根目录执行：
 ```
-# go run main.go
+# go run main.go -logtostderr -v=5
 ```
 
 4.此时程序可能会打印一些错误日志，提示找不到资源，继续执行以下步骤，通过CRD定义路由
