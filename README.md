@@ -50,5 +50,5 @@ Apache APISIX ingress for K8s
 ### 开发文档
 [开发文档](doc/dev/develop.md)
 
-### 集群部署 (文档待补充)
+### 集群部署
 [集群部署](doc/deploy/deploy.md)
