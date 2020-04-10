@@ -1,0 +1,12 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: apisix-view-clusterrolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: apisix-view-clusterrole
+subjects:
+- kind: ServiceAccount
+  name: apisix-view-serviceaccount
+  namespace: cloud

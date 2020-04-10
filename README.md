@@ -51,9 +51,4 @@ Apache APISIX ingress for K8s
 [开发文档](doc/dev/develop.md)
 
 ### 集群部署 (文档待补充)
-- 1.下载RBAC；
-- 2.下载 deployment yaml；
-- 3.修改模板中镜像版本；
-- 4.执行；
-- 5.CRD定义文件；
-- 6.通过CRD定义apisix路由的描述文件；
+[集群部署](doc/deploy/deploy.md)

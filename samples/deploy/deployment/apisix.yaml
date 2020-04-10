@@ -1,0 +1,38 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: apisix
+  namespace: cloud
+spec:
+  minReadySeconds: 5
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apisix
+      tier: backend
+  strategy:
+    rollingUpdate:
+      maxSurge: 50%
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations: {}
+      labels:
+        app: apisix
+        tier: backend
+    spec:
+      hostNetwork: true
+      containers:
+      - envFrom:
+        - configMapRef:
+            name: cloud-config
+        image: ???/???/apisix:???
+        imagePullPolicy: IfNotPresent
+        name: apisix
+        ports:
+        - containerPort: 80
+          hostPort: 80
+        - containerPort: 9180
+          hostPort: 9180
+      terminationGracePeriodSeconds: 60
