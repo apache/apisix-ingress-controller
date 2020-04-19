@@ -1,14 +1,14 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: apisix
+  name: ingress-controller
   namespace: cloud
 spec:
   minReadySeconds: 5
   replicas: 1
   selector:
     matchLabels:
-      app: apisix
+      app: ingress-controller
       tier: backend
   strategy:
     rollingUpdate:
@@ -27,12 +27,10 @@ spec:
       - envFrom:
         - configMapRef:
             name: cloud-config
-        image: ???/???/apisix:???
+        image: ???/???/ingress-controller:???
         imagePullPolicy: IfNotPresent
-        name: apisix
+        name: ingress-controller
         ports:
-        - containerPort: 80
-          hostPort: 80
-        - containerPort: 9180
-          hostPort: 9180
+        - containerPort: 8080
+          hostPort: 8080
       terminationGracePeriodSeconds: 60
