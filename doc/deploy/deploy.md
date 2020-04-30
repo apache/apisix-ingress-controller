@@ -27,7 +27,8 @@ kubectl apply -f samples/deploy/configmap/cloud.yaml
 ```
 
 ## 配置 Deployment
-* 执行命令之前按需修改name和namespaces，并且补充APISIX image路径和版本号
+* 执行命令之前按需修改name和namespaces，并且补充APISIX ingress controller image路径和版本号
+
 
 ```shell
 kubectl apply -f samples/deploy/deployment/ingress-controller.yaml
