@@ -27,3 +27,7 @@ require (
 	k8s.io/apimachinery v0.0.0-20190817020851-f2f3a405f61d
 	k8s.io/client-go v0.0.0-20190819141724-e14f31a72a77
 )
+
+replace github.com/gxthrj/apisix-ingress-types v0.1.2 => github.com/api7/ingress-types v0.1.2
+
+replace github.com/gxthrj/apisix-types v0.1.0 => github.com/api7/types v0.1.0
