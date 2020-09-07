@@ -57,7 +57,7 @@ spec:
     shortNames:
     - ar
 
----------------------
+---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
@@ -76,8 +76,7 @@ spec:
     shortNames:
     - as
 
------------------------
-
+---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
