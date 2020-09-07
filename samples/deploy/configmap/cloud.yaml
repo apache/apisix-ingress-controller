@@ -7,3 +7,4 @@ data:
   ETCD_SERVER_INTERNAL: '["http://127.0.0.1:2379","http://127.0.0.1:2380","http://127.0.0.1:2381"]'
   SYSLOG_HOST: 127.0.0.1
   APISIX_BASE_URL: "http://apisix.cloud.svc.cluster.local:9180/apisix/admin"
+  ENV: "prod"
