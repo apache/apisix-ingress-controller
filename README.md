@@ -5,7 +5,7 @@ Apache APISIX ingress for K8s
 
 A k8s compatible ingress controller.
 1. stability；
-2. stay in sync with Apache APISIX pod in k8s cluter；
+2. stay in sync with Apache APISIX pod in k8s cluster；
 3. Full Apache APISIX extension support：route, upstream, consumer, plugin, etc；
 
 
@@ -15,12 +15,12 @@ A k8s compatible ingress controller.
  2. hot-reload during yaml apply;
  3. auto register k8s endpoint to upstream(Apache APISIX) node;
  4. out of box support for node health check；
- 5. surpport upstream node defined load balancing；
- 6. extension pluin config hot-reload and dynamic tuning；
- 7. ingress controller itself as a plugable hot-reload compoent；
+ 5. support upstream node defined load balancing；
+ 6. extension plugin config hot-reload and dynamic tuning；
+ 7. ingress controller itself as a plugable hot-reload component；
 
 
-### Deisgn
+### Design
 
 ![Architecture](https://github.com/iresty/ingress-controller/blob/master/doc/imgs/module.png)
 
@@ -41,7 +41,7 @@ A k8s compatible ingress controller.
 
 #### 4.ingress-controller
    - driver process for ingress controller; watches k8s apiserver;
-   - match and covert Apisix-ingress-types to Apisix-types before handing the conterol over to the above module seven;
+   - match and covert Apisix-ingress-types to Apisix-types before handing the control over to the above module seven;
 
 
 ### Sequence Diagram
