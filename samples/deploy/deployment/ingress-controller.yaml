@@ -8,7 +8,7 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ingress-controller
+      app: apisix-ingress-controller
       tier: backend
   strategy:
     rollingUpdate:
@@ -19,7 +19,7 @@ spec:
     metadata:
       annotations: {}
       labels:
-        app: apisix
+        app: apisix-ingress-controller
         tier: backend
     spec:
       hostNetwork: true
