@@ -9,7 +9,7 @@ import (
 	informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions/config/v1"
 	"github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
 	"github.com/gxthrj/seven/state"
-	"github.com/iresty/ingress-controller/pkg/ingress/apisix"
+	"github.com/api7/ingress-controller/pkg/ingress/apisix"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -18,7 +18,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"time"
-	"github.com/iresty/ingress-controller/pkg/ingress/endpoint"
+	"github.com/api7/ingress-controller/pkg/ingress/endpoint"
 )
 
 type ApisixUpstreamController struct {

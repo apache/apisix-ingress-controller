@@ -1,7 +1,7 @@
 package endpoint
 
 import (
-	"github.com/iresty/ingress-controller/conf"
+	"github.com/api7/ingress-controller/conf"
 	"github.com/golang/glog"
 	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 )

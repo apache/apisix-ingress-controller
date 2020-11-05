@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/iresty/ingress-controller/conf"
+	"github.com/api7/ingress-controller/conf"
 	"k8s.io/api/core/v1"
 	"strconv"
 	"github.com/gxthrj/seven/apisix"

@@ -1,4 +1,4 @@
-module github.com/iresty/ingress-controller
+module github.com/api7/ingress-controller
 
 go 1.13
 

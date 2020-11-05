@@ -4,7 +4,7 @@ import (
 	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	apisix "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"github.com/gxthrj/seven/conf"
-	"github.com/iresty/ingress-controller/pkg/ingress/endpoint"
+	"github.com/api7/ingress-controller/pkg/ingress/endpoint"
 	"strconv"
 )
 

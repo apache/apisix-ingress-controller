@@ -8,7 +8,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
-	"github.com/iresty/ingress-controller/conf"
+	"github.com/api7/ingress-controller/conf"
 )
 
 var logEntry *logrus.Entry
