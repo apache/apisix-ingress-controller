@@ -22,13 +22,13 @@ A k8s compatible ingress controller.
 
 ### Design
 
-![Architecture](https://github.com/iresty/ingress-controller/blob/master/doc/imgs/module.png)
+![Architecture](https://github.com/api7/ingress-controller/blob/master/doc/imgs/module.png)
 
 #### 1.Apisix-ingress-types
    - defines the CRD(CustomResourceDefinition) needed by Apache APISIX
    - currently supports ApisixRoute/ApisixService/ApisixUpstream，and other service and route level plugins;
    - can be packaged as a stand-alone binary, keep in sync with the ingress definition;
-   - CRD design see：https://github.com/iresty/ingress-controller/issues/3;
+   - CRD design see：https://github.com/api7/ingress-controller/issues/3;
 
 #### 2.Apisix-types
    - define interface objects to match concepts from Apache APISIX like route, service, upstream, and plugin;
@@ -46,7 +46,7 @@ A k8s compatible ingress controller.
 
 ### Sequence Diagram
 
-![Sequence Diagram](https://github.com/iresty/ingress-controller/blob/master/doc/imgs/flow.png)
+![Sequence Diagram](https://github.com/api7/ingress-controller/blob/master/doc/imgs/flow.png)
 
 ### Documentation
 [SDK Doc](doc/dev/develop.md)

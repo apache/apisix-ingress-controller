@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"time"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"github.com/iresty/ingress-controller/pkg/ingress/apisix"
+	"github.com/api7/ingress-controller/pkg/ingress/apisix"
 	"github.com/gxthrj/seven/state"
 )
 

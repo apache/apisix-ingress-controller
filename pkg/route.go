@@ -6,7 +6,7 @@ import (
 	"io"
 	"encoding/json"
 	"io/ioutil"
-	"github.com/iresty/ingress-controller/log"
+	"github.com/api7/ingress-controller/log"
 )
 
 var logger = log.GetLogger()

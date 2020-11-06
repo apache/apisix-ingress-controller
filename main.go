@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/iresty/ingress-controller/pkg/ingress/controller"
-	"github.com/iresty/ingress-controller/conf"
+	"github.com/api7/ingress-controller/pkg/ingress/controller"
+	"github.com/api7/ingress-controller/conf"
 	api6Informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
 	"net/http"
-	"github.com/iresty/ingress-controller/pkg"
-	"github.com/iresty/ingress-controller/log"
+	"github.com/api7/ingress-controller/pkg"
+	"github.com/api7/ingress-controller/log"
 	"time"
 	"flag"
 	"github.com/golang/glog"

@@ -17,7 +17,7 @@ import (
 	"github.com/gxthrj/seven/apisix"
 	sevenConf "github.com/gxthrj/seven/conf"
 	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"github.com/iresty/ingress-controller/conf"
+	"github.com/api7/ingress-controller/conf"
 )
 
 type EndpointController struct {

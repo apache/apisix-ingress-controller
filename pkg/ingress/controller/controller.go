@@ -4,7 +4,7 @@ import (
 	"github.com/golang/glog"
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	"github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
-	"github.com/iresty/ingress-controller/log"
+	"github.com/api7/ingress-controller/log"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/informers"
 )

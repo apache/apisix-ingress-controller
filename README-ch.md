@@ -22,12 +22,12 @@ Apache APISIX ingress for K8s
 
 ### 设计
 
-![模块划分](https://github.com/iresty/ingress-controller/blob/master/doc/imgs/module.png)
+![模块划分](https://github.com/api7/ingress-controller/blob/master/doc/imgs/module.png)
 
 #### 1.Apisix-ingress-types
    - 定义了Apache APISIX 在k8s中需要使用的CRD(CustomResourceDefinition)，目前支持ApisixRoute/ApisixService/ApisixUpstream，并且支持service和route级别的plugins定义方式。
    - 该模块可以单独打包，保持与ingress的定义同步；
-   - CRD的定义设计参见：https://github.com/iresty/ingress-controller/issues/3
+   - CRD的定义设计参见：https://github.com/api7/ingress-controller/issues/3
 
 #### 2.Apisix-types
    - 参照Apache APISIX api定义了Apache APISIX的主要对象route、service、upstream，以及plugin。
@@ -45,7 +45,7 @@ Apache APISIX ingress for K8s
 
 ### 时序图
 
-![调用流程](https://github.com/iresty/ingress-controller/blob/master/doc/imgs/flow.png)
+![调用流程](https://github.com/api7/ingress-controller/blob/master/doc/imgs/flow.png)
 
 ### 开发文档
 [开发文档](doc/dev/develop.md)

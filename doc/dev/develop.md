@@ -23,10 +23,10 @@
 
 2.config文件位置：~/.kube/config
 
-3.将config文件copy一份到本地开发环境，并将文件路径配置到 $GOPATH/src/github.com/iresty/ingress-controller/conf/conf.json中的k8sAuth配置项;
+3.将config文件copy一份到本地开发环境，并将文件路径配置到 $GOPATH/src/github.com/api7/ingress-controller/conf/conf.json中的k8sAuth配置项;
 
 #### 配置apisix服务地址
-不管选择哪种部署方式，请将apisix的服务地址配置到 $GOPATH/src/github.com/iresty/ingress-controller/conf/conf.json中，配置项为conf/apisix/base_url
+不管选择哪种部署方式，请将apisix的服务地址配置到 $GOPATH/src/github.com/api7/ingress-controller/conf/conf.json中，配置项为conf/apisix/base_url
 
 ## 本地启动ingress-controller
 

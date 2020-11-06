@@ -1,7 +1,7 @@
 package pkg
 
 import (
-	"github.com/iresty/ingress-controller/conf"
+	"github.com/api7/ingress-controller/conf"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/api/core/v1"
 )
