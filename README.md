@@ -136,8 +136,8 @@ kubectl apply -f samples/deploy/deployment/ingress-controller.yaml
 
 ## Document
 
-* [SDK doc](./doc/dev/develop.md)
-* [Design introduction](./doc/design/design.md)
+* [SDK doc](./docs/develop.md)
+* [Design introduction](./docs/design.md)
 
 ## Master branch builds
 

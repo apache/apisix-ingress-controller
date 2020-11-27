@@ -4,7 +4,7 @@ Apache APISIX ingress for Kubernetes.
 
 ## Design
 
-![Architecture](../imgs/module.png)
+![Architecture](../images/module.png)
 
 ### 1.Ingress-types
 
@@ -38,4 +38,4 @@ Apache APISIX ingress for Kubernetes.
 
 ## Sequence Diagram
 
-![Sequence Diagram](../imgs/flow.png)
+![Sequence Diagram](../images/flow.png)
