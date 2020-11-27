@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"github.com/tidwall/gjson"
 	"runtime"
-	"github.com/coreos/etcd/client"
 )
 
 var (
@@ -28,7 +27,7 @@ var (
 	nsInformer coreinformers.NamespaceInformer
 	EndpointsInformer coreinformers.EndpointsInformer
 	IsLeader = false
-	etcdClient client.Client
+	//etcdClient client.Client
 	kubeClient kubernetes.Interface
 	CoreSharedInformerFactory informers.SharedInformerFactory
 )
@@ -78,13 +77,6 @@ func init() {
 		panic(fmt.Sprintf("failed to read configuration file: %s", filePath))
 	} else {
 		configuration := gjson.ParseBytes(configurationContent)
-		// etcd conf
-		etcdConf := configuration.Get("conf.etcd")
-		addresses := make([]string, 0, len(etcdConf.Get("address").Array()))
-		for _, address := range etcdConf.Get("address").Array() {
-			addresses = append(addresses, address.String())
-		}
-		EtcdConfig.Addresses = addresses
 		// apisix baseUrl
 		apisixConf := configuration.Get("conf.apisix")
 		apisixBaseUrl := apisixConf.Get("base_url").String()
@@ -97,7 +89,7 @@ func init() {
 		Syslog.Host = syslogConf.Get("host").String()
 	}
 	// init etcd client
-	etcdClient = NewEtcdClient()
+	//etcdClient = NewEtcdClient()
 	// init informer
 	InitInformer()
 }
@@ -110,9 +102,9 @@ type syslog struct {
 	Host string
 }
 
-func GetEtcdAPI() client.KeysAPI{
-	return client.NewKeysAPI(etcdClient)
-}
+//func GetEtcdAPI() client.KeysAPI{
+//	return client.NewKeysAPI(etcdClient)
+//}
 
 
 func GetURL() string{
@@ -200,17 +192,17 @@ func ExceptNilErr(err error)  {
 	}
 }
 
-func NewEtcdClient() client.Client {
-	cfg := client.Config{
-		Endpoints: EtcdConfig.Addresses,
-		Transport: client.DefaultTransport,
-	}
-	if c, err := client.New(cfg); err != nil {
-		panic(fmt.Sprintf("failed to initialize etcd watcher. %s", err.Error()))
-	} else {
-		return c
-	}
-}
+//func NewEtcdClient() client.Client {
+//	cfg := client.Config{
+//		Endpoints: EtcdConfig.Addresses,
+//		Transport: client.DefaultTransport,
+//	}
+//	if c, err := client.New(cfg); err != nil {
+//		panic(fmt.Sprintf("failed to initialize etcd watcher. %s", err.Error()))
+//	} else {
+//		return c
+//	}
+//}
 
 // EtcdWatcher
 //type EtcdWatcher struct {

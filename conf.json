@@ -1,8 +1,5 @@
 {
   "conf":{
-    "etcd":{
-      "address": #etcdAddress#
-    },
     "k8sAuth": {
       "file": #k8sAuthFile#
     },
