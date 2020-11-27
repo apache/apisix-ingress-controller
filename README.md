@@ -1,55 +1,159 @@
-# ingress-controller
-Apache APISIX ingress for K8s
+# Apache APISIX for Kubernetes
 
-### Goal
+Use Apache APISIX for Kubernetes [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
 
-A k8s compatible ingress controller.
-1. stability；
-2. stay in sync with Apache APISIX pod in k8s cluster；
-3. Full Apache APISIX extension support：route, upstream, consumer, plugin, etc；
+Configure [plugins](https://github.com/apache/apisix/tree/master/doc/plugins), load balancing and more in Apache APISIX for Kubernetes Services, support service registration discovery mechanism for upstreams. All using Custom Resource Definitions (CRDs).
 
+## Features
 
-### ingress controller features
+* Declarative configuration for Apache APISIX with Custom Resource Definitions(CRDs), using k8s yaml struct with minimum learning curve.
+* Hot-reload during yaml apply.
+* Auto register k8s endpoint to upstream(Apache APISIX) node.
+* Out of box support for node health check.
+* Support load balancing based on pod (upstream nodes).
+* Plug-in extension supports hot configuration and immediate effect.
+* Ingress controller itself as a plugable hot-reload component.
 
- 1. add Apache APISIX Custom Resource Definition(s) via k8s yaml syntax(with minimum learning curve);
- 2. hot-reload during yaml apply;
- 3. auto register k8s endpoint to upstream(Apache APISIX) node;
- 4. out of box support for node health check；
- 5. support upstream node defined load balancing；
- 6. extension plugin config hot-reload and dynamic tuning；
- 7. ingress controller itself as a plugable hot-reload component；
+## Get started
 
+### Dependencies
 
-### Design
+* Kubernetes
+* [Deploy Apache APISIX in k8s](https://github.com/apache/apisix/blob/master/kubernetes/README.md)
 
-![Architecture](https://github.com/api7/ingress-controller/blob/master/doc/imgs/module.png)
+To install `ingress controller` in k8s, need to care about 3 parts:
 
-#### 1.Apisix-ingress-types
-   - defines the CRD(CustomResourceDefinition) needed by Apache APISIX
-   - currently supports ApisixRoute/ApisixService/ApisixUpstream，and other service and route level plugins;
-   - can be packaged as a stand-alone binary, keep in sync with the ingress definition;
-   - CRD design see：https://github.com/api7/ingress-controller/issues/3;
+1. CRDs: They are the data structure of Apache APISIX in Kubernetes, used to define route, service, upstream, plugins, etc.
 
-#### 2.Apisix-types
-   - define interface objects to match concepts from Apache APISIX like route, service, upstream, and plugin;
-   - can be a packaged as a stand-alone binary, need to match with compatible Apache APISIX version;
-   - add new types to this module to support new features;
+2. RBAC: This is a function of Kubernetes, granting `ingress controller` resource access permissions.
 
-#### 3.seven
-   - contains main application logic;
-   - Sync the k8s cluster states to Apache APISIX, based on Apisix-types object;
+3. Configmap: Contains the necessary configuration for `ingress controller`.
 
-#### 4.ingress-controller
-   - driver process for ingress controller; watches k8s apiserver;
-   - match and covert Apisix-ingress-types to Apisix-types before handing the control over to the above module seven;
+### CRDs installation
 
+Install CRDs in Kubernetes
 
-### Sequence Diagram
+```shell
+kubectl apply -f - <<EOF
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: apisixroutes.apisix.apache.org
+spec:
+  group: apisix.apache.org
+  versions:
+    - name: v1
+      served: true
+      storage: true
+  scope: Namespaced
+  names:
+    plural: apisixroutes
+    singular: apisixroute
+    kind: ApisixRoute
+    shortNames:
+    - ar
 
-![Sequence Diagram](https://github.com/api7/ingress-controller/blob/master/doc/imgs/flow.png)
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: apisixservices.apisix.apache.org
+spec:
+  group: apisix.apache.org
+  versions:
+    - name: v1
+      served: true
+      storage: true
+  scope: Namespaced
+  names:
+    plural: apisixservices
+    singular: apisixservice
+    kind: ApisixService
+    shortNames:
+    - as
 
-### Documentation
-[SDK Doc](doc/dev/develop.md)
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: apisixupstreams.apisix.apache.org
+spec:
+  group: apisix.apache.org
+  versions:
+    - name: v1
+      served: true
+      storage: true
+  scope: Namespaced
+  names:
+    plural: apisixupstreams
+    singular: apisixupstream
+    kind: ApisixUpstream
+    shortNames:
+    - au
 
-### Deployment
-[Deployment](doc/deploy/deploy.md)
+EOF
+```
+
+### RBAC configuration
+
+* Create ServiceAccount
+
+```shell
+kubectl apply -f samples/deploy/rbac/service_account.yaml
+```
+
+* Create ClusterRole
+
+```shell
+kubectl apply -f samples/deploy/rbac/apisix_view_clusterrole.yaml
+```
+
+* Create ClusterRoleBinding
+
+```shell
+kubectl apply -f samples/deploy/rbac/apisix_view_clusterrolebinding.yaml
+```
+
+### Configmap for ingress controller
+
+Pay attention to the `namespace` and `APISIX address` in configmap.
+
+```shell
+kubectl apply -f samples/deploy/configmap/cloud.yaml
+```
+
+### Deploy ingress controller
+
+[How to build image from master branch?](# Master branch builds)
+
+```shell
+kubectl apply -f samples/deploy/deployment/ingress-controller.yaml
+```
+
+### Helm
+
+// todo
+
+## Document
+
+* [SDK doc](./doc/dev/develop.md)
+* [Design introduction](./doc/design/design.md)
+
+## Master branch builds
+
+```shell
+docker build -t apache/ingress-controller:v0.1.0 .
+```
+
+## Seeking help
+
+- Mailing List: Mail to dev-subscribe@apisix.apache.org, follow the reply to subscribe the mailing list.
+- QQ Group - 578997126, 552030619
+- [Slack Workspace](http://s.apache.org/slack-invite) - join `#apisix` on our Slack to meet the team and ask questions
+- ![Twitter Follow](https://img.shields.io/twitter/follow/ApacheAPISIX?style=social) - follow and interact with us using hashtag `#ApacheAPISIX`
+- [bilibili video](https://space.bilibili.com/551921247)
+
+## License
+
+[Apache License 2.0](https://github.com/api7/ingress-controller/blob/master/LICENSE)
+
