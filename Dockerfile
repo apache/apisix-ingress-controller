@@ -1,5 +1,6 @@
 FROM golang:1.13.8 AS build-env
-MAINTAINER gxthrj@163.com
+LABEL maintainer="gxthrj@163.com"
+
 
 WORKDIR /go/src/github.com/api7/ingress-controller
 COPY . .
@@ -14,16 +15,13 @@ RUN mkdir /root/ingress-controller \
     && ln -s  /usr/share/zoneinfo/Hongkong /etc/localtime \
     && dpkg-reconfigure -f noninteractive tzdata
 
-FROM alpine:3.11
-MAINTAINER gxthrj@163.com
+FROM alpine:3.12.1
+LABEL maintainer="gxthrj@163.com"
 
 RUN mkdir /root/ingress-controller \
-   && apk update  \
-   && apk add ca-certificates \
+   && apk add --no-cache ca-certificates libc6-compat \
    && update-ca-certificates \
-   && apk add --no-cache libc6-compat \
-   && echo "hosts: files dns" > /etc/nsswitch.conf \
-   && rm -rf /var/cache/apk/*
+   && echo "hosts: files dns" > /etc/nsswitch.conf
 
 
 WORKDIR /root/ingress-controller
