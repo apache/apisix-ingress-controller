@@ -1,4 +1,4 @@
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ingress-controller
@@ -34,3 +34,4 @@ spec:
         - containerPort: 8080
           hostPort: 8080
       terminationGracePeriodSeconds: 60
+      serviceAccountName: apisix-view-serviceaccount
