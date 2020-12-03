@@ -34,3 +34,4 @@ spec:
         - containerPort: 8080
           hostPort: 8080
       terminationGracePeriodSeconds: 60
+      serviceAccountName: apisix-view-serviceaccount
