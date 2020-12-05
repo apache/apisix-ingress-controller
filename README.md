@@ -134,8 +134,9 @@ kubectl apply -f samples/deploy/deployment/ingress-controller.yaml
 
 // todo
 
-## Document
+## Documents
 
+* [Usage](./docs/usage.md)
 * [SDK doc](./docs/develop.md)
 * [Design introduction](./docs/design.md)
 
