@@ -35,7 +35,7 @@ github:
       merge:   false
       rebase:  false
 
-    notifications:
-      commits:      notifications@apisix.apache.org
-      issues:       notifications@apisix.apache.org
-      pullrequests: notifications@apisix.apache.org
+notifications:
+    commits:      notifications@apisix.apache.org
+    issues:       notifications@apisix.apache.org
+    pullrequests: notifications@apisix.apache.org
