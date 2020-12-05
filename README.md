@@ -124,7 +124,7 @@ kubectl apply -f samples/deploy/configmap/cloud.yaml
 
 ### Deploy ingress controller
 
-[How to build image from master branch?](# Master branch builds)
+[How to build image from master branch?](#Master-branch-builds)
 
 ```shell
 kubectl apply -f samples/deploy/deployment/ingress-controller.yaml
@@ -144,6 +144,11 @@ kubectl apply -f samples/deploy/deployment/ingress-controller.yaml
 ```shell
 docker build -t apache/ingress-controller:v0.1.0 .
 ```
+
+## User stories
+
+- [aispeech: Why we create a new k8s ingress controller?(Chinese)](https://mp.weixin.qq.com/s/bmm2ibk2V7-XYneLo9XAPQ)
+- [Tencent Cloud: Why choose Apache APISIX to implement the k8s ingress controller?(Chinese)](https://www.upyun.com/opentalk/448.html)
 
 ## Seeking help
 
