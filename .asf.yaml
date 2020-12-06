@@ -21,8 +21,8 @@ github:
     labels:
       - ingress
       - controller
-      - Kubernetes
-      - K8s
+      - kubernetes
+      - k8s
       - apigateway
       - microservices
       - api
