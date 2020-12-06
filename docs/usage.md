@@ -74,7 +74,7 @@ Tips: When defining `ApisixUpstream`, there is no need to define a specific pod 
 List the way to define the above rules using `Admin API` to facilitate comparison and understanding.
 
 ```shell
-# 1. Define upstream: foo-upstream id=1
+# 1. Define upstream: foo-upstream id=1 (the ip list in nodes is an example, no specific meaning)
 curl -XPUT http://127.0.0.1:9080/apisix/admin/upstreams/1 -H 'X-API-KEY: edd1c9f034335f136f87ad84b625c8f1' -d '
 {
     "nodes": {
