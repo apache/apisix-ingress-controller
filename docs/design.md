@@ -112,7 +112,6 @@ metadata:
   annotations:
     k8s.apisix.apache.org/whitelist-source-range: 1.2.3.4,2.2.0.0/16
   name: httpserver-route
-  namespace: cloud
 spec:
     ...
 ```

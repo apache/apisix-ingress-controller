@@ -27,7 +27,6 @@ apiVersion: apisix.apache.org/v1
 kind: ApisixUpstream
 metadata:
   name: foo
-  namespace: cloud
 spec:
   ports:
   - port: 8080
@@ -44,7 +43,6 @@ apiVersion: apisix.apache.org/v1
 kind: ApisixService
 metadata:
   name: foo
-  namespace: cloud
 spec:
   upstream: foo
   port: 8080
@@ -57,7 +55,6 @@ apiVersion: apisix.apache.org/v1
 kind: ApisixRoute
 metadata:
   name: foo-route
-  namespace: cloud
 spec:
   rules:
   - host: test.apisix.apache.org
@@ -120,7 +117,6 @@ apiVersion: apisix.apache.org/v1
 kind: ApisixService
 metadata:
   name: foo
-  namespace: cloud
 spec:
   upstream: foo
   port: 8080

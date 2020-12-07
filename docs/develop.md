@@ -116,7 +116,6 @@ apiVersion: apisix.apache.org/v1
 kind: ApisixRoute
 metadata:
   name: httpserver-route
-  namespace: cloud
 spec:
   rules:
   - host: test.apisix.apache.org
@@ -141,7 +140,6 @@ metadata:
     k8s.apisix.apache.org/ssl-redirect: "false"
     k8s.apisix.apache.org/whitelist-source-range: 1.2.3.4,2.2.0.0/16
   name: httpserver-route
-  namespace: cloud
 spec:
   rules:
   - host: test1.apisix.apache.org
@@ -174,9 +172,8 @@ apiVersion: apisix.apache.org/v1
 kind: ApisixService                   # apisix service
 metadata:
   name: httpserver
-  namespace: cloud
 spec:
-  upstream: httpserver          # upstream = cloud/httpserver (namespace/upstreamName)
+  upstream: httpserver          # upstream = default/httpserver (namespace/upstreamName)
   port: 8080                        # 在service上定义端口号
   plugins:
   - name: aispeech-chash
@@ -196,8 +193,7 @@ kubectl apply -f - <<EOF
 apiVersion: apisix.apache.org/v1
 kind: ApisixUpstream                  # apisix upstream
 metadata:
-  name: httpserver      # cloud/httpserver
-  namespace: cloud
+  name: httpserver      # default/httpserver
 spec:
   ports:
   - port: 8080
