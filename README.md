@@ -4,15 +4,14 @@ Use Apache APISIX for Kubernetes [Ingress](https://kubernetes.io/docs/concepts/s
 
 In `apisix-ingress-controller`, all using Custom Resource Definitions (CRDs). Such as configure [plugins](https://github.com/apache/apisix/tree/master/doc/plugins), upport service registration discovery mechanism for upstreams, load balancing and more in Apache APISIX.
 
-Compared with [NGINX Ingress Controller](https://github.com/kubernetes/ingress-nginx), `apisix-ingress-controller` have solved several obvious problems.
+Compared with other ingress controllers, `apisix-ingress-controller` have solved several obvious problems.
 
-* Hot-reload during yaml apply.
-* Flexible expansion capabilities.
-* Avoid reloading of Ingress itself when updated business services.
+* Dynamically update the configuration, no need to reload.
+* Flexible extension capabilities based on plugins.
+* Convenient traffic split.
+* Multi-cluster configuration distribution.
 
-`apisix-ingress-controller` belongs to Apache APISIX control plane. Currently it serves for Kubernetes clusters. In the future, we plan to separate the `seven` module to adapt to more deployment modes, such as virtual machine clusters.
-
-
+`apisix-ingress-controller` belongs to Apache APISIX control plane. Currently it serves for Kubernetes clusters. In the future, we plan to separate the submodule to adapt to more deployment modes, such as virtual machine clusters.
 
 ## Features
 
@@ -23,6 +22,7 @@ Compared with [NGINX Ingress Controller](https://github.com/kubernetes/ingress-n
 * Support load balancing based on pod (upstream nodes).
 * Plug-in extension supports hot configuration and immediate effect.
 * Ingress controller itself as a plugable hot-reload component.
+* Multi-cluster configuration distribution.
 
 ## Architecture
 
@@ -96,7 +96,7 @@ We welcome all kinds of contributions from the open-source community, individual
 ## Community
 
 - Mailing List: Mail to dev-subscribe@apisix.apache.org, follow the reply to subscribe the mailing list.
-- QQ Group - 578997126, 552030619
+- QQ Group - 578997126
 - ![Twitter Follow](https://img.shields.io/twitter/follow/ApacheAPISIX?style=social) - follow and interact with us using hashtag `#ApacheAPISIX`
 - [bilibili video](https://space.bilibili.com/551921247)
 
