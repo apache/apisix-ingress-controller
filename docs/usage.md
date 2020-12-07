@@ -14,7 +14,7 @@ As shown below.
 
 Define the simplest route to direct traffic to the back-end service, the back-end service is named `httpserver`.
 
-As shown below.
+As shown below.(The ip list in nodes is an example, no specific meaning)
 
 ![first](./images/first.png)
 
