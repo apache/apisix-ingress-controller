@@ -6,6 +6,10 @@ All configurations in `apisix-ingress-controller` are defined with Kubernetes CR
 
 `apisix-ingress-controller` is an Apache APISIX control plane component. Currently it serves for Kubernetes clusters. In the future, we plan to separate the submodule to adapt to more deployment modes, such as virtual machine clusters.
 
+## Architecture
+
+<img src="./docs/images/module-0.png" alt="Architecture" width="600" height="313" />
+
 ## Features
 
 * Declarative configuration for Apache APISIX with Custom Resource Definitions(CRDs), using k8s yaml struct with minimum learning curve.
@@ -17,9 +21,9 @@ All configurations in `apisix-ingress-controller` are defined with Kubernetes CR
 * Ingress controller itself as a plugable hot-reload component.
 * Multi-cluster configuration distribution.
 
-## Architecture
+## Modules
 
-![Architecture](./docs/images/module-1.png)
+<img src="./docs/images/module-1.png" alt="module" width="600" height="313" />
 
 ### 1. `Ingress types` Submodule
 
