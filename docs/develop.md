@@ -169,7 +169,7 @@ spec:
             enable_websocket: true
 ```
 
-The definition in config needs to follow the schema definition of the plugin `proxy-rewrite`.
+The definition in config needs to follow the schema definition of the plugin [proxy-rewrite](https://github.com/apache/apisix/blob/master/doc/plugins/proxy-rewrite.md).
 
 If the plug-in schema is an array, you need to change the `config` field to `config_set`.
 

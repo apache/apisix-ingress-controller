@@ -97,7 +97,7 @@ The current comparison rule is based on the grouping of `route` / `service` / `u
 
 According to the `namespace` `name` `port` defined in the `ApisixUpstream` resource object, `apisix-ingress-controller` will register the `endpoints` node information in the `running` state to the nodes in Apache APISIX Upstream. And according to Kubernetes Endpoint status is synchronized in real time.
 
-Based on service discovery, Apache APISIX Ingress can directly access back-end Pod nodes. Bypassing Kubernetes Service, it is possible to implement customized load balancing strategies.
+Based on service discovery, Apache APISIX Ingress can directly access backend Pod nodes. Bypassing Kubernetes Service, it is possible to implement customized load balancing strategies.
 
 ### Annotation implementation
 
@@ -116,7 +116,7 @@ spec:
     ...
 ```
 
-The black and white list here is implemented by the `ip-restriction` plugin.
+The black and white list here is implemented by the [ip-restriction](https://github.com/apache/apisix/blob/master/doc/plugins/ip-restriction.md) plugin.
 
 There will be more annotation implementations in the future to facilitate the definition of some common configurations, such as CORS.
 

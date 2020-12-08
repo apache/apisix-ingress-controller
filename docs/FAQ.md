@@ -1,6 +1,6 @@
 # FAQ
 
-1. How to bind between Service and Upstream?
+1. How to bind Service and Upstream?
 
 All resource objects are uniquely determined by the namespace / name / port combination Id. If the combined Id is the same, the `service` and `upstream` will be considered as a binding relationship.
 

@@ -7,9 +7,9 @@
 
 To install `ingress controller` in k8s, need to care about 3 parts:
 
-1. CRDs: They are the data structure of Apache APISIX in Kubernetes, used to define route, service, upstream, plugins, etc.
+1. CRDs: The definitions of Apache APISIX configurations in Kubernetes.
 
-2. RBAC: This is a function of Kubernetes, granting `ingress controller` resource access permissions.
+2. [RBAC](https://kubernetes.io/blog/2017/04/rbac-support-in-kubernetes/): This is support by Kubernetes, granting `ingress controller` resource access permissions.
 
 3. Configmap: Contains the necessary configuration for `ingress controller`.
 

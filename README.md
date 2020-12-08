@@ -2,9 +2,9 @@
 
 Use Apache APISIX for Kubernetes [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
 
-In `apisix-ingress-controller`, all using Custom Resource Definitions (CRDs). Such as configure [plugins](https://github.com/apache/apisix/tree/master/doc/plugins), upport service registration discovery mechanism for upstreams, load balancing and more in Apache APISIX.
+All configurations in `apisix-ingress-controller` are defined with Kubernetes CRDs (Custom Resource Definitions). Such as configure [plugins](https://github.com/apache/apisix/tree/master/doc/plugins), Support service registration discovery mechanism for upstreams, load balancing and more in Apache APISIX.
 
-`apisix-ingress-controller` belongs to Apache APISIX control plane. Currently it serves for Kubernetes clusters. In the future, we plan to separate the submodule to adapt to more deployment modes, such as virtual machine clusters.
+`apisix-ingress-controller` is an Apache APISIX control plane component. Currently it serves for Kubernetes clusters. In the future, we plan to separate the submodule to adapt to more deployment modes, such as virtual machine clusters.
 
 ## Features
 
@@ -21,7 +21,7 @@ In `apisix-ingress-controller`, all using Custom Resource Definitions (CRDs). Su
 
 ![Architecture](./docs/images/module-1.png)
 
-### 1.Ingress types
+### 1. `Ingress types` Submodule
 
 - defines the CRD(CustomResourceDefinition) needed by Apache APISIX
 
@@ -31,7 +31,7 @@ In `apisix-ingress-controller`, all using Custom Resource Definitions (CRDs). Su
 
 - [CRD design](https://github.com/api7/ingress-controller/issues/3)
 
-### 2. APISIX types
+### 2. `APISIX types` Submodule
 
 - define interface objects to match concepts from Apache APISIX like route, service, upstream, and plugin.
 
@@ -39,13 +39,13 @@ In `apisix-ingress-controller`, all using Custom Resource Definitions (CRDs). Su
 
 - add new types to this module to support new features.
 
-### 3.Seven
+### 3. `Seven` submodule
 
 - contains main application logic.
 
 - Sync the k8s cluster states to Apache APISIX, based on Apisix-types object.
 
-### 4.Ingress-controller
+### 4.`Ingress-controller` Submodule
 
 - driver process for ingress controller, watches k8s apiserver.
 
