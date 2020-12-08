@@ -6,7 +6,7 @@ All configurations in `apisix-ingress-controller` are defined with Kubernetes CR
 
 `apisix-ingress-controller` is an Apache APISIX control plane component. Currently it serves for Kubernetes clusters. In the future, we plan to separate the submodule to adapt to more deployment modes, such as virtual machine clusters.
 
-## Architecture
+The technical architecture of `apisix-ingress-controller`:
 
 <img src="./docs/images/module-0.png" alt="Architecture" width="600" height="313" />
 
