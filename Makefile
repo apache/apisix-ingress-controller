@@ -16,9 +16,18 @@
 #
 default: build
 
+### build:            Build apisix-ingress-controller
 build:
 	go build -o apisix-ingress-controller main.go
+
+### lint:             Do static lint check
 lint:
 	golangci-lint run
 
-.PHONY: build lint
+### help:             Show Makefile rules
+help:
+	@echo Makefile rules:
+	@echo
+	@grep -E '^### [-A-Za-z0-9_]+:' Makefile | sed 's/###/   /'
+
+.PHONY: build lint help
