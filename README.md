@@ -4,13 +4,6 @@ Use Apache APISIX for Kubernetes [Ingress](https://kubernetes.io/docs/concepts/s
 
 In `apisix-ingress-controller`, all using Custom Resource Definitions (CRDs). Such as configure [plugins](https://github.com/apache/apisix/tree/master/doc/plugins), upport service registration discovery mechanism for upstreams, load balancing and more in Apache APISIX.
 
-Compared with other ingress controllers, `apisix-ingress-controller` have solved several obvious problems.
-
-* Dynamically update the configuration, no need to reload.
-* Flexible extension capabilities based on plugins.
-* Convenient traffic split.
-* Multi-cluster configuration distribution.
-
 `apisix-ingress-controller` belongs to Apache APISIX control plane. Currently it serves for Kubernetes clusters. In the future, we plan to separate the submodule to adapt to more deployment modes, such as virtual machine clusters.
 
 ## Features
