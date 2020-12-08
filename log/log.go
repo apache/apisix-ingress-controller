@@ -3,12 +3,12 @@ package log
 import (
 	"bufio"
 	"fmt"
+	"github.com/api7/ingress-controller/pkg/config"
 	"github.com/sirupsen/logrus"
 	"log/syslog"
 	"os"
 	"runtime"
 	"strings"
-	"github.com/api7/ingress-controller/conf"
 )
 
 var logEntry *logrus.Entry
@@ -18,17 +18,17 @@ func GetLogger() *logrus.Entry {
 		var log = logrus.New()
 		setNull(log)
 		log.SetLevel(logrus.DebugLevel)
-		if conf.ENV != conf.LOCAL {
+		if config.ENV != config.LOCAL {
 			log.SetLevel(logrus.InfoLevel)
 		}
 		log.SetFormatter(&logrus.JSONFormatter{})
 		logEntry = log.WithFields(logrus.Fields{
 			"app": "ingress-controller",
 		})
-		hook, err := createHook("udp", fmt.Sprintf("%s:514", conf.Syslog.Host),
+		hook, err := createHook("udp", fmt.Sprintf("%s:514", config.SyslogServer),
 			syslog.LOG_LOCAL4, "ingress-controller")
 		if err != nil {
-			panic("failed to create log hook " + conf.Syslog.Host)
+			panic("failed to create log hook " + config.SyslogServer)
 		}
 		log.AddHook(hook)
 	}
@@ -108,7 +108,7 @@ func (hook *SysLogHook) Fire(entry *logrus.Entry) error {
 }
 
 func localPrint(line string) {
-	if conf.ENV != conf.BETA && conf.ENV != conf.PROD && conf.ENV != conf.HBPROD{
+	if config.ENV != config.BETA && config.ENV != config.PROD && config.ENV != config.HBPROD {
 		fmt.Print(line)
 	}
 }

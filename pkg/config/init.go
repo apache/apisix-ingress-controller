@@ -1,44 +1,97 @@
-package conf
+package config
 
 import (
-	coreinformers "k8s.io/client-go/informers/core/v1"
-	restclient "k8s.io/client-go/rest"
+	"encoding/json"
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
-	seven "github.com/gxthrj/seven/conf"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/informers"
-	"os"
-	"path/filepath"
 	"io/ioutil"
-	"fmt"
-	"github.com/tidwall/gjson"
+	"k8s.io/client-go/informers"
+	coreinformers "k8s.io/client-go/informers/core/v1"
+	"k8s.io/client-go/kubernetes"
+	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"os"
 	"runtime"
 )
 
 var (
-	ENV      string
-	basePath string
-	ADMIN_URL = os.Getenv("APISIX_ADMIN_INTERNAL")
-	HOSTNAME = os.Getenv("HOSTNAME")
-	LOCAL_ADMIN_URL = ""
-	podInformer coreinformers.PodInformer
-	svcInformer coreinformers.ServiceInformer
-	nsInformer coreinformers.NamespaceInformer
+	_hostname    string
+	config       *restclient.Config
+
+	// Deprecate: will be removed in the near future without notifications.
+	SyslogServer string
+)
+
+func init() {
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+	_hostname = hostname
+}
+
+var (
+	ENV               string
+	basePath          string
+	ADMIN_URL         = os.Getenv("APISIX_ADMIN_INTERNAL")
+	HOSTNAME          = os.Getenv("HOSTNAME")
+	LOCAL_ADMIN_URL   = ""
+	podInformer       coreinformers.PodInformer
+	svcInformer       coreinformers.ServiceInformer
+	nsInformer        coreinformers.NamespaceInformer
 	EndpointsInformer coreinformers.EndpointsInformer
-	IsLeader = false
+	IsLeader          = false
 	//etcdClient client.Client
-	kubeClient kubernetes.Interface
+	kubeClient                kubernetes.Interface
 	CoreSharedInformerFactory informers.SharedInformerFactory
 )
+
 const PROD = "prod"
 const HBPROD = "hb-prod"
 const BETA = "beta"
 const DEV = "dev"
 const TEST = "test"
 const LOCAL = "local"
-const confPath = "/root/ingress-controller/conf.json"
 const AispeechUpstreamKey = "/apisix/customer/upstream/map"
+
+// Config contains necessary config items for running apisix-ingress-controller.
+type Config struct {
+	Hostname string `json:"-"`
+
+	SyslogServer string       `json:"syslog_server"`
+	Kubeconfig   string       `json:"kubeconfig"`
+	Etcd         EtcdConfig   `json:"etcd"`
+	APISIX       APISIXConfig `json:"apisix"`
+}
+
+// EtcdConfig contains config items about etcd.
+type EtcdConfig struct {
+	Endpoints []string `json:"endpoints"`
+}
+
+// APISIXConfig contains config items about apisix.
+type APISIXConfig struct {
+	BaseURL string `json:"base_url"`
+}
+
+// NewDefaultConfig creates a Config object filled by default value.
+func NewDefaultConfig() *Config {
+	return &Config{
+		Hostname: _hostname,
+	}
+}
+
+// NewConfigFromFiles creates a Config object and fill it by values in configuration file.
+func NewConfigFromFile(configPath string) (*Config, error) {
+	data, err := ioutil.ReadFile(configPath)
+	if err != nil {
+		return nil, err
+	}
+	conf := NewDefaultConfig()
+	if err := json.Unmarshal(data, conf); err != nil {
+		return nil, err
+	}
+	return conf, nil
+}
 
 func setEnvironment() {
 	if env := os.Getenv("ENV"); env == "" {
@@ -47,59 +100,6 @@ func setEnvironment() {
 		ENV = env
 	}
 	_, basePath, _, _ = runtime.Caller(1)
-}
-
-func ConfPath() string {
-	if ENV == LOCAL {
-		return filepath.Join(filepath.Dir(basePath), "conf.json")
-	} else {
-		return confPath
-	}
-}
-
-type etcdConfig struct {
-	Addresses []string
-}
-
-var EtcdConfig etcdConfig
-var K8sAuth k8sAuth
-var Syslog syslog
-
-var config *restclient.Config
-
-func init() {
-	// 获取当前环境
-	setEnvironment()
-	// 获取配置文件路径
-	filePath := ConfPath()
-	// 获取配置文件内容
-	if configurationContent, err := ioutil.ReadFile(filePath); err != nil {
-		panic(fmt.Sprintf("failed to read configuration file: %s", filePath))
-	} else {
-		configuration := gjson.ParseBytes(configurationContent)
-		// apisix baseUrl
-		apisixConf := configuration.Get("conf.apisix")
-		apisixBaseUrl := apisixConf.Get("base_url").String()
-		seven.SetBaseUrl(apisixBaseUrl)
-		// k8sAuth conf
-		k8sAuthConf := configuration.Get("conf.k8sAuth")
-		K8sAuth.file = k8sAuthConf.Get("file").String()
-		// syslog conf
-		syslogConf := configuration.Get("conf.syslog")
-		Syslog.Host = syslogConf.Get("host").String()
-	}
-	// init etcd client
-	//etcdClient = NewEtcdClient()
-	// init informer
-	InitInformer()
-}
-
-type k8sAuth struct {
-	file string
-}
-
-type syslog struct {
-	Host string
 }
 
 //func GetEtcdAPI() client.KeysAPI{
@@ -131,7 +131,7 @@ func GetKubeClient() kubernetes.Interface{
 	return kubeClient
 }
 
-func InitKubeClient() kubernetes.Interface {
+func InitKubeClient() (kubernetes.Interface, error) {
 	//var err error
 	//if ENV == LOCAL {
 	//	clientConfig, err := clientcmd.LoadFromFile(K8sAuth.file)
@@ -145,34 +145,51 @@ func InitKubeClient() kubernetes.Interface {
 	//}
 
 	k8sClient, err := kubernetes.NewForConfig(config)
-	ExceptNilErr(err)
-	return k8sClient
+	if err != nil {
+		return nil, err
+	}
+	return k8sClient, nil
 }
 
-func InitApisixClient() clientSet.Interface{
-	apisixRouteClientset, err:= clientSet.NewForConfig(config)
+func InitApisixClient() clientSet.Interface {
+	apisixRouteClientset, err := clientSet.NewForConfig(config)
 	ExceptNilErr(err)
 	return apisixRouteClientset
 }
 
-func InitInformer() {
+// Deprecate: will be removed in the near future without notification.
+func SetSyslogServer(srv string) {
+	SyslogServer = srv
+}
+
+// InitInformer initializes the Kubernetes API objects informers.
+// Deprecate: will be refactored in the near future without notifications.
+func InitInformer(c *Config) error {
 	// 生成一个k8s client
 	//var config *restclient.Config
 	var err error
-	if ENV == LOCAL {
-		clientConfig, err := clientcmd.LoadFromFile(K8sAuth.file)
-		ExceptNilErr(err)
+	if c.Kubeconfig != "" {
+		clientConfig, err := clientcmd.LoadFromFile(c.Kubeconfig)
+		if err != nil {
+			return err
+		}
 
 		config, err = clientcmd.NewDefaultClientConfig(*clientConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
-		ExceptNilErr(err)
+		if err != nil {
+			return err
+		}
 	} else {
 		config, err = restclient.InClusterConfig()
-		ExceptNilErr(err)
+		if err != nil {
+			return err
+		}
 	}
 
 	//k8sClient, err := kubernetes.NewForConfig(config)
-	kubeClient = InitKubeClient()
-	ExceptNilErr(err)
+	kubeClient, err = InitKubeClient()
+	if err != nil {
+		return err
+	}
 
 	// 创建一个informerFactory
 	//sharedInformerFactory := informers.NewSharedInformerFactory(k8sClient, 0)
@@ -184,6 +201,7 @@ func InitInformer() {
 	svcInformer = CoreSharedInformerFactory.Core().V1().Services()
 	nsInformer = CoreSharedInformerFactory.Core().V1().Namespaces()
 	//return podInformer, svcInformer, nsInformer
+	return nil
 }
 
 func ExceptNilErr(err error)  {

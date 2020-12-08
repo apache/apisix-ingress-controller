@@ -2,7 +2,11 @@ package controller
 
 import (
 	"fmt"
+	"github.com/api7/ingress-controller/pkg/config"
 	"github.com/golang/glog"
+	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
+	"github.com/gxthrj/seven/apisix"
+	sevenConf "github.com/gxthrj/seven/conf"
 	"github.com/gxthrj/seven/state"
 	CoreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -12,12 +16,8 @@ import (
 	CoreListerV1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"time"
 	"strconv"
-	"github.com/gxthrj/seven/apisix"
-	sevenConf "github.com/gxthrj/seven/conf"
-	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"github.com/api7/ingress-controller/conf"
+	"time"
 )
 
 type EndpointController struct {
@@ -29,12 +29,12 @@ type EndpointController struct {
 
 func BuildEndpointController(kubeclientset kubernetes.Interface) *EndpointController {
 	controller := &EndpointController{
-		kubeclientset: kubeclientset,
-		endpointList: conf.EndpointsInformer.Lister(),
-		endpointSynced: conf.EndpointsInformer.Informer().HasSynced,
-		workqueue:     workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpoints"),
+		kubeclientset:  kubeclientset,
+		endpointList:   config.EndpointsInformer.Lister(),
+		endpointSynced: config.EndpointsInformer.Informer().HasSynced,
+		workqueue:      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpoints"),
 	}
-	conf.EndpointsInformer.Informer().AddEventHandler(
+	config.EndpointsInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    controller.addFunc,
 			UpdateFunc: controller.updateFunc,

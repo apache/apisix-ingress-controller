@@ -1,13 +1,7 @@
 {
-  "conf":{
-    "k8sAuth":{
-      "file": "/Users/jinwei/go_git/go/src/github.com/api7/ingress-controller/conf/config"
-    },
-    "syslog":{
-      "host": "localhost"
-    },
-    "apisix":{
+    "kubeconfig": "conf/kubeconfig",
+    "syslog_server": "localhost",
+    "apisix": {
       "base_url": "http://172.16.20.90:30116/apisix/admin"
     }
-  }
 }

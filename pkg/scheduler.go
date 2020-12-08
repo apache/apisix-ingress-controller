@@ -1,13 +1,13 @@
 package pkg
 
 import (
-	"github.com/api7/ingress-controller/conf"
-	"k8s.io/apimachinery/pkg/labels"
+	"github.com/api7/ingress-controller/pkg/config"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 func ListPods(m map[string]string) ([]*v1.Pod, error){
-	podInformer := conf.GetPodInformer()
+	podInformer := config.GetPodInformer()
 	selector := labels.Set(m).AsSelector()
 	ret, err := podInformer.Lister().List(selector)
 	for _, pod := range ret {
@@ -17,7 +17,7 @@ func ListPods(m map[string]string) ([]*v1.Pod, error){
 }
 
 func ListPodsBySvcName(name string) []*v1.Pod {
-	svcInformer := conf.GetSvcInformer()
+	svcInformer := config.GetSvcInformer()
 	selector := labels.NewSelector()
 	ret, _ := svcInformer.Lister().List(selector)
 	for _, svc := range ret {

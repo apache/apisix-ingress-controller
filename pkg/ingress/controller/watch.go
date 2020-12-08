@@ -1,14 +1,14 @@
 package controller
 
 import (
-	"github.com/api7/ingress-controller/conf"
+	"github.com/api7/ingress-controller/pkg/config"
+	"github.com/golang/glog"
+	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
+	"github.com/gxthrj/seven/apisix"
+	sevenConf "github.com/gxthrj/seven/conf"
+	"github.com/gxthrj/seven/state"
 	"k8s.io/api/core/v1"
 	"strconv"
-	"github.com/gxthrj/seven/apisix"
-	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"github.com/gxthrj/seven/state"
-	sevenConf "github.com/gxthrj/seven/conf"
-	"github.com/golang/glog"
 )
 
 const (
@@ -22,7 +22,7 @@ func Watch(){
 	c := &controller{
 		queue: make(chan interface{}, 100),
 	}
-	conf.EndpointsInformer.Informer().AddEventHandler(&QueueEventHandler{c:c})
+	config.EndpointsInformer.Informer().AddEventHandler(&QueueEventHandler{c: c})
 	go c.run()
 }
 
