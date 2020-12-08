@@ -10,6 +10,10 @@ The technical architecture of `apisix-ingress-controller`:
 
 <img src="./docs/images/module-0.png" alt="Architecture" width="600" height="313" />
 
+## Status
+
+This project is currently considered experimental.
+
 ## Features
 
 * Declarative configuration for Apache APISIX with Custom Resource Definitions(CRDs), using k8s yaml struct with minimum learning curve.
