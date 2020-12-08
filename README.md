@@ -23,33 +23,33 @@ All configurations in `apisix-ingress-controller` are defined with Kubernetes CR
 
 ### 1. `Ingress types` Submodule
 
-- defines the CRD(CustomResourceDefinition) needed by Apache APISIX
+- Define the CRD(CustomResourceDefinition) needed by Apache APISIX
 
-- currently supports ApisixRoute/ApisixService/ApisixUpstream，and other service and route level plugins.
+- Currently supports ApisixRoute/ApisixService/ApisixUpstream，and other service and route level plugins.
 
-- can be packaged as a stand-alone binary, keep in sync with the ingress definition.
+- Can be packaged as a stand-alone binary, keep in sync with the ingress definition.
 
 - [CRD design](https://github.com/api7/ingress-controller/issues/3)
 
 ### 2. `APISIX types` Submodule
 
-- define interface objects to match concepts from Apache APISIX like route, service, upstream, and plugin.
+- Define interface objects to match concepts from Apache APISIX like route, service, upstream, and plugin.
 
-- can be a packaged as a stand-alone binary, need to match with compatible Apache APISIX version.
+- Can be a packaged as a stand-alone binary, need to match with compatible Apache APISIX version.
 
-- add new types to this module to support new features.
+- Add new types to this module to support new features.
 
 ### 3. `Seven` submodule
 
-- contains main application logic.
+- Contain main application logic.
 
 - Sync the k8s cluster states to Apache APISIX, based on Apisix-types object.
 
 ### 4.`Ingress-controller` Submodule
 
-- driver process for ingress controller, watches k8s apiserver.
+- Driver process for ingress controller, watches k8s apiserver.
 
-- match and covert Apisix-ingress-types to Apisix-types before handing the control over to the above module seven.
+- Match and covert Apisix-ingress-types to Apisix-types before handing the control over to the above module `seven`.
 
 Get more [implementation details](./docs/design.md).
 
@@ -91,7 +91,7 @@ We welcome all kinds of contributions from the open-source community, individual
 - Mailing List: Mail to dev-subscribe@apisix.apache.org, follow the reply to subscribe the mailing list.
 - QQ Group - 578997126
 - ![Twitter Follow](https://img.shields.io/twitter/follow/ApacheAPISIX?style=social) - follow and interact with us using hashtag `#ApacheAPISIX`
-- [bilibili video](https://space.bilibili.com/551921247)
+- [Bilibili video](https://space.bilibili.com/551921247)
 
 ## License
 
