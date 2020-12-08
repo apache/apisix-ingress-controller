@@ -37,14 +37,12 @@ func NewIngressCommand() *cobra.Command {
 				fileConf, err := config.NewConfigFromFile(configPath)
 				if err != nil {
 					utils.Dief("failed to parse configuration file [%s]: %s", configPath, err.Error())
-					os.Exit(1)
 				}
 				conf = fileConf
 			}
 
 			if err := config.InitInformer(conf); err != nil {
 				utils.Dief("failed to initialize Kubernetes shared index informer: %s", err.Error())
-				os.Exit(1)
 			}
 
 			defer glog.Flush()
