@@ -107,7 +107,6 @@ apiVersion: apisix.apache.org/v1
 kind: ApisixRoute
 metadata:
   name: httpserver-route
-  namespace: cloud
 spec:
   rules:
   - host: test.apisix.apache.org

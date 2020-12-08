@@ -1,13 +1,15 @@
 package apisix
 
 import (
+	"fmt"
 	"testing"
+
+	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
+	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
-	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
-	"fmt"
 )
+
 func TestApisixUpstreamCRD_Convert(t *testing.T) {
 	assert := assert.New(t)
 
@@ -21,7 +23,7 @@ func TestApisixUpstreamCRD_Convert(t *testing.T) {
 		// convert
 		if upstreams, err := au3.Convert(); err != nil {
 			assert.Error(err)
-		}else {
+		} else {
 			// equals or deepCompare
 			upstreamExpect := buildExpectUpstream()
 			//upstreamsExpect := []*v1.Upstream{upstreamExpect}
@@ -36,8 +38,8 @@ func TestApisixUpstreamCRD_Convert(t *testing.T) {
 	}
 }
 
-func equals(s, d *v1.Upstream) bool{
-	if *s.Name != *d.Name || *s.FullName != *d.FullName || *s.Group != *d.Group{
+func equals(s, d *v1.Upstream) bool {
+	if *s.Name != *d.Name || *s.FullName != *d.FullName || *s.Group != *d.Group {
 		return false
 	}
 
@@ -49,45 +51,35 @@ func equals(s, d *v1.Upstream) bool{
 }
 
 // mock BuildEps
-type EndpointRequestTest struct {}
+type EndpointRequestTest struct{}
 
 func (epr *EndpointRequestTest) BuildEps(ns, name string, port int) []*v1.Node {
 	nodes := make([]*v1.Node, 0)
 	return nodes
 }
 
-func buildExpectUpstream() *v1.Upstream{
-	fullName := "cloud_httpserver_8080"
+func buildExpectUpstream() *v1.Upstream {
+	fullName := "default_httpserver_8080"
 	LBType := "chash"
 	HashOn := "header"
 	Key := "hello_key"
 	fromKind := "ApisixUpstream"
 	upstreamExpect := &v1.Upstream{
 		FullName: &fullName,
-		Name: &fullName,
-		Type: &LBType,
-		HashOn: &HashOn,
-		Key: &Key,
+		Name:     &fullName,
+		Type:     &LBType,
+		HashOn:   &HashOn,
+		Key:      &Key,
 		FromKind: &fromKind,
 	}
 	return upstreamExpect
 }
 
-
 var upstreamYaml = `
 kind: ApisixUpstream
 apiVersion: apisix.apache.org/v1
 metadata:
-  annotations:
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"apisix.apache.org/v1","kind":"ApisixUpstream","metadata":{"annotations":{},"name":"httpserver","namespace":"cloud"},"spec":{"ports":[{"Port":8080,"loadbalancer":{"hashOn":"header","key":"hello","type":"chash"}}]}}
-  creationTimestamp: "2020-02-12T08:27:39Z"
-  generation: 5
   name: httpserver
-  namespace: cloud
-  resourceVersion: "9000529"
-  selfLink: /apis/apisix.apache.org/v1/namespaces/cloud/apisixupstreams/httpserver
-  uid: 87b1112a-4d71-11ea-9952-080027b01891
 spec:
   ports:
   - loadbalancer:
@@ -96,4 +88,3 @@ spec:
       type: chash
     port: 8080
 `
-

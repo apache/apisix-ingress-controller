@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ingress-controller
-  namespace: cloud
 spec:
   minReadySeconds: 5
   replicas: 1
@@ -26,7 +25,7 @@ spec:
       containers:
       - envFrom:
         - configMapRef:
-            name: cloud-config
+            name: apisix-config
         image: ???/???/ingress-controller:???
         imagePullPolicy: IfNotPresent
         name: ingress-controller
