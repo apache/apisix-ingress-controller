@@ -1,0 +1,4 @@
+resources:
+  - ./apisix_view_clusterrole.yaml
+  - ./service_account.yaml
+  - ./apisix_view_clusterrolebinding.yaml

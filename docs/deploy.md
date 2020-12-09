@@ -1,101 +1,17 @@
 # 集群部署
 
-## 配置RBAC
-示例文件在项目下的samples下
-* 执行下面的命令之前按需修改一下name和namespaces
-### 1.创建ServiceAccount
+## 安装依赖
+
+通过 [kustomize](https://kustomize.io/) 安装所需要的依赖。
 
 ```shell
-kubectl apply -f samples/deploy/rbac/service_account.yaml
+kubectl kustomize "github.com/apache/apisix-ingress-controller?ref=master" | kubectl apply -f -
 ```
 
-### 2.创建ClusterRole
-```shell
-kubectl apply -f samples/deploy/rbac/apisix_view_clusterrole.yaml
-```
-
-### 3.创建ClusterRoleBinding
-```shell
-kubectl apply -f samples/deploy/rbac/apisix_view_clusterrolebinding.yaml
-```
-
-## 配置 ConfigMap
-* 执行命令之前按需修改
+上述命令会将 samples/deploy 中声明的配置应用到你的 Kubernetes 集群，如果该目录中的默认配置参数无法满足你的需求，可以考虑修改后再安装：
 
 ```shell
-kubectl apply -f samples/deploy/configmap/cloud.yaml
-```
-
-## 配置 Deployment
-* 执行命令之前按需修改name和namespaces，并且补充APISIX ingress controller image路径和版本号
-
-
-```shell
-kubectl apply -f samples/deploy/deployment/ingress-controller.yaml
-```
-
-## CRD定义文件
-
-如果APISIX CRD还未定义，执行以下脚本
-```
-kubectl apply -f - <<EOF
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: apisixroutes.apisix.apache.org
-spec:
-  group: apisix.apache.org
-  versions:
-    - name: v1
-      served: true
-      storage: true
-  scope: Namespaced
-  names:
-    plural: apisixroutes
-    singular: apisixroute
-    kind: ApisixRoute
-    shortNames:
-    - ar
-
----
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: apisixservices.apisix.apache.org
-spec:
-  group: apisix.apache.org
-  versions:
-    - name: v1
-      served: true
-      storage: true
-  scope: Namespaced
-  names:
-    plural: apisixservices
-    singular: apisixservice
-    kind: ApisixService
-    shortNames:
-    - as
-
----
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: apisixupstreams.apisix.apache.org
-spec:
-  group: apisix.apache.org
-  versions:
-    - name: v1
-      served: true
-      storage: true
-  scope: Namespaced
-  names:
-    plural: apisixupstreams
-    singular: apisixupstream
-    kind: ApisixUpstream
-    shortNames:
-    - au
-
-EOF
+kubectl apply -k samples/deploy
 ```
 
 ## 通过CRD定义apisix路由的描述文件

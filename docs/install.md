@@ -13,105 +13,18 @@ To install `ingress controller` in k8s, need to care about 3 parts:
 
 3. Configmap: Contains the necessary configuration for `ingress controller`.
 
-## CRDs installation
+## Kustomize
 
-Install CRDs in Kubernetes
+Install the abovementioned resources by [Kustomize](https://kustomize.io/):
 
 ```shell
-kubectl apply -f - <<EOF
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: apisixroutes.apisix.apache.org
-spec:
-  group: apisix.apache.org
-  versions:
-    - name: v1
-      served: true
-      storage: true
-  scope: Namespaced
-  names:
-    plural: apisixroutes
-    singular: apisixroute
-    kind: ApisixRoute
-    shortNames:
-    - ar
-
----
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: apisixservices.apisix.apache.org
-spec:
-  group: apisix.apache.org
-  versions:
-    - name: v1
-      served: true
-      storage: true
-  scope: Namespaced
-  names:
-    plural: apisixservices
-    singular: apisixservice
-    kind: ApisixService
-    shortNames:
-    - as
-
----
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: apisixupstreams.apisix.apache.org
-spec:
-  group: apisix.apache.org
-  versions:
-    - name: v1
-      served: true
-      storage: true
-  scope: Namespaced
-  names:
-    plural: apisixupstreams
-    singular: apisixupstream
-    kind: ApisixUpstream
-    shortNames:
-    - au
-
-EOF
+kubectl kustomize "github.com/apache/apisix-ingress-controller?ref=master" | kubectl apply -f -
 ```
 
-## RBAC configuration
-
-* Create ServiceAccount
+If the default parameters in samples/deploy are not good for you, just tweak them and run:
 
 ```shell
-kubectl apply -f ../samples/deploy/rbac/service_account.yaml
-```
-
-* Create ClusterRole
-
-```shell
-kubectl apply -f ../samples/deploy/rbac/apisix_view_clusterrole.yaml
-```
-
-* Create ClusterRoleBinding
-
-```shell
-kubectl apply -f ../samples/deploy/rbac/apisix_view_clusterrolebinding.yaml
-```
-
-## Configmap for ingress controller
-
-Pay attention to the `namespace` and `APISIX address` in configmap.
-
-```shell
-kubectl apply -f ../samples/deploy/configmap/cloud.yaml
-```
-
-## Deploy ingress controller
-
-[How to build image from master branch?](#Master-branch-builds)
-
-```shell
-kubectl apply -f ../samples/deploy/deployment/ingress-controller.yaml
+kubectl apply -k /path/to/apisix-ingress-controller/samples/deploy
 ```
 
 ## Helm

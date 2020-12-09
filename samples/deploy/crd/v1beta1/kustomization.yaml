@@ -1,0 +1,4 @@
+resources:
+  - ./ApisixRoute.yaml
+  - ./ApisixUpstream.yaml
+  - ./ApisixService.yaml
