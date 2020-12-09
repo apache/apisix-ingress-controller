@@ -18,7 +18,7 @@ To install `ingress controller` in k8s, need to care about 3 parts:
 Install the abovementioned resources by [Kustomize](https://kustomize.io/):
 
 ```shell
-kubectl kustomize "github.com/apache/apisix-ingress-controller?ref=master" | kubectl apply -f -
+kubectl kustomize "github.com/apache/apisix-ingress-controller/samples/deploy?ref=master" | kubectl apply -f -
 ```
 
 If the default parameters in samples/deploy are not good for you, just tweak them and run:
