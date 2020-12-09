@@ -30,7 +30,6 @@ type Logger struct {
 }
 
 func (logger *Logger) write(level zapcore.Level, message string, fields []zapcore.Field) {
-
 	e := zapcore.Entry{
 		Level:   level,
 		Time:    time.Now(),
