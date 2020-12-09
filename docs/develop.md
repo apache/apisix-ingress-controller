@@ -36,7 +36,7 @@ Configure the service address of Apache APISIX to conf/apisix/base_url ($GOPATH/
 
 * Create CRDs
 
-```
+```shell
 kubectl apply -k samples/deploy/crd/v1beta1
 ```
 
