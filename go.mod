@@ -14,6 +14,7 @@ require (
 	github.com/spf13/cobra v1.1.1
 	github.com/stretchr/testify v1.4.0
 	github.com/tidwall/gjson v1.6.4
+	go.uber.org/zap v1.13.0
 	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.0.0-20190819141258-3544db3b9e44
 	k8s.io/apimachinery v0.0.0-20190817020851-f2f3a405f61d
