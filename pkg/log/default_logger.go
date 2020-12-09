@@ -3,7 +3,7 @@ package log
 import "go.uber.org/zap/zapcore"
 
 var (
-	//  DefaultLogger is the default logger, which logs message to stderr and with
+	// DefaultLogger is the default logger, which logs message to stderr and with
 	// the minimal level "warn".
 	DefaultLogger *Logger
 )

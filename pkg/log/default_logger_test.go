@@ -1,11 +1,11 @@
 package log
 
 import (
-	"go.uber.org/zap"
 	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -78,6 +78,5 @@ func TestDefaultLogger(t *testing.T) {
 			assert.Equal(t, fields.Name, "alex", "bad name field ", fields.Name)
 			assert.Equal(t, fields.Age, 3, "bad age field ", fields.Age)
 		})
-
 	}
 }
