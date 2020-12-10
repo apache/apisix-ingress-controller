@@ -1,0 +1,23 @@
+name: test-ci
+
+on:
+  push:
+    branches:
+      - master
+      - kv/ci
+  pull_request:
+    branches:
+      - master
+jobs:
+  run-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: setup go
+      uses: actions/setup-go@v1
+      with:
+        go-version: '1.13'
+    - name: run test
+      working-directory: ./
+      run: |
+        go test ./...
