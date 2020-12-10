@@ -16,9 +16,15 @@
 #
 default: help
 
+VERSION ?= 0.0.0
+GITSHA ?= $(shell git rev-parse HEAD)
+
 ### build:            Build apisix-ingress-controller
 build:
-	go build -o apisix-ingress-controller main.go
+	go build \
+		-o apisix-ingress-controller \
+		-ldflags "-X version._buildVersion=$(VERSION) -X version._buildGitRevision=$(GITSHA)" \
+		main.go
 
 ### lint:             Do static lint check
 lint:

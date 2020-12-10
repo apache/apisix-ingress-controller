@@ -14,20 +14,34 @@
  // limitations under the License.
 package cmd
 
-import (
-	"github.com/spf13/cobra"
+ import (
+	 "fmt"
 
-	"github.com/api7/ingress-controller/cmd/ingress"
-)
+	 "github.com/spf13/cobra"
 
-// NewAPISIXIngressControllerCommand creates the apisix-ingress-controller command.
-func NewAPISIXIngressControllerCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "apisix-ingress-controller [command]",
-		Long:    "Yet another Ingress controller for Kubernetes using Apache APISIX as the high performance reverse proxy. Please note that all flags in this command line is not in use for now, but will be enabled in the near future.",
-		Version: "", // TODO: fill the version info.
-	}
+	 "github.com/api7/ingress-controller/cmd/ingress"
+	 "github.com/api7/ingress-controller/pkg/version"
+ )
 
-	cmd.AddCommand(ingress.NewIngressCommand())
-	return cmd
-}
+ func newVersionCommand() *cobra.Command {
+	 return &cobra.Command{
+		 Use:   "version",
+		 Short: "version for apisix-ingress-controller",
+		 Run: func(cmd *cobra.Command, _ []string) {
+			 fmt.Printf("apisix-ingress-controller version %s\n", version.Version())
+		 },
+	 }
+ }
+
+ // NewAPISIXIngressControllerCommand creates the apisix-ingress-controller command.
+ func NewAPISIXIngressControllerCommand() *cobra.Command {
+	 cmd := &cobra.Command{
+		 Use:     "apisix-ingress-controller [command]",
+		 Long:    "Yet another Ingress controller for Kubernetes using Apache APISIX as the high performance reverse proxy. Please note that all flags in this command line is not in use for now, but will be enabled in the near future.",
+		 Version: version.Version(),
+	 }
+
+	 cmd.AddCommand(ingress.NewIngressCommand())
+	 cmd.AddCommand(newVersionCommand())
+	 return cmd
+ }
