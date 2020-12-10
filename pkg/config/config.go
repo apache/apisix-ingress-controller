@@ -1,0 +1,102 @@
+// Licensed to the Apache Software Foundation (ASF) under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// The ASF licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+package config
+
+import (
+	"encoding/json"
+	"errors"
+	"io/ioutil"
+	"strings"
+	"time"
+
+	"github.com/api7/ingress-controller/pkg/types"
+	"gopkg.in/yaml.v2"
+)
+
+const (
+	_minimalResyncInterval = time.Second
+)
+
+// Config contains all config items which are necessary for
+// apisix-ingress-controller's running.
+type Config struct {
+	LogLevel        string           `json:"log_level" yaml:"log_level"`
+	LogOutput       string           `json:"log_output" yaml:"log_output"`
+	HTTPListen      string           `json:"http_listen" yaml:"http_listen"`
+	EnableProfiling bool             `json:"enable_profiling" yaml:"enable_profiling"`
+	Kubernetes      KubernetesConfig `json:"kubernetes" yaml:"kubernetes"`
+	APISIX          APISIXConfig     `json:"apisix" yaml:"apisix"`
+}
+
+// KubernetesConfig contains all Kubernetes related config items.
+type KubernetesConfig struct {
+	Kubeconfig     string             `json:"kubeconfig" yaml:"kubeconfig"`
+	ResyncInterval types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
+}
+
+// APISIXConfig contains all APISIX related config items.
+type APISIXConfig struct {
+	BaseURL string `json:"base_url" yaml:"base_url"`
+	// TODO: Obsolete the plain way to specify admin_key, which is insecure.
+	AdminKey string `json:"admin_key" yaml:"admin_key"`
+}
+
+// NewDefaultConfig creates a Config object which fills all config items with
+// default value.
+func NewDefaultConfig() *Config {
+	return &Config{
+		LogLevel:        "warn",
+		LogOutput:       "stderr",
+		HTTPListen:      ":8080",
+		EnableProfiling: true,
+		Kubernetes: KubernetesConfig{
+			Kubeconfig:     "", // Use in-cluster configurations.
+			ResyncInterval: types.TimeDuration{time.Minute},
+		},
+	}
+}
+
+// NewConfigFromFile creates a Config object and fills all config items according
+// to the configuration file. The file can be in JSON/YAML format, which will be
+// distinguished according to the file suffix.
+func NewConfigFromFile(filename string) (*Config, error) {
+	cfg := NewDefaultConfig()
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	if strings.HasSuffix(filename, ".yaml") || strings.HasSuffix(filename, ".yml") {
+		err = yaml.Unmarshal(data, cfg)
+	} else {
+		err = json.Unmarshal(data, cfg)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+// Validate validates whether the Config is right.
+func (cfg *Config) Validate() error {
+	if cfg.Kubernetes.ResyncInterval.Duration < _minimalResyncInterval {
+		return errors.New("controller resync interval too small")
+	}
+	if cfg.APISIX.BaseURL == "" {
+		return errors.New("apisix base url is required")
+	}
+	return nil
+}
