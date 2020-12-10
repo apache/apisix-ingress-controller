@@ -49,7 +49,7 @@ func BuildEps(ns, name string, port int) []*v1.Node {
 	nodes := make([]*v1.Node, 0)
 	epInformers := conf.EndpointsInformer
 	if ep, err := epInformers.Lister().Endpoints(ns).Get(name); err != nil {
-		glog.Errorf("find endpoint %s/%s err", ns, name, err.Error())
+		glog.Errorf("find endpoint %s/%s err: %s", ns, name, err.Error())
 	} else {
 		for _, s := range ep.Subsets {
 			for _, ip := range s.Addresses {
