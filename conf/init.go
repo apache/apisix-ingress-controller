@@ -81,7 +81,7 @@ var Syslog syslog
 
 var config *restclient.Config
 
-func init() {
+func Init() {
 	// 获取当前环境
 	setEnvironment()
 	// 获取配置文件路径
