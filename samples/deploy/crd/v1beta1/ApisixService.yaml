@@ -1,0 +1,17 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: apisixservices.apisix.apache.org
+spec:
+  group: apisix.apache.org
+  versions:
+    - name: v1
+      served: true
+      storage: true
+  scope: Namespaced
+  names:
+    plural: apisixservices
+    singular: apisixservice
+    kind: ApisixService
+    shortNames:
+      - as

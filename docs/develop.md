@@ -36,65 +36,8 @@ Configure the service address of Apache APISIX to conf/apisix/base_url ($GOPATH/
 
 * Create CRDs
 
-```yaml
-kubectl apply -f - <<EOF
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: apisixroutes.apisix.apache.org
-spec:
-  group: apisix.apache.org
-  versions:
-    - name: v1
-      served: true
-      storage: true
-  scope: Namespaced
-  names:
-    plural: apisixroutes
-    singular: apisixroute
-    kind: ApisixRoute
-    shortNames:
-    - ar
-
----
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: apisixservices.apisix.apache.org
-spec:
-  group: apisix.apache.org
-  versions:
-    - name: v1
-      served: true
-      storage: true
-  scope: Namespaced
-  names:
-    plural: apisixservices
-    singular: apisixservice
-    kind: ApisixService
-    shortNames:
-    - as
-
----
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: apisixupstreams.apisix.apache.org
-spec:
-  group: apisix.apache.org
-  versions:
-    - name: v1
-      served: true
-      storage: true
-  scope: Namespaced
-  names:
-    plural: apisixupstreams
-    singular: apisixupstream
-    kind: ApisixUpstream
-    shortNames:
-    - au
-
-EOF
+```shell
+kubectl apply -k samples/deploy/crd/v1beta1
 ```
 
 * Run apisix-ingress-controller
