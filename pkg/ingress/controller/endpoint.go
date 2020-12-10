@@ -1,22 +1,26 @@
- // Licensed to the Apache Software Foundation (ASF) under one or more
- // contributor license agreements.  See the NOTICE file distributed with
- // this work for additional information regarding copyright ownership.
- // The ASF licenses this file to You under the Apache License, Version 2.0
- // (the "License"); you may not use this file except in compliance with
- // the License.  You may obtain a copy of the License at
- //
- //     http://www.apache.org/licenses/LICENSE-2.0
- //
- // Unless required by applicable law or agreed to in writing, software
- // distributed under the License is distributed on an "AS IS" BASIS,
- // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- // See the License for the specific language governing permissions and
- // limitations under the License.
+// Licensed to the Apache Software Foundation (ASF) under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// The ASF licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package controller
 
 import (
 	"fmt"
+	"github.com/api7/ingress-controller/conf"
 	"github.com/golang/glog"
+	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
+	"github.com/gxthrj/seven/apisix"
+	sevenConf "github.com/gxthrj/seven/conf"
 	"github.com/gxthrj/seven/state"
 	CoreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -26,27 +30,23 @@ import (
 	CoreListerV1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"time"
 	"strconv"
-	"github.com/gxthrj/seven/apisix"
-	sevenConf "github.com/gxthrj/seven/conf"
-	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"github.com/api7/ingress-controller/conf"
+	"time"
 )
 
 type EndpointController struct {
-	kubeclientset kubernetes.Interface
-	endpointList  CoreListerV1.EndpointsLister
+	kubeclientset  kubernetes.Interface
+	endpointList   CoreListerV1.EndpointsLister
 	endpointSynced cache.InformerSynced
-	workqueue     workqueue.RateLimitingInterface
+	workqueue      workqueue.RateLimitingInterface
 }
 
 func BuildEndpointController(kubeclientset kubernetes.Interface) *EndpointController {
 	controller := &EndpointController{
-		kubeclientset: kubeclientset,
-		endpointList: conf.EndpointsInformer.Lister(),
+		kubeclientset:  kubeclientset,
+		endpointList:   conf.EndpointsInformer.Lister(),
 		endpointSynced: conf.EndpointsInformer.Informer().HasSynced,
-		workqueue:     workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpoints"),
+		workqueue:      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpoints"),
 	}
 	conf.EndpointsInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -68,7 +68,8 @@ func (c *EndpointController) Run(stop <-chan struct{}) error {
 }
 
 func (c *EndpointController) runWorker() {
-	for c.processNextWorkItem() {}
+	for c.processNextWorkItem() {
+	}
 }
 
 func (c *EndpointController) processNextWorkItem() bool {
@@ -107,14 +108,14 @@ func (c *EndpointController) syncHandler(key string) error {
 		glog.V(2).Infof("find endpoint %s/%s", namespace, name)
 	}
 	if err != nil {
-		logger.Error("invalid resource key: %s", key)
+		logger.Errorf("invalid resource key: %s", key)
 		return fmt.Errorf("invalid resource key: %s", key)
 	}
 
 	endpointYaml, err := c.endpointList.Endpoints(namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Info("endpoint %s is removed", key)
+			logger.Infof("endpoint %s is removed", key)
 			return nil
 		}
 		runtime.HandleError(fmt.Errorf("failed to list endpoint %s/%s", key, err.Error()))
@@ -126,16 +127,16 @@ func (c *EndpointController) syncHandler(key string) error {
 }
 
 func (c *EndpointController) process(ep *CoreV1.Endpoints) {
-	if ep.Namespace != "kube-system"{ // todo here is some ignore namespaces
-		for _, s := range ep.Subsets{
+	if ep.Namespace != "kube-system" { // todo here is some ignore namespaces
+		for _, s := range ep.Subsets {
 			// if upstream need to watch
 			// ips
 			ips := make([]string, 0)
-			for _, address := range s.Addresses{
+			for _, address := range s.Addresses {
 				ips = append(ips, address.IP)
 			}
 			// ports
-			for _, port := range s.Ports{
+			for _, port := range s.Ports {
 				upstreamName := ep.Namespace + "_" + ep.Name + "_" + strconv.Itoa(int(port.Port))
 				// find upstreamName is in apisix
 				// default
