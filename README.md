@@ -22,7 +22,7 @@ This project is currently considered experimental.
 * Out of box support for node health check.
 * Support load balancing based on pod (upstream nodes).
 * Plug-in extension supports hot configuration and immediate effect.
-* Ingress controller itself as a plugable hot-reload component.
+* Ingress controller itself as a pluggable hot-reload component.
 * Multi-cluster configuration distribution.
 
 ## Modules
