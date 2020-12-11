@@ -1,4 +1,4 @@
-#!/bin/sh
+<!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -15,13 +15,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-pwd=`pwd`
-
-sed -i -e "s%#k8sAuthFile#%`echo $K8S_AUTH_FILE`%g" ${pwd}/conf.json
-sed -i -e "s%#syslogAddress#%`echo $SYSLOG_HOST`%g" ${pwd}/conf.json
-sed -i -e "s%#apisixBaseUrl#%`echo $APISIX_BASE_URL`%g" ${pwd}/conf.json
-
-cd /root/ingress-controller
-exec ./ingress-controller ingress
-
+-->
