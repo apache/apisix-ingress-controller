@@ -15,8 +15,9 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
 	"net"
+
+	"github.com/gin-gonic/gin"
 
 	apirouter "github.com/api7/ingress-controller/pkg/api/router"
 	"github.com/api7/ingress-controller/pkg/config"
@@ -26,7 +27,7 @@ import (
 
 // Server represents the API Server in ingress-apisix-controller.
 type Server struct {
-	router   *gin.Engine
+	router       *gin.Engine
 	httpListener net.Listener
 }
 
@@ -42,7 +43,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	apirouter.Mount(router)
 
 	return &Server{
-		router:   router,
+		router:       router,
 		httpListener: httpListener,
 	}, nil
 }

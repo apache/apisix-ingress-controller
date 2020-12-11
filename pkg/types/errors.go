@@ -18,7 +18,7 @@ import (
 	"strings"
 )
 
-// IsUseOfClosedNetConnErr checks whether the err is caused due to
+// IsUseOfClosedNetConnErr checks whether the error is due to
 // use of closed network connection.
 func IsUseOfClosedNetConnErr(err error) bool {
 	return strings.Contains(err.Error(), "use of closed network connection")
