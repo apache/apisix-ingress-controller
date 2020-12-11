@@ -14,11 +14,11 @@
 // limitations under the License.
 package main
 
-import (
-	"os"
+ import (
+	 "fmt"
+	 "os"
 
 	"github.com/api7/ingress-controller/cmd"
-	"github.com/api7/ingress-controller/log"
 	"github.com/api7/ingress-controller/conf"
 )
 
@@ -26,7 +26,7 @@ func main() {
 	conf.Init()
 	root := cmd.NewAPISIXIngressControllerCommand()
 	if err := root.Execute(); err != nil {
-		log.GetLogger().Error(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 }
