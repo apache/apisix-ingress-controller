@@ -16,7 +16,6 @@ package ingress
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -27,7 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/api7/ingress-controller/conf"
-	"github.com/api7/ingress-controller/pkg"
+	"github.com/api7/ingress-controller/pkg/api"
 	"github.com/api7/ingress-controller/pkg/config"
 	"github.com/api7/ingress-controller/pkg/ingress/controller"
 	"github.com/api7/ingress-controller/pkg/log"
@@ -108,12 +107,14 @@ func NewIngressCommand() *cobra.Command {
 				c.SharedInformerFactory.Start(stop)
 			}()
 
-			go func() {
-				router := pkg.Route()
-				if err := http.ListenAndServe(":8080", router); err != nil && err != http.ErrServerClosed {
-					log.Errorf("failed to start http server: %s", err)
-				}
-			}()
+			srv, err := api.NewServer(cfg)
+			if err != nil {
+				dief("failed to create API Server: %s", err)
+			}
+
+			if err := srv.Run(stop); err != nil {
+				dief("failed to launch API Server: %s", err)
+			}
 
 			waitForSignal(stop)
 			log.Info("apisix-ingress-controller exited")
