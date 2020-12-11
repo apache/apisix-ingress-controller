@@ -127,4 +127,23 @@ func TestConfigInvalidation(t *testing.T) {
 	assert.Nil(t, err, "failed to new config from file: ", err)
 	err = newCfg.Validate()
 	assert.Equal(t, err.Error(), "apisix base url is required", "bad error: ", err)
+
+	yamlData = `
+kubernetes:
+  resync_interval: 15s
+apisix:
+  base_url: http://127.0.0.1:1234/apisix
+`
+	tmpYAML, err = ioutil.TempFile("/tmp", "config-*.yaml")
+	assert.Nil(t, err, "failed to create temporary yaml configuration file: ", err)
+	defer os.Remove(tmpYAML.Name())
+
+	_, err = tmpYAML.Write([]byte(yamlData))
+	assert.Nil(t, err, "failed to write yaml data: ", err)
+	tmpYAML.Close()
+
+	newCfg, err = NewConfigFromFile(tmpYAML.Name())
+	assert.Nil(t, err, "failed to new config from file: ", err)
+	err = newCfg.Validate()
+	assert.Equal(t, err.Error(), "controller resync interval too small", "bad error: ", err)
 }

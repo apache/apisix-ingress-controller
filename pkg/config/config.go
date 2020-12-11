@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	_minimalResyncInterval = time.Second
+	_minimalResyncInterval = 30 * time.Second
 )
 
 // Config contains all config items which are necessary for
