@@ -17,13 +17,23 @@
 default: help
 
 VERSION ?= 0.0.0
-GITSHA ?= $(shell git rev-parse HEAD)
+GITSHA ?= $(shell git rev-parse --short=7 HEAD)
+OSNAME ?= $(shell uname -s | tr A-Z a-z)
+OSARCH ?= $(shell uname -m | tr A-Z a-z)
+ifeq ($(OSARCH), x86_64)
+	OSARCH = amd64
+endif
+
+VERSYM="github.com/api7/ingress-controller/pkg/version._buildVersion"
+GITSHASYM="github.com/api7/ingress-controller/pkg/version._buildGitRevision"
+BUILDOSSYM="github.com/api7/ingress-controller/pkg/version._buildOS"
+GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH)"
 
 ### build:            Build apisix-ingress-controller
 build:
 	go build \
 		-o apisix-ingress-controller \
-		-ldflags "-X version._buildVersion=$(VERSION) -X version._buildGitRevision=$(GITSHA)" \
+		-ldflags $(GO_LDFLAGS) \
 		main.go
 
 ### lint:             Do static lint check

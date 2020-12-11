@@ -24,13 +24,21 @@ import (
 )
 
 func newVersionCommand() *cobra.Command {
-	return &cobra.Command{
+	var long bool
+	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "version for apisix-ingress-controller",
 		Run: func(cmd *cobra.Command, _ []string) {
-			fmt.Printf("apisix-ingress-controller version %s\n", version.Version())
+			if long {
+				fmt.Print(version.Long())
+			} else {
+				fmt.Printf("apisix-ingress-controller version %s\n", version.Short())
+			}
 		},
 	}
+
+	cmd.PersistentFlags().BoolVar(&long, "long", false, "show long mode version information")
+	return cmd
 }
 
 // NewAPISIXIngressControllerCommand creates the apisix-ingress-controller command.
@@ -38,7 +46,7 @@ func NewAPISIXIngressControllerCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "apisix-ingress-controller [command]",
 		Long:    "Yet another Ingress controller for Kubernetes using Apache APISIX as the high performance reverse proxy. Please note that all flags in this command line is not in use for now, but will be enabled in the near future.",
-		Version: version.Version(),
+		Version: version.Short(),
 	}
 
 	cmd.AddCommand(ingress.NewIngressCommand())

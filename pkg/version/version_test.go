@@ -23,9 +23,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestVersion(t *testing.T) {
-	ver := Version()
+func TestShort(t *testing.T) {
+	ver := Short()
 	expectedVersion := fmt.Sprintf("unknown-unknown-%s", runtime.Version())
-	t.Log(expectedVersion)
+	assert.Equal(t, expectedVersion, ver, "bad version")
+}
+
+func TestLong(t *testing.T) {
+	ver := Long()
+	expectedVersion := `Version: unknown
+Git SHA: unknown
+Go Version: %s
+Building OS/Arch: unknown
+Running OS/Arch: %s/%s
+`
+	expectedVersion = fmt.Sprintf(expectedVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 	assert.Equal(t, expectedVersion, ver, "bad version")
 }
