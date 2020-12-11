@@ -1,0 +1,48 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# log options
+log_level: "warn"    # the error log level, default is warn, optional values are:
+                     # debug
+                     # info
+                     # warn
+                     # error
+                     # panic
+                     # fatal
+log_output: "stderr" # the output file path of error log, default is stderr, when
+                     # the file path is "stderr" or "stdout", logs are marshalled
+                     # plainly, which is more readable for human; otherwise logs
+                     # are marshalled in JSON format, which can be parsed by
+                     # programs easily.
+
+http_listen: ":8080"   # the HTTP Server listen address, default is ":8080"
+enable_profiling: true # enable profileing via web interfaces
+                       # host:port/debug/pprof, default is true.
+
+# Kubernetes related configurations.
+kubernetes:
+  kubeconfig: ""         # the Kubernetes configuration file path, default is
+                         # "", so the in-cluster configuration will be used.
+  resync_interval: "60s" # how long should apisix-ingress-controller
+                         # re-synchronizes with Kubernetes, default is 60s,
+                         # and the minimal resync interval is 30s.
+
+# APISIX related configurations.
+apisix:
+  base_url: "http://host:port/foo/bar/baz" # the APISIX admin api / manager api
+                                           # base url, it's required.
+  #admin_key: "blahblahblah"               # admin key for the authorization
+                                           # of APISIX admin api / manager api,
+                                           # default is empty.
