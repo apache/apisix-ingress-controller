@@ -1,21 +1,23 @@
- // Licensed to the Apache Software Foundation (ASF) under one or more
- // contributor license agreements.  See the NOTICE file distributed with
- // this work for additional information regarding copyright ownership.
- // The ASF licenses this file to You under the Apache License, Version 2.0
- // (the "License"); you may not use this file except in compliance with
- // the License.  You may obtain a copy of the License at
- //
- //     http://www.apache.org/licenses/LICENSE-2.0
- //
- // Unless required by applicable law or agreed to in writing, software
- // distributed under the License is distributed on an "AS IS" BASIS,
- // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- // See the License for the specific language governing permissions and
- // limitations under the License.
+// Licensed to the Apache Software Foundation (ASF) under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// The ASF licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package controller
 
 import (
 	"fmt"
+	"github.com/api7/ingress-controller/pkg/ingress/apisix"
+	"github.com/api7/ingress-controller/pkg/ingress/endpoint"
 	"github.com/golang/glog"
 	apisixV1 "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
@@ -23,7 +25,6 @@ import (
 	informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions/config/v1"
 	"github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
 	"github.com/gxthrj/seven/state"
-	"github.com/api7/ingress-controller/pkg/ingress/apisix"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -32,7 +33,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"time"
-	"github.com/api7/ingress-controller/pkg/ingress/endpoint"
 )
 
 type ApisixUpstreamController struct {
@@ -112,14 +112,14 @@ func (c *ApisixUpstreamController) processNextWorkItem() bool {
 func (c *ApisixUpstreamController) syncHandler(key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		logger.Error("invalid resource key: %s", key)
+		logger.Errorf("invalid resource key: %s", key)
 		return fmt.Errorf("invalid resource key: %s", key)
 	}
 
 	apisixUpstreamYaml, err := c.apisixUpstreamList.ApisixUpstreams(namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Info("apisixUpstream %s is removed", key)
+			logger.Infof("apisixUpstream %s is removed", key)
 			return nil
 		}
 		runtime.HandleError(fmt.Errorf("failed to list apisixUpstream %s/%s", key, err.Error()))

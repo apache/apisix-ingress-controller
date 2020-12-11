@@ -19,9 +19,11 @@ import (
 
 	"github.com/api7/ingress-controller/cmd"
 	"github.com/api7/ingress-controller/log"
+	"github.com/api7/ingress-controller/conf"
 )
 
 func main() {
+	conf.Init()
 	root := cmd.NewAPISIXIngressControllerCommand()
 	if err := root.Execute(); err != nil {
 		log.GetLogger().Error(err.Error())

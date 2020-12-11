@@ -1,45 +1,45 @@
- // Licensed to the Apache Software Foundation (ASF) under one or more
- // contributor license agreements.  See the NOTICE file distributed with
- // this work for additional information regarding copyright ownership.
- // The ASF licenses this file to You under the Apache License, Version 2.0
- // (the "License"); you may not use this file except in compliance with
- // the License.  You may obtain a copy of the License at
- //
- //     http://www.apache.org/licenses/LICENSE-2.0
- //
- // Unless required by applicable law or agreed to in writing, software
- // distributed under the License is distributed on an "AS IS" BASIS,
- // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- // See the License for the specific language governing permissions and
- // limitations under the License.
+// Licensed to the Apache Software Foundation (ASF) under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// The ASF licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package controller
 
 import (
-	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
-	informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions/config/v1"
-	apisixScheme "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned/scheme"
+	"fmt"
+	"github.com/api7/ingress-controller/pkg/ingress/apisix"
+	"github.com/golang/glog"
 	apisixV1 "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
+	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
+	apisixScheme "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned/scheme"
+	informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions/config/v1"
 	"github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
+	"github.com/gxthrj/seven/state"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
-	"fmt"
-	"github.com/golang/glog"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"time"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"github.com/api7/ingress-controller/pkg/ingress/apisix"
-	"github.com/gxthrj/seven/state"
 )
 
 type ApisixServiceController struct {
-	kubeclientset          kubernetes.Interface
-	apisixClientset clientSet.Interface
-	apisixServiceList      v1.ApisixServiceLister
-	apisixServiceSynced    cache.InformerSynced
-	workqueue              workqueue.RateLimitingInterface
+	kubeclientset       kubernetes.Interface
+	apisixClientset     clientSet.Interface
+	apisixServiceList   v1.ApisixServiceLister
+	apisixServiceSynced cache.InformerSynced
+	workqueue           workqueue.RateLimitingInterface
 }
 
 func BuildApisixServiceController(
@@ -49,11 +49,11 @@ func BuildApisixServiceController(
 
 	runtime.Must(apisixScheme.AddToScheme(scheme.Scheme))
 	controller := &ApisixServiceController{
-		kubeclientset:        kubeclientset,
-		apisixClientset:      apisixServiceClientset,
+		kubeclientset:       kubeclientset,
+		apisixClientset:     apisixServiceClientset,
 		apisixServiceList:   apisixServiceInformer.Lister(),
 		apisixServiceSynced: apisixServiceInformer.Informer().HasSynced,
-		workqueue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ApisixServices"),
+		workqueue:           workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ApisixServices"),
 	}
 	apisixServiceInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -111,14 +111,14 @@ func (c *ApisixServiceController) processNextWorkItem() bool {
 func (c *ApisixServiceController) syncHandler(key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		logger.Error("invalid resource key: %s", key)
+		logger.Errorf("invalid resource key: %s", key)
 		return fmt.Errorf("invalid resource key: %s", key)
 	}
 
 	apisixServiceYaml, err := c.apisixServiceList.ApisixServices(namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Info("apisixUpstream %s is removed", key)
+			logger.Infof("apisixUpstream %s is removed", key)
 			return nil
 		}
 		runtime.HandleError(fmt.Errorf("failed to list apisixUpstream %s/%s", key, err.Error()))
