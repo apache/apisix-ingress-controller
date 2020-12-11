@@ -48,7 +48,7 @@ func (logger *Logger) write(level zapcore.Level, message string, fields []zapcor
 		Level:   level,
 		Time:    time.Now(),
 		Message: message,
-		Caller:  zapcore.NewEntryCaller(runtime.Caller(2)),
+		Caller:  zapcore.NewEntryCaller(runtime.Caller(3)),
 	}
 
 	_ = logger.core.Write(e, fields)
