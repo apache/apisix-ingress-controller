@@ -18,7 +18,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	api6Informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
@@ -37,6 +39,15 @@ func dief(template string, args ...interface{}) {
 	}
 	fmt.Fprintf(os.Stderr, template, args...)
 	os.Exit(1)
+}
+
+func waitForSignal(stopCh chan struct{}) {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	sig := <-sigCh
+	log.Infof("signal %d (%s) received", sig, sig.String())
+	close(stopCh)
 }
 
 // NewIngressCommand creates the ingress sub command for apisix-ingress-controller.
@@ -97,11 +108,15 @@ func NewIngressCommand() *cobra.Command {
 				c.SharedInformerFactory.Start(stop)
 			}()
 
-			router := pkg.Route()
-			err = http.ListenAndServe(":8080", router)
-			if err != nil {
-				logger.Fatal("ListenAndServe: ", err)
-			}
+			go func() {
+				router := pkg.Route()
+				if err := http.ListenAndServe(":8080", router); err != nil && err != http.ErrServerClosed {
+					log.Errorf("failed to start http server: %s", err)
+				}
+			}()
+
+			waitForSignal(stop)
+			log.Info("apisix-ingress-controller exited")
 		},
 	}
 
