@@ -1,4 +1,4 @@
-name: test-ci
+name: unit-test-ci
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
       uses: actions/setup-go@v1
       with:
         go-version: '1.13'
-    - name: run test
+    - name: run unit test
       working-directory: ./
       run: |
         go test ./...
