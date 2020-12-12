@@ -32,6 +32,7 @@ func mountHealthz(r *gin.Engine) {
 
 func healthz(c *gin.Context) {
 	c.AbortWithStatusJSON(http.StatusOK, healthzResponse{Status: "ok"})
+	return
 }
 
 // Mount mounts all api routers.
