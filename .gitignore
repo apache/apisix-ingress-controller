@@ -14,3 +14,4 @@
 .idea
 .DS_Store
 apisix-ingress-controller
+.actions/openwhisk-utilities

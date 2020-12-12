@@ -12,31 +12,3 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-package version
-
-import (
-	"fmt"
-	"runtime"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-)
-
-func TestShort(t *testing.T) {
-	ver := Short()
-	expectedVersion := fmt.Sprintf("unknown-unknown-%s", runtime.Version())
-	assert.Equal(t, expectedVersion, ver, "bad version")
-}
-
-func TestLong(t *testing.T) {
-	ver := Long()
-	expectedVersion := `Version: unknown
-Git SHA: unknown
-Go Version: %s
-Building OS/Arch: unknown
-Running OS/Arch: %s/%s
-`
-	expectedVersion = fmt.Sprintf(expectedVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH)
-	assert.Equal(t, expectedVersion, ver, "bad version")
-}
