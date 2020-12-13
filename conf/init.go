@@ -44,6 +44,8 @@ var (
 	//etcdClient client.Client
 	kubeClient kubernetes.Interface
 	CoreSharedInformerFactory informers.SharedInformerFactory
+
+	injectedConfPath string
 )
 const PROD = "prod"
 const HBPROD = "hb-prod"
@@ -63,7 +65,15 @@ func setEnvironment() {
 	_, basePath, _, _ = runtime.Caller(1)
 }
 
+// Only use in unit tests.
+func SetConfPath(path string) {
+	injectedConfPath = path
+}
+
 func ConfPath() string {
+	if injectedConfPath != "" {
+		return injectedConfPath
+	}
 	if ENV == LOCAL {
 		return filepath.Join(filepath.Dir(basePath), "conf.json")
 	} else {
