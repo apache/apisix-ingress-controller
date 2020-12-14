@@ -12,21 +12,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package main
+package types
 
- import (
-	 "fmt"
-	 "os"
-
-	"github.com/api7/ingress-controller/cmd"
-	"github.com/api7/ingress-controller/conf"
+import (
+	"strings"
 )
 
-func main() {
-	conf.Init()
-	root := cmd.NewAPISIXIngressControllerCommand()
-	if err := root.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
+// IsUseOfClosedNetConnErr checks whether the error is due to
+// use of closed network connection.
+func IsUseOfClosedNetConnErr(err error) bool {
+	return strings.Contains(err.Error(), "use of closed network connection")
 }

@@ -12,21 +12,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package main
+package types
 
- import (
-	 "fmt"
-	 "os"
+import (
+	"errors"
+	"testing"
 
-	"github.com/api7/ingress-controller/cmd"
-	"github.com/api7/ingress-controller/conf"
+	"github.com/stretchr/testify/assert"
 )
 
-func main() {
-	conf.Init()
-	root := cmd.NewAPISIXIngressControllerCommand()
-	if err := root.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
+func TestIsUseOfClosedNetConnErr(t *testing.T) {
+	assert.False(t, IsUseOfClosedNetConnErr(errors.New("some errors")))
+	assert.True(t, IsUseOfClosedNetConnErr(errors.New("accept tcp 127.0.0.1:64064: use of closed network connection")))
 }

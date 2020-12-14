@@ -3,12 +3,13 @@ module github.com/api7/ingress-controller
 go 1.13
 
 require (
+	github.com/gin-gonic/gin v1.6.3
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/gxthrj/apisix-ingress-types v0.1.2
 	github.com/gxthrj/apisix-types v0.1.0
 	github.com/gxthrj/seven v0.1.9
-	github.com/julienschmidt/httprouter v1.3.0
+	github.com/julienschmidt/httprouter v1.2.0
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v1.1.1

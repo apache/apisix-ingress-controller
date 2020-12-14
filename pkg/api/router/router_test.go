@@ -12,21 +12,29 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package main
+package router
 
- import (
-	 "fmt"
-	 "os"
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 
-	"github.com/api7/ingress-controller/cmd"
-	"github.com/api7/ingress-controller/conf"
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 )
 
-func main() {
-	conf.Init()
-	root := cmd.NewAPISIXIngressControllerCommand()
-	if err := root.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
+func TestHealthz(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, r := gin.CreateTestContext(w)
+	mountHealthz(r)
+	healthz(c)
+
+	assert.Equal(t, w.Code, http.StatusOK)
+
+	var resp healthzResponse
+	dec := json.NewDecoder(w.Body)
+	assert.Nil(t, dec.Decode(&resp))
+
+	assert.Equal(t, resp, healthzResponse{Status: "ok"})
 }

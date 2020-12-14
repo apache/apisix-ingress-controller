@@ -12,21 +12,37 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package main
+package api
 
- import (
-	 "fmt"
-	 "os"
+import (
+	"testing"
+	"time"
 
-	"github.com/api7/ingress-controller/cmd"
-	"github.com/api7/ingress-controller/conf"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/api7/ingress-controller/pkg/config"
 )
 
-func main() {
-	conf.Init()
-	root := cmd.NewAPISIXIngressControllerCommand()
-	if err := root.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
+func TestServer(t *testing.T) {
+	cfg := &config.Config{HTTPListen: "127.0.0.1:0"}
+	srv, err := NewServer(cfg)
+	assert.Nil(t, err, "see non-nil error: ", err)
+
+	err = srv.httpListener.Close()
+	assert.Nil(t, err, "see non-nil error: ", err)
+}
+
+func TestServerRun(t *testing.T) {
+	cfg := &config.Config{HTTPListen: "127.0.0.1:0"}
+	srv, err := NewServer(cfg)
+	assert.Nil(t, err, "see non-nil error: ", err)
+
+	stopCh := make(chan struct{})
+	go func() {
+		time.Sleep(2 * time.Second)
+		close(stopCh)
+	}()
+
+	err = srv.Run(stopCh)
+	assert.Nil(t, err, "see non-nil error: ", err)
 }

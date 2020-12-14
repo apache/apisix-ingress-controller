@@ -12,21 +12,29 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package main
+package router
 
- import (
-	 "fmt"
-	 "os"
+import (
+	"net/http"
 
-	"github.com/api7/ingress-controller/cmd"
-	"github.com/api7/ingress-controller/conf"
+	"github.com/gin-gonic/gin"
 )
 
-func main() {
-	conf.Init()
-	root := cmd.NewAPISIXIngressControllerCommand()
-	if err := root.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
+type healthzResponse struct {
+	Status string `json:"status"`
+}
+
+func mountHealthz(r *gin.Engine) {
+	r.GET("/healthz", healthz)
+	r.GET("/apisix/healthz", healthz)
+}
+
+func healthz(c *gin.Context) {
+	c.AbortWithStatusJSON(http.StatusOK, healthzResponse{Status: "ok"})
+	return
+}
+
+// Mount mounts all api routers.
+func Mount(r *gin.Engine) {
+	mountHealthz(r)
 }
