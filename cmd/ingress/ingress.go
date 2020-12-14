@@ -15,6 +15,7 @@
 package ingress
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -69,7 +70,6 @@ func NewIngressCommand() *cobra.Command {
 				}
 				cfg = c
 			}
-
 			logger, err := log.NewLogger(
 				log.WithLogLevel(cfg.LogLevel),
 				log.WithOutputFile(cfg.LogOutput),
@@ -78,6 +78,13 @@ func NewIngressCommand() *cobra.Command {
 				dief("failed to initialize logging: %s", err)
 			}
 			log.DefaultLogger = logger
+			log.Info("apisix ingress controller started")
+
+			data, err := json.MarshalIndent(cfg, "", "\t")
+			if err != nil {
+				dief("failed to show configuration: %s", string(data))
+			}
+			log.Info("use configuration\n", string(data))
 
 			kubeClientSet := conf.GetKubeClient()
 			apisixClientset := conf.InitApisixClient()
@@ -116,12 +123,12 @@ func NewIngressCommand() *cobra.Command {
 			}()
 
 			waitForSignal(stop)
-			log.Info("apisix-ingress-controller exited")
+			log.Info("apisix ingress controller exited")
 		},
 	}
 
 	cmd.PersistentFlags().StringVar(&configPath, "config-path", "", "configuration file path for apisix-ingress-controller")
-	cmd.PersistentFlags().StringVar(&cfg.LogLevel, "log-level", "warn", "error log level")
+	cmd.PersistentFlags().StringVar(&cfg.LogLevel, "log-level", "info", "error log level")
 	cmd.PersistentFlags().StringVar(&cfg.LogOutput, "log-output", "stderr", "error log output file")
 	cmd.PersistentFlags().StringVar(&cfg.HTTPListen, "http-listen", ":8080", "the HTTP Server listen address")
 	cmd.PersistentFlags().BoolVar(&cfg.EnableProfiling, "enable-profiling", true, "enable profiling via web interface host:port/debug/pprof")
