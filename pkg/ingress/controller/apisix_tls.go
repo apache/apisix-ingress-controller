@@ -126,8 +126,7 @@ func (c *ApisixTlsController) syncHandler(key string) error {
 	logger.Info(name)
 	apisixTls := apisix.ApisixTlsCRD(*apisixTlsYaml)
 	tlses, _ := apisixTls.Convert()
-	//comb := state.ApisixCombination{Routes: nil, Services: services, Upstreams: upstreams}
-	//_, err = comb.Solver()
+	// todo sync to apisix
 	return err
 }
 
