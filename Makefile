@@ -40,6 +40,10 @@ build:
 lint:
 	golangci-lint run
 
+### unit-test:        Run unit test cases
+unit-test:
+	go test -cover -coverprofile=coverage.txt ./...
+
 ### license-check:    Do Apache License Header check
 license-check:
 ifeq ("$(wildcard .actions/openwhisk-utilities/scancode/scanCode.py)", "")

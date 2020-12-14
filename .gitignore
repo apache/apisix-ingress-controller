@@ -13,5 +13,6 @@
 
 .idea
 .DS_Store
+coverage.txt
 apisix-ingress-controller
 .actions/openwhisk-utilities
