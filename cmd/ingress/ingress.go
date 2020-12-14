@@ -112,9 +112,12 @@ func NewIngressCommand() *cobra.Command {
 				dief("failed to create API Server: %s", err)
 			}
 
-			if err := srv.Run(stop); err != nil {
-				dief("failed to launch API Server: %s", err)
-			}
+			// TODO add sync.WaitGroup
+			go func() {
+				if err := srv.Run(stop); err != nil {
+					dief("failed to launch API Server: %s", err)
+				}
+			}()
 
 			waitForSignal(stop)
 			log.Info("apisix-ingress-controller exited")
