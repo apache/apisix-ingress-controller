@@ -62,6 +62,14 @@ func (api6 *Api6Controller) ApisixService() {
 	auc.Run(api6.Stop)
 }
 
+func (api6 *Api6Controller) ApisixTls() {
+	auc := BuildApisixTlsController(
+		api6.KubeClientSet,
+		api6.Api6ClientSet,
+		api6.SharedInformerFactory.Apisix().V1().ApisixTlses())
+	auc.Run(api6.Stop)
+}
+
 func (api6 *Api6Controller) Endpoint() {
 	auc := BuildEndpointController(api6.KubeClientSet)
 	//conf.EndpointsInformer)
