@@ -1,0 +1,28 @@
+name: lint-checker-ci
+
+on:
+  push:
+    branches:
+      - master
+      - chore/gofmt
+  pull_request:
+    branches:
+      - master
+jobs:
+  run-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: setup go
+        uses: actions/setup-go@v1
+        with:
+          go-version: '1.13'
+      - name: run gofmt
+        working-directory: ./
+        run: |
+          diffs=`gofmt -l .`
+          if [[ -n $diffs ]]; then
+              echo "Files are not formatted by gofmt:"
+              echo $diffs
+              exit 1
+          fi

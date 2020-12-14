@@ -14,9 +14,9 @@
 // limitations under the License.
 package main
 
- import (
-	 "fmt"
-	 "os"
+import (
+	"fmt"
+	"os"
 
 	"github.com/api7/ingress-controller/cmd"
 	"github.com/api7/ingress-controller/conf"

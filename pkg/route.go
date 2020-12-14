@@ -15,17 +15,17 @@
 package pkg
 
 import (
-	"github.com/julienschmidt/httprouter"
-	"net/http"
-	"io"
 	"encoding/json"
-	"io/ioutil"
 	"github.com/api7/ingress-controller/log"
+	"github.com/julienschmidt/httprouter"
+	"io"
+	"io/ioutil"
+	"net/http"
 )
 
 var logger = log.GetLogger()
 
-func Route() *httprouter.Router{
+func Route() *httprouter.Router {
 	router := httprouter.New()
 	router.GET("/healthz", Healthz)
 	router.GET("/apisix/healthz", Healthz)
@@ -33,20 +33,20 @@ func Route() *httprouter.Router{
 	return router
 }
 
-func Healthz(w http.ResponseWriter, req *http.Request, _ httprouter.Params){
+func Healthz(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	io.WriteString(w, "ok")
 }
 
-type CheckResponse struct{
+type CheckResponse struct {
 	Ok bool `json:"ok"`
 }
 
-type WriteResponse struct{
+type WriteResponse struct {
 	Status string `json:"status"`
-	Msg string `json:"msg"`
+	Msg    string `json:"msg"`
 }
 
-func populateMode(w http.ResponseWriter, r *http.Request, params httprouter.Params, model interface{}) error{
+func populateMode(w http.ResponseWriter, r *http.Request, params httprouter.Params, model interface{}) error {
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
 	if err != nil {
 		return err

@@ -15,12 +15,12 @@
 package controller
 
 import (
+	"github.com/api7/ingress-controller/log"
 	"github.com/golang/glog"
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	"github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
-	"github.com/api7/ingress-controller/log"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 )
 
 var logger = log.GetLogger()
@@ -33,11 +33,11 @@ func recoverException() {
 }
 
 type Api6Controller struct {
-	KubeClientSet         kubernetes.Interface
-	Api6ClientSet    clientSet.Interface
-	SharedInformerFactory externalversions.SharedInformerFactory
+	KubeClientSet             kubernetes.Interface
+	Api6ClientSet             clientSet.Interface
+	SharedInformerFactory     externalversions.SharedInformerFactory
 	CoreSharedInformerFactory informers.SharedInformerFactory
-	Stop                  chan struct{}
+	Stop                      chan struct{}
 }
 
 func (api6 *Api6Controller) ApisixRoute() {

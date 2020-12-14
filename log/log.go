@@ -17,12 +17,12 @@ package log
 import (
 	"bufio"
 	"fmt"
+	"github.com/api7/ingress-controller/conf"
 	"github.com/sirupsen/logrus"
 	"log/syslog"
 	"os"
 	"runtime"
 	"strings"
-	"github.com/api7/ingress-controller/conf"
 )
 
 var logEntry *logrus.Entry
@@ -122,7 +122,7 @@ func (hook *SysLogHook) Fire(entry *logrus.Entry) error {
 }
 
 func localPrint(line string) {
-	if conf.ENV != conf.BETA && conf.ENV != conf.PROD && conf.ENV != conf.HBPROD{
+	if conf.ENV != conf.BETA && conf.ENV != conf.PROD && conf.ENV != conf.HBPROD {
 		fmt.Print(line)
 	}
 }

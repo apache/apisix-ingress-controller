@@ -16,32 +16,32 @@ package controller
 
 import (
 	"github.com/api7/ingress-controller/conf"
+	"github.com/golang/glog"
+	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
+	"github.com/gxthrj/seven/apisix"
+	sevenConf "github.com/gxthrj/seven/conf"
+	"github.com/gxthrj/seven/state"
 	"k8s.io/api/core/v1"
 	"strconv"
-	"github.com/gxthrj/seven/apisix"
-	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"github.com/gxthrj/seven/state"
-	sevenConf "github.com/gxthrj/seven/conf"
-	"github.com/golang/glog"
 )
 
 const (
-	ADD = "ADD"
-	UPDATE = "UPDATE"
-	DELETE = "DELETE"
+	ADD           = "ADD"
+	UPDATE        = "UPDATE"
+	DELETE        = "DELETE"
 	WatchFromKind = "watch"
 )
 
-func Watch(){
+func Watch() {
 	c := &controller{
 		queue: make(chan interface{}, 100),
 	}
-	conf.EndpointsInformer.Informer().AddEventHandler(&QueueEventHandler{c:c})
+	conf.EndpointsInformer.Informer().AddEventHandler(&QueueEventHandler{c: c})
 	go c.run()
 }
 
-func (c *controller) pop() interface{}{
-	e := <- c.queue
+func (c *controller) pop() interface{} {
+	e := <-c.queue
 	return e
 }
 
@@ -55,21 +55,21 @@ func (c *controller) run() {
 func (c *controller) process(obj interface{}) {
 	qo, _ := obj.(*queueObj)
 	ep, _ := qo.Obj.(*v1.Endpoints)
-	if ep.Namespace != "kube-system"{ // todo here is some ignore namespaces
-		for _, s := range ep.Subsets{
+	if ep.Namespace != "kube-system" { // todo here is some ignore namespaces
+		for _, s := range ep.Subsets {
 			// if upstream need to watch
 			// ips
 			ips := make([]string, 0)
-			for _, address := range s.Addresses{
+			for _, address := range s.Addresses {
 				ips = append(ips, address.IP)
 			}
 			// ports
-			for _, port := range s.Ports{
+			for _, port := range s.Ports {
 				upstreamName := ep.Namespace + "_" + ep.Name + "_" + strconv.Itoa(int(port.Port))
 				// find upstreamName is in apisix
 				// sync with all apisix group
-				for k, _ := range sevenConf.UrlGroup {
-					upstreams, err :=  apisix.ListUpstream(k)
+				for k := range sevenConf.UrlGroup {
+					upstreams, err := apisix.ListUpstream(k)
 					if err == nil {
 						for _, upstream := range upstreams {
 							if *(upstream.Name) == upstreamName {
@@ -106,8 +106,8 @@ type controller struct {
 }
 
 type queueObj struct {
-	OpeType string `json:"ope_type"`
-	Obj interface{} `json:"obj"`
+	OpeType string      `json:"ope_type"`
+	Obj     interface{} `json:"obj"`
 }
 
 type QueueEventHandler struct {
@@ -123,5 +123,5 @@ func (h *QueueEventHandler) OnDelete(obj interface{}) {
 }
 
 func (h *QueueEventHandler) OnUpdate(old, update interface{}) {
-	h.c.queue <- &queueObj{ UPDATE, update}
+	h.c.queue <- &queueObj{UPDATE, update}
 }

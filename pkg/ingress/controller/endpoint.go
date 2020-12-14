@@ -142,7 +142,7 @@ func (c *EndpointController) process(ep *CoreV1.Endpoints) {
 				// default
 				syncWithGroup("", upstreamName, ips, port)
 				// sync with all apisix group
-				for g, _ := range sevenConf.UrlGroup {
+				for g := range sevenConf.UrlGroup {
 					syncWithGroup(g, upstreamName, ips, port)
 					//upstreams, err :=  apisix.ListUpstream(k)
 					//if err == nil {
