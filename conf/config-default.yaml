@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # log options
-log_level: "warn"    # the error log level, default is warn, optional values are:
+log_level: "info"    # the error log level, default is info, optional values are:
                      # debug
                      # info
                      # warn
