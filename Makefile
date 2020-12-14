@@ -40,6 +40,10 @@ build:
 lint:
 	golangci-lint run
 
+### gofmt:            Format all go codes
+gofmt:
+	find . -type f -name "*.go" | xargs gofmt -w -s
+
 ### unit-test:        Run unit test cases
 unit-test:
 	go test -cover -coverprofile=coverage.txt ./...

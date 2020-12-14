@@ -15,10 +15,10 @@
 package apisix
 
 import (
+	"github.com/api7/ingress-controller/pkg/ingress/endpoint"
 	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	apisix "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"github.com/gxthrj/seven/conf"
-	"github.com/api7/ingress-controller/pkg/ingress/endpoint"
 	"strconv"
 )
 
@@ -30,9 +30,9 @@ const (
 
 //type ApisixUpstreamCRD ingress.ApisixUpstream
 
-type ApisixUpstreamBuilder struct{
+type ApisixUpstreamBuilder struct {
 	CRD *ingress.ApisixUpstream
-	Ep endpoint.Endpoint
+	Ep  endpoint.Endpoint
 }
 
 // Convert convert to  apisix.Route from ingress.ApisixRoute CRD

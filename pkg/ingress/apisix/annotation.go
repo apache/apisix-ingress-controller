@@ -15,13 +15,13 @@
 package apisix
 
 import (
-	"strconv"
 	apisix "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	seven "github.com/gxthrj/seven/apisix"
+	"strconv"
 )
 
 // BuildAnnotation return plugins and group
-func BuildAnnotation(annotations map[string]string) (apisix.Plugins, string){
+func BuildAnnotation(annotations map[string]string) (apisix.Plugins, string) {
 	plugins := make(apisix.Plugins)
 	cors := &CorsYaml{}
 	// ingress.class

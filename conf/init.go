@@ -1,52 +1,53 @@
- // Licensed to the Apache Software Foundation (ASF) under one or more
- // contributor license agreements.  See the NOTICE file distributed with
- // this work for additional information regarding copyright ownership.
- // The ASF licenses this file to You under the Apache License, Version 2.0
- // (the "License"); you may not use this file except in compliance with
- // the License.  You may obtain a copy of the License at
- //
- //     http://www.apache.org/licenses/LICENSE-2.0
- //
- // Unless required by applicable law or agreed to in writing, software
- // distributed under the License is distributed on an "AS IS" BASIS,
- // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- // See the License for the specific language governing permissions and
- // limitations under the License.
+// Licensed to the Apache Software Foundation (ASF) under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// The ASF licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package conf
 
 import (
-	coreinformers "k8s.io/client-go/informers/core/v1"
-	restclient "k8s.io/client-go/rest"
+	"fmt"
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	seven "github.com/gxthrj/seven/conf"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/kubernetes"
+	"github.com/tidwall/gjson"
+	"io/ioutil"
 	"k8s.io/client-go/informers"
+	coreinformers "k8s.io/client-go/informers/core/v1"
+	"k8s.io/client-go/kubernetes"
+	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	"path/filepath"
-	"io/ioutil"
-	"fmt"
-	"github.com/tidwall/gjson"
 	"runtime"
 )
 
 var (
-	ENV      string
-	basePath string
-	ADMIN_URL = os.Getenv("APISIX_ADMIN_INTERNAL")
-	HOSTNAME = os.Getenv("HOSTNAME")
-	LOCAL_ADMIN_URL = ""
-	podInformer coreinformers.PodInformer
-	svcInformer coreinformers.ServiceInformer
-	nsInformer coreinformers.NamespaceInformer
+	ENV               string
+	basePath          string
+	ADMIN_URL         = os.Getenv("APISIX_ADMIN_INTERNAL")
+	HOSTNAME          = os.Getenv("HOSTNAME")
+	LOCAL_ADMIN_URL   = ""
+	podInformer       coreinformers.PodInformer
+	svcInformer       coreinformers.ServiceInformer
+	nsInformer        coreinformers.NamespaceInformer
 	EndpointsInformer coreinformers.EndpointsInformer
-	IsLeader = false
+	IsLeader          = false
 	//etcdClient client.Client
-	kubeClient kubernetes.Interface
+	kubeClient                kubernetes.Interface
 	CoreSharedInformerFactory informers.SharedInformerFactory
 
 	injectedConfPath string
 )
+
 const PROD = "prod"
 const HBPROD = "hb-prod"
 const BETA = "beta"
@@ -130,8 +131,7 @@ type syslog struct {
 //	return client.NewKeysAPI(etcdClient)
 //}
 
-
-func GetURL() string{
+func GetURL() string {
 	if ADMIN_URL != "" {
 		return ADMIN_URL
 	} else {
@@ -139,19 +139,19 @@ func GetURL() string{
 	}
 }
 
-func GetPodInformer() coreinformers.PodInformer{
+func GetPodInformer() coreinformers.PodInformer {
 	return podInformer
 }
 
-func GetSvcInformer() coreinformers.ServiceInformer{
+func GetSvcInformer() coreinformers.ServiceInformer {
 	return svcInformer
 }
 
-func GetNsInformer() coreinformers.NamespaceInformer{
+func GetNsInformer() coreinformers.NamespaceInformer {
 	return nsInformer
 }
 
-func GetKubeClient() kubernetes.Interface{
+func GetKubeClient() kubernetes.Interface {
 	return kubeClient
 }
 
@@ -173,8 +173,8 @@ func InitKubeClient() kubernetes.Interface {
 	return k8sClient
 }
 
-func InitApisixClient() clientSet.Interface{
-	apisixRouteClientset, err:= clientSet.NewForConfig(config)
+func InitApisixClient() clientSet.Interface {
+	apisixRouteClientset, err := clientSet.NewForConfig(config)
 	ExceptNilErr(err)
 	return apisixRouteClientset
 }
@@ -210,7 +210,7 @@ func InitInformer() {
 	//return podInformer, svcInformer, nsInformer
 }
 
-func ExceptNilErr(err error)  {
+func ExceptNilErr(err error) {
 	if err != nil {
 		panic(err)
 	}
@@ -260,4 +260,3 @@ func ExceptNilErr(err error)  {
 //type LevelSpec struct {
 //	Pod []string `json:"pod"`
 //}
-

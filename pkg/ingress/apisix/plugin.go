@@ -15,8 +15,8 @@
 package apisix
 
 import (
-	"strconv"
 	"github.com/gxthrj/seven/apisix"
+	"strconv"
 )
 
 type CorsYaml struct {
@@ -26,7 +26,7 @@ type CorsYaml struct {
 	AllowMethods string `json:"allow_methods,omitempty"`
 }
 
-func (c *CorsYaml) SetEnable(enable string){
+func (c *CorsYaml) SetEnable(enable string) {
 	if b, err := strconv.ParseBool(enable); err != nil {
 		c.Enable = false
 	} else {
@@ -34,18 +34,18 @@ func (c *CorsYaml) SetEnable(enable string){
 	}
 }
 
-func (c *CorsYaml) SetOrigin(origin string){
+func (c *CorsYaml) SetOrigin(origin string) {
 	c.AllowOrigin = origin
 }
 
-func (c *CorsYaml) SetHeaders(headers string){
+func (c *CorsYaml) SetHeaders(headers string) {
 	c.AllowHeaders = headers
 }
-func (c *CorsYaml) SetMethods(methods string){
+func (c *CorsYaml) SetMethods(methods string) {
 	c.AllowMethods = methods
 }
 
-func (c *CorsYaml) Build() *apisix.Cors{
+func (c *CorsYaml) Build() *apisix.Cors {
 	maxAge := int64(3600)
 	return apisix.BuildCors(c.Enable, &c.AllowOrigin, &c.AllowHeaders, &c.AllowMethods, &maxAge)
 }
