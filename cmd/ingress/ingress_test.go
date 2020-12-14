@@ -83,7 +83,7 @@ func TestSignalHandler(t *testing.T) {
 
 	msg := string(fws.buf.Bytes())
 	assert.Contains(t, msg, fmt.Sprintf("signal %d (%s) received", syscall.SIGINT, syscall.SIGINT.String()))
-	assert.Contains(t, msg, "apisix-ingress-controller exited")
+	assert.Contains(t, msg, "apisix ingress controller exited")
 }
 
 func TestNewIngressCommandEffectiveLog(t *testing.T) {
