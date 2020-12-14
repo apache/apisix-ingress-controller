@@ -17,4 +17,4 @@ jobs:
       - name: Misspell
         run: |
           find . -name "*.go" -type f | xargs ./misspell -error
-          find . -
+          find docs -type f | xargs ./misspell -error
