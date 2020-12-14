@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - kv/ci
+      - ci/go-unit-test-coverage-report
   pull_request:
     branches:
       - master
@@ -20,4 +20,8 @@ jobs:
     - name: run unit test
       working-directory: ./
       run: |
-        go test ./...
+        make unit-test
+    - name: upload coverage profile
+      working-directory: ./
+      run: |
+        bash <(curl -s https://codecov.io/bash)
