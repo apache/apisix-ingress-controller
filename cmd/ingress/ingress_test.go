@@ -27,7 +27,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/api7/ingress-controller/conf"
 	"github.com/api7/ingress-controller/pkg/config"
 	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/api7/ingress-controller/pkg/types"
@@ -60,10 +59,6 @@ func (fws *fakeWriteSyncer) bytes() (p []byte) {
 }
 
 func TestSignalHandler(t *testing.T) {
-	// TODO remove these lines.
-	conf.ENV = "local"
-	conf.SetConfPath("./testdata/conf.json")
-	conf.Init()
 	cmd := NewIngressCommand()
 	waitCh := make(chan struct{})
 	go func() {
@@ -99,11 +94,6 @@ func TestNewIngressCommandEffectiveLog(t *testing.T) {
 		"--apisix-admin-key", "0x123",
 	})
 	defer os.Remove("./test.log")
-
-	// TODO remove these lines.
-	conf.ENV = "local"
-	conf.SetConfPath("./testdata/conf.json")
-	conf.Init()
 
 	stopCh := make(chan struct{})
 	go func() {

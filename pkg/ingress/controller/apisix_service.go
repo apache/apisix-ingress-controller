@@ -16,8 +16,8 @@ package controller
 
 import (
 	"fmt"
-	"github.com/api7/ingress-controller/pkg/ingress/apisix"
-	"github.com/golang/glog"
+	"time"
+
 	apisixV1 "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	apisixScheme "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned/scheme"
@@ -31,7 +31,9 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"time"
+
+	"github.com/api7/ingress-controller/pkg/ingress/apisix"
+	"github.com/api7/ingress-controller/pkg/log"
 )
 
 type ApisixServiceController struct {
@@ -67,7 +69,7 @@ func BuildApisixServiceController(
 func (c *ApisixServiceController) Run(stop <-chan struct{}) error {
 	// 同步缓存
 	if ok := cache.WaitForCacheSync(stop); !ok {
-		glog.Errorf("同步ApisixService缓存失败")
+		log.Error("同步ApisixService缓存失败")
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 	go wait.Until(c.runWorker, time.Second, stop)
@@ -111,21 +113,21 @@ func (c *ApisixServiceController) processNextWorkItem() bool {
 func (c *ApisixServiceController) syncHandler(key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		logger.Errorf("invalid resource key: %s", key)
+		log.Errorf("invalid resource key: %s", key)
 		return fmt.Errorf("invalid resource key: %s", key)
 	}
 
 	apisixServiceYaml, err := c.apisixServiceList.ApisixServices(namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Infof("apisixUpstream %s is removed", key)
+			log.Infof("apisixUpstream %s is removed", key)
 			return nil
 		}
 		runtime.HandleError(fmt.Errorf("failed to list apisixUpstream %s/%s", key, err.Error()))
 		return err
 	}
-	logger.Info(namespace)
-	logger.Info(name)
+	log.Info(namespace)
+	log.Info(name)
 	apisixService := apisix.ApisixServiceCRD(*apisixServiceYaml)
 	services, upstreams, _ := apisixService.Convert()
 	comb := state.ApisixCombination{Routes: nil, Services: services, Upstreams: upstreams}

@@ -15,7 +15,7 @@
 package controller
 
 import (
-	"github.com/api7/ingress-controller/conf"
+	"github.com/api7/ingress-controller/pkg/kube"
 	"github.com/golang/glog"
 	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"github.com/gxthrj/seven/apisix"
@@ -36,7 +36,7 @@ func Watch() {
 	c := &controller{
 		queue: make(chan interface{}, 100),
 	}
-	conf.EndpointsInformer.Informer().AddEventHandler(&QueueEventHandler{c: c})
+	kube.EndpointsInformer.Informer().AddEventHandler(&QueueEventHandler{c: c})
 	go c.run()
 }
 

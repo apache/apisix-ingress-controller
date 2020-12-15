@@ -15,20 +15,18 @@
 package controller
 
 import (
-	"github.com/api7/ingress-controller/log"
-	"github.com/golang/glog"
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	"github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-)
 
-var logger = log.GetLogger()
+	"github.com/api7/ingress-controller/pkg/log"
+)
 
 // recover any exception
 func recoverException() {
 	if err := recover(); err != nil {
-		glog.Error(err)
+		log.Error(err)
 	}
 }
 

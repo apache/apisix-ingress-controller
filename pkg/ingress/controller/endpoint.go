@@ -16,7 +16,6 @@ package controller
 
 import (
 	"fmt"
-	"github.com/api7/ingress-controller/conf"
 	"github.com/golang/glog"
 	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"github.com/gxthrj/seven/apisix"
@@ -32,6 +31,9 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"strconv"
 	"time"
+
+	"github.com/api7/ingress-controller/pkg/kube"
+	"github.com/api7/ingress-controller/pkg/log"
 )
 
 type EndpointController struct {
@@ -44,11 +46,11 @@ type EndpointController struct {
 func BuildEndpointController(kubeclientset kubernetes.Interface) *EndpointController {
 	controller := &EndpointController{
 		kubeclientset:  kubeclientset,
-		endpointList:   conf.EndpointsInformer.Lister(),
-		endpointSynced: conf.EndpointsInformer.Informer().HasSynced,
+		endpointList:   kube.EndpointsInformer.Lister(),
+		endpointSynced: kube.EndpointsInformer.Informer().HasSynced,
 		workqueue:      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpoints"),
 	}
-	conf.EndpointsInformer.Informer().AddEventHandler(
+	kube.EndpointsInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    controller.addFunc,
 			UpdateFunc: controller.updateFunc,
@@ -60,7 +62,7 @@ func BuildEndpointController(kubeclientset kubernetes.Interface) *EndpointContro
 func (c *EndpointController) Run(stop <-chan struct{}) error {
 	// 同步缓存
 	if ok := cache.WaitForCacheSync(stop); !ok {
-		glog.Errorf("同步Endpoint缓存失败")
+		log.Errorf("同步Endpoint缓存失败")
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 	go wait.Until(c.runWorker, time.Second, stop)
@@ -76,7 +78,7 @@ func (c *EndpointController) processNextWorkItem() bool {
 	defer recoverException()
 	obj, shutdown := c.workqueue.Get()
 	if shutdown {
-		glog.V(2).Info("shutdown")
+		log.Info("shutdown")
 		return false
 	}
 	err := func(obj interface{}) error {
@@ -105,17 +107,17 @@ func (c *EndpointController) processNextWorkItem() bool {
 func (c *EndpointController) syncHandler(key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if name == "cinfoserver" || name == "file-resync2-server" {
-		glog.V(2).Infof("find endpoint %s/%s", namespace, name)
+		log.Infof("find endpoint %s/%s", namespace, name)
 	}
 	if err != nil {
-		logger.Errorf("invalid resource key: %s", key)
+		log.Errorf("invalid resource key: %s", key)
 		return fmt.Errorf("invalid resource key: %s", key)
 	}
 
 	endpointYaml, err := c.endpointList.Endpoints(namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Infof("endpoint %s is removed", key)
+			log.Infof("endpoint %s is removed", key)
 			return nil
 		}
 		runtime.HandleError(fmt.Errorf("failed to list endpoint %s/%s", key, err.Error()))

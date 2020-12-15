@@ -26,10 +26,10 @@ import (
 	api6Informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
 	"github.com/spf13/cobra"
 
-	"github.com/api7/ingress-controller/conf"
 	"github.com/api7/ingress-controller/pkg/api"
 	"github.com/api7/ingress-controller/pkg/config"
 	"github.com/api7/ingress-controller/pkg/ingress/controller"
+	"github.com/api7/ingress-controller/pkg/kube"
 	"github.com/api7/ingress-controller/pkg/log"
 )
 
@@ -85,19 +85,23 @@ func NewIngressCommand() *cobra.Command {
 			}
 			log.Info("use configuration\n", string(data))
 
-			kubeClientSet := conf.GetKubeClient()
-			apisixClientset := conf.InitApisixClient()
+			// TODO: Move these logics to the inside of pkg/ingress/controller.
+			if err := kube.InitInformer(cfg); err != nil {
+				dief("failed to initialize kube informers: %s", err)
+			}
+			kubeClientSet := kube.GetKubeClient()
+			apisixClientset := kube.GetApisixClient()
 			sharedInformerFactory := api6Informers.NewSharedInformerFactory(apisixClientset, 0)
 			stop := make(chan struct{})
 			c := &controller.Api6Controller{
 				KubeClientSet:             kubeClientSet,
 				Api6ClientSet:             apisixClientset,
 				SharedInformerFactory:     sharedInformerFactory,
-				CoreSharedInformerFactory: conf.CoreSharedInformerFactory,
+				CoreSharedInformerFactory: kube.CoreSharedInformerFactory,
 				Stop:                      stop,
 			}
 			epInformer := c.CoreSharedInformerFactory.Core().V1().Endpoints()
-			conf.EndpointsInformer = epInformer
+			kube.EndpointsInformer = epInformer
 			// endpoint
 			c.Endpoint()
 			go c.CoreSharedInformerFactory.Start(stop)

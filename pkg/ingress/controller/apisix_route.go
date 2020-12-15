@@ -31,6 +31,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"time"
+
+	"github.com/api7/ingress-controller/pkg/log"
 )
 
 type ApisixRouteController struct {
@@ -113,7 +115,7 @@ func (c *ApisixRouteController) Run(stop <-chan struct{}) error {
 	//defer c.workqueue.ShutDown()
 	// 同步缓存
 	if ok := cache.WaitForCacheSync(stop); !ok {
-		logger.Errorf("同步缓存失败")
+		log.Errorf("同步缓存失败")
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 	go wait.Until(c.runWorker, time.Second, stop)
@@ -179,14 +181,14 @@ func (c *ApisixRouteController) syncHandler(rqo *RouteQueueObj) error {
 func (c *ApisixRouteController) add(key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		logger.Errorf("invalid resource key: %s", key)
+		log.Errorf("invalid resource key: %s", key)
 		return fmt.Errorf("invalid resource key: %s", key)
 	}
 
 	apisixIngressRoute, err := c.apisixRouteList.ApisixRoutes(namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Infof("apisixRoute %s is removed", key)
+			log.Infof("apisixRoute %s is removed", key)
 			return nil
 		}
 		runtime.HandleError(fmt.Errorf("failed to list apisixRoute %s/%s", key, err.Error()))
@@ -206,14 +208,14 @@ func (c *ApisixRouteController) sync(rqo *RouteQueueObj) error {
 	key := rqo.Key
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		logger.Errorf("invalid resource key: %s", key)
+		log.Errorf("invalid resource key: %s", key)
 		return fmt.Errorf("invalid resource key: %s", key)
 	}
 
 	apisixIngressRoute, err := c.apisixRouteList.ApisixRoutes(namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Infof("apisixRoute %s is removed", key)
+			log.Infof("apisixRoute %s is removed", key)
 			return nil
 		}
 		runtime.HandleError(fmt.Errorf("failed to list apisixRoute %s/%s", key, err.Error()))
