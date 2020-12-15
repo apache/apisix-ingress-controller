@@ -43,7 +43,7 @@ spec:
       - envFrom:
         - configMapRef:
             name: apisix-config
-        image: ???/???/ingress-controller:???
+        image: viewking/apisix-ingress-controller:dev
         imagePullPolicy: IfNotPresent
         name: ingress-controller
         ports:
