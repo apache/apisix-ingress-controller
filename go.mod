@@ -9,12 +9,9 @@ require (
 	github.com/gxthrj/apisix-ingress-types v0.1.2
 	github.com/gxthrj/apisix-types v0.1.0
 	github.com/gxthrj/seven v0.1.9
-	github.com/julienschmidt/httprouter v1.2.0
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
-	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v1.1.1
 	github.com/stretchr/testify v1.4.0
-	github.com/tidwall/gjson v1.6.4
 	go.uber.org/zap v1.13.0
 	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.0.0-20190819141258-3544db3b9e44
