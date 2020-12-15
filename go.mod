@@ -9,7 +9,7 @@ require (
 	github.com/gxthrj/apisix-ingress-types v0.1.3
 	github.com/gxthrj/apisix-types v0.1.3
 	github.com/gxthrj/seven v0.2.7
-	github.com/julienschmidt/httprouter v1.3.0
+	github.com/onsi/ginkgo v1.11.0
 	github.com/spf13/cobra v1.1.1
 	github.com/stretchr/testify v1.4.0
 	go.uber.org/zap v1.13.0
@@ -21,4 +21,4 @@ require (
 
 replace github.com/gxthrj/apisix-ingress-types v0.1.3 => github.com/api7/ingress-types v0.1.3
 
-replace github.com/gxthrj/apisix-types v0.1.2 => github.com/api7/types v0.1.2
+replace github.com/gxthrj/apisix-types v0.1.3 => github.com/api7/types v0.1.3
