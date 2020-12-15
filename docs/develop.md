@@ -45,24 +45,23 @@ Tips: The Kubernetes cluster deployment method is recommended for production and
 
 2. Location: ~/.kube/config
 
-3. Copy the config file to the local development environment, and set the path of configure file to the k8sAuth item ($GOPATH/src/github.com/apache/apisix-ingress-controller/conf/conf.json#conf.k8sAuth).
+3. Copy the config file to your local development environment, the path should be configured in apisix-ingress-controller by specifying `--kuebconfig` option.
 
-### Configure Apache APISIX service address
+### Configure APISIX service address
 
-Configure the service address of Apache APISIX to conf/apisix/base_url ($GOPATH/src/github.com/apache/apisix-ingress-controller/conf/conf.json).
+Your APISIX service address should be configured in apisix-ingress-controller by specifying `--apisix-base-url` option.
 
 ## Start ingress-controller locally
 
-* Create CRDs
+* Build and run apisix-ingress-controller
 
 ```shell
-kubectl apply -k samples/deploy/crd/v1beta1
-```
-
-* Run apisix-ingress-controller
-
-```shell
-# go run main.go -logtostderr -v=5
+$ make build
+$ ./apisix-ingress-controller ingress \
+  --kubeconfig /path/to/kubeconfig \
+  --http-listen :8080 \
+  --log-output stderr \
+  --apisix-base-url http://apisix-service:port/apisix
 ```
 
 Tips: The program may print some error logs, indicating that the resource cannot be found. Continue with the following steps to define the route through CRDs.
