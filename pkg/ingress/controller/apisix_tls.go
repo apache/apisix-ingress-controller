@@ -42,6 +42,12 @@ type ApisixTlsController struct {
 	workqueue       workqueue.RateLimitingInterface
 }
 
+type TlsQueueObj struct {
+	Key    string              `json:"key"`
+	OldObj *apisixV1.ApisixTls `json:"old_obj"`
+	Ope    string              `json:"ope"` // add / update / delete
+}
+
 func BuildApisixTlsController(
 	kubeclientset kubernetes.Interface,
 	apisixTlsClientset clientSet.Interface,
@@ -89,11 +95,12 @@ func (c *ApisixTlsController) processNextWorkItem() bool {
 		var key string
 		var ok bool
 
-		if key, ok = obj.(string); !ok {
+		var tqo *TlsQueueObj
+		if tqo, ok = obj.(*TlsQueueObj); !ok {
 			c.workqueue.Forget(obj)
-			return fmt.Errorf("expected string in workqueue but got %#v", obj)
+			return fmt.Errorf("expected TlsQueueObj in workqueue but got %#v", obj)
 		}
-		if err := c.syncHandler(key); err != nil {
+		if err := c.syncHandler(tqo); err != nil {
 			return fmt.Errorf("error syncing '%s': %s", key, err.Error())
 		}
 
@@ -106,27 +113,29 @@ func (c *ApisixTlsController) processNextWorkItem() bool {
 	return true
 }
 
-func (c *ApisixTlsController) syncHandler(key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+func (c *ApisixTlsController) syncHandler(tqo *TlsQueueObj) error {
+	namespace, name, err := cache.SplitMetaNamespaceKey(tqo.Key)
 	if err != nil {
-		logger.Errorf("invalid resource key: %s", key)
-		return fmt.Errorf("invalid resource key: %s", key)
+		logger.Errorf("invalid resource key: %s", tqo.Key)
+		return fmt.Errorf("invalid resource key: %s", tqo.Key)
 	}
 
 	apisixTlsYaml, err := c.apisixTlsList.ApisixTlses(namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Infof("apisixTls %s is removed", key)
+			logger.Infof("apisixTls %s is removed", tqo.Key)
 			return nil
 		}
-		runtime.HandleError(fmt.Errorf("failed to list apisixTls %s/%s", key, err.Error()))
+		runtime.HandleError(fmt.Errorf("failed to list apisixTls %s/%s", tqo.Key, err.Error()))
 		return err
 	}
-	logger.Info(namespace)
-	logger.Info(name)
 	apisixTls := apisix.ApisixTlsCRD(*apisixTlsYaml)
-	tlses, _ := apisixTls.Convert()
-	// todo sync to apisix
+	if tls, err := apisixTls.Convert(); err != nil {
+		return err
+	} else {
+		// sync to apisix
+		state.SyncSsl(tls, tqo.Ope)
+	}
 	return err
 }
 
@@ -137,7 +146,8 @@ func (c *ApisixTlsController) addFunc(obj interface{}) {
 		runtime.HandleError(err)
 		return
 	}
-	c.workqueue.AddRateLimited(key)
+	rqo := &TlsQueueObj{Key: key, OldObj: nil, Ope: state.Create}
+	c.workqueue.AddRateLimited(rqo)
 }
 
 func (c *ApisixTlsController) updateFunc(oldObj, newObj interface{}) {
@@ -146,7 +156,14 @@ func (c *ApisixTlsController) updateFunc(oldObj, newObj interface{}) {
 	if oldTls.ResourceVersion == newTls.ResourceVersion {
 		return
 	}
-	c.addFunc(newObj)
+	var key string
+	var err error
+	if key, err = cache.MetaNamespaceKeyFunc(newObj); err != nil {
+		runtime.HandleError(err)
+		return
+	}
+	rqo := &TlsQueueObj{Key: key, OldObj: oldTls, Ope: state.Update}
+	c.workqueue.AddRateLimited(rqo)
 }
 
 func (c *ApisixTlsController) deleteFunc(obj interface{}) {
@@ -157,5 +174,6 @@ func (c *ApisixTlsController) deleteFunc(obj interface{}) {
 		runtime.HandleError(err)
 		return
 	}
-	c.workqueue.AddRateLimited(key)
+	rqo := &TlsQueueObj{Key: key, OldObj: nil, Ope: state.Delete}
+	c.workqueue.AddRateLimited(rqo)
 }

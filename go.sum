@@ -24,6 +24,7 @@ github.com/api7/ingress-types v0.1.3/go.mod h1:xWuHLSHGN4/JZjz9b0ftKgtE3yZ7NehkJ
 github.com/api7/types v0.1.0 h1:x8nOUY9yjNCCpxlODqXpp5MrEjp9W4grNyGsgxxLq1Y=
 github.com/api7/types v0.1.0/go.mod h1:STdHATWxqIeJhUEXt6dZTd6z0To0qO70K/1mnfBtlC0=
 github.com/api7/types v0.1.1/go.mod h1:STdHATWxqIeJhUEXt6dZTd6z0To0qO70K/1mnfBtlC0=
+github.com/api7/types v0.1.2/go.mod h1:STdHATWxqIeJhUEXt6dZTd6z0To0qO70K/1mnfBtlC0=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
 github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da/go.mod h1:Q73ZrmVTwzkszR9V5SSuryQ31EELlFMUz1kKyl939pY=
 github.com/armon/go-radix v0.0.0-20180808171621-7fddfc383310/go.mod h1:ufUuZ+zHj4x4TnLV4JWEpy2hxWSpsRywHrMgIH9cCH8=
@@ -118,8 +119,10 @@ github.com/grpc-ecosystem/grpc-gateway v1.9.0/go.mod h1:vNeuVxBJEsws4ogUvrchl83t
 github.com/gxthrj/apisix-ingress-types v0.1.3/go.mod h1:xWuHLSHGN4/JZjz9b0ftKgtE3yZ7NehkJAiTyZ+KoPA=
 github.com/gxthrj/apisix-types v0.1.0/go.mod h1:STdHATWxqIeJhUEXt6dZTd6z0To0qO70K/1mnfBtlC0=
 github.com/gxthrj/apisix-types v0.1.1/go.mod h1:STdHATWxqIeJhUEXt6dZTd6z0To0qO70K/1mnfBtlC0=
+github.com/gxthrj/apisix-types v0.1.3/go.mod h1:STdHATWxqIeJhUEXt6dZTd6z0To0qO70K/1mnfBtlC0=
 github.com/gxthrj/seven v0.1.9 h1:EccFVE5PIqZXyt91laXxGu9tydCjg31EXn/Q4aFfwD4=
 github.com/gxthrj/seven v0.1.9/go.mod h1:epDVCYT1ibfV6fgaeM918QAer9u0/M2LXW6OcIRdfQc=
+github.com/gxthrj/seven v0.2.0/go.mod h1:Uf0JHSRmhZyV3tPLV1oVzq/Dw19ya9rXFsECiLKrgVk=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
 github.com/hashicorp/consul/sdk v0.1.1/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyNV1vwHyQBF0x8=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
@@ -162,6 +165,7 @@ github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
 github.com/julienschmidt/httprouter v1.2.0 h1:TDTW5Yz1mjftljbcKqRcrYhd4XeOoI98t+9HbQbYf7g=
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
+github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
 github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 h1:uC1QfSlInpQF+M0ao65imhwqKnz3Q2z/d8PWZRMQvDM=
 github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88/go.mod h1:3w7q1U84EfirKl04SVQ/s7nPm1ZPhiXd34z40TNz36k=
 github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvWXihfKN4Q=

@@ -28,7 +28,10 @@ const (
 type ApisixTlsCRD ingress.ApisixTls
 
 // Convert convert to  apisix.Service from ingress.ApisixService CRD
-func (as *ApisixTlsCRD) Convert() ([]*apisix.Ssl, error) {
+func (as *ApisixTlsCRD) Convert() (*apisix.Ssl, error) {
+	name := as.Name
+	namespace := as.Namespace
+	id := namespace + "_" + name
 	secretName := as.Spec.Secret.Name
 	secretNamespace := as.Spec.Secret.Namespace
 	clientSet := ingressConf.GetKubeClient()
@@ -38,14 +41,14 @@ func (as *ApisixTlsCRD) Convert() ([]*apisix.Ssl, error) {
 	}
 	cert := string(secret.Data["cert"])
 	key := string(secret.Data["key"])
-	result := make([]*apisix.Ssl, 0)
-	for _, host := range as.Spec.Hosts {
-		ssl := &apisix.Ssl{
-			Sni:  &host,
-			Cert: &cert,
-			Key:  &key,
-		}
-		result = append(result, ssl)
+	status := 1
+	snis := make([]*string, 0)
+	ssl := &apisix.Ssl{
+		ID:     &id,
+		Snis:   snis,
+		Cert:   &cert,
+		Key:    &key,
+		Status: &status,
 	}
-	return result, nil
+	return ssl, nil
 }
