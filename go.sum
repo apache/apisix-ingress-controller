@@ -20,6 +20,7 @@ github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuy
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/api7/ingress-types v0.1.2 h1:K8GxVKSvPi89CHozico/oLbcy6mZOdeOk+VfJRCLXrE=
 github.com/api7/ingress-types v0.1.2/go.mod h1:xWuHLSHGN4/JZjz9b0ftKgtE3yZ7NehkJAiTyZ+KoPA=
+github.com/api7/ingress-types v0.1.3 h1:euvLySusNeOjzOjnpZl+J3Ve5ZcWoby/lm3lPmH4xTI=
 github.com/api7/ingress-types v0.1.3/go.mod h1:xWuHLSHGN4/JZjz9b0ftKgtE3yZ7NehkJAiTyZ+KoPA=
 github.com/api7/types v0.1.0 h1:x8nOUY9yjNCCpxlODqXpp5MrEjp9W4grNyGsgxxLq1Y=
 github.com/api7/types v0.1.0/go.mod h1:STdHATWxqIeJhUEXt6dZTd6z0To0qO70K/1mnfBtlC0=
@@ -119,9 +120,11 @@ github.com/grpc-ecosystem/grpc-gateway v1.9.0/go.mod h1:vNeuVxBJEsws4ogUvrchl83t
 github.com/gxthrj/apisix-ingress-types v0.1.3/go.mod h1:xWuHLSHGN4/JZjz9b0ftKgtE3yZ7NehkJAiTyZ+KoPA=
 github.com/gxthrj/apisix-types v0.1.0/go.mod h1:STdHATWxqIeJhUEXt6dZTd6z0To0qO70K/1mnfBtlC0=
 github.com/gxthrj/apisix-types v0.1.1/go.mod h1:STdHATWxqIeJhUEXt6dZTd6z0To0qO70K/1mnfBtlC0=
+github.com/gxthrj/apisix-types v0.1.3 h1:H8TqK6uIcG+rM2o+wq33gSh4KKZI+197j9lcy8aZ0Iw=
 github.com/gxthrj/apisix-types v0.1.3/go.mod h1:STdHATWxqIeJhUEXt6dZTd6z0To0qO70K/1mnfBtlC0=
 github.com/gxthrj/seven v0.1.9 h1:EccFVE5PIqZXyt91laXxGu9tydCjg31EXn/Q4aFfwD4=
 github.com/gxthrj/seven v0.1.9/go.mod h1:epDVCYT1ibfV6fgaeM918QAer9u0/M2LXW6OcIRdfQc=
+github.com/gxthrj/seven v0.2.0 h1:S85ZI2TzVQILsiI9BE+Sa0VqrkU3kzNYJFOOh4+5Vu8=
 github.com/gxthrj/seven v0.2.0/go.mod h1:Uf0JHSRmhZyV3tPLV1oVzq/Dw19ya9rXFsECiLKrgVk=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
 github.com/hashicorp/consul/sdk v0.1.1/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyNV1vwHyQBF0x8=

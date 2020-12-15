@@ -119,21 +119,25 @@ func (c *ApisixTlsController) syncHandler(tqo *TlsQueueObj) error {
 		logger.Errorf("invalid resource key: %s", tqo.Key)
 		return fmt.Errorf("invalid resource key: %s", tqo.Key)
 	}
-
-	apisixTlsYaml, err := c.apisixTlsList.ApisixTlses(namespace).Get(name)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Infof("apisixTls %s is removed", tqo.Key)
-			return nil
+	apisixTlsYaml := tqo.OldObj
+	if tqo.Ope != state.Delete {
+		apisixTlsYaml, err = c.apisixTlsList.ApisixTlses(namespace).Get(name)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				logger.Infof("apisixTls %s is removed", tqo.Key)
+				return nil
+			}
+			runtime.HandleError(fmt.Errorf("failed to list apisixTls %s/%s", tqo.Key, err.Error()))
+			return err
 		}
-		runtime.HandleError(fmt.Errorf("failed to list apisixTls %s/%s", tqo.Key, err.Error()))
-		return err
 	}
 	apisixTls := apisix.ApisixTlsCRD(*apisixTlsYaml)
 	if tls, err := apisixTls.Convert(); err != nil {
 		return err
 	} else {
 		// sync to apisix
+		logger.Debug(tls)
+		logger.Debug(tqo)
 		state.SyncSsl(tls, tqo.Ope)
 	}
 	return err
@@ -167,6 +171,7 @@ func (c *ApisixTlsController) updateFunc(oldObj, newObj interface{}) {
 }
 
 func (c *ApisixTlsController) deleteFunc(obj interface{}) {
+	oldTls := obj.(cache.DeletedFinalStateUnknown).Obj.(*apisixV1.ApisixTls)
 	var key string
 	var err error
 	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
@@ -174,6 +179,6 @@ func (c *ApisixTlsController) deleteFunc(obj interface{}) {
 		runtime.HandleError(err)
 		return
 	}
-	rqo := &TlsQueueObj{Key: key, OldObj: nil, Ope: state.Delete}
+	rqo := &TlsQueueObj{Key: key, OldObj: oldTls, Ope: state.Delete}
 	c.workqueue.AddRateLimited(rqo)
 }

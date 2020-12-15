@@ -137,6 +137,7 @@ rules:
   - apisixroutes
   - apisixupstreams
   - apisixservices
+  - apisixtlses
   verbs:
   - get
   - list
