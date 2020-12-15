@@ -5,7 +5,7 @@ For running e2e test cases, a Kubernetes cluster is needed, [minikube](https://m
 
 ## Scaffold
 
-a e2e test scaffold is prepared to run test cases easily. The source codes are put in `test/e2e/scaffold`, it builds necessary running environment:
+a e2e test scaffold is prepared to run test cases easily. The source codes are in directory `test/e2e/scaffold`, it builds necessary running environment:
 
 * Create a brand new namespace;
 * Create etcd deployment and etcd service in the specified namespace;
