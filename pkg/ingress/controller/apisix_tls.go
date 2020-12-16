@@ -132,7 +132,8 @@ func (c *ApisixTlsController) syncHandler(tqo *TlsQueueObj) error {
 		}
 	}
 	apisixTls := apisix.ApisixTlsCRD(*apisixTlsYaml)
-	if tls, err := apisixTls.Convert(); err != nil {
+	sc := &apisix.SecretClient{}
+	if tls, err := apisixTls.Convert(sc); err != nil {
 		return err
 	} else {
 		// sync to apisix

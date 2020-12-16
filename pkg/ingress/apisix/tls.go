@@ -18,6 +18,7 @@ import (
 	ingressConf "github.com/api7/ingress-controller/conf"
 	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	apisix "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,14 +29,13 @@ const (
 type ApisixTlsCRD ingress.ApisixTls
 
 // Convert convert to  apisix.Service from ingress.ApisixService CRD
-func (as *ApisixTlsCRD) Convert() (*apisix.Ssl, error) {
+func (as *ApisixTlsCRD) Convert(sc Secreter) (*apisix.Ssl, error) {
 	name := as.Name
 	namespace := as.Namespace
 	id := namespace + "_" + name
 	secretName := as.Spec.Secret.Name
 	secretNamespace := as.Spec.Secret.Namespace
-	clientSet := ingressConf.GetKubeClient()
-	secret, err := clientSet.CoreV1().Secrets(secretNamespace).Get(secretName, metav1.GetOptions{})
+	secret, err := sc.FindByName(secretNamespace, secretName)
 	if err != nil {
 		return nil, err
 	}
@@ -43,6 +43,9 @@ func (as *ApisixTlsCRD) Convert() (*apisix.Ssl, error) {
 	key := string(secret.Data["key"])
 	status := 1
 	snis := make([]*string, 0)
+	for _, host := range as.Spec.Hosts {
+		snis = append(snis, &host)
+	}
 	ssl := &apisix.Ssl{
 		ID:     &id,
 		Snis:   snis,
@@ -51,4 +54,15 @@ func (as *ApisixTlsCRD) Convert() (*apisix.Ssl, error) {
 		Status: &status,
 	}
 	return ssl, nil
+}
+
+type Secreter interface {
+	FindByName(namespace, name string) (*v1.Secret, error)
+}
+
+type SecretClient struct{}
+
+func (sc *SecretClient) FindByName(namespace, name string) (*v1.Secret, error) {
+	clientSet := ingressConf.GetKubeClient()
+	return clientSet.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
 }
