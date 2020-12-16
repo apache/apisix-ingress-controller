@@ -31,6 +31,7 @@ type Options struct {
 	IngressAPISIXImage      string
 	ETCDImage               string
 	APISIXImage             string
+	HTTPBINImage            string
 	APISIXConfigPath        string
 	APISIXDefaultConfigPath string
 	IngressAPISIXConfig     *config.Config
@@ -47,6 +48,8 @@ type Scaffold struct {
 	etcdService             *corev1.Service
 	apisixDeployment        *appsv1.Deployment
 	apisixService           *corev1.Service
+	httpbinDeployment       *appsv1.Deployment
+	httpbinService          *corev1.Service
 
 	// Used for template rendering.
 	EtcdServiceFQDN string
@@ -90,6 +93,9 @@ func (s *Scaffold) beforeEach() {
 
 	s.apisixDeployment, s.apisixService, err = s.newAPISIX()
 	assert.Nil(ginkgo.GinkgoT(), err, "initializing Apache APISIX")
+
+	s.httpbinDeployment, s.httpbinService, err = s.newHTTPBIN()
+	assert.Nil(ginkgo.GinkgoT(), err, "initializing httpbin")
 
 	s.ingressAPISIXDeployment, err = s.newIngressAPISIXController()
 	assert.Nil(ginkgo.GinkgoT(), err, "initializing ingress apisix controller")

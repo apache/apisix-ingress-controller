@@ -31,6 +31,7 @@ func main() {
 		ETCDImage:          "bitnami/etcd:3.4.14-debian-10-r0",
 		IngressAPISIXImage: "viewking/apisix-ingress-controller:dev",
 		APISIXImage:        "apache/apisix:latest",
+		HTTPBINImage:       "kennethreitz/httpbin",
 		IngressAPISIXConfig: &config.Config{
 			LogLevel:   "info",
 			LogOutput:  "stdout",
