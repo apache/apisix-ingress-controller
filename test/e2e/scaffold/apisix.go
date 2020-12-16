@@ -16,6 +16,7 @@ package scaffold
 
 import (
 	"io/ioutil"
+	"net/url"
 	"strings"
 	"text/template"
 
@@ -27,6 +28,16 @@ import (
 const (
 	_apisixConfigConfigMap = "apisix-gw-config.yaml"
 )
+
+func (s *Scaffold) apisixServiceURL() string {
+	// TODO remove these hacks after we create NodePort serivce.
+	// For now, we forward service port to local.
+	u := url.URL{
+		Scheme: "http",
+		Host:   "127.0.0.1",
+	}
+	return u.String()
+}
 
 func (s *Scaffold) readAPISIXConfigFromFile(path string) (string, error) {
 	data, err := ioutil.ReadFile(path)

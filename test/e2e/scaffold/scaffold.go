@@ -15,12 +15,15 @@
 package scaffold
 
 import (
+	"github.com/gavv/httpexpect/v2"
+	clientset "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	"net/http"
 
 	"github.com/api7/ingress-controller/pkg/config"
 )
@@ -38,10 +41,11 @@ type Options struct {
 }
 
 type Scaffold struct {
-	opts       *Options
-	namespace  string
-	kubeconfig clientcmd.ClientConfig
-	clientset  kubernetes.Interface
+	opts         *Options
+	namespace    string
+	kubeconfig   clientcmd.ClientConfig
+	clientset    kubernetes.Interface
+	apisixClient clientset.Interface
 
 	ingressAPISIXDeployment *appsv1.Deployment
 	etcdDeployment          *appsv1.Deployment
@@ -69,6 +73,52 @@ func NewScaffold(o *Options) *Scaffold {
 	return s
 }
 
+func NewDefaultScaffold() *Scaffold {
+	opts := &Options{
+		Name:               "sample",
+		Kubeconfig:         "/Users/alex/.kube/config",
+		ETCDImage:          "bitnami/etcd:3.4.14-debian-10-r0",
+		IngressAPISIXImage: "viewking/apisix-ingress-controller:dev",
+		APISIXImage:        "apache/apisix:latest",
+		HTTPBINImage:       "kennethreitz/httpbin",
+		IngressAPISIXConfig: &config.Config{
+			LogLevel:   "info",
+			LogOutput:  "stdout",
+			HTTPListen: ":8080",
+			APISIX: config.APISIXConfig{
+				// We don't use FQDN since we don't know the namespace in advance.
+				BaseURL: "https://apisix-service-e2e-test:9180/apisix",
+			},
+		},
+		APISIXConfigPath:        "/Users/alex/Workstation/tokers/apisix-ingress-controller/test/e2e/testdata/apisix-gw-config.yaml",
+		APISIXDefaultConfigPath: "/Users/alex/Workstation/tokers/apisix-ingress-controller/test/e2e/testdata/apisix-gw-config-default.yaml",
+	}
+	return NewScaffold(opts)
+}
+
+// DefaultHTTPBackend returns the service name and service ports
+// of the default http backend.
+func (s *Scaffold) DefaultHTTPBackend() (string, []int32) {
+	var ports []int32
+	for _, p := range s.httpbinService.Spec.Ports {
+		ports = append(ports, p.Port)
+	}
+	return s.httpbinService.Name, ports
+}
+
+// NewHTTPClient creates the default HTTP client.
+func (s *Scaffold) NewHTTPClient() *httpexpect.Expect {
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: s.apisixServiceURL(),
+		Client: &http.Client{
+			Transport: &http.Transport{},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
+		),
+	})
+}
+
 func (s *Scaffold) BeforeEach() {
 	s.beforeEach()
 }
@@ -84,6 +134,9 @@ func (s *Scaffold) beforeEach() {
 
 	s.clientset, err = kubernetes.NewForConfig(restConfig)
 	assert.Nil(ginkgo.GinkgoT(), err, "creating Kubernetes clientset")
+
+	s.apisixClient, err = clientset.NewForConfig(restConfig)
+	assert.Nil(ginkgo.GinkgoT(), err, "creating APISIX clientset")
 
 	s.namespace, err = createNamespace(s.clientset, s.opts.Name)
 	assert.Nil(ginkgo.GinkgoT(), err, "creating namespace")
