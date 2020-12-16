@@ -15,7 +15,7 @@
 package apisix
 
 import (
-	ingressConf "github.com/api7/ingress-controller/conf"
+	ingressConf "github.com/api7/ingress-controller/pkg/kube"
 	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	apisix "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"k8s.io/api/core/v1"
