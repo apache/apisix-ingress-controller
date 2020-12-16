@@ -22,12 +22,12 @@ import (
 
 func (s *Scaffold) newHTTPBIN() (*appsv1.Deployment, *corev1.Service, error) {
 	desc := &deploymentDesc{
-		name:            "httpbin-deloyment-e2e-test",
-		namespace:       s.namespace,
-		image:           s.opts.HTTPBINImage,
-		ports:           []int32{80},
-		replica:         1,
-		probe:           &corev1.Probe{
+		name:      "httpbin-deloyment-e2e-test",
+		namespace: s.namespace,
+		image:     s.opts.HTTPBINImage,
+		ports:     []int32{80},
+		replica:   1,
+		probe: &corev1.Probe{
 			Handler: corev1.Handler{
 				TCPSocket: &corev1.TCPSocketAction{
 					Port: intstr.FromInt(80),
@@ -48,11 +48,11 @@ func (s *Scaffold) newHTTPBIN() (*appsv1.Deployment, *corev1.Service, error) {
 		name:      "httpbin-service-e2e-test",
 		namespace: s.namespace,
 		selector:  d.Spec.Selector.MatchLabels,
-		ports:     []corev1.ServicePort{
+		ports: []corev1.ServicePort{
 			{
-				Name: "http",
-				Protocol: corev1.ProtocolTCP,
-				Port: 80,
+				Name:       "http",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       80,
 				TargetPort: intstr.FromInt(80),
 			},
 		},
