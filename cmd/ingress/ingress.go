@@ -24,6 +24,7 @@ import (
 	"time"
 
 	api6Informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
+	"github.com/gxthrj/seven/conf"
 	"github.com/spf13/cobra"
 
 	"github.com/api7/ingress-controller/pkg/api"
@@ -86,6 +87,7 @@ func NewIngressCommand() *cobra.Command {
 			log.Info("use configuration\n", string(data))
 
 			// TODO: Move these logics to the inside of pkg/ingress/controller.
+			conf.SetBaseUrl(cfg.APISIX.BaseURL)
 			if err := kube.InitInformer(cfg); err != nil {
 				dief("failed to initialize kube informers: %s", err)
 			}
