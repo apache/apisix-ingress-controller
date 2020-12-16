@@ -22,7 +22,8 @@ apisix ingress controller e2e test suites
 
 For running e2e test cases, a Kubernetes cluster is needed, [minikube](https://minikube.sigs.k8s.io/docs/start/) is a good choice to build k8s cluster in development environment.
 
-## Scaffold
+Scaffold
+---------
 
 a e2e test scaffold is prepared to run test cases easily. The source codes are in directory `test/e2e/scaffold`, it builds necessary running environment:
 
