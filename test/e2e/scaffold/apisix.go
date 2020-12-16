@@ -15,12 +15,49 @@
 package scaffold
 
 import (
+	"io/ioutil"
+	"strings"
+	"text/template"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+const (
+	_apisixConfigConfigMap = "apisix-gw-config.yaml"
+)
+
+func (s *Scaffold) readAPISIXConfigFromFile(path string) (string, error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+
+	var buf strings.Builder
+	t := template.Must(template.New(path).Parse(string(data)))
+	if err := t.Execute(&buf, s); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
 func (s *Scaffold) newAPISIX() (*appsv1.Deployment, *corev1.Service, error) {
+	data, err := s.readAPISIXConfigFromFile(s.opts.APISIXConfigPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	defaultData, err := s.readAPISIXConfigFromFile(s.opts.APISIXDefaultConfigPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	cmData := map[string]string{
+		"config.yaml":         data,
+		"config-default.yaml": defaultData,
+	}
+	if err := createConfigMap(s.clientset, _apisixConfigConfigMap, s.namespace, cmData); err != nil {
+		return nil, nil, err
+	}
 	desc := &deploymentDesc{
 		name:      "apisix-deployment-e2e-test",
 		namespace: s.namespace,
@@ -30,12 +67,36 @@ func (s *Scaffold) newAPISIX() (*appsv1.Deployment, *corev1.Service, error) {
 		probe: &corev1.Probe{
 			Handler: corev1.Handler{
 				TCPSocket: &corev1.TCPSocketAction{
-					Port: intstr.FromInt(2379),
+					Port: intstr.FromInt(9080),
 				},
 			},
 			InitialDelaySeconds: 2,
 			TimeoutSeconds:      2,
 			PeriodSeconds:       5,
+		},
+		volumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "apisix-config-yaml-configmap",
+				MountPath: "/usr/local/apisix/conf/config.yaml",
+				SubPath:   "config.yaml",
+			},
+			{
+				Name:      "apisix-config-yaml-configmap",
+				MountPath: "/usr/local/apisix/conf/config-default.yaml",
+				SubPath:   "config-default.yaml",
+			},
+		},
+		volumes: []corev1.Volume{
+			{
+				Name: "apisix-config-yaml-configmap",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: _apisixConfigConfigMap,
+						},
+					},
+				},
+			},
 		},
 	}
 

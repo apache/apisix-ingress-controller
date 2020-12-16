@@ -20,13 +20,28 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/api7/ingress-controller/pkg/types"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	"github.com/api7/ingress-controller/pkg/types"
+)
+
+const (
+	_serviceAccount     = "ingress-apisix-e2e-test-service-account"
+	_clusterRoleBinding = "ingress-apisix-e2e-test-clusterrolebinding"
+	// TODO Customize cluster role, do not use cluster-admin
+	_clusterRole = "apisix-view-clusterrole"
 )
 
 func (s *Scaffold) newIngressAPISIXController() (*appsv1.Deployment, error) {
+	if err := createServiceAccount(s.clientset, _serviceAccount, s.namespace); err != nil {
+		return nil, err
+	}
+	if err := createClusterRoleBinding(s.clientset, _clusterRoleBinding, s.namespace, _serviceAccount, _clusterRole); err != nil {
+		return nil, err
+	}
+
 	var (
 		cmd  []string
 		port int
@@ -36,6 +51,8 @@ func (s *Scaffold) newIngressAPISIXController() (*appsv1.Deployment, error) {
 		Duration: time.Duration(0),
 	}
 
+	cmd = append(cmd, "/ingress-apisix/apisix-ingress-controller")
+	cmd = append(cmd, "ingress")
 	if s.opts.IngressAPISIXConfig.LogLevel != "" {
 		cmd = append(cmd, "--log-level", s.opts.IngressAPISIXConfig.LogLevel)
 	}
@@ -86,6 +103,7 @@ func (s *Scaffold) newIngressAPISIXController() (*appsv1.Deployment, error) {
 			TimeoutSeconds:      2,
 			PeriodSeconds:       5,
 		},
+		serviceAccount: _serviceAccount,
 	}
 
 	return ensureDeployment(s.clientset, newDeployment(desc))

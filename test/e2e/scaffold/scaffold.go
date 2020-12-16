@@ -15,8 +15,6 @@
 package scaffold
 
 import (
-	"context"
-
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -28,18 +26,17 @@ import (
 )
 
 type Options struct {
-	Name                string
-	Kubeconfig          string
-	IngressAPISIXImage  string
-	ETCDImage           string
-	APISIXImage         string
-	APISIXConfig        string
-	IngressAPISIXConfig *config.Config
+	Name                    string
+	Kubeconfig              string
+	IngressAPISIXImage      string
+	ETCDImage               string
+	APISIXImage             string
+	APISIXConfigPath        string
+	APISIXDefaultConfigPath string
+	IngressAPISIXConfig     *config.Config
 }
 
 type Scaffold struct {
-	context    context.Context
-	ctxCancel  context.CancelFunc
 	opts       *Options
 	namespace  string
 	kubeconfig clientcmd.ClientConfig
@@ -50,18 +47,17 @@ type Scaffold struct {
 	etcdService             *corev1.Service
 	apisixDeployment        *appsv1.Deployment
 	apisixService           *corev1.Service
+
+	// Used for template rendering.
+	EtcdServiceFQDN string
 }
 
 // NewScaffold creates an e2e test scaffold.
 func NewScaffold(o *Options) *Scaffold {
 	defer ginkgo.GinkgoRecover()
 
-	ctx, cancel := context.WithCancel(context.Background())
-
 	s := &Scaffold{
-		opts:      o,
-		context:   ctx,
-		ctxCancel: cancel,
+		opts: o,
 	}
 
 	ginkgo.BeforeEach(s.beforeEach)
@@ -86,7 +82,7 @@ func (s *Scaffold) beforeEach() {
 	s.clientset, err = kubernetes.NewForConfig(restConfig)
 	assert.Nil(ginkgo.GinkgoT(), err, "creating Kubernetes clientset")
 
-	s.namespace, err = createNamespace(s.context, s.clientset, s.opts.Name)
+	s.namespace, err = createNamespace(s.clientset, s.opts.Name)
 	assert.Nil(ginkgo.GinkgoT(), err, "creating namespace")
 
 	s.etcdDeployment, s.etcdService, err = s.newETCD()
@@ -100,9 +96,9 @@ func (s *Scaffold) beforeEach() {
 }
 
 func (s *Scaffold) afterEach() {
-	go func() {
-		defer ginkgo.GinkgoRecover()
-		err := deleteNamespace(s.clientset, s.namespace)
-		assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
-	}()
+	//go func() {
+	defer ginkgo.GinkgoRecover()
+	err := deleteNamespace(s.clientset, s.namespace)
+	assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
+	//}()
 }

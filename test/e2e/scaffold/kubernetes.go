@@ -15,13 +15,14 @@
 package scaffold
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -36,16 +37,18 @@ const (
 )
 
 type deploymentDesc struct {
-	name         string
-	namespace    string
-	image        string
-	ports        []int32
-	replica      int32
-	command      []string
-	volumeMounts []corev1.VolumeMount
-	volumes      []corev1.Volume
-	probe        *corev1.Probe
-	envVar       []corev1.EnvVar
+	name            string
+	namespace       string
+	image           string
+	ports           []int32
+	replica         int32
+	command         []string
+	volumeMounts    []corev1.VolumeMount
+	volumes         []corev1.Volume
+	probe           *corev1.Probe
+	envVar          []corev1.EnvVar
+	imagePullPolicy string
+	serviceAccount  string
 }
 
 type serviceDesc struct {
@@ -88,8 +91,8 @@ func ensureService(clientset kubernetes.Interface, svc *corev1.Service) (*corev1
 
 func newDeployment(desc *deploymentDesc) *appsv1.Deployment {
 	var (
-		containerPorts               []corev1.ContainerPort
-		termintionGracePeriodSeconds int64
+		containerPorts                []corev1.ContainerPort
+		terminationGracePeriodSeconds int64
 	)
 	replica := desc.replica
 
@@ -99,6 +102,11 @@ func newDeployment(desc *deploymentDesc) *appsv1.Deployment {
 			ContainerPort: port,
 			Protocol:      corev1.ProtocolTCP,
 		})
+	}
+
+	imagePullPolicy := corev1.PullIfNotPresent
+	if desc.imagePullPolicy != "" {
+		imagePullPolicy = corev1.PullPolicy(desc.imagePullPolicy)
 	}
 
 	d := &appsv1.Deployment{
@@ -120,16 +128,19 @@ func newDeployment(desc *deploymentDesc) *appsv1.Deployment {
 					},
 				},
 				Spec: corev1.PodSpec{
-					TerminationGracePeriodSeconds: &termintionGracePeriodSeconds,
+					ServiceAccountName:            desc.serviceAccount,
+					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 					Containers: []corev1.Container{
 						{
-							Name:           desc.name,
-							Image:          desc.image,
-							Env:            desc.envVar,
-							Ports:          containerPorts,
-							ReadinessProbe: desc.probe,
-							LivenessProbe:  desc.probe,
-							VolumeMounts:   desc.volumeMounts,
+							Name:            desc.name,
+							Image:           desc.image,
+							ImagePullPolicy: imagePullPolicy,
+							Env:             desc.envVar,
+							Ports:           containerPorts,
+							ReadinessProbe:  desc.probe,
+							LivenessProbe:   desc.probe,
+							VolumeMounts:    desc.volumeMounts,
+							Command:         desc.command,
 						},
 					},
 					Volumes: desc.volumes,
@@ -168,7 +179,7 @@ func loadConfig(kubeconfig, context string) clientcmd.ClientConfig {
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
 }
 
-func createNamespace(ctx context.Context, clientset kubernetes.Interface, scaffoldName string) (string, error) {
+func createNamespace(clientset kubernetes.Interface, scaffoldName string) (string, error) {
 	ts := time.Now().UnixNano()
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -210,4 +221,71 @@ func waitExponentialBackoff(condFunc func() (bool, error)) error {
 		Steps:    6,
 	}
 	return wait.ExponentialBackoff(backoff, condFunc)
+}
+
+func createServiceAccount(clientset kubernetes.Interface, name, namespace string) error {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+	}
+	condFunc := func() (bool, error) {
+		_, err := clientset.CoreV1().ServiceAccounts(namespace).Create(sa)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return waitExponentialBackoff(condFunc)
+}
+
+func createClusterRoleBinding(clientset kubernetes.Interface, name, namespace, sa, clusterRole string) error {
+	if err := clientset.RbacV1().ClusterRoleBindings().Delete(name, &metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
+		return err
+	}
+
+	crb := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      rbacv1.ServiceAccountKind,
+				Name:      sa,
+				Namespace: namespace,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     clusterRole,
+		},
+	}
+	condFunc := func() (bool, error) {
+		_, err := clientset.RbacV1().ClusterRoleBindings().Create(crb)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return waitExponentialBackoff(condFunc)
+}
+
+func createConfigMap(clientset kubernetes.Interface, name, namespace string, data map[string]string) error {
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Data: data,
+	}
+	condFunc := func() (bool, error) {
+		_, err := clientset.CoreV1().ConfigMaps(namespace).Create(cm)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return waitExponentialBackoff(condFunc)
 }

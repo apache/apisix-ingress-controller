@@ -15,6 +15,8 @@
 package scaffold
 
 import (
+	"fmt"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -68,5 +70,8 @@ func (s *Scaffold) newETCD() (*appsv1.Deployment, *corev1.Service, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+
+	s.EtcdServiceFQDN = fmt.Sprintf("etcd-service-e2e-test.%s.svc.cluster.local", svc.Namespace)
+
 	return d, svc, nil
 }
