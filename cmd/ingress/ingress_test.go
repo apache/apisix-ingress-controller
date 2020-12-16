@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gxthrj/seven/conf"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/api7/ingress-controller/pkg/config"
@@ -130,6 +131,9 @@ func TestNewIngressCommandEffectiveLog(t *testing.T) {
 	assert.Equal(t, cfg.Kubernetes.ResyncInterval, types.TimeDuration{24 * time.Hour})
 	assert.Equal(t, cfg.APISIX.AdminKey, "0x123")
 	assert.Equal(t, cfg.APISIX.BaseURL, "http://apisixgw.default.cluster.local/apisix")
+
+	// Test the conf.BaseUrl is really set.
+	assert.Equal(t, cfg.APISIX.BaseURL, conf.BaseUrl)
 }
 
 func parseLog(t *testing.T, r *bufio.Reader) *fields {
