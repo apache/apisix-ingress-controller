@@ -32,7 +32,8 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"time"
 
-	"github.com/api7/ingress-controller/pkg/log"
+	"github.com/api7/ingress-controller/pkg/log" +
+		""
 )
 
 type ApisixRouteController struct {

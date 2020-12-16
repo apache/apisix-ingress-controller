@@ -8,9 +8,8 @@ require (
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/gxthrj/apisix-ingress-types v0.1.3
 	github.com/gxthrj/apisix-types v0.1.3
-	github.com/gxthrj/seven v0.2.0
+	github.com/gxthrj/seven v0.2.4
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/spf13/cobra v1.1.1
 	github.com/stretchr/testify v1.4.0
 	go.uber.org/zap v1.13.0

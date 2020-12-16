@@ -17,6 +17,7 @@ package controller
 import (
 	"fmt"
 	"github.com/api7/ingress-controller/pkg/ingress/apisix"
+	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/golang/glog"
 	apisixV1 "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
@@ -116,7 +117,7 @@ func (c *ApisixTlsController) processNextWorkItem() bool {
 func (c *ApisixTlsController) syncHandler(tqo *TlsQueueObj) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(tqo.Key)
 	if err != nil {
-		logger.Errorf("invalid resource key: %s", tqo.Key)
+		log.Errorf("invalid resource key: %s", tqo.Key)
 		return fmt.Errorf("invalid resource key: %s", tqo.Key)
 	}
 	apisixTlsYaml := tqo.OldObj
@@ -124,7 +125,7 @@ func (c *ApisixTlsController) syncHandler(tqo *TlsQueueObj) error {
 		apisixTlsYaml, err = c.apisixTlsList.ApisixTlses(namespace).Get(name)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				logger.Infof("apisixTls %s is removed", tqo.Key)
+				log.Infof("apisixTls %s is removed", tqo.Key)
 				return nil
 			}
 			runtime.HandleError(fmt.Errorf("failed to list apisixTls %s/%s", tqo.Key, err.Error()))
@@ -137,8 +138,8 @@ func (c *ApisixTlsController) syncHandler(tqo *TlsQueueObj) error {
 		return err
 	} else {
 		// sync to apisix
-		logger.Debug(tls)
-		logger.Debug(tqo)
+		log.Debug(tls)
+		log.Debug(tqo)
 		state.SyncSsl(tls, tqo.Ope)
 	}
 	return err
