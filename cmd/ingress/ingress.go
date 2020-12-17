@@ -114,6 +114,8 @@ func NewIngressCommand() *cobra.Command {
 			c.ApisixUpstream()
 			// ApisixService
 			c.ApisixService()
+			// ApisixTLS
+			c.ApisixTLS()
 
 			go func() {
 				time.Sleep(time.Duration(10) * time.Second)
