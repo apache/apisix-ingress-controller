@@ -243,6 +243,7 @@ func (c *ApisixRouteController) sync(rqo *RouteQueueObj) error {
 	case rqo.Ope == DELETE:
 		apisixIngressRoute, _ := c.apisixRouteList.ApisixRoutes(namespace).Get(name)
 		if apisixIngressRoute != nil && apisixIngressRoute.ResourceVersion > rqo.OldObj.ResourceVersion {
+			log.Warnf("Route %s has been covered when retry", rqo.Key)
 			return nil
 		}
 		apisixRoute := apisix.ApisixRoute(*rqo.OldObj)

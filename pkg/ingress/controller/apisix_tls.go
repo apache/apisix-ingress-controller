@@ -126,6 +126,7 @@ func (c *ApisixTlsController) syncHandler(tqo *TlsQueueObj) error {
 	if tqo.Ope == state.Delete {
 		apisixIngressTls, _ := c.apisixTlsList.ApisixTlses(namespace).Get(name)
 		if apisixIngressTls != nil && apisixIngressTls.ResourceVersion > tqo.OldObj.ResourceVersion {
+			log.Warnf("TLS %s has been covered when retry", tqo.Key)
 			return nil
 		}
 	} else {

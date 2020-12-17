@@ -126,6 +126,7 @@ func (c *ApisixServiceController) syncHandler(sqo *ServiceQueueObj) error {
 	if sqo.Ope == DELETE {
 		apisixIngressService, _ := c.apisixServiceList.ApisixServices(namespace).Get(name)
 		if apisixIngressService != nil && apisixIngressService.ResourceVersion > sqo.OldObj.ResourceVersion {
+			log.Warnf("Service %s has been covered when retry", sqo.Key)
 			return nil
 		}
 	} else {
