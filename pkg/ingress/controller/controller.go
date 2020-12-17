@@ -62,7 +62,7 @@ func (api6 *Api6Controller) ApisixService() {
 	auc.Run(api6.Stop)
 }
 
-func (api6 *Api6Controller) ApisixTls() {
+func (api6 *Api6Controller) ApisixTLS() {
 	auc := BuildApisixTlsController(
 		api6.KubeClientSet,
 		api6.Api6ClientSet,
