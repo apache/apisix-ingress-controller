@@ -56,7 +56,7 @@ func BuildApisixUpstreamController(
 		apisixClientset:      apisixUpstreamClientset,
 		apisixUpstreamList:   apisixUpstreamInformer.Lister(),
 		apisixUpstreamSynced: apisixUpstreamInformer.Informer().HasSynced,
-		workqueue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ApisixUpstreams"),
+		workqueue:            workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixUpstreams"),
 	}
 	apisixUpstreamInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -99,6 +99,7 @@ func (c *ApisixUpstreamController) processNextWorkItem() bool {
 		}
 		// 在syncHandler中处理业务
 		if err := c.syncHandler(key); err != nil {
+			c.workqueue.AddRateLimited(obj)
 			return fmt.Errorf("error syncing '%s': %s", key, err.Error())
 		}
 

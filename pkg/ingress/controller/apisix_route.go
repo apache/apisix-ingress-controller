@@ -60,7 +60,7 @@ func BuildApisixRouteController(
 		apisixRouteClientset: api6RouteClientset,
 		apisixRouteList:      api6RouteInformer.Lister(),
 		apisixRouteSynced:    api6RouteInformer.Informer().HasSynced,
-		workqueue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ApisixRoutes"),
+		workqueue:            workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoutes"),
 	}
 	api6RouteInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -144,6 +144,7 @@ func (c *ApisixRouteController) processNextWorkItem() bool {
 		}
 		// 在syncHandler中处理业务
 		if err := c.syncHandler(rqo); err != nil {
+			c.workqueue.AddRateLimited(obj)
 			return fmt.Errorf("error syncing '%s': %s", key, err.Error())
 		}
 

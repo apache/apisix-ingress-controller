@@ -55,7 +55,7 @@ func BuildApisixServiceController(
 		apisixClientset:     apisixServiceClientset,
 		apisixServiceList:   apisixServiceInformer.Lister(),
 		apisixServiceSynced: apisixServiceInformer.Informer().HasSynced,
-		workqueue:           workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ApisixServices"),
+		workqueue:           workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixServices"),
 	}
 	apisixServiceInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -98,6 +98,7 @@ func (c *ApisixServiceController) processNextWorkItem() bool {
 		}
 		// 在syncHandler中处理业务
 		if err := c.syncHandler(key); err != nil {
+			c.workqueue.AddRateLimited(obj)
 			return fmt.Errorf("error syncing '%s': %s", key, err.Error())
 		}
 
