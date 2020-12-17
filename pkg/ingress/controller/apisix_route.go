@@ -228,6 +228,7 @@ func (c *ApisixRouteController) sync(rqo *RouteQueueObj) error {
 		if err != nil {
 			if errors.IsNotFound(err) {
 				log.Errorf("apisixRoute %s is removed", key)
+				return nil
 			}
 			return err // if error occurred, return
 		}

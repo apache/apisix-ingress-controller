@@ -133,6 +133,7 @@ func (c *ApisixServiceController) syncHandler(sqo *ServiceQueueObj) error {
 		if err != nil {
 			if errors.IsNotFound(err) {
 				log.Infof("apisixUpstream %s is removed", sqo.Key)
+				return nil
 			}
 			runtime.HandleError(fmt.Errorf("failed to list apisixUpstream %s/%s", sqo.Key, err.Error()))
 			return err
