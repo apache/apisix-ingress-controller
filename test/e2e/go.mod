@@ -3,12 +3,13 @@ module github.com/api7/ingress-controller/test/e2e
 go 1.14
 
 require (
-	github.com/api7/ingress-controller v0.0.0-20201216014256-7be016730204
 	github.com/gavv/httpexpect/v2 v2.1.0
-	github.com/gxthrj/apisix-ingress-types v0.1.2
+	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/gruntwork-io/terratest v0.31.2
+	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/onsi/ginkgo v1.14.2
+	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/stretchr/testify v1.6.1
-	k8s.io/api v0.0.0-20190819141258-3544db3b9e44
-	k8s.io/apimachinery v0.0.0-20190817020851-f2f3a405f61d
-	k8s.io/client-go v0.0.0-20190819141724-e14f31a72a77
+	k8s.io/api v0.19.3
+	k8s.io/client-go v0.19.3
 )

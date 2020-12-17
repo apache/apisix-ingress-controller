@@ -18,30 +18,4 @@ import (
 	_ "github.com/api7/ingress-controller/test/e2e/proxy"
 )
 
-func main() {
-	//defer ginkgo.GinkgoRecover()
-	// FIXME Remove these lines after we creating the first e2e test case.
-	//opts := &scaffold.Options{
-	//	Name:               "sample",
-	//	Kubeconfig:         "/Users/alex/.kube/config",
-	//	ETCDImage:          "bitnami/etcd:3.4.14-debian-10-r0",
-	//	IngressAPISIXImage: "viewking/apisix-ingress-controller:dev",
-	//	APISIXImage:        "apache/apisix:latest",
-	//	HTTPBINImage:       "kennethreitz/httpbin",
-	//	IngressAPISIXConfig: &config.Config{
-	//		LogLevel:   "info",
-	//		LogOutput:  "stdout",
-	//		HTTPListen: ":8080",
-	//		APISIX: config.APISIXConfig{
-	//			// We don't use FQDN since we don't know the namespace in advance.
-	//			BaseURL: "https://apisix-service-e2e-test:9180/apisix",
-	//		},
-	//	},
-	//	APISIXConfigPath:        "/Users/alex/Workstation/tokers/apisix-ingress-controller/test/e2e/testdata/apisix-gw-config.yaml",
-	//	APISIXDefaultConfigPath: "/Users/alex/Workstation/tokers/apisix-ingress-controller/test/e2e/testdata/apisix-gw-config-default.yaml",
-	//}
-	//s := scaffold.NewScaffold(opts)
-	//assert.NotNil(ginkgo.GinkgoT(), s, "creating scaffold")
-	//s.BeforeEach()
-	//s.AfterEach()
-}
+func main() {}

@@ -16,8 +16,9 @@
 package main
 
 import (
-	"github.com/onsi/ginkgo"
 	"testing"
+
+	"github.com/onsi/ginkgo"
 )
 
 func TestRunE2E(t *testing.T) {

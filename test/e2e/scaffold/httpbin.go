@@ -15,52 +15,84 @@
 package scaffold
 
 import (
-	appsv1 "k8s.io/api/apps/v1"
+	"github.com/gruntwork-io/terratest/modules/k8s"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func (s *Scaffold) newHTTPBIN() (*appsv1.Deployment, *corev1.Service, error) {
-	desc := &deploymentDesc{
-		name:      "httpbin-deloyment-e2e-test",
-		namespace: s.namespace,
-		image:     s.opts.HTTPBINImage,
-		ports:     []int32{80},
-		replica:   1,
-		probe: &corev1.Probe{
-			Handler: corev1.Handler{
-				TCPSocket: &corev1.TCPSocketAction{
-					Port: intstr.FromInt(80),
-				},
-			},
-			InitialDelaySeconds: 2,
-			TimeoutSeconds:      2,
-			PeriodSeconds:       5,
-		},
-	}
+var (
+	_httpbinDeployment = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: httpbin-deployment-e2e-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: httpbin-deployment-e2e-test
+  strategy:
+    rollingUpdate:
+      maxSurge: 50%
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: httpbin-deployment-e2e-test
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+        - livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            successThreshold: 1
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 2
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            successThreshold: 1
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 2
+          image: "kennethreitz/httpbin"
+          imagePullPolicy: IfNotPresent
+          name: httpbin-deployment-e2e-test
+          ports:
+            - containerPort: 80
+              name: "http"
+              protocol: "TCP"
+`
+	_httpService = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpbin-service-e2e-test
+spec:
+  selector:
+    app: httpbin-deployment-e2e-test
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  type: ClusterIP
+`
+)
 
-	d, err := ensureDeployment(s.clientset, newDeployment(desc))
+func (s *Scaffold) newHTTPBIN() (*corev1.Service, error) {
+	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, _httpbinDeployment); err != nil {
+		return nil, err
+	}
+	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, _httpService); err != nil {
+		return nil, err
+	}
+	svc, err := k8s.GetServiceE(s.t, s.kubectlOptions, "httpbin-service-e2e-test")
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	svcDesc := &serviceDesc{
-		name:      "httpbin-service-e2e-test",
-		namespace: s.namespace,
-		selector:  d.Spec.Selector.MatchLabels,
-		ports: []corev1.ServicePort{
-			{
-				Name:       "http",
-				Protocol:   corev1.ProtocolTCP,
-				Port:       80,
-				TargetPort: intstr.FromInt(80),
-			},
-		},
-	}
-	svc, err := ensureService(s.clientset, newService(svcDesc))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return d, svc, err
+	return svc, nil
 }

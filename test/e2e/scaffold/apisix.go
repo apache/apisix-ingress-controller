@@ -15,130 +15,153 @@
 package scaffold
 
 import (
-	"io/ioutil"
-	"net/url"
+	"errors"
+	"fmt"
 	"strings"
-	"text/template"
 
-	appsv1 "k8s.io/api/apps/v1"
+	"github.com/gruntwork-io/terratest/modules/k8s"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-const (
-	_apisixConfigConfigMap = "apisix-gw-config.yaml"
+var (
+	_apisixConfigMap = `
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: apisix-gw-config.yaml
+data:
+  config-default.yaml: |
+%s
+  config.yaml: |
+%s
+`
+	_apisixDeployment = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apisix-deployment-e2e-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apisix-deployment-e2e-test
+  strategy:
+    rollingUpdate:
+      maxSurge: 50%
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: apisix-deployment-e2e-test
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+        - livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            successThreshold: 1
+            tcpSocket:
+              port: 9080
+            timeoutSeconds: 2
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            successThreshold: 1
+            tcpSocket:
+              port: 9080
+            timeoutSeconds: 2
+          image: "apache/apisix:latest"
+          imagePullPolicy: IfNotPresent
+          name: apisix-deployment-e2e-test
+          ports:
+            - containerPort: 9080
+              name: "http"
+              protocol: "TCP"
+            - containerPort: 9180
+              name: "http-admin"
+              protocol: "TCP"
+          volumeMounts:
+            - mountPath: /usr/local/apisix/conf/config.yaml
+              name: apisix-config-yaml-configmap
+              subPath: config.yaml
+            - mountPath: /usr/local/apisix/conf/config-default.yaml
+              name: apisix-config-yaml-configmap
+              subPath: config-default.yaml
+      volumes:
+        - configMap:
+            name: apisix-gw-config.yaml
+          name: apisix-config-yaml-configmap
+`
+	_apisixService = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: apisix-service-e2e-test
+spec:
+  selector:
+    app: apisix-deployment-e2e-test
+  ports:
+    - name: http
+      port: 9080
+      protocol: TCP
+      targetPort: 9080
+    - name: http-admin
+      port: 9180
+      protocol: TCP
+      targetPort: 9180
+  type: NodePort
+`
 )
 
-func (s *Scaffold) apisixServiceURL() string {
-	// TODO remove these hacks after we create NodePort serivce.
-	// For now, we forward service port to local.
-	u := url.URL{
-		Scheme: "http",
-		Host:   "127.0.0.1",
+func (s *Scaffold) apisixServiceURL() (string, error) {
+	if len(s.nodes) == 0 {
+		return "", errors.New("no available node")
 	}
-	return u.String()
+	for _, port := range s.apisixService.Spec.Ports {
+		if port.Name == "http" {
+			// Basically we use minikube, so just use the first node.
+			return fmt.Sprintf("http://%s:%d", s.nodes[0], port.NodePort), nil
+		}
+	}
+	return "", errors.New("no http port in apisix service")
 }
 
-func (s *Scaffold) readAPISIXConfigFromFile(path string) (string, error) {
-	data, err := ioutil.ReadFile(path)
+func (s *Scaffold) newAPISIX() (*corev1.Service, error) {
+	defaultData, err := s.renderConfig(s.opts.APISIXDefaultConfigPath)
 	if err != nil {
-		return "", err
+		return nil, err
+	}
+	data, err := s.renderConfig(s.opts.APISIXConfigPath)
+	if err != nil {
+		return nil, err
+	}
+	defaultData = indent(defaultData)
+	data = indent(data)
+	configData := fmt.Sprintf(_apisixConfigMap, defaultData, data)
+	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, configData); err != nil {
+		return nil, err
+	}
+	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, _apisixDeployment); err != nil {
+		return nil, err
+	}
+	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, _apisixService); err != nil {
+		return nil, err
 	}
 
-	var buf strings.Builder
-	t := template.Must(template.New(path).Parse(string(data)))
-	if err := t.Execute(&buf, s); err != nil {
-		return "", err
+	svc, err := k8s.GetServiceE(s.t, s.kubectlOptions, "apisix-service-e2e-test")
+	if err != nil {
+		return nil, err
 	}
-	return buf.String(), nil
+	return svc, nil
 }
 
-func (s *Scaffold) newAPISIX() (*appsv1.Deployment, *corev1.Service, error) {
-	data, err := s.readAPISIXConfigFromFile(s.opts.APISIXConfigPath)
-	if err != nil {
-		return nil, nil, err
+func indent(data string) string {
+	list := strings.Split(data, "\n")
+	for i := 0; i < len(list); i++ {
+		list[i] = "    " + list[i]
 	}
-	defaultData, err := s.readAPISIXConfigFromFile(s.opts.APISIXDefaultConfigPath)
-	if err != nil {
-		return nil, nil, err
-	}
-	cmData := map[string]string{
-		"config.yaml":         data,
-		"config-default.yaml": defaultData,
-	}
-	if err := createConfigMap(s.clientset, _apisixConfigConfigMap, s.namespace, cmData); err != nil {
-		return nil, nil, err
-	}
-	desc := &deploymentDesc{
-		name:      "apisix-deployment-e2e-test",
-		namespace: s.namespace,
-		image:     s.opts.APISIXImage,
-		ports:     []int32{9080, 9180},
-		replica:   1,
-		probe: &corev1.Probe{
-			Handler: corev1.Handler{
-				TCPSocket: &corev1.TCPSocketAction{
-					Port: intstr.FromInt(9080),
-				},
-			},
-			InitialDelaySeconds: 2,
-			TimeoutSeconds:      2,
-			PeriodSeconds:       5,
-		},
-		volumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "apisix-config-yaml-configmap",
-				MountPath: "/usr/local/apisix/conf/config.yaml",
-				SubPath:   "config.yaml",
-			},
-			{
-				Name:      "apisix-config-yaml-configmap",
-				MountPath: "/usr/local/apisix/conf/config-default.yaml",
-				SubPath:   "config-default.yaml",
-			},
-		},
-		volumes: []corev1.Volume{
-			{
-				Name: "apisix-config-yaml-configmap",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: _apisixConfigConfigMap,
-						},
-					},
-				},
-			},
-		},
-	}
-
-	d, err := ensureDeployment(s.clientset, newDeployment(desc))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	svcDesc := &serviceDesc{
-		name:      "apisix-service-e2e-test",
-		namespace: s.namespace,
-		selector:  d.Spec.Selector.MatchLabels,
-		ports: []corev1.ServicePort{
-			{
-				Protocol:   corev1.ProtocolTCP,
-				Name:       "apisix-dp",
-				Port:       9080,
-				TargetPort: intstr.FromInt(9080),
-			},
-			{
-				Protocol:   corev1.ProtocolTCP,
-				Name:       "apisix-cp",
-				Port:       9180,
-				TargetPort: intstr.FromInt(9180),
-			},
-		},
-	}
-
-	svc, err := ensureService(s.clientset, newService(svcDesc))
-	if err != nil {
-		return nil, nil, err
-	}
-	return d, svc, nil
+	return strings.Join(list, "\n")
 }

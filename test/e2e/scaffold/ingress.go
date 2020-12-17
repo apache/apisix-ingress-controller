@@ -15,96 +15,98 @@
 package scaffold
 
 import (
-	"errors"
-	"net"
-	"strconv"
-	"time"
+	"fmt"
 
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
-
-	"github.com/api7/ingress-controller/pkg/types"
+	"github.com/gruntwork-io/terratest/modules/k8s"
 )
 
 const (
 	_serviceAccount     = "ingress-apisix-e2e-test-service-account"
-	_clusterRoleBinding = "ingress-apisix-e2e-test-clusterrolebinding"
-	// TODO Customize cluster role, do not use cluster-admin
-	_clusterRole = "apisix-view-clusterrole"
+	_clusterRoleBinding = `
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ingress-apisix-e2e-test-clusterrolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: ingress-apisix-e2e-test-service-account
+  namespace: %s
+`
+	_ingressAPISIXDeployment = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingress-apisix-controller-deployment-e2e-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingress-apisix-controller-deployment-e2e-test
+  strategy:
+    rollingUpdate:
+      maxSurge: 50%
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: ingress-apisix-controller-deployment-e2e-test
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+        - livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            successThreshold: 1
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 2
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            successThreshold: 1
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 2
+          image: "viewking/apisix-ingress-controller:dev"
+          imagePullPolicy: IfNotPresent
+          name: ingress-apisix-controller-deployment-e2e-test
+          ports:
+            - containerPort: 8080
+              name: "http"
+              protocol: "TCP"
+          command:
+            - /ingress-apisix/apisix-ingress-controller
+            - ingress
+            - --log-level
+            - debug
+            - --log-output
+            - stdout
+            - --http-listen
+            - :8080
+            - --apisix-base-url
+            - http://apisix-service-e2e-test:9180/apisix/admin
+      serviceAccount: ingress-apisix-e2e-test-service-account
+`
 )
 
-func (s *Scaffold) newIngressAPISIXController() (*appsv1.Deployment, error) {
-	if err := createServiceAccount(s.clientset, _serviceAccount, s.namespace); err != nil {
-		return nil, err
-	}
-	if err := createClusterRoleBinding(s.clientset, _clusterRoleBinding, s.namespace, _serviceAccount, _clusterRole); err != nil {
-		return nil, err
+func (s *Scaffold) newIngressAPISIXController() error {
+	if err := k8s.CreateServiceAccountE(s.t, s.kubectlOptions, _serviceAccount); err != nil {
+		return err
 	}
 
-	var (
-		cmd  []string
-		port int
-	)
-
-	zeroTime := types.TimeDuration{
-		Duration: time.Duration(0),
+	crb := fmt.Sprintf(_clusterRoleBinding, s.namespace)
+	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, crb); err != nil {
+		return err
 	}
-
-	cmd = append(cmd, "/ingress-apisix/apisix-ingress-controller")
-	cmd = append(cmd, "ingress")
-	if s.opts.IngressAPISIXConfig.LogLevel != "" {
-		cmd = append(cmd, "--log-level", s.opts.IngressAPISIXConfig.LogLevel)
+	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, _ingressAPISIXDeployment); err != nil {
+		return err
 	}
-	if s.opts.IngressAPISIXConfig.LogOutput != "" {
-		cmd = append(cmd, "--log-output", s.opts.IngressAPISIXConfig.LogOutput)
-	}
-	if s.opts.IngressAPISIXConfig.HTTPListen != "" {
-		cmd = append(cmd, "--http-listen", s.opts.IngressAPISIXConfig.HTTPListen)
-	}
-	if s.opts.IngressAPISIXConfig.Kubernetes.Kubeconfig != "" {
-		cmd = append(cmd, "--kubeconfig", s.opts.IngressAPISIXConfig.Kubernetes.Kubeconfig)
-	}
-	if s.opts.IngressAPISIXConfig.Kubernetes.ResyncInterval != zeroTime {
-		cmd = append(cmd, "--resync-interval", s.opts.IngressAPISIXConfig.Kubernetes.ResyncInterval.String())
-	}
-	if s.opts.IngressAPISIXConfig.APISIX.BaseURL == "" {
-		return nil, errors.New("missing APISIX base URL configuration")
-	}
-	cmd = append(cmd, "--apisix-base-url", s.opts.IngressAPISIXConfig.APISIX.BaseURL)
-
-	if s.opts.IngressAPISIXConfig.HTTPListen != "" {
-		_, rawPort, err := net.SplitHostPort(s.opts.IngressAPISIXConfig.HTTPListen)
-		if err != nil {
-			return nil, err
-		}
-		port, err = strconv.Atoi(rawPort)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		port = 8080 // Default port of ingress apisix api server.
-	}
-
-	desc := &deploymentDesc{
-		name:      "ingress-apisix-controller-deployment-e2e-test",
-		namespace: s.namespace,
-		image:     s.opts.IngressAPISIXImage,
-		ports:     []int32{8080},
-		replica:   1,
-		command:   cmd,
-		probe: &corev1.Probe{
-			Handler: corev1.Handler{
-				TCPSocket: &corev1.TCPSocketAction{
-					Port: intstr.FromInt(port),
-				},
-			},
-			InitialDelaySeconds: 2,
-			TimeoutSeconds:      2,
-			PeriodSeconds:       5,
-		},
-		serviceAccount: _serviceAccount,
-	}
-
-	return ensureDeployment(s.clientset, newDeployment(desc))
+	return nil
 }
