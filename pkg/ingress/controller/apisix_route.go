@@ -136,7 +136,6 @@ func (c *ApisixRouteController) processNextWorkItem() bool {
 	}
 	err := func(obj interface{}) error {
 		defer c.workqueue.Done(obj)
-		var key string
 		var ok bool
 		var rqo *RouteQueueObj
 		if rqo, ok = obj.(*RouteQueueObj); !ok {
@@ -145,7 +144,8 @@ func (c *ApisixRouteController) processNextWorkItem() bool {
 		}
 		if err := c.syncHandler(rqo); err != nil {
 			c.workqueue.AddRateLimited(obj)
-			return fmt.Errorf("error syncing '%s': %s", key, err.Error())
+			log.Errorf("sync route %s failed", rqo.Key)
+			return fmt.Errorf("error syncing '%s': %s", rqo.Key, err.Error())
 		}
 
 		c.workqueue.Forget(obj)

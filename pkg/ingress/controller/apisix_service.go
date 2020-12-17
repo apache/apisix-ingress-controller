@@ -99,10 +99,11 @@ func (c *ApisixServiceController) processNextWorkItem() bool {
 		var ok bool
 		if sqo, ok = obj.(*ServiceQueueObj); !ok {
 			c.workqueue.Forget(obj)
-			return fmt.Errorf("expected string in workqueue but got %#v", obj)
+			return fmt.Errorf("expected ServiceQueueObj in workqueue but got %#v", obj)
 		}
 		if err := c.syncHandler(sqo); err != nil {
 			c.workqueue.AddRateLimited(obj)
+			log.Errorf("sync service %s failed", sqo.Key)
 			return fmt.Errorf("error syncing '%s': %s", sqo.Key, err.Error())
 		}
 

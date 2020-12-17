@@ -103,6 +103,7 @@ func (c *ApisixTlsController) processNextWorkItem() bool {
 		}
 		if err := c.syncHandler(tqo); err != nil {
 			c.workqueue.AddRateLimited(tqo)
+			log.Errorf("sync tls %s failed", tqo.Key)
 			return fmt.Errorf("error syncing '%s': %s", key, err.Error())
 		}
 
