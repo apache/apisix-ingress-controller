@@ -16,9 +16,10 @@ package controller
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/api7/ingress-controller/pkg/ingress/apisix"
 	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/golang/glog"
 	apisixV1 "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	apisixScheme "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned/scheme"
@@ -32,7 +33,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"time"
 )
 
 type ApisixTlsController struct {
@@ -73,7 +73,7 @@ func BuildApisixTlsController(
 
 func (c *ApisixTlsController) Run(stop <-chan struct{}) error {
 	if ok := cache.WaitForCacheSync(stop); !ok {
-		glog.Errorf("sync ApisixService cache failed")
+		log.Errorf("sync ApisixService cache failed")
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 	go wait.Until(c.runWorker, time.Second, stop)
