@@ -100,7 +100,17 @@ func (c *ApisixRouteController) updateFunc(oldObj, newObj interface{}) {
 }
 
 func (c *ApisixRouteController) deleteFunc(obj interface{}) {
-	oldRoute := obj.(cache.DeletedFinalStateUnknown).Obj.(*api6V1.ApisixRoute)
+	oldRoute, ok := obj.(*api6V1.ApisixRoute)
+	if !ok {
+		oldState, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			return
+		}
+		oldRoute, ok = oldState.Obj.(*api6V1.ApisixRoute)
+		if !ok {
+			return
+		}
+	}
 	var key string
 	var err error
 	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)

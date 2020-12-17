@@ -173,7 +173,18 @@ func (c *ApisixServiceController) updateFunc(oldObj, newObj interface{}) {
 }
 
 func (c *ApisixServiceController) deleteFunc(obj interface{}) {
-	oldService := obj.(cache.DeletedFinalStateUnknown).Obj.(*apisixV1.ApisixService)
+	oldService, ok := obj.(*apisixV1.ApisixService)
+	if !ok {
+		oldState, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			return
+		}
+		oldService, ok = oldState.Obj.(*apisixV1.ApisixService)
+		if !ok {
+			return
+		}
+	}
+
 	var key string
 	var err error
 	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)

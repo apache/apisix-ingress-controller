@@ -181,7 +181,17 @@ func (c *ApisixTlsController) updateFunc(oldObj, newObj interface{}) {
 }
 
 func (c *ApisixTlsController) deleteFunc(obj interface{}) {
-	oldTls := obj.(cache.DeletedFinalStateUnknown).Obj.(*apisixV1.ApisixTls)
+	oldTls, ok := obj.(*apisixV1.ApisixTls)
+	if !ok {
+		oldState, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			return
+		}
+		oldTls, ok = oldState.Obj.(*apisixV1.ApisixTls)
+		if !ok {
+			return
+		}
+	}
 	var key string
 	var err error
 	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
