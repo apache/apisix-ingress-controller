@@ -21,7 +21,6 @@ namespace: ingress-apisix
 commonLabels:
   apisix.apache.org/app: ingress-apisix
 bases:
-  - ./configmap
   - ./deployment
   - ./rbac
   - ./crd/v1beta1
