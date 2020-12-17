@@ -28,7 +28,7 @@ const (
 
 type ApisixTlsCRD ingress.ApisixTls
 
-// Convert convert to  apisix.Service from ingress.ApisixService CRD
+// Convert convert to  apisix.Ssl from ingress.ApisixTls CRD
 func (as *ApisixTlsCRD) Convert(sc Secreter) (*apisix.Ssl, error) {
 	name := as.Name
 	namespace := as.Namespace
