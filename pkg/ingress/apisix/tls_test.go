@@ -17,11 +17,12 @@ package apisix
 import (
 	"encoding/json"
 	"fmt"
+	"testing"
+
 	a6Type "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
-	"testing"
 )
 
 func TestConvert(t *testing.T) {
