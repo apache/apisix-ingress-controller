@@ -33,7 +33,7 @@ No, currently we are implementing one-way synchronization, that is, CRDs file ->
 
 This is because CRDs are generally declared in the file system, and Apply to enter Kubernetes etcd, we follow the definition of CRDs and synchronize to Apache Apisix Data Plane, but the reverse will make the situation more complicated.
 
-4. Why there are some logs like "list upstreams failed, err: http get failed, url: http://192.168.63.185:9180/apisix/admin/upstreams, err: status: 401"
+4. Why there are some logs like "list upstreams failed, err: http get failed, url: blahblahblah, err: status: 401"
 
 So far apisix-ingress-controller doesn't support set admin_key for Apache APISIX, so when you deploy your APISIX cluster, admin_key should be removed from config.
 
