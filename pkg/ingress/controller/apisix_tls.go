@@ -60,7 +60,7 @@ func BuildApisixTlsController(
 		apisixClientset: apisixTlsClientset,
 		apisixTlsList:   apisixTlsInformer.Lister(),
 		apisixTlsSynced: apisixTlsInformer.Informer().HasSynced,
-		workqueue:       workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ApisixTlses"),
+		workqueue:       workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixTlses"),
 	}
 	apisixTlsInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -102,6 +102,8 @@ func (c *ApisixTlsController) processNextWorkItem() bool {
 			return fmt.Errorf("expected TlsQueueObj in workqueue but got %#v", obj)
 		}
 		if err := c.syncHandler(tqo); err != nil {
+			c.workqueue.AddRateLimited(tqo)
+			log.Errorf("sync tls %s failed", tqo.Key)
 			return fmt.Errorf("error syncing '%s': %s", key, err.Error())
 		}
 
@@ -121,7 +123,13 @@ func (c *ApisixTlsController) syncHandler(tqo *TlsQueueObj) error {
 		return fmt.Errorf("invalid resource key: %s", tqo.Key)
 	}
 	apisixTlsYaml := tqo.OldObj
-	if tqo.Ope != state.Delete {
+	if tqo.Ope == state.Delete {
+		apisixIngressTls, _ := c.apisixTlsList.ApisixTlses(namespace).Get(name)
+		if apisixIngressTls != nil && apisixIngressTls.ResourceVersion > tqo.OldObj.ResourceVersion {
+			log.Warnf("TLS %s has been covered when retry", tqo.Key)
+			return nil
+		}
+	} else {
 		apisixTlsYaml, err = c.apisixTlsList.ApisixTlses(namespace).Get(name)
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -132,6 +140,7 @@ func (c *ApisixTlsController) syncHandler(tqo *TlsQueueObj) error {
 			return err
 		}
 	}
+
 	apisixTls := apisix.ApisixTlsCRD(*apisixTlsYaml)
 	sc := &apisix.SecretClient{}
 	if tls, err := apisixTls.Convert(sc); err != nil {
@@ -173,7 +182,17 @@ func (c *ApisixTlsController) updateFunc(oldObj, newObj interface{}) {
 }
 
 func (c *ApisixTlsController) deleteFunc(obj interface{}) {
-	oldTls := obj.(cache.DeletedFinalStateUnknown).Obj.(*apisixV1.ApisixTls)
+	oldTls, ok := obj.(*apisixV1.ApisixTls)
+	if !ok {
+		oldState, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			return
+		}
+		oldTls, ok = oldState.Obj.(*apisixV1.ApisixTls)
+		if !ok {
+			return
+		}
+	}
 	var key string
 	var err error
 	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
