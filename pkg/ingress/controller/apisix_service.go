@@ -66,6 +66,12 @@ func BuildApisixServiceController(
 	return controller
 }
 
+type ServiceQueueObj struct {
+	Key    string                  `json:"key"`
+	OldObj *apisixV1.ApisixService `json:"old_obj"`
+	Ope    string                  `json:"ope"` // add / update / delete
+}
+
 func (c *ApisixServiceController) Run(stop <-chan struct{}) error {
 	// 同步缓存
 	if ok := cache.WaitForCacheSync(stop); !ok {
@@ -89,17 +95,15 @@ func (c *ApisixServiceController) processNextWorkItem() bool {
 	}
 	err := func(obj interface{}) error {
 		defer c.workqueue.Done(obj)
-		var key string
+		var sqo *ServiceQueueObj
 		var ok bool
-
-		if key, ok = obj.(string); !ok {
+		if sqo, ok = obj.(*ServiceQueueObj); !ok {
 			c.workqueue.Forget(obj)
 			return fmt.Errorf("expected string in workqueue but got %#v", obj)
 		}
-		// 在syncHandler中处理业务
-		if err := c.syncHandler(key); err != nil {
+		if err := c.syncHandler(sqo); err != nil {
 			c.workqueue.AddRateLimited(obj)
-			return fmt.Errorf("error syncing '%s': %s", key, err.Error())
+			return fmt.Errorf("error syncing '%s': %s", sqo.Key, err.Error())
 		}
 
 		c.workqueue.Forget(obj)
@@ -111,24 +115,28 @@ func (c *ApisixServiceController) processNextWorkItem() bool {
 	return true
 }
 
-func (c *ApisixServiceController) syncHandler(key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+func (c *ApisixServiceController) syncHandler(sqo *ServiceQueueObj) error {
+	namespace, name, err := cache.SplitMetaNamespaceKey(sqo.Key)
 	if err != nil {
-		log.Errorf("invalid resource key: %s", key)
-		return fmt.Errorf("invalid resource key: %s", key)
+		log.Errorf("invalid resource key: %s", sqo.Key)
+		return fmt.Errorf("invalid resource key: %s", sqo.Key)
 	}
-
-	apisixServiceYaml, err := c.apisixServiceList.ApisixServices(namespace).Get(name)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Infof("apisixUpstream %s is removed", key)
+	apisixServiceYaml := sqo.OldObj
+	if sqo.Ope == DELETE {
+		apisixIngressService, _ := c.apisixServiceList.ApisixServices(namespace).Get(name)
+		if apisixIngressService != nil && apisixIngressService.ResourceVersion > sqo.OldObj.ResourceVersion {
 			return nil
 		}
-		runtime.HandleError(fmt.Errorf("failed to list apisixUpstream %s/%s", key, err.Error()))
-		return err
+	} else {
+		apisixServiceYaml, err = c.apisixServiceList.ApisixServices(namespace).Get(name)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				log.Infof("apisixUpstream %s is removed", sqo.Key)
+			}
+			runtime.HandleError(fmt.Errorf("failed to list apisixUpstream %s/%s", sqo.Key, err.Error()))
+			return err
+		}
 	}
-	log.Info(namespace)
-	log.Info(name)
 	apisixService := apisix.ApisixServiceCRD(*apisixServiceYaml)
 	services, upstreams, _ := apisixService.Convert()
 	comb := state.ApisixCombination{Routes: nil, Services: services, Upstreams: upstreams}
@@ -143,19 +151,28 @@ func (c *ApisixServiceController) addFunc(obj interface{}) {
 		runtime.HandleError(err)
 		return
 	}
-	c.workqueue.AddRateLimited(key)
+	sqo := &RouteQueueObj{Key: key, OldObj: nil, Ope: ADD}
+	c.workqueue.AddRateLimited(sqo)
 }
 
 func (c *ApisixServiceController) updateFunc(oldObj, newObj interface{}) {
-	oldRoute := oldObj.(*apisixV1.ApisixService)
-	newRoute := newObj.(*apisixV1.ApisixService)
-	if oldRoute.ResourceVersion == newRoute.ResourceVersion {
+	oldService := oldObj.(*apisixV1.ApisixService)
+	newService := newObj.(*apisixV1.ApisixService)
+	if oldService.ResourceVersion >= newService.ResourceVersion {
 		return
 	}
-	c.addFunc(newObj)
+	var key string
+	var err error
+	if key, err = cache.MetaNamespaceKeyFunc(newObj); err != nil {
+		runtime.HandleError(err)
+		return
+	}
+	sqo := &ServiceQueueObj{Key: key, OldObj: oldService, Ope: UPDATE}
+	c.workqueue.AddRateLimited(sqo)
 }
 
 func (c *ApisixServiceController) deleteFunc(obj interface{}) {
+	oldService := obj.(cache.DeletedFinalStateUnknown).Obj.(*apisixV1.ApisixService)
 	var key string
 	var err error
 	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
@@ -163,5 +180,6 @@ func (c *ApisixServiceController) deleteFunc(obj interface{}) {
 		runtime.HandleError(err)
 		return
 	}
-	c.workqueue.AddRateLimited(key)
+	sqo := &ServiceQueueObj{Key: key, OldObj: oldService, Ope: DELETE}
+	c.workqueue.AddRateLimited(sqo)
 }
