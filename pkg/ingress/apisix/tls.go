@@ -18,6 +18,7 @@ import (
 	ingressConf "github.com/api7/ingress-controller/pkg/kube"
 	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	apisix "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
+	"github.com/gxthrj/seven/conf"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -32,6 +33,9 @@ type ApisixTlsCRD ingress.ApisixTls
 func (as *ApisixTlsCRD) Convert(sc Secreter) (*apisix.Ssl, error) {
 	name := as.Name
 	namespace := as.Namespace
+	_, group := BuildAnnotation(as.Annotations)
+	conf.AddGroup(group)
+
 	id := namespace + "_" + name
 	secretName := as.Spec.Secret.Name
 	secretNamespace := as.Spec.Secret.Namespace
@@ -52,6 +56,7 @@ func (as *ApisixTlsCRD) Convert(sc Secreter) (*apisix.Ssl, error) {
 		Cert:   &cert,
 		Key:    &key,
 		Status: &status,
+		Group:  &group,
 	}
 	return ssl, nil
 }

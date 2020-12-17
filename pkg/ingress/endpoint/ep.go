@@ -60,5 +60,12 @@ func BuildEps(ns, name string, port int) []*v1.Node {
 			}
 		}
 	}
+	if len(nodes) < 1 {
+		ip := "127.0.0.1"
+		port := 1000
+		weight := 100
+		node := &v1.Node{IP: &ip, Port: &port, Weight: &weight}
+		nodes = append(nodes, node)
+	}
 	return nodes
 }
