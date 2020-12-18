@@ -41,8 +41,5 @@ kubernetes:
 
 # APISIX related configurations.
 apisix:
-  base_url: "http://host:port/foo/bar/baz" # the APISIX admin api / manager api
+  base_url: "http://127.0.0.1:9080/apisix/admin" # the APISIX admin api / manager api
                                            # base url, it's required.
-  #admin_key: "blahblahblah"               # admin key for the authorization
-                                           # of APISIX admin api / manager api,
-                                           # default is empty.
