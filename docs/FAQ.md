@@ -43,6 +43,8 @@ Note since APISIX have two configuration files, the first is config.yaml, which 
 
 When `apisix-ingress-controller` creates a route with CRD, it checks the `Endpoint` resources in Kubernetes (matched by namespace_name_port). If the corresponding endpoint information is not found, the route will not be created and wait for the next retry.
 
+Tips: The failure caused by empty upstream nodes is a limitation of Apache APISIX, related [issue](https://github.com/apache/apisix/issues/3072)
+
 6. What is the retry rule of `apisix-ingress-controller`?
 
 If an error occurs during the process of `apisix-ingress-controller` parsing CRD and distributing the configuration to APISIX, a retry will be triggered.
