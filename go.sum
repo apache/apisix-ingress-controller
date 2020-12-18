@@ -127,7 +127,10 @@ github.com/gxthrj/seven v0.1.9/go.mod h1:epDVCYT1ibfV6fgaeM918QAer9u0/M2LXW6OcIR
 github.com/gxthrj/seven v0.2.0 h1:S85ZI2TzVQILsiI9BE+Sa0VqrkU3kzNYJFOOh4+5Vu8=
 github.com/gxthrj/seven v0.2.0/go.mod h1:Uf0JHSRmhZyV3tPLV1oVzq/Dw19ya9rXFsECiLKrgVk=
 github.com/gxthrj/seven v0.2.4/go.mod h1:SYs/veqEMdwRF5BL3nf/nxfypoDMO2E6Odgp17m+J9U=
+github.com/gxthrj/seven v0.2.6 h1:d7OteigPwnv9lLHjq6jWQ0IbTD3g+RnhS8ogDieskeg=
 github.com/gxthrj/seven v0.2.6/go.mod h1:SYs/veqEMdwRF5BL3nf/nxfypoDMO2E6Odgp17m+J9U=
+github.com/gxthrj/seven v0.2.7 h1:DNRi3HGXiTEC2O87jq9MqEMHjwf7eHvYQXhJxv1Qa5E=
+github.com/gxthrj/seven v0.2.7/go.mod h1:SYs/veqEMdwRF5BL3nf/nxfypoDMO2E6Odgp17m+J9U=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
 github.com/hashicorp/consul/sdk v0.1.1/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyNV1vwHyQBF0x8=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=

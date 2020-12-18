@@ -22,6 +22,7 @@ import (
 	api6Scheme "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned/scheme"
 	api6Informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions/config/v1"
 	"github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
+	apisixV1 "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"github.com/gxthrj/seven/state"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -208,8 +209,22 @@ func (c *ApisixRouteController) add(key string) error {
 	apisixRoute := apisix.ApisixRoute(*apisixIngressRoute)
 	routes, services, upstreams, _ := apisixRoute.Convert()
 	comb := state.ApisixCombination{Routes: routes, Services: services, Upstreams: upstreams}
-	_, err = comb.Solver()
-	return err
+	// protect: will retry when any upstream nodes is empty
+	retry := false
+	upstreamWithEmptyNodes := &apisixV1.Upstream{}
+	for _, upstream := range upstreams {
+		if len(upstream.Nodes) < 1 {
+			upstreamWithEmptyNodes = upstream
+			break
+		}
+	}
+	if !retry {
+		_, err = comb.Solver()
+		return err
+	} else {
+		return fmt.Errorf("upstream %s which nodes is empty", *upstreamWithEmptyNodes.Name)
+	}
+
 }
 
 // sync

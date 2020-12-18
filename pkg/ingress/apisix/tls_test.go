@@ -45,22 +45,64 @@ spec:
 	status := int(1)
 	cert := "root"
 	key := "123456"
+	group := ""
 	sslExpect := &a6Type.Ssl{
 		ID:     &id,
 		Snis:   snis,
 		Cert:   &cert,
 		Key:    &key,
 		Status: &status,
+		Group:  &group,
 	}
 	atlsCRD := &ApisixTlsCRD{}
 	err := yaml.Unmarshal([]byte(atlsStr), atlsCRD)
 	assert.Nil(t, err, "yaml decode failed")
 	sc := &SecretClientMock{}
 	ssl, err := atlsCRD.Convert(sc)
-	assert.EqualValues(t, sslExpect.Key, ssl.Key, "ssl convert error")
-	assert.EqualValues(t, sslExpect.ID, ssl.ID, "ssl convert error")
-	assert.EqualValues(t, sslExpect.Cert, ssl.Cert, "ssl convert error")
-	assert.EqualValues(t, sslExpect.Snis, ssl.Snis, "ssl convert error")
+	assert.EqualValues(t, sslExpect.Key, ssl.Key, "key convert error")
+	assert.EqualValues(t, sslExpect.ID, ssl.ID, "id convert error")
+	assert.EqualValues(t, sslExpect.Cert, ssl.Cert, "cert convert error")
+	assert.EqualValues(t, sslExpect.Snis, ssl.Snis, "snis convert error")
+	assert.EqualValues(t, sslExpect.Group, ssl.Group, "group convert error")
+}
+
+func TestConvert_group_annotation(t *testing.T) {
+	atlsStr := `
+apiVersion: apisix.apache.org/v1
+kind: ApisixTls
+metadata:
+  annotations:
+    k8s.apisix.apache.org/ingress.class: 127.0.0.1:9080
+  name: foo
+  namespace: helm
+spec:
+  hosts:
+  - api6.com
+  secret:
+    name: test-atls
+    namespace: helm
+`
+	id := "helm_foo"
+	host := "api6.com"
+	snis := []*string{&host}
+	status := int(1)
+	cert := "root"
+	key := "123456"
+	group := "127.0.0.1:9080"
+	sslExpect := &a6Type.Ssl{
+		ID:     &id,
+		Snis:   snis,
+		Cert:   &cert,
+		Key:    &key,
+		Status: &status,
+		Group:  &group,
+	}
+	atlsCRD := &ApisixTlsCRD{}
+	err := yaml.Unmarshal([]byte(atlsStr), atlsCRD)
+	assert.Nil(t, err, "yaml decode failed")
+	sc := &SecretClientMock{}
+	ssl, err := atlsCRD.Convert(sc)
+	assert.EqualValues(t, sslExpect.Group, ssl.Group, "group convert error")
 }
 
 func TestConvert_Error(t *testing.T) {

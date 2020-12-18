@@ -38,3 +38,15 @@ This is because CRDs are generally declared in the file system, and Apply to ent
 So far apisix-ingress-controller doesn't support set admin_key for Apache APISIX, so when you deploy your APISIX cluster, admin_key should be removed from config.
 
 Note since APISIX have two configuration files, the first is config.yaml, which contains the user specified configs, the other is config-default.yaml, which has all default items, config items in these two files will be merged. So admin_key in both files should be removed. You can customize these two configuration files and mount them to APISIX deloyment.
+
+5. Failed to create route with `ApisixRoute`?
+
+When `apisix-ingress-controller` creates a route with CRD, it checks the `Endpoint` resources in Kubernetes (matched by namespace_name_port). If the corresponding endpoint information is not found, the route will not be created and wait for the next retry.
+
+Tips: The failure caused by empty upstream nodes is a limitation of Apache APISIX, related [issue](https://github.com/apache/apisix/issues/3072)
+
+6. What is the retry rule of `apisix-ingress-controller`?
+
+If an error occurs during the process of `apisix-ingress-controller` parsing CRD and distributing the configuration to APISIX, a retry will be triggered.
+
+The delayed retry method is adopted. After the first failure, it is retried once per second. After 5 retries are triggered, the slow retry strategy will be enabled, and the retry will be performed every 1 minute until it succeeds.

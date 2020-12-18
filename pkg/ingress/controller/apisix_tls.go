@@ -149,9 +149,8 @@ func (c *ApisixTlsController) syncHandler(tqo *TlsQueueObj) error {
 		// sync to apisix
 		log.Debug(tls)
 		log.Debug(tqo)
-		state.SyncSsl(tls, tqo.Ope)
+		return state.SyncSsl(tls, tqo.Ope)
 	}
-	return err
 }
 
 func (c *ApisixTlsController) addFunc(obj interface{}) {
