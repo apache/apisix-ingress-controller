@@ -50,10 +50,20 @@ kubectl apply -k /path/to/apisix-ingress-controller/samples/deploy
 
 // todo
 
-## Master branch builds
+## Manual build
+
+* Build binary
 
 ```shell
-docker build -t apache/ingress-controller:v0.1.0 ../.
+$ cd /path/to/apisix-ingress-controller/
+$ make build
+```
+
+
+* Build with Docker
+
+```shell
+$ docker build -t apache/ingress-controller:v0.1.0 ../.
 ```
 
 ## Next
