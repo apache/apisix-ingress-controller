@@ -49,5 +49,13 @@ spec:
         ports:
         - containerPort: 8080
           hostPort: 8080
+        volumeMounts:
+        - mountPath: /ingress-apisix/config.yaml
+          name: apisix-ingress-configmap
+          subPath: config.yaml
+      volumes:
+        - configMap:
+            name: apisix-ingress-cm
+          name: apisix-ingress-configmap
       terminationGracePeriodSeconds: 60
       serviceAccountName: apisix-view-serviceaccount
