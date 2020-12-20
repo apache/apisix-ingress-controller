@@ -34,6 +34,12 @@ To install `ingress controller` in k8s, need to care about 3 parts:
 
 ## Kustomize
 
+Before executing the following commands, you need to create the namespace `ingress-apisix`:
+
+```shell
+kubectl create ns ingress-apisix
+```
+
 Install the abovementioned resources by [Kustomize](https://kustomize.io/):
 
 ```shell
