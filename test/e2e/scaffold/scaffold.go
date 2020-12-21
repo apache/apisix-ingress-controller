@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"text/template"
 	"time"
@@ -29,6 +30,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type Options struct {
@@ -90,10 +92,14 @@ func (s *Scaffold) DefaultHTTPBackend() (string, []int32) {
 
 // NewHTTPClient creates the default HTTP client.
 func (s *Scaffold) NewHTTPClient() *httpexpect.Expect {
-	url, err := s.apisixServiceURL()
+	host, err := s.apisixServiceURL()
 	assert.Nil(s.t, err, "getting apisix service url")
+	u := url.URL{
+		Scheme: "http",
+		Host:   host,
+	}
 	return httpexpect.WithConfig(httpexpect.Config{
-		BaseURL: url,
+		BaseURL: u.String(),
 		Client: &http.Client{
 			Transport: &http.Transport{},
 		},
@@ -126,18 +132,27 @@ func (s *Scaffold) beforeEach() {
 	s.etcdService, err = s.newEtcd()
 	assert.Nil(s.t, err, "initializing etcd")
 
-	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.etcdService.Name, 3, 2*time.Second)
+	// We don't use k8s.WaitUntilServiceAvailable since it hacks for Minikube.
+	err = s.waitAllEtcdPodsAvailable()
+	assert.Nil(s.t, err, "waiting for etcd ready")
 
 	s.apisixService, err = s.newAPISIX()
 	assert.Nil(s.t, err, "initializing Apache APISIX")
 
-	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.apisixService.Name, 3, 2*time.Second)
+	// We don't use k8s.WaitUntilServiceAvailable since it hacks for Minikube.
+	err = s.waitAllAPISIXPodsAvailable()
+	assert.Nil(s.t, err, "waiting for apisix ready")
 
 	s.httpbinService, err = s.newHTTPBIN()
 	assert.Nil(s.t, err, "initializing httpbin")
 
+	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.httpbinService.Name, 3, 2*time.Second)
+
 	err = s.newIngressAPISIXController()
 	assert.Nil(s.t, err, "initializing ingress apisix controller")
+
+	err = s.waitAllIngressControllerPodsAvailable()
+	assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
 }
 
 func (s *Scaffold) afterEach() {
@@ -158,4 +173,14 @@ func (s *Scaffold) renderConfig(path string) (string, error) {
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+func waitExponentialBackoff(condFunc func() (bool, error)) error {
+	backoff := wait.Backoff{
+		Duration: 100 * time.Millisecond,
+		Factor:   3,
+		Jitter:   0,
+		Steps:    6,
+	}
+	return wait.ExponentialBackoff(backoff, condFunc)
 }

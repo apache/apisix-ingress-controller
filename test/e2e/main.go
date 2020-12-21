@@ -15,7 +15,7 @@
 package main
 
 import (
-	_ "github.com/api7/ingress-controller/test/e2e/proxy"
+	_ "github.com/api7/ingress-controller/test/e2e/ingress"
 )
 
-func main() {}
+func runE2E() {}

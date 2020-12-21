@@ -17,7 +17,10 @@ package scaffold
 import (
 	"fmt"
 
+	"github.com/onsi/ginkgo"
 	"github.com/gruntwork-io/terratest/modules/k8s"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -60,16 +63,16 @@ spec:
       containers:
         - livenessProbe:
             failureThreshold: 3
-            initialDelaySeconds: 2
-            periodSeconds: 5
+            initialDelaySeconds: 1
+            periodSeconds: 2
             successThreshold: 1
             tcpSocket:
               port: 8080
             timeoutSeconds: 2
           readinessProbe:
             failureThreshold: 3
-            initialDelaySeconds: 2
-            periodSeconds: 5
+            initialDelaySeconds: 1
+            periodSeconds: 2
             successThreshold: 1
             tcpSocket:
               port: 8080
@@ -109,4 +112,32 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		return err
 	}
 	return nil
+}
+
+func (s *Scaffold) waitAllIngressControllerPodsAvailable() error {
+	opts := metav1.ListOptions{
+		LabelSelector: "app=ingress-apisix-controller-deployment-e2e-test",
+	}
+	condFunc := func() (bool, error) {
+		items, err := k8s.ListPodsE(s.t, s.kubectlOptions, opts)
+		if err != nil {
+			return false, err
+		}
+		if len(items) == 0 {
+			ginkgo.GinkgoT().Log("no ingress-apisix-controller pods created")
+			return false, nil
+		}
+		for _, item := range items {
+			for _, cond := range item.Status.Conditions {
+				if cond.Type != corev1.PodReady {
+					continue
+				}
+				if cond.Status != "True" {
+					return false, nil
+				}
+			}
+		}
+		return true, nil
+	}
+	return waitExponentialBackoff(condFunc)
 }

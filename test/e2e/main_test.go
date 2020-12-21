@@ -22,5 +22,6 @@ import (
 )
 
 func TestRunE2E(t *testing.T) {
+	runE2E()
 	ginkgo.RunSpecs(t, "ingress-apisix e2e test suites")
 }
