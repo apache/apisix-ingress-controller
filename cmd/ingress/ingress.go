@@ -58,10 +58,26 @@ func NewIngressCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "ingress [flags]",
-		Short: "launch the controller",
-		Example: `Run apisix-ingress-controller from configuration file:
+		Long: `launch the ingress controller
 
-	apisix-ingress-controller ingress --config-path /path/to/config.json`,
+You can run apisix-ingress-controller from configuration file or command line options,
+if you run it from configuration file, other command line options will be ignored.
+
+Run from configuration file:
+
+    apisix-ingress-controller ingress --config-path /path/to/config.json
+
+Both json and yaml are supported as the configuration file format.
+
+Run from command line options:
+
+    apisix-ingress-controller ingress --apisix-base-url http://apisix-service:9180/apisix/admin --kubeconfig /path/to/kubeconfig
+
+If you run apisix-ingress-controller outside the Kubernetes cluster, --kubeconfig option (or kubeconfig item in configuration file) should be specified explicitly,
+or if you run it inside cluster, leave it alone and in-cluster configuration will be discovered and used.
+
+Before you run apisix-ingress-controller, be sure all related resources, like CRDs (ApisixRoute, ApisixUpstream and etc),
+the apisix cluster and others are created`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if configPath != "" {
 				c, err := config.NewConfigFromFile(configPath)
