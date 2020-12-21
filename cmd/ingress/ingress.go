@@ -57,7 +57,7 @@ func NewIngressCommand() *cobra.Command {
 	cfg := config.NewDefaultConfig()
 
 	cmd := &cobra.Command{
-		Use:   "ingress [flags]",
+		Use: "ingress [flags]",
 		Long: `launch the ingress controller
 
 You can run apisix-ingress-controller from configuration file or command line options,
