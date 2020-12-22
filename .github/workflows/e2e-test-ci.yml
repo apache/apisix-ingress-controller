@@ -9,20 +9,15 @@ on:
       - master
       - test/e2e-sanity-case
 jobs:
-  minikube:
+  e2e-test:
     runs-on: ubuntu-latest
     name: build and start minikube
     steps:
       - uses: actions/checkout@v2
-      - name: Start minikube
+      - name: start minikube
         uses: medyagh/setup-minikube@master
-      - name: cluster info
+      - name: output cluster info
         run: kubectl cluster-info
-  run-test:
-    runs-on: ubuntu-latest
-    needs: minikube
-    steps:
-      - uses: actions/checkout@v2
       - name: setup go
         uses: actions/setup-go@v1
         with:
