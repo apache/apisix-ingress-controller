@@ -20,7 +20,7 @@ jobs:
           run: kubectl cluster-info
   run-test:
     runs-on: ubuntu-latest
-    needs: install-minikube
+    needs: minikube
     steps:
       - uses: actions/checkout@v2
       - name: setup go
