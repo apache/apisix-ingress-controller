@@ -11,13 +11,13 @@ on:
 jobs:
   minikube:
     runs-on: ubuntu-latest
-      name: build and start minikube
-      steps:
-        - uses: actions/checkout@v2
-        - name: Start minikube
-          uses: medyagh/setup-minikube@master
-        - name: cluster info
-          run: kubectl cluster-info
+    name: build and start minikube
+    steps:
+      - uses: actions/checkout@v2
+      - name: Start minikube
+        uses: medyagh/setup-minikube@master
+      - name: cluster info
+        run: kubectl cluster-info
   run-test:
     runs-on: ubuntu-latest
     needs: minikube
