@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package main
+package e2e
 
 import (
 	_ "github.com/api7/ingress-controller/test/e2e/ingress"

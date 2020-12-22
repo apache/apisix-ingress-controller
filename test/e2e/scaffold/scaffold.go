@@ -19,6 +19,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"os/user"
+	"path/filepath"
 	"strings"
 	"text/template"
 	"time"
@@ -70,12 +73,21 @@ func NewScaffold(o *Options) *Scaffold {
 	return s
 }
 
+// NewDefaultScaffold creates a scaffold with some default options.
 func NewDefaultScaffold() *Scaffold {
+	kubeconfig := os.Getenv("KUBECONFIG")
+	if kubeconfig == "" {
+		u, err := user.Current()
+		if err != nil {
+			panic(err)
+		}
+		kubeconfig = filepath.Join(u.HomeDir, ".kube", "config")
+	}
 	opts := &Options{
-		Name:                    "sample",
-		Kubeconfig:              "/Users/alex/.kube/config",
-		APISIXConfigPath:        "/Users/alex/Workstation/tokers/apisix-ingress-controller/test/e2e/testdata/apisix-gw-config.yaml",
-		APISIXDefaultConfigPath: "/Users/alex/Workstation/tokers/apisix-ingress-controller/test/e2e/testdata/apisix-gw-config-default.yaml",
+		Name:                    "default",
+		Kubeconfig:              kubeconfig,
+		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
+		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
 	}
 	return NewScaffold(opts)
 }
