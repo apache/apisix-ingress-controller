@@ -40,10 +40,7 @@ spec:
     spec:
       hostNetwork: true
       containers:
-      - envFrom:
-        - configMapRef:
-            name: apisix-config
-        image: viewking/apisix-ingress-controller:dev
+      - image: viewking/apisix-ingress-controller:dev
         imagePullPolicy: IfNotPresent
         name: ingress-controller
         ports:
