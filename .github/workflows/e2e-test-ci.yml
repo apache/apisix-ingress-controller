@@ -9,22 +9,15 @@ on:
       - master
       - test/e2e-sanity-case
 jobs:
-  install-minikube:
+  minikube:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - uses: opsgang/ga-setup-minikube@v0.1.1
-        with:
-          minikube-version: 1.14.2
-          k8s-version: 1.19.2
-      - name: launching
-        run: |
-          minikube config set vm-driver docker
-          minikube config set kubernetes-version v1.19.2
-          minikube start
-          minikube update-context
-          kubectl cluster-info
-
+      name: build and start minikube
+      steps:
+        - uses: actions/checkout@v2
+        - name: Start minikube
+          uses: medyagh/setup-minikube@master
+        - name: cluster info
+          run: kubectl cluster-info
   run-test:
     runs-on: ubuntu-latest
     needs: install-minikube
