@@ -48,6 +48,10 @@ gofmt:
 unit-test:
 	go test -cover -coverprofile=coverage.txt ./...
 
+### e2e-test:         Run e2e test cases
+e2e-test:
+	cd test/e2e && go test github.com/api7/ingress-controller/test/e2e
+
 ### license-check:    Do Apache License Header check
 license-check:
 ifeq ("$(wildcard .actions/openwhisk-utilities/scancode/scanCode.py)", "")
