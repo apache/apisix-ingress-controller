@@ -58,6 +58,26 @@ type Scaffold struct {
 	EtcdServiceFQDN string
 }
 
+// Getkubeconfig returns the kubeconfig file path.
+// Order:
+// env KUBECONFIG;
+// ~/.kube/config;
+// "" (in case in-cluster configuration will be used).
+func GetKubeconfig() string {
+	kubeconfig := os.Getenv("KUBECONFIG")
+	if kubeconfig == "" {
+		u, err := user.Current()
+		if err != nil {
+			panic(err)
+		}
+		kubeconfig = filepath.Join(u.HomeDir, ".kube", "config")
+		if _, err := os.Stat(kubeconfig); err != nil && !os.IsNotExist(err) {
+			kubeconfig = ""
+		}
+	}
+	return kubeconfig
+}
+
 // NewScaffold creates an e2e test scaffold.
 func NewScaffold(o *Options) *Scaffold {
 	defer ginkgo.GinkgoRecover()
@@ -75,17 +95,9 @@ func NewScaffold(o *Options) *Scaffold {
 
 // NewDefaultScaffold creates a scaffold with some default options.
 func NewDefaultScaffold() *Scaffold {
-	kubeconfig := os.Getenv("KUBECONFIG")
-	if kubeconfig == "" {
-		u, err := user.Current()
-		if err != nil {
-			panic(err)
-		}
-		kubeconfig = filepath.Join(u.HomeDir, ".kube", "config")
-	}
 	opts := &Options{
 		Name:                    "default",
-		Kubeconfig:              kubeconfig,
+		Kubeconfig:              GetKubeconfig(),
 		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
 		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
 	}

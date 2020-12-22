@@ -20,6 +20,7 @@ VERSION ?= 0.0.0
 GITSHA ?= $(shell git rev-parse --short=7 HEAD)
 OSNAME ?= $(shell uname -s | tr A-Z a-z)
 OSARCH ?= $(shell uname -m | tr A-Z a-z)
+PWD ?= $(shell pwd)
 ifeq ($(OSARCH), x86_64)
 	OSARCH = amd64
 endif
@@ -50,6 +51,10 @@ unit-test:
 
 ### e2e-test:         Run e2e test cases
 e2e-test:
+	export APISIX_ROUTE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixRoute.yaml && \
+	export APISIX_UPSTREAM_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml && \
+	export APISIX_SERVICE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixService.yaml && \
+	export APISIX_TLS_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml && \
 	cd test/e2e && go test github.com/api7/ingress-controller/test/e2e
 
 ### license-check:    Do Apache License Header check
