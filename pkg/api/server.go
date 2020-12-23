@@ -16,6 +16,8 @@ package api
 
 import (
 	"net"
+	"net/http"
+	"net/http/pprof"
 
 	"github.com/gin-gonic/gin"
 
@@ -29,6 +31,7 @@ import (
 type Server struct {
 	router       *gin.Engine
 	httpListener net.Listener
+	pprofMu      *http.ServeMux
 }
 
 // NewServer initializes the API Server.
@@ -42,10 +45,22 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	router.Use(gin.Recovery(), gin.Logger())
 	apirouter.Mount(router)
 
-	return &Server{
+	srv := &Server{
 		router:       router,
 		httpListener: httpListener,
-	}, nil
+	}
+
+	if cfg.EnableProfiling {
+		srv.pprofMu = new(http.ServeMux)
+		srv.pprofMu.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		srv.pprofMu.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		srv.pprofMu.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		srv.pprofMu.HandleFunc("/debug/pprof/trace", pprof.Trace)
+		srv.pprofMu.HandleFunc("/debug/pprof/", pprof.Index)
+		router.GET("/debug/pprof/*profile", gin.WrapF(srv.pprofMu.ServeHTTP))
+	}
+
+	return srv, nil
 }
 
 // Run launches the API Server.
