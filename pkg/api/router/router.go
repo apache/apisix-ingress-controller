@@ -18,6 +18,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type healthzResponse struct {
@@ -34,7 +35,16 @@ func healthz(c *gin.Context) {
 	return
 }
 
+func mountMetrics(r *gin.Engine) {
+	r.GET("/metrics", metrics)
+}
+
+func metrics(c *gin.Context) {
+	promhttp.Handler().ServeHTTP(c.Writer, c.Request)
+}
+
 // Mount mounts all api routers.
 func Mount(r *gin.Engine) {
 	mountHealthz(r)
+	mountMetrics(r)
 }
