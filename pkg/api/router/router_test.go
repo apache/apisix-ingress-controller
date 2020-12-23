@@ -38,3 +38,15 @@ func TestHealthz(t *testing.T) {
 
 	assert.Equal(t, resp, healthzResponse{Status: "ok"})
 }
+
+func TestMetrics(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, r := gin.CreateTestContext(w)
+	req, err := http.NewRequest("GET", "/metrics", nil)
+	assert.Nil(t, err, nil)
+	c.Request = req
+	mountMetrics(r)
+	metrics(c)
+
+	assert.Equal(t, w.Code, http.StatusOK)
+}
