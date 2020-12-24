@@ -17,6 +17,12 @@ jobs:
         uses: abstractj/setup-minikube@issue-12
       - name: Output cluster info
         run: kubectl cluster-info
+      - name: Add images
+        run: |
+          minikube cache add apache/apisix:latest -v 7 --alsologtostderr
+          minikube cache add bitnami/etcd:3.4.14-debian-10-r0
+          minikube cache add kennethreitz/httpbin
+          minikube cache add viewking/apisix-ingress-controller:dev
       - name: Setup Go Env
         uses: actions/setup-go@v1
         with:
