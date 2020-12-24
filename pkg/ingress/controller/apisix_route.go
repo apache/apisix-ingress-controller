@@ -16,14 +16,12 @@ package controller
 
 import (
 	"fmt"
-	"github.com/api7/ingress-controller/pkg/ingress/apisix"
 	api6V1 "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	api6Scheme "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned/scheme"
 	api6Informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions/config/v1"
 	"github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
 	apisixV1 "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"github.com/gxthrj/seven/state"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -33,7 +31,9 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"time"
 
+	"github.com/api7/ingress-controller/pkg/ingress/apisix"
 	"github.com/api7/ingress-controller/pkg/log"
+	"github.com/api7/ingress-controller/pkg/seven/state"
 )
 
 type ApisixRouteController struct {

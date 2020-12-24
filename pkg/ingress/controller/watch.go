@@ -15,14 +15,16 @@
 package controller
 
 import (
+	"strconv"
+
 	"github.com/api7/ingress-controller/pkg/kube"
 	"github.com/golang/glog"
 	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"github.com/gxthrj/seven/apisix"
-	sevenConf "github.com/gxthrj/seven/conf"
-	"github.com/gxthrj/seven/state"
 	"k8s.io/api/core/v1"
-	"strconv"
+
+	"github.com/api7/ingress-controller/pkg/seven/apisix"
+	sevenConf "github.com/api7/ingress-controller/pkg/seven/conf"
+	"github.com/api7/ingress-controller/pkg/seven/state"
 )
 
 const (
