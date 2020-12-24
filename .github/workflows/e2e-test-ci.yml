@@ -20,9 +20,9 @@ jobs:
       - name: Add images
         run: |
           minikube cache add apache/apisix:latest -v 7 --alsologtostderr
-          minikube cache add bitnami/etcd:3.4.14-debian-10-r0
-          minikube cache add kennethreitz/httpbin
-          minikube cache add viewking/apisix-ingress-controller:dev
+          minikube cache add bitnami/etcd:3.4.14-debian-10-r0 -v 7 --alsologtostderr
+          minikube cache add kennethreitz/httpbin -v 7 --alsologtostderr
+          minikube cache add viewking/apisix-ingress-controller:dev -v 7 --alsologtostderr
       - name: Setup Go Env
         uses: actions/setup-go@v1
         with:
