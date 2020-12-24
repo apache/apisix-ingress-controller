@@ -15,6 +15,8 @@
 package api
 
 import (
+	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -45,4 +47,48 @@ func TestServerRun(t *testing.T) {
 
 	err = srv.Run(stopCh)
 	assert.Nil(t, err, "see non-nil error: ", err)
+}
+
+func TestProfileNotMount(t *testing.T) {
+	cfg := &config.Config{HTTPListen: "127.0.0.1:0"}
+	srv, err := NewServer(cfg)
+	assert.Nil(t, err, "see non-nil error: ", err)
+	stopCh := make(chan struct{})
+	go func() {
+		err := srv.Run(stopCh)
+		assert.Nil(t, err, "see non-nil error: ", err)
+	}()
+
+	u := (&url.URL{
+		Scheme: "http",
+		Host:   srv.httpListener.Addr().String(),
+		Path:   "/debug/pprof/cmdline",
+	}).String()
+
+	resp, err := http.Get(u)
+	assert.Nil(t, err, nil)
+	assert.Equal(t, resp.StatusCode, http.StatusNotFound)
+	close(stopCh)
+}
+
+func TestProfile(t *testing.T) {
+	cfg := &config.Config{HTTPListen: "127.0.0.1:0", EnableProfiling: true}
+	srv, err := NewServer(cfg)
+	assert.Nil(t, err, "see non-nil error: ", err)
+	stopCh := make(chan struct{})
+	go func() {
+		err := srv.Run(stopCh)
+		assert.Nil(t, err, "see non-nil error: ", err)
+	}()
+
+	u := (&url.URL{
+		Scheme: "http",
+		Host:   srv.httpListener.Addr().String(),
+		Path:   "/debug/pprof/cmdline",
+	}).String()
+
+	resp, err := http.Get(u)
+	assert.Nil(t, err, nil)
+	assert.Equal(t, resp.StatusCode, http.StatusOK)
+	close(stopCh)
 }
