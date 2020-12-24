@@ -39,17 +39,57 @@ Tips: The Kubernetes cluster deployment method is recommended for production and
 
 ### 3. httpbin service
 
-Deploy [httpbin](https://github.com/postmanlabs/httpbin) to your Kubernetes cluster and expose it as a Service.
+Deploy [httpbin](https://github.com/postmanlabs/httpbin) to your Kubernetes cluster and expose it as a Service. For instance:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: httpbin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: httpbin
+  template:
+    metadata:
+      labels:
+        app: httpbin
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+      - name: httpbin
+        image: "kennethreitz/httpbin"
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+          name: "http"
+          protocol: "TCP"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpbin
+spec:
+  selector:
+    app: httpbin
+  ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 80
+  type: ClusterIP
+```
 
 ## Configuration
 
-### Configure the `kube config` file locally to facilitate local debugging
+### Configure the kubeconfig file locally to facilitate local debugging
 
 1. Start minikube.
 
 2. Location: ~/.kube/config
 
-3. Copy the config file to your local development environment, the path should be configured in apisix-ingress-controller by specifying `--kuebconfig` option.
+3. Copy the config file to your local development environment, the path should be configured in apisix-ingress-controller by specifying `--kubeconfig` option.
 
 ### Configure APISIX service address
 
@@ -99,7 +139,7 @@ spec:
 EOF
 ```
 
-Here we use the FQDN `httpbin.default.svc.cluster.local` as the `serviceName`, and the service port is 8080, change them if your `httpbin` service has different name, namespace or port.
+Here we use the FQDN `httpbin.default.svc.cluster.local` as the `serviceName`, and the service port is 8080, change them if your `httpbin` service has a different name, namespace or port.
 
 In addition, `ApisixRoute` also continues to support the definition with annotation, you can also define as below.
 
