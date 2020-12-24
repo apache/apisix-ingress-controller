@@ -114,8 +114,8 @@ func (s *Scaffold) DefaultHTTPBackend() (string, []int32) {
 	return s.httpbinService.Name, ports
 }
 
-// NewHTTPClient creates the default HTTP client.
-func (s *Scaffold) NewHTTPClient() *httpexpect.Expect {
+// NewAPISIXClient creates the default HTTP client.
+func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 	host, err := s.apisixServiceURL()
 	assert.Nil(s.t, err, "getting apisix service url")
 	u := url.URL{

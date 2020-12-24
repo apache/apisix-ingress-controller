@@ -15,11 +15,12 @@
 package e2e
 
 import (
-	_ "github.com/api7/ingress-controller/test/e2e/ingress"
-	"github.com/gruntwork-io/terratest/modules/k8s"
-	"github.com/onsi/ginkgo"
 	"os"
 
+	"github.com/gruntwork-io/terratest/modules/k8s"
+	"github.com/onsi/ginkgo"
+
+	_ "github.com/api7/ingress-controller/test/e2e/ingress"
 	"github.com/api7/ingress-controller/test/e2e/scaffold"
 )
 

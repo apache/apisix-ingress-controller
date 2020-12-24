@@ -52,7 +52,7 @@ var _ = ginkgo.Describe("single-route", func() {
 		assert.Nil(ginkgo.GinkgoT(), err, "checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "checking number of upstreams")
-		body := s.NewHTTPClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
+		body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
 		var placeholder ip
 		err = json.Unmarshal([]byte(body), &placeholder)
 		assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling IP")
