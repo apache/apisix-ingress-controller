@@ -17,6 +17,7 @@
 default: help
 
 VERSION ?= 0.0.0
+IMAGE_TAG ?= "latest"
 GITSHA ?= $(shell git rev-parse --short=7 HEAD)
 OSNAME ?= $(shell uname -s | tr A-Z a-z)
 OSARCH ?= $(shell uname -m | tr A-Z a-z)
@@ -36,6 +37,10 @@ build:
 		-o apisix-ingress-controller \
 		-ldflags $(GO_LDFLAGS) \
 		main.go
+
+### build-image:      Build apisix-ingress-controller image
+build-image:
+	docker build -t apisix-ingress-container:$(IMAGE_TAG) .
 
 ### lint:             Do static lint check
 lint:
