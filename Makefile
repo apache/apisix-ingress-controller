@@ -40,7 +40,7 @@ build:
 
 ### build-image:      Build apisix-ingress-controller image
 build-image:
-	docker build -t apisix-ingress-container:$(IMAGE_TAG) .
+	docker build -t apisix-ingress-controller:$(IMAGE_TAG) .
 
 ### lint:             Do static lint check
 lint:
@@ -60,7 +60,7 @@ e2e-test:
 	export APISIX_UPSTREAM_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml && \
 	export APISIX_SERVICE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixService.yaml && \
 	export APISIX_TLS_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml && \
-	cd test/e2e && go test github.com/api7/ingress-controller/test/e2e
+	cd test/e2e && go test -cover -coverprofile=coverage.txt github.com/api7/ingress-controller/test/e2e
 
 ### license-check:    Do Apache License Header check
 license-check:
