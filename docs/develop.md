@@ -37,6 +37,10 @@ Tips: The Kubernetes cluster deployment method is recommended for production and
 
 [Install Apache APISIX in Kubernetes](https://github.com/apache/apisix/tree/master/kubernetes)
 
+### 3. httpbin service
+
+Deploy [httpbin](https://github.com/postmanlabs/httpbin) to your Kubernetes cluster and expose it as a Service.
+
 ## Configuration
 
 ### Configure the `kube config` file locally to facilitate local debugging
@@ -68,7 +72,7 @@ Tips: The program may print some error logs, indicating that the resource cannot
 
 ### Define ApisixRoute
 
-Take the back-end service `httpserver` as an example (you can choose any upstream service for test).
+Take the backend service `httpbin` as an example (you can choose any other upstream services for test).
 
 In fact, in order to reduce the trouble caused by ingress migration, we try to keep the structure of ApisixRoute consistent with the original ingress.
 
@@ -89,11 +93,13 @@ spec:
     http:
       paths:
       - backend:
-          serviceName: httpserver
+          serviceName: httpbin.default.svc.cluster.local
           servicePort: 8080
         path: /hello*
 EOF
 ```
+
+Here we use the FQDN `httpbin.default.svc.cluster.local` as the `serviceName`, and the service port is 8080, change them if your `httpbin` service has different name, namespace or port.
 
 In addition, `ApisixRoute` also continues to support the definition with annotation, you can also define as below.
 
@@ -115,7 +121,7 @@ spec:
     http:
       paths:
       - backend:
-          serviceName: httpserver
+          serviceName: httpbin.default.svc.cluster.local
           servicePort: 8080
         path: /hello*
         plugins:
@@ -165,7 +171,7 @@ kubectl apply -f - <<EOF
 apiVersion: apisix.apache.org/v1
 kind: ApisixUpstream                  # apisix upstream
 metadata:
-  name: httpserver      # default/httpserver
+  name: httpbin      # default/httpbin
 spec:
   ports:
   - port: 8080
