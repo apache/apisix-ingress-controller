@@ -17,9 +17,11 @@
 default: help
 
 VERSION ?= 0.0.0
+IMAGE_TAG ?= "latest"
 GITSHA ?= $(shell git rev-parse --short=7 HEAD)
 OSNAME ?= $(shell uname -s | tr A-Z a-z)
 OSARCH ?= $(shell uname -m | tr A-Z a-z)
+PWD ?= $(shell pwd)
 ifeq ($(OSARCH), x86_64)
 	OSARCH = amd64
 endif
@@ -36,6 +38,10 @@ build:
 		-ldflags $(GO_LDFLAGS) \
 		main.go
 
+### build-image:      Build apisix-ingress-controller image
+build-image:
+	docker build -t apisix-ingress-controller:$(IMAGE_TAG) .
+
 ### lint:             Do static lint check
 lint:
 	golangci-lint run
@@ -47,6 +53,14 @@ gofmt:
 ### unit-test:        Run unit test cases
 unit-test:
 	go test -cover -coverprofile=coverage.txt ./...
+
+### e2e-test:         Run e2e test cases
+e2e-test:
+	export APISIX_ROUTE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixRoute.yaml && \
+	export APISIX_UPSTREAM_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml && \
+	export APISIX_SERVICE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixService.yaml && \
+	export APISIX_TLS_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml && \
+	cd test/e2e && go test -cover -coverprofile=coverage.txt github.com/api7/ingress-controller/test/e2e
 
 ### license-check:    Do Apache License Header check
 license-check:

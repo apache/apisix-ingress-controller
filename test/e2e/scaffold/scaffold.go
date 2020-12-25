@@ -18,6 +18,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"os"
+	"os/user"
+	"path/filepath"
 	"strings"
 	"text/template"
 	"time"
@@ -29,6 +33,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type Options struct {
@@ -53,6 +58,26 @@ type Scaffold struct {
 	EtcdServiceFQDN string
 }
 
+// Getkubeconfig returns the kubeconfig file path.
+// Order:
+// env KUBECONFIG;
+// ~/.kube/config;
+// "" (in case in-cluster configuration will be used).
+func GetKubeconfig() string {
+	kubeconfig := os.Getenv("KUBECONFIG")
+	if kubeconfig == "" {
+		u, err := user.Current()
+		if err != nil {
+			panic(err)
+		}
+		kubeconfig = filepath.Join(u.HomeDir, ".kube", "config")
+		if _, err := os.Stat(kubeconfig); err != nil && !os.IsNotExist(err) {
+			kubeconfig = ""
+		}
+	}
+	return kubeconfig
+}
+
 // NewScaffold creates an e2e test scaffold.
 func NewScaffold(o *Options) *Scaffold {
 	defer ginkgo.GinkgoRecover()
@@ -68,12 +93,13 @@ func NewScaffold(o *Options) *Scaffold {
 	return s
 }
 
+// NewDefaultScaffold creates a scaffold with some default options.
 func NewDefaultScaffold() *Scaffold {
 	opts := &Options{
-		Name:                    "sample",
-		Kubeconfig:              "/Users/alex/.kube/config",
-		APISIXConfigPath:        "/Users/alex/Workstation/tokers/apisix-ingress-controller/test/e2e/testdata/apisix-gw-config.yaml",
-		APISIXDefaultConfigPath: "/Users/alex/Workstation/tokers/apisix-ingress-controller/test/e2e/testdata/apisix-gw-config-default.yaml",
+		Name:                    "default",
+		Kubeconfig:              GetKubeconfig(),
+		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
+		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
 	}
 	return NewScaffold(opts)
 }
@@ -88,12 +114,16 @@ func (s *Scaffold) DefaultHTTPBackend() (string, []int32) {
 	return s.httpbinService.Name, ports
 }
 
-// NewHTTPClient creates the default HTTP client.
-func (s *Scaffold) NewHTTPClient() *httpexpect.Expect {
-	url, err := s.apisixServiceURL()
+// NewAPISIXClient creates the default HTTP client.
+func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
+	host, err := s.apisixServiceURL()
 	assert.Nil(s.t, err, "getting apisix service url")
+	u := url.URL{
+		Scheme: "http",
+		Host:   host,
+	}
 	return httpexpect.WithConfig(httpexpect.Config{
-		BaseURL: url,
+		BaseURL: u.String(),
 		Client: &http.Client{
 			Transport: &http.Transport{},
 		},
@@ -126,18 +156,27 @@ func (s *Scaffold) beforeEach() {
 	s.etcdService, err = s.newEtcd()
 	assert.Nil(s.t, err, "initializing etcd")
 
-	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.etcdService.Name, 3, 2*time.Second)
+	// We don't use k8s.WaitUntilServiceAvailable since it hacks for Minikube.
+	err = s.waitAllEtcdPodsAvailable()
+	assert.Nil(s.t, err, "waiting for etcd ready")
 
 	s.apisixService, err = s.newAPISIX()
 	assert.Nil(s.t, err, "initializing Apache APISIX")
 
-	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.apisixService.Name, 3, 2*time.Second)
+	// We don't use k8s.WaitUntilServiceAvailable since it hacks for Minikube.
+	err = s.waitAllAPISIXPodsAvailable()
+	assert.Nil(s.t, err, "waiting for apisix ready")
 
 	s.httpbinService, err = s.newHTTPBIN()
 	assert.Nil(s.t, err, "initializing httpbin")
 
+	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.httpbinService.Name, 3, 2*time.Second)
+
 	err = s.newIngressAPISIXController()
 	assert.Nil(s.t, err, "initializing ingress apisix controller")
+
+	err = s.waitAllIngressControllerPodsAvailable()
+	assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
 }
 
 func (s *Scaffold) afterEach() {
@@ -158,4 +197,14 @@ func (s *Scaffold) renderConfig(path string) (string, error) {
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+func waitExponentialBackoff(condFunc func() (bool, error)) error {
+	backoff := wait.Backoff{
+		Duration: 100 * time.Millisecond,
+		Factor:   3,
+		Jitter:   0,
+		Steps:    6,
+	}
+	return wait.ExponentialBackoff(backoff, condFunc)
 }

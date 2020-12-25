@@ -10,6 +10,8 @@ require (
 	github.com/onsi/ginkgo v1.14.2
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/stretchr/testify v1.6.1
+	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.19.3
+	k8s.io/apimachinery v0.19.3
 	k8s.io/client-go v0.19.3
 )

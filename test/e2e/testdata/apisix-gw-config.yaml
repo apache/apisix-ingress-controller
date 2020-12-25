@@ -45,9 +45,8 @@ apisix:
 
   port_admin: 9180              # use a separate port
   allow_admin:
-    - 172.17.0.0/16
-    - 10.0.0.0/24
     - 127.0.0.0/24
+    - 0.0.0.0/0
 
   delete_uri_tail_slash: false    # delete the '/' at the end of the URI
   router:

@@ -18,7 +18,9 @@ import (
 	"fmt"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
+	"github.com/onsi/ginkgo"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
@@ -49,16 +51,16 @@ spec:
             value: "yes"
           livenessProbe:
             failureThreshold: 3
-            initialDelaySeconds: 2
-            periodSeconds: 5
+            initialDelaySeconds: 1
+            periodSeconds: 2
             successThreshold: 1
             tcpSocket:
               port: 2379
             timeoutSeconds: 2
           readinessProbe:
             failureThreshold: 3
-            initialDelaySeconds: 2
-            periodSeconds: 5
+            initialDelaySeconds: 1
+            periodSeconds: 2
             successThreshold: 1
             tcpSocket:
               port: 2379
@@ -102,4 +104,32 @@ func (s *Scaffold) newEtcd() (*corev1.Service, error) {
 	}
 	s.EtcdServiceFQDN = fmt.Sprintf("etcd-service-e2e-test.%s.svc.cluster.local", svc.Namespace)
 	return svc, nil
+}
+
+func (s *Scaffold) waitAllEtcdPodsAvailable() error {
+	opts := metav1.ListOptions{
+		LabelSelector: "app=etcd-deployment-e2e-test",
+	}
+	condFunc := func() (bool, error) {
+		items, err := k8s.ListPodsE(s.t, s.kubectlOptions, opts)
+		if err != nil {
+			return false, err
+		}
+		if len(items) == 0 {
+			ginkgo.GinkgoT().Log("no etcd pods created")
+			return false, nil
+		}
+		for _, item := range items {
+			for _, cond := range item.Status.Conditions {
+				if cond.Type != corev1.PodReady {
+					continue
+				}
+				if cond.Status != "True" {
+					return false, nil
+				}
+			}
+		}
+		return true, nil
+	}
+	return waitExponentialBackoff(condFunc)
 }

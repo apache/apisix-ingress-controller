@@ -1,0 +1,38 @@
+name: e2e-test-ci
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+      - test/e2e-sanity-case
+jobs:
+  e2e-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install minikube
+        uses: abstractj/setup-minikube@issue-12
+      - name: Output cluster info
+        run: kubectl cluster-info
+      - name: Add images
+        run: |
+          IMAGE_TAG=dev make build-image
+          minikube cache add apache/apisix:latest -v 7 --alsologtostderr
+          minikube cache add bitnami/etcd:3.4.14-debian-10-r0 -v 7 --alsologtostderr
+          minikube cache add kennethreitz/httpbin -v 7 --alsologtostderr
+          minikube cache add apisix-ingress-controller:dev -v 7 --alsologtostderr
+      - name: Setup Go Env
+        uses: actions/setup-go@v1
+        with:
+          go-version: '1.13'
+      - name: Run e2e test cases
+        working-directory: ./
+        run: |
+          make e2e-test
+      - name: upload coverage profile
+        working-directory: ./test/e2e
+        run: |
+          bash <(curl -s https://codecov.io/bash)
