@@ -18,9 +18,6 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"github.com/gxthrj/seven/apisix"
-	sevenConf "github.com/gxthrj/seven/conf"
-	"github.com/gxthrj/seven/state"
 	CoreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -34,6 +31,9 @@ import (
 
 	"github.com/api7/ingress-controller/pkg/kube"
 	"github.com/api7/ingress-controller/pkg/log"
+	"github.com/api7/ingress-controller/pkg/seven/apisix"
+	sevenConf "github.com/api7/ingress-controller/pkg/seven/conf"
+	"github.com/api7/ingress-controller/pkg/seven/state"
 )
 
 type EndpointController struct {

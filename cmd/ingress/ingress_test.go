@@ -25,11 +25,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gxthrj/seven/conf"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/api7/ingress-controller/pkg/config"
 	"github.com/api7/ingress-controller/pkg/log"
+	"github.com/api7/ingress-controller/pkg/seven/conf"
 	"github.com/api7/ingress-controller/pkg/types"
 )
 

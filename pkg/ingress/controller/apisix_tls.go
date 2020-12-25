@@ -18,14 +18,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/api7/ingress-controller/pkg/ingress/apisix"
-	"github.com/api7/ingress-controller/pkg/log"
 	apisixV1 "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	apisixScheme "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned/scheme"
 	informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions/config/v1"
 	"github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
-	"github.com/gxthrj/seven/state"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -33,6 +30,10 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+
+	"github.com/api7/ingress-controller/pkg/ingress/apisix"
+	"github.com/api7/ingress-controller/pkg/log"
+	"github.com/api7/ingress-controller/pkg/seven/state"
 )
 
 type ApisixTlsController struct {

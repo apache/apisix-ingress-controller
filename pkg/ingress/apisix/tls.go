@@ -15,12 +15,13 @@
 package apisix
 
 import (
-	ingressConf "github.com/api7/ingress-controller/pkg/kube"
 	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	apisix "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"github.com/gxthrj/seven/conf"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	ingressConf "github.com/api7/ingress-controller/pkg/kube"
+	"github.com/api7/ingress-controller/pkg/seven/conf"
 )
 
 const (

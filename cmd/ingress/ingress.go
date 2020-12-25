@@ -24,7 +24,6 @@ import (
 	"time"
 
 	api6Informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
-	"github.com/gxthrj/seven/conf"
 	"github.com/spf13/cobra"
 
 	"github.com/api7/ingress-controller/pkg/api"
@@ -32,6 +31,7 @@ import (
 	"github.com/api7/ingress-controller/pkg/ingress/controller"
 	"github.com/api7/ingress-controller/pkg/kube"
 	"github.com/api7/ingress-controller/pkg/log"
+	"github.com/api7/ingress-controller/pkg/seven/conf"
 )
 
 func dief(template string, args ...interface{}) {
