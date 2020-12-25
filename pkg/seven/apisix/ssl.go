@@ -21,10 +21,10 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 
 	"github.com/api7/ingress-controller/pkg/seven/conf"
 	"github.com/api7/ingress-controller/pkg/seven/utils"
+	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 // ListSsl list ssl from etcd , convert to v1.Upstream

@@ -19,11 +19,11 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 
 	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	"github.com/api7/ingress-controller/pkg/seven/db"
 	"github.com/api7/ingress-controller/pkg/seven/utils"
+	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 const (

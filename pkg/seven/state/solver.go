@@ -15,10 +15,9 @@
 package state
 
 import (
-	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-
 	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	"github.com/api7/ingress-controller/pkg/seven/db"
+	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 var UpstreamQueue chan UpstreamQueueObj

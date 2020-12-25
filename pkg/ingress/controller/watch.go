@@ -19,12 +19,12 @@ import (
 
 	"github.com/api7/ingress-controller/pkg/kube"
 	"github.com/golang/glog"
-	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	sevenConf "github.com/api7/ingress-controller/pkg/seven/conf"
 	"github.com/api7/ingress-controller/pkg/seven/state"
+	apisixv1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
@@ -75,12 +75,12 @@ func (c *controller) process(obj interface{}) {
 					if err == nil {
 						for _, upstream := range upstreams {
 							if *(upstream.Name) == upstreamName {
-								nodes := make([]*apisixType.Node, 0)
+								nodes := make([]*apisixv1.Node, 0)
 								for _, ip := range ips {
 									ipAddress := ip
 									p := int(port.Port)
 									weight := 100
-									node := &apisixType.Node{IP: &ipAddress, Port: &p, Weight: &weight}
+									node := &apisixv1.Node{IP: &ipAddress, Port: &p, Weight: &weight}
 									nodes = append(nodes, node)
 								}
 								upstream.Nodes = nodes
@@ -89,7 +89,7 @@ func (c *controller) process(obj interface{}) {
 								//apisix.UpdateUpstream(upstream)
 								fromKind := WatchFromKind
 								upstream.FromKind = &fromKind
-								upstreams := []*apisixType.Upstream{upstream}
+								upstreams := []*apisixv1.Upstream{upstream}
 								comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
 								if _, err = comb.Solver(); err != nil {
 									glog.Errorf(err.Error())
