@@ -20,11 +20,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-
 	"github.com/api7/ingress-controller/pkg/seven/conf"
 	sevendb "github.com/api7/ingress-controller/pkg/seven/db"
 	"github.com/api7/ingress-controller/pkg/seven/utils"
+	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 // FindCurrentRoute find current route in memDB

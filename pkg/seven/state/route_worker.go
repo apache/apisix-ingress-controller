@@ -14,7 +14,9 @@
 // limitations under the License.
 package state
 
-import "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
+import (
+	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+)
 
 type routeWorker struct {
 	*v1.Route

@@ -16,8 +16,10 @@ package controller
 
 import (
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/golang/glog"
-	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	CoreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -26,14 +28,13 @@ import (
 	CoreListerV1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"strconv"
-	"time"
 
 	"github.com/api7/ingress-controller/pkg/kube"
 	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	sevenConf "github.com/api7/ingress-controller/pkg/seven/conf"
 	"github.com/api7/ingress-controller/pkg/seven/state"
+	apisixv1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 type EndpointController struct {
@@ -150,12 +151,12 @@ func (c *EndpointController) process(ep *CoreV1.Endpoints) {
 					//if err == nil {
 					//	for _, upstream := range upstreams {
 					//		if *(upstream.Name) == upstreamName {
-					//			nodes := make([]*apisixType.Node, 0)
+					//			nodes := make([]*apisixv1.Node, 0)
 					//			for _, ip := range ips {
 					//				ipAddress := ip
 					//				p := int(port.Port)
 					//				weight := 100
-					//				node := &apisixType.Node{IP: &ipAddress, Port: &p, Weight: &weight}
+					//				node := &apisixv1.Node{IP: &ipAddress, Port: &p, Weight: &weight}
 					//				nodes = append(nodes, node)
 					//			}
 					//			upstream.Nodes = nodes
@@ -164,7 +165,7 @@ func (c *EndpointController) process(ep *CoreV1.Endpoints) {
 					//			//apisix.UpdateUpstream(upstream)
 					//			fromKind := WatchFromKind
 					//			upstream.FromKind = &fromKind
-					//			upstreams := []*apisixType.Upstream{upstream}
+					//			upstreams := []*apisixv1.Upstream{upstream}
 					//			comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
 					//			if _, err = comb.Solver(); err != nil {
 					//				glog.Errorf(err.Error())
@@ -183,12 +184,12 @@ func syncWithGroup(group, upstreamName string, ips []string, port CoreV1.Endpoin
 	if err == nil {
 		for _, upstream := range upstreams {
 			if *(upstream.Name) == upstreamName {
-				nodes := make([]*apisixType.Node, 0)
+				nodes := make([]*apisixv1.Node, 0)
 				for _, ip := range ips {
 					ipAddress := ip
 					p := int(port.Port)
 					weight := 100
-					node := &apisixType.Node{IP: &ipAddress, Port: &p, Weight: &weight}
+					node := &apisixv1.Node{IP: &ipAddress, Port: &p, Weight: &weight}
 					nodes = append(nodes, node)
 				}
 				upstream.Nodes = nodes
@@ -197,7 +198,7 @@ func syncWithGroup(group, upstreamName string, ips []string, port CoreV1.Endpoin
 				//apisix.UpdateUpstream(upstream)
 				fromKind := WatchFromKind
 				upstream.FromKind = &fromKind
-				upstreams := []*apisixType.Upstream{upstream}
+				upstreams := []*apisixv1.Upstream{upstream}
 				comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
 				if _, err = comb.Solver(); err != nil {
 					glog.Errorf(err.Error())

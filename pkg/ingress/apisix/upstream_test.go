@@ -19,9 +19,10 @@ import (
 	"testing"
 
 	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
-	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
+
+	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestApisixUpstreamCRD_Convert(t *testing.T) {

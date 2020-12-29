@@ -19,10 +19,11 @@ import (
 	"fmt"
 	"testing"
 
-	a6Type "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+
+	apisix "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestConvert(t *testing.T) {
@@ -46,7 +47,7 @@ spec:
 	cert := "root"
 	key := "123456"
 	group := ""
-	sslExpect := &a6Type.Ssl{
+	sslExpect := &apisix.Ssl{
 		ID:     &id,
 		Snis:   snis,
 		Cert:   &cert,
@@ -89,7 +90,7 @@ spec:
 	cert := "root"
 	key := "123456"
 	group := "127.0.0.1:9080"
-	sslExpect := &a6Type.Ssl{
+	sslExpect := &apisix.Ssl{
 		ID:     &id,
 		Snis:   snis,
 		Cert:   &cert,
