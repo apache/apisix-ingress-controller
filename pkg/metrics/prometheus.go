@@ -93,6 +93,13 @@ func NewPrometheusCollector(podName, podNamespace string) Collector {
 		),
 	}
 
+	// Since we use the DefaultRegisterer, in test cases, the metrics
+	// might be registered duplicately, unregister them before re register.
+	prometheus.Unregister(collector.isLeader)
+	prometheus.Unregister(collector.apisixCodes)
+	prometheus.Unregister(collector.apisixLatency)
+	prometheus.Unregister(collector.apisixRequests)
+
 	prometheus.MustRegister(
 		collector.isLeader,
 		collector.apisixCodes,
