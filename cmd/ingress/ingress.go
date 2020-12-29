@@ -23,6 +23,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/api7/ingress-controller/pkg/metrics"
 	api6Informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
 	"github.com/spf13/cobra"
 
@@ -107,6 +108,18 @@ the apisix cluster and others are created`,
 			if err := kube.InitInformer(cfg); err != nil {
 				dief("failed to initialize kube informers: %s", err)
 			}
+
+			// TODO: logics about metrics should be moved inside ingress controller,
+			// after we  refactoring it.
+			podName := os.Getenv("POD_NAME")
+			podNamespace := os.Getenv("POD_NAMESPACE")
+			if podNamespace == "" {
+				podNamespace = "default"
+			}
+
+			collector := metrics.NewPrometheusCollector(podName, podNamespace)
+			collector.ResetLeader(true)
+
 			kubeClientSet := kube.GetKubeClient()
 			apisixClientset := kube.GetApisixClient()
 			sharedInformerFactory := api6Informers.NewSharedInformerFactory(apisixClientset, 0)
