@@ -30,7 +30,7 @@ type RouteCompare struct {
 }
 
 type Quit struct {
-	Name string
+	Err error
 }
 
 const (

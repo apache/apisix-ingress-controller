@@ -162,16 +162,19 @@ func NewServiceWorkers(services []*v1.Service, rwg *RouteWorkerGroup) ServiceWor
 }
 
 // upstream
-func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup) {
+func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup) error {
 	for _, u := range upstreams {
 		op := Update
 		if currentUpstream, err := apisix.FindCurrentUpstream(*u.Group, *u.Name, *u.FullName); err != nil {
 			glog.Errorf("solver upstream failed, find upstream from etcd failed, upstream: %+v, err: %+v", u, err)
-			return
+			return err
 		} else {
 			paddingUpstream(u, currentUpstream)
 			// diff
-			hasDiff, _ := utils.HasDiff(u, currentUpstream)
+			hasDiff, err := utils.HasDiff(u, currentUpstream)
+			if err != nil {
+				return err
+			}
 			if hasDiff {
 				if *u.ID != strconv.Itoa(0) {
 					op = Update
@@ -189,12 +192,12 @@ func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup) {
 						upstreamDB := &db.UpstreamDB{Upstreams: []*v1.Upstream{u}}
 						if err := upstreamDB.UpdateUpstreams(); err != nil {
 							glog.Errorf("solver upstream failed, update upstream to local db failed, err: %s", err.Error())
-							return
+							return err
 						}
 						// 2.sync apisix
 						if err = apisix.UpdateUpstream(u); err != nil {
 							glog.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
-							return
+							return err
 						}
 					}
 					// if fromKind == WatchFromKind
@@ -202,7 +205,7 @@ func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup) {
 						// 1.update nodes
 						if err = apisix.PatchNodes(u, u.Nodes); err != nil {
 							glog.Errorf("solver upstream failed, patch node info to etcd failed, err: %+v", err)
-							return
+							return err
 						}
 						// 2. sync memDB
 						us := []*v1.Upstream{u}
@@ -213,7 +216,7 @@ func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup) {
 						upstreamDB := &db.UpstreamDB{Upstreams: us}
 						if err := upstreamDB.UpdateUpstreams(); err != nil {
 							glog.Errorf("solver upstream failed, update upstream to local db failed, err: %s", err.Error())
-							return
+							return err
 						}
 					}
 				} else {
@@ -221,7 +224,7 @@ func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup) {
 					// 1.sync apisix and get response
 					if upstreamResponse, err := apisix.AddUpstream(u); err != nil {
 						glog.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
-						return
+						return err
 					} else {
 						tmp := strings.Split(*upstreamResponse.Upstream.Key, "/")
 						*u.ID = tmp[len(tmp)-1]

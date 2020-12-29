@@ -15,9 +15,12 @@
 package state
 
 import (
+	"errors"
 	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	"github.com/api7/ingress-controller/pkg/seven/db"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"sync"
+	"time"
 )
 
 var UpstreamQueue chan UpstreamQueueObj
@@ -46,7 +49,7 @@ func WatchUpstream() {
 }
 
 // Solver
-func (s *ApisixCombination) Solver() (bool, error) {
+func (s *ApisixCombination) Solver() (string, error) {
 	// 1.route workers
 	rwg := NewRouteWorkers(s.Routes)
 	// 2.service workers
@@ -56,13 +59,75 @@ func (s *ApisixCombination) Solver() (bool, error) {
 	// 3.upstream workers
 	uqo := &UpstreamQueueObj{Upstreams: s.Upstreams, ServiceWorkerGroup: swg}
 	uqo.AddQueue()
-	return true, nil
+	// add timeout after 5s
+	return s.Status("", rwg, swg, 5*time.Second)
+
+}
+
+func (s *ApisixCombination) Status(id string, rwg RouteWorkerGroup, swg ServiceWorkerGroup, timeout time.Duration) (string, error) {
+	count := len(s.Routes) + len(s.Services) + len(s.Upstreams)
+	resultChan := make(chan CRDStatus)
+
+	var wg *sync.WaitGroup
+	return WaitWorkerGroup(id, wg, count, resultChan, rwg, swg, timeout)
+}
+
+func WaitWorkerGroup(id string, wg *sync.WaitGroup, count int, result chan CRDStatus, rwg RouteWorkerGroup, swg ServiceWorkerGroup, timeout time.Duration) (string, error) {
+	go func() {
+		wg.Add(count)
+		wg.Wait()
+		result <- CRDStatus{Id: "", Status: "success", Err: nil}
+	}()
+
+	resourceChan := make(chan ResourceStatus, count)
+	for {
+		select {
+		case r := <-resourceChan:
+			Done(wg, r, result)
+		case r := <-result:
+			return id, r.Err
+		case <-time.After(timeout):
+			quit := &Quit{Err: errors.New("timeout")}
+			// clean route workers
+			for _, routeWorkers := range rwg {
+				for _, rw := range routeWorkers {
+					rw.Quit <- *quit
+				}
+			}
+			// clean service workers
+			for _, serviceWorkers := range swg {
+				for _, sw := range serviceWorkers {
+					sw.Quit <- *quit
+				}
+			}
+			return id, errors.New("timeout")
+		}
+	}
+}
+
+func Done(wg *sync.WaitGroup, r ResourceStatus, result chan CRDStatus) {
+	if r.Err != nil {
+		result <- CRDStatus{Id: "", Status: "failed", Err: r.Err}
+	}
+	wg.Done()
 }
 
 // UpstreamQueueObj for upstream queue
 type UpstreamQueueObj struct {
 	Upstreams          []*v1.Upstream
 	ServiceWorkerGroup ServiceWorkerGroup
+}
+
+type CRDStatus struct {
+	Id     string `json:"id"`
+	Status string `json:"status"`
+	Err    error  `json:"err"`
+}
+
+type ResourceStatus struct {
+	Kind string `json:"kind"`
+	Id   string `json:"id"`
+	Err  error  `json:"err"`
 }
 
 // AddQueue make upstreams in order
