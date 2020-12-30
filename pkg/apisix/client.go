@@ -49,7 +49,7 @@ type Client interface {
 // for APISIX's Route resource.
 type Route interface {
 	List(context.Context, string) ([]*v1.Route, error)
-	Create(context.Context, *v1.Route, string) (*v1.Route, error)
+	Create(context.Context, *v1.Route) (*v1.Route, error)
 	Delete(context.Context, *v1.Route) error
 	Update(context.Context, *v1.Route) error
 }

@@ -20,9 +20,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/api7/ingress-controller/pkg/seven/apisix"
+	"github.com/api7/ingress-controller/pkg/seven/conf"
 	"github.com/api7/ingress-controller/pkg/seven/db"
-	"github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 var UpstreamQueue chan UpstreamQueueObj
@@ -135,9 +137,11 @@ func (rc *RouteCompare) Sync() error {
 			request := db.RouteRequest{Name: *old.Name, FullName: fullName}
 
 			if route, err := request.FindByName(); err != nil {
-				// log error
+				log.Errorf("failed to find route %s from memory DB: %s", *old.Name, err)
 			} else {
-				if err = apisix.DeleteRoute(route); err == nil {
+				if err := conf.Client.Route().Delete(context.TODO(), route); err != nil {
+					log.Errorf("failed to delete route %s from APISIX: %s", *route.Name, err)
+				} else {
 					db := db.RouteDB{Routes: []*v1.Route{route}}
 					db.DeleteRoute()
 				}

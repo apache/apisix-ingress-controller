@@ -23,6 +23,7 @@ import (
 
 	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/api7/ingress-controller/pkg/seven/apisix"
+	"github.com/api7/ingress-controller/pkg/seven/conf"
 	"github.com/api7/ingress-controller/pkg/seven/db"
 	"github.com/api7/ingress-controller/pkg/seven/utils"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
@@ -145,27 +146,26 @@ func (r *routeWorker) sync() error {
 			return err
 		}
 		// 2. sync apisix
-		if err := apisix.UpdateRoute(r.Route); err != nil {
+		if err := conf.Client.Route().Update(context.TODO(), r.Route); err != nil {
+			log.Errorf("failed to update route %s: %s, ", *r.Name, err)
 			return err
 		}
 		log.Infof("update route %s, %s", *r.Name, *r.ServiceId)
 	} else {
 		// 1. sync apisix and get id
-		if res, err := apisix.AddRoute(r.Route); err != nil {
-			log.Errorf("add route failed, route: %#v, err: %+v", r.Route, err)
-			return err
-		} else {
-			key := res.Route.Key
-			tmp := strings.Split(*key, "/")
-			*r.ID = tmp[len(tmp)-1]
-		}
-		// 2. sync memDB
-		db := &db.RouteDB{Routes: []*v1.Route{r.Route}}
-		if err := db.Insert(); err != nil {
+		route, err := conf.Client.Route().Create(context.TODO(), r.Route)
+		if err != nil {
+			log.Errorf("failed to create route: %s", err.Error())
 			return err
 		}
-		log.Infof("create route %s, %s", *r.Name, *r.ServiceId)
+		*r.ID = *route.ID
 	}
+	// 2. sync memDB
+	db := &db.RouteDB{Routes: []*v1.Route{r.Route}}
+	if err := db.Insert(); err != nil {
+		return err
+	}
+	log.Infof("create route %s, %s", *r.Name, *r.ServiceId)
 	return nil
 }
 

@@ -61,9 +61,19 @@ func (fws *fakeWriteSyncer) bytes() (p []byte) {
 
 func TestSignalHandler(t *testing.T) {
 	cmd := NewIngressCommand()
+	cmd.SetArgs([]string{
+		"--log-level", "debug",
+		"--log-output", "./test.log",
+		"--http-listen", "127.0.0.1:16780",
+		"--enable-profiling",
+		"--kubeconfig", "/foo/bar/baz",
+		"--resync-interval", "24h",
+		"--apisix-base-url", "http://apisixgw.default.cluster.local/apisix",
+		"--apisix-admin-key", "0x123",
+	})
 	waitCh := make(chan struct{})
 	go func() {
-		cmd.Run(cmd, nil)
+		cmd.Execute()
 		close(waitCh)
 	}()
 

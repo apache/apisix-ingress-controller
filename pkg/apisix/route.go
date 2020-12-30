@@ -98,7 +98,7 @@ func (r *routeClient) List(ctx context.Context, group string) ([]*v1.Route, erro
 	return items, nil
 }
 
-func (r *routeClient) Create(ctx context.Context, obj *v1.Route, group string) (*v1.Route, error) {
+func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
 	data, err := json.Marshal(routeReqBody{
 		Desc:      obj.Name,
 		URI:       obj.Path,
@@ -131,6 +131,11 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route, group string) (
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&routeResp); err != nil {
 		return nil, err
+	}
+
+	var group string
+	if obj.Group != nil {
+		group = *obj.Group
 	}
 
 	return routeResp.Item.route(group)

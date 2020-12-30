@@ -185,7 +185,7 @@ func TestRouteClient(t *testing.T) {
 		Name:       &name,
 		ServiceId:  &id,
 		UpstreamId: &id,
-	}, "")
+	})
 	assert.Nil(t, err)
 	assert.Equal(t, *obj.ID, "1")
 
@@ -195,7 +195,7 @@ func TestRouteClient(t *testing.T) {
 		Name:       &name,
 		ServiceId:  &id,
 		UpstreamId: &id,
-	}, "")
+	})
 	assert.Nil(t, err)
 	assert.Equal(t, *obj.ID, "2")
 
