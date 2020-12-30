@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
+	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 // listRepsonse is the unified LIST response mapping of APISIX.

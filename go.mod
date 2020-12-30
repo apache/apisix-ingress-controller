@@ -22,6 +22,7 @@ require (
 	github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 // indirect
 	github.com/yudai/pp v2.0.1+incompatible // indirect
 	go.uber.org/zap v1.13.0
+	golang.org/x/net v0.0.0-20201224014010-6772e930b67b
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.0.0-20190819141258-3544db3b9e44

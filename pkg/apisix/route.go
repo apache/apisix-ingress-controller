@@ -21,12 +21,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"path"
 
-	v1 "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"go.uber.org/zap"
 
 	"github.com/api7/ingress-controller/pkg/log"
+	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 type routeReqBody struct {
@@ -49,7 +48,7 @@ type routeClient struct {
 
 func newRouteClient(stub *stub) Route {
 	return &routeClient{
-		url:  path.Join(stub.baseURL, "/routes"),
+		url:  stub.baseURL + "/routes",
 		stub: stub,
 	}
 }
@@ -105,7 +104,8 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route, group string) (
 		URI:       obj.Path,
 		Host:      obj.Host,
 		ServiceId: obj.ServiceId,
-		Plugins:   obj.Plugins,
+
+		Plugins: obj.Plugins,
 	})
 	if err != nil {
 		return nil, err
@@ -138,7 +138,7 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route, group string) (
 
 func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 	log.Infof("delete route, id:%s", *obj.ID)
-	url := path.Join(r.url, *obj.ID)
+	url := r.url + "/" + *obj.ID
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
 	if err != nil {
 		return err
@@ -167,7 +167,7 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) error {
 	if err != nil {
 		return err
 	}
-	url := path.Join(r.url, *obj.ID)
+	url := r.url + "/" + *obj.ID
 	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, url, bytes.NewReader(body))
 	if err != nil {
 		return err

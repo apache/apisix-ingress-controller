@@ -16,15 +16,17 @@ package apisix
 
 import (
 	"context"
+	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
-	"github.com/api7/ingress-controller/pkg/log"
 	"go.uber.org/zap"
 
-	v1 "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
+	"github.com/api7/ingress-controller/pkg/log"
+	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
@@ -75,13 +77,15 @@ func (s *stub) do(req *http.Request) (*http.Response, error) {
 }
 
 // NewClient creates an APISIX client to perform resources change pushing.
-func NewClient(o *Options) Client {
+func NewClient(o *Options) (Client, error) {
 	if o.BaseURL == "" {
-		o.BaseURL = "/apisix/admin"
+		return nil, errors.New("empty base_url")
 	}
 	if o.Timeout == time.Duration(0) {
 		o.Timeout = _defaultTimeout
 	}
+	o.BaseURL = strings.TrimSuffix(o.BaseURL, "/")
+
 	stub := &stub{
 		baseURL:  o.BaseURL,
 		adminKey: o.AdminKey,
@@ -97,7 +101,7 @@ func NewClient(o *Options) Client {
 		stub: stub,
 	}
 	cli.route = newRouteClient(stub)
-	return cli
+	return cli, nil
 }
 
 // Route implements Client interface.
