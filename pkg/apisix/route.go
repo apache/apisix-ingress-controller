@@ -152,6 +152,7 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
 		return fmt.Errorf("unexpected status code %d", resp.StatusCode)
 	}
+	return nil
 }
 
 func (r *routeClient) Update(ctx context.Context, obj *v1.Route) error {
