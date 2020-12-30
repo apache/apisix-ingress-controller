@@ -30,60 +30,54 @@ func init() {
 	UpstreamQueue = make(chan UpstreamQueueObj, 500)
 	ServiceQueue = make(chan ServiceQueueObj, 500)
 	go WatchUpstream()
-	go WatchService()
+	//go WatchService()
 }
 
-func WatchService() {
-	for {
-		sqo := <-ServiceQueue
-		// solver service
-		SolverService(sqo.Services, sqo.RouteWorkerGroup)
-	}
-}
+//func WatchService() {
+//	for {
+//		sqo := <-ServiceQueue
+// solver service
+//SolverService(sqo.Services, sqo.RouteWorkerGroup)
+//}
+//}
 
 func WatchUpstream() {
 	for {
 		uqo := <-UpstreamQueue
-		SolverUpstream(uqo.Upstreams, uqo.ServiceWorkerGroup)
+		SolverUpstream(uqo.Upstreams, uqo.ServiceWorkerGroup, uqo.Wg, uqo.ErrorChan)
 	}
 }
 
 // Solver
 func (s *ApisixCombination) Solver() (string, error) {
+	var wg *sync.WaitGroup
+	resultChan := make(chan CRDStatus)
 	// 1.route workers
-	rwg := NewRouteWorkers(s.Routes)
+	rwg := NewRouteWorkers(s.Routes, wg, resultChan)
 	// 2.service workers
-	swg := NewServiceWorkers(s.Services, &rwg)
+	swg := NewServiceWorkers(s.Services, &rwg, wg, resultChan)
 	//sqo := &ServiceQueueObj{Services: s.Services, RouteWorkerGroup: rwg}
 	//sqo.AddQueue()
 	// 3.upstream workers
-	uqo := &UpstreamQueueObj{Upstreams: s.Upstreams, ServiceWorkerGroup: swg}
+	uqo := &UpstreamQueueObj{Upstreams: s.Upstreams, ServiceWorkerGroup: swg, Wg: wg, ErrorChan: resultChan}
 	uqo.AddQueue()
+	// add before wg.Wait()
+	wg.Add(len(uqo.Upstreams))
 	// add timeout after 5s
-	return s.Status("", rwg, swg, 5*time.Second)
-
+	return s.Status("", rwg, swg, 5*time.Second, wg, resultChan)
 }
 
-func (s *ApisixCombination) Status(id string, rwg RouteWorkerGroup, swg ServiceWorkerGroup, timeout time.Duration) (string, error) {
-	count := len(s.Routes) + len(s.Services) + len(s.Upstreams)
-	resultChan := make(chan CRDStatus)
-
-	var wg *sync.WaitGroup
-	return WaitWorkerGroup(id, wg, count, resultChan, rwg, swg, timeout)
-}
-
-func WaitWorkerGroup(id string, wg *sync.WaitGroup, count int, result chan CRDStatus, rwg RouteWorkerGroup, swg ServiceWorkerGroup, timeout time.Duration) (string, error) {
+func (s *ApisixCombination) Status(id string, rwg RouteWorkerGroup, swg ServiceWorkerGroup, timeout time.Duration, wg *sync.WaitGroup, resultChan chan CRDStatus) (string, error) {
 	go func() {
-		wg.Add(count)
 		wg.Wait()
-		result <- CRDStatus{Id: "", Status: "success", Err: nil}
+		resultChan <- CRDStatus{Id: id, Status: "success", Err: nil}
 	}()
+	return WaitWorkerGroup(id, wg, resultChan, rwg, swg, timeout)
+}
 
-	resourceChan := make(chan ResourceStatus, count)
+func WaitWorkerGroup(id string, wg *sync.WaitGroup, result chan CRDStatus, rwg RouteWorkerGroup, swg ServiceWorkerGroup, timeout time.Duration) (string, error) {
 	for {
 		select {
-		case r := <-resourceChan:
-			Done(wg, r, result)
 		case r := <-result:
 			return id, r.Err
 		case <-time.After(timeout):
@@ -105,17 +99,12 @@ func WaitWorkerGroup(id string, wg *sync.WaitGroup, count int, result chan CRDSt
 	}
 }
 
-func Done(wg *sync.WaitGroup, r ResourceStatus, result chan CRDStatus) {
-	if r.Err != nil {
-		result <- CRDStatus{Id: "", Status: "failed", Err: r.Err}
-	}
-	wg.Done()
-}
-
 // UpstreamQueueObj for upstream queue
 type UpstreamQueueObj struct {
 	Upstreams          []*v1.Upstream
 	ServiceWorkerGroup ServiceWorkerGroup
+	Wg                 *sync.WaitGroup
+	ErrorChan          chan CRDStatus
 }
 
 type CRDStatus struct {

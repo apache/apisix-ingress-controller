@@ -16,12 +16,15 @@ package state
 
 import (
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"sync"
 )
 
 type routeWorker struct {
 	*v1.Route
-	Event chan Event
-	Quit  chan Quit
+	Event     chan Event
+	Quit      chan Quit
+	Wg        *sync.WaitGroup
+	ErrorChan chan CRDStatus
 }
 
 // RouteWorkerGroup for broadcast from service to route
@@ -29,8 +32,9 @@ type RouteWorkerGroup map[string][]*routeWorker
 
 // start start watch event
 func (w *routeWorker) start() {
+	defer w.Wg.Done()
 	w.Event = make(chan Event)
-	go func() {
+	func() {
 		for {
 			select {
 			case event := <-w.Event:
