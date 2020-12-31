@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	"github.com/api7/ingress-controller/pkg/seven/conf"
 	"github.com/api7/ingress-controller/pkg/seven/db"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
@@ -154,14 +153,12 @@ func (rc *RouteCompare) Sync() error {
 func SyncSsl(ssl *v1.Ssl, method string) error {
 	switch method {
 	case Create:
-		_, err := apisix.AddOrUpdateSsl(ssl)
+		_, err := conf.Client.SSL().Create(context.TODO(), ssl)
 		return err
 	case Update:
-		_, err := apisix.AddOrUpdateSsl(ssl)
-		return err
+		return conf.Client.SSL().Update(context.TODO(), ssl)
 	case Delete:
-		err := apisix.DeleteSsl(ssl)
-		return err
+		return conf.Client.SSL().Delete(context.TODO(), ssl)
 	}
 	return nil
 }

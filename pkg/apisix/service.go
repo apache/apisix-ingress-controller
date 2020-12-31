@@ -43,10 +43,10 @@ func newServiceClient(stub *stub) Service {
 	}
 }
 
-func (r *serviceClient) List(ctx context.Context, group string) ([]*v1.Service, error) {
-	log.Infow("try to list services in APISIX", zap.String("url", r.url))
+func (s *serviceClient) List(ctx context.Context, group string) ([]*v1.Service, error) {
+	log.Infow("try to list services in APISIX", zap.String("url", s.url))
 
-	upsItems, err := r.stub.listResource(ctx, r.url)
+	upsItems, err := s.stub.listResource(ctx, s.url)
 	if err != nil {
 		log.Errorf("failed to list upstreams: %s", err)
 		return nil, err
@@ -57,7 +57,7 @@ func (r *serviceClient) List(ctx context.Context, group string) ([]*v1.Service, 
 		svc, err := item.service(group)
 		if err != nil {
 			log.Errorw("failed to convert service item",
-				zap.String("url", r.url),
+				zap.String("url", s.url),
 				zap.String("service_key", item.Key),
 				zap.Error(err),
 			)
@@ -69,7 +69,7 @@ func (r *serviceClient) List(ctx context.Context, group string) ([]*v1.Service, 
 	return items, nil
 }
 
-func (r *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Service, error) {
+func (s *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Service, error) {
 	log.Infow("try to create service", zap.String("full_name", *obj.FullName))
 
 	body, err := json.Marshal(serviceItem{
@@ -81,7 +81,7 @@ func (r *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Servic
 		return nil, err
 	}
 
-	resp, err := r.stub.createResource(ctx, r.url, bytes.NewReader(body))
+	resp, err := s.stub.createResource(ctx, s.url, bytes.NewReader(body))
 	if err != nil {
 		log.Errorf("failed to create service: %s", err)
 		return nil, err
@@ -93,13 +93,13 @@ func (r *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Servic
 	return resp.Item.service(group)
 }
 
-func (r *serviceClient) Delete(ctx context.Context, obj *v1.Service) error {
+func (s *serviceClient) Delete(ctx context.Context, obj *v1.Service) error {
 	log.Infof("delete service, id:%s", *obj.ID)
-	url := r.url + "/" + *obj.ID
-	return r.stub.deleteResource(ctx, url)
+	url := s.url + "/" + *obj.ID
+	return s.stub.deleteResource(ctx, url)
 }
 
-func (r *serviceClient) Update(ctx context.Context, obj *v1.Service) error {
+func (s *serviceClient) Update(ctx context.Context, obj *v1.Service) error {
 	log.Infof("update service, id:%s", *obj.ID)
 
 	body, err := json.Marshal(serviceItem{
@@ -111,6 +111,6 @@ func (r *serviceClient) Update(ctx context.Context, obj *v1.Service) error {
 		return err
 	}
 
-	url := r.url + "/" + *obj.ID
-	return r.stub.updateResource(ctx, url, bytes.NewReader(body))
+	url := s.url + "/" + *obj.ID
+	return s.stub.updateResource(ctx, url, bytes.NewReader(body))
 }

@@ -40,6 +40,7 @@ type Client interface {
 	Route() Route
 	Upstream() Upstream
 	Service() Service
+	SSL() SSL
 }
 
 // Route is the specific client interface to take over the create, update,
@@ -49,6 +50,15 @@ type Route interface {
 	Create(context.Context, *v1.Route) (*v1.Route, error)
 	Delete(context.Context, *v1.Route) error
 	Update(context.Context, *v1.Route) error
+}
+
+// SSL is the specific client interface to take over the create, update,
+// list and delete for APISIX's SSL resource.
+type SSL interface {
+	List(context.Context, string) ([]*v1.Ssl, error)
+	Create(context.Context, *v1.Ssl) (*v1.Ssl, error)
+	Delete(context.Context, *v1.Ssl) error
+	Update(context.Context, *v1.Ssl) error
 }
 
 // Upstream is the specific client interface to take over the create, update,
@@ -74,6 +84,7 @@ type client struct {
 	route    Route
 	upstream Upstream
 	service  Service
+	ssl      SSL
 }
 
 // NewClient creates an APISIX client to perform resources change pushing.
@@ -101,6 +112,8 @@ func NewClient(o *Options) (Client, error) {
 		stub:     stub,
 		route:    newRouteClient(stub),
 		upstream: newUpstreamClient(stub),
+		service:  newServiceClient(stub),
+		ssl:      newSSLClient(stub),
 	}
 	return cli, nil
 }
@@ -118,4 +131,9 @@ func (c *client) Upstream() Upstream {
 // Service implements Client.Service method.
 func (c *client) Service() Service {
 	return c.service
+}
+
+// SSL implements Client.SSL method.
+func (c *client) SSL() SSL {
+	return c.ssl
 }

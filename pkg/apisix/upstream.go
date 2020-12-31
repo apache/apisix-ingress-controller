@@ -53,10 +53,10 @@ func newUpstreamClient(stub *stub) Upstream {
 	}
 }
 
-func (r *upstreamClient) List(ctx context.Context, group string) ([]*v1.Upstream, error) {
-	log.Infow("try to list upstreams in APISIX", zap.String("url", r.url))
+func (u *upstreamClient) List(ctx context.Context, group string) ([]*v1.Upstream, error) {
+	log.Infow("try to list upstreams in APISIX", zap.String("url", u.url))
 
-	upsItems, err := r.stub.listResource(ctx, r.url)
+	upsItems, err := u.stub.listResource(ctx, u.url)
 	if err != nil {
 		log.Errorf("failed to list upstreams: %s", err)
 		return nil, err
@@ -67,7 +67,7 @@ func (r *upstreamClient) List(ctx context.Context, group string) ([]*v1.Upstream
 		ups, err := item.upstream(group)
 		if err != nil {
 			log.Errorw("failed to convert upstream item",
-				zap.String("url", r.url),
+				zap.String("url", u.url),
 				zap.String("upstream_key", item.Key),
 				zap.Error(err),
 			)
@@ -79,7 +79,7 @@ func (r *upstreamClient) List(ctx context.Context, group string) ([]*v1.Upstream
 	return items, nil
 }
 
-func (r *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upstream, error) {
+func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upstream, error) {
 	log.Infow("try to create upstream",
 		zap.String("full_name", *obj.FullName),
 	)
@@ -102,7 +102,7 @@ func (r *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		return nil, err
 	}
 
-	resp, err := r.stub.createResource(ctx, r.url, bytes.NewReader(body))
+	resp, err := u.stub.createResource(ctx, u.url, bytes.NewReader(body))
 	if err != nil {
 		log.Errorf("failed to create upstream: %s", err)
 		return nil, err
@@ -114,13 +114,13 @@ func (r *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	return resp.Item.upstream(group)
 }
 
-func (r *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
+func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 	log.Infof("delete upstream, id:%s", *obj.ID)
-	url := r.url + "/" + *obj.ID
-	return r.stub.deleteResource(ctx, url)
+	url := u.url + "/" + *obj.ID
+	return u.stub.deleteResource(ctx, url)
 }
 
-func (r *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) error {
+func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) error {
 	log.Infof("update upstream, id:%s", *obj.ID)
 
 	// TODO Just pass the node array.
@@ -141,6 +141,6 @@ func (r *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) error {
 		return err
 	}
 
-	url := r.url + "/" + *obj.ID
-	return r.stub.updateResource(ctx, url, bytes.NewReader(body))
+	url := u.url + "/" + *obj.ID
+	return u.stub.updateResource(ctx, url, bytes.NewReader(body))
 }

@@ -182,6 +182,20 @@ func (i *item) service(group string) (*v1.Service, error) {
 	}, nil
 }
 
+// ssl decodes item.Value and converts it to v1.Ssl.
+func (i *item) ssl(group string) (*v1.Ssl, error) {
+	var ssl v1.Ssl
+	if err := json.Unmarshal(i.Value, &ssl); err != nil {
+		return nil, err
+	}
+
+	list := strings.Split(i.Key, "/")
+	id := list[len(list)-1]
+	ssl.ID = &id
+	ssl.Group = &group
+	return &ssl, nil
+}
+
 func genFullName(name *string, group string) string {
 	fullName := "unknown"
 	if name != nil {
