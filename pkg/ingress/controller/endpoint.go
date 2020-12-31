@@ -15,6 +15,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -31,7 +32,6 @@ import (
 
 	"github.com/api7/ingress-controller/pkg/kube"
 	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	sevenConf "github.com/api7/ingress-controller/pkg/seven/conf"
 	"github.com/api7/ingress-controller/pkg/seven/state"
 	apisixv1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
@@ -180,7 +180,7 @@ func (c *EndpointController) process(ep *CoreV1.Endpoints) {
 }
 
 func syncWithGroup(group, upstreamName string, ips []string, port CoreV1.EndpointPort) {
-	upstreams, err := apisix.ListUpstream(group)
+	upstreams, err := sevenConf.Client.Upstream().List(context.TODO(), group)
 	if err == nil {
 		for _, upstream := range upstreams {
 			if *(upstream.Name) == upstreamName {

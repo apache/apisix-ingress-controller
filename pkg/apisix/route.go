@@ -51,7 +51,7 @@ func (r *routeClient) List(ctx context.Context, group string) ([]*v1.Route, erro
 
 	routeItems, err := r.stub.listResource(ctx, r.url)
 	if err != nil {
-		log.Errorf("failed to listResource routes: %s", err)
+		log.Errorf("failed to list routes: %s", err)
 		return nil, err
 	}
 

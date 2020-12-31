@@ -42,7 +42,7 @@ type Client interface {
 }
 
 // Route is the specific client interface to take over the create, update,
-// listResource and delete for APISIX's Route resource.
+// list and delete for APISIX's Route resource.
 type Route interface {
 	List(context.Context, string) ([]*v1.Route, error)
 	Create(context.Context, *v1.Route) (*v1.Route, error)
@@ -51,7 +51,7 @@ type Route interface {
 }
 
 // Upstream is the specific client interface to take over the create, update,
-// listResource and delete for APISIX's Upstream resource.
+// list and delete for APISIX's Upstream resource.
 type Upstream interface {
 	List(context.Context, string) ([]*v1.Upstream, error)
 	Create(context.Context, *v1.Upstream) (*v1.Upstream, error)

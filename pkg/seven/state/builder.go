@@ -18,8 +18,9 @@ import (
 	"context"
 	"errors"
 	"strconv"
-	"strings"
 	"sync"
+
+	"github.com/golang/glog"
 
 	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/api7/ingress-controller/pkg/seven/apisix"
@@ -230,10 +231,10 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 						errNotify = err
 						return
 					}
+
 					// 2.sync apisix
-					if err = apisix.UpdateUpstream(u); err != nil {
-						log.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
-						errNotify = err
+					if err = conf.Client.Upstream().Update(context.TODO(), u); err != nil {
+						glog.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
 						return
 					}
 				}
@@ -261,14 +262,13 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 			} else {
 				op = Create
 				// 1.sync apisix and get response
-				if upstreamResponse, err := apisix.AddUpstream(u); err != nil {
-					log.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
-					errNotify = err
+				ups, err := conf.Client.Upstream().Create(context.TODO(), u)
+				if err != nil {
+					log.Errorf("failed to create upstream: %s", err)
 					return
-				} else {
-					tmp := strings.Split(*upstreamResponse.Upstream.Key, "/")
-					*u.ID = tmp[len(tmp)-1]
 				}
+
+				*u.ID = *ups.ID
 				// 2.sync memDB
 				//apisix.InsertUpstreams([]*v1.Upstream{u})
 				upstreamDB := &db.UpstreamDB{Upstreams: []*v1.Upstream{u}}

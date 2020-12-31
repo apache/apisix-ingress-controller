@@ -58,7 +58,7 @@ func (r *upstreamClient) List(ctx context.Context, group string) ([]*v1.Upstream
 
 	upsItems, err := r.stub.listResource(ctx, r.url)
 	if err != nil {
-		log.Errorf("failed to listResource upstreams: %s", err)
+		log.Errorf("failed to list upstreams: %s", err)
 		return nil, err
 	}
 
