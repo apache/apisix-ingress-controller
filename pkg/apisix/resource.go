@@ -154,6 +154,34 @@ func (i *item) upstream(group string) (*v1.Upstream, error) {
 	}, nil
 }
 
+// service decodes item.Value and converts it to v1.Service.
+func (i *item) service(group string) (*v1.Service, error) {
+	var svc serviceItem
+	if err := json.Unmarshal(i.Value, &svc); err != nil {
+		return nil, err
+	}
+
+	list := strings.Split(i.Key, "/")
+	id := list[len(list)-1]
+	var plugins v1.Plugins
+	if svc.Plugins != nil {
+		plugins := make(v1.Plugins, len(*svc.Plugins))
+		for k, v := range *svc.Plugins {
+			plugins[k] = v
+		}
+	}
+	fullName := genFullName(svc.Desc, group)
+
+	return &v1.Service{
+		ID:         &id,
+		FullName:   &fullName,
+		Group:      &group,
+		Name:       svc.Desc,
+		UpstreamId: svc.UpstreamId,
+		Plugins:    &plugins,
+	}, nil
+}
+
 func genFullName(name *string, group string) string {
 	fullName := "unknown"
 	if name != nil {

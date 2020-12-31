@@ -39,6 +39,7 @@ type Options struct {
 type Client interface {
 	Route() Route
 	Upstream() Upstream
+	Service() Service
 }
 
 // Route is the specific client interface to take over the create, update,
@@ -59,10 +60,20 @@ type Upstream interface {
 	Update(context.Context, *v1.Upstream) error
 }
 
+// Service is the specific client interface to take over the create, update,
+// list and delete for APISIX's Service resource.
+type Service interface {
+	List(context.Context, string) ([]*v1.Service, error)
+	Create(context.Context, *v1.Service) (*v1.Service, error)
+	Delete(context.Context, *v1.Service) error
+	Update(context.Context, *v1.Service) error
+}
+
 type client struct {
 	stub     *stub
 	route    Route
 	upstream Upstream
+	service  Service
 }
 
 // NewClient creates an APISIX client to perform resources change pushing.
@@ -94,12 +105,17 @@ func NewClient(o *Options) (Client, error) {
 	return cli, nil
 }
 
-// Route implements Client interface.
+// Route implements Client.Route method.
 func (c *client) Route() Route {
 	return c.route
 }
 
-// Upstream implements Client interface.
+// Upstream implements Client.Upstream method.
 func (c *client) Upstream() Upstream {
 	return c.upstream
+}
+
+// Service implements Client.Service method.
+func (c *client) Service() Service {
+	return c.service
 }
