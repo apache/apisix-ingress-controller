@@ -18,15 +18,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
+	"strconv"
 	"strings"
 
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
-// listRepsonse is the unified LIST response mapping of APISIX.
+// listResponse is the unified LIST response mapping of APISIX.
 type listResponse struct {
 	Count string `json:"count"`
 	Node  node   `json:"node"`
+}
+
+type createResponse struct {
+	Action string `json:"action"`
+	Item   item   `json:"node"`
 }
 
 type node struct {
@@ -70,7 +77,7 @@ type routeItem struct {
 	Plugins    map[string]interface{} `json:"plugins"`
 }
 
-// route decodes item.value and converts it to v1.Route.
+// route decodes item.Value and converts it to v1.Route.
 func (i *item) route(group string) (*v1.Route, error) {
 	list := strings.Split(i.Key, "/")
 	if len(list) < 1 {
@@ -82,14 +89,7 @@ func (i *item) route(group string) (*v1.Route, error) {
 		return nil, err
 	}
 
-	name := route.Desc
-	fullName := "unknown"
-	if name != nil {
-		fullName = *name
-	}
-	if group != "" {
-		fullName = group + "_" + fullName
-	}
+	fullName := genFullName(route.Desc, group)
 
 	return &v1.Route{
 		ID:         &list[len(list)-1],
@@ -103,4 +103,64 @@ func (i *item) route(group string) (*v1.Route, error) {
 		ServiceId:  route.ServiceId,
 		Plugins:    (*v1.Plugins)(&route.Plugins),
 	}, nil
+}
+
+// upstream decodes item.Value and converts it to v1.Upstream.
+func (i *item) upstream(group string) (*v1.Upstream, error) {
+	list := strings.Split(i.Key, "/")
+	if len(list) < 1 {
+		return nil, fmt.Errorf("bad upstream config key: %s", i.Key)
+	}
+
+	var ups upstreamItem
+	if err := json.Unmarshal(i.Value, &ups); err != nil {
+		return nil, err
+	}
+
+	id := list[len(list)-1]
+	name := ups.Desc
+	LBType := ups.LBType
+	key := i.Key
+
+	var nodes []*v1.Node
+	for ep, w := range ups.Nodes {
+		ip, p, err := net.SplitHostPort(ep)
+		if err != nil {
+			return nil, fmt.Errorf("bad endpoint %s", ep)
+		}
+		port, err := strconv.Atoi(p)
+		if err != nil || port < 1 || port > 65535 {
+			return nil, fmt.Errorf("bad endpoint %s", ep)
+		}
+
+		weight := int(w)
+		nodes = append(nodes, &v1.Node{
+			IP:     &ip,
+			Port:   &port,
+			Weight: &weight,
+		})
+	}
+
+	fullName := genFullName(ups.Desc, group)
+
+	return &v1.Upstream{
+		ID:       &id,
+		FullName: &fullName,
+		Group:    &group,
+		Name:     name,
+		Type:     LBType,
+		Key:      &key,
+		Nodes:    nodes,
+	}, nil
+}
+
+func genFullName(name *string, group string) string {
+	fullName := "unknown"
+	if name != nil {
+		fullName = *name
+	}
+	if group != "" {
+		fullName = group + "_" + fullName
+	}
+	return fullName
 }

@@ -26,62 +26,42 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/net/nettest"
+	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 
 	"github.com/stretchr/testify/assert"
 
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"golang.org/x/net/nettest"
 )
 
-type fakeAPISIXRouteSrv struct {
-	id    int
-	route map[string]json.RawMessage
+type fakeAPISIXUpstreamSrv struct {
+	id       int
+	upstream map[string]json.RawMessage
 }
 
-type fakeListResp struct {
-	Count string   `json:"count"`
-	Node  fakeNode `json:"node"`
-}
-
-type fakeCreateResp struct {
-	Action string   `json:"action"`
-	Node   fakeItem `json:"node"`
-}
-
-type fakeNode struct {
-	Key   string     `json:"key"`
-	Items []fakeItem `json:"nodes"`
-}
-
-type fakeItem struct {
-	Key   string          `json:"key"`
-	Value json.RawMessage `json:"value"`
-}
-
-func (srv *fakeAPISIXRouteSrv) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (srv *fakeAPISIXUpstreamSrv) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	if !strings.HasPrefix(r.URL.Path, "/apisix/admin/routes") {
+	if !strings.HasPrefix(r.URL.Path, "/apisix/admin/upstreams") {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	if r.Method == http.MethodGet {
 		resp := fakeListResp{
-			Count: strconv.Itoa(len(srv.route)),
+			Count: strconv.Itoa(len(srv.upstream)),
 			Node: fakeNode{
-				Key: "/apisix/routes",
+				Key: "/apisix/upstreams",
 			},
 		}
 		var keys []string
-		for key := range srv.route {
+		for key := range srv.upstream {
 			keys = append(keys, key)
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
 			resp.Node.Items = append(resp.Node.Items, fakeItem{
 				Key:   key,
-				Value: srv.route[key],
+				Value: srv.upstream[key],
 			})
 		}
 		w.WriteHeader(http.StatusOK)
@@ -91,11 +71,11 @@ func (srv *fakeAPISIXRouteSrv) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	if r.Method == http.MethodDelete {
-		id := strings.TrimPrefix(r.URL.Path, "/apisix/admin/routes/")
-		id = "/apisix/routes/" + id
+		id := strings.TrimPrefix(r.URL.Path, "/apisix/admin/upstreams/")
+		id = "/apisix/upstreams/" + id
 		code := http.StatusNotFound
-		if _, ok := srv.route[id]; ok {
-			delete(srv.route, id)
+		if _, ok := srv.upstream[id]; ok {
+			delete(srv.upstream, id)
 			code = http.StatusOK
 		}
 		w.WriteHeader(code)
@@ -103,9 +83,9 @@ func (srv *fakeAPISIXRouteSrv) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 	if r.Method == http.MethodPost {
 		srv.id++
-		key := fmt.Sprintf("/apisix/routes/%d", srv.id)
+		key := fmt.Sprintf("/apisix/upstreams/%d", srv.id)
 		data, _ := ioutil.ReadAll(r.Body)
-		srv.route[key] = data
+		srv.upstream[key] = data
 		w.WriteHeader(http.StatusCreated)
 		resp := fakeCreateResp{
 			Action: "create",
@@ -120,29 +100,28 @@ func (srv *fakeAPISIXRouteSrv) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	if r.Method == http.MethodPatch {
-		id := strings.TrimPrefix(r.URL.Path, "/apisix/admin/routes/")
-		id = "/apisix/routes/" + id
-		if _, ok := srv.route[id]; !ok {
+		id := strings.TrimPrefix(r.URL.Path, "/apisix/admin/upstreams/")
+		id = "/apisix/upstreams/" + id
+		if _, ok := srv.upstream[id]; !ok {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
 		data, _ := ioutil.ReadAll(r.Body)
-		srv.route[id] = data
+		srv.upstream[id] = data
 
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 }
 
-func runFakeRouteSrv(t *testing.T) *http.Server {
-	srv := &fakeAPISIXRouteSrv{
-		id:    0,
-		route: make(map[string]json.RawMessage),
+func runFakeUpstreamSrv(t *testing.T) *http.Server {
+	srv := &fakeAPISIXUpstreamSrv{
+		id:       0,
+		upstream: make(map[string]json.RawMessage),
 	}
 
 	ln, _ := nettest.NewLocalListener("tcp")
-
 	httpSrv := &http.Server{
 		Addr:    ln.Addr().String(),
 		Handler: srv,
@@ -157,8 +136,8 @@ func runFakeRouteSrv(t *testing.T) *http.Server {
 	return httpSrv
 }
 
-func TestRouteClient(t *testing.T) {
-	srv := runFakeRouteSrv(t)
+func TestUpstreamClient(t *testing.T) {
+	srv := runFakeUpstreamSrv(t)
 	defer func() {
 		assert.Nil(t, srv.Shutdown(context.Background()))
 	}()
@@ -168,33 +147,46 @@ func TestRouteClient(t *testing.T) {
 		Host:   srv.Addr,
 		Path:   "/apisix/admin",
 	}
-
-	cli := newRouteClient(&stub{
+	cli := newUpstreamClient(&stub{
 		baseURL: u.String(),
 		cli:     http.DefaultClient,
 	})
 
 	// Create
-	id := "111"
-	host := "www.foo.com"
-	uri := "/bar"
+	key := "upstream/abc"
+	lbType := "roundrobin"
+	fullName := "default_test"
+	group := "default"
 	name := "test"
-	obj, err := cli.Create(context.Background(), &v1.Route{
-		Host:       &host,
-		Path:       &uri,
-		Name:       &name,
-		ServiceId:  &id,
-		UpstreamId: &id,
+	ip := "10.0.11.153"
+	port := 15006
+	weight := 100
+	nodes := []*v1.Node{
+		{
+			IP:     &ip,
+			Port:   &port,
+			Weight: &weight,
+		},
+	}
+
+	obj, err := cli.Create(context.TODO(), &v1.Upstream{
+		FullName: &fullName,
+		Group:    &group,
+		Name:     &name,
+		Type:     &lbType,
+		Key:      &key,
+		Nodes:    nodes,
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, *obj.ID, "1")
 
-	obj, err = cli.Create(context.Background(), &v1.Route{
-		Host:       &host,
-		Path:       &uri,
-		Name:       &name,
-		ServiceId:  &id,
-		UpstreamId: &id,
+	obj, err = cli.Create(context.TODO(), &v1.Upstream{
+		FullName: &fullName,
+		Group:    &group,
+		Name:     &name,
+		Type:     &lbType,
+		Key:      &key,
+		Nodes:    nodes,
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, *obj.ID, "2")
@@ -214,20 +206,21 @@ func TestRouteClient(t *testing.T) {
 	assert.Equal(t, "2", *objs[0].ID)
 
 	// Patch then List
-	id = "112"
+	lbType = "chash"
 	objId := "2"
-	err = cli.Update(context.Background(), &v1.Route{
-		ID:         &objId,
-		Host:       &host,
-		Path:       &uri,
-		Name:       &name,
-		ServiceId:  &id,
-		UpstreamId: &id,
+	err = cli.Update(context.Background(), &v1.Upstream{
+		ID:       &objId,
+		FullName: &fullName,
+		Group:    &group,
+		Name:     &name,
+		Type:     &lbType,
+		Key:      &key,
+		Nodes:    nodes,
 	})
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background(), "")
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
 	assert.Equal(t, "2", *objs[0].ID)
-	assert.Equal(t, "112", *objs[0].ServiceId)
+	assert.Equal(t, lbType, *objs[0].Type)
 }
