@@ -157,7 +157,8 @@ func (s *Scaffold) beforeEach() {
 	assert.Nil(s.t, err, "initializing etcd")
 
 	// We don't use k8s.WaitUntilServiceAvailable since it hacks for Minikube.
-	err = s.waitAllEtcdPodsAvailable()
+	//err = s.waitAllEtcdPodsAvailable()
+	k8s.WaitUntilNumPodsCreatedE(s.t, s.kubectlOptions, s.etcdSelector(), 1, 5, time.Second)
 	assert.Nil(s.t, err, "waiting for etcd ready")
 
 	s.apisixService, err = s.newAPISIX()
