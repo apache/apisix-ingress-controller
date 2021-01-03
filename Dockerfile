@@ -25,12 +25,12 @@ WORKDIR /build
 COPY . .
 RUN GOPROXY=https://goproxy.io,direct make build
 
-FROM alpine:3.12.1
+FROM centos:centos7
 LABEL maintainer="gxthrj@163.com"
 
 WORKDIR /ingress-apisix
-RUN apk add --no-cache ca-certificates libc6-compat \
-    && update-ca-certificates \
+RUN yum -y install ca-certificates libc6-compat \
+    && update-ca-trust \
     && echo "hosts: files dns" > /etc/nsswitch.conf
 
 COPY --from=build-env /build/apisix-ingress-controller .
