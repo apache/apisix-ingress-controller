@@ -83,10 +83,8 @@ func (s *ApisixCombination) SyncWithGroup(ctx context.Context, id string, result
 }
 
 func WaitWorkerGroup(id string, resultChan chan CRDStatus) (string, error) {
-	select {
-	case r := <-resultChan:
-		return id, r.Err
-	}
+	r := <-resultChan
+	return id, r.Err
 }
 
 // UpstreamQueueObj for upstream queue
