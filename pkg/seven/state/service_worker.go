@@ -20,6 +20,7 @@ import (
 
 	"github.com/golang/glog"
 
+	"context"
 	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	"github.com/api7/ingress-controller/pkg/seven/db"
 	"github.com/api7/ingress-controller/pkg/seven/utils"
@@ -32,7 +33,7 @@ const ApisixService = "ApisixService"
 type serviceWorker struct {
 	*v1.Service
 	Event     chan Event
-	Quit      chan Quit
+	Ctx       context.Context
 	Wg        *sync.WaitGroup
 	ErrorChan chan CRDStatus
 }
@@ -42,14 +43,13 @@ type ServiceWorkerGroup map[string][]*serviceWorker
 
 // start start watch event
 func (w *serviceWorker) start(rwg *RouteWorkerGroup) {
-	defer w.Wg.Done()
 	w.Event = make(chan Event)
-	func() {
+	go func() {
 		for {
 			select {
 			case event := <-w.Event:
 				w.trigger(event, rwg)
-			case <-w.Quit:
+			case <-w.Ctx.Done():
 				return
 			}
 		}
@@ -59,7 +59,6 @@ func (w *serviceWorker) start(rwg *RouteWorkerGroup) {
 // trigger add to queue
 func (w *serviceWorker) trigger(event Event, rwg *RouteWorkerGroup) error {
 	glog.V(2).Infof("1.service trigger from %s, %s", event.Op, event.Kind)
-	defer close(w.Quit)
 	// consumer Event set upstreamID
 	upstream := event.Obj.(*v1.Upstream)
 	glog.V(2).Infof("2.service trigger from %s, %s", event.Op, *upstream.Name)

@@ -15,31 +15,21 @@
 package state
 
 import (
+	"context"
 	"errors"
 	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	"github.com/api7/ingress-controller/pkg/seven/db"
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"github.com/api7/ingress-controller/pkg/types/apisix/v1"
 	"sync"
 	"time"
 )
 
 var UpstreamQueue chan UpstreamQueueObj
-var ServiceQueue chan ServiceQueueObj
 
 func init() {
 	UpstreamQueue = make(chan UpstreamQueueObj, 500)
-	ServiceQueue = make(chan ServiceQueueObj, 500)
 	go WatchUpstream()
-	//go WatchService()
 }
-
-//func WatchService() {
-//	for {
-//		sqo := <-ServiceQueue
-// solver service
-//SolverService(sqo.Services, sqo.RouteWorkerGroup)
-//}
-//}
 
 func WatchUpstream() {
 	for {
@@ -50,51 +40,52 @@ func WatchUpstream() {
 
 // Solver
 func (s *ApisixCombination) Solver() (string, error) {
-	var wg *sync.WaitGroup
+	// define the result notify
+	timeout := 15 * time.Second
 	resultChan := make(chan CRDStatus)
-	// 1.route workers
-	rwg := NewRouteWorkers(s.Routes, wg, resultChan)
-	// 2.service workers
-	swg := NewServiceWorkers(s.Services, &rwg, wg, resultChan)
-	//sqo := &ServiceQueueObj{Services: s.Services, RouteWorkerGroup: rwg}
-	//sqo.AddQueue()
-	// 3.upstream workers
-	uqo := &UpstreamQueueObj{Upstreams: s.Upstreams, ServiceWorkerGroup: swg, Wg: wg, ErrorChan: resultChan}
-	uqo.AddQueue()
-	// add before wg.Wait()
-	wg.Add(len(uqo.Upstreams))
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, timeout)
+	go s.SyncWithGroup(ctx, "", resultChan)
+
 	// add timeout after 5s
-	return s.Status("", rwg, swg, 5*time.Second, wg, resultChan)
+	return WaitWorkerGroup("", resultChan)
 }
 
-func (s *ApisixCombination) Status(id string, rwg RouteWorkerGroup, swg ServiceWorkerGroup, timeout time.Duration, wg *sync.WaitGroup, resultChan chan CRDStatus) (string, error) {
+func waitTimeout(wg *sync.WaitGroup, timeout time.Duration, resultChan chan CRDStatus) {
+	c := make(chan struct{})
 	go func() {
+		defer close(c)
 		wg.Wait()
-		resultChan <- CRDStatus{Id: id, Status: "success", Err: nil}
 	}()
-	return WaitWorkerGroup(id, wg, resultChan, rwg, swg, timeout)
+	select {
+	case <-c:
+		resultChan <- CRDStatus{Id: "", Status: "success", Err: nil}
+	case <-time.After(timeout):
+		resultChan <- CRDStatus{Id: "", Status: "failure", Err: errors.New("timeout")}
+	}
 }
 
-func WaitWorkerGroup(id string, wg *sync.WaitGroup, result chan CRDStatus, rwg RouteWorkerGroup, swg ServiceWorkerGroup, timeout time.Duration) (string, error) {
+func (s *ApisixCombination) SyncWithGroup(ctx context.Context, id string, resultChan chan CRDStatus) {
+	var wg sync.WaitGroup
+	count := len(s.Routes) + len(s.Services) + len(s.Upstreams)
+	wg.Add(count)
+	// goroutine for sync route/service/upstream
+	// route
+	rwg := NewRouteWorkers(ctx, s.Routes, &wg, resultChan)
+	// service
+	swg := NewServiceWorkers(ctx, s.Services, &rwg, &wg, resultChan)
+	// upstream
+	uqo := &UpstreamQueueObj{Upstreams: s.Upstreams, ServiceWorkerGroup: swg, Wg: &wg, ErrorChan: resultChan}
+	uqo.AddQueue()
+	// waitTimeout should be shorter than worker timeout
+	waitTimeout(&wg, 10*time.Second, resultChan)
+}
+
+func WaitWorkerGroup(id string, resultChan chan CRDStatus) (string, error) {
 	for {
 		select {
-		case r := <-result:
+		case r := <-resultChan:
 			return id, r.Err
-		case <-time.After(timeout):
-			quit := &Quit{Err: errors.New("timeout")}
-			// clean route workers
-			for _, routeWorkers := range rwg {
-				for _, rw := range routeWorkers {
-					rw.Quit <- *quit
-				}
-			}
-			// clean service workers
-			for _, serviceWorkers := range swg {
-				for _, sw := range serviceWorkers {
-					sw.Quit <- *quit
-				}
-			}
-			return id, errors.New("timeout")
 		}
 	}
 }
@@ -128,12 +119,6 @@ func (uqo *UpstreamQueueObj) AddQueue() {
 type ServiceQueueObj struct {
 	Services         []*v1.Service
 	RouteWorkerGroup RouteWorkerGroup
-}
-
-// AddQueue make upstreams in order
-// upstreams is group by CRD
-func (sqo *ServiceQueueObj) AddQueue() {
-	ServiceQueue <- *sqo
 }
 
 // Sync remove from apisix
