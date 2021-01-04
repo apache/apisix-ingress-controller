@@ -16,8 +16,9 @@ package state
 
 import (
 	"context"
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 	"sync"
+
+	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 type routeWorker struct {

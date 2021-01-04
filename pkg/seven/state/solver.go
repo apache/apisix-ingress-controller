@@ -17,11 +17,12 @@ package state
 import (
 	"context"
 	"errors"
+	"sync"
+	"time"
+
 	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	"github.com/api7/ingress-controller/pkg/seven/db"
 	"github.com/api7/ingress-controller/pkg/types/apisix/v1"
-	"sync"
-	"time"
 )
 
 var UpstreamQueue chan UpstreamQueueObj

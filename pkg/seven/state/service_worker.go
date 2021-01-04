@@ -15,17 +15,17 @@
 package state
 
 import (
+	"context"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/golang/glog"
 
-	"context"
 	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	"github.com/api7/ingress-controller/pkg/seven/db"
 	"github.com/api7/ingress-controller/pkg/seven/utils"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
-	"sync"
 )
 
 const ApisixService = "ApisixService"

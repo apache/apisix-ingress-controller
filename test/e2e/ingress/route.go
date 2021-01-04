@@ -15,10 +15,12 @@
 package ingress
 
 import (
-	"github.com/api7/ingress-controller/test/e2e/scaffold"
+	"time"
+
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
-	"time"
+
+	"github.com/api7/ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("upstream expansion", func() {
