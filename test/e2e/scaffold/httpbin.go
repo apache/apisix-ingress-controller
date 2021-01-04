@@ -87,7 +87,6 @@ spec:
 
 func (s *Scaffold) newHTTPBIN() (*corev1.Service, error) {
 	httpbinDeployment := fmt.Sprintf(_httpbinDeployment, 1)
-	fmt.Println(httpbinDeployment)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, httpbinDeployment); err != nil {
 		return nil, err
 	}
