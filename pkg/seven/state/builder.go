@@ -21,8 +21,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/golang/glog"
-
+	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	"github.com/api7/ingress-controller/pkg/seven/db"
 	"github.com/api7/ingress-controller/pkg/seven/utils"
@@ -109,7 +108,7 @@ func (r *routeWorker) trigger(event Event) {
 	// consumer Event
 	service := event.Obj.(*v1.Service)
 	r.ServiceId = service.ID
-	glog.V(2).Infof("trigger routeWorker %s from %s, %s", *r.Name, event.Op, *service.Name)
+	log.Infof("trigger routeWorker %s from %s, %s", *r.Name, event.Op, *service.Name)
 
 	// padding
 	currentRoute, err := apisix.FindCurrentRoute(r.Route)
@@ -140,18 +139,18 @@ func (r *routeWorker) sync() error {
 		// 1. sync memDB
 		db := &db.RouteDB{Routes: []*v1.Route{r.Route}}
 		if err := db.UpdateRoute(); err != nil {
-			glog.Errorf("update route failed, route: %#v, err: %+v", r.Route, err)
+			log.Errorf("update route failed, route: %#v, err: %+v", r.Route, err)
 			return err
 		}
 		// 2. sync apisix
 		if err := apisix.UpdateRoute(r.Route); err != nil {
 			return err
 		}
-		glog.V(2).Infof("update route %s, %s", *r.Name, *r.ServiceId)
+		log.Infof("update route %s, %s", *r.Name, *r.ServiceId)
 	} else {
 		// 1. sync apisix and get id
 		if res, err := apisix.AddRoute(r.Route); err != nil {
-			glog.Errorf("add route failed, route: %#v, err: %+v", r.Route, err)
+			log.Errorf("add route failed, route: %#v, err: %+v", r.Route, err)
 			return err
 		} else {
 			key := res.Route.Key
@@ -163,7 +162,7 @@ func (r *routeWorker) sync() error {
 		if err := db.Insert(); err != nil {
 			return err
 		}
-		glog.V(2).Infof("create route %s, %s", *r.Name, *r.ServiceId)
+		log.Infof("create route %s, %s", *r.Name, *r.ServiceId)
 	}
 	return nil
 }
@@ -197,7 +196,7 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 	}()
 	op := Update
 	if currentUpstream, err := apisix.FindCurrentUpstream(*u.Group, *u.Name, *u.FullName); err != nil {
-		glog.Errorf("solver upstream failed, find upstream from etcd failed, upstream: %+v, err: %+v", u, err)
+		log.Errorf("solver upstream failed, find upstream from etcd failed, upstream: %+v, err: %+v", u, err)
 		errNotify = err
 		return
 	} else {
@@ -224,13 +223,13 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 					// 1.sync memDB
 					upstreamDB := &db.UpstreamDB{Upstreams: []*v1.Upstream{u}}
 					if err := upstreamDB.UpdateUpstreams(); err != nil {
-						glog.Errorf("solver upstream failed, update upstream to local db failed, err: %s", err.Error())
+						log.Errorf("solver upstream failed, update upstream to local db failed, err: %s", err.Error())
 						errNotify = err
 						return
 					}
 					// 2.sync apisix
 					if err = apisix.UpdateUpstream(u); err != nil {
-						glog.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
+						log.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
 						errNotify = err
 						return
 					}
@@ -239,7 +238,7 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 				if u.FromKind != nil && *u.FromKind == WatchFromKind {
 					// 1.update nodes
 					if err = apisix.PatchNodes(u, u.Nodes); err != nil {
-						glog.Errorf("solver upstream failed, patch node info to etcd failed, err: %+v", err)
+						log.Errorf("solver upstream failed, patch node info to etcd failed, err: %+v", err)
 						errNotify = err
 						return
 					}
@@ -251,7 +250,7 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 					}
 					upstreamDB := &db.UpstreamDB{Upstreams: us}
 					if err := upstreamDB.UpdateUpstreams(); err != nil {
-						glog.Errorf("solver upstream failed, update upstream to local db failed, err: %s", err.Error())
+						log.Errorf("solver upstream failed, update upstream to local db failed, err: %s", err.Error())
 						errNotify = err
 						return
 					}
@@ -260,7 +259,7 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 				op = Create
 				// 1.sync apisix and get response
 				if upstreamResponse, err := apisix.AddUpstream(u); err != nil {
-					glog.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
+					log.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
 					errNotify = err
 					return
 				} else {
@@ -274,7 +273,7 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 			}
 		}
 	}
-	glog.V(2).Infof("solver upstream %s:%s", op, *u.Name)
+	log.Infof("solver upstream %s:%s", op, *u.Name)
 	// anyway, broadcast to service
 	serviceWorkers := swg[*u.Name]
 	for _, sw := range serviceWorkers {
