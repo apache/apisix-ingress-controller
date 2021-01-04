@@ -81,12 +81,12 @@ func SolverService(services []*v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGr
 
 func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGroup, errorChan chan CRDStatus) {
 	var errNotify error
-	defer func(err error) {
-		if err != nil {
-			errorChan <- CRDStatus{Id: "", Status: "failure", Err: err}
+	defer func() {
+		if errNotify != nil {
+			errorChan <- CRDStatus{Id: "", Status: "failure", Err: errNotify}
 		}
 		wg.Done()
-	}(errNotify)
+	}()
 
 	op := Update
 	// padding
