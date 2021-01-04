@@ -15,11 +15,10 @@
 package db
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/go-memdb"
 
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"github.com/api7/ingress-controller/pkg/seven/utils"
+	"github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
@@ -42,7 +41,7 @@ func (rr *RouteRequest) FindByName() (*v1.Route, error) {
 			currentRoute := raw.(*v1.Route)
 			return currentRoute, nil
 		}
-		return nil, fmt.Errorf("NOT FOUND")
+		return nil, utils.NotFound
 	}
 }
 

@@ -16,6 +16,7 @@ package state
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 	"sync"
@@ -112,7 +113,7 @@ func (r *routeWorker) trigger(event Event) {
 
 	// padding
 	currentRoute, err := apisix.FindCurrentRoute(r.Route)
-	if err != nil && err.Error() != "NOT FOUND" {
+	if err != nil && errors.Is(err, utils.NotFound) {
 		errNotify = err
 		return
 	}

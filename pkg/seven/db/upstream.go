@@ -15,11 +15,10 @@
 package db
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/go-memdb"
 
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"github.com/api7/ingress-controller/pkg/seven/utils"
+	"github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
@@ -46,7 +45,7 @@ func (ur *UpstreamRequest) FindByName() (*v1.Upstream, error) {
 			currentUpstream := raw.(*v1.Upstream)
 			return currentUpstream, nil
 		}
-		return nil, fmt.Errorf("NOT FOUND")
+		return nil, utils.NotFound
 	}
 }
 
