@@ -19,19 +19,20 @@
 
 # CRD specification
 
-In order to control the behavior of the proxy (Apache APISIX), the following CRDs should be defined
+In order to control the behavior of the proxy ([Apache APISIX](https://github.com/apache/apisix)), the following CRDs should be defined.
 
 ## CRD Types
 
 - [ApisixRoute](#apisixroute)
 - [ApisixService](#apisixservice)
 - [ApisixUpstream](#apisixupstream)
-- [ApisixPlugin](#apisixplugin)
 - [ApisixTls](#apisixtls)
 
 ## ApisixRoute
 
-`ApisixRoute` corresponds to the `route` object in Apache APISIX.
+`ApisixRoute` corresponds to the `Route` object in Apache APISIX. The `Route` matches the client's request by defining rules,
+then loads and executes the corresponding plugin based on the matching result, and forwards the request to the specified Upstream.
+To learn more, please check the [Apache APISIX architecture-design document](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#route).
 
 Structure example:
 
@@ -63,24 +64,26 @@ spec:
               key: remote_addr
 ```
 
-|     Field     |  Type    | Description                     |
-|---------------|----------|--------------------------------|
-| rules         | array    | ApisixRoute's request matching rules. |
-| host          | string   | The requested host.        |
-| http          | string   | The routing rule of the request.         |
-| paths         | array    | The routing rule of the request.      |
+|     Field     |  Type    |                    Description                     |
+|---------------|----------|----------------------------------------------------|
+| rules         | array    | ApisixRoute's request matching rules.              |
+| host          | string   | The requested host.                                |
+| http          | string   | The routing rule of the request.                   |
+| paths         | array    | The routing rule of the request.                   |
 | backend       | object   | Backend service information configuration.         |
-| serviceName   | string   | The name of the service.        |
-| servicePort   | int      | The port of the service.        |
+| serviceName   | string   | The name of backend service.                       |
+| servicePort   | int      | The port of backend service.                       |
 | path          | string   | The URI matched by the route. Supports exact match and prefix match. Example，exact match: `/hello`, prefix match: `/hello/*`.   |
-| plugins       | array    | Custom plugin collection (Plugins defined in the `route` level).    |
+| plugins       | array    | Custom plugin collection (Plugins defined in the `route` level). For more plugin information, please refer to the [Apache APISIX plugin docs](https://github.com/apache/apisix/tree/master/doc/plugins).    |
 | name          | string   | The name of the plugin.      |
 | enable        | boolean  | Whether to enable the plugin, `true`: means enable, `false`: means disable.      |
-| config        | object   |  Configuration of plugin information.    |
+| config        | object   | Configuration of plugin information. Note: The check of configuration schema is missing now, so please be careful when editing.    |
 
 ## ApisixService
 
-`ApisixService` corresponds to the `service` object in Apache APISIX.
+`ApisixService` corresponds to the `Service` object in Apache APISIX.
+A `Service` is an abstraction of an API (which can also be understood as a set of Route abstractions). It usually corresponds to the upstream service abstraction. Between `Route` and `Service`, usually the relationship of N:1.
+To learn more, please check the [Apache APISIX architecture-design document](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#service).
 
 Structure example:
 
@@ -107,11 +110,17 @@ spec:
 |---------------|----------|----------------|
 | upstream      | string   | The name of the upstream service.    |
 | port          | int      | The port number of the upstream service.    |
-| plugins       | array   | Custom plugin collection (Plugins defined in the `service` level).  |
+| plugins       | array   | Custom plugin collection (Plugins defined in the `service` level). For more plugin information, please refer to the [Apache APISIX plugin docs](https://github.com/apache/apisix/tree/master/doc/plugins). |
+| name          | string   | The name of the plugin.      |
+| enable        | boolean  | Whether to enable the plugin, `true`: means enable, `false`: means disable.      |
+| config        | object   | Configuration of plugin information. Note: The check of configuration schema is missing now, so please be careful when editing.    |
 
 ## ApisixUpstream
 
-`ApisixUpstream` corresponds to the `upstream` object in Apache APISIX.
+`ApisixUpstream` corresponds to the `Upstream` object in Apache APISIX.
+Upstream is a virtual host abstraction that performs load balancing on a given set of service nodes according to configuration rules.
+Upstream address information can be directly configured to `Route` (or `Service`). When Upstream has duplicates, you need to use "reference" to avoid duplication.
+To learn more, please check the [Apache APISIX architecture-design document](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#upstream).
 
 Structure example:
 
@@ -131,48 +140,13 @@ spec:
 |---------------|----------|----------------|
 | ports         | array    | Custom upstream collection.   |
 | port          | int      | Upstream service port number.    |
-| loadbalancer  | string/object   | Select the algorithm of the upstream service, support `roundrobin` and `chash`.  |
-
-## ApisixPlugin
-
-`ApisixPlugin` corresponds to the `plugin` object in Apache APISIX.
-
-Structure example:
-
-```yaml
-apiVersion: apisix.apache.org/v1
-kind: ApisixPlugin
-metadata:
-  name: httpserver-plugins
-  namespace: cloud
-spec:
-  plugins:
-  - name: limit-conn
-    enable: true
-    config:
-      count: 2
-      time_window: 60
-      rejected_code: 503
-      key: remote_addr
-  - name: proxy-rewrite
-    enable: true
-    config:
-      regex_uri:
-      - '^/(.*)'
-      - '/voice-copy-outer-service/$1'
-      scheme: http
-      host: internalalpha.talkinggenie.com
-      enable_websocket: true
-```
-
-|     Field     |  Type    | Description                 |
-|---------------|----------|-----------------------------|
-| plugins       | array   | Custom plugin collection.    |
-| name          | string   | The name of the plugin.      |
-| enable        | boolean  | Whether to enable the plugin, `true`: means enable, `false`: means disable.  |
-| config        | object   |  Configuration of plugin information. |
+| loadbalancer  | string/object   | The load balance algorithm of this upstream service, optional value can be `roundrobin` or `chash`.  |
 
 ## ApisixTls
+
+`ApisixTls` corresponds to the `SSL` of the `Router` object in Apache APISIX.
+`SSL` loads the matching route. (Default) Use SNI (Server Name Indication) as the primary index.
+To learn more, please check the [Apache APISIX architecture-design document](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#router).
 
 Structure example:
 
@@ -192,7 +166,9 @@ spec：
 
 |     Field     |  Type    | Description                     |
 |---------------|----------|---------------------------------|
-| hosts         | array    | Host of `Tls`.                  |
+| hosts         | array    | Host of `SNI`.                  |
 | secret        | object   | Secret information.             |
-| name          | string   | The name of the secret.         |
-| namespace     | string   | The namespace of the secret.    |
+| name          | string   | The name of `SNI` secret.         |
+| namespace     | string   | The namespace of `SNI` secret.    |
+
+[Back to top](#crd-types)
