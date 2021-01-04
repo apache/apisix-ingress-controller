@@ -19,7 +19,7 @@
 
 # CRD specification
 
-In order to control the behavior of the proxy ([Apache APISIX](https://github.com/apache/apisix)), the following CRDs should be defined.
+Use the following CRDs to define your routing rules. Normally, you only need to use ApisixRoute to complete a simple route definition.
 
 ## CRD Types
 
@@ -32,7 +32,7 @@ In order to control the behavior of the proxy ([Apache APISIX](https://github.co
 
 `ApisixRoute` corresponds to the `Route` object in Apache APISIX. The `Route` matches the client's request by defining rules,
 then loads and executes the corresponding plugin based on the matching result, and forwards the request to the specified Upstream.
-To learn more, please check the [Apache APISIX architecture-design document](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#route).
+To learn more, please check the [Apache APISIX architecture-design docs](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#route).
 
 Structure example:
 
@@ -40,9 +40,6 @@ Structure example:
 apiVersion: apisix.apache.org/v1
 kind: ApisixRoute
 metadata:
-  annotations:
-    k8s.apisix.apache.org/ingress.class: apisix_group
-    k8s.apisix.apache.org/ssl-redirect: 'false'
   name: httpserverRoute
   namespace: cloud
 spec:
@@ -55,7 +52,7 @@ spec:
           servicePort: 8080
         path: /hello*
         plugins:
-          - name: limit-conn
+          - name: limit-count
             enable: true
             config:
               count: 2
@@ -71,19 +68,44 @@ spec:
 | http          | string   | The routing rule of the request.                   |
 | paths         | array    | The routing rule of the request.                   |
 | backend       | object   | Backend service information configuration.         |
-| serviceName   | string   | The name of backend service.                       |
-| servicePort   | int      | The port of backend service.                       |
-| path          | string   | The URI matched by the route. Supports exact match and prefix match. Example，exact match: `/hello`, prefix match: `/hello/*`.   |
+| serviceName   | string   | The name of backend service. `namespace + serviceName + servicePort` form a unique identifier to match the back-end service.                      |
+| servicePort   | int      | The port of backend service. `namespace + serviceName + servicePort` form a unique identifier to match the back-end service.                      |
+| path          | string   | The URI matched by the route. Supports exact match and prefix match. Example，exact match: `/hello`, prefix match: `/hello*`.                     |
 | plugins       | array    | Custom plugin collection (Plugins defined in the `route` level). For more plugin information, please refer to the [Apache APISIX plugin docs](https://github.com/apache/apisix/tree/master/doc/plugins).    |
-| name          | string   | The name of the plugin.      |
+| name          | string   | The name of the plugin. For more information about the example plugin, please check the [limit-count docs](https://github.com/apache/apisix/blob/master/doc/plugins/limit-count.md#Attributes).             |
 | enable        | boolean  | Whether to enable the plugin, `true`: means enable, `false`: means disable.      |
 | config        | object   | Configuration of plugin information. Note: The check of configuration schema is missing now, so please be careful when editing.    |
+
+**Support partial `annotation`**
+
+Structure example:
+
+```yaml
+apiVersion: apisix.apache.org/v1
+kind: ApisixRoute
+metadata:
+  annotations:
+    k8s.apisix.apache.org/ingress.class: apisix_group
+    k8s.apisix.apache.org/ssl-redirect: 'false'
+    k8s.apisix.apache.org/whitelist-source-range:
+      - 1.2.3.4/16
+      - 4.3.2.1/8
+  name: httpserverRoute
+  namespace: cloud
+spec:
+```
+
+|         Field                                  |    Type    |                       Description                                  |
+|------------------------------------------------|------------|--------------------------------------------------------------------|
+| `k8s.apisix.apache.org/ssl-redirect`           | boolean    | Whether to use SSL forwarding, true: means using SSL forwarding, false: means not using SSL forwarding.   |
+| `k8s.apisix.apache.org/ingress.class`          | string     | Grouping of ingress.                                               |
+| `k8s.apisix.apache.org/whitelist-source-range` | array      | Whitelist of IPs allowed to be accessed.                           |
 
 ## ApisixService
 
 `ApisixService` corresponds to the `Service` object in Apache APISIX.
 A `Service` is an abstraction of an API (which can also be understood as a set of Route abstractions). It usually corresponds to the upstream service abstraction. Between `Route` and `Service`, usually the relationship of N:1.
-To learn more, please check the [Apache APISIX architecture-design document](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#service).
+To learn more, please check the [Apache APISIX architecture-design docs](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#service).
 
 Structure example:
 
@@ -97,7 +119,7 @@ spec:
   upstream: httpserver
   port: 8080
   plugins:
-    - name: limit-conn
+    - name: limit-count
       enable: true
       config:
         count: 2
@@ -110,8 +132,8 @@ spec:
 |---------------|----------|----------------|
 | upstream      | string   | The name of the upstream service.    |
 | port          | int      | The port number of the upstream service.    |
-| plugins       | array   | Custom plugin collection (Plugins defined in the `service` level). For more plugin information, please refer to the [Apache APISIX plugin docs](https://github.com/apache/apisix/tree/master/doc/plugins). |
-| name          | string   | The name of the plugin.      |
+| plugins       | array   | Custom plugin collection (Plugins defined in the `service` level). For more plugin information, please refer to the [Apache APISIX plugins docs](https://github.com/apache/apisix/tree/master/doc/plugins). |
+| name          | string   | The name of the plugin. For more information about the example plugin, please check the [limit-count docs](https://github.com/apache/apisix/blob/master/doc/plugins/limit-count.md#Attributes).    |
 | enable        | boolean  | Whether to enable the plugin, `true`: means enable, `false`: means disable.      |
 | config        | object   | Configuration of plugin information. Note: The check of configuration schema is missing now, so please be careful when editing.    |
 
@@ -120,7 +142,7 @@ spec:
 `ApisixUpstream` corresponds to the `Upstream` object in Apache APISIX.
 Upstream is a virtual host abstraction that performs load balancing on a given set of service nodes according to configuration rules.
 Upstream address information can be directly configured to `Route` (or `Service`). When Upstream has duplicates, you need to use "reference" to avoid duplication.
-To learn more, please check the [Apache APISIX architecture-design document](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#upstream).
+To learn more, please check the [Apache APISIX architecture-design docs](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#upstream).
 
 Structure example:
 
@@ -146,7 +168,7 @@ spec:
 
 `ApisixTls` corresponds to the `SSL` of the `Router` object in Apache APISIX.
 `SSL` loads the matching route. (Default) Use SNI (Server Name Indication) as the primary index.
-To learn more, please check the [Apache APISIX architecture-design document](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#router).
+To learn more, please check the [Apache APISIX architecture-design docs](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#router).
 
 Structure example:
 
@@ -167,8 +189,8 @@ spec：
 |     Field     |  Type    | Description                     |
 |---------------|----------|---------------------------------|
 | hosts         | array    | Host of `SNI`.                  |
-| secret        | object   | Secret information.             |
-| name          | string   | The name of `SNI` secret.         |
-| namespace     | string   | The namespace of `SNI` secret.    |
+| secret        | object   | The secret of kubernetes, it works with `ApisixTls`.            |
+| name          | string   | The name of `secret`. `namespace` and `name` are the unique identifier to match kubernetes secret.       |
+| namespace     | string   | The namespace of `secret`. `namespace` and `name` are the unique identifier to match kubernetes secret.  |
 
 [Back to top](#crd-types)
