@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 -->
+
 # CRD specification
 
 In order to control the behavior of the proxy (Apache APISIX), the following CRDs should be defined
@@ -92,7 +93,7 @@ metadata:
 spec:
   upstream: httpserver
   port: 8080
-  plugins:   
+  plugins:
     - name: limit-conn
       enable: true
       config:
