@@ -47,7 +47,7 @@ spec:
         - containerPort: 8080
           hostPort: 8080
         volumeMounts:
-        - mountPath: /ingress-apisix/config.yaml
+        - mountPath: /ingress-apisix/conf/config.yaml
           name: apisix-ingress-configmap
           subPath: config.yaml
       volumes:
