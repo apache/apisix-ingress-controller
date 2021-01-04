@@ -154,6 +154,7 @@ func (s *Scaffold) EnsureNumApisixUpstreamsCreated(desired int) error {
 	return ensureNumApisixCRDsCreated(u.String(), desired)
 }
 
+// ListApisixUpstreams list all upstream from APISIX
 func (s *Scaffold) ListApisixUpstreams() (*apisix.UpstreamsResponse, error) {
 	host, err := s.apisixAdminServiceURL()
 	if err != nil {
