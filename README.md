@@ -88,10 +88,10 @@ Get more [implementation details](./docs/design.md).
 
 ## Todos
 
-* Support `ApisixSSL` CRD and the logic. [#52](https://github.com/apache/apisix-ingress-controller/issues/52)
-* Support retry when synchronization. [#59](https://github.com/apache/apisix-ingress-controller/issues/59)
+* Support UDP definition. [#116](https://github.com/apache/apisix-ingress-controller/issues/116)
+* Support TCP definition. [#115](https://github.com/apache/apisix-ingress-controller/issues/115)
+* Support GRPC definition. [#114](https://github.com/apache/apisix-ingress-controller/issues/114)
 * Add a complete demo. [#9](https://github.com/apache/apisix-ingress-controller/issues/9)
-* Use terratest for testing with Kubernetes. [#51](https://github.com/apache/apisix-ingress-controller/issues/51)
 * More todos will display in [issues](https://github.com/apache/apisix-ingress-controller/issues)
 
 ## Documents
