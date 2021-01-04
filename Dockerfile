@@ -36,4 +36,4 @@ RUN apk add --no-cache ca-certificates libc6-compat \
 COPY --from=build-env /build/apisix-ingress-controller .
 COPY --from=build-env /usr/share/zoneinfo/Hongkong /etc/localtime
 
-ENTRYPOINT ["/ingress-apisix/apisix-ingress-controller", "ingress", "--config-path", "/ingress-apisix/config.yaml"]
+ENTRYPOINT ["/ingress-apisix/apisix-ingress-controller", "ingress", "--config-path", "/ingress-apisix/conf/config.yaml"]
