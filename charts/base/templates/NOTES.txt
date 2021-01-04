@@ -1,0 +1,1 @@
+Installs ingress-apisix cluster resources: CRDs, cluster bindings and associated service accounts.

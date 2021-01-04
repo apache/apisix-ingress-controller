@@ -54,7 +54,19 @@ kubectl apply -k /path/to/apisix-ingress-controller/samples/deploy
 
 ## Helm
 
-// todo
+First of all, deploying the necessary CRDs and cluster resources like serviceaccount through the [base](../charts/base) chart.
+
+```shell
+helm install ingress-apisix-base -n ingress-apisix ./charts/base
+```
+
+Note namespace `ingress-apisix` should be created before you run the above command.
+
+Then try to deploy apisix-ingress-controller through the [ingress-apisix](../charts/ingress-apisix) chart.
+
+```shell
+helm install ingress-apisix -n ingress-apisix ./charts/ingress-apisix
+```
 
 ## Master branch builds
 
