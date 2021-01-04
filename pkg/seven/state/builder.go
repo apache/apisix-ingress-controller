@@ -99,12 +99,12 @@ func NewRouteWorkers(ctx context.Context, routes []*v1.Route, wg *sync.WaitGroup
 // 3.route get the Event and trigger a padding for object,then diff,sync;
 func (r *routeWorker) trigger(event Event) {
 	var errNotify error
-	defer func(err error) {
-		if err != nil {
-			r.ErrorChan <- CRDStatus{Id: "", Status: "failure", Err: err}
+	defer func() {
+		if errNotify != nil {
+			r.ErrorChan <- CRDStatus{Id: "", Status: "failure", Err: errNotify}
 		}
 		r.Wg.Done()
-	}(errNotify)
+	}()
 	// consumer Event
 	service := event.Obj.(*v1.Service)
 	r.ServiceId = service.ID
@@ -188,12 +188,12 @@ func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup, wg *sync.W
 
 func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitGroup, errorChan chan CRDStatus) {
 	var errNotify error
-	defer func(err error) {
-		if err != nil {
-			errorChan <- CRDStatus{Id: "", Status: "failure", Err: err}
+	defer func() {
+		if errNotify != nil {
+			errorChan <- CRDStatus{Id: "", Status: "failure", Err: errNotify}
 		}
 		wg.Done()
-	}(errNotify)
+	}()
 	op := Update
 	if currentUpstream, err := apisix.FindCurrentUpstream(*u.Group, *u.Name, *u.FullName); err != nil {
 		glog.Errorf("solver upstream failed, find upstream from etcd failed, upstream: %+v, err: %+v", u, err)
