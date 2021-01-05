@@ -42,7 +42,7 @@ func WatchUpstream() {
 // Solver
 func (s *ApisixCombination) Solver() (string, error) {
 	// define the result notify
-	timeout := 1500 * time.Second
+	timeout := 15 * time.Second
 	resultChan := make(chan CRDStatus)
 	ctx := context.Background()
 	ctx, _ = context.WithTimeout(ctx, timeout)
@@ -79,7 +79,7 @@ func (s *ApisixCombination) SyncWithGroup(ctx context.Context, id string, result
 	uqo := &UpstreamQueueObj{Upstreams: s.Upstreams, ServiceWorkerGroup: swg, Wg: &wg, ErrorChan: resultChan}
 	uqo.AddQueue()
 	// waitTimeout should be shorter than worker timeout
-	waitTimeout(&wg, 100*time.Second, resultChan)
+	waitTimeout(&wg, 10*time.Second, resultChan)
 }
 
 func WaitWorkerGroup(id string, resultChan chan CRDStatus) (string, error) {
