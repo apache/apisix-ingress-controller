@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	_httpbinDeployment = `
+	_httpbinDeploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -86,7 +86,7 @@ spec:
 )
 
 func (s *Scaffold) newHTTPBIN() (*corev1.Service, error) {
-	httpbinDeployment := fmt.Sprintf(_httpbinDeployment, 1)
+	httpbinDeployment := fmt.Sprintf(_httpbinDeploymentTemplate, 1)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, httpbinDeployment); err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (s *Scaffold) newHTTPBIN() (*corev1.Service, error) {
 }
 
 func (s *Scaffold) ScaleHTTPBIN(num int) error {
-	httpbinDeployment := fmt.Sprintf(_httpbinDeployment, num)
+	httpbinDeployment := fmt.Sprintf(_httpbinDeploymentTemplate, num)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, httpbinDeployment); err != nil {
 		return err
 	}
