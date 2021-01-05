@@ -19,7 +19,7 @@
 
 # CRD specification
 
-In order to control the behavior of the proxy ([Apache APISIX](https://github.com/apache/apisix)), the following CRDs should be defined. Normally, you only need to use ApisixRoute to complete a simple route definition.
+In order to control the behavior of the proxy ([Apache APISIX](https://github.com/apache/apisix)), the following CRDs should be defined.
 
 ## CRD Types
 
@@ -190,7 +190,7 @@ spec：
 |---------------|----------|---------------------------------|
 | hosts         | array    | The domain list to identify which hosts (matched with SNI) can use the TLS certificate stored in the Secret.  |
 | secret        | object   | The definition of the related Secret object with current ApisixTls object.                               |
-| name          | string   | The name of `secret`. `namespace` and `name` are the unique identifier to match kubernetes secret.       |
-| namespace     | string   | The namespace of `secret`. `namespace` and `name` are the unique identifier to match kubernetes secret.  |
+| name          | string   | The name of secret, the secret contains key and cert for `TLS`.       |
+| namespace     | string   | The namespace of secret , the secret contains key and cert for `TLS`.  |
 
 [Back to top](#crd-types)
