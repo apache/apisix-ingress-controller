@@ -196,7 +196,7 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 	}()
 	op := Update
 	if currentUpstream, err := apisix.FindCurrentUpstream(*u.Group, *u.Name, *u.FullName); err != nil {
-		log.Errorf("solver upstream failed, find upstream from etcd failed, upstream: %+v, err: %+v", u, err)
+		log.Errorf("solver upstream failed, find upstream from APISIX failed, upstream: %+v, err: %+v", u, err)
 		errNotify = err
 		return
 	} else {
