@@ -21,8 +21,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	"github.com/gruntwork-io/terratest/modules/k8s"
-	"github.com/gxthrj/seven/apisix"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
