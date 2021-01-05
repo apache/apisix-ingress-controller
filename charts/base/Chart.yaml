@@ -22,5 +22,6 @@ keywords:
   - ingress
   - apisix
   - nginx
+  - crd
 type: application
 version: 0.1.0
