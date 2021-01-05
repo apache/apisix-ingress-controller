@@ -16,4 +16,4 @@ package utils
 
 import "errors"
 
-var NotFound = errors.New("NOT FOUND")
+var ErrNotFound = errors.New("NOT FOUND")

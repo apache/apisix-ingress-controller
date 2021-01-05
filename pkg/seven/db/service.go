@@ -41,7 +41,7 @@ func (sr *ServiceRequest) FindByName() (*v1.Service, error) {
 			currentService := raw.(*v1.Service)
 			return currentService, nil
 		}
-		return nil, utils.NotFound
+		return nil, utils.ErrNotFound
 	}
 }
 

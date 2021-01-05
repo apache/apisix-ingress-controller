@@ -49,7 +49,7 @@ func FindCurrentRoute(route *v1.Route) (*v1.Route, error) {
 		}
 
 	}
-	return nil, utils.NotFound
+	return nil, utils.ErrNotFound
 }
 
 // ListRoute list route from etcd , convert to v1.Route

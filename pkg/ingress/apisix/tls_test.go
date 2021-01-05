@@ -155,5 +155,5 @@ func (sc *SecretClientMock) FindByName(namespace, name string) (*v1.Secret, erro
 type SecretClientErrorMock struct{}
 
 func (sc *SecretClientErrorMock) FindByName(namespace, name string) (*v1.Secret, error) {
-	return nil, utils.NotFound
+	return nil, utils.ErrNotFound
 }

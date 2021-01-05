@@ -41,7 +41,7 @@ func (rr *RouteRequest) FindByName() (*v1.Route, error) {
 			currentRoute := raw.(*v1.Route)
 			return currentRoute, nil
 		}
-		return nil, utils.NotFound
+		return nil, utils.ErrNotFound
 	}
 }
 

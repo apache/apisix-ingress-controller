@@ -45,7 +45,7 @@ func (ur *UpstreamRequest) FindByName() (*v1.Upstream, error) {
 			currentUpstream := raw.(*v1.Upstream)
 			return currentUpstream, nil
 		}
-		return nil, utils.NotFound
+		return nil, utils.ErrNotFound
 	}
 }
 

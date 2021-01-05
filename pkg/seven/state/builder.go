@@ -112,7 +112,7 @@ func (r *routeWorker) trigger(event Event) {
 
 	// padding
 	currentRoute, err := apisix.FindCurrentRoute(r.Route)
-	if err != nil && !errors.Is(err, utils.NotFound) {
+	if err != nil && !errors.Is(err, utils.ErrNotFound) {
 		errNotify = err
 		return
 	}
