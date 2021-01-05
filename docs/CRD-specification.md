@@ -19,7 +19,7 @@
 
 # CRD specification
 
-Use the following CRDs to define your routing rules. Normally, you only need to use ApisixRoute to complete a simple route definition.
+In order to control the behavior of the proxy ([Apache APISIX](https://github.com/apache/apisix)), the following CRDs should be defined. Normally, you only need to use ApisixRoute to complete a simple route definition.
 
 ## CRD Types
 
@@ -65,11 +65,11 @@ spec:
 |---------------|----------|----------------------------------------------------|
 | rules         | array    | ApisixRoute's request matching rules.              |
 | host          | string   | The requested host.                                |
-| http          | string   | The routing rule of the request.                   |
-| paths         | array    | The routing rule of the request.                   |
+| http          | object   | Route rules are applied to the scope of layer 7 traffic.     |
+| paths         | array    | Path-based `route` rule matching.                     |
 | backend       | object   | Backend service information configuration.         |
-| serviceName   | string   | The name of backend service. `namespace + serviceName + servicePort` form a unique identifier to match the back-end service.                      |
-| servicePort   | int      | The port of backend service. `namespace + serviceName + servicePort` form a unique identifier to match the back-end service.                      |
+| serviceName   | string   | The name of backend service. `namespace + serviceName + servicePort` form an unique identifier to match the back-end service.                      |
+| servicePort   | int      | The port of backend service. `namespace + serviceName + servicePort` form an unique identifier to match the back-end service.                      |
 | path          | string   | The URI matched by the route. Supports exact match and prefix match. Example，exact match: `/hello`, prefix match: `/hello*`.                     |
 | plugins       | array    | Custom plugin collection (Plugins defined in the `route` level). For more plugin information, please refer to the [Apache APISIX plugin docs](https://github.com/apache/apisix/tree/master/doc/plugins).    |
 | name          | string   | The name of the plugin. For more information about the example plugin, please check the [limit-count docs](https://github.com/apache/apisix/blob/master/doc/plugins/limit-count.md#Attributes).             |
@@ -97,7 +97,7 @@ spec:
 
 |         Field                                  |    Type    |                       Description                                  |
 |------------------------------------------------|------------|--------------------------------------------------------------------|
-| `k8s.apisix.apache.org/ssl-redirect`           | boolean    | Whether to use SSL forwarding, true: means using SSL forwarding, false: means not using SSL forwarding.   |
+| `k8s.apisix.apache.org/ssl-redirect`           | boolean    | Whether to force http to be redirected from https. ture: means forced conversion to https, false: means no conversion.   |
 | `k8s.apisix.apache.org/ingress.class`          | string     | Grouping of ingress.                                               |
 | `k8s.apisix.apache.org/whitelist-source-range` | array      | Whitelist of IPs allowed to be accessed.                           |
 
@@ -166,7 +166,7 @@ spec:
 
 ## ApisixTls
 
-`ApisixTls` corresponds to the `SSL` of the `Router` object in Apache APISIX.
+`ApisixTls` corresponds to the SSL load matching route in Apache APISIX.
 `SSL` loads the matching route. (Default) Use SNI (Server Name Indication) as the primary index.
 To learn more, please check the [Apache APISIX architecture-design docs](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#router).
 
@@ -188,8 +188,8 @@ spec：
 
 |     Field     |  Type    | Description                     |
 |---------------|----------|---------------------------------|
-| hosts         | array    | Host of `SNI`.                  |
-| secret        | object   | The secret of kubernetes, it works with `ApisixTls`.            |
+| hosts         | array    | The domain list to identify which hosts (matched with SNI) can use the TLS certificate stored in the Secret.  |
+| secret        | object   | The definition of the related Secret object with current ApisixTls object.                               |
 | name          | string   | The name of `secret`. `namespace` and `name` are the unique identifier to match kubernetes secret.       |
 | namespace     | string   | The namespace of `secret`. `namespace` and `name` are the unique identifier to match kubernetes secret.  |
 
