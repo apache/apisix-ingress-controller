@@ -86,7 +86,9 @@ func paddingUpstream(upstream *v1.Upstream, currentUpstream *v1.Upstream) {
 // NewRouteWorkers make routeWrokers group by service per CRD
 // 1.make routes group by (1_2_3) it may be a map like map[1_2_3][]Route;
 // 2.route is listenning Event from the ready of 1_2_3;
-func NewRouteWorkers(ctx context.Context, routes []*v1.Route, wg *sync.WaitGroup, errorChan chan CRDStatus) RouteWorkerGroup {
+func NewRouteWorkers(ctx context.Context,
+	routes []*v1.Route, wg *sync.WaitGroup, errorChan chan CRDStatus) RouteWorkerGroup {
+
 	rwg := make(RouteWorkerGroup)
 	for _, r := range routes {
 		rw := &routeWorker{Route: r, Ctx: ctx, Wg: wg, ErrorChan: errorChan}
@@ -168,7 +170,8 @@ func (r *routeWorker) sync() error {
 }
 
 // service
-func NewServiceWorkers(ctx context.Context, services []*v1.Service, rwg *RouteWorkerGroup, wg *sync.WaitGroup, errorChan chan CRDStatus) ServiceWorkerGroup {
+func NewServiceWorkers(ctx context.Context,
+	services []*v1.Service, rwg *RouteWorkerGroup, wg *sync.WaitGroup, errorChan chan CRDStatus) ServiceWorkerGroup {
 	swg := make(ServiceWorkerGroup)
 	for _, s := range services {
 		rw := &serviceWorker{Service: s, Ctx: ctx, Wg: wg, ErrorChan: errorChan}
