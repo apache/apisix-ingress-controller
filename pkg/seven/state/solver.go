@@ -42,17 +42,16 @@ func WatchUpstream() {
 // Solver
 func (s *ApisixCombination) Solver() (string, error) {
 	// define the result notify
-	timeout := 15 * time.Second
+	timeout := 10 * time.Second
 	resultChan := make(chan CRDStatus)
 	ctx := context.Background()
 	ctx, _ = context.WithTimeout(ctx, timeout)
 	go s.SyncWithGroup(ctx, "", resultChan)
 
-	// add timeout after 5s
 	return WaitWorkerGroup("", resultChan)
 }
 
-func waitTimeout(wg *sync.WaitGroup, timeout time.Duration, resultChan chan CRDStatus) {
+func waitTimeout(ctx context.Context, wg *sync.WaitGroup, resultChan chan CRDStatus) {
 	c := make(chan struct{})
 	go func() {
 		defer close(c)
@@ -61,7 +60,7 @@ func waitTimeout(wg *sync.WaitGroup, timeout time.Duration, resultChan chan CRDS
 	select {
 	case <-c:
 		resultChan <- CRDStatus{Id: "", Status: "success", Err: nil}
-	case <-time.After(timeout):
+	case <-ctx.Done():
 		resultChan <- CRDStatus{Id: "", Status: "failure", Err: errors.New("timeout")}
 	}
 }
@@ -78,8 +77,8 @@ func (s *ApisixCombination) SyncWithGroup(ctx context.Context, id string, result
 	// upstream
 	uqo := &UpstreamQueueObj{Upstreams: s.Upstreams, ServiceWorkerGroup: swg, Wg: &wg, ErrorChan: resultChan}
 	uqo.AddQueue()
-	// waitTimeout should be shorter than worker timeout
-	waitTimeout(&wg, 10*time.Second, resultChan)
+
+	waitTimeout(ctx, &wg, resultChan)
 }
 
 func WaitWorkerGroup(id string, resultChan chan CRDStatus) (string, error) {
