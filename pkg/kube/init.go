@@ -55,7 +55,7 @@ func InitInformer(cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	CoreSharedInformerFactory = informers.NewSharedInformerFactory(kubeClient, 0)
+	CoreSharedInformerFactory = informers.NewSharedInformerFactory(kubeClient, cfg.Kubernetes.ResyncInterval.Duration)
 
 	return nil
 }
