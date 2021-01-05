@@ -16,4 +16,5 @@ package utils
 
 import "errors"
 
+// ErrNotFound unify Not Found error.
 var ErrNotFound = errors.New("NOT FOUND")
