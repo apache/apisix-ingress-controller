@@ -19,69 +19,48 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-replicaCount: 1
-installCRDs: true
+ingressController:
+  replicaCount: 1
 
-image:
-  repository: apache/apisix-ingress-controller
-  pullPolicy: IfNotPresent
-  tag: "0.1.0"
+  image:
+    repository: apache/apisix-ingress-controller
+    pullPolicy: IfNotPresent
+    tag: "0.1.0"
 
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: ""
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
 
-podAnnotations: {}
-
-podSecurityContext: {}
-  # fsGroup: 2000
-
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
-
-service:
-  type: ClusterIP
-  port: 80
-
-controller:
   configmap: "apisix-ingress-cm"
   serviceAccount: "apisix-view-serviceaccount"
-  logLevel: "info"
-  logOutput: "stderr"
-  httpListen: ":8080"
-  enableProfiling: true
-  kubernetes:
-    kubeconfig: ""
-    resyncInterval: "60s"
-  apisix:
-    baseURL: "http://127.0.0.1:9080/apisix/admin"
 
-resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
+  service:
+    type: ClusterIP
+    port: 80
 
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
+  config:
+    logLevel: "info"
+    logOutput: "stderr"
+    httpListen: ":8080"
+    enableProfiling: true
+    kubernetes:
+      kubeconfig: ""
+      resyncInterval: "60s"
+    apisix:
+      baseURL: "http://127.0.0.1:9080/apisix/admin"
 
-nodeSelector: {}
+  resources: {}
 
-tolerations: []
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    # targetMemoryUtilizationPercentage: 80
 
-affinity: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}

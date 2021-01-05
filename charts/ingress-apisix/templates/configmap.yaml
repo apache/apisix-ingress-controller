@@ -18,17 +18,17 @@ apiVersion: v1
 data:
   config.yaml: |
     # log options
-    log_level: {{ .Values.controller.logLevel | quote }}
-    log_output: {{ .Values.controller.logOutput | quote }}
-    http_listen: {{ .Values.controller.httpListen | quote }}
-    enable_profiling: {{ .Values.controller.enableProfiling }}
+    log_level: {{ .Values.ingressController.config.logLevel | quote }}
+    log_output: {{ .Values.ingressController.config.logOutput | quote }}
+    http_listen: {{ .Values.ingressController.config.httpListen | quote }}
+    enable_profiling: {{ .Values.ingressController.config.enableProfiling }}
     kubernetes:
-      kubeconfig: {{ .Values.controller.kubernetes.kubeconfig | quote }}
-      resync_interval: {{ .Values.controller.kubernetes.resyncInterval | quote }}
+      kubeconfig: {{ .Values.ingressController.config.kubernetes.kubeconfig | quote }}
+      resync_interval: {{ .Values.ingressController.config.kubernetes.resyncInterval | quote }}
     apisix:
-      base_url: {{ .Values.controller.apisix.baseURL | quote }}
+      base_url: {{ .Values.ingressController.config.apisix.baseURL | quote }}
 kind: ConfigMap
 metadata:
-  name: {{ .Values.controller.configmap }}
+  name: {{ .Values.ingressController.configmap }}
   labels:
     {{- include "ingress-apisix.labels" . | nindent 4 }}

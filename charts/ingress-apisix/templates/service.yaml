@@ -21,9 +21,9 @@ metadata:
   labels:
     {{- include "ingress-apisix.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.ingressController.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
+    - port: {{ .Values.ingressController.service.port }}
       targetPort: http
       protocol: TCP
       name: http

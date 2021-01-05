@@ -21,32 +21,32 @@ metadata:
   labels:
     {{- include "ingress-apisix.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
+  {{- if not .Values.ingressController.autoscaling.enabled }}
+  replicas: {{ .Values.ingressController.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
       {{- include "ingress-apisix.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
+      {{- with .Values.ingressController.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
         {{- include "ingress-apisix.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with .Values.imagePullSecrets }}
+      {{- with .Values.ingressController.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ .Values.controller.serviceAccount }}
+      serviceAccountName: {{ .Values.ingressController.serviceAccount }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- toYaml .Values.ingressController.podSecurityContext | nindent 8 }}
       volumes:
         - name: configuration
           configMap:
-            name: {{ .Values.controller.configmap }}
+            name: {{ .Values.ingressController.configmap }}
             items:
               - key: config.yaml
                 path: config.yaml
@@ -58,12 +58,12 @@ spec:
             - --config-path
             - /ingress-apisix/conf/config.yaml
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+            {{- toYaml .Values.ingressController.securityContext | nindent 12 }}
+          image: "{{ .Values.ingressController.image.repository }}:{{ .Values.ingressController.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.ingressController.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ (.Values.controller.httpListen | split ":")._1 }}
+              containerPort: {{ (.Values.ingressController.config.httpListen | split ":")._1 }}
               protocol: TCP
           livenessProbe:
             httpGet:
@@ -74,19 +74,19 @@ spec:
               path: /healthz
               port: http
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml .Values.ingressController.resources | nindent 12 }}
           volumeMounts:
             - mountPath: /ingress-apisix/conf
               name: configuration
-      {{- with .Values.nodeSelector }}
+      {{- with .Values.ingressController.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- with .Values.ingressController.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- with .Values.ingressController.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
