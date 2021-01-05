@@ -20,8 +20,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/golang/glog"
-
+	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	"github.com/api7/ingress-controller/pkg/seven/db"
 	"github.com/api7/ingress-controller/pkg/seven/utils"
@@ -58,10 +57,10 @@ func (w *serviceWorker) start(rwg *RouteWorkerGroup) {
 
 // trigger add to queue
 func (w *serviceWorker) trigger(event Event, rwg *RouteWorkerGroup) error {
-	glog.V(2).Infof("1.service trigger from %s, %s", event.Op, event.Kind)
+	log.Infof("1.service trigger from %s, %s", event.Op, event.Kind)
 	// consumer Event set upstreamID
 	upstream := event.Obj.(*v1.Upstream)
-	glog.V(2).Infof("2.service trigger from %s, %s", event.Op, *upstream.Name)
+	log.Infof("2.service trigger from %s, %s", event.Op, *upstream.Name)
 
 	w.UpstreamId = upstream.ID
 	// add to queue
@@ -104,8 +103,7 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 			op = Create
 			// 1. sync apisix and get id
 			if serviceResponse, err := apisix.AddService(svc); err != nil {
-				// todo log error
-				glog.V(2).Info(err.Error())
+				log.Info(err.Error())
 				errNotify = err
 				return
 			} else {
@@ -118,7 +116,7 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 				errNotify = err
 				return
 			}
-			glog.V(2).Infof("create service %s, %s", *svc.Name, *svc.UpstreamId)
+			log.Infof("create service %s, %s", *svc.Name, *svc.UpstreamId)
 		} else {
 			op = Update
 			needToUpdate := true
@@ -142,7 +140,7 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 					errNotify = err
 					return
 				}
-				glog.V(2).Infof("update service %s, %s", *svc.Name, *svc.UpstreamId)
+				log.Infof("update service %s, %s", *svc.Name, *svc.UpstreamId)
 			}
 
 		}
@@ -151,7 +149,7 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 	routeWorkers := rwg[*svc.Name]
 	for _, rw := range routeWorkers {
 		event := &Event{Kind: ServiceKind, Op: op, Obj: svc}
-		glog.V(2).Infof("send event %s, %s, %s", event.Kind, event.Op, *svc.Name)
+		log.Infof("send event %s, %s, %s", event.Kind, event.Op, *svc.Name)
 		rw.Event <- *event
 	}
 }
