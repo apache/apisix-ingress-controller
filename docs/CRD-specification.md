@@ -97,7 +97,7 @@ spec:
 
 |         Field                                  |    Type    |                       Description                                  |
 |------------------------------------------------|------------|--------------------------------------------------------------------|
-| `k8s.apisix.apache.org/ssl-redirect`           | boolean    | Whether to force http to be redirected from https. ture: means forced conversion to https, false: means no conversion.   |
+| `k8s.apisix.apache.org/ssl-redirect`           | boolean    | Whether to force http redirect to https. `ture`: means to force conversion to https, `false`: means not to convert.   |
 | `k8s.apisix.apache.org/ingress.class`          | string     | Grouping of ingress.                                               |
 | `k8s.apisix.apache.org/whitelist-source-range` | array      | Whitelist of IPs allowed to be accessed.                           |
 
@@ -167,7 +167,6 @@ spec:
 ## ApisixTls
 
 `ApisixTls` corresponds to the SSL load matching route in Apache APISIX.
-`SSL` loads the matching route. (Default) Use SNI (Server Name Indication) as the primary index.
 To learn more, please check the [Apache APISIX architecture-design docs](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#router).
 
 Structure example:
