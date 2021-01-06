@@ -33,6 +33,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -157,7 +158,8 @@ func (s *Scaffold) beforeEach() {
 	assert.Nil(s.t, err, "initializing etcd")
 
 	// We don't use k8s.WaitUntilServiceAvailable since it hacks for Minikube.
-	err = s.waitAllEtcdPodsAvailable()
+	//err = s.waitAllEtcdPodsAvailable()
+	err = k8s.WaitUntilNumPodsCreatedE(s.t, s.kubectlOptions, s.Selector("app=etcd-deployment-e2e-test"), 1, 5, 2*time.Second)
 	assert.Nil(s.t, err, "waiting for etcd ready")
 
 	s.apisixService, err = s.newAPISIX()
@@ -207,4 +209,8 @@ func waitExponentialBackoff(condFunc func() (bool, error)) error {
 		Steps:    6,
 	}
 	return wait.ExponentialBackoff(backoff, condFunc)
+}
+
+func (s *Scaffold) WaitUntilNumPodsCreatedE(selector metav1.ListOptions, desiredCount int, retries int, interval time.Duration) error {
+	return k8s.WaitUntilNumPodsCreatedE(s.t, s.kubectlOptions, selector, desiredCount, retries, interval)
 }

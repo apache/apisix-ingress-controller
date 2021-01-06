@@ -21,8 +21,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 
+	"github.com/api7/ingress-controller/pkg/seven/utils"
 	apisix "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -154,5 +155,5 @@ func (sc *SecretClientMock) FindByName(namespace, name string) (*v1.Secret, erro
 type SecretClientErrorMock struct{}
 
 func (sc *SecretClientErrorMock) FindByName(namespace, name string) (*v1.Secret, error) {
-	return nil, fmt.Errorf("NOT FOUND")
+	return nil, utils.ErrNotFound
 }

@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
@@ -88,6 +89,10 @@ func (s *Scaffold) CreateApisixRoute(name string, rules []ApisixRouteRule) {
 	k8s.KubectlApplyFromString(s.t, s.kubectlOptions, string(data))
 }
 
+func (s *Scaffold) CreateApisixRouteByString(yaml string) {
+	k8s.KubectlApplyFromString(s.t, s.kubectlOptions, yaml)
+}
+
 func ensureNumApisixCRDsCreated(url string, desired int) error {
 	condFunc := func() (bool, error) {
 		resp, err := http.Get(url)
@@ -116,7 +121,7 @@ func ensureNumApisixCRDsCreated(url string, desired int) error {
 		}
 		return true, nil
 	}
-	return wait.Poll(3*time.Second, 15*time.Second, condFunc)
+	return wait.Poll(3*time.Second, 35*time.Second, condFunc)
 }
 
 // EnsureNumApisixRoutesCreated waits until desired number of Routes are created in
@@ -147,4 +152,24 @@ func (s *Scaffold) EnsureNumApisixUpstreamsCreated(desired int) error {
 		Path:   "/apisix/admin/upstreams",
 	}
 	return ensureNumApisixCRDsCreated(u.String(), desired)
+}
+
+// ListApisixUpstreams list all upstream from APISIX
+func (s *Scaffold) ListApisixUpstreams() (*apisix.UpstreamsResponse, error) {
+	host, err := s.apisixAdminServiceURL()
+	if err != nil {
+		return nil, err
+	}
+	u := url.URL{
+		Scheme: "http",
+		Host:   host,
+		Path:   "/apisix/admin/upstreams",
+	}
+	resp, err := http.Get(u.String())
+	var responses *apisix.UpstreamsResponse
+	dec := json.NewDecoder(resp.Body)
+	if err := dec.Decode(&responses); err != nil {
+		return nil, err
+	}
+	return responses, nil
 }

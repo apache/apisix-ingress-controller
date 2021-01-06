@@ -15,24 +15,26 @@
 package scaffold
 
 import (
+	"fmt"
+
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	corev1 "k8s.io/api/core/v1"
 )
 
 var (
-	_httpbinDeployment = `
+	_httpbinDeploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: httpbin-deployment-e2e-test
 spec:
-  replicas: 1
+  replicas: %d
   selector:
     matchLabels:
       app: httpbin-deployment-e2e-test
   strategy:
     rollingUpdate:
-      maxSurge: 50%
+      maxSurge: 50%%
       maxUnavailable: 1
     type: RollingUpdate
   template:
@@ -84,7 +86,8 @@ spec:
 )
 
 func (s *Scaffold) newHTTPBIN() (*corev1.Service, error) {
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, _httpbinDeployment); err != nil {
+	httpbinDeployment := fmt.Sprintf(_httpbinDeploymentTemplate, 1)
+	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, httpbinDeployment); err != nil {
 		return nil, err
 	}
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, _httpService); err != nil {
@@ -95,4 +98,12 @@ func (s *Scaffold) newHTTPBIN() (*corev1.Service, error) {
 		return nil, err
 	}
 	return svc, nil
+}
+
+func (s *Scaffold) ScaleHTTPBIN(num int) error {
+	httpbinDeployment := fmt.Sprintf(_httpbinDeploymentTemplate, num)
+	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, httpbinDeployment); err != nil {
+		return err
+	}
+	return nil
 }
