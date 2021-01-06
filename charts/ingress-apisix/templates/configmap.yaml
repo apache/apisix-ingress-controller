@@ -29,6 +29,6 @@ data:
       base_url: {{ .Values.ingressController.config.apisix.baseURL | quote }}
 kind: ConfigMap
 metadata:
-  name: {{ .Values.ingressController.configmap }}
+  name: {{ .Release.Name }}-configmap
   labels:
     {{- include "ingress-apisix.labels" . | nindent 4 }}

@@ -17,24 +17,12 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ .Values.rbac.serviceAccount }}
-  labels:
-    {{- include "base.labels" . | nindent 4 }}
-  {{- with .Values.rbac.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+  name: {{ .Release.Name }}-serviceaccount
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ .Values.rbac.clusterRole }}
-  labels:
-    {{- include "base.labels" . | nindent 4 }}
-  {{- with .Values.rbac.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+  name: {{ .Release.Name }}-clusterrole
 rules:
   - apiGroups:
       - ""
@@ -162,18 +150,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ .Values.rbac.clusterRoleBinding }}
-  labels:
-    {{- include "base.labels" . | nindent 4 }}
-  {{- with .Values.rbac.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+  name: {{ .Release.Name }}-clusterrolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ .Values.rbac.clusterRole }}
+  name: {{ .Release.Name }}-clusterrole
 subjects:
   - kind: ServiceAccount
-    name: {{ .Values.rbac.serviceAccount }}
+    name: {{ .Release.Name }}-serviceaccount
     namespace: {{ .Release.Namespace }}

@@ -21,7 +21,7 @@ metadata:
   labels:
     {{- include "ingress-apisix.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.ingressController.service.type }}
+  type: ClusterIP
   ports:
     - port: {{ .Values.ingressController.service.port }}
       targetPort: http

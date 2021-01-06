@@ -30,15 +30,9 @@ ingressController:
   imagePullSecrets: []
   nameOverride: ""
   fullnameOverride: ""
-  podAnnotations: {}
-  podSecurityContext: {}
-  securityContext: {}
-
-  configmap: "apisix-ingress-cm"
-  serviceAccount: "apisix-view-serviceaccount"
+  serviceAccount: "ingress-apisix-base-serviceaccount"
 
   service:
-    type: ClusterIP
     port: 80
 
   config:
@@ -63,4 +57,3 @@ ingressController:
 
   nodeSelector: {}
   tolerations: []
-  affinity: {}

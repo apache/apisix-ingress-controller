@@ -29,10 +29,6 @@ spec:
       {{- include "ingress-apisix.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.ingressController.podAnnotations }}
-      annotations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
       labels:
         {{- include "ingress-apisix.selectorLabels" . | nindent 8 }}
     spec:
@@ -41,12 +37,10 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ .Values.ingressController.serviceAccount }}
-      securityContext:
-        {{- toYaml .Values.ingressController.podSecurityContext | nindent 8 }}
       volumes:
         - name: configuration
           configMap:
-            name: {{ .Values.ingressController.configmap }}
+            name: {{ .Release.Name }}-configmap
             items:
               - key: config.yaml
                 path: config.yaml
@@ -57,8 +51,6 @@ spec:
             - ingress
             - --config-path
             - /ingress-apisix/conf/config.yaml
-          securityContext:
-            {{- toYaml .Values.ingressController.securityContext | nindent 12 }}
           image: "{{ .Values.ingressController.image.repository }}:{{ .Values.ingressController.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.ingressController.image.pullPolicy }}
           ports:
@@ -80,10 +72,6 @@ spec:
               name: configuration
       {{- with .Values.ingressController.nodeSelector }}
       nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.ingressController.affinity }}
-      affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with .Values.ingressController.tolerations }}
