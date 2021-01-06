@@ -99,7 +99,7 @@ func (s *serviceClient) Delete(ctx context.Context, obj *v1.Service) error {
 	return s.stub.deleteResource(ctx, url)
 }
 
-func (s *serviceClient) Update(ctx context.Context, obj *v1.Service) error {
+func (s *serviceClient) Update(ctx context.Context, obj *v1.Service) (*v1.Service, error) {
 	log.Infof("update service, id:%s", *obj.ID)
 
 	body, err := json.Marshal(serviceItem{
@@ -108,9 +108,17 @@ func (s *serviceClient) Update(ctx context.Context, obj *v1.Service) error {
 		Desc:       obj.Name,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	url := s.url + "/" + *obj.ID
-	return s.stub.updateResource(ctx, url, bytes.NewReader(body))
+	resp, err := s.stub.updateResource(ctx, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	var group string
+	if obj.Group != nil {
+		group = *obj.Group
+	}
+	return resp.Item.service(group)
 }

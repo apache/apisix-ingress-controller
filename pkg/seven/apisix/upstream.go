@@ -61,5 +61,6 @@ func PatchNodes(upstream *v1.Upstream, nodes []*v1.Node) error {
 		// Restore it
 		upstream.Nodes = oldNodes
 	}()
-	return conf.Client.Upstream().Update(context.TODO(), upstream)
+	_, err := conf.Client.Upstream().Update(context.TODO(), upstream)
+	return err
 }

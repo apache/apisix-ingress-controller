@@ -91,21 +91,26 @@ func (s *stub) createResource(ctx context.Context, url string, body io.Reader) (
 	return &cr, nil
 }
 
-func (s *stub) updateResource(ctx context.Context, url string, body io.Reader) error {
+func (s *stub) updateResource(ctx context.Context, url string, body io.Reader) (*updateResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, url, body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	resp, err := s.do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer drainBody(resp.Body, url)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
-	return nil
+	var ur updateResponse
+	dec := json.NewDecoder(resp.Body)
+	if err := dec.Decode(&ur); err != nil {
+		return nil, err
+	}
+	return &ur, nil
 }
 
 func (s *stub) deleteResource(ctx context.Context, url string) error {

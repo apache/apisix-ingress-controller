@@ -156,7 +156,8 @@ func SyncSsl(ssl *v1.Ssl, method string) error {
 		_, err := conf.Client.SSL().Create(context.TODO(), ssl)
 		return err
 	case Update:
-		return conf.Client.SSL().Update(context.TODO(), ssl)
+		_, err := conf.Client.SSL().Update(context.TODO(), ssl)
+		return err
 	case Delete:
 		return conf.Client.SSL().Delete(context.TODO(), ssl)
 	}

@@ -20,6 +20,7 @@ import (
 
 	"github.com/api7/ingress-controller/pkg/seven/conf"
 	sevendb "github.com/api7/ingress-controller/pkg/seven/db"
+	"github.com/api7/ingress-controller/pkg/seven/utils"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 

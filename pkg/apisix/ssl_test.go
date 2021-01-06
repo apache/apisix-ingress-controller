@@ -110,6 +110,8 @@ func (srv *fakeAPISIXSSLSrv) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		srv.ssl[id] = data
 
 		w.WriteHeader(http.StatusOK)
+		output := fmt.Sprintf(`{"action": "compareAndSwap", "node": {"key": "%s", "value": %s}}`, id, string(data))
+		_, _ = w.Write([]byte(output))
 		return
 	}
 }
@@ -185,7 +187,7 @@ func TestSSLClient(t *testing.T) {
 	// Patch then List
 	objId := "2"
 	sni = "foo.com"
-	err = cli.Update(context.Background(), &v1.Ssl{
+	_, err = cli.Update(context.Background(), &v1.Ssl{
 		ID:   &objId,
 		Snis: []*string{&sni},
 	})

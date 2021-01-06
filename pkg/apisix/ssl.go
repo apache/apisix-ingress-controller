@@ -99,7 +99,7 @@ func (t *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 	return t.stub.deleteResource(ctx, url)
 }
 
-func (t *sslClient) Update(ctx context.Context, obj *v1.Ssl) error {
+func (t *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	log.Infof("update ssl, id:%s", *obj.ID)
 	url := t.url + "/" + *obj.ID
 	data, err := json.Marshal(v1.Ssl{
@@ -110,7 +110,15 @@ func (t *sslClient) Update(ctx context.Context, obj *v1.Ssl) error {
 		Status: obj.Status,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return t.stub.updateResource(ctx, url, bytes.NewReader(data))
+	resp, err := t.stub.updateResource(ctx, url, bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	var group string
+	if obj.Group != nil {
+		group = *obj.Group
+	}
+	return resp.Item.ssl(group)
 }

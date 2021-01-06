@@ -111,6 +111,8 @@ func (srv *fakeAPISIXUpstreamSrv) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		srv.upstream[id] = data
 
 		w.WriteHeader(http.StatusOK)
+		output := fmt.Sprintf(`{"action": "compareAndSwap", "node": {"key": "%s", "value": %s}}`, id, string(data))
+		_, _ = w.Write([]byte(output))
 		return
 	}
 }
@@ -208,7 +210,7 @@ func TestUpstreamClient(t *testing.T) {
 	// Patch then List
 	lbType = "chash"
 	objId := "2"
-	err = cli.Update(context.Background(), &v1.Upstream{
+	_, err = cli.Update(context.Background(), &v1.Upstream{
 		ID:       &objId,
 		FullName: &fullName,
 		Group:    &group,

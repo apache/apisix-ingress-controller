@@ -36,6 +36,8 @@ type createResponse struct {
 	Item   item   `json:"node"`
 }
 
+type updateResponse = createResponse
+
 type node struct {
 	Key   string `json:"key"`
 	Items items  `json:"nodes"`

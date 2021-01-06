@@ -109,7 +109,6 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 			} else {
 				*svc.ID = *s.ID
 			}
-
 			// 2. sync memDB
 			db := &db.ServiceDB{Services: []*v1.Service{svc}}
 			if err := db.Insert(); err != nil {
@@ -117,31 +116,31 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 				return
 			}
 			log.Infof("create service %s, %s", *svc.Name, *svc.UpstreamId)
-		}
-	} else {
-		op = Update
-		needToUpdate := true
-		if currentService.FromKind != nil && *(currentService.FromKind) == ApisixService { // update from ApisixUpstream
-			if svc.FromKind == nil || (svc.FromKind != nil && *(svc.FromKind) != ApisixService) {
-				// currentService > svc
-				// set lb && health check
-				needToUpdate = false
+		} else {
+			op = Update
+			needToUpdate := true
+			if currentService.FromKind != nil && *(currentService.FromKind) == ApisixService { // update from ApisixUpstream
+				if svc.FromKind == nil || (svc.FromKind != nil && *(svc.FromKind) != ApisixService) {
+					// currentService > svc
+					// set lb && health check
+					needToUpdate = false
+				}
 			}
-		}
-		if needToUpdate {
-			// 1. sync memDB
-			db := db.ServiceDB{Services: []*v1.Service{svc}}
-			if err := db.UpdateService(); err != nil {
-				log.Errorf("failed to update service to mem db: %s", err)
-				errNotify = err
-				return
-			}
-			// 2. sync apisix
-			if err := conf.Client.Service().Update(context.TODO(), svc); err != nil {
-				errNotify = err
-				log.Errorf("failed to update service: %s, id:%s", err, *svc.ID)
-			} else {
-				log.Infof("updated service, id:%s, upstream_id:%s", *svc.ID, *svc.UpstreamId)
+			if needToUpdate {
+				// 1. sync memDB
+				db := db.ServiceDB{Services: []*v1.Service{svc}}
+				if err := db.UpdateService(); err != nil {
+					log.Errorf("failed to update service to mem db: %s", err)
+					errNotify = err
+					return
+				}
+				// 2. sync apisix
+				if _, err := conf.Client.Service().Update(context.TODO(), svc); err != nil {
+					errNotify = err
+					log.Errorf("failed to update service: %s, id:%s", err, *svc.ID)
+				} else {
+					log.Infof("updated service, id:%s, upstream_id:%s", *svc.ID, *svc.UpstreamId)
+				}
 			}
 		}
 	}

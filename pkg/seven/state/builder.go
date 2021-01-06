@@ -147,7 +147,7 @@ func (r *routeWorker) sync() error {
 			return err
 		}
 		// 2. sync apisix
-		if err := conf.Client.Route().Update(context.TODO(), r.Route); err != nil {
+		if _, err := conf.Client.Route().Update(context.TODO(), r.Route); err != nil {
 			log.Errorf("failed to update route %s: %s, ", *r.Name, err)
 			return err
 		}
@@ -233,7 +233,7 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 					}
 
 					// 2.sync apisix
-					if err = conf.Client.Upstream().Update(context.TODO(), u); err != nil {
+					if _, err = conf.Client.Upstream().Update(context.TODO(), u); err != nil {
 						glog.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
 						return
 					}

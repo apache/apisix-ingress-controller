@@ -49,7 +49,7 @@ type Route interface {
 	List(context.Context, string) ([]*v1.Route, error)
 	Create(context.Context, *v1.Route) (*v1.Route, error)
 	Delete(context.Context, *v1.Route) error
-	Update(context.Context, *v1.Route) error
+	Update(context.Context, *v1.Route) (*v1.Route, error)
 }
 
 // SSL is the specific client interface to take over the create, update,
@@ -58,7 +58,7 @@ type SSL interface {
 	List(context.Context, string) ([]*v1.Ssl, error)
 	Create(context.Context, *v1.Ssl) (*v1.Ssl, error)
 	Delete(context.Context, *v1.Ssl) error
-	Update(context.Context, *v1.Ssl) error
+	Update(context.Context, *v1.Ssl) (*v1.Ssl, error)
 }
 
 // Upstream is the specific client interface to take over the create, update,
@@ -67,7 +67,7 @@ type Upstream interface {
 	List(context.Context, string) ([]*v1.Upstream, error)
 	Create(context.Context, *v1.Upstream) (*v1.Upstream, error)
 	Delete(context.Context, *v1.Upstream) error
-	Update(context.Context, *v1.Upstream) error
+	Update(context.Context, *v1.Upstream) (*v1.Upstream, error)
 }
 
 // Service is the specific client interface to take over the create, update,
@@ -76,7 +76,7 @@ type Service interface {
 	List(context.Context, string) ([]*v1.Service, error)
 	Create(context.Context, *v1.Service) (*v1.Service, error)
 	Delete(context.Context, *v1.Service) error
-	Update(context.Context, *v1.Service) error
+	Update(context.Context, *v1.Service) (*v1.Service, error)
 }
 
 type client struct {

@@ -120,7 +120,7 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 	return u.stub.deleteResource(ctx, url)
 }
 
-func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) error {
+func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upstream, error) {
 	log.Infof("update upstream, id:%s", *obj.ID)
 
 	// TODO Just pass the node array.
@@ -138,9 +138,17 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) error {
 		Desc:   obj.Name,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	url := u.url + "/" + *obj.ID
-	return u.stub.updateResource(ctx, url, bytes.NewReader(body))
+	resp, err := u.stub.updateResource(ctx, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	var group string
+	if obj.Group != nil {
+		group = *obj.Group
+	}
+	return resp.Item.upstream(group)
 }

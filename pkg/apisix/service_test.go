@@ -110,6 +110,8 @@ func (srv *fakeAPISIXServiceSrv) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		srv.service[id] = data
 
 		w.WriteHeader(http.StatusOK)
+		output := fmt.Sprintf(`{"action": "compareAndSwap", "node": {"key": "%s", "value": %s}}`, id, string(data))
+		_, _ = w.Write([]byte(output))
 		return
 	}
 }
@@ -192,7 +194,7 @@ func TestServiceClient(t *testing.T) {
 	// Patch then List
 	upsId = "14"
 	objId := "2"
-	err = cli.Update(context.Background(), &v1.Service{
+	_, err = cli.Update(context.Background(), &v1.Service{
 		ID:         &objId,
 		FullName:   &fullName,
 		Group:      &group,

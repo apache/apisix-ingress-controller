@@ -131,6 +131,8 @@ func (srv *fakeAPISIXRouteSrv) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		srv.route[id] = data
 
 		w.WriteHeader(http.StatusOK)
+		output := fmt.Sprintf(`{"action": "compareAndSwap", "node": {"key": "%s", "value": %s}}`, id, string(data))
+		_, _ = w.Write([]byte(output))
 		return
 	}
 }
@@ -216,7 +218,7 @@ func TestRouteClient(t *testing.T) {
 	// Patch then List
 	id = "112"
 	objId := "2"
-	err = cli.Update(context.Background(), &v1.Route{
+	_, err = cli.Update(context.Background(), &v1.Route{
 		ID:         &objId,
 		Host:       &host,
 		Path:       &uri,

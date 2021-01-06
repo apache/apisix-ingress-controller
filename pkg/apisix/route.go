@@ -107,7 +107,7 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 	return r.stub.deleteResource(ctx, url)
 }
 
-func (r *routeClient) Update(ctx context.Context, obj *v1.Route) error {
+func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
 	log.Infof("update route, id:%s", *obj.ID)
 	body, err := json.Marshal(routeReqBody{
 		Desc:      obj.Name,
@@ -117,8 +117,16 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) error {
 		Plugins:   obj.Plugins,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	url := r.url + "/" + *obj.ID
-	return r.stub.updateResource(ctx, url, bytes.NewReader(body))
+	resp, err := r.stub.updateResource(ctx, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	var group string
+	if obj.Group != nil {
+		group = *obj.Group
+	}
+	return resp.Item.route(group)
 }
