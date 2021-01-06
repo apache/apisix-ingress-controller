@@ -16,6 +16,7 @@ package scaffold
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -100,9 +101,13 @@ func (s *Scaffold) newHTTPBIN() (*corev1.Service, error) {
 	return svc, nil
 }
 
-func (s *Scaffold) ScaleHTTPBIN(num int) error {
-	httpbinDeployment := fmt.Sprintf(_httpbinDeploymentTemplate, num)
+// ScaleHTTPBIN scales the number of HTTPBIN pods to desired.
+func (s *Scaffold) ScaleHTTPBIN(desired int) error {
+	httpbinDeployment := fmt.Sprintf(_httpbinDeploymentTemplate, desired)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, httpbinDeployment); err != nil {
+		return err
+	}
+	if err := k8s.WaitUntilNumPodsCreatedE(s.t, s.kubectlOptions, s.labelSelector("app=httpbin-deployment-e2e-test"), desired, 5, 5*time.Second); err != nil {
 		return err
 	}
 	return nil

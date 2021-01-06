@@ -30,16 +30,16 @@ var _ = ginkgo.Describe("upstream expansion", func() {
 apiVersion: apisix.apache.org/v1
 kind: ApisixRoute
 metadata:
-  name: httpbin-route
+ name: httpbin-route
 spec:
-  rules:
-  - host: httpbin.com
-    http:
-      paths:
-      - backend:
-          serviceName: httpbin-service-e2e-test
-          servicePort: 80
-        path: /ip
+ rules:
+ - host: httpbin.com
+   http:
+     paths:
+     - backend:
+         serviceName: httpbin-service-e2e-test
+         servicePort: 80
+       path: /ip
 `
 		s.CreateApisixRouteByString(apisixRoute)
 
@@ -48,8 +48,8 @@ spec:
 		err = s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 		scale := 2
-		s.ScaleHTTPBIN(scale)
-		s.WaitUntilNumPodsCreatedE(s.Selector("app=httpbin-deployment-e2e-test"), scale, 5, 5*time.Second)
+		err = s.ScaleHTTPBIN(scale)
+		assert.Nil(ginkgo.GinkgoT(), err)
 		time.Sleep(10 * time.Second) // wait for ingress to sync
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")

@@ -134,7 +134,7 @@ func (s *Scaffold) waitAllEtcdPodsAvailable() error {
 	return waitExponentialBackoff(condFunc)
 }
 
-func (s *Scaffold) Selector(label string) metav1.ListOptions {
+func (s *Scaffold) labelSelector(label string) metav1.ListOptions {
 	return metav1.ListOptions{
 		LabelSelector: label,
 	}
