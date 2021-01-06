@@ -23,7 +23,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/api7/ingress-controller/pkg/metrics"
 	api6Informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
 	"github.com/spf13/cobra"
 
@@ -32,6 +31,7 @@ import (
 	"github.com/api7/ingress-controller/pkg/ingress/controller"
 	"github.com/api7/ingress-controller/pkg/kube"
 	"github.com/api7/ingress-controller/pkg/log"
+	"github.com/api7/ingress-controller/pkg/metrics"
 	"github.com/api7/ingress-controller/pkg/seven/conf"
 )
 
@@ -122,7 +122,7 @@ the apisix cluster and others are created`,
 
 			kubeClientSet := kube.GetKubeClient()
 			apisixClientset := kube.GetApisixClient()
-			sharedInformerFactory := api6Informers.NewSharedInformerFactory(apisixClientset, 0)
+			sharedInformerFactory := api6Informers.NewSharedInformerFactory(apisixClientset, 6.*time.Hour)
 			stop := make(chan struct{})
 			c := &controller.Api6Controller{
 				KubeClientSet:             kubeClientSet,

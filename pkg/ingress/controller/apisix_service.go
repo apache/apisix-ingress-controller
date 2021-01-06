@@ -57,12 +57,12 @@ func BuildApisixServiceController(
 		apisixServiceSynced: apisixServiceInformer.Informer().HasSynced,
 		workqueue:           workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixServices"),
 	}
-	apisixServiceInformer.Informer().AddEventHandler(
+	apisixServiceInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    controller.addFunc,
 			UpdateFunc: controller.updateFunc,
 			DeleteFunc: controller.deleteFunc,
-		})
+		}, 2*time.Hour)
 	return controller
 }
 

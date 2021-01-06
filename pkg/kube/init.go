@@ -15,6 +15,8 @@
 package kube
 
 import (
+	"time"
+
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	"k8s.io/client-go/informers"
 	coreinformers "k8s.io/client-go/informers/core/v1"
@@ -55,7 +57,7 @@ func InitInformer(cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	CoreSharedInformerFactory = informers.NewSharedInformerFactory(kubeClient, 0)
+	CoreSharedInformerFactory = informers.NewSharedInformerFactory(kubeClient, 6*time.Hour)
 
 	return nil
 }

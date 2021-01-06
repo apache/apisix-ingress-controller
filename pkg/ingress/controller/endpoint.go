@@ -51,12 +51,12 @@ func BuildEndpointController(kubeclientset kubernetes.Interface) *EndpointContro
 		endpointSynced: kube.EndpointsInformer.Informer().HasSynced,
 		workqueue:      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpoints"),
 	}
-	kube.EndpointsInformer.Informer().AddEventHandler(
+	kube.EndpointsInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    controller.addFunc,
 			UpdateFunc: controller.updateFunc,
 			DeleteFunc: controller.deleteFunc,
-		})
+		}, 6*time.Hour)
 	return controller
 }
 

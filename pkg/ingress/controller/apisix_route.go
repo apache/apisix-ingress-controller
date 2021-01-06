@@ -63,12 +63,12 @@ func BuildApisixRouteController(
 		apisixRouteSynced:    api6RouteInformer.Informer().HasSynced,
 		workqueue:            workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoutes"),
 	}
-	api6RouteInformer.Informer().AddEventHandler(
+	api6RouteInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    controller.addFunc,
 			UpdateFunc: controller.updateFunc,
 			DeleteFunc: controller.deleteFunc,
-		})
+		}, 30.*time.Minute)
 	return controller
 }
 

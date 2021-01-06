@@ -63,12 +63,12 @@ func BuildApisixTlsController(
 		apisixTlsSynced: apisixTlsInformer.Informer().HasSynced,
 		workqueue:       workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixTlses"),
 	}
-	apisixTlsInformer.Informer().AddEventHandler(
+	apisixTlsInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    controller.addFunc,
 			UpdateFunc: controller.updateFunc,
 			DeleteFunc: controller.deleteFunc,
-		})
+		}, 30*time.Minute)
 	return controller
 }
 

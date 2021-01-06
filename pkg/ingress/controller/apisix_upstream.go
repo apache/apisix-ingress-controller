@@ -58,12 +58,12 @@ func BuildApisixUpstreamController(
 		apisixUpstreamSynced: apisixUpstreamInformer.Informer().HasSynced,
 		workqueue:            workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixUpstreams"),
 	}
-	apisixUpstreamInformer.Informer().AddEventHandler(
+	apisixUpstreamInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    controller.addFunc,
 			UpdateFunc: controller.updateFunc,
 			DeleteFunc: controller.deleteFunc,
-		})
+		}, 6*time.Hour)
 	return controller
 }
 
