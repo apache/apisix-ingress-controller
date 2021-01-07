@@ -124,8 +124,6 @@ func (c *ApisixRouteController) deleteFunc(obj interface{}) {
 }
 
 func (c *ApisixRouteController) Run(stop <-chan struct{}) error {
-	//defer c.workqueue.ShutDown()
-	// 同步缓存
 	if ok := cache.WaitForCacheSync(stop); !ok {
 		log.Errorf("同步缓存失败")
 		return fmt.Errorf("failed to wait for caches to sync")

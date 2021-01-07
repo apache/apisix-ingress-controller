@@ -23,16 +23,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/api7/ingress-controller/pkg/metrics"
-	api6Informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
 	"github.com/spf13/cobra"
 
-	"github.com/api7/ingress-controller/pkg/api"
 	"github.com/api7/ingress-controller/pkg/config"
 	"github.com/api7/ingress-controller/pkg/ingress/controller"
-	"github.com/api7/ingress-controller/pkg/kube"
 	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/api7/ingress-controller/pkg/seven/conf"
 )
 
 func dief(template string, args ...interface{}) {
@@ -103,63 +98,14 @@ the apisix cluster and others are created`,
 			}
 			log.Info("use configuration\n", string(data))
 
-			// TODO: Move these logics to the inside of pkg/ingress/controller.
-			conf.SetBaseUrl(cfg.APISIX.BaseURL)
-			if err := kube.InitInformer(cfg); err != nil {
-				dief("failed to initialize kube informers: %s", err)
-			}
-
-			// TODO: logics about metrics should be moved inside ingress controller,
-			// after we  refactoring it.
-			podName := os.Getenv("POD_NAME")
-			podNamespace := os.Getenv("POD_NAMESPACE")
-			if podNamespace == "" {
-				podNamespace = "default"
-			}
-
-			collector := metrics.NewPrometheusCollector(podName, podNamespace)
-			collector.ResetLeader(true)
-
-			kubeClientSet := kube.GetKubeClient()
-			apisixClientset := kube.GetApisixClient()
-			sharedInformerFactory := api6Informers.NewSharedInformerFactory(apisixClientset, 0)
 			stop := make(chan struct{})
-			c := &controller.Api6Controller{
-				KubeClientSet:             kubeClientSet,
-				Api6ClientSet:             apisixClientset,
-				SharedInformerFactory:     sharedInformerFactory,
-				CoreSharedInformerFactory: kube.CoreSharedInformerFactory,
-				Stop:                      stop,
-			}
-			epInformer := c.CoreSharedInformerFactory.Core().V1().Endpoints()
-			kube.EndpointsInformer = epInformer
-			// endpoint
-			c.Endpoint()
-			go c.CoreSharedInformerFactory.Start(stop)
-
-			// ApisixRoute
-			c.ApisixRoute()
-			// ApisixUpstream
-			c.ApisixUpstream()
-			// ApisixService
-			c.ApisixService()
-			// ApisixTLS
-			c.ApisixTLS()
-
-			go func() {
-				time.Sleep(time.Duration(10) * time.Second)
-				c.SharedInformerFactory.Start(stop)
-			}()
-
-			srv, err := api.NewServer(cfg)
+			ingress, err := controller.NewController(cfg)
 			if err != nil {
-				dief("failed to create API Server: %s", err)
+				dief("failed to create ingress controller: %s", err)
 			}
-
-			// TODO add sync.WaitGroup
 			go func() {
-				if err := srv.Run(stop); err != nil {
-					dief("failed to launch API Server: %s", err)
+				if err := ingress.Run(stop); err != nil {
+					dief("failed to launch ingress controller: %s", err)
 				}
 			}()
 
