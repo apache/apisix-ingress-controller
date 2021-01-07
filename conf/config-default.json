@@ -5,7 +5,7 @@
   "enable_profiling": true,
   "kubernetes": {
     "kubeconfig": "",
-    "resync_interval": "60s"
+    "resync_interval": "6h"
   },
   "apisix": {
     "base_url": "http://127.0.0.1:9080/apisix/admin"
