@@ -21,8 +21,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 
+	apisixhttp "github.com/api7/ingress-controller/pkg/apisix"
+	"github.com/api7/ingress-controller/pkg/seven/conf"
 	"github.com/api7/ingress-controller/pkg/seven/utils"
 	apisix "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
@@ -99,6 +101,7 @@ spec:
 		Status: &status,
 		Group:  &group,
 	}
+	setDummyApisixClient(t)
 	atlsCRD := &ApisixTlsCRD{}
 	err := yaml.Unmarshal([]byte(atlsStr), atlsCRD)
 	assert.Nil(t, err, "yaml decode failed")
@@ -119,6 +122,7 @@ spec:
     name: test-atls
     namespace: helm
 `
+	setDummyApisixClient(t)
 	atlsCRD := &ApisixTlsCRD{}
 	err := yaml.Unmarshal([]byte(atlsStr), atlsCRD)
 	assert.Nil(t, err, "yaml decode failed")
@@ -156,4 +160,13 @@ type SecretClientErrorMock struct{}
 
 func (sc *SecretClientErrorMock) FindByName(namespace, name string) (*v1.Secret, error) {
 	return nil, utils.ErrNotFound
+}
+
+func setDummyApisixClient(t *testing.T) {
+	cli, err := apisixhttp.NewForOptions(&apisixhttp.ClusterOptions{
+		Name:    "",
+		BaseURL: "http://127.0.0.2:9080/apisix/admin",
+	})
+	assert.Nil(t, err)
+	conf.SetAPISIXClient(cli)
 }
