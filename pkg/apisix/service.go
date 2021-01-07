@@ -26,8 +26,9 @@ import (
 )
 
 type serviceClient struct {
-	url  string
-	stub *stub
+	url         string
+	clusterName string
+	cluster     *cluster
 }
 
 type serviceItem struct {
@@ -36,17 +37,18 @@ type serviceItem struct {
 	Desc       *string                 `json:"desc,omitempty"`
 }
 
-func newServiceClient(stub *stub) Service {
+func newServiceClient(c *cluster) Service {
 	return &serviceClient{
-		url:  stub.baseURL + "/services",
-		stub: stub,
+		url:         c.baseURL + "/services",
+		clusterName: c.name,
+		cluster:     c,
 	}
 }
 
-func (s *serviceClient) List(ctx context.Context, group string) ([]*v1.Service, error) {
+func (s *serviceClient) List(ctx context.Context) ([]*v1.Service, error) {
 	log.Infow("try to list services in APISIX", zap.String("url", s.url))
 
-	upsItems, err := s.stub.listResource(ctx, s.url)
+	upsItems, err := s.cluster.listResource(ctx, s.url)
 	if err != nil {
 		log.Errorf("failed to list upstreams: %s", err)
 		return nil, err
@@ -54,7 +56,7 @@ func (s *serviceClient) List(ctx context.Context, group string) ([]*v1.Service, 
 
 	var items []*v1.Service
 	for i, item := range upsItems.Node.Items {
-		svc, err := item.service(group)
+		svc, err := item.service(s.clusterName)
 		if err != nil {
 			log.Errorw("failed to convert service item",
 				zap.String("url", s.url),
@@ -81,22 +83,22 @@ func (s *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Servic
 		return nil, err
 	}
 
-	resp, err := s.stub.createResource(ctx, s.url, bytes.NewReader(body))
+	resp, err := s.cluster.createResource(ctx, s.url, bytes.NewReader(body))
 	if err != nil {
 		log.Errorf("failed to create service: %s", err)
 		return nil, err
 	}
-	var group string
+	var clusterName string
 	if obj.Group != nil {
-		group = *obj.Group
+		clusterName = *obj.Group
 	}
-	return resp.Item.service(group)
+	return resp.Item.service(clusterName)
 }
 
 func (s *serviceClient) Delete(ctx context.Context, obj *v1.Service) error {
 	log.Infof("delete service, id:%s", *obj.ID)
 	url := s.url + "/" + *obj.ID
-	return s.stub.deleteResource(ctx, url)
+	return s.cluster.deleteResource(ctx, url)
 }
 
 func (s *serviceClient) Update(ctx context.Context, obj *v1.Service) (*v1.Service, error) {
@@ -112,13 +114,13 @@ func (s *serviceClient) Update(ctx context.Context, obj *v1.Service) (*v1.Servic
 	}
 
 	url := s.url + "/" + *obj.ID
-	resp, err := s.stub.updateResource(ctx, url, bytes.NewReader(body))
+	resp, err := s.cluster.updateResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
-	var group string
+	var clusterName string
 	if obj.Group != nil {
-		group = *obj.Group
+		clusterName = *obj.Group
 	}
-	return resp.Item.service(group)
+	return resp.Item.service(clusterName)
 }

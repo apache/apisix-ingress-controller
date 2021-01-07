@@ -28,8 +28,9 @@ import (
 )
 
 type upstreamClient struct {
-	url  string
-	stub *stub
+	clusterName string
+	url         string
+	cluster     *cluster
 }
 
 type upstreamReqBody struct {
@@ -46,17 +47,18 @@ type upstreamItem struct {
 	LBType *string          `json:"type"`
 }
 
-func newUpstreamClient(stub *stub) Upstream {
+func newUpstreamClient(c *cluster) Upstream {
 	return &upstreamClient{
-		url:  stub.baseURL + "/upstreams",
-		stub: stub,
+		url:         c.baseURL + "/upstreams",
+		cluster:     c,
+		clusterName: c.name,
 	}
 }
 
-func (u *upstreamClient) List(ctx context.Context, group string) ([]*v1.Upstream, error) {
+func (u *upstreamClient) List(ctx context.Context) ([]*v1.Upstream, error) {
 	log.Infow("try to list upstreams in APISIX", zap.String("url", u.url))
 
-	upsItems, err := u.stub.listResource(ctx, u.url)
+	upsItems, err := u.cluster.listResource(ctx, u.url)
 	if err != nil {
 		log.Errorf("failed to list upstreams: %s", err)
 		return nil, err
@@ -64,7 +66,7 @@ func (u *upstreamClient) List(ctx context.Context, group string) ([]*v1.Upstream
 
 	var items []*v1.Upstream
 	for i, item := range upsItems.Node.Items {
-		ups, err := item.upstream(group)
+		ups, err := item.upstream(u.clusterName)
 		if err != nil {
 			log.Errorw("failed to convert upstream item",
 				zap.String("url", u.url),
@@ -102,22 +104,22 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		return nil, err
 	}
 
-	resp, err := u.stub.createResource(ctx, u.url, bytes.NewReader(body))
+	resp, err := u.cluster.createResource(ctx, u.url, bytes.NewReader(body))
 	if err != nil {
 		log.Errorf("failed to create upstream: %s", err)
 		return nil, err
 	}
-	var group string
+	var clusterName string
 	if obj.Group != nil {
-		group = *obj.Group
+		clusterName = *obj.Group
 	}
-	return resp.Item.upstream(group)
+	return resp.Item.upstream(clusterName)
 }
 
 func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 	log.Infof("delete upstream, id:%s", *obj.ID)
 	url := u.url + "/" + *obj.ID
-	return u.stub.deleteResource(ctx, url)
+	return u.cluster.deleteResource(ctx, url)
 }
 
 func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upstream, error) {
@@ -142,13 +144,13 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	}
 
 	url := u.url + "/" + *obj.ID
-	resp, err := u.stub.updateResource(ctx, url, bytes.NewReader(body))
+	resp, err := u.cluster.updateResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
-	var group string
+	var clusterName string
 	if obj.Group != nil {
-		group = *obj.Group
+		clusterName = *obj.Group
 	}
-	return resp.Item.upstream(group)
+	return resp.Item.upstream(clusterName)
 }

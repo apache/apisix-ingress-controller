@@ -34,7 +34,7 @@ func FindCurrentUpstream(group, name, fullName string) (*v1.Upstream, error) {
 		return currentUpstream, nil
 	} else {
 		// find upstream from apisix
-		if upstreams, err := conf.Client.Upstream().List(context.TODO(), group); err != nil {
+		if upstreams, err := conf.Client.Cluster(group).Upstream().List(context.TODO()); err != nil {
 			glog.Errorf("list upstreams in etcd failed, group: %s, err: %+v", group, err)
 			return nil, fmt.Errorf("list upstreams failed, err: %+v", err)
 		} else {
@@ -61,6 +61,10 @@ func PatchNodes(upstream *v1.Upstream, nodes []*v1.Node) error {
 		// Restore it
 		upstream.Nodes = oldNodes
 	}()
-	_, err := conf.Client.Upstream().Update(context.TODO(), upstream)
+	var cluster string
+	if upstream.Group != nil {
+		cluster = *upstream.Group
+	}
+	_, err := conf.Client.Cluster(cluster).Upstream().Update(context.TODO(), upstream)
 	return err
 }

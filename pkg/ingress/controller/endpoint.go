@@ -180,7 +180,7 @@ func (c *EndpointController) process(ep *CoreV1.Endpoints) {
 }
 
 func syncWithGroup(group, upstreamName string, ips []string, port CoreV1.EndpointPort) {
-	upstreams, err := sevenConf.Client.Upstream().List(context.TODO(), group)
+	upstreams, err := sevenConf.Client.Cluster(group).Upstream().List(context.TODO())
 	if err == nil {
 		for _, upstream := range upstreams {
 			if *(upstream.Name) == upstreamName {

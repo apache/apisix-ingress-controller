@@ -149,7 +149,7 @@ func TestUpstreamClient(t *testing.T) {
 		Host:   srv.Addr,
 		Path:   "/apisix/admin",
 	}
-	cli := newUpstreamClient(&stub{
+	cli := newUpstreamClient(&cluster{
 		baseURL: u.String(),
 		cli:     http.DefaultClient,
 	})
@@ -194,7 +194,7 @@ func TestUpstreamClient(t *testing.T) {
 	assert.Equal(t, *obj.ID, "2")
 
 	// List
-	objs, err := cli.List(context.Background(), "")
+	objs, err := cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 2)
 	assert.Equal(t, *objs[0].ID, "1")
@@ -202,7 +202,7 @@ func TestUpstreamClient(t *testing.T) {
 
 	// Delete then List
 	assert.Nil(t, cli.Delete(context.Background(), objs[0]))
-	objs, err = cli.List(context.Background(), "")
+	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
 	assert.Equal(t, "2", *objs[0].ID)
@@ -220,7 +220,7 @@ func TestUpstreamClient(t *testing.T) {
 		Nodes:    nodes,
 	})
 	assert.Nil(t, err)
-	objs, err = cli.List(context.Background(), "")
+	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
 	assert.Equal(t, "2", *objs[0].ID)

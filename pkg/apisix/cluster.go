@@ -17,34 +17,117 @@ package apisix
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
+	"time"
 
 	"go.uber.org/zap"
 
 	"github.com/api7/ingress-controller/pkg/log"
 )
 
-type stub struct {
+const (
+	_defaultTimeout = 5 * time.Second
+)
+
+var (
+	// ErrClusterNotExist means a cluster doesn't exist.
+	ErrClusterNotExist = errors.New("client not exist")
+	// ErrDuplicatedCluster means the cluster adding request was
+	// rejected since the cluster was already created.
+	ErrDuplicatedCluster = errors.New("duplicated cluster")
+)
+
+// Options contains parameters to customize APISIX client.
+type ClusterOptions struct {
+	Name     string
+	AdminKey string
+	BaseURL  string
+	Timeout  time.Duration
+}
+
+type cluster struct {
+	name     string
 	baseURL  string
 	adminKey string
 	cli      *http.Client
+
+	route    Route
+	upstream Upstream
+	service  Service
+	ssl      SSL
 }
 
-func (s *stub) applyAuth(req *http.Request) {
+func newCluster(o *ClusterOptions) (Cluster, error) {
+	if o.BaseURL == "" {
+		return nil, errors.New("empty base url")
+	}
+	if o.Timeout == time.Duration(0) {
+		o.Timeout = _defaultTimeout
+	}
+	o.BaseURL = strings.TrimSuffix(o.BaseURL, "/")
+
+	c := &cluster{
+		name:     o.Name,
+		baseURL:  o.BaseURL,
+		adminKey: o.AdminKey,
+		cli: &http.Client{
+			Timeout: o.Timeout,
+			Transport: &http.Transport{
+				ResponseHeaderTimeout: o.Timeout,
+				ExpectContinueTimeout: o.Timeout,
+			},
+		},
+	}
+	c.route = newRouteClient(c)
+	c.upstream = newUpstreamClient(c)
+	c.service = newServiceClient(c)
+	c.ssl = newSSLClient(c)
+
+	return c, nil
+}
+
+// String exposes the client information in human readable format.
+func (c *cluster) String() string {
+	return fmt.Sprintf("name=%s; base_url=%s", c.name, c.baseURL)
+}
+
+// Route implements Cluster.Route method.
+func (c *cluster) Route() Route {
+	return c.route
+}
+
+// Upstream implements Cluster.Upstream method.
+func (c *cluster) Upstream() Upstream {
+	return c.upstream
+}
+
+// Service implements Cluster.Service method.
+func (c *cluster) Service() Service {
+	return c.service
+}
+
+// SSL implements Cluster.SSL method.
+func (c *cluster) SSL() SSL {
+	return c.ssl
+}
+
+func (s *cluster) applyAuth(req *http.Request) {
 	if s.adminKey != "" {
 		req.Header.Set("X-API-Key", s.adminKey)
 	}
 }
 
-func (s *stub) do(req *http.Request) (*http.Response, error) {
+func (s *cluster) do(req *http.Request) (*http.Response, error) {
 	s.applyAuth(req)
 	return s.cli.Do(req)
 }
 
-func (s *stub) listResource(ctx context.Context, url string) (*listResponse, error) {
+func (s *cluster) listResource(ctx context.Context, url string) (*listResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -67,7 +150,7 @@ func (s *stub) listResource(ctx context.Context, url string) (*listResponse, err
 	return &list, nil
 }
 
-func (s *stub) createResource(ctx context.Context, url string, body io.Reader) (*createResponse, error) {
+func (s *cluster) createResource(ctx context.Context, url string, body io.Reader) (*createResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
 	if err != nil {
 		return nil, err
@@ -91,7 +174,7 @@ func (s *stub) createResource(ctx context.Context, url string, body io.Reader) (
 	return &cr, nil
 }
 
-func (s *stub) updateResource(ctx context.Context, url string, body io.Reader) (*updateResponse, error) {
+func (s *cluster) updateResource(ctx context.Context, url string, body io.Reader) (*updateResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, url, body)
 	if err != nil {
 		return nil, err
@@ -113,7 +196,7 @@ func (s *stub) updateResource(ctx context.Context, url string, body io.Reader) (
 	return &ur, nil
 }
 
-func (s *stub) deleteResource(ctx context.Context, url string) error {
+func (s *cluster) deleteResource(ctx context.Context, url string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
 	if err != nil {
 		return err

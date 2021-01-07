@@ -80,7 +80,7 @@ type routeItem struct {
 }
 
 // route decodes item.Value and converts it to v1.Route.
-func (i *item) route(group string) (*v1.Route, error) {
+func (i *item) route(clusterName string) (*v1.Route, error) {
 	list := strings.Split(i.Key, "/")
 	if len(list) < 1 {
 		return nil, fmt.Errorf("bad route config key: %s", i.Key)
@@ -91,12 +91,12 @@ func (i *item) route(group string) (*v1.Route, error) {
 		return nil, err
 	}
 
-	fullName := genFullName(route.Desc, group)
+	fullName := genFullName(route.Desc, clusterName)
 
 	return &v1.Route{
 		ID:         &list[len(list)-1],
-		Group:      &group,
 		FullName:   &fullName,
+		Group:      &clusterName,
 		Name:       route.Desc,
 		Host:       route.Host,
 		Path:       route.URI,
@@ -108,7 +108,7 @@ func (i *item) route(group string) (*v1.Route, error) {
 }
 
 // upstream decodes item.Value and converts it to v1.Upstream.
-func (i *item) upstream(group string) (*v1.Upstream, error) {
+func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 	list := strings.Split(i.Key, "/")
 	if len(list) < 1 {
 		return nil, fmt.Errorf("bad upstream config key: %s", i.Key)
@@ -143,12 +143,12 @@ func (i *item) upstream(group string) (*v1.Upstream, error) {
 		})
 	}
 
-	fullName := genFullName(ups.Desc, group)
+	fullName := genFullName(ups.Desc, clusterName)
 
 	return &v1.Upstream{
 		ID:       &id,
 		FullName: &fullName,
-		Group:    &group,
+		Group:    &clusterName,
 		Name:     name,
 		Type:     LBType,
 		Key:      &key,
@@ -157,7 +157,7 @@ func (i *item) upstream(group string) (*v1.Upstream, error) {
 }
 
 // service decodes item.Value and converts it to v1.Service.
-func (i *item) service(group string) (*v1.Service, error) {
+func (i *item) service(clusterName string) (*v1.Service, error) {
 	var svc serviceItem
 	if err := json.Unmarshal(i.Value, &svc); err != nil {
 		return nil, err
@@ -172,12 +172,12 @@ func (i *item) service(group string) (*v1.Service, error) {
 			plugins[k] = v
 		}
 	}
-	fullName := genFullName(svc.Desc, group)
+	fullName := genFullName(svc.Desc, clusterName)
 
 	return &v1.Service{
 		ID:         &id,
 		FullName:   &fullName,
-		Group:      &group,
+		Group:      &clusterName,
 		Name:       svc.Desc,
 		UpstreamId: svc.UpstreamId,
 		Plugins:    &plugins,
@@ -185,7 +185,7 @@ func (i *item) service(group string) (*v1.Service, error) {
 }
 
 // ssl decodes item.Value and converts it to v1.Ssl.
-func (i *item) ssl(group string) (*v1.Ssl, error) {
+func (i *item) ssl(clusterName string) (*v1.Ssl, error) {
 	var ssl v1.Ssl
 	if err := json.Unmarshal(i.Value, &ssl); err != nil {
 		return nil, err
@@ -194,17 +194,17 @@ func (i *item) ssl(group string) (*v1.Ssl, error) {
 	list := strings.Split(i.Key, "/")
 	id := list[len(list)-1]
 	ssl.ID = &id
-	ssl.Group = &group
+	ssl.Group = &clusterName
 	return &ssl, nil
 }
 
-func genFullName(name *string, group string) string {
+func genFullName(name *string, clusterName string) string {
 	fullName := "unknown"
 	if name != nil {
 		fullName = *name
 	}
-	if group != "" {
-		fullName = group + "_" + fullName
+	if clusterName != "" {
+		fullName = clusterName + "_" + fullName
 	}
 	return fullName
 }

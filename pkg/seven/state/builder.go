@@ -139,6 +139,10 @@ func (r *routeWorker) trigger(event Event) {
 
 // sync
 func (r *routeWorker) sync() error {
+	var cluster string
+	if r.Group != nil {
+		cluster = *r.Group
+	}
 	if *r.Route.ID != strconv.Itoa(0) {
 		// 1. sync memDB
 		db := &db.RouteDB{Routes: []*v1.Route{r.Route}}
@@ -147,14 +151,14 @@ func (r *routeWorker) sync() error {
 			return err
 		}
 		// 2. sync apisix
-		if _, err := conf.Client.Route().Update(context.TODO(), r.Route); err != nil {
+		if _, err := conf.Client.Cluster(cluster).Route().Update(context.TODO(), r.Route); err != nil {
 			log.Errorf("failed to update route %s: %s, ", *r.Name, err)
 			return err
 		}
 		log.Infof("update route %s, %s", *r.Name, *r.ServiceId)
 	} else {
 		// 1. sync apisix and get id
-		route, err := conf.Client.Route().Create(context.TODO(), r.Route)
+		route, err := conf.Client.Cluster(cluster).Route().Create(context.TODO(), r.Route)
 		if err != nil {
 			log.Errorf("failed to create route: %s", err.Error())
 			return err
@@ -233,7 +237,11 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 					}
 
 					// 2.sync apisix
-					if _, err = conf.Client.Upstream().Update(context.TODO(), u); err != nil {
+					var cluster string
+					if u.Group != nil {
+						cluster = *u.Group
+					}
+					if _, err = conf.Client.Cluster(cluster).Upstream().Update(context.TODO(), u); err != nil {
 						glog.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
 						return
 					}
@@ -262,7 +270,11 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 			} else {
 				op = Create
 				// 1.sync apisix and get response
-				ups, err := conf.Client.Upstream().Create(context.TODO(), u)
+				var cluster string
+				if u.Group != nil {
+					cluster = *u.Group
+				}
+				ups, err := conf.Client.Cluster(cluster).Upstream().Create(context.TODO(), u)
 				if err != nil {
 					log.Errorf("failed to create upstream: %s", err)
 					return

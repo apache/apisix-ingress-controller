@@ -26,13 +26,17 @@ import (
 
 // FindCurrentRoute find current route in memDB
 func FindCurrentRoute(route *v1.Route) (*v1.Route, error) {
+	var cluster string
+	if route.Group != nil {
+		cluster = *route.Group
+	}
 	db := &sevendb.RouteRequest{Group: *route.Group, Name: *route.Name, FullName: *route.FullName}
 	currentRoute, _ := db.FindByName()
 	if currentRoute != nil {
 		return currentRoute, nil
 	} else {
 		// find from apisix
-		if routes, err := conf.Client.Route().List(context.TODO(), *route.Group); err != nil {
+		if routes, err := conf.Client.Cluster(cluster).Route().List(context.TODO()); err != nil {
 			return nil, fmt.Errorf("list routes from etcd failed, err: %+v", err)
 		} else {
 			for _, r := range routes {

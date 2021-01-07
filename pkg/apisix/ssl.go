@@ -27,24 +27,23 @@ import (
 )
 
 type sslClient struct {
-	url  string
-	stub *stub
+	url         string
+	clusterName string
+	cluster     *cluster
 }
 
-type sslReqBody struct {
-}
-
-func newSSLClient(stub *stub) SSL {
+func newSSLClient(c *cluster) SSL {
 	return &sslClient{
-		url:  stub.baseURL + "/ssl",
-		stub: stub,
+		url:         c.baseURL + "/ssl",
+		cluster:     c,
+		clusterName: c.name,
 	}
 }
 
-func (t *sslClient) List(ctx context.Context, group string) ([]*v1.Ssl, error) {
-	log.Infow("try to list ssl in APISIX", zap.String("url", t.url))
+func (s *sslClient) List(ctx context.Context) ([]*v1.Ssl, error) {
+	log.Infow("try to list ssl in APISIX", zap.String("url", s.url))
 
-	sslItems, err := t.stub.listResource(ctx, t.url)
+	sslItems, err := s.cluster.listResource(ctx, s.url)
 	if err != nil {
 		log.Errorf("failed to list ssl: %s", err)
 		return nil, err
@@ -52,10 +51,10 @@ func (t *sslClient) List(ctx context.Context, group string) ([]*v1.Ssl, error) {
 
 	var items []*v1.Ssl
 	for i, item := range sslItems.Node.Items {
-		ssl, err := item.ssl(group)
+		ssl, err := item.ssl(s.clusterName)
 		if err != nil {
 			log.Errorw("failed to convert ssl item",
-				zap.String("url", t.url),
+				zap.String("url", s.url),
 				zap.String("ssl_key", item.Key),
 				zap.Error(err),
 			)
@@ -68,7 +67,7 @@ func (t *sslClient) List(ctx context.Context, group string) ([]*v1.Ssl, error) {
 	return items, nil
 }
 
-func (t *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
+func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	log.Info("try to create ssl")
 	data, err := json.Marshal(v1.Ssl{
 		Snis:   obj.Snis,
@@ -79,29 +78,29 @@ func (t *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := t.stub.createResource(ctx, t.url, bytes.NewReader(data))
+	resp, err := s.cluster.createResource(ctx, s.url, bytes.NewReader(data))
 	if err != nil {
 		log.Errorf("failed to create ssl: %s", err)
 		return nil, err
 	}
 
-	var group string
+	var clusterName string
 	if obj.Group != nil {
-		group = *obj.Group
+		clusterName = *obj.Group
 	}
 
-	return resp.Item.ssl(group)
+	return resp.Item.ssl(clusterName)
 }
 
-func (t *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
+func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 	log.Infof("delete ssl, id:%s", *obj.ID)
-	url := t.url + "/" + *obj.ID
-	return t.stub.deleteResource(ctx, url)
+	url := s.url + "/" + *obj.ID
+	return s.cluster.deleteResource(ctx, url)
 }
 
-func (t *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
+func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	log.Infof("update ssl, id:%s", *obj.ID)
-	url := t.url + "/" + *obj.ID
+	url := s.url + "/" + *obj.ID
 	data, err := json.Marshal(v1.Ssl{
 		ID:     obj.ID,
 		Snis:   obj.Snis,
@@ -112,13 +111,13 @@ func (t *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := t.stub.updateResource(ctx, url, bytes.NewReader(data))
+	resp, err := s.cluster.updateResource(ctx, url, bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
-	var group string
+	var clusterName string
 	if obj.Group != nil {
-		group = *obj.Group
+		clusterName = *obj.Group
 	}
-	return resp.Item.ssl(group)
+	return resp.Item.ssl(clusterName)
 }

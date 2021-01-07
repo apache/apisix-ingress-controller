@@ -35,21 +35,23 @@ type routeReqBody struct {
 }
 
 type routeClient struct {
-	url  string
-	stub *stub
+	clusterName string
+	url         string
+	cluster     *cluster
 }
 
-func newRouteClient(stub *stub) Route {
+func newRouteClient(c *cluster) Route {
 	return &routeClient{
-		url:  stub.baseURL + "/routes",
-		stub: stub,
+		clusterName: c.name,
+		url:         c.baseURL + "/routes",
+		cluster:     c,
 	}
 }
 
-func (r *routeClient) List(ctx context.Context, group string) ([]*v1.Route, error) {
+func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 	log.Infow("try to list routes in APISIX", zap.String("url", r.url))
 
-	routeItems, err := r.stub.listResource(ctx, r.url)
+	routeItems, err := r.cluster.listResource(ctx, r.url)
 	if err != nil {
 		log.Errorf("failed to list routes: %s", err)
 		return nil, err
@@ -57,7 +59,7 @@ func (r *routeClient) List(ctx context.Context, group string) ([]*v1.Route, erro
 
 	var items []*v1.Route
 	for i, item := range routeItems.Node.Items {
-		route, err := item.route(group)
+		route, err := item.route(r.clusterName)
 		if err != nil {
 			log.Errorw("failed to convert route item",
 				zap.String("url", r.url),
@@ -87,24 +89,23 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	if err != nil {
 		return nil, err
 	}
-	resp, err := r.stub.createResource(ctx, r.url, bytes.NewReader(data))
+	resp, err := r.cluster.createResource(ctx, r.url, bytes.NewReader(data))
 	if err != nil {
 		log.Errorf("failed to create route: %s", err)
 		return nil, err
 	}
 
-	var group string
+	var clusterName string
 	if obj.Group != nil {
-		group = *obj.Group
+		clusterName = *obj.Group
 	}
-
-	return resp.Item.route(group)
+	return resp.Item.route(clusterName)
 }
 
 func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 	log.Infof("delete route, id:%s", *obj.ID)
 	url := r.url + "/" + *obj.ID
-	return r.stub.deleteResource(ctx, url)
+	return r.cluster.deleteResource(ctx, url)
 }
 
 func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
@@ -120,13 +121,13 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		return nil, err
 	}
 	url := r.url + "/" + *obj.ID
-	resp, err := r.stub.updateResource(ctx, url, bytes.NewReader(body))
+	resp, err := r.cluster.updateResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
-	var group string
+	var clusterName string
 	if obj.Group != nil {
-		group = *obj.Group
+		clusterName = *obj.Group
 	}
-	return resp.Item.route(group)
+	return resp.Item.route(clusterName)
 }

@@ -138,7 +138,11 @@ func (rc *RouteCompare) Sync() error {
 			if route, err := request.FindByName(); err != nil {
 				log.Errorf("failed to find route %s from memory DB: %s", *old.Name, err)
 			} else {
-				if err := conf.Client.Route().Delete(context.TODO(), route); err != nil {
+				var cluster string
+				if route.Group != nil {
+					cluster = *route.Group
+				}
+				if err := conf.Client.Cluster(cluster).Route().Delete(context.TODO(), route); err != nil {
 					log.Errorf("failed to delete route %s from APISIX: %s", *route.Name, err)
 				} else {
 					db := db.RouteDB{Routes: []*v1.Route{route}}
@@ -151,15 +155,19 @@ func (rc *RouteCompare) Sync() error {
 }
 
 func SyncSsl(ssl *v1.Ssl, method string) error {
+	var cluster string
+	if ssl.Group != nil {
+		cluster = *ssl.Group
+	}
 	switch method {
 	case Create:
-		_, err := conf.Client.SSL().Create(context.TODO(), ssl)
+		_, err := conf.Client.Cluster(cluster).SSL().Create(context.TODO(), ssl)
 		return err
 	case Update:
-		_, err := conf.Client.SSL().Update(context.TODO(), ssl)
+		_, err := conf.Client.Cluster(cluster).SSL().Update(context.TODO(), ssl)
 		return err
 	case Delete:
-		return conf.Client.SSL().Delete(context.TODO(), ssl)
+		return conf.Client.Cluster(cluster).SSL().Delete(context.TODO(), ssl)
 	}
 	return nil
 }

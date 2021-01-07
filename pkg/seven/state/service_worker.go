@@ -98,11 +98,15 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 		errNotify = err
 		return
 	}
+	var cluster string
+	if svc.Group != nil {
+		cluster = *svc.Group
+	}
 	if hasDiff {
 		if *svc.ID == strconv.Itoa(0) {
 			op = Create
 			// 1. sync apisix and get id
-			if s, err := conf.Client.Service().Create(context.TODO(), svc); err != nil {
+			if s, err := conf.Client.Cluster(cluster).Service().Create(context.TODO(), svc); err != nil {
 				log.Errorf("failed to create service: %s", err)
 				errNotify = err
 				return
@@ -135,7 +139,7 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 					return
 				}
 				// 2. sync apisix
-				if _, err := conf.Client.Service().Update(context.TODO(), svc); err != nil {
+				if _, err := conf.Client.Cluster(cluster).Service().Update(context.TODO(), svc); err != nil {
 					errNotify = err
 					log.Errorf("failed to update service: %s, id:%s", err, *svc.ID)
 				} else {

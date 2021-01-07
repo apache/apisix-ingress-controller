@@ -34,7 +34,7 @@ func FindCurrentService(group, name, fullName string) (*v1.Service, error) {
 		return currentService, nil
 	} else {
 		// find service from apisix
-		if services, err := conf.Client.Service().List(context.TODO(), group); err != nil {
+		if services, err := conf.Client.Cluster(group).Service().List(context.TODO()); err != nil {
 			glog.Errorf("list services in etcd failed, group: %s, err: %+v", group, err)
 			return nil, fmt.Errorf("list services failed, err: %+v", err)
 		} else {
