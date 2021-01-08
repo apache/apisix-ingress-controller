@@ -26,9 +26,10 @@ const (
 )
 
 type RouteRequest struct {
-	Group    string
-	Name     string
-	FullName string
+	Group     string
+	Name      string
+	FullName  string
+	ServiceId string
 }
 
 func (rr *RouteRequest) FindByName() (*v1.Route, error) {
@@ -92,6 +93,20 @@ func (db *RouteDB) DeleteRoute() error {
 	return nil
 }
 
+func (rr *RouteRequest) ExistByServiceId() (*v1.Route, error) {
+	txn := DB.Txn(false)
+	defer txn.Abort()
+	if raw, err := txn.First(Route, "service_id", rr.ServiceId); err != nil {
+		return nil, err
+	} else {
+		if raw != nil {
+			firstRoute := raw.(*v1.Route)
+			return firstRoute, nil
+		}
+		return nil, utils.ErrNotFound
+	}
+}
+
 var routeSchema = &memdb.TableSchema{
 	Name: Route,
 	Indexes: map[string]*memdb.IndexSchema{
@@ -105,6 +120,11 @@ var routeSchema = &memdb.TableSchema{
 			Unique:       true,
 			Indexer:      &memdb.StringFieldIndex{Field: "Name"},
 			AllowMissing: true,
+		},
+		"service_id": {
+			Name:    "service_id",
+			Unique:  false,
+			Indexer: &memdb.StringFieldIndex{Field: "ServiceId"},
 		},
 	},
 }

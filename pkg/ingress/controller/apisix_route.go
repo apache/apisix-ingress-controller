@@ -247,10 +247,17 @@ func (c *ApisixRouteController) sync(rqo *RouteQueueObj) error {
 			return nil
 		}
 		apisixRoute := apisix.ApisixRoute(*rqo.OldObj)
-		routes, _, _, _ := apisixRoute.Convert()
+		routes, services, upstreams, _ := apisixRoute.Convert()
 		rc := &state.RouteCompare{OldRoutes: routes, NewRoutes: nil}
-		return rc.Sync()
-
+		if err := rc.Sync(); err != nil {
+			return err
+		} else {
+			comb := state.ApisixCombination{Routes: nil, Services: services, Upstreams: upstreams}
+			if err := comb.Remove(); err != nil {
+				return err
+			}
+		}
+		return nil
 	default:
 		return fmt.Errorf("not expected in (ApisixRouteController) sync")
 	}
