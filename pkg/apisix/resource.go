@@ -18,10 +18,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
-	"strconv"
 	"strings"
 
+	"github.com/api7/ingress-controller/pkg/log"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -81,6 +80,7 @@ type routeItem struct {
 
 // route decodes item.Value and converts it to v1.Route.
 func (i *item) route(clusterName string) (*v1.Route, error) {
+	log.Infof("got route: %s", string(i.Value))
 	list := strings.Split(i.Key, "/")
 	if len(list) < 1 {
 		return nil, fmt.Errorf("bad route config key: %s", i.Key)
@@ -109,6 +109,7 @@ func (i *item) route(clusterName string) (*v1.Route, error) {
 
 // upstream decodes item.Value and converts it to v1.Upstream.
 func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
+	log.Infof("got upstream: %s", string(i.Value))
 	list := strings.Split(i.Key, "/")
 	if len(list) < 1 {
 		return nil, fmt.Errorf("bad upstream config key: %s", i.Key)
@@ -125,21 +126,11 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 	key := i.Key
 
 	var nodes []*v1.Node
-	for ep, w := range ups.Nodes {
-		ip, p, err := net.SplitHostPort(ep)
-		if err != nil {
-			return nil, fmt.Errorf("bad endpoint %s", ep)
-		}
-		port, err := strconv.Atoi(p)
-		if err != nil || port < 1 || port > 65535 {
-			return nil, fmt.Errorf("bad endpoint %s", ep)
-		}
-
-		weight := int(w)
+	for _, node := range ups.Nodes {
 		nodes = append(nodes, &v1.Node{
-			IP:     &ip,
-			Port:   &port,
-			Weight: &weight,
+			IP:     &node.Host,
+			Port:   &node.Port,
+			Weight: &node.Weight,
 		})
 	}
 
@@ -158,6 +149,7 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 
 // service decodes item.Value and converts it to v1.Service.
 func (i *item) service(clusterName string) (*v1.Service, error) {
+	log.Infof("got service: %s", string(i.Value))
 	var svc serviceItem
 	if err := json.Unmarshal(i.Value, &svc); err != nil {
 		return nil, err
@@ -186,6 +178,7 @@ func (i *item) service(clusterName string) (*v1.Service, error) {
 
 // ssl decodes item.Value and converts it to v1.Ssl.
 func (i *item) ssl(clusterName string) (*v1.Ssl, error) {
+	log.Infof("got ssl: %s", string(i.Value))
 	var ssl v1.Ssl
 	if err := json.Unmarshal(i.Value, &ssl); err != nil {
 		return nil, err

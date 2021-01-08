@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 
 	"go.uber.org/zap"
 
@@ -37,18 +38,39 @@ type upstreamNode struct {
 	Weight int    `json:"weight,omitempty" yaml:"weight,omitempty"`
 }
 
+type upstreamNodes []upstreamNode
+
+// items implements json.Unmarshaler interface.
+// lua-cjson doesn't distinguish empty array and table,
+// and by default empty array will be encoded as '{}'.
+// We have to maintain the compatibility.
+func (n *upstreamNodes) UnmarshalJSON(p []byte) error {
+	if p[0] == '{' {
+		if len(p) != 2 {
+			return errors.New("unexpected non-empty object")
+		}
+		return nil
+	}
+	var data []upstreamNode
+	if err := json.Unmarshal(p, &data); err != nil {
+		return err
+	}
+	*n = data
+	return nil
+}
+
 type upstreamReqBody struct {
-	LBType *string        `json:"type"`
-	HashOn *string        `json:"hash_on,omitempty"`
-	Key    *string        `json:"key,omitempty"`
-	Nodes  []upstreamNode `json:"nodes"`
-	Desc   *string        `json:"desc"`
+	LBType *string       `json:"type"`
+	HashOn *string       `json:"hash_on,omitempty"`
+	Key    *string       `json:"key,omitempty"`
+	Nodes  upstreamNodes `json:"nodes"`
+	Desc   *string       `json:"desc"`
 }
 
 type upstreamItem struct {
-	Nodes  map[string]int64 `json:"nodes"`
-	Desc   *string          `json:"desc"`
-	LBType *string          `json:"type"`
+	Nodes  upstreamNodes `json:"nodes"`
+	Desc   *string       `json:"desc"`
+	LBType *string       `json:"type"`
 }
 
 func newUpstreamClient(c *cluster) Upstream {
@@ -90,7 +112,7 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		zap.String("full_name", *obj.FullName),
 	)
 
-	nodes := make([]upstreamNode, 0, len(obj.Nodes))
+	nodes := make(upstreamNodes, 0, len(obj.Nodes))
 	for _, node := range obj.Nodes {
 		nodes = append(nodes, upstreamNode{
 			Host:   *node.IP,
@@ -131,7 +153,7 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upstream, error) {
 	log.Infof("update upstream, id:%s", *obj.ID)
 
-	nodes := make([]upstreamNode, 0, len(obj.Nodes))
+	nodes := make(upstreamNodes, 0, len(obj.Nodes))
 	for _, node := range obj.Nodes {
 		nodes = append(nodes, upstreamNode{
 			Host:   *node.IP,

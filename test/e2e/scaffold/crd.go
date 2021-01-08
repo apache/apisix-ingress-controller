@@ -15,18 +15,21 @@
 package scaffold
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
 
-	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+
+	"github.com/api7/ingress-controller/pkg/apisix"
+	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 type counter struct {
@@ -155,7 +158,7 @@ func (s *Scaffold) EnsureNumApisixUpstreamsCreated(desired int) error {
 }
 
 // ListApisixUpstreams list all upstream from APISIX
-func (s *Scaffold) ListApisixUpstreams() (*apisix.UpstreamsResponse, error) {
+func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 	host, err := s.apisixAdminServiceURL()
 	if err != nil {
 		return nil, err
@@ -163,13 +166,13 @@ func (s *Scaffold) ListApisixUpstreams() (*apisix.UpstreamsResponse, error) {
 	u := url.URL{
 		Scheme: "http",
 		Host:   host,
-		Path:   "/apisix/admin/upstreams",
+		Path:   "/apisix/admin",
 	}
-	resp, err := http.Get(u.String())
-	var responses *apisix.UpstreamsResponse
-	dec := json.NewDecoder(resp.Body)
-	if err := dec.Decode(&responses); err != nil {
+	cli, err := apisix.NewForOptions(&apisix.ClusterOptions{
+		BaseURL: u.String(),
+	})
+	if err != nil {
 		return nil, err
 	}
-	return responses, nil
+	return cli.Cluster("").Upstream().List(context.TODO())
 }
