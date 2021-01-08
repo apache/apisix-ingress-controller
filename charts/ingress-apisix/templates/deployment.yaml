@@ -60,11 +60,11 @@ spec:
           livenessProbe:
             httpGet:
               path: /healthz
-              port: http
+              port: {{ (.Values.ingressController.config.httpListen | split ":")._1 }}
           readinessProbe:
             httpGet:
               path: /healthz
-              port: http
+              port: {{ (.Values.ingressController.config.httpListen | split ":")._1 }}
           resources:
             {{- toYaml .Values.ingressController.resources | nindent 12 }}
           volumeMounts:
