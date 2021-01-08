@@ -79,6 +79,18 @@ func (upstreamDB *UpstreamDB) UpdateUpstreams() error {
 	return nil
 }
 
+func (db *UpstreamDB) DeleteUpstream() error {
+	txn := DB.Txn(true)
+	defer txn.Abort()
+	for _, r := range db.Upstreams {
+		if _, err := txn.DeleteAll(Upstream, "id", *(r.FullName)); err != nil {
+			return err
+		}
+	}
+	txn.Commit()
+	return nil
+}
+
 var upstreamSchema = &memdb.TableSchema{
 	Name: Upstream,
 	Indexes: map[string]*memdb.IndexSchema{

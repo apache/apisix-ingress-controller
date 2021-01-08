@@ -133,18 +133,23 @@ func (c *ApisixServiceController) syncHandler(sqo *ServiceQueueObj) error {
 		apisixServiceYaml, err = c.apisixServiceList.ApisixServices(namespace).Get(name)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				log.Infof("apisixUpstream %s is removed", sqo.Key)
+				log.Infof("apisixService %s is removed", sqo.Key)
 				return nil
 			}
-			runtime.HandleError(fmt.Errorf("failed to list apisixUpstream %s/%s", sqo.Key, err.Error()))
+			runtime.HandleError(fmt.Errorf("failed to list apisixService %s/%s", sqo.Key, err.Error()))
 			return err
 		}
 	}
 	apisixService := apisix.ApisixServiceCRD(*apisixServiceYaml)
 	services, upstreams, _ := apisixService.Convert()
 	comb := state.ApisixCombination{Routes: nil, Services: services, Upstreams: upstreams}
-	_, err = comb.Solver()
-	return err
+	if sqo.Ope == DELETE {
+		return comb.Remove()
+	} else {
+		_, err = comb.Solver()
+		return err
+	}
+
 }
 
 func (c *ApisixServiceController) addFunc(obj interface{}) {
@@ -154,7 +159,7 @@ func (c *ApisixServiceController) addFunc(obj interface{}) {
 		runtime.HandleError(err)
 		return
 	}
-	sqo := &RouteQueueObj{Key: key, OldObj: nil, Ope: ADD}
+	sqo := &ServiceQueueObj{Key: key, OldObj: nil, Ope: ADD}
 	c.workqueue.AddRateLimited(sqo)
 }
 

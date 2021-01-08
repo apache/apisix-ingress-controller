@@ -17,12 +17,14 @@ package state
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/api7/ingress-controller/pkg/seven/conf"
 	"github.com/api7/ingress-controller/pkg/seven/db"
+	"github.com/api7/ingress-controller/pkg/seven/utils"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -50,6 +52,76 @@ func (s *ApisixCombination) Solver() (string, error) {
 	go s.SyncWithGroup(ctx, "", resultChan)
 
 	return WaitWorkerGroup("", resultChan)
+}
+
+func (s *ApisixCombination) Remove() error {
+	// services
+	for _, svc := range s.Services {
+		if err := RemoveService(svc); err != nil {
+			return err
+		}
+	}
+
+	// upstreams
+	for _, up := range s.Upstreams {
+		if err := RemoveUpstream(up); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func RemoveService(svc *v1.Service) error {
+	// find ref route
+	routeRequest := db.RouteRequest{ServiceId: *svc.ID}
+	if route, err := routeRequest.ExistByServiceId(); err != nil {
+		if !errors.Is(err, utils.ErrNotFound) {
+			// except ErrNotFound, need to retry
+			return err
+		} else {
+			// do delete svc
+			var cluster string
+			if route.Group != nil {
+				cluster = *route.Group
+			}
+			if err := conf.Client.Cluster(cluster).Service().Delete(context.TODO(), svc); err != nil {
+				log.Errorf("failed to delete svc %s from APISIX: %s", *svc.FullName, err)
+				return err
+			} else {
+				db := db.ServiceDB{Services: []*v1.Service{svc}}
+				db.DeleteService()
+				return nil
+			}
+		}
+	} else {
+		return fmt.Errorf("svc %s is still referenced by route %s", *svc.FullName, *route.FullName)
+	}
+}
+
+func RemoveUpstream(up *v1.Upstream) error {
+	serviceRequest := db.ServiceRequest{UpstreamId: *up.ID}
+	if svc, err := serviceRequest.ExistByUpstreamId(); err != nil {
+		if !errors.Is(err, utils.ErrNotFound) {
+			// except ErrNotFound, need to retry
+			return err
+		} else {
+			// do delete svc
+			var cluster string
+			if svc.Group != nil {
+				cluster = *svc.Group
+			}
+			if err := conf.Client.Cluster(cluster).Upstream().Delete(context.TODO(), up); err != nil {
+				log.Errorf("failed to delete upstream %s from APISIX: %s", *up.FullName, err)
+				return err
+			} else {
+				db := db.UpstreamDB{Upstreams: []*v1.Upstream{up}}
+				db.DeleteUpstream()
+				return nil
+			}
+		}
+	} else {
+		return fmt.Errorf("svc %s is still referenced by route %s", *svc.FullName, *route.FullName)
+	}
 }
 
 func waitTimeout(ctx context.Context, wg *sync.WaitGroup, resultChan chan CRDStatus) {
