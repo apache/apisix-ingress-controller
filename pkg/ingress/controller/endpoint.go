@@ -38,14 +38,16 @@ import (
 )
 
 type EndpointController struct {
+	controller     *Controller
 	kubeclientset  kubernetes.Interface
 	endpointList   CoreListerV1.EndpointsLister
 	endpointSynced cache.InformerSynced
 	workqueue      workqueue.RateLimitingInterface
 }
 
-func BuildEndpointController(kubeclientset kubernetes.Interface) *EndpointController {
+func BuildEndpointController(kubeclientset kubernetes.Interface, root *Controller) *EndpointController {
 	controller := &EndpointController{
+		controller:     root,
 		kubeclientset:  kubeclientset,
 		endpointList:   kube.EndpointsInformer.Lister(),
 		endpointSynced: kube.EndpointsInformer.Informer().HasSynced,
@@ -215,6 +217,9 @@ func (c *EndpointController) addFunc(obj interface{}) {
 		runtime.HandleError(err)
 		return
 	}
+	if !c.controller.namespaceWatching(key) {
+		return
+	}
 	c.workqueue.AddRateLimited(key)
 }
 
@@ -233,6 +238,9 @@ func (c *EndpointController) deleteFunc(obj interface{}) {
 	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		runtime.HandleError(err)
+		return
+	}
+	if !c.controller.namespaceWatching(key) {
 		return
 	}
 	c.workqueue.AddRateLimited(key)

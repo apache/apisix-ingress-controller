@@ -18,6 +18,10 @@ import (
 	"os"
 	"sync"
 
+	v1 "k8s.io/api/core/v1"
+
+	"k8s.io/client-go/tools/cache"
+
 	"github.com/api7/ingress-controller/pkg/apisix"
 
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
@@ -44,6 +48,7 @@ func recoverException() {
 // Controller is the ingress apisix controller object.
 type Controller struct {
 	wg                 sync.WaitGroup
+	watchingNamespace  map[string]struct{}
 	apiServer          *api.Server
 	clientset          kubernetes.Interface
 	crdClientset       crdclientset.Interface
@@ -82,12 +87,21 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	crdClientset := kube.GetApisixClient()
 	sharedInformerFactory := externalversions.NewSharedInformerFactory(crdClientset, cfg.Kubernetes.ResyncInterval.Duration)
 
+	var watchingNamespace map[string]struct{}
+	if len(cfg.Kubernetes.AppNamespaces) > 1 || cfg.Kubernetes.AppNamespaces[0] != v1.NamespaceAll {
+		watchingNamespace = make(map[string]struct{}, len(cfg.Kubernetes.AppNamespaces))
+		for _, ns := range cfg.Kubernetes.AppNamespaces {
+			watchingNamespace[ns] = struct{}{}
+		}
+	}
+
 	c := &Controller{
 		apiServer:          apiSrv,
 		metricsCollector:   metrics.NewPrometheusCollector(podName, podNamespace),
 		clientset:          kube.GetKubeClient(),
 		crdClientset:       crdClientset,
 		crdInformerFactory: sharedInformerFactory,
+		watchingNamespace:  watchingNamespace,
 	}
 
 	return c, nil
@@ -117,7 +131,7 @@ func (c *Controller) Run(stop chan struct{}) error {
 	epInformer := ac.CoreSharedInformerFactory.Core().V1().Endpoints()
 	kube.EndpointsInformer = epInformer
 	// endpoint
-	ac.Endpoint()
+	ac.Endpoint(c)
 	c.goAttach(func() {
 		ac.CoreSharedInformerFactory.Start(stop)
 	})
@@ -128,13 +142,13 @@ func (c *Controller) Run(stop chan struct{}) error {
 	})
 
 	// ApisixRoute
-	ac.ApisixRoute()
+	ac.ApisixRoute(c)
 	// ApisixUpstream
-	ac.ApisixUpstream()
+	ac.ApisixUpstream(c)
 	// ApisixService
-	ac.ApisixService()
+	ac.ApisixService(c)
 	// ApisixTLS
-	ac.ApisixTLS()
+	ac.ApisixTLS(c)
 
 	c.goAttach(func() {
 		ac.SharedInformerFactory.Start(stop)
@@ -145,6 +159,24 @@ func (c *Controller) Run(stop chan struct{}) error {
 	return nil
 }
 
+// namespaceWatching accepts a resource key, getting the namespace part
+// and checking whether the namespace is being watched.
+func (c *Controller) namespaceWatching(key string) (ok bool) {
+	if c.watchingNamespace == nil {
+		ok = true
+		return
+	}
+	ns, _, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		// Ignore resource with invalid key.
+		ok = false
+		log.Warnf("resource %s was ignored since: %s", key, err)
+		return
+	}
+	_, ok = c.watchingNamespace[ns]
+	return
+}
+
 type Api6Controller struct {
 	KubeClientSet             kubernetes.Interface
 	Api6ClientSet             clientSet.Interface
@@ -153,40 +185,44 @@ type Api6Controller struct {
 	Stop                      chan struct{}
 }
 
-func (api6 *Api6Controller) ApisixRoute() {
+func (api6 *Api6Controller) ApisixRoute(controller *Controller) {
 	arc := BuildApisixRouteController(
 		api6.KubeClientSet,
 		api6.Api6ClientSet,
-		api6.SharedInformerFactory.Apisix().V1().ApisixRoutes())
+		api6.SharedInformerFactory.Apisix().V1().ApisixRoutes(),
+		controller)
 	arc.Run(api6.Stop)
 }
 
-func (api6 *Api6Controller) ApisixUpstream() {
+func (api6 *Api6Controller) ApisixUpstream(controller *Controller) {
 	auc := BuildApisixUpstreamController(
 		api6.KubeClientSet,
 		api6.Api6ClientSet,
-		api6.SharedInformerFactory.Apisix().V1().ApisixUpstreams())
+		api6.SharedInformerFactory.Apisix().V1().ApisixUpstreams(),
+		controller)
 	auc.Run(api6.Stop)
 }
 
-func (api6 *Api6Controller) ApisixService() {
+func (api6 *Api6Controller) ApisixService(controller *Controller) {
 	auc := BuildApisixServiceController(
 		api6.KubeClientSet,
 		api6.Api6ClientSet,
-		api6.SharedInformerFactory.Apisix().V1().ApisixServices())
+		api6.SharedInformerFactory.Apisix().V1().ApisixServices(),
+		controller)
 	auc.Run(api6.Stop)
 }
 
-func (api6 *Api6Controller) ApisixTLS() {
+func (api6 *Api6Controller) ApisixTLS(controller *Controller) {
 	auc := BuildApisixTlsController(
 		api6.KubeClientSet,
 		api6.Api6ClientSet,
-		api6.SharedInformerFactory.Apisix().V1().ApisixTlses())
+		api6.SharedInformerFactory.Apisix().V1().ApisixTlses(),
+		controller)
 	auc.Run(api6.Stop)
 }
 
-func (api6 *Api6Controller) Endpoint() {
-	auc := BuildEndpointController(api6.KubeClientSet)
+func (api6 *Api6Controller) Endpoint(controller *Controller) {
+	auc := BuildEndpointController(api6.KubeClientSet, controller)
 	//conf.EndpointsInformer)
 	auc.Run(api6.Stop)
 }

@@ -22,7 +22,7 @@ import (
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	api6Scheme "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned/scheme"
 	api6Informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions/config/v1"
-	"github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
+	v1 "github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -37,6 +37,7 @@ import (
 )
 
 type ApisixRouteController struct {
+	controller           *Controller
 	kubeclientset        kubernetes.Interface
 	apisixRouteClientset clientSet.Interface
 	apisixRouteList      v1.ApisixRouteLister
@@ -53,10 +54,12 @@ type RouteQueueObj struct {
 func BuildApisixRouteController(
 	kubeclientset kubernetes.Interface,
 	api6RouteClientset clientSet.Interface,
-	api6RouteInformer api6Informers.ApisixRouteInformer) *ApisixRouteController {
+	api6RouteInformer api6Informers.ApisixRouteInformer,
+	root *Controller) *ApisixRouteController {
 
 	runtime.Must(api6Scheme.AddToScheme(scheme.Scheme))
 	controller := &ApisixRouteController{
+		controller:           root,
 		kubeclientset:        kubeclientset,
 		apisixRouteClientset: api6RouteClientset,
 		apisixRouteList:      api6RouteInformer.Lister(),
@@ -79,6 +82,9 @@ func (c *ApisixRouteController) addFunc(obj interface{}) {
 		runtime.HandleError(err)
 		return
 	}
+	if !c.controller.namespaceWatching(key) {
+		return
+	}
 	rqo := &RouteQueueObj{Key: key, OldObj: nil, Ope: ADD}
 	c.workqueue.AddRateLimited(rqo)
 }
@@ -94,6 +100,9 @@ func (c *ApisixRouteController) updateFunc(oldObj, newObj interface{}) {
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(newObj); err != nil {
 		runtime.HandleError(err)
+		return
+	}
+	if !c.controller.namespaceWatching(key) {
 		return
 	}
 	rqo := &RouteQueueObj{Key: key, OldObj: oldRoute, Ope: UPDATE}
@@ -117,6 +126,9 @@ func (c *ApisixRouteController) deleteFunc(obj interface{}) {
 	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		runtime.HandleError(err)
+		return
+	}
+	if !c.controller.namespaceWatching(key) {
 		return
 	}
 	rqo := &RouteQueueObj{Key: key, OldObj: oldRoute, Ope: DELETE}

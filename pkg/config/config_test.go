@@ -35,6 +35,7 @@ func TestNewConfigFromFile(t *testing.T) {
 		Kubernetes: KubernetesConfig{
 			ResyncInterval: types.TimeDuration{time.Hour},
 			Kubeconfig:     "/path/to/foo/baz",
+			AppNamespaces:  []string{""},
 		},
 		APISIX: APISIXConfig{
 			BaseURL:  "http://127.0.0.1:8080/apisix",

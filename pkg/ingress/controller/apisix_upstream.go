@@ -22,7 +22,7 @@ import (
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	apisixScheme "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned/scheme"
 	informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions/config/v1"
-	"github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
+	v1 "github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -38,6 +38,7 @@ import (
 )
 
 type ApisixUpstreamController struct {
+	controller           *Controller
 	kubeclientset        kubernetes.Interface
 	apisixClientset      clientSet.Interface
 	apisixUpstreamList   v1.ApisixUpstreamLister
@@ -48,10 +49,12 @@ type ApisixUpstreamController struct {
 func BuildApisixUpstreamController(
 	kubeclientset kubernetes.Interface,
 	apisixUpstreamClientset clientSet.Interface,
-	apisixUpstreamInformer informers.ApisixUpstreamInformer) *ApisixUpstreamController {
+	apisixUpstreamInformer informers.ApisixUpstreamInformer,
+	root *Controller) *ApisixUpstreamController {
 
 	runtime.Must(apisixScheme.AddToScheme(scheme.Scheme))
 	controller := &ApisixUpstreamController{
+		controller:           root,
 		kubeclientset:        kubeclientset,
 		apisixClientset:      apisixUpstreamClientset,
 		apisixUpstreamList:   apisixUpstreamInformer.Lister(),
@@ -161,6 +164,9 @@ func (c *ApisixUpstreamController) addFunc(obj interface{}) {
 		runtime.HandleError(err)
 		return
 	}
+	if !c.controller.namespaceWatching(key) {
+		return
+	}
 	sqo := &UpstreamQueueObj{Key: key, OldObj: nil, Ope: ADD}
 	c.workqueue.AddRateLimited(sqo)
 }
@@ -200,6 +206,9 @@ func (c *ApisixUpstreamController) deleteFunc(obj interface{}) {
 	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		runtime.HandleError(err)
+		return
+	}
+	if !c.controller.namespaceWatching(key) {
 		return
 	}
 	sqo := &UpstreamQueueObj{Key: key, OldObj: oldUpstream, Ope: DELETE}
