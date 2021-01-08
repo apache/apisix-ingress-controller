@@ -78,6 +78,7 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Infow("creating ssl", zap.ByteString("body", data), zap.String("url", s.url))
 	resp, err := s.cluster.createResource(ctx, s.url, bytes.NewReader(data))
 	if err != nil {
 		log.Errorf("failed to create ssl: %s", err)
@@ -111,6 +112,7 @@ func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Infow("updating ssl", zap.ByteString("body", data), zap.String("url", url))
 	resp, err := s.cluster.updateResource(ctx, url, bytes.NewReader(data))
 	if err != nil {
 		return nil, err

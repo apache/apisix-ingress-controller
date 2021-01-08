@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/multierr"
 	"go.uber.org/zap"
 
 	"github.com/api7/ingress-controller/pkg/log"
@@ -40,6 +41,8 @@ var (
 	// ErrDuplicatedCluster means the cluster adding request was
 	// rejected since the cluster was already created.
 	ErrDuplicatedCluster = errors.New("duplicated cluster")
+
+	_errReadOnClosedResBody = errors.New("http: read on closed response body")
 )
 
 // Options contains parameters to customize APISIX client.
@@ -138,7 +141,9 @@ func (s *cluster) listResource(ctx context.Context, url string) (*listResponse, 
 	}
 	defer drainBody(resp.Body, url)
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code %d", resp.StatusCode)
+		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
+		err = multierr.Append(err, fmt.Errorf("error message: %s", readBody(resp.Body, url)))
+		return nil, err
 	}
 
 	var list listResponse
@@ -163,7 +168,9 @@ func (s *cluster) createResource(ctx context.Context, url string, body io.Reader
 	defer drainBody(resp.Body, url)
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code %d", resp.StatusCode)
+		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
+		err = multierr.Append(err, fmt.Errorf("error message: %s", readBody(resp.Body, url)))
+		return nil, err
 	}
 
 	var cr createResponse
@@ -186,7 +193,9 @@ func (s *cluster) updateResource(ctx context.Context, url string, body io.Reader
 	defer drainBody(resp.Body, url)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
+		err = multierr.Append(err, fmt.Errorf("error message: %s", readBody(resp.Body, url)))
+		return nil, err
 	}
 	var ur updateResponse
 	dec := json.NewDecoder(resp.Body)
@@ -208,7 +217,9 @@ func (s *cluster) deleteResource(ctx context.Context, url string) error {
 	defer drainBody(resp.Body, url)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
-		return fmt.Errorf("unexpected status code %d", resp.StatusCode)
+		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
+		err = multierr.Append(err, fmt.Errorf("error message: %s", readBody(resp.Body, url)))
+		return err
 	}
 	return nil
 }
@@ -217,10 +228,12 @@ func (s *cluster) deleteResource(ctx context.Context, url string) error {
 func drainBody(r io.ReadCloser, url string) {
 	_, err := io.Copy(ioutil.Discard, r)
 	if err != nil {
-		log.Warnw("failed to drain body (read)",
-			zap.String("url", url),
-			zap.Error(err),
-		)
+		if err.Error() != _errReadOnClosedResBody.Error() {
+			log.Warnw("failed to drain body (read)",
+				zap.String("url", url),
+				zap.Error(err),
+			)
+		}
 	}
 
 	if err := r.Close(); err != nil {
@@ -229,4 +242,18 @@ func drainBody(r io.ReadCloser, url string) {
 			zap.Error(err),
 		)
 	}
+}
+
+func readBody(r io.ReadCloser, url string) string {
+	defer func() {
+		if err := r.Close(); err != nil {
+			log.Warnw("failed to close body", zap.String("url", url), zap.Error(err))
+		}
+	}()
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		log.Warnw("failed to read body", zap.String("url", url), zap.Error(err))
+		return ""
+	}
+	return string(data)
 }

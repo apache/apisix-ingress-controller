@@ -89,6 +89,8 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	if err != nil {
 		return nil, err
 	}
+
+	log.Infow("creating route", zap.ByteString("body", data), zap.String("url", r.url))
 	resp, err := r.cluster.createResource(ctx, r.url, bytes.NewReader(data))
 	if err != nil {
 		log.Errorf("failed to create route: %s", err)
@@ -121,6 +123,7 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		return nil, err
 	}
 	url := r.url + "/" + *obj.ID
+	log.Infow("updating route", zap.ByteString("body", body), zap.String("url", r.url))
 	resp, err := r.cluster.updateResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err

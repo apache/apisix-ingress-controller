@@ -18,8 +18,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"net"
-	"strconv"
 
 	"go.uber.org/zap"
 
@@ -33,12 +31,18 @@ type upstreamClient struct {
 	cluster     *cluster
 }
 
+type upstreamNode struct {
+	Host   string `json:"host,omitempty" yaml:"ip,omitempty"`
+	Port   int    `json:"port,omitempty" yaml:"port,omitempty"`
+	Weight int    `json:"weight,omitempty" yaml:"weight,omitempty"`
+}
+
 type upstreamReqBody struct {
-	LBType *string          `json:"type"`
-	HashOn *string          `json:"hash_on,omitempty"`
-	Key    *string          `json:"key,omitempty"`
-	Nodes  map[string]int64 `json:"nodes"`
-	Desc   *string          `json:"desc"`
+	LBType *string        `json:"type"`
+	HashOn *string        `json:"hash_on,omitempty"`
+	Key    *string        `json:"key,omitempty"`
+	Nodes  []upstreamNode `json:"nodes"`
+	Desc   *string        `json:"desc"`
 }
 
 type upstreamItem struct {
@@ -86,13 +90,14 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		zap.String("full_name", *obj.FullName),
 	)
 
-	// TODO Just pass the node array.
-	nodes := make(map[string]int64, len(obj.Nodes))
-	for _, n := range obj.Nodes {
-		ep := net.JoinHostPort(*n.IP, strconv.Itoa(*n.Port))
-		nodes[ep] = int64(*n.Weight)
+	nodes := make([]upstreamNode, 0, len(obj.Nodes))
+	for _, node := range obj.Nodes {
+		nodes = append(nodes, upstreamNode{
+			Host:   *node.IP,
+			Port:   *node.Port,
+			Weight: *node.Weight,
+		})
 	}
-
 	body, err := json.Marshal(upstreamReqBody{
 		LBType: obj.Type,
 		HashOn: obj.HashOn,
@@ -103,6 +108,7 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	if err != nil {
 		return nil, err
 	}
+	log.Infow("creating upstream", zap.ByteString("body", body), zap.String("url", u.url))
 
 	resp, err := u.cluster.createResource(ctx, u.url, bytes.NewReader(body))
 	if err != nil {
@@ -125,13 +131,14 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upstream, error) {
 	log.Infof("update upstream, id:%s", *obj.ID)
 
-	// TODO Just pass the node array.
-	nodes := make(map[string]int64, len(obj.Nodes))
-	for _, n := range obj.Nodes {
-		ep := net.JoinHostPort(*n.IP, strconv.Itoa(*n.Port))
-		nodes[ep] = int64(*n.Weight)
+	nodes := make([]upstreamNode, 0, len(obj.Nodes))
+	for _, node := range obj.Nodes {
+		nodes = append(nodes, upstreamNode{
+			Host:   *node.IP,
+			Port:   *node.Port,
+			Weight: *node.Weight,
+		})
 	}
-
 	body, err := json.Marshal(upstreamReqBody{
 		LBType: obj.Type,
 		HashOn: obj.HashOn,
@@ -144,6 +151,7 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	}
 
 	url := u.url + "/" + *obj.ID
+	log.Infow("upating upstream", zap.ByteString("body", body), zap.String("url", url))
 	resp, err := u.cluster.updateResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err

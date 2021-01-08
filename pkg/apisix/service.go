@@ -33,7 +33,7 @@ type serviceClient struct {
 
 type serviceItem struct {
 	UpstreamId *string                 `json:"upstream_id,omitempty"`
-	Plugins    *map[string]interface{} `json:"plugins"`
+	Plugins    *map[string]interface{} `json:"plugins,omitempty"`
 	Desc       *string                 `json:"desc,omitempty"`
 }
 
@@ -83,6 +83,7 @@ func (s *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Servic
 		return nil, err
 	}
 
+	log.Infow("creating service", zap.ByteString("body", body), zap.String("url", s.url))
 	resp, err := s.cluster.createResource(ctx, s.url, bytes.NewReader(body))
 	if err != nil {
 		log.Errorf("failed to create service: %s", err)
@@ -114,6 +115,7 @@ func (s *serviceClient) Update(ctx context.Context, obj *v1.Service) (*v1.Servic
 	}
 
 	url := s.url + "/" + *obj.ID
+	log.Infow("creating service", zap.ByteString("body", body), zap.String("url", url))
 	resp, err := s.cluster.updateResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
