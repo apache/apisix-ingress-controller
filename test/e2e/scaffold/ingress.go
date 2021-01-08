@@ -29,7 +29,7 @@ const (
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: ingress-apisix-e2e-test-clusterrolebinding
+  name: %s-clusterrolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -39,7 +39,7 @@ subjects:
   name: ingress-apisix-e2e-test-service-account
   namespace: %s
 `
-	_ingressAPISIXDeployment = `
+	_ingressAPISIXDeploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -51,7 +51,7 @@ spec:
       app: ingress-apisix-controller-deployment-e2e-test
   strategy:
     rollingUpdate:
-      maxSurge: 50%
+      maxSurge: 50%%
       maxUnavailable: 1
     type: RollingUpdate
   template:
@@ -95,20 +95,23 @@ spec:
             - :8080
             - --apisix-base-url
             - http://apisix-service-e2e-test:9180/apisix/admin
+            - --app-namespace
+            - %s
       serviceAccount: ingress-apisix-e2e-test-service-account
 `
 )
 
 func (s *Scaffold) newIngressAPISIXController() error {
+	ingressAPISIXDeployment := fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.namespace)
 	if err := k8s.CreateServiceAccountE(s.t, s.kubectlOptions, _serviceAccount); err != nil {
 		return err
 	}
 
-	crb := fmt.Sprintf(_clusterRoleBinding, s.namespace)
+	crb := fmt.Sprintf(_clusterRoleBinding, s.namespace, s.namespace)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, crb); err != nil {
 		return err
 	}
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, _ingressAPISIXDeployment); err != nil {
+	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment); err != nil {
 		return err
 	}
 	return nil
