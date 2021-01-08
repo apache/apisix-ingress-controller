@@ -53,6 +53,7 @@ type Scaffold struct {
 	apisixService     *corev1.Service
 	httpbinDeployment *appsv1.Deployment
 	httpbinService    *corev1.Service
+	finializers       []func()
 
 	// Used for template rendering.
 	EtcdServiceFQDN string
@@ -173,8 +174,16 @@ func (s *Scaffold) beforeEach() {
 
 func (s *Scaffold) afterEach() {
 	defer ginkgo.GinkgoRecover()
-	//err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
-	//assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
+	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
+	assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
+
+	for _, f := range s.finializers {
+		f()
+	}
+}
+
+func (s *Scaffold) addFinializer(f func()) {
+	s.finializers = append(s.finializers, f)
 }
 
 func (s *Scaffold) renderConfig(path string) (string, error) {
