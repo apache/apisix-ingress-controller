@@ -24,7 +24,7 @@ spec:
   type: ClusterIP
   ports:
     - port: {{ .Values.ingressController.service.port }}
-      targetPort: http
+      targetPort: {{ (.Values.ingressController.config.httpListen | split ":")._1 }}
       protocol: TCP
       name: http
   selector:
