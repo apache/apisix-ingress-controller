@@ -173,26 +173,3 @@ func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 	}
 	return cli.Cluster("").Upstream().List(context.TODO())
 }
-
-// ListAPISIXRoutes lists all route objects from APISIX.
-func (s *Scaffold) ListAPISIXRoutes() (*apisix.RoutesResponse, error) {
-	host, err := s.apisixAdminServiceURL()
-	if err != nil {
-		return nil, err
-	}
-	u := url.URL{
-		Scheme: "http",
-		Host:   host,
-		Path:   "/apisix/admin/routes",
-	}
-	resp, err := http.Get(u.String())
-	if err != nil {
-		return nil, err
-	}
-	var responses *apisix.RoutesResponse
-	dec := json.NewDecoder(resp.Body)
-	if err := dec.Decode(&responses); err != nil {
-		return nil, err
-	}
-	return responses, nil
-}
