@@ -105,7 +105,7 @@ func RemoveUpstream(up *v1.Upstream) error {
 			// except ErrNotFound, need to retry
 			return err
 		} else {
-			// do delete svc
+			// do delete upstream
 			var cluster string
 			if svc.Group != nil {
 				cluster = *svc.Group
@@ -120,7 +120,7 @@ func RemoveUpstream(up *v1.Upstream) error {
 			}
 		}
 	} else {
-		return fmt.Errorf("svc %s is still referenced by route %s", *svc.FullName, *route.FullName)
+		return fmt.Errorf("upstream %s is still referenced by service %s", *up.FullName, *svc.FullName)
 	}
 }
 
