@@ -72,6 +72,17 @@ func (s *ApisixCombination) Remove() error {
 }
 
 func RemoveService(svc *v1.Service) error {
+	// find svc ID
+	serviceRequest := db.ServiceRequest{FullName: *svc.FullName}
+	if service, err := serviceRequest.FindByName(); err != nil {
+		// if not found, keep going on.
+		if errors.Is(err, utils.ErrNotFound) {
+			return nil
+		}
+		return err
+	} else {
+		svc.ID = service.ID
+	}
 	// find ref route
 	routeRequest := db.RouteRequest{ServiceId: *svc.ID}
 	if route, err := routeRequest.ExistByServiceId(); err != nil {
@@ -81,8 +92,8 @@ func RemoveService(svc *v1.Service) error {
 		} else {
 			// do delete svc
 			var cluster string
-			if route.Group != nil {
-				cluster = *route.Group
+			if svc.Group != nil {
+				cluster = *svc.Group
 			}
 			if err := conf.Client.Cluster(cluster).Service().Delete(context.TODO(), svc); err != nil {
 				log.Errorf("failed to delete svc %s from APISIX: %s", *svc.FullName, err)
@@ -99,6 +110,16 @@ func RemoveService(svc *v1.Service) error {
 }
 
 func RemoveUpstream(up *v1.Upstream) error {
+	upstreamRequest := db.UpstreamRequest{FullName: *up.FullName}
+	if upstream, err := upstreamRequest.FindByName(); err != nil {
+		// if not found, keep going on.
+		if errors.Is(err, utils.ErrNotFound) {
+			return nil
+		}
+		return err
+	} else {
+		up.ID = upstream.ID
+	}
 	serviceRequest := db.ServiceRequest{UpstreamId: *up.ID}
 	if svc, err := serviceRequest.ExistByUpstreamId(); err != nil {
 		if !errors.Is(err, utils.ErrNotFound) {
@@ -107,8 +128,8 @@ func RemoveUpstream(up *v1.Upstream) error {
 		} else {
 			// do delete upstream
 			var cluster string
-			if svc.Group != nil {
-				cluster = *svc.Group
+			if up.Group != nil {
+				cluster = *up.Group
 			}
 			if err := conf.Client.Cluster(cluster).Upstream().Delete(context.TODO(), up); err != nil {
 				log.Errorf("failed to delete upstream %s from APISIX: %s", *up.FullName, err)
