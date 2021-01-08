@@ -21,8 +21,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/api7/ingress-controller/pkg/types"
 	"gopkg.in/yaml.v2"
+
+	"github.com/api7/ingress-controller/pkg/types"
 )
 
 const (
@@ -63,7 +64,7 @@ func NewDefaultConfig() *Config {
 		EnableProfiling: true,
 		Kubernetes: KubernetesConfig{
 			Kubeconfig:     "", // Use in-cluster configurations.
-			ResyncInterval: types.TimeDuration{time.Minute},
+			ResyncInterval: types.TimeDuration{6 * time.Hour},
 		},
 	}
 }
