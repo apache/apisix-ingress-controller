@@ -18,6 +18,8 @@ import (
 	"os"
 	"sync"
 
+	"github.com/api7/ingress-controller/pkg/apisix"
+
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	crdclientset "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	"github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
@@ -58,7 +60,16 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		podNamespace = "default"
 	}
 
-	conf.SetBaseUrl(cfg.APISIX.BaseURL)
+	client, err := apisix.NewForOptions(&apisix.ClusterOptions{
+		Name:     "",
+		AdminKey: cfg.APISIX.AdminKey,
+		BaseURL:  cfg.APISIX.BaseURL,
+	})
+	if err != nil {
+		return nil, err
+	}
+	conf.SetAPISIXClient(client)
+
 	if err := kube.InitInformer(cfg); err != nil {
 		return nil, err
 	}

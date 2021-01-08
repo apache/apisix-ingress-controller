@@ -50,9 +50,9 @@ spec:
 		scale := 2
 		s.ScaleHTTPBIN(scale)
 		s.WaitUntilNumPodsCreatedE(s.Selector("app=httpbin-deployment-e2e-test"), scale, 5, 5*time.Second)
-		time.Sleep(2 * time.Second) // wait for ingress to sync
-		response, err := s.ListApisixUpstreams()
-		assert.Nil(ginkgo.GinkgoT(), err, "List upstreams error")
-		assert.Equal(ginkgo.GinkgoT(), 2, len(response.Upstreams.Upstreams[0].UpstreamNodes.Nodes), "upstreams nodes not expect")
+		time.Sleep(10 * time.Second) // wait for ingress to sync
+		ups, err := s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
+		assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 2, "upstreams nodes not expect")
 	})
 })

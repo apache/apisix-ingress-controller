@@ -29,7 +29,6 @@ import (
 
 	"github.com/api7/ingress-controller/pkg/config"
 	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/api7/ingress-controller/pkg/seven/conf"
 	"github.com/api7/ingress-controller/pkg/types"
 )
 
@@ -61,9 +60,19 @@ func (fws *fakeWriteSyncer) bytes() (p []byte) {
 
 func TestSignalHandler(t *testing.T) {
 	cmd := NewIngressCommand()
+	cmd.SetArgs([]string{
+		"--log-level", "debug",
+		"--log-output", "./test.log",
+		"--http-listen", "127.0.0.1:16780",
+		"--enable-profiling",
+		"--kubeconfig", "/foo/bar/baz",
+		"--resync-interval", "24h",
+		"--apisix-base-url", "http://apisixgw.default.cluster.local/apisix",
+		"--apisix-admin-key", "0x123",
+	})
 	waitCh := make(chan struct{})
 	go func() {
-		cmd.Run(cmd, nil)
+		cmd.Execute()
 		close(waitCh)
 	}()
 
@@ -131,9 +140,6 @@ func TestNewIngressCommandEffectiveLog(t *testing.T) {
 	assert.Equal(t, cfg.Kubernetes.ResyncInterval, types.TimeDuration{24 * time.Hour})
 	assert.Equal(t, cfg.APISIX.AdminKey, "0x123")
 	assert.Equal(t, cfg.APISIX.BaseURL, "http://apisixgw.default.cluster.local/apisix")
-
-	// Test the conf.BaseUrl is really set.
-	assert.Equal(t, cfg.APISIX.BaseURL, conf.BaseUrl)
 }
 
 func parseLog(t *testing.T, r *bufio.Reader) *fields {

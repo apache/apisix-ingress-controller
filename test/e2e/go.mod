@@ -13,3 +13,5 @@ require (
 )
 
 replace github.com/gxthrj/apisix-ingress-types v0.1.3 => github.com/api7/ingress-types v0.1.3
+
+replace github.com/api7/ingress-controller => ../../

@@ -18,11 +18,13 @@ import (
 	"context"
 	"errors"
 	"strconv"
-	"strings"
 	"sync"
+
+	"github.com/golang/glog"
 
 	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/api7/ingress-controller/pkg/seven/apisix"
+	"github.com/api7/ingress-controller/pkg/seven/conf"
 	"github.com/api7/ingress-controller/pkg/seven/db"
 	"github.com/api7/ingress-controller/pkg/seven/utils"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
@@ -137,6 +139,10 @@ func (r *routeWorker) trigger(event Event) {
 
 // sync
 func (r *routeWorker) sync() error {
+	var cluster string
+	if r.Group != nil {
+		cluster = *r.Group
+	}
 	if *r.Route.ID != strconv.Itoa(0) {
 		// 1. sync memDB
 		db := &db.RouteDB{Routes: []*v1.Route{r.Route}}
@@ -145,27 +151,26 @@ func (r *routeWorker) sync() error {
 			return err
 		}
 		// 2. sync apisix
-		if err := apisix.UpdateRoute(r.Route); err != nil {
+		if _, err := conf.Client.Cluster(cluster).Route().Update(context.TODO(), r.Route); err != nil {
+			log.Errorf("failed to update route %s: %s, ", *r.Name, err)
 			return err
 		}
 		log.Infof("update route %s, %s", *r.Name, *r.ServiceId)
 	} else {
 		// 1. sync apisix and get id
-		if res, err := apisix.AddRoute(r.Route); err != nil {
-			log.Errorf("add route failed, route: %#v, err: %+v", r.Route, err)
-			return err
-		} else {
-			key := res.Route.Key
-			tmp := strings.Split(*key, "/")
-			*r.ID = tmp[len(tmp)-1]
-		}
-		// 2. sync memDB
-		db := &db.RouteDB{Routes: []*v1.Route{r.Route}}
-		if err := db.Insert(); err != nil {
+		route, err := conf.Client.Cluster(cluster).Route().Create(context.TODO(), r.Route)
+		if err != nil {
+			log.Errorf("failed to create route: %s", err.Error())
 			return err
 		}
-		log.Infof("create route %s, %s", *r.Name, *r.ServiceId)
+		*r.ID = *route.ID
 	}
+	// 2. sync memDB
+	db := &db.RouteDB{Routes: []*v1.Route{r.Route}}
+	if err := db.Insert(); err != nil {
+		return err
+	}
+	log.Infof("create route %s, %s", *r.Name, *r.ServiceId)
 	return nil
 }
 
@@ -230,10 +235,14 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 						errNotify = err
 						return
 					}
+
 					// 2.sync apisix
-					if err = apisix.UpdateUpstream(u); err != nil {
-						log.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
-						errNotify = err
+					var cluster string
+					if u.Group != nil {
+						cluster = *u.Group
+					}
+					if _, err = conf.Client.Cluster(cluster).Upstream().Update(context.TODO(), u); err != nil {
+						glog.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
 						return
 					}
 				}
@@ -261,14 +270,17 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 			} else {
 				op = Create
 				// 1.sync apisix and get response
-				if upstreamResponse, err := apisix.AddUpstream(u); err != nil {
-					log.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
-					errNotify = err
-					return
-				} else {
-					tmp := strings.Split(*upstreamResponse.Upstream.Key, "/")
-					*u.ID = tmp[len(tmp)-1]
+				var cluster string
+				if u.Group != nil {
+					cluster = *u.Group
 				}
+				ups, err := conf.Client.Cluster(cluster).Upstream().Create(context.TODO(), u)
+				if err != nil {
+					log.Errorf("failed to create upstream: %s", err)
+					return
+				}
+
+				*u.ID = *ups.ID
 				// 2.sync memDB
 				//apisix.InsertUpstreams([]*v1.Upstream{u})
 				upstreamDB := &db.UpstreamDB{Upstreams: []*v1.Upstream{u}}

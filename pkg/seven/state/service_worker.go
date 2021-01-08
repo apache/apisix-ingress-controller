@@ -17,11 +17,11 @@ package state
 import (
 	"context"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/api7/ingress-controller/pkg/seven/apisix"
+	"github.com/api7/ingress-controller/pkg/seven/conf"
 	"github.com/api7/ingress-controller/pkg/seven/db"
 	"github.com/api7/ingress-controller/pkg/seven/utils"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
@@ -98,17 +98,20 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 		errNotify = err
 		return
 	}
+	var cluster string
+	if svc.Group != nil {
+		cluster = *svc.Group
+	}
 	if hasDiff {
 		if *svc.ID == strconv.Itoa(0) {
 			op = Create
 			// 1. sync apisix and get id
-			if serviceResponse, err := apisix.AddService(svc); err != nil {
-				log.Info(err.Error())
+			if s, err := conf.Client.Cluster(cluster).Service().Create(context.TODO(), svc); err != nil {
+				log.Errorf("failed to create service: %s", err)
 				errNotify = err
 				return
 			} else {
-				tmp := strings.Split(*serviceResponse.Service.Key, "/")
-				*svc.ID = tmp[len(tmp)-1]
+				*svc.ID = *s.ID
 			}
 			// 2. sync memDB
 			db := &db.ServiceDB{Services: []*v1.Service{svc}}
@@ -131,23 +134,22 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 				// 1. sync memDB
 				db := db.ServiceDB{Services: []*v1.Service{svc}}
 				if err := db.UpdateService(); err != nil {
-					// todo log error
+					log.Errorf("failed to update service to mem db: %s", err)
 					errNotify = err
 					return
 				}
 				// 2. sync apisix
-				if _, err := apisix.UpdateService(svc); err != nil {
+				if _, err := conf.Client.Cluster(cluster).Service().Update(context.TODO(), svc); err != nil {
 					errNotify = err
-					return
+					log.Errorf("failed to update service: %s, id:%s", err, *svc.ID)
+				} else {
+					log.Infof("updated service, id:%s, upstream_id:%s", *svc.ID, *svc.UpstreamId)
 				}
-				log.Infof("update service %s, %s", *svc.Name, *svc.UpstreamId)
 			}
-
 		}
 	}
 	// broadcast to route
-	routeWorkers := rwg[*svc.Name]
-	for _, rw := range routeWorkers {
+	for _, rw := range rwg[*svc.Name] {
 		event := &Event{Kind: ServiceKind, Op: op, Obj: svc}
 		log.Infof("send event %s, %s, %s", event.Kind, event.Op, *svc.Name)
 		rw.Event <- *event

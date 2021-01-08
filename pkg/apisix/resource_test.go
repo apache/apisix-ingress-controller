@@ -21,15 +21,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUpstreamsUnmarshalJSON(t *testing.T) {
-	var ups Upstreams
+func TestItemUnmarshalJSON(t *testing.T) {
+	var items node
 	emptyData := `
 {
 	"key": "test",
 	"nodes": {}
 }
 `
-	err := json.Unmarshal([]byte(emptyData), &ups)
+	err := json.Unmarshal([]byte(emptyData), &items)
 	assert.Nil(t, err)
 
 	emptyData = `
@@ -38,7 +38,7 @@ func TestUpstreamsUnmarshalJSON(t *testing.T) {
 	"nodes": {"a": "b", "c": "d"}
 }
 `
-	err = json.Unmarshal([]byte(emptyData), &ups)
+	err = json.Unmarshal([]byte(emptyData), &items)
 	assert.Equal(t, err.Error(), "unexpected non-empty object")
 
 	emptyArray := `
@@ -47,38 +47,32 @@ func TestUpstreamsUnmarshalJSON(t *testing.T) {
 	"nodes": []
 }
 `
-	err = json.Unmarshal([]byte(emptyArray), &ups)
+	err = json.Unmarshal([]byte(emptyArray), &items)
 	assert.Nil(t, err)
-
-	normalData := `
-{
-	"key": "test",
-	"nodes": [
-		{
-			"key": "ups1",
-			"value": {
-				"desc": "test upstream 1",
-				"type": "rr",
-				"nodes": {
-					"192.168.12.12": 100
-				}
-			}
-		}
-	]
 }
-`
-	err = json.Unmarshal([]byte(normalData), &ups)
+
+func TestItemConvertRoute(t *testing.T) {
+	item := &item{
+		Key: "/apisix/routes/001",
+		Value: json.RawMessage(`
+			{
+				"upstream_id": "13",
+				"service_id": "14",
+				"host": "foo.com",
+				"uri": "/shop/133/details",
+				"methods": ["GET", "POST"]
+			}
+		`),
+	}
+
+	r, err := item.route("qa")
 	assert.Nil(t, err)
-	assert.Equal(t, ups.Key, "test")
-	assert.Equal(t, len(ups.Upstreams), 1)
-
-	key := *ups.Upstreams[0].Key
-	assert.Equal(t, key, "ups1")
-	desc := *ups.Upstreams[0].UpstreamNodes.Desc
-	assert.Equal(t, desc, "test upstream 1")
-	lb := *ups.Upstreams[0].UpstreamNodes.LBType
-	assert.Equal(t, lb, "rr")
-
-	assert.Equal(t, len(ups.Upstreams[0].UpstreamNodes.Nodes), 1)
-	assert.Equal(t, ups.Upstreams[0].UpstreamNodes.Nodes["192.168.12.12"], int64(100))
+	assert.Equal(t, *r.UpstreamId, "13")
+	assert.Equal(t, *r.ServiceId, "14")
+	assert.Equal(t, *r.Host, "foo.com")
+	assert.Equal(t, *r.Path, "/shop/133/details")
+	assert.Equal(t, *r.Methods[0], "GET")
+	assert.Equal(t, *r.Methods[1], "POST")
+	assert.Nil(t, r.Name)
+	assert.Equal(t, *r.FullName, "qa_unknown")
 }

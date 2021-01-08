@@ -14,8 +14,16 @@
 // limitations under the License.
 package conf
 
-var BaseUrl = "http://172.16.20.90:30116/apisix/admin"
-var UrlGroup = make(map[string]string)
+import (
+	"github.com/api7/ingress-controller/pkg/apisix"
+	"github.com/api7/ingress-controller/pkg/log"
+)
+
+var (
+	BaseUrl  = "http://172.16.20.90:30116/apisix/admin"
+	UrlGroup = make(map[string]string)
+	Client   apisix.APISIX
+)
 
 func SetBaseUrl(url string) {
 	BaseUrl = url
@@ -23,14 +31,20 @@ func SetBaseUrl(url string) {
 
 func AddGroup(group string) {
 	if group != "" {
-		UrlGroup[group] = "http://" + group + "/apisix/admin"
+		err := Client.AddCluster(&apisix.ClusterOptions{
+			Name:    group,
+			BaseURL: "http://" + group + "/apisix/admin",
+		})
+		if err != nil {
+			if err == apisix.ErrDuplicatedCluster {
+				log.Errorf("failed to create cluster %s: %s", group, err)
+			} else {
+				log.Infof("cluster %s already exists", group)
+			}
+		}
 	}
 }
 
-func FindUrl(group string) string {
-	if group != "" && UrlGroup[group] != "" {
-		return UrlGroup[group]
-	} else {
-		return BaseUrl
-	}
+func SetAPISIXClient(c apisix.APISIX) {
+	Client = c
 }

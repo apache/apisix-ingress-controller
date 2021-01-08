@@ -15,13 +15,13 @@
 package controller
 
 import (
+	"context"
 	"strconv"
 
-	"github.com/api7/ingress-controller/pkg/kube"
 	"github.com/golang/glog"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/api7/ingress-controller/pkg/seven/apisix"
+	"github.com/api7/ingress-controller/pkg/kube"
 	sevenConf "github.com/api7/ingress-controller/pkg/seven/conf"
 	"github.com/api7/ingress-controller/pkg/seven/state"
 	apisixv1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
@@ -70,8 +70,8 @@ func (c *controller) process(obj interface{}) {
 				upstreamName := ep.Namespace + "_" + ep.Name + "_" + strconv.Itoa(int(port.Port))
 				// find upstreamName is in apisix
 				// sync with all apisix group
-				for k := range sevenConf.UrlGroup {
-					upstreams, err := apisix.ListUpstream(k)
+				for _, cluster := range sevenConf.Client.ListClusters() {
+					upstreams, err := cluster.Upstream().List(context.TODO())
 					if err == nil {
 						for _, upstream := range upstreams {
 							if *(upstream.Name) == upstreamName {
