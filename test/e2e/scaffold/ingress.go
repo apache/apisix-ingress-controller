@@ -77,7 +77,7 @@ spec:
             tcpSocket:
               port: 8080
             timeoutSeconds: 2
-          image: "apache/apisix-ingress-controller:dev"
+          image: "apisix-ingress-controller:dev"
           imagePullPolicy: IfNotPresent
           name: ingress-apisix-controller-deployment-e2e-test
           ports:
