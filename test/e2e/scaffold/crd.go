@@ -22,14 +22,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/api7/ingress-controller/pkg/apisix"
+	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-
-	"github.com/api7/ingress-controller/pkg/apisix"
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 type counter struct {
@@ -94,6 +93,10 @@ func (s *Scaffold) CreateApisixRoute(name string, rules []ApisixRouteRule) {
 
 func (s *Scaffold) CreateApisixRouteByString(yaml string) {
 	k8s.KubectlApplyFromString(s.t, s.kubectlOptions, yaml)
+
+}
+func (s *Scaffold) RemoveApisixRouteByString(yaml string) {
+	k8s.KubectlDeleteFromString(s.t, s.kubectlOptions, yaml)
 }
 
 func ensureNumApisixCRDsCreated(url string, desired int) error {
