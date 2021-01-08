@@ -116,6 +116,7 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 	}
 
 	var ups upstreamItem
+	log.Info(string(i.Value))
 	if err := json.Unmarshal(i.Value, &ups); err != nil {
 		return nil, err
 	}
