@@ -122,17 +122,17 @@ func (c *ApisixUpstreamController) syncHandler(sqo *UpstreamQueueObj) error {
 	if sqo.Ope == DELETE {
 		apisixIngressUpstream, _ := c.apisixUpstreamList.ApisixUpstreams(namespace).Get(name)
 		if apisixIngressUpstream != nil && apisixIngressUpstream.ResourceVersion > sqo.OldObj.ResourceVersion {
-			log.Warnf("Upstram %s has been covered when retry", sqo.Key)
+			log.Warnf("Upstream %s has been covered when retry", sqo.Key)
 			return nil
 		}
 	} else {
 		apisixUpstreamYaml, err = c.apisixUpstreamList.ApisixUpstreams(namespace).Get(name)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				log.Infof("apisixUpstraem %s is removed", sqo.Key)
+				log.Infof("apisixUpstream %s is removed", sqo.Key)
 				return nil
 			}
-			runtime.HandleError(fmt.Errorf("failed to list apisixService %s/%s", sqo.Key, err.Error()))
+			runtime.HandleError(fmt.Errorf("failed to list apisixUpstream %s/%s", sqo.Key, err.Error()))
 			return err
 		}
 	}
@@ -171,8 +171,10 @@ func (c *ApisixUpstreamController) updateFunc(oldObj, newObj interface{}) {
 	if oldUpstream.ResourceVersion >= newUpstream.ResourceVersion {
 		return
 	}
-	var key string
-	var err error
+	var (
+		key string
+		err error
+	)
 	if key, err = cache.MetaNamespaceKeyFunc(newObj); err != nil {
 		runtime.HandleError(err)
 		return
