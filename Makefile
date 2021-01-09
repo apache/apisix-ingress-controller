@@ -16,8 +16,9 @@
 #
 default: help
 
-VERSION ?= 0.1.0
-IMAGE_TAG ?= "dev"
+VERSION ?= 0.2.0
+IMAGE_TAG ?= "latest"
+
 GITSHA ?= $(shell git rev-parse --short=7 HEAD)
 OSNAME ?= $(shell uname -s | tr A-Z a-z)
 OSARCH ?= $(shell uname -m | tr A-Z a-z)
