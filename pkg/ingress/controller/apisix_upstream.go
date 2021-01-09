@@ -90,17 +90,17 @@ func (c *ApisixUpstreamController) processNextWorkItem() bool {
 	}
 	err := func(obj interface{}) error {
 		defer c.workqueue.Done(obj)
-		var key string
+		var sqo *UpstreamQueueObj
 		var ok bool
 
-		if key, ok = obj.(string); !ok {
+		if sqo, ok = obj.(*UpstreamQueueObj); !ok {
 			c.workqueue.Forget(obj)
 			return fmt.Errorf("expected string in workqueue but got %#v", obj)
 		}
 		// 在syncHandler中处理业务
-		if err := c.syncHandler(key); err != nil {
+		if err := c.syncHandler(sqo); err != nil {
 			c.workqueue.AddRateLimited(obj)
-			return fmt.Errorf("error syncing '%s': %s", key, err.Error())
+			return fmt.Errorf("error syncing '%s': %s", sqo.Key, err.Error())
 		}
 
 		c.workqueue.Forget(obj)
@@ -112,30 +112,46 @@ func (c *ApisixUpstreamController) processNextWorkItem() bool {
 	return true
 }
 
-func (c *ApisixUpstreamController) syncHandler(key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+func (c *ApisixUpstreamController) syncHandler(sqo *UpstreamQueueObj) error {
+	namespace, name, err := cache.SplitMetaNamespaceKey(sqo.Key)
 	if err != nil {
-		log.Errorf("invalid resource key: %s", key)
-		return fmt.Errorf("invalid resource key: %s", key)
+		log.Errorf("invalid resource key: %s", sqo.Key)
+		return fmt.Errorf("invalid resource key: %s", sqo.Key)
 	}
-
-	apisixUpstreamYaml, err := c.apisixUpstreamList.ApisixUpstreams(namespace).Get(name)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Infof("apisixUpstream %s is removed", key)
+	apisixUpstreamYaml := sqo.OldObj
+	if sqo.Ope == DELETE {
+		apisixIngressUpstream, _ := c.apisixUpstreamList.ApisixUpstreams(namespace).Get(name)
+		if apisixIngressUpstream != nil && apisixIngressUpstream.ResourceVersion > sqo.OldObj.ResourceVersion {
+			log.Warnf("Upstream %s has been covered when retry", sqo.Key)
 			return nil
 		}
-		runtime.HandleError(fmt.Errorf("failed to list apisixUpstream %s/%s", key, err.Error()))
-		return err
+	} else {
+		apisixUpstreamYaml, err = c.apisixUpstreamList.ApisixUpstreams(namespace).Get(name)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				log.Infof("apisixUpstream %s is removed", sqo.Key)
+				return nil
+			}
+			runtime.HandleError(fmt.Errorf("failed to list apisixUpstream %s/%s", sqo.Key, err.Error()))
+			return err
+		}
 	}
-	log.Info(namespace)
-	log.Info(name)
-	//apisixUpstream := apisix.ApisixUpstreamCRD(*apisixUpstreamYaml)
 	aub := apisix.ApisixUpstreamBuilder{CRD: apisixUpstreamYaml, Ep: &endpoint.EndpointRequest{}}
 	upstreams, _ := aub.Convert()
 	comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
-	_, err = comb.Solver()
-	return err
+	if sqo.Ope == DELETE {
+		return comb.Remove()
+	} else {
+		_, err = comb.Solver()
+		return err
+	}
+
+}
+
+type UpstreamQueueObj struct {
+	Key    string                   `json:"key"`
+	OldObj *apisixV1.ApisixUpstream `json:"old_obj"`
+	Ope    string                   `json:"ope"` // add / update / delete
 }
 
 func (c *ApisixUpstreamController) addFunc(obj interface{}) {
@@ -145,19 +161,40 @@ func (c *ApisixUpstreamController) addFunc(obj interface{}) {
 		runtime.HandleError(err)
 		return
 	}
-	c.workqueue.AddRateLimited(key)
+	sqo := &UpstreamQueueObj{Key: key, OldObj: nil, Ope: ADD}
+	c.workqueue.AddRateLimited(sqo)
 }
 
 func (c *ApisixUpstreamController) updateFunc(oldObj, newObj interface{}) {
-	oldRoute := oldObj.(*apisixV1.ApisixUpstream)
-	newRoute := newObj.(*apisixV1.ApisixUpstream)
-	if oldRoute.ResourceVersion == newRoute.ResourceVersion {
+	oldUpstream := oldObj.(*apisixV1.ApisixUpstream)
+	newUpstream := newObj.(*apisixV1.ApisixUpstream)
+	if oldUpstream.ResourceVersion >= newUpstream.ResourceVersion {
 		return
 	}
-	c.addFunc(newObj)
+	var (
+		key string
+		err error
+	)
+	if key, err = cache.MetaNamespaceKeyFunc(newObj); err != nil {
+		runtime.HandleError(err)
+		return
+	}
+	sqo := &UpstreamQueueObj{Key: key, OldObj: oldUpstream, Ope: UPDATE}
+	c.addFunc(sqo)
 }
 
 func (c *ApisixUpstreamController) deleteFunc(obj interface{}) {
+	oldUpstream, ok := obj.(*apisixV1.ApisixUpstream)
+	if !ok {
+		oldState, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			return
+		}
+		oldUpstream, ok = oldState.Obj.(*apisixV1.ApisixUpstream)
+		if !ok {
+			return
+		}
+	}
 	var key string
 	var err error
 	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
@@ -165,5 +202,6 @@ func (c *ApisixUpstreamController) deleteFunc(obj interface{}) {
 		runtime.HandleError(err)
 		return
 	}
-	c.workqueue.AddRateLimited(key)
+	sqo := &UpstreamQueueObj{Key: key, OldObj: oldUpstream, Ope: DELETE}
+	c.workqueue.AddRateLimited(sqo)
 }

@@ -23,9 +23,9 @@ import (
 	"github.com/api7/ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("upstream expansion", func() {
+var _ = ginkgo.Describe("ApisixRoute Testing", func() {
 	s := scaffold.NewDefaultScaffold()
-	ginkgo.It("create and then scale to 2 ", func() {
+	ginkgo.It("create and then scale upstream pods to 2 ", func() {
 		apisixRoute := `
 apiVersion: apisix.apache.org/v1
 kind: ApisixRoute
@@ -54,5 +54,39 @@ spec:
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
 		assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 2, "upstreams nodes not expect")
+	})
+
+	ginkgo.It("create and then remove ", func() {
+		apisixRoute := `
+apiVersion: apisix.apache.org/v1
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  rules:
+  - host: httpbin.com
+    http:
+      paths:
+      - backend:
+          serviceName: httpbin-service-e2e-test
+          servicePort: 80
+        path: /ip
+`
+		s.CreateApisixRouteByString(apisixRoute)
+
+		err := s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+		err = s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		ups, err := s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
+		assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 1, "upstreams nodes not expect")
+
+		// remove
+		s.CreateApisixRouteByString(apisixRoute)
+		time.Sleep(5 * time.Second) // wait for ingress to sync
+		ups, err = s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
+		assert.Len(ginkgo.GinkgoT(), len(ups), 0, "upstreams nodes not expect")
 	})
 })

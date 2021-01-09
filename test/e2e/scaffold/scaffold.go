@@ -182,8 +182,8 @@ func (s *Scaffold) beforeEach() {
 
 func (s *Scaffold) afterEach() {
 	defer ginkgo.GinkgoRecover()
-	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
-	assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
+	//err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
+	//assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
 }
 
 func (s *Scaffold) renderConfig(path string) (string, error) {
