@@ -161,7 +161,7 @@ func (s *Scaffold) EnsureNumApisixUpstreamsCreated(desired int) error {
 func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 	host, err := s.apisixAdminServiceURL()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	u := url.URL{
 		Scheme: "http",

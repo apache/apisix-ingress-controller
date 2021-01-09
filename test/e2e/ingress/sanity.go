@@ -18,10 +18,9 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/api7/ingress-controller/test/e2e/scaffold"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/api7/ingress-controller/test/e2e/scaffold"
 )
 
 type ip struct {
@@ -58,5 +57,49 @@ var _ = ginkgo.Describe("single-route", func() {
 		assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling IP")
 		// It's not our focus point to check the IP address returned by httpbin,
 		// so here skip the IP address validation.
+	})
+})
+
+var _ = ginkgo.Describe("double-routes", func() {
+	s := scaffold.NewDefaultScaffold()
+	ginkgo.It("double routes work independently", func() {
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		s.CreateApisixRoute("httpbin-route", []scaffold.ApisixRouteRule{
+			{
+				Host: "httpbin.com",
+				HTTP: scaffold.ApisixRouteRuleHTTP{
+					Paths: []scaffold.ApisixRouteRuleHTTPPath{
+						{
+							Path: "/ip",
+							Backend: scaffold.ApisixRouteRuleHTTPBackend{
+								ServiceName: backendSvc,
+								ServicePort: backendSvcPort[0],
+							},
+						},
+						{
+							Path: "/json",
+							Backend: scaffold.ApisixRouteRuleHTTPBackend{
+								ServiceName: backendSvc,
+								ServicePort: backendSvcPort[0],
+							},
+						},
+					},
+				},
+			},
+		})
+		err := s.EnsureNumApisixRoutesCreated(2)
+		assert.Nil(ginkgo.GinkgoT(), err, "checking number of routes")
+		err = s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "checking number of upstreams")
+		body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
+		var placeholder ip
+		err = json.Unmarshal([]byte(body), &placeholder)
+		assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling IP")
+
+		body = s.NewAPISIXClient().GET("/json").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
+		var dummy map[string]interface{}
+		err = json.Unmarshal([]byte(body), &dummy)
+		assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling json")
+		// We don't care the json data, only make sure it's a normal json string.
 	})
 })
