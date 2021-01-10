@@ -19,25 +19,25 @@
 
 # Table of Contents
 
-- [0.1.0](#010)
 - [0.2.0](#020)
+- [0.1.0](#010)
 
 # 0.2.0
 
 This release mainly improve basic features, bugfix and adds test cases.
 
-### Core
+## Core
 
-- Enhanced documentation, easier to read and execute[#129](https://github.com/apache/apisix-ingress-controller/pull/129) 
+- Enhanced documentation, easier to read and execute[#129](https://github.com/apache/apisix-ingress-controller/pull/129)
 - API specification for CRDs [#151](https://github.com/apache/apisix-ingress-controller/pull/151)
 - Support Canary plugin (Base on the [feature](https://github.com/apache/apisix/pull/2935) in Apache APISIX) [#13](https://github.com/apache/apisix-ingress-controller/issues/13)
-- Support prometheus metrics [#143](https://github.com/apache/apisix-ingress-controller/pull/143) 
-- Support install ingress controller by Helm Chart [#153](https://github.com/apache/apisix-ingress-controller/pull/153) 
+- Support prometheus metrics [#143](https://github.com/apache/apisix-ingress-controller/pull/143)
+- Support install ingress controller by Helm Chart [#153](https://github.com/apache/apisix-ingress-controller/pull/153)
 - Support reconcile loop. [#149](https://github.com/apache/apisix-ingress-controller/pull/149) [#157](https://github.com/apache/apisix-ingress-controller/pull/157) [#163](https://github.com/apache/apisix-ingress-controller/pull/163)
 - Support namespaces filtering. [#162](https://github.com/apache/apisix-ingress-controller/pull/162)
-- Some Refactor. [#147](https://github.com/apache/apisix-ingress-controller/pull/147) [#155](https://github.com/apache/apisix-ingress-controller/pull/155) [#134](https://github.com/apache/apisix-ingress-controller/pull/134) 
+- Some Refactor. [#147](https://github.com/apache/apisix-ingress-controller/pull/147) [#155](https://github.com/apache/apisix-ingress-controller/pull/155) [#134](https://github.com/apache/apisix-ingress-controller/pull/134)
 
-### Test case
+## Test case
 
 more e2e case [#156](https://github.com/apache/apisix-ingress-controller/pull/156) [#142](https://github.com/apache/apisix-ingress-controller/pull/142)
 
@@ -47,7 +47,7 @@ more e2e case [#156](https://github.com/apache/apisix-ingress-controller/pull/15
 
 This release mainly improve basic features, bugfix and adds test cases.
 
-### Core
+## Core
 
 - Enriched documentation.
 - CI Integration. [#75](https://github.com/apache/apisix-ingress-controller/pull/75) [#80](https://github.com/apache/apisix-ingress-controller/pull/80) [#84](https://github.com/apache/apisix-ingress-controller/pull/84) [#87](https://github.com/apache/apisix-ingress-controller/pull/87) [#89](https://github.com/apache/apisix-ingress-controller/pull/89) [#97](https://github.com/apache/apisix-ingress-controller/pull/97)
@@ -56,11 +56,11 @@ This release mainly improve basic features, bugfix and adds test cases.
 - Support command line configuration. [#61](https://github.com/apache/apisix-ingress-controller/pull/61)
 - Support to define SSL by CRD. [#95](https://github.com/apache/apisix-ingress-controller/pull/95)
 
-### Test case
+## Test case
 
 - Add E2E test enviroment. [#101](https://github.com/apache/apisix-ingress-controller/pull/101)
 
-### Bugfix
+## Bugfix
 
 - invalid memory address or nil pointer dereference. [#9](https://github.com/api7/seven/pull/9)
 
