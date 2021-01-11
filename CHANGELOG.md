@@ -28,7 +28,7 @@ This release mainly improve basic features, bugfix and adds test cases.
 
 ## Core
 
-- Enhanced documentation, easier to read and execute[#129](https://github.com/apache/apisix-ingress-controller/pull/129)
+- Enhanced documentation, easier to read and execute [#129](https://github.com/apache/apisix-ingress-controller/pull/129)
 - API specification for CRDs [#151](https://github.com/apache/apisix-ingress-controller/pull/151)
 - Support Canary plugin (Base on the [feature](https://github.com/apache/apisix/pull/2935) in Apache APISIX) [#13](https://github.com/apache/apisix-ingress-controller/issues/13)
 - Support prometheus metrics [#143](https://github.com/apache/apisix-ingress-controller/pull/143)
