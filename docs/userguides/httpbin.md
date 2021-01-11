@@ -105,4 +105,3 @@ In case of success, you'll see a JSON string which contains all requests headers
   }
 }
 ```
-
