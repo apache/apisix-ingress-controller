@@ -53,6 +53,7 @@ type Scaffold struct {
 	apisixService     *corev1.Service
 	httpbinDeployment *appsv1.Deployment
 	httpbinService    *corev1.Service
+	finializers       []func()
 
 	// Used for template rendering.
 	EtcdServiceFQDN string
@@ -133,14 +134,6 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 	})
 }
 
-func (s *Scaffold) BeforeEach() {
-	s.beforeEach()
-}
-
-func (s *Scaffold) AfterEach() {
-	s.afterEach()
-}
-
 func (s *Scaffold) beforeEach() {
 	var err error
 	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.opts.Name, time.Now().Nanosecond())
@@ -157,7 +150,6 @@ func (s *Scaffold) beforeEach() {
 	assert.Nil(s.t, err, "initializing etcd")
 
 	// We don't use k8s.WaitUntilServiceAvailable since it hacks for Minikube.
-	//err = s.waitAllEtcdPodsAvailable()
 	err = k8s.WaitUntilNumPodsCreatedE(s.t, s.kubectlOptions, s.labelSelector("app=etcd-deployment-e2e-test"), 1, 5, 2*time.Second)
 	assert.Nil(s.t, err, "waiting for etcd ready")
 
@@ -182,8 +174,16 @@ func (s *Scaffold) beforeEach() {
 
 func (s *Scaffold) afterEach() {
 	defer ginkgo.GinkgoRecover()
-	//err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
-	//assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
+	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
+	assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
+
+	for _, f := range s.finializers {
+		f()
+	}
+}
+
+func (s *Scaffold) addFinializer(f func()) {
+	s.finializers = append(s.finializers, f)
 }
 
 func (s *Scaffold) renderConfig(path string) (string, error) {

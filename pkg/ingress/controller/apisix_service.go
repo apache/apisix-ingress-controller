@@ -22,7 +22,7 @@ import (
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	apisixScheme "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned/scheme"
 	informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions/config/v1"
-	"github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
+	v1 "github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -37,6 +37,7 @@ import (
 )
 
 type ApisixServiceController struct {
+	controller          *Controller
 	kubeclientset       kubernetes.Interface
 	apisixClientset     clientSet.Interface
 	apisixServiceList   v1.ApisixServiceLister
@@ -47,10 +48,12 @@ type ApisixServiceController struct {
 func BuildApisixServiceController(
 	kubeclientset kubernetes.Interface,
 	apisixServiceClientset clientSet.Interface,
-	apisixServiceInformer informers.ApisixServiceInformer) *ApisixServiceController {
+	apisixServiceInformer informers.ApisixServiceInformer,
+	root *Controller) *ApisixServiceController {
 
 	runtime.Must(apisixScheme.AddToScheme(scheme.Scheme))
 	controller := &ApisixServiceController{
+		controller:          root,
 		kubeclientset:       kubeclientset,
 		apisixClientset:     apisixServiceClientset,
 		apisixServiceList:   apisixServiceInformer.Lister(),
@@ -159,6 +162,9 @@ func (c *ApisixServiceController) addFunc(obj interface{}) {
 		runtime.HandleError(err)
 		return
 	}
+	if !c.controller.namespaceWatching(key) {
+		return
+	}
 	sqo := &ServiceQueueObj{Key: key, OldObj: nil, Ope: ADD}
 	c.workqueue.AddRateLimited(sqo)
 }
@@ -173,6 +179,9 @@ func (c *ApisixServiceController) updateFunc(oldObj, newObj interface{}) {
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(newObj); err != nil {
 		runtime.HandleError(err)
+		return
+	}
+	if !c.controller.namespaceWatching(key) {
 		return
 	}
 	sqo := &ServiceQueueObj{Key: key, OldObj: oldService, Ope: UPDATE}
@@ -197,6 +206,9 @@ func (c *ApisixServiceController) deleteFunc(obj interface{}) {
 	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		runtime.HandleError(err)
+		return
+	}
+	if !c.controller.namespaceWatching(key) {
 		return
 	}
 	sqo := &ServiceQueueObj{Key: key, OldObj: oldService, Ope: DELETE}

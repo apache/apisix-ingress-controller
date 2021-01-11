@@ -22,7 +22,7 @@ import (
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	apisixScheme "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned/scheme"
 	informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions/config/v1"
-	"github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
+	v1 "github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -37,6 +37,7 @@ import (
 )
 
 type ApisixTlsController struct {
+	controller      *Controller
 	kubeclientset   kubernetes.Interface
 	apisixClientset clientSet.Interface
 	apisixTlsList   v1.ApisixTlsLister
@@ -53,10 +54,12 @@ type TlsQueueObj struct {
 func BuildApisixTlsController(
 	kubeclientset kubernetes.Interface,
 	apisixTlsClientset clientSet.Interface,
-	apisixTlsInformer informers.ApisixTlsInformer) *ApisixTlsController {
+	apisixTlsInformer informers.ApisixTlsInformer,
+	root *Controller) *ApisixTlsController {
 
 	runtime.Must(apisixScheme.AddToScheme(scheme.Scheme))
 	controller := &ApisixTlsController{
+		controller:      root,
 		kubeclientset:   kubeclientset,
 		apisixClientset: apisixTlsClientset,
 		apisixTlsList:   apisixTlsInformer.Lister(),
@@ -161,6 +164,9 @@ func (c *ApisixTlsController) addFunc(obj interface{}) {
 		runtime.HandleError(err)
 		return
 	}
+	if !c.controller.namespaceWatching(key) {
+		return
+	}
 	rqo := &TlsQueueObj{Key: key, OldObj: nil, Ope: state.Create}
 	c.workqueue.AddRateLimited(rqo)
 }
@@ -175,6 +181,9 @@ func (c *ApisixTlsController) updateFunc(oldObj, newObj interface{}) {
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(newObj); err != nil {
 		runtime.HandleError(err)
+		return
+	}
+	if !c.controller.namespaceWatching(key) {
 		return
 	}
 	rqo := &TlsQueueObj{Key: key, OldObj: oldTls, Ope: state.Update}
@@ -198,6 +207,9 @@ func (c *ApisixTlsController) deleteFunc(obj interface{}) {
 	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		runtime.HandleError(err)
+		return
+	}
+	if !c.controller.namespaceWatching(key) {
 		return
 	}
 	rqo := &TlsQueueObj{Key: key, OldObj: oldTls, Ope: state.Delete}

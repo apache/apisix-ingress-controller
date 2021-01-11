@@ -15,6 +15,7 @@
 package ingress
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/onsi/ginkgo"
@@ -26,7 +27,8 @@ import (
 var _ = ginkgo.Describe("ApisixRoute Testing", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("create and then scale upstream pods to 2 ", func() {
-		apisixRoute := `
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v1
 kind: ApisixRoute
 metadata:
@@ -37,11 +39,11 @@ spec:
    http:
      paths:
      - backend:
-         serviceName: httpbin-service-e2e-test
-         servicePort: 80
+         serviceName: %s
+         servicePort: %d
        path: /ip
-`
-		s.CreateApisixRouteByString(apisixRoute)
+`, backendSvc, backendSvcPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
 
 		err := s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
@@ -50,14 +52,15 @@ spec:
 		scale := 2
 		err = s.ScaleHTTPBIN(scale)
 		assert.Nil(ginkgo.GinkgoT(), err)
-		time.Sleep(10 * time.Second) // wait for ingress to sync
+		time.Sleep(5 * time.Second) // wait for ingress to sync
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
 		assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 2, "upstreams nodes not expect")
 	})
 
-	ginkgo.It("create and then remove ", func() {
-		apisixRoute := `
+	ginkgo.It("create and then remove", func() {
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v1
 kind: ApisixRoute
 metadata:
@@ -68,25 +71,22 @@ spec:
     http:
       paths:
       - backend:
-          serviceName: httpbin-service-e2e-test
-          servicePort: 80
+          serviceName: %s
+          servicePort: %d
         path: /ip
-`
-		s.CreateApisixRouteByString(apisixRoute)
+`, backendSvc, backendSvcPort[0])
 
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
 		err := s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		ups, err := s.ListApisixUpstreams()
-		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
-		assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 1, "upstreams nodes not expect")
 
 		// remove
-		s.CreateApisixRouteByString(apisixRoute)
-		time.Sleep(5 * time.Second) // wait for ingress to sync
-		ups, err = s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
+		time.Sleep(10 * time.Second) // wait for ingress to sync
+		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
-		assert.Len(ginkgo.GinkgoT(), len(ups), 0, "upstreams nodes not expect")
+		assert.Len(ginkgo.GinkgoT(), ups, 0, "upstreams nodes not expect")
 	})
 })

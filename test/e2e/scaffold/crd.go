@@ -91,12 +91,33 @@ func (s *Scaffold) CreateApisixRoute(name string, rules []ApisixRouteRule) {
 	k8s.KubectlApplyFromString(s.t, s.kubectlOptions, string(data))
 }
 
-func (s *Scaffold) CreateApisixRouteByString(yaml string) {
-	k8s.KubectlApplyFromString(s.t, s.kubectlOptions, yaml)
-
+// CreateResourceFromString creates resource from a loaded yaml string.
+func (s *Scaffold) CreateResourceFromString(yaml string) error {
+	return k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
 }
-func (s *Scaffold) RemoveApisixRouteByString(yaml string) {
-	k8s.KubectlDeleteFromString(s.t, s.kubectlOptions, yaml)
+
+// RemoveResourceByString remove resource from a loaded yaml string.
+func (s *Scaffold) RemoveResourceByString(yaml string) error {
+	return k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
+}
+
+// CreateResourceFromStringWithNamespace creates resource from a loaded yaml string
+// and sets its namespace to the sepcified one.
+func (s *Scaffold) CreateResourceFromStringWithNamespace(yaml, namespace string) error {
+	originalNamespace := s.kubectlOptions.Namespace
+	s.kubectlOptions.Namespace = namespace
+	defer func() {
+		s.kubectlOptions.Namespace = originalNamespace
+	}()
+	s.addFinializer(func() {
+		originalNamespace := s.kubectlOptions.Namespace
+		s.kubectlOptions.Namespace = namespace
+		defer func() {
+			s.kubectlOptions.Namespace = originalNamespace
+		}()
+		assert.Nil(s.t, k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml))
+	})
+	return k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
 }
 
 func ensureNumApisixCRDsCreated(url string, desired int) error {
