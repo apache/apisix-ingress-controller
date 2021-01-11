@@ -39,8 +39,8 @@ spec:
    http:
      paths:
      - backend:
-         serviceName: httpbin-service-e2e-test
-         servicePort: 80
+         serviceName: %s
+         servicePort: %d
        path: /ip
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
@@ -52,7 +52,7 @@ spec:
 		scale := 2
 		err = s.ScaleHTTPBIN(scale)
 		assert.Nil(ginkgo.GinkgoT(), err)
-		time.Sleep(10 * time.Second) // wait for ingress to sync
+		time.Sleep(5 * time.Second) // wait for ingress to sync
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
 		assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 2, "upstreams nodes not expect")
@@ -83,10 +83,10 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 
 		// remove
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
-		time.Sleep(5 * time.Second) // wait for ingress to sync
+		assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
+		time.Sleep(10 * time.Second) // wait for ingress to sync
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
-		assert.Len(ginkgo.GinkgoT(), len(ups), 0, "upstreams nodes not expect")
+		assert.Len(ginkgo.GinkgoT(), ups, 0, "upstreams nodes not expect")
 	})
 })

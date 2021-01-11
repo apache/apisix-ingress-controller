@@ -60,8 +60,10 @@ e2e-test: build-image-to-minikube
 	export APISIX_UPSTREAM_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml && \
 	export APISIX_SERVICE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixService.yaml && \
 	export APISIX_TLS_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml && \
-	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=4
+	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=1
 
+# build images to minikube node directly, it's an internal directive, so don't
+# expose it's help message.
 build-image-to-minikube:
 	@minikube version > /dev/null 2>&1 || (echo "ERROR: minikube is required."; exit 1)
 	@eval $$(minikube docker-env);\
