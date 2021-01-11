@@ -18,7 +18,7 @@ default: help
 
 VERSION ?= 0.2.0
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
-IMAGE_TAG ?= "latest"
+IMAGE_TAG ?= "dev"
 
 GITSHA ?= $(shell git rev-parse --short=7 HEAD)
 OSNAME ?= $(shell uname -s | tr A-Z a-z)
