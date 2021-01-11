@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"syscall"
@@ -42,6 +43,10 @@ type fields struct {
 	Message string
 }
 
+func init() {
+	rand.Seed(int64(time.Now().Nanosecond()))
+}
+
 func (fws *fakeWriteSyncer) Sync() error {
 	return nil
 }
@@ -58,12 +63,18 @@ func (fws *fakeWriteSyncer) bytes() (p []byte) {
 	return
 }
 
+func getRandomListen() string {
+	port := rand.Intn(10000) + 10000
+	return fmt.Sprintf("127.0.0.1:%d", port)
+}
+
 func TestSignalHandler(t *testing.T) {
 	cmd := NewIngressCommand()
+	listen := getRandomListen()
 	cmd.SetArgs([]string{
 		"--log-level", "debug",
-		"--log-output", "./test.log",
-		"--http-listen", "127.0.0.1:16780",
+		"--log-output", "stderr",
+		"--http-listen", listen,
 		"--enable-profiling",
 		"--kubeconfig", "/foo/bar/baz",
 		"--resync-interval", "24h",
@@ -92,11 +103,12 @@ func TestSignalHandler(t *testing.T) {
 }
 
 func TestNewIngressCommandEffectiveLog(t *testing.T) {
+	listen := getRandomListen()
 	cmd := NewIngressCommand()
 	cmd.SetArgs([]string{
 		"--log-level", "debug",
 		"--log-output", "./test.log",
-		"--http-listen", "127.0.0.1:16780",
+		"--http-listen", listen,
 		"--enable-profiling",
 		"--kubeconfig", "/foo/bar/baz",
 		"--resync-interval", "24h",
@@ -134,7 +146,7 @@ func TestNewIngressCommandEffectiveLog(t *testing.T) {
 
 	assert.Equal(t, cfg.LogOutput, "./test.log")
 	assert.Equal(t, cfg.LogLevel, "debug")
-	assert.Equal(t, cfg.HTTPListen, "127.0.0.1:16780")
+	assert.Equal(t, cfg.HTTPListen, listen)
 	assert.Equal(t, cfg.EnableProfiling, true)
 	assert.Equal(t, cfg.Kubernetes.Kubeconfig, "/foo/bar/baz")
 	assert.Equal(t, cfg.Kubernetes.ResyncInterval, types.TimeDuration{24 * time.Hour})
