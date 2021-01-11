@@ -17,7 +17,7 @@
 default: help
 
 VERSION ?= 0.1.0
-IMAGE_TAG ?= "latest"
+IMAGE_TAG ?= "dev"
 GITSHA ?= $(shell git rev-parse --short=7 HEAD)
 OSNAME ?= $(shell uname -s | tr A-Z a-z)
 OSARCH ?= $(shell uname -m | tr A-Z a-z)
@@ -40,7 +40,7 @@ build:
 
 ### build-image:      Build apisix-ingress-controller image
 build-image:
-	docker build -t apisix-ingress-controller:$(IMAGE_TAG) .
+	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) .
 
 ### lint:             Do static lint check
 lint:
@@ -54,13 +54,18 @@ gofmt:
 unit-test:
 	go test -cover -coverprofile=coverage.txt ./...
 
-### e2e-test:         Run e2e test cases
-e2e-test:
+### e2e-test:         Run e2e test cases (minikube is required)
+e2e-test: build-image-to-minikube
 	export APISIX_ROUTE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixRoute.yaml && \
 	export APISIX_UPSTREAM_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml && \
 	export APISIX_SERVICE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixService.yaml && \
 	export APISIX_TLS_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml && \
-	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p
+	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=4
+
+build-image-to-minikube:
+	@minikube version > /dev/null 2>&1 || (echo "ERROR: minikube is required."; exit 1)
+	@eval $$(minikube docker-env);\
+	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) .
 
 ### license-check:    Do Apache License Header check
 license-check:
