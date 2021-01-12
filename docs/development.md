@@ -29,16 +29,16 @@ This document explains how to get started with developing for Apache APISIX Ingr
 
 ## Fork and Clone
 
-* Fork the repository from https://github.com/apache/apisix-ingress-controller to your own GitHub account.
+* Fork the repository from [apache/apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller) to your own GitHub account.
 * Clone the forked repository to your workstation.
 * Run `go mod download` to download modules to local cache. By the way, if you are a developer in China, we suggest you setting `GOPROXY` to `https://goproxy.cn` to speed up the downloading.
 
 ## Build
 
 ```shell
-$ cd /path/to/apisix-ingress-controller
-$ make build
-$ ./apisix-ingress-controller version
+cd /path/to/apisix-ingress-controller
+make build
+./apisix-ingress-controller version
 ```
 
 ## Test
@@ -46,24 +46,24 @@ $ ./apisix-ingress-controller version
 ### Run unit test cases
 
 ```shell
-$ cd /path/to/apisix-ingress-controller
-$ make unit-test
+cd /path/to/apisix-ingress-controller
+make unit-test
 ```
 
 ### Run e2e test cases
 
 ```shell
-$ cd /path/to/apisix-ingress-controller
-$ make e2e-test
+cd /path/to/apisix-ingress-controller
+make e2e-test
 ```
 
 Note the running of e2e cases is somewhat slow, so please be patient.
 
 ### Build docker image
 
-```
-$ cd /path/to/apisix-ingress-controller
-$ make build-image IMAGE_TAG=a.b.c
+```shell
+cd /path/to/apisix-ingress-controller
+make build-image IMAGE_TAG=a.b.c
 ```
 
 The Dockerfile in this repository is only for development, not for release.
@@ -75,13 +75,13 @@ We assume all prerequisites abovementioned are met, what's more, since we want t
 Let's assume the Admin API service address of Apache APISIX is `http://192.168.65.2:31156`. Next launch the ingress-apisix-controller by the following command.
 
 ```shell
-$ cd /path/to/apisix-ingress-controller
-$ ./apisix-ingress-controller ingress \
-  --kubeconfig /path/to/kubeconfig \
-  --http-listen :8080 \
-  --log-output stderr \
-  --apisix-base-url http://192.168.65.2:31156/apisix/admin
-  --apisix-admin-key edd1c9f034335f136f87ad84b625c8f1
+cd /path/to/apisix-ingress-controller
+./apisix-ingress-controller ingress \
+    --kubeconfig /path/to/kubeconfig \
+    --http-listen :8080 \
+    --log-output stderr \
+    --apisix-base-url http://192.168.65.2:31156/apisix/admin
+    --apisix-admin-key edd1c9f034335f136f87ad84b625c8f1
 ```
 
 Something you need to pay attention to:
