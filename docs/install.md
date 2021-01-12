@@ -71,7 +71,8 @@ helm install ingress-apisix -n ingress-apisix ./charts/ingress-apisix
 ## Master branch builds
 
 ```shell
-cd .. && make build-image
+cd /path/to/apisix-ingress-controller
+make build-image
 ```
 
 ## Next
