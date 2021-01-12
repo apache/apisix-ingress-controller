@@ -33,7 +33,7 @@ We use [kennethreitz/httpbin](https://hub.docker.com/r/kennethreitz/httpbin/) as
 
 Now, try to deploy it to your Kubernetes cluster:
 
-```yaml
+```shell
 $ kubectl run httpbin --image kennethreitz/httpbin --port 80
 $ kubectl expose pod httpbin --port 80
 ```
@@ -43,6 +43,7 @@ $ kubectl expose pod httpbin --port 80
 In order to let Apache APISIX proxies requests to httpbin, we need to create an `ApisixRoute` resource, if you're not familiar with it, see the [reference](https://github.com/apache/apisix-ingress-controller/blob/master/docs/CRD-specification.md#apisixroute) for the details.
 
 ```yaml
+# httpbin-route.yaml
 apiVersion: apisix.apache.org/v1
 kind: ApisixRoute
 metadata:
@@ -62,29 +63,15 @@ The YAML snippet shows a simple `ApisixRoute` configuration, which tells Apache 
 Now try to create it.
 
 ```shell
-$ kubectl apply -f - <<EOS
-apiVersion: apisix.apache.org/v1
-kind: ApisixRoute
-metadata:
-  name: httpserver-route
-spec:
-  rules:
-  - host: test.apisix.apache.org
-    http:
-      paths:
-      - backend:
-          serviceName: httpbin
-          servicePort: 8080
-        path: /
-EOS
+$ kubectl apply -f httpbin-route.yaml
 ```
 
 ## Test
 
-Run curl call in one of Apache APISIX Pods to check whether the resource was delivered to it.
+Run curl call in one of Apache APISIX Pods to check whether the resource was delivered to it. Note you should replace the value of `--apisix-admin-key` to the real `admin_key` value in your Apache APISIX cluster.
 
 ```shell
-$ kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9180/apisix/admin/routes
+$ kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9180/apisix/admin/routes --apisix-admin-key edd1c9f034335f136f87ad84b625c8f1
 ```
 
 And request to Apache APISIX to verify the route.
