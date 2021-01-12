@@ -15,11 +15,14 @@
 package scaffold
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/onsi/ginkgo"
+	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -45,7 +48,7 @@ kind: Deployment
 metadata:
   name: ingress-apisix-controller-deployment-e2e-test
 spec:
-  replicas: 1
+  replicas: %d
   selector:
     matchLabels:
       app: ingress-apisix-controller-deployment-e2e-test
@@ -77,6 +80,15 @@ spec:
             tcpSocket:
               port: 8080
             timeoutSeconds: 2
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           image: "apache/apisix-ingress-controller:dev"
           imagePullPolicy: Never
           name: ingress-apisix-controller-deployment-e2e-test
@@ -102,7 +114,7 @@ spec:
 )
 
 func (s *Scaffold) newIngressAPISIXController() error {
-	ingressAPISIXDeployment := fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.namespace)
+	ingressAPISIXDeployment := fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace)
 	if err := k8s.CreateServiceAccountE(s.t, s.kubectlOptions, _serviceAccount); err != nil {
 		return err
 	}
@@ -143,4 +155,25 @@ func (s *Scaffold) waitAllIngressControllerPodsAvailable() error {
 		return true, nil
 	}
 	return waitExponentialBackoff(condFunc)
+}
+
+// GetLeaderLease returns the Lease resource.
+func (s *Scaffold) GetLeaderLease() (*coordinationv1.Lease, error) {
+	cli, err := k8s.GetKubernetesClientE(s.t)
+	if err != nil {
+		return nil, err
+	}
+	lease, err := cli.CoordinationV1().Leases(s.namespace).Get(context.TODO(), "ingress-apisix-leader", metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return lease, nil
+}
+
+// GetIngressPodDetails returns a batch of pod description
+// about apisix-ingress-controller.
+func (s *Scaffold) GetIngressPodDetails() ([]v1.Pod, error) {
+	return k8s.ListPodsE(s.t, s.kubectlOptions, metav1.ListOptions{
+		LabelSelector: "app=ingress-apisix-controller-deployment-e2e-test",
+	})
 }

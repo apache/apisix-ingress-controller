@@ -17,6 +17,7 @@ package ingress
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/api7/ingress-controller/test/e2e/scaffold"
 	"github.com/onsi/ginkgo"
@@ -101,5 +102,60 @@ var _ = ginkgo.Describe("double-routes", func() {
 		err = json.Unmarshal([]byte(body), &dummy)
 		assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling json")
 		// We don't care the json data, only make sure it's a normal json string.
+	})
+})
+
+var _ = ginkgo.Describe("leader election", func() {
+	s := scaffold.NewScaffold(&scaffold.Options{
+		Name:                    "leaderelection",
+		Kubeconfig:              scaffold.GetKubeconfig(),
+		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
+		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
+		IngressAPISIXReplicas:   2,
+	})
+	ginkgo.It("lease check", func() {
+		pods, err := s.GetIngressPodDetails()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), pods, 2)
+		lease, err := s.GetLeaderLease()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Equal(ginkgo.GinkgoT(), *lease.Spec.LeaseDurationSeconds, int32(15))
+		if *lease.Spec.HolderIdentity != pods[0].Name && *lease.Spec.HolderIdentity != pods[1].Name {
+			assert.Fail(ginkgo.GinkgoT(), "bad leader lease holder identity")
+		}
+	})
+
+	ginkgo.It("leader failover", func() {
+		// Wait the leader election to complete.
+		time.Sleep(2 * time.Second)
+		pods, err := s.GetIngressPodDetails()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), pods, 2)
+
+		lease, err := s.GetLeaderLease()
+		assert.Nil(ginkgo.GinkgoT(), err)
+
+		leaderIdx := 0
+		if *lease.Spec.HolderIdentity == pods[1].Name {
+			leaderIdx = 1
+		}
+		ginkgo.GinkgoT().Logf("lease is %s", *lease.Spec.HolderIdentity)
+		assert.Nil(ginkgo.GinkgoT(), s.KillPod(pods[leaderIdx].Name))
+		time.Sleep(25 * time.Second)
+
+		newLease, err := s.GetLeaderLease()
+		assert.Nil(ginkgo.GinkgoT(), err)
+
+		newPods, err := s.GetIngressPodDetails()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), pods, 2)
+
+		assert.NotEqual(ginkgo.GinkgoT(), *newLease.Spec.HolderIdentity, *lease.Spec.HolderIdentity)
+		assert.Greater(ginkgo.GinkgoT(), *newLease.Spec.LeaseTransitions, *lease.Spec.LeaseTransitions)
+
+		if *newLease.Spec.HolderIdentity != newPods[0].Name && *newLease.Spec.HolderIdentity != newPods[1].Name {
+			assert.Failf(ginkgo.GinkgoT(), "bad leader lease holder identity: %s, should be %s or %s",
+				*newLease.Spec.HolderIdentity, newPods[0].Name, newPods[1].Name)
+		}
 	})
 })

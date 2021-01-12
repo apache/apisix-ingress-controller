@@ -20,26 +20,21 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
-
-	v1 "k8s.io/api/core/v1"
-
-	"k8s.io/client-go/tools/cache"
-
-	"github.com/api7/ingress-controller/pkg/apisix"
-
 	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	crdclientset "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	"github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
+	"go.uber.org/zap"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 
 	"github.com/api7/ingress-controller/pkg/api"
+	"github.com/api7/ingress-controller/pkg/apisix"
 	"github.com/api7/ingress-controller/pkg/config"
 	"github.com/api7/ingress-controller/pkg/kube"
 	"github.com/api7/ingress-controller/pkg/log"
@@ -172,11 +167,17 @@ func (c *Controller) Run(stop chan struct{}) error {
 			OnNewLeader: func(identity string) {
 				log.Warnf("found a new leader %s", identity)
 				if identity != c.name {
-					log.Infof("controller now is running as a candidate")
+					log.Infow("controller now is running as a candidate",
+						zap.String("namespace", c.namespace),
+						zap.String("pod", c.name),
+					)
 				}
 			},
 			OnStoppedLeading: func() {
-				log.Info("controller now is running as a candidate")
+				log.Infow("controller now is running as a candidate",
+					zap.String("namespace", c.namespace),
+					zap.String("pod", c.name),
+				)
 				c.metricsCollector.ResetLeader(false)
 			},
 		},
@@ -201,7 +202,10 @@ election:
 }
 
 func (c *Controller) run(ctx context.Context) {
-	log.Info("controller now is running as leader")
+	log.Infow("controller now is running as leader",
+		zap.String("namespace", c.namespace),
+		zap.String("pod", c.name),
+	)
 	c.metricsCollector.ResetLeader(true)
 
 	ac := &Api6Controller{

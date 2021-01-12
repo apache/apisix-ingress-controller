@@ -15,6 +15,7 @@
 package scaffold
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -25,6 +26,8 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
@@ -41,6 +44,7 @@ type Options struct {
 	Kubeconfig              string
 	APISIXConfigPath        string
 	APISIXDefaultConfigPath string
+	IngressAPISIXReplicas   int
 }
 
 type Scaffold struct {
@@ -101,8 +105,18 @@ func NewDefaultScaffold() *Scaffold {
 		Kubeconfig:              GetKubeconfig(),
 		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
 		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
+		IngressAPISIXReplicas:   1,
 	}
 	return NewScaffold(opts)
+}
+
+// KillPod kill the pod which name is podName.
+func (s *Scaffold) KillPod(podName string) error {
+	cli, err := k8s.GetKubernetesClientE(s.t)
+	if err != nil {
+		return err
+	}
+	return cli.CoreV1().Pods(s.namespace).Delete(context.TODO(), podName, metav1.DeleteOptions{})
 }
 
 // DefaultHTTPBackend returns the service name and service ports
