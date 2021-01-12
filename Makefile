@@ -30,6 +30,7 @@ VERSYM="github.com/api7/ingress-controller/pkg/version._buildVersion"
 GITSHASYM="github.com/api7/ingress-controller/pkg/version._buildGitRevision"
 BUILDOSSYM="github.com/api7/ingress-controller/pkg/version._buildOS"
 GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH)"
+E2E_CONCURRENCY ?= 1
 
 ### build:            Build apisix-ingress-controller
 build:
@@ -60,7 +61,7 @@ e2e-test: build-image-to-minikube
 	export APISIX_UPSTREAM_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml && \
 	export APISIX_SERVICE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixService.yaml && \
 	export APISIX_TLS_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml && \
-	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=1
+	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=$(E2E_CONCURRENCY)
 
 # build images to minikube node directly, it's an internal directive, so don't
 # expose it's help message.
