@@ -15,8 +15,17 @@
 package controller
 
 import (
+	"context"
 	"os"
 	"sync"
+	"time"
+
+	"go.uber.org/zap"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 
 	v1 "k8s.io/api/core/v1"
 
@@ -47,6 +56,9 @@ func recoverException() {
 
 // Controller is the ingress apisix controller object.
 type Controller struct {
+	name               string
+	namespace          string
+	cfg                *config.Config
 	wg                 sync.WaitGroup
 	watchingNamespace  map[string]struct{}
 	apiServer          *api.Server
@@ -96,6 +108,9 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	}
 
 	c := &Controller{
+		name:               podName,
+		namespace:          podNamespace,
+		cfg:                cfg,
 		apiServer:          apiSrv,
 		metricsCollector:   metrics.NewPrometheusCollector(podName, podNamespace),
 		clientset:          kube.GetKubeClient(),
@@ -115,30 +130,93 @@ func (c *Controller) goAttach(handler func()) {
 	}()
 }
 
+// Eventf implements the resourcelock.EventRecorder interface.
+func (c *Controller) Eventf(_ runtime.Object, eventType string, reason string, message string, _ ...interface{}) {
+	log.Infow(reason, zap.String("message", message), zap.String("event_type", eventType))
+}
+
 // Run launches the controller.
 func (c *Controller) Run(stop chan struct{}) error {
-	// TODO leader election.
+	rootCtx, rootCancel := context.WithCancel(context.Background())
+	defer rootCancel()
+	go func() {
+		<-stop
+		rootCancel()
+	}()
+	c.metricsCollector.ResetLeader(false)
+
+	go func() {
+		if err := c.apiServer.Run(rootCtx.Done()); err != nil {
+			log.Errorf("failed to launch API Server: %s", err)
+		}
+	}()
+
+	lock := &resourcelock.LeaseLock{
+		LeaseMeta: metav1.ObjectMeta{
+			Namespace: c.namespace,
+			Name:      c.cfg.Kubernetes.ElectionID,
+		},
+		Client: c.clientset.CoordinationV1(),
+		LockConfig: resourcelock.ResourceLockConfig{
+			Identity:      c.name,
+			EventRecorder: c,
+		},
+	}
+	cfg := leaderelection.LeaderElectionConfig{
+		Lock:          lock,
+		LeaseDuration: 15 * time.Second,
+		RenewDeadline: 5 * time.Second,
+		RetryPeriod:   2 * time.Second,
+		Callbacks: leaderelection.LeaderCallbacks{
+			OnStartedLeading: c.run,
+			OnNewLeader: func(identity string) {
+				log.Warnf("found a new leader %s", identity)
+				if identity != c.name {
+					log.Infof("controller now is running as a candidate")
+				}
+			},
+			OnStoppedLeading: func() {
+				log.Info("controller now is running as a candidate")
+				c.metricsCollector.ResetLeader(false)
+			},
+		},
+		ReleaseOnCancel: true,
+		Name:            "ingress-apisix",
+	}
+
+	elector, err := leaderelection.NewLeaderElector(cfg)
+	if err != nil {
+		log.Errorf("failed to create leader elector: %s", err.Error())
+		return err
+	}
+
+election:
+	elector.Run(rootCtx)
+	select {
+	case <-rootCtx.Done():
+		return nil
+	default:
+		goto election
+	}
+}
+
+func (c *Controller) run(ctx context.Context) {
+	log.Info("controller now is running as leader")
 	c.metricsCollector.ResetLeader(true)
-	log.Info("controller run as leader")
 
 	ac := &Api6Controller{
 		KubeClientSet:             c.clientset,
 		Api6ClientSet:             c.crdClientset,
 		SharedInformerFactory:     c.crdInformerFactory,
 		CoreSharedInformerFactory: kube.CoreSharedInformerFactory,
-		Stop:                      stop,
+		Stop:                      ctx.Done(),
 	}
 	epInformer := ac.CoreSharedInformerFactory.Core().V1().Endpoints()
 	kube.EndpointsInformer = epInformer
 	// endpoint
 	ac.Endpoint(c)
 	c.goAttach(func() {
-		ac.CoreSharedInformerFactory.Start(stop)
-	})
-	c.goAttach(func() {
-		if err := c.apiServer.Run(stop); err != nil {
-			log.Errorf("failed to launch API Server: %s", err)
-		}
+		ac.CoreSharedInformerFactory.Start(ctx.Done())
 	})
 
 	// ApisixRoute
@@ -151,12 +229,11 @@ func (c *Controller) Run(stop chan struct{}) error {
 	ac.ApisixTLS(c)
 
 	c.goAttach(func() {
-		ac.SharedInformerFactory.Start(stop)
+		ac.SharedInformerFactory.Start(ctx.Done())
 	})
 
-	<-stop
+	<-ctx.Done()
 	c.wg.Wait()
-	return nil
 }
 
 // namespaceWatching accepts a resource key, getting the namespace part
@@ -182,7 +259,7 @@ type Api6Controller struct {
 	Api6ClientSet             clientSet.Interface
 	SharedInformerFactory     externalversions.SharedInformerFactory
 	CoreSharedInformerFactory informers.SharedInformerFactory
-	Stop                      chan struct{}
+	Stop                      <-chan struct{}
 }
 
 func (api6 *Api6Controller) ApisixRoute(controller *Controller) {
