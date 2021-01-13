@@ -19,14 +19,14 @@
 
 # Installation
 
-This is an index page about installing Ingress APISIX in several environments. Click the following links according to your expectation.
+This is an index page about installing Ingress APISIX in several environments. Click the following links on demands.
 
 * [Install Ingress APISIX on Minikube](deployments/minikube.md)
 * [Install Ingress APISIX on Azure AKS](deployments/azure.md)
 
 ## Kustomize Support
 
-As an alternaive way, you can also select to install apisix-ingress-controller by [Kustomize](https://kustomize.io/).
+As an alternative way, you can also choose to install apisix-ingress-controller by [Kustomize](https://kustomize.io/).
 
 ```shell
 kubectl create namespace ingress-apisix
