@@ -16,8 +16,10 @@
 #
 default: help
 
-VERSION ?= 0.1.0
+VERSION ?= 0.2.0
+RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 IMAGE_TAG ?= "dev"
+
 GITSHA ?= $(shell git rev-parse --short=7 HEAD)
 OSNAME ?= $(shell uname -s | tr A-Z a-z)
 OSARCH ?= $(shell uname -m | tr A-Z a-z)
@@ -83,5 +85,28 @@ help:
 	@echo Makefile rules:
 	@echo
 	@grep -E '^### [-A-Za-z0-9_]+:' Makefile | sed 's/###/   /'
+
+### release-src:      Release source
+release-src:
+	tar -zcvf $(RELEASE_SRC).tgz \
+	--exclude .github \
+	--exclude .git \
+	--exclude .idea \
+	--exclude .gitignore \
+	--exclude .DS_Store \
+	--exclude docs \
+	--exclude samples \
+	--exclude test \
+	--exclude release \
+	--exclude $(RELEASE_SRC).tgz \
+	.
+
+	gpg --batch --yes --armor --detach-sig $(RELEASE_SRC).tgz
+	shasum -a 512 $(RELEASE_SRC).tgz > $(RELEASE_SRC).tgz.sha512
+
+	mkdir -p release
+	mv $(RELEASE_SRC).tgz release/$(RELEASE_SRC).tgz
+	mv $(RELEASE_SRC).tgz.asc release/$(RELEASE_SRC).tgz.asc
+	mv $(RELEASE_SRC).tgz.sha512 release/$(RELEASE_SRC).tgz.sha512
 
 .PHONY: build lint help
