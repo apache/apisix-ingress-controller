@@ -23,6 +23,7 @@ import (
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -157,14 +158,25 @@ func (s *Scaffold) waitAllIngressControllerPodsAvailable() error {
 	return waitExponentialBackoff(condFunc)
 }
 
-// GetLeaderLease returns the Lease resource.
-func (s *Scaffold) GetLeaderLease() (*coordinationv1.Lease, error) {
+// WaitGetLeaderLease waits the lease to be created and returns it.
+func (s *Scaffold) WaitGetLeaderLease() (*coordinationv1.Lease, error) {
 	cli, err := k8s.GetKubernetesClientE(s.t)
 	if err != nil {
 		return nil, err
 	}
-	lease, err := cli.CoordinationV1().Leases(s.namespace).Get(context.TODO(), "ingress-apisix-leader", metav1.GetOptions{})
-	if err != nil {
+	var lease *coordinationv1.Lease
+	condFunc := func() (bool, error) {
+		l, err := cli.CoordinationV1().Leases(s.namespace).Get(context.TODO(), "ingress-apisix-leader", metav1.GetOptions{})
+		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		lease = l
+		return true, nil
+	}
+	if err := waitExponentialBackoff(condFunc); err != nil {
 		return nil, err
 	}
 	return lease, nil

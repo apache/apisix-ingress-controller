@@ -52,6 +52,11 @@ var _ = ginkgo.Describe("single-route", func() {
 		assert.Nil(ginkgo.GinkgoT(), err, "checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "checking number of upstreams")
+
+		// TODO When ingress controller can feedback the lifecycle of CRDs to the
+		// status field, we can poll it rather than sleeping.
+		time.Sleep(3 * time.Second)
+
 		body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
 		var placeholder ip
 		err = json.Unmarshal([]byte(body), &placeholder)
@@ -92,6 +97,9 @@ var _ = ginkgo.Describe("double-routes", func() {
 		assert.Nil(ginkgo.GinkgoT(), err, "checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "checking number of upstreams")
+		// TODO When ingress controller can feedback the lifecycle of CRDs to the
+		// status field, we can poll it rather than sleeping.
+		time.Sleep(3 * time.Second)
 		body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
 		var placeholder ip
 		err = json.Unmarshal([]byte(body), &placeholder)
@@ -117,7 +125,7 @@ var _ = ginkgo.Describe("leader election", func() {
 		pods, err := s.GetIngressPodDetails()
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), pods, 2)
-		lease, err := s.GetLeaderLease()
+		lease, err := s.WaitGetLeaderLease()
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Equal(ginkgo.GinkgoT(), *lease.Spec.LeaseDurationSeconds, int32(15))
 		if *lease.Spec.HolderIdentity != pods[0].Name && *lease.Spec.HolderIdentity != pods[1].Name {
@@ -126,13 +134,11 @@ var _ = ginkgo.Describe("leader election", func() {
 	})
 
 	ginkgo.It("leader failover", func() {
-		// Wait the leader election to complete.
-		time.Sleep(2 * time.Second)
 		pods, err := s.GetIngressPodDetails()
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), pods, 2)
 
-		lease, err := s.GetLeaderLease()
+		lease, err := s.WaitGetLeaderLease()
 		assert.Nil(ginkgo.GinkgoT(), err)
 
 		leaderIdx := 0
@@ -141,9 +147,11 @@ var _ = ginkgo.Describe("leader election", func() {
 		}
 		ginkgo.GinkgoT().Logf("lease is %s", *lease.Spec.HolderIdentity)
 		assert.Nil(ginkgo.GinkgoT(), s.KillPod(pods[leaderIdx].Name))
+
+		// Wait the old lease expire and new leader was elected.
 		time.Sleep(25 * time.Second)
 
-		newLease, err := s.GetLeaderLease()
+		newLease, err := s.WaitGetLeaderLease()
 		assert.Nil(ginkgo.GinkgoT(), err)
 
 		newPods, err := s.GetIngressPodDetails()

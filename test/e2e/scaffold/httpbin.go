@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/onsi/ginkgo"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -111,4 +114,33 @@ func (s *Scaffold) ScaleHTTPBIN(desired int) error {
 		return err
 	}
 	return nil
+}
+
+// WaitAllHTTPBINPods waits until all httpbin pods ready.
+func (s *Scaffold) WaitAllHTTPBINPoddsAvailable() error {
+	opts := metav1.ListOptions{
+		LabelSelector: "app=httpbin-deployment-e2e-test",
+	}
+	condFunc := func() (bool, error) {
+		items, err := k8s.ListPodsE(s.t, s.kubectlOptions, opts)
+		if err != nil {
+			return false, err
+		}
+		if len(items) == 0 {
+			ginkgo.GinkgoT().Log("no apisix pods created")
+			return false, nil
+		}
+		for _, item := range items {
+			for _, cond := range item.Status.Conditions {
+				if cond.Type != corev1.PodReady {
+					continue
+				}
+				if cond.Status != "True" {
+					return false, nil
+				}
+			}
+		}
+		return true, nil
+	}
+	return waitExponentialBackoff(condFunc)
 }

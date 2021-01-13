@@ -49,10 +49,11 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		scale := 2
-		err = s.ScaleHTTPBIN(scale)
-		assert.Nil(ginkgo.GinkgoT(), err)
-		time.Sleep(5 * time.Second) // wait for ingress to sync
+		assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(2), "scaling number of httpbin instancess")
+		assert.Nil(ginkgo.GinkgoT(), s.WaitAllHTTPBINPoddsAvailable(), "waiting for all httpbin pods ready")
+		// TODO When ingress controller can feedback the lifecycle of CRDs to the
+		// status field, we can poll it rather than sleeping.
+		time.Sleep(5 * time.Second)
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
 		assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 2, "upstreams nodes not expect")
@@ -84,7 +85,10 @@ spec:
 
 		// remove
 		assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
-		time.Sleep(10 * time.Second) // wait for ingress to sync
+
+		// TODO When ingress controller can feedback the lifecycle of CRDs to the
+		// status field, we can poll it rather than sleeping.
+		time.Sleep(10 * time.Second)
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
 		assert.Len(ginkgo.GinkgoT(), ups, 0, "upstreams nodes not expect")

@@ -163,14 +163,12 @@ func (s *Scaffold) beforeEach() {
 	s.etcdService, err = s.newEtcd()
 	assert.Nil(s.t, err, "initializing etcd")
 
-	// We don't use k8s.WaitUntilServiceAvailable since it hacks for Minikube.
-	err = k8s.WaitUntilNumPodsCreatedE(s.t, s.kubectlOptions, s.labelSelector("app=etcd-deployment-e2e-test"), 1, 5, 2*time.Second)
+	err = s.waitAllEtcdPodsAvailable()
 	assert.Nil(s.t, err, "waiting for etcd ready")
 
 	s.apisixService, err = s.newAPISIX()
 	assert.Nil(s.t, err, "initializing Apache APISIX")
 
-	// We don't use k8s.WaitUntilServiceAvailable since it hacks for Minikube.
 	err = s.waitAllAPISIXPodsAvailable()
 	assert.Nil(s.t, err, "waiting for apisix ready")
 
@@ -194,6 +192,10 @@ func (s *Scaffold) afterEach() {
 	for _, f := range s.finializers {
 		f()
 	}
+
+	// Wait for a while to prevent the worker node being overwhelming
+	// (new cases will be run).
+	time.Sleep(3 * time.Second)
 }
 
 func (s *Scaffold) addFinializer(f func()) {
@@ -216,10 +218,9 @@ func (s *Scaffold) renderConfig(path string) (string, error) {
 
 func waitExponentialBackoff(condFunc func() (bool, error)) error {
 	backoff := wait.Backoff{
-		Duration: 100 * time.Millisecond,
-		Factor:   3,
-		Jitter:   0,
-		Steps:    6,
+		Duration: 500 * time.Millisecond,
+		Factor:   2,
+		Steps:    8,
 	}
 	return wait.ExponentialBackoff(backoff, condFunc)
 }
