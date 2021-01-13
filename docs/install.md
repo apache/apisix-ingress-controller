@@ -19,62 +19,18 @@
 
 # Installation
 
-## Dependencies
+This is an index page about installing Ingress APISIX in several environments. Click the following links according to your expectation.
 
-* Kubernetes
-* [Deploy Apache APISIX in k8s](https://github.com/apache/apisix/blob/master/kubernetes/README.md)
+* [Install Ingress APISIX on Minikube](deployments/minikube.md)
+* [Install Ingress APISIX on Azure AKS](deployments/azure.md)
 
-To install `ingress controller` in k8s, need to care about 3 parts:
+## Kustomize Support
 
-1. CRDs: The definitions of Apache APISIX configurations in Kubernetes.
-
-2. [RBAC](https://kubernetes.io/blog/2017/04/rbac-support-in-kubernetes/): This is support by Kubernetes, granting `ingress controller` resource access permissions.
-
-3. Configmap: Contains the necessary configuration for `ingress controller`.
-
-## Kustomize
-
-Before executing the following commands, you need to create the namespace `ingress-apisix`:
+As an alternaive way, you can also select to install apisix-ingress-controller by [Kustomize](https://kustomize.io/).
 
 ```shell
-kubectl create ns ingress-apisix
-```
-
-Install the abovementioned resources by [Kustomize](https://kustomize.io/):
-
-```shell
+kubectl create namespace ingress-apisix
 kubectl kustomize "github.com/apache/apisix-ingress-controller/samples/deploy?ref=master" | kubectl apply -f -
 ```
 
-If the default parameters in samples/deploy are not good for you, just tweak them and run:
-
-```shell
-kubectl apply -k /path/to/apisix-ingress-controller/samples/deploy
-```
-
-## Helm
-
-First of all, deploying the necessary CRDs and cluster resources like serviceaccount through the [base](../charts/base) chart.
-
-```shell
-helm install ingress-apisix-base -n ingress-apisix ./charts/base
-```
-
-Note namespace `ingress-apisix` should be created before you run the above command.
-
-Then try to deploy apisix-ingress-controller through the [ingress-apisix](../charts/ingress-apisix) chart.
-
-```shell
-helm install ingress-apisix -n ingress-apisix ./charts/ingress-apisix
-```
-
-## Master branch builds
-
-```shell
-cd /path/to/apisix-ingress-controller
-make build-image
-```
-
-## Next
-
-* [Usage](./usage.md)
+Parameters are hardcoded so if the default values are not good for you, just tweak them manually.
