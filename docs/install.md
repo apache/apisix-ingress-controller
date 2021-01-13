@@ -71,7 +71,8 @@ helm install ingress-apisix -n ingress-apisix ./charts/ingress-apisix
 ## Master branch builds
 
 ```shell
-docker build -t apache/ingress-controller:v0.1.0 ../.
+cd /path/to/apisix-ingress-controller
+make build-image
 ```
 
 ## Next
