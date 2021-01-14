@@ -124,7 +124,7 @@ We welcome all kinds of contributions from the open-source community, individual
 
 ## Terminology
 
-* Ingress APISIX: the whole service that contains the proxy (Apache APISIX) and ingress controller (apisix ingress controller).
+* Ingress APISIX: the whole service that contains the proxy ([Apache APISIX](https://apisix.apache.org)) and ingress controller (apisix ingress controller).
 * apisix-ingress-controller: the ingress controller component.
 
 ## License
