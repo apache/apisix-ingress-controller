@@ -41,6 +41,11 @@ type Cluster interface {
 	Service() Service
 	// SSL returns a SSL interface that can operate SSL resources.
 	SSL() SSL
+	// String exposes the client information in human readable format.
+	String() string
+	// Ready waits until all resources in APISIX cluster is synced to
+	// cache.
+	Ready(context.Context) error
 }
 
 // Route is the specific client interface to take over the create, update,
@@ -80,22 +85,13 @@ type Service interface {
 }
 
 type apisix struct {
-	defaultCluster     Cluster
 	nonExistentCluster Cluster
-	defaultClusterName string
 	clusters           map[string]Cluster
 }
 
-// NewForOptions creates an APISIX client to perform resources change pushing.
-// Users should carry a ClusterOptions to configure the default APISIX cluster.
-func NewForOptions(co *ClusterOptions) (APISIX, error) {
-	defaultCluster, err := newCluster(co)
-	if err != nil {
-		return nil, err
-	}
+// New creates an APISIX client to perform resources change pushing.
+func New() (APISIX, error) {
 	cli := &apisix{
-		defaultCluster:     defaultCluster,
-		defaultClusterName: co.Name,
 		nonExistentCluster: newNonExistentCluster(),
 	}
 	return cli, nil
@@ -103,9 +99,6 @@ func NewForOptions(co *ClusterOptions) (APISIX, error) {
 
 // Cluster implements APISIX.Cluster method.
 func (c *apisix) Cluster(name string) Cluster {
-	if name == c.defaultClusterName {
-		return c.defaultCluster
-	}
 	cluster, ok := c.clusters[name]
 	if !ok {
 		return c.nonExistentCluster
@@ -115,8 +108,7 @@ func (c *apisix) Cluster(name string) Cluster {
 
 // ListClusters implements APISIX.ListClusters method.
 func (c *apisix) ListClusters() []Cluster {
-	clusters := make([]Cluster, 0, len(c.clusters)+1)
-	clusters = append(clusters, c.defaultCluster)
+	clusters := make([]Cluster, 0, len(c.clusters))
 	for _, cluster := range c.clusters {
 		clusters = append(clusters, cluster)
 	}
@@ -125,9 +117,6 @@ func (c *apisix) ListClusters() []Cluster {
 
 // AddCluster implements APISIX.AddCluster method.
 func (c *apisix) AddCluster(co *ClusterOptions) error {
-	if co.Name == c.defaultClusterName {
-		return ErrDuplicatedCluster
-	}
 	_, ok := c.clusters[co.Name]
 	if ok {
 		return ErrDuplicatedCluster

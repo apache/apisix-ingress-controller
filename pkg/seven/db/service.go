@@ -18,7 +18,7 @@ import (
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/api7/ingress-controller/pkg/seven/utils"
-	"github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
@@ -106,8 +106,7 @@ func (rr *ServiceRequest) ExistByUpstreamId() (*v1.Service, error) {
 	}
 }
 
-var serviceSchema = &memdb.TableSchema{
-	Name: Service,
+var serviceSchema = &memdb.TableSchema{Name: Service,
 	Indexes: map[string]*memdb.IndexSchema{
 		"id": {
 			Name:    "id",

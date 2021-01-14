@@ -19,12 +19,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/api7/ingress-controller/pkg/cache"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/wait"
+
+	"github.com/hashicorp/go-memdb"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 
@@ -58,6 +62,10 @@ type cluster struct {
 	baseURL  string
 	adminKey string
 	cli      *http.Client
+	cache    cache.NamespacingCache
+	dbReady  chan error
+	dbUpdate chan interface{}
+	dbDelete chan interface{}
 
 	route    Route
 	upstream Upstream
@@ -85,18 +93,119 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 				ExpectContinueTimeout: o.Timeout,
 			},
 		},
+		cache: nil,
+		dbReady: make(chan error, 1),
 	}
 	c.route = newRouteClient(c)
 	c.upstream = newUpstreamClient(c)
 	c.service = newServiceClient(c)
 	c.ssl = newSSLClient(c)
 
+	go c.warmingUp()
+
 	return c, nil
 }
 
-// String exposes the client information in human readable format.
+func (c *cluster) warmingUp() {
+	log.Infow("warming up caching", zap.String("cluster", c.name))
+	now := time.Now()
+	defer log.Infow("caching warmed",
+		zap.String("cost_time", time.Now().Sub(now).String()),
+		zap.String("cluster", c.name),
+	)
+
+	backoff := wait.Backoff{
+		Duration: time.Second,
+		Factor:   2,
+		Steps:    6,
+	}
+	c.dbReady <- wait.ExponentialBackoff(backoff, c.warmingUpOnce)
+}
+
+func (c *cluster) warmingUpOnce() (bool, error) {
+	routes, err := c.route.List(context.TODO())
+	if err != nil {
+		log.Errorf("failed to list route in APISIX: %s", err)
+		return false, err
+	}
+	services, err := c.service.List(context.TODO())
+	if err != nil {
+		log.Errorf("failed to list services in APISIX: %s", err)
+		return false, err
+	}
+	upstreams, err := c.upstream.List(context.TODO())
+	if err != nil {
+		log.Errorf("failed to list upstreams in APISIX: %s", err)
+		return false, err
+	}
+	ssl, err := c.ssl.List(context.TODO())
+	if err != nil {
+		log.Errorf("failed to list ssl in APISIX: %s", err)
+		return false, err
+	}
+
+	txn := c.db.Txn(true)
+	defer txn.Abort()
+
+	for _, r := range routes {
+		if err := txn.Insert("route", r); err != nil {
+			log.Errorw("failed to insert route to cache",
+				zap.String("route", *r.ID),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
+			return false, err
+		}
+	}
+	for _, u := range services {
+		if err := txn.Insert("service", u); err != nil {
+			log.Errorw("failed to insert service to cache",
+				zap.String("service", *u.ID),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
+			return false, err
+		}
+	}
+	for _, u := range upstreams {
+		if err := txn.Insert("upstream", u); err != nil {
+			log.Errorw("failed to insert upstream to cache",
+				zap.String("upstream", *u.ID),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
+			return false, err
+		}
+	}
+	for _, s := range ssl {
+		if err := txn.Insert("ssl", s); err != nil {
+			log.Errorw("failed to insert ssl to cache",
+				zap.String("ssl", *s.ID),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
+			return false, err
+		}
+	}
+	txn.Commit()
+	return true, nil
+}
+
+func (c *cluster)
+
+// String implements Cluster.String method.
 func (c *cluster) String() string {
 	return fmt.Sprintf("name=%s; base_url=%s", c.name, c.baseURL)
+}
+
+// Ready implements Cluster.Ready method.
+func (c *cluster) Ready(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-c.dbReady:
+		return err
+	}
 }
 
 // Route implements Cluster.Route method.

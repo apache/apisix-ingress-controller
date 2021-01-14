@@ -130,3 +130,11 @@ func (nc *nonExistentCluster) Service() Service {
 func (nc *nonExistentCluster) Upstream() Upstream {
 	return nc.upstream
 }
+
+func (nc *nonExistentCluster) Ready(_ context.Context) error {
+	return nil
+}
+
+func (nc *nonExistentCluster) String() string {
+	return "non-existent cluster"
+}

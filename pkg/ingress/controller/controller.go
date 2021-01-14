@@ -56,6 +56,7 @@ type Controller struct {
 	cfg                *config.Config
 	wg                 sync.WaitGroup
 	watchingNamespace  map[string]struct{}
+	apisix             apisix.APISIX
 	apiServer          *api.Server
 	clientset          kubernetes.Interface
 	crdClientset       crdclientset.Interface
@@ -71,12 +72,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	if podNamespace == "" {
 		podNamespace = "default"
 	}
-
-	client, err := apisix.NewForOptions(&apisix.ClusterOptions{
-		Name:     "",
-		AdminKey: cfg.APISIX.AdminKey,
-		BaseURL:  cfg.APISIX.BaseURL,
-	})
+	client, err := apisix.New()
 	if err != nil {
 		return nil, err
 	}
@@ -107,6 +103,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		namespace:          podNamespace,
 		cfg:                cfg,
 		apiServer:          apiSrv,
+		apisix:             client,
 		metricsCollector:   metrics.NewPrometheusCollector(podName, podNamespace),
 		clientset:          kube.GetKubeClient(),
 		crdClientset:       crdClientset,
@@ -207,6 +204,22 @@ func (c *Controller) run(ctx context.Context) {
 		zap.String("pod", c.name),
 	)
 	c.metricsCollector.ResetLeader(true)
+
+	err := c.apisix.AddCluster(&apisix.ClusterOptions{
+		Name:     "",
+		AdminKey: c.cfg.APISIX.AdminKey,
+		BaseURL:  c.cfg.APISIX.BaseURL,
+	})
+	if err != nil {
+		// TODO give up the leader role.
+		log.Errorf("failed to add default cluster: %s", err)
+		return
+	}
+	if err := c.apisix.Cluster("").Ready(ctx); err != nil {
+		// TODO give up the leader role.
+		log.Errorf("failed to wait the default cluster to be ready: %s", err)
+		return
+	}
 
 	ac := &Api6Controller{
 		KubeClientSet:             c.clientset,
