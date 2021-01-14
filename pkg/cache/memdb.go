@@ -16,7 +16,18 @@
 package cache
 
 import (
+	"errors"
+
 	"github.com/hashicorp/go-memdb"
+)
+
+var (
+	_allowedNamespace = map[string]struct{}{
+		"route":    {},
+		"service":  {},
+		"ssl":      {},
+		"upstream": {},
+	}
 )
 
 type dbCache struct {
@@ -34,7 +45,18 @@ func NewMemDBCache() (NamespacingCache, error) {
 	}, nil
 }
 
+func (c *dbCache) checkNamespace(ns string) error {
+	_, ok := _allowedNamespace[ns]
+	if !ok {
+		return errors.New("invalid namespace")
+	}
+	return nil
+}
+
 func (c *dbCache) Insert(namespace string, obj interface{}) error {
+	if err := c.checkNamespace(namespace); err != nil {
+		return err
+	}
 	txn := c.db.Txn(true)
 	defer txn.Abort()
 	if err := txn.Insert(namespace, obj); err != nil {
@@ -47,9 +69,33 @@ func (c *dbCache) Insert(namespace string, obj interface{}) error {
 func (c *dbCache) Get(namespace, key string) (interface{}, error) {
 	txn := c.db.Txn(false)
 	defer txn.Abort()
-	obj, err := txn.First(namespace, key)
+	obj, err := txn.First(namespace, "id", key)
 	if err != nil {
 		return nil, err
 	}
 	return obj, nil
+}
+
+func (c *dbCache) List(namespace string) ([]interface{}, error) {
+	txn := c.db.Txn(false)
+	defer txn.Abort()
+	iter, err := txn.Get(namespace, "id")
+	if err != nil {
+		return nil, err
+	}
+	var objs []interface{}
+	for obj := iter.Next(); obj != nil; obj = iter.Next() {
+		objs = append(objs, obj)
+	}
+	return objs, nil
+}
+
+func (c *dbCache) Delete(namespace string, obj interface{}) error {
+	txn := c.db.Txn(true)
+	defer txn.Abort()
+	if err := txn.Delete(namespace, obj); err != nil {
+		return err
+	}
+	txn.Commit()
+	return nil
 }

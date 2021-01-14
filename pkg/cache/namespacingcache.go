@@ -15,13 +15,17 @@
 
 package cache
 
-// NamespacingCache defines the necessary behaviors that a cache object should have.
+// NamespacingCache defines the necessary behaviors that the cache object should have.
 // Note this interface is for APISIX, not for generic purpose, the namespace concept here
 // is used to distinguish the different resource types in APISIX.
 type NamespacingCache interface {
-	// Insert adds or updates the object to the specified namespace in cache.
+	// Insert adds or updates the object to the specified namespace.
 	Insert(string, interface{}) error
-	// Get finds the object in the specified namespace in cache according to
+	// Get finds the object in the specified namespace according to
 	// the key.
 	Get(string, string) (interface{}, error)
+	// List lists all objects in the specified namespace.
+	List(string) ([]interface{}, error)
+	// Delete deletes the specified object in the specified namesapce.
+	Delete(string, interface{}) error
 }
