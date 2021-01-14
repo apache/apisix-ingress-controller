@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/api7/ingress-controller/test/e2e/scaffold"
 	"github.com/onsi/ginkgo"
@@ -48,6 +49,10 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "creating ApisixRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "checking number of routes")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
+
+		// TODO When ingress controller can feedback the lifecycle of CRDs to the
+		// status field, we can poll it rather than sleeping.
+		time.Sleep(3 * time.Second)
 
 		body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
 		var placeholder ip

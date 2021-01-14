@@ -30,6 +30,9 @@ import (
 const (
 	// NamespaceAll represents all namespaces.
 	NamespaceAll = "*"
+	// IngressAPISIXLeader is the default election id for the controller
+	// leader election.
+	IngressAPISIXLeader = "ingress-apisix-leader"
 
 	_minimalResyncInterval = 30 * time.Second
 )
@@ -50,6 +53,7 @@ type KubernetesConfig struct {
 	Kubeconfig     string             `json:"kubeconfig" yaml:"kubeconfig"`
 	ResyncInterval types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
 	AppNamespaces  []string           `json:"app_namespaces" yaml:"app_namespaces"`
+	ElectionID     string             `json:"election_id" yaml:"election_id"`
 }
 
 // APISIXConfig contains all APISIX related config items.
@@ -71,6 +75,7 @@ func NewDefaultConfig() *Config {
 			Kubeconfig:     "", // Use in-cluster configurations.
 			ResyncInterval: types.TimeDuration{Duration: 6 * time.Hour},
 			AppNamespaces:  []string{v1.NamespaceAll},
+			ElectionID:     IngressAPISIXLeader,
 		},
 	}
 }
