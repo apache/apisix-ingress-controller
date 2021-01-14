@@ -34,3 +34,7 @@ kubectl kustomize "github.com/apache/apisix-ingress-controller/samples/deploy?re
 ```
 
 Parameters are hardcoded so if the default values are not good for you, just tweak them manually.
+
+## Verify Installation
+
+There are a lot of use examples (See [samples](./samples/index.md) for more details), try to follow the operations there to verify the installation.
