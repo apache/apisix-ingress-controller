@@ -43,8 +43,10 @@ ingressController:
     kubernetes:
       kubeconfig: ""
       resyncInterval: "60s"
+      appNamespaces: ["*"]
     apisix:
       baseURL: "http://127.0.0.1:9080/apisix/admin"
+      adminKey: "edd1c9f034335f136f87ad84b625c8f1"
 
   resources: {}
 

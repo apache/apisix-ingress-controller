@@ -117,10 +117,15 @@ We welcome all kinds of contributions from the open-source community, individual
 
 ## Community
 
-- Mailing List: Mail to dev-subscribe@apisix.apache.org, follow the reply to subscribe the mailing list.
-- QQ Group - 578997126
-- ![Twitter Follow](https://img.shields.io/twitter/follow/ApacheAPISIX?style=social) - follow and interact with us using hashtag `#ApacheAPISIX`
-- [Bilibili video](https://space.bilibili.com/551921247)
+* Mailing List: Mail to dev-subscribe@apisix.apache.org, follow the reply to subscribe the mailing list.
+* QQ Group - 578997126
+* ![Twitter Follow](https://img.shields.io/twitter/follow/ApacheAPISIX?style=social) - follow and interact with us using hashtag `#ApacheAPISIX`
+* [Bilibili video](https://space.bilibili.com/551921247)
+
+## Terminology
+
+* Ingress APISIX: the whole service that contains the proxy ([Apache APISIX](https://apisix.apache.org)) and ingress controller (apisix ingress controller).
+* apisix-ingress-controller: the ingress controller component.
 
 ## License
 
