@@ -17,7 +17,8 @@ package cache
 
 // NamespacingCache defines the necessary behaviors that the cache object should have.
 // Note this interface is for APISIX, not for generic purpose, the namespace concept here
-// is used to distinguish the different resource types in APISIX.
+// is used to distinguish the different resource types in APISIX. So it should only support
+// standard APISIX resources, i.e. Route, Upstream, Service and SSL.
 type NamespacingCache interface {
 	// Insert adds or updates the object to the specified namespace.
 	Insert(string, interface{}) error
