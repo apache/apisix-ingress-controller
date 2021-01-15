@@ -20,6 +20,8 @@ import v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 // Cache defines the necessary behaviors that the cache object should have.
 // Note this interface is for APISIX, not for generic purpose, it supports
 // standard APISIX resources, i.e. Route, Upstream, Service and SSL.
+// Cache implementations should copy the target objects before/after read/write
+// operations for the sake of avoiding data corrupted by other writers.
 type Cache interface {
 	// InsertRoute adds or updates route to cache.
 	InsertRoute(*v1.Route) error

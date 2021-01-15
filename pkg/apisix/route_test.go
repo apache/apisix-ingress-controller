@@ -171,9 +171,13 @@ func TestRouteClient(t *testing.T) {
 		Path:   "/apisix/admin",
 	}
 
+	closedCh := make(chan error)
+	close(closedCh)
 	cli := newRouteClient(&cluster{
-		baseURL: u.String(),
-		cli:     http.DefaultClient,
+		baseURL:    u.String(),
+		cli:        http.DefaultClient,
+		cache:      &dummyCache{},
+		cacheReady: closedCh,
 	})
 
 	// Create

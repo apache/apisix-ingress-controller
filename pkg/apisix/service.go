@@ -45,6 +45,8 @@ func newServiceClient(c *cluster) Service {
 	}
 }
 
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
 func (s *serviceClient) List(ctx context.Context) ([]*v1.Service, error) {
 	log.Infow("try to list services in APISIX", zap.String("url", s.url))
 
@@ -72,6 +74,9 @@ func (s *serviceClient) List(ctx context.Context) ([]*v1.Service, error) {
 }
 
 func (s *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Service, error) {
+	if err := s.cluster.Ready(ctx); err != nil {
+		return nil, err
+	}
 	log.Infow("try to create service", zap.String("full_name", *obj.FullName))
 
 	body, err := json.Marshal(serviceItem{
@@ -93,16 +98,36 @@ func (s *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Servic
 	if obj.Group != nil {
 		clusterName = *obj.Group
 	}
-	return resp.Item.service(clusterName)
+	svc, err := resp.Item.service(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.cluster.cache.InsertService(svc); err != nil {
+		log.Errorf("failed to reflect service create to cache: %s", err)
+	}
+	return svc, nil
 }
 
 func (s *serviceClient) Delete(ctx context.Context, obj *v1.Service) error {
+	if err := s.cluster.Ready(ctx); err != nil {
+		return err
+	}
 	log.Infof("delete service, id:%s", *obj.ID)
 	url := s.url + "/" + *obj.ID
-	return s.cluster.deleteResource(ctx, url)
+	if err := s.cluster.deleteResource(ctx, url); err != nil {
+		return err
+	}
+	if err := s.cluster.cache.DeleteService(obj); err != nil {
+		log.Errorf("failed to reflect service delete to cache: %s", err)
+		return err
+	}
+	return nil
 }
 
 func (s *serviceClient) Update(ctx context.Context, obj *v1.Service) (*v1.Service, error) {
+	if err := s.cluster.Ready(ctx); err != nil {
+		return nil, err
+	}
 	log.Infof("update service, id:%s", *obj.ID)
 
 	body, err := json.Marshal(serviceItem{
@@ -124,5 +149,13 @@ func (s *serviceClient) Update(ctx context.Context, obj *v1.Service) (*v1.Servic
 	if obj.Group != nil {
 		clusterName = *obj.Group
 	}
-	return resp.Item.service(clusterName)
+	svc, err := resp.Item.service(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.cluster.cache.InsertService(obj); err != nil {
+		log.Errorf("failed to reflect service update to cache: %s", err)
+		return nil, err
+	}
+	return svc, nil
 }

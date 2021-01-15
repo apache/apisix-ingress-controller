@@ -19,16 +19,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/api7/ingress-controller/pkg/cache"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/api7/ingress-controller/pkg/apisix/cache"
+
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/hashicorp/go-memdb"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 
@@ -58,14 +58,12 @@ type ClusterOptions struct {
 }
 
 type cluster struct {
-	name     string
-	baseURL  string
-	adminKey string
-	cli      *http.Client
-	cache    cache.NamespacingCache
-	dbReady  chan error
-	dbUpdate chan interface{}
-	dbDelete chan interface{}
+	name       string
+	baseURL    string
+	adminKey   string
+	cli        *http.Client
+	cache      cache.Cache
+	cacheReady chan error
 
 	route    Route
 	upstream Upstream
@@ -93,8 +91,8 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 				ExpectContinueTimeout: o.Timeout,
 			},
 		},
-		cache: nil,
-		dbReady: make(chan error, 1),
+		cache:      nil,
+		cacheReady: make(chan error, 1),
 	}
 	c.route = newRouteClient(c)
 	c.upstream = newUpstreamClient(c)
@@ -119,10 +117,16 @@ func (c *cluster) warmingUp() {
 		Factor:   2,
 		Steps:    6,
 	}
-	c.dbReady <- wait.ExponentialBackoff(backoff, c.warmingUpOnce)
+	c.cacheReady <- wait.ExponentialBackoff(backoff, c.warmingUpOnce)
 }
 
 func (c *cluster) warmingUpOnce() (bool, error) {
+	dbcache, err := cache.NewMemDBCache()
+	if err != nil {
+		return false, err
+	}
+	c.cache = dbcache
+
 	routes, err := c.route.List(context.TODO())
 	if err != nil {
 		log.Errorf("failed to list route in APISIX: %s", err)
@@ -144,11 +148,8 @@ func (c *cluster) warmingUpOnce() (bool, error) {
 		return false, err
 	}
 
-	txn := c.db.Txn(true)
-	defer txn.Abort()
-
 	for _, r := range routes {
-		if err := txn.Insert("route", r); err != nil {
+		if err := c.cache.InsertRoute(r); err != nil {
 			log.Errorw("failed to insert route to cache",
 				zap.String("route", *r.ID),
 				zap.String("cluster", c.name),
@@ -157,10 +158,10 @@ func (c *cluster) warmingUpOnce() (bool, error) {
 			return false, err
 		}
 	}
-	for _, u := range services {
-		if err := txn.Insert("service", u); err != nil {
+	for _, s := range services {
+		if err := c.cache.InsertService(s); err != nil {
 			log.Errorw("failed to insert service to cache",
-				zap.String("service", *u.ID),
+				zap.String("service", *s.ID),
 				zap.String("cluster", c.name),
 				zap.String("error", err.Error()),
 			)
@@ -168,7 +169,7 @@ func (c *cluster) warmingUpOnce() (bool, error) {
 		}
 	}
 	for _, u := range upstreams {
-		if err := txn.Insert("upstream", u); err != nil {
+		if err := c.cache.InsertUpstream(u); err != nil {
 			log.Errorw("failed to insert upstream to cache",
 				zap.String("upstream", *u.ID),
 				zap.String("cluster", c.name),
@@ -178,7 +179,7 @@ func (c *cluster) warmingUpOnce() (bool, error) {
 		}
 	}
 	for _, s := range ssl {
-		if err := txn.Insert("ssl", s); err != nil {
+		if err := c.cache.InsertSSL(s); err != nil {
 			log.Errorw("failed to insert ssl to cache",
 				zap.String("ssl", *s.ID),
 				zap.String("cluster", c.name),
@@ -187,11 +188,8 @@ func (c *cluster) warmingUpOnce() (bool, error) {
 			return false, err
 		}
 	}
-	txn.Commit()
 	return true, nil
 }
-
-func (c *cluster)
 
 // String implements Cluster.String method.
 func (c *cluster) String() string {
@@ -203,7 +201,7 @@ func (c *cluster) Ready(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case err := <-c.dbReady:
+	case err := <-c.cacheReady:
 		return err
 	}
 }

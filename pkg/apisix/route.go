@@ -48,9 +48,10 @@ func newRouteClient(c *cluster) Route {
 	}
 }
 
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
 func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 	log.Infow("try to list routes in APISIX", zap.String("url", r.url))
-
 	routeItems, err := r.cluster.listResource(ctx, r.url)
 	if err != nil {
 		log.Errorf("failed to list routes: %s", err)
@@ -77,6 +78,9 @@ func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 }
 
 func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
+	if err := r.cluster.Ready(ctx); err != nil {
+		return nil, err
+	}
 	log.Infow("try to create route", zap.String("host", *obj.Host))
 	data, err := json.Marshal(routeReqBody{
 		Desc:      obj.Name,
@@ -101,16 +105,36 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	if obj.Group != nil {
 		clusterName = *obj.Group
 	}
-	return resp.Item.route(clusterName)
+	route, err := resp.Item.route(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.cluster.cache.InsertRoute(route); err != nil {
+		log.Errorf("failed to reflect route create to cache: %s", err)
+	}
+	return route, nil
 }
 
 func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
+	if err := r.cluster.Ready(ctx); err != nil {
+		return err
+	}
 	log.Infof("delete route, id:%s", *obj.ID)
 	url := r.url + "/" + *obj.ID
-	return r.cluster.deleteResource(ctx, url)
+	if err := r.cluster.deleteResource(ctx, url); err != nil {
+		return err
+	}
+	if err := r.cluster.cache.DeleteRoute(obj); err != nil {
+		log.Errorf("failed to reflect route delete to cache: %s", err)
+		return err
+	}
+	return nil
 }
 
 func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
+	if err := r.cluster.Ready(ctx); err != nil {
+		return nil, err
+	}
 	log.Infof("update route, id:%s", *obj.ID)
 	body, err := json.Marshal(routeReqBody{
 		Desc:      obj.Name,
@@ -132,5 +156,13 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	if obj.Group != nil {
 		clusterName = *obj.Group
 	}
-	return resp.Item.route(clusterName)
+	route, err := resp.Item.route(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.cluster.cache.InsertRoute(route); err != nil {
+		log.Errorf("failed to reflect route update to cache: %s", err)
+		return nil, err
+	}
+	return route, nil
 }

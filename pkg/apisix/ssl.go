@@ -40,6 +40,8 @@ func newSSLClient(c *cluster) SSL {
 	}
 }
 
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
 func (s *sslClient) List(ctx context.Context) ([]*v1.Ssl, error) {
 	log.Infow("try to list ssl in APISIX", zap.String("url", s.url))
 
@@ -68,6 +70,9 @@ func (s *sslClient) List(ctx context.Context) ([]*v1.Ssl, error) {
 }
 
 func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
+	if err := s.cluster.Ready(ctx); err != nil {
+		return nil, err
+	}
 	log.Info("try to create ssl")
 	data, err := json.Marshal(v1.Ssl{
 		Snis:   obj.Snis,
@@ -90,16 +95,36 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 		clusterName = *obj.Group
 	}
 
-	return resp.Item.ssl(clusterName)
+	ssl, err := resp.Item.ssl(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.cluster.cache.InsertSSL(ssl); err != nil {
+		log.Errorf("failed to reflect ssl create to cache: %s", err)
+	}
+	return ssl, nil
 }
 
 func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
+	if err := s.cluster.Ready(ctx); err != nil {
+		return err
+	}
 	log.Infof("delete ssl, id:%s", *obj.ID)
 	url := s.url + "/" + *obj.ID
-	return s.cluster.deleteResource(ctx, url)
+	if err := s.cluster.deleteResource(ctx, url); err != nil {
+		return err
+	}
+	if err := s.cluster.cache.DeleteSSL(obj); err != nil {
+		log.Errorf("failed to reflect ssl delete to cache: %s", err)
+		return err
+	}
+	return nil
 }
 
 func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
+	if err := s.cluster.Ready(ctx); err != nil {
+		return nil, err
+	}
 	log.Infof("update ssl, id:%s", *obj.ID)
 	url := s.url + "/" + *obj.ID
 	data, err := json.Marshal(v1.Ssl{
@@ -121,5 +146,14 @@ func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if obj.Group != nil {
 		clusterName = *obj.Group
 	}
-	return resp.Item.ssl(clusterName)
+	ssl, err := resp.Item.ssl(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.cluster.cache.InsertSSL(ssl); err != nil {
+		log.Errorf("failed to reflect ssl update to cache: %s", err)
+		return nil, err
+
+	}
+	return ssl, nil
 }

@@ -18,6 +18,8 @@ package apisix
 import (
 	"context"
 
+	"github.com/api7/ingress-controller/pkg/apisix/cache"
+
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -138,3 +140,24 @@ func (nc *nonExistentCluster) Ready(_ context.Context) error {
 func (nc *nonExistentCluster) String() string {
 	return "non-existent cluster"
 }
+
+type dummyCache struct{}
+
+var _ cache.Cache = &dummyCache{}
+
+func (c *dummyCache) InsertRoute(_ *v1.Route) error              { return nil }
+func (c *dummyCache) InsertService(_ *v1.Service) error          { return nil }
+func (c *dummyCache) InsertSSL(_ *v1.Ssl) error                  { return nil }
+func (c *dummyCache) InsertUpstream(_ *v1.Upstream) error        { return nil }
+func (c *dummyCache) GetRoute(_ string) (*v1.Route, error)       { return nil, cache.ErrNotFound }
+func (c *dummyCache) GetService(_ string) (*v1.Service, error)   { return nil, cache.ErrNotFound }
+func (c *dummyCache) GetSSL(_ string) (*v1.Ssl, error)           { return nil, cache.ErrNotFound }
+func (c *dummyCache) GetUpstream(_ string) (*v1.Upstream, error) { return nil, cache.ErrNotFound }
+func (c *dummyCache) ListRoutes() ([]*v1.Route, error)           { return nil, nil }
+func (c *dummyCache) ListServices() ([]*v1.Service, error)       { return nil, nil }
+func (c *dummyCache) ListSSL() ([]*v1.Ssl, error)                { return nil, nil }
+func (c *dummyCache) ListUpstreams() ([]*v1.Upstream, error)     { return nil, nil }
+func (c *dummyCache) DeleteRoute(_ *v1.Route) error              { return nil }
+func (c *dummyCache) DeleteService(_ *v1.Service) error          { return nil }
+func (c *dummyCache) DeleteSSL(_ *v1.Ssl) error                  { return nil }
+func (c *dummyCache) DeleteUpstream(_ *v1.Upstream) error        { return nil }

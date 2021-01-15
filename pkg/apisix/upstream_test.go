@@ -149,9 +149,13 @@ func TestUpstreamClient(t *testing.T) {
 		Host:   srv.Addr,
 		Path:   "/apisix/admin",
 	}
+	closedCh := make(chan error)
+	close(closedCh)
 	cli := newUpstreamClient(&cluster{
-		baseURL: u.String(),
-		cli:     http.DefaultClient,
+		baseURL:    u.String(),
+		cli:        http.DefaultClient,
+		cache:      &dummyCache{},
+		cacheReady: closedCh,
 	})
 
 	// Create

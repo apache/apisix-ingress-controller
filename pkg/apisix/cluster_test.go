@@ -24,7 +24,10 @@ import (
 )
 
 func TestAddCluster(t *testing.T) {
-	apisix, err := NewForOptions(&ClusterOptions{
+	apisix, err := New()
+	assert.Nil(t, err)
+
+	err = apisix.AddCluster(&ClusterOptions{
 		BaseURL: "http://service1:9080/apisix/admin",
 	})
 	assert.Nil(t, err)
@@ -49,7 +52,10 @@ func TestAddCluster(t *testing.T) {
 }
 
 func TestNonExistentCluster(t *testing.T) {
-	apisix, err := NewForOptions(&ClusterOptions{
+	apisix, err := New()
+	assert.Nil(t, err)
+
+	err = apisix.AddCluster(&ClusterOptions{
 		BaseURL: "http://service1:9080/apisix/admin",
 	})
 	assert.Nil(t, err)

@@ -46,19 +46,19 @@ func NewMemDBCache() (Cache, error) {
 }
 
 func (c *dbCache) InsertRoute(r *v1.Route) error {
-	return c.insert("route", r)
+	return c.insert("route", r.DeepCopy())
 }
 
 func (c *dbCache) InsertService(s *v1.Service) error {
-	return c.insert("service", s)
+	return c.insert("service", s.DeepCopy())
 }
 
 func (c *dbCache) InsertSSL(ssl *v1.Ssl) error {
-	return c.insert("ssl", ssl)
+	return c.insert("ssl", ssl.DeepCopy())
 }
 
 func (c *dbCache) InsertUpstream(u *v1.Upstream) error {
-	return c.insert("upstream", u)
+	return c.insert("upstream", u.DeepCopy())
 }
 
 func (c *dbCache) insert(table string, obj interface{}) error {
@@ -76,7 +76,7 @@ func (c *dbCache) GetRoute(key string) (*v1.Route, error) {
 	if err != nil {
 		return nil, err
 	}
-	return obj.(*v1.Route), nil
+	return obj.(*v1.Route).DeepCopy(), nil
 }
 
 func (c *dbCache) GetService(key string) (*v1.Service, error) {
@@ -84,7 +84,7 @@ func (c *dbCache) GetService(key string) (*v1.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	return obj.(*v1.Service), nil
+	return obj.(*v1.Service).DeepCopy(), nil
 }
 
 func (c *dbCache) GetSSL(key string) (*v1.Ssl, error) {
@@ -92,7 +92,7 @@ func (c *dbCache) GetSSL(key string) (*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
-	return obj.(*v1.Ssl), nil
+	return obj.(*v1.Ssl).DeepCopy(), nil
 }
 
 func (c *dbCache) GetUpstream(key string) (*v1.Upstream, error) {
@@ -100,7 +100,7 @@ func (c *dbCache) GetUpstream(key string) (*v1.Upstream, error) {
 	if err != nil {
 		return nil, err
 	}
-	return obj.(*v1.Upstream), nil
+	return obj.(*v1.Upstream).DeepCopy(), nil
 }
 
 func (c *dbCache) get(table, key string) (interface{}, error) {
@@ -123,7 +123,7 @@ func (c *dbCache) ListRoutes() ([]*v1.Route, error) {
 	}
 	routes := make([]*v1.Route, 0, len(raws))
 	for _, raw := range raws {
-		routes = append(routes, raw.(*v1.Route))
+		routes = append(routes, raw.(*v1.Route).DeepCopy())
 	}
 	return routes, nil
 }
@@ -135,7 +135,7 @@ func (c *dbCache) ListServices() ([]*v1.Service, error) {
 	}
 	services := make([]*v1.Service, 0, len(raws))
 	for _, raw := range raws {
-		services = append(services, raw.(*v1.Service))
+		services = append(services, raw.(*v1.Service).DeepCopy())
 	}
 	return services, nil
 }
@@ -147,7 +147,7 @@ func (c *dbCache) ListSSL() ([]*v1.Ssl, error) {
 	}
 	ssl := make([]*v1.Ssl, 0, len(raws))
 	for _, raw := range raws {
-		ssl = append(ssl, raw.(*v1.Ssl))
+		ssl = append(ssl, raw.(*v1.Ssl).DeepCopy())
 	}
 	return ssl, nil
 }
@@ -159,7 +159,7 @@ func (c *dbCache) ListUpstreams() ([]*v1.Upstream, error) {
 	}
 	upstreams := make([]*v1.Upstream, 0, len(raws))
 	for _, raw := range raws {
-		upstreams = append(upstreams, raw.(*v1.Upstream))
+		upstreams = append(upstreams, raw.(*v1.Upstream).DeepCopy())
 	}
 	return upstreams, nil
 }

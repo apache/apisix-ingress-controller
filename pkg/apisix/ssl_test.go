@@ -148,9 +148,13 @@ func TestSSLClient(t *testing.T) {
 		Host:   srv.Addr,
 		Path:   "/apisix/admin",
 	}
+	closedCh := make(chan error)
+	close(closedCh)
 	cli := newSSLClient(&cluster{
-		baseURL: u.String(),
-		cli:     http.DefaultClient,
+		baseURL:    u.String(),
+		cli:        http.DefaultClient,
+		cache:      &dummyCache{},
+		cacheReady: closedCh,
 	})
 
 	// Create

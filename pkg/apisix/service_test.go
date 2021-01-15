@@ -148,9 +148,13 @@ func TestServiceClient(t *testing.T) {
 		Host:   srv.Addr,
 		Path:   "/apisix/admin",
 	}
+	closedCh := make(chan error)
+	close(closedCh)
 	cli := newServiceClient(&cluster{
-		baseURL: u.String(),
-		cli:     http.DefaultClient,
+		baseURL:    u.String(),
+		cli:        http.DefaultClient,
+		cache:      &dummyCache{},
+		cacheReady: closedCh,
 	})
 
 	// Create
