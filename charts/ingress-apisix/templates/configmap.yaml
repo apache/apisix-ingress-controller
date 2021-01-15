@@ -25,7 +25,12 @@ data:
     kubernetes:
       kubeconfig: {{ .Values.ingressController.config.kubernetes.kubeconfig | quote }}
       resync_interval: {{ .Values.ingressController.config.kubernetes.resyncInterval | quote }}
-      app_namespaces: {{ .Values.ingressController.config.kubernetes.appNamespaces }}
+      {{- if gt (len .Values.ingressController.config.kubernetes.appNamespaces) 0 }}
+      app_namespaces:
+      {{- range .Values.ingressController.config.kubernetes.appNamespaces }}
+      - {{ . | quote }}
+      {{- end }}
+      {{- end }}
     apisix:
       base_url: {{ .Values.ingressController.config.apisix.baseURL | quote }}
       admin_key: {{ .Values.ingressController.config.apisix.adminKey | quote }}

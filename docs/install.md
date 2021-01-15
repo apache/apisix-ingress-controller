@@ -23,6 +23,7 @@ This is an index page about installing Ingress APISIX in several environments. C
 
 * [Install Ingress APISIX on Minikube](deployments/minikube.md)
 * [Install Ingress APISIX on Azure AKS](deployments/azure.md)
+* [Install Ingress APISIX on AWS EKS](deployments/aws.md)
 
 ## Kustomize Support
 
