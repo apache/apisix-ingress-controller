@@ -55,8 +55,8 @@ spec:
       paths:
       - backend:
           serviceName: httpbin
-          servicePort: 8080
-        path: /hello*
+          servicePort: 80
+        path: /*
 ```
 
 The YAML snippet shows a simple `ApisixRoute` configuration, which tells Apache APISIX to route all requests with Host `local.httpbin.org` to the `httpbin` service.
@@ -71,7 +71,7 @@ kubectl apply -f httpbin-route.yaml
 Run curl call in one of Apache APISIX Pods to check whether the resource was delivered to it. Note you should replace the value of `--apisix-admin-key` to the real `admin_key` value in your Apache APISIX cluster.
 
 ```shell
-kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9180/apisix/admin/routes --apisix-admin-key edd1c9f034335f136f87ad84b625c8f1
+kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9180/apisix/admin/routes -H 'X-API-Key: edd1c9f034335f136f87ad84b625c8f1'
 ```
 
 And request to Apache APISIX to verify the route.
