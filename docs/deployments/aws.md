@@ -67,7 +67,7 @@ helm install ingress-apisix-base -n ingress-apisix ./charts/base
 helm install ingress-apisix ./charts/ingress-apisix \
   --set ingressController.image.tag=dev \
   --set ingressController.config.apisix.baseURL=http://apisix-admin:9180/apisix/admin \
-  --set ingressController.config.apisix.adminKey=edd1c9f034335f136f87ad84b625c8f1
+  --set ingressController.config.apisix.adminKey=edd1c9f034335f136f87ad84b625c8f1 \
   --namespace ingress-apisix
 ```
 
