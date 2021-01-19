@@ -17,9 +17,9 @@
 #
 -->
 
-# Install Ingress APISIX on AWS EKS
+# Install Ingress APISIX on Amazon EKS
 
-This document explains how to install Ingress APISIX on [AWS EKS](https://amazonaws-china.com/eks/?whats-new-cards.sort-by=item.additionalFields.postDateTime&whats-new-cards.sort-order=desc&eks-blogs.sort-by=item.additionalFields.createdDate&eks-blogs.sort-order=desc).
+This document explains how to install Ingress APISIX on [Amazon EKS](https://amazonaws-china.com/eks/?whats-new-cards.sort-by=item.additionalFields.postDateTime&whats-new-cards.sort-order=desc&eks-blogs.sort-by=item.additionalFields.createdDate&eks-blogs.sort-order=desc).
 
 ## Prerequisites
 
