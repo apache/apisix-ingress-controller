@@ -19,7 +19,6 @@ import (
 	"context"
 
 	"github.com/api7/ingress-controller/pkg/apisix/cache"
-
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 

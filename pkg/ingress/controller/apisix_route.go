@@ -131,7 +131,6 @@ func (c *ApisixRouteController) deleteFunc(obj interface{}) {
 	if !c.controller.namespaceWatching(key) {
 		return
 	}
-	log.Warnf("old route: %#v", oldRoute)
 	rqo := &RouteQueueObj{Key: key, OldObj: oldRoute, Ope: DELETE}
 	c.workqueue.AddRateLimited(rqo)
 }
@@ -151,7 +150,7 @@ func (c *ApisixRouteController) runWorker() {
 }
 
 func (c *ApisixRouteController) processNextWorkItem() bool {
-	//defer recoverException()
+	defer recoverException()
 	obj, shutdown := c.workqueue.Get()
 	if shutdown {
 		return false
@@ -164,7 +163,6 @@ func (c *ApisixRouteController) processNextWorkItem() bool {
 			c.workqueue.Forget(obj)
 			return fmt.Errorf("expected RouteQueueObj in workqueue but got %#v", obj)
 		}
-		log.Warnf("got %s event", rqo.Ope)
 		if err := c.syncHandler(rqo); err != nil {
 			c.workqueue.AddRateLimited(obj)
 			log.Errorf("sync route %s failed", rqo.Key)

@@ -25,13 +25,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/api7/ingress-controller/pkg/apisix/cache"
-
-	"k8s.io/apimachinery/pkg/util/wait"
-
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/util/wait"
 
+	"github.com/api7/ingress-controller/pkg/apisix/cache"
 	"github.com/api7/ingress-controller/pkg/log"
 )
 
