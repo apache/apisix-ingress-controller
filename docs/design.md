@@ -75,6 +75,11 @@ Currently `apisix-ingress-controller` CRDs consist of 3 parts: ApisixRoute/Apisi
 
 ![flow](./images/flow.png)
 
+* Here is a flowchart that introduces the main logic of `ApisixRoute` and other CRDs during synchronization.
+
+![logic](./images/sync-logic-controller.png)
+
+
 ### Conversion structure
 
 `apisix-ingress-controller` provides external configuration methods for CRDs. It is aimed at operators such as daily operation and maintenance, who often need to process a large number of routes in batches, hoping to handle all related services in the same configuration file, and at the same time have convenient and understandable management capabilities. Apache APISIX is designed from the perspective of the gateway, and all routes are independent. This leads to obvious differences in the data structure between the two. One focuses on batch definition, while the other is discrete implementation.
