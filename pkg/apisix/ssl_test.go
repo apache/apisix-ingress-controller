@@ -148,7 +148,7 @@ func TestSSLClient(t *testing.T) {
 		Host:   srv.Addr,
 		Path:   "/apisix/admin",
 	}
-	closedCh := make(chan error)
+	closedCh := make(chan struct{})
 	close(closedCh)
 	cli := newSSLClient(&cluster{
 		baseURL:    u.String(),
