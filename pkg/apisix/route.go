@@ -48,6 +48,13 @@ func newRouteClient(c *cluster) Route {
 	}
 }
 
+// Get only looks up the cache, it's not necessary to access APISIX, since all resources
+// are created by Create, which reflects the change to cache in turn, so if resource
+// is not in cache, it's not in APISIX either.
+func (r *routeClient) Get(_ context.Context, fullname string) (*v1.Route, error) {
+	return r.cluster.cache.GetRoute(fullname)
+}
+
 // List is only used in cache warming up. So here just pass through
 // to APISIX.
 func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
@@ -111,6 +118,7 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	}
 	if err := r.cluster.cache.InsertRoute(route); err != nil {
 		log.Errorf("failed to reflect route create to cache: %s", err)
+		return nil, err
 	}
 	return route, nil
 }

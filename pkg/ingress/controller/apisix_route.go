@@ -131,6 +131,7 @@ func (c *ApisixRouteController) deleteFunc(obj interface{}) {
 	if !c.controller.namespaceWatching(key) {
 		return
 	}
+	log.Warnf("old route: %#v", oldRoute)
 	rqo := &RouteQueueObj{Key: key, OldObj: oldRoute, Ope: DELETE}
 	c.workqueue.AddRateLimited(rqo)
 }
@@ -150,7 +151,7 @@ func (c *ApisixRouteController) runWorker() {
 }
 
 func (c *ApisixRouteController) processNextWorkItem() bool {
-	defer recoverException()
+	//defer recoverException()
 	obj, shutdown := c.workqueue.Get()
 	if shutdown {
 		return false
@@ -163,6 +164,7 @@ func (c *ApisixRouteController) processNextWorkItem() bool {
 			c.workqueue.Forget(obj)
 			return fmt.Errorf("expected RouteQueueObj in workqueue but got %#v", obj)
 		}
+		log.Warnf("got %s event", rqo.Ope)
 		if err := c.syncHandler(rqo); err != nil {
 			c.workqueue.AddRateLimited(obj)
 			log.Errorf("sync route %s failed", rqo.Key)
@@ -213,7 +215,8 @@ func (c *ApisixRouteController) add(key string) error {
 			log.Infof("apisixRoute %s is removed", key)
 			return nil
 		}
-		runtime.HandleError(fmt.Errorf("failed to list apisixRoute %s/%s", key, err.Error()))
+		log.Errorf("failed to list ApisixRoute %s: %s", key, err.Error())
+		runtime.HandleError(fmt.Errorf("failed to list ApisixRoute %s: %s", key, err.Error()))
 		return err
 	}
 	apisixRoute := apisix.ApisixRoute(*apisixIngressRoute)

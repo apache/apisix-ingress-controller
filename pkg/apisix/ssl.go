@@ -40,6 +40,13 @@ func newSSLClient(c *cluster) SSL {
 	}
 }
 
+// Get only looks up the cache, it's not necessary to access APISIX, since all resources
+// are created by Create, which reflects the change to cache in turn, so if resource
+// is not in cache, it's not in APISIX either.
+func (s *sslClient) Get(_ context.Context, fullname string) (*v1.Ssl, error) {
+	return s.cluster.cache.GetSSL(fullname)
+}
+
 // List is only used in cache warming up. So here just pass through
 // to APISIX.
 func (s *sslClient) List(ctx context.Context) ([]*v1.Ssl, error) {
@@ -101,6 +108,7 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	}
 	if err := s.cluster.cache.InsertSSL(ssl); err != nil {
 		log.Errorf("failed to reflect ssl create to cache: %s", err)
+		return nil, err
 	}
 	return ssl, nil
 }

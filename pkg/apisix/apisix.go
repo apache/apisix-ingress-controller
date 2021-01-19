@@ -51,6 +51,7 @@ type Cluster interface {
 // Route is the specific client interface to take over the create, update,
 // list and delete for APISIX's Route resource.
 type Route interface {
+	Get(context.Context, string) (*v1.Route, error)
 	List(context.Context) ([]*v1.Route, error)
 	Create(context.Context, *v1.Route) (*v1.Route, error)
 	Delete(context.Context, *v1.Route) error
@@ -60,6 +61,7 @@ type Route interface {
 // SSL is the specific client interface to take over the create, update,
 // list and delete for APISIX's SSL resource.
 type SSL interface {
+	Get(context.Context, string) (*v1.Ssl, error)
 	List(context.Context) ([]*v1.Ssl, error)
 	Create(context.Context, *v1.Ssl) (*v1.Ssl, error)
 	Delete(context.Context, *v1.Ssl) error
@@ -69,6 +71,7 @@ type SSL interface {
 // Upstream is the specific client interface to take over the create, update,
 // list and delete for APISIX's Upstream resource.
 type Upstream interface {
+	Get(context.Context, string) (*v1.Upstream, error)
 	List(context.Context) ([]*v1.Upstream, error)
 	Create(context.Context, *v1.Upstream) (*v1.Upstream, error)
 	Delete(context.Context, *v1.Upstream) error
@@ -78,6 +81,7 @@ type Upstream interface {
 // Service is the specific client interface to take over the create, update,
 // list and delete for APISIX's Service resource.
 type Service interface {
+	Get(context.Context, string) (*v1.Service, error)
 	List(context.Context) ([]*v1.Service, error)
 	Create(context.Context, *v1.Service) (*v1.Service, error)
 	Delete(context.Context, *v1.Service) error

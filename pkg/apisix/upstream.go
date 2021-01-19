@@ -81,6 +81,13 @@ func newUpstreamClient(c *cluster) Upstream {
 	}
 }
 
+// Get only looks up the cache, it's not necessary to access APISIX, since all resources
+// are created by Create, which reflects the change to cache in turn, so if resource
+// is not in cache, it's not in APISIX either.
+func (u *upstreamClient) Get(_ context.Context, fullname string) (*v1.Upstream, error) {
+	return u.cluster.cache.GetUpstream(fullname)
+}
+
 // List is only used in cache warming up. So here just pass through
 // to APISIX.
 func (u *upstreamClient) List(ctx context.Context) ([]*v1.Upstream, error) {
@@ -152,6 +159,7 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	}
 	if err := u.cluster.cache.InsertUpstream(ups); err != nil {
 		log.Errorf("failed to reflect upstream create to cache: %s", err)
+		return nil, err
 	}
 	return ups, err
 }

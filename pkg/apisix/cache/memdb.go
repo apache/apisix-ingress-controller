@@ -113,6 +113,9 @@ func (c *dbCache) get(table, key string) (interface{}, error) {
 		}
 		return nil, err
 	}
+	if obj == nil {
+		return nil, ErrNotFound
+	}
 	return obj, nil
 }
 

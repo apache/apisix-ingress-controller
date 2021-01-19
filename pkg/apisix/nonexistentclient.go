@@ -47,6 +47,10 @@ type embedDummyResourceImplementer struct {
 
 type dummyRoute struct{}
 
+func (f *dummyRoute) Get(_ context.Context, _ string) (*v1.Route, error) {
+	return nil, ErrClusterNotExist
+}
+
 func (f *dummyRoute) List(_ context.Context) ([]*v1.Route, error) {
 	return nil, ErrClusterNotExist
 }
@@ -64,6 +68,10 @@ func (f *dummyRoute) Update(_ context.Context, _ *v1.Route) (*v1.Route, error) {
 }
 
 type dummySSL struct{}
+
+func (f *dummySSL) Get(_ context.Context, _ string) (*v1.Ssl, error) {
+	return nil, ErrClusterNotExist
+}
 
 func (f *dummySSL) List(_ context.Context) ([]*v1.Ssl, error) {
 	return nil, ErrClusterNotExist
@@ -83,6 +91,10 @@ func (f *dummySSL) Update(_ context.Context, _ *v1.Ssl) (*v1.Ssl, error) {
 
 type dummyUpstream struct{}
 
+func (f *dummyUpstream) Get(_ context.Context, _ string) (*v1.Upstream, error) {
+	return nil, ErrClusterNotExist
+}
+
 func (f *dummyUpstream) List(_ context.Context) ([]*v1.Upstream, error) {
 	return nil, ErrClusterNotExist
 }
@@ -100,6 +112,10 @@ func (f *dummyUpstream) Update(_ context.Context, _ *v1.Upstream) (*v1.Upstream,
 }
 
 type dummyService struct{}
+
+func (f *dummyService) Get(_ context.Context, _ string) (*v1.Service, error) {
+	return nil, ErrClusterNotExist
+}
 
 func (f *dummyService) List(_ context.Context) ([]*v1.Service, error) {
 	return nil, ErrClusterNotExist

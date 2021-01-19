@@ -45,6 +45,13 @@ func newServiceClient(c *cluster) Service {
 	}
 }
 
+// Get only looks up the cache, it's not necessary to access APISIX, since all resources
+// are created by Create, which reflects the change to cache in turn, so if resource
+// is not in cache, it's not in APISIX either.
+func (s *serviceClient) Get(_ context.Context, fullname string) (*v1.Service, error) {
+	return s.cluster.cache.GetService(fullname)
+}
+
 // List is only used in cache warming up. So here just pass through
 // to APISIX.
 func (s *serviceClient) List(ctx context.Context) ([]*v1.Service, error) {
@@ -104,6 +111,7 @@ func (s *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Servic
 	}
 	if err := s.cluster.cache.InsertService(svc); err != nil {
 		log.Errorf("failed to reflect service create to cache: %s", err)
+		return nil, err
 	}
 	return svc, nil
 }

@@ -58,17 +58,17 @@ type ClusterOptions struct {
 }
 
 type cluster struct {
-	name       string
-	baseURL    string
-	adminKey   string
-	cli        *http.Client
-	cache      cache.Cache
-	cacheReady chan error
-
-	route    Route
-	upstream Upstream
-	service  Service
-	ssl      SSL
+	name              string
+	baseURL           string
+	adminKey          string
+	cli               *http.Client
+	cache             cache.Cache
+	cacheReady        chan struct{}
+	cacheWarmingUpErr error
+	route             Route
+	upstream          Upstream
+	service           Service
+	ssl               SSL
 }
 
 func newCluster(o *ClusterOptions) (Cluster, error) {
@@ -92,7 +92,7 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 			},
 		},
 		cache:      nil,
-		cacheReady: make(chan error, 1),
+		cacheReady: make(chan struct{}),
 	}
 	c.route = newRouteClient(c)
 	c.upstream = newUpstreamClient(c)
@@ -117,7 +117,11 @@ func (c *cluster) warmingUp() {
 		Factor:   2,
 		Steps:    6,
 	}
-	c.cacheReady <- wait.ExponentialBackoff(backoff, c.warmingUpOnce)
+	err := wait.ExponentialBackoff(backoff, c.warmingUpOnce)
+	if err != nil {
+		c.cacheWarmingUpErr = err
+	}
+	close(c.cacheReady)
 }
 
 func (c *cluster) warmingUpOnce() (bool, error) {
@@ -198,11 +202,15 @@ func (c *cluster) String() string {
 
 // Ready implements Cluster.Ready method.
 func (c *cluster) Ready(ctx context.Context) error {
+	if c.cacheWarmingUpErr != nil {
+		return c.cacheWarmingUpErr
+	}
 	select {
 	case <-ctx.Done():
+		log.Errorf("failed to wait cluster to ready: %s", ctx.Err())
 		return ctx.Err()
-	case err := <-c.cacheReady:
-		return err
+	case <-c.cacheReady:
+		return nil
 	}
 }
 
