@@ -22,6 +22,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/api7/ingress-controller/pkg/apisix/cache"
 	"github.com/api7/ingress-controller/pkg/log"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
@@ -81,8 +82,48 @@ func newUpstreamClient(c *cluster) Upstream {
 	}
 }
 
+func (u *upstreamClient) Get(ctx context.Context, fullname string) (*v1.Upstream, error) {
+	log.Infow("try to look up upstream",
+		zap.String("fullname", fullname),
+		zap.String("url", u.url),
+		zap.String("cluster", u.clusterName),
+	)
+	ups, err := u.cluster.cache.GetUpstream(fullname)
+	if err == nil {
+		return ups, nil
+	}
+	if err != cache.ErrNotFound {
+		log.Errorw("failed to find upstream in cache, will try to lookup from APISIX",
+			zap.String("fullname", fullname),
+			zap.Error(err),
+		)
+	} else {
+		log.Warnw("failed to find upstream in cache, will try to lookup from APISIX",
+			zap.String("fullname", fullname),
+			zap.Error(err),
+		)
+	}
+
+	// FIXME Replace the List with accurate get since list is not trivial.
+	list, err := u.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, elem := range list {
+		if *elem.FullName == fullname {
+			return elem, nil
+		}
+	}
+	return nil, cache.ErrNotFound
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
 func (u *upstreamClient) List(ctx context.Context) ([]*v1.Upstream, error) {
-	log.Infow("try to list upstreams in APISIX", zap.String("url", u.url))
+	log.Infow("try to list upstreams in APISIX",
+		zap.String("url", u.url),
+		zap.String("cluster", u.clusterName),
+	)
 
 	upsItems, err := u.cluster.listResource(ctx, u.url)
 	if err != nil {
@@ -102,15 +143,21 @@ func (u *upstreamClient) List(ctx context.Context) ([]*v1.Upstream, error) {
 			return nil, err
 		}
 		items = append(items, ups)
-		log.Infof("list upstream #%d, body: %s", i, string(item.Value))
+		log.Debugf("list upstream #%d, body: %s", i, string(item.Value))
 	}
 	return items, nil
 }
 
 func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upstream, error) {
 	log.Infow("try to create upstream",
-		zap.String("full_name", *obj.FullName),
+		zap.String("fullname", *obj.FullName),
+		zap.String("url", u.url),
+		zap.String("cluster", u.clusterName),
 	)
+
+	if err := u.cluster.HasSynced(ctx); err != nil {
+		return nil, err
+	}
 
 	nodes := make(upstreamNodes, 0, len(obj.Nodes))
 	for _, node := range obj.Nodes {
@@ -141,17 +188,50 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	if obj.Group != nil {
 		clusterName = *obj.Group
 	}
-	return resp.Item.upstream(clusterName)
+	ups, err := resp.Item.upstream(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	if err := u.cluster.cache.InsertUpstream(ups); err != nil {
+		log.Errorf("failed to reflect upstream create to cache: %s", err)
+		return nil, err
+	}
+	return ups, err
 }
 
 func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
-	log.Infof("delete upstream, id:%s", *obj.ID)
+	log.Infow("try to delete upstream",
+		zap.String("id", *obj.ID),
+		zap.String("fullname", *obj.FullName),
+		zap.String("cluster", u.clusterName),
+		zap.String("url", u.url),
+	)
+
+	if err := u.cluster.HasSynced(ctx); err != nil {
+		return err
+	}
 	url := u.url + "/" + *obj.ID
-	return u.cluster.deleteResource(ctx, url)
+	if err := u.cluster.deleteResource(ctx, url); err != nil {
+		return err
+	}
+	if err := u.cluster.cache.DeleteUpstream(obj); err != nil {
+		log.Errorf("failed to reflect upstream delete to cache: %s", err.Error())
+		return err
+	}
+	return nil
 }
 
 func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upstream, error) {
-	log.Infof("update upstream, id:%s", *obj.ID)
+	log.Infow("try to update upstream",
+		zap.String("id", *obj.ID),
+		zap.String("fullname", *obj.FullName),
+		zap.String("cluster", u.clusterName),
+		zap.String("url", u.url),
+	)
+
+	if err := u.cluster.HasSynced(ctx); err != nil {
+		return nil, err
+	}
 
 	nodes := make(upstreamNodes, 0, len(obj.Nodes))
 	for _, node := range obj.Nodes {
@@ -173,7 +253,7 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	}
 
 	url := u.url + "/" + *obj.ID
-	log.Infow("upating upstream", zap.ByteString("body", body), zap.String("url", url))
+	log.Infow("updating upstream", zap.ByteString("body", body), zap.String("url", url))
 	resp, err := u.cluster.updateResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -182,5 +262,13 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	if obj.Group != nil {
 		clusterName = *obj.Group
 	}
-	return resp.Item.upstream(clusterName)
+	ups, err := resp.Item.upstream(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	if err := u.cluster.cache.InsertUpstream(ups); err != nil {
+		log.Errorf("failed to reflect upstraem update to cache: %s", err)
+		return nil, err
+	}
+	return ups, err
 }

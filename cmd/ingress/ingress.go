@@ -109,7 +109,7 @@ the apisix cluster and others are created`,
 			}
 			go func() {
 				if err := ingress.Run(stop); err != nil {
-					dief("failed to launch ingress controller: %s", err)
+					dief("failed to run ingress controller: %s", err)
 				}
 			}()
 

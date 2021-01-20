@@ -192,7 +192,11 @@ func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 		Host:   host,
 		Path:   "/apisix/admin",
 	}
-	cli, err := apisix.NewForOptions(&apisix.ClusterOptions{
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(&apisix.ClusterOptions{
 		BaseURL: u.String(),
 	})
 	if err != nil {

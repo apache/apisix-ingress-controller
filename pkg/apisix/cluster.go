@@ -27,7 +27,9 @@ import (
 
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/util/wait"
 
+	"github.com/api7/ingress-controller/pkg/apisix/cache"
 	"github.com/api7/ingress-controller/pkg/log"
 )
 
@@ -54,15 +56,17 @@ type ClusterOptions struct {
 }
 
 type cluster struct {
-	name     string
-	baseURL  string
-	adminKey string
-	cli      *http.Client
-
-	route    Route
-	upstream Upstream
-	service  Service
-	ssl      SSL
+	name         string
+	baseURL      string
+	adminKey     string
+	cli          *http.Client
+	cache        cache.Cache
+	cacheSynced  chan struct{}
+	cacheSyncErr error
+	route        Route
+	upstream     Upstream
+	service      Service
+	ssl          SSL
 }
 
 func newCluster(o *ClusterOptions) (Cluster, error) {
@@ -85,18 +89,139 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 				ExpectContinueTimeout: o.Timeout,
 			},
 		},
+		cache:       nil,
+		cacheSynced: make(chan struct{}),
 	}
 	c.route = newRouteClient(c)
 	c.upstream = newUpstreamClient(c)
 	c.service = newServiceClient(c)
 	c.ssl = newSSLClient(c)
 
+	go c.syncCache()
+
 	return c, nil
 }
 
-// String exposes the client information in human readable format.
+func (c *cluster) syncCache() {
+	log.Infow("syncing cache", zap.String("cluster", c.name))
+	now := time.Now()
+	defer func() {
+		if c.cacheSyncErr == nil {
+			log.Infow("cache synced",
+				zap.String("cost_time", time.Now().Sub(now).String()),
+				zap.String("cluster", c.name),
+			)
+		} else {
+			log.Errorw("failed to sync cache",
+				zap.String("cost_time", time.Now().Sub(now).String()),
+				zap.String("cluster", c.name),
+			)
+		}
+	}()
+
+	backoff := wait.Backoff{
+		Duration: time.Second,
+		Factor:   2,
+		Steps:    6,
+	}
+	err := wait.ExponentialBackoff(backoff, c.syncCacheOnce)
+	if err != nil {
+		c.cacheSyncErr = err
+	}
+	close(c.cacheSynced)
+}
+
+func (c *cluster) syncCacheOnce() (bool, error) {
+	dbcache, err := cache.NewMemDBCache()
+	if err != nil {
+		return false, err
+	}
+	c.cache = dbcache
+
+	routes, err := c.route.List(context.TODO())
+	if err != nil {
+		log.Errorf("failed to list route in APISIX: %s", err)
+		return false, err
+	}
+	services, err := c.service.List(context.TODO())
+	if err != nil {
+		log.Errorf("failed to list services in APISIX: %s", err)
+		return false, err
+	}
+	upstreams, err := c.upstream.List(context.TODO())
+	if err != nil {
+		log.Errorf("failed to list upstreams in APISIX: %s", err)
+		return false, err
+	}
+	ssl, err := c.ssl.List(context.TODO())
+	if err != nil {
+		log.Errorf("failed to list ssl in APISIX: %s", err)
+		return false, err
+	}
+
+	for _, r := range routes {
+		if err := c.cache.InsertRoute(r); err != nil {
+			log.Errorw("failed to insert route to cache",
+				zap.String("route", *r.ID),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
+			return false, err
+		}
+	}
+	for _, s := range services {
+		if err := c.cache.InsertService(s); err != nil {
+			log.Errorw("failed to insert service to cache",
+				zap.String("service", *s.ID),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
+			return false, err
+		}
+	}
+	for _, u := range upstreams {
+		if err := c.cache.InsertUpstream(u); err != nil {
+			log.Errorw("failed to insert upstream to cache",
+				zap.String("upstream", *u.ID),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
+			return false, err
+		}
+	}
+	for _, s := range ssl {
+		if err := c.cache.InsertSSL(s); err != nil {
+			log.Errorw("failed to insert ssl to cache",
+				zap.String("ssl", *s.ID),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
+			return false, err
+		}
+	}
+	return true, nil
+}
+
+// String implements Cluster.String method.
 func (c *cluster) String() string {
 	return fmt.Sprintf("name=%s; base_url=%s", c.name, c.baseURL)
+}
+
+// HasSynced implements Cluster.HasSynced method.
+func (c *cluster) HasSynced(ctx context.Context) error {
+	if c.cacheSyncErr != nil {
+		return c.cacheSyncErr
+	}
+	now := time.Now()
+	log.Warnf("waiting cluster %s to ready, it may takes a while", c.name)
+	select {
+	case <-ctx.Done():
+		log.Errorf("failed to wait cluster to ready: %s", ctx.Err())
+		return ctx.Err()
+	case <-c.cacheSynced:
+		log.Warnf("cluster %s now is ready, cost time %s", c.name, time.Now().Sub(now).String())
+		return nil
+	}
 }
 
 // Route implements Cluster.Route method.

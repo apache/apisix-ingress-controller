@@ -20,9 +20,7 @@ import (
 	"sync"
 
 	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	"github.com/api7/ingress-controller/pkg/seven/conf"
-	"github.com/api7/ingress-controller/pkg/seven/db"
 	"github.com/api7/ingress-controller/pkg/seven/utils"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
@@ -89,7 +87,11 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 
 	op := Update
 	// padding
-	currentService, _ := apisix.FindCurrentService(*svc.Group, *svc.Name, *svc.FullName)
+	var cluster string
+	if svc.Group != nil {
+		cluster = *svc.Group
+	}
+	currentService, _ := conf.Client.Cluster(cluster).Service().Get(context.TODO(), *svc.FullName)
 	paddingService(svc, currentService)
 	// diff
 	hasDiff, err := utils.HasDiff(svc, currentService)
@@ -98,26 +100,15 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 		errNotify = err
 		return
 	}
-	var cluster string
-	if svc.Group != nil {
-		cluster = *svc.Group
-	}
 	if hasDiff {
 		if *svc.ID == strconv.Itoa(0) {
 			op = Create
-			// 1. sync apisix and get id
 			if s, err := conf.Client.Cluster(cluster).Service().Create(context.TODO(), svc); err != nil {
 				log.Errorf("failed to create service: %s", err)
 				errNotify = err
 				return
 			} else {
 				*svc.ID = *s.ID
-			}
-			// 2. sync memDB
-			db := &db.ServiceDB{Services: []*v1.Service{svc}}
-			if err := db.Insert(); err != nil {
-				errNotify = err
-				return
 			}
 			log.Infof("create service %s, %s", *svc.Name, *svc.UpstreamId)
 		} else {
@@ -131,14 +122,6 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 				}
 			}
 			if needToUpdate {
-				// 1. sync memDB
-				db := db.ServiceDB{Services: []*v1.Service{svc}}
-				if err := db.UpdateService(); err != nil {
-					log.Errorf("failed to update service to mem db: %s", err)
-					errNotify = err
-					return
-				}
-				// 2. sync apisix
 				if _, err := conf.Client.Cluster(cluster).Service().Update(context.TODO(), svc); err != nil {
 					errNotify = err
 					log.Errorf("failed to update service: %s, id:%s", err, *svc.ID)

@@ -20,12 +20,9 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/golang/glog"
-
+	"github.com/api7/ingress-controller/pkg/apisix/cache"
 	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/api7/ingress-controller/pkg/seven/apisix"
 	"github.com/api7/ingress-controller/pkg/seven/conf"
-	"github.com/api7/ingress-controller/pkg/seven/db"
 	"github.com/api7/ingress-controller/pkg/seven/utils"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
@@ -115,8 +112,12 @@ func (r *routeWorker) trigger(event Event) {
 	log.Infof("trigger routeWorker %s from %s, %s", *r.Name, event.Op, *service.Name)
 
 	// padding
-	currentRoute, err := apisix.FindCurrentRoute(r.Route)
-	if err != nil && !errors.Is(err, utils.ErrNotFound) {
+	var cluster string
+	if r.Route.Group != nil {
+		cluster = *r.Route.Group
+	}
+	currentRoute, err := conf.Client.Cluster(cluster).Route().Get(context.TODO(), *r.Route.FullName)
+	if err != nil && !errors.Is(err, cache.ErrNotFound) {
 		errNotify = err
 		return
 	}
@@ -144,31 +145,18 @@ func (r *routeWorker) sync() error {
 		cluster = *r.Group
 	}
 	if *r.Route.ID != strconv.Itoa(0) {
-		// 1. sync memDB
-		db := &db.RouteDB{Routes: []*v1.Route{r.Route}}
-		if err := db.UpdateRoute(); err != nil {
-			log.Errorf("update route failed, route: %#v, err: %+v", r.Route, err)
-			return err
-		}
-		// 2. sync apisix
 		if _, err := conf.Client.Cluster(cluster).Route().Update(context.TODO(), r.Route); err != nil {
 			log.Errorf("failed to update route %s: %s, ", *r.Name, err)
 			return err
 		}
 		log.Infof("update route %s, %s", *r.Name, *r.ServiceId)
 	} else {
-		// 1. sync apisix and get id
 		route, err := conf.Client.Cluster(cluster).Route().Create(context.TODO(), r.Route)
 		if err != nil {
 			log.Errorf("failed to create route: %s", err.Error())
 			return err
 		}
 		*r.ID = *route.ID
-	}
-	// 2. sync memDB
-	db := &db.RouteDB{Routes: []*v1.Route{r.Route}}
-	if err := db.Insert(); err != nil {
-		return err
 	}
 	log.Infof("create route %s, %s", *r.Name, *r.ServiceId)
 	return nil
@@ -195,28 +183,45 @@ func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup, wg *sync.W
 }
 
 func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitGroup, errorChan chan CRDStatus) {
-	var errNotify error
+	var (
+		op        string
+		errNotify error
+	)
 	defer func() {
 		if errNotify != nil {
 			errorChan <- CRDStatus{Id: "", Status: "failure", Err: errNotify}
 		}
 		wg.Done()
 	}()
-	op := Update
-	if currentUpstream, err := apisix.FindCurrentUpstream(*u.Group, *u.Name, *u.FullName); err != nil {
-		log.Errorf("solver upstream failed, find upstream from APISIX failed, upstream: %+v, err: %+v", u, err)
+	var cluster string
+	if u.Group != nil {
+		cluster = *u.Group
+	}
+	if currentUpstream, err := conf.Client.Cluster(cluster).Upstream().Get(context.TODO(), *u.FullName); err != nil && err != cache.ErrNotFound {
+		log.Errorf("failed to find upstream %s: %s", *u.FullName, err)
 		errNotify = err
 		return
 	} else {
 		paddingUpstream(u, currentUpstream)
-		// diff
-		hasDiff, err := utils.HasDiff(u, currentUpstream)
-		if err != nil {
-			errNotify = err
-			return
-		}
-		if hasDiff {
-			if *u.ID != strconv.Itoa(0) {
+		if currentUpstream == nil {
+			if u.FromKind != nil && *u.FromKind == WatchFromKind {
+				// We don't have a pre-defined upstream and the current upstream updating from
+				// endpoints.
+				return
+			}
+			op = Create
+			if _, err := conf.Client.Cluster(cluster).Upstream().Create(context.TODO(), u); err != nil {
+				log.Errorf("failed to create upstream %s: %s", *u.FullName, err)
+				return
+			}
+		} else {
+			// diff
+			hasDiff, err := utils.HasDiff(u, currentUpstream)
+			if err != nil {
+				errNotify = err
+				return
+			}
+			if hasDiff {
 				op = Update
 				// 0.field check
 				needToUpdate := true
@@ -227,64 +232,17 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 						needToUpdate = false
 					}
 				}
-				if needToUpdate {
-					// 1.sync memDB
-					upstreamDB := &db.UpstreamDB{Upstreams: []*v1.Upstream{u}}
-					if err := upstreamDB.UpdateUpstreams(); err != nil {
-						log.Errorf("solver upstream failed, update upstream to local db failed, err: %s", err.Error())
-						errNotify = err
-						return
-					}
-
-					// 2.sync apisix
-					var cluster string
-					if u.Group != nil {
-						cluster = *u.Group
-					}
-					if _, err = conf.Client.Cluster(cluster).Upstream().Update(context.TODO(), u); err != nil {
-						glog.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
-						return
-					}
-				}
-				// if fromKind == WatchFromKind
-				if u.FromKind != nil && *u.FromKind == WatchFromKind {
-					// 1.update nodes
-					if err = apisix.PatchNodes(u, u.Nodes); err != nil {
-						log.Errorf("solver upstream failed, patch node info to etcd failed, err: %+v", err)
-						errNotify = err
-						return
-					}
-					// 2. sync memDB
-					us := []*v1.Upstream{u}
-					if !needToUpdate {
+				if needToUpdate || (u.FromKind != nil && *u.FromKind == WatchFromKind) {
+					if u.FromKind != nil && *u.FromKind == WatchFromKind {
 						currentUpstream.Nodes = u.Nodes
-						us = []*v1.Upstream{currentUpstream}
+					} else { // due to CRD update
+						currentUpstream = u
 					}
-					upstreamDB := &db.UpstreamDB{Upstreams: us}
-					if err := upstreamDB.UpdateUpstreams(); err != nil {
-						log.Errorf("solver upstream failed, update upstream to local db failed, err: %s", err.Error())
-						errNotify = err
+					if _, err = conf.Client.Cluster(cluster).Upstream().Update(context.TODO(), currentUpstream); err != nil {
+						log.Errorf("failed to update upstream %s: %s", *u.FullName, err)
 						return
 					}
 				}
-			} else {
-				op = Create
-				// 1.sync apisix and get response
-				var cluster string
-				if u.Group != nil {
-					cluster = *u.Group
-				}
-				ups, err := conf.Client.Cluster(cluster).Upstream().Create(context.TODO(), u)
-				if err != nil {
-					log.Errorf("failed to create upstream: %s", err)
-					return
-				}
-
-				*u.ID = *ups.ID
-				// 2.sync memDB
-				//apisix.InsertUpstreams([]*v1.Upstream{u})
-				upstreamDB := &db.UpstreamDB{Upstreams: []*v1.Upstream{u}}
-				upstreamDB.InsertUpstreams()
 			}
 		}
 	}

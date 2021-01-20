@@ -17,14 +17,14 @@ package state
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
+	"go.uber.org/multierr"
+
+	"github.com/api7/ingress-controller/pkg/apisix/cache"
 	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/api7/ingress-controller/pkg/seven/conf"
-	"github.com/api7/ingress-controller/pkg/seven/db"
-	"github.com/api7/ingress-controller/pkg/seven/utils"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -57,92 +57,58 @@ func (s *ApisixCombination) Solver() (string, error) {
 func (s *ApisixCombination) Remove() error {
 	// services
 	for _, svc := range s.Services {
-		if err := RemoveService(svc); err != nil {
-			return err
+		var cluster string
+		if svc.Group != nil {
+			cluster = *svc.Group
+		}
+		svcInCache, err := conf.Client.Cluster(cluster).Service().Get(context.TODO(), *svc.FullName)
+		if err != nil {
+			if err == cache.ErrNotFound {
+				log.Errorf("failed to remove service %s: %s", *svc.FullName, err)
+				continue
+			} else {
+				return err
+			}
+		}
+		paddingService(svc, svcInCache)
+		err = conf.Client.Cluster(cluster).Service().Delete(context.TODO(), svc)
+		if err != nil {
+			if err == cache.ErrNotFound {
+				log.Errorf("failed to remove service %s: %s", *svc.FullName, err)
+			} else if err == cache.ErrStillInUse {
+				log.Warnf("failed to remove service %s: %s", *svc.FullName, err)
+			} else {
+				return err
+			}
 		}
 	}
 
 	// upstreams
-	for _, up := range s.Upstreams {
-		if err := RemoveUpstream(up); err != nil {
+	for _, ups := range s.Upstreams {
+		var cluster string
+		if ups.Group != nil {
+			cluster = *ups.Group
+		}
+		upsInCache, err := conf.Client.Cluster(cluster).Upstream().Get(context.TODO(), *ups.FullName)
+		if err != nil {
+			if err == cache.ErrNotFound {
+				log.Errorf("failed to remove service %s: %s", *ups.FullName, err)
+				continue
+			} else {
+				return err
+			}
+		}
+		paddingUpstream(ups, upsInCache)
+		err = conf.Client.Cluster(cluster).Upstream().Delete(context.TODO(), ups)
+		if err == cache.ErrNotFound {
+			log.Errorf("failed to remove upstream %s: %s", *ups.FullName, err)
+		} else if err == cache.ErrStillInUse {
+			log.Warnf("failed to remove upstream %s: %s", *ups.FullName, err)
+		} else {
 			return err
 		}
 	}
 	return nil
-}
-
-func RemoveService(svc *v1.Service) error {
-	// find svc ID
-	serviceRequest := db.ServiceRequest{FullName: *svc.FullName}
-	if service, err := serviceRequest.FindByName(); err != nil {
-		// if not found, keep going on.
-		if errors.Is(err, utils.ErrNotFound) {
-			return nil
-		}
-		return err
-	} else {
-		svc.ID = service.ID
-	}
-	// find ref route
-	routeRequest := db.RouteRequest{ServiceId: *svc.ID}
-	if route, err := routeRequest.ExistByServiceId(); err != nil {
-		if !errors.Is(err, utils.ErrNotFound) {
-			// except ErrNotFound, need to retry
-			return err
-		} else {
-			// do delete svc
-			var cluster string
-			if svc.Group != nil {
-				cluster = *svc.Group
-			}
-			if err := conf.Client.Cluster(cluster).Service().Delete(context.TODO(), svc); err != nil {
-				log.Errorf("failed to delete svc %s from APISIX: %s", *svc.FullName, err)
-				return err
-			} else {
-				db := db.ServiceDB{Services: []*v1.Service{svc}}
-				db.DeleteService()
-				return nil
-			}
-		}
-	} else {
-		return fmt.Errorf("svc %s is still referenced by route %s", *svc.FullName, *route.FullName)
-	}
-}
-
-func RemoveUpstream(up *v1.Upstream) error {
-	upstreamRequest := db.UpstreamRequest{FullName: *up.FullName}
-	if upstream, err := upstreamRequest.FindByName(); err != nil {
-		// if not found, keep going on.
-		if errors.Is(err, utils.ErrNotFound) {
-			return nil
-		}
-		return err
-	} else {
-		up.ID = upstream.ID
-	}
-	serviceRequest := db.ServiceRequest{UpstreamId: *up.ID}
-	if svc, err := serviceRequest.ExistByUpstreamId(); err != nil {
-		if !errors.Is(err, utils.ErrNotFound) {
-			// except ErrNotFound, need to retry
-			return err
-		} else {
-			// do delete upstream
-			var cluster string
-			if up.Group != nil {
-				cluster = *up.Group
-			}
-			if err := conf.Client.Cluster(cluster).Upstream().Delete(context.TODO(), up); err != nil {
-				log.Errorf("failed to delete upstream %s from APISIX: %s", *up.FullName, err)
-				return err
-			} else {
-				db := db.UpstreamDB{Upstreams: []*v1.Upstream{up}}
-				db.DeleteUpstream()
-				return nil
-			}
-		}
-	} else {
-		return fmt.Errorf("upstream %s is still referenced by service %s", *up.FullName, *svc.FullName)
-	}
 }
 
 func waitTimeout(ctx context.Context, wg *sync.WaitGroup, resultChan chan CRDStatus) {
@@ -213,6 +179,7 @@ type ServiceQueueObj struct {
 
 // Sync remove from apisix
 func (rc *RouteCompare) Sync() error {
+	var merr error
 	for _, old := range rc.OldRoutes {
 		needToDel := true
 		for _, nr := range rc.NewRoutes {
@@ -222,29 +189,28 @@ func (rc *RouteCompare) Sync() error {
 			}
 		}
 		if needToDel {
-			fullName := *old.Name
-			if *old.Group != "" {
-				fullName = *old.Group + "_" + *old.Name
+			var cluster string
+			if old.Group != nil {
+				cluster = *old.Group
 			}
-			request := db.RouteRequest{Name: *old.Name, FullName: fullName}
 
-			if route, err := request.FindByName(); err != nil {
-				log.Errorf("failed to find route %s from memory DB: %s", *old.Name, err)
-			} else {
-				var cluster string
-				if route.Group != nil {
-					cluster = *route.Group
+			// old should inject the ID.
+			route, err := conf.Client.Cluster(cluster).Route().Get(context.TODO(), *old.FullName)
+			if err != nil {
+				if err != cache.ErrNotFound {
+					merr = multierr.Append(merr, err)
 				}
-				if err := conf.Client.Cluster(cluster).Route().Delete(context.TODO(), route); err != nil {
-					log.Errorf("failed to delete route %s from APISIX: %s", *route.Name, err)
-				} else {
-					db := db.RouteDB{Routes: []*v1.Route{route}}
-					db.DeleteRoute()
-				}
+				continue
+			}
+
+			paddingRoute(old, route)
+			if err := conf.Client.Cluster(cluster).Route().Delete(context.TODO(), old); err != nil {
+				log.Errorf("failed to delete route %s from APISIX: %s", *old.Name, err)
+				merr = multierr.Append(merr, err)
 			}
 		}
 	}
-	return nil
+	return merr
 }
 
 func SyncSsl(ssl *v1.Ssl, method string) error {
@@ -257,9 +223,11 @@ func SyncSsl(ssl *v1.Ssl, method string) error {
 		_, err := conf.Client.Cluster(cluster).SSL().Create(context.TODO(), ssl)
 		return err
 	case Update:
+		// FIXME we don't know the full name of SSL.
 		_, err := conf.Client.Cluster(cluster).SSL().Update(context.TODO(), ssl)
 		return err
 	case Delete:
+		// FIXME we don't know the full name of SSL.
 		return conf.Client.Cluster(cluster).SSL().Delete(context.TODO(), ssl)
 	}
 	return nil

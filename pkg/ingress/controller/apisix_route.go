@@ -213,7 +213,8 @@ func (c *ApisixRouteController) add(key string) error {
 			log.Infof("apisixRoute %s is removed", key)
 			return nil
 		}
-		runtime.HandleError(fmt.Errorf("failed to list apisixRoute %s/%s", key, err.Error()))
+		log.Errorf("failed to list ApisixRoute %s: %s", key, err.Error())
+		runtime.HandleError(fmt.Errorf("failed to list ApisixRoute %s: %s", key, err.Error()))
 		return err
 	}
 	apisixRoute := apisix.ApisixRoute(*apisixIngressRoute)

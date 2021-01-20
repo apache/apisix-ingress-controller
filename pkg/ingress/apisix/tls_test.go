@@ -163,7 +163,9 @@ func (sc *SecretClientErrorMock) FindByName(namespace, name string) (*v1.Secret,
 }
 
 func setDummyApisixClient(t *testing.T) {
-	cli, err := apisixhttp.NewForOptions(&apisixhttp.ClusterOptions{
+	cli, err := apisixhttp.NewClient()
+	assert.Nil(t, err)
+	err = cli.AddCluster(&apisixhttp.ClusterOptions{
 		Name:    "",
 		BaseURL: "http://127.0.0.2:9080/apisix/admin",
 	})

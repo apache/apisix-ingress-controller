@@ -18,6 +18,7 @@ package apisix
 import (
 	"context"
 
+	"github.com/api7/ingress-controller/pkg/apisix/cache"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -45,6 +46,10 @@ type embedDummyResourceImplementer struct {
 
 type dummyRoute struct{}
 
+func (f *dummyRoute) Get(_ context.Context, _ string) (*v1.Route, error) {
+	return nil, ErrClusterNotExist
+}
+
 func (f *dummyRoute) List(_ context.Context) ([]*v1.Route, error) {
 	return nil, ErrClusterNotExist
 }
@@ -62,6 +67,10 @@ func (f *dummyRoute) Update(_ context.Context, _ *v1.Route) (*v1.Route, error) {
 }
 
 type dummySSL struct{}
+
+func (f *dummySSL) Get(_ context.Context, _ string) (*v1.Ssl, error) {
+	return nil, ErrClusterNotExist
+}
 
 func (f *dummySSL) List(_ context.Context) ([]*v1.Ssl, error) {
 	return nil, ErrClusterNotExist
@@ -81,6 +90,10 @@ func (f *dummySSL) Update(_ context.Context, _ *v1.Ssl) (*v1.Ssl, error) {
 
 type dummyUpstream struct{}
 
+func (f *dummyUpstream) Get(_ context.Context, _ string) (*v1.Upstream, error) {
+	return nil, ErrClusterNotExist
+}
+
 func (f *dummyUpstream) List(_ context.Context) ([]*v1.Upstream, error) {
 	return nil, ErrClusterNotExist
 }
@@ -98,6 +111,10 @@ func (f *dummyUpstream) Update(_ context.Context, _ *v1.Upstream) (*v1.Upstream,
 }
 
 type dummyService struct{}
+
+func (f *dummyService) Get(_ context.Context, _ string) (*v1.Service, error) {
+	return nil, ErrClusterNotExist
+}
 
 func (f *dummyService) List(_ context.Context) ([]*v1.Service, error) {
 	return nil, ErrClusterNotExist
@@ -130,3 +147,32 @@ func (nc *nonExistentCluster) Service() Service {
 func (nc *nonExistentCluster) Upstream() Upstream {
 	return nc.upstream
 }
+
+func (nc *nonExistentCluster) HasSynced(_ context.Context) error {
+	return nil
+}
+
+func (nc *nonExistentCluster) String() string {
+	return "non-existent cluster"
+}
+
+type dummyCache struct{}
+
+var _ cache.Cache = &dummyCache{}
+
+func (c *dummyCache) InsertRoute(_ *v1.Route) error              { return nil }
+func (c *dummyCache) InsertService(_ *v1.Service) error          { return nil }
+func (c *dummyCache) InsertSSL(_ *v1.Ssl) error                  { return nil }
+func (c *dummyCache) InsertUpstream(_ *v1.Upstream) error        { return nil }
+func (c *dummyCache) GetRoute(_ string) (*v1.Route, error)       { return nil, cache.ErrNotFound }
+func (c *dummyCache) GetService(_ string) (*v1.Service, error)   { return nil, cache.ErrNotFound }
+func (c *dummyCache) GetSSL(_ string) (*v1.Ssl, error)           { return nil, cache.ErrNotFound }
+func (c *dummyCache) GetUpstream(_ string) (*v1.Upstream, error) { return nil, cache.ErrNotFound }
+func (c *dummyCache) ListRoutes() ([]*v1.Route, error)           { return nil, nil }
+func (c *dummyCache) ListServices() ([]*v1.Service, error)       { return nil, nil }
+func (c *dummyCache) ListSSL() ([]*v1.Ssl, error)                { return nil, nil }
+func (c *dummyCache) ListUpstreams() ([]*v1.Upstream, error)     { return nil, nil }
+func (c *dummyCache) DeleteRoute(_ *v1.Route) error              { return nil }
+func (c *dummyCache) DeleteService(_ *v1.Service) error          { return nil }
+func (c *dummyCache) DeleteSSL(_ *v1.Ssl) error                  { return nil }
+func (c *dummyCache) DeleteUpstream(_ *v1.Upstream) error        { return nil }

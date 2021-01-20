@@ -171,9 +171,13 @@ func TestRouteClient(t *testing.T) {
 		Path:   "/apisix/admin",
 	}
 
+	closedCh := make(chan struct{})
+	close(closedCh)
 	cli := newRouteClient(&cluster{
-		baseURL: u.String(),
-		cli:     http.DefaultClient,
+		baseURL:     u.String(),
+		cli:         http.DefaultClient,
+		cache:       &dummyCache{},
+		cacheSynced: closedCh,
 	})
 
 	// Create
@@ -185,6 +189,7 @@ func TestRouteClient(t *testing.T) {
 		Host:       &host,
 		Path:       &uri,
 		Name:       &name,
+		FullName:   &name,
 		ServiceId:  &id,
 		UpstreamId: &id,
 	})
@@ -195,6 +200,7 @@ func TestRouteClient(t *testing.T) {
 		Host:       &host,
 		Path:       &uri,
 		Name:       &name,
+		FullName:   &name,
 		ServiceId:  &id,
 		UpstreamId: &id,
 	})
@@ -223,6 +229,7 @@ func TestRouteClient(t *testing.T) {
 		Host:       &host,
 		Path:       &uri,
 		Name:       &name,
+		FullName:   &name,
 		ServiceId:  &id,
 		UpstreamId: &id,
 	})
