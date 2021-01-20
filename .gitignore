@@ -10,7 +10,11 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+release
 
 .idea
 .DS_Store
+coverage.txt
+test/e2e/coverage.txt
 apisix-ingress-controller
+.actions/openwhisk-utilities

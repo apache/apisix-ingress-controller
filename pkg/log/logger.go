@@ -242,7 +242,7 @@ func NewLogger(opts ...Option) (*Logger, error) {
 		} else if o.outputFile == "stderr" {
 			writer = os.Stderr
 		} else {
-			file, err := os.OpenFile(o.outputFile, os.O_WRONLY|os.O_APPEND, 0644)
+			file, err := os.OpenFile(o.outputFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 			if err != nil {
 				return nil, err
 			}

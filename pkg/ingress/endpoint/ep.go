@@ -15,9 +15,10 @@
 package endpoint
 
 import (
-	"github.com/api7/ingress-controller/conf"
 	"github.com/golang/glog"
-	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
+
+	"github.com/api7/ingress-controller/pkg/kube"
+	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 type Endpoint interface {
@@ -28,7 +29,7 @@ type EndpointRequest struct{}
 
 func (epr *EndpointRequest) BuildEps(ns, name string, port int) []*v1.Node {
 	nodes := make([]*v1.Node, 0)
-	epInformers := conf.EndpointsInformer
+	epInformers := kube.EndpointsInformer
 	if ep, err := epInformers.Lister().Endpoints(ns).Get(name); err != nil {
 		glog.Errorf("find endpoint %s/%s err: %s", ns, name, err.Error())
 	} else {
@@ -47,7 +48,7 @@ func (epr *EndpointRequest) BuildEps(ns, name string, port int) []*v1.Node {
 // BuildEps build nodes from endpoints for upstream
 func BuildEps(ns, name string, port int) []*v1.Node {
 	nodes := make([]*v1.Node, 0)
-	epInformers := conf.EndpointsInformer
+	epInformers := kube.EndpointsInformer
 	if ep, err := epInformers.Lister().Endpoints(ns).Get(name); err != nil {
 		glog.Errorf("find endpoint %s/%s err: %s", ns, name, err.Error())
 	} else {

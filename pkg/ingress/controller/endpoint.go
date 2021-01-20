@@ -15,13 +15,12 @@
 package controller
 
 import (
+	"context"
 	"fmt"
-	"github.com/api7/ingress-controller/conf"
+	"strconv"
+	"time"
+
 	"github.com/golang/glog"
-	apisixType "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"github.com/gxthrj/seven/apisix"
-	sevenConf "github.com/gxthrj/seven/conf"
-	"github.com/gxthrj/seven/state"
 	CoreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -30,25 +29,31 @@ import (
 	CoreListerV1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"strconv"
-	"time"
+
+	"github.com/api7/ingress-controller/pkg/kube"
+	"github.com/api7/ingress-controller/pkg/log"
+	sevenConf "github.com/api7/ingress-controller/pkg/seven/conf"
+	"github.com/api7/ingress-controller/pkg/seven/state"
+	apisixv1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 type EndpointController struct {
+	controller     *Controller
 	kubeclientset  kubernetes.Interface
 	endpointList   CoreListerV1.EndpointsLister
 	endpointSynced cache.InformerSynced
 	workqueue      workqueue.RateLimitingInterface
 }
 
-func BuildEndpointController(kubeclientset kubernetes.Interface) *EndpointController {
+func BuildEndpointController(kubeclientset kubernetes.Interface, root *Controller) *EndpointController {
 	controller := &EndpointController{
+		controller:     root,
 		kubeclientset:  kubeclientset,
-		endpointList:   conf.EndpointsInformer.Lister(),
-		endpointSynced: conf.EndpointsInformer.Informer().HasSynced,
+		endpointList:   kube.EndpointsInformer.Lister(),
+		endpointSynced: kube.EndpointsInformer.Informer().HasSynced,
 		workqueue:      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpoints"),
 	}
-	conf.EndpointsInformer.Informer().AddEventHandler(
+	kube.EndpointsInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    controller.addFunc,
 			UpdateFunc: controller.updateFunc,
@@ -60,7 +65,7 @@ func BuildEndpointController(kubeclientset kubernetes.Interface) *EndpointContro
 func (c *EndpointController) Run(stop <-chan struct{}) error {
 	// 同步缓存
 	if ok := cache.WaitForCacheSync(stop); !ok {
-		glog.Errorf("同步Endpoint缓存失败")
+		log.Errorf("同步Endpoint缓存失败")
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 	go wait.Until(c.runWorker, time.Second, stop)
@@ -76,7 +81,7 @@ func (c *EndpointController) processNextWorkItem() bool {
 	defer recoverException()
 	obj, shutdown := c.workqueue.Get()
 	if shutdown {
-		glog.V(2).Info("shutdown")
+		log.Info("shutdown")
 		return false
 	}
 	err := func(obj interface{}) error {
@@ -105,17 +110,17 @@ func (c *EndpointController) processNextWorkItem() bool {
 func (c *EndpointController) syncHandler(key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if name == "cinfoserver" || name == "file-resync2-server" {
-		glog.V(2).Infof("find endpoint %s/%s", namespace, name)
+		log.Infof("find endpoint %s/%s", namespace, name)
 	}
 	if err != nil {
-		logger.Errorf("invalid resource key: %s", key)
+		log.Errorf("invalid resource key: %s", key)
 		return fmt.Errorf("invalid resource key: %s", key)
 	}
 
 	endpointYaml, err := c.endpointList.Endpoints(namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Infof("endpoint %s is removed", key)
+			log.Infof("endpoint %s is removed", key)
 			return nil
 		}
 		runtime.HandleError(fmt.Errorf("failed to list endpoint %s/%s", key, err.Error()))
@@ -142,18 +147,18 @@ func (c *EndpointController) process(ep *CoreV1.Endpoints) {
 				// default
 				syncWithGroup("", upstreamName, ips, port)
 				// sync with all apisix group
-				for g, _ := range sevenConf.UrlGroup {
+				for g := range sevenConf.UrlGroup {
 					syncWithGroup(g, upstreamName, ips, port)
 					//upstreams, err :=  apisix.ListUpstream(k)
 					//if err == nil {
 					//	for _, upstream := range upstreams {
 					//		if *(upstream.Name) == upstreamName {
-					//			nodes := make([]*apisixType.Node, 0)
+					//			nodes := make([]*apisixv1.Node, 0)
 					//			for _, ip := range ips {
 					//				ipAddress := ip
 					//				p := int(port.Port)
 					//				weight := 100
-					//				node := &apisixType.Node{IP: &ipAddress, Port: &p, Weight: &weight}
+					//				node := &apisixv1.Node{IP: &ipAddress, Port: &p, Weight: &weight}
 					//				nodes = append(nodes, node)
 					//			}
 					//			upstream.Nodes = nodes
@@ -162,7 +167,7 @@ func (c *EndpointController) process(ep *CoreV1.Endpoints) {
 					//			//apisix.UpdateUpstream(upstream)
 					//			fromKind := WatchFromKind
 					//			upstream.FromKind = &fromKind
-					//			upstreams := []*apisixType.Upstream{upstream}
+					//			upstreams := []*apisixv1.Upstream{upstream}
 					//			comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
 					//			if _, err = comb.Solver(); err != nil {
 					//				glog.Errorf(err.Error())
@@ -177,16 +182,16 @@ func (c *EndpointController) process(ep *CoreV1.Endpoints) {
 }
 
 func syncWithGroup(group, upstreamName string, ips []string, port CoreV1.EndpointPort) {
-	upstreams, err := apisix.ListUpstream(group)
+	upstreams, err := sevenConf.Client.Cluster(group).Upstream().List(context.TODO())
 	if err == nil {
 		for _, upstream := range upstreams {
 			if *(upstream.Name) == upstreamName {
-				nodes := make([]*apisixType.Node, 0)
+				nodes := make([]*apisixv1.Node, 0)
 				for _, ip := range ips {
 					ipAddress := ip
 					p := int(port.Port)
 					weight := 100
-					node := &apisixType.Node{IP: &ipAddress, Port: &p, Weight: &weight}
+					node := &apisixv1.Node{IP: &ipAddress, Port: &p, Weight: &weight}
 					nodes = append(nodes, node)
 				}
 				upstream.Nodes = nodes
@@ -195,7 +200,7 @@ func syncWithGroup(group, upstreamName string, ips []string, port CoreV1.Endpoin
 				//apisix.UpdateUpstream(upstream)
 				fromKind := WatchFromKind
 				upstream.FromKind = &fromKind
-				upstreams := []*apisixType.Upstream{upstream}
+				upstreams := []*apisixv1.Upstream{upstream}
 				comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
 				if _, err = comb.Solver(); err != nil {
 					glog.Errorf(err.Error())
@@ -210,6 +215,9 @@ func (c *EndpointController) addFunc(obj interface{}) {
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
 		runtime.HandleError(err)
+		return
+	}
+	if !c.controller.namespaceWatching(key) {
 		return
 	}
 	c.workqueue.AddRateLimited(key)
@@ -230,6 +238,9 @@ func (c *EndpointController) deleteFunc(obj interface{}) {
 	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		runtime.HandleError(err)
+		return
+	}
+	if !c.controller.namespaceWatching(key) {
 		return
 	}
 	c.workqueue.AddRateLimited(key)

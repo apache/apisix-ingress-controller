@@ -1,17 +1,17 @@
-//  Licensed to the Apache Software Foundation (ASF) under one or more
-//  contributor license agreements.  See the NOTICE file distributed with
-//  this work for additional information regarding copyright ownership.
-//  The ASF licenses this file to You under the Apache License, Version 2.0
-//  (the "License"); you may not use this file except in compliance with
-//  the License.  You may obtain a copy of the License at
+// Licensed to the Apache Software Foundation (ASF) under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// The ASF licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
-//  Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//  See the License for the specific language governing permissions and
-//  limitations under the License.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package config
 
 import (
@@ -35,6 +35,8 @@ func TestNewConfigFromFile(t *testing.T) {
 		Kubernetes: KubernetesConfig{
 			ResyncInterval: types.TimeDuration{time.Hour},
 			Kubeconfig:     "/path/to/foo/baz",
+			AppNamespaces:  []string{""},
+			ElectionID:     "my-election-id",
 		},
 		APISIX: APISIXConfig{
 			BaseURL:  "http://127.0.0.1:8080/apisix",
@@ -71,6 +73,7 @@ enable_profiling: true
 kubernetes:
   kubeconfig: /path/to/foo/baz
   resync_interval: 1h0m0s
+  election_id: my-election-id
 apisix:
   base_url: http://127.0.0.1:8080/apisix
   admin_key: "123456"

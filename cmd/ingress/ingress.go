@@ -15,17 +15,16 @@
 package ingress
 
 import (
+	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
-	api6Informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
 	"github.com/spf13/cobra"
 
-	"github.com/api7/ingress-controller/conf"
-	"github.com/api7/ingress-controller/pkg"
 	"github.com/api7/ingress-controller/pkg/config"
 	"github.com/api7/ingress-controller/pkg/ingress/controller"
 	"github.com/api7/ingress-controller/pkg/log"
@@ -39,17 +38,42 @@ func dief(template string, args ...interface{}) {
 	os.Exit(1)
 }
 
+func waitForSignal(stopCh chan struct{}) {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	sig := <-sigCh
+	log.Infof("signal %d (%s) received", sig, sig.String())
+	close(stopCh)
+}
+
 // NewIngressCommand creates the ingress sub command for apisix-ingress-controller.
 func NewIngressCommand() *cobra.Command {
 	var configPath string
 	cfg := config.NewDefaultConfig()
 
 	cmd := &cobra.Command{
-		Use:   "ingress [flags]",
-		Short: "launch the controller",
-		Example: `Run apisix-ingress-controller from configuration file:
+		Use: "ingress [flags]",
+		Long: `launch the ingress controller
 
-	apisix-ingress-controller ingress --config-path /path/to/config.json`,
+You can run apisix-ingress-controller from configuration file or command line options,
+if you run it from configuration file, other command line options will be ignored.
+
+Run from configuration file:
+
+    apisix-ingress-controller ingress --config-path /path/to/config.json
+
+Both json and yaml are supported as the configuration file format.
+
+Run from command line options:
+
+    apisix-ingress-controller ingress --apisix-base-url http://apisix-service:9180/apisix/admin --kubeconfig /path/to/kubeconfig
+
+If you run apisix-ingress-controller outside the Kubernetes cluster, --kubeconfig option (or kubeconfig item in configuration file) should be specified explicitly,
+or if you run it inside cluster, leave it alone and in-cluster configuration will be discovered and used.
+
+Before you run apisix-ingress-controller, be sure all related resources, like CRDs (ApisixRoute, ApisixUpstream and etc),
+the apisix cluster and others are created`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if configPath != "" {
 				c, err := config.NewConfigFromFile(configPath)
@@ -57,6 +81,9 @@ func NewIngressCommand() *cobra.Command {
 					dief("failed to initialize configuration: %s", err)
 				}
 				cfg = c
+			}
+			if err := cfg.Validate(); err != nil {
+				dief("bad configuration: %s", err)
 			}
 
 			logger, err := log.NewLogger(
@@ -67,51 +94,39 @@ func NewIngressCommand() *cobra.Command {
 				dief("failed to initialize logging: %s", err)
 			}
 			log.DefaultLogger = logger
+			log.Info("apisix ingress controller started")
 
-			kubeClientSet := conf.GetKubeClient()
-			apisixClientset := conf.InitApisixClient()
-			sharedInformerFactory := api6Informers.NewSharedInformerFactory(apisixClientset, 0)
-			stop := make(chan struct{})
-			c := &controller.Api6Controller{
-				KubeClientSet:             kubeClientSet,
-				Api6ClientSet:             apisixClientset,
-				SharedInformerFactory:     sharedInformerFactory,
-				CoreSharedInformerFactory: conf.CoreSharedInformerFactory,
-				Stop:                      stop,
+			data, err := json.MarshalIndent(cfg, "", "\t")
+			if err != nil {
+				dief("failed to show configuration: %s", string(data))
 			}
-			epInformer := c.CoreSharedInformerFactory.Core().V1().Endpoints()
-			conf.EndpointsInformer = epInformer
-			// endpoint
-			c.Endpoint()
-			go c.CoreSharedInformerFactory.Start(stop)
+			log.Info("use configuration\n", string(data))
 
-			// ApisixRoute
-			c.ApisixRoute()
-			// ApisixUpstream
-			c.ApisixUpstream()
-			// ApisixService
-			c.ApisixService()
-
+			stop := make(chan struct{})
+			ingress, err := controller.NewController(cfg)
+			if err != nil {
+				dief("failed to create ingress controller: %s", err)
+			}
 			go func() {
-				time.Sleep(time.Duration(10) * time.Second)
-				c.SharedInformerFactory.Start(stop)
+				if err := ingress.Run(stop); err != nil {
+					dief("failed to launch ingress controller: %s", err)
+				}
 			}()
 
-			router := pkg.Route()
-			err = http.ListenAndServe(":8080", router)
-			if err != nil {
-				logger.Fatal("ListenAndServe: ", err)
-			}
+			waitForSignal(stop)
+			log.Info("apisix ingress controller exited")
 		},
 	}
 
 	cmd.PersistentFlags().StringVar(&configPath, "config-path", "", "configuration file path for apisix-ingress-controller")
-	cmd.PersistentFlags().StringVar(&cfg.LogLevel, "log-level", "warn", "error log level")
+	cmd.PersistentFlags().StringVar(&cfg.LogLevel, "log-level", "info", "error log level")
 	cmd.PersistentFlags().StringVar(&cfg.LogOutput, "log-output", "stderr", "error log output file")
 	cmd.PersistentFlags().StringVar(&cfg.HTTPListen, "http-listen", ":8080", "the HTTP Server listen address")
 	cmd.PersistentFlags().BoolVar(&cfg.EnableProfiling, "enable-profiling", true, "enable profiling via web interface host:port/debug/pprof")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.Kubeconfig, "kubeconfig", "", "Kubernetes configuration file (by default in-cluster configuration will be used)")
 	cmd.PersistentFlags().DurationVar(&cfg.Kubernetes.ResyncInterval.Duration, "resync-interval", time.Minute, "the controller resync (with Kubernetes) interval, the minimum resync interval is 30s")
+	cmd.PersistentFlags().StringSliceVar(&cfg.Kubernetes.AppNamespaces, "app-namespace", []string{config.NamespaceAll}, "namespaces that controller will watch for resources")
+	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ElectionID, "election-id", config.IngressAPISIXLeader, "election id used for compaign the controller leader")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.BaseURL, "apisix-base-url", "", "the base URL for APISIX admin api / manager api")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.AdminKey, "apisix-admin-key", "", "admin key used for the authorization of APISIX admin api / manager api")
 

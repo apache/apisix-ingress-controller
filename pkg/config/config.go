@@ -21,11 +21,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/api7/ingress-controller/pkg/types"
 	"gopkg.in/yaml.v2"
+	v1 "k8s.io/api/core/v1"
+
+	"github.com/api7/ingress-controller/pkg/types"
 )
 
 const (
+	// NamespaceAll represents all namespaces.
+	NamespaceAll = "*"
+	// IngressAPISIXLeader is the default election id for the controller
+	// leader election.
+	IngressAPISIXLeader = "ingress-apisix-leader"
+
 	_minimalResyncInterval = 30 * time.Second
 )
 
@@ -44,6 +52,8 @@ type Config struct {
 type KubernetesConfig struct {
 	Kubeconfig     string             `json:"kubeconfig" yaml:"kubeconfig"`
 	ResyncInterval types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
+	AppNamespaces  []string           `json:"app_namespaces" yaml:"app_namespaces"`
+	ElectionID     string             `json:"election_id" yaml:"election_id"`
 }
 
 // APISIXConfig contains all APISIX related config items.
@@ -63,7 +73,9 @@ func NewDefaultConfig() *Config {
 		EnableProfiling: true,
 		Kubernetes: KubernetesConfig{
 			Kubeconfig:     "", // Use in-cluster configurations.
-			ResyncInterval: types.TimeDuration{time.Minute},
+			ResyncInterval: types.TimeDuration{Duration: 6 * time.Hour},
+			AppNamespaces:  []string{v1.NamespaceAll},
+			ElectionID:     IngressAPISIXLeader,
 		},
 	}
 }
@@ -98,5 +110,21 @@ func (cfg *Config) Validate() error {
 	if cfg.APISIX.BaseURL == "" {
 		return errors.New("apisix base url is required")
 	}
+	cfg.Kubernetes.AppNamespaces = purifyAppNamespaces(cfg.Kubernetes.AppNamespaces)
 	return nil
+}
+
+func purifyAppNamespaces(namespaces []string) []string {
+	exists := make(map[string]struct{})
+	var ultimate []string
+	for _, ns := range namespaces {
+		if ns == NamespaceAll {
+			return []string{v1.NamespaceAll}
+		}
+		if _, ok := exists[ns]; !ok {
+			ultimate = append(ultimate, ns)
+			exists[ns] = struct{}{}
+		}
+	}
+	return ultimate
 }

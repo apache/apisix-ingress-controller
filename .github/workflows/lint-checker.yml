@@ -1,0 +1,38 @@
+name: lint-checker-ci
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  run-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: setup go
+        uses: actions/setup-go@v1
+        with:
+          go-version: '1.13'
+      - name: run gofmt
+        working-directory: ./
+        run: |
+          diffs=`gofmt -l .`
+          if [[ -n $diffs ]]; then
+              echo "Files are not formatted by gofmt:"
+              echo $diffs
+              exit 1
+          fi
+  markdownlint:
+    name: 🍇 Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: 🚀 Use Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: '12.x'
+      - run: npm install -g markdownlint-cli@0.25.0
+      - run: markdownlint '**/*.md' --ignore node_modules

@@ -1,4 +1,25 @@
+<!--
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+-->
+
 # Apache APISIX for Kubernetes
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/apache/apisix-ingress-controller)](https://goreportcard.com/report/github.com/apache/apisix-ingress-controller)
 
 Use Apache APISIX for Kubernetes [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
 
@@ -67,10 +88,10 @@ Get more [implementation details](./docs/design.md).
 
 ## Todos
 
-* Support `ApisixSSL` CRD and the logic. [#52](https://github.com/apache/apisix-ingress-controller/issues/52)
-* Support retry when synchronization. [#59](https://github.com/apache/apisix-ingress-controller/issues/59)
+* Support UDP definition. [#116](https://github.com/apache/apisix-ingress-controller/issues/116)
+* Support TCP definition. [#115](https://github.com/apache/apisix-ingress-controller/issues/115)
+* Support GRPC definition. [#114](https://github.com/apache/apisix-ingress-controller/issues/114)
 * Add a complete demo. [#9](https://github.com/apache/apisix-ingress-controller/issues/9)
-* Use terratest for testing with Kubernetes. [#51](https://github.com/apache/apisix-ingress-controller/issues/51)
 * More todos will display in [issues](https://github.com/apache/apisix-ingress-controller/issues)
 
 ## Documents
@@ -96,10 +117,15 @@ We welcome all kinds of contributions from the open-source community, individual
 
 ## Community
 
-- Mailing List: Mail to dev-subscribe@apisix.apache.org, follow the reply to subscribe the mailing list.
-- QQ Group - 578997126
-- ![Twitter Follow](https://img.shields.io/twitter/follow/ApacheAPISIX?style=social) - follow and interact with us using hashtag `#ApacheAPISIX`
-- [Bilibili video](https://space.bilibili.com/551921247)
+* Mailing List: Mail to dev-subscribe@apisix.apache.org, follow the reply to subscribe the mailing list.
+* QQ Group - 578997126
+* ![Twitter Follow](https://img.shields.io/twitter/follow/ApacheAPISIX?style=social) - follow and interact with us using hashtag `#ApacheAPISIX`
+* [Bilibili video](https://space.bilibili.com/551921247)
+
+## Terminology
+
+* Ingress APISIX: the whole service that contains the proxy ([Apache APISIX](https://apisix.apache.org)) and ingress controller (apisix ingress controller).
+* apisix-ingress-controller: the ingress controller component.
 
 ## License
 

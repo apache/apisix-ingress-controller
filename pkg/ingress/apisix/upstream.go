@@ -1,25 +1,27 @@
- // Licensed to the Apache Software Foundation (ASF) under one or more
- // contributor license agreements.  See the NOTICE file distributed with
- // this work for additional information regarding copyright ownership.
- // The ASF licenses this file to You under the Apache License, Version 2.0
- // (the "License"); you may not use this file except in compliance with
- // the License.  You may obtain a copy of the License at
- //
- //     http://www.apache.org/licenses/LICENSE-2.0
- //
- // Unless required by applicable law or agreed to in writing, software
- // distributed under the License is distributed on an "AS IS" BASIS,
- // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- // See the License for the specific language governing permissions and
- // limitations under the License.
+// Licensed to the Apache Software Foundation (ASF) under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// The ASF licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package apisix
 
 import (
-	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
-	apisix "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"github.com/gxthrj/seven/conf"
-	"github.com/api7/ingress-controller/pkg/ingress/endpoint"
 	"strconv"
+
+	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
+
+	"github.com/api7/ingress-controller/pkg/ingress/endpoint"
+	"github.com/api7/ingress-controller/pkg/seven/conf"
+	apisix "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
@@ -30,9 +32,9 @@ const (
 
 //type ApisixUpstreamCRD ingress.ApisixUpstream
 
-type ApisixUpstreamBuilder struct{
+type ApisixUpstreamBuilder struct {
 	CRD *ingress.ApisixUpstream
-	Ep endpoint.Endpoint
+	Ep  endpoint.Endpoint
 }
 
 // Convert convert to  apisix.Route from ingress.ApisixRoute CRD
