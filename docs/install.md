@@ -26,6 +26,7 @@ This is an index page about installing Ingress APISIX in several environments. C
 * [Install Ingress APISIX on Azure AKS](deployments/azure.md)
 * [Install Ingress APISIX on AWS EKS](deployments/aws.md)
 * [Install Ingress APISIX on Google Cloud GKE](deployments/gke.md)
+* [Install Ingress APISIX on ACK](deployments/ack.md)
 
 ## Kustomize Support
 
