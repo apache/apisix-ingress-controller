@@ -50,7 +50,7 @@ Two Service resources were created, one is `apisix-gateway`, which processes the
 The gateway service type is set to `LoadBalancer` (See [Access services through SLB](https://help.aliyun.com/document_detail/182218.html) for more details), so that clients can access Apache APISIX through a load balancer. You can find the load balancer hostname by running:
 
 ```shell
-kubectl get service apisix-gateway --namespace ingress-apisix -o jsonpath='{.status.loadBalancer.ingress[].hostname}'
+kubectl get service apisix-gateway --namespace ingress-apisix -o jsonpath='{.status.loadBalancer.ingress[].ip}'
 ```
 
 Another thing should be concerned that the `allow.ipList` field should be customized according to the [Pod CIRD configuration of ACK](https://www.alibabacloud.com/help/en/doc-detail/86500.htm), so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
