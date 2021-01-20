@@ -175,7 +175,7 @@ func (s *serviceClient) Delete(ctx context.Context, obj *v1.Service) error {
 }
 
 func (s *serviceClient) Update(ctx context.Context, obj *v1.Service) (*v1.Service, error) {
-	log.Infof("try to update service",
+	log.Infow("try to update service",
 		zap.String("id", *obj.ID),
 		zap.String("fullname", *obj.FullName),
 		zap.String("cluster", s.clusterName),

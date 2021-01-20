@@ -219,7 +219,7 @@ func (c *cluster) HasSynced(ctx context.Context) error {
 		log.Errorf("failed to wait cluster to ready: %s", ctx.Err())
 		return ctx.Err()
 	case <-c.cacheSynced:
-		log.Warnf("cluster %s now is ready, cost time %s", time.Now().Sub(now).String())
+		log.Warnf("cluster %s now is ready, cost time %s", c.name, time.Now().Sub(now).String())
 		return nil
 	}
 }

@@ -189,6 +189,7 @@ func TestRouteClient(t *testing.T) {
 		Host:       &host,
 		Path:       &uri,
 		Name:       &name,
+		FullName:   &name,
 		ServiceId:  &id,
 		UpstreamId: &id,
 	})
@@ -199,6 +200,7 @@ func TestRouteClient(t *testing.T) {
 		Host:       &host,
 		Path:       &uri,
 		Name:       &name,
+		FullName:   &name,
 		ServiceId:  &id,
 		UpstreamId: &id,
 	})
@@ -227,6 +229,7 @@ func TestRouteClient(t *testing.T) {
 		Host:       &host,
 		Path:       &uri,
 		Name:       &name,
+		FullName:   &name,
 		ServiceId:  &id,
 		UpstreamId: &id,
 	})

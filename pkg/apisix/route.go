@@ -183,7 +183,7 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 }
 
 func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
-	log.Infof("try to update route",
+	log.Infow("try to update route",
 		zap.String("id", *obj.ID),
 		zap.String("fullname", *obj.FullName),
 		zap.String("cluster", r.clusterName),

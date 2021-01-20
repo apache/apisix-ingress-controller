@@ -123,7 +123,7 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 }
 
 func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
-	log.Infof("try to delete ssl",
+	log.Infow("try to delete ssl",
 		zap.String("id", *obj.ID),
 		zap.String("cluster", s.clusterName),
 		zap.String("url", s.url),
@@ -143,7 +143,7 @@ func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 }
 
 func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
-	log.Infof("try to update ssl",
+	log.Infow("try to update ssl",
 		zap.String("id", *obj.ID),
 		zap.String("cluster", s.clusterName),
 		zap.String("url", s.url),
