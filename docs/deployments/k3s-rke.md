@@ -17,16 +17,16 @@
 #
 -->
 
-# Install Ingress APISIX on K3S
+# Install Ingress APISIX on K3S and Rancher RKE
 
-This document explains how to install Ingress APISIX on [k3S](https://k3s.io/).
+This document explains how to install Ingress APISIX on [k3S](https://k3s.io/) and [Rancher RKE](https://rancher.com/products/rke/).
 
 K3S is a certified Kubernetes distribution built for IoT and Edge computing, whilst [Apache APISIX](https://apisix.apache.org) is also good at IoT (See [MQTT plugin](https://github.com/apache/apisix/blob/master/doc/plugins/mqtt-proxy.md)) and runs well on ARM architecture.
 It's a good choice to use Ingress APISIX as the north-south API gateway in K3S.
 
 ## Prerequisites
 
-* Install [K3S](https://rancher.com/docs/k3s/latest/en/installation/).
+* Install [K3S](https://rancher.com/docs/k3s/latest/en/installation/) or [Rancher RKE](https://rancher.com/docs/rke/latest/en/installation/).
 * Install [Helm](https://helm.sh/).
 * Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
 * Clone [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller).
@@ -48,13 +48,14 @@ helm install apisix ./chart/apisix \
 kubectl get service --namespace ingress-apisix
 ```
 
-*Note root permission may required to run above commands.*
+*If you are using K3S, the default kubeconfig file is in /etc/rancher/k3s and root permission may required.*
 
 Two Service resources were created, one is `apisix-gateway`, which processes the real traffic; another is `apisix-admin`, which acts as the control plane to process all the configuration changes.
 
-The gateway service type is set to `NodePort`, so that clients can access Apache APISIX through the Node IPs and the assigned port. If you want to expose a `LoadBalancer` service, try to use [Klipper](https://github.com/k3s-io/klipper-lb).
+The gateway service type is set to `NodePort`, so that clients can access Apache APISIX through the Node IPs and the assigned port.
+If you are using K3S and you want to expose a `LoadBalancer` service, try to use [Klipper](https://github.com/k3s-io/klipper-lb).
 
-Another thing should be concerned that the `allow.ipList` field should be customized according to the [K3S Networking Settings](https://rancher.com/docs/k3s/latest/en/installation/install-options/server-config/#networking), so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
+Another thing should be concerned that the `allow.ipList` field should be customized according to the Pod CIDR settings(see [K3S](https://rancher.com/docs/k3s/latest/en/installation/install-options/server-config/#networking) or [Rancher RKE](https://rancher.com/docs/rancher/v2.x/en/cluster-provisioning/rke-clusters/options/#cluster-config-file), so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
 
 ## Install apisix-ingress-controller
 
@@ -73,7 +74,7 @@ helm install ingress-apisix ./charts/ingress-apisix \
   --kubeconfig /etc/rancher/k3s/k3s.yaml
 ```
 
-*Note root permission may required to run above commands.*
+*If you are using K3S, the default kubeconfig file is in /etc/rancher/k3s and root permission may required.*
 
 The admin key used in abovementioned commands is the default one, if you change the admin key configuration when you deployed APISIX, please remember to change it here.
 
