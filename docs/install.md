@@ -28,7 +28,6 @@ This is an index page about installing Ingress APISIX in several environments. C
 * [Install Ingress APISIX on Google Cloud GKE](deployments/gke.md)
 * [Install Ingress APISIX on ACK](deployments/ack.md)
 
-
 ## Kustomize Support
 
 As an alternative way, you can also choose to install apisix-ingress-controller by [Kustomize](https://kustomize.io/).
