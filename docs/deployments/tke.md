@@ -45,6 +45,7 @@ helm install apisix ./chart/apisix \
   --namespace ingress-apisix \
 kubectl get service --namespace ingress-apisix
 ```
+
 Please be careful you must configure the `etcd.persistence.size` to multiplese of 10Gi (it's a limitation on TKE), otherwise the [PersistentVolumeClaim](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) creation will fail.
 
 Two Service resources were created, one is `apisix-gateway`, which processes the real traffic; another is `apisix-admin`, which acts as the control plane to process all the configuration changes.
