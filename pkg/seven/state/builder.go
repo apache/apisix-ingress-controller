@@ -203,14 +203,25 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 		return
 	} else {
 		paddingUpstream(u, currentUpstream)
-		// diff
-		hasDiff, err := utils.HasDiff(u, currentUpstream)
-		if err != nil {
-			errNotify = err
-			return
-		}
-		if hasDiff {
-			if *u.ID != strconv.Itoa(0) {
+		if currentUpstream == nil {
+			if u.FromKind != nil && *u.FromKind == WatchFromKind {
+				// We don't have a pre-defined upstream and the current upstream updating from
+				// endpoints.
+				return
+			}
+			op = Create
+			if _, err := conf.Client.Cluster(cluster).Upstream().Create(context.TODO(), u); err != nil {
+				log.Errorf("failed to create upstream %s: %s", *u.FullName, err)
+				return
+			}
+		} else {
+			// diff
+			hasDiff, err := utils.HasDiff(u, currentUpstream)
+			if err != nil {
+				errNotify = err
+				return
+			}
+			if hasDiff {
 				op = Update
 				// 0.field check
 				needToUpdate := true
@@ -222,16 +233,15 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 					}
 				}
 				if needToUpdate || (u.FromKind != nil && *u.FromKind == WatchFromKind) {
-					if _, err = conf.Client.Cluster(cluster).Upstream().Update(context.TODO(), u); err != nil {
+					if u.FromKind != nil && *u.FromKind == WatchFromKind {
+						currentUpstream.Nodes = u.Nodes
+					} else { // due to CRD update
+						currentUpstream = u
+					}
+					if _, err = conf.Client.Cluster(cluster).Upstream().Update(context.TODO(), currentUpstream); err != nil {
 						log.Errorf("failed to update upstream %s: %s", *u.FullName, err)
 						return
 					}
-				}
-			} else {
-				op = Create
-				if _, err := conf.Client.Cluster(cluster).Upstream().Create(context.TODO(), u); err != nil {
-					log.Errorf("failed to create upstream %s: %s", *u.FullName, err)
-					return
 				}
 			}
 		}

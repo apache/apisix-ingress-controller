@@ -215,7 +215,7 @@ func (c *Controller) run(ctx context.Context) {
 		log.Errorf("failed to add default cluster: %s", err)
 		return
 	}
-	if err := c.apisix.Cluster("").Ready(ctx); err != nil {
+	if err := c.apisix.Cluster("").HasSynced(ctx); err != nil {
 		// TODO give up the leader role.
 		log.Errorf("failed to wait the default cluster to be ready: %s", err)
 		return

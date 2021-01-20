@@ -148,7 +148,7 @@ func (nc *nonExistentCluster) Upstream() Upstream {
 	return nc.upstream
 }
 
-func (nc *nonExistentCluster) Ready(_ context.Context) error {
+func (nc *nonExistentCluster) HasSynced(_ context.Context) error {
 	return nil
 }
 

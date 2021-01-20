@@ -22,6 +22,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/api7/ingress-controller/pkg/apisix/cache"
 	"github.com/api7/ingress-controller/pkg/log"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
@@ -48,17 +49,48 @@ func newRouteClient(c *cluster) Route {
 	}
 }
 
-// Get only looks up the cache, it's not necessary to access APISIX, since all resources
-// are created by Create, which reflects the change to cache in turn, so if resource
-// is not in cache, it's not in APISIX either.
-func (r *routeClient) Get(_ context.Context, fullname string) (*v1.Route, error) {
-	return r.cluster.cache.GetRoute(fullname)
+func (r *routeClient) Get(ctx context.Context, fullname string) (*v1.Route, error) {
+	log.Infow("try to look up route",
+		zap.String("fullname", fullname),
+		zap.String("url", r.url),
+		zap.String("cluster", r.clusterName),
+	)
+	route, err := r.cluster.cache.GetRoute(fullname)
+	if err == nil {
+		return route, nil
+	}
+	if err != cache.ErrNotFound {
+		log.Errorw("failed to find route in cache, will try to lookup from APISIX",
+			zap.String("fullname", fullname),
+			zap.Error(err),
+		)
+	} else {
+		log.Warnw("failed to find route in cache, will try to lookup from APISIX",
+			zap.String("fullname", fullname),
+			zap.Error(err),
+		)
+	}
+
+	// FIXME Replace the List with accurate get since list is not trivial.
+	list, err := r.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, elem := range list {
+		if *elem.FullName == fullname {
+			return elem, nil
+		}
+	}
+	return nil, cache.ErrNotFound
 }
 
 // List is only used in cache warming up. So here just pass through
 // to APISIX.
 func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
-	log.Infow("try to list routes in APISIX", zap.String("url", r.url))
+	log.Infow("try to list routes in APISIX",
+		zap.String("cluster", r.clusterName),
+		zap.String("url", r.url),
+	)
 	routeItems, err := r.cluster.listResource(ctx, r.url)
 	if err != nil {
 		log.Errorf("failed to list routes: %s", err)
@@ -85,10 +117,16 @@ func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 }
 
 func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
-	if err := r.cluster.Ready(ctx); err != nil {
+	log.Infow("try to create route",
+		zap.String("host", *obj.Host),
+		zap.String("fullname", *obj.FullName),
+		zap.String("cluster", r.clusterName),
+		zap.String("url", r.url),
+	)
+
+	if err := r.cluster.HasSynced(ctx); err != nil {
 		return nil, err
 	}
-	log.Infow("try to create route", zap.String("host", *obj.Host))
 	data, err := json.Marshal(routeReqBody{
 		Desc:      obj.Name,
 		URI:       obj.Path,
@@ -124,10 +162,15 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 }
 
 func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
-	if err := r.cluster.Ready(ctx); err != nil {
+	log.Infow("try to delete route",
+		zap.String("id", *obj.ID),
+		zap.String("fullname", *obj.FullName),
+		zap.String("cluster", r.clusterName),
+		zap.String("url", r.url),
+	)
+	if err := r.cluster.HasSynced(ctx); err != nil {
 		return err
 	}
-	log.Infof("delete route, id:%s", *obj.ID)
 	url := r.url + "/" + *obj.ID
 	if err := r.cluster.deleteResource(ctx, url); err != nil {
 		return err
@@ -140,10 +183,15 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 }
 
 func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
-	if err := r.cluster.Ready(ctx); err != nil {
+	log.Infof("try to update route",
+		zap.String("id", *obj.ID),
+		zap.String("fullname", *obj.FullName),
+		zap.String("cluster", r.clusterName),
+		zap.String("url", r.url),
+	)
+	if err := r.cluster.HasSynced(ctx); err != nil {
 		return nil, err
 	}
-	log.Infof("update route, id:%s", *obj.ID)
 	body, err := json.Marshal(routeReqBody{
 		Desc:      obj.Name,
 		Host:      obj.Host,

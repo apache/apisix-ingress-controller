@@ -45,7 +45,7 @@ type Cluster interface {
 	String() string
 	// Ready waits until all resources in APISIX cluster is synced to
 	// cache.
-	Ready(context.Context) error
+	HasSynced(context.Context) error
 }
 
 // Route is the specific client interface to take over the create, update,

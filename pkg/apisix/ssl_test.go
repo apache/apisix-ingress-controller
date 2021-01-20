@@ -151,10 +151,10 @@ func TestSSLClient(t *testing.T) {
 	closedCh := make(chan struct{})
 	close(closedCh)
 	cli := newSSLClient(&cluster{
-		baseURL:    u.String(),
-		cli:        http.DefaultClient,
-		cache:      &dummyCache{},
-		cacheReady: closedCh,
+		baseURL:     u.String(),
+		cli:         http.DefaultClient,
+		cache:       &dummyCache{},
+		cacheSynced: closedCh,
 	})
 
 	// Create

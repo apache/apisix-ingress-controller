@@ -56,17 +56,17 @@ type ClusterOptions struct {
 }
 
 type cluster struct {
-	name              string
-	baseURL           string
-	adminKey          string
-	cli               *http.Client
-	cache             cache.Cache
-	cacheReady        chan struct{}
-	cacheWarmingUpErr error
-	route             Route
-	upstream          Upstream
-	service           Service
-	ssl               SSL
+	name         string
+	baseURL      string
+	adminKey     string
+	cli          *http.Client
+	cache        cache.Cache
+	cacheSynced  chan struct{}
+	cacheSyncErr error
+	route        Route
+	upstream     Upstream
+	service      Service
+	ssl          SSL
 }
 
 func newCluster(o *ClusterOptions) (Cluster, error) {
@@ -89,40 +89,49 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 				ExpectContinueTimeout: o.Timeout,
 			},
 		},
-		cache:      nil,
-		cacheReady: make(chan struct{}),
+		cache:       nil,
+		cacheSynced: make(chan struct{}),
 	}
 	c.route = newRouteClient(c)
 	c.upstream = newUpstreamClient(c)
 	c.service = newServiceClient(c)
 	c.ssl = newSSLClient(c)
 
-	go c.warmingUp()
+	go c.syncCache()
 
 	return c, nil
 }
 
-func (c *cluster) warmingUp() {
-	log.Infow("warming up caching", zap.String("cluster", c.name))
+func (c *cluster) syncCache() {
+	log.Infow("syncing cache", zap.String("cluster", c.name))
 	now := time.Now()
-	defer log.Infow("caching warmed",
-		zap.String("cost_time", time.Now().Sub(now).String()),
-		zap.String("cluster", c.name),
-	)
+	defer func() {
+		if c.cacheSyncErr == nil {
+			log.Infow("cache synced",
+				zap.String("cost_time", time.Now().Sub(now).String()),
+				zap.String("cluster", c.name),
+			)
+		} else {
+			log.Errorw("failed to sync cache",
+				zap.String("cost_time", time.Now().Sub(now).String()),
+				zap.String("cluster", c.name),
+			)
+		}
+	}()
 
 	backoff := wait.Backoff{
 		Duration: time.Second,
 		Factor:   2,
 		Steps:    6,
 	}
-	err := wait.ExponentialBackoff(backoff, c.warmingUpOnce)
+	err := wait.ExponentialBackoff(backoff, c.syncCacheOnce)
 	if err != nil {
-		c.cacheWarmingUpErr = err
+		c.cacheSyncErr = err
 	}
-	close(c.cacheReady)
+	close(c.cacheSynced)
 }
 
-func (c *cluster) warmingUpOnce() (bool, error) {
+func (c *cluster) syncCacheOnce() (bool, error) {
 	dbcache, err := cache.NewMemDBCache()
 	if err != nil {
 		return false, err
@@ -198,16 +207,19 @@ func (c *cluster) String() string {
 	return fmt.Sprintf("name=%s; base_url=%s", c.name, c.baseURL)
 }
 
-// Ready implements Cluster.Ready method.
-func (c *cluster) Ready(ctx context.Context) error {
-	if c.cacheWarmingUpErr != nil {
-		return c.cacheWarmingUpErr
+// HasSynced implements Cluster.HasSynced method.
+func (c *cluster) HasSynced(ctx context.Context) error {
+	if c.cacheSyncErr != nil {
+		return c.cacheSyncErr
 	}
+	now := time.Now()
+	log.Warnf("waiting cluster %s to ready, it may takes a while", c.name)
 	select {
 	case <-ctx.Done():
 		log.Errorf("failed to wait cluster to ready: %s", ctx.Err())
 		return ctx.Err()
-	case <-c.cacheReady:
+	case <-c.cacheSynced:
+		log.Warnf("cluster %s now is ready, cost time %s", time.Now().Sub(now).String())
 		return nil
 	}
 }
