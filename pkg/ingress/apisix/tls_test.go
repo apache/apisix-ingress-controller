@@ -163,7 +163,7 @@ func (sc *SecretClientErrorMock) FindByName(namespace, name string) (*v1.Secret,
 }
 
 func setDummyApisixClient(t *testing.T) {
-	cli, err := apisixhttp.New()
+	cli, err := apisixhttp.NewClient()
 	assert.Nil(t, err)
 	err = cli.AddCluster(&apisixhttp.ClusterOptions{
 		Name:    "",

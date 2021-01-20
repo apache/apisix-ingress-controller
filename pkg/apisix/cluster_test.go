@@ -24,7 +24,7 @@ import (
 )
 
 func TestAddCluster(t *testing.T) {
-	apisix, err := New()
+	apisix, err := NewClient()
 	assert.Nil(t, err)
 
 	err = apisix.AddCluster(&ClusterOptions{
@@ -52,7 +52,7 @@ func TestAddCluster(t *testing.T) {
 }
 
 func TestNonExistentCluster(t *testing.T) {
-	apisix, err := New()
+	apisix, err := NewClient()
 	assert.Nil(t, err)
 
 	err = apisix.AddCluster(&ClusterOptions{

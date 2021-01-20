@@ -72,7 +72,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	if podNamespace == "" {
 		podNamespace = "default"
 	}
-	client, err := apisix.New()
+	client, err := apisix.NewClient()
 	if err != nil {
 		return nil, err
 	}

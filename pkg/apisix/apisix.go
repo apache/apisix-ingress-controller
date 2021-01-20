@@ -93,8 +93,8 @@ type apisix struct {
 	clusters           map[string]Cluster
 }
 
-// New creates an APISIX client to perform resources change pushing.
-func New() (APISIX, error) {
+// NewClient creates an APISIX client to perform resources change pushing.
+func NewClient() (APISIX, error) {
 	cli := &apisix{
 		nonExistentCluster: newNonExistentCluster(),
 	}
