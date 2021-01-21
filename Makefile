@@ -20,6 +20,7 @@ VERSION ?= 0.2.0
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 IMAGE_TAG ?= "dev"
 
+GINKGO ?= $(shell which ginkgo)
 GITSHA ?= $(shell git rev-parse --short=7 HEAD)
 OSNAME ?= $(shell uname -s | tr A-Z a-z)
 OSARCH ?= $(shell uname -m | tr A-Z a-z)
@@ -58,12 +59,18 @@ unit-test:
 	go test -cover -coverprofile=coverage.txt ./...
 
 ### e2e-test:         Run e2e test cases (minikube is required)
-e2e-test: build-image-to-minikube
+e2e-test: ginkgo-check build-image-to-minikube
 	export APISIX_ROUTE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixRoute.yaml && \
 	export APISIX_UPSTREAM_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml && \
 	export APISIX_SERVICE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixService.yaml && \
 	export APISIX_TLS_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml && \
 	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=$(E2E_CONCURRENCY)
+.PHONY: ginkgo-check
+ginkgo-check:
+ifeq ("$(wildcard $(GINKGO))", "")
+	@echo "ERROR: Need to install ginkgo first, run: go get -u github.com/onsi/ginkgo/ginkgo"
+	exit 1
+endif
 
 # build images to minikube node directly, it's an internal directive, so don't
 # expose it's help message.
@@ -110,3 +117,4 @@ release-src:
 	mv $(RELEASE_SRC).tgz.sha512 release/$(RELEASE_SRC).tgz.sha512
 
 .PHONY: build lint help
+
