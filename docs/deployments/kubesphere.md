@@ -66,7 +66,7 @@ helm install ingress-apisix ./charts/ingress-apisix \
   --set ingressController.image.tag=dev \
   --set ingressController.config.apisix.baseURL=http://apisix-admin:9180/apisix/admin \
   --set ingressController.config.apisix.adminKey=edd1c9f034335f136f87ad84b625c8f1 \
-  --namespace ingress-apisix \
+  --namespace ingress-apisix
 ```
 
 The admin key used in abovementioned commands is the default one, if you change the admin key configuration when you deployed APISIX, please remember to change it here.
