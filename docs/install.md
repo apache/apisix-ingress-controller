@@ -29,7 +29,6 @@ This is an index page about installing Ingress APISIX in several environments. C
 * [Install Ingress APISIX on KubeSphere](deployments/kubesphere.md)
 * [Install Ingress APISIX on K3S and RKE](deployments/k3s-rke.md)
 
-
 ## Kustomize Support
 
 As an alternative way, you can also choose to install apisix-ingress-controller by [Kustomize](https://kustomize.io/).
