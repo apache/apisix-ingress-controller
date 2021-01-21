@@ -15,23 +15,21 @@
 package apisix
 
 import (
-	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
+	"context"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	ingressConf "github.com/api7/ingress-controller/pkg/kube"
+	configv1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/api7/ingress-controller/pkg/seven/conf"
 	apisix "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
-const (
-	ApisixTls = "ApisixTls"
-)
-
-type ApisixTlsCRD ingress.ApisixTls
+type ApisixTLSCRD configv1.ApisixTLS
 
 // Convert convert to  apisix.Ssl from ingress.ApisixTls CRD
-func (as *ApisixTlsCRD) Convert(sc Secreter) (*apisix.Ssl, error) {
+func (as *ApisixTLSCRD) Convert(sc Secreter) (*apisix.Ssl, error) {
 	name := as.Name
 	namespace := as.Namespace
 	_, group := BuildAnnotation(as.Annotations)
@@ -70,5 +68,5 @@ type SecretClient struct{}
 
 func (sc *SecretClient) FindByName(namespace, name string) (*v1.Secret, error) {
 	clientSet := ingressConf.GetKubeClient()
-	return clientSet.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
+	return clientSet.CoreV1().Secrets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 }

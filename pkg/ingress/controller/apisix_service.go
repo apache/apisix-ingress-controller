@@ -18,11 +18,6 @@ import (
 	"fmt"
 	"time"
 
-	apisixV1 "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
-	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
-	apisixScheme "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned/scheme"
-	informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions/config/v1"
-	v1 "github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -32,6 +27,11 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/api7/ingress-controller/pkg/ingress/apisix"
+	configv1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
+	clientset "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	apisixscheme "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
+	informersv1 "github.com/api7/ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v1"
+	listersv1 "github.com/api7/ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/api7/ingress-controller/pkg/seven/state"
 )
@@ -39,19 +39,19 @@ import (
 type ApisixServiceController struct {
 	controller          *Controller
 	kubeclientset       kubernetes.Interface
-	apisixClientset     clientSet.Interface
-	apisixServiceList   v1.ApisixServiceLister
+	apisixClientset     clientset.Interface
+	apisixServiceList   listersv1.ApisixServiceLister
 	apisixServiceSynced cache.InformerSynced
 	workqueue           workqueue.RateLimitingInterface
 }
 
 func BuildApisixServiceController(
 	kubeclientset kubernetes.Interface,
-	apisixServiceClientset clientSet.Interface,
-	apisixServiceInformer informers.ApisixServiceInformer,
+	apisixServiceClientset clientset.Interface,
+	apisixServiceInformer informersv1.ApisixServiceInformer,
 	root *Controller) *ApisixServiceController {
 
-	runtime.Must(apisixScheme.AddToScheme(scheme.Scheme))
+	runtime.Must(apisixscheme.AddToScheme(scheme.Scheme))
 	controller := &ApisixServiceController{
 		controller:          root,
 		kubeclientset:       kubeclientset,
@@ -71,7 +71,7 @@ func BuildApisixServiceController(
 
 type ServiceQueueObj struct {
 	Key    string                  `json:"key"`
-	OldObj *apisixV1.ApisixService `json:"old_obj"`
+	OldObj *configv1.ApisixService `json:"old_obj"`
 	Ope    string                  `json:"ope"` // add / update / delete
 }
 
@@ -170,8 +170,8 @@ func (c *ApisixServiceController) addFunc(obj interface{}) {
 }
 
 func (c *ApisixServiceController) updateFunc(oldObj, newObj interface{}) {
-	oldService := oldObj.(*apisixV1.ApisixService)
-	newService := newObj.(*apisixV1.ApisixService)
+	oldService := oldObj.(*configv1.ApisixService)
+	newService := newObj.(*configv1.ApisixService)
 	if oldService.ResourceVersion >= newService.ResourceVersion {
 		return
 	}
@@ -189,13 +189,13 @@ func (c *ApisixServiceController) updateFunc(oldObj, newObj interface{}) {
 }
 
 func (c *ApisixServiceController) deleteFunc(obj interface{}) {
-	oldService, ok := obj.(*apisixV1.ApisixService)
+	oldService, ok := obj.(*configv1.ApisixService)
 	if !ok {
 		oldState, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			return
 		}
-		oldService, ok = oldState.Obj.(*apisixV1.ApisixService)
+		oldService, ok = oldState.Obj.(*configv1.ApisixService)
 		if !ok {
 			return
 		}

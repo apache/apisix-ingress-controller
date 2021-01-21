@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"testing"
 
-	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 
+	configv1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -29,7 +29,7 @@ func TestApisixUpstreamCRD_Convert(t *testing.T) {
 	assert := assert.New(t)
 
 	// get yaml from string
-	var crd ingress.ApisixUpstream
+	var crd configv1.ApisixUpstream
 	bytes := []byte(upstreamYaml)
 	if err := yaml.Unmarshal(bytes, &crd); err != nil {
 		assert.Error(err)
