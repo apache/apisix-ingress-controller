@@ -59,7 +59,7 @@ unit-test:
 	go test -cover -coverprofile=coverage.txt ./...
 
 ### e2e-test:         Run e2e test cases (minikube is required)
-e2e-test: build-image-to-minikube ginkgo-check
+e2e-test: ginkgo-check build-image-to-minikube
 	export APISIX_ROUTE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixRoute.yaml && \
 	export APISIX_UPSTREAM_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml && \
 	export APISIX_SERVICE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixService.yaml && \
