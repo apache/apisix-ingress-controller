@@ -21,12 +21,13 @@
 
 This is an index page about installing Ingress APISIX in several environments. Click the following links on demands.
 
-* [Install Ingress APISIX on Minikube](deployments/minikube.md)
-* [Install Ingress APISIX on K3S and RKE](deployments/k3s-rke.md)
 * [Install Ingress APISIX on Azure AKS](deployments/azure.md)
 * [Install Ingress APISIX on AWS EKS](deployments/aws.md)
-* [Install Ingress APISIX on Google Cloud GKE](deployments/gke.md)
 * [Install Ingress APISIX on ACK](deployments/ack.md)
+* [Install Ingress APISIX on Google Cloud GKE](deployments/gke.md)
+* [Install Ingress APISIX on Minikube](deployments/minikube.md)
+* [Install Ingress APISIX on KubeSphere](deployments/kubesphere.md)
+* [Install Ingress APISIX on K3S and RKE](deployments/k3s-rke.md)
 
 ## Kustomize Support
 

@@ -29,7 +29,7 @@ KubeSphere is a distributed operating system managing cloud native applications 
 * Install [Helm](https://helm.sh/).
 * Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
 * Clone [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller).
-* Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
+* Make sure your target namespace exists, kubectl operations of this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX
 
@@ -51,11 +51,11 @@ Two Service resources were created, one is `apisix-gateway`, which processes the
 The gateway service type is set to `NodePort`, so that clients can access Apache APISIX through the Node IPs and the assigned port.
 If you want to expose a `LoadBalancer` service, try to use [Porter](https://github.com/kubesphere/porter).
 
-Another thing should be concerned that the `allow.ipList` field should be customized according to the Pod CIDR settings(), so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
+Another thing that should be concerned that the `allow.ipList` field should be customized according to the Pod CIDR settings, so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
 
 ## Install apisix-ingress-controller
 
-You can also install apisix-ingress-controller by Helm Charts, it's recommended to install it in the same namespace with Apache APISIX.
+You can also install apisix-ingress-controller by Helm Charts. It's recommended to install it in the same namespace with Apache APISIX.
 
 ```shell
 cd /path/to/apisix-ingress-controller
@@ -69,8 +69,8 @@ helm install ingress-apisix ./charts/ingress-apisix \
   --namespace ingress-apisix
 ```
 
-The admin key used in abovementioned commands is the default one, if you change the admin key configuration when you deployed APISIX, please remember to change it here.
+The admin key used above is the default one. If you change the admin key configuration when you deployed APISIX, please remember to change it here.
 
-Change the `ingressController.image.tag` to the Apache APISIX version that you desire. You have to wait for while until the correspdoning pods are running.
+Change the `ingressController.image.tag` to the Apache APISIX version that you desire. Wait for the correspdoning pods are running.
 
 Now try to create some [resources](../CRD-specification.md) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../samples/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
