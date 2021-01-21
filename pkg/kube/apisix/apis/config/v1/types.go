@@ -32,7 +32,7 @@ type ApisixRoute struct {
 	Spec              *ApisixRouteSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
 }
 
-// ApisixRouteSpec is the spec definiton for ApisixRouteSpec.
+// ApisixRouteSpec is the spec definition for ApisixRouteSpec.
 type ApisixRouteSpec struct {
 	Rules []Rule `json:"rules,omitempty"`
 }
