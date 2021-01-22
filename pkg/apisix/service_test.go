@@ -33,7 +33,6 @@ import (
 )
 
 type fakeAPISIXServiceSrv struct {
-	id      int
 	service map[string]json.RawMessage
 }
 
@@ -80,9 +79,9 @@ func (srv *fakeAPISIXServiceSrv) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		w.WriteHeader(code)
 	}
 
-	if r.Method == http.MethodPost {
-		srv.id++
-		key := fmt.Sprintf("/apisix/services/%d", srv.id)
+	if r.Method == http.MethodPut {
+		paths := strings.Split(r.URL.Path, "/")
+		key := fmt.Sprintf("/apisix/services/%s", paths[len(paths)-1])
 		data, _ := ioutil.ReadAll(r.Body)
 		srv.service[key] = data
 		w.WriteHeader(http.StatusCreated)
@@ -118,7 +117,6 @@ func (srv *fakeAPISIXServiceSrv) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 func runFakeServiceSrv(t *testing.T) *http.Server {
 	srv := &fakeAPISIXServiceSrv{
-		id:      0,
 		service: make(map[string]json.RawMessage),
 	}
 
@@ -163,7 +161,9 @@ func TestServiceClient(t *testing.T) {
 	name := "test"
 	upsId := "13"
 
+	id := "1"
 	obj, err := cli.Create(context.TODO(), &v1.Service{
+		ID:         &id,
 		FullName:   &fullName,
 		Group:      &group,
 		Name:       &name,
@@ -172,7 +172,9 @@ func TestServiceClient(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, *obj.ID, "1")
 
+	id2 := "2"
 	obj, err = cli.Create(context.TODO(), &v1.Service{
+		ID:         &id2,
 		FullName:   &fullName,
 		Group:      &group,
 		Name:       &name,

@@ -34,7 +34,6 @@ import (
 )
 
 type fakeAPISIXUpstreamSrv struct {
-	id       int
 	upstream map[string]json.RawMessage
 }
 
@@ -81,9 +80,9 @@ func (srv *fakeAPISIXUpstreamSrv) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(code)
 	}
 
-	if r.Method == http.MethodPost {
-		srv.id++
-		key := fmt.Sprintf("/apisix/upstreams/%d", srv.id)
+	if r.Method == http.MethodPut {
+		paths := strings.Split(r.URL.Path, "/")
+		key := fmt.Sprintf("/apisix/upstreams/%s", paths[len(paths)-1])
 		data, _ := ioutil.ReadAll(r.Body)
 		srv.upstream[key] = data
 		w.WriteHeader(http.StatusCreated)
@@ -119,7 +118,6 @@ func (srv *fakeAPISIXUpstreamSrv) ServeHTTP(w http.ResponseWriter, r *http.Reque
 
 func runFakeUpstreamSrv(t *testing.T) *http.Server {
 	srv := &fakeAPISIXUpstreamSrv{
-		id:       0,
 		upstream: make(map[string]json.RawMessage),
 	}
 
@@ -175,7 +173,9 @@ func TestUpstreamClient(t *testing.T) {
 		},
 	}
 
+	id1 := "1"
 	obj, err := cli.Create(context.TODO(), &v1.Upstream{
+		ID:       &id1,
 		FullName: &fullName,
 		Group:    &group,
 		Name:     &name,
@@ -186,7 +186,9 @@ func TestUpstreamClient(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, *obj.ID, "1")
 
+	id2 := "2"
 	obj, err = cli.Create(context.TODO(), &v1.Upstream{
+		ID:       &id2,
 		FullName: &fullName,
 		Group:    &group,
 		Name:     &name,
