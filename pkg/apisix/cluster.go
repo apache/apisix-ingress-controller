@@ -255,6 +255,35 @@ func (s *cluster) do(req *http.Request) (*http.Response, error) {
 	return s.cli.Do(req)
 }
 
+func (s *cluster) getResource(ctx context.Context, url string) (*getResponse, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer drainBody(resp.Body, url)
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, cache.ErrNotFound
+		} else {
+			err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
+			err = multierr.Append(err, fmt.Errorf("error message: %s", readBody(resp.Body, url)))
+		}
+		return nil, err
+	}
+
+	var res getResponse
+
+	dec := json.NewDecoder(resp.Body)
+	if err := dec.Decode(&res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
 func (s *cluster) listResource(ctx context.Context, url string) (*listResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -281,7 +310,7 @@ func (s *cluster) listResource(ctx context.Context, url string) (*listResponse, 
 }
 
 func (s *cluster) createResource(ctx context.Context, url string, body io.Reader) (*createResponse, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
 	if err != nil {
 		return nil, err
 	}

@@ -16,7 +16,6 @@ package state
 
 import (
 	"context"
-	"strconv"
 	"sync"
 
 	"github.com/api7/ingress-controller/pkg/log"
@@ -92,7 +91,9 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 		cluster = *svc.Group
 	}
 	currentService, _ := conf.Client.Cluster(cluster).Service().Get(context.TODO(), *svc.FullName)
-	paddingService(svc, currentService)
+	if paddingService(svc, currentService) {
+		op = Create
+	}
 	// diff
 	hasDiff, err := utils.HasDiff(svc, currentService)
 	// sync
@@ -101,18 +102,14 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 		return
 	}
 	if hasDiff {
-		if *svc.ID == strconv.Itoa(0) {
-			op = Create
-			if s, err := conf.Client.Cluster(cluster).Service().Create(context.TODO(), svc); err != nil {
+		if op == Create {
+			if _, err := conf.Client.Cluster(cluster).Service().Create(context.TODO(), svc); err != nil {
 				log.Errorf("failed to create service: %s", err)
 				errNotify = err
 				return
-			} else {
-				*svc.ID = *s.ID
 			}
 			log.Infof("create service %s, %s", *svc.Name, *svc.UpstreamId)
 		} else {
-			op = Update
 			needToUpdate := true
 			if currentService.FromKind != nil && *(currentService.FromKind) == ApisixService { // update from ApisixUpstream
 				if svc.FromKind == nil || (svc.FromKind != nil && *(svc.FromKind) != ApisixService) {
