@@ -17,9 +17,8 @@ package apisix
 import (
 	"strconv"
 
-	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
-
 	"github.com/api7/ingress-controller/pkg/ingress/endpoint"
+	configv1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/api7/ingress-controller/pkg/seven/conf"
 	apisix "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
@@ -28,7 +27,7 @@ const (
 	ApisixService = "ApisixService"
 )
 
-type ApisixServiceCRD ingress.ApisixService
+type ApisixServiceCRD configv1.ApisixService
 
 // Convert convert to  apisix.Service from ingress.ApisixService CRD
 func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, error) {

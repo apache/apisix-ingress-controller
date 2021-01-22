@@ -15,18 +15,18 @@
 package kube
 
 import (
-	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
 	"k8s.io/client-go/informers"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/api7/ingress-controller/pkg/config"
+	clientset "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned"
 )
 
 var (
 	EndpointsInformer         coreinformers.EndpointsInformer
 	kubeClient                kubernetes.Interface
-	apisixKubeClient          *clientSet.Clientset
+	apisixKubeClient          *clientset.Clientset
 	CoreSharedInformerFactory informers.SharedInformerFactory
 )
 
@@ -34,7 +34,7 @@ func GetKubeClient() kubernetes.Interface {
 	return kubeClient
 }
 
-func GetApisixClient() clientSet.Interface {
+func GetApisixClient() clientset.Interface {
 	return apisixKubeClient
 }
 
@@ -51,7 +51,7 @@ func InitInformer(cfg *config.Config) error {
 		return err
 	}
 
-	apisixKubeClient, err = clientSet.NewForConfig(restConfig)
+	apisixKubeClient, err = clientset.NewForConfig(restConfig)
 	if err != nil {
 		return err
 	}

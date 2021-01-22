@@ -18,11 +18,6 @@ import (
 	"fmt"
 	"time"
 
-	apisixV1 "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
-	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
-	apisixScheme "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned/scheme"
-	informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions/config/v1"
-	v1 "github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -32,41 +27,46 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/api7/ingress-controller/pkg/ingress/apisix"
+	configv1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
+	clientset "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	apisixscheme "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
+	informersv1 "github.com/api7/ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v1"
+	listersv1 "github.com/api7/ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/api7/ingress-controller/pkg/seven/state"
 )
 
-type ApisixTlsController struct {
+type ApisixTLSController struct {
 	controller      *Controller
 	kubeclientset   kubernetes.Interface
-	apisixClientset clientSet.Interface
-	apisixTlsList   v1.ApisixTlsLister
-	apisixTlsSynced cache.InformerSynced
+	apisixClientset clientset.Interface
+	apisixTLSList   listersv1.ApisixTLSLister
+	apisixTLSSynced cache.InformerSynced
 	workqueue       workqueue.RateLimitingInterface
 }
 
 type TlsQueueObj struct {
 	Key    string              `json:"key"`
-	OldObj *apisixV1.ApisixTls `json:"old_obj"`
+	OldObj *configv1.ApisixTLS `json:"old_obj"`
 	Ope    string              `json:"ope"` // add / update / delete
 }
 
 func BuildApisixTlsController(
 	kubeclientset kubernetes.Interface,
-	apisixTlsClientset clientSet.Interface,
-	apisixTlsInformer informers.ApisixTlsInformer,
-	root *Controller) *ApisixTlsController {
+	apisixTLSClientset clientset.Interface,
+	apisixTLSInformer informersv1.ApisixTLSInformer,
+	root *Controller) *ApisixTLSController {
 
-	runtime.Must(apisixScheme.AddToScheme(scheme.Scheme))
-	controller := &ApisixTlsController{
+	runtime.Must(apisixscheme.AddToScheme(scheme.Scheme))
+	controller := &ApisixTLSController{
 		controller:      root,
 		kubeclientset:   kubeclientset,
-		apisixClientset: apisixTlsClientset,
-		apisixTlsList:   apisixTlsInformer.Lister(),
-		apisixTlsSynced: apisixTlsInformer.Informer().HasSynced,
+		apisixClientset: apisixTLSClientset,
+		apisixTLSList:   apisixTLSInformer.Lister(),
+		apisixTLSSynced: apisixTLSInformer.Informer().HasSynced,
 		workqueue:       workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixTlses"),
 	}
-	apisixTlsInformer.Informer().AddEventHandler(
+	apisixTLSInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    controller.addFunc,
 			UpdateFunc: controller.updateFunc,
@@ -75,7 +75,7 @@ func BuildApisixTlsController(
 	return controller
 }
 
-func (c *ApisixTlsController) Run(stop <-chan struct{}) error {
+func (c *ApisixTLSController) Run(stop <-chan struct{}) error {
 	if ok := cache.WaitForCacheSync(stop); !ok {
 		log.Errorf("sync ApisixService cache failed")
 		return fmt.Errorf("failed to wait for caches to sync")
@@ -84,12 +84,12 @@ func (c *ApisixTlsController) Run(stop <-chan struct{}) error {
 	return nil
 }
 
-func (c *ApisixTlsController) runWorker() {
+func (c *ApisixTLSController) runWorker() {
 	for c.processNextWorkItem() {
 	}
 }
 
-func (c *ApisixTlsController) processNextWorkItem() bool {
+func (c *ApisixTLSController) processNextWorkItem() bool {
 	defer recoverException()
 	obj, shutdown := c.workqueue.Get()
 	if shutdown {
@@ -120,7 +120,7 @@ func (c *ApisixTlsController) processNextWorkItem() bool {
 	return true
 }
 
-func (c *ApisixTlsController) syncHandler(tqo *TlsQueueObj) error {
+func (c *ApisixTLSController) syncHandler(tqo *TlsQueueObj) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(tqo.Key)
 	if err != nil {
 		log.Errorf("invalid resource key: %s", tqo.Key)
@@ -128,13 +128,13 @@ func (c *ApisixTlsController) syncHandler(tqo *TlsQueueObj) error {
 	}
 	apisixTlsYaml := tqo.OldObj
 	if tqo.Ope == state.Delete {
-		apisixIngressTls, _ := c.apisixTlsList.ApisixTlses(namespace).Get(name)
+		apisixIngressTls, _ := c.apisixTLSList.ApisixTLSs(namespace).Get(name)
 		if apisixIngressTls != nil && apisixIngressTls.ResourceVersion > tqo.OldObj.ResourceVersion {
 			log.Warnf("TLS %s has been covered when retry", tqo.Key)
 			return nil
 		}
 	} else {
-		apisixTlsYaml, err = c.apisixTlsList.ApisixTlses(namespace).Get(name)
+		apisixTlsYaml, err = c.apisixTLSList.ApisixTLSs(namespace).Get(name)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				log.Infof("apisixTls %s is removed", tqo.Key)
@@ -145,7 +145,7 @@ func (c *ApisixTlsController) syncHandler(tqo *TlsQueueObj) error {
 		}
 	}
 
-	apisixTls := apisix.ApisixTlsCRD(*apisixTlsYaml)
+	apisixTls := apisix.ApisixTLSCRD(*apisixTlsYaml)
 	sc := &apisix.SecretClient{}
 	if tls, err := apisixTls.Convert(sc); err != nil {
 		return err
@@ -157,7 +157,7 @@ func (c *ApisixTlsController) syncHandler(tqo *TlsQueueObj) error {
 	}
 }
 
-func (c *ApisixTlsController) addFunc(obj interface{}) {
+func (c *ApisixTLSController) addFunc(obj interface{}) {
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
@@ -171,9 +171,9 @@ func (c *ApisixTlsController) addFunc(obj interface{}) {
 	c.workqueue.AddRateLimited(rqo)
 }
 
-func (c *ApisixTlsController) updateFunc(oldObj, newObj interface{}) {
-	oldTls := oldObj.(*apisixV1.ApisixTls)
-	newTls := newObj.(*apisixV1.ApisixTls)
+func (c *ApisixTLSController) updateFunc(oldObj, newObj interface{}) {
+	oldTls := oldObj.(*configv1.ApisixTLS)
+	newTls := newObj.(*configv1.ApisixTLS)
 	if oldTls.ResourceVersion == newTls.ResourceVersion {
 		return
 	}
@@ -190,14 +190,14 @@ func (c *ApisixTlsController) updateFunc(oldObj, newObj interface{}) {
 	c.workqueue.AddRateLimited(rqo)
 }
 
-func (c *ApisixTlsController) deleteFunc(obj interface{}) {
-	oldTls, ok := obj.(*apisixV1.ApisixTls)
+func (c *ApisixTLSController) deleteFunc(obj interface{}) {
+	oldTls, ok := obj.(*configv1.ApisixTLS)
 	if !ok {
 		oldState, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			return
 		}
-		oldTls, ok = oldState.Obj.(*apisixV1.ApisixTls)
+		oldTls, ok = oldState.Obj.(*configv1.ApisixTLS)
 		if !ok {
 			return
 		}

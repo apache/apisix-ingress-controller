@@ -8,10 +8,8 @@ require (
 	github.com/gruntwork-io/terratest v0.31.2
 	github.com/onsi/ginkgo v1.14.2
 	github.com/stretchr/testify v1.6.1
-	k8s.io/api v0.19.3
-	k8s.io/apimachinery v0.19.3
+	k8s.io/api v0.20.2
+	k8s.io/apimachinery v0.20.2
 )
-
-replace github.com/gxthrj/apisix-ingress-types v0.1.3 => github.com/api7/ingress-types v0.1.3
 
 replace github.com/api7/ingress-controller => ../../

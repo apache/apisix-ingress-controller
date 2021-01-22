@@ -17,9 +17,8 @@ package apisix
 import (
 	"strconv"
 
-	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
-
 	"github.com/api7/ingress-controller/pkg/ingress/endpoint"
+	configv1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/api7/ingress-controller/pkg/seven/conf"
 	apisix "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
@@ -35,7 +34,7 @@ const (
 	INGRESS_CLASS      = "k8s.apisix.apache.org/ingress.class"
 )
 
-type ApisixRoute ingress.ApisixRoute
+type ApisixRoute configv1.ApisixRoute
 
 // Convert convert to  apisix.Route from ingress.ApisixRoute CRD
 func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.Upstream, error) {
@@ -57,7 +56,7 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 		for _, p := range paths {
 			uri := p.Path
 			svcName := p.Backend.ServiceName
-			svcPort := strconv.FormatInt(p.Backend.ServicePort, 10)
+			svcPort := strconv.Itoa(p.Backend.ServicePort)
 			// apisix route name = host + path
 			apisixRouteName := host + uri
 			// apisix service name = namespace_svcName_svcPort

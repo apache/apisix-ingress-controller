@@ -58,7 +58,7 @@ spec:
 		Status: &status,
 		Group:  &group,
 	}
-	atlsCRD := &ApisixTlsCRD{}
+	atlsCRD := &ApisixTLSCRD{}
 	err := yaml.Unmarshal([]byte(atlsStr), atlsCRD)
 	assert.Nil(t, err, "yaml decode failed")
 	sc := &SecretClientMock{}
@@ -102,7 +102,7 @@ spec:
 		Group:  &group,
 	}
 	setDummyApisixClient(t)
-	atlsCRD := &ApisixTlsCRD{}
+	atlsCRD := &ApisixTLSCRD{}
 	err := yaml.Unmarshal([]byte(atlsStr), atlsCRD)
 	assert.Nil(t, err, "yaml decode failed")
 	sc := &SecretClientMock{}
@@ -123,7 +123,7 @@ spec:
     namespace: helm
 `
 	setDummyApisixClient(t)
-	atlsCRD := &ApisixTlsCRD{}
+	atlsCRD := &ApisixTLSCRD{}
 	err := yaml.Unmarshal([]byte(atlsStr), atlsCRD)
 	assert.Nil(t, err, "yaml decode failed")
 	sc := &SecretClientErrorMock{}
