@@ -122,6 +122,10 @@ We welcome all kinds of contributions from the open-source community, individual
 * ![Twitter Follow](https://img.shields.io/twitter/follow/ApacheAPISIX?style=social) - follow and interact with us using hashtag `#ApacheAPISIX`
 * [Bilibili video](https://space.bilibili.com/551921247)
 
+## Milestone
+
+* [Milestone](https://github.com/apache/apisix-ingress-controller/milestones)
+
 ## Terminology
 
 * Ingress APISIX: the whole service that contains the proxy ([Apache APISIX](https://apisix.apache.org)) and ingress controller (apisix ingress controller).
