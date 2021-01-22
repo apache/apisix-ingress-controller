@@ -260,7 +260,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		return err
 	}
 
-	crb := fmt.Sprintf(_clusterRoleBinding,s.namespace,s.namespace, s.namespace)
+	crb := fmt.Sprintf(_clusterRoleBinding, s.namespace, s.namespace, s.namespace)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, crb); err != nil {
 		return err
 	}
