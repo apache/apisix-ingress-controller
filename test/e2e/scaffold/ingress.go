@@ -33,7 +33,7 @@ const (
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-	name: apisix-view-clusterrole
+	name: %s-apisix-view-clusterrole
 rules:
 - apiGroups:
 	- ""
@@ -172,7 +172,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: apisix_view_clusterrole
+  name: %s-apisix_view_clusterrole
 subjects:
 - kind: ServiceAccount
   name: ingress-apisix-e2e-test-service-account
@@ -255,12 +255,12 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		return err
 	}
 
-	cr := fmt.Sprintf(_clusterRole, s.namespace, s.namespace)
+	cr := fmt.Sprintf(_clusterRole, s.namespace)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, cr); err != nil {
 		return err
 	}
 
-	crb := fmt.Sprintf(_clusterRoleBinding, s.namespace, s.namespace)
+	crb := fmt.Sprintf(_clusterRoleBinding,s.namespace,s.namespace, s.namespace)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, crb); err != nil {
 		return err
 	}
