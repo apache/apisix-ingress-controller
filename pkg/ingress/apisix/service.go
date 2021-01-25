@@ -47,20 +47,20 @@ func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, er
 	fromKind := ApisixService
 	// plugins
 	plugins := as.Spec.Plugins
-	pluginRet := &apisix.Plugins{}
+	pluginRet := apisix.Plugins{}
 	// 1.from annotations
 	for k, v := range pluginsInAnnotation {
-		(*pluginRet)[k] = v
+		pluginRet[k] = v
 	}
 	// 2.from service plugins
 	for _, p := range plugins {
 		if p.Enable {
 			if p.Config != nil {
-				(*pluginRet)[p.Name] = p.Config
+				pluginRet[p.Name] = p.Config
 			} else if p.ConfigSet != nil {
-				(*pluginRet)[p.Name] = p.ConfigSet
+				pluginRet[p.Name] = p.ConfigSet
 			} else {
-				(*pluginRet)[p.Name] = make(map[string]interface{})
+				pluginRet[p.Name] = make(map[string]interface{})
 			}
 		}
 	}
@@ -71,12 +71,12 @@ func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, er
 	}
 
 	service := &apisix.Service{
-		FullName:        &fullServiceName,
-		Group:           &group,
-		ResourceVersion: &rv,
-		Name:            &apisixServiceName,
-		UpstreamName:    &apisixUpstreamName,
-		FromKind:        &fromKind,
+		FullName:        fullServiceName,
+		Group:           group,
+		ResourceVersion: rv,
+		Name:            apisixServiceName,
+		UpstreamName:    apisixUpstreamName,
+		FromKind:        fromKind,
 		Plugins:         pluginRet,
 	}
 	services = append(services, service)
@@ -89,13 +89,13 @@ func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, er
 	LBType := DefaultLBType
 	nodes := endpoint.BuildEps(ns, upstreamName, int(port))
 	upstream := &apisix.Upstream{
-		FullName:        &fullUpstreamName,
-		Group:           &group,
-		ResourceVersion: &rv,
-		Name:            &apisixUpstreamName,
-		Type:            &LBType,
+		FullName:        fullUpstreamName,
+		Group:           group,
+		ResourceVersion: rv,
+		Name:            apisixUpstreamName,
+		Type:            LBType,
 		Nodes:           nodes,
-		FromKind:        &fromKind,
+		FromKind:        fromKind,
 	}
 	upstreams = append(upstreams, upstream)
 	return services, upstreams, nil

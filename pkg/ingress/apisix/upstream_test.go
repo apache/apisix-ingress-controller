@@ -54,11 +54,11 @@ func TestApisixUpstreamCRD_Convert(t *testing.T) {
 }
 
 func equals(s, d *v1.Upstream) bool {
-	if *s.Name != *d.Name || *s.FullName != *d.FullName || *s.Group != *d.Group {
+	if s.Name != d.Name || s.FullName != d.FullName || s.Group != d.Group {
 		return false
 	}
 
-	if *s.FromKind != *d.FromKind || *s.Type != *d.Type || *s.Key != *d.Key || *s.HashOn != *d.HashOn {
+	if s.FromKind != d.FromKind || s.Type != d.Type || s.Key != d.Key || s.HashOn != d.HashOn {
 		return false
 	}
 
@@ -68,8 +68,8 @@ func equals(s, d *v1.Upstream) bool {
 // mock BuildEps
 type EndpointRequestTest struct{}
 
-func (epr *EndpointRequestTest) BuildEps(ns, name string, port int) []*v1.Node {
-	nodes := make([]*v1.Node, 0)
+func (epr *EndpointRequestTest) BuildEps(ns, name string, port int) []v1.Node {
+	nodes := make([]v1.Node, 0)
 	return nodes
 }
 
@@ -81,14 +81,14 @@ func buildExpectUpstream() *v1.Upstream {
 	fromKind := "ApisixUpstream"
 	group := ""
 	upstreamExpect := &v1.Upstream{
-		Group:           &group,
-		ResourceVersion: &group,
-		FullName:        &fullName,
-		Name:            &fullName,
-		Type:            &LBType,
-		HashOn:          &HashOn,
-		Key:             &Key,
-		FromKind:        &fromKind,
+		Group:           group,
+		ResourceVersion: group,
+		FullName:        fullName,
+		Name:            fullName,
+		Type:            LBType,
+		HashOn:          HashOn,
+		Key:             Key,
+		FromKind:        fromKind,
 	}
 	return upstreamExpect
 }

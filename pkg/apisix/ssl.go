@@ -151,7 +151,7 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
-	url := s.url + "/" + *obj.ID
+	url := s.url + "/" + obj.ID
 	log.Infow("creating ssl", zap.ByteString("body", data), zap.String("url", url))
 	resp, err := s.cluster.createResource(ctx, url, bytes.NewReader(data))
 	if err != nil {
@@ -160,8 +160,8 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	}
 
 	var clusterName string
-	if obj.Group != nil {
-		clusterName = *obj.Group
+	if obj.Group != "" {
+		clusterName = obj.Group
 	}
 
 	ssl, err := resp.Item.ssl(clusterName)
@@ -177,14 +177,14 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 
 func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 	log.Infow("try to delete ssl",
-		zap.String("id", *obj.ID),
+		zap.String("id", obj.ID),
 		zap.String("cluster", s.clusterName),
 		zap.String("url", s.url),
 	)
 	if err := s.cluster.HasSynced(ctx); err != nil {
 		return err
 	}
-	url := s.url + "/" + *obj.ID
+	url := s.url + "/" + obj.ID
 	if err := s.cluster.deleteResource(ctx, url); err != nil {
 		return err
 	}
@@ -197,14 +197,14 @@ func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 
 func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	log.Infow("try to update ssl",
-		zap.String("id", *obj.ID),
+		zap.String("id", obj.ID),
 		zap.String("cluster", s.clusterName),
 		zap.String("url", s.url),
 	)
 	if err := s.cluster.HasSynced(ctx); err != nil {
 		return nil, err
 	}
-	url := s.url + "/" + *obj.ID
+	url := s.url + "/" + obj.ID
 	data, err := json.Marshal(v1.Ssl{
 		ID:     obj.ID,
 		Snis:   obj.Snis,
@@ -221,8 +221,8 @@ func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 		return nil, err
 	}
 	var clusterName string
-	if obj.Group != nil {
-		clusterName = *obj.Group
+	if obj.Group != "" {
+		clusterName = obj.Group
 	}
 	ssl, err := resp.Item.ssl(clusterName)
 	if err != nil {

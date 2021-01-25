@@ -157,51 +157,45 @@ func TestSSLClient(t *testing.T) {
 	})
 
 	// Create
-	id1 := "1"
-	group := "default"
-	sni := "bar.com"
 	obj, err := cli.Create(context.TODO(), &v1.Ssl{
-		ID:    &id1,
-		Group: &group,
-		Snis:  []*string{&sni},
+		ID:    "1",
+		Group: "default",
+		Snis:  []string{"bar.com"},
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, *obj.ID, "1")
+	assert.Equal(t, obj.ID, "1")
 
-	id2 := "2"
 	obj, err = cli.Create(context.TODO(), &v1.Ssl{
-		ID:    &id2,
-		Group: &group,
-		Snis:  []*string{&sni},
+		ID:    "2",
+		Group: "default",
+		Snis:  []string{"bar.com"},
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, *obj.ID, "2")
+	assert.Equal(t, obj.ID, "2")
 
 	// List
 	objs, err := cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 2)
-	assert.Equal(t, *objs[0].ID, "1")
-	assert.Equal(t, *objs[1].ID, "2")
+	assert.Equal(t, objs[0].ID, "1")
+	assert.Equal(t, objs[1].ID, "2")
 
 	// Delete then List
 	assert.Nil(t, cli.Delete(context.Background(), objs[0]))
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
-	assert.Equal(t, "2", *objs[0].ID)
+	assert.Equal(t, "2", objs[0].ID)
 
 	// Patch then List
-	objId := "2"
-	sni = "foo.com"
 	_, err = cli.Update(context.Background(), &v1.Ssl{
-		ID:   &objId,
-		Snis: []*string{&sni},
+		ID:   "2",
+		Snis: []string{"foo.com"},
 	})
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
-	assert.Equal(t, "2", *objs[0].ID)
-	assert.Equal(t, sni, *objs[0].Snis[0])
+	assert.Equal(t, "2", objs[0].ID)
+	assert.Equal(t, "foo.com", objs[0].Snis[0])
 }

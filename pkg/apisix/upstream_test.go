@@ -165,70 +165,67 @@ func TestUpstreamClient(t *testing.T) {
 	ip := "10.0.11.153"
 	port := 15006
 	weight := 100
-	nodes := []*v1.Node{
+	nodes := []v1.Node{
 		{
-			IP:     &ip,
-			Port:   &port,
-			Weight: &weight,
+			IP:     ip,
+			Port:   port,
+			Weight: weight,
 		},
 	}
 
-	id1 := "1"
 	obj, err := cli.Create(context.TODO(), &v1.Upstream{
-		ID:       &id1,
-		FullName: &fullName,
-		Group:    &group,
-		Name:     &name,
-		Type:     &lbType,
-		Key:      &key,
+		ID:       "1",
+		FullName: fullName,
+		Group:    group,
+		Name:     name,
+		Type:     lbType,
+		Key:      key,
 		Nodes:    nodes,
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, *obj.ID, "1")
+	assert.Equal(t, obj.ID, "1")
 
 	id2 := "2"
 	obj, err = cli.Create(context.TODO(), &v1.Upstream{
-		ID:       &id2,
-		FullName: &fullName,
-		Group:    &group,
-		Name:     &name,
-		Type:     &lbType,
-		Key:      &key,
+		ID:       id2,
+		FullName: fullName,
+		Group:    group,
+		Name:     name,
+		Type:     lbType,
+		Key:      key,
 		Nodes:    nodes,
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, *obj.ID, "2")
+	assert.Equal(t, obj.ID, "2")
 
 	// List
 	objs, err := cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 2)
-	assert.Equal(t, *objs[0].ID, "1")
-	assert.Equal(t, *objs[1].ID, "2")
+	assert.Equal(t, objs[0].ID, "1")
+	assert.Equal(t, objs[1].ID, "2")
 
 	// Delete then List
 	assert.Nil(t, cli.Delete(context.Background(), objs[0]))
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
-	assert.Equal(t, "2", *objs[0].ID)
+	assert.Equal(t, "2", objs[0].ID)
 
 	// Patch then List
-	lbType = "chash"
-	objId := "2"
 	_, err = cli.Update(context.Background(), &v1.Upstream{
-		ID:       &objId,
-		FullName: &fullName,
-		Group:    &group,
-		Name:     &name,
-		Type:     &lbType,
-		Key:      &key,
+		ID:       "2",
+		FullName: fullName,
+		Group:    group,
+		Name:     name,
+		Type:     "chash",
+		Key:      key,
 		Nodes:    nodes,
 	})
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
-	assert.Equal(t, "2", *objs[0].ID)
-	assert.Equal(t, lbType, *objs[0].Type)
+	assert.Equal(t, "2", objs[0].ID)
+	assert.Equal(t, "chash", objs[0].Type)
 }

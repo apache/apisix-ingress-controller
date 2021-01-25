@@ -73,12 +73,12 @@ type item struct {
 }
 
 type routeItem struct {
-	UpstreamId *string                `json:"upstream_id"`
-	ServiceId  *string                `json:"service_id"`
-	Host       *string                `json:"host"`
-	URI        *string                `json:"uri"`
-	Desc       *string                `json:"desc"`
-	Methods    []*string              `json:"methods"`
+	UpstreamId string                 `json:"upstream_id"`
+	ServiceId  string                 `json:"service_id"`
+	Host       string                 `json:"host"`
+	URI        string                 `json:"uri"`
+	Desc       string                 `json:"desc"`
+	Methods    []string               `json:"methods"`
 	Plugins    map[string]interface{} `json:"plugins"`
 }
 
@@ -98,16 +98,16 @@ func (i *item) route(clusterName string) (*v1.Route, error) {
 	fullName := genFullName(route.Desc, clusterName)
 
 	return &v1.Route{
-		ID:         &list[len(list)-1],
-		FullName:   &fullName,
-		Group:      &clusterName,
+		ID:         list[len(list)-1],
+		FullName:   fullName,
+		Group:      clusterName,
 		Name:       route.Desc,
 		Host:       route.Host,
 		Path:       route.URI,
 		Methods:    route.Methods,
 		UpstreamId: route.UpstreamId,
 		ServiceId:  route.ServiceId,
-		Plugins:    (*v1.Plugins)(&route.Plugins),
+		Plugins:    route.Plugins,
 	}, nil
 }
 
@@ -129,24 +129,24 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 	LBType := ups.LBType
 	key := i.Key
 
-	var nodes []*v1.Node
+	var nodes []v1.Node
 	for _, node := range ups.Nodes {
-		nodes = append(nodes, &v1.Node{
-			IP:     &node.Host,
-			Port:   &node.Port,
-			Weight: &node.Weight,
+		nodes = append(nodes, v1.Node{
+			IP:     node.Host,
+			Port:   node.Port,
+			Weight: node.Weight,
 		})
 	}
 
 	fullName := genFullName(ups.Desc, clusterName)
 
 	return &v1.Upstream{
-		ID:       &id,
-		FullName: &fullName,
-		Group:    &clusterName,
+		ID:       id,
+		FullName: fullName,
+		Group:    clusterName,
 		Name:     name,
 		Type:     LBType,
-		Key:      &key,
+		Key:      key,
 		Nodes:    nodes,
 	}, nil
 }
@@ -163,20 +163,20 @@ func (i *item) service(clusterName string) (*v1.Service, error) {
 	id := list[len(list)-1]
 	var plugins v1.Plugins
 	if svc.Plugins != nil {
-		plugins := make(v1.Plugins, len(*svc.Plugins))
-		for k, v := range *svc.Plugins {
+		plugins := make(v1.Plugins, len(svc.Plugins))
+		for k, v := range svc.Plugins {
 			plugins[k] = v
 		}
 	}
 	fullName := genFullName(svc.Desc, clusterName)
 
 	return &v1.Service{
-		ID:         &id,
-		FullName:   &fullName,
-		Group:      &clusterName,
+		ID:         id,
+		FullName:   fullName,
+		Group:      clusterName,
 		Name:       svc.Desc,
 		UpstreamId: svc.UpstreamId,
-		Plugins:    &plugins,
+		Plugins:    plugins,
 	}, nil
 }
 
@@ -190,16 +190,13 @@ func (i *item) ssl(clusterName string) (*v1.Ssl, error) {
 
 	list := strings.Split(i.Key, "/")
 	id := list[len(list)-1]
-	ssl.ID = &id
-	ssl.Group = &clusterName
+	ssl.ID = id
+	ssl.Group = clusterName
 	return &ssl, nil
 }
 
-func genFullName(name *string, clusterName string) string {
-	fullName := "unknown"
-	if name != nil {
-		fullName = *name
-	}
+func genFullName(name string, clusterName string) string {
+	fullName := name
 	if clusterName != "" {
 		fullName = clusterName + "_" + fullName
 	}

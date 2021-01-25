@@ -220,7 +220,7 @@ func (c *dbCache) checkServiceReference(s *v1.Service) error {
 	// Service is referenced by Route.
 	txn := c.db.Txn(false)
 	defer txn.Abort()
-	obj, err := txn.First("route", "service_id", *s.FullName)
+	obj, err := txn.First("route", "service_id", s.FullName)
 	if err != nil {
 		if err == memdb.ErrNotFound {
 			return nil
@@ -237,7 +237,7 @@ func (c *dbCache) checkUpstreamReference(u *v1.Upstream) error {
 	// Upstream is referenced by Service.
 	txn := c.db.Txn(false)
 	defer txn.Abort()
-	obj, err := txn.First("service", "upstream_id", *u.FullName)
+	obj, err := txn.First("service", "upstream_id", u.FullName)
 	if err != nil {
 		if err == memdb.ErrNotFound {
 			return nil

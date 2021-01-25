@@ -59,7 +59,7 @@ func (w *serviceWorker) trigger(event Event, rwg *RouteWorkerGroup) error {
 	log.Infof("1.service trigger from %s, %s", event.Op, event.Kind)
 	// consumer Event set upstreamID
 	upstream := event.Obj.(*v1.Upstream)
-	log.Infof("2.service trigger from %s, %s", event.Op, *upstream.Name)
+	log.Infof("2.service trigger from %s, %s", event.Op, upstream.Name)
 
 	w.UpstreamId = upstream.ID
 	// add to queue
@@ -89,10 +89,10 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 	op := Update
 	// padding
 	var cluster string
-	if svc.Group != nil {
-		cluster = *svc.Group
+	if svc.Group != "" {
+		cluster = svc.Group
 	}
-	currentService, _ := conf.Client.Cluster(cluster).Service().Get(context.TODO(), *svc.FullName)
+	currentService, _ := conf.Client.Cluster(cluster).Service().Get(context.TODO(), svc.FullName)
 	if paddingService(svc, currentService) {
 		op = Create
 	}
@@ -110,11 +110,11 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 				errNotify = err
 				return
 			}
-			log.Infof("create service %s, %s", *svc.Name, *svc.UpstreamId)
+			log.Infof("create service %s, %s", svc.Name, svc.UpstreamId)
 		} else {
 			needToUpdate := true
-			if currentService.FromKind != nil && *(currentService.FromKind) == ApisixService { // update from ApisixUpstream
-				if svc.FromKind == nil || (svc.FromKind != nil && *(svc.FromKind) != ApisixService) {
+			if currentService.FromKind == ApisixService { // update from ApisixUpstream
+				if svc.FromKind != ApisixService {
 					// currentService > svc
 					// set lb && health check
 					needToUpdate = false
@@ -123,17 +123,17 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 			if needToUpdate {
 				if _, err := conf.Client.Cluster(cluster).Service().Update(context.TODO(), svc); err != nil {
 					errNotify = err
-					log.Errorf("failed to update service: %s, id:%s", err, *svc.ID)
+					log.Errorf("failed to update service: %s, id:%s", err, svc.ID)
 				} else {
-					log.Infof("updated service, id:%s, upstream_id:%s", *svc.ID, *svc.UpstreamId)
+					log.Infof("updated service, id:%s, upstream_id:%s", svc.ID, svc.UpstreamId)
 				}
 			}
 		}
 	}
 	// broadcast to route
-	for _, rw := range rwg[*svc.Name] {
+	for _, rw := range rwg[svc.Name] {
 		event := &Event{Kind: ServiceKind, Op: op, Obj: svc}
-		log.Infof("send event %s, %s, %s", event.Kind, event.Op, *svc.Name)
+		log.Infof("send event %s, %s, %s", event.Kind, event.Op, svc.Name)
 		rw.Event <- *event
 	}
 }
