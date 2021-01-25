@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"net/http"
 
 	"go.uber.org/zap"
 
@@ -141,7 +140,6 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 		zap.String("url", s.url),
 		zap.String("id", *obj.ID),
 	)
-	url := s.url + "/" + *obj.ID
 	if err := s.cluster.HasSynced(ctx); err != nil {
 		return nil, err
 	}
