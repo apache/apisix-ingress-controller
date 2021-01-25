@@ -23,6 +23,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/api7/ingress-controller/pkg/apisix/cache"
+	"github.com/api7/ingress-controller/pkg/id"
 	"github.com/api7/ingress-controller/pkg/log"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
@@ -104,17 +105,42 @@ func (u *upstreamClient) Get(ctx context.Context, fullname string) (*v1.Upstream
 		)
 	}
 
-	// FIXME Replace the List with accurate get since list is not trivial.
-	list, err := u.List(ctx)
+	// TODO Add mutex here to avoid dog-pile effection.
+	url := u.url + "/" + id.GenID(fullname)
+	resp, err := u.cluster.getResource(ctx, url)
 	if err != nil {
+		if err == cache.ErrNotFound {
+			log.Warnw("upstream not found",
+				zap.String("fullname", fullname),
+				zap.String("url", url),
+				zap.String("cluster", u.clusterName),
+			)
+		} else {
+			log.Errorw("failed to get upstream from APISIX",
+				zap.String("fullname", fullname),
+				zap.String("url", url),
+				zap.String("cluster", u.clusterName),
+				zap.Error(err),
+			)
+		}
 		return nil, err
 	}
-	for _, elem := range list {
-		if *elem.FullName == fullname {
-			return elem, nil
-		}
+
+	ups, err = resp.Item.upstream(u.clusterName)
+	if err != nil {
+		log.Errorw("failed to convert upstream item",
+			zap.String("url", u.url),
+			zap.String("ssl_key", resp.Item.Key),
+			zap.Error(err),
+		)
+		return nil, err
 	}
-	return nil, cache.ErrNotFound
+
+	if err := u.cluster.cache.InsertUpstream(ups); err != nil {
+		log.Errorf("failed to reflect upstream create to cache: %s", err)
+		return nil, err
+	}
+	return ups, nil
 }
 
 // List is only used in cache warming up. So here just pass through
@@ -177,9 +203,10 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	if err != nil {
 		return nil, err
 	}
-	log.Infow("creating upstream", zap.ByteString("body", body), zap.String("url", u.url))
+	url := u.url + "/" + *obj.ID
+	log.Infow("creating upstream", zap.ByteString("body", body), zap.String("url", url))
 
-	resp, err := u.cluster.createResource(ctx, u.url, bytes.NewReader(body))
+	resp, err := u.cluster.createResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		log.Errorf("failed to create upstream: %s", err)
 		return nil, err

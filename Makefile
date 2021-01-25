@@ -34,6 +34,7 @@ GITSHASYM="github.com/api7/ingress-controller/pkg/version._buildGitRevision"
 BUILDOSSYM="github.com/api7/ingress-controller/pkg/version._buildOS"
 GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH)"
 E2E_CONCURRENCY ?= 1
+E2E_SKIP_BUILD ?= 0
 
 ### build:            Build apisix-ingress-controller
 build:
@@ -75,9 +76,11 @@ endif
 # build images to minikube node directly, it's an internal directive, so don't
 # expose it's help message.
 build-image-to-minikube:
+ifeq ($(E2E_SKIP_BUILD), 0)
 	@minikube version > /dev/null 2>&1 || (echo "ERROR: minikube is required."; exit 1)
 	@eval $$(minikube docker-env);\
 	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) .
+endif
 
 ### license-check:    Do Apache License Header check
 license-check:

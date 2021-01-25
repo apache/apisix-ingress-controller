@@ -24,6 +24,10 @@ import (
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
+type getResponse struct {
+	Item item `json:"node"`
+}
+
 // listResponse is the unified LIST response mapping of APISIX.
 type listResponse struct {
 	Count string `json:"count"`

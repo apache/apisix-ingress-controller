@@ -23,6 +23,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/api7/ingress-controller/pkg/apisix/cache"
+	"github.com/api7/ingress-controller/pkg/id"
 	"github.com/api7/ingress-controller/pkg/log"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
@@ -49,6 +50,8 @@ func newRouteClient(c *cluster) Route {
 	}
 }
 
+// FIXME, currently if caller pass a non-existent resource, the Get always passes
+// through cache.
 func (r *routeClient) Get(ctx context.Context, fullname string) (*v1.Route, error) {
 	log.Infow("try to look up route",
 		zap.String("fullname", fullname),
@@ -71,17 +74,42 @@ func (r *routeClient) Get(ctx context.Context, fullname string) (*v1.Route, erro
 		)
 	}
 
-	// FIXME Replace the List with accurate get since list is not trivial.
-	list, err := r.List(ctx)
+	// TODO Add mutex here to avoid dog-pile effection.
+	url := r.url + "/" + id.GenID(fullname)
+	resp, err := r.cluster.getResource(ctx, url)
 	if err != nil {
+		if err == cache.ErrNotFound {
+			log.Warnw("route not found",
+				zap.String("fullname", fullname),
+				zap.String("url", url),
+				zap.String("cluster", r.clusterName),
+			)
+		} else {
+			log.Errorw("failed to get route from APISIX",
+				zap.String("fullname", fullname),
+				zap.String("url", url),
+				zap.String("cluster", r.clusterName),
+				zap.Error(err),
+			)
+		}
 		return nil, err
 	}
-	for _, elem := range list {
-		if *elem.FullName == fullname {
-			return elem, nil
-		}
+
+	route, err = resp.Item.route(r.clusterName)
+	if err != nil {
+		log.Errorw("failed to convert route item",
+			zap.String("url", r.url),
+			zap.String("route_key", resp.Item.Key),
+			zap.Error(err),
+		)
+		return nil, err
 	}
-	return nil, cache.ErrNotFound
+
+	if err := r.cluster.cache.InsertRoute(route); err != nil {
+		log.Errorf("failed to reflect route create to cache: %s", err)
+		return nil, err
+	}
+	return route, nil
 }
 
 // List is only used in cache warming up. So here just pass through
@@ -139,8 +167,9 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		return nil, err
 	}
 
-	log.Infow("creating route", zap.ByteString("body", data), zap.String("url", r.url))
-	resp, err := r.cluster.createResource(ctx, r.url, bytes.NewReader(data))
+	url := r.url + "/" + *obj.ID
+	log.Infow("creating route", zap.ByteString("body", data), zap.String("url", url))
+	resp, err := r.cluster.createResource(ctx, url, bytes.NewReader(data))
 	if err != nil {
 		log.Errorf("failed to create route: %s", err)
 		return nil, err
