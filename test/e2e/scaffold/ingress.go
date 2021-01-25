@@ -90,7 +90,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-          image: "apache/apisix-ingress-controller:dev1"
+          image: "apache/apisix-ingress-controller:dev"
           imagePullPolicy: Never
           name: ingress-apisix-controller-deployment-e2e-test
           ports:
