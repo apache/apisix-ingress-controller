@@ -190,7 +190,6 @@ func (c *cluster) syncCacheOnce() (bool, error) {
 		}
 	}
 	for _, s := range ssl {
-		s.FullName = s.ID
 		if err := c.cache.InsertSSL(s); err != nil {
 			log.Errorw("failed to insert ssl to cache",
 				zap.String("ssl", s.ID),

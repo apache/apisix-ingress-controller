@@ -16,6 +16,7 @@ package scaffold
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -145,6 +146,30 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 		BaseURL: u.String(),
 		Client: &http.Client{
 			Transport: &http.Transport{},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
+		),
+	})
+}
+
+// NewAPISIXHttpsClient creates the default HTTPs client.
+func (s *Scaffold) NewAPISIXHttpsClient() *httpexpect.Expect {
+	host, err := s.apisixServiceHttpsURL()
+	assert.Nil(s.t, err, "getting apisix service url")
+	u := url.URL{
+		Scheme: "https",
+		Host:   host,
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					// accept any certificate; for testing only!
+					InsecureSkipVerify: true,
+				},
+			},
 		},
 		Reporter: httpexpect.NewAssertReporter(
 			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),

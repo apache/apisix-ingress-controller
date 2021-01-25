@@ -46,6 +46,7 @@ spec:
 `
 )
 
+// NewSecret new a k8s secret
 func (s *Scaffold) NewSecret(name, cert, key string) error {
 	certBase64 := base64.StdEncoding.EncodeToString([]byte(cert))
 	keyBase64 := base64.StdEncoding.EncodeToString([]byte(key))
@@ -56,6 +57,7 @@ func (s *Scaffold) NewSecret(name, cert, key string) error {
 	return nil
 }
 
+// NewApisixTls new a ApisixTls CRD
 func (s *Scaffold) NewApisixTls(name, host, secretName string) error {
 	tls := fmt.Sprintf(_api6tlsTemplate, name, host, secretName, s.kubectlOptions.Namespace)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, tls); err != nil {
@@ -64,6 +66,7 @@ func (s *Scaffold) NewApisixTls(name, host, secretName string) error {
 	return nil
 }
 
+// DeleteApisixTls remove ApisixTls CRD
 func (s *Scaffold) DeleteApisixTls(name string, host, secretName string) error {
 	tls := fmt.Sprintf(_api6tlsTemplate, name, host, secretName, s.kubectlOptions.Namespace)
 	if err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, tls); err != nil {

@@ -169,8 +169,6 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
-	ssl.ID = obj.ID
-	ssl.FullName = obj.ID
 	if err := s.cluster.cache.InsertSSL(ssl); err != nil {
 		log.Errorf("failed to reflect ssl create to cache: %s", err)
 		return nil, err
@@ -191,7 +189,6 @@ func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 	if err := s.cluster.deleteResource(ctx, url); err != nil {
 		return err
 	}
-	obj.FullName = obj.ID
 	if err := s.cluster.cache.DeleteSSL(obj); err != nil {
 		log.Errorf("failed to reflect ssl delete to cache: %s", err)
 		return err
@@ -232,8 +229,6 @@ func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
-	ssl.ID = obj.ID
-	ssl.FullName = obj.ID
 	if err := s.cluster.cache.InsertSSL(ssl); err != nil {
 		log.Errorf("failed to reflect ssl update to cache: %s", err)
 		return nil, err
