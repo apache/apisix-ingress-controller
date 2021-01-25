@@ -87,7 +87,7 @@ var (
 					"id": {
 						Name:    "id",
 						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "ID"},
+						Indexer: &memdb.StringFieldIndex{Field: "FullName"},
 					},
 				},
 			},

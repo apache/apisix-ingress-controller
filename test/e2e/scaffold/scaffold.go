@@ -27,8 +27,6 @@ import (
 	"text/template"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/testing"
@@ -36,6 +34,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -191,8 +190,8 @@ func (s *Scaffold) beforeEach() {
 
 func (s *Scaffold) afterEach() {
 	defer ginkgo.GinkgoRecover()
-	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
-	assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
+	//err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
+	//assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
 
 	for _, f := range s.finializers {
 		f()

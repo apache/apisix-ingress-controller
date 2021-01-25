@@ -190,6 +190,7 @@ func (c *cluster) syncCacheOnce() (bool, error) {
 		}
 	}
 	for _, s := range ssl {
+		s.FullName = s.ID
 		if err := c.cache.InsertSSL(s); err != nil {
 			log.Errorw("failed to insert ssl to cache",
 				zap.String("ssl", s.ID),
@@ -310,7 +311,11 @@ func (s *cluster) listResource(ctx context.Context, url string) (*listResponse, 
 }
 
 func (s *cluster) createResource(ctx context.Context, url string, body io.Reader) (*createResponse, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
+	return s.createResourceWithMethod(ctx, url, body, http.MethodPut)
+}
+
+func (s *cluster) createResourceWithMethod(ctx context.Context, url string, body io.Reader, method string) (*createResponse, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return nil, err
 	}
