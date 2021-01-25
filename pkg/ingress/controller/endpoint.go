@@ -82,51 +82,63 @@ func (c *endpointsController) run(ctx context.Context) error {
 			return nil
 		}
 
+		var (
+			err error
+		)
+
 		key, ok := obj.(string)
 		if !ok {
 			log.Errorf("found endpoints object with unexpected type %T, ignore it", obj)
 			c.workqueue.Forget(obj)
 		} else {
-			c.process(ctx, key)
+			err = c.process(ctx, key)
 		}
 
 		c.workqueue.Done(obj)
+
+		if err != nil {
+			log.Warnf("object %s retried since %s", key, err)
+			c.retry(obj)
+		}
 	}
 }
 
-func (c *endpointsController) process(ctx context.Context, key string) {
+func (c *endpointsController) process(ctx context.Context, key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		log.Errorf("found endpoints objects with malformed namespace/name: %s, ignore it", err)
-		return
+		return nil
 	}
 
 	ep, err := c.lister.Endpoints(namespace).Get(name)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			log.Warnf("endpoints %s was removed before it can be processed", key)
-		} else {
-			log.Errorf("failed to get endpoints %s: %s", key, err)
+			return nil
 		}
-		return
+		log.Errorf("failed to get endpoints %s: %s", key, err)
+		return err
 	}
-	c.sync(ctx, ep)
+	return c.sync(ctx, ep)
 }
 
-func (c *endpointsController) sync(ctx context.Context, ep *corev1.Endpoints) {
+func (c *endpointsController) sync(ctx context.Context, ep *corev1.Endpoints) error {
 	clusters := c.controller.apisix.ListClusters()
 	for _, s := range ep.Subsets {
 		for _, port := range s.Ports {
 			upstream := fmt.Sprintf("%s_%s_%d", ep.Namespace, ep.Name, port.Port)
 			for _, cluster := range clusters {
-				c.syncToCluster(ctx, upstream, cluster, s.Addresses, int(port.Port))
+				if err := c.syncToCluster(ctx, upstream, cluster, s.Addresses, int(port.Port)); err != nil {
+					return err
+				}
 			}
 		}
 	}
+	return nil
 }
 
 func (c *endpointsController) syncToCluster(ctx context.Context, upstreamName string,
-	cluster apisix.Cluster, addresses []corev1.EndpointAddress, port int) {
+	cluster apisix.Cluster, addresses []corev1.EndpointAddress, port int) error {
 	upstream, err := cluster.Upstream().Get(ctx, upstreamName)
 	if err != nil {
 		if err == apisixcache.ErrNotFound {
@@ -134,14 +146,15 @@ func (c *endpointsController) syncToCluster(ctx context.Context, upstreamName st
 				zap.String("cluster", cluster.String()),
 				zap.String("upstream", upstreamName),
 			)
+			return nil
 		} else {
 			log.Errorw("failed to get upstream",
 				zap.String("upstream", upstreamName),
 				zap.String("cluster", cluster.String()),
 				zap.Error(err),
 			)
+			return err
 		}
-		return
 	}
 
 	nodes := make([]apisixv1.Node, 0, len(addresses))
@@ -168,7 +181,13 @@ func (c *endpointsController) syncToCluster(ctx context.Context, upstreamName st
 			zap.String("cluster", cluster.String()),
 			zap.Error(err),
 		)
+		return err
 	}
+	return nil
+}
+
+func (c *endpointsController) retry(obj interface{}) {
+	c.workqueue.AddRateLimited(obj)
 }
 
 func (c *endpointsController) onAdd(obj interface{}) {
