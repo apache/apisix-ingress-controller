@@ -62,17 +62,17 @@ func (n *upstreamNodes) UnmarshalJSON(p []byte) error {
 }
 
 type upstreamReqBody struct {
-	LBType *string       `json:"type"`
-	HashOn *string       `json:"hash_on,omitempty"`
-	Key    *string       `json:"key,omitempty"`
+	LBType string        `json:"type"`
+	HashOn string        `json:"hash_on,omitempty"`
+	Key    string        `json:"key,omitempty"`
 	Nodes  upstreamNodes `json:"nodes"`
-	Desc   *string       `json:"desc"`
+	Desc   string        `json:"desc"`
 }
 
 type upstreamItem struct {
 	Nodes  upstreamNodes `json:"nodes"`
-	Desc   *string       `json:"desc"`
-	LBType *string       `json:"type"`
+	Desc   string        `json:"desc"`
+	LBType string        `json:"type"`
 }
 
 func newUpstreamClient(c *cluster) Upstream {
@@ -176,7 +176,7 @@ func (u *upstreamClient) List(ctx context.Context) ([]*v1.Upstream, error) {
 
 func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upstream, error) {
 	log.Infow("try to create upstream",
-		zap.String("fullname", *obj.FullName),
+		zap.String("fullname", obj.FullName),
 		zap.String("url", u.url),
 		zap.String("cluster", u.clusterName),
 	)
@@ -188,9 +188,9 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	nodes := make(upstreamNodes, 0, len(obj.Nodes))
 	for _, node := range obj.Nodes {
 		nodes = append(nodes, upstreamNode{
-			Host:   *node.IP,
-			Port:   *node.Port,
-			Weight: *node.Weight,
+			Host:   node.IP,
+			Port:   node.Port,
+			Weight: node.Weight,
 		})
 	}
 	body, err := json.Marshal(upstreamReqBody{
@@ -203,7 +203,7 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	if err != nil {
 		return nil, err
 	}
-	url := u.url + "/" + *obj.ID
+	url := u.url + "/" + obj.ID
 	log.Infow("creating upstream", zap.ByteString("body", body), zap.String("url", url))
 
 	resp, err := u.cluster.createResource(ctx, url, bytes.NewReader(body))
@@ -212,8 +212,8 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		return nil, err
 	}
 	var clusterName string
-	if obj.Group != nil {
-		clusterName = *obj.Group
+	if obj.Group != "" {
+		clusterName = obj.Group
 	}
 	ups, err := resp.Item.upstream(clusterName)
 	if err != nil {
@@ -228,8 +228,8 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 
 func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 	log.Infow("try to delete upstream",
-		zap.String("id", *obj.ID),
-		zap.String("fullname", *obj.FullName),
+		zap.String("id", obj.ID),
+		zap.String("fullname", obj.FullName),
 		zap.String("cluster", u.clusterName),
 		zap.String("url", u.url),
 	)
@@ -237,7 +237,7 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 	if err := u.cluster.HasSynced(ctx); err != nil {
 		return err
 	}
-	url := u.url + "/" + *obj.ID
+	url := u.url + "/" + obj.ID
 	if err := u.cluster.deleteResource(ctx, url); err != nil {
 		return err
 	}
@@ -250,8 +250,8 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 
 func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upstream, error) {
 	log.Infow("try to update upstream",
-		zap.String("id", *obj.ID),
-		zap.String("fullname", *obj.FullName),
+		zap.String("id", obj.ID),
+		zap.String("fullname", obj.FullName),
 		zap.String("cluster", u.clusterName),
 		zap.String("url", u.url),
 	)
@@ -263,9 +263,9 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	nodes := make(upstreamNodes, 0, len(obj.Nodes))
 	for _, node := range obj.Nodes {
 		nodes = append(nodes, upstreamNode{
-			Host:   *node.IP,
-			Port:   *node.Port,
-			Weight: *node.Weight,
+			Host:   node.IP,
+			Port:   node.Port,
+			Weight: node.Weight,
 		})
 	}
 	body, err := json.Marshal(upstreamReqBody{
@@ -279,15 +279,15 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		return nil, err
 	}
 
-	url := u.url + "/" + *obj.ID
+	url := u.url + "/" + obj.ID
 	log.Infow("updating upstream", zap.ByteString("body", body), zap.String("url", url))
 	resp, err := u.cluster.updateResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 	var clusterName string
-	if obj.Group != nil {
-		clusterName = *obj.Group
+	if obj.Group != "" {
+		clusterName = obj.Group
 	}
 	ups, err := resp.Item.upstream(clusterName)
 	if err != nil {

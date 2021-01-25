@@ -156,61 +156,52 @@ func TestServiceClient(t *testing.T) {
 	})
 
 	// Create
-	group := "default"
-	fullName := "default_test"
-	name := "test"
-	upsId := "13"
-
-	id := "1"
 	obj, err := cli.Create(context.TODO(), &v1.Service{
-		ID:         &id,
-		FullName:   &fullName,
-		Group:      &group,
-		Name:       &name,
-		UpstreamId: &upsId,
+		ID:         "1",
+		FullName:   "default_test",
+		Group:      "default",
+		Name:       "test",
+		UpstreamId: "13",
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, *obj.ID, "1")
+	assert.Equal(t, obj.ID, "1")
 
-	id2 := "2"
 	obj, err = cli.Create(context.TODO(), &v1.Service{
-		ID:         &id2,
-		FullName:   &fullName,
-		Group:      &group,
-		Name:       &name,
-		UpstreamId: &upsId,
+		ID:         "2",
+		FullName:   "default_test",
+		Group:      "default",
+		Name:       "test",
+		UpstreamId: "13",
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, *obj.ID, "2")
+	assert.Equal(t, obj.ID, "2")
 
 	// List
 	objs, err := cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 2)
-	assert.Equal(t, *objs[0].ID, "1")
-	assert.Equal(t, *objs[1].ID, "2")
+	assert.Equal(t, objs[0].ID, "1")
+	assert.Equal(t, objs[1].ID, "2")
 
 	// Delete then List
 	assert.Nil(t, cli.Delete(context.Background(), objs[0]))
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
-	assert.Equal(t, "2", *objs[0].ID)
+	assert.Equal(t, "2", objs[0].ID)
 
 	// Patch then List
-	upsId = "14"
-	objId := "2"
 	_, err = cli.Update(context.Background(), &v1.Service{
-		ID:         &objId,
-		FullName:   &fullName,
-		Group:      &group,
-		Name:       &name,
-		UpstreamId: &upsId,
+		ID:         "2",
+		FullName:   "default_test",
+		Group:      "default",
+		Name:       "test",
+		UpstreamId: "14",
 	})
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
-	assert.Equal(t, "2", *objs[0].ID)
-	assert.Equal(t, upsId, *objs[0].UpstreamId)
+	assert.Equal(t, "2", objs[0].ID)
+	assert.Equal(t, "14", objs[0].UpstreamId)
 }

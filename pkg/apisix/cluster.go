@@ -162,7 +162,7 @@ func (c *cluster) syncCacheOnce() (bool, error) {
 	for _, r := range routes {
 		if err := c.cache.InsertRoute(r); err != nil {
 			log.Errorw("failed to insert route to cache",
-				zap.String("route", *r.ID),
+				zap.String("route", r.ID),
 				zap.String("cluster", c.name),
 				zap.String("error", err.Error()),
 			)
@@ -172,7 +172,7 @@ func (c *cluster) syncCacheOnce() (bool, error) {
 	for _, s := range services {
 		if err := c.cache.InsertService(s); err != nil {
 			log.Errorw("failed to insert service to cache",
-				zap.String("service", *s.ID),
+				zap.String("service", s.ID),
 				zap.String("cluster", c.name),
 				zap.String("error", err.Error()),
 			)
@@ -182,7 +182,7 @@ func (c *cluster) syncCacheOnce() (bool, error) {
 	for _, u := range upstreams {
 		if err := c.cache.InsertUpstream(u); err != nil {
 			log.Errorw("failed to insert upstream to cache",
-				zap.String("upstream", *u.ID),
+				zap.String("upstream", u.ID),
 				zap.String("cluster", c.name),
 				zap.String("error", err.Error()),
 			)
@@ -192,7 +192,7 @@ func (c *cluster) syncCacheOnce() (bool, error) {
 	for _, s := range ssl {
 		if err := c.cache.InsertSSL(s); err != nil {
 			log.Errorw("failed to insert ssl to cache",
-				zap.String("ssl", *s.ID),
+				zap.String("ssl", s.ID),
 				zap.String("cluster", c.name),
 				zap.String("error", err.Error()),
 			)

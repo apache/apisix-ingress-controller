@@ -35,9 +35,9 @@ type serviceClient struct {
 }
 
 type serviceItem struct {
-	UpstreamId *string                 `json:"upstream_id,omitempty"`
-	Plugins    *map[string]interface{} `json:"plugins,omitempty"`
-	Desc       *string                 `json:"desc,omitempty"`
+	UpstreamId string                 `json:"upstream_id,omitempty"`
+	Plugins    map[string]interface{} `json:"plugins,omitempty"`
+	Desc       string                 `json:"desc,omitempty"`
 }
 
 func newServiceClient(c *cluster) Service {
@@ -141,7 +141,7 @@ func (s *serviceClient) List(ctx context.Context) ([]*v1.Service, error) {
 
 func (s *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Service, error) {
 	log.Infow("try to create service",
-		zap.String("fullname", *obj.FullName),
+		zap.String("fullname", obj.FullName),
 		zap.String("cluster", s.clusterName),
 		zap.String("url", s.url),
 	)
@@ -151,14 +151,14 @@ func (s *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Servic
 
 	body, err := json.Marshal(serviceItem{
 		UpstreamId: obj.UpstreamId,
-		Plugins:    (*map[string]interface{})(obj.Plugins),
+		Plugins:    obj.Plugins,
 		Desc:       obj.Name,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	url := s.url + "/" + *obj.ID
+	url := s.url + "/" + obj.ID
 	log.Infow("creating service", zap.ByteString("body", body), zap.String("url", url))
 	resp, err := s.cluster.createResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
@@ -166,8 +166,8 @@ func (s *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Servic
 		return nil, err
 	}
 	var clusterName string
-	if obj.Group != nil {
-		clusterName = *obj.Group
+	if obj.Group != "" {
+		clusterName = obj.Group
 	}
 	svc, err := resp.Item.service(clusterName)
 	if err != nil {
@@ -182,15 +182,15 @@ func (s *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Servic
 
 func (s *serviceClient) Delete(ctx context.Context, obj *v1.Service) error {
 	log.Infow("try to delete service",
-		zap.String("id", *obj.ID),
-		zap.String("fullname", *obj.FullName),
+		zap.String("id", obj.ID),
+		zap.String("fullname", obj.FullName),
 		zap.String("cluster", s.clusterName),
 		zap.String("url", s.url),
 	)
 	if err := s.cluster.HasSynced(ctx); err != nil {
 		return err
 	}
-	url := s.url + "/" + *obj.ID
+	url := s.url + "/" + obj.ID
 	if err := s.cluster.deleteResource(ctx, url); err != nil {
 		return err
 	}
@@ -203,8 +203,8 @@ func (s *serviceClient) Delete(ctx context.Context, obj *v1.Service) error {
 
 func (s *serviceClient) Update(ctx context.Context, obj *v1.Service) (*v1.Service, error) {
 	log.Infow("try to update service",
-		zap.String("id", *obj.ID),
-		zap.String("fullname", *obj.FullName),
+		zap.String("id", obj.ID),
+		zap.String("fullname", obj.FullName),
 		zap.String("cluster", s.clusterName),
 		zap.String("url", s.url),
 	)
@@ -215,22 +215,22 @@ func (s *serviceClient) Update(ctx context.Context, obj *v1.Service) (*v1.Servic
 
 	body, err := json.Marshal(serviceItem{
 		UpstreamId: obj.UpstreamId,
-		Plugins:    (*map[string]interface{})(obj.Plugins),
+		Plugins:    obj.Plugins,
 		Desc:       obj.Name,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	url := s.url + "/" + *obj.ID
+	url := s.url + "/" + obj.ID
 	log.Infow("creating service", zap.ByteString("body", body), zap.String("url", url))
 	resp, err := s.cluster.updateResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 	var clusterName string
-	if obj.Group != nil {
-		clusterName = *obj.Group
+	if obj.Group != "" {
+		clusterName = obj.Group
 	}
 	svc, err := resp.Item.service(clusterName)
 	if err != nil {

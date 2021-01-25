@@ -179,65 +179,58 @@ func TestRouteClient(t *testing.T) {
 	})
 
 	// Create
-	id := "1"
-	host := "www.foo.com"
-	uri := "/bar"
-	name := "test"
 	obj, err := cli.Create(context.Background(), &v1.Route{
-		ID:         &id,
-		Host:       &host,
-		Path:       &uri,
-		Name:       &name,
-		FullName:   &name,
-		ServiceId:  &id,
-		UpstreamId: &id,
+		ID:         "1",
+		Host:       "www.foo.com",
+		Path:       "/bar",
+		Name:       "test",
+		FullName:   "test",
+		ServiceId:  "1",
+		UpstreamId: "1",
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, *obj.ID, "1")
+	assert.Equal(t, obj.ID, "1")
 
-	id2 := "2"
 	obj, err = cli.Create(context.Background(), &v1.Route{
-		ID:         &id2,
-		Host:       &host,
-		Path:       &uri,
-		Name:       &name,
-		FullName:   &name,
-		ServiceId:  &id,
-		UpstreamId: &id,
+		ID:         "2",
+		Host:       "www.foo.com",
+		Path:       "/bar",
+		Name:       "test",
+		FullName:   "test",
+		ServiceId:  "1",
+		UpstreamId: "1",
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, *obj.ID, "2")
+	assert.Equal(t, obj.ID, "2")
 
 	// List
 	objs, err := cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 2)
-	assert.Equal(t, *objs[0].ID, "1")
-	assert.Equal(t, *objs[1].ID, "2")
+	assert.Equal(t, objs[0].ID, "1")
+	assert.Equal(t, objs[1].ID, "2")
 
 	// Delete then List
 	assert.Nil(t, cli.Delete(context.Background(), objs[0]))
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
-	assert.Equal(t, "2", *objs[0].ID)
+	assert.Equal(t, "2", objs[0].ID)
 
 	// Patch then List
-	id = "112"
-	objId := "2"
 	_, err = cli.Update(context.Background(), &v1.Route{
-		ID:         &objId,
-		Host:       &host,
-		Path:       &uri,
-		Name:       &name,
-		FullName:   &name,
-		ServiceId:  &id,
-		UpstreamId: &id,
+		ID:         "2",
+		Host:       "www.foo.com",
+		Path:       "/bar",
+		Name:       "test",
+		FullName:   "test",
+		ServiceId:  "112",
+		UpstreamId: "112",
 	})
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
-	assert.Equal(t, "2", *objs[0].ID)
-	assert.Equal(t, "112", *objs[0].ServiceId)
+	assert.Equal(t, "2", objs[0].ID)
+	assert.Equal(t, "112", objs[0].ServiceId)
 }

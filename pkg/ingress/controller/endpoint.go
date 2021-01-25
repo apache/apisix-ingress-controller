@@ -185,21 +185,17 @@ func syncWithGroup(group, upstreamName string, ips []string, port CoreV1.Endpoin
 	upstreams, err := sevenConf.Client.Cluster(group).Upstream().List(context.TODO())
 	if err == nil {
 		for _, upstream := range upstreams {
-			if *(upstream.Name) == upstreamName {
-				nodes := make([]*apisixv1.Node, 0)
+			if upstream.Name == upstreamName {
+				nodes := make([]apisixv1.Node, 0)
 				for _, ip := range ips {
-					ipAddress := ip
-					p := int(port.Port)
-					weight := 100
-					node := &apisixv1.Node{IP: &ipAddress, Port: &p, Weight: &weight}
+					node := apisixv1.Node{IP: ip, Port: int(port.Port), Weight: 100}
 					nodes = append(nodes, node)
 				}
 				upstream.Nodes = nodes
 				// update upstream nodes
 				// add to seven solver queue
 				//apisix.UpdateUpstream(upstream)
-				fromKind := WatchFromKind
-				upstream.FromKind = &fromKind
+				upstream.FromKind = WatchFromKind
 				upstreams := []*apisixv1.Upstream{upstream}
 				comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
 				if _, err = comb.Solver(); err != nil {

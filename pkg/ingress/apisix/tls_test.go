@@ -43,25 +43,25 @@ spec:
     namespace: helm
 `
 	id := "helm_foo"
-	host := "api6.com"
-	snis := []*string{&host}
-	status := int(1)
+	snis := []string{"api6.com"}
+	status := 1
 	cert := "root"
 	key := "123456"
 	group := ""
 	sslExpect := &apisix.Ssl{
-		ID:     &id,
+		ID:     id,
 		Snis:   snis,
-		Cert:   &cert,
-		Key:    &key,
-		Status: &status,
-		Group:  &group,
+		Cert:   cert,
+		Key:    key,
+		Status: status,
+		Group:  group,
 	}
 	atlsCRD := &ApisixTLSCRD{}
 	err := yaml.Unmarshal([]byte(atlsStr), atlsCRD)
 	assert.Nil(t, err, "yaml decode failed")
 	sc := &SecretClientMock{}
 	ssl, err := atlsCRD.Convert(sc)
+	assert.Nil(t, err)
 	assert.EqualValues(t, sslExpect.Key, ssl.Key, "key convert error")
 	assert.EqualValues(t, sslExpect.ID, ssl.ID, "id convert error")
 	assert.EqualValues(t, sslExpect.Cert, ssl.Cert, "cert convert error")
@@ -86,19 +86,18 @@ spec:
     namespace: helm
 `
 	id := "helm_foo"
-	host := "api6.com"
-	snis := []*string{&host}
+	snis := []string{"api6.com"}
 	status := int(1)
 	cert := "root"
 	key := "123456"
 	group := "127.0.0.1:9080"
 	sslExpect := &apisix.Ssl{
-		ID:     &id,
+		ID:     id,
 		Snis:   snis,
-		Cert:   &cert,
-		Key:    &key,
-		Status: &status,
-		Group:  &group,
+		Cert:   cert,
+		Key:    key,
+		Status: status,
+		Group:  group,
 	}
 	setDummyApisixClient(t)
 	atlsCRD := &ApisixTLSCRD{}
@@ -106,6 +105,7 @@ spec:
 	assert.Nil(t, err, "yaml decode failed")
 	sc := &SecretClientMock{}
 	ssl, err := atlsCRD.Convert(sc)
+	assert.Nil(t, err)
 	assert.EqualValues(t, sslExpect.Group, ssl.Group, "group convert error")
 }
 
