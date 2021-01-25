@@ -16,7 +16,6 @@ package apisix
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -151,7 +150,7 @@ func (sc *SecretClientMock) FindByName(namespace, name string) (*v1.Secret, erro
 `
 	secret := &v1.Secret{}
 	if err := json.Unmarshal([]byte(secretStr), secret); err != nil {
-		fmt.Errorf(err.Error())
+		return nil, err
 	}
 	return secret, nil
 }
