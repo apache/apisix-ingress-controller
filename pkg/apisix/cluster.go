@@ -108,12 +108,12 @@ func (c *cluster) syncCache() {
 	defer func() {
 		if c.cacheSyncErr == nil {
 			log.Infow("cache synced",
-				zap.String("cost_time", time.Now().Sub(now).String()),
+				zap.String("cost_time", time.Since(now).String()),
 				zap.String("cluster", c.name),
 			)
 		} else {
 			log.Errorw("failed to sync cache",
-				zap.String("cost_time", time.Now().Sub(now).String()),
+				zap.String("cost_time", time.Since(now).String()),
 				zap.String("cluster", c.name),
 			)
 		}
@@ -219,7 +219,7 @@ func (c *cluster) HasSynced(ctx context.Context) error {
 		log.Errorf("failed to wait cluster to ready: %s", ctx.Err())
 		return ctx.Err()
 	case <-c.cacheSynced:
-		log.Warnf("cluster %s now is ready, cost time %s", c.name, time.Now().Sub(now).String())
+		log.Warnf("cluster %s now is ready, cost time %s", c.name, time.Since(now).String())
 		return nil
 	}
 }
