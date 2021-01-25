@@ -65,8 +65,8 @@ func (c *Controller) newEndpointsController(factory informers.SharedInformerFact
 }
 
 func (c *endpointsController) run(ctx context.Context) error {
-	log.Debug("endpoints controller started")
-	defer log.Debug("endpoints controller exited")
+	log.Info("endpoints controller started")
+	defer log.Info("endpoints controller exited")
 
 	go func() {
 		c.informer.Run(ctx.Done())
@@ -97,7 +97,7 @@ func (c *endpointsController) run(ctx context.Context) error {
 		c.workqueue.Done(obj)
 
 		if err != nil {
-			log.Warnf("object %s retried since %s", key, err)
+			log.Warnf("endpoints %s retried since %s", key, err)
 			c.retry(obj)
 		}
 	}
