@@ -83,7 +83,9 @@ func TestSignalHandler(t *testing.T) {
 	})
 	waitCh := make(chan struct{})
 	go func() {
-		cmd.Execute()
+		if err := cmd.Execute(); err != nil {
+			log.Errorf("failed to execute command: %s", err)
+		}
 		close(waitCh)
 	}()
 

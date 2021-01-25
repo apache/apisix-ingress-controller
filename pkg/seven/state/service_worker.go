@@ -45,7 +45,9 @@ func (w *serviceWorker) start(rwg *RouteWorkerGroup) {
 		for {
 			select {
 			case event := <-w.Event:
-				w.trigger(event, rwg)
+				if err := w.trigger(event, rwg); err != nil {
+					log.Errorf("failed to trigger event: %s", err)
+				}
 			case <-w.Ctx.Done():
 				return
 			}

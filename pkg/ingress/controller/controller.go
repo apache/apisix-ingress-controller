@@ -285,7 +285,9 @@ func (api6 *Api6Controller) ApisixRoute(controller *Controller) {
 		api6.Api6ClientSet,
 		api6.SharedInformerFactory.Apisix().V1().ApisixRoutes(),
 		controller)
-	arc.Run(api6.Stop)
+	if err := arc.Run(api6.Stop); err != nil {
+		log.Errorf("failed to run ApisixRouteController: %s", err)
+	}
 }
 
 func (api6 *Api6Controller) ApisixUpstream(controller *Controller) {
@@ -294,29 +296,37 @@ func (api6 *Api6Controller) ApisixUpstream(controller *Controller) {
 		api6.Api6ClientSet,
 		api6.SharedInformerFactory.Apisix().V1().ApisixUpstreams(),
 		controller)
-	auc.Run(api6.Stop)
+	if err := auc.Run(api6.Stop); err != nil {
+		log.Errorf("failed to run ApisixUpstreamController: %s", err)
+	}
 }
 
 func (api6 *Api6Controller) ApisixService(controller *Controller) {
-	auc := BuildApisixServiceController(
+	asc := BuildApisixServiceController(
 		api6.KubeClientSet,
 		api6.Api6ClientSet,
 		api6.SharedInformerFactory.Apisix().V1().ApisixServices(),
 		controller)
-	auc.Run(api6.Stop)
+	if err := asc.Run(api6.Stop); err != nil {
+		log.Errorf("failed to run ApisixServiceController: %s", err)
+	}
 }
 
 func (api6 *Api6Controller) ApisixTLS(controller *Controller) {
-	auc := BuildApisixTlsController(
+	atc := BuildApisixTlsController(
 		api6.KubeClientSet,
 		api6.Api6ClientSet,
 		api6.SharedInformerFactory.Apisix().V1().ApisixTLSs(),
 		controller)
-	auc.Run(api6.Stop)
+	if err := atc.Run(api6.Stop); err != nil {
+		log.Errorf("failed to run ApisixTlsController: %s", err)
+	}
 }
 
 func (api6 *Api6Controller) Endpoint(controller *Controller) {
-	auc := BuildEndpointController(api6.KubeClientSet, controller)
+	ec := BuildEndpointController(api6.KubeClientSet, controller)
 	//conf.EndpointsInformer)
-	auc.Run(api6.Stop)
+	if err := ec.Run(api6.Stop); err != nil {
+		log.Errorf("failed to run EndpointController: %s", err)
+	}
 }
