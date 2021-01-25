@@ -17,9 +17,8 @@ package apisix
 import (
 	"strconv"
 
-	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
-
 	"github.com/api7/ingress-controller/pkg/ingress/endpoint"
+	configv1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/api7/ingress-controller/pkg/seven/conf"
 	apisix "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
@@ -33,7 +32,7 @@ const (
 //type ApisixUpstreamCRD ingress.ApisixUpstream
 
 type ApisixUpstreamBuilder struct {
-	CRD *ingress.ApisixUpstream
+	CRD *configv1.ApisixUpstream
 	Ep  endpoint.Endpoint
 }
 
@@ -54,7 +53,7 @@ func (aub *ApisixUpstreamBuilder) Convert() ([]*apisix.Upstream, error) {
 		// apisix route name = namespace_svcName_svcPort = apisix service name
 		apisixUpstreamName := ns + "_" + name + "_" + strconv.Itoa(int(port))
 
-		lb := r.Loadbalancer
+		lb := r.LoadBalancer
 
 		//nodes := endpoint.BuildEps(ns, name, int(port))
 		nodes := aub.Ep.BuildEps(ns, name, int(port))

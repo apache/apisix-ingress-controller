@@ -18,11 +18,6 @@ import (
 	"fmt"
 	"time"
 
-	api6V1 "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
-	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
-	api6Scheme "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned/scheme"
-	api6Informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions/config/v1"
-	v1 "github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -32,6 +27,11 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/api7/ingress-controller/pkg/ingress/apisix"
+	configv1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
+	clientset "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	apisixscheme "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
+	apisixinformers "github.com/api7/ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v1"
+	listersv1 "github.com/api7/ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/api7/ingress-controller/pkg/seven/state"
 )
@@ -39,25 +39,25 @@ import (
 type ApisixRouteController struct {
 	controller           *Controller
 	kubeclientset        kubernetes.Interface
-	apisixRouteClientset clientSet.Interface
-	apisixRouteList      v1.ApisixRouteLister
+	apisixRouteClientset clientset.Interface
+	apisixRouteList      listersv1.ApisixRouteLister
 	apisixRouteSynced    cache.InformerSynced
 	workqueue            workqueue.RateLimitingInterface
 }
 
 type RouteQueueObj struct {
-	Key    string              `json:"key"`
-	OldObj *api6V1.ApisixRoute `json:"old_obj"`
-	Ope    string              `json:"ope"` // add / update / delete
+	Key    string                `json:"key"`
+	OldObj *configv1.ApisixRoute `json:"old_obj"`
+	Ope    string                `json:"ope"` // add / update / delete
 }
 
 func BuildApisixRouteController(
 	kubeclientset kubernetes.Interface,
-	api6RouteClientset clientSet.Interface,
-	api6RouteInformer api6Informers.ApisixRouteInformer,
+	api6RouteClientset clientset.Interface,
+	api6RouteInformer apisixinformers.ApisixRouteInformer,
 	root *Controller) *ApisixRouteController {
 
-	runtime.Must(api6Scheme.AddToScheme(scheme.Scheme))
+	runtime.Must(apisixscheme.AddToScheme(scheme.Scheme))
 	controller := &ApisixRouteController{
 		controller:           root,
 		kubeclientset:        kubeclientset,
@@ -90,8 +90,8 @@ func (c *ApisixRouteController) addFunc(obj interface{}) {
 }
 
 func (c *ApisixRouteController) updateFunc(oldObj, newObj interface{}) {
-	oldRoute := oldObj.(*api6V1.ApisixRoute)
-	newRoute := newObj.(*api6V1.ApisixRoute)
+	oldRoute := oldObj.(*configv1.ApisixRoute)
+	newRoute := newObj.(*configv1.ApisixRoute)
 	if oldRoute.ResourceVersion >= newRoute.ResourceVersion {
 		return
 	}
@@ -110,13 +110,13 @@ func (c *ApisixRouteController) updateFunc(oldObj, newObj interface{}) {
 }
 
 func (c *ApisixRouteController) deleteFunc(obj interface{}) {
-	oldRoute, ok := obj.(*api6V1.ApisixRoute)
+	oldRoute, ok := obj.(*configv1.ApisixRoute)
 	if !ok {
 		oldState, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			return
 		}
-		oldRoute, ok = oldState.Obj.(*api6V1.ApisixRoute)
+		oldRoute, ok = oldState.Obj.(*configv1.ApisixRoute)
 		if !ok {
 			return
 		}

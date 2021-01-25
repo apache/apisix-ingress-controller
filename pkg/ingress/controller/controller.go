@@ -20,9 +20,6 @@ import (
 	"sync"
 	"time"
 
-	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
-	crdclientset "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
-	"github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,6 +34,9 @@ import (
 	"github.com/api7/ingress-controller/pkg/apisix"
 	"github.com/api7/ingress-controller/pkg/config"
 	"github.com/api7/ingress-controller/pkg/kube"
+	clientset "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	crdclientset "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	"github.com/api7/ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/api7/ingress-controller/pkg/metrics"
 	"github.com/api7/ingress-controller/pkg/seven/conf"
@@ -273,7 +273,7 @@ func (c *Controller) namespaceWatching(key string) (ok bool) {
 
 type Api6Controller struct {
 	KubeClientSet             kubernetes.Interface
-	Api6ClientSet             clientSet.Interface
+	Api6ClientSet             clientset.Interface
 	SharedInformerFactory     externalversions.SharedInformerFactory
 	CoreSharedInformerFactory informers.SharedInformerFactory
 	Stop                      <-chan struct{}
@@ -310,7 +310,7 @@ func (api6 *Api6Controller) ApisixTLS(controller *Controller) {
 	auc := BuildApisixTlsController(
 		api6.KubeClientSet,
 		api6.Api6ClientSet,
-		api6.SharedInformerFactory.Apisix().V1().ApisixTlses(),
+		api6.SharedInformerFactory.Apisix().V1().ApisixTLSs(),
 		controller)
 	auc.Run(api6.Stop)
 }
