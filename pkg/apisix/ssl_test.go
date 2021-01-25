@@ -33,7 +33,6 @@ import (
 )
 
 type fakeAPISIXSSLSrv struct {
-	id  int
 	ssl map[string]json.RawMessage
 }
 
@@ -80,9 +79,9 @@ func (srv *fakeAPISIXSSLSrv) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(code)
 	}
 
-	if r.Method == http.MethodPost {
-		srv.id++
-		key := fmt.Sprintf("/apisix/ssl/%d", srv.id)
+	if r.Method == http.MethodPut {
+		paths := strings.Split(r.URL.Path, "/")
+		key := fmt.Sprintf("/apisix/ssl/%s", paths[len(paths)-1])
 		data, _ := ioutil.ReadAll(r.Body)
 		srv.ssl[key] = data
 		w.WriteHeader(http.StatusCreated)
@@ -118,7 +117,6 @@ func (srv *fakeAPISIXSSLSrv) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func runFakeSSLSrv(t *testing.T) *http.Server {
 	srv := &fakeAPISIXSSLSrv{
-		id:  0,
 		ssl: make(map[string]json.RawMessage),
 	}
 
@@ -150,6 +148,7 @@ func TestSSLClient(t *testing.T) {
 	}
 	closedCh := make(chan struct{})
 	close(closedCh)
+
 	cli := newSSLClient(&cluster{
 		baseURL:     u.String(),
 		cli:         http.DefaultClient,
@@ -158,16 +157,20 @@ func TestSSLClient(t *testing.T) {
 	})
 
 	// Create
+	id1 := "1"
 	group := "default"
 	sni := "bar.com"
 	obj, err := cli.Create(context.TODO(), &v1.Ssl{
+		ID:    &id1,
 		Group: &group,
 		Snis:  []*string{&sni},
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, *obj.ID, "1")
 
+	id2 := "2"
 	obj, err = cli.Create(context.TODO(), &v1.Ssl{
+		ID:    &id2,
 		Group: &group,
 		Snis:  []*string{&sni},
 	})

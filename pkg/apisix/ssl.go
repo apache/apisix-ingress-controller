@@ -22,6 +22,8 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/api7/ingress-controller/pkg/apisix/cache"
+	"github.com/api7/ingress-controller/pkg/id"
 	"github.com/api7/ingress-controller/pkg/log"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
@@ -40,14 +42,64 @@ func newSSLClient(c *cluster) SSL {
 	}
 }
 
-func (s *sslClient) Get(_ context.Context, fullname string) (*v1.Ssl, error) {
+func (s *sslClient) Get(ctx context.Context, fullname string) (*v1.Ssl, error) {
 	log.Infow("try to look up ssl",
 		zap.String("fullname", fullname),
 		zap.String("url", s.url),
 		zap.String("cluster", s.clusterName),
 	)
 
-	return s.cluster.cache.GetSSL(fullname)
+	ssl, err := s.cluster.cache.GetSSL(fullname)
+	if err == nil {
+		return ssl, nil
+	}
+	if err != cache.ErrNotFound {
+		log.Errorw("failed to find ssl in cache, will try to lookup from APISIX",
+			zap.String("fullname", fullname),
+			zap.Error(err),
+		)
+	} else {
+		log.Warnw("failed to find ssl in cache, will try to lookup from APISIX",
+			zap.String("fullname", fullname),
+			zap.Error(err),
+		)
+	}
+
+	// TODO Add mutex here to avoid dog-pile effection.
+	url := s.url + "/" + id.GenID(fullname)
+	resp, err := s.cluster.getResource(ctx, url)
+	if err != nil {
+		if err == cache.ErrNotFound {
+			log.Warnw("ssl not found",
+				zap.String("fullname", fullname),
+				zap.String("url", url),
+				zap.String("cluster", s.clusterName),
+			)
+		} else {
+			log.Errorw("failed to get ssl from APISIX",
+				zap.String("fullname", fullname),
+				zap.String("url", url),
+				zap.String("cluster", s.clusterName),
+				zap.Error(err),
+			)
+		}
+		return nil, err
+	}
+	ssl, err = resp.Item.ssl(s.clusterName)
+	if err != nil {
+		log.Errorw("failed to convert ssl item",
+			zap.String("url", s.url),
+			zap.String("ssl_key", resp.Item.Key),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+
+	if err := s.cluster.cache.InsertSSL(ssl); err != nil {
+		log.Errorf("failed to reflect ssl create to cache: %s", err)
+		return nil, err
+	}
+	return ssl, nil
 }
 
 // List is only used in cache warming up. So here just pass through
@@ -99,8 +151,9 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Infow("creating ssl", zap.ByteString("body", data), zap.String("url", s.url))
-	resp, err := s.cluster.createResource(ctx, s.url, bytes.NewReader(data))
+	url := s.url + "/" + *obj.ID
+	log.Infow("creating ssl", zap.ByteString("body", data), zap.String("url", url))
+	resp, err := s.cluster.createResource(ctx, url, bytes.NewReader(data))
 	if err != nil {
 		log.Errorf("failed to create ssl: %s", err)
 		return nil, err

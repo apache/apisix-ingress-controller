@@ -34,7 +34,6 @@ import (
 )
 
 type fakeAPISIXRouteSrv struct {
-	id    int
 	route map[string]json.RawMessage
 }
 
@@ -101,9 +100,9 @@ func (srv *fakeAPISIXRouteSrv) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(code)
 	}
 
-	if r.Method == http.MethodPost {
-		srv.id++
-		key := fmt.Sprintf("/apisix/routes/%d", srv.id)
+	if r.Method == http.MethodPut {
+		paths := strings.Split(r.URL.Path, "/")
+		key := fmt.Sprintf("/apisix/routes/%s", paths[len(paths)-1])
 		data, _ := ioutil.ReadAll(r.Body)
 		srv.route[key] = data
 		w.WriteHeader(http.StatusCreated)
@@ -139,7 +138,6 @@ func (srv *fakeAPISIXRouteSrv) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 func runFakeRouteSrv(t *testing.T) *http.Server {
 	srv := &fakeAPISIXRouteSrv{
-		id:    0,
 		route: make(map[string]json.RawMessage),
 	}
 
@@ -181,11 +179,12 @@ func TestRouteClient(t *testing.T) {
 	})
 
 	// Create
-	id := "111"
+	id := "1"
 	host := "www.foo.com"
 	uri := "/bar"
 	name := "test"
 	obj, err := cli.Create(context.Background(), &v1.Route{
+		ID:         &id,
 		Host:       &host,
 		Path:       &uri,
 		Name:       &name,
@@ -196,7 +195,9 @@ func TestRouteClient(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, *obj.ID, "1")
 
+	id2 := "2"
 	obj, err = cli.Create(context.Background(), &v1.Route{
+		ID:         &id2,
 		Host:       &host,
 		Path:       &uri,
 		Name:       &name,

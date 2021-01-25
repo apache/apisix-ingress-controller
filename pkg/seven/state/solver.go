@@ -70,7 +70,7 @@ func (s *ApisixCombination) Remove() error {
 				return err
 			}
 		}
-		paddingService(svc, svcInCache)
+		_ = paddingService(svc, svcInCache)
 		err = conf.Client.Cluster(cluster).Service().Delete(context.TODO(), svc)
 		if err != nil {
 			if err == cache.ErrNotFound {
@@ -98,7 +98,7 @@ func (s *ApisixCombination) Remove() error {
 				return err
 			}
 		}
-		paddingUpstream(ups, upsInCache)
+		_ = paddingUpstream(ups, upsInCache)
 		err = conf.Client.Cluster(cluster).Upstream().Delete(context.TODO(), ups)
 		if err == cache.ErrNotFound {
 			log.Errorf("failed to remove upstream %s: %s", *ups.FullName, err)
@@ -203,7 +203,7 @@ func (rc *RouteCompare) Sync() error {
 				continue
 			}
 
-			paddingRoute(old, route)
+			_ = paddingRoute(old, route)
 			if err := conf.Client.Cluster(cluster).Route().Delete(context.TODO(), old); err != nil {
 				log.Errorf("failed to delete route %s from APISIX: %s", *old.Name, err)
 				merr = multierr.Append(merr, err)

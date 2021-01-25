@@ -23,6 +23,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/api7/ingress-controller/pkg/apisix/cache"
+	"github.com/api7/ingress-controller/pkg/id"
 	"github.com/api7/ingress-controller/pkg/log"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
@@ -69,17 +70,42 @@ func (s *serviceClient) Get(ctx context.Context, fullname string) (*v1.Service, 
 		)
 	}
 
-	// FIXME Replace the List with accurate get since list is not trivial.
-	list, err := s.List(ctx)
+	// TODO Add mutex here to avoid dog-pile effection.
+	url := s.url + "/" + id.GenID(fullname)
+	resp, err := s.cluster.getResource(ctx, url)
 	if err != nil {
+		if err == cache.ErrNotFound {
+			log.Warnw("service not found",
+				zap.String("fullname", fullname),
+				zap.String("url", url),
+				zap.String("cluster", s.clusterName),
+			)
+		} else {
+			log.Errorw("failed to get service from APISIX",
+				zap.String("fullname", fullname),
+				zap.String("url", url),
+				zap.String("cluster", s.clusterName),
+				zap.Error(err),
+			)
+		}
 		return nil, err
 	}
-	for _, elem := range list {
-		if *elem.FullName == fullname {
-			return elem, nil
-		}
+
+	svc, err = resp.Item.service(s.clusterName)
+	if err != nil {
+		log.Errorw("failed to convert service item",
+			zap.String("url", s.url),
+			zap.String("service_key", resp.Item.Key),
+			zap.Error(err),
+		)
+		return nil, err
 	}
-	return nil, cache.ErrNotFound
+
+	if err := s.cluster.cache.InsertService(svc); err != nil {
+		log.Errorf("failed to reflect service create to cache: %s", err)
+		return nil, err
+	}
+	return svc, nil
 }
 
 // List is only used in cache warming up. So here just pass through
@@ -132,8 +158,9 @@ func (s *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Servic
 		return nil, err
 	}
 
-	log.Infow("creating service", zap.ByteString("body", body), zap.String("url", s.url))
-	resp, err := s.cluster.createResource(ctx, s.url, bytes.NewReader(body))
+	url := s.url + "/" + *obj.ID
+	log.Infow("creating service", zap.ByteString("body", body), zap.String("url", url))
+	resp, err := s.cluster.createResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		log.Errorf("failed to create service: %s", err)
 		return nil, err
