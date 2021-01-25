@@ -215,7 +215,7 @@ func (c *endpointsController) onUpdate(prev, curr interface{}) {
 func (c *endpointsController) onDelete(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		log.Errorf("failed to find the final state before deletion: %s")
+		log.Errorf("failed to find the final state before deletion: %s", err)
 		return
 	}
 	if !c.controller.namespaceWatching(key) {
