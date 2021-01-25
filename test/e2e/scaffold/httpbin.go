@@ -131,13 +131,18 @@ func (s *Scaffold) WaitAllHTTPBINPoddsAvailable() error {
 			return false, nil
 		}
 		for _, item := range items {
+			foundPodReady := false
 			for _, cond := range item.Status.Conditions {
 				if cond.Type != corev1.PodReady {
 					continue
 				}
+				foundPodReady = true
 				if cond.Status != "True" {
 					return false, nil
 				}
+			}
+			if !foundPodReady {
+				return false, nil
 			}
 		}
 		return true, nil
