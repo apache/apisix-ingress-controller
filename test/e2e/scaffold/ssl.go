@@ -39,7 +39,7 @@ metadata:
   name: %s
 spec:
   hosts:
-  - api6.com
+  - %s
   secret:
     name: %s
     namespace: %s
@@ -56,9 +56,17 @@ func (s *Scaffold) NewSecret(name, cert, key string) error {
 	return nil
 }
 
-func (s *Scaffold) NewApisixTls(name, secretName string) error {
-	tls := fmt.Sprintf(_api6tlsTemplate, name, secretName, s.kubectlOptions.Namespace)
+func (s *Scaffold) NewApisixTls(name, host, secretName string) error {
+	tls := fmt.Sprintf(_api6tlsTemplate, name, host, secretName, s.kubectlOptions.Namespace)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, tls); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Scaffold) DeleteApisixTls(name string, host, secretName string) error {
+	tls := fmt.Sprintf(_api6tlsTemplate, name, host, secretName, s.kubectlOptions.Namespace)
+	if err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, tls); err != nil {
 		return err
 	}
 	return nil
