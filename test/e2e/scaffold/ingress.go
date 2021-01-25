@@ -28,8 +28,8 @@ import (
 )
 
 const (
-	_serviceAccount     = "ingress-apisix-e2e-test-service-account"
-	_clusterRole = `
+	_serviceAccount = "ingress-apisix-e2e-test-service-account"
+	_clusterRole    = `
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
