@@ -36,7 +36,7 @@ jobs:
       - name: Run e2e test cases
         working-directory: ./
         run: |
-          make e2e-test E2E_SKIP_BUILD=1 E2E_CONCURRENCY=1
+          make e2e-test E2E_SKIP_BUILD=1 E2E_CONCURRENCY=2
       - name: upload coverage profile
         working-directory: ./test/e2e
         run: |
