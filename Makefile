@@ -66,6 +66,7 @@ e2e-test: ginkgo-check build-image-to-minikube
 	export APISIX_SERVICE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixService.yaml && \
 	export APISIX_TLS_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml && \
 	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=$(E2E_CONCURRENCY)
+
 .PHONY: ginkgo-check
 ginkgo-check:
 ifeq ("$(wildcard $(GINKGO))", "")

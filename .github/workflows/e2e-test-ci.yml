@@ -30,10 +30,15 @@ jobs:
         uses: actions/setup-go@v1
         with:
           go-version: '1.13'
+      - name: Install ginkgo
+        run: |
+          mkdir go || true
+          GOPATH=~/go go get -u github.com/onsi/ginkgo/ginkgo
+          cp go/bin/ginkgo /usr/local/bin
       - name: Run e2e test cases
         working-directory: ./
         run: |
-          make e2e-test
+          make e2e-test E2E_SKIP_BUILD=1 E2E_CONCURRENCY=2
       - name: upload coverage profile
         working-directory: ./test/e2e
         run: |
