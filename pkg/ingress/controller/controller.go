@@ -63,6 +63,8 @@ type Controller struct {
 	metricsCollector   metrics.Collector
 	crdController      *Api6Controller
 	crdInformerFactory externalversions.SharedInformerFactory
+
+	endpointsController *endpointsController
 }
 
 // NewController creates an ingress apisix controller object.
@@ -97,6 +99,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 			watchingNamespace[ns] = struct{}{}
 		}
 	}
+	kube.EndpointsInformer = kube.CoreSharedInformerFactory.Core().V1().Endpoints()
 
 	c := &Controller{
 		name:               podName,
@@ -111,6 +114,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		watchingNamespace:  watchingNamespace,
 	}
 
+	c.endpointsController = c.newEndpointsController(kube.CoreSharedInformerFactory)
 	return c, nil
 }
 
@@ -221,6 +225,12 @@ func (c *Controller) run(ctx context.Context) {
 		return
 	}
 
+	c.goAttach(func() {
+		if err := c.endpointsController.run(ctx); err != nil {
+			log.Errorf("failed to run endpoints controller: %s", err.Error())
+		}
+	})
+
 	ac := &Api6Controller{
 		KubeClientSet:             c.clientset,
 		Api6ClientSet:             c.crdClientset,
@@ -228,13 +238,6 @@ func (c *Controller) run(ctx context.Context) {
 		CoreSharedInformerFactory: kube.CoreSharedInformerFactory,
 		Stop:                      ctx.Done(),
 	}
-	epInformer := ac.CoreSharedInformerFactory.Core().V1().Endpoints()
-	kube.EndpointsInformer = epInformer
-	// endpoint
-	ac.Endpoint(c)
-	c.goAttach(func() {
-		ac.CoreSharedInformerFactory.Start(ctx.Done())
-	})
 
 	// ApisixRoute
 	ac.ApisixRoute(c)
@@ -320,13 +323,5 @@ func (api6 *Api6Controller) ApisixTLS(controller *Controller) {
 		controller)
 	if err := atc.Run(api6.Stop); err != nil {
 		log.Errorf("failed to run ApisixTlsController: %s", err)
-	}
-}
-
-func (api6 *Api6Controller) Endpoint(controller *Controller) {
-	ec := BuildEndpointController(api6.KubeClientSet, controller)
-	//conf.EndpointsInformer)
-	if err := ec.Run(api6.Stop); err != nil {
-		log.Errorf("failed to run EndpointController: %s", err)
 	}
 }
