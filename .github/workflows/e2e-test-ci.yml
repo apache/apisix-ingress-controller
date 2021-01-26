@@ -33,7 +33,7 @@ jobs:
       - name: Install ginkgo
         run: |
           mkdir go || true
-          GOPATH=~/go go get -u github.com/onsi/ginkgo/ginkgo
+          GOPATH=go go get -u github.com/onsi/ginkgo/ginkgo
           cp go/bin/ginkgo /usr/local/bin
       - name: Run e2e test cases
         working-directory: ./
