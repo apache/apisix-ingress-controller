@@ -7,14 +7,15 @@ on:
   pull_request:
     branches:
       - master
-      - test/e2e-sanity-case
+      - ci/e2e
 jobs:
   e2e-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Install minikube
-        uses: abstractj/setup-minikube@issue-12
+        run: |
+          sh ./utils/minikube.sh
       - name: Output cluster info
         run: kubectl cluster-info
       - name: Add images
