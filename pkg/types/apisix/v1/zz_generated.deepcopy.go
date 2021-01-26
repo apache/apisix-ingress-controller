@@ -184,7 +184,7 @@ func (in *UpstreamHealthy) DeepCopyInto(out *UpstreamHealthy) {
 	*out = *in
 	if in.HttpStatuses != nil {
 		in, out := &in.HttpStatuses, &out.HttpStatuses
-		*out = make([]string, len(*in))
+		*out = make([]int, len(*in))
 		copy(*out, *in)
 	}
 	return
@@ -231,7 +231,7 @@ func (in *UpstreamUnhealthy) DeepCopyInto(out *UpstreamUnhealthy) {
 	*out = *in
 	if in.HttpStatuses != nil {
 		in, out := &in.HttpStatuses, &out.HttpStatuses
-		*out = make([]string, len(*in))
+		*out = make([]int, len(*in))
 		copy(*out, *in)
 	}
 	return
