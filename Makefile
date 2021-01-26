@@ -61,11 +61,12 @@ unit-test:
 
 ### e2e-test:         Run e2e test cases (minikube is required)
 e2e-test: ginkgo-check build-image-to-minikube
-	export APISIX_ROUTE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixRoute.yaml && \
-	export APISIX_UPSTREAM_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml && \
-	export APISIX_SERVICE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixService.yaml && \
-	export APISIX_TLS_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml && \
+	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixRoute.yaml
+	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml
+	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixService.yaml
+	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml
 	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=$(E2E_CONCURRENCY)
+
 .PHONY: ginkgo-check
 ginkgo-check:
 ifeq ("$(wildcard $(GINKGO))", "")
