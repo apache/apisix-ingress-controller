@@ -15,55 +15,8 @@
 package e2e
 
 import (
-	"os"
-
-	"github.com/gruntwork-io/terratest/modules/k8s"
-	"github.com/onsi/ginkgo"
-
+	_ "github.com/api7/ingress-controller/test/e2e/endpoints"
 	_ "github.com/api7/ingress-controller/test/e2e/ingress"
-	"github.com/api7/ingress-controller/test/e2e/scaffold"
 )
 
-var (
-	_apisixRouteDef    string
-	_apisixUpstreamDef string
-	_apisixServiceDef  string
-	_apisixTLSDef      string
-)
-
-func runE2E() {
-	if v := os.Getenv("APISIX_ROUTE_DEF"); v != "" {
-		_apisixRouteDef = v
-	} else {
-		panic("no specified ApisixRoute definition file")
-	}
-	if v := os.Getenv("APISIX_UPSTREAM_DEF"); v != "" {
-		_apisixUpstreamDef = v
-	} else {
-		panic("no specified ApisixUpstream resource definition file")
-	}
-	if v := os.Getenv("APISIX_UPSTREAM_DEF"); v != "" {
-		_apisixUpstreamDef = v
-	} else {
-		panic("no specified ApisixUpstream resource definition file")
-	}
-	if v := os.Getenv("APISIX_SERVICE_DEF"); v != "" {
-		_apisixServiceDef = v
-	} else {
-		panic("no specified ApisixService resource definition file")
-	}
-	if v := os.Getenv("APISIX_TLS_DEF"); v != "" {
-		_apisixTLSDef = v
-	} else {
-		panic("no specified ApisixTls resource definition file")
-	}
-
-	kubeconfig := scaffold.GetKubeconfig()
-	opts := &k8s.KubectlOptions{
-		ConfigPath: kubeconfig,
-	}
-	k8s.KubectlApply(ginkgo.GinkgoT(), opts, _apisixRouteDef)
-	k8s.KubectlApply(ginkgo.GinkgoT(), opts, _apisixUpstreamDef)
-	k8s.KubectlApply(ginkgo.GinkgoT(), opts, _apisixServiceDef)
-	k8s.KubectlApply(ginkgo.GinkgoT(), opts, _apisixTLSDef)
-}
+func runE2E() {}

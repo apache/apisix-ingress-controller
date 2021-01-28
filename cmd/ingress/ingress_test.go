@@ -99,7 +99,7 @@ func TestSignalHandler(t *testing.T) {
 	assert.Nil(t, syscall.Kill(os.Getpid(), syscall.SIGINT))
 	<-waitCh
 
-	msg := string(fws.buf.Bytes())
+	msg := fws.buf.String()
 	assert.Contains(t, msg, fmt.Sprintf("signal %d (%s) received", syscall.SIGINT, syscall.SIGINT.String()))
 	assert.Contains(t, msg, "apisix ingress controller exited")
 }

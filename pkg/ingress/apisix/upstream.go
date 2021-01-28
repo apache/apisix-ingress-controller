@@ -56,7 +56,7 @@ func (aub *ApisixUpstreamBuilder) Convert() ([]*apisix.Upstream, error) {
 		lb := r.LoadBalancer
 
 		//nodes := endpoint.BuildEps(ns, name, int(port))
-		nodes := aub.Ep.BuildEps(ns, name, int(port))
+		nodes := aub.Ep.BuildEps(ns, name, port)
 		fromKind := ApisixUpstream
 
 		// fullName
@@ -65,12 +65,12 @@ func (aub *ApisixUpstreamBuilder) Convert() ([]*apisix.Upstream, error) {
 			fullName = group + "_" + apisixUpstreamName
 		}
 		upstream := &apisix.Upstream{
-			FullName:        &fullName,
-			Group:           &group,
-			ResourceVersion: &rv,
-			Name:            &apisixUpstreamName,
+			FullName:        fullName,
+			Group:           group,
+			ResourceVersion: rv,
+			Name:            apisixUpstreamName,
 			Nodes:           nodes,
-			FromKind:        &fromKind,
+			FromKind:        fromKind,
 		}
 		lbType := RR
 		if lb != nil {
@@ -78,20 +78,20 @@ func (aub *ApisixUpstreamBuilder) Convert() ([]*apisix.Upstream, error) {
 		}
 		switch {
 		case lbType == CHASH:
-			upstream.Type = &lbType
+			upstream.Type = lbType
 			hashOn := lb["hashOn"]
 			key := lb["key"]
 			if hashOn != nil {
 				ho := hashOn.(string)
-				upstream.HashOn = &ho
+				upstream.HashOn = ho
 			}
 			if key != nil {
 				k := key.(string)
-				upstream.Key = &k
+				upstream.Key = k
 			}
 		default:
 			lbType = RR
-			upstream.Type = &lbType
+			upstream.Type = lbType
 		}
 		upstreams = append(upstreams, upstream)
 	}

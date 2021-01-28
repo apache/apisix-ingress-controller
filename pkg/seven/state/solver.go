@@ -58,13 +58,13 @@ func (s *ApisixCombination) Remove() error {
 	// services
 	for _, svc := range s.Services {
 		var cluster string
-		if svc.Group != nil {
-			cluster = *svc.Group
+		if svc.Group != "" {
+			cluster = svc.Group
 		}
-		svcInCache, err := conf.Client.Cluster(cluster).Service().Get(context.TODO(), *svc.FullName)
+		svcInCache, err := conf.Client.Cluster(cluster).Service().Get(context.TODO(), svc.FullName)
 		if err != nil {
 			if err == cache.ErrNotFound {
-				log.Errorf("failed to remove service %s: %s", *svc.FullName, err)
+				log.Errorf("failed to remove service %s: %s", svc.FullName, err)
 				continue
 			} else {
 				return err
@@ -74,9 +74,9 @@ func (s *ApisixCombination) Remove() error {
 		err = conf.Client.Cluster(cluster).Service().Delete(context.TODO(), svc)
 		if err != nil {
 			if err == cache.ErrNotFound {
-				log.Errorf("failed to remove service %s: %s", *svc.FullName, err)
+				log.Errorf("failed to remove service %s: %s", svc.FullName, err)
 			} else if err == cache.ErrStillInUse {
-				log.Warnf("failed to remove service %s: %s", *svc.FullName, err)
+				log.Warnf("failed to remove service %s: %s", svc.FullName, err)
 			} else {
 				return err
 			}
@@ -86,13 +86,13 @@ func (s *ApisixCombination) Remove() error {
 	// upstreams
 	for _, ups := range s.Upstreams {
 		var cluster string
-		if ups.Group != nil {
-			cluster = *ups.Group
+		if ups.Group != "" {
+			cluster = ups.Group
 		}
-		upsInCache, err := conf.Client.Cluster(cluster).Upstream().Get(context.TODO(), *ups.FullName)
+		upsInCache, err := conf.Client.Cluster(cluster).Upstream().Get(context.TODO(), ups.FullName)
 		if err != nil {
 			if err == cache.ErrNotFound {
-				log.Errorf("failed to remove service %s: %s", *ups.FullName, err)
+				log.Errorf("failed to remove service %s: %s", ups.FullName, err)
 				continue
 			} else {
 				return err
@@ -101,9 +101,9 @@ func (s *ApisixCombination) Remove() error {
 		_ = paddingUpstream(ups, upsInCache)
 		err = conf.Client.Cluster(cluster).Upstream().Delete(context.TODO(), ups)
 		if err == cache.ErrNotFound {
-			log.Errorf("failed to remove upstream %s: %s", *ups.FullName, err)
+			log.Errorf("failed to remove upstream %s: %s", ups.FullName, err)
 		} else if err == cache.ErrStillInUse {
-			log.Warnf("failed to remove upstream %s: %s", *ups.FullName, err)
+			log.Warnf("failed to remove upstream %s: %s", ups.FullName, err)
 		} else {
 			return err
 		}
@@ -190,12 +190,12 @@ func (rc *RouteCompare) Sync() error {
 		}
 		if needToDel {
 			var cluster string
-			if old.Group != nil {
-				cluster = *old.Group
+			if old.Group != "" {
+				cluster = old.Group
 			}
 
 			// old should inject the ID.
-			route, err := conf.Client.Cluster(cluster).Route().Get(context.TODO(), *old.FullName)
+			route, err := conf.Client.Cluster(cluster).Route().Get(context.TODO(), old.FullName)
 			if err != nil {
 				if err != cache.ErrNotFound {
 					merr = multierr.Append(merr, err)
@@ -205,7 +205,7 @@ func (rc *RouteCompare) Sync() error {
 
 			_ = paddingRoute(old, route)
 			if err := conf.Client.Cluster(cluster).Route().Delete(context.TODO(), old); err != nil {
-				log.Errorf("failed to delete route %s from APISIX: %s", *old.Name, err)
+				log.Errorf("failed to delete route %s from APISIX: %s", old.Name, err)
 				merr = multierr.Append(merr, err)
 			}
 		}
@@ -215,8 +215,8 @@ func (rc *RouteCompare) Sync() error {
 
 func SyncSsl(ssl *v1.Ssl, method string) error {
 	var cluster string
-	if ssl.Group != nil {
-		cluster = *ssl.Group
+	if ssl.Group != "" {
+		cluster = ssl.Group
 	}
 	switch method {
 	case Create:
