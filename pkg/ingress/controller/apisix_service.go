@@ -16,6 +16,7 @@ package controller
 
 import (
 	"fmt"
+	"github.com/api7/ingress-controller/pkg/ingress/endpoint"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -143,8 +144,8 @@ func (c *ApisixServiceController) syncHandler(sqo *ServiceQueueObj) error {
 			return err
 		}
 	}
-	apisixService := apisix.ApisixServiceCRD(*apisixServiceYaml)
-	services, upstreams, _ := apisixService.Convert()
+	asb := apisix.ApisixServiceBuilder{CRD: apisixServiceYaml, Ep: &endpoint.EndpointRequest{}, EnableEndpointSlice: c.controller.cfg.EnableEndpointSlice}
+	services, upstreams, _ := asb.Convert()
 	comb := state.ApisixCombination{Routes: nil, Services: services, Upstreams: upstreams}
 	if sqo.Ope == DELETE {
 		return comb.Remove()

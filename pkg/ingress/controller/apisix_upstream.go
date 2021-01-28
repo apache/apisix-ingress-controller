@@ -139,7 +139,7 @@ func (c *ApisixUpstreamController) syncHandler(sqo *UpstreamQueueObj) error {
 			return err
 		}
 	}
-	aub := apisix.ApisixUpstreamBuilder{CRD: apisixUpstreamYaml, Ep: &endpoint.EndpointRequest{}}
+	aub := apisix.ApisixUpstreamBuilder{CRD: apisixUpstreamYaml, Ep: &endpoint.EndpointRequest{}, EnableEndpointSlice: c.controller.cfg.EnableEndpointSlice}
 	upstreams, _ := aub.Convert()
 	comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
 	if sqo.Ope == DELETE {

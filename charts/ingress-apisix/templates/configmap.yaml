@@ -22,6 +22,7 @@ data:
     log_output: {{ .Values.ingressController.config.logOutput | quote }}
     http_listen: {{ .Values.ingressController.config.httpListen | quote }}
     enable_profiling: {{ .Values.ingressController.config.enableProfiling }}
+    enable_endpointslice: {{ .Values.ingressController.config.enableEndpointSlice }}
     kubernetes:
       kubeconfig: {{ .Values.ingressController.config.kubernetes.kubeconfig | quote }}
       resync_interval: {{ .Values.ingressController.config.kubernetes.resyncInterval | quote }}

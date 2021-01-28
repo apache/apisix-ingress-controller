@@ -27,26 +27,31 @@ const (
 	ApisixService = "ApisixService"
 )
 
-type ApisixServiceCRD configv1.ApisixService
+type ApisixServiceBuilder struct {
+	CRD                 *configv1.ApisixService
+	Ep                  endpoint.Endpoint
+	EnableEndpointSlice bool
+}
 
 // Convert convert to  apisix.Service from ingress.ApisixService CRD
-func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, error) {
-	ns := as.Namespace
-	name := as.Name
+func (asb *ApisixServiceBuilder) Convert() ([]*apisix.Service, []*apisix.Upstream, error) {
+	ar := asb.CRD
+	ns := ar.Namespace
+	name := ar.Name
 	// meta annotation
-	pluginsInAnnotation, group := BuildAnnotation(as.Annotations)
+	pluginsInAnnotation, group := BuildAnnotation(ar.Annotations)
 	conf.AddGroup(group)
 	services := make([]*apisix.Service, 0)
 	upstreams := make([]*apisix.Upstream, 0)
-	rv := as.ObjectMeta.ResourceVersion
-	port := as.Spec.Port
-	upstreamName := as.Spec.Upstream
+	rv := ar.ObjectMeta.ResourceVersion
+	port := ar.Spec.Port
+	upstreamName := ar.Spec.Upstream
 	// apisix upstream name = namespace_upstreamName_svcPort
 	apisixUpstreamName := ns + "_" + upstreamName + "_" + strconv.Itoa(int(port))
 	apisixServiceName := ns + "_" + name + "_" + strconv.Itoa(int(port))
 	fromKind := ApisixService
 	// plugins
-	plugins := as.Spec.Plugins
+	plugins := ar.Spec.Plugins
 	pluginRet := apisix.Plugins{}
 	// 1.from annotations
 	for k, v := range pluginsInAnnotation {
@@ -87,7 +92,12 @@ func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, er
 		fullUpstreamName = group + "_" + apisixUpstreamName
 	}
 	LBType := DefaultLBType
-	nodes := endpoint.BuildEps(ns, upstreamName, int(port))
+	var nodes []apisix.Node
+	if asb.EnableEndpointSlice {
+		nodes = endpoint.BuildEpss(ns, upstreamName, port)
+	} else {
+		nodes = endpoint.BuildEps(ns, upstreamName, port)
+	}
 	upstream := &apisix.Upstream{
 		FullName:        fullUpstreamName,
 		Group:           group,

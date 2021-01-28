@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
@@ -64,12 +63,9 @@ type Controller struct {
 	metricsCollector   metrics.Collector
 	crdController      *Api6Controller
 	crdInformerFactory externalversions.SharedInformerFactory
-
-	// informers and listers
+	epController       kubeEndpointsController
+	// informers
 	epInformer cache.SharedIndexInformer
-	epLister   listerscorev1.EndpointsLister
-
-	endpointsController *endpointsController
 }
 
 // NewController creates an ingress apisix controller object.
@@ -105,6 +101,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		}
 	}
 	kube.EndpointsInformer = kube.CoreSharedInformerFactory.Core().V1().Endpoints()
+	kube.EndpointSliceInformer = kube.CoreSharedInformerFactory.Discovery().V1beta1().EndpointSlices()
 
 	c := &Controller{
 		name:               podName,
@@ -119,10 +116,15 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		watchingNamespace:  watchingNamespace,
 
 		epInformer: kube.CoreSharedInformerFactory.Core().V1().Endpoints().Informer(),
-		epLister:   kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
 	}
 
-	c.endpointsController = c.newEndpointsController(c.epInformer, c.epLister)
+	if c.cfg.EnableEndpointSlice {
+		epsLister := kube.CoreSharedInformerFactory.Discovery().V1beta1().EndpointSlices().Lister()
+		c.epController = c.newEndpointSliceController(c.epInformer, epsLister)
+	} else {
+		epLister := kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister()
+		c.epController = c.newEndpointsController(c.epInformer, epLister)
+	}
 	return c, nil
 }
 
@@ -239,7 +241,7 @@ func (c *Controller) run(ctx context.Context) {
 	})
 
 	c.goAttach(func() {
-		c.endpointsController.run(ctx)
+		c.epController.run(ctx)
 	})
 
 	ac := &Api6Controller{

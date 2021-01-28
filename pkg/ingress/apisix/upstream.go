@@ -32,8 +32,9 @@ const (
 //type ApisixUpstreamCRD ingress.ApisixUpstream
 
 type ApisixUpstreamBuilder struct {
-	CRD *configv1.ApisixUpstream
-	Ep  endpoint.Endpoint
+	CRD                 *configv1.ApisixUpstream
+	Ep                  endpoint.Endpoint
+	EnableEndpointSlice bool
 }
 
 // Convert convert to  apisix.Route from ingress.ApisixRoute CRD
@@ -56,7 +57,12 @@ func (aub *ApisixUpstreamBuilder) Convert() ([]*apisix.Upstream, error) {
 		lb := r.LoadBalancer
 
 		//nodes := endpoint.BuildEps(ns, name, int(port))
-		nodes := aub.Ep.BuildEps(ns, name, port)
+		var nodes []apisix.Node
+		if aub.EnableEndpointSlice {
+			nodes = aub.Ep.BuildEpss(ns, name, port)
+		} else {
+			nodes = aub.Ep.BuildEps(ns, name, port)
+		}
 		fromKind := ApisixUpstream
 
 		// fullName

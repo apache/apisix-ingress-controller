@@ -73,6 +73,11 @@ func (epr *EndpointRequestTest) BuildEps(ns, name string, port int) []v1.Node {
 	return nodes
 }
 
+func (epr *EndpointRequestTest) BuildEpss(ns, name string, port int) []v1.Node {
+	nodes := make([]v1.Node, 0)
+	return nodes
+}
+
 func buildExpectUpstream() *v1.Upstream {
 	fullName := "cloud_httpserver_8080"
 	LBType := "chash"

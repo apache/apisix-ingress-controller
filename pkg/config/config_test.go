@@ -28,10 +28,11 @@ import (
 
 func TestNewConfigFromFile(t *testing.T) {
 	cfg := &Config{
-		LogLevel:        "warn",
-		LogOutput:       "stdout",
-		HTTPListen:      ":9090",
-		EnableProfiling: true,
+		LogLevel:            "warn",
+		LogOutput:           "stdout",
+		HTTPListen:          ":9090",
+		EnableProfiling:     true,
+		EnableEndpointSlice: false,
 		Kubernetes: KubernetesConfig{
 			ResyncInterval: types.TimeDuration{time.Hour},
 			Kubeconfig:     "/path/to/foo/baz",
@@ -70,6 +71,7 @@ log_level: warn
 log_output: stdout
 http_listen: :9090
 enable_profiling: true
+enable_endpointslice: false
 kubernetes:
   kubeconfig: /path/to/foo/baz
   resync_interval: 1h0m0s
