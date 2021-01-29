@@ -82,11 +82,7 @@ func (c *endpointsController) run(ctx context.Context) {
 				return
 			}
 
-			var (
-				err error
-			)
-
-			err = c.sync(ctx, obj.(*types.Event))
+			err := c.sync(ctx, obj.(*types.Event))
 			c.workqueue.Done(obj)
 			c.handleSyncErr(obj, err)
 		}

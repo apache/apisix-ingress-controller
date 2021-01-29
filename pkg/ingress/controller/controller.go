@@ -235,6 +235,10 @@ func (c *Controller) run(ctx context.Context) {
 	}
 
 	c.goAttach(func() {
+		c.epInformer.Run(ctx.Done())
+	})
+
+	c.goAttach(func() {
 		c.endpointsController.run(ctx)
 	})
 
