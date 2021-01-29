@@ -45,7 +45,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
 	})
 
-	ginkgo.FIt("upstream nodes should be reset to empty when Service/Endpoints was deleted", func() {
+	ginkgo.It("upstream nodes should be reset to empty when Service/Endpoints was deleted", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v1
