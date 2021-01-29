@@ -16,13 +16,10 @@ package controller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/informers"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -31,11 +28,14 @@ import (
 	apisixcache "github.com/api7/ingress-controller/pkg/apisix/cache"
 	"github.com/api7/ingress-controller/pkg/log"
 	"github.com/api7/ingress-controller/pkg/seven/state"
+	"github.com/api7/ingress-controller/pkg/types"
 	apisixv1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
 	_defaultNodeWeight = 100
+	// maxRetries is the number of times an object will be retried before it is dropped out of the queue.
+	_maxRetries = 10
 )
 
 type endpointsController struct {
@@ -43,14 +43,16 @@ type endpointsController struct {
 	informer   cache.SharedIndexInformer
 	lister     listerscorev1.EndpointsLister
 	workqueue  workqueue.RateLimitingInterface
+	workers    int
 }
 
-func (c *Controller) newEndpointsController(factory informers.SharedInformerFactory) *endpointsController {
+func (c *Controller) newEndpointsController(informer cache.SharedIndexInformer, lister listerscorev1.EndpointsLister) *endpointsController {
 	ctl := &endpointsController{
 		controller: c,
-		informer:   factory.Core().V1().Endpoints().Informer(),
-		lister:     factory.Core().V1().Endpoints().Lister(),
+		informer:   informer,
+		lister:     lister,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpoints"),
+		workers:    1,
 	}
 
 	ctl.informer.AddEventHandler(
@@ -64,71 +66,53 @@ func (c *Controller) newEndpointsController(factory informers.SharedInformerFact
 	return ctl
 }
 
-func (c *endpointsController) run(ctx context.Context) error {
+func (c *endpointsController) run(ctx context.Context) {
 	log.Info("endpoints controller started")
 	defer log.Info("endpoints controller exited")
 
-	go func() {
-		c.informer.Run(ctx.Done())
-	}()
-
 	if ok := cache.WaitForCacheSync(ctx.Done(), c.informer.HasSynced); !ok {
-		return errors.New("endpoints informers cache sync failed")
+		log.Error("informers sync failed")
+		return
 	}
 
-	for {
-		obj, shutdown := c.workqueue.Get()
-		if shutdown {
-			return nil
-		}
+	handler := func() {
+		for {
+			obj, shutdown := c.workqueue.Get()
+			if shutdown {
+				return
+			}
 
-		var (
-			err error
-		)
+			var (
+				err error
+			)
 
-		key, ok := obj.(string)
-		if !ok {
-			log.Errorf("found endpoints object with unexpected type %T, ignore it", obj)
-			c.workqueue.Forget(obj)
-		} else {
-			err = c.process(ctx, key)
-		}
-
-		c.workqueue.Done(obj)
-
-		if err != nil {
-			log.Warnf("endpoints %s retried since %s", key, err)
-			c.retry(obj)
+			err = c.sync(ctx, obj.(*types.Event))
+			c.workqueue.Done(obj)
+			c.handleSyncErr(obj, err)
 		}
 	}
+
+	for i := 0; i < c.workers; i++ {
+		go handler()
+	}
+
+	<-ctx.Done()
+	c.workqueue.ShutDown()
 }
 
-func (c *endpointsController) process(ctx context.Context, key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		log.Errorf("found endpoints objects with malformed namespace/name: %s, ignore it", err)
-		return nil
-	}
-
-	ep, err := c.lister.Endpoints(namespace).Get(name)
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			log.Warnf("endpoints %s was removed before it can be processed", key)
-			return nil
-		}
-		log.Errorf("failed to get endpoints %s: %s", key, err)
-		return err
-	}
-	return c.sync(ctx, ep)
-}
-
-func (c *endpointsController) sync(ctx context.Context, ep *corev1.Endpoints) error {
+func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
+	ep := ev.Object.(*corev1.Endpoints)
 	clusters := c.controller.apisix.ListClusters()
 	for _, s := range ep.Subsets {
 		for _, port := range s.Ports {
+			// FIXME this is wrong, we should use the port name as the key.
 			upstream := fmt.Sprintf("%s_%s_%d", ep.Namespace, ep.Name, port.Port)
 			for _, cluster := range clusters {
-				if err := c.syncToCluster(ctx, upstream, cluster, s.Addresses, int(port.Port)); err != nil {
+				var addresses []corev1.EndpointAddress
+				if ev.Type != types.EventDelete {
+					addresses = s.Addresses
+				}
+				if err := c.syncToCluster(ctx, upstream, cluster, addresses, int(port.Port)); err != nil {
 					return err
 				}
 			}
@@ -186,8 +170,18 @@ func (c *endpointsController) syncToCluster(ctx context.Context, upstreamName st
 	return nil
 }
 
-func (c *endpointsController) retry(obj interface{}) {
-	c.workqueue.AddRateLimited(obj)
+func (c *endpointsController) handleSyncErr(obj interface{}, err error) {
+	if err == nil {
+		c.workqueue.Forget(obj)
+		return
+	}
+	if c.workqueue.NumRequeues(obj) < _maxRetries {
+		log.Infof("sync endpoints %+v failed, will retry", obj)
+		c.workqueue.AddRateLimited(obj)
+	} else {
+		c.workqueue.Forget(obj)
+		log.Warnf("drop endpoints %+v out of the queue", obj)
+	}
 }
 
 func (c *endpointsController) onAdd(obj interface{}) {
@@ -199,7 +193,11 @@ func (c *endpointsController) onAdd(obj interface{}) {
 	if !c.controller.namespaceWatching(key) {
 		return
 	}
-	c.workqueue.AddRateLimited(key)
+
+	c.workqueue.AddRateLimited(&types.Event{
+		Type:   types.EventAdd,
+		Object: obj,
+	})
 }
 
 func (c *endpointsController) onUpdate(prev, curr interface{}) {
@@ -209,17 +207,39 @@ func (c *endpointsController) onUpdate(prev, curr interface{}) {
 	if prevEp.GetResourceVersion() == currEp.GetResourceVersion() {
 		return
 	}
-	c.onAdd(currEp)
-}
-
-func (c *endpointsController) onDelete(obj interface{}) {
-	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	key, err := cache.MetaNamespaceKeyFunc(currEp)
 	if err != nil {
-		log.Errorf("failed to find the final state before deletion: %s", err)
+		log.Errorf("found endpoints object with bad namespace/name: %s, ignore it", err)
 		return
 	}
 	if !c.controller.namespaceWatching(key) {
 		return
 	}
-	c.workqueue.AddRateLimited(key)
+	c.workqueue.AddRateLimited(&types.Event{
+		Type:   types.EventUpdate,
+		Object: curr,
+	})
+}
+
+func (c *endpointsController) onDelete(obj interface{}) {
+	ep, ok := obj.(*corev1.Endpoints)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			log.Errorf("found endpoints: %+v in bad tombstone state", obj)
+			return
+		}
+		ep = tombstone.Obj.(*corev1.Endpoints)
+	}
+
+	// FIXME Refactor Controller.namespaceWatching to just use
+	// namespace after all controllers use the same way to fetch
+	// the object.
+	if !c.controller.namespaceWatching(ep.Namespace + "/" + ep.Name) {
+		return
+	}
+	c.workqueue.AddRateLimited(&types.Event{
+		Type:   types.EventDelete,
+		Object: ep,
+	})
 }

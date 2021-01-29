@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
@@ -63,6 +64,10 @@ type Controller struct {
 	metricsCollector   metrics.Collector
 	crdController      *Api6Controller
 	crdInformerFactory externalversions.SharedInformerFactory
+
+	// informers and listers
+	epInformer cache.SharedIndexInformer
+	epLister   listerscorev1.EndpointsLister
 
 	endpointsController *endpointsController
 }
@@ -112,9 +117,12 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		crdClientset:       crdClientset,
 		crdInformerFactory: sharedInformerFactory,
 		watchingNamespace:  watchingNamespace,
+
+		epInformer: kube.CoreSharedInformerFactory.Core().V1().Endpoints().Informer(),
+		epLister:   kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
 	}
 
-	c.endpointsController = c.newEndpointsController(kube.CoreSharedInformerFactory)
+	c.endpointsController = c.newEndpointsController(c.epInformer, c.epLister)
 	return c, nil
 }
 
@@ -219,6 +227,7 @@ func (c *Controller) run(ctx context.Context) {
 		log.Errorf("failed to add default cluster: %s", err)
 		return
 	}
+
 	if err := c.apisix.Cluster("").HasSynced(ctx); err != nil {
 		// TODO give up the leader role.
 		log.Errorf("failed to wait the default cluster to be ready: %s", err)
@@ -226,9 +235,7 @@ func (c *Controller) run(ctx context.Context) {
 	}
 
 	c.goAttach(func() {
-		if err := c.endpointsController.run(ctx); err != nil {
-			log.Errorf("failed to run endpoints controller: %s", err.Error())
-		}
+		c.endpointsController.run(ctx)
 	})
 
 	ac := &Api6Controller{
