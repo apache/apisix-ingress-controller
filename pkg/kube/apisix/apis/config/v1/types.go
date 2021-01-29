@@ -74,8 +74,11 @@ type ApisixRouteList struct {
 // +genclient:noStatus
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// ApisixUpstream is used to decorate Upstream in APISIX, such as load
-// balacing type.
+// ApisixUpstream is used to decorate Upstream in APISIX.
+// An ApisixUpstream object corresponds to a Kubernetes Service, both of
+// them have the same name. Upstreams in ApisixUpstream should refer to a port
+// in the Service. Ports in Service doesn't referenced
+// and bad port references will be ignored.
 type ApisixUpstream struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
@@ -84,12 +87,14 @@ type ApisixUpstream struct {
 
 // ApisixUpstreamSpec describes the specification of Upstream in APISIX.
 type ApisixUpstreamSpec struct {
-	Ports []Port `json:"ports,omitempty"`
+	Upstreams []Upstream `json:"ports,omitempty"`
 }
 
-// Port is the port-specific configurations.
-type Port struct {
-	Port         int          `json:"port,omitempty"`
+// Upstream defines how to generate an APISIX Upstream resource.
+// It doesn't have a name field, name will be composed by the
+// namespace, name of ApisixUpstream and the ServicePortName.
+type Upstream struct {
+	ServicePort  int32        `json:"servicePort,omitempty"`
 	LoadBalancer LoadBalancer `json:"loadbalancer,omitempty"`
 }
 

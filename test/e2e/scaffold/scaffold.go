@@ -121,10 +121,10 @@ func (s *Scaffold) KillPod(podName string) error {
 
 // DefaultHTTPBackend returns the service name and service ports
 // of the default http backend.
-func (s *Scaffold) DefaultHTTPBackend() (string, []int32) {
-	var ports []int32
+func (s *Scaffold) DefaultHTTPBackend() (string, []corev1.ServicePort) {
+	var ports []corev1.ServicePort
 	for _, p := range s.httpbinService.Spec.Ports {
-		ports = append(ports, p.Port)
+		ports = append(ports, p)
 	}
 	return s.httpbinService.Name, ports
 }

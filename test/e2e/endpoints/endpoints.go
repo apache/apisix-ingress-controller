@@ -36,11 +36,11 @@ kind: ApisixUpstream
 metadata:
   name: %s
 spec:
-  ports:
-    - port: %d
-      loadbalancer:
-        type: roundbin
-`, backendSvc, backendSvcPort[0])
+  upstreams:
+  - servicePort: %d
+    loadbalancer:
+      type: roundbin
+`, backendSvc, backendSvcPort[0].Port)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ups))
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
 	})
@@ -61,13 +61,13 @@ spec:
          serviceName: %s
          servicePort: %d
        path: /ip
-`, backendSvc, backendSvcPort[0])
+`, backendSvc, backendSvcPort[0].Port)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK)
 
-		// Now delete the backend httpbin service resource.
-		assert.Nil(ginkgo.GinkgoT(), s.DeleteHTTPBINService())
+		// Now scales the backend httpbin to zero.
+		assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(0))
 		time.Sleep(3 * time.Second)
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusBadGateway)
 	})

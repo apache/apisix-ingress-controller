@@ -47,16 +47,11 @@ func (aub *ApisixUpstreamBuilder) Convert() ([]*apisix.Upstream, error) {
 
 	upstreams := make([]*apisix.Upstream, 0)
 	rv := ar.ObjectMeta.ResourceVersion
-	Ports := ar.Spec.Ports
-	for _, r := range Ports {
-		port := r.Port
-		// apisix route name = namespace_svcName_svcPort = apisix service name
-		apisixUpstreamName := ns + "_" + name + "_" + strconv.Itoa(int(port))
-
+	for _, r := range ar.Spec.Upstreams {
+		apisixUpstreamName := ns + "_" + name + "_" + strconv.Itoa(int(r.ServicePort))
 		lb := r.LoadBalancer
 
-		//nodes := endpoint.BuildEps(ns, name, int(port))
-		nodes := aub.Ep.BuildEps(ns, name, port)
+		nodes := aub.Ep.BuildEps(ns, name, r.ServicePort)
 		fromKind := ApisixUpstream
 
 		// fullName

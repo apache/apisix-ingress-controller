@@ -42,7 +42,7 @@ spec:
          serviceName: %s
          servicePort: %d
        path: /ip
-`, backendSvc, backendSvcPort[0])
+`, backendSvc, backendSvcPort[0].Port)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
 
 		err := s.EnsureNumApisixRoutesCreated(1)
@@ -75,7 +75,7 @@ spec:
           serviceName: %s
           servicePort: %d
         path: /ip
-`, backendSvc, backendSvcPort[0])
+`, backendSvc, backendSvcPort[0].Port)
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
 		err := s.EnsureNumApisixRoutesCreated(1)

@@ -18,25 +18,31 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/api7/ingress-controller/pkg/kube"
+	"github.com/api7/ingress-controller/pkg/log"
 	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 )
 
 type Endpoint interface {
-	BuildEps(ns, name string, port int) []v1.Node
+	BuildEps(string, string, int32) []v1.Node
 }
 
 type EndpointRequest struct{}
 
-func (epr *EndpointRequest) BuildEps(ns, name string, port int) []v1.Node {
+func (epr *EndpointRequest) BuildEps(ns, name string, port int32) []v1.Node {
 	nodes := make([]v1.Node, 0)
 	epInformers := kube.EndpointsInformer
 	if ep, err := epInformers.Lister().Endpoints(ns).Get(name); err != nil {
-		glog.Errorf("find endpoint %s/%s err: %s", ns, name, err.Error())
+		log.Errorf("find endpoint %s/%s err: %s", ns, name, err.Error())
 	} else {
 		for _, s := range ep.Subsets {
-			for _, ip := range s.Addresses {
-				node := v1.Node{IP: ip.IP, Port: port, Weight: 100}
-				nodes = append(nodes, node)
+			for _, subsetPort := range s.Ports {
+				if subsetPort.Port == port {
+					for _, ip := range s.Addresses {
+						node := v1.Node{IP: ip.IP, Port: int(port), Weight: 100}
+						nodes = append(nodes, node)
+					}
+					break
+				}
 			}
 		}
 	}

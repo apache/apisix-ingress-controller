@@ -20,6 +20,7 @@ import (
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -39,20 +40,25 @@ const (
 )
 
 type endpointsController struct {
-	controller *Controller
-	informer   cache.SharedIndexInformer
-	lister     listerscorev1.EndpointsLister
-	workqueue  workqueue.RateLimitingInterface
-	workers    int
+	controller  *Controller
+	informer    cache.SharedIndexInformer
+	lister      listerscorev1.EndpointsLister
+	svcInformer cache.SharedIndexInformer
+	svcLister   listerscorev1.ServiceLister
+	workqueue   workqueue.RateLimitingInterface
+	workers     int
 }
 
-func (c *Controller) newEndpointsController(informer cache.SharedIndexInformer, lister listerscorev1.EndpointsLister) *endpointsController {
+func (c *Controller) newEndpointsController(informer cache.SharedIndexInformer, lister listerscorev1.EndpointsLister,
+	svcInformer cache.SharedIndexInformer, svcLister listerscorev1.ServiceLister) *endpointsController {
 	ctl := &endpointsController{
-		controller: c,
-		informer:   informer,
-		lister:     lister,
-		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpoints"),
-		workers:    1,
+		controller:  c,
+		informer:    informer,
+		lister:      lister,
+		svcInformer: svcInformer,
+		svcLister:   svcLister,
+		workqueue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpoints"),
+		workers:     1,
 	}
 
 	ctl.informer.AddEventHandler(
@@ -70,7 +76,7 @@ func (c *endpointsController) run(ctx context.Context) {
 	log.Info("endpoints controller started")
 	defer log.Info("endpoints controller exited")
 
-	if ok := cache.WaitForCacheSync(ctx.Done(), c.informer.HasSynced); !ok {
+	if ok := cache.WaitForCacheSync(ctx.Done(), c.informer.HasSynced, c.svcInformer.HasSynced); !ok {
 		log.Error("informers sync failed")
 		return
 	}
@@ -98,11 +104,33 @@ func (c *endpointsController) run(ctx context.Context) {
 
 func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 	ep := ev.Object.(*corev1.Endpoints)
+	svcPorts, err := c.getServicePorts(ep.Namespace, ep.Name)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			if ev.Type != types.EventDelete {
+				log.Warnw("service was deleted before sync",
+					zap.String("namespace", ep.Namespace),
+					zap.String("name", ep.Name),
+				)
+			}
+			return nil
+		} else {
+			log.Errorw("failed to get service ports",
+				zap.String("namespace", ep.Namespace),
+				zap.String("name", ep.Name),
+				zap.Error(err),
+			)
+			return err
+		}
+	}
 	clusters := c.controller.apisix.ListClusters()
 	for _, s := range ep.Subsets {
 		for _, port := range s.Ports {
-			// FIXME this is wrong, we should use the port name as the key.
-			upstream := fmt.Sprintf("%s_%s_%d", ep.Namespace, ep.Name, port.Port)
+			portVal, ok := svcPorts[port.Name]
+			if !ok {
+				continue
+			}
+			upstream := fmt.Sprintf("%s_%s_%d", ep.Namespace, ep.Name, portVal)
 			for _, cluster := range clusters {
 				var addresses []corev1.EndpointAddress
 				if ev.Type != types.EventDelete {
@@ -238,4 +266,16 @@ func (c *endpointsController) onDelete(obj interface{}) {
 		Type:   types.EventDelete,
 		Object: ep,
 	})
+}
+
+func (c *endpointsController) getServicePorts(namespace, name string) (map[string]int32, error) {
+	svc, err := c.svcLister.Services(namespace).Get(name)
+	if err != nil {
+		return nil, err
+	}
+	ports := make(map[string]int32)
+	for _, port := range svc.Spec.Ports {
+		ports[port.Name] = port.Port
+	}
+	return ports, nil
 }

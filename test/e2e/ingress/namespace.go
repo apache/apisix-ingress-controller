@@ -44,7 +44,7 @@ spec:
           serviceName: %s
           servicePort: %d
         path: /ip
-`, backendSvc, backendSvcPort[0])
+`, backendSvc, backendSvcPort[0].Port)
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "creating ApisixRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "checking number of routes")
@@ -74,7 +74,7 @@ spec:
          serviceName: %s
          servicePort: %d
        path: /headers
-`, backendSvc, backendSvcPort[0])
+`, backendSvc, backendSvcPort[0].Port)
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route, "default"), "creating ApisixRoute")
 		_ = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)

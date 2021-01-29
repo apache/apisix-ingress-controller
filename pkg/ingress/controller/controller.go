@@ -66,8 +66,10 @@ type Controller struct {
 	crdInformerFactory externalversions.SharedInformerFactory
 
 	// informers and listers
-	epInformer cache.SharedIndexInformer
-	epLister   listerscorev1.EndpointsLister
+	epInformer  cache.SharedIndexInformer
+	epLister    listerscorev1.EndpointsLister
+	svcInformer cache.SharedIndexInformer
+	svcLister   listerscorev1.ServiceLister
 
 	endpointsController *endpointsController
 }
@@ -118,11 +120,13 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		crdInformerFactory: sharedInformerFactory,
 		watchingNamespace:  watchingNamespace,
 
-		epInformer: kube.CoreSharedInformerFactory.Core().V1().Endpoints().Informer(),
-		epLister:   kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
+		epInformer:  kube.CoreSharedInformerFactory.Core().V1().Endpoints().Informer(),
+		epLister:    kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
+		svcInformer: kube.CoreSharedInformerFactory.Core().V1().Services().Informer(),
+		svcLister:   kube.CoreSharedInformerFactory.Core().V1().Services().Lister(),
 	}
 
-	c.endpointsController = c.newEndpointsController(c.epInformer, c.epLister)
+	c.endpointsController = c.newEndpointsController(c.epInformer, c.epLister, c.svcInformer, c.svcLister)
 	return c, nil
 }
 
@@ -237,7 +241,9 @@ func (c *Controller) run(ctx context.Context) {
 	c.goAttach(func() {
 		c.epInformer.Run(ctx.Done())
 	})
-
+	c.goAttach(func() {
+		c.svcInformer.Run(ctx.Done())
+	})
 	c.goAttach(func() {
 		c.endpointsController.run(ctx)
 	})

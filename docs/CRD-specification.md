@@ -139,10 +139,13 @@ spec:
 
 ## ApisixUpstream
 
-`ApisixUpstream` corresponds to the `Upstream` object in Apache APISIX.
-Upstream is a virtual host abstraction that performs load balancing on a given set of service nodes according to configuration rules.
-Upstream address information can be directly configured to `Route` (or `Service`). When Upstream has duplicates, you need to use "reference" to avoid duplication.
+In APISIX, Upstream is a virtual host abstraction that performs load balancing on a given set of service nodes according to configuration rules.
 To learn more, please check the [Apache APISIX architecture-design docs](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#upstream).
+
+An ApisixUpstream object corresponds to a Kubernetes Service, both of
+them have the same name. Upstreams in ApisixUpstream should refer to a port
+in the Service. Ports in Service doesn't referenced
+and bad port references will be ignored.
 
 Structure example:
 
@@ -153,8 +156,8 @@ metadata:
   name: httpserver
   namespace: cloud
 spec:
-  ports:
-    - port: 8080
+  upstreams:
+    - servicePort: 8080
       loadbalancer: roundrobin
 ```
 

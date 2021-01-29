@@ -41,7 +41,7 @@ var _ = ginkgo.Describe("single-route", func() {
 							Path: "/ip",
 							Backend: scaffold.ApisixRouteRuleHTTPBackend{
 								ServiceName: backendSvc,
-								ServicePort: backendSvcPort[0],
+								ServicePort: backendSvcPort[0].Port,
 							},
 						},
 					},
@@ -79,14 +79,14 @@ var _ = ginkgo.Describe("double-routes", func() {
 							Path: "/ip",
 							Backend: scaffold.ApisixRouteRuleHTTPBackend{
 								ServiceName: backendSvc,
-								ServicePort: backendSvcPort[0],
+								ServicePort: backendSvcPort[0].Port,
 							},
 						},
 						{
 							Path: "/json",
 							Backend: scaffold.ApisixRouteRuleHTTPBackend{
 								ServiceName: backendSvc,
-								ServicePort: backendSvcPort[0],
+								ServicePort: backendSvcPort[0].Port,
 							},
 						},
 					},
