@@ -16,6 +16,7 @@ package endpoints
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/api7/ingress-controller/test/e2e/scaffold"
@@ -42,5 +43,32 @@ spec:
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ups))
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
+	})
+
+	ginkgo.It("upstream nodes should be reset to empty when Service/Endpoints was deleted", func() {
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		apisixRoute := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ rules:
+ - host: httpbin.com
+   http:
+     paths:
+     - backend:
+         serviceName: %s
+         servicePort: %d
+       path: /ip
+`, backendSvc, backendSvcPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK)
+
+		// Now delete the backend httpbin service resource.
+		assert.Nil(ginkgo.GinkgoT(), s.DeleteHTTPBINService())
+		time.Sleep(3 * time.Second)
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusBadGateway)
 	})
 })
