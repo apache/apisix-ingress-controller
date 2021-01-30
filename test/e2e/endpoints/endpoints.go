@@ -26,7 +26,7 @@ import (
 
 var _ = ginkgo.Describe("endpoints", func() {
 	s := scaffold.NewDefaultScaffold()
-	ginkgo.FIt("ignore applied only if there is an ApisixUpstream referenced", func() {
+	ginkgo.It("ignore applied only if there is an ApisixUpstream referenced", func() {
 		time.Sleep(5 * time.Second)
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(0), "checking number of upstreams")
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
