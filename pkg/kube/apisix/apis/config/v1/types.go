@@ -87,15 +87,15 @@ type ApisixUpstream struct {
 
 // ApisixUpstreamSpec describes the specification of Upstream in APISIX.
 type ApisixUpstreamSpec struct {
-	Upstreams []Upstream `json:"ports,omitempty"`
+	Upstreams []Upstream `json:"upstreams,omitempty" yaml:"upstreams,omitempty"`
 }
 
 // Upstream defines how to generate an APISIX Upstream resource.
 // It doesn't have a name field, name will be composed by the
 // namespace, name of ApisixUpstream and the ServicePortName.
 type Upstream struct {
-	ServicePort  int32        `json:"servicePort,omitempty"`
-	LoadBalancer LoadBalancer `json:"loadbalancer,omitempty"`
+	ServicePort  int32        `json:"servicePort,omitempty" yaml:"servicePort,omitempty"`
+	LoadBalancer LoadBalancer `json:"loadbalancer,omitempty" yaml:"loadbalancer,omitempty"`
 }
 
 // LoadBalancer describes the load balancing parameters.

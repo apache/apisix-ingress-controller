@@ -68,7 +68,7 @@ func equals(s, d *v1.Upstream) bool {
 // mock BuildEps
 type EndpointRequestTest struct{}
 
-func (epr *EndpointRequestTest) BuildEps(ns, name string, port int) []v1.Node {
+func (epr *EndpointRequestTest) BuildEps(ns, name string, port int32) []v1.Node {
 	nodes := make([]v1.Node, 0)
 	return nodes
 }
@@ -100,10 +100,10 @@ metadata:
   name: httpserver
   namespace: cloud
 spec:
-  ports:
-  - loadbalancer:
+  upstreams:
+  - servicePort: 8080
+    loadbalancer:
       hashOn: header
       key: hello_key
       type: chash
-    port: 8080
 `
