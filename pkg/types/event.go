@@ -12,4 +12,36 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package store
+
+package types
+
+// EventType is the type of event.
+type EventType int
+
+const (
+	// EventAdd means an add event.
+	EventAdd = iota + 1
+	// EventUpdate means an update event.
+	EventUpdate
+	// EventDelete means a delete event.
+	EventDelete
+)
+
+func (ev EventType) String() string {
+	switch ev {
+	case EventAdd:
+		return "add"
+	case EventUpdate:
+		return "update"
+	case EventDelete:
+		return "delete"
+	default:
+		return "unknown"
+	}
+}
+
+// Event represents a typed event.
+type Event struct {
+	Type   EventType
+	Object interface{}
+}
