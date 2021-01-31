@@ -23,7 +23,7 @@ Apache APISIX ingress for Kubernetes.
 
 ## Modules
 
-![Architecture](./images/module-1.png)
+![Architecture](./images/modules.png)
 
 ### 1.Ingress-types
 
@@ -97,7 +97,7 @@ At present, we have defined multiple CRDs, and these CRDs are responsible for th
 
 So, in `apisix-ingress-controller`, a broadcast notification mechanism is designed through `channel`, that is, the definition of any object must be notified to other objects related to it and trigger the corresponding behavior.
 
-![hierarchical](./images/hierarchical.png)
+![hierarchical](./images/cascade-update.png)
 
 In a typical scenario, there is a many-to-many relationship between `ApisixRoute` and `ApisixService`, and a one-to-one relationship between `ApisixService` and `ApisixUpstream`.
 
@@ -114,7 +114,7 @@ The `seven` module internally saves memory data structures, which is currently v
 
 The current comparison rule is based on the grouping of `route` / `service` / `upstream` resource objects, compare them separately, and make corresponding broadcast notifications after finding the differences.
 
-![diff-flow](./images/diff-flow.png)
+![diff-flow](./images/diff-rules.png)
 
 ### Service Discovery
 
