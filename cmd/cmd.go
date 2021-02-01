@@ -19,8 +19,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/api7/ingress-controller/cmd/ingress"
-	"github.com/api7/ingress-controller/pkg/version"
+	"github.com/apache/apisix-ingress-controller/cmd/ingress"
+	"github.com/apache/apisix-ingress-controller/pkg/version"
 )
 
 func newVersionCommand() *cobra.Command {

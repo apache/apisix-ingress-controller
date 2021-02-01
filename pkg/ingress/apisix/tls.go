@@ -20,10 +20,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	ingressConf "github.com/api7/ingress-controller/pkg/kube"
-	configv1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
-	"github.com/api7/ingress-controller/pkg/seven/conf"
-	apisix "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	ingressConf "github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
+	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type ApisixTLSCRD configv1.ApisixTLS

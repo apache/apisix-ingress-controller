@@ -22,8 +22,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/api7/ingress-controller/pkg/apisix"
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"

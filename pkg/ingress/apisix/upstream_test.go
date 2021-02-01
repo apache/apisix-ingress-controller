@@ -21,8 +21,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 
-	configv1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestApisixUpstreamCRD_Convert(t *testing.T) {

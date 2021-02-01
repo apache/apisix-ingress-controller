@@ -19,8 +19,8 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
-	"github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 

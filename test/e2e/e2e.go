@@ -15,8 +15,8 @@
 package e2e
 
 import (
-	_ "github.com/api7/ingress-controller/test/e2e/endpoints"
-	_ "github.com/api7/ingress-controller/test/e2e/ingress"
+	_ "github.com/apache/apisix-ingress-controller/test/e2e/endpoints"
+	_ "github.com/apache/apisix-ingress-controller/test/e2e/ingress"
 )
 
 func runE2E() {}

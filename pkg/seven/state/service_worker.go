@@ -18,10 +18,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/api7/ingress-controller/pkg/seven/conf"
-	"github.com/api7/ingress-controller/pkg/seven/utils"
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/utils"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 const ApisixService = "ApisixService"

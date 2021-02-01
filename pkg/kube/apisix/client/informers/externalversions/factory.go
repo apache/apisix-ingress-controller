@@ -23,9 +23,9 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned"
-	config "github.com/api7/ingress-controller/pkg/kube/apisix/client/informers/externalversions/config"
-	internalinterfaces "github.com/api7/ingress-controller/pkg/kube/apisix/client/informers/externalversions/internalinterfaces"
+	versioned "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	config "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config"
+	internalinterfaces "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/internalinterfaces"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

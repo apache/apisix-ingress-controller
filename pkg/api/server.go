@@ -21,10 +21,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	apirouter "github.com/api7/ingress-controller/pkg/api/router"
-	"github.com/api7/ingress-controller/pkg/config"
-	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/api7/ingress-controller/pkg/types"
+	apirouter "github.com/apache/apisix-ingress-controller/pkg/api/router"
+	"github.com/apache/apisix-ingress-controller/pkg/config"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 // Server represents the API Server in ingress-apisix-controller.
