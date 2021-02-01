@@ -129,6 +129,11 @@ func (s *Scaffold) DefaultHTTPBackend() (string, []int32) {
 	return s.httpbinService.Name, ports
 }
 
+// GetAPISIXEndpoint returns the service and port (as an endpoint).
+func (s *Scaffold) GetAPISIXEndpoint() (string, error) {
+	return s.apisixServiceURL()
+}
+
 // NewAPISIXClient creates the default HTTP client.
 func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 	host, err := s.apisixServiceURL()

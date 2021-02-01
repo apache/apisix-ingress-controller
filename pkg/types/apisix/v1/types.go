@@ -106,6 +106,7 @@ type Upstream struct {
 	Key      string `json:"key,omitempty" yaml:"key,omitempty"`
 	Nodes    []Node `json:"nodes,omitempty" yaml:"nodes,omitempty"`
 	FromKind string `json:"from_kind,omitempty" yaml:"from_kind,omitempty"`
+	Scheme   string `json:"scheme,omitempty" yaml:"scheme,omitempty"`
 }
 
 // Node the node in upstream

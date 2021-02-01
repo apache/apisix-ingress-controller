@@ -172,7 +172,9 @@ func (c *endpointsController) handleSyncErr(obj interface{}, err error) {
 		return
 	}
 	if c.workqueue.NumRequeues(obj) < _maxRetries {
-		log.Infof("sync endpoints %+v failed, will retry", obj)
+		log.Infow("sync endpoints failed, will retry",
+			zap.Any("object", obj),
+		)
 		c.workqueue.AddRateLimited(obj)
 	} else {
 		c.workqueue.Forget(obj)

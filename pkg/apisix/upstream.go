@@ -67,6 +67,7 @@ type upstreamReqBody struct {
 	Key    string        `json:"key,omitempty"`
 	Nodes  upstreamNodes `json:"nodes"`
 	Desc   string        `json:"desc"`
+	Scheme string        `json:"scheme"`
 }
 
 type upstreamItem struct {
@@ -199,6 +200,7 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		Key:    obj.Key,
 		Nodes:  nodes,
 		Desc:   obj.Name,
+		Scheme: obj.Scheme,
 	})
 	if err != nil {
 		return nil, err
