@@ -98,10 +98,12 @@ func (i *item) route(clusterName string) (*v1.Route, error) {
 	fullName := genFullName(route.Desc, clusterName)
 
 	return &v1.Route{
-		ID:         list[len(list)-1],
-		FullName:   fullName,
-		Group:      clusterName,
-		Name:       route.Desc,
+		Metadata: v1.Metadata{
+			ID:         list[len(list)-1],
+			FullName:   fullName,
+			Group:      clusterName,
+			Name:       route.Desc,
+		},
 		Host:       route.Host,
 		Path:       route.URI,
 		Methods:    route.Methods,
@@ -141,10 +143,12 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 	fullName := genFullName(ups.Desc, clusterName)
 
 	return &v1.Upstream{
-		ID:       id,
-		FullName: fullName,
-		Group:    clusterName,
-		Name:     name,
+		Metadata: v1.Metadata{
+			ID:       id,
+			FullName: fullName,
+			Group:    clusterName,
+			Name:     name,
+		},
 		Type:     LBType,
 		Key:      key,
 		Nodes:    nodes,
