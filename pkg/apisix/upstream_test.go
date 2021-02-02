@@ -174,10 +174,12 @@ func TestUpstreamClient(t *testing.T) {
 	}
 
 	obj, err := cli.Create(context.TODO(), &v1.Upstream{
-		ID:       "1",
-		FullName: fullName,
-		Group:    group,
-		Name:     name,
+		Metadata: v1.Metadata{
+			ID:       "1",
+			FullName: fullName,
+			Group:    group,
+			Name:     name,
+		},
 		Type:     lbType,
 		Key:      key,
 		Nodes:    nodes,
@@ -187,10 +189,12 @@ func TestUpstreamClient(t *testing.T) {
 
 	id2 := "2"
 	obj, err = cli.Create(context.TODO(), &v1.Upstream{
-		ID:       id2,
-		FullName: fullName,
-		Group:    group,
-		Name:     name,
+		Metadata: v1.Metadata{
+			ID:       id2,
+			FullName: fullName,
+			Group:    group,
+			Name:     name,
+		},
 		Type:     lbType,
 		Key:      key,
 		Nodes:    nodes,
@@ -214,10 +218,12 @@ func TestUpstreamClient(t *testing.T) {
 
 	// Patch then List
 	_, err = cli.Update(context.Background(), &v1.Upstream{
-		ID:       "2",
-		FullName: fullName,
-		Group:    group,
-		Name:     name,
+		Metadata: v1.Metadata{
+			ID:       "2",
+			FullName: fullName,
+			Group:    group,
+			Name:     name,
+		},
 		Type:     "chash",
 		Key:      key,
 		Nodes:    nodes,
