@@ -26,7 +26,7 @@ import (
 
 var _ = ginkgo.Describe("choose scheme", func() {
 	s := scaffold.NewDefaultScaffold()
-	ginkgo.FIt("grpc", func() {
+	ginkgo.It("grpc", func() {
 		err := s.CreateResourceFromString(`
 apiVersion: v1
 kind: Pod
