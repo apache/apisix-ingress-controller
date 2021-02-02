@@ -67,13 +67,14 @@ type upstreamReqBody struct {
 	Key    string        `json:"key,omitempty"`
 	Nodes  upstreamNodes `json:"nodes"`
 	Desc   string        `json:"desc"`
-	Scheme string        `json:"scheme"`
+	Scheme string        `json:"scheme,omitempty"`
 }
 
 type upstreamItem struct {
 	Nodes  upstreamNodes `json:"nodes"`
 	Desc   string        `json:"desc"`
 	LBType string        `json:"type"`
+	Scheme string        `json:"scheme"`
 }
 
 func newUpstreamClient(c *cluster) Upstream {

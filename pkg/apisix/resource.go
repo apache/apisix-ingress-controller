@@ -126,11 +126,6 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 		return nil, err
 	}
 
-	id := list[len(list)-1]
-	name := ups.Desc
-	LBType := ups.LBType
-	key := i.Key
-
 	var nodes []v1.Node
 	for _, node := range ups.Nodes {
 		nodes = append(nodes, v1.Node{
@@ -144,14 +139,15 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 
 	return &v1.Upstream{
 		Metadata: v1.Metadata{
-			ID:       id,
+			ID:       list[len(list)-1],
 			FullName: fullName,
 			Group:    clusterName,
-			Name:     name,
+			Name:     ups.Desc,
 		},
-		Type:  LBType,
-		Key:   key,
-		Nodes: nodes,
+		Type:   ups.LBType,
+		Key:    i.Key,
+		Nodes:  nodes,
+		Scheme: ups.Scheme,
 	}, nil
 }
 
