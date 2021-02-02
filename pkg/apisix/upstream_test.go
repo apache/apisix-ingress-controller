@@ -180,9 +180,9 @@ func TestUpstreamClient(t *testing.T) {
 			Group:    group,
 			Name:     name,
 		},
-		Type:     lbType,
-		Key:      key,
-		Nodes:    nodes,
+		Type:  lbType,
+		Key:   key,
+		Nodes: nodes,
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "1")
@@ -195,9 +195,9 @@ func TestUpstreamClient(t *testing.T) {
 			Group:    group,
 			Name:     name,
 		},
-		Type:     lbType,
-		Key:      key,
-		Nodes:    nodes,
+		Type:  lbType,
+		Key:   key,
+		Nodes: nodes,
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "2")
@@ -224,9 +224,9 @@ func TestUpstreamClient(t *testing.T) {
 			Group:    group,
 			Name:     name,
 		},
-		Type:     "chash",
-		Key:      key,
-		Nodes:    nodes,
+		Type:  "chash",
+		Key:   key,
+		Nodes: nodes,
 	})
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())

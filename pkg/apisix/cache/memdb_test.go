@@ -226,8 +226,8 @@ func TestMemDBCacheUpstream(t *testing.T) {
 func TestMemDBCacheReference(t *testing.T) {
 	r := &v1.Route{
 		Metadata: v1.Metadata{
-			FullName:  "route",
-			Name:      "route",
+			FullName: "route",
+			Name:     "route",
 		},
 		ServiceId: "service",
 	}

@@ -87,10 +87,10 @@ func buildExpectUpstream() *v1.Upstream {
 			FullName:        fullName,
 			Name:            fullName,
 		},
-		Type:            LBType,
-		HashOn:          HashOn,
-		Key:             Key,
-		FromKind:        fromKind,
+		Type:     LBType,
+		HashOn:   HashOn,
+		Key:      Key,
+		FromKind: fromKind,
 	}
 	return upstreamExpect
 }
