@@ -15,6 +15,7 @@
 package apisix
 
 import (
+	"errors"
 	"strconv"
 
 	"github.com/apache/apisix-ingress-controller/pkg/ingress/endpoint"
@@ -24,8 +25,6 @@ import (
 )
 
 const (
-	RR             = "roundrobin"
-	CHASH          = "chash"
 	ApisixUpstream = "ApisixUpstream"
 )
 
@@ -72,26 +71,32 @@ func (aub *ApisixUpstreamBuilder) Convert() ([]*apisix.Upstream, error) {
 			Nodes:           nodes,
 			FromKind:        fromKind,
 		}
-		lbType := RR
-		if lb != nil {
-			lbType = lb["type"].(string)
-		}
-		switch {
-		case lbType == CHASH:
-			upstream.Type = lbType
-			hashOn := lb["hashOn"]
-			key := lb["key"]
-			if hashOn != nil {
-				ho := hashOn.(string)
-				upstream.HashOn = ho
+		if lb == nil || lb.Type == "" {
+			upstream.Type = apisix.LbRoundRobin
+		} else {
+			switch lb.Type {
+			case apisix.LbRoundRobin, apisix.LbLeastConn, apisix.LbEwma:
+				upstream.Type = lb.Type
+			case apisix.LbConsistentHash:
+				upstream.Type = lb.Type
+				upstream.Key = lb.Key
+				switch lb.HashOn {
+				case apisix.HashOnVars:
+					fallthrough
+				case apisix.HashOnHeader:
+					fallthrough
+				case apisix.HashOnCookie:
+					fallthrough
+				case apisix.HashOnConsumer:
+					fallthrough
+				case apisix.HashOnVarsCombination:
+					upstream.HashOn = lb.HashOn
+				default:
+					return nil, errors.New("invalid hashOn value")
+				}
+			default:
+				return nil, errors.New("invalid load balancer type")
 			}
-			if key != nil {
-				k := key.(string)
-				upstream.Key = k
-			}
-		default:
-			lbType = RR
-			upstream.Type = lbType
 		}
 		upstreams = append(upstreams, upstream)
 	}
