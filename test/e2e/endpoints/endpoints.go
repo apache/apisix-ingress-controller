@@ -69,6 +69,6 @@ spec:
 		// Now delete the backend httpbin service resource.
 		assert.Nil(ginkgo.GinkgoT(), s.DeleteHTTPBINService())
 		time.Sleep(3 * time.Second)
-		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusBadGateway)
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusServiceUnavailable)
 	})
 })
