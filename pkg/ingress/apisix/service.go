@@ -95,9 +95,9 @@ func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, er
 			ResourceVersion: rv,
 			Name:            apisixUpstreamName,
 		},
-		Type:            LBType,
-		Nodes:           nodes,
-		FromKind:        fromKind,
+		Type:     LBType,
+		Nodes:    nodes,
+		FromKind: fromKind,
 	}
 	upstreams = append(upstreams, upstream)
 	return services, upstreams, nil

@@ -96,11 +96,11 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 					ResourceVersion: rv,
 					Name:            apisixRouteName,
 				},
-				Host:            host,
-				Path:            uri,
-				ServiceName:     apisixSvcName,
-				UpstreamName:    apisixUpstreamName,
-				Plugins:         pluginRet,
+				Host:         host,
+				Path:         uri,
+				ServiceName:  apisixSvcName,
+				UpstreamName: apisixUpstreamName,
+				Plugins:      pluginRet,
 			}
 			routes = append(routes, route)
 			// services
@@ -135,8 +135,8 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 					ResourceVersion: rv,
 					Name:            apisixUpstreamName,
 				},
-				Type:            LBType,
-				Nodes:           nodes,
+				Type:  LBType,
+				Nodes: nodes,
 			}
 			upstreamMap[upstream.FullName] = upstream
 		}

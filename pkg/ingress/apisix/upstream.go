@@ -71,8 +71,8 @@ func (aub *ApisixUpstreamBuilder) Convert() ([]*apisix.Upstream, error) {
 				ResourceVersion: rv,
 				Name:            apisixUpstreamName,
 			},
-			Nodes:           nodes,
-			FromKind:        fromKind,
+			Nodes:    nodes,
+			FromKind: fromKind,
 		}
 		lbType := RR
 		if lb != nil {

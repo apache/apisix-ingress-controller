@@ -99,10 +99,10 @@ func (i *item) route(clusterName string) (*v1.Route, error) {
 
 	return &v1.Route{
 		Metadata: v1.Metadata{
-			ID:         list[len(list)-1],
-			FullName:   fullName,
-			Group:      clusterName,
-			Name:       route.Desc,
+			ID:       list[len(list)-1],
+			FullName: fullName,
+			Group:    clusterName,
+			Name:     route.Desc,
 		},
 		Host:       route.Host,
 		Path:       route.URI,
@@ -149,9 +149,9 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 			Group:    clusterName,
 			Name:     name,
 		},
-		Type:     LBType,
-		Key:      key,
-		Nodes:    nodes,
+		Type:  LBType,
+		Key:   key,
+		Nodes: nodes,
 	}, nil
 }
 
