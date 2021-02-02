@@ -19,9 +19,9 @@ limitations under the License.
 package fake
 
 import (
-	clientset "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned"
-	apisixv1 "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v1"
-	fakeapisixv1 "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v1/fake"
+	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v1"
+	fakeapisixv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

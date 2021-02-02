@@ -26,14 +26,14 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/api7/ingress-controller/pkg/ingress/apisix"
-	configv1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
-	clientset "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned"
-	apisixscheme "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
-	apisixinformers "github.com/api7/ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v1"
-	listersv1 "github.com/api7/ingress-controller/pkg/kube/apisix/client/listers/config/v1"
-	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/api7/ingress-controller/pkg/seven/state"
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/apisix"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
+	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v1"
+	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/state"
 )
 
 type ApisixRouteController struct {

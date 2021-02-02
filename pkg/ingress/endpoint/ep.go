@@ -17,8 +17,8 @@ package endpoint
 import (
 	"github.com/golang/glog"
 
-	"github.com/api7/ingress-controller/pkg/kube"
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type Endpoint interface {

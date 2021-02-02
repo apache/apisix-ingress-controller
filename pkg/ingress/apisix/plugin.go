@@ -17,7 +17,7 @@ package apisix
 import (
 	"strconv"
 
-	"github.com/api7/ingress-controller/pkg/seven/apisix"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/apisix"
 )
 
 type CorsYaml struct {

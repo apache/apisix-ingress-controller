@@ -19,7 +19,7 @@ limitations under the License.
 package scheme
 
 import (
-	apisixv1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

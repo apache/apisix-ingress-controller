@@ -19,8 +19,8 @@ import (
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/api7/ingress-controller/pkg/config"
-	clientset "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	"github.com/apache/apisix-ingress-controller/pkg/config"
+	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
 )
 
 var (

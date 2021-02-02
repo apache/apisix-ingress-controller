@@ -31,16 +31,16 @@ import (
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 
-	"github.com/api7/ingress-controller/pkg/api"
-	"github.com/api7/ingress-controller/pkg/apisix"
-	"github.com/api7/ingress-controller/pkg/config"
-	"github.com/api7/ingress-controller/pkg/kube"
-	clientset "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned"
-	crdclientset "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned"
-	"github.com/api7/ingress-controller/pkg/kube/apisix/client/informers/externalversions"
-	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/api7/ingress-controller/pkg/metrics"
-	"github.com/api7/ingress-controller/pkg/seven/conf"
+	"github.com/apache/apisix-ingress-controller/pkg/api"
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	"github.com/apache/apisix-ingress-controller/pkg/config"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	crdclientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
 )
 
 // recover any exception

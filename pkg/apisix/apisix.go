@@ -17,7 +17,7 @@ package apisix
 import (
 	"context"
 
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 // APISIX is the unified client tool to communicate with APISIX.

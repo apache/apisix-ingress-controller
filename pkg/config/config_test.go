@@ -23,7 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/api7/ingress-controller/pkg/types"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 func TestNewConfigFromFile(t *testing.T) {
