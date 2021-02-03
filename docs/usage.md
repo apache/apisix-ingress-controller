@@ -55,19 +55,7 @@ spec:
       key: hello
 ```
 
-2. Define Service with `ApisixService`
-
-```yaml
-apiVersion: apisix.apache.org/v1
-kind: ApisixService
-metadata:
-  name: foo
-spec:
-  upstream: foo
-  port: 8080
-```
-
-3. Define Route with `ApisixRoute`
+2. Define Route with `ApisixRoute`
 
 ```yaml
 apiVersion: apisix.apache.org/v1
@@ -121,54 +109,3 @@ curl -XPUT http://127.0.0.1:9080/apisix/admin/routes/3 -H 'X-API-KEY: edd1c9f034
 }'
 ```
 
-## Add a plugin
-
-Next, take the `proxy-rewrite` plugin as an example.
-
-Add plug-ins through admin api to achieve the purpose of rewriting upstream uri.
-
-e.g. test.apisix.apache.org/hello -> test-rewrite.apisix.apache.org/copy/hello
-
-With CRDs, use `ApisixService` as example.
-
-```yaml
-apiVersion: apisix.apache.org/v1
-kind: ApisixService
-metadata:
-  name: foo
-spec:
-  upstream: foo
-  port: 8080
-  plugins:
-  - enable: true
-    name: proxy-rewrite
-    config:
-    regex_uri:
-    - '^/(.*)'
-    - '/copy/$1'
-    scheme: http
-    host: test-rewrite.apisix.apache.org
-```
-
-For facilitating understanding, show the way with `Admin API` as below.
-
-```shell
-curl http://127.0.0.1:9080/apisix/admin/services/2 -H 'X-API-KEY: edd1c9f034335f136f87ad84b625c8f1' -X PUT -d '
-{
-    "desc": "foo-service",
-    "upstream_id": "1",
-    "plugins": {
-        "proxy-rewrite": {
-            "regex_uri": ["^/(.*)", "/copy/$1"],
-            "scheme": "http",
-            "host": "test-rewrite.apisix.apache.org"
-        }
-    }
-}'
-```
-
-It can be found that the way of defining plugins is almost the same, except that the format is changed from `json` to `yaml`.
-
-By defining the plug-in in CRDs, you can disable the plug-in by setting `enable: false` without deleting it. Keep the original configuration for easy opening next time.
-
-Tips: ApisixRoute and ApisixService both support plugins definition.

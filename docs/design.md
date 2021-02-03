@@ -29,7 +29,7 @@ Apache APISIX ingress for Kubernetes.
 
 - defines the CRD(CustomResourceDefinition) needed by Apache APISIX
 
-- currently supports ApisixRoute/ApisixService/ApisixUpstream，and other service and route level plugins;
+- currently supports ApisixRoute/ApisixUpstream，and other service and route level plugins;
 
 - can be packaged as a stand-alone binary, keep in sync with the ingress definition;
 
@@ -57,14 +57,12 @@ Apache APISIX ingress for Kubernetes.
 
 ## CRD design
 
-Currently `apisix-ingress-controller` CRDs consist of 3 parts: ApisixRoute/ApisixService/ApisixUpstream. The design follows the following ideas.
+Currently `apisix-ingress-controller` CRDs consist of 3 parts: ApisixRoute/ApisixUpstream. The design follows the following ideas.
 
 1. The most important part of the gateway is the route part, which is used to define the distribution rules of the gateway traffics.
 2. In order to facilitate understanding and configuration, the design structure of `ApisixRoute` is basically similar to Kubernetes Ingress.
 3. In the design of annotation, the structure of Kubernetes Ingress is used for reference, but the internal implementation is based on the plug-in of Apache APISIX.
-4. Both `ApisixRoute` and `ApisixService` can be bound to plug-ins, which is consistent with Apache APISIX.
-5. In the simplest case, you only need to define `ApisixRoute`, and the Ingress controller will automatically add `ApisixService` and `ApisixUpstream`.
-6. `ApisixService`, like Apache APISIX service, is a grouping of routes, which can simplify the configuration complexity of the same plug-in.
+5. In the simplest case, you only need to define `ApisixRoute`, and the Ingress controller will automatically add `ApisixUpstream`.
 7. `ApisixUpstream` can define some details on Apache APISIX upstream, such as load balancing/health check, etc.
 
 ## Monitoring CRDs
@@ -93,18 +91,11 @@ They are a many-to-many relationship.Therefore, `apisix-ingress-controller` has 
 
 ### Cascade update
 
-At present, we have defined multiple CRDs, and these CRDs are responsible for the definition of their respective fields. `ApisixRoute`/ `ApisixService` / `ApisixUpstream` correspond to objects such as `route`/ `service` / `upstream` in Apache APISIX. As the strong binding relationship between APISIX objects, when modifying and deleting batch data structures such as CRDs, you have to consider the impact of cascading between objects.
+At present, we have defined multiple CRDs, and these CRDs are responsible for the definition of their respective fields. `ApisixRoute`/ `ApisixUpstream` correspond to objects such as `route`/ `service` / `upstream` in Apache APISIX. As the strong binding relationship between APISIX objects, when modifying and deleting batch data structures such as CRDs, you have to consider the impact of cascading between objects.
 
 So, in `apisix-ingress-controller`, a broadcast notification mechanism is designed through `channel`, that is, the definition of any object must be notified to other objects related to it and trigger the corresponding behavior.
 
 ![hierarchical](./images/cascade-update.png)
-
-In a typical scenario, there is a many-to-many relationship between `ApisixRoute` and `ApisixService`, and a one-to-one relationship between `ApisixService` and `ApisixUpstream`.
-
-* When the `ApisixService` changes, it needs to be notified upwards to the `ApisixRoute`, and also needs to be notified downwards to the corresponding `ApisixUpstream`.
-* When one of the `http-route` in `ApisixRoute` changes, the relevant `ApisixService` and `ApisixUpstream` need to be notified.
-
-This is particularly prominent in `modify` and `delete`.
 
 **We can initiate discussions in this area and propose a more reasonable design plan**
 

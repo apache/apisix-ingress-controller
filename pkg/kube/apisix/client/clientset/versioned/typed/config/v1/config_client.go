@@ -27,7 +27,6 @@ import (
 type ApisixV1Interface interface {
 	RESTClient() rest.Interface
 	ApisixRoutesGetter
-	ApisixServicesGetter
 	ApisixTlsesGetter
 	ApisixUpstreamsGetter
 }
@@ -39,10 +38,6 @@ type ApisixV1Client struct {
 
 func (c *ApisixV1Client) ApisixRoutes(namespace string) ApisixRouteInterface {
 	return newApisixRoutes(c, namespace)
-}
-
-func (c *ApisixV1Client) ApisixServices(namespace string) ApisixServiceInterface {
-	return newApisixServices(c, namespace)
 }
 
 func (c *ApisixV1Client) ApisixTlses(namespace string) ApisixTlsInterface {

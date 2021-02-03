@@ -32,10 +32,6 @@ func (c *FakeApisixV1) ApisixRoutes(namespace string) v1.ApisixRouteInterface {
 	return &FakeApisixRoutes{c, namespace}
 }
 
-func (c *FakeApisixV1) ApisixServices(namespace string) v1.ApisixServiceInterface {
-	return &FakeApisixServices{c, namespace}
-}
-
 func (c *FakeApisixV1) ApisixTlses(namespace string) v1.ApisixTlsInterface {
 	return &FakeApisixTlses{c, namespace}
 }
