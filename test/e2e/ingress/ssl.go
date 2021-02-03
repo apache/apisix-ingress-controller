@@ -21,10 +21,10 @@ import (
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/api7/ingress-controller/test/e2e/scaffold"
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.FDescribe("SSL Testing", func() {
+var _ = ginkgo.Describe("SSL Testing", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("create a SSL from ApisixTls ", func() {
 		secretName := "test-apisix-tls"
@@ -156,7 +156,7 @@ RU+QPRECgYB6XW24EI5+w3STbpnc6VoTS+sy9I9abTJPYo9LpCJwfMYc9Tg9Cx2K
 		tls, err := s.ListApisixTls()
 		assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
 		assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
-		assert.Equal(ginkgo.GinkgoT(), *tls[0].Snis[0], host, "tls host is error")
+		assert.Equal(ginkgo.GinkgoT(), tls[0].Snis[0], host, "tls host is error")
 	})
 	ginkgo.It("delete a SSL from ApisixTls ", func() {
 		secretName := "test-apisix-tls"
@@ -221,7 +221,7 @@ RU+QPRECgYB6XW24EI5+w3STbpnc6VoTS+sy9I9abTJPYo9LpCJwfMYc9Tg9Cx2K
 		tls, err := s.ListApisixTls()
 		assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
 		assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
-		assert.Equal(ginkgo.GinkgoT(), *tls[0].Snis[0], host, "tls host is error")
+		assert.Equal(ginkgo.GinkgoT(), tls[0].Snis[0], host, "tls host is error")
 
 		// delete ApisixTls
 		err = s.DeleteApisixTls(tlsName, host, secretName)
