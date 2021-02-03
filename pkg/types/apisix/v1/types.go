@@ -16,6 +16,30 @@ package v1
 
 import "encoding/json"
 
+const (
+	// HashOnVars means the hash scope is variable.
+	HashOnVars = "vars"
+	// HashVarsCombination means the hash scope is the
+	// variable combination.
+	HashOnVarsCombination = "vars_combinations"
+	// HashOnHeader means the hash scope is HTTP request
+	// headers.
+	HashOnHeader = "header"
+	// HashOnCookie means the hash scope is HTTP Cookie.
+	HashOnCookie = "cookie"
+	// HashOnConsumer means the hash scope is APISIX consumer.
+	HashOnConsumer = "consumer"
+
+	// LbRoundRobin is the round robin load balancer.
+	LbRoundRobin = "roundrobin"
+	// LbConsistentHash is the consistent hash load balancer.
+	LbConsistentHash = "chash"
+	// LbEwma is the ewma load balancer.
+	LbEwma = "ewma"
+	// LbLeaseConn is the least connection load balancer.
+	LbLeastConn = "least_conn"
+)
+
 // Route apisix route object
 // +k8s:deepcopy-gen=true
 type Route struct {
