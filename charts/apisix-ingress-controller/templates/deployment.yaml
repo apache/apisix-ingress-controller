@@ -17,26 +17,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "ingress-apisix.fullname" . }}
+  name: {{ include "apisix-ingress-controller.fullname" . }}
   labels:
-    {{- include "ingress-apisix.labels" . | nindent 4 }}
+    {{- include "apisix-ingress-controller.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.ingressController.autoscaling.enabled }}
-  replicas: {{ .Values.ingressController.replicaCount }}
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "ingress-apisix.selectorLabels" . | nindent 6 }}
+      {{- include "apisix-ingress-controller.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "ingress-apisix.selectorLabels" . | nindent 8 }}
+        {{- include "apisix-ingress-controller.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with .Values.ingressController.imagePullSecrets }}
+      {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ .Values.ingressController.serviceAccount }}
+      serviceAccountName: {{ include "apisix-ingress-controller.serviceAccountName" . }}
       volumes:
         - name: configuration
           configMap:
@@ -51,22 +51,22 @@ spec:
             - ingress
             - --config-path
             - /ingress-apisix/conf/config.yaml
-          image: "{{ .Values.ingressController.image.repository }}:{{ .Values.ingressController.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.ingressController.image.pullPolicy }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ (.Values.ingressController.config.httpListen | split ":")._1 }}
+              containerPort: {{ (.Values.config.httpListen | split ":")._1 }}
               protocol: TCP
           livenessProbe:
             httpGet:
               path: /healthz
-              port: {{ (.Values.ingressController.config.httpListen | split ":")._1 }}
+              port: {{ (.Values.config.httpListen | split ":")._1 }}
           readinessProbe:
             httpGet:
               path: /healthz
-              port: {{ (.Values.ingressController.config.httpListen | split ":")._1 }}
+              port: {{ (.Values.config.httpListen | split ":")._1 }}
           resources:
-            {{- toYaml .Values.ingressController.resources | nindent 12 }}
+            {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - mountPath: /ingress-apisix/conf
               name: configuration
@@ -79,11 +79,11 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.name
-      {{- with .Values.ingressController.nodeSelector }}
+      {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.ingressController.tolerations }}
+      {{- with .Values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
