@@ -191,22 +191,22 @@ func (p *Config) DeepCopy() *Config {
 // +genclient:noStatus
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// ApisixTLS defines SSL resource in APISIX.
-type ApisixTLS struct {
+// ApisixTls defines SSL resource in APISIX.
+type ApisixTls struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-	Spec              *ApisixTLSSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Spec              *ApisixTlsSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type ApisixTLSList struct {
+type ApisixTlsList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
-	Items           []ApisixTLS `json:"items,omitempty"`
+	Items           []ApisixTls `json:"items,omitempty"`
 }
 
-// ApisixTLSSpec is the specification of ApisixSSL.
-type ApisixTLSSpec struct {
+// ApisixTlsSpec is the specification of ApisixSSL.
+type ApisixTlsSpec struct {
 	Hosts  []string     `json:"hosts,omitempty"`
 	Secret ApisixSecret `json:"secret,omitempty"`
 }
