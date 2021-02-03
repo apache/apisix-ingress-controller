@@ -108,4 +108,3 @@ curl -XPUT http://127.0.0.1:9080/apisix/admin/routes/3 -H 'X-API-KEY: edd1c9f034
     "service_id": "2"
 }'
 ```
-
