@@ -91,7 +91,18 @@ type ApisixUpstreamSpec struct {
 type Port struct {
 	Port         int           `json:"port,omitempty"`
 	LoadBalancer *LoadBalancer `json:"loadbalancer,omitempty"`
+	// The scheme used to talk with the upstream.
+	// Now value can be http, grpc.
+	// +optional
+	Scheme string `json:"scheme,omitempty" yaml:"scheme,omitempty"`
 }
+
+var (
+	// SchemeHTTP represents the HTTP protocol.
+	SchemeHTTP = "http"
+	// SchemeGRPC represents the GRPC protocol.
+	SchemeGRPC = "grpc"
+)
 
 // LoadBalancer describes the load balancing parameters.
 type LoadBalancer struct {

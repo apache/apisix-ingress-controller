@@ -16,6 +16,7 @@ package apisix
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/apache/apisix-ingress-controller/pkg/ingress/endpoint"
@@ -48,6 +49,10 @@ func (aub *ApisixUpstreamBuilder) Convert() ([]*apisix.Upstream, error) {
 	rv := ar.ObjectMeta.ResourceVersion
 	Ports := ar.Spec.Ports
 	for _, r := range Ports {
+		if r.Scheme != "" && r.Scheme != configv1.SchemeHTTP && r.Scheme != configv1.SchemeGRPC {
+			return nil, fmt.Errorf("bad scheme %s", r.Scheme)
+		}
+
 		port := r.Port
 		// apisix route name = namespace_svcName_svcPort = apisix service name
 		apisixUpstreamName := ns + "_" + name + "_" + strconv.Itoa(int(port))
@@ -72,6 +77,9 @@ func (aub *ApisixUpstreamBuilder) Convert() ([]*apisix.Upstream, error) {
 			},
 			Nodes:    nodes,
 			FromKind: fromKind,
+		}
+		if r.Scheme != "" {
+			upstream.Scheme = r.Scheme
 		}
 		if lb == nil || lb.Type == "" {
 			upstream.Type = apisix.LbRoundRobin
