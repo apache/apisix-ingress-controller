@@ -14,14 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-apiVersion: v2
-name: ingress-apisix
-description: Apache APISIX Ingress Controller for Kubernetes
-icon: https://apache.org/logos/res/apisix/apisix.png
-keywords:
-  - ingress
-  - apisix
-  - nginx
-type: application
-version: 0.1.0
-appVersion: 0.1.0
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "apisix-ingress-controller.fullname" . }}
+  labels:
+    {{- include "apisix-ingress-controller.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ (.Values.config.httpListen | split ":")._1 }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "apisix-ingress-controller.selectorLabels" . | nindent 4 }}

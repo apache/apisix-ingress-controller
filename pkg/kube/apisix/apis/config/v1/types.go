@@ -89,25 +89,18 @@ type ApisixUpstreamSpec struct {
 
 // Port is the port-specific configurations.
 type Port struct {
-	Port         int          `json:"port,omitempty"`
-	LoadBalancer LoadBalancer `json:"loadbalancer,omitempty"`
+	Port         int           `json:"port,omitempty"`
+	LoadBalancer *LoadBalancer `json:"loadbalancer,omitempty"`
 }
 
 // LoadBalancer describes the load balancing parameters.
-type LoadBalancer map[string]interface{}
-
-func (p LoadBalancer) DeepCopyInto(out *LoadBalancer) {
-	b, _ := json.Marshal(&p)
-	_ = json.Unmarshal(b, out)
-}
-
-func (p *LoadBalancer) DeepCopy() *LoadBalancer {
-	if p == nil {
-		return nil
-	}
-	out := new(LoadBalancer)
-	p.DeepCopyInto(out)
-	return out
+type LoadBalancer struct {
+	Type string `json:"type" yaml:"type"`
+	// The HashOn and Key fields are required when Type is "chash".
+	// HashOn represents the key fetching scope.
+	HashOn string `json:"hashOn,omitempty" yaml:"hashOn,omitempty"`
+	// Key represents the hash key.
+	Key string `json:"key,omitempty" yaml:"key,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

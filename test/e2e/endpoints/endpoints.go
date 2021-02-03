@@ -39,7 +39,7 @@ spec:
   ports:
     - port: %d
       loadbalancer:
-        type: roundbin
+        type: roundrobin
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ups))
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")

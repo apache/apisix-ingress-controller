@@ -15,8 +15,8 @@
 # limitations under the License.
 #
 apiVersion: v2
-name: base
-description: Helm chart for deploying ingress-apisix cluster resources and CRDs
+name: apisix-ingress-controller
+description: Apache APISIX Ingress Controller for Kubernetes
 icon: https://apache.org/logos/res/apisix/apisix.png
 keywords:
   - ingress
@@ -25,3 +25,4 @@ keywords:
   - crd
 type: application
 version: 0.1.0
+appVersion: 0.2.0
