@@ -90,15 +90,17 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 
 			// routes
 			route := &apisix.Route{
-				Group:           group,
-				FullName:        fullRouteName,
-				ResourceVersion: rv,
-				Name:            apisixRouteName,
-				Host:            host,
-				Path:            uri,
-				ServiceName:     apisixSvcName,
-				UpstreamName:    apisixUpstreamName,
-				Plugins:         pluginRet,
+				Metadata: apisix.Metadata{
+					Group:           group,
+					FullName:        fullRouteName,
+					ResourceVersion: rv,
+					Name:            apisixRouteName,
+				},
+				Host:         host,
+				Path:         uri,
+				ServiceName:  apisixSvcName,
+				UpstreamName: apisixUpstreamName,
+				Plugins:      pluginRet,
 			}
 			routes = append(routes, route)
 			// services
@@ -127,12 +129,14 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 			port, _ := strconv.Atoi(svcPort)
 			nodes := endpoint.BuildEps(ns, svcName, port)
 			upstream := &apisix.Upstream{
-				FullName:        fullUpstreamName,
-				Group:           group,
-				ResourceVersion: rv,
-				Name:            apisixUpstreamName,
-				Type:            LBType,
-				Nodes:           nodes,
+				Metadata: apisix.Metadata{
+					FullName:        fullUpstreamName,
+					Group:           group,
+					ResourceVersion: rv,
+					Name:            apisixUpstreamName,
+				},
+				Type:  LBType,
+				Nodes: nodes,
 			}
 			upstreamMap[upstream.FullName] = upstream
 		}

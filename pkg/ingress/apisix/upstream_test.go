@@ -81,14 +81,16 @@ func buildExpectUpstream() *v1.Upstream {
 	fromKind := "ApisixUpstream"
 	group := ""
 	upstreamExpect := &v1.Upstream{
-		Group:           group,
-		ResourceVersion: group,
-		FullName:        fullName,
-		Name:            fullName,
-		Type:            LBType,
-		HashOn:          HashOn,
-		Key:             Key,
-		FromKind:        fromKind,
+		Metadata: v1.Metadata{
+			Group:           group,
+			ResourceVersion: group,
+			FullName:        fullName,
+			Name:            fullName,
+		},
+		Type:     LBType,
+		HashOn:   HashOn,
+		Key:      Key,
+		FromKind: fromKind,
 	}
 	return upstreamExpect
 }

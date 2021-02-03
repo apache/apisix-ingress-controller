@@ -89,13 +89,15 @@ func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, er
 	LBType := DefaultLBType
 	nodes := endpoint.BuildEps(ns, upstreamName, int(port))
 	upstream := &apisix.Upstream{
-		FullName:        fullUpstreamName,
-		Group:           group,
-		ResourceVersion: rv,
-		Name:            apisixUpstreamName,
-		Type:            LBType,
-		Nodes:           nodes,
-		FromKind:        fromKind,
+		Metadata: apisix.Metadata{
+			FullName:        fullUpstreamName,
+			Group:           group,
+			ResourceVersion: rv,
+			Name:            apisixUpstreamName,
+		},
+		Type:     LBType,
+		Nodes:    nodes,
+		FromKind: fromKind,
 	}
 	upstreams = append(upstreams, upstream)
 	return services, upstreams, nil

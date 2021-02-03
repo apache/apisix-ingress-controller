@@ -64,12 +64,14 @@ func (aub *ApisixUpstreamBuilder) Convert() ([]*apisix.Upstream, error) {
 			fullName = group + "_" + apisixUpstreamName
 		}
 		upstream := &apisix.Upstream{
-			FullName:        fullName,
-			Group:           group,
-			ResourceVersion: rv,
-			Name:            apisixUpstreamName,
-			Nodes:           nodes,
-			FromKind:        fromKind,
+			Metadata: apisix.Metadata{
+				FullName:        fullName,
+				Group:           group,
+				ResourceVersion: rv,
+				Name:            apisixUpstreamName,
+			},
+			Nodes:    nodes,
+			FromKind: fromKind,
 		}
 		if lb == nil || lb.Type == "" {
 			upstream.Type = apisix.LbRoundRobin
