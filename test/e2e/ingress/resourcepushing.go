@@ -33,17 +33,18 @@ var _ = ginkgo.Describe("ApisixRoute Testing", func() {
 apiVersion: apisix.apache.org/v1
 kind: ApisixRoute
 metadata:
-name: httpbin-route
+  name: httpbin-route
 spec:
-rules:
-- host: httpbin.com
-  http:
-	paths:
-	- backend:
-		serviceName: %s
-		servicePort: %d
-	  path: /ip
+  rules:
+  - host: httpbin.com
+    http:
+      paths:
+      - backend:
+          serviceName: %s
+          servicePort: %d
+        path: /ip
 `, backendSvc, backendSvcPort[0])
+		fmt.Println(apisixRoute)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
 
 		err := s.EnsureNumApisixRoutesCreated(1)
@@ -67,16 +68,16 @@ rules:
 apiVersion: apisix.apache.org/v1
 kind: ApisixRoute
 metadata:
- name: httpbin-route
+  name: httpbin-route
 spec:
- rules:
- - host: httpbin.com
-   http:
-	 paths:
-	 - backend:
-		 serviceName: %s
-		 servicePort: %d
-	   path: /ip
+  rules:
+  - host: httpbin.com
+    http:
+      paths:
+      - backend:
+          serviceName: %s
+          servicePort: %d
+        path: /ip
 `, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
