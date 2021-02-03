@@ -30,20 +30,20 @@ var _ = ginkgo.Describe("ApisixRoute Testing", func() {
 	ginkgo.It("create and then scale upstream pods to 2 ", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-	apiVersion: apisix.apache.org/v1
-	kind: ApisixRoute
-	metadata:
-	name: httpbin-route
-	spec:
-	rules:
-	- host: httpbin.com
-	  http:
-	    paths:
-	    - backend:
-	        serviceName: %s
-	        servicePort: %d
-	      path: /ip
-	`, backendSvc, backendSvcPort[0])
+apiVersion: apisix.apache.org/v1
+kind: ApisixRoute
+metadata:
+name: httpbin-route
+spec:
+rules:
+- host: httpbin.com
+  http:
+	paths:
+	- backend:
+		serviceName: %s
+		servicePort: %d
+	  path: /ip
+`, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
 
 		err := s.EnsureNumApisixRoutesCreated(1)
@@ -64,20 +64,20 @@ var _ = ginkgo.Describe("ApisixRoute Testing", func() {
 	ginkgo.It("create and then remove", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-	apiVersion: apisix.apache.org/v1
-	kind: ApisixRoute
-	metadata:
-	 name: httpbin-route
-	spec:
-	 rules:
-	 - host: httpbin.com
-	   http:
-	     paths:
-	     - backend:
-	         serviceName: %s
-	         servicePort: %d
-	       path: /ip
-	`, backendSvc, backendSvcPort[0])
+apiVersion: apisix.apache.org/v1
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ rules:
+ - host: httpbin.com
+   http:
+	 paths:
+	 - backend:
+		 serviceName: %s
+		 servicePort: %d
+	   path: /ip
+`, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
 		err := s.EnsureNumApisixRoutesCreated(1)
