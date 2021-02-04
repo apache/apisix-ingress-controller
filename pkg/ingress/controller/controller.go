@@ -141,8 +141,8 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		ApisixUpstreamLister: c.apisixUpstreamLister,
 	})
 
-	c.endpointsController = c.newEndpointsController(c.epInformer, c.epLister)
-	c.apisixUpstreamController = c.newApisixUpstreamController(c.apisixUpstreamInformer, c.apisixUpstreamLister)
+	c.endpointsController = c.newEndpointsController()
+	c.apisixUpstreamController = c.newApisixUpstreamController()
 
 	return c, nil
 }
@@ -257,6 +257,9 @@ func (c *Controller) run(ctx context.Context) {
 
 	c.goAttach(func() {
 		c.epInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
+		c.svcInformer.Run(ctx.Done())
 	})
 
 	c.goAttach(func() {

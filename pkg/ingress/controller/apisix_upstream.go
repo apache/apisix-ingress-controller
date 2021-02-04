@@ -24,7 +24,6 @@ import (
 
 	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
-	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -32,22 +31,18 @@ import (
 
 type apisixUpstreamController struct {
 	controller *Controller
-	informer   cache.SharedIndexInformer
-	lister     listersv1.ApisixUpstreamLister
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
 }
 
-func (c *Controller) newApisixUpstreamController(informer cache.SharedIndexInformer, lister listersv1.ApisixUpstreamLister) *apisixUpstreamController {
+func (c *Controller) newApisixUpstreamController() *apisixUpstreamController {
 	ctl := &apisixUpstreamController{
 		controller: c,
-		informer:   informer,
-		lister:     lister,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ApisixUpstream"),
 		workers:    1,
 	}
 
-	ctl.informer.AddEventHandler(
+	ctl.controller.apisixUpstreamInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    ctl.onAdd,
 			UpdateFunc: ctl.onUpdate,
@@ -60,7 +55,7 @@ func (c *Controller) newApisixUpstreamController(informer cache.SharedIndexInfor
 func (c *apisixUpstreamController) run(ctx context.Context) {
 	log.Info("ApisixUpstream controller started")
 	defer log.Info("ApisixUpstream controller exited")
-	if ok := cache.WaitForCacheSync(ctx.Done(), c.informer.HasSynced, c.controller.svcInformer.HasSynced); !ok {
+	if ok := cache.WaitForCacheSync(ctx.Done(), c.controller.apisixUpstreamInformer.HasSynced, c.controller.svcInformer.HasSynced); !ok {
 		log.Errorf("cache sync failed")
 		return
 	}
@@ -92,7 +87,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 		return err
 	}
 
-	au, err := c.lister.ApisixUpstreams(namespace).Get(name)
+	au, err := c.controller.apisixUpstreamLister.ApisixUpstreams(namespace).Get(name)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Errorf("failed to get ApisixUpstream %s: %s", key, err)
@@ -220,7 +215,7 @@ func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
 	}
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
-		log.Errorf("found ApisixUpstream resource with bad meta namesapce key: %s", err)
+		log.Errorf("found ApisixUpstream resource with bad meta namespace key: %s", err)
 		return
 	}
 	log.Debugw("ApisixUpstream update event arrived",

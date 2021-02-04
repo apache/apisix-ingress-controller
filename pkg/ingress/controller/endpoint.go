@@ -20,7 +20,6 @@ import (
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -40,22 +39,18 @@ const (
 
 type endpointsController struct {
 	controller *Controller
-	informer   cache.SharedIndexInformer
-	lister     listerscorev1.EndpointsLister
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
 }
 
-func (c *Controller) newEndpointsController(informer cache.SharedIndexInformer, lister listerscorev1.EndpointsLister) *endpointsController {
+func (c *Controller) newEndpointsController() *endpointsController {
 	ctl := &endpointsController{
 		controller: c,
-		informer:   informer,
-		lister:     lister,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpoints"),
 		workers:    1,
 	}
 
-	ctl.informer.AddEventHandler(
+	ctl.controller.epInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    ctl.onAdd,
 			UpdateFunc: ctl.onUpdate,
@@ -70,7 +65,7 @@ func (c *endpointsController) run(ctx context.Context) {
 	log.Info("endpoints controller started")
 	defer log.Info("endpoints controller exited")
 
-	if ok := cache.WaitForCacheSync(ctx.Done(), c.informer.HasSynced); !ok {
+	if ok := cache.WaitForCacheSync(ctx.Done(), c.controller.epInformer.HasSynced); !ok {
 		log.Error("informers sync failed")
 		return
 	}

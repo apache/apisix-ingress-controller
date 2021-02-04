@@ -153,7 +153,7 @@ func ComposeUpstreamName(namespace, name string, port int32) string {
 	pstr := strconv.Itoa(int(port))
 	// FIXME Use sync.Pool to reuse this buffer if the upstream
 	// name composing code path is hot.
-	p := make([]byte, len(namespace)+len(name)+len(pstr)+2)
+	p := make([]byte, 0, len(namespace)+len(name)+len(pstr)+2)
 	buf := bytes.NewBuffer(p)
 
 	buf.WriteString(namespace)

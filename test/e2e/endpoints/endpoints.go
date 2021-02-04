@@ -36,7 +36,7 @@ kind: ApisixUpstream
 metadata:
   name: %s
 spec:
-  ports:
+  portLevelSettings:
     - port: %d
       loadbalancer:
         type: roundrobin
