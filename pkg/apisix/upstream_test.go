@@ -165,7 +165,7 @@ func TestUpstreamClient(t *testing.T) {
 	ip := "10.0.11.153"
 	port := 15006
 	weight := 100
-	nodes := []v1.Node{
+	nodes := []v1.UpstreamNode{
 		{
 			IP:     ip,
 			Port:   port,
