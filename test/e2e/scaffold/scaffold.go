@@ -160,6 +160,7 @@ func (s *Scaffold) beforeEach() {
 		ConfigPath: s.opts.Kubeconfig,
 		Namespace:  s.namespace,
 	}
+	s.finializers = nil
 	k8s.CreateNamespace(s.t, s.kubectlOptions, s.namespace)
 
 	s.nodes, err = k8s.GetReadyNodesE(s.t, s.kubectlOptions)
