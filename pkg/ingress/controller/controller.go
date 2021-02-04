@@ -330,7 +330,7 @@ func (api6 *Api6Controller) ApisixTLS(controller *Controller) {
 	atc := BuildApisixTlsController(
 		api6.KubeClientSet,
 		api6.Api6ClientSet,
-		api6.SharedInformerFactory.Apisix().V1().ApisixTLSs(),
+		api6.SharedInformerFactory.Apisix().V1().ApisixTlses(),
 		controller)
 	if err := atc.Run(api6.Stop); err != nil {
 		log.Errorf("failed to run ApisixTlsController: %s", err)

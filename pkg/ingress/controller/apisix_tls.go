@@ -40,21 +40,21 @@ type ApisixTLSController struct {
 	controller      *Controller
 	kubeclientset   kubernetes.Interface
 	apisixClientset clientset.Interface
-	apisixTLSList   listersv1.ApisixTLSLister
+	apisixTLSList   listersv1.ApisixTlsLister
 	apisixTLSSynced cache.InformerSynced
 	workqueue       workqueue.RateLimitingInterface
 }
 
 type TlsQueueObj struct {
 	Key    string              `json:"key"`
-	OldObj *configv1.ApisixTLS `json:"old_obj"`
+	OldObj *configv1.ApisixTls `json:"old_obj"`
 	Ope    string              `json:"ope"` // add / update / delete
 }
 
 func BuildApisixTlsController(
 	kubeclientset kubernetes.Interface,
 	apisixTLSClientset clientset.Interface,
-	apisixTLSInformer informersv1.ApisixTLSInformer,
+	apisixTLSInformer informersv1.ApisixTlsInformer,
 	root *Controller) *ApisixTLSController {
 
 	runtime.Must(apisixscheme.AddToScheme(scheme.Scheme))
@@ -128,13 +128,13 @@ func (c *ApisixTLSController) syncHandler(tqo *TlsQueueObj) error {
 	}
 	apisixTlsYaml := tqo.OldObj
 	if tqo.Ope == state.Delete {
-		apisixIngressTls, _ := c.apisixTLSList.ApisixTLSs(namespace).Get(name)
+		apisixIngressTls, _ := c.apisixTLSList.ApisixTlses(namespace).Get(name)
 		if apisixIngressTls != nil && apisixIngressTls.ResourceVersion > tqo.OldObj.ResourceVersion {
 			log.Warnf("TLS %s has been covered when retry", tqo.Key)
 			return nil
 		}
 	} else {
-		apisixTlsYaml, err = c.apisixTLSList.ApisixTLSs(namespace).Get(name)
+		apisixTlsYaml, err = c.apisixTLSList.ApisixTlses(namespace).Get(name)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				log.Infof("apisixTls %s is removed", tqo.Key)
@@ -172,8 +172,8 @@ func (c *ApisixTLSController) addFunc(obj interface{}) {
 }
 
 func (c *ApisixTLSController) updateFunc(oldObj, newObj interface{}) {
-	oldTls := oldObj.(*configv1.ApisixTLS)
-	newTls := newObj.(*configv1.ApisixTLS)
+	oldTls := oldObj.(*configv1.ApisixTls)
+	newTls := newObj.(*configv1.ApisixTls)
 	if oldTls.ResourceVersion == newTls.ResourceVersion {
 		return
 	}
@@ -191,13 +191,13 @@ func (c *ApisixTLSController) updateFunc(oldObj, newObj interface{}) {
 }
 
 func (c *ApisixTLSController) deleteFunc(obj interface{}) {
-	oldTls, ok := obj.(*configv1.ApisixTLS)
+	oldTls, ok := obj.(*configv1.ApisixTls)
 	if !ok {
 		oldState, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			return
 		}
-		oldTls, ok = oldState.Obj.(*configv1.ApisixTLS)
+		oldTls, ok = oldState.Obj.(*configv1.ApisixTls)
 		if !ok {
 			return
 		}

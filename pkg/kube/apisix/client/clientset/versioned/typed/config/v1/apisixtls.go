@@ -30,45 +30,45 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-// ApisixTLSsGetter has a method to return a ApisixTLSInterface.
+// ApisixTlsesGetter has a method to return a ApisixTlsInterface.
 // A group's client should implement this interface.
-type ApisixTLSsGetter interface {
-	ApisixTLSs(namespace string) ApisixTLSInterface
+type ApisixTlsesGetter interface {
+	ApisixTlses(namespace string) ApisixTlsInterface
 }
 
-// ApisixTLSInterface has methods to work with ApisixTLS resources.
-type ApisixTLSInterface interface {
-	Create(ctx context.Context, apisixTLS *v1.ApisixTLS, opts metav1.CreateOptions) (*v1.ApisixTLS, error)
-	Update(ctx context.Context, apisixTLS *v1.ApisixTLS, opts metav1.UpdateOptions) (*v1.ApisixTLS, error)
+// ApisixTlsInterface has methods to work with ApisixTls resources.
+type ApisixTlsInterface interface {
+	Create(ctx context.Context, apisixTls *v1.ApisixTls, opts metav1.CreateOptions) (*v1.ApisixTls, error)
+	Update(ctx context.Context, apisixTls *v1.ApisixTls, opts metav1.UpdateOptions) (*v1.ApisixTls, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.ApisixTLS, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v1.ApisixTLSList, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.ApisixTls, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.ApisixTlsList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.ApisixTLS, err error)
-	ApisixTLSExpansion
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.ApisixTls, err error)
+	ApisixTlsExpansion
 }
 
-// apisixTLSs implements ApisixTLSInterface
-type apisixTLSs struct {
+// apisixTlses implements ApisixTlsInterface
+type apisixTlses struct {
 	client rest.Interface
 	ns     string
 }
 
-// newApisixTLSs returns a ApisixTLSs
-func newApisixTLSs(c *ApisixV1Client, namespace string) *apisixTLSs {
-	return &apisixTLSs{
+// newApisixTlses returns a ApisixTlses
+func newApisixTlses(c *ApisixV1Client, namespace string) *apisixTlses {
+	return &apisixTlses{
 		client: c.RESTClient(),
 		ns:     namespace,
 	}
 }
 
-// Get takes name of the apisixTLS, and returns the corresponding apisixTLS object, and an error if there is any.
-func (c *apisixTLSs) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.ApisixTLS, err error) {
-	result = &v1.ApisixTLS{}
+// Get takes name of the apisixTls, and returns the corresponding apisixTls object, and an error if there is any.
+func (c *apisixTlses) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.ApisixTls, err error) {
+	result = &v1.ApisixTls{}
 	err = c.client.Get().
 		Namespace(c.ns).
-		Resource("apisixtlss").
+		Resource("apisixtlses").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do(ctx).
@@ -76,16 +76,16 @@ func (c *apisixTLSs) Get(ctx context.Context, name string, options metav1.GetOpt
 	return
 }
 
-// List takes label and field selectors, and returns the list of ApisixTLSs that match those selectors.
-func (c *apisixTLSs) List(ctx context.Context, opts metav1.ListOptions) (result *v1.ApisixTLSList, err error) {
+// List takes label and field selectors, and returns the list of ApisixTlses that match those selectors.
+func (c *apisixTlses) List(ctx context.Context, opts metav1.ListOptions) (result *v1.ApisixTlsList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
-	result = &v1.ApisixTLSList{}
+	result = &v1.ApisixTlsList{}
 	err = c.client.Get().
 		Namespace(c.ns).
-		Resource("apisixtlss").
+		Resource("apisixtlses").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do(ctx).
@@ -93,8 +93,8 @@ func (c *apisixTLSs) List(ctx context.Context, opts metav1.ListOptions) (result 
 	return
 }
 
-// Watch returns a watch.Interface that watches the requested apisixTLSs.
-func (c *apisixTLSs) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
+// Watch returns a watch.Interface that watches the requested apisixTlses.
+func (c *apisixTlses) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -102,44 +102,44 @@ func (c *apisixTLSs) Watch(ctx context.Context, opts metav1.ListOptions) (watch.
 	opts.Watch = true
 	return c.client.Get().
 		Namespace(c.ns).
-		Resource("apisixtlss").
+		Resource("apisixtlses").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Watch(ctx)
 }
 
-// Create takes the representation of a apisixTLS and creates it.  Returns the server's representation of the apisixTLS, and an error, if there is any.
-func (c *apisixTLSs) Create(ctx context.Context, apisixTLS *v1.ApisixTLS, opts metav1.CreateOptions) (result *v1.ApisixTLS, err error) {
-	result = &v1.ApisixTLS{}
+// Create takes the representation of a apisixTls and creates it.  Returns the server's representation of the apisixTls, and an error, if there is any.
+func (c *apisixTlses) Create(ctx context.Context, apisixTls *v1.ApisixTls, opts metav1.CreateOptions) (result *v1.ApisixTls, err error) {
+	result = &v1.ApisixTls{}
 	err = c.client.Post().
 		Namespace(c.ns).
-		Resource("apisixtlss").
+		Resource("apisixtlses").
 		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(apisixTLS).
+		Body(apisixTls).
 		Do(ctx).
 		Into(result)
 	return
 }
 
-// Update takes the representation of a apisixTLS and updates it. Returns the server's representation of the apisixTLS, and an error, if there is any.
-func (c *apisixTLSs) Update(ctx context.Context, apisixTLS *v1.ApisixTLS, opts metav1.UpdateOptions) (result *v1.ApisixTLS, err error) {
-	result = &v1.ApisixTLS{}
+// Update takes the representation of a apisixTls and updates it. Returns the server's representation of the apisixTls, and an error, if there is any.
+func (c *apisixTlses) Update(ctx context.Context, apisixTls *v1.ApisixTls, opts metav1.UpdateOptions) (result *v1.ApisixTls, err error) {
+	result = &v1.ApisixTls{}
 	err = c.client.Put().
 		Namespace(c.ns).
-		Resource("apisixtlss").
-		Name(apisixTLS.Name).
+		Resource("apisixtlses").
+		Name(apisixTls.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(apisixTLS).
+		Body(apisixTls).
 		Do(ctx).
 		Into(result)
 	return
 }
 
-// Delete takes name of the apisixTLS and deletes it. Returns an error if one occurs.
-func (c *apisixTLSs) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
+// Delete takes name of the apisixTls and deletes it. Returns an error if one occurs.
+func (c *apisixTlses) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
-		Resource("apisixtlss").
+		Resource("apisixtlses").
 		Name(name).
 		Body(&opts).
 		Do(ctx).
@@ -147,14 +147,14 @@ func (c *apisixTLSs) Delete(ctx context.Context, name string, opts metav1.Delete
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *apisixTLSs) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
+func (c *apisixTlses) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
 	if listOpts.TimeoutSeconds != nil {
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
 		Namespace(c.ns).
-		Resource("apisixtlss").
+		Resource("apisixtlses").
 		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Body(&opts).
@@ -162,12 +162,12 @@ func (c *apisixTLSs) DeleteCollection(ctx context.Context, opts metav1.DeleteOpt
 		Error()
 }
 
-// Patch applies the patch and returns the patched apisixTLS.
-func (c *apisixTLSs) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.ApisixTLS, err error) {
-	result = &v1.ApisixTLS{}
+// Patch applies the patch and returns the patched apisixTls.
+func (c *apisixTlses) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.ApisixTls, err error) {
+	result = &v1.ApisixTls{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
-		Resource("apisixtlss").
+		Resource("apisixtlses").
 		Name(name).
 		SubResource(subresources...).
 		VersionedParams(&opts, scheme.ParameterCodec).
