@@ -20,6 +20,7 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/onsi/ginkgo"
+	"github.com/stretchr/testify/assert"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -33,137 +34,137 @@ const (
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-	name: %s-apisix-view-clusterrole
+  name: %s-apisix-view-clusterrole
 rules:
-- apiGroups:
-	- ""
-	resources:
-	- configmaps
-	- endpoints
-	- persistentvolumeclaims
-	- pods
-	- replicationcontrollers
-	- replicationcontrollers/scale
-	- serviceaccounts
-	- services
-	verbs:
-	- get
-	- list
-	- watch
-- apiGroups:
-	- ""
-	resources:
-	- bindings
-	- events
-	- limitranges
-	- namespaces/status
-	- pods/log
-	- pods/status
-	- replicationcontrollers/status
-	- resourcequotas
-	- resourcequotas/status
-	verbs:
-	- get
-	- list
-	- watch
-- apiGroups:
-	- ""
-	resources:
-	- namespaces
-	verbs:
-	- get
-	- list
-	- watch
-- apiGroups:
-	- apps
-	resources:
-	- controllerrevisions
-	- daemonsets
-	- deployments
-	- deployments/scale
-	- replicasets
-	- replicasets/scale
-	- statefulsets
-	- statefulsets/scale
-	verbs:
-	- get
-	- list
-	- watch
-- apiGroups:
-	- autoscaling
-	resources:
-	- horizontalpodautoscalers
-	verbs:
-	- get
-	- list
-	- watch
-- apiGroups:
-	- batch
-	resources:
-	- cronjobs
-	- jobs
-	verbs:
-	- get
-	- list
-	- watch
-- apiGroups:
-	- extensions
-	resources:
-	- daemonsets
-	- deployments
-	- deployments/scale
-	- ingresses
-	- networkpolicies
-	- replicasets
-	- replicasets/scale
-	- replicationcontrollers/scale
-	verbs:
-	- get
-	- list
-	- watch
-- apiGroups:
-	- policy
-	resources:
-	- poddisruptionbudgets
-	verbs:
-	- get
-	- list
-	- watch
-- apiGroups:
-	- networking.k8s.io
-	resources:
-	- ingresses
-	- networkpolicies
-	verbs:
-	- get
-	- list
-	- watch
-- apiGroups:
-	- metrics.k8s.io
-	resources:
-	- pods
-	verbs:
-	- get
-	- list
-	- watch
-- apiGroups:
-	- apisix.apache.org
-	resources:
-	- apisixroutes
-	- apisixupstreams
-	- apisixservices
-	- apisixtlses
-	verbs:
-	- get
-	- list
-	- watch
-- apiGroups:
-	- coordination.k8s.io
-	resources:
-	- leases
-	verbs:
-	- '*'
-	`
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - endpoints
+      - persistentvolumeclaims
+      - pods
+      - replicationcontrollers
+      - replicationcontrollers/scale
+      - serviceaccounts
+      - services
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - bindings
+      - events
+      - limitranges
+      - namespaces/status
+      - pods/log
+      - pods/status
+      - replicationcontrollers/status
+      - resourcequotas
+      - resourcequotas/status
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - controllerrevisions
+      - daemonsets
+      - deployments
+      - deployments/scale
+      - replicasets
+      - replicasets/scale
+      - statefulsets
+      - statefulsets/scale
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - autoscaling
+    resources:
+      - horizontalpodautoscalers
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - batch
+    resources:
+      - cronjobs
+      - jobs
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - extensions
+    resources:
+      - daemonsets
+      - deployments
+      - deployments/scale
+      - ingresses
+      - networkpolicies
+      - replicasets
+      - replicasets/scale
+      - replicationcontrollers/scale
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - networking.k8s.io
+    resources:
+      - ingresses
+      - networkpolicies
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - metrics.k8s.io
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apisix.apache.org
+    resources:
+      - apisixroutes
+      - apisixupstreams
+      - apisixservices
+      - apisixtlses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+    - coordination.k8s.io
+    resources:
+    - leases
+    verbs:
+    - '*'
+`
 	_clusterRoleBinding = `
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -172,7 +173,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: %s-apisix_view_clusterrole
+  name: %s-apisix-view-clusterrole
 subjects:
 - kind: ServiceAccount
   name: ingress-apisix-e2e-test-service-account
@@ -264,6 +265,14 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, crb); err != nil {
 		return err
 	}
+	s.addFinializer(func() {
+		err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, crb)
+		assert.Nil(s.t, err, "deleting ClusterRoleBinding")
+	})
+	s.addFinializer(func() {
+		err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, cr)
+		assert.Nil(s.t, err, "deleting ClusterRole")
+	})
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment); err != nil {
 		return err
 	}
