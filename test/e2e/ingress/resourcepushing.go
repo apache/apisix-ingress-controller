@@ -44,7 +44,6 @@ spec:
           servicePort: %d
         path: /ip
 `, backendSvc, backendSvcPort[0])
-		fmt.Println(apisixRoute)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
 
 		err := s.EnsureNumApisixRoutesCreated(1)
