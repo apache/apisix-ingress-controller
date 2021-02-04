@@ -17,14 +17,11 @@ package crd
 import (
 	"testing"
 
-	"k8s.io/apimachinery/pkg/util/intstr"
-
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-
-	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 )
