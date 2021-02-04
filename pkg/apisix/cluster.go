@@ -310,11 +310,7 @@ func (s *cluster) listResource(ctx context.Context, url string) (*listResponse, 
 }
 
 func (s *cluster) createResource(ctx context.Context, url string, body io.Reader) (*createResponse, error) {
-	return s.createResourceWithMethod(ctx, url, body, http.MethodPut)
-}
-
-func (s *cluster) createResourceWithMethod(ctx context.Context, url string, body io.Reader, method string) (*createResponse, error) {
-	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
 	if err != nil {
 		return nil, err
 	}
