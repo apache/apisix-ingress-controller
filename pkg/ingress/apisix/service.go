@@ -17,7 +17,8 @@ package apisix
 import (
 	"strconv"
 
-	"github.com/apache/apisix-ingress-controller/pkg/ingress/endpoint"
+	"github.com/apache/apisix-ingress-controller/pkg/crd"
+
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -30,7 +31,7 @@ const (
 type ApisixServiceCRD configv1.ApisixService
 
 // Convert convert to  apisix.Service from ingress.ApisixService CRD
-func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, error) {
+func (as *ApisixServiceCRD) Convert(translator crd.Translator) ([]*apisix.Service, []*apisix.Upstream, error) {
 	ns := as.Namespace
 	name := as.Name
 	// meta annotation
@@ -86,19 +87,15 @@ func (as *ApisixServiceCRD) Convert() ([]*apisix.Service, []*apisix.Upstream, er
 	if group != "" {
 		fullUpstreamName = group + "_" + apisixUpstreamName
 	}
-	LBType := DefaultLBType
-	nodes := endpoint.BuildEps(ns, upstreamName, int(port))
-	upstream := &apisix.Upstream{
-		Metadata: apisix.Metadata{
-			FullName:        fullUpstreamName,
-			Group:           group,
-			ResourceVersion: rv,
-			Name:            apisixUpstreamName,
-		},
-		Type:     LBType,
-		Nodes:    nodes,
-		FromKind: fromKind,
+	ups, err := translator.TranslateUpstream(ns, name, int32(port))
+	if err != nil {
+		return nil, nil, err
 	}
-	upstreams = append(upstreams, upstream)
+	ups.FullName = fullUpstreamName
+	ups.Group = group
+	ups.ResourceVersion = rv
+	ups.Name = apisixUpstreamName
+	ups.FromKind = fromKind
+	upstreams = append(upstreams, ups)
 	return services, upstreams, nil
 }

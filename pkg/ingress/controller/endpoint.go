@@ -137,9 +137,9 @@ func (c *endpointsController) syncToCluster(ctx context.Context, upstreamName st
 		}
 	}
 
-	nodes := make([]apisixv1.Node, 0, len(addresses))
+	nodes := make([]apisixv1.UpstreamNode, 0, len(addresses))
 	for _, address := range addresses {
-		nodes = append(nodes, apisixv1.Node{
+		nodes = append(nodes, apisixv1.UpstreamNode{
 			IP:     address.IP,
 			Port:   port,
 			Weight: _defaultNodeWeight,

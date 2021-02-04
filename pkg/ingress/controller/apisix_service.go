@@ -144,7 +144,7 @@ func (c *ApisixServiceController) syncHandler(sqo *ServiceQueueObj) error {
 		}
 	}
 	apisixService := apisix.ApisixServiceCRD(*apisixServiceYaml)
-	services, upstreams, _ := apisixService.Convert()
+	services, upstreams, _ := apisixService.Convert(c.controller.translator)
 	comb := state.ApisixCombination{Routes: nil, Services: services, Upstreams: upstreams}
 	if sqo.Ope == DELETE {
 		return comb.Remove()

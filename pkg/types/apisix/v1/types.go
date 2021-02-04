@@ -15,7 +15,9 @@
 package v1
 
 import (
+	"bytes"
 	"encoding/json"
+	"strconv"
 )
 
 const (
@@ -40,6 +42,11 @@ const (
 	LbEwma = "ewma"
 	// LbLeaseConn is the least connection load balancer.
 	LbLeastConn = "least_conn"
+
+	// SchemeHTTP represents the HTTP protocol.
+	SchemeHTTP = "http"
+	// SchemeGRPC represents the GRPC protocol.
+	SchemeGRPC = "grpc"
 )
 
 // Metadata contains all meta information about resources.
@@ -101,17 +108,17 @@ type Service struct {
 type Upstream struct {
 	Metadata `json:",inline" yaml:",inline"`
 
-	Type     string `json:"type,omitempty" yaml:"type,omitempty"`
-	HashOn   string `json:"hash_on,omitemtpy" yaml:"hash_on,omitempty"`
-	Key      string `json:"key,omitempty" yaml:"key,omitempty"`
-	Nodes    []Node `json:"nodes,omitempty" yaml:"nodes,omitempty"`
-	FromKind string `json:"from_kind,omitempty" yaml:"from_kind,omitempty"`
-	Scheme   string `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+	Type     string         `json:"type,omitempty" yaml:"type,omitempty"`
+	HashOn   string         `json:"hash_on,omitemtpy" yaml:"hash_on,omitempty"`
+	Key      string         `json:"key,omitempty" yaml:"key,omitempty"`
+	Nodes    []UpstreamNode `json:"nodes,omitempty" yaml:"nodes,omitempty"`
+	FromKind string         `json:"from_kind,omitempty" yaml:"from_kind,omitempty"`
+	Scheme   string         `json:"scheme,omitempty" yaml:"scheme,omitempty"`
 }
 
 // Node the node in upstream
 // +k8s:deepcopy-gen=true
-type Node struct {
+type UpstreamNode struct {
 	IP     string `json:"ip,omitempty" yaml:"ip,omitempty"`
 	Port   int    `json:"port,omitempty" yaml:"port,omitempty"`
 	Weight int    `json:"weight,omitempty" yaml:"weight,omitempty"`
@@ -127,4 +134,33 @@ type Ssl struct {
 	Key      string   `json:"key,omitempty" yaml:"key,omitempty"`
 	Status   int      `json:"status,omitempty" yaml:"status,omitempty"`
 	Group    string   `json:"group,omitempty" yaml:"group,omitempty"`
+}
+
+// NewDefaultUpstream returns an empty Upstream with default values.
+func NewDefaultUpstream() *Upstream {
+	return &Upstream{
+		Type:     LbRoundRobin,
+		Key:      "",
+		Nodes:    nil,
+		FromKind: "",
+		Scheme:   SchemeHTTP,
+	}
+}
+
+// ComposeUpstreamName uses namespace, name and port info to compose
+// the upstream name.
+func ComposeUpstreamName(namespace, name string, port int32) string {
+	pstr := strconv.Itoa(int(port))
+	// FIXME Use sync.Pool to reuse this buffer if the upstream
+	// name composing code path is hot.
+	p := make([]byte, len(namespace)+len(name)+len(pstr)+2)
+	buf := bytes.NewBuffer(p)
+
+	buf.WriteString(namespace)
+	buf.WriteByte('_')
+	buf.WriteString(name)
+	buf.WriteByte('_')
+	buf.WriteString(pstr)
+
+	return buf.String()
 }

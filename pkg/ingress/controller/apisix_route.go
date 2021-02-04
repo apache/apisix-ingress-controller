@@ -218,7 +218,7 @@ func (c *ApisixRouteController) add(key string) error {
 		return err
 	}
 	apisixRoute := apisix.ApisixRoute(*apisixIngressRoute)
-	routes, services, upstreams, _ := apisixRoute.Convert()
+	routes, services, upstreams, _ := apisixRoute.Convert(c.controller.translator)
 	comb := state.ApisixCombination{Routes: routes, Services: services, Upstreams: upstreams}
 	_, err = comb.Solver()
 	return err
@@ -246,10 +246,10 @@ func (c *ApisixRouteController) sync(rqo *RouteQueueObj) error {
 			return err // if error occurred, return
 		}
 		oldApisixRoute := apisix.ApisixRoute(*rqo.OldObj)
-		oldRoutes, _, _, _ := oldApisixRoute.Convert()
+		oldRoutes, _, _, _ := oldApisixRoute.Convert(c.controller.translator)
 
 		newApisixRoute := apisix.ApisixRoute(*apisixIngressRoute)
-		newRoutes, _, _, _ := newApisixRoute.Convert()
+		newRoutes, _, _, _ := newApisixRoute.Convert(c.controller.translator)
 
 		rc := &state.RouteCompare{OldRoutes: oldRoutes, NewRoutes: newRoutes}
 		return rc.Sync()
@@ -260,7 +260,7 @@ func (c *ApisixRouteController) sync(rqo *RouteQueueObj) error {
 			return nil
 		}
 		apisixRoute := apisix.ApisixRoute(*rqo.OldObj)
-		routes, services, upstreams, _ := apisixRoute.Convert()
+		routes, services, upstreams, _ := apisixRoute.Convert(c.controller.translator)
 		rc := &state.RouteCompare{OldRoutes: routes, NewRoutes: nil}
 		if err := rc.Sync(); err != nil {
 			return err
