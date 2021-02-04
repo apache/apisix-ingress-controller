@@ -16,5 +16,5 @@ release
 .DS_Store
 coverage.txt
 test/e2e/coverage.txt
-./apisix-ingress-controller
+apisix-ingress-controller
 .actions/openwhisk-utilities
