@@ -162,7 +162,7 @@ func (s *Scaffold) apisixServiceHttpsURL() (string, error) {
 			return net.JoinHostPort(addr, strconv.Itoa(int(port.NodePort))), nil
 		}
 	}
-	return "", errors.New("no http port in apisix service")
+	return "", errors.New("no http port defined in apisix service")
 }
 
 func (s *Scaffold) apisixAdminServiceURL() (string, error) {
