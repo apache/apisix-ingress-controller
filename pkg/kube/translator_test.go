@@ -15,6 +15,7 @@
 package kube
 
 import (
+	"context"
 	"testing"
 
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -22,6 +23,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/cache"
 
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 )
@@ -93,10 +97,12 @@ func TestTranslateUpstreamConfig(t *testing.T) {
 }
 
 func TestTranslateUpstreamNodes(t *testing.T) {
-	tr := &translator{}
 	svc := &corev1.Service{
-		TypeMeta:   metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{},
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "svc",
+			Namespace: "test",
+		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{
@@ -119,8 +125,11 @@ func TestTranslateUpstreamNodes(t *testing.T) {
 		},
 	}
 	endpoints := &corev1.Endpoints{
-		TypeMeta:   metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{},
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "svc",
+			Namespace: "test",
+		},
 		Subsets: []corev1.EndpointSubset{
 			{
 				Ports: []corev1.EndpointPort{
@@ -140,14 +149,40 @@ func TestTranslateUpstreamNodes(t *testing.T) {
 			},
 		},
 	}
-	nodes, err := tr.translateUptreamNodes(svc, endpoints, 10080)
+
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	svcInformer := informersFactory.Core().V1().Services().Informer()
+	svcLister := informersFactory.Core().V1().Services().Lister()
+
+	processCh := make(chan struct{})
+	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	go svcInformer.Run(stopCh)
+	cache.WaitForCacheSync(stopCh, svcInformer.HasSynced)
+
+	_, err := client.CoreV1().Services("test").Create(context.Background(), svc, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	tr := &translator{&TranslatorOptions{
+		ServiceLister: svcLister,
+	}}
+	<-processCh
+
+	nodes, err := tr.TranslateUpstreamNodes(endpoints, 10080)
 	assert.Nil(t, nodes)
 	assert.Equal(t, err, &translateError{
 		field:  "service.spec.ports",
 		reason: "port not defined",
 	})
 
-	nodes, err = tr.translateUptreamNodes(svc, endpoints, 80)
+	nodes, err = tr.TranslateUpstreamNodes(endpoints, 80)
 	assert.Nil(t, err)
 	assert.Equal(t, nodes, []apisixv1.UpstreamNode{
 		{
@@ -162,7 +197,7 @@ func TestTranslateUpstreamNodes(t *testing.T) {
 		},
 	})
 
-	nodes, err = tr.translateUptreamNodes(svc, endpoints, 443)
+	nodes, err = tr.TranslateUpstreamNodes(endpoints, 443)
 	assert.Nil(t, err)
 	assert.Equal(t, nodes, []apisixv1.UpstreamNode{
 		{
