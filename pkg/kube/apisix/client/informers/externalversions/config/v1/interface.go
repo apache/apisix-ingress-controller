@@ -26,10 +26,8 @@ import (
 type Interface interface {
 	// ApisixRoutes returns a ApisixRouteInformer.
 	ApisixRoutes() ApisixRouteInformer
-	// ApisixServices returns a ApisixServiceInformer.
-	ApisixServices() ApisixServiceInformer
-	// ApisixTLSs returns a ApisixTLSInformer.
-	ApisixTLSs() ApisixTLSInformer
+	// ApisixTlses returns a ApisixTlsInformer.
+	ApisixTlses() ApisixTlsInformer
 	// ApisixUpstreams returns a ApisixUpstreamInformer.
 	ApisixUpstreams() ApisixUpstreamInformer
 }
@@ -50,14 +48,9 @@ func (v *version) ApisixRoutes() ApisixRouteInformer {
 	return &apisixRouteInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// ApisixServices returns a ApisixServiceInformer.
-func (v *version) ApisixServices() ApisixServiceInformer {
-	return &apisixServiceInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// ApisixTLSs returns a ApisixTLSInformer.
-func (v *version) ApisixTLSs() ApisixTLSInformer {
-	return &apisixTLSInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+// ApisixTlses returns a ApisixTlsInformer.
+func (v *version) ApisixTlses() ApisixTlsInformer {
+	return &apisixTlsInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // ApisixUpstreams returns a ApisixUpstreamInformer.

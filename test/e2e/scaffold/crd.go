@@ -204,3 +204,27 @@ func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 	}
 	return cli.Cluster("").Upstream().List(context.TODO())
 }
+
+// ListApisixTls list all ssl from APISIX
+func (s *Scaffold) ListApisixTls() ([]*v1.Ssl, error) {
+	host, err := s.apisixAdminServiceURL()
+	if err != nil {
+		return nil, err
+	}
+	u := url.URL{
+		Scheme: "http",
+		Host:   host,
+		Path:   "/apisix/admin",
+	}
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(&apisix.ClusterOptions{
+		BaseURL: u.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cli.Cluster("").SSL().List(context.TODO())
+}

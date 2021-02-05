@@ -27,8 +27,7 @@ import (
 type ApisixV1Interface interface {
 	RESTClient() rest.Interface
 	ApisixRoutesGetter
-	ApisixServicesGetter
-	ApisixTLSsGetter
+	ApisixTlsesGetter
 	ApisixUpstreamsGetter
 }
 
@@ -41,12 +40,8 @@ func (c *ApisixV1Client) ApisixRoutes(namespace string) ApisixRouteInterface {
 	return newApisixRoutes(c, namespace)
 }
 
-func (c *ApisixV1Client) ApisixServices(namespace string) ApisixServiceInterface {
-	return newApisixServices(c, namespace)
-}
-
-func (c *ApisixV1Client) ApisixTLSs(namespace string) ApisixTLSInterface {
-	return newApisixTLSs(c, namespace)
+func (c *ApisixV1Client) ApisixTlses(namespace string) ApisixTlsInterface {
+	return newApisixTlses(c, namespace)
 }
 
 func (c *ApisixV1Client) ApisixUpstreams(namespace string) ApisixUpstreamInterface {
