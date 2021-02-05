@@ -26,20 +26,24 @@ import (
 
 var _ = ginkgo.Describe("endpoints", func() {
 	s := scaffold.NewDefaultScaffold()
-	ginkgo.It("ignore applied only if there is an ApisixUpstream referenced", func() {
+	ginkgo.It("ignore applied only if there is an ApisixRoute referenced", func() {
 		time.Sleep(5 * time.Second)
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(0), "checking number of upstreams")
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		ups := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v1
-kind: ApisixUpstream
+kind: ApisixRoute
 metadata:
-  name: %s
+  name: httpbin-route
 spec:
-  portLevelSettings:
-    - port: %d
-      loadbalancer:
-        type: roundrobin
+   rules:
+   - host: httpbin.org
+     http:
+       paths:
+       - backend:
+           serviceName: %s
+           servicePort: %d
+         path: /ip
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ups))
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
