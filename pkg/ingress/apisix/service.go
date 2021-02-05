@@ -17,8 +17,7 @@ package apisix
 import (
 	"strconv"
 
-	"github.com/apache/apisix-ingress-controller/pkg/crd"
-
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -31,7 +30,7 @@ const (
 type ApisixServiceCRD configv1.ApisixService
 
 // Convert convert to  apisix.Service from ingress.ApisixService CRD
-func (as *ApisixServiceCRD) Convert(translator crd.Translator) ([]*apisix.Service, []*apisix.Upstream, error) {
+func (as *ApisixServiceCRD) Convert(translator kube.Translator) ([]*apisix.Service, []*apisix.Upstream, error) {
 	ns := as.Namespace
 	name := as.Name
 	// meta annotation

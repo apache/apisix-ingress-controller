@@ -17,8 +17,7 @@ package apisix
 import (
 	"strconv"
 
-	"github.com/apache/apisix-ingress-controller/pkg/crd"
-
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -38,7 +37,7 @@ const (
 type ApisixRoute configv1.ApisixRoute
 
 // Convert convert to  apisix.Route from ingress.ApisixRoute CRD
-func (ar *ApisixRoute) Convert(translator crd.Translator) ([]*apisix.Route, []*apisix.Service, []*apisix.Upstream, error) {
+func (ar *ApisixRoute) Convert(translator kube.Translator) ([]*apisix.Route, []*apisix.Service, []*apisix.Upstream, error) {
 	ns := ar.Namespace
 	// meta annotation
 	plugins, group := BuildAnnotation(ar.Annotations)

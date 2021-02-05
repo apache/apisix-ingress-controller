@@ -35,7 +35,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/api"
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/crd"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
 	crdclientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
@@ -60,7 +59,7 @@ type Controller struct {
 	wg                 sync.WaitGroup
 	watchingNamespace  map[string]struct{}
 	apisix             apisix.APISIX
-	translator         crd.Translator
+	translator         kube.Translator
 	apiServer          *api.Server
 	clientset          kubernetes.Interface
 	crdClientset       crdclientset.Interface
@@ -134,7 +133,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		apisixUpstreamInformer: sharedInformerFactory.Apisix().V1().ApisixUpstreams().Informer(),
 		apisixUpstreamLister:   sharedInformerFactory.Apisix().V1().ApisixUpstreams().Lister(),
 	}
-	c.translator = crd.NewTranslator(&crd.TranslatorOptions{
+	c.translator = kube.NewTranslator(&kube.TranslatorOptions{
 		EndpointsLister:      c.epLister,
 		ServiceLister:        c.svcLister,
 		ApisixUpstreamLister: c.apisixUpstreamLister,
