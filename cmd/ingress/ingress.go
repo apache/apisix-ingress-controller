@@ -28,7 +28,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/ingress/controller"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/version"
 )
 
 func dief(template string, args ...interface{}) {
@@ -96,8 +95,6 @@ the apisix cluster and others are created`,
 			}
 			log.DefaultLogger = logger
 			log.Info("apisix ingress controller started")
-
-			log.Info("version: ", version.Short())
 
 			data, err := json.MarshalIndent(cfg, "", "\t")
 			if err != nil {
