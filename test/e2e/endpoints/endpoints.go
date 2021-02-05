@@ -86,7 +86,7 @@ var _ = ginkgo.Describe("port usage", func() {
 		IngressAPISIXReplicas:   1,
 		HTTPBinServicePort:      8080, // use service port which is different from target port (80)
 	})
-	ginkgo.FIt("service port != target port", func() {
+	ginkgo.It("service port != target port", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v1
