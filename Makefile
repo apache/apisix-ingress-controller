@@ -63,7 +63,6 @@ unit-test:
 e2e-test: ginkgo-check build-image-to-minikube
 	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixRoute.yaml
 	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml
-	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixService.yaml
 	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml
 	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=$(E2E_CONCURRENCY)
 

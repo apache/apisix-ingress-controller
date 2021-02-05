@@ -254,8 +254,6 @@ func (c *Controller) run(ctx context.Context) {
 	ac.ApisixRoute(c)
 	// ApisixUpstream
 	ac.ApisixUpstream(c)
-	// ApisixService
-	ac.ApisixService(c)
 	// ApisixTLS
 	ac.ApisixTLS(c)
 
@@ -312,17 +310,6 @@ func (api6 *Api6Controller) ApisixUpstream(controller *Controller) {
 		controller)
 	if err := auc.Run(api6.Stop); err != nil {
 		log.Errorf("failed to run ApisixUpstreamController: %s", err)
-	}
-}
-
-func (api6 *Api6Controller) ApisixService(controller *Controller) {
-	asc := BuildApisixServiceController(
-		api6.KubeClientSet,
-		api6.Api6ClientSet,
-		api6.SharedInformerFactory.Apisix().V1().ApisixServices(),
-		controller)
-	if err := asc.Run(api6.Stop); err != nil {
-		log.Errorf("failed to run ApisixServiceController: %s", err)
 	}
 }
 

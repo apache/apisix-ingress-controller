@@ -77,7 +77,7 @@ func BuildApisixTlsController(
 
 func (c *ApisixTLSController) Run(stop <-chan struct{}) error {
 	if ok := cache.WaitForCacheSync(stop); !ok {
-		log.Errorf("sync ApisixService cache failed")
+		log.Errorf("sync ApisixTLS cache failed")
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 	go wait.Until(c.runWorker, time.Second, stop)
