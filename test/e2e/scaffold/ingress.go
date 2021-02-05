@@ -47,6 +47,7 @@ rules:
       - replicationcontrollers/scale
       - serviceaccounts
       - services
+      - secrets
     verbs:
       - get
       - list
