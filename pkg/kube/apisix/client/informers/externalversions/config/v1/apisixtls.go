@@ -32,59 +32,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// ApisixTLSInformer provides access to a shared informer and lister for
-// ApisixTLSs.
-type ApisixTLSInformer interface {
+// ApisixTlsInformer provides access to a shared informer and lister for
+// ApisixTlses.
+type ApisixTlsInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.ApisixTLSLister
+	Lister() v1.ApisixTlsLister
 }
 
-type apisixTLSInformer struct {
+type apisixTlsInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewApisixTLSInformer constructs a new informer for ApisixTLS type.
+// NewApisixTlsInformer constructs a new informer for ApisixTls type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewApisixTLSInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredApisixTLSInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewApisixTlsInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredApisixTlsInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredApisixTLSInformer constructs a new informer for ApisixTLS type.
+// NewFilteredApisixTlsInformer constructs a new informer for ApisixTls type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredApisixTLSInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredApisixTlsInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ApisixV1().ApisixTLSs(namespace).List(context.TODO(), options)
+				return client.ApisixV1().ApisixTlses(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ApisixV1().ApisixTLSs(namespace).Watch(context.TODO(), options)
+				return client.ApisixV1().ApisixTlses(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&configv1.ApisixTLS{},
+		&configv1.ApisixTls{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *apisixTLSInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredApisixTLSInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *apisixTlsInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredApisixTlsInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *apisixTLSInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&configv1.ApisixTLS{}, f.defaultInformer)
+func (f *apisixTlsInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&configv1.ApisixTls{}, f.defaultInformer)
 }
 
-func (f *apisixTLSInformer) Lister() v1.ApisixTLSLister {
-	return v1.NewApisixTLSLister(f.Informer().GetIndexer())
+func (f *apisixTlsInformer) Lister() v1.ApisixTlsLister {
+	return v1.NewApisixTlsLister(f.Informer().GetIndexer())
 }

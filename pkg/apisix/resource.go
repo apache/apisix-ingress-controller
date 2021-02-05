@@ -192,6 +192,7 @@ func (i *item) ssl(clusterName string) (*v1.Ssl, error) {
 	id := list[len(list)-1]
 	ssl.ID = id
 	ssl.Group = clusterName
+	ssl.FullName = id
 	return &ssl, nil
 }
 

@@ -134,7 +134,8 @@ func TestMemDBCacheSSL(t *testing.T) {
 	assert.Nil(t, err, "NewMemDBCache")
 
 	s1 := &v1.Ssl{
-		ID: "abc",
+		ID:       "abc",
+		FullName: "abc",
 	}
 	assert.Nil(t, c.InsertSSL(s1), "inserting ssl 1")
 
@@ -142,10 +143,12 @@ func TestMemDBCacheSSL(t *testing.T) {
 	assert.Equal(t, s1, s)
 
 	s2 := &v1.Ssl{
-		ID: "def",
+		ID:       "def",
+		FullName: "def",
 	}
 	s3 := &v1.Ssl{
-		ID: "ghi",
+		ID:       "ghi",
+		FullName: "ghi",
 	}
 	assert.Nil(t, c.InsertSSL(s2), "inserting ssl 2")
 	assert.Nil(t, c.InsertSSL(s3), "inserting ssl 3")

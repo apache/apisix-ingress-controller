@@ -26,7 +26,7 @@ import (
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-type ApisixTLSCRD configv1.ApisixTLS
+type ApisixTLSCRD configv1.ApisixTls
 
 // Convert convert to  apisix.Ssl from ingress.ApisixTls CRD
 func (as *ApisixTLSCRD) Convert(sc Secreter) (*apisix.Ssl, error) {
