@@ -137,7 +137,6 @@ rules:
   resources:
   - apisixroutes
   - apisixupstreams
-  - apisixservices
   - apisixtlses
   verbs:
   - get

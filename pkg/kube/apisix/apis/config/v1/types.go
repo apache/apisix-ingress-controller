@@ -132,33 +132,6 @@ type ApisixUpstreamList struct {
 	Items           []ApisixUpstream `json:"items,omitempty"`
 }
 
-// +genclient
-// +genclient:noStatus
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// ApisixService is used to define the Service resource in APISIX, it's
-// useful to use Service to put all common configurations and let Route
-// to reference it.
-type ApisixService struct {
-	metav1.TypeMeta   `json:",inline" yaml:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-	Spec              *ApisixServiceSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type ApisixServiceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-	Items           []ApisixService `json:"items,omitempty"`
-}
-
-// ApisixServiceSpec describes the ApisixService specification.
-type ApisixServiceSpec struct {
-	Upstream string   `json:"upstream,omitempty"`
-	Port     int      `json:"port,omitempty"`
-	Plugins  []Plugin `json:"plugins,omitempty"`
-}
-
 type Plugin struct {
 	Name      string    `json:"name,omitempty"`
 	Enable    bool      `json:"enable,omitempty"`

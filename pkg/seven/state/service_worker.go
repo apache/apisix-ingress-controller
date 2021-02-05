@@ -24,8 +24,6 @@ import (
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-const ApisixService = "ApisixService"
-
 type serviceWorker struct {
 	*v1.Service
 	Event     chan Event
@@ -112,21 +110,11 @@ func SolverSingleService(svc *v1.Service, rwg RouteWorkerGroup, wg *sync.WaitGro
 			}
 			log.Infof("create service %s, %s", svc.Name, svc.UpstreamId)
 		} else {
-			needToUpdate := true
-			if currentService.FromKind == ApisixService { // update from ApisixUpstream
-				if svc.FromKind != ApisixService {
-					// currentService > svc
-					// set lb && health check
-					needToUpdate = false
-				}
-			}
-			if needToUpdate {
-				if _, err := conf.Client.Cluster(cluster).Service().Update(context.TODO(), svc); err != nil {
-					errNotify = err
-					log.Errorf("failed to update service: %s, id:%s", err, svc.ID)
-				} else {
-					log.Infof("updated service, id:%s, upstream_id:%s", svc.ID, svc.UpstreamId)
-				}
+			if _, err := conf.Client.Cluster(cluster).Service().Update(context.TODO(), svc); err != nil {
+				errNotify = err
+				log.Errorf("failed to update service: %s, id:%s", err, svc.ID)
+			} else {
+				log.Infof("updated service, id:%s, upstream_id:%s", svc.ID, svc.UpstreamId)
 			}
 		}
 	}

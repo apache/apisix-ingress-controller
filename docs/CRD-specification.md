@@ -24,7 +24,6 @@ In order to control the behavior of the proxy ([Apache APISIX](https://github.co
 ## CRD Types
 
 - [ApisixRoute](#apisixroute)
-- [ApisixService](#apisixservice)
 - [ApisixUpstream](#apisixupstream)
 - [ApisixTls](#apisixtls)
 
@@ -100,42 +99,6 @@ spec:
 | `k8s.apisix.apache.org/ssl-redirect`           | boolean    | Whether to force http redirect to https. `ture`: means to force conversion to https, `false`: means not to convert.   |
 | `k8s.apisix.apache.org/ingress.class`          | string     | Grouping of ingress.                                               |
 | `k8s.apisix.apache.org/whitelist-source-range` | array      | Whitelist of IPs allowed to be accessed.                           |
-
-## ApisixService
-
-`ApisixService` corresponds to the `Service` object in Apache APISIX.
-A `Service` is an abstraction of an API (which can also be understood as a set of Route abstractions). It usually corresponds to the upstream service abstraction. Between `Route` and `Service`, usually the relationship of N:1.
-To learn more, please check the [Apache APISIX architecture-design docs](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#service).
-
-Structure example:
-
-```yaml
-apiVersion: apisix.apache.org/v1
-kind: ApisixService
-metadata:
-  name: httpserver
-  namespace: cloud  
-spec:
-  upstream: httpserver
-  port: 8080
-  plugins:
-    - name: limit-count
-      enable: true
-      config:
-        count: 2
-        time_window: 60
-        rejected_code: 503
-        key: remote_addr
-```
-
-|     Field     |  Type    | Description    |
-|---------------|----------|----------------|
-| upstream      | string   | The name of the upstream service.    |
-| port          | int      | The port number of the upstream service.    |
-| plugins       | array   | Custom plugin collection (Plugins defined in the `service` level). For more plugin information, please refer to the [Apache APISIX plugins docs](https://github.com/apache/apisix/tree/master/doc/plugins). |
-| name          | string   | The name of the plugin. For more information about the example plugin, please check the [limit-count docs](https://github.com/apache/apisix/blob/master/doc/plugins/limit-count.md#Attributes).    |
-| enable        | boolean  | Whether to enable the plugin, `true`: means enable, `false`: means disable.      |
-| config        | object   | Configuration of plugin information. Note: The check of configuration schema is missing now, so please be careful when editing.    |
 
 ## ApisixUpstream
 
