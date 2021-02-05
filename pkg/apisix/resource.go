@@ -84,7 +84,7 @@ type routeItem struct {
 
 // route decodes item.Value and converts it to v1.Route.
 func (i *item) route(clusterName string) (*v1.Route, error) {
-	log.Infof("got route: %s", string(i.Value))
+	log.Debugf("got route: %s", string(i.Value))
 	list := strings.Split(i.Key, "/")
 	if len(list) < 1 {
 		return nil, fmt.Errorf("bad route config key: %s", i.Key)
@@ -115,7 +115,7 @@ func (i *item) route(clusterName string) (*v1.Route, error) {
 
 // upstream decodes item.Value and converts it to v1.Upstream.
 func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
-	log.Infof("got upstream: %s", string(i.Value))
+	log.Debugf("got upstream: %s", string(i.Value))
 	list := strings.Split(i.Key, "/")
 	if len(list) < 1 {
 		return nil, fmt.Errorf("bad upstream config key: %s", i.Key)
@@ -153,7 +153,7 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 
 // service decodes item.Value and converts it to v1.Service.
 func (i *item) service(clusterName string) (*v1.Service, error) {
-	log.Infof("got service: %s", string(i.Value))
+	log.Debugf("got service: %s", string(i.Value))
 	var svc serviceItem
 	if err := json.Unmarshal(i.Value, &svc); err != nil {
 		return nil, err
@@ -182,7 +182,7 @@ func (i *item) service(clusterName string) (*v1.Service, error) {
 
 // ssl decodes item.Value and converts it to v1.Ssl.
 func (i *item) ssl(clusterName string) (*v1.Ssl, error) {
-	log.Infof("got ssl: %s", string(i.Value))
+	log.Debugf("got ssl: %s", string(i.Value))
 	var ssl v1.Ssl
 	if err := json.Unmarshal(i.Value, &ssl); err != nil {
 		return nil, err
