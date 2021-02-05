@@ -16,9 +16,9 @@
 #
 default: help
 
-VERSION ?= 0.2.0
+VERSION ?= 0.3.0
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
-IMAGE_TAG ?= "dev"
+IMAGE_TAG ?= "0.3.0"
 
 GINKGO ?= $(shell which ginkgo)
 GITSHA ?= $(shell git rev-parse --short=7 HEAD)
