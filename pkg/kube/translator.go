@@ -26,6 +26,10 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
+const (
+	_defaultWeight = 100
+)
+
 type translateError struct {
 	field  string
 	reason string
@@ -37,6 +41,9 @@ func (te *translateError) Error() string {
 
 // Translator translates Apisix* CRD resources to the description in APISIX.
 type Translator interface {
+	// TranslateUpstreamNodes translate Endpoints resources to APISIX Upstream nodes
+	// according to the give port.
+	TranslateUpstreamNodes(*corev1.Endpoints, int32) ([]apisixv1.UpstreamNode, error)
 	// TranslateUpstreamConfig translates ApisixUpstreamConfig (part of ApisixUpstream)
 	// to APISIX Upstream, it doesn't fill the the Upstream metadata and nodes.
 	TranslateUpstreamConfig(config *configv1.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
@@ -46,6 +53,8 @@ type Translator interface {
 	TranslateUpstream(string, string, int32) (*apisixv1.Upstream, error)
 }
 
+// TranslatorOptions contains options to help Translator
+// work well.
 type TranslatorOptions struct {
 	EndpointsLister      listerscorev1.EndpointsLister
 	ServiceLister        listerscorev1.ServiceLister
@@ -111,14 +120,6 @@ func (t *translator) TranslateUpstreamConfig(au *configv1.ApisixUpstreamConfig) 
 }
 
 func (t *translator) TranslateUpstream(namespace, name string, port int32) (*apisixv1.Upstream, error) {
-	svc, err := t.ServiceLister.Services(namespace).Get(name)
-	if err != nil {
-		return nil, &translateError{
-			field:  "service",
-			reason: err.Error(),
-		}
-	}
-
 	endpoints, err := t.EndpointsLister.Endpoints(namespace).Get(name)
 	if err != nil {
 		return nil, &translateError{
@@ -126,7 +127,7 @@ func (t *translator) TranslateUpstream(namespace, name string, port int32) (*api
 			reason: err.Error(),
 		}
 	}
-	nodes, err := t.translateUptreamNodes(svc, endpoints, port)
+	nodes, err := t.TranslateUpstreamNodes(endpoints, port)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +158,15 @@ func (t *translator) TranslateUpstream(namespace, name string, port int32) (*api
 	return ups, nil
 }
 
-func (t *translator) translateUptreamNodes(svc *corev1.Service, endpoints *corev1.Endpoints, port int32) ([]apisixv1.UpstreamNode, error) {
+func (t *translator) TranslateUpstreamNodes(endpoints *corev1.Endpoints, port int32) ([]apisixv1.UpstreamNode, error) {
+	svc, err := t.ServiceLister.Services(endpoints.Namespace).Get(endpoints.Name)
+	if err != nil {
+		return nil, &translateError{
+			field:  "service",
+			reason: err.Error(),
+		}
+	}
+
 	var svcPort *corev1.ServicePort
 	for _, exposePort := range svc.Spec.Ports {
 		if exposePort.Port == port {
@@ -186,7 +195,7 @@ func (t *translator) translateUptreamNodes(svc *corev1.Service, endpoints *corev
 					IP:   addr.IP,
 					Port: int(epPort.Port),
 					// FIXME Custom node weight
-					Weight: 100,
+					Weight: _defaultWeight,
 				})
 			}
 		}

@@ -16,10 +16,10 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -32,7 +32,6 @@ import (
 )
 
 const (
-	_defaultNodeWeight = 100
 	// maxRetries is the number of times an object will be retried before it is dropped out of the queue.
 	_maxRetries = 10
 )
@@ -93,17 +92,39 @@ func (c *endpointsController) run(ctx context.Context) {
 
 func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 	ep := ev.Object.(*corev1.Endpoints)
+	svc, err := c.controller.svcLister.Services(ep.Namespace).Get(ep.Name)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			log.Warnf("service %s/%s was deleted", ep.Namespace, ep.Name)
+			return nil
+		}
+		log.Errorf("failed to get service %s/%s: %s", ep.Namespace, ep.Name, err)
+		return err
+	}
+	portMap := make(map[string]int32)
+	for _, port := range svc.Spec.Ports {
+		portMap[port.Name] = port.Port
+	}
 	clusters := c.controller.apisix.ListClusters()
 	for _, s := range ep.Subsets {
 		for _, port := range s.Ports {
-			// FIXME this is wrong, we should use the port name as the key.
-			upstream := fmt.Sprintf("%s_%s_%d", ep.Namespace, ep.Name, port.Port)
+			svcPort, ok := portMap[port.Name]
+			if !ok {
+				// This shouldn't happen.
+				log.Errorf("port %s in endpoints %s/%s but not in service", port.Name, ep.Namespace, ep.Name)
+				continue
+			}
+			nodes, err := c.controller.translator.TranslateUpstreamNodes(ep, svcPort)
+			if err != nil {
+				log.Errorw("failed to translate upstream nodes",
+					zap.Error(err),
+					zap.Any("endpoints", ep),
+					zap.Int32("port", svcPort),
+				)
+			}
+			name := apisixv1.ComposeUpstreamName(ep.Namespace, ep.Name, svcPort)
 			for _, cluster := range clusters {
-				var addresses []corev1.EndpointAddress
-				if ev.Type != types.EventDelete {
-					addresses = s.Addresses
-				}
-				if err := c.syncToCluster(ctx, upstream, cluster, addresses, int(port.Port)); err != nil {
+				if err := c.syncToCluster(ctx, cluster, nodes, name); err != nil {
 					return err
 				}
 			}
@@ -112,19 +133,18 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 	return nil
 }
 
-func (c *endpointsController) syncToCluster(ctx context.Context, upstreamName string,
-	cluster apisix.Cluster, addresses []corev1.EndpointAddress, port int) error {
-	upstream, err := cluster.Upstream().Get(ctx, upstreamName)
+func (c *endpointsController) syncToCluster(ctx context.Context, cluster apisix.Cluster, nodes []apisixv1.UpstreamNode, upsName string) error {
+	upstream, err := cluster.Upstream().Get(ctx, upsName)
 	if err != nil {
 		if err == apisixcache.ErrNotFound {
 			log.Warnw("upstream is not referenced",
 				zap.String("cluster", cluster.String()),
-				zap.String("upstream", upstreamName),
+				zap.String("upstream", upsName),
 			)
 			return nil
 		} else {
 			log.Errorw("failed to get upstream",
-				zap.String("upstream", upstreamName),
+				zap.String("upstream", upsName),
 				zap.String("cluster", cluster.String()),
 				zap.Error(err),
 			)
@@ -132,17 +152,10 @@ func (c *endpointsController) syncToCluster(ctx context.Context, upstreamName st
 		}
 	}
 
-	nodes := make([]apisixv1.UpstreamNode, 0, len(addresses))
-	for _, address := range addresses {
-		nodes = append(nodes, apisixv1.UpstreamNode{
-			IP:     address.IP,
-			Port:   port,
-			Weight: _defaultNodeWeight,
-		})
-	}
 	log.Debugw("upstream binds new nodes",
-		zap.String("upstream", upstreamName),
+		zap.String("upstream", upsName),
 		zap.Any("nodes", nodes),
+		zap.String("cluster", cluster.String()),
 	)
 
 	upstream.Nodes = nodes
@@ -152,7 +165,7 @@ func (c *endpointsController) syncToCluster(ctx context.Context, upstreamName st
 
 	if _, err = comb.Solver(); err != nil {
 		log.Errorw("failed to sync upstream",
-			zap.String("upstream", upstreamName),
+			zap.String("upstream", upsName),
 			zap.String("cluster", cluster.String()),
 			zap.Error(err),
 		)
