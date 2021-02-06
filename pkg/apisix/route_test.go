@@ -30,11 +30,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type fakeAPISIXRouteSrv struct {
-	id    int
 	route map[string]json.RawMessage
 }
 
@@ -101,9 +100,9 @@ func (srv *fakeAPISIXRouteSrv) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(code)
 	}
 
-	if r.Method == http.MethodPost {
-		srv.id++
-		key := fmt.Sprintf("/apisix/routes/%d", srv.id)
+	if r.Method == http.MethodPut {
+		paths := strings.Split(r.URL.Path, "/")
+		key := fmt.Sprintf("/apisix/routes/%s", paths[len(paths)-1])
 		data, _ := ioutil.ReadAll(r.Body)
 		srv.route[key] = data
 		w.WriteHeader(http.StatusCreated)
@@ -139,7 +138,6 @@ func (srv *fakeAPISIXRouteSrv) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 func runFakeRouteSrv(t *testing.T) *http.Server {
 	srv := &fakeAPISIXRouteSrv{
-		id:    0,
 		route: make(map[string]json.RawMessage),
 	}
 
@@ -171,65 +169,74 @@ func TestRouteClient(t *testing.T) {
 		Path:   "/apisix/admin",
 	}
 
+	closedCh := make(chan struct{})
+	close(closedCh)
 	cli := newRouteClient(&cluster{
-		baseURL: u.String(),
-		cli:     http.DefaultClient,
+		baseURL:     u.String(),
+		cli:         http.DefaultClient,
+		cache:       &dummyCache{},
+		cacheSynced: closedCh,
 	})
 
 	// Create
-	id := "111"
-	host := "www.foo.com"
-	uri := "/bar"
-	name := "test"
 	obj, err := cli.Create(context.Background(), &v1.Route{
-		Host:       &host,
-		Path:       &uri,
-		Name:       &name,
-		ServiceId:  &id,
-		UpstreamId: &id,
+		Metadata: v1.Metadata{
+			ID:       "1",
+			Name:     "test",
+			FullName: "test",
+		},
+		Host:       "www.foo.com",
+		Path:       "/bar",
+		ServiceId:  "1",
+		UpstreamId: "1",
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, *obj.ID, "1")
+	assert.Equal(t, obj.ID, "1")
 
 	obj, err = cli.Create(context.Background(), &v1.Route{
-		Host:       &host,
-		Path:       &uri,
-		Name:       &name,
-		ServiceId:  &id,
-		UpstreamId: &id,
+		Metadata: v1.Metadata{
+			ID:       "2",
+			Name:     "test",
+			FullName: "test",
+		},
+		Host:       "www.foo.com",
+		Path:       "/bar",
+		ServiceId:  "1",
+		UpstreamId: "1",
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, *obj.ID, "2")
+	assert.Equal(t, obj.ID, "2")
 
 	// List
 	objs, err := cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 2)
-	assert.Equal(t, *objs[0].ID, "1")
-	assert.Equal(t, *objs[1].ID, "2")
+	assert.Equal(t, objs[0].ID, "1")
+	assert.Equal(t, objs[1].ID, "2")
 
 	// Delete then List
 	assert.Nil(t, cli.Delete(context.Background(), objs[0]))
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
-	assert.Equal(t, "2", *objs[0].ID)
+	assert.Equal(t, "2", objs[0].ID)
 
 	// Patch then List
-	id = "112"
-	objId := "2"
 	_, err = cli.Update(context.Background(), &v1.Route{
-		ID:         &objId,
-		Host:       &host,
-		Path:       &uri,
-		Name:       &name,
-		ServiceId:  &id,
-		UpstreamId: &id,
+		Metadata: v1.Metadata{
+			ID:       "2",
+			Name:     "test",
+			FullName: "test",
+		},
+		Host:       "www.foo.com",
+		Path:       "/bar",
+		ServiceId:  "112",
+		UpstreamId: "112",
 	})
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
-	assert.Equal(t, "2", *objs[0].ID)
-	assert.Equal(t, "112", *objs[0].ServiceId)
+	assert.Equal(t, "2", objs[0].ID)
+	assert.Equal(t, "112", objs[0].ServiceId)
 }

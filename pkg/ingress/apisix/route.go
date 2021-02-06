@@ -17,11 +17,10 @@ package apisix
 import (
 	"strconv"
 
-	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
-
-	"github.com/api7/ingress-controller/pkg/ingress/endpoint"
-	"github.com/api7/ingress-controller/pkg/seven/conf"
-	apisix "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/endpoint"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
+	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
@@ -35,7 +34,7 @@ const (
 	INGRESS_CLASS      = "k8s.apisix.apache.org/ingress.class"
 )
 
-type ApisixRoute ingress.ApisixRoute
+type ApisixRoute configv1.ApisixRoute
 
 // Convert convert to  apisix.Route from ingress.ApisixRoute CRD
 func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.Upstream, error) {
@@ -57,7 +56,7 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 		for _, p := range paths {
 			uri := p.Path
 			svcName := p.Backend.ServiceName
-			svcPort := strconv.FormatInt(p.Backend.ServicePort, 10)
+			svcPort := strconv.Itoa(p.Backend.ServicePort)
 			// apisix route name = host + path
 			apisixRouteName := host + uri
 			// apisix service name = namespace_svcName_svcPort
@@ -91,15 +90,17 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 
 			// routes
 			route := &apisix.Route{
-				Group:           &group,
-				FullName:        &fullRouteName,
-				ResourceVersion: &rv,
-				Name:            &apisixRouteName,
-				Host:            &host,
-				Path:            &uri,
-				ServiceName:     &apisixSvcName,
-				UpstreamName:    &apisixUpstreamName,
-				Plugins:         &pluginRet,
+				Metadata: apisix.Metadata{
+					Group:           group,
+					FullName:        fullRouteName,
+					ResourceVersion: rv,
+					Name:            apisixRouteName,
+				},
+				Host:         host,
+				Path:         uri,
+				ServiceName:  apisixSvcName,
+				UpstreamName: apisixUpstreamName,
+				Plugins:      pluginRet,
 			}
 			routes = append(routes, route)
 			// services
@@ -110,13 +111,13 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 			}
 
 			service := &apisix.Service{
-				FullName:        &fullServiceName,
-				Group:           &group,
-				Name:            &apisixSvcName,
-				UpstreamName:    &apisixUpstreamName,
-				ResourceVersion: &rv,
+				FullName:        fullServiceName,
+				Group:           group,
+				Name:            apisixSvcName,
+				UpstreamName:    apisixUpstreamName,
+				ResourceVersion: rv,
 			}
-			serviceMap[*service.FullName] = service
+			serviceMap[service.FullName] = service
 
 			// upstreams
 			// fullServiceName
@@ -128,14 +129,16 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 			port, _ := strconv.Atoi(svcPort)
 			nodes := endpoint.BuildEps(ns, svcName, port)
 			upstream := &apisix.Upstream{
-				FullName:        &fullUpstreamName,
-				Group:           &group,
-				ResourceVersion: &rv,
-				Name:            &apisixUpstreamName,
-				Type:            &LBType,
-				Nodes:           nodes,
+				Metadata: apisix.Metadata{
+					FullName:        fullUpstreamName,
+					Group:           group,
+					ResourceVersion: rv,
+					Name:            apisixUpstreamName,
+				},
+				Type:  LBType,
+				Nodes: nodes,
 			}
-			upstreamMap[*upstream.FullName] = upstream
+			upstreamMap[upstream.FullName] = upstream
 		}
 	}
 	for _, s := range serviceMap {

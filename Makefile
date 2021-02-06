@@ -16,10 +16,11 @@
 #
 default: help
 
-VERSION ?= 0.2.0
+VERSION ?= 0.3.0
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
-IMAGE_TAG ?= "dev"
+IMAGE_TAG ?= dev
 
+GINKGO ?= $(shell which ginkgo)
 GITSHA ?= $(shell git rev-parse --short=7 HEAD)
 OSNAME ?= $(shell uname -s | tr A-Z a-z)
 OSARCH ?= $(shell uname -m | tr A-Z a-z)
@@ -28,11 +29,12 @@ ifeq ($(OSARCH), x86_64)
 	OSARCH = amd64
 endif
 
-VERSYM="github.com/api7/ingress-controller/pkg/version._buildVersion"
-GITSHASYM="github.com/api7/ingress-controller/pkg/version._buildGitRevision"
-BUILDOSSYM="github.com/api7/ingress-controller/pkg/version._buildOS"
+VERSYM="github.com/apache/apisix-ingress-controller/pkg/version._buildVersion"
+GITSHASYM="github.com/apache/apisix-ingress-controller/pkg/version._buildGitRevision"
+BUILDOSSYM="github.com/apache/apisix-ingress-controller/pkg/version._buildOS"
 GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH)"
 E2E_CONCURRENCY ?= 1
+E2E_SKIP_BUILD ?= 0
 
 ### build:            Build apisix-ingress-controller
 build:
@@ -58,19 +60,27 @@ unit-test:
 	go test -cover -coverprofile=coverage.txt ./...
 
 ### e2e-test:         Run e2e test cases (minikube is required)
-e2e-test: build-image-to-minikube
-	export APISIX_ROUTE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixRoute.yaml && \
-	export APISIX_UPSTREAM_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml && \
-	export APISIX_SERVICE_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixService.yaml && \
-	export APISIX_TLS_DEF=$(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml && \
+e2e-test: ginkgo-check build-image-to-minikube
+	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixRoute.yaml
+	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml
+	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml
 	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=$(E2E_CONCURRENCY)
+
+.PHONY: ginkgo-check
+ginkgo-check:
+ifeq ("$(wildcard $(GINKGO))", "")
+	@echo "ERROR: Need to install ginkgo first, run: go get -u github.com/onsi/ginkgo/ginkgo"
+	exit 1
+endif
 
 # build images to minikube node directly, it's an internal directive, so don't
 # expose it's help message.
 build-image-to-minikube:
+ifeq ($(E2E_SKIP_BUILD), 0)
 	@minikube version > /dev/null 2>&1 || (echo "ERROR: minikube is required."; exit 1)
 	@eval $$(minikube docker-env);\
 	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) .
+endif
 
 ### license-check:    Do Apache License Header check
 license-check:
@@ -110,3 +120,4 @@ release-src:
 	mv $(RELEASE_SRC).tgz.sha512 release/$(RELEASE_SRC).tgz.sha512
 
 .PHONY: build lint help
+

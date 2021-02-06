@@ -61,17 +61,15 @@ You can also install apisix-ingress-controller by Helm Charts, it's recommended 
 
 ```shell
 cd /path/to/apisix-ingress-controller
-# install base resources, e.g. ServiceAccount.
-helm install ingress-apisix-base -n ingress-apisix ./charts/base
 # install apisix-ingress-controller
-helm install ingress-apisix ./charts/ingress-apisix \
-  --set ingressController.image.tag=dev \
-  --set ingressController.config.apisix.baseURL=http://apisix-admin:9180/apisix/admin \
-  --set ingressController.config.apisix.adminKey=edd1c9f034335f136f87ad84b625c8f1 \
+helm install apisix-ingress-controller ./charts/apisix-ingress-controller \
+  --set image.tag=dev \
+  --set config.apisix.baseURL=http://apisix-admin:9180/apisix/admin \
+  --set config.apisix.adminKey=edd1c9f034335f136f87ad84b625c8f1 \
   --namespace ingress-apisix
 ```
 
-Change the `ingressController.image.tag` to the Apache APISIX version that you desire. You have to Wait for while until the correspdoning pods are running.
+Change the `image.tag` to the apisix-ingress-controller version that you desire. You have to wait for while until the correspdoning pods are running.
 
 Now open your [EKS console](https://console.aws.amazon.com/eks/home), choosing your cluster and clicking the Workloads tag, you'll see all pods of Apache APISIX, etcd and apisix-ingress-controller are ready.
 

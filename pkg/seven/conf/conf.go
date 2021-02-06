@@ -15,8 +15,8 @@
 package conf
 
 import (
-	"github.com/api7/ingress-controller/pkg/apisix"
-	"github.com/api7/ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
 var (

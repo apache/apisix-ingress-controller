@@ -21,7 +21,7 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/apache/apisix-ingress-controller)](https://goreportcard.com/report/github.com/apache/apisix-ingress-controller)
 
-Use Apache APISIX for Kubernetes [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
+Use [Apache APISIX](https://github.com/apache/apisix#apache-apisix) for Kubernetes [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/).
 
 All configurations in `apisix-ingress-controller` are defined with Kubernetes CRDs (Custom Resource Definitions). Such as configure [plugins](https://github.com/apache/apisix/tree/master/doc/plugins), Support service registration discovery mechanism for upstreams, load balancing and more in Apache APISIX.
 
@@ -54,11 +54,11 @@ This project is currently considered experimental.
 
 - Define the CRD(CustomResourceDefinition) needed by Apache APISIX
 
-- Currently supports ApisixRoute/ApisixService/ApisixUpstream，and other service and route level plugins.
+- Currently supports ApisixRoute/ApisixUpstream，and other service and route level plugins.
 
 - Can be packaged as a stand-alone binary, keep in sync with the ingress definition.
 
-- [CRD design](https://github.com/api7/ingress-controller/issues/3)
+- [CRD design](https://github.com/apache/apisix-ingress-controller/issues/3)
 
 ### 2. `APISIX types` Submodule
 
@@ -121,6 +121,10 @@ We welcome all kinds of contributions from the open-source community, individual
 * QQ Group - 578997126
 * ![Twitter Follow](https://img.shields.io/twitter/follow/ApacheAPISIX?style=social) - follow and interact with us using hashtag `#ApacheAPISIX`
 * [Bilibili video](https://space.bilibili.com/551921247)
+
+## Milestone
+
+* [Milestone](https://github.com/apache/apisix-ingress-controller/milestones)
 
 ## Terminology
 

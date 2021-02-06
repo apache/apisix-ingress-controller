@@ -15,25 +15,24 @@
 package apisix
 
 import (
+	"errors"
+	"fmt"
 	"strconv"
 
-	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
-
-	"github.com/api7/ingress-controller/pkg/ingress/endpoint"
-	"github.com/api7/ingress-controller/pkg/seven/conf"
-	apisix "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/endpoint"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
+	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
-	RR             = "roundrobin"
-	CHASH          = "chash"
 	ApisixUpstream = "ApisixUpstream"
 )
 
 //type ApisixUpstreamCRD ingress.ApisixUpstream
 
 type ApisixUpstreamBuilder struct {
-	CRD *ingress.ApisixUpstream
+	CRD *configv1.ApisixUpstream
 	Ep  endpoint.Endpoint
 }
 
@@ -50,14 +49,18 @@ func (aub *ApisixUpstreamBuilder) Convert() ([]*apisix.Upstream, error) {
 	rv := ar.ObjectMeta.ResourceVersion
 	Ports := ar.Spec.Ports
 	for _, r := range Ports {
+		if r.Scheme != "" && r.Scheme != configv1.SchemeHTTP && r.Scheme != configv1.SchemeGRPC {
+			return nil, fmt.Errorf("bad scheme %s", r.Scheme)
+		}
+
 		port := r.Port
 		// apisix route name = namespace_svcName_svcPort = apisix service name
 		apisixUpstreamName := ns + "_" + name + "_" + strconv.Itoa(int(port))
 
-		lb := r.Loadbalancer
+		lb := r.LoadBalancer
 
 		//nodes := endpoint.BuildEps(ns, name, int(port))
-		nodes := aub.Ep.BuildEps(ns, name, int(port))
+		nodes := aub.Ep.BuildEps(ns, name, port)
 		fromKind := ApisixUpstream
 
 		// fullName
@@ -66,33 +69,44 @@ func (aub *ApisixUpstreamBuilder) Convert() ([]*apisix.Upstream, error) {
 			fullName = group + "_" + apisixUpstreamName
 		}
 		upstream := &apisix.Upstream{
-			FullName:        &fullName,
-			Group:           &group,
-			ResourceVersion: &rv,
-			Name:            &apisixUpstreamName,
-			Nodes:           nodes,
-			FromKind:        &fromKind,
+			Metadata: apisix.Metadata{
+				FullName:        fullName,
+				Group:           group,
+				ResourceVersion: rv,
+				Name:            apisixUpstreamName,
+			},
+			Nodes:    nodes,
+			FromKind: fromKind,
 		}
-		lbType := RR
-		if lb != nil {
-			lbType = lb["type"].(string)
+		if r.Scheme != "" {
+			upstream.Scheme = r.Scheme
 		}
-		switch {
-		case lbType == CHASH:
-			upstream.Type = &lbType
-			hashOn := lb["hashOn"]
-			key := lb["key"]
-			if hashOn != nil {
-				ho := hashOn.(string)
-				upstream.HashOn = &ho
+		if lb == nil || lb.Type == "" {
+			upstream.Type = apisix.LbRoundRobin
+		} else {
+			switch lb.Type {
+			case apisix.LbRoundRobin, apisix.LbLeastConn, apisix.LbEwma:
+				upstream.Type = lb.Type
+			case apisix.LbConsistentHash:
+				upstream.Type = lb.Type
+				upstream.Key = lb.Key
+				switch lb.HashOn {
+				case apisix.HashOnVars:
+					fallthrough
+				case apisix.HashOnHeader:
+					fallthrough
+				case apisix.HashOnCookie:
+					fallthrough
+				case apisix.HashOnConsumer:
+					fallthrough
+				case apisix.HashOnVarsCombination:
+					upstream.HashOn = lb.HashOn
+				default:
+					return nil, errors.New("invalid hashOn value")
+				}
+			default:
+				return nil, errors.New("invalid load balancer type")
 			}
-			if key != nil {
-				k := key.(string)
-				upstream.Key = &k
-			}
-		default:
-			lbType = RR
-			upstream.Type = &lbType
 		}
 		upstreams = append(upstreams, upstream)
 	}

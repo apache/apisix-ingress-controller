@@ -60,6 +60,7 @@ func TestItemConvertRoute(t *testing.T) {
 				"service_id": "14",
 				"host": "foo.com",
 				"uri": "/shop/133/details",
+				"desc": "unknown",
 				"methods": ["GET", "POST"]
 			}
 		`),
@@ -67,12 +68,12 @@ func TestItemConvertRoute(t *testing.T) {
 
 	r, err := item.route("qa")
 	assert.Nil(t, err)
-	assert.Equal(t, *r.UpstreamId, "13")
-	assert.Equal(t, *r.ServiceId, "14")
-	assert.Equal(t, *r.Host, "foo.com")
-	assert.Equal(t, *r.Path, "/shop/133/details")
-	assert.Equal(t, *r.Methods[0], "GET")
-	assert.Equal(t, *r.Methods[1], "POST")
-	assert.Nil(t, r.Name)
-	assert.Equal(t, *r.FullName, "qa_unknown")
+	assert.Equal(t, r.UpstreamId, "13")
+	assert.Equal(t, r.ServiceId, "14")
+	assert.Equal(t, r.Host, "foo.com")
+	assert.Equal(t, r.Path, "/shop/133/details")
+	assert.Equal(t, r.Methods[0], "GET")
+	assert.Equal(t, r.Methods[1], "POST")
+	assert.Equal(t, r.Name, "unknown")
+	assert.Equal(t, r.FullName, "qa_unknown")
 }

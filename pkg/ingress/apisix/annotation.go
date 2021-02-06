@@ -17,8 +17,8 @@ package apisix
 import (
 	"strconv"
 
-	seven "github.com/api7/ingress-controller/pkg/seven/apisix"
-	apisix "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	seven "github.com/apache/apisix-ingress-controller/pkg/seven/apisix"
+	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 // BuildAnnotation return plugins and group

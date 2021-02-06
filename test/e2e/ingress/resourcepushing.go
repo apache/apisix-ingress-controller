@@ -16,12 +16,13 @@ package ingress
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/api7/ingress-controller/test/e2e/scaffold"
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("ApisixRoute Testing", func() {
@@ -32,16 +33,16 @@ var _ = ginkgo.Describe("ApisixRoute Testing", func() {
 apiVersion: apisix.apache.org/v1
 kind: ApisixRoute
 metadata:
- name: httpbin-route
+  name: httpbin-route
 spec:
- rules:
- - host: httpbin.com
-   http:
-     paths:
-     - backend:
-         serviceName: %s
-         servicePort: %d
-       path: /ip
+  rules:
+  - host: httpbin.com
+    http:
+      paths:
+      - backend:
+          serviceName: %s
+          servicePort: %d
+        path: /ip
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
 
@@ -53,10 +54,11 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.WaitAllHTTPBINPoddsAvailable(), "waiting for all httpbin pods ready")
 		// TODO When ingress controller can feedback the lifecycle of CRDs to the
 		// status field, we can poll it rather than sleeping.
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
 		assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 2, "upstreams nodes not expect")
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
 	})
 
 	ginkgo.It("create and then remove", func() {

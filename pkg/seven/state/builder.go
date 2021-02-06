@@ -17,17 +17,14 @@ package state
 import (
 	"context"
 	"errors"
-	"strconv"
 	"sync"
 
-	"github.com/golang/glog"
-
-	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/api7/ingress-controller/pkg/seven/apisix"
-	"github.com/api7/ingress-controller/pkg/seven/conf"
-	"github.com/api7/ingress-controller/pkg/seven/db"
-	"github.com/api7/ingress-controller/pkg/seven/utils"
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/apache/apisix-ingress-controller/pkg/id"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/utils"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
@@ -35,54 +32,37 @@ const (
 	WatchFromKind  = "watch"
 )
 
-//// InitDB insert object into memDB first time
-//func InitDB(){
-//	routes, _ := apisix.ListRoute()
-//	upstreams, _ := apisix.ListUpstream()
-//	apisix.InsertRoute(routes)
-//	apisix.InsertUpstreams(upstreams)
-//}
-//
-//// LoadTargetState load targetState from ... maybe k8s CRD
-//func LoadTargetState(routes []*v1.Route, upstreams []*v1.Upstream){
-//
-//	// 1.diff
-//	// 2.send event
-//}
-
-// paddingRoute padding route from memDB
-func paddingRoute(route *v1.Route, currentRoute *v1.Route) {
-	// padding object, just id
+// paddingRoute fills route through currentRoute, it returns a boolean
+// value to indicate whether the route is a new created one.
+func paddingRoute(route *v1.Route, currentRoute *v1.Route) bool {
 	if currentRoute == nil {
-		// NOT FOUND : set Id = 0
-		id := strconv.Itoa(0)
-		route.ID = &id
-	} else {
-		route.ID = currentRoute.ID
+		route.ID = id.GenID(route.FullName)
+		return true
 	}
+	route.ID = currentRoute.ID
+	return false
 }
 
-// padding service from memDB
-func paddingService(service *v1.Service, currentService *v1.Service) {
+// paddingService fills service through currentService, it returns a boolean
+// value to indicate whether the service is a new created one.
+func paddingService(service *v1.Service, currentService *v1.Service) bool {
 	if currentService == nil {
-		id := strconv.Itoa(0)
-		service.ID = &id
-	} else {
-		service.ID = currentService.ID
+		service.ID = id.GenID(service.FullName)
+		return true
 	}
+	service.ID = currentService.ID
+	return false
 }
 
-// paddingUpstream padding upstream from memDB
-func paddingUpstream(upstream *v1.Upstream, currentUpstream *v1.Upstream) {
-	// padding id
+// paddingUpstream fills upstream through currentUpstream, it returns a boolean
+// value to indicate whether the upstream is a new created one.
+func paddingUpstream(upstream *v1.Upstream, currentUpstream *v1.Upstream) bool {
 	if currentUpstream == nil {
-		// NOT FOUND : set Id = 0
-		id := strconv.Itoa(0)
-		upstream.ID = &id
-	} else {
-		upstream.ID = currentUpstream.ID
+		upstream.ID = id.GenID(upstream.FullName)
+		return true
 	}
-	// todo padding nodes ? or sync nodes from crd ?
+	upstream.ID = currentUpstream.ID
+	return false
 }
 
 // NewRouteWorkers make routeWrokers group by service per CRD
@@ -95,14 +75,17 @@ func NewRouteWorkers(ctx context.Context,
 	for _, r := range routes {
 		rw := &routeWorker{Route: r, Ctx: ctx, Wg: wg, ErrorChan: errorChan}
 		rw.start()
-		rwg.Add(*r.ServiceName, rw)
+		rwg.Add(r.ServiceName, rw)
 	}
 	return rwg
 }
 
 // 3.route get the Event and trigger a padding for object,then diff,sync;
 func (r *routeWorker) trigger(event Event) {
-	var errNotify error
+	var (
+		op        string
+		errNotify error
+	)
 	defer func() {
 		if errNotify != nil {
 			r.ErrorChan <- CRDStatus{Id: "", Status: "failure", Err: errNotify}
@@ -112,24 +95,32 @@ func (r *routeWorker) trigger(event Event) {
 	// consumer Event
 	service := event.Obj.(*v1.Service)
 	r.ServiceId = service.ID
-	log.Infof("trigger routeWorker %s from %s, %s", *r.Name, event.Op, *service.Name)
+	log.Infof("trigger routeWorker %s from %s, %s", r.Name, event.Op, service.Name)
 
 	// padding
-	currentRoute, err := apisix.FindCurrentRoute(r.Route)
-	if err != nil && !errors.Is(err, utils.ErrNotFound) {
+	var cluster string
+	if r.Route.Group != "" {
+		cluster = r.Route.Group
+	}
+	currentRoute, err := conf.Client.Cluster(cluster).Route().Get(context.TODO(), r.Route.FullName)
+	if err != nil && !errors.Is(err, cache.ErrNotFound) {
 		errNotify = err
 		return
 	}
-	paddingRoute(r.Route, currentRoute)
-	// diff
+
+	if paddingRoute(r.Route, currentRoute) {
+		op = Create
+	} else {
+		op = Update
+	}
+
 	hasDiff, err := utils.HasDiff(r.Route, currentRoute)
-	// sync
 	if err != nil {
 		errNotify = err
 		return
 	}
 	if hasDiff {
-		err := r.sync()
+		err := r.sync(op)
 		if err != nil {
 			errNotify = err
 			return
@@ -138,39 +129,26 @@ func (r *routeWorker) trigger(event Event) {
 }
 
 // sync
-func (r *routeWorker) sync() error {
+func (r *routeWorker) sync(op string) error {
 	var cluster string
-	if r.Group != nil {
-		cluster = *r.Group
+	if r.Group != "" {
+		cluster = r.Group
 	}
-	if *r.Route.ID != strconv.Itoa(0) {
-		// 1. sync memDB
-		db := &db.RouteDB{Routes: []*v1.Route{r.Route}}
-		if err := db.UpdateRoute(); err != nil {
-			log.Errorf("update route failed, route: %#v, err: %+v", r.Route, err)
-			return err
-		}
-		// 2. sync apisix
+	if op == Update {
 		if _, err := conf.Client.Cluster(cluster).Route().Update(context.TODO(), r.Route); err != nil {
-			log.Errorf("failed to update route %s: %s, ", *r.Name, err)
+			log.Errorf("failed to update route %s: %s, ", r.Name, err)
 			return err
 		}
-		log.Infof("update route %s, %s", *r.Name, *r.ServiceId)
+		log.Infof("update route %s, %s", r.Name, r.ServiceId)
 	} else {
-		// 1. sync apisix and get id
 		route, err := conf.Client.Cluster(cluster).Route().Create(context.TODO(), r.Route)
 		if err != nil {
 			log.Errorf("failed to create route: %s", err.Error())
 			return err
 		}
-		*r.ID = *route.ID
+		r.ID = route.ID
 	}
-	// 2. sync memDB
-	db := &db.RouteDB{Routes: []*v1.Route{r.Route}}
-	if err := db.Insert(); err != nil {
-		return err
-	}
-	log.Infof("create route %s, %s", *r.Name, *r.ServiceId)
+	log.Infof("create route %s, %s", r.Name, r.ServiceId)
 	return nil
 }
 
@@ -182,7 +160,7 @@ func NewServiceWorkers(ctx context.Context,
 		rw := &serviceWorker{Service: s, Ctx: ctx, Wg: wg, ErrorChan: errorChan}
 		//rw.Wg.Add(1)
 		rw.start(rwg)
-		swg.Add(*s.UpstreamName, rw)
+		swg.Add(s.UpstreamName, rw)
 	}
 	return swg
 }
@@ -195,102 +173,76 @@ func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup, wg *sync.W
 }
 
 func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitGroup, errorChan chan CRDStatus) {
-	var errNotify error
+	var (
+		op        string
+		errNotify error
+	)
 	defer func() {
 		if errNotify != nil {
 			errorChan <- CRDStatus{Id: "", Status: "failure", Err: errNotify}
 		}
 		wg.Done()
 	}()
-	op := Update
-	if currentUpstream, err := apisix.FindCurrentUpstream(*u.Group, *u.Name, *u.FullName); err != nil {
-		log.Errorf("solver upstream failed, find upstream from APISIX failed, upstream: %+v, err: %+v", u, err)
+	var cluster string
+	if u.Group != "" {
+		cluster = u.Group
+	}
+	if currentUpstream, err := conf.Client.Cluster(cluster).Upstream().Get(context.TODO(), u.FullName); err != nil && err != cache.ErrNotFound {
+		log.Errorf("failed to find upstream %s: %s", u.FullName, err)
 		errNotify = err
 		return
 	} else {
-		paddingUpstream(u, currentUpstream)
-		// diff
-		hasDiff, err := utils.HasDiff(u, currentUpstream)
-		if err != nil {
-			errNotify = err
-			return
+		if paddingUpstream(u, currentUpstream) {
+			op = Create
+		} else {
+			op = Update
 		}
-		if hasDiff {
-			if *u.ID != strconv.Itoa(0) {
+
+		if op == Create {
+			if u.FromKind == WatchFromKind {
+				// We don't have a pre-defined upstream and the current upstream updating from
+				// endpoints.
+				return
+			}
+			if _, err := conf.Client.Cluster(cluster).Upstream().Create(context.TODO(), u); err != nil {
+				log.Errorf("failed to create upstream %s: %s", u.FullName, err)
+				return
+			}
+		} else {
+			// diff
+			hasDiff, err := utils.HasDiff(u, currentUpstream)
+			if err != nil {
+				errNotify = err
+				return
+			}
+			if hasDiff {
 				op = Update
 				// 0.field check
 				needToUpdate := true
-				if currentUpstream.FromKind != nil && *(currentUpstream.FromKind) == ApisixUpstream { // update from ApisixUpstream
-					if u.FromKind == nil || (u.FromKind != nil && *(u.FromKind) != ApisixUpstream) {
+				if currentUpstream.FromKind == ApisixUpstream { // update from ApisixUpstream
+					if u.FromKind != ApisixUpstream {
 						// currentUpstream > u
 						// set lb && health check
 						needToUpdate = false
 					}
 				}
-				if needToUpdate {
-					// 1.sync memDB
-					upstreamDB := &db.UpstreamDB{Upstreams: []*v1.Upstream{u}}
-					if err := upstreamDB.UpdateUpstreams(); err != nil {
-						log.Errorf("solver upstream failed, update upstream to local db failed, err: %s", err.Error())
-						errNotify = err
-						return
-					}
-
-					// 2.sync apisix
-					var cluster string
-					if u.Group != nil {
-						cluster = *u.Group
-					}
-					if _, err = conf.Client.Cluster(cluster).Upstream().Update(context.TODO(), u); err != nil {
-						glog.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
-						return
-					}
-				}
-				// if fromKind == WatchFromKind
-				if u.FromKind != nil && *u.FromKind == WatchFromKind {
-					// 1.update nodes
-					if err = apisix.PatchNodes(u, u.Nodes); err != nil {
-						log.Errorf("solver upstream failed, patch node info to etcd failed, err: %+v", err)
-						errNotify = err
-						return
-					}
-					// 2. sync memDB
-					us := []*v1.Upstream{u}
-					if !needToUpdate {
+				if needToUpdate || u.FromKind == WatchFromKind {
+					if u.FromKind == WatchFromKind {
 						currentUpstream.Nodes = u.Nodes
-						us = []*v1.Upstream{currentUpstream}
+					} else { // due to CRD update
+						currentUpstream = u
 					}
-					upstreamDB := &db.UpstreamDB{Upstreams: us}
-					if err := upstreamDB.UpdateUpstreams(); err != nil {
-						log.Errorf("solver upstream failed, update upstream to local db failed, err: %s", err.Error())
-						errNotify = err
+					if _, err = conf.Client.Cluster(cluster).Upstream().Update(context.TODO(), currentUpstream); err != nil {
+						log.Errorf("failed to update upstream %s: %s", u.FullName, err)
 						return
 					}
 				}
-			} else {
-				op = Create
-				// 1.sync apisix and get response
-				var cluster string
-				if u.Group != nil {
-					cluster = *u.Group
-				}
-				ups, err := conf.Client.Cluster(cluster).Upstream().Create(context.TODO(), u)
-				if err != nil {
-					log.Errorf("failed to create upstream: %s", err)
-					return
-				}
-
-				*u.ID = *ups.ID
-				// 2.sync memDB
-				//apisix.InsertUpstreams([]*v1.Upstream{u})
-				upstreamDB := &db.UpstreamDB{Upstreams: []*v1.Upstream{u}}
-				upstreamDB.InsertUpstreams()
 			}
 		}
 	}
-	log.Infof("solver upstream %s:%s", op, *u.Name)
+	log.Infof("solver upstream %s:%s", op, u.Name)
 	// anyway, broadcast to service
-	serviceWorkers := swg[*u.Name]
+	serviceWorkers := swg[u.Name]
 	for _, sw := range serviceWorkers {
 		event := &Event{Kind: UpstreamKind, Op: op, Obj: u}
 		sw.Event <- *event

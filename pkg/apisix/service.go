@@ -20,9 +20,12 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/api7/ingress-controller/pkg/log"
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
 	"go.uber.org/zap"
+
+	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/apache/apisix-ingress-controller/pkg/id"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type serviceClient struct {
@@ -32,9 +35,9 @@ type serviceClient struct {
 }
 
 type serviceItem struct {
-	UpstreamId *string                 `json:"upstream_id,omitempty"`
-	Plugins    *map[string]interface{} `json:"plugins,omitempty"`
-	Desc       *string                 `json:"desc,omitempty"`
+	UpstreamId string                 `json:"upstream_id,omitempty"`
+	Plugins    map[string]interface{} `json:"plugins,omitempty"`
+	Desc       string                 `json:"desc,omitempty"`
 }
 
 func newServiceClient(c *cluster) Service {
@@ -45,8 +48,73 @@ func newServiceClient(c *cluster) Service {
 	}
 }
 
+func (s *serviceClient) Get(ctx context.Context, fullname string) (*v1.Service, error) {
+	log.Infow("try to look up service",
+		zap.String("fullname", fullname),
+		zap.String("url", s.url),
+		zap.String("cluster", s.clusterName),
+	)
+	svc, err := s.cluster.cache.GetService(fullname)
+	if err == nil {
+		return svc, nil
+	}
+	if err != cache.ErrNotFound {
+		log.Errorw("failed to find service in cache, will try to look up from APISIX",
+			zap.String("fullname", fullname),
+			zap.Error(err),
+		)
+	} else {
+		log.Warnw("failed to find service in cache, will try to look up from APISIX",
+			zap.String("fullname", fullname),
+			zap.Error(err),
+		)
+	}
+
+	// TODO Add mutex here to avoid dog-pile effection.
+	url := s.url + "/" + id.GenID(fullname)
+	resp, err := s.cluster.getResource(ctx, url)
+	if err != nil {
+		if err == cache.ErrNotFound {
+			log.Warnw("service not found",
+				zap.String("fullname", fullname),
+				zap.String("url", url),
+				zap.String("cluster", s.clusterName),
+			)
+		} else {
+			log.Errorw("failed to get service from APISIX",
+				zap.String("fullname", fullname),
+				zap.String("url", url),
+				zap.String("cluster", s.clusterName),
+				zap.Error(err),
+			)
+		}
+		return nil, err
+	}
+
+	svc, err = resp.Item.service(s.clusterName)
+	if err != nil {
+		log.Errorw("failed to convert service item",
+			zap.String("url", s.url),
+			zap.String("service_key", resp.Item.Key),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+
+	if err := s.cluster.cache.InsertService(svc); err != nil {
+		log.Errorf("failed to reflect service create to cache: %s", err)
+		return nil, err
+	}
+	return svc, nil
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
 func (s *serviceClient) List(ctx context.Context) ([]*v1.Service, error) {
-	log.Infow("try to list services in APISIX", zap.String("url", s.url))
+	log.Infow("try to list services in APISIX",
+		zap.String("url", s.url),
+		zap.String("cluster", s.clusterName),
+	)
 
 	upsItems, err := s.cluster.listResource(ctx, s.url)
 	if err != nil {
@@ -72,57 +140,105 @@ func (s *serviceClient) List(ctx context.Context) ([]*v1.Service, error) {
 }
 
 func (s *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Service, error) {
-	log.Infow("try to create service", zap.String("full_name", *obj.FullName))
+	log.Infow("try to create service",
+		zap.String("fullname", obj.FullName),
+		zap.String("cluster", s.clusterName),
+		zap.String("url", s.url),
+	)
+	if err := s.cluster.HasSynced(ctx); err != nil {
+		return nil, err
+	}
 
 	body, err := json.Marshal(serviceItem{
 		UpstreamId: obj.UpstreamId,
-		Plugins:    (*map[string]interface{})(obj.Plugins),
+		Plugins:    obj.Plugins,
 		Desc:       obj.Name,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	log.Infow("creating service", zap.ByteString("body", body), zap.String("url", s.url))
-	resp, err := s.cluster.createResource(ctx, s.url, bytes.NewReader(body))
+	url := s.url + "/" + obj.ID
+	log.Infow("creating service", zap.ByteString("body", body), zap.String("url", url))
+	resp, err := s.cluster.createResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		log.Errorf("failed to create service: %s", err)
 		return nil, err
 	}
 	var clusterName string
-	if obj.Group != nil {
-		clusterName = *obj.Group
+	if obj.Group != "" {
+		clusterName = obj.Group
 	}
-	return resp.Item.service(clusterName)
+	svc, err := resp.Item.service(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.cluster.cache.InsertService(svc); err != nil {
+		log.Errorf("failed to reflect service create to cache: %s", err)
+		return nil, err
+	}
+	return svc, nil
 }
 
 func (s *serviceClient) Delete(ctx context.Context, obj *v1.Service) error {
-	log.Infof("delete service, id:%s", *obj.ID)
-	url := s.url + "/" + *obj.ID
-	return s.cluster.deleteResource(ctx, url)
+	log.Infow("try to delete service",
+		zap.String("id", obj.ID),
+		zap.String("fullname", obj.FullName),
+		zap.String("cluster", s.clusterName),
+		zap.String("url", s.url),
+	)
+	if err := s.cluster.HasSynced(ctx); err != nil {
+		return err
+	}
+	url := s.url + "/" + obj.ID
+	if err := s.cluster.deleteResource(ctx, url); err != nil {
+		return err
+	}
+	if err := s.cluster.cache.DeleteService(obj); err != nil {
+		log.Errorf("failed to reflect service delete to cache: %s", err)
+		return err
+	}
+	return nil
 }
 
 func (s *serviceClient) Update(ctx context.Context, obj *v1.Service) (*v1.Service, error) {
-	log.Infof("update service, id:%s", *obj.ID)
+	log.Infow("try to update service",
+		zap.String("id", obj.ID),
+		zap.String("fullname", obj.FullName),
+		zap.String("cluster", s.clusterName),
+		zap.String("url", s.url),
+	)
+
+	if err := s.cluster.HasSynced(ctx); err != nil {
+		return nil, err
+	}
 
 	body, err := json.Marshal(serviceItem{
 		UpstreamId: obj.UpstreamId,
-		Plugins:    (*map[string]interface{})(obj.Plugins),
+		Plugins:    obj.Plugins,
 		Desc:       obj.Name,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	url := s.url + "/" + *obj.ID
+	url := s.url + "/" + obj.ID
 	log.Infow("creating service", zap.ByteString("body", body), zap.String("url", url))
 	resp, err := s.cluster.updateResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 	var clusterName string
-	if obj.Group != nil {
-		clusterName = *obj.Group
+	if obj.Group != "" {
+		clusterName = obj.Group
 	}
-	return resp.Item.service(clusterName)
+	svc, err := resp.Item.service(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.cluster.cache.InsertService(obj); err != nil {
+		log.Errorf("failed to reflect service update to cache: %s", err)
+		return nil, err
+	}
+	return svc, nil
 }

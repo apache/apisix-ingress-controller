@@ -22,8 +22,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/api7/ingress-controller/pkg/apisix"
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
@@ -192,11 +192,39 @@ func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 		Host:   host,
 		Path:   "/apisix/admin",
 	}
-	cli, err := apisix.NewForOptions(&apisix.ClusterOptions{
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(&apisix.ClusterOptions{
 		BaseURL: u.String(),
 	})
 	if err != nil {
 		return nil, err
 	}
 	return cli.Cluster("").Upstream().List(context.TODO())
+}
+
+// ListApisixTls list all ssl from APISIX
+func (s *Scaffold) ListApisixTls() ([]*v1.Ssl, error) {
+	host, err := s.apisixAdminServiceURL()
+	if err != nil {
+		return nil, err
+	}
+	u := url.URL{
+		Scheme: "http",
+		Host:   host,
+		Path:   "/apisix/admin",
+	}
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(&apisix.ClusterOptions{
+		BaseURL: u.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cli.Cluster("").SSL().List(context.TODO())
 }

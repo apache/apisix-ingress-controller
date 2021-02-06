@@ -28,9 +28,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/api7/ingress-controller/pkg/config"
-	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/api7/ingress-controller/pkg/types"
+	"github.com/apache/apisix-ingress-controller/pkg/config"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 type fakeWriteSyncer struct {
@@ -83,7 +83,9 @@ func TestSignalHandler(t *testing.T) {
 	})
 	waitCh := make(chan struct{})
 	go func() {
-		cmd.Execute()
+		if err := cmd.Execute(); err != nil {
+			log.Errorf("failed to execute command: %s", err)
+		}
 		close(waitCh)
 	}()
 
@@ -97,7 +99,7 @@ func TestSignalHandler(t *testing.T) {
 	assert.Nil(t, syscall.Kill(os.Getpid(), syscall.SIGINT))
 	<-waitCh
 
-	msg := string(fws.buf.Bytes())
+	msg := fws.buf.String()
 	assert.Contains(t, msg, fmt.Sprintf("signal %d (%s) received", syscall.SIGINT, syscall.SIGINT.String()))
 	assert.Contains(t, msg, "apisix ingress controller exited")
 }
@@ -133,6 +135,10 @@ func TestNewIngressCommandEffectiveLog(t *testing.T) {
 	buf := bufio.NewReader(file)
 	f := parseLog(t, buf)
 	assert.Contains(t, f.Message, "apisix ingress controller started")
+	assert.Equal(t, f.Level, "info")
+
+	f = parseLog(t, buf)
+	assert.Contains(t, f.Message, "version:")
 	assert.Equal(t, f.Level, "info")
 
 	f = parseLog(t, buf)

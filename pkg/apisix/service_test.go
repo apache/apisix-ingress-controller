@@ -28,12 +28,11 @@ import (
 
 	"golang.org/x/net/nettest"
 
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/stretchr/testify/assert"
 )
 
 type fakeAPISIXServiceSrv struct {
-	id      int
 	service map[string]json.RawMessage
 }
 
@@ -80,9 +79,9 @@ func (srv *fakeAPISIXServiceSrv) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		w.WriteHeader(code)
 	}
 
-	if r.Method == http.MethodPost {
-		srv.id++
-		key := fmt.Sprintf("/apisix/services/%d", srv.id)
+	if r.Method == http.MethodPut {
+		paths := strings.Split(r.URL.Path, "/")
+		key := fmt.Sprintf("/apisix/services/%s", paths[len(paths)-1])
 		data, _ := ioutil.ReadAll(r.Body)
 		srv.service[key] = data
 		w.WriteHeader(http.StatusCreated)
@@ -118,7 +117,6 @@ func (srv *fakeAPISIXServiceSrv) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 func runFakeServiceSrv(t *testing.T) *http.Server {
 	srv := &fakeAPISIXServiceSrv{
-		id:      0,
 		service: make(map[string]json.RawMessage),
 	}
 
@@ -148,63 +146,62 @@ func TestServiceClient(t *testing.T) {
 		Host:   srv.Addr,
 		Path:   "/apisix/admin",
 	}
+	closedCh := make(chan struct{})
+	close(closedCh)
 	cli := newServiceClient(&cluster{
-		baseURL: u.String(),
-		cli:     http.DefaultClient,
+		baseURL:     u.String(),
+		cli:         http.DefaultClient,
+		cache:       &dummyCache{},
+		cacheSynced: closedCh,
 	})
 
 	// Create
-	group := "default"
-	fullName := "default_test"
-	name := "test"
-	upsId := "13"
-
 	obj, err := cli.Create(context.TODO(), &v1.Service{
-		FullName:   &fullName,
-		Group:      &group,
-		Name:       &name,
-		UpstreamId: &upsId,
+		ID:         "1",
+		FullName:   "default_test",
+		Group:      "default",
+		Name:       "test",
+		UpstreamId: "13",
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, *obj.ID, "1")
+	assert.Equal(t, obj.ID, "1")
 
 	obj, err = cli.Create(context.TODO(), &v1.Service{
-		FullName:   &fullName,
-		Group:      &group,
-		Name:       &name,
-		UpstreamId: &upsId,
+		ID:         "2",
+		FullName:   "default_test",
+		Group:      "default",
+		Name:       "test",
+		UpstreamId: "13",
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, *obj.ID, "2")
+	assert.Equal(t, obj.ID, "2")
 
 	// List
 	objs, err := cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 2)
-	assert.Equal(t, *objs[0].ID, "1")
-	assert.Equal(t, *objs[1].ID, "2")
+	assert.Equal(t, objs[0].ID, "1")
+	assert.Equal(t, objs[1].ID, "2")
 
 	// Delete then List
 	assert.Nil(t, cli.Delete(context.Background(), objs[0]))
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
-	assert.Equal(t, "2", *objs[0].ID)
+	assert.Equal(t, "2", objs[0].ID)
 
 	// Patch then List
-	upsId = "14"
-	objId := "2"
 	_, err = cli.Update(context.Background(), &v1.Service{
-		ID:         &objId,
-		FullName:   &fullName,
-		Group:      &group,
-		Name:       &name,
-		UpstreamId: &upsId,
+		ID:         "2",
+		FullName:   "default_test",
+		Group:      "default",
+		Name:       "test",
+		UpstreamId: "14",
 	})
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
-	assert.Equal(t, "2", *objs[0].ID)
-	assert.Equal(t, upsId, *objs[0].UpstreamId)
+	assert.Equal(t, "2", objs[0].ID)
+	assert.Equal(t, "14", objs[0].UpstreamId)
 }

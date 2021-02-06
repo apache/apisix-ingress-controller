@@ -18,18 +18,18 @@ import (
 	"fmt"
 	"testing"
 
-	ingress "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestApisixUpstreamCRD_Convert(t *testing.T) {
 	assert := assert.New(t)
 
 	// get yaml from string
-	var crd ingress.ApisixUpstream
+	var crd configv1.ApisixUpstream
 	bytes := []byte(upstreamYaml)
 	if err := yaml.Unmarshal(bytes, &crd); err != nil {
 		assert.Error(err)
@@ -54,11 +54,11 @@ func TestApisixUpstreamCRD_Convert(t *testing.T) {
 }
 
 func equals(s, d *v1.Upstream) bool {
-	if *s.Name != *d.Name || *s.FullName != *d.FullName || *s.Group != *d.Group {
+	if s.Name != d.Name || s.FullName != d.FullName || s.Group != d.Group {
 		return false
 	}
 
-	if *s.FromKind != *d.FromKind || *s.Type != *d.Type || *s.Key != *d.Key || *s.HashOn != *d.HashOn {
+	if s.FromKind != d.FromKind || s.Type != d.Type || s.Key != d.Key || s.HashOn != d.HashOn {
 		return false
 	}
 
@@ -68,8 +68,8 @@ func equals(s, d *v1.Upstream) bool {
 // mock BuildEps
 type EndpointRequestTest struct{}
 
-func (epr *EndpointRequestTest) BuildEps(ns, name string, port int) []*v1.Node {
-	nodes := make([]*v1.Node, 0)
+func (epr *EndpointRequestTest) BuildEps(ns, name string, port int) []v1.Node {
+	nodes := make([]v1.Node, 0)
 	return nodes
 }
 
@@ -81,14 +81,16 @@ func buildExpectUpstream() *v1.Upstream {
 	fromKind := "ApisixUpstream"
 	group := ""
 	upstreamExpect := &v1.Upstream{
-		Group:           &group,
-		ResourceVersion: &group,
-		FullName:        &fullName,
-		Name:            &fullName,
-		Type:            &LBType,
-		HashOn:          &HashOn,
-		Key:             &Key,
-		FromKind:        &fromKind,
+		Metadata: v1.Metadata{
+			Group:           group,
+			ResourceVersion: group,
+			FullName:        fullName,
+			Name:            fullName,
+		},
+		Type:     LBType,
+		HashOn:   HashOn,
+		Key:      Key,
+		FromKind: fromKind,
 	}
 	return upstreamExpect
 }

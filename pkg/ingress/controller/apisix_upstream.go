@@ -18,11 +18,6 @@ import (
 	"fmt"
 	"time"
 
-	apisixV1 "github.com/gxthrj/apisix-ingress-types/pkg/apis/config/v1"
-	clientSet "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned"
-	apisixScheme "github.com/gxthrj/apisix-ingress-types/pkg/client/clientset/versioned/scheme"
-	informers "github.com/gxthrj/apisix-ingress-types/pkg/client/informers/externalversions/config/v1"
-	v1 "github.com/gxthrj/apisix-ingress-types/pkg/client/listers/config/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -31,28 +26,33 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/api7/ingress-controller/pkg/ingress/apisix"
-	"github.com/api7/ingress-controller/pkg/ingress/endpoint"
-	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/api7/ingress-controller/pkg/seven/state"
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/apisix"
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/endpoint"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
+	informersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v1"
+	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/state"
 )
 
 type ApisixUpstreamController struct {
 	controller           *Controller
 	kubeclientset        kubernetes.Interface
-	apisixClientset      clientSet.Interface
-	apisixUpstreamList   v1.ApisixUpstreamLister
+	apisixClientset      clientset.Interface
+	apisixUpstreamList   listersv1.ApisixUpstreamLister
 	apisixUpstreamSynced cache.InformerSynced
 	workqueue            workqueue.RateLimitingInterface
 }
 
 func BuildApisixUpstreamController(
 	kubeclientset kubernetes.Interface,
-	apisixUpstreamClientset clientSet.Interface,
-	apisixUpstreamInformer informers.ApisixUpstreamInformer,
+	apisixUpstreamClientset clientset.Interface,
+	apisixUpstreamInformer informersv1.ApisixUpstreamInformer,
 	root *Controller) *ApisixUpstreamController {
 
-	runtime.Must(apisixScheme.AddToScheme(scheme.Scheme))
+	runtime.Must(apisixscheme.AddToScheme(scheme.Scheme))
 	controller := &ApisixUpstreamController{
 		controller:           root,
 		kubeclientset:        kubeclientset,
@@ -153,7 +153,7 @@ func (c *ApisixUpstreamController) syncHandler(sqo *UpstreamQueueObj) error {
 
 type UpstreamQueueObj struct {
 	Key    string                   `json:"key"`
-	OldObj *apisixV1.ApisixUpstream `json:"old_obj"`
+	OldObj *configv1.ApisixUpstream `json:"old_obj"`
 	Ope    string                   `json:"ope"` // add / update / delete
 }
 
@@ -172,8 +172,8 @@ func (c *ApisixUpstreamController) addFunc(obj interface{}) {
 }
 
 func (c *ApisixUpstreamController) updateFunc(oldObj, newObj interface{}) {
-	oldUpstream := oldObj.(*apisixV1.ApisixUpstream)
-	newUpstream := newObj.(*apisixV1.ApisixUpstream)
+	oldUpstream := oldObj.(*configv1.ApisixUpstream)
+	newUpstream := newObj.(*configv1.ApisixUpstream)
 	if oldUpstream.ResourceVersion >= newUpstream.ResourceVersion {
 		return
 	}
@@ -190,13 +190,13 @@ func (c *ApisixUpstreamController) updateFunc(oldObj, newObj interface{}) {
 }
 
 func (c *ApisixUpstreamController) deleteFunc(obj interface{}) {
-	oldUpstream, ok := obj.(*apisixV1.ApisixUpstream)
+	oldUpstream, ok := obj.(*configv1.ApisixUpstream)
 	if !ok {
 		oldState, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			return
 		}
-		oldUpstream, ok = oldState.Obj.(*apisixV1.ApisixUpstream)
+		oldUpstream, ok = oldState.Obj.(*configv1.ApisixUpstream)
 		if !ok {
 			return
 		}

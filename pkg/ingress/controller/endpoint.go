@@ -17,231 +17,227 @@ package controller
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"time"
 
-	"github.com/golang/glog"
-	CoreV1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
-	CoreListerV1 "k8s.io/client-go/listers/core/v1"
+	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/api7/ingress-controller/pkg/kube"
-	"github.com/api7/ingress-controller/pkg/log"
-	sevenConf "github.com/api7/ingress-controller/pkg/seven/conf"
-	"github.com/api7/ingress-controller/pkg/seven/state"
-	apisixv1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/state"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-type EndpointController struct {
-	controller     *Controller
-	kubeclientset  kubernetes.Interface
-	endpointList   CoreListerV1.EndpointsLister
-	endpointSynced cache.InformerSynced
-	workqueue      workqueue.RateLimitingInterface
+const (
+	_defaultNodeWeight = 100
+	// maxRetries is the number of times an object will be retried before it is dropped out of the queue.
+	_maxRetries = 10
+)
+
+type endpointsController struct {
+	controller *Controller
+	informer   cache.SharedIndexInformer
+	lister     listerscorev1.EndpointsLister
+	workqueue  workqueue.RateLimitingInterface
+	workers    int
 }
 
-func BuildEndpointController(kubeclientset kubernetes.Interface, root *Controller) *EndpointController {
-	controller := &EndpointController{
-		controller:     root,
-		kubeclientset:  kubeclientset,
-		endpointList:   kube.EndpointsInformer.Lister(),
-		endpointSynced: kube.EndpointsInformer.Informer().HasSynced,
-		workqueue:      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpoints"),
+func (c *Controller) newEndpointsController(informer cache.SharedIndexInformer, lister listerscorev1.EndpointsLister) *endpointsController {
+	ctl := &endpointsController{
+		controller: c,
+		informer:   informer,
+		lister:     lister,
+		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpoints"),
+		workers:    1,
 	}
-	kube.EndpointsInformer.Informer().AddEventHandler(
+
+	ctl.informer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    controller.addFunc,
-			UpdateFunc: controller.updateFunc,
-			DeleteFunc: controller.deleteFunc,
-		})
-	return controller
+			AddFunc:    ctl.onAdd,
+			UpdateFunc: ctl.onUpdate,
+			DeleteFunc: ctl.onDelete,
+		},
+	)
+
+	return ctl
 }
 
-func (c *EndpointController) Run(stop <-chan struct{}) error {
-	// 同步缓存
-	if ok := cache.WaitForCacheSync(stop); !ok {
-		log.Errorf("同步Endpoint缓存失败")
-		return fmt.Errorf("failed to wait for caches to sync")
+func (c *endpointsController) run(ctx context.Context) {
+	log.Info("endpoints controller started")
+	defer log.Info("endpoints controller exited")
+
+	if ok := cache.WaitForCacheSync(ctx.Done(), c.informer.HasSynced); !ok {
+		log.Error("informers sync failed")
+		return
 	}
-	go wait.Until(c.runWorker, time.Second, stop)
+
+	handler := func() {
+		for {
+			obj, shutdown := c.workqueue.Get()
+			if shutdown {
+				return
+			}
+
+			err := c.sync(ctx, obj.(*types.Event))
+			c.workqueue.Done(obj)
+			c.handleSyncErr(obj, err)
+		}
+	}
+
+	for i := 0; i < c.workers; i++ {
+		go handler()
+	}
+
+	<-ctx.Done()
+	c.workqueue.ShutDown()
+}
+
+func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
+	ep := ev.Object.(*corev1.Endpoints)
+	clusters := c.controller.apisix.ListClusters()
+	for _, s := range ep.Subsets {
+		for _, port := range s.Ports {
+			// FIXME this is wrong, we should use the port name as the key.
+			upstream := fmt.Sprintf("%s_%s_%d", ep.Namespace, ep.Name, port.Port)
+			for _, cluster := range clusters {
+				var addresses []corev1.EndpointAddress
+				if ev.Type != types.EventDelete {
+					addresses = s.Addresses
+				}
+				if err := c.syncToCluster(ctx, upstream, cluster, addresses, int(port.Port)); err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return nil
 }
 
-func (c *EndpointController) runWorker() {
-	for c.processNextWorkItem() {
-	}
-}
-
-func (c *EndpointController) processNextWorkItem() bool {
-	defer recoverException()
-	obj, shutdown := c.workqueue.Get()
-	if shutdown {
-		log.Info("shutdown")
-		return false
-	}
-	err := func(obj interface{}) error {
-		defer c.workqueue.Done(obj)
-		var key string
-		var ok bool
-
-		if key, ok = obj.(string); !ok {
-			c.workqueue.Forget(obj)
-			return fmt.Errorf("expected string in workqueue but got %#v", obj)
-		}
-		// 在syncHandler中处理业务
-		if err := c.syncHandler(key); err != nil {
-			return fmt.Errorf("error syncing '%s': %s", key, err.Error())
-		}
-
-		c.workqueue.Forget(obj)
-		return nil
-	}(obj)
+func (c *endpointsController) syncToCluster(ctx context.Context, upstreamName string,
+	cluster apisix.Cluster, addresses []corev1.EndpointAddress, port int) error {
+	upstream, err := cluster.Upstream().Get(ctx, upstreamName)
 	if err != nil {
-		runtime.HandleError(err)
-	}
-	return true
-}
-
-func (c *EndpointController) syncHandler(key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if name == "cinfoserver" || name == "file-resync2-server" {
-		log.Infof("find endpoint %s/%s", namespace, name)
-	}
-	if err != nil {
-		log.Errorf("invalid resource key: %s", key)
-		return fmt.Errorf("invalid resource key: %s", key)
-	}
-
-	endpointYaml, err := c.endpointList.Endpoints(namespace).Get(name)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Infof("endpoint %s is removed", key)
+		if err == apisixcache.ErrNotFound {
+			log.Warnw("upstream is not referenced",
+				zap.String("cluster", cluster.String()),
+				zap.String("upstream", upstreamName),
+			)
 			return nil
+		} else {
+			log.Errorw("failed to get upstream",
+				zap.String("upstream", upstreamName),
+				zap.String("cluster", cluster.String()),
+				zap.Error(err),
+			)
+			return err
 		}
-		runtime.HandleError(fmt.Errorf("failed to list endpoint %s/%s", key, err.Error()))
+	}
+
+	nodes := make([]apisixv1.Node, 0, len(addresses))
+	for _, address := range addresses {
+		nodes = append(nodes, apisixv1.Node{
+			IP:     address.IP,
+			Port:   port,
+			Weight: _defaultNodeWeight,
+		})
+	}
+	log.Debugw("upstream binds new nodes",
+		zap.String("upstream", upstreamName),
+		zap.Any("nodes", nodes),
+	)
+
+	upstream.Nodes = nodes
+	upstream.FromKind = WatchFromKind
+	upstreams := []*apisixv1.Upstream{upstream}
+	comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
+
+	if _, err = comb.Solver(); err != nil {
+		log.Errorw("failed to sync upstream",
+			zap.String("upstream", upstreamName),
+			zap.String("cluster", cluster.String()),
+			zap.Error(err),
+		)
 		return err
 	}
-	// endpoint sync
-	c.process(endpointYaml)
-	return err
+	return nil
 }
 
-func (c *EndpointController) process(ep *CoreV1.Endpoints) {
-	if ep.Namespace != "kube-system" { // todo here is some ignore namespaces
-		for _, s := range ep.Subsets {
-			// if upstream need to watch
-			// ips
-			ips := make([]string, 0)
-			for _, address := range s.Addresses {
-				ips = append(ips, address.IP)
-			}
-			// ports
-			for _, port := range s.Ports {
-				upstreamName := ep.Namespace + "_" + ep.Name + "_" + strconv.Itoa(int(port.Port))
-				// find upstreamName is in apisix
-				// default
-				syncWithGroup("", upstreamName, ips, port)
-				// sync with all apisix group
-				for g := range sevenConf.UrlGroup {
-					syncWithGroup(g, upstreamName, ips, port)
-					//upstreams, err :=  apisix.ListUpstream(k)
-					//if err == nil {
-					//	for _, upstream := range upstreams {
-					//		if *(upstream.Name) == upstreamName {
-					//			nodes := make([]*apisixv1.Node, 0)
-					//			for _, ip := range ips {
-					//				ipAddress := ip
-					//				p := int(port.Port)
-					//				weight := 100
-					//				node := &apisixv1.Node{IP: &ipAddress, Port: &p, Weight: &weight}
-					//				nodes = append(nodes, node)
-					//			}
-					//			upstream.Nodes = nodes
-					//			// update upstream nodes
-					//			// add to seven solver queue
-					//			//apisix.UpdateUpstream(upstream)
-					//			fromKind := WatchFromKind
-					//			upstream.FromKind = &fromKind
-					//			upstreams := []*apisixv1.Upstream{upstream}
-					//			comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
-					//			if _, err = comb.Solver(); err != nil {
-					//				glog.Errorf(err.Error())
-					//			}
-					//		}
-					//	}
-					//}
-				}
-			}
-		}
-	}
-}
-
-func syncWithGroup(group, upstreamName string, ips []string, port CoreV1.EndpointPort) {
-	upstreams, err := sevenConf.Client.Cluster(group).Upstream().List(context.TODO())
+func (c *endpointsController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
-		for _, upstream := range upstreams {
-			if *(upstream.Name) == upstreamName {
-				nodes := make([]*apisixv1.Node, 0)
-				for _, ip := range ips {
-					ipAddress := ip
-					p := int(port.Port)
-					weight := 100
-					node := &apisixv1.Node{IP: &ipAddress, Port: &p, Weight: &weight}
-					nodes = append(nodes, node)
-				}
-				upstream.Nodes = nodes
-				// update upstream nodes
-				// add to seven solver queue
-				//apisix.UpdateUpstream(upstream)
-				fromKind := WatchFromKind
-				upstream.FromKind = &fromKind
-				upstreams := []*apisixv1.Upstream{upstream}
-				comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
-				if _, err = comb.Solver(); err != nil {
-					glog.Errorf(err.Error())
-				}
-			}
-		}
+		c.workqueue.Forget(obj)
+		return
+	}
+	if c.workqueue.NumRequeues(obj) < _maxRetries {
+		log.Infow("sync endpoints failed, will retry",
+			zap.Any("object", obj),
+		)
+		c.workqueue.AddRateLimited(obj)
+	} else {
+		c.workqueue.Forget(obj)
+		log.Warnf("drop endpoints %+v out of the queue", obj)
 	}
 }
 
-func (c *EndpointController) addFunc(obj interface{}) {
-	var key string
-	var err error
-	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-		runtime.HandleError(err)
-		return
-	}
-	if !c.controller.namespaceWatching(key) {
-		return
-	}
-	c.workqueue.AddRateLimited(key)
-}
-
-func (c *EndpointController) updateFunc(oldObj, newObj interface{}) {
-	oldRoute := oldObj.(*CoreV1.Endpoints)
-	newRoute := newObj.(*CoreV1.Endpoints)
-	if oldRoute.ResourceVersion == newRoute.ResourceVersion {
-		return
-	}
-	c.addFunc(newObj)
-}
-
-func (c *EndpointController) deleteFunc(obj interface{}) {
-	var key string
-	var err error
-	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+func (c *endpointsController) onAdd(obj interface{}) {
+	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
-		runtime.HandleError(err)
+		log.Errorf("found endpoints object with bad namespace/name: %s, ignore it", err)
 		return
 	}
 	if !c.controller.namespaceWatching(key) {
 		return
 	}
-	c.workqueue.AddRateLimited(key)
+
+	c.workqueue.AddRateLimited(&types.Event{
+		Type:   types.EventAdd,
+		Object: obj,
+	})
+}
+
+func (c *endpointsController) onUpdate(prev, curr interface{}) {
+	prevEp := prev.(*corev1.Endpoints)
+	currEp := curr.(*corev1.Endpoints)
+
+	if prevEp.GetResourceVersion() == currEp.GetResourceVersion() {
+		return
+	}
+	key, err := cache.MetaNamespaceKeyFunc(currEp)
+	if err != nil {
+		log.Errorf("found endpoints object with bad namespace/name: %s, ignore it", err)
+		return
+	}
+	if !c.controller.namespaceWatching(key) {
+		return
+	}
+	c.workqueue.AddRateLimited(&types.Event{
+		Type:   types.EventUpdate,
+		Object: curr,
+	})
+}
+
+func (c *endpointsController) onDelete(obj interface{}) {
+	ep, ok := obj.(*corev1.Endpoints)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			log.Errorf("found endpoints: %+v in bad tombstone state", obj)
+			return
+		}
+		ep = tombstone.Obj.(*corev1.Endpoints)
+	}
+
+	// FIXME Refactor Controller.namespaceWatching to just use
+	// namespace after all controllers use the same way to fetch
+	// the object.
+	if !c.controller.namespaceWatching(ep.Namespace + "/" + ep.Name) {
+		return
+	}
+	c.workqueue.AddRateLimited(&types.Event{
+		Type:   types.EventDelete,
+		Object: ep,
+	})
 }

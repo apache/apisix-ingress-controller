@@ -116,6 +116,14 @@ func (s *Scaffold) ScaleHTTPBIN(desired int) error {
 	return nil
 }
 
+// DeleteHTTPBINService deletes the HTTPBIN service object.
+func (s *Scaffold) DeleteHTTPBINService() error {
+	if err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, _httpService); err != nil {
+		return err
+	}
+	return nil
+}
+
 // WaitAllHTTPBINPods waits until all httpbin pods ready.
 func (s *Scaffold) WaitAllHTTPBINPoddsAvailable() error {
 	opts := metav1.ListOptions{
@@ -131,13 +139,18 @@ func (s *Scaffold) WaitAllHTTPBINPoddsAvailable() error {
 			return false, nil
 		}
 		for _, item := range items {
+			foundPodReady := false
 			for _, cond := range item.Status.Conditions {
 				if cond.Type != corev1.PodReady {
 					continue
 				}
+				foundPodReady = true
 				if cond.Status != "True" {
 					return false, nil
 				}
+			}
+			if !foundPodReady {
+				return false, nil
 			}
 		}
 		return true, nil

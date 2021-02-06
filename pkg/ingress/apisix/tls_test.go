@@ -16,17 +16,16 @@ package apisix
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 
-	apisixhttp "github.com/api7/ingress-controller/pkg/apisix"
-	"github.com/api7/ingress-controller/pkg/seven/conf"
-	"github.com/api7/ingress-controller/pkg/seven/utils"
-	apisix "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	apisixhttp "github.com/apache/apisix-ingress-controller/pkg/apisix"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/utils"
+	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestConvert(t *testing.T) {
@@ -44,25 +43,25 @@ spec:
     namespace: helm
 `
 	id := "helm_foo"
-	host := "api6.com"
-	snis := []*string{&host}
-	status := int(1)
+	snis := []string{"api6.com"}
+	status := 1
 	cert := "root"
 	key := "123456"
 	group := ""
 	sslExpect := &apisix.Ssl{
-		ID:     &id,
+		ID:     id,
 		Snis:   snis,
-		Cert:   &cert,
-		Key:    &key,
-		Status: &status,
-		Group:  &group,
+		Cert:   cert,
+		Key:    key,
+		Status: status,
+		Group:  group,
 	}
-	atlsCRD := &ApisixTlsCRD{}
+	atlsCRD := &ApisixTLSCRD{}
 	err := yaml.Unmarshal([]byte(atlsStr), atlsCRD)
 	assert.Nil(t, err, "yaml decode failed")
 	sc := &SecretClientMock{}
 	ssl, err := atlsCRD.Convert(sc)
+	assert.Nil(t, err)
 	assert.EqualValues(t, sslExpect.Key, ssl.Key, "key convert error")
 	assert.EqualValues(t, sslExpect.ID, ssl.ID, "id convert error")
 	assert.EqualValues(t, sslExpect.Cert, ssl.Cert, "cert convert error")
@@ -87,26 +86,26 @@ spec:
     namespace: helm
 `
 	id := "helm_foo"
-	host := "api6.com"
-	snis := []*string{&host}
+	snis := []string{"api6.com"}
 	status := int(1)
 	cert := "root"
 	key := "123456"
 	group := "127.0.0.1:9080"
 	sslExpect := &apisix.Ssl{
-		ID:     &id,
+		ID:     id,
 		Snis:   snis,
-		Cert:   &cert,
-		Key:    &key,
-		Status: &status,
-		Group:  &group,
+		Cert:   cert,
+		Key:    key,
+		Status: status,
+		Group:  group,
 	}
 	setDummyApisixClient(t)
-	atlsCRD := &ApisixTlsCRD{}
+	atlsCRD := &ApisixTLSCRD{}
 	err := yaml.Unmarshal([]byte(atlsStr), atlsCRD)
 	assert.Nil(t, err, "yaml decode failed")
 	sc := &SecretClientMock{}
 	ssl, err := atlsCRD.Convert(sc)
+	assert.Nil(t, err)
 	assert.EqualValues(t, sslExpect.Group, ssl.Group, "group convert error")
 }
 
@@ -123,7 +122,7 @@ spec:
     namespace: helm
 `
 	setDummyApisixClient(t)
-	atlsCRD := &ApisixTlsCRD{}
+	atlsCRD := &ApisixTLSCRD{}
 	err := yaml.Unmarshal([]byte(atlsStr), atlsCRD)
 	assert.Nil(t, err, "yaml decode failed")
 	sc := &SecretClientErrorMock{}
@@ -151,7 +150,7 @@ func (sc *SecretClientMock) FindByName(namespace, name string) (*v1.Secret, erro
 `
 	secret := &v1.Secret{}
 	if err := json.Unmarshal([]byte(secretStr), secret); err != nil {
-		fmt.Errorf(err.Error())
+		return nil, err
 	}
 	return secret, nil
 }
@@ -163,7 +162,9 @@ func (sc *SecretClientErrorMock) FindByName(namespace, name string) (*v1.Secret,
 }
 
 func setDummyApisixClient(t *testing.T) {
-	cli, err := apisixhttp.NewForOptions(&apisixhttp.ClusterOptions{
+	cli, err := apisixhttp.NewClient()
+	assert.Nil(t, err)
+	err = cli.AddCluster(&apisixhttp.ClusterOptions{
 		Name:    "",
 		BaseURL: "http://127.0.0.2:9080/apisix/admin",
 	})

@@ -19,12 +19,15 @@ import (
 	"context"
 	"testing"
 
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAddCluster(t *testing.T) {
-	apisix, err := NewForOptions(&ClusterOptions{
+	apisix, err := NewClient()
+	assert.Nil(t, err)
+
+	err = apisix.AddCluster(&ClusterOptions{
 		BaseURL: "http://service1:9080/apisix/admin",
 	})
 	assert.Nil(t, err)
@@ -49,7 +52,10 @@ func TestAddCluster(t *testing.T) {
 }
 
 func TestNonExistentCluster(t *testing.T) {
-	apisix, err := NewForOptions(&ClusterOptions{
+	apisix, err := NewClient()
+	assert.Nil(t, err)
+
+	err = apisix.AddCluster(&ClusterOptions{
 		BaseURL: "http://service1:9080/apisix/admin",
 	})
 	assert.Nil(t, err)

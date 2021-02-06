@@ -27,13 +27,12 @@ import (
 	"strings"
 	"testing"
 
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/nettest"
 )
 
 type fakeAPISIXSSLSrv struct {
-	id  int
 	ssl map[string]json.RawMessage
 }
 
@@ -80,9 +79,9 @@ func (srv *fakeAPISIXSSLSrv) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(code)
 	}
 
-	if r.Method == http.MethodPost {
-		srv.id++
-		key := fmt.Sprintf("/apisix/ssl/%d", srv.id)
+	if r.Method == http.MethodPut {
+		paths := strings.Split(r.URL.Path, "/")
+		key := fmt.Sprintf("/apisix/ssl/%s", paths[len(paths)-1])
 		data, _ := ioutil.ReadAll(r.Body)
 		srv.ssl[key] = data
 		w.WriteHeader(http.StatusCreated)
@@ -118,7 +117,6 @@ func (srv *fakeAPISIXSSLSrv) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func runFakeSSLSrv(t *testing.T) *http.Server {
 	srv := &fakeAPISIXSSLSrv{
-		id:  0,
 		ssl: make(map[string]json.RawMessage),
 	}
 
@@ -148,53 +146,56 @@ func TestSSLClient(t *testing.T) {
 		Host:   srv.Addr,
 		Path:   "/apisix/admin",
 	}
+	closedCh := make(chan struct{})
+	close(closedCh)
+
 	cli := newSSLClient(&cluster{
-		baseURL: u.String(),
-		cli:     http.DefaultClient,
+		baseURL:     u.String(),
+		cli:         http.DefaultClient,
+		cache:       &dummyCache{},
+		cacheSynced: closedCh,
 	})
 
 	// Create
-	group := "default"
-	sni := "bar.com"
 	obj, err := cli.Create(context.TODO(), &v1.Ssl{
-		Group: &group,
-		Snis:  []*string{&sni},
+		ID:    "1",
+		Group: "default",
+		Snis:  []string{"bar.com"},
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, *obj.ID, "1")
+	assert.Equal(t, obj.ID, "1")
 
 	obj, err = cli.Create(context.TODO(), &v1.Ssl{
-		Group: &group,
-		Snis:  []*string{&sni},
+		ID:    "2",
+		Group: "default",
+		Snis:  []string{"bar.com"},
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, *obj.ID, "2")
+	assert.Equal(t, obj.ID, "2")
 
 	// List
 	objs, err := cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 2)
-	assert.Equal(t, *objs[0].ID, "1")
-	assert.Equal(t, *objs[1].ID, "2")
+	assert.Equal(t, objs[0].ID, "1")
+	assert.Equal(t, objs[1].ID, "2")
 
 	// Delete then List
 	assert.Nil(t, cli.Delete(context.Background(), objs[0]))
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
-	assert.Equal(t, "2", *objs[0].ID)
+	assert.Equal(t, "2", objs[0].ID)
 
 	// Patch then List
-	objId := "2"
-	sni = "foo.com"
 	_, err = cli.Update(context.Background(), &v1.Ssl{
-		ID:   &objId,
-		Snis: []*string{&sni},
+		ID:   "2",
+		Snis: []string{"foo.com"},
 	})
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
-	assert.Equal(t, "2", *objs[0].ID)
-	assert.Equal(t, sni, *objs[0].Snis[0])
+	assert.Equal(t, "2", objs[0].ID)
+	assert.Equal(t, "foo.com", objs[0].Snis[0])
 }
