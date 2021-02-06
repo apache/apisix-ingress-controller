@@ -50,6 +50,7 @@ spec:
 	})
 
 	ginkgo.It("upstream nodes should be reset to empty when Service/Endpoints was deleted", func() {
+		ginkgo.Skip("now we don't handle endpoints delete event")
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v1
@@ -115,8 +116,7 @@ spec:
 
 		// scale HTTPBIN, so the endpoints controller has the opportunity to update upstream.
 		assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(3))
-		time.Sleep(3 * time.Second)
-
+		time.Sleep(10 * time.Second)
 		ups, err = s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing APISIX upstreams")
 		assert.Len(ginkgo.GinkgoT(), ups, 1)
