@@ -42,6 +42,11 @@ func (ev EventType) String() string {
 
 // Event represents a typed event.
 type Event struct {
-	Type   EventType
+	// Type is the type of event.
+	Type EventType
+	// Object is the event subject.
 	Object interface{}
+	// Tombstone is the final state before object was delete,
+	// it's useful for DELETE event.
+	Tombstone interface{}
 }

@@ -19,8 +19,8 @@ limitations under the License.
 package config
 
 import (
-	v1 "github.com/api7/ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v1"
-	internalinterfaces "github.com/api7/ingress-controller/pkg/kube/apisix/client/informers/externalversions/internalinterfaces"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v1"
+	internalinterfaces "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to each of this group's versions.

@@ -54,11 +54,11 @@ This project is currently considered experimental.
 
 - Define the CRD(CustomResourceDefinition) needed by Apache APISIX
 
-- Currently supports ApisixRoute/ApisixService/ApisixUpstream，and other service and route level plugins.
+- Currently supports ApisixRoute/ApisixUpstream，and other service and route level plugins.
 
 - Can be packaged as a stand-alone binary, keep in sync with the ingress definition.
 
-- [CRD design](https://github.com/api7/ingress-controller/issues/3)
+- [CRD design](https://github.com/apache/apisix-ingress-controller/issues/3)
 
 ### 2. `APISIX types` Submodule
 

@@ -21,7 +21,7 @@ package externalversions
 import (
 	"fmt"
 
-	v1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -55,10 +55,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=apisix.apache.org, Version=v1
 	case v1.SchemeGroupVersion.WithResource("apisixroutes"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V1().ApisixRoutes().Informer()}, nil
-	case v1.SchemeGroupVersion.WithResource("apisixservices"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V1().ApisixServices().Informer()}, nil
-	case v1.SchemeGroupVersion.WithResource("apisixtlss"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V1().ApisixTLSs().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("apisixtlses"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V1().ApisixTlses().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("apisixupstreams"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V1().ApisixUpstreams().Informer()}, nil
 

@@ -17,10 +17,10 @@ package apisix
 import (
 	"strconv"
 
-	"github.com/api7/ingress-controller/pkg/ingress/endpoint"
-	configv1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
-	"github.com/api7/ingress-controller/pkg/seven/conf"
-	apisix "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
+	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
@@ -37,7 +37,7 @@ const (
 type ApisixRoute configv1.ApisixRoute
 
 // Convert convert to  apisix.Route from ingress.ApisixRoute CRD
-func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.Upstream, error) {
+func (ar *ApisixRoute) Convert(translator kube.Translator) ([]*apisix.Route, []*apisix.Service, []*apisix.Upstream, error) {
 	ns := ar.Namespace
 	// meta annotation
 	plugins, group := BuildAnnotation(ar.Annotations)
@@ -90,15 +90,17 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 
 			// routes
 			route := &apisix.Route{
-				Group:           group,
-				FullName:        fullRouteName,
-				ResourceVersion: rv,
-				Name:            apisixRouteName,
-				Host:            host,
-				Path:            uri,
-				ServiceName:     apisixSvcName,
-				UpstreamName:    apisixUpstreamName,
-				Plugins:         pluginRet,
+				Metadata: apisix.Metadata{
+					Group:           group,
+					FullName:        fullRouteName,
+					ResourceVersion: rv,
+					Name:            apisixRouteName,
+				},
+				Host:         host,
+				Path:         uri,
+				ServiceName:  apisixSvcName,
+				UpstreamName: apisixUpstreamName,
+				Plugins:      pluginRet,
 			}
 			routes = append(routes, route)
 			// services
@@ -123,18 +125,15 @@ func (ar *ApisixRoute) Convert() ([]*apisix.Route, []*apisix.Service, []*apisix.
 			if group != "" {
 				fullUpstreamName = group + "_" + apisixUpstreamName
 			}
-			LBType := DefaultLBType
-			port, _ := strconv.Atoi(svcPort)
-			nodes := endpoint.BuildEps(ns, svcName, port)
-			upstream := &apisix.Upstream{
-				FullName:        fullUpstreamName,
-				Group:           group,
-				ResourceVersion: rv,
-				Name:            apisixUpstreamName,
-				Type:            LBType,
-				Nodes:           nodes,
+			ups, err := translator.TranslateUpstream(ns, svcName, int32(p.Backend.ServicePort))
+			if err != nil {
+				return nil, nil, nil, err
 			}
-			upstreamMap[upstream.FullName] = upstream
+			ups.FullName = fullUpstreamName
+			ups.Group = group
+			ups.ResourceVersion = rv
+			ups.Name = apisixUpstreamName
+			upstreamMap[ups.FullName] = ups
 		}
 	}
 	for _, s := range serviceMap {

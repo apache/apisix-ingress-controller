@@ -17,7 +17,7 @@ package state
 import (
 	"testing"
 
-	"github.com/api7/ingress-controller/pkg/seven/utils"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/utils"
 )
 
 type school struct {

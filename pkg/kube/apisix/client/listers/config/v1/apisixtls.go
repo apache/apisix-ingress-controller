@@ -19,75 +19,75 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
 )
 
-// ApisixTLSLister helps list ApisixTLSs.
+// ApisixTlsLister helps list ApisixTlses.
 // All objects returned here must be treated as read-only.
-type ApisixTLSLister interface {
-	// List lists all ApisixTLSs in the indexer.
+type ApisixTlsLister interface {
+	// List lists all ApisixTlses in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.ApisixTLS, err error)
-	// ApisixTLSs returns an object that can list and get ApisixTLSs.
-	ApisixTLSs(namespace string) ApisixTLSNamespaceLister
-	ApisixTLSListerExpansion
+	List(selector labels.Selector) (ret []*v1.ApisixTls, err error)
+	// ApisixTlses returns an object that can list and get ApisixTlses.
+	ApisixTlses(namespace string) ApisixTlsNamespaceLister
+	ApisixTlsListerExpansion
 }
 
-// apisixTLSLister implements the ApisixTLSLister interface.
-type apisixTLSLister struct {
+// apisixTlsLister implements the ApisixTlsLister interface.
+type apisixTlsLister struct {
 	indexer cache.Indexer
 }
 
-// NewApisixTLSLister returns a new ApisixTLSLister.
-func NewApisixTLSLister(indexer cache.Indexer) ApisixTLSLister {
-	return &apisixTLSLister{indexer: indexer}
+// NewApisixTlsLister returns a new ApisixTlsLister.
+func NewApisixTlsLister(indexer cache.Indexer) ApisixTlsLister {
+	return &apisixTlsLister{indexer: indexer}
 }
 
-// List lists all ApisixTLSs in the indexer.
-func (s *apisixTLSLister) List(selector labels.Selector) (ret []*v1.ApisixTLS, err error) {
+// List lists all ApisixTlses in the indexer.
+func (s *apisixTlsLister) List(selector labels.Selector) (ret []*v1.ApisixTls, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.ApisixTLS))
+		ret = append(ret, m.(*v1.ApisixTls))
 	})
 	return ret, err
 }
 
-// ApisixTLSs returns an object that can list and get ApisixTLSs.
-func (s *apisixTLSLister) ApisixTLSs(namespace string) ApisixTLSNamespaceLister {
-	return apisixTLSNamespaceLister{indexer: s.indexer, namespace: namespace}
+// ApisixTlses returns an object that can list and get ApisixTlses.
+func (s *apisixTlsLister) ApisixTlses(namespace string) ApisixTlsNamespaceLister {
+	return apisixTlsNamespaceLister{indexer: s.indexer, namespace: namespace}
 }
 
-// ApisixTLSNamespaceLister helps list and get ApisixTLSs.
+// ApisixTlsNamespaceLister helps list and get ApisixTlses.
 // All objects returned here must be treated as read-only.
-type ApisixTLSNamespaceLister interface {
-	// List lists all ApisixTLSs in the indexer for a given namespace.
+type ApisixTlsNamespaceLister interface {
+	// List lists all ApisixTlses in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.ApisixTLS, err error)
-	// Get retrieves the ApisixTLS from the indexer for a given namespace and name.
+	List(selector labels.Selector) (ret []*v1.ApisixTls, err error)
+	// Get retrieves the ApisixTls from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.ApisixTLS, error)
-	ApisixTLSNamespaceListerExpansion
+	Get(name string) (*v1.ApisixTls, error)
+	ApisixTlsNamespaceListerExpansion
 }
 
-// apisixTLSNamespaceLister implements the ApisixTLSNamespaceLister
+// apisixTlsNamespaceLister implements the ApisixTlsNamespaceLister
 // interface.
-type apisixTLSNamespaceLister struct {
+type apisixTlsNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
 }
 
-// List lists all ApisixTLSs in the indexer for a given namespace.
-func (s apisixTLSNamespaceLister) List(selector labels.Selector) (ret []*v1.ApisixTLS, err error) {
+// List lists all ApisixTlses in the indexer for a given namespace.
+func (s apisixTlsNamespaceLister) List(selector labels.Selector) (ret []*v1.ApisixTls, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.ApisixTLS))
+		ret = append(ret, m.(*v1.ApisixTls))
 	})
 	return ret, err
 }
 
-// Get retrieves the ApisixTLS from the indexer for a given namespace and name.
-func (s apisixTLSNamespaceLister) Get(name string) (*v1.ApisixTLS, error) {
+// Get retrieves the ApisixTls from the indexer for a given namespace and name.
+func (s apisixTlsNamespaceLister) Get(name string) (*v1.ApisixTls, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
@@ -95,5 +95,5 @@ func (s apisixTLSNamespaceLister) Get(name string) (*v1.ApisixTLS, error) {
 	if !exists {
 		return nil, errors.NewNotFound(v1.Resource("apisixtls"), name)
 	}
-	return obj.(*v1.ApisixTLS), nil
+	return obj.(*v1.ApisixTls), nil
 }

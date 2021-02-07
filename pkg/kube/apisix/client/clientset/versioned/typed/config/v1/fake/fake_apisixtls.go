@@ -21,7 +21,7 @@ package fake
 import (
 	"context"
 
-	configv1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -30,31 +30,31 @@ import (
 	testing "k8s.io/client-go/testing"
 )
 
-// FakeApisixTLSs implements ApisixTLSInterface
-type FakeApisixTLSs struct {
+// FakeApisixTlses implements ApisixTlsInterface
+type FakeApisixTlses struct {
 	Fake *FakeApisixV1
 	ns   string
 }
 
-var apisixtlssResource = schema.GroupVersionResource{Group: "apisix.apache.org", Version: "v1", Resource: "apisixtlss"}
+var apisixtlsesResource = schema.GroupVersionResource{Group: "apisix.apache.org", Version: "v1", Resource: "apisixtlses"}
 
-var apisixtlssKind = schema.GroupVersionKind{Group: "apisix.apache.org", Version: "v1", Kind: "ApisixTLS"}
+var apisixtlsesKind = schema.GroupVersionKind{Group: "apisix.apache.org", Version: "v1", Kind: "ApisixTls"}
 
-// Get takes name of the apisixTLS, and returns the corresponding apisixTLS object, and an error if there is any.
-func (c *FakeApisixTLSs) Get(ctx context.Context, name string, options v1.GetOptions) (result *configv1.ApisixTLS, err error) {
+// Get takes name of the apisixTls, and returns the corresponding apisixTls object, and an error if there is any.
+func (c *FakeApisixTlses) Get(ctx context.Context, name string, options v1.GetOptions) (result *configv1.ApisixTls, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(apisixtlssResource, c.ns, name), &configv1.ApisixTLS{})
+		Invokes(testing.NewGetAction(apisixtlsesResource, c.ns, name), &configv1.ApisixTls{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*configv1.ApisixTLS), err
+	return obj.(*configv1.ApisixTls), err
 }
 
-// List takes label and field selectors, and returns the list of ApisixTLSs that match those selectors.
-func (c *FakeApisixTLSs) List(ctx context.Context, opts v1.ListOptions) (result *configv1.ApisixTLSList, err error) {
+// List takes label and field selectors, and returns the list of ApisixTlses that match those selectors.
+func (c *FakeApisixTlses) List(ctx context.Context, opts v1.ListOptions) (result *configv1.ApisixTlsList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(apisixtlssResource, apisixtlssKind, c.ns, opts), &configv1.ApisixTLSList{})
+		Invokes(testing.NewListAction(apisixtlsesResource, apisixtlsesKind, c.ns, opts), &configv1.ApisixTlsList{})
 
 	if obj == nil {
 		return nil, err
@@ -64,8 +64,8 @@ func (c *FakeApisixTLSs) List(ctx context.Context, opts v1.ListOptions) (result 
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &configv1.ApisixTLSList{ListMeta: obj.(*configv1.ApisixTLSList).ListMeta}
-	for _, item := range obj.(*configv1.ApisixTLSList).Items {
+	list := &configv1.ApisixTlsList{ListMeta: obj.(*configv1.ApisixTlsList).ListMeta}
+	for _, item := range obj.(*configv1.ApisixTlsList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -73,58 +73,58 @@ func (c *FakeApisixTLSs) List(ctx context.Context, opts v1.ListOptions) (result 
 	return list, err
 }
 
-// Watch returns a watch.Interface that watches the requested apisixTLSs.
-func (c *FakeApisixTLSs) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+// Watch returns a watch.Interface that watches the requested apisixTlses.
+func (c *FakeApisixTlses) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(apisixtlssResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchAction(apisixtlsesResource, c.ns, opts))
 
 }
 
-// Create takes the representation of a apisixTLS and creates it.  Returns the server's representation of the apisixTLS, and an error, if there is any.
-func (c *FakeApisixTLSs) Create(ctx context.Context, apisixTLS *configv1.ApisixTLS, opts v1.CreateOptions) (result *configv1.ApisixTLS, err error) {
+// Create takes the representation of a apisixTls and creates it.  Returns the server's representation of the apisixTls, and an error, if there is any.
+func (c *FakeApisixTlses) Create(ctx context.Context, apisixTls *configv1.ApisixTls, opts v1.CreateOptions) (result *configv1.ApisixTls, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(apisixtlssResource, c.ns, apisixTLS), &configv1.ApisixTLS{})
+		Invokes(testing.NewCreateAction(apisixtlsesResource, c.ns, apisixTls), &configv1.ApisixTls{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*configv1.ApisixTLS), err
+	return obj.(*configv1.ApisixTls), err
 }
 
-// Update takes the representation of a apisixTLS and updates it. Returns the server's representation of the apisixTLS, and an error, if there is any.
-func (c *FakeApisixTLSs) Update(ctx context.Context, apisixTLS *configv1.ApisixTLS, opts v1.UpdateOptions) (result *configv1.ApisixTLS, err error) {
+// Update takes the representation of a apisixTls and updates it. Returns the server's representation of the apisixTls, and an error, if there is any.
+func (c *FakeApisixTlses) Update(ctx context.Context, apisixTls *configv1.ApisixTls, opts v1.UpdateOptions) (result *configv1.ApisixTls, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(apisixtlssResource, c.ns, apisixTLS), &configv1.ApisixTLS{})
+		Invokes(testing.NewUpdateAction(apisixtlsesResource, c.ns, apisixTls), &configv1.ApisixTls{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*configv1.ApisixTLS), err
+	return obj.(*configv1.ApisixTls), err
 }
 
-// Delete takes name of the apisixTLS and deletes it. Returns an error if one occurs.
-func (c *FakeApisixTLSs) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+// Delete takes name of the apisixTls and deletes it. Returns an error if one occurs.
+func (c *FakeApisixTlses) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(apisixtlssResource, c.ns, name), &configv1.ApisixTLS{})
+		Invokes(testing.NewDeleteAction(apisixtlsesResource, c.ns, name), &configv1.ApisixTls{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeApisixTLSs) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(apisixtlssResource, c.ns, listOpts)
+func (c *FakeApisixTlses) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(apisixtlsesResource, c.ns, listOpts)
 
-	_, err := c.Fake.Invokes(action, &configv1.ApisixTLSList{})
+	_, err := c.Fake.Invokes(action, &configv1.ApisixTlsList{})
 	return err
 }
 
-// Patch applies the patch and returns the patched apisixTLS.
-func (c *FakeApisixTLSs) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *configv1.ApisixTLS, err error) {
+// Patch applies the patch and returns the patched apisixTls.
+func (c *FakeApisixTlses) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *configv1.ApisixTls, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(apisixtlssResource, c.ns, name, pt, data, subresources...), &configv1.ApisixTLS{})
+		Invokes(testing.NewPatchSubresourceAction(apisixtlsesResource, c.ns, name, pt, data, subresources...), &configv1.ApisixTls{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*configv1.ApisixTLS), err
+	return obj.(*configv1.ApisixTls), err
 }

@@ -19,16 +19,15 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
-	"github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
 type ApisixV1Interface interface {
 	RESTClient() rest.Interface
 	ApisixRoutesGetter
-	ApisixServicesGetter
-	ApisixTLSsGetter
+	ApisixTlsesGetter
 	ApisixUpstreamsGetter
 }
 
@@ -41,12 +40,8 @@ func (c *ApisixV1Client) ApisixRoutes(namespace string) ApisixRouteInterface {
 	return newApisixRoutes(c, namespace)
 }
 
-func (c *ApisixV1Client) ApisixServices(namespace string) ApisixServiceInterface {
-	return newApisixServices(c, namespace)
-}
-
-func (c *ApisixV1Client) ApisixTLSs(namespace string) ApisixTLSInterface {
-	return newApisixTLSs(c, namespace)
+func (c *ApisixV1Client) ApisixTlses(namespace string) ApisixTlsInterface {
+	return newApisixTlses(c, namespace)
 }
 
 func (c *ApisixV1Client) ApisixUpstreams(namespace string) ApisixUpstreamInterface {

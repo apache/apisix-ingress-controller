@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/api7/ingress-controller/cmd"
+	"github.com/apache/apisix-ingress-controller/cmd"
 )
 
 func main() {

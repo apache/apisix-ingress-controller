@@ -26,7 +26,7 @@ import (
 	"strings"
 	"testing"
 
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 
 	"github.com/stretchr/testify/assert"
 
@@ -165,7 +165,7 @@ func TestUpstreamClient(t *testing.T) {
 	ip := "10.0.11.153"
 	port := 15006
 	weight := 100
-	nodes := []v1.Node{
+	nodes := []v1.UpstreamNode{
 		{
 			IP:     ip,
 			Port:   port,
@@ -174,26 +174,30 @@ func TestUpstreamClient(t *testing.T) {
 	}
 
 	obj, err := cli.Create(context.TODO(), &v1.Upstream{
-		ID:       "1",
-		FullName: fullName,
-		Group:    group,
-		Name:     name,
-		Type:     lbType,
-		Key:      key,
-		Nodes:    nodes,
+		Metadata: v1.Metadata{
+			ID:       "1",
+			FullName: fullName,
+			Group:    group,
+			Name:     name,
+		},
+		Type:  lbType,
+		Key:   key,
+		Nodes: nodes,
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "1")
 
 	id2 := "2"
 	obj, err = cli.Create(context.TODO(), &v1.Upstream{
-		ID:       id2,
-		FullName: fullName,
-		Group:    group,
-		Name:     name,
-		Type:     lbType,
-		Key:      key,
-		Nodes:    nodes,
+		Metadata: v1.Metadata{
+			ID:       id2,
+			FullName: fullName,
+			Group:    group,
+			Name:     name,
+		},
+		Type:  lbType,
+		Key:   key,
+		Nodes: nodes,
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "2")
@@ -214,13 +218,15 @@ func TestUpstreamClient(t *testing.T) {
 
 	// Patch then List
 	_, err = cli.Update(context.Background(), &v1.Upstream{
-		ID:       "2",
-		FullName: fullName,
-		Group:    group,
-		Name:     name,
-		Type:     "chash",
-		Key:      key,
-		Nodes:    nodes,
+		Metadata: v1.Metadata{
+			ID:       "2",
+			FullName: fullName,
+			Group:    group,
+			Name:     name,
+		},
+		Type:  "chash",
+		Key:   key,
+		Nodes: nodes,
 	})
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())

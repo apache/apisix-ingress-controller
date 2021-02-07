@@ -22,10 +22,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/api7/ingress-controller/pkg/apisix/cache"
-	"github.com/api7/ingress-controller/pkg/id"
-	"github.com/api7/ingress-controller/pkg/log"
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/apache/apisix-ingress-controller/pkg/id"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type sslClient struct {
@@ -138,6 +138,7 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	log.Infow("try to create ssl",
 		zap.String("cluster", s.clusterName),
 		zap.String("url", s.url),
+		zap.String("id", obj.ID),
 	)
 	if err := s.cluster.HasSynced(ctx); err != nil {
 		return nil, err
@@ -231,7 +232,6 @@ func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err := s.cluster.cache.InsertSSL(ssl); err != nil {
 		log.Errorf("failed to reflect ssl update to cache: %s", err)
 		return nil, err
-
 	}
 	return ssl, nil
 }

@@ -19,17 +19,15 @@ limitations under the License.
 package v1
 
 import (
-	internalinterfaces "github.com/api7/ingress-controller/pkg/kube/apisix/client/informers/externalversions/internalinterfaces"
+	internalinterfaces "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
 	// ApisixRoutes returns a ApisixRouteInformer.
 	ApisixRoutes() ApisixRouteInformer
-	// ApisixServices returns a ApisixServiceInformer.
-	ApisixServices() ApisixServiceInformer
-	// ApisixTLSs returns a ApisixTLSInformer.
-	ApisixTLSs() ApisixTLSInformer
+	// ApisixTlses returns a ApisixTlsInformer.
+	ApisixTlses() ApisixTlsInformer
 	// ApisixUpstreams returns a ApisixUpstreamInformer.
 	ApisixUpstreams() ApisixUpstreamInformer
 }
@@ -50,14 +48,9 @@ func (v *version) ApisixRoutes() ApisixRouteInformer {
 	return &apisixRouteInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// ApisixServices returns a ApisixServiceInformer.
-func (v *version) ApisixServices() ApisixServiceInformer {
-	return &apisixServiceInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// ApisixTLSs returns a ApisixTLSInformer.
-func (v *version) ApisixTLSs() ApisixTLSInformer {
-	return &apisixTLSInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+// ApisixTlses returns a ApisixTlsInformer.
+func (v *version) ApisixTlses() ApisixTlsInformer {
+	return &apisixTlsInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // ApisixUpstreams returns a ApisixUpstreamInformer.

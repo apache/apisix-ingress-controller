@@ -29,8 +29,8 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/api7/ingress-controller/pkg/apisix/cache"
-	"github.com/api7/ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
 const (

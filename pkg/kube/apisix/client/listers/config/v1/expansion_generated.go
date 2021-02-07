@@ -26,21 +26,13 @@ type ApisixRouteListerExpansion interface{}
 // ApisixRouteNamespaceLister.
 type ApisixRouteNamespaceListerExpansion interface{}
 
-// ApisixServiceListerExpansion allows custom methods to be added to
-// ApisixServiceLister.
-type ApisixServiceListerExpansion interface{}
+// ApisixTlsListerExpansion allows custom methods to be added to
+// ApisixTlsLister.
+type ApisixTlsListerExpansion interface{}
 
-// ApisixServiceNamespaceListerExpansion allows custom methods to be added to
-// ApisixServiceNamespaceLister.
-type ApisixServiceNamespaceListerExpansion interface{}
-
-// ApisixTLSListerExpansion allows custom methods to be added to
-// ApisixTLSLister.
-type ApisixTLSListerExpansion interface{}
-
-// ApisixTLSNamespaceListerExpansion allows custom methods to be added to
-// ApisixTLSNamespaceLister.
-type ApisixTLSNamespaceListerExpansion interface{}
+// ApisixTlsNamespaceListerExpansion allows custom methods to be added to
+// ApisixTlsNamespaceLister.
+type ApisixTlsNamespaceListerExpansion interface{}
 
 // ApisixUpstreamListerExpansion allows custom methods to be added to
 // ApisixUpstreamLister.

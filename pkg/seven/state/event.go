@@ -15,7 +15,7 @@
 package state
 
 import (
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type ApisixCombination struct {

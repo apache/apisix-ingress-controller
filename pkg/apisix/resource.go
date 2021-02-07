@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/api7/ingress-controller/pkg/log"
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type getResponse struct {
@@ -98,10 +98,12 @@ func (i *item) route(clusterName string) (*v1.Route, error) {
 	fullName := genFullName(route.Desc, clusterName)
 
 	return &v1.Route{
-		ID:         list[len(list)-1],
-		FullName:   fullName,
-		Group:      clusterName,
-		Name:       route.Desc,
+		Metadata: v1.Metadata{
+			ID:       list[len(list)-1],
+			FullName: fullName,
+			Group:    clusterName,
+			Name:     route.Desc,
+		},
 		Host:       route.Host,
 		Path:       route.URI,
 		Methods:    route.Methods,
@@ -124,14 +126,9 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 		return nil, err
 	}
 
-	id := list[len(list)-1]
-	name := ups.Desc
-	LBType := ups.LBType
-	key := i.Key
-
-	var nodes []v1.Node
+	var nodes []v1.UpstreamNode
 	for _, node := range ups.Nodes {
-		nodes = append(nodes, v1.Node{
+		nodes = append(nodes, v1.UpstreamNode{
 			IP:     node.Host,
 			Port:   node.Port,
 			Weight: node.Weight,
@@ -141,13 +138,16 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 	fullName := genFullName(ups.Desc, clusterName)
 
 	return &v1.Upstream{
-		ID:       id,
-		FullName: fullName,
-		Group:    clusterName,
-		Name:     name,
-		Type:     LBType,
-		Key:      key,
-		Nodes:    nodes,
+		Metadata: v1.Metadata{
+			ID:       list[len(list)-1],
+			FullName: fullName,
+			Group:    clusterName,
+			Name:     ups.Desc,
+		},
+		Type:   ups.LBType,
+		Key:    i.Key,
+		Nodes:  nodes,
+		Scheme: ups.Scheme,
 	}, nil
 }
 
@@ -192,6 +192,7 @@ func (i *item) ssl(clusterName string) (*v1.Ssl, error) {
 	id := list[len(list)-1]
 	ssl.ID = id
 	ssl.Group = clusterName
+	ssl.FullName = id
 	return &ssl, nil
 }
 

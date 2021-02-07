@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	v1 "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v1"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
@@ -32,12 +32,8 @@ func (c *FakeApisixV1) ApisixRoutes(namespace string) v1.ApisixRouteInterface {
 	return &FakeApisixRoutes{c, namespace}
 }
 
-func (c *FakeApisixV1) ApisixServices(namespace string) v1.ApisixServiceInterface {
-	return &FakeApisixServices{c, namespace}
-}
-
-func (c *FakeApisixV1) ApisixTLSs(namespace string) v1.ApisixTLSInterface {
-	return &FakeApisixTLSs{c, namespace}
+func (c *FakeApisixV1) ApisixTlses(namespace string) v1.ApisixTlsInterface {
+	return &FakeApisixTlses{c, namespace}
 }
 
 func (c *FakeApisixV1) ApisixUpstreams(namespace string) v1.ApisixUpstreamInterface {

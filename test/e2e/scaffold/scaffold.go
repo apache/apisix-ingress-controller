@@ -16,6 +16,7 @@ package scaffold
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -27,8 +28,6 @@ import (
 	"text/template"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/testing"
@@ -36,6 +35,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -45,6 +45,7 @@ type Options struct {
 	APISIXConfigPath        string
 	APISIXDefaultConfigPath string
 	IngressAPISIXReplicas   int
+	HTTPBinServicePort      int
 }
 
 type Scaffold struct {
@@ -106,6 +107,7 @@ func NewDefaultScaffold() *Scaffold {
 		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
 		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
 		IngressAPISIXReplicas:   1,
+		HTTPBinServicePort:      80,
 	}
 	return NewScaffold(opts)
 }
@@ -129,6 +131,11 @@ func (s *Scaffold) DefaultHTTPBackend() (string, []int32) {
 	return s.httpbinService.Name, ports
 }
 
+// GetAPISIXEndpoint returns the service and port (as an endpoint).
+func (s *Scaffold) GetAPISIXEndpoint() (string, error) {
+	return s.apisixServiceURL()
+}
+
 // NewAPISIXClient creates the default HTTP client.
 func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 	host, err := s.apisixServiceURL()
@@ -148,6 +155,30 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 	})
 }
 
+// NewAPISIXHttpsClient creates the default HTTPs client.
+func (s *Scaffold) NewAPISIXHttpsClient() *httpexpect.Expect {
+	host, err := s.apisixServiceHttpsURL()
+	assert.Nil(s.t, err, "getting apisix service url")
+	u := url.URL{
+		Scheme: "https",
+		Host:   host,
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					// accept any certificate; for testing only!
+					InsecureSkipVerify: true,
+				},
+			},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
+		),
+	})
+}
+
 func (s *Scaffold) beforeEach() {
 	var err error
 	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.opts.Name, time.Now().Nanosecond())
@@ -155,6 +186,7 @@ func (s *Scaffold) beforeEach() {
 		ConfigPath: s.opts.Kubeconfig,
 		Namespace:  s.namespace,
 	}
+	s.finializers = nil
 	k8s.CreateNamespace(s.t, s.kubectlOptions, s.namespace)
 
 	s.nodes, err = k8s.GetReadyNodesE(s.t, s.kubectlOptions)

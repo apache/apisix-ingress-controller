@@ -22,10 +22,10 @@ import (
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 
-	apisixhttp "github.com/api7/ingress-controller/pkg/apisix"
-	"github.com/api7/ingress-controller/pkg/seven/conf"
-	"github.com/api7/ingress-controller/pkg/seven/utils"
-	apisix "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	apisixhttp "github.com/apache/apisix-ingress-controller/pkg/apisix"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/utils"
+	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestConvert(t *testing.T) {

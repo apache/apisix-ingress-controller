@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,16 +32,16 @@ import (
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 
-	"github.com/api7/ingress-controller/pkg/api"
-	"github.com/api7/ingress-controller/pkg/apisix"
-	"github.com/api7/ingress-controller/pkg/config"
-	"github.com/api7/ingress-controller/pkg/kube"
-	clientset "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned"
-	crdclientset "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned"
-	"github.com/api7/ingress-controller/pkg/kube/apisix/client/informers/externalversions"
-	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/api7/ingress-controller/pkg/metrics"
-	"github.com/api7/ingress-controller/pkg/seven/conf"
+	"github.com/apache/apisix-ingress-controller/pkg/api"
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	"github.com/apache/apisix-ingress-controller/pkg/config"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	crdclientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
 )
 
 // recover any exception
@@ -58,6 +59,7 @@ type Controller struct {
 	wg                 sync.WaitGroup
 	watchingNamespace  map[string]struct{}
 	apisix             apisix.APISIX
+	translator         kube.Translator
 	apiServer          *api.Server
 	clientset          kubernetes.Interface
 	crdClientset       crdclientset.Interface
@@ -65,11 +67,17 @@ type Controller struct {
 	crdController      *Api6Controller
 	crdInformerFactory externalversions.SharedInformerFactory
 
-	// informers and listers
-	epInformer cache.SharedIndexInformer
-	epLister   listerscorev1.EndpointsLister
+	// common informers and listers
+	epInformer             cache.SharedIndexInformer
+	epLister               listerscorev1.EndpointsLister
+	svcInformer            cache.SharedIndexInformer
+	svcLister              listerscorev1.ServiceLister
+	apisixUpstreamInformer cache.SharedIndexInformer
+	apisixUpstreamLister   listersv1.ApisixUpstreamLister
 
-	endpointsController *endpointsController
+	// resource conrollers
+	endpointsController      *endpointsController
+	apisixUpstreamController *apisixUpstreamController
 }
 
 // NewController creates an ingress apisix controller object.
@@ -118,11 +126,22 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		crdInformerFactory: sharedInformerFactory,
 		watchingNamespace:  watchingNamespace,
 
-		epInformer: kube.CoreSharedInformerFactory.Core().V1().Endpoints().Informer(),
-		epLister:   kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
+		epInformer:             kube.CoreSharedInformerFactory.Core().V1().Endpoints().Informer(),
+		epLister:               kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
+		svcInformer:            kube.CoreSharedInformerFactory.Core().V1().Services().Informer(),
+		svcLister:              kube.CoreSharedInformerFactory.Core().V1().Services().Lister(),
+		apisixUpstreamInformer: sharedInformerFactory.Apisix().V1().ApisixUpstreams().Informer(),
+		apisixUpstreamLister:   sharedInformerFactory.Apisix().V1().ApisixUpstreams().Lister(),
 	}
+	c.translator = kube.NewTranslator(&kube.TranslatorOptions{
+		EndpointsLister:      c.epLister,
+		ServiceLister:        c.svcLister,
+		ApisixUpstreamLister: c.apisixUpstreamLister,
+	})
 
-	c.endpointsController = c.newEndpointsController(c.epInformer, c.epLister)
+	c.endpointsController = c.newEndpointsController()
+	c.apisixUpstreamController = c.newApisixUpstreamController()
+
 	return c, nil
 }
 
@@ -237,9 +256,15 @@ func (c *Controller) run(ctx context.Context) {
 	c.goAttach(func() {
 		c.epInformer.Run(ctx.Done())
 	})
+	c.goAttach(func() {
+		c.svcInformer.Run(ctx.Done())
+	})
 
 	c.goAttach(func() {
 		c.endpointsController.run(ctx)
+	})
+	c.goAttach(func() {
+		c.apisixUpstreamController.run(ctx)
 	})
 
 	ac := &Api6Controller{
@@ -252,10 +277,6 @@ func (c *Controller) run(ctx context.Context) {
 
 	// ApisixRoute
 	ac.ApisixRoute(c)
-	// ApisixUpstream
-	ac.ApisixUpstream(c)
-	// ApisixService
-	ac.ApisixService(c)
 	// ApisixTLS
 	ac.ApisixTLS(c)
 
@@ -304,33 +325,11 @@ func (api6 *Api6Controller) ApisixRoute(controller *Controller) {
 	}
 }
 
-func (api6 *Api6Controller) ApisixUpstream(controller *Controller) {
-	auc := BuildApisixUpstreamController(
-		api6.KubeClientSet,
-		api6.Api6ClientSet,
-		api6.SharedInformerFactory.Apisix().V1().ApisixUpstreams(),
-		controller)
-	if err := auc.Run(api6.Stop); err != nil {
-		log.Errorf("failed to run ApisixUpstreamController: %s", err)
-	}
-}
-
-func (api6 *Api6Controller) ApisixService(controller *Controller) {
-	asc := BuildApisixServiceController(
-		api6.KubeClientSet,
-		api6.Api6ClientSet,
-		api6.SharedInformerFactory.Apisix().V1().ApisixServices(),
-		controller)
-	if err := asc.Run(api6.Stop); err != nil {
-		log.Errorf("failed to run ApisixServiceController: %s", err)
-	}
-}
-
 func (api6 *Api6Controller) ApisixTLS(controller *Controller) {
 	atc := BuildApisixTlsController(
 		api6.KubeClientSet,
 		api6.Api6ClientSet,
-		api6.SharedInformerFactory.Apisix().V1().ApisixTLSs(),
+		api6.SharedInformerFactory.Apisix().V1().ApisixTlses(),
 		controller)
 	if err := atc.Run(api6.Stop); err != nil {
 		log.Errorf("failed to run ApisixTlsController: %s", err)

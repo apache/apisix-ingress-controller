@@ -26,14 +26,14 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/api7/ingress-controller/pkg/ingress/apisix"
-	configv1 "github.com/api7/ingress-controller/pkg/kube/apisix/apis/config/v1"
-	clientset "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned"
-	apisixscheme "github.com/api7/ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
-	apisixinformers "github.com/api7/ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v1"
-	listersv1 "github.com/api7/ingress-controller/pkg/kube/apisix/client/listers/config/v1"
-	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/api7/ingress-controller/pkg/seven/state"
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/apisix"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
+	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v1"
+	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/state"
 )
 
 type ApisixRouteController struct {
@@ -218,7 +218,7 @@ func (c *ApisixRouteController) add(key string) error {
 		return err
 	}
 	apisixRoute := apisix.ApisixRoute(*apisixIngressRoute)
-	routes, services, upstreams, _ := apisixRoute.Convert()
+	routes, services, upstreams, _ := apisixRoute.Convert(c.controller.translator)
 	comb := state.ApisixCombination{Routes: routes, Services: services, Upstreams: upstreams}
 	_, err = comb.Solver()
 	return err
@@ -246,10 +246,10 @@ func (c *ApisixRouteController) sync(rqo *RouteQueueObj) error {
 			return err // if error occurred, return
 		}
 		oldApisixRoute := apisix.ApisixRoute(*rqo.OldObj)
-		oldRoutes, _, _, _ := oldApisixRoute.Convert()
+		oldRoutes, _, _, _ := oldApisixRoute.Convert(c.controller.translator)
 
 		newApisixRoute := apisix.ApisixRoute(*apisixIngressRoute)
-		newRoutes, _, _, _ := newApisixRoute.Convert()
+		newRoutes, _, _, _ := newApisixRoute.Convert(c.controller.translator)
 
 		rc := &state.RouteCompare{OldRoutes: oldRoutes, NewRoutes: newRoutes}
 		return rc.Sync()
@@ -260,7 +260,7 @@ func (c *ApisixRouteController) sync(rqo *RouteQueueObj) error {
 			return nil
 		}
 		apisixRoute := apisix.ApisixRoute(*rqo.OldObj)
-		routes, services, upstreams, _ := apisixRoute.Convert()
+		routes, services, upstreams, _ := apisixRoute.Convert(c.controller.translator)
 		rc := &state.RouteCompare{OldRoutes: routes, NewRoutes: nil}
 		if err := rc.Sync(); err != nil {
 			return err

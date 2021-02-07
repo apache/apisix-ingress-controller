@@ -1,3 +1,4 @@
+<!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -14,18 +15,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ include "ingress-apisix.fullname" . }}
-  labels:
-    {{- include "ingress-apisix.labels" . | nindent 4 }}
-spec:
-  type: ClusterIP
-  ports:
-    - port: {{ .Values.ingressController.service.port }}
-      targetPort: {{ (.Values.ingressController.config.httpListen | split ":")._1 }}
-      protocol: TCP
-      name: http
-  selector:
-    {{- include "ingress-apisix.selectorLabels" . | nindent 4 }}
+-->
+
+# Apache APISIX Ingress Controller Helm Chart
+
+## Prerequisites
+
+- Kubernetes 1.12+
+- [Apache APISIX](https://github.com/apache/apisix#configure-and-installation)
+- [Helm v3.0+](https://helm.sh/docs/intro/quickstart/#install-helm)
+
+## Install
+
+To install the chart with release name `apisix-ingress-controller`:
+
+```bash
+helm install apisix-ingress-controller --namespace ingress-apisix .
+```
+
+## Uninstall
+
+To uninstall/delete the `apisix-ingress-controller` release:
+
+```bash
+helm uninstall apisix-ingress-controller --namespace ingress-apisix
+```

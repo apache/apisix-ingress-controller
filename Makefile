@@ -16,9 +16,9 @@
 #
 default: help
 
-VERSION ?= 0.2.0
+VERSION ?= 0.3.0
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
-IMAGE_TAG ?= "dev"
+IMAGE_TAG ?= dev
 
 GINKGO ?= $(shell which ginkgo)
 GITSHA ?= $(shell git rev-parse --short=7 HEAD)
@@ -29,9 +29,9 @@ ifeq ($(OSARCH), x86_64)
 	OSARCH = amd64
 endif
 
-VERSYM="github.com/api7/ingress-controller/pkg/version._buildVersion"
-GITSHASYM="github.com/api7/ingress-controller/pkg/version._buildGitRevision"
-BUILDOSSYM="github.com/api7/ingress-controller/pkg/version._buildOS"
+VERSYM="github.com/apache/apisix-ingress-controller/pkg/version._buildVersion"
+GITSHASYM="github.com/apache/apisix-ingress-controller/pkg/version._buildGitRevision"
+BUILDOSSYM="github.com/apache/apisix-ingress-controller/pkg/version._buildOS"
 GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH)"
 E2E_CONCURRENCY ?= 1
 E2E_SKIP_BUILD ?= 0
@@ -63,7 +63,6 @@ unit-test:
 e2e-test: ginkgo-check build-image-to-minikube
 	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixRoute.yaml
 	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml
-	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixService.yaml
 	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml
 	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=$(E2E_CONCURRENCY)
 

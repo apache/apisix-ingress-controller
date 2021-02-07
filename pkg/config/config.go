@@ -24,7 +24,7 @@ import (
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/api7/ingress-controller/pkg/types"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 const (

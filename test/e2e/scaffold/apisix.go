@@ -87,6 +87,9 @@ spec:
             - containerPort: 9180
               name: "http-admin"
               protocol: "TCP"
+            - containerPort: 9443
+              name: "https"
+              protocol: "TCP"
           volumeMounts:
             - mountPath: /usr/local/apisix/conf/config.yaml
               name: apisix-config-yaml-configmap
@@ -116,6 +119,10 @@ spec:
       port: 9180
       protocol: TCP
       targetPort: 9180
+    - name: https
+      port: 9443
+      protocol: TCP
+      targetPort: 9443
   type: NodePort
 `
 )
@@ -137,6 +144,25 @@ func (s *Scaffold) apisixServiceURL() (string, error) {
 		}
 	}
 	return "", errors.New("no http port in apisix service")
+}
+
+func (s *Scaffold) apisixServiceHttpsURL() (string, error) {
+	if len(s.nodes) == 0 {
+		return "", errors.New("no available node")
+	}
+	var addr string
+	for _, node := range s.nodes {
+		if len(node.Status.Addresses) > 0 {
+			addr = node.Status.Addresses[0].Address
+			break
+		}
+	}
+	for _, port := range s.apisixService.Spec.Ports {
+		if port.Name == "https" {
+			return net.JoinHostPort(addr, strconv.Itoa(int(port.NodePort))), nil
+		}
+	}
+	return "", errors.New("no https port defined in apisix service")
 }
 
 func (s *Scaffold) apisixAdminServiceURL() (string, error) {

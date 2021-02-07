@@ -74,40 +74,55 @@ type ApisixRouteList struct {
 // +genclient:noStatus
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// ApisixUpstream is used to decorate Upstream in APISIX, such as load
-// balacing type.
+// ApisixUpstream is a decorator for Kubernetes Service, it arms the Service
+// with rich features like health check, retry policies, load balancer and others.
+// It's designed to have same name with the Kubernetes Service and can be customized
+// for individual port.
 type ApisixUpstream struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-	Spec              *ApisixUpstreamSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
+
+	Spec *ApisixUpstreamSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
 }
 
-// ApisixUpstreamSpec describes the specification of Upstream in APISIX.
+// ApisixUpstreamSpec describes the specification of ApisixUpstream.
 type ApisixUpstreamSpec struct {
-	Ports []Port `json:"ports,omitempty"`
+	ApisixUpstreamConfig `json:",inline" yaml:",inline"`
+
+	PortLevelSettings []PortLevelSettings `json:"portLevelSettings,omitempty" yaml:"portLevelSettings,omitempty"`
 }
 
-// Port is the port-specific configurations.
-type Port struct {
-	Port         int          `json:"port,omitempty"`
-	LoadBalancer LoadBalancer `json:"loadbalancer,omitempty"`
+// ApisixUpstreamConfig contains rich features on APISIX Upstream, for instance
+// load balancer, health check and etc.
+type ApisixUpstreamConfig struct {
+	// LoadBalancer represents the load balancer configuration for Kubernetes Service.
+	// The default strategy is round robin.
+	// +optional
+	LoadBalancer *LoadBalancer `json:"loadbalancer,omitempty" yaml:"loadbalancer,omitempty"`
+	// The scheme used to talk with the upstream.
+	// Now value can be http, grpc.
+	// +optional
+	Scheme string `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+}
+
+// PortLevelSettings configures the ApisixUpstreamConfig for each individual port. It inherits
+// configurations from the outer level (the whole Kubernetes Service) and overrides some of
+// them if they are set on the port level.
+type PortLevelSettings struct {
+	ApisixUpstreamConfig `json:",inline" yaml:",inline"`
+
+	// Port is a Kubernetes Service port, it should be already defined.
+	Port int32 `json:"port" yaml:"port"`
 }
 
 // LoadBalancer describes the load balancing parameters.
-type LoadBalancer map[string]interface{}
-
-func (p LoadBalancer) DeepCopyInto(out *LoadBalancer) {
-	b, _ := json.Marshal(&p)
-	_ = json.Unmarshal(b, out)
-}
-
-func (p *LoadBalancer) DeepCopy() *LoadBalancer {
-	if p == nil {
-		return nil
-	}
-	out := new(LoadBalancer)
-	p.DeepCopyInto(out)
-	return out
+type LoadBalancer struct {
+	Type string `json:"type" yaml:"type"`
+	// The HashOn and Key fields are required when Type is "chash".
+	// HashOn represents the key fetching scope.
+	HashOn string `json:"hashOn,omitempty" yaml:"hashOn,omitempty"`
+	// Key represents the hash key.
+	Key string `json:"key,omitempty" yaml:"key,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -115,33 +130,6 @@ type ApisixUpstreamList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 	Items           []ApisixUpstream `json:"items,omitempty"`
-}
-
-// +genclient
-// +genclient:noStatus
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// ApisixService is used to define the Service resource in APISIX, it's
-// useful to use Service to put all common configurations and let Route
-// to reference it.
-type ApisixService struct {
-	metav1.TypeMeta   `json:",inline" yaml:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-	Spec              *ApisixServiceSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type ApisixServiceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-	Items           []ApisixService `json:"items,omitempty"`
-}
-
-// ApisixServiceSpec describes the ApisixService specification.
-type ApisixServiceSpec struct {
-	Upstream string   `json:"upstream,omitempty"`
-	Port     int      `json:"port,omitempty"`
-	Plugins  []Plugin `json:"plugins,omitempty"`
 }
 
 type Plugin struct {
@@ -187,22 +175,22 @@ func (p *Config) DeepCopy() *Config {
 // +genclient:noStatus
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// ApisixTLS defines SSL resource in APISIX.
-type ApisixTLS struct {
+// ApisixTls defines SSL resource in APISIX.
+type ApisixTls struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-	Spec              *ApisixTLSSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Spec              *ApisixTlsSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type ApisixTLSList struct {
+type ApisixTlsList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
-	Items           []ApisixTLS `json:"items,omitempty"`
+	Items           []ApisixTls `json:"items,omitempty"`
 }
 
-// ApisixTLSSpec is the specification of ApisixSSL.
-type ApisixTLSSpec struct {
+// ApisixTlsSpec is the specification of ApisixSSL.
+type ApisixTlsSpec struct {
 	Hosts  []string     `json:"hosts,omitempty"`
 	Secret ApisixSecret `json:"secret,omitempty"`
 }

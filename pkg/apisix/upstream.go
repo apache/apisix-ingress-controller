@@ -22,10 +22,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/api7/ingress-controller/pkg/apisix/cache"
-	"github.com/api7/ingress-controller/pkg/id"
-	"github.com/api7/ingress-controller/pkg/log"
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/apache/apisix-ingress-controller/pkg/id"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type upstreamClient struct {
@@ -67,12 +67,14 @@ type upstreamReqBody struct {
 	Key    string        `json:"key,omitempty"`
 	Nodes  upstreamNodes `json:"nodes"`
 	Desc   string        `json:"desc"`
+	Scheme string        `json:"scheme,omitempty"`
 }
 
 type upstreamItem struct {
 	Nodes  upstreamNodes `json:"nodes"`
 	Desc   string        `json:"desc"`
 	LBType string        `json:"type"`
+	Scheme string        `json:"scheme"`
 }
 
 func newUpstreamClient(c *cluster) Upstream {
@@ -199,6 +201,7 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		Key:    obj.Key,
 		Nodes:  nodes,
 		Desc:   obj.Name,
+		Scheme: obj.Scheme,
 	})
 	if err != nil {
 		return nil, err

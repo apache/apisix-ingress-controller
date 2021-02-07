@@ -30,7 +30,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type fakeAPISIXRouteSrv struct {
@@ -180,11 +180,13 @@ func TestRouteClient(t *testing.T) {
 
 	// Create
 	obj, err := cli.Create(context.Background(), &v1.Route{
-		ID:         "1",
+		Metadata: v1.Metadata{
+			ID:       "1",
+			Name:     "test",
+			FullName: "test",
+		},
 		Host:       "www.foo.com",
 		Path:       "/bar",
-		Name:       "test",
-		FullName:   "test",
 		ServiceId:  "1",
 		UpstreamId: "1",
 	})
@@ -192,11 +194,13 @@ func TestRouteClient(t *testing.T) {
 	assert.Equal(t, obj.ID, "1")
 
 	obj, err = cli.Create(context.Background(), &v1.Route{
-		ID:         "2",
+		Metadata: v1.Metadata{
+			ID:       "2",
+			Name:     "test",
+			FullName: "test",
+		},
 		Host:       "www.foo.com",
 		Path:       "/bar",
-		Name:       "test",
-		FullName:   "test",
 		ServiceId:  "1",
 		UpstreamId: "1",
 	})
@@ -219,11 +223,13 @@ func TestRouteClient(t *testing.T) {
 
 	// Patch then List
 	_, err = cli.Update(context.Background(), &v1.Route{
-		ID:         "2",
+		Metadata: v1.Metadata{
+			ID:       "2",
+			Name:     "test",
+			FullName: "test",
+		},
 		Host:       "www.foo.com",
 		Path:       "/bar",
-		Name:       "test",
-		FullName:   "test",
 		ServiceId:  "112",
 		UpstreamId: "112",
 	})

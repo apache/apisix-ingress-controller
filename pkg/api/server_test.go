@@ -22,7 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/api7/ingress-controller/pkg/config"
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 )
 
 func TestServer(t *testing.T) {

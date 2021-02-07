@@ -15,7 +15,7 @@
 
 package cache
 
-import v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+import v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 
 // Cache defines the necessary behaviors that the cache object should have.
 // Note this interface is for APISIX, not for generic purpose, it supports

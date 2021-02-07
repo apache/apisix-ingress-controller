@@ -25,9 +25,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/api7/ingress-controller/pkg/config"
-	"github.com/api7/ingress-controller/pkg/ingress/controller"
-	"github.com/api7/ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/config"
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/controller"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/version"
 )
 
 func dief(template string, args ...interface{}) {
@@ -95,6 +96,8 @@ the apisix cluster and others are created`,
 			}
 			log.DefaultLogger = logger
 			log.Info("apisix ingress controller started")
+
+			log.Info("version:\n", version.Long())
 
 			data, err := json.MarshalIndent(cfg, "", "\t")
 			if err != nil {

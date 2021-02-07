@@ -19,12 +19,12 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/api7/ingress-controller/pkg/apisix/cache"
-	"github.com/api7/ingress-controller/pkg/id"
-	"github.com/api7/ingress-controller/pkg/log"
-	"github.com/api7/ingress-controller/pkg/seven/conf"
-	"github.com/api7/ingress-controller/pkg/seven/utils"
-	v1 "github.com/api7/ingress-controller/pkg/types/apisix/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/apache/apisix-ingress-controller/pkg/id"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
+	"github.com/apache/apisix-ingress-controller/pkg/seven/utils"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 const (

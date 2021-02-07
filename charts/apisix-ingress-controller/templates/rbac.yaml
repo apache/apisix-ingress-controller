@@ -14,11 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: {{ .Release.Name }}-serviceaccount
----
+{{- if .Values.rbac.create }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -35,6 +31,7 @@ rules:
       - replicationcontrollers/scale
       - serviceaccounts
       - services
+      - secrets
     verbs:
       - get
       - list
@@ -146,6 +143,12 @@ rules:
       - get
       - list
       - watch
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - '*'
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -157,5 +160,6 @@ roleRef:
   name: {{ .Release.Name }}-clusterrole
 subjects:
   - kind: ServiceAccount
-    name: {{ .Release.Name }}-serviceaccount
+    name: {{ include "apisix-ingress-controller.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
+{{- end }}
