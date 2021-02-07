@@ -15,202 +15,244 @@
 package controller
 
 import (
-	"fmt"
-	"time"
+	"context"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
+	"go.uber.org/zap"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/apache/apisix-ingress-controller/pkg/ingress/apisix"
-	"github.com/apache/apisix-ingress-controller/pkg/ingress/endpoint"
+	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
-	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
-	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
-	informersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v1"
-	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/seven/state"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-type ApisixUpstreamController struct {
-	controller           *Controller
-	kubeclientset        kubernetes.Interface
-	apisixClientset      clientset.Interface
-	apisixUpstreamList   listersv1.ApisixUpstreamLister
-	apisixUpstreamSynced cache.InformerSynced
-	workqueue            workqueue.RateLimitingInterface
+type apisixUpstreamController struct {
+	controller *Controller
+	workqueue  workqueue.RateLimitingInterface
+	workers    int
 }
 
-func BuildApisixUpstreamController(
-	kubeclientset kubernetes.Interface,
-	apisixUpstreamClientset clientset.Interface,
-	apisixUpstreamInformer informersv1.ApisixUpstreamInformer,
-	root *Controller) *ApisixUpstreamController {
-
-	runtime.Must(apisixscheme.AddToScheme(scheme.Scheme))
-	controller := &ApisixUpstreamController{
-		controller:           root,
-		kubeclientset:        kubeclientset,
-		apisixClientset:      apisixUpstreamClientset,
-		apisixUpstreamList:   apisixUpstreamInformer.Lister(),
-		apisixUpstreamSynced: apisixUpstreamInformer.Informer().HasSynced,
-		workqueue:            workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixUpstreams"),
+func (c *Controller) newApisixUpstreamController() *apisixUpstreamController {
+	ctl := &apisixUpstreamController{
+		controller: c,
+		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ApisixUpstream"),
+		workers:    1,
 	}
-	apisixUpstreamInformer.Informer().AddEventHandler(
+
+	ctl.controller.apisixUpstreamInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    controller.addFunc,
-			UpdateFunc: controller.updateFunc,
-			DeleteFunc: controller.deleteFunc,
-		})
-	return controller
+			AddFunc:    ctl.onAdd,
+			UpdateFunc: ctl.onUpdate,
+			DeleteFunc: ctl.OnDelete,
+		},
+	)
+	return ctl
 }
 
-func (c *ApisixUpstreamController) Run(stop <-chan struct{}) error {
-	// 同步缓存
-	if ok := cache.WaitForCacheSync(stop); !ok {
-		log.Error("同步ApisixUpstream缓存失败")
-		return fmt.Errorf("failed to wait for caches to sync")
+func (c *apisixUpstreamController) run(ctx context.Context) {
+	log.Info("ApisixUpstream controller started")
+	defer log.Info("ApisixUpstream controller exited")
+	if ok := cache.WaitForCacheSync(ctx.Done(), c.controller.apisixUpstreamInformer.HasSynced, c.controller.svcInformer.HasSynced); !ok {
+		log.Errorf("cache sync failed")
+		return
 	}
-	go wait.Until(c.runWorker, time.Second, stop)
-	return nil
+	for i := 0; i < c.workers; i++ {
+		go c.runWorker(ctx)
+	}
+
+	<-ctx.Done()
+	c.workqueue.ShutDown()
 }
 
-func (c *ApisixUpstreamController) runWorker() {
-	for c.processNextWorkItem() {
-	}
-}
-
-func (c *ApisixUpstreamController) processNextWorkItem() bool {
-	defer recoverException()
-	obj, shutdown := c.workqueue.Get()
-	if shutdown {
-		return false
-	}
-	err := func(obj interface{}) error {
-		defer c.workqueue.Done(obj)
-		var sqo *UpstreamQueueObj
-		var ok bool
-
-		if sqo, ok = obj.(*UpstreamQueueObj); !ok {
-			c.workqueue.Forget(obj)
-			return fmt.Errorf("expected string in workqueue but got %#v", obj)
+func (c *apisixUpstreamController) runWorker(ctx context.Context) {
+	for {
+		obj, quit := c.workqueue.Get()
+		if quit {
+			return
 		}
-		// 在syncHandler中处理业务
-		if err := c.syncHandler(sqo); err != nil {
-			c.workqueue.AddRateLimited(obj)
-			return fmt.Errorf("error syncing '%s': %s", sqo.Key, err.Error())
-		}
+		err := c.sync(ctx, obj.(*types.Event))
+		c.workqueue.Done(obj)
+		c.handleSyncErr(obj, err)
+	}
+}
 
-		c.workqueue.Forget(obj)
-		return nil
-	}(obj)
+func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) error {
+	key := ev.Object.(string)
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		runtime.HandleError(err)
-	}
-	return true
-}
-
-func (c *ApisixUpstreamController) syncHandler(sqo *UpstreamQueueObj) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(sqo.Key)
-	if err != nil {
-		log.Errorf("invalid resource key: %s", sqo.Key)
-		return fmt.Errorf("invalid resource key: %s", sqo.Key)
-	}
-	apisixUpstreamYaml := sqo.OldObj
-	if sqo.Ope == DELETE {
-		apisixIngressUpstream, _ := c.apisixUpstreamList.ApisixUpstreams(namespace).Get(name)
-		if apisixIngressUpstream != nil && apisixIngressUpstream.ResourceVersion > sqo.OldObj.ResourceVersion {
-			log.Warnf("Upstream %s has been covered when retry", sqo.Key)
-			return nil
-		}
-	} else {
-		apisixUpstreamYaml, err = c.apisixUpstreamList.ApisixUpstreams(namespace).Get(name)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				log.Infof("apisixUpstream %s is removed", sqo.Key)
-				return nil
-			}
-			runtime.HandleError(fmt.Errorf("failed to list apisixUpstream %s/%s", sqo.Key, err.Error()))
-			return err
-		}
-	}
-	aub := apisix.ApisixUpstreamBuilder{CRD: apisixUpstreamYaml, Ep: &endpoint.EndpointRequest{}}
-	upstreams, _ := aub.Convert()
-	comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
-	if sqo.Ope == DELETE {
-		return comb.Remove()
-	} else {
-		_, err = comb.Solver()
+		log.Errorf("found ApisixUpstream resource with invalid meta namespace key %s: %s", key, err)
 		return err
 	}
 
-}
-
-type UpstreamQueueObj struct {
-	Key    string                   `json:"key"`
-	OldObj *configv1.ApisixUpstream `json:"old_obj"`
-	Ope    string                   `json:"ope"` // add / update / delete
-}
-
-func (c *ApisixUpstreamController) addFunc(obj interface{}) {
-	var key string
-	var err error
-	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-		runtime.HandleError(err)
-		return
-	}
-	if !c.controller.namespaceWatching(key) {
-		return
-	}
-	sqo := &UpstreamQueueObj{Key: key, OldObj: nil, Ope: ADD}
-	c.workqueue.AddRateLimited(sqo)
-}
-
-func (c *ApisixUpstreamController) updateFunc(oldObj, newObj interface{}) {
-	oldUpstream := oldObj.(*configv1.ApisixUpstream)
-	newUpstream := newObj.(*configv1.ApisixUpstream)
-	if oldUpstream.ResourceVersion >= newUpstream.ResourceVersion {
-		return
-	}
-	var (
-		key string
-		err error
-	)
-	if key, err = cache.MetaNamespaceKeyFunc(newObj); err != nil {
-		runtime.HandleError(err)
-		return
-	}
-	sqo := &UpstreamQueueObj{Key: key, OldObj: oldUpstream, Ope: UPDATE}
-	c.addFunc(sqo)
-}
-
-func (c *ApisixUpstreamController) deleteFunc(obj interface{}) {
-	oldUpstream, ok := obj.(*configv1.ApisixUpstream)
-	if !ok {
-		oldState, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			return
-		}
-		oldUpstream, ok = oldState.Obj.(*configv1.ApisixUpstream)
-		if !ok {
-			return
-		}
-	}
-	var key string
-	var err error
-	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	au, err := c.controller.apisixUpstreamLister.ApisixUpstreams(namespace).Get(name)
 	if err != nil {
-		runtime.HandleError(err)
+		if !k8serrors.IsNotFound(err) {
+			log.Errorf("failed to get ApisixUpstream %s: %s", key, err)
+			return err
+		}
+		if ev.Type != types.EventDelete {
+			log.Warnf("ApisixUpstream %s was deleted before it can be delivered", key)
+			// Don't need retry.
+			return nil
+		}
+	}
+	if ev.Type == types.EventDelete {
+		if au != nil {
+			// We still find the resource while we are processing the DELETE event,
+			// that means object with same namespace and name was created, discarding
+			// this stale DELETE event.
+			log.Warnf("discard the stale ApisixUpstream DELETE event since the %s exists", key)
+			return nil
+		}
+		au = ev.Tombstone.(*configv1.ApisixUpstream)
+	}
+
+	var portLevelSettings map[int32]*configv1.ApisixUpstreamConfig
+	if len(au.Spec.PortLevelSettings) > 0 {
+		portLevelSettings = make(map[int32]*configv1.ApisixUpstreamConfig, len(au.Spec.PortLevelSettings))
+		for _, port := range au.Spec.PortLevelSettings {
+			portLevelSettings[port.Port] = &port.ApisixUpstreamConfig
+		}
+	}
+
+	svc, err := c.controller.svcLister.Services(namespace).Get(name)
+	if err != nil {
+		log.Errorf("failed to get service %s: %s", key, err)
+		return err
+	}
+
+	for _, port := range svc.Spec.Ports {
+		upsName := apisixv1.ComposeUpstreamName(namespace, name, port.Port)
+		// TODO: multiple cluster
+		ups, err := c.controller.apisix.Cluster("").Upstream().Get(ctx, upsName)
+		if err != nil {
+			if err == apisixcache.ErrNotFound {
+				continue
+			}
+			log.Errorf("failed to get upstream %s: %s", upsName, err)
+			return err
+		}
+		var newUps *apisixv1.Upstream
+		if ev.Type != types.EventDelete {
+			cfg, ok := portLevelSettings[port.Port]
+			if !ok {
+				cfg = &au.Spec.ApisixUpstreamConfig
+			}
+			// FIXME Same ApisixUpstreamConfig might be translated multiple times.
+			newUps, err = c.controller.translator.TranslateUpstreamConfig(cfg)
+			if err != nil {
+				log.Errorw("found malformed ApisixUpstream",
+					zap.Any("object", au),
+					zap.Error(err),
+				)
+				return err
+			}
+		} else {
+			newUps = apisixv1.NewDefaultUpstream()
+		}
+
+		newUps.Metadata = ups.Metadata
+		newUps.Nodes = ups.Nodes
+		log.Debugw("updating upstream since ApisixUpstream changed",
+			zap.String("event", ev.Type.String()),
+			zap.Any("upstream", newUps),
+			zap.Any("ApisixUpstream", au),
+		)
+		if _, err := c.controller.apisix.Cluster("").Upstream().Update(ctx, newUps); err != nil {
+			log.Errorw("failed to update upstream",
+				zap.Error(err),
+				zap.Any("upstream", newUps),
+				zap.Any("ApisixUpstream", au),
+			)
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *apisixUpstreamController) handleSyncErr(obj interface{}, err error) {
+	if err == nil {
+		c.workqueue.Forget(obj)
+		return
+	}
+	if c.workqueue.NumRequeues(obj) < _maxRetries {
+		log.Infow("sync endpoints failed, will retry",
+			zap.Any("object", obj),
+		)
+		c.workqueue.AddRateLimited(obj)
+	} else {
+		c.workqueue.Forget(obj)
+		log.Warnf("drop endpoints %+v out of the queue", obj)
+	}
+}
+
+func (c *apisixUpstreamController) onAdd(obj interface{}) {
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Errorf("found ApisixUpstream resource with bad meta namesapce key: %s", err)
 		return
 	}
 	if !c.controller.namespaceWatching(key) {
 		return
 	}
-	sqo := &UpstreamQueueObj{Key: key, OldObj: oldUpstream, Ope: DELETE}
-	c.workqueue.AddRateLimited(sqo)
+	log.Debugw("ApisixUpstream add event arrived",
+		zap.Any("object", obj))
+
+	c.workqueue.AddRateLimited(&types.Event{
+		Type:   types.EventAdd,
+		Object: key,
+	})
+}
+
+func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
+	prev := oldObj.(*configv1.ApisixUpstream)
+	curr := newObj.(*configv1.ApisixUpstream)
+	if prev.ResourceVersion >= curr.ResourceVersion {
+		return
+	}
+	key, err := cache.MetaNamespaceKeyFunc(newObj)
+	if err != nil {
+		log.Errorf("found ApisixUpstream resource with bad meta namespace key: %s", err)
+		return
+	}
+	log.Debugw("ApisixUpstream update event arrived",
+		zap.Any("new object", curr),
+		zap.Any("old object", prev),
+	)
+
+	c.workqueue.AddRateLimited(&types.Event{
+		Type:   types.EventUpdate,
+		Object: key,
+	})
+}
+
+func (c *apisixUpstreamController) OnDelete(obj interface{}) {
+	au, ok := obj.(*configv1.ApisixUpstream)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			return
+		}
+		au = tombstone.Obj.(*configv1.ApisixUpstream)
+	}
+
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Errorf("found ApisixUpstream resource with bad meta namesapce key: %s", err)
+		return
+	}
+	if !c.controller.namespaceWatching(key) {
+		return
+	}
+	log.Debugw("ApisixUpstream delete event arrived",
+		zap.Any("final state", au),
+	)
+	c.workqueue.AddRateLimited(&types.Event{
+		Type:      types.EventDelete,
+		Object:    key,
+		Tombstone: au,
+	})
 }

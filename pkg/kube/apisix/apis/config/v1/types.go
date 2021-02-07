@@ -74,35 +74,46 @@ type ApisixRouteList struct {
 // +genclient:noStatus
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// ApisixUpstream is used to decorate Upstream in APISIX, such as load
-// balacing type.
+// ApisixUpstream is a decorator for Kubernetes Service, it arms the Service
+// with rich features like health check, retry policies, load balancer and others.
+// It's designed to have same name with the Kubernetes Service and can be customized
+// for individual port.
 type ApisixUpstream struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-	Spec              *ApisixUpstreamSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
+
+	Spec *ApisixUpstreamSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
 }
 
-// ApisixUpstreamSpec describes the specification of Upstream in APISIX.
+// ApisixUpstreamSpec describes the specification of ApisixUpstream.
 type ApisixUpstreamSpec struct {
-	Ports []Port `json:"ports,omitempty"`
+	ApisixUpstreamConfig `json:",inline" yaml:",inline"`
+
+	PortLevelSettings []PortLevelSettings `json:"portLevelSettings,omitempty" yaml:"portLevelSettings,omitempty"`
 }
 
-// Port is the port-specific configurations.
-type Port struct {
-	Port         int           `json:"port,omitempty"`
-	LoadBalancer *LoadBalancer `json:"loadbalancer,omitempty"`
+// ApisixUpstreamConfig contains rich features on APISIX Upstream, for instance
+// load balancer, health check and etc.
+type ApisixUpstreamConfig struct {
+	// LoadBalancer represents the load balancer configuration for Kubernetes Service.
+	// The default strategy is round robin.
+	// +optional
+	LoadBalancer *LoadBalancer `json:"loadbalancer,omitempty" yaml:"loadbalancer,omitempty"`
 	// The scheme used to talk with the upstream.
 	// Now value can be http, grpc.
 	// +optional
 	Scheme string `json:"scheme,omitempty" yaml:"scheme,omitempty"`
 }
 
-var (
-	// SchemeHTTP represents the HTTP protocol.
-	SchemeHTTP = "http"
-	// SchemeGRPC represents the GRPC protocol.
-	SchemeGRPC = "grpc"
-)
+// PortLevelSettings configures the ApisixUpstreamConfig for each individual port. It inherits
+// configurations from the outer level (the whole Kubernetes Service) and overrides some of
+// them if they are set on the port level.
+type PortLevelSettings struct {
+	ApisixUpstreamConfig `json:",inline" yaml:",inline"`
+
+	// Port is a Kubernetes Service port, it should be already defined.
+	Port int32 `json:"port" yaml:"port"`
+}
 
 // LoadBalancer describes the load balancing parameters.
 type LoadBalancer struct {

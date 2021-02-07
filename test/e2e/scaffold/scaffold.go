@@ -45,6 +45,7 @@ type Options struct {
 	APISIXConfigPath        string
 	APISIXDefaultConfigPath string
 	IngressAPISIXReplicas   int
+	HTTPBinServicePort      int
 }
 
 type Scaffold struct {
@@ -106,6 +107,7 @@ func NewDefaultScaffold() *Scaffold {
 		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
 		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
 		IngressAPISIXReplicas:   1,
+		HTTPBinServicePort:      80,
 	}
 	return NewScaffold(opts)
 }

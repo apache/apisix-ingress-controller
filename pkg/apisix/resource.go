@@ -126,9 +126,9 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 		return nil, err
 	}
 
-	var nodes []v1.Node
+	var nodes []v1.UpstreamNode
 	for _, node := range ups.Nodes {
-		nodes = append(nodes, v1.Node{
+		nodes = append(nodes, v1.UpstreamNode{
 			IP:     node.Host,
 			Port:   node.Port,
 			Weight: node.Weight,
