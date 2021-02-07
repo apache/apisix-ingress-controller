@@ -156,7 +156,7 @@ func (t *translator) translateUpstreamActiveHealthCheck(config *configv1.ActiveH
 				reason: "empty",
 			}
 		}
-		active.Healthy.Interval = int(config.Healthy.Interval)
+		active.Healthy.Interval = int(config.Healthy.Interval.Seconds())
 	}
 
 	if config.Unhealthy != nil {
@@ -191,7 +191,7 @@ func (t *translator) translateUpstreamActiveHealthCheck(config *configv1.ActiveH
 				reason: "empty",
 			}
 		}
-		active.Unhealthy.Interval = int(config.Unhealthy.Interval)
+		active.Unhealthy.Interval = int(config.Unhealthy.Interval.Seconds())
 	}
 
 	return &active, nil
