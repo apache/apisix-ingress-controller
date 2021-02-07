@@ -68,7 +68,7 @@ func (t *translator) translateUpstreamLoadBalancer(lb *configv1.LoadBalancer, up
 }
 
 func (t *translator) translateUpstreamHealthCheck(config *configv1.HealthCheck, ups *apisixv1.Upstream) error {
-	if config.Passive == nil && config.Active == nil {
+	if config == nil || (config.Passive == nil && config.Active == nil) {
 		return nil
 	}
 	var hc apisixv1.UpstreamHealthCheck

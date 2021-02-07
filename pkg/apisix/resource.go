@@ -145,9 +145,11 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 			Name:     ups.Desc,
 		},
 		Type:   ups.LBType,
-		Key:    i.Key,
+		Key:    ups.Key,
+		HashOn: ups.HashOn,
 		Nodes:  nodes,
 		Scheme: ups.Scheme,
+		Checks: ups.Checks,
 	}, nil
 }
 

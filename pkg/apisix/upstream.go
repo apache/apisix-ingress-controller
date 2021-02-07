@@ -62,20 +62,16 @@ func (n *upstreamNodes) UnmarshalJSON(p []byte) error {
 }
 
 type upstreamReqBody struct {
-	LBType string        `json:"type"`
-	HashOn string        `json:"hash_on,omitempty"`
-	Key    string        `json:"key,omitempty"`
-	Nodes  upstreamNodes `json:"nodes"`
-	Desc   string        `json:"desc"`
-	Scheme string        `json:"scheme,omitempty"`
+	LBType string                  `json:"type"`
+	HashOn string                  `json:"hash_on,omitempty"`
+	Key    string                  `json:"key,omitempty"`
+	Nodes  upstreamNodes           `json:"nodes"`
+	Desc   string                  `json:"desc"`
+	Scheme string                  `json:"scheme,omitempty"`
+	Checks *v1.UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
 }
 
-type upstreamItem struct {
-	Nodes  upstreamNodes `json:"nodes"`
-	Desc   string        `json:"desc"`
-	LBType string        `json:"type"`
-	Scheme string        `json:"scheme"`
-}
+type upstreamItem upstreamReqBody
 
 func newUpstreamClient(c *cluster) Upstream {
 	return &upstreamClient{
@@ -202,6 +198,7 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		Nodes:  nodes,
 		Desc:   obj.Name,
 		Scheme: obj.Scheme,
+		Checks: obj.Checks,
 	})
 	if err != nil {
 		return nil, err
