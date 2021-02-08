@@ -86,7 +86,7 @@ func newUpstreamClient(c *cluster) Upstream {
 }
 
 func (u *upstreamClient) Get(ctx context.Context, fullname string) (*v1.Upstream, error) {
-	log.Infow("try to look up upstream",
+	log.Debugw("try to look up upstream",
 		zap.String("fullname", fullname),
 		zap.String("url", u.url),
 		zap.String("cluster", u.clusterName),
@@ -101,7 +101,7 @@ func (u *upstreamClient) Get(ctx context.Context, fullname string) (*v1.Upstream
 			zap.Error(err),
 		)
 	} else {
-		log.Warnw("failed to find upstream in cache, will try to lookup from APISIX",
+		log.Debugw("failed to find upstream in cache, will try to lookup from APISIX",
 			zap.String("fullname", fullname),
 			zap.Error(err),
 		)
@@ -148,7 +148,7 @@ func (u *upstreamClient) Get(ctx context.Context, fullname string) (*v1.Upstream
 // List is only used in cache warming up. So here just pass through
 // to APISIX.
 func (u *upstreamClient) List(ctx context.Context) ([]*v1.Upstream, error) {
-	log.Infow("try to list upstreams in APISIX",
+	log.Debugw("try to list upstreams in APISIX",
 		zap.String("url", u.url),
 		zap.String("cluster", u.clusterName),
 	)
@@ -177,7 +177,7 @@ func (u *upstreamClient) List(ctx context.Context) ([]*v1.Upstream, error) {
 }
 
 func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upstream, error) {
-	log.Infow("try to create upstream",
+	log.Debugw("try to create upstream",
 		zap.String("fullname", obj.FullName),
 		zap.String("url", u.url),
 		zap.String("cluster", u.clusterName),
@@ -207,7 +207,7 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		return nil, err
 	}
 	url := u.url + "/" + obj.ID
-	log.Infow("creating upstream", zap.ByteString("body", body), zap.String("url", url))
+	log.Debugw("creating upstream", zap.ByteString("body", body), zap.String("url", url))
 
 	resp, err := u.cluster.createResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
@@ -230,7 +230,7 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 }
 
 func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
-	log.Infow("try to delete upstream",
+	log.Debugw("try to delete upstream",
 		zap.String("id", obj.ID),
 		zap.String("fullname", obj.FullName),
 		zap.String("cluster", u.clusterName),
@@ -252,7 +252,7 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 }
 
 func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upstream, error) {
-	log.Infow("try to update upstream",
+	log.Debugw("try to update upstream",
 		zap.String("id", obj.ID),
 		zap.String("fullname", obj.FullName),
 		zap.String("cluster", u.clusterName),
@@ -283,7 +283,7 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	}
 
 	url := u.url + "/" + obj.ID
-	log.Infow("updating upstream", zap.ByteString("body", body), zap.String("url", url))
+	log.Debugw("updating upstream", zap.ByteString("body", body), zap.String("url", url))
 	resp, err := u.cluster.updateResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err

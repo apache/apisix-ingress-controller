@@ -43,7 +43,7 @@ func newSSLClient(c *cluster) SSL {
 }
 
 func (s *sslClient) Get(ctx context.Context, fullname string) (*v1.Ssl, error) {
-	log.Infow("try to look up ssl",
+	log.Debugw("try to look up ssl",
 		zap.String("fullname", fullname),
 		zap.String("url", s.url),
 		zap.String("cluster", s.clusterName),
@@ -59,7 +59,7 @@ func (s *sslClient) Get(ctx context.Context, fullname string) (*v1.Ssl, error) {
 			zap.Error(err),
 		)
 	} else {
-		log.Warnw("failed to find ssl in cache, will try to lookup from APISIX",
+		log.Debugw("failed to find ssl in cache, will try to lookup from APISIX",
 			zap.String("fullname", fullname),
 			zap.Error(err),
 		)
@@ -105,7 +105,7 @@ func (s *sslClient) Get(ctx context.Context, fullname string) (*v1.Ssl, error) {
 // List is only used in cache warming up. So here just pass through
 // to APISIX.
 func (s *sslClient) List(ctx context.Context) ([]*v1.Ssl, error) {
-	log.Infow("try to list ssl in APISIX",
+	log.Debugw("try to list ssl in APISIX",
 		zap.String("url", s.url),
 		zap.String("cluster", s.clusterName),
 	)
@@ -135,7 +135,7 @@ func (s *sslClient) List(ctx context.Context) ([]*v1.Ssl, error) {
 }
 
 func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
-	log.Infow("try to create ssl",
+	log.Debugw("try to create ssl",
 		zap.String("cluster", s.clusterName),
 		zap.String("url", s.url),
 		zap.String("id", obj.ID),
@@ -153,7 +153,7 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 		return nil, err
 	}
 	url := s.url + "/" + obj.ID
-	log.Infow("creating ssl", zap.ByteString("body", data), zap.String("url", url))
+	log.Debugw("creating ssl", zap.ByteString("body", data), zap.String("url", url))
 	resp, err := s.cluster.createResource(ctx, url, bytes.NewReader(data))
 	if err != nil {
 		log.Errorf("failed to create ssl: %s", err)
@@ -177,7 +177,7 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 }
 
 func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
-	log.Infow("try to delete ssl",
+	log.Debugw("try to delete ssl",
 		zap.String("id", obj.ID),
 		zap.String("cluster", s.clusterName),
 		zap.String("url", s.url),
@@ -197,7 +197,7 @@ func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 }
 
 func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
-	log.Infow("try to update ssl",
+	log.Debugw("try to update ssl",
 		zap.String("id", obj.ID),
 		zap.String("cluster", s.clusterName),
 		zap.String("url", s.url),
@@ -216,7 +216,7 @@ func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Infow("updating ssl", zap.ByteString("body", data), zap.String("url", url))
+	log.Debugw("updating ssl", zap.ByteString("body", data), zap.String("url", url))
 	resp, err := s.cluster.updateResource(ctx, url, bytes.NewReader(data))
 	if err != nil {
 		return nil, err
