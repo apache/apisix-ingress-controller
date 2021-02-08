@@ -135,14 +135,14 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 		})
 	}
 
-	// XXX This is a work around scheme to avoid APISIX's
+	// This is a work around scheme to avoid APISIX's
 	// health check schema about the health checker intervals.
 	if ups.Checks != nil && ups.Checks.Active != nil {
 		if ups.Checks.Active.Healthy.Interval == 0 {
-			ups.Checks.Active.Healthy.Interval = 1
+			ups.Checks.Active.Healthy.Interval = int(v1.ActiveHealthCheckMinInterval.Seconds())
 		}
 		if ups.Checks.Active.Unhealthy.Interval == 0 {
-			ups.Checks.Active.Healthy.Interval = 1
+			ups.Checks.Active.Healthy.Interval = int(v1.ActiveHealthCheckMinInterval.Seconds())
 		}
 	}
 

@@ -68,7 +68,7 @@ type upstreamReqBody struct {
 	Nodes  upstreamNodes           `json:"nodes"`
 	Desc   string                  `json:"desc"`
 	Scheme string                  `json:"scheme,omitempty"`
-	Checks *v1.UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
+	Checks *v1.UpstreamHealthCheck `json:"checks,omitempty"`
 }
 
 type upstreamItem upstreamReqBody
