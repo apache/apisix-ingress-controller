@@ -163,7 +163,7 @@ type PassiveHealthCheck struct {
 type ActiveHealthCheckHealthy struct {
 	PassiveHealthCheckHealthy `json:",inline" yaml:",inline"`
 
-	Interval time.Duration `json:"interval,omitempty" yaml:"interval,omitempty"`
+	Interval metav1.Duration `json:"interval,omitempty" yaml:"interval,omitempty"`
 }
 
 // ActiveHealthCheckUnhealthy defines the conditions to judge whether
@@ -171,7 +171,7 @@ type ActiveHealthCheckHealthy struct {
 type ActiveHealthCheckUnhealthy struct {
 	PassiveHealthCheckUnhealthy `json:",inline" yaml:",inline"`
 
-	Interval time.Duration `json:"interval,omitempty" yaml:"interval,omitempty"`
+	Interval metav1.Duration `json:"interval,omitempty" yaml:"interval,omitempty"`
 }
 
 // PassiveHealthCheckHealthy defines the conditions to judge whether

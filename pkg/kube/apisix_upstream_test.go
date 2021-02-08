@@ -19,10 +19,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestTranslateUpstreamHealthCheck(t *testing.T) {
@@ -37,14 +37,14 @@ func TestTranslateUpstreamHealthCheck(t *testing.T) {
 				PassiveHealthCheckUnhealthy: configv1.PassiveHealthCheckUnhealthy{
 					HTTPCodes: []int{500, 502, 504},
 				},
-				Interval: time.Second,
+				Interval: metav1.Duration{Duration: time.Second},
 			},
 			Healthy: &configv1.ActiveHealthCheckHealthy{
 				PassiveHealthCheckHealthy: configv1.PassiveHealthCheckHealthy{
 					HTTPCodes: []int{200},
 					Successes: 2,
 				},
-				Interval: 3 * time.Second,
+				Interval: metav1.Duration{Duration: 3 * time.Second},
 			},
 		},
 		Passive: &configv1.PassiveHealthCheck{
@@ -267,8 +267,21 @@ func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
 		Active: &configv1.ActiveHealthCheck{
 			Type: "https",
 			Healthy: &configv1.ActiveHealthCheckHealthy{
-				Interval: 500 * time.Millisecond,
+				Interval: metav1.Duration{Duration: 500 * time.Millisecond},
 			},
+		},
+	}
+	err = tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.active.healthy.interval",
+		reason: "invalid value",
+	})
+
+	// missing active health check healthy interval
+	hc = &configv1.HealthCheck{
+		Active: &configv1.ActiveHealthCheck{
+			Type:    "https",
+			Healthy: &configv1.ActiveHealthCheckHealthy{},
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
@@ -333,8 +346,21 @@ func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
 		Active: &configv1.ActiveHealthCheck{
 			Type: "https",
 			Unhealthy: &configv1.ActiveHealthCheckUnhealthy{
-				Interval: 500 * time.Millisecond,
+				Interval: metav1.Duration{Duration: 500 * time.Millisecond},
 			},
+		},
+	}
+	err = tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.active.unhealthy.interval",
+		reason: "invalid value",
+	})
+
+	// missing active health check unhealthy interval
+	hc = &configv1.HealthCheck{
+		Active: &configv1.ActiveHealthCheck{
+			Type:      "https",
+			Unhealthy: &configv1.ActiveHealthCheckUnhealthy{},
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)

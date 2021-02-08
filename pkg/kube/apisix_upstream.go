@@ -102,6 +102,8 @@ func (t *translator) translateUpstreamActiveHealthCheck(config *configv1.ActiveH
 	switch config.Type {
 	case apisixv1.HealthCheckHTTP, apisixv1.HealthCheckHTTPS, apisixv1.HealthCheckTCP:
 		active.Type = config.Type
+	case "":
+		active.Type = apisixv1.HealthCheckHTTP
 	default:
 		return nil, &translateError{
 			field:  "healthCheck.active.Type",
@@ -150,7 +152,7 @@ func (t *translator) translateUpstreamActiveHealthCheck(config *configv1.ActiveH
 		}
 		active.Healthy.HTTPStatuses = config.Healthy.HTTPCodes
 
-		if config.Healthy.Interval != 0 && config.Healthy.Interval < apisixv1.ActiveHealthCheckMinInterval {
+		if config.Healthy.Interval.Duration < apisixv1.ActiveHealthCheckMinInterval {
 			return nil, &translateError{
 				field:  "healthCheck.active.healthy.interval",
 				reason: "invalid value",
@@ -185,7 +187,7 @@ func (t *translator) translateUpstreamActiveHealthCheck(config *configv1.ActiveH
 		}
 		active.Unhealthy.HTTPStatuses = config.Unhealthy.HTTPCodes
 
-		if config.Unhealthy.Interval != 0 && config.Unhealthy.Interval < apisixv1.ActiveHealthCheckMinInterval {
+		if config.Unhealthy.Interval.Duration < apisixv1.ActiveHealthCheckMinInterval {
 			return nil, &translateError{
 				field:  "healthCheck.active.unhealthy.interval",
 				reason: "invalid value",
@@ -202,6 +204,8 @@ func (t *translator) translateUpstreamPassiveHealthCheck(config *configv1.Passiv
 	switch config.Type {
 	case apisixv1.HealthCheckHTTP, apisixv1.HealthCheckHTTPS, apisixv1.HealthCheckTCP:
 		passive.Type = config.Type
+	case "":
+		passive.Type = apisixv1.HealthCheckHTTP
 	default:
 		return nil, &translateError{
 			field:  "healthCheck.passive.Type",
