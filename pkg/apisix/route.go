@@ -53,7 +53,7 @@ func newRouteClient(c *cluster) Route {
 // FIXME, currently if caller pass a non-existent resource, the Get always passes
 // through cache.
 func (r *routeClient) Get(ctx context.Context, fullname string) (*v1.Route, error) {
-	log.Infow("try to look up route",
+	log.Debugw("try to look up route",
 		zap.String("fullname", fullname),
 		zap.String("url", r.url),
 		zap.String("cluster", r.clusterName),
@@ -68,7 +68,7 @@ func (r *routeClient) Get(ctx context.Context, fullname string) (*v1.Route, erro
 			zap.Error(err),
 		)
 	} else {
-		log.Warnw("failed to find route in cache, will try to lookup from APISIX",
+		log.Debugw("failed to find route in cache, will try to lookup from APISIX",
 			zap.String("fullname", fullname),
 			zap.Error(err),
 		)
@@ -115,7 +115,7 @@ func (r *routeClient) Get(ctx context.Context, fullname string) (*v1.Route, erro
 // List is only used in cache warming up. So here just pass through
 // to APISIX.
 func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
-	log.Infow("try to list routes in APISIX",
+	log.Debugw("try to list routes in APISIX",
 		zap.String("cluster", r.clusterName),
 		zap.String("url", r.url),
 	)
@@ -138,14 +138,14 @@ func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 		}
 
 		items = append(items, route)
-		log.Infof("list route #%d, body: %s", i, string(item.Value))
+		log.Debugf("list route #%d, body: %s", i, string(item.Value))
 	}
 
 	return items, nil
 }
 
 func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
-	log.Infow("try to create route",
+	log.Debugw("try to create route",
 		zap.String("host", obj.Host),
 		zap.String("fullname", obj.FullName),
 		zap.String("cluster", r.clusterName),
@@ -168,7 +168,7 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	}
 
 	url := r.url + "/" + obj.ID
-	log.Infow("creating route", zap.ByteString("body", data), zap.String("url", url))
+	log.Debugw("creating route", zap.ByteString("body", data), zap.String("url", url))
 	resp, err := r.cluster.createResource(ctx, url, bytes.NewReader(data))
 	if err != nil {
 		log.Errorf("failed to create route: %s", err)
@@ -191,7 +191,7 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 }
 
 func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
-	log.Infow("try to delete route",
+	log.Debugw("try to delete route",
 		zap.String("id", obj.ID),
 		zap.String("fullname", obj.FullName),
 		zap.String("cluster", r.clusterName),
@@ -212,7 +212,7 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 }
 
 func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
-	log.Infow("try to update route",
+	log.Debugw("try to update route",
 		zap.String("id", obj.ID),
 		zap.String("fullname", obj.FullName),
 		zap.String("cluster", r.clusterName),
@@ -232,7 +232,7 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		return nil, err
 	}
 	url := r.url + "/" + obj.ID
-	log.Infow("updating route", zap.ByteString("body", body), zap.String("url", r.url))
+	log.Debugw("updating route", zap.ByteString("body", body), zap.String("url", r.url))
 	resp, err := r.cluster.updateResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err

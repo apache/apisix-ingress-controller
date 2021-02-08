@@ -49,7 +49,7 @@ func newServiceClient(c *cluster) Service {
 }
 
 func (s *serviceClient) Get(ctx context.Context, fullname string) (*v1.Service, error) {
-	log.Infow("try to look up service",
+	log.Debugw("try to look up service",
 		zap.String("fullname", fullname),
 		zap.String("url", s.url),
 		zap.String("cluster", s.clusterName),
@@ -64,7 +64,7 @@ func (s *serviceClient) Get(ctx context.Context, fullname string) (*v1.Service, 
 			zap.Error(err),
 		)
 	} else {
-		log.Warnw("failed to find service in cache, will try to look up from APISIX",
+		log.Debugw("failed to find service in cache, will try to look up from APISIX",
 			zap.String("fullname", fullname),
 			zap.Error(err),
 		)
@@ -111,7 +111,7 @@ func (s *serviceClient) Get(ctx context.Context, fullname string) (*v1.Service, 
 // List is only used in cache warming up. So here just pass through
 // to APISIX.
 func (s *serviceClient) List(ctx context.Context) ([]*v1.Service, error) {
-	log.Infow("try to list services in APISIX",
+	log.Debugw("try to list services in APISIX",
 		zap.String("url", s.url),
 		zap.String("cluster", s.clusterName),
 	)
@@ -134,13 +134,13 @@ func (s *serviceClient) List(ctx context.Context) ([]*v1.Service, error) {
 			return nil, err
 		}
 		items = append(items, svc)
-		log.Infof("list service #%d, body: %s", i, string(item.Value))
+		log.Debugf("list service #%d, body: %s", i, string(item.Value))
 	}
 	return items, nil
 }
 
 func (s *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Service, error) {
-	log.Infow("try to create service",
+	log.Debugw("try to create service",
 		zap.String("fullname", obj.FullName),
 		zap.String("cluster", s.clusterName),
 		zap.String("url", s.url),
@@ -159,7 +159,7 @@ func (s *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Servic
 	}
 
 	url := s.url + "/" + obj.ID
-	log.Infow("creating service", zap.ByteString("body", body), zap.String("url", url))
+	log.Debugw("creating service", zap.ByteString("body", body), zap.String("url", url))
 	resp, err := s.cluster.createResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		log.Errorf("failed to create service: %s", err)
@@ -181,7 +181,7 @@ func (s *serviceClient) Create(ctx context.Context, obj *v1.Service) (*v1.Servic
 }
 
 func (s *serviceClient) Delete(ctx context.Context, obj *v1.Service) error {
-	log.Infow("try to delete service",
+	log.Debugw("try to delete service",
 		zap.String("id", obj.ID),
 		zap.String("fullname", obj.FullName),
 		zap.String("cluster", s.clusterName),
@@ -202,7 +202,7 @@ func (s *serviceClient) Delete(ctx context.Context, obj *v1.Service) error {
 }
 
 func (s *serviceClient) Update(ctx context.Context, obj *v1.Service) (*v1.Service, error) {
-	log.Infow("try to update service",
+	log.Debugw("try to update service",
 		zap.String("id", obj.ID),
 		zap.String("fullname", obj.FullName),
 		zap.String("cluster", s.clusterName),
@@ -223,7 +223,7 @@ func (s *serviceClient) Update(ctx context.Context, obj *v1.Service) (*v1.Servic
 	}
 
 	url := s.url + "/" + obj.ID
-	log.Infow("creating service", zap.ByteString("body", body), zap.String("url", url))
+	log.Debugw("creating service", zap.ByteString("body", body), zap.String("url", url))
 	resp, err := s.cluster.updateResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
