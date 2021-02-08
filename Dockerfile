@@ -23,7 +23,7 @@ RUN rm -rf /etc/localtime \
 
 WORKDIR /build
 COPY . .
-RUN GOPROXY=https://goproxy.io,direct make build
+RUN GOPROXY=https://goproxy.cn,direct make build
 
 FROM centos:centos7
 LABEL maintainer="gxthrj@163.com"

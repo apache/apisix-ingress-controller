@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"go.uber.org/multierr"
@@ -35,6 +36,10 @@ import (
 
 const (
 	_defaultTimeout = 5 * time.Second
+
+	_cacheNotSync = iota
+	_cacheSyncing
+	_cacheSynced
 )
 
 var (
@@ -60,6 +65,7 @@ type cluster struct {
 	baseURL      string
 	adminKey     string
 	cli          *http.Client
+	cacheState   int32
 	cache        cache.Cache
 	cacheSynced  chan struct{}
 	cacheSyncErr error
@@ -90,6 +96,7 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 			},
 		},
 		cache:       nil,
+		cacheState:  _cacheNotSync,
 		cacheSynced: make(chan struct{}),
 	}
 	c.route = newRouteClient(c)
@@ -105,6 +112,9 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 func (c *cluster) syncCache() {
 	log.Infow("syncing cache", zap.String("cluster", c.name))
 	now := time.Now()
+	if !atomic.CompareAndSwapInt32(&c.cacheState, _cacheNotSync, _cacheSyncing) {
+		panic("dubious state when sync cache")
+	}
 	defer func() {
 		if c.cacheSyncErr == nil {
 			log.Infow("cache synced",
@@ -129,6 +139,10 @@ func (c *cluster) syncCache() {
 		c.cacheSyncErr = err
 	}
 	close(c.cacheSynced)
+
+	if !atomic.CompareAndSwapInt32(&c.cacheState, _cacheSyncing, _cacheSynced) {
+		panic("dubious state when sync cache")
+	}
 }
 
 func (c *cluster) syncCacheOnce() (bool, error) {
@@ -212,6 +226,11 @@ func (c *cluster) HasSynced(ctx context.Context) error {
 	if c.cacheSyncErr != nil {
 		return c.cacheSyncErr
 	}
+	if atomic.LoadInt32(&c.cacheState) == _cacheSynced {
+		return nil
+	}
+
+	// still in sync
 	now := time.Now()
 	log.Warnf("waiting cluster %s to ready, it may takes a while", c.name)
 	select {
