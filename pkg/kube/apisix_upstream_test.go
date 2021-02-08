@@ -93,3 +93,253 @@ func TestTranslateUpstreamHealthCheck(t *testing.T) {
 		},
 	})
 }
+
+func TestTranslateUpstreamPassiveHealthCheckUnusually(t *testing.T) {
+	tr := &translator{}
+
+	// invalid passive health check type
+	hc := &configv1.HealthCheck{
+		Passive: &configv1.PassiveHealthCheck{
+			Type: "redis",
+		},
+	}
+
+	err := tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.passive.Type",
+		reason: "invalid value",
+	})
+
+	// invalid passive health check healthy successes
+	hc = &configv1.HealthCheck{
+		Passive: &configv1.PassiveHealthCheck{
+			Type: "http",
+			Healthy: &configv1.PassiveHealthCheckHealthy{
+				Successes: -1,
+			},
+		},
+	}
+	err = tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.passive.healthy.successes",
+		reason: "invalid value",
+	})
+
+	// empty passive health check healthy httpCodes.
+	hc = &configv1.HealthCheck{
+		Passive: &configv1.PassiveHealthCheck{
+			Type: "http",
+			Healthy: &configv1.PassiveHealthCheckHealthy{
+				Successes: 1,
+				HTTPCodes: []int{},
+			},
+		},
+	}
+	err = tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.passive.healthy.httpCodes",
+		reason: "empty",
+	})
+
+	// empty passive health check unhealthy httpFailures.
+	hc = &configv1.HealthCheck{
+		Passive: &configv1.PassiveHealthCheck{
+			Type: "http",
+			Unhealthy: &configv1.PassiveHealthCheckUnhealthy{
+				HTTPFailures: -1,
+			},
+		},
+	}
+	err = tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.passive.unhealthy.httpFailures",
+		reason: "invalid value",
+	})
+
+	// empty passive health check unhealthy tcpFailures.
+	hc = &configv1.HealthCheck{
+		Passive: &configv1.PassiveHealthCheck{
+			Type: "http",
+			Unhealthy: &configv1.PassiveHealthCheckUnhealthy{
+				TCPFailures: -1,
+			},
+		},
+	}
+	err = tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.passive.unhealthy.tcpFailures",
+		reason: "invalid value",
+	})
+
+	// empty passive health check unhealthy httpCodes.
+	hc = &configv1.HealthCheck{
+		Passive: &configv1.PassiveHealthCheck{
+			Type: "http",
+			Unhealthy: &configv1.PassiveHealthCheckUnhealthy{
+				HTTPCodes: []int{},
+			},
+		},
+	}
+	err = tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.passive.unhealthy.httpCodes",
+		reason: "empty",
+	})
+}
+
+func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
+	tr := &translator{}
+
+	// invalid active health check type
+	hc := &configv1.HealthCheck{
+		Active: &configv1.ActiveHealthCheck{
+			Type: "redis",
+		},
+	}
+	err := tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.active.Type",
+		reason: "invalid value",
+	})
+
+	// invalid active health check port value
+	hc = &configv1.HealthCheck{
+		Active: &configv1.ActiveHealthCheck{
+			Type: "http",
+			Port: 65536,
+		},
+	}
+	err = tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.active.port",
+		reason: "invalid value",
+	})
+
+	// invalid active health check concurrency value
+	hc = &configv1.HealthCheck{
+		Active: &configv1.ActiveHealthCheck{
+			Type:        "https",
+			Concurrency: -1,
+		},
+	}
+	err = tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.active.concurrency",
+		reason: "invalid value",
+	})
+
+	// invalid active health check healthy successes value
+	hc = &configv1.HealthCheck{
+		Active: &configv1.ActiveHealthCheck{
+			Type: "https",
+			Healthy: &configv1.ActiveHealthCheckHealthy{
+				PassiveHealthCheckHealthy: configv1.PassiveHealthCheckHealthy{
+					Successes: -1,
+				},
+			},
+		},
+	}
+	err = tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.active.healthy.successes",
+		reason: "invalid value",
+	})
+
+	// invalid active health check healthy successes value
+	hc = &configv1.HealthCheck{
+		Active: &configv1.ActiveHealthCheck{
+			Type: "https",
+			Healthy: &configv1.ActiveHealthCheckHealthy{
+				PassiveHealthCheckHealthy: configv1.PassiveHealthCheckHealthy{
+					HTTPCodes: []int{},
+				},
+			},
+		},
+	}
+	err = tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.active.healthy.httpCodes",
+		reason: "empty",
+	})
+
+	// invalid active health check healthy interval
+	hc = &configv1.HealthCheck{
+		Active: &configv1.ActiveHealthCheck{
+			Type: "https",
+			Healthy: &configv1.ActiveHealthCheckHealthy{
+				Interval: 500 * time.Millisecond,
+			},
+		},
+	}
+	err = tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.active.healthy.interval",
+		reason: "invalid value",
+	})
+
+	// invalid active health check unhealthy httpFailures
+	hc = &configv1.HealthCheck{
+		Active: &configv1.ActiveHealthCheck{
+			Type: "https",
+			Unhealthy: &configv1.ActiveHealthCheckUnhealthy{
+				PassiveHealthCheckUnhealthy: configv1.PassiveHealthCheckUnhealthy{
+					HTTPFailures: -1,
+				},
+			},
+		},
+	}
+	err = tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.active.unhealthy.httpFailures",
+		reason: "invalid value",
+	})
+
+	// invalid active health check unhealthy tcpFailures
+	hc = &configv1.HealthCheck{
+		Active: &configv1.ActiveHealthCheck{
+			Type: "https",
+			Unhealthy: &configv1.ActiveHealthCheckUnhealthy{
+				PassiveHealthCheckUnhealthy: configv1.PassiveHealthCheckUnhealthy{
+					TCPFailures: -1,
+				},
+			},
+		},
+	}
+	err = tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.active.unhealthy.tcpFailures",
+		reason: "invalid value",
+	})
+
+	// invalid active health check unhealthy httpCodes
+	hc = &configv1.HealthCheck{
+		Active: &configv1.ActiveHealthCheck{
+			Type: "https",
+			Unhealthy: &configv1.ActiveHealthCheckUnhealthy{
+				PassiveHealthCheckUnhealthy: configv1.PassiveHealthCheckUnhealthy{
+					HTTPCodes: []int{},
+				},
+			},
+		},
+	}
+	err = tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.active.unhealthy.httpCodes",
+		reason: "empty",
+	})
+
+	// invalid active health check unhealthy interval
+	hc = &configv1.HealthCheck{
+		Active: &configv1.ActiveHealthCheck{
+			Type: "https",
+			Unhealthy: &configv1.ActiveHealthCheckUnhealthy{
+				Interval: 500 * time.Millisecond,
+			},
+		},
+	}
+	err = tr.translateUpstreamHealthCheck(hc, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "healthCheck.active.unhealthy.interval",
+		reason: "invalid value",
+	})
+}

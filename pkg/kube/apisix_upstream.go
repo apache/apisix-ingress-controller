@@ -142,7 +142,7 @@ func (t *translator) translateUpstreamActiveHealthCheck(config *configv1.ActiveH
 			}
 		}
 		active.Healthy.Successes = config.Healthy.Successes
-		if len(config.Healthy.HTTPCodes) < 1 {
+		if config.Healthy.HTTPCodes != nil && len(config.Healthy.HTTPCodes) < 1 {
 			return nil, &translateError{
 				field:  "healthCheck.active.healthy.httpCodes",
 				reason: "empty",
@@ -150,10 +150,10 @@ func (t *translator) translateUpstreamActiveHealthCheck(config *configv1.ActiveH
 		}
 		active.Healthy.HTTPStatuses = config.Healthy.HTTPCodes
 
-		if config.Healthy.Interval < apisixv1.ActiveHealthCheckMinInterval {
+		if config.Healthy.Interval != 0 && config.Healthy.Interval < apisixv1.ActiveHealthCheckMinInterval {
 			return nil, &translateError{
-				field:  "healthCheck.active.healthy.httpCodes",
-				reason: "empty",
+				field:  "healthCheck.active.healthy.interval",
+				reason: "invalid value",
 			}
 		}
 		active.Healthy.Interval = int(config.Healthy.Interval.Seconds())
@@ -177,7 +177,7 @@ func (t *translator) translateUpstreamActiveHealthCheck(config *configv1.ActiveH
 		active.Unhealthy.TCPFailures = config.Unhealthy.TCPFailures
 		active.Unhealthy.Timeouts = config.Unhealthy.Timeout.Seconds()
 
-		if len(config.Unhealthy.HTTPCodes) < 1 {
+		if config.Unhealthy.HTTPCodes != nil && len(config.Unhealthy.HTTPCodes) < 1 {
 			return nil, &translateError{
 				field:  "healthCheck.active.unhealthy.httpCodes",
 				reason: "empty",
@@ -185,10 +185,10 @@ func (t *translator) translateUpstreamActiveHealthCheck(config *configv1.ActiveH
 		}
 		active.Unhealthy.HTTPStatuses = config.Unhealthy.HTTPCodes
 
-		if config.Unhealthy.Interval < apisixv1.ActiveHealthCheckMinInterval {
+		if config.Unhealthy.Interval != 0 && config.Unhealthy.Interval < apisixv1.ActiveHealthCheckMinInterval {
 			return nil, &translateError{
-				field:  "healthCheck.active.unhealthy.httpCodes",
-				reason: "empty",
+				field:  "healthCheck.active.unhealthy.interval",
+				reason: "invalid value",
 			}
 		}
 		active.Unhealthy.Interval = int(config.Unhealthy.Interval.Seconds())
@@ -217,7 +217,7 @@ func (t *translator) translateUpstreamPassiveHealthCheck(config *configv1.Passiv
 			}
 		}
 		passive.Healthy.Successes = config.Healthy.Successes
-		if len(config.Healthy.HTTPCodes) < 1 {
+		if config.Healthy.HTTPCodes != nil && len(config.Healthy.HTTPCodes) < 1 {
 			return nil, &translateError{
 				field:  "healthCheck.passive.healthy.httpCodes",
 				reason: "empty",
@@ -244,7 +244,7 @@ func (t *translator) translateUpstreamPassiveHealthCheck(config *configv1.Passiv
 		passive.Unhealthy.TCPFailures = config.Unhealthy.TCPFailures
 		passive.Unhealthy.Timeouts = config.Unhealthy.Timeout.Seconds()
 
-		if len(config.Unhealthy.HTTPCodes) < 1 {
+		if config.Unhealthy.HTTPCodes != nil && len(config.Unhealthy.HTTPCodes) < 1 {
 			return nil, &translateError{
 				field:  "healthCheck.passive.unhealthy.httpCodes",
 				reason: "empty",
