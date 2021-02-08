@@ -43,6 +43,10 @@ kubernetes:
   election_id: "ingress-apisix-leader" # the election id for the controller leader compaign,
                                        # only the leader will watch and delivery resource changes,
                                        # other instances (as candidates) stand by.
+  ingress_class: "apisix"              # The class of an Ingress object is set using the field
+                                       # IngressClassName in Kubernetes clusters version v1.18.0
+                                       # or higher or the annotation "kubernetes.io/ingress.class"
+                                       # (deprecated).
 
 # APISIX related configurations.
 apisix:

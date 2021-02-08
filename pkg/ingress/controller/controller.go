@@ -20,7 +20,6 @@ import (
 	"sync"
 	"time"
 
-	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,6 +27,7 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
+	networkingv1 "k8s.io/client-go/listers/networking/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
@@ -39,6 +39,7 @@ import (
 	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
 	crdclientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
+	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
@@ -68,15 +69,21 @@ type Controller struct {
 	crdInformerFactory externalversions.SharedInformerFactory
 
 	// common informers and listers
-	epInformer             cache.SharedIndexInformer
-	epLister               listerscorev1.EndpointsLister
-	svcInformer            cache.SharedIndexInformer
-	svcLister              listerscorev1.ServiceLister
+	epInformer      cache.SharedIndexInformer
+	epLister        listerscorev1.EndpointsLister
+	svcInformer     cache.SharedIndexInformer
+	svcLister       listerscorev1.ServiceLister
+	ingressInformer cache.SharedIndexInformer
+	// TODO Be compatible with networking v1beta1
+	ingressLister          networkingv1.IngressLister
+	ingressClassInformer   cache.SharedIndexInformer
+	ingressClassLister     networkingv1.IngressClassLister
 	apisixUpstreamInformer cache.SharedIndexInformer
 	apisixUpstreamLister   listersv1.ApisixUpstreamLister
 
 	// resource conrollers
 	endpointsController      *endpointsController
+	ingressController        *ingressController
 	apisixUpstreamController *apisixUpstreamController
 }
 
@@ -130,6 +137,10 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		epLister:               kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
 		svcInformer:            kube.CoreSharedInformerFactory.Core().V1().Services().Informer(),
 		svcLister:              kube.CoreSharedInformerFactory.Core().V1().Services().Lister(),
+		ingressInformer:        kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Informer(),
+		ingressLister:          kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Lister(),
+		ingressClassInformer:   kube.CoreSharedInformerFactory.Networking().V1().IngressClasses().Informer(),
+		ingressClassLister:     kube.CoreSharedInformerFactory.Networking().V1().IngressClasses().Lister(),
 		apisixUpstreamInformer: sharedInformerFactory.Apisix().V1().ApisixUpstreams().Informer(),
 		apisixUpstreamLister:   sharedInformerFactory.Apisix().V1().ApisixUpstreams().Lister(),
 	}
@@ -141,6 +152,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 
 	c.endpointsController = c.newEndpointsController()
 	c.apisixUpstreamController = c.newApisixUpstreamController()
+	c.ingressController = c.newIngressController()
 
 	return c, nil
 }
@@ -259,7 +271,12 @@ func (c *Controller) run(ctx context.Context) {
 	c.goAttach(func() {
 		c.svcInformer.Run(ctx.Done())
 	})
-
+	c.goAttach(func() {
+		c.ingressInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
+		c.ingressClassInformer.Run(ctx.Done())
+	})
 	c.goAttach(func() {
 		c.endpointsController.run(ctx)
 	})
