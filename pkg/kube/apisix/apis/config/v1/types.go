@@ -16,6 +16,7 @@ package v1
 
 import (
 	"encoding/json"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -103,6 +104,10 @@ type ApisixUpstreamConfig struct {
 	// Now value can be http, grpc.
 	// +optional
 	Scheme string `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+
+	// The health check configurtions for the upstream.
+	// +optional
+	HealthCheck *HealthCheck `json:"healthCheck,omitempty" yaml:"healthCheck,omitempty"`
 }
 
 // PortLevelSettings configures the ApisixUpstreamConfig for each individual port. It inherits
@@ -123,6 +128,66 @@ type LoadBalancer struct {
 	HashOn string `json:"hashOn,omitempty" yaml:"hashOn,omitempty"`
 	// Key represents the hash key.
 	Key string `json:"key,omitempty" yaml:"key,omitempty"`
+}
+
+// HealthCheck describes the upstream health check parameters.
+type HealthCheck struct {
+	Active  *ActiveHealthCheck  `json:"active" yaml:"active"`
+	Passive *PassiveHealthCheck `json:"passive,omitempty" yaml:"passive,omitempty"`
+}
+
+// ActiveHealthCheck defines the active kind of upstream health check.
+type ActiveHealthCheck struct {
+	Type           string                      `json:"type,omitempty" yaml:"type,omitempty"`
+	Timeout        time.Duration               `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	Concurrency    int                         `json:"concurrency,omitempty" yaml:"concurrency,omitempty"`
+	Host           string                      `json:"host,omitempty" yaml:"host,omitempty"`
+	Port           int32                       `json:"port,omitempty" yaml:"port,omitempty"`
+	HTTPPath       string                      `json:"httpPath,omitempty" yaml:"httpPath,omitempty"`
+	StrictTLS      *bool                       `json:"strictTLS,omitempty" yaml:"strictTLS,omitempty"`
+	RequestHeaders []string                    `json:"requestHeaders,omitempty" yaml:"requestHeaders,omitempty"`
+	Healthy        *ActiveHealthCheckHealthy   `json:"healthy,omitempty" yaml:"healthy,omitempty"`
+	Unhealthy      *ActiveHealthCheckUnhealthy `json:"unhealthy,omitempty" yaml:"unhealthy,omitempty"`
+}
+
+// PassiveHealthCheck defines the conditions to judge whether
+// an upstream node is healthy with the passive manager.
+type PassiveHealthCheck struct {
+	Type      string                       `json:"type,omitempty" yaml:"type,omitempty"`
+	Healthy   *PassiveHealthCheckHealthy   `json:"healthy,omitempty" yaml:"healthy,omitempty"`
+	Unhealthy *PassiveHealthCheckUnhealthy `json:"unhealthy,omitempty" yaml:"unhealthy,omitempty"`
+}
+
+// ActiveHealthCheckHealthy defines the conditions to judge whether
+// an upstream node is healthy with the active manner.
+type ActiveHealthCheckHealthy struct {
+	PassiveHealthCheckHealthy `json:",inline" yaml:",inline"`
+
+	Interval metav1.Duration `json:"interval,omitempty" yaml:"interval,omitempty"`
+}
+
+// ActiveHealthCheckUnhealthy defines the conditions to judge whether
+// an upstream node is unhealthy with the active mannger.
+type ActiveHealthCheckUnhealthy struct {
+	PassiveHealthCheckUnhealthy `json:",inline" yaml:",inline"`
+
+	Interval metav1.Duration `json:"interval,omitempty" yaml:"interval,omitempty"`
+}
+
+// PassiveHealthCheckHealthy defines the conditions to judge whether
+// an upstream node is healthy with the passive manner.
+type PassiveHealthCheckHealthy struct {
+	HTTPCodes []int `json:"httpCodes,omitempty" yaml:"httpCodes,omitempty"`
+	Successes int   `json:"successes,omitempty" yaml:"successes,omitempty"`
+}
+
+// PassiveHealthCheckUnhealthy defines the conditions to judge whether
+// an upstream node is unhealthy with the passive mannger.
+type PassiveHealthCheckUnhealthy struct {
+	HTTPCodes    []int         `json:"httpCodes,omitempty" yaml:"httpCodes,omitempty"`
+	HTTPFailures int           `json:"httpFailures,omitempty" yaml:"http_failures,omitempty"`
+	TCPFailures  int           `json:"tcpFailures,omitempty" yaml:"tcpFailures,omitempty"`
+	Timeout      time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

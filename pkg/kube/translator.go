@@ -74,47 +74,14 @@ func NewTranslator(opts *TranslatorOptions) Translator {
 
 func (t *translator) TranslateUpstreamConfig(au *configv1.ApisixUpstreamConfig) (*apisixv1.Upstream, error) {
 	ups := apisixv1.NewDefaultUpstream()
-
-	if au.Scheme == "" {
-		au.Scheme = apisixv1.SchemeHTTP
-	} else {
-		switch au.Scheme {
-		case apisixv1.SchemeHTTP, apisixv1.SchemeGRPC:
-			ups.Scheme = au.Scheme
-		default:
-			return nil, &translateError{field: "scheme", reason: "invalid value"}
-		}
+	if err := t.translateUpstreamScheme(au.Scheme, ups); err != nil {
+		return nil, err
 	}
-
-	if au.LoadBalancer == nil || au.LoadBalancer.Type == "" {
-		ups.Type = apisixv1.LbRoundRobin
-	} else {
-		switch au.LoadBalancer.Type {
-		case apisixv1.LbRoundRobin, apisixv1.LbLeastConn, apisixv1.LbEwma:
-			ups.Type = au.LoadBalancer.Type
-		case apisixv1.LbConsistentHash:
-			ups.Type = au.LoadBalancer.Type
-			ups.Key = au.LoadBalancer.Key
-			switch au.LoadBalancer.HashOn {
-			case apisixv1.HashOnVars:
-				fallthrough
-			case apisixv1.HashOnHeader:
-				fallthrough
-			case apisixv1.HashOnCookie:
-				fallthrough
-			case apisixv1.HashOnConsumer:
-				fallthrough
-			case apisixv1.HashOnVarsCombination:
-				ups.HashOn = au.LoadBalancer.HashOn
-			default:
-				return nil, &translateError{field: "loadbalancer.hashOn", reason: "invalid value"}
-			}
-		default:
-			return nil, &translateError{
-				field:  "loadbalancer.type",
-				reason: "invalid value",
-			}
-		}
+	if err := t.translateUpstreamLoadBalancer(au.LoadBalancer, ups); err != nil {
+		return nil, err
+	}
+	if err := t.translateUpstreamHealthCheck(au.HealthCheck, ups); err != nil {
+		return nil, err
 	}
 	return ups, nil
 }

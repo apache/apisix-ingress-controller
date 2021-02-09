@@ -8,7 +8,6 @@ require (
 	github.com/gruntwork-io/terratest v0.31.2
 	github.com/onsi/ginkgo v1.14.2
 	github.com/stretchr/testify v1.6.1
-	google.golang.org/grpc v1.27.1
 	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2
 )
