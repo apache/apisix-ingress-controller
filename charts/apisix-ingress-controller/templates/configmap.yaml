@@ -22,6 +22,7 @@ data:
     log_output: {{ .Values.config.logOutput | quote }}
     http_listen: {{ .Values.config.httpListen | quote }}
     enable_profiling: {{ .Values.config.enableProfiling }}
+    enable_endpointslice: {{ .Values.config.enableEndpointSlice }}
     kubernetes:
       kubeconfig: {{ .Values.config.kubernetes.kubeconfig | quote }}
       resync_interval: {{ .Values.config.kubernetes.resyncInterval | quote }}

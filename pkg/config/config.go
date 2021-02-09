@@ -40,12 +40,13 @@ const (
 // Config contains all config items which are necessary for
 // apisix-ingress-controller's running.
 type Config struct {
-	LogLevel        string           `json:"log_level" yaml:"log_level"`
-	LogOutput       string           `json:"log_output" yaml:"log_output"`
-	HTTPListen      string           `json:"http_listen" yaml:"http_listen"`
-	EnableProfiling bool             `json:"enable_profiling" yaml:"enable_profiling"`
-	Kubernetes      KubernetesConfig `json:"kubernetes" yaml:"kubernetes"`
-	APISIX          APISIXConfig     `json:"apisix" yaml:"apisix"`
+	LogLevel            string           `json:"log_level" yaml:"log_level"`
+	LogOutput           string           `json:"log_output" yaml:"log_output"`
+	HTTPListen          string           `json:"http_listen" yaml:"http_listen"`
+	EnableProfiling     bool             `json:"enable_profiling" yaml:"enable_profiling"`
+	EnableEndpointSlice bool             `json:"enable_endpointslice" yaml:"enable_endpointslice"`
+	Kubernetes          KubernetesConfig `json:"kubernetes" yaml:"kubernetes"`
+	APISIX              APISIXConfig     `json:"apisix" yaml:"apisix"`
 }
 
 // KubernetesConfig contains all Kubernetes related config items.
@@ -67,10 +68,11 @@ type APISIXConfig struct {
 // default value.
 func NewDefaultConfig() *Config {
 	return &Config{
-		LogLevel:        "warn",
-		LogOutput:       "stderr",
-		HTTPListen:      ":8080",
-		EnableProfiling: true,
+		LogLevel:            "warn",
+		LogOutput:           "stderr",
+		HTTPListen:          ":8080",
+		EnableProfiling:     true,
+		EnableEndpointSlice: false,
 		Kubernetes: KubernetesConfig{
 			Kubeconfig:     "", // Use in-cluster configurations.
 			ResyncInterval: types.TimeDuration{Duration: 6 * time.Hour},

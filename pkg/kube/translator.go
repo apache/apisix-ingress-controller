@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	discoveryvibeta1 "k8s.io/api/discovery/v1beta1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
@@ -44,6 +45,9 @@ type Translator interface {
 	// TranslateUpstreamNodes translate Endpoints resources to APISIX Upstream nodes
 	// according to the give port.
 	TranslateUpstreamNodes(*corev1.Endpoints, int32) ([]apisixv1.UpstreamNode, error)
+	// TranslateUpstreamNodesFromEndpointSlice translate EndpointSlice resources to APISIX Upstream nodes
+	// according to the give port.
+	TranslateUpstreamNodesFromEndpointSlice(*discoveryvibeta1.EndpointSlice, int32) ([]apisixv1.UpstreamNode, error)
 	// TranslateUpstreamConfig translates ApisixUpstreamConfig (part of ApisixUpstream)
 	// to APISIX Upstream, it doesn't fill the the Upstream metadata and nodes.
 	TranslateUpstreamConfig(config *configv1.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
@@ -56,7 +60,8 @@ type Translator interface {
 // TranslatorOptions contains options to help Translator
 // work well.
 type TranslatorOptions struct {
-	EndpointsLister      listerscorev1.EndpointsLister
+	// EndpointMode decides what source to use to get endpoint information
+	EndpointMode         EndpointMode
 	ServiceLister        listerscorev1.ServiceLister
 	ApisixUpstreamLister listersv1.ApisixUpstreamLister
 }
@@ -64,6 +69,17 @@ type TranslatorOptions struct {
 type translator struct {
 	*TranslatorOptions
 }
+
+// EndpointMode decides what source to use to get endpoint information
+type EndpointMode int
+
+const (
+	// EndpointsOnly type will use only Kubernetes Endpoints
+	EndpointsOnly EndpointMode = iota
+
+	// EndpointSliceOnly type will use only Kubernetes EndpointSlices
+	EndpointSliceOnly
+)
 
 // NewTranslator initializes a APISIX CRD resources Translator.
 func NewTranslator(opts *TranslatorOptions) Translator {
@@ -120,17 +136,42 @@ func (t *translator) TranslateUpstreamConfig(au *configv1.ApisixUpstreamConfig) 
 }
 
 func (t *translator) TranslateUpstream(namespace, name string, port int32) (*apisixv1.Upstream, error) {
-	endpoints, err := t.EndpointsLister.Endpoints(namespace).Get(name)
-	if err != nil {
+	var endpoints *corev1.Endpoints
+	var endpointSlice *discoveryvibeta1.EndpointSlice
+	var nodes []apisixv1.UpstreamNode
+	var err error
+	switch t.EndpointMode {
+	case EndpointSliceOnly:
+		endpointSlice, err = CoreSharedInformerFactory.Discovery().V1beta1().EndpointSlices().Lister().EndpointSlices(namespace).Get(name)
+		if err != nil {
+			return nil, &translateError{
+				field:  "endpointslice",
+				reason: err.Error(),
+			}
+		}
+		nodes, err = t.TranslateUpstreamNodesFromEndpointSlice(endpointSlice, port)
+		if err != nil {
+			return nil, err
+		}
+	case EndpointsOnly:
+		endpoints, err = CoreSharedInformerFactory.Core().V1().Endpoints().Lister().Endpoints(namespace).Get(name)
+		if err != nil {
+			return nil, &translateError{
+				field:  "endpoints",
+				reason: err.Error(),
+			}
+		}
+		nodes, err = t.TranslateUpstreamNodes(endpoints, port)
+		if err != nil {
+			return nil, err
+		}
+	default:
 		return nil, &translateError{
 			field:  "endpoints",
-			reason: err.Error(),
+			reason: "error to list endpoints",
 		}
 	}
-	nodes, err := t.TranslateUpstreamNodes(endpoints, port)
-	if err != nil {
-		return nil, err
-	}
+
 	ups := apisixv1.NewDefaultUpstream()
 	au, err := t.ApisixUpstreamLister.ApisixUpstreams(namespace).Get(name)
 	if err != nil {
@@ -194,6 +235,53 @@ func (t *translator) TranslateUpstreamNodes(endpoints *corev1.Endpoints, port in
 				nodes = append(nodes, apisixv1.UpstreamNode{
 					IP:   addr.IP,
 					Port: int(epPort.Port),
+					// FIXME Custom node weight
+					Weight: _defaultWeight,
+				})
+			}
+		}
+	}
+	return nodes, nil
+}
+
+// FIXME needs an extra abstraction (interface) to shield the real type of Endpoints (Endpoints or EndpointSlices) to
+// combine the TranslateUpstreamNodes with TranslateUpstreamNodesFromEndpointSlice
+func (t *translator) TranslateUpstreamNodesFromEndpointSlice(endpoints *discoveryvibeta1.EndpointSlice, port int32) ([]apisixv1.UpstreamNode, error) {
+	svc, err := t.ServiceLister.Services(endpoints.Namespace).Get(endpoints.Name)
+	if err != nil {
+		return nil, &translateError{
+			field:  "service",
+			reason: err.Error(),
+		}
+	}
+
+	var svcPort *corev1.ServicePort
+	for _, exposePort := range svc.Spec.Ports {
+		if exposePort.Port == port {
+			svcPort = &exposePort
+			break
+		}
+	}
+	if svcPort == nil {
+		return nil, &translateError{
+			field:  "service.spec.ports",
+			reason: "port not defined",
+		}
+	}
+	var nodes []apisixv1.UpstreamNode
+	for _, ep := range endpoints.Endpoints {
+		var epPort *discoveryvibeta1.EndpointPort
+		for _, port := range endpoints.Ports {
+			if *port.Name == svcPort.Name {
+				epPort = &port
+				break
+			}
+		}
+		if epPort != nil {
+			for _, addr := range ep.Addresses {
+				nodes = append(nodes, apisixv1.UpstreamNode{
+					IP:   addr,
+					Port: int(*epPort.Port),
 					// FIXME Custom node weight
 					Weight: _defaultWeight,
 				})

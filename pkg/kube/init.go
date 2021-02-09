@@ -16,7 +16,6 @@ package kube
 
 import (
 	"k8s.io/client-go/informers"
-	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
@@ -24,7 +23,6 @@ import (
 )
 
 var (
-	EndpointsInformer         coreinformers.EndpointsInformer
 	kubeClient                kubernetes.Interface
 	apisixKubeClient          *clientset.Clientset
 	CoreSharedInformerFactory informers.SharedInformerFactory

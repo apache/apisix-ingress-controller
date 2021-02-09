@@ -68,15 +68,13 @@ type Controller struct {
 	crdInformerFactory externalversions.SharedInformerFactory
 
 	// common informers and listers
-	epInformer             cache.SharedIndexInformer
-	epLister               listerscorev1.EndpointsLister
 	svcInformer            cache.SharedIndexInformer
 	svcLister              listerscorev1.ServiceLister
 	apisixUpstreamInformer cache.SharedIndexInformer
 	apisixUpstreamLister   listersv1.ApisixUpstreamLister
 
 	// resource conrollers
-	endpointsController      *endpointsController
+	endpointsController      kubeEndpointsController
 	apisixUpstreamController *apisixUpstreamController
 }
 
@@ -112,7 +110,6 @@ func NewController(cfg *config.Config) (*Controller, error) {
 			watchingNamespace[ns] = struct{}{}
 		}
 	}
-	kube.EndpointsInformer = kube.CoreSharedInformerFactory.Core().V1().Endpoints()
 
 	c := &Controller{
 		name:               podName,
@@ -126,20 +123,28 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		crdInformerFactory: sharedInformerFactory,
 		watchingNamespace:  watchingNamespace,
 
-		epInformer:             kube.CoreSharedInformerFactory.Core().V1().Endpoints().Informer(),
-		epLister:               kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
 		svcInformer:            kube.CoreSharedInformerFactory.Core().V1().Services().Informer(),
 		svcLister:              kube.CoreSharedInformerFactory.Core().V1().Services().Lister(),
 		apisixUpstreamInformer: sharedInformerFactory.Apisix().V1().ApisixUpstreams().Informer(),
 		apisixUpstreamLister:   sharedInformerFactory.Apisix().V1().ApisixUpstreams().Lister(),
 	}
-	c.translator = kube.NewTranslator(&kube.TranslatorOptions{
-		EndpointsLister:      c.epLister,
-		ServiceLister:        c.svcLister,
-		ApisixUpstreamLister: c.apisixUpstreamLister,
-	})
 
-	c.endpointsController = c.newEndpointsController()
+	if c.cfg.EnableEndpointSlice {
+		c.endpointsController = c.newEndpointSliceController()
+		c.translator = kube.NewTranslator(&kube.TranslatorOptions{
+			EndpointMode:         kube.EndpointSliceOnly,
+			ServiceLister:        c.svcLister,
+			ApisixUpstreamLister: c.apisixUpstreamLister,
+		})
+	} else {
+		c.endpointsController = c.newEndpointsController()
+		c.translator = kube.NewTranslator(&kube.TranslatorOptions{
+			EndpointMode:         kube.EndpointsOnly,
+			ServiceLister:        c.svcLister,
+			ApisixUpstreamLister: c.apisixUpstreamLister,
+		})
+	}
+
 	c.apisixUpstreamController = c.newApisixUpstreamController()
 
 	return c, nil
@@ -254,7 +259,7 @@ func (c *Controller) run(ctx context.Context) {
 	}
 
 	c.goAttach(func() {
-		c.epInformer.Run(ctx.Done())
+		c.endpointsController.getInformer().Run(ctx.Done())
 	})
 	c.goAttach(func() {
 		c.svcInformer.Run(ctx.Done())

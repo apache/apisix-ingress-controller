@@ -51,6 +51,7 @@ config:
   logOutput: "stderr"
   httpListen: ":8080"
   enableProfiling: true
+  enableEndpointSlice: false
   kubernetes:
     kubeconfig: ""
     resyncInterval: "60s"

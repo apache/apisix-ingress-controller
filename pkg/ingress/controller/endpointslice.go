@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
+	discoveryv1beta1 "k8s.io/api/discovery/v1beta1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -32,19 +32,19 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-type endpointsController struct {
+type endpointSliceController struct {
 	controller *Controller
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
 	epInformer cache.SharedIndexInformer
 }
 
-func (c *Controller) newEndpointsController() *endpointsController {
-	ctl := &endpointsController{
+func (c *Controller) newEndpointSliceController() *endpointSliceController {
+	ctl := &endpointSliceController{
 		controller: c,
-		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpoints"),
+		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpointslice"),
 		workers:    1,
-		epInformer: kube.CoreSharedInformerFactory.Core().V1().Endpoints().Informer(),
+		epInformer: kube.CoreSharedInformerFactory.Discovery().V1beta1().EndpointSlices().Informer(),
 	}
 
 	ctl.epInformer.AddEventHandler(
@@ -58,9 +58,9 @@ func (c *Controller) newEndpointsController() *endpointsController {
 	return ctl
 }
 
-func (c *endpointsController) run(ctx context.Context) {
-	log.Info("endpoints controller started")
-	defer log.Info("endpoints controller exited")
+func (c *endpointSliceController) run(ctx context.Context) {
+	log.Info("endpointslice controller started")
+	defer log.Info("endpointslice controller exited")
 
 	if ok := cache.WaitForCacheSync(ctx.Done(), c.epInformer.HasSynced); !ok {
 		log.Error("informers sync failed")
@@ -88,8 +88,8 @@ func (c *endpointsController) run(ctx context.Context) {
 	c.workqueue.ShutDown()
 }
 
-func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
-	ep := ev.Object.(*corev1.Endpoints)
+func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) error {
+	ep := ev.Object.(*discoveryv1beta1.EndpointSlice)
 	svc, err := c.controller.svcLister.Services(ep.Namespace).Get(ep.Name)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -104,34 +104,32 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 		portMap[port.Name] = port.Port
 	}
 	clusters := c.controller.apisix.ListClusters()
-	for _, s := range ep.Subsets {
-		for _, port := range s.Ports {
-			svcPort, ok := portMap[port.Name]
-			if !ok {
-				// This shouldn't happen.
-				log.Errorf("port %s in endpoints %s/%s but not in service", port.Name, ep.Namespace, ep.Name)
-				continue
-			}
-			nodes, err := c.controller.translator.TranslateUpstreamNodes(ep, svcPort)
-			if err != nil {
-				log.Errorw("failed to translate upstream nodes",
-					zap.Error(err),
-					zap.Any("endpoints", ep),
-					zap.Int32("port", svcPort),
-				)
-			}
-			name := apisixv1.ComposeUpstreamName(ep.Namespace, ep.Name, svcPort)
-			for _, cluster := range clusters {
-				if err := c.syncToCluster(ctx, cluster, nodes, name); err != nil {
-					return err
-				}
+	for _, port := range ep.Ports {
+		svcPort, ok := portMap[*port.Name]
+		if !ok {
+			// This shouldn't happen.
+			log.Errorf("port %s in endpointslice %s/%s but not in service", *port.Name, ep.Namespace, ep.Name)
+			continue
+		}
+		nodes, err := c.controller.translator.TranslateUpstreamNodesFromEndpointSlice(ep, svcPort)
+		if err != nil {
+			log.Errorw("failed to translate upstream nodes",
+				zap.Error(err),
+				zap.Any("endpointslice", ep),
+				zap.Int32("port", svcPort),
+			)
+		}
+		name := apisixv1.ComposeUpstreamName(ep.Namespace, ep.Name, svcPort)
+		for _, cluster := range clusters {
+			if err := c.syncToCluster(ctx, cluster, nodes, name); err != nil {
+				return err
 			}
 		}
 	}
 	return nil
 }
 
-func (c *endpointsController) syncToCluster(ctx context.Context, cluster apisix.Cluster, nodes []apisixv1.UpstreamNode, upsName string) error {
+func (c *endpointSliceController) syncToCluster(ctx context.Context, cluster apisix.Cluster, nodes []apisixv1.UpstreamNode, upsName string) error {
 	upstream, err := cluster.Upstream().Get(ctx, upsName)
 	if err != nil {
 		if err == apisixcache.ErrNotFound {
@@ -172,26 +170,26 @@ func (c *endpointsController) syncToCluster(ctx context.Context, cluster apisix.
 	return nil
 }
 
-func (c *endpointsController) handleSyncErr(obj interface{}, err error) {
+func (c *endpointSliceController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
 		return
 	}
 	if c.workqueue.NumRequeues(obj) < _maxRetries {
-		log.Infow("sync endpoints failed, will retry",
+		log.Infow("sync endpointslice failed, will retry",
 			zap.Any("object", obj),
 		)
 		c.workqueue.AddRateLimited(obj)
 	} else {
 		c.workqueue.Forget(obj)
-		log.Warnf("drop endpoints %+v out of the queue", obj)
+		log.Warnf("drop endpointslice %+v out of the queue", obj)
 	}
 }
 
-func (c *endpointsController) onAdd(obj interface{}) {
+func (c *endpointSliceController) onAdd(obj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
-		log.Errorf("found endpoints object with bad namespace/name: %s, ignore it", err)
+		log.Errorf("found endpointslice object with bad namespace/name: %s, ignore it", err)
 		return
 	}
 	if !c.controller.namespaceWatching(key) {
@@ -204,16 +202,16 @@ func (c *endpointsController) onAdd(obj interface{}) {
 	})
 }
 
-func (c *endpointsController) onUpdate(prev, curr interface{}) {
-	prevEp := prev.(*corev1.Endpoints)
-	currEp := curr.(*corev1.Endpoints)
+func (c *endpointSliceController) onUpdate(prev, curr interface{}) {
+	prevEp := prev.(*discoveryv1beta1.EndpointSlice)
+	currEp := curr.(*discoveryv1beta1.EndpointSlice)
 
 	if prevEp.GetResourceVersion() == currEp.GetResourceVersion() {
 		return
 	}
 	key, err := cache.MetaNamespaceKeyFunc(currEp)
 	if err != nil {
-		log.Errorf("found endpoints object with bad namespace/name: %s, ignore it", err)
+		log.Errorf("found endpointslice object with bad namespace/name: %s, ignore it", err)
 		return
 	}
 	if !c.controller.namespaceWatching(key) {
@@ -225,15 +223,15 @@ func (c *endpointsController) onUpdate(prev, curr interface{}) {
 	})
 }
 
-func (c *endpointsController) onDelete(obj interface{}) {
-	ep, ok := obj.(*corev1.Endpoints)
+func (c *endpointSliceController) onDelete(obj interface{}) {
+	ep, ok := obj.(*discoveryv1beta1.EndpointSlice)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
-			log.Errorf("found endpoints: %+v in bad tombstone state", obj)
+			log.Errorf("found endpointslice: %+v in bad tombstone state", obj)
 			return
 		}
-		ep = tombstone.Obj.(*corev1.Endpoints)
+		ep = tombstone.Obj.(*discoveryv1beta1.EndpointSlice)
 	}
 
 	// FIXME Refactor Controller.namespaceWatching to just use
@@ -248,6 +246,6 @@ func (c *endpointsController) onDelete(obj interface{}) {
 	})
 }
 
-func (c *endpointsController) getInformer() cache.SharedIndexInformer {
+func (c *endpointSliceController) getInformer() cache.SharedIndexInformer {
 	return c.epInformer
 }
