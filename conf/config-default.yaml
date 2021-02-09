@@ -30,7 +30,6 @@ log_output: "stderr" # the output file path of error log, default is stderr, whe
 http_listen: ":8080"   # the HTTP Server listen address, default is ":8080"
 enable_profiling: true # enable profileing via web interfaces
                        # host:port/debug/pprof, default is true.
-enable_endpointslice: false # enable endpointSlice support, default is false
 
 # Kubernetes related configurations.
 kubernetes:
@@ -44,6 +43,7 @@ kubernetes:
   election_id: "ingress-apisix-leader" # the election id for the controller leader compaign,
                                        # only the leader will watch and delivery resource changes,
                                        # other instances (as candidates) stand by.
+  enable_endpointslice: false          # enable endpointSlice support, default is false.
 
 # APISIX related configurations.
 apisix:

@@ -118,6 +118,7 @@ func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) err
 				zap.Any("endpointslice", ep),
 				zap.Int32("port", svcPort),
 			)
+			return err
 		}
 		name := apisixv1.ComposeUpstreamName(ep.Namespace, ep.Name, svcPort)
 		for _, cluster := range clusters {

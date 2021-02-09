@@ -28,16 +28,16 @@ import (
 
 func TestNewConfigFromFile(t *testing.T) {
 	cfg := &Config{
-		LogLevel:            "warn",
-		LogOutput:           "stdout",
-		HTTPListen:          ":9090",
-		EnableProfiling:     true,
-		EnableEndpointSlice: false,
+		LogLevel:        "warn",
+		LogOutput:       "stdout",
+		HTTPListen:      ":9090",
+		EnableProfiling: true,
 		Kubernetes: KubernetesConfig{
-			ResyncInterval: types.TimeDuration{time.Hour},
-			Kubeconfig:     "/path/to/foo/baz",
-			AppNamespaces:  []string{""},
-			ElectionID:     "my-election-id",
+			ResyncInterval:      types.TimeDuration{time.Hour},
+			Kubeconfig:          "/path/to/foo/baz",
+			AppNamespaces:       []string{""},
+			ElectionID:          "my-election-id",
+			EnableEndpointSlice: false,
 		},
 		APISIX: APISIXConfig{
 			BaseURL:  "http://127.0.0.1:8080/apisix",

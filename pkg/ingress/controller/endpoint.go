@@ -119,6 +119,7 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 					zap.Any("endpoints", ep),
 					zap.Int32("port", svcPort),
 				)
+				return err
 			}
 			name := apisixv1.ComposeUpstreamName(ep.Namespace, ep.Name, svcPort)
 			for _, cluster := range clusters {

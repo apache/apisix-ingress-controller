@@ -154,9 +154,9 @@ func TestNewIngressCommandEffectiveLog(t *testing.T) {
 	assert.Equal(t, cfg.LogLevel, "debug")
 	assert.Equal(t, cfg.HTTPListen, listen)
 	assert.Equal(t, cfg.EnableProfiling, true)
-	assert.Equal(t, cfg.EnableEndpointSlice, false)
 	assert.Equal(t, cfg.Kubernetes.Kubeconfig, "/foo/bar/baz")
 	assert.Equal(t, cfg.Kubernetes.ResyncInterval, types.TimeDuration{24 * time.Hour})
+	assert.Equal(t, cfg.Kubernetes.EnableEndpointSlice, false)
 	assert.Equal(t, cfg.APISIX.AdminKey, "0x123")
 	assert.Equal(t, cfg.APISIX.BaseURL, "http://apisixgw.default.cluster.local/apisix")
 }

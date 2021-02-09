@@ -40,21 +40,21 @@ const (
 // Config contains all config items which are necessary for
 // apisix-ingress-controller's running.
 type Config struct {
-	LogLevel            string           `json:"log_level" yaml:"log_level"`
-	LogOutput           string           `json:"log_output" yaml:"log_output"`
-	HTTPListen          string           `json:"http_listen" yaml:"http_listen"`
-	EnableProfiling     bool             `json:"enable_profiling" yaml:"enable_profiling"`
-	EnableEndpointSlice bool             `json:"enable_endpointslice" yaml:"enable_endpointslice"`
-	Kubernetes          KubernetesConfig `json:"kubernetes" yaml:"kubernetes"`
-	APISIX              APISIXConfig     `json:"apisix" yaml:"apisix"`
+	LogLevel        string           `json:"log_level" yaml:"log_level"`
+	LogOutput       string           `json:"log_output" yaml:"log_output"`
+	HTTPListen      string           `json:"http_listen" yaml:"http_listen"`
+	EnableProfiling bool             `json:"enable_profiling" yaml:"enable_profiling"`
+	Kubernetes      KubernetesConfig `json:"kubernetes" yaml:"kubernetes"`
+	APISIX          APISIXConfig     `json:"apisix" yaml:"apisix"`
 }
 
 // KubernetesConfig contains all Kubernetes related config items.
 type KubernetesConfig struct {
-	Kubeconfig     string             `json:"kubeconfig" yaml:"kubeconfig"`
-	ResyncInterval types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
-	AppNamespaces  []string           `json:"app_namespaces" yaml:"app_namespaces"`
-	ElectionID     string             `json:"election_id" yaml:"election_id"`
+	Kubeconfig          string             `json:"kubeconfig" yaml:"kubeconfig"`
+	ResyncInterval      types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
+	AppNamespaces       []string           `json:"app_namespaces" yaml:"app_namespaces"`
+	ElectionID          string             `json:"election_id" yaml:"election_id"`
+	EnableEndpointSlice bool               `json:"enable_endpointslice" yaml:"enable_endpointslice"`
 }
 
 // APISIXConfig contains all APISIX related config items.
@@ -68,16 +68,16 @@ type APISIXConfig struct {
 // default value.
 func NewDefaultConfig() *Config {
 	return &Config{
-		LogLevel:            "warn",
-		LogOutput:           "stderr",
-		HTTPListen:          ":8080",
-		EnableProfiling:     true,
-		EnableEndpointSlice: false,
+		LogLevel:        "warn",
+		LogOutput:       "stderr",
+		HTTPListen:      ":8080",
+		EnableProfiling: true,
 		Kubernetes: KubernetesConfig{
-			Kubeconfig:     "", // Use in-cluster configurations.
-			ResyncInterval: types.TimeDuration{Duration: 6 * time.Hour},
-			AppNamespaces:  []string{v1.NamespaceAll},
-			ElectionID:     IngressAPISIXLeader,
+			Kubeconfig:          "", // Use in-cluster configurations.
+			ResyncInterval:      types.TimeDuration{Duration: 6 * time.Hour},
+			AppNamespaces:       []string{v1.NamespaceAll},
+			ElectionID:          IngressAPISIXLeader,
+			EnableEndpointSlice: false,
 		},
 	}
 }

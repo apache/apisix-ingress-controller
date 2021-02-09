@@ -129,7 +129,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		apisixUpstreamLister:   sharedInformerFactory.Apisix().V1().ApisixUpstreams().Lister(),
 	}
 
-	if c.cfg.EnableEndpointSlice {
+	if c.cfg.Kubernetes.EnableEndpointSlice {
 		c.endpointsController = c.newEndpointSliceController()
 		c.translator = kube.NewTranslator(&kube.TranslatorOptions{
 			EndpointMode:         kube.EndpointSliceOnly,
