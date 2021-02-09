@@ -27,7 +27,6 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
-	networkingv1 "k8s.io/client-go/listers/networking/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
@@ -69,15 +68,13 @@ type Controller struct {
 	crdInformerFactory externalversions.SharedInformerFactory
 
 	// common informers and listers
-	epInformer      cache.SharedIndexInformer
-	epLister        listerscorev1.EndpointsLister
-	svcInformer     cache.SharedIndexInformer
-	svcLister       listerscorev1.ServiceLister
-	ingressInformer cache.SharedIndexInformer
-	// TODO Be compatible with networking v1beta1
-	ingressLister          networkingv1.IngressLister
-	ingressClassInformer   cache.SharedIndexInformer
-	ingressClassLister     networkingv1.IngressClassLister
+	epInformer             cache.SharedIndexInformer
+	epLister               listerscorev1.EndpointsLister
+	svcInformer            cache.SharedIndexInformer
+	svcLister              listerscorev1.ServiceLister
+	ingressLister          kube.IngressLister
+	ingressV1Informer      cache.SharedIndexInformer
+	ingressV1beta1Informer cache.SharedIndexInformer
 	apisixUpstreamInformer cache.SharedIndexInformer
 	apisixUpstreamLister   listersv1.ApisixUpstreamLister
 
@@ -121,6 +118,9 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	}
 	kube.EndpointsInformer = kube.CoreSharedInformerFactory.Core().V1().Endpoints()
 
+	ingressLister := kube.NewIngressLister(kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Lister(),
+		kube.CoreSharedInformerFactory.Networking().V1beta1().Ingresses().Lister())
+
 	c := &Controller{
 		name:               podName,
 		namespace:          podNamespace,
@@ -137,10 +137,9 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		epLister:               kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
 		svcInformer:            kube.CoreSharedInformerFactory.Core().V1().Services().Informer(),
 		svcLister:              kube.CoreSharedInformerFactory.Core().V1().Services().Lister(),
-		ingressInformer:        kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Informer(),
-		ingressLister:          kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Lister(),
-		ingressClassInformer:   kube.CoreSharedInformerFactory.Networking().V1().IngressClasses().Informer(),
-		ingressClassLister:     kube.CoreSharedInformerFactory.Networking().V1().IngressClasses().Lister(),
+		ingressV1Informer:      kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Informer(),
+		ingressV1beta1Informer: kube.CoreSharedInformerFactory.Networking().V1beta1().Ingresses().Informer(),
+		ingressLister:          ingressLister,
 		apisixUpstreamInformer: sharedInformerFactory.Apisix().V1().ApisixUpstreams().Informer(),
 		apisixUpstreamLister:   sharedInformerFactory.Apisix().V1().ApisixUpstreams().Lister(),
 	}
@@ -272,10 +271,10 @@ func (c *Controller) run(ctx context.Context) {
 		c.svcInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
-		c.ingressInformer.Run(ctx.Done())
+		c.ingressV1Informer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
-		c.ingressClassInformer.Run(ctx.Done())
+		c.ingressV1beta1Informer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
 		c.endpointsController.run(ctx)

@@ -51,6 +51,9 @@ type Translator interface {
 	// given namespace, name (searching Service/Endpoints) and port (filtering Endpoints).
 	// The returned Upstream doesn't have metadata info.
 	TranslateUpstream(string, string, int32) (*apisixv1.Upstream, error)
+	// TranslateIngress composes a couple of APISIX Routes and upstreams according
+	// to the given Ingress resource.
+	TranslateIngress(Ingress) ([]*apisixv1.Route, []*apisixv1.Upstream, error)
 }
 
 // TranslatorOptions contains options to help Translator
@@ -168,4 +171,9 @@ func (t *translator) TranslateUpstreamNodes(endpoints *corev1.Endpoints, port in
 		}
 	}
 	return nodes, nil
+}
+
+func (t *translator) TranslateIngress(ing Ingress) ([]*apisixv1.Route, []*apisixv1.Upstream, error) {
+	// Not Yet Implemented
+	return nil, nil, nil
 }

@@ -105,6 +105,9 @@ func TestSignalHandler(t *testing.T) {
 }
 
 func TestNewIngressCommandEffectiveLog(t *testing.T) {
+	// Delay for 2 seconds to avoid conflicting with the
+	// TestSignalHandler case.
+	time.Sleep(2 * time.Second)
 	listen := getRandomListen()
 	cmd := NewIngressCommand()
 	cmd.SetArgs([]string{
