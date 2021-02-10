@@ -17,9 +17,10 @@ package translation
 import (
 	"bytes"
 
+	networkingv1beta1 "k8s.io/api/networking/v1beta1"
+
 	"go.uber.org/zap"
 	networkingv1 "k8s.io/api/networking/v1"
-	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"

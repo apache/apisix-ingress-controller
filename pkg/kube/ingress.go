@@ -39,6 +39,12 @@ type IngressLister interface {
 	V1beta1(string, string) (Ingress, error)
 }
 
+// IngressInformer is an encapsulation for the informer of Kubernetes
+// Ingress, it aims at to be compatible with different Ingress versions.
+type IngressInformer interface {
+	Run(chan struct{})
+}
+
 // Ingress is an encapsulation for Kubernetes Ingress with different
 // versions, for now, they are networking/v1 and networking/v1beta1.
 type Ingress interface {

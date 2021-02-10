@@ -17,21 +17,17 @@ package controller
 import (
 	"context"
 
-	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
-
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
-
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-
 	"go.uber.org/zap"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
+	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
@@ -51,12 +47,7 @@ func (c *Controller) newIngressController() *ingressController {
 		workers:    1,
 	}
 
-	c.ingressV1Informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    ctl.onAdd,
-		UpdateFunc: ctl.onUpdate,
-		DeleteFunc: ctl.OnDelete,
-	})
-	c.ingressV1beta1Informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	c.ingressInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ctl.onAdd,
 		UpdateFunc: ctl.onUpdate,
 		DeleteFunc: ctl.OnDelete,
@@ -68,7 +59,7 @@ func (c *ingressController) run(ctx context.Context) {
 	log.Info("ingress controller started")
 	defer log.Infof("ingress controller exited")
 
-	if !cache.WaitForCacheSync(ctx.Done(), c.controller.ingressV1beta1Informer.HasSynced, c.controller.ingressV1Informer.HasSynced) {
+	if !cache.WaitForCacheSync(ctx.Done(), c.controller.ingressInformer.HasSynced) {
 		log.Errorf("cache sync failed")
 		return
 	}
@@ -138,6 +129,12 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		return err
 	}
 
+	log.Debugw("translated ingress resource to a couple of routes and upstreams",
+		zap.Any("ingress", ing),
+		zap.Any("routes", routes),
+		zap.Any("upstreams", upstreams),
+	)
+
 	if err := c.syncToCluster(ctx, "", routes, upstreams, ev.Type); err != nil {
 		log.Errorw("failed to sync ingress artifacts (routes, upstreams)",
 			zap.Error(err),
@@ -167,7 +164,7 @@ func (c *ingressController) syncToCluster(ctx context.Context, clusterName strin
 	}
 	for _, u := range upstreams {
 		old, err := c.controller.apisix.Cluster(clusterName).Upstream().Get(ctx, u.FullName)
-		if err == nil || err == apisixcache.ErrNotFound {
+		if err == nil && err != apisixcache.ErrNotFound {
 			return err
 		}
 		if old == nil {
@@ -182,7 +179,7 @@ func (c *ingressController) syncToCluster(ctx context.Context, clusterName strin
 	}
 	for _, r := range routes {
 		old, err := c.controller.apisix.Cluster(clusterName).Route().Get(ctx, r.FullName)
-		if err == nil || err == apisixcache.ErrNotFound {
+		if err == nil && err != apisixcache.ErrNotFound {
 			return err
 		}
 		if old == nil {
