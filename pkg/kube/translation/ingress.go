@@ -46,7 +46,9 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) ([]*apisixv1.
 						zap.Error(err),
 						zap.Any("ingress", ing),
 					)
+					return nil, nil, err
 				}
+				upstreams = append(upstreams, ups)
 			}
 			path := pathRule.Path
 			if pathRule.PathType != nil && *pathRule.PathType == networkingv1.PathTypePrefix {
@@ -88,7 +90,9 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) ([]
 						zap.Error(err),
 						zap.Any("ingress", ing),
 					)
+					return nil, nil, err
 				}
+				upstreams = append(upstreams, ups)
 			}
 			path := pathRule.Path
 			if pathRule.PathType != nil && *pathRule.PathType == networkingv1beta1.PathTypePrefix {
