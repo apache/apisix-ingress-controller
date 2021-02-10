@@ -120,7 +120,7 @@ func TestTranslateIngressV1NoBackend(t *testing.T) {
 	assert.Len(t, upstreams, 0)
 	assert.Nil(t, err)
 	assert.Equal(t, routes[0].UpstreamId, "")
-	assert.Equal(t, routes[0].Path, "/foo*")
+	assert.Equal(t, routes[0].Uris, []string{"/foo", "/foo/*"})
 }
 
 func TestTranslateIngressV1BackendWithInvalidService(t *testing.T) {
@@ -290,10 +290,10 @@ func TestTranslateIngressV1(t *testing.T) {
 	assert.Len(t, upstreams, 2)
 	assert.Nil(t, err)
 
-	assert.Equal(t, routes[0].Path, "/foo*")
+	assert.Equal(t, routes[0].Uris, []string{"/foo", "/foo/*"})
 	assert.Equal(t, routes[0].UpstreamId, upstreams[0].ID)
 	assert.Equal(t, routes[0].Host, "apisix.apache.org")
-	assert.Equal(t, routes[1].Path, "/bar")
+	assert.Equal(t, routes[1].Uris, []string{"/bar"})
 	assert.Equal(t, routes[1].UpstreamId, upstreams[1].ID)
 	assert.Equal(t, routes[1].Host, "apisix.apache.org")
 
@@ -346,7 +346,7 @@ func TestTranslateIngressV1beta1NoBackend(t *testing.T) {
 	assert.Len(t, upstreams, 0)
 	assert.Nil(t, err)
 	assert.Equal(t, routes[0].UpstreamId, "")
-	assert.Equal(t, routes[0].Path, "/foo*")
+	assert.Equal(t, routes[0].Uris, []string{"/foo", "/foo/*"})
 }
 
 func TestTranslateIngressV1beta1BackendWithInvalidService(t *testing.T) {
@@ -513,10 +513,10 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	assert.Len(t, upstreams, 2)
 	assert.Nil(t, err)
 
-	assert.Equal(t, routes[0].Path, "/foo*")
+	assert.Equal(t, routes[0].Uris, []string{"/foo", "/foo/*"})
 	assert.Equal(t, routes[0].UpstreamId, upstreams[0].ID)
 	assert.Equal(t, routes[0].Host, "apisix.apache.org")
-	assert.Equal(t, routes[1].Path, "/bar")
+	assert.Equal(t, routes[1].Uris, []string{"/bar"})
 	assert.Equal(t, routes[1].UpstreamId, upstreams[1].ID)
 	assert.Equal(t, routes[1].Host, "apisix.apache.org")
 

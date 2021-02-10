@@ -80,6 +80,7 @@ type Route struct {
 
 	Host         string   `json:"host,omitempty" yaml:"host,omitempty"`
 	Path         string   `json:"path,omitempty" yaml:"path,omitempty"`
+	Uris         []string `json:"uris,omitempty" yaml:"uris,omitempty"`
 	Methods      []string `json:"methods,omitempty" yaml:"methods,omitempty"`
 	ServiceId    string   `json:"service_id,omitempty" yaml:"service_id,omitempty"`
 	ServiceName  string   `json:"service_name,omitempty" yaml:"service_name,omitempty"`

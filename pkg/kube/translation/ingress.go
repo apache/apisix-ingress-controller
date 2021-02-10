@@ -50,16 +50,25 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) ([]*apisixv1.
 				}
 				upstreams = append(upstreams, ups)
 			}
-			path := pathRule.Path
+			uris := []string{pathRule.Path}
 			if pathRule.PathType != nil && *pathRule.PathType == networkingv1.PathTypePrefix {
-				path += "*"
+				// As per the specification of Ingress path matching rule:
+				// if the last element of the path is a substring of the
+				// last element in request path, it is not a match ,e.g. /foo/bar
+				// matches /foo/bar/baz, but does not match /foo/barbaz.
+				// While in APISIX, /foo/bar matches both /foo/bar/baz and
+				// /foo/barbaz.
+				// In order to be conformant with Ingress specification, here
+				// we create two paths here, the first is the path itself
+				// (exact match), the other is path + "/*" (prefix match).
+				uris = append(uris, pathRule.Path+"/*")
 			}
 			route := &apisixv1.Route{
 				Metadata: apisixv1.Metadata{
 					FullName: composeIngressRouteName(rule.Host, pathRule.Path),
 				},
 				Host: rule.Host,
-				Path: path,
+				Uris: uris,
 			}
 			route.ID = id.GenID(route.FullName)
 			if ups != nil {
@@ -94,16 +103,25 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) ([]
 				}
 				upstreams = append(upstreams, ups)
 			}
-			path := pathRule.Path
+			uris := []string{pathRule.Path}
 			if pathRule.PathType != nil && *pathRule.PathType == networkingv1beta1.PathTypePrefix {
-				path += "*"
+				// As per the specification of Ingress path matching rule:
+				// if the last element of the path is a substring of the
+				// last element in request path, it is not a match ,e.g. /foo/bar
+				// matches /foo/bar/baz, but does not match /foo/barbaz.
+				// While in APISIX, /foo/bar matches both /foo/bar/baz and
+				// /foo/barbaz.
+				// In order to be conformant with Ingress specification, here
+				// we create two paths here, the first is the path itself
+				// (exact match), the other is path + "/*" (prefix match).
+				uris = append(uris, pathRule.Path+"/*")
 			}
 			route := &apisixv1.Route{
 				Metadata: apisixv1.Metadata{
 					FullName: composeIngressRouteName(rule.Host, pathRule.Path),
 				},
 				Host: rule.Host,
-				Path: path,
+				Uris: uris,
 			}
 			route.ID = id.GenID(route.FullName)
 			if ups != nil {
