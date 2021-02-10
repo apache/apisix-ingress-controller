@@ -72,6 +72,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) ([]*apisixv1.
 				Uris: uris,
 			}
 			route.ID = id.GenID(route.FullName)
+			route.Name = route.FullName
 			if ups != nil {
 				route.UpstreamId = ups.ID
 			}
@@ -124,6 +125,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) ([]
 				Host: rule.Host,
 				Uris: uris,
 			}
+			route.Name = route.FullName
 			route.ID = id.GenID(route.FullName)
 			if ups != nil {
 				route.UpstreamId = ups.ID
@@ -161,6 +163,7 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 		return nil, err
 	}
 	ups.FullName = apisixv1.ComposeUpstreamName(namespace, backend.Name, svcPort)
+	ups.Name = ups.FullName
 	ups.ID = id.GenID(ups.FullName)
 	return ups, nil
 }
@@ -192,6 +195,7 @@ func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcNa
 		return nil, err
 	}
 	ups.FullName = apisixv1.ComposeUpstreamName(namespace, svcName, portNumber)
+	ups.Name = ups.FullName
 	ups.ID = id.GenID(ups.FullName)
 	return ups, nil
 }
