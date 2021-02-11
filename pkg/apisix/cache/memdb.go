@@ -50,7 +50,9 @@ func (c *dbCache) InsertRoute(r *v1.Route) error {
 	// check. The service id will be removed in the future,
 	// and that time, please remove these codes.
 	route := r.DeepCopy()
-	route.ServiceId = "blackhole"
+	if route.ServiceId == "" {
+		route.ServiceId = "blackhole"
+	}
 	return c.insert("route", route)
 }
 
