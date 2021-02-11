@@ -52,7 +52,7 @@ spec:
 `, backendSvc, backendPort[0])
 		err := s.CreateResourceFromString(ing)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 
 		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 		// Exact path, doesn't match /ip/aha
@@ -85,7 +85,7 @@ spec:
 `, backendSvc, backendPort[0])
 		err := s.CreateResourceFromString(ing)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 
 		_ = s.NewAPISIXClient().GET("/status/500").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusInternalServerError)
 		_ = s.NewAPISIXClient().GET("/status/504").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusGatewayTimeout)
@@ -120,7 +120,7 @@ spec:
 `, backendSvc, backendPort[0])
 		err := s.CreateResourceFromString(ing)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 
 		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 		// Exact path, doesn't match /ip/aha
@@ -151,7 +151,7 @@ spec:
 `, backendSvc, backendPort[0])
 		err := s.CreateResourceFromString(ing)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 
 		_ = s.NewAPISIXClient().GET("/status/500").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusInternalServerError)
 		_ = s.NewAPISIXClient().GET("/status/504").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusGatewayTimeout)
