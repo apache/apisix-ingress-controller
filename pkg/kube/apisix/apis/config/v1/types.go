@@ -108,7 +108,7 @@ type ApisixUpstreamConfig struct {
 	// How many times that the proxy (Apache APISIX) should do when
 	// errors occur (error, timeout or bad http status codes like 500, 502).
 	// +optional
-	Retires int `json:"retires,omitempty" yaml:"retries,omitempty"`
+	Retries int `json:"retries,omitempty" yaml:"retries,omitempty"`
 
 	// Timeout settings for the read, send and connect to the upstream.
 	// +optional
