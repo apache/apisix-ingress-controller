@@ -27,6 +27,7 @@ In order to control the behavior of the proxy ([Apache APISIX](https://github.co
 - [ApisixUpstream](#apisixupstream)
   - [Configuring Load Balancer](#configuring-load-balancer)
   - [Configuring Health Check](#configuring-load-balancer)
+  - [Configuring Retry and Timeout](#configuring-retry-and-timeout)
   - [Port Level Settings](#port-level-settings)
   - [Configuration References](#configuration-references)
 - [ApisixTls](#apisixtls)
@@ -200,6 +201,44 @@ up once the healthy conditions are met (three consecutive requests got good stat
 Note the active health checker is somewhat duplicated with the liveness/readiness probes but it's required if the passive feedback mechanism is in use. So once you use the health check feature in ApisixUpstream,
 the active health checker is mandatory.
 
+### Configuring Retry and Timeout
+
+You may want the proxy to retry when requests occur faults like transient network errors
+or service unavailable, by default the retry count is `1`. You can change it by specifying the `retries` field.
+
+The following configuration configures the `retries` to `3`, which indicates there'll be at most `3` requests sent to
+Kubernetes service `httpbin`'s endpoints.
+
+One should bear in mind that passing a request to the next endpoint is only possible
+if nothing has been sent to a client yet. That is, if an error or timeout occurs in the middle
+of the transferring of a response, fixing this is impossible.
+
+```yaml
+apiVersion: apisix.apache.org/v1
+kind: ApisixUpstream
+metadata:
+  name: httpbin
+spec:
+  retries: 3
+```
+
+The default connect, read and send timeout are `60s`, which might not proper for some applicartions,
+just change them in the `timeout` field.
+
+```yaml
+apiVersion: apisix.apache.org/v1
+kind: ApisixUpstream
+metadata:
+  name: httpbin
+spec:
+  timeout:
+    connect: 5s
+    read: 10s
+    send: 10s
+```
+
+The above examples sets the connect, read and timeout to `5s`, `10s`, `10s` respectively.
+
 ### Port Level Settings
 
 Once in a while a single Kubernetes Service might expose multiple ports which provides distinct functions and different Upstream configurations are required.
@@ -250,6 +289,11 @@ In the meanwhile, the ApisixUpstream `foo` sets `http` scheme for port `7000` an
 | loadbalancer.type | string | The load balancing type, can be `roundrobin`, `ewma`, `least_conn`, `chash`, default is `roundrobin`. |
 | loadbalancer.hashOn | string | The hash value source scope, only take effects if the `chash` algorithm is in use. Values can `vars`, `header`, `vars_combinations`, `cookie` and `consumers`, default is `vars`. |
 | loadbalancer.key | string | The hash key, only in valid if the `chash` algorithm is used.
+| retries | int | The retry count. |
+| timeout | object | The timeout settings. |
+| timeout.connect | time duration in the form "72h3m0.5s" | The connect timeout. |
+| timeout.read | time duration in the form "72h3m0.5s" | The read timeout. |
+| timeout.send | time duration in the form "72h3m0.5s" | The send timeout. |
 | healthCheck | object | The health check parameters, see [Health Check](https://github.com/apache/apisix/blob/master/doc/health-check.md) for more details. |
 | healthCheck.active | object | active health check configuration, which is a mandatory field. |
 | healthCheck.active.type | string | health check type, can be `http`, `https` and `tcp`, default is `http`. |
