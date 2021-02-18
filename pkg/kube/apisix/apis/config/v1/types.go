@@ -105,9 +105,25 @@ type ApisixUpstreamConfig struct {
 	// +optional
 	Scheme string `json:"scheme,omitempty" yaml:"scheme,omitempty"`
 
+	// How many times that the proxy (Apache APISIX) should do when
+	// errors occur (error, timeout or bad http status codes like 500, 502).
+	// +optional
+	Retries int `json:"retries,omitempty" yaml:"retries,omitempty"`
+
+	// Timeout settings for the read, send and connect to the upstream.
+	// +optional
+	Timeout *UpstreamTimeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+
 	// The health check configurtions for the upstream.
 	// +optional
 	HealthCheck *HealthCheck `json:"healthCheck,omitempty" yaml:"healthCheck,omitempty"`
+}
+
+// UpstreamTimeout is settings for the read, send and connect to the upstream.
+type UpstreamTimeout struct {
+	Connect metav1.Duration `json:"connect,omitempty" yaml:"connect,omitempty"`
+	Send    metav1.Duration `json:"send,omitempty" yaml:"send,omitempty"`
+	Read    metav1.Duration `json:"read,omitempty" yaml:"read,omitempty"`
 }
 
 // PortLevelSettings configures the ApisixUpstreamConfig for each individual port. It inherits

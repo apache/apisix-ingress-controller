@@ -19,6 +19,55 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
+func (t *translator) translateUpstreamRetriesAndTimeout(retries int, timeout *configv1.UpstreamTimeout, ups *apisixv1.Upstream) error {
+	if retries < 0 {
+		return &translateError{
+			field:  "retries",
+			reason: "invalid value",
+		}
+	}
+	ups.Retries = retries
+	if timeout == nil {
+		return nil
+	}
+
+	// Since the schema of timeout doesn't allow only configuring
+	// one or two items. Here we assign the default value first.
+	connTimeout := apisixv1.DefaultUpstreamTimeout
+	readTimeout := apisixv1.DefaultUpstreamTimeout
+	sendTimeout := apisixv1.DefaultUpstreamTimeout
+	if timeout.Connect.Duration < 0 {
+		return &translateError{
+			field:  "timeout.connect",
+			reason: "invalid value",
+		}
+	} else if timeout.Connect.Duration > 0 {
+		connTimeout = int(timeout.Connect.Seconds())
+	}
+	if timeout.Read.Duration < 0 {
+		return &translateError{
+			field:  "timeout.read",
+			reason: "invalid value",
+		}
+	} else if timeout.Read.Duration > 0 {
+		readTimeout = int(timeout.Read.Seconds())
+	}
+	if timeout.Send.Duration < 0 {
+		return &translateError{
+			field:  "timeout.send",
+			reason: "invalid value",
+		}
+	} else if timeout.Send.Duration > 0 {
+		sendTimeout = int(timeout.Send.Seconds())
+	}
+	ups.Timeout = &apisixv1.UpstreamTimeout{
+		Connect: connTimeout,
+		Send:    sendTimeout,
+		Read:    readTimeout,
+	}
+	return nil
+}
+
 func (t *translator) translateUpstreamScheme(scheme string, ups *apisixv1.Upstream) error {
 	if scheme == "" {
 		ups.Scheme = apisixv1.SchemeHTTP

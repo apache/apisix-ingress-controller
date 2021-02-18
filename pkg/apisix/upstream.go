@@ -62,13 +62,15 @@ func (n *upstreamNodes) UnmarshalJSON(p []byte) error {
 }
 
 type upstreamReqBody struct {
-	LBType string                  `json:"type"`
-	HashOn string                  `json:"hash_on,omitempty"`
-	Key    string                  `json:"key,omitempty"`
-	Nodes  upstreamNodes           `json:"nodes"`
-	Desc   string                  `json:"desc"`
-	Scheme string                  `json:"scheme,omitempty"`
-	Checks *v1.UpstreamHealthCheck `json:"checks,omitempty"`
+	LBType  string                  `json:"type"`
+	HashOn  string                  `json:"hash_on,omitempty"`
+	Key     string                  `json:"key,omitempty"`
+	Nodes   upstreamNodes           `json:"nodes"`
+	Desc    string                  `json:"desc"`
+	Scheme  string                  `json:"scheme,omitempty"`
+	Retries int                     `json:"retries,omitempty"`
+	Timeout *v1.UpstreamTimeout     `json:"timeout,omitempty"`
+	Checks  *v1.UpstreamHealthCheck `json:"checks,omitempty"`
 }
 
 type upstreamItem upstreamReqBody
@@ -192,13 +194,15 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		})
 	}
 	body, err := json.Marshal(upstreamReqBody{
-		LBType: obj.Type,
-		HashOn: obj.HashOn,
-		Key:    obj.Key,
-		Nodes:  nodes,
-		Desc:   obj.Name,
-		Scheme: obj.Scheme,
-		Checks: obj.Checks,
+		LBType:  obj.Type,
+		HashOn:  obj.HashOn,
+		Key:     obj.Key,
+		Nodes:   nodes,
+		Desc:    obj.Name,
+		Scheme:  obj.Scheme,
+		Checks:  obj.Checks,
+		Retries: obj.Retries,
+		Timeout: obj.Timeout,
 	})
 	if err != nil {
 		return nil, err
