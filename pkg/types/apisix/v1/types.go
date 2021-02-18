@@ -63,7 +63,7 @@ const (
 	// the active health check.
 	ActiveHealthCheckMinInterval = time.Second
 
-	// Default connect, read and send timeout with upstreams.
+	// Default connect, read and send timeout (in seconds) with upstreams.
 	DefaultUpstreamTimeout = 60
 )
 
