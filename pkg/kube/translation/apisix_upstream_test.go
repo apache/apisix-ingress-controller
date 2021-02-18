@@ -369,3 +369,39 @@ func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
 		reason: "invalid value",
 	})
 }
+
+func TestUpstreamRetriesAndTimeout(t *testing.T) {
+	tr := &translator{}
+	err := tr.translateUpstreamRetriesAndTimeout(-1, nil, nil)
+	assert.Equal(t, err, &translateError{
+		field:  "retries",
+		reason: "invalid value",
+	})
+
+	var ups apisixv1.Upstream
+	err = tr.translateUpstreamRetriesAndTimeout(3, nil, &ups)
+	assert.Nil(t, err)
+	assert.Equal(t, ups.Retries, 3)
+
+	timeout := &configv1.UpstreamTimeout{
+		Connect: metav1.Duration{Duration: time.Second},
+		Read:    metav1.Duration{Duration: -1},
+	}
+	err = tr.translateUpstreamRetriesAndTimeout(3, timeout, &ups)
+	assert.Equal(t, err, &translateError{
+		field:  "timeout.read",
+		reason: "invalid value",
+	})
+
+	timeout = &configv1.UpstreamTimeout{
+		Connect: metav1.Duration{Duration: time.Second},
+		Read:    metav1.Duration{Duration: 15 * time.Second},
+	}
+	err = tr.translateUpstreamRetriesAndTimeout(3, timeout, &ups)
+	assert.Nil(t, err)
+	assert.Equal(t, ups.Timeout, &apisixv1.UpstreamTimeout{
+		Connect: 1,
+		Send:    60,
+		Read:    15,
+	})
+}

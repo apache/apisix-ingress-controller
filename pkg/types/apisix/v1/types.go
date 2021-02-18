@@ -62,6 +62,9 @@ const (
 	// ActiveHealthCheckMinInterval is the minimum interval for
 	// the active health check.
 	ActiveHealthCheckMinInterval = time.Second
+
+	// Default connect, read and send timeout (in seconds) with upstreams.
+	DefaultUpstreamTimeout = 60
 )
 
 // Metadata contains all meta information about resources.
@@ -131,6 +134,18 @@ type Upstream struct {
 	Nodes    []UpstreamNode       `json:"nodes,omitempty" yaml:"nodes,omitempty"`
 	FromKind string               `json:"from_kind,omitempty" yaml:"from_kind,omitempty"`
 	Scheme   string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+	Retries  int                  `json:"retries,omitempty" yaml:"retries,omitempty"`
+	Timeout  *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+}
+
+// UpstreamTimeout represents the timeout settings on Upstream.
+type UpstreamTimeout struct {
+	// Connect is the connect timeout
+	Connect int `json:"connect" yaml:"connect"`
+	// Send is the send timeout
+	Send int `json:"send" yaml:"send"`
+	// Read is the read timeout
+	Read int `json:"read" yaml:"read"`
 }
 
 // Node the node in upstream

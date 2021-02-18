@@ -89,6 +89,9 @@ func (t *translator) TranslateUpstreamConfig(au *configv1.ApisixUpstreamConfig) 
 	if err := t.translateUpstreamHealthCheck(au.HealthCheck, ups); err != nil {
 		return nil, err
 	}
+	if err := t.translateUpstreamRetriesAndTimeout(au.Retries, au.Timeout, ups); err != nil {
+		return nil, err
+	}
 	return ups, nil
 }
 
