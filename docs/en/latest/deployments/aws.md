@@ -27,7 +27,6 @@ This document explains how to install Ingress APISIX on [Amazon EKS](https://ama
 * Install [Helm](https://helm.sh/).
 * Download the kube config for your EKS from [aws cli interface](https://amazonaws-china.com/cli/).
 * Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
-* Clone [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller).
 * Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX
@@ -37,8 +36,8 @@ This document explains how to install Ingress APISIX on [Amazon EKS](https://ama
 ```shell
 cd /path/to/apisix-helm-chart
 helm repo add bitnami https://charts.bitnami.com/bitnami
-helm dependency update ./chart/apisix
-helm install apisix ./chart/apisix \
+helm dependency update ./charts/apisix
+helm install apisix ./charts/apisix \
   --set gateway.type=LoadBalancer \
   --set allow.ipList="{0.0.0.0/0}" \
   --namespace ingress-apisix \
@@ -60,7 +59,7 @@ Another thing should be concerned that the `allow.ipList` field should be custom
 You can also install apisix-ingress-controller by Helm Charts, it's recommended to install it in the same namespace with Apache APISIX.
 
 ```shell
-cd /path/to/apisix-ingress-controller
+cd /path/to/apisix-helm-chart
 # install apisix-ingress-controller
 helm install apisix-ingress-controller ./charts/apisix-ingress-controller \
   --set image.tag=dev \
