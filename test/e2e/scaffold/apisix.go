@@ -236,7 +236,7 @@ func (s *Scaffold) waitAllAPISIXPodsAvailable() error {
 			return false, nil
 		}
 		s, _ := json.Marshal(items)
-		ginkgo.GinkgoT().Log("apisix: \n", s)
+		ginkgo.GinkgoT().Log("apisix: \n", string(s))
 		for _, item := range items {
 			foundPodReady := false
 			for _, cond := range item.Status.Conditions {
