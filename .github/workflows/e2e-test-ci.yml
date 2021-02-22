@@ -20,14 +20,11 @@ jobs:
         run: kubectl cluster-info
       - name: Add images
         run: |
-          IMAGE_TAG=dev make build-image
+          IMAGE_TAG=dev make build-image-to-minikube
+          eval $(minikube docker-env)
           docker pull apache/apisix:dev
           docker pull bitnami/etcd:3.4.14-debian-10-r0
           docker pull kennethreitz/httpbin
-          minikube cache add apache/apisix-ingress-controller:dev -v 7 --alsologtostderr
-          minikube cache add apache/apisix:dev -v 7 --alsologtostderr
-          minikube cache add bitnami/etcd:3.4.14-debian-10-r0 -v 7 --alsologtostderr
-          minikube cache add kennethreitz/httpbin -v 7 --alsologtostderr
       - name: Setup Go Env
         uses: actions/setup-go@v1
         with:
