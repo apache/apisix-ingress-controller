@@ -15,6 +15,7 @@
 package scaffold
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -234,6 +235,8 @@ func (s *Scaffold) waitAllAPISIXPodsAvailable() error {
 			ginkgo.GinkgoT().Log("no apisix pods created")
 			return false, nil
 		}
+		s, _ := json.Marshal(items)
+		ginkgo.GinkgoT().Log("apisix: \n", s)
 		for _, item := range items {
 			foundPodReady := false
 			for _, cond := range item.Status.Conditions {
