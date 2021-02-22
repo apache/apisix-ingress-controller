@@ -25,6 +25,7 @@ jobs:
           docker pull apache/apisix:dev
           docker pull bitnami/etcd:3.4.14-debian-10-r0
           docker pull kennethreitz/httpbin
+          docker images
       - name: Setup Go Env
         uses: actions/setup-go@v1
         with:
