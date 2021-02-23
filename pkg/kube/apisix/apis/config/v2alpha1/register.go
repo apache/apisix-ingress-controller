@@ -22,7 +22,7 @@ import (
 
 const (
 	_groupName = "apisix.apache.org"
-	_version   = "v1"
+	_version   = "v2alpha1"
 )
 
 var (
@@ -36,10 +36,6 @@ var (
 
 func Resource(resource string) schema.GroupResource {
 	return SchemeGroupVersion.WithResource(resource).GroupResource()
-}
-
-func Kind(kind string) schema.GroupKind {
-	return SchemeGroupVersion.WithKind(kind).GroupKind()
 }
 
 func addKnownTypes(scheme *runtime.Scheme) error {
