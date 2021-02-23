@@ -21,7 +21,7 @@ package versioned
 import (
 	"fmt"
 
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v1"
+	apisixv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -29,19 +29,19 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	ApisixV1() apisixv1.ApisixV1Interface
+	ApisixV2alpha1() apisixv2alpha1.ApisixV2alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	apisixV1 *apisixv1.ApisixV1Client
+	apisixV2alpha1 *apisixv2alpha1.ApisixV2alpha1Client
 }
 
-// ApisixV1 retrieves the ApisixV1Client
-func (c *Clientset) ApisixV1() apisixv1.ApisixV1Interface {
-	return c.apisixV1
+// ApisixV2alpha1 retrieves the ApisixV2alpha1Client
+func (c *Clientset) ApisixV2alpha1() apisixv2alpha1.ApisixV2alpha1Interface {
+	return c.apisixV2alpha1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -65,7 +65,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
-	cs.apisixV1, err = apisixv1.NewForConfig(&configShallowCopy)
+	cs.apisixV2alpha1, err = apisixv2alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
-	cs.apisixV1 = apisixv1.NewForConfigOrDie(c)
+	cs.apisixV2alpha1 = apisixv2alpha1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -90,7 +90,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.apisixV1 = apisixv1.New(c)
+	cs.apisixV2alpha1 = apisixv2alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs
