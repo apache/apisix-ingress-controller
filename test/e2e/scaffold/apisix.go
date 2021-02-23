@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os/exec"
 	"strconv"
 	"strings"
 
@@ -235,12 +234,6 @@ func (s *Scaffold) waitAllAPISIXPodsAvailable() error {
 			ginkgo.GinkgoT().Log("no apisix pods created")
 			return false, nil
 		}
-		output, err := exec.Command("/usr/local/bin/kubectl", "logs", items[0].Name, "-n", items[0].Namespace).Output()
-		ginkgo.GinkgoT().Logf("apisix logs: %s, err: %s", string(output), err)
-
-		output, err = exec.Command("/usr/local/bin/kubectl", "get", "pods", items[0].Namespace).Output()
-		ginkgo.GinkgoT().Logf("pods: %s, err: %s", string(output), err)
-
 		for _, item := range items {
 			foundPodReady := false
 			for _, cond := range item.Status.Conditions {
