@@ -37,6 +37,8 @@ func TestNewConfigFromFile(t *testing.T) {
 			Kubeconfig:     "/path/to/foo/baz",
 			AppNamespaces:  []string{""},
 			ElectionID:     "my-election-id",
+			IngressClass:   IngressClass,
+			IngressVersion: IngressNetworkingV1,
 		},
 		APISIX: APISIXConfig{
 			BaseURL:  "http://127.0.0.1:8080/apisix",
@@ -74,6 +76,8 @@ kubernetes:
   kubeconfig: /path/to/foo/baz
   resync_interval: 1h0m0s
   election_id: my-election-id
+  ingress_class: apisix
+  ingress_version: networking/v1
 apisix:
   base_url: http://127.0.0.1:8080/apisix
   admin_key: "123456"

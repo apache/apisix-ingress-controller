@@ -29,11 +29,13 @@ import (
 )
 
 type routeReqBody struct {
-	Desc      string     `json:"desc,omitempty"`
-	URI       string     `json:"uri,omitempty"`
-	Host      string     `json:"host,omitempty"`
-	ServiceId string     `json:"service_id,omitempty"`
-	Plugins   v1.Plugins `json:"plugins,omitempty"`
+	Desc       string     `json:"desc,omitempty"`
+	URI        string     `json:"uri,omitempty"`
+	Uris       []string   `json:"uris,omitempty"`
+	Host       string     `json:"host,omitempty"`
+	ServiceId  string     `json:"service_id,omitempty"`
+	UpstreamId string     `json:"upstream_id,omitempty"`
+	Plugins    v1.Plugins `json:"plugins,omitempty"`
 }
 
 type routeClient struct {
@@ -156,12 +158,13 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		return nil, err
 	}
 	data, err := json.Marshal(routeReqBody{
-		Desc:      obj.Name,
-		URI:       obj.Path,
-		Host:      obj.Host,
-		ServiceId: obj.ServiceId,
-
-		Plugins: obj.Plugins,
+		Desc:       obj.Name,
+		URI:        obj.Path,
+		Host:       obj.Host,
+		ServiceId:  obj.ServiceId,
+		UpstreamId: obj.UpstreamId,
+		Uris:       obj.Uris,
+		Plugins:    obj.Plugins,
 	})
 	if err != nil {
 		return nil, err

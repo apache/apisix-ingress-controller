@@ -20,11 +20,12 @@ jobs:
         run: kubectl cluster-info
       - name: Add images
         run: |
-          IMAGE_TAG=dev make build-image
-          minikube cache add apache/apisix-ingress-controller:dev -v 7 --alsologtostderr
-          minikube cache add apache/apisix:dev -v 7 --alsologtostderr
-          minikube cache add bitnami/etcd:3.4.14-debian-10-r0 -v 7 --alsologtostderr
-          minikube cache add kennethreitz/httpbin -v 7 --alsologtostderr
+          IMAGE_TAG=dev make build-image-to-minikube
+          eval $(minikube docker-env)
+          docker pull apache/apisix:dev
+          docker pull bitnami/etcd:3.4.14-debian-10-r0
+          docker pull kennethreitz/httpbin
+          docker images
       - name: Setup Go Env
         uses: actions/setup-go@v1
         with:
@@ -36,7 +37,7 @@ jobs:
       - name: Run e2e test cases
         working-directory: ./
         run: |
-          make e2e-test E2E_SKIP_BUILD=1 E2E_CONCURRENCY=2
+          make e2e-test E2E_SKIP_BUILD=1 E2E_CONCURRENCY=1
       - name: upload coverage profile
         working-directory: ./test/e2e
         run: |

@@ -95,7 +95,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 		}
 		if ev.Type != types.EventDelete {
 			log.Warnf("ApisixUpstream %s was deleted before it can be delivered", key)
-			// Don't need retry.
+			// Don't need to retry.
 			return nil
 		}
 	}
@@ -104,7 +104,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 			// We still find the resource while we are processing the DELETE event,
 			// that means object with same namespace and name was created, discarding
 			// this stale DELETE event.
-			log.Warnf("discard the stale ApisixUpstream DELETE event since the %s exists", key)
+			log.Warnf("discard the stale ApisixUpstream delete event since the %s exists", key)
 			return nil
 		}
 		au = ev.Tombstone.(*configv1.ApisixUpstream)
@@ -216,6 +216,9 @@ func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
 		log.Errorf("found ApisixUpstream resource with bad meta namespace key: %s", err)
+		return
+	}
+	if !c.controller.namespaceWatching(key) {
 		return
 	}
 	log.Debugw("ApisixUpstream update event arrived",
