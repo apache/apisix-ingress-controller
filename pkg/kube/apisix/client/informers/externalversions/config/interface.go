@@ -19,14 +19,14 @@ limitations under the License.
 package config
 
 import (
-	v2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v2alpha1"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v1"
 	internalinterfaces "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to each of this group's versions.
 type Interface interface {
-	// V2alpha1 provides access to shared informers for resources in V2alpha1.
-	V2alpha1() v2alpha1.Interface
+	// V1 provides access to shared informers for resources in V1.
+	V1() v1.Interface
 }
 
 type group struct {
@@ -40,7 +40,7 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &group{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// V2alpha1 returns a new v2alpha1.Interface.
-func (g *group) V2alpha1() v2alpha1.Interface {
-	return v2alpha1.New(g.factory, g.namespace, g.tweakListOptions)
+// V1 returns a new v1.Interface.
+func (g *group) V1() v1.Interface {
+	return v1.New(g.factory, g.namespace, g.tweakListOptions)
 }

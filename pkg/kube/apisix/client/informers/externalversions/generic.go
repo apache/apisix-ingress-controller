@@ -21,7 +21,7 @@ package externalversions
 import (
 	"fmt"
 
-	v2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -52,9 +52,13 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=apisix.apache.org, Version=v2alpha1
-	case v2alpha1.SchemeGroupVersion.WithResource("apisixroutes"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2alpha1().ApisixRoutes().Informer()}, nil
+	// Group=apisix.apache.org, Version=v1
+	case v1.SchemeGroupVersion.WithResource("apisixroutes"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V1().ApisixRoutes().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("apisixtlses"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V1().ApisixTlses().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("apisixupstreams"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V1().ApisixUpstreams().Informer()}, nil
 
 	}
 
