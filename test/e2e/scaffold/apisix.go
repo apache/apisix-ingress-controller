@@ -235,13 +235,13 @@ func (s *Scaffold) waitAllAPISIXPodsAvailable() error {
 			ginkgo.GinkgoT().Log("no apisix pods created")
 			return false, nil
 		}
-		cmd := fmt.Sprintf("kubectl logs %s -n %s", items[0].Name, items[0].Namespace)
+		cmd := fmt.Sprintf("/usr/local/bin/kubectl logs %s -n %s", items[0].Name, items[0].Namespace)
 		output, err := exec.Command(cmd).Output()
-		ginkgo.GinkgoT().Logf("apisix logs: %s, err: ", string(output), err)
+		ginkgo.GinkgoT().Logf("apisix logs: %s, err: %s", string(output), err)
 
-		cmd = fmt.Sprintf("kubectl get pods -n %s", items[0].Namespace)
+		cmd = fmt.Sprintf("/usr/local/bin/kubectl get pods -n %s", items[0].Namespace)
 		output, err = exec.Command(cmd).Output()
-		ginkgo.GinkgoT().Logf("pods: %s, err: ", string(output), err)
+		ginkgo.GinkgoT().Logf("pods: %s, err: %s", string(output), err)
 
 		for _, item := range items {
 			foundPodReady := false
