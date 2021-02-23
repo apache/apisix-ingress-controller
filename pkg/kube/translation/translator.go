@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package kube
+package translation
 
 import (
 	"fmt"
@@ -21,6 +21,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -50,7 +51,12 @@ type Translator interface {
 	// TranslateUpstream composes an upstream according to the
 	// given namespace, name (searching Service/Endpoints) and port (filtering Endpoints).
 	// The returned Upstream doesn't have metadata info.
+	// It doesn't assign any metadata fields, so it's caller's responsibility to decide
+	// the metadata.
 	TranslateUpstream(string, string, int32) (*apisixv1.Upstream, error)
+	// TranslateIngress composes a couple of APISIX Routes and upstreams according
+	// to the given Ingress resource.
+	TranslateIngress(kube.Ingress) ([]*apisixv1.Route, []*apisixv1.Upstream, error)
 }
 
 // TranslatorOptions contains options to help Translator
@@ -171,4 +177,11 @@ func (t *translator) TranslateUpstreamNodes(endpoints *corev1.Endpoints, port in
 		}
 	}
 	return nodes, nil
+}
+
+func (t *translator) TranslateIngress(ing kube.Ingress) ([]*apisixv1.Route, []*apisixv1.Upstream, error) {
+	if ing.GroupVersion() == kube.IngressV1 {
+		return t.translateIngressV1(ing.V1())
+	}
+	return t.translateIngressV1beta1(ing.V1beta1())
 }

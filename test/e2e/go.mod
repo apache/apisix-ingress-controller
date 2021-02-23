@@ -5,7 +5,7 @@ go 1.14
 require (
 	github.com/apache/apisix-ingress-controller v0.0.0-20210105024109-72e53386de5a
 	github.com/gavv/httpexpect/v2 v2.1.0
-	github.com/gruntwork-io/terratest v0.31.2
+	github.com/gruntwork-io/terratest v0.32.7
 	github.com/onsi/ginkgo v1.14.2
 	github.com/stretchr/testify v1.6.1
 	k8s.io/api v0.20.2
