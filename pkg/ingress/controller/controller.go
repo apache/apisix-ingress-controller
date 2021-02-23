@@ -20,7 +20,6 @@ import (
 	"sync"
 	"time"
 
-	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,6 +38,8 @@ import (
 	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
 	crdclientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
+	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
@@ -59,7 +60,7 @@ type Controller struct {
 	wg                 sync.WaitGroup
 	watchingNamespace  map[string]struct{}
 	apisix             apisix.APISIX
-	translator         kube.Translator
+	translator         translation.Translator
 	apiServer          *api.Server
 	clientset          kubernetes.Interface
 	crdClientset       crdclientset.Interface
@@ -72,11 +73,14 @@ type Controller struct {
 	epLister               listerscorev1.EndpointsLister
 	svcInformer            cache.SharedIndexInformer
 	svcLister              listerscorev1.ServiceLister
+	ingressLister          kube.IngressLister
+	ingressInformer        cache.SharedIndexInformer
 	apisixUpstreamInformer cache.SharedIndexInformer
 	apisixUpstreamLister   listersv1.ApisixUpstreamLister
 
 	// resource conrollers
 	endpointsController      *endpointsController
+	ingressController        *ingressController
 	apisixUpstreamController *apisixUpstreamController
 }
 
@@ -105,7 +109,10 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	crdClientset := kube.GetApisixClient()
 	sharedInformerFactory := externalversions.NewSharedInformerFactory(crdClientset, cfg.Kubernetes.ResyncInterval.Duration)
 
-	var watchingNamespace map[string]struct{}
+	var (
+		watchingNamespace map[string]struct{}
+		ingressInformer   cache.SharedIndexInformer
+	)
 	if len(cfg.Kubernetes.AppNamespaces) > 1 || cfg.Kubernetes.AppNamespaces[0] != v1.NamespaceAll {
 		watchingNamespace = make(map[string]struct{}, len(cfg.Kubernetes.AppNamespaces))
 		for _, ns := range cfg.Kubernetes.AppNamespaces {
@@ -113,6 +120,15 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		}
 	}
 	kube.EndpointsInformer = kube.CoreSharedInformerFactory.Core().V1().Endpoints()
+
+	ingressLister := kube.NewIngressLister(kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Lister(),
+		kube.CoreSharedInformerFactory.Networking().V1beta1().Ingresses().Lister())
+
+	if cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1 {
+		ingressInformer = kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Informer()
+	} else {
+		ingressInformer = kube.CoreSharedInformerFactory.Extensions().V1beta1().Ingresses().Informer()
+	}
 
 	c := &Controller{
 		name:               podName,
@@ -130,10 +146,12 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		epLister:               kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
 		svcInformer:            kube.CoreSharedInformerFactory.Core().V1().Services().Informer(),
 		svcLister:              kube.CoreSharedInformerFactory.Core().V1().Services().Lister(),
+		ingressLister:          ingressLister,
+		ingressInformer:        ingressInformer,
 		apisixUpstreamInformer: sharedInformerFactory.Apisix().V1().ApisixUpstreams().Informer(),
 		apisixUpstreamLister:   sharedInformerFactory.Apisix().V1().ApisixUpstreams().Lister(),
 	}
-	c.translator = kube.NewTranslator(&kube.TranslatorOptions{
+	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 		EndpointsLister:      c.epLister,
 		ServiceLister:        c.svcLister,
 		ApisixUpstreamLister: c.apisixUpstreamLister,
@@ -141,6 +159,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 
 	c.endpointsController = c.newEndpointsController()
 	c.apisixUpstreamController = c.newApisixUpstreamController()
+	c.ingressController = c.newIngressController()
 
 	return c, nil
 }
@@ -259,12 +278,17 @@ func (c *Controller) run(ctx context.Context) {
 	c.goAttach(func() {
 		c.svcInformer.Run(ctx.Done())
 	})
-
+	c.goAttach(func() {
+		c.ingressInformer.Run(ctx.Done())
+	})
 	c.goAttach(func() {
 		c.endpointsController.run(ctx)
 	})
 	c.goAttach(func() {
 		c.apisixUpstreamController.run(ctx)
+	})
+	c.goAttach(func() {
+		c.ingressController.run(ctx)
 	})
 
 	ac := &Api6Controller{

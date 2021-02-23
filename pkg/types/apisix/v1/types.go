@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"strconv"
+	"time"
 )
 
 const (
@@ -47,6 +48,23 @@ const (
 	SchemeHTTP = "http"
 	// SchemeGRPC represents the GRPC protocol.
 	SchemeGRPC = "grpc"
+
+	// HealthCheckHTTP represents the HTTP kind health check.
+	HealthCheckHTTP = "http"
+	// HealthCheckHTTPS represents the HTTPS kind health check.
+	HealthCheckHTTPS = "https"
+	// HealthCheckTCP represents the TCP kind health check.
+	HealthCheckTCP = "tcp"
+
+	// HealthCheckMaxConsecutiveNumber is the max number for
+	// the consecutive success/failure in upstream health check.
+	HealthCheckMaxConsecutiveNumber = 254
+	// ActiveHealthCheckMinInterval is the minimum interval for
+	// the active health check.
+	ActiveHealthCheckMinInterval = time.Second
+
+	// Default connect, read and send timeout (in seconds) with upstreams.
+	DefaultUpstreamTimeout = 60
 )
 
 // Metadata contains all meta information about resources.
@@ -65,6 +83,7 @@ type Route struct {
 
 	Host         string   `json:"host,omitempty" yaml:"host,omitempty"`
 	Path         string   `json:"path,omitempty" yaml:"path,omitempty"`
+	Uris         []string `json:"uris,omitempty" yaml:"uris,omitempty"`
 	Methods      []string `json:"methods,omitempty" yaml:"methods,omitempty"`
 	ServiceId    string   `json:"service_id,omitempty" yaml:"service_id,omitempty"`
 	ServiceName  string   `json:"service_name,omitempty" yaml:"service_name,omitempty"`
@@ -108,12 +127,25 @@ type Service struct {
 type Upstream struct {
 	Metadata `json:",inline" yaml:",inline"`
 
-	Type     string         `json:"type,omitempty" yaml:"type,omitempty"`
-	HashOn   string         `json:"hash_on,omitemtpy" yaml:"hash_on,omitempty"`
-	Key      string         `json:"key,omitempty" yaml:"key,omitempty"`
-	Nodes    []UpstreamNode `json:"nodes,omitempty" yaml:"nodes,omitempty"`
-	FromKind string         `json:"from_kind,omitempty" yaml:"from_kind,omitempty"`
-	Scheme   string         `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+	Type     string               `json:"type,omitempty" yaml:"type,omitempty"`
+	HashOn   string               `json:"hash_on,omitemtpy" yaml:"hash_on,omitempty"`
+	Key      string               `json:"key,omitempty" yaml:"key,omitempty"`
+	Checks   *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
+	Nodes    []UpstreamNode       `json:"nodes,omitempty" yaml:"nodes,omitempty"`
+	FromKind string               `json:"from_kind,omitempty" yaml:"from_kind,omitempty"`
+	Scheme   string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+	Retries  int                  `json:"retries,omitempty" yaml:"retries,omitempty"`
+	Timeout  *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+}
+
+// UpstreamTimeout represents the timeout settings on Upstream.
+type UpstreamTimeout struct {
+	// Connect is the connect timeout
+	Connect int `json:"connect" yaml:"connect"`
+	// Send is the send timeout
+	Send int `json:"send" yaml:"send"`
+	// Read is the read timeout
+	Read int `json:"read" yaml:"read"`
 }
 
 // Node the node in upstream
@@ -122,6 +154,74 @@ type UpstreamNode struct {
 	IP     string `json:"ip,omitempty" yaml:"ip,omitempty"`
 	Port   int    `json:"port,omitempty" yaml:"port,omitempty"`
 	Weight int    `json:"weight,omitempty" yaml:"weight,omitempty"`
+}
+
+// UpstreamHealthCheck defines the active and/or passive health check for an Upstream,
+// with the upstream health check feature, pods can be kicked out or joined in quickly,
+// if the feedback of Kubernetes liveness/readiness probe is long.
+// +k8s:deepcopy-gen=true
+type UpstreamHealthCheck struct {
+	Active  *UpstreamActiveHealthCheck  `json:"active" yaml:"active"`
+	Passive *UpstreamPassiveHealthCheck `json:"passive,omitempty" yaml:"passive,omitempty"`
+}
+
+// UpstreamActiveHealthCheck defines the active kind of upstream health check.
+// +k8s:deepcopy-gen=true
+type UpstreamActiveHealthCheck struct {
+	Type               string                             `json:"type,omitempty" yaml:"type,omitempty"`
+	Timeout            int                                `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	Concurrency        int                                `json:"concurrency,omitempty" yaml:"concurrency,omitempty"`
+	Host               string                             `json:"host,omitempty" yaml:"host,omitempty"`
+	Port               int32                              `json:"port,omitempty" yaml:"port,omitempty"`
+	HTTPPath           string                             `json:"http_path,omitempty" yaml:"http_path,omitempty"`
+	HTTPSVerifyCert    bool                               `json:"https_verify_certificate,omitempty" yaml:"https_verify_certificate,omitempty"`
+	HTTPRequestHeaders []string                           `json:"req_headers,omitempty" yaml:"req_headers,omitempty"`
+	Healthy            UpstreamActiveHealthCheckHealthy   `json:"healthy,omitempty" yaml:"healthy,omitempty"`
+	Unhealthy          UpstreamActiveHealthCheckUnhealthy `json:"unhealthy,omitempty" yaml:"unhealthy,omitempty"`
+}
+
+// UpstreamPassiveHealthCheck defines the passive kind of upstream health check.
+// +k8s:deepcopy-gen=true
+type UpstreamPassiveHealthCheck struct {
+	Type      string                              `json:"type,omitempty" yaml:"type,omitempty"`
+	Healthy   UpstreamPassiveHealthCheckHealthy   `json:"healthy,omitempty" yaml:"healthy,omitempty"`
+	Unhealthy UpstreamPassiveHealthCheckUnhealthy `json:"unhealthy,omitempty" yaml:"unhealthy,omitempty"`
+}
+
+// UpstreamActiveHealthCheckHealthy defines the conditions to judge whether
+// an upstream node is healthy with the active manner.
+// +k8s:deepcopy-gen=true
+type UpstreamActiveHealthCheckHealthy struct {
+	UpstreamPassiveHealthCheckHealthy `json:",inline" yaml:",inline"`
+
+	Interval int `json:"interval,omitempty" yaml:"interval,omitempty"`
+}
+
+// UpstreamPassiveHealthCheckHealthy defines the conditions to judge whether
+// an upstream node is healthy with the passive manner.
+// +k8s:deepcopy-gen=true
+type UpstreamPassiveHealthCheckHealthy struct {
+	HTTPStatuses []int `json:"http_statuses,omitempty" yaml:"http_statuses,omitempty"`
+	Successes    int   `json:"successes,omitempty" yaml:"successes,omitempty"`
+}
+
+// UpstreamActiveHealthCheckUnhealthy defines the conditions to judge whether
+// an upstream node is unhealthy with the active mannger.
+// +k8s:deepcopy-gen=true
+type UpstreamActiveHealthCheckUnhealthy struct {
+	UpstreamPassiveHealthCheckUnhealthy `json:",inline" yaml:",inline"`
+
+	Interval int `json:"interval,omitempty" yaml:"interval,omitempty"`
+}
+
+// UpstreamPassiveHealthCheckUnhealthy defines the conditions to judge whether
+// an upstream node is unhealthy with the passive mannger.
+// +k8s:deepcopy-gen=true
+type UpstreamPassiveHealthCheckUnhealthy struct {
+	HTTPStatuses []int   `json:"http_statuses,omitempty" yaml:"http_statuses,omitempty"`
+	HTTPFailures int     `json:"http_failures,omitempty" yaml:"http_failures,omitempty"`
+	TCPFailures  int     `json:"tcp_failures,omitempty" yaml:"tcp_failures,omitempty"`
+	Timeouts     float64 `json:"timeouts,omitempty" yaml:"timeouts,omitempty"`
 }
 
 // Ssl apisix ssl object

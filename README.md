@@ -39,6 +39,7 @@ This project is currently considered experimental.
 
 * Declarative configuration for Apache APISIX with Custom Resource Definitions(CRDs), using k8s yaml struct with minimum learning curve.
 * Hot-reload during yaml apply.
+* Native Kubernetes Ingress (both `v1` and `v1beta1`) support.
 * Auto register k8s endpoint to upstream(Apache APISIX) node.
 * Out of box support for node health check.
 * Support load balancing based on pod (upstream nodes).

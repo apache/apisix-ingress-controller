@@ -46,7 +46,14 @@ func NewMemDBCache() (Cache, error) {
 }
 
 func (c *dbCache) InsertRoute(r *v1.Route) error {
-	return c.insert("route", r.DeepCopy())
+	// FIXME this is a work around to bypass the schema index
+	// check. The service id will be removed in the future,
+	// and that time, please remove these codes.
+	route := r.DeepCopy()
+	if route.ServiceId == "" {
+		route.ServiceId = "blackhole"
+	}
+	return c.insert("route", route)
 }
 
 func (c *dbCache) InsertService(s *v1.Service) error {

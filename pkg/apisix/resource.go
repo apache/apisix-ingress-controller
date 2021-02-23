@@ -77,6 +77,7 @@ type routeItem struct {
 	ServiceId  string                 `json:"service_id"`
 	Host       string                 `json:"host"`
 	URI        string                 `json:"uri"`
+	Uris       []string               `json:"uris"`
 	Desc       string                 `json:"desc"`
 	Methods    []string               `json:"methods"`
 	Plugins    map[string]interface{} `json:"plugins"`
@@ -106,6 +107,7 @@ func (i *item) route(clusterName string) (*v1.Route, error) {
 		},
 		Host:       route.Host,
 		Path:       route.URI,
+		Uris:       route.Uris,
 		Methods:    route.Methods,
 		UpstreamId: route.UpstreamId,
 		ServiceId:  route.ServiceId,
@@ -135,6 +137,17 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 		})
 	}
 
+	// This is a work around scheme to avoid APISIX's
+	// health check schema about the health checker intervals.
+	if ups.Checks != nil && ups.Checks.Active != nil {
+		if ups.Checks.Active.Healthy.Interval == 0 {
+			ups.Checks.Active.Healthy.Interval = int(v1.ActiveHealthCheckMinInterval.Seconds())
+		}
+		if ups.Checks.Active.Unhealthy.Interval == 0 {
+			ups.Checks.Active.Healthy.Interval = int(v1.ActiveHealthCheckMinInterval.Seconds())
+		}
+	}
+
 	fullName := genFullName(ups.Desc, clusterName)
 
 	return &v1.Upstream{
@@ -144,10 +157,14 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 			Group:    clusterName,
 			Name:     ups.Desc,
 		},
-		Type:   ups.LBType,
-		Key:    i.Key,
-		Nodes:  nodes,
-		Scheme: ups.Scheme,
+		Type:    ups.LBType,
+		Key:     ups.Key,
+		HashOn:  ups.HashOn,
+		Nodes:   nodes,
+		Scheme:  ups.Scheme,
+		Checks:  ups.Checks,
+		Retries: ups.Retries,
+		Timeout: ups.Timeout,
 	}, nil
 }
 

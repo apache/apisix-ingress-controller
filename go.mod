@@ -5,7 +5,9 @@ go 1.13
 require (
 	github.com/gin-gonic/gin v1.6.3
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
+	github.com/gruntwork-io/terratest v0.32.7 // indirect
 	github.com/hashicorp/go-memdb v1.0.4
+	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect
@@ -31,5 +33,3 @@ require (
 	k8s.io/apimachinery v0.20.2
 	k8s.io/client-go v0.20.2
 )
-
-replace github.com/gxthrj/apisix-ingress-types v0.1.3 => github.com/api7/ingress-types v0.1.3
