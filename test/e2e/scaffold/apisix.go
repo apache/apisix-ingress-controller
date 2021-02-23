@@ -15,10 +15,10 @@
 package scaffold
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -235,8 +235,10 @@ func (s *Scaffold) waitAllAPISIXPodsAvailable() error {
 			ginkgo.GinkgoT().Log("no apisix pods created")
 			return false, nil
 		}
-		s, _ := json.Marshal(items[0].Status)
-		ginkgo.GinkgoT().Log("apisix: \n", string(s))
+		cmd := fmt.Sprintf("kubectl logs %s -n %s", items[0].Name, items[0].Namespace)
+		output, _ := exec.Command(cmd).Output()
+		ginkgo.GinkgoT().Logf("apisix logs: %s", string(output))
+
 		for _, item := range items {
 			foundPodReady := false
 			for _, cond := range item.Status.Conditions {
