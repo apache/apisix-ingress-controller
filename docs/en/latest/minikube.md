@@ -63,4 +63,4 @@ helm install apisix-ingress-controller ./charts/apisix-ingress-controller \
 
 Change the `image.tag` to the apisix-ingress-controller version that you desire. You have to wait for while until the correspdoning pods are running.
 
-Now try to create some [resources](../CRD-specification.md) to verify the running of Ingress APISIX. As a minimalist example, see [proxy-the-httpbin-service](../samples/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
+Now try to create some [resources](./CRD-specification.md) to verify the running of Ingress APISIX. As a minimalist example, see [proxy-the-httpbin-service](./proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
