@@ -17,13 +17,14 @@
 #
 -->
 
-# Install Ingress APISIX on Minikube
+# Install Ingress APISIX on Azure AKS
 
-This document explains how to install Ingress APISIX on [Minikube](https://minikube.sigs.k8s.io/).
+This document explains how to install Ingress APISIX on [Auzre AKS](https://docs.microsoft.com/en-us/azure/aks/intro-kubernetes#:~:text=Azure%20Kubernetes%20Service%20(AKS)%20makes,managed%20Kubernetes%20cluster%20in%20Azure.&text=The%20Kubernetes%20masters%20are%20managed,clusters%2C%20not%20for%20the%20masters.).
 
 ## Prerequisites
 
-* Install [Minikube](https://minikube.sigs.k8s.io/docs/start/).
+* Create an Kubernetes Service on Azure.
+* Install [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/#:~:text=The%20Azure%20command%2Dline%20interface,with%20an%20emphasis%20on%20automation.) and download the credentials by running `az aks get-credentials`.
 * Install [Helm](https://helm.sh/).
 * Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
 * Clone [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller).
@@ -38,6 +39,7 @@ cd /path/to/apisix-helm-chart
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm dependency update ./chart/apisix
 helm install apisix ./chart/apisix \
+  --set gateway.type=LoadBalancer \
   --set allow.ipList="{0.0.0.0/0}" \
   --namespace ingress-apisix
 kubectl get service --namespace ingress-apisix
@@ -45,7 +47,13 @@ kubectl get service --namespace ingress-apisix
 
 Two Service resources were created, one is `apisix-gateway`, which processes the real traffic; another is `apisix-admin`, which acts as the control plane to process all the configuration changes.
 
-One thing should be concerned that the `allow.ipList` field should be customized according to the Pod CIRD configuration of Minikube, so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
+The gateway service type is set to `LoadBalancer`, so that clients can access Apache APISIX through a load balancer IP. You can find the load balancer IP by running:
+
+```shell
+kubectl get service apisix-gateway --namespace ingress-apisix -o jsonpath='{.status.loadBalancer.ingress[].ip}'
+```
+
+Another thing should be concerned that the `allow.ipList` field should be customized according to the [Pod CIRD configuration of AKS](https://docs.microsoft.com/en-us/azure/aks/configure-azure-cni), so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
 
 ## Install apisix-ingress-controller
 
@@ -63,4 +71,4 @@ helm install apisix-ingress-controller ./charts/apisix-ingress-controller \
 
 Change the `image.tag` to the apisix-ingress-controller version that you desire. You have to wait for while until the correspdoning pods are running.
 
-Now try to create some [resources](./CRD-specification.md) to verify the running of Ingress APISIX. As a minimalist example, see [proxy-the-httpbin-service](./proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
+Now try to create some [resources](../CRD-specification.md) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../samples/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.

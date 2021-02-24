@@ -71,4 +71,4 @@ The admin key used above is the default one. If you change the admin key configu
 
 Change the `image.tag` to the apisix-ingress-controller version that you desire. Wait for the correspdoning pods are running.
 
-Now try to create some [resources](./CRD-specification.md) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](./proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
+Now try to create some [resources](../CRD-specification.md) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../samples/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
