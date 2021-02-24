@@ -33,6 +33,15 @@ const (
 	// IngressAPISIXLeader is the default election id for the controller
 	// leader election.
 	IngressAPISIXLeader = "ingress-apisix-leader"
+	// IngressClass is the default ingress class name, used for Ingress
+	// object's IngressClassName field in Kubernetes clusters version v1.18.0
+	// or higher, or the annotation "kubernetes.io/ingress.class" (deprecated).
+	IngressClass = "apisix"
+
+	// IngressNetworkingV1 represents ingress.networking/v1
+	IngressNetworkingV1 = "networking/v1"
+	// IngressNetworkingV1beta1 represents ingress.networking/v1beta1
+	IngressNetworkingV1beta1 = "networking/v1beta1"
 
 	_minimalResyncInterval = 30 * time.Second
 )
@@ -54,7 +63,9 @@ type KubernetesConfig struct {
 	ResyncInterval      types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
 	AppNamespaces       []string           `json:"app_namespaces" yaml:"app_namespaces"`
 	ElectionID          string             `json:"election_id" yaml:"election_id"`
-	EnableEndpointSlice bool               `json:"enable_endpointslice" yaml:"enable_endpointslice"`
+	IngressClass        string             `json:"ingress_class" yaml:"ingress_class"`
+	IngressVersion      string             `json:"ingress_version" yaml:"ingress_version"`
+	EnableEndpointSlice bool
 }
 
 // APISIXConfig contains all APISIX related config items.
@@ -77,6 +88,8 @@ func NewDefaultConfig() *Config {
 			ResyncInterval:      types.TimeDuration{Duration: 6 * time.Hour},
 			AppNamespaces:       []string{v1.NamespaceAll},
 			ElectionID:          IngressAPISIXLeader,
+			IngressClass:        IngressClass,
+			IngressVersion:      IngressNetworkingV1,
 			EnableEndpointSlice: false,
 		},
 	}
@@ -111,6 +124,9 @@ func (cfg *Config) Validate() error {
 	}
 	if cfg.APISIX.BaseURL == "" {
 		return errors.New("apisix base url is required")
+	}
+	if cfg.Kubernetes.IngressVersion != IngressNetworkingV1 && cfg.Kubernetes.IngressVersion != IngressNetworkingV1beta1 {
+		return errors.New("unsupported ingress version")
 	}
 	cfg.Kubernetes.AppNamespaces = purifyAppNamespaces(cfg.Kubernetes.AppNamespaces)
 	return nil

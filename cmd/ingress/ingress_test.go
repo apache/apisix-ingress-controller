@@ -89,7 +89,7 @@ func TestSignalHandler(t *testing.T) {
 		close(waitCh)
 	}()
 
-	time.Sleep(time.Second)
+	time.Sleep(5 * time.Second)
 	fws := &fakeWriteSyncer{}
 	logger, err := log.NewLogger(log.WithLogLevel("info"), log.WithWriteSyncer(fws))
 	assert.Nil(t, err)
@@ -125,7 +125,7 @@ func TestNewIngressCommandEffectiveLog(t *testing.T) {
 		close(stopCh)
 	}()
 
-	time.Sleep(time.Second)
+	time.Sleep(5 * time.Second)
 	assert.Nil(t, syscall.Kill(os.Getpid(), syscall.SIGINT))
 	<-stopCh
 

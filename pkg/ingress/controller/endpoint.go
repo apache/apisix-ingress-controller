@@ -151,14 +151,14 @@ func (c *endpointsController) syncToCluster(ctx context.Context, cluster apisix.
 		}
 	}
 
+	upstream.Nodes = nodes
+	upstream.FromKind = WatchFromKind
+
 	log.Debugw("upstream binds new nodes",
-		zap.String("upstream", upsName),
-		zap.Any("nodes", nodes),
+		zap.Any("upstream", upstream),
 		zap.String("cluster", cluster.String()),
 	)
 
-	upstream.Nodes = nodes
-	upstream.FromKind = WatchFromKind
 	upstreams := []*apisixv1.Upstream{upstream}
 	comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
 
