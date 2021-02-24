@@ -247,6 +247,8 @@ spec:
             - http://apisix-service-e2e-test:9180/apisix/admin
             - --app-namespace
             - %s
+            - --enable-endpointslice
+            - true
       serviceAccount: ingress-apisix-e2e-test-service-account
 `
 )
