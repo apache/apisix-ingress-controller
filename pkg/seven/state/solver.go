@@ -38,7 +38,7 @@ func init() {
 func WatchUpstream() {
 	for {
 		uqo := <-UpstreamQueue
-		SolverUpstream(uqo.Upstreams, uqo.ServiceWorkerGroup, uqo.Wg, uqo.ErrorChan)
+		SolverUpstream(uqo.Upstreams, uqo.RouteWorkerGroup, uqo.Wg, uqo.ErrorChan)
 	}
 }
 
@@ -132,10 +132,8 @@ func (s *ApisixCombination) SyncWithGroup(ctx context.Context, id string, result
 	// goroutine for sync route/service/upstream
 	// route
 	rwg := NewRouteWorkers(ctx, s.Routes, &wg, resultChan)
-	// service
-	swg := NewServiceWorkers(ctx, s.Services, &rwg, &wg, resultChan)
 	// upstream
-	uqo := &UpstreamQueueObj{Upstreams: s.Upstreams, ServiceWorkerGroup: swg, Wg: &wg, ErrorChan: resultChan}
+	uqo := &UpstreamQueueObj{Upstreams: s.Upstreams, RouteWorkerGroup: rwg, Wg: &wg, ErrorChan: resultChan}
 	uqo.AddQueue()
 
 	waitTimeout(ctx, &wg, resultChan)
@@ -148,10 +146,10 @@ func WaitWorkerGroup(id string, resultChan chan CRDStatus) (string, error) {
 
 // UpstreamQueueObj for upstream queue
 type UpstreamQueueObj struct {
-	Upstreams          []*v1.Upstream
-	ServiceWorkerGroup ServiceWorkerGroup
-	Wg                 *sync.WaitGroup
-	ErrorChan          chan CRDStatus
+	Upstreams        []*v1.Upstream
+	RouteWorkerGroup RouteWorkerGroup
+	Wg               *sync.WaitGroup
+	ErrorChan        chan CRDStatus
 }
 
 type CRDStatus struct {
