@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -26,7 +28,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/apache/apisix-ingress-controller/pkg/ingress/apisix"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
 	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
@@ -217,10 +218,23 @@ func (c *ApisixRouteController) add(key string) error {
 		runtime.HandleError(fmt.Errorf("failed to list ApisixRoute %s: %s", key, err.Error()))
 		return err
 	}
-	apisixRoute := apisix.ApisixRoute(*apisixIngressRoute)
-	routes, services, upstreams, _ := apisixRoute.Convert(c.controller.translator)
-	comb := state.ApisixCombination{Routes: routes, Services: services, Upstreams: upstreams}
+	routes, upstreams, err := c.controller.translator.TranslateRouteV1(apisixIngressRoute)
+	if err != nil {
+		log.Errorw("failed to translate ApisixRoute/v1",
+			zap.Any("route", apisixIngressRoute),
+			zap.Error(err),
+		)
+		return err
+	}
+	comb := state.ApisixCombination{Routes: routes, Upstreams: upstreams}
 	_, err = comb.Solver()
+	if err != nil {
+		log.Errorw("failed to push routes and upstreams to APISIX",
+			zap.Any("routes", routes),
+			zap.Any("upstreams", upstreams),
+			zap.Error(err),
+		)
+	}
 	return err
 
 }
@@ -245,11 +259,8 @@ func (c *ApisixRouteController) sync(rqo *RouteQueueObj) error {
 			}
 			return err // if error occurred, return
 		}
-		oldApisixRoute := apisix.ApisixRoute(*rqo.OldObj)
-		oldRoutes, _, _, _ := oldApisixRoute.Convert(c.controller.translator)
-
-		newApisixRoute := apisix.ApisixRoute(*apisixIngressRoute)
-		newRoutes, _, _, _ := newApisixRoute.Convert(c.controller.translator)
+		oldRoutes, _, _ := c.controller.translator.TranslateRouteV1(rqo.OldObj)
+		newRoutes, _, _ := c.controller.translator.TranslateRouteV1(apisixIngressRoute)
 
 		rc := &state.RouteCompare{OldRoutes: oldRoutes, NewRoutes: newRoutes}
 		return rc.Sync()
@@ -259,13 +270,12 @@ func (c *ApisixRouteController) sync(rqo *RouteQueueObj) error {
 			log.Warnf("Route %s has been covered when retry", rqo.Key)
 			return nil
 		}
-		apisixRoute := apisix.ApisixRoute(*rqo.OldObj)
-		routes, services, upstreams, _ := apisixRoute.Convert(c.controller.translator)
+		routes, upstreams, _ := c.controller.translator.TranslateRouteV1(rqo.OldObj)
 		rc := &state.RouteCompare{OldRoutes: routes, NewRoutes: nil}
 		if err := rc.Sync(); err != nil {
 			return err
 		} else {
-			comb := state.ApisixCombination{Routes: nil, Services: services, Upstreams: upstreams}
+			comb := state.ApisixCombination{Routes: nil, Upstreams: upstreams}
 			if err := comb.Remove(); err != nil {
 				return err
 			}
