@@ -46,7 +46,7 @@ func (c *Controller) newApisixUpstreamController() *apisixUpstreamController {
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    ctl.onAdd,
 			UpdateFunc: ctl.onUpdate,
-			DeleteFunc: ctl.OnDelete,
+			DeleteFunc: ctl.onDelete,
 		},
 	)
 	return ctl
@@ -56,7 +56,7 @@ func (c *apisixUpstreamController) run(ctx context.Context) {
 	log.Info("ApisixUpstream controller started")
 	defer log.Info("ApisixUpstream controller exited")
 	if ok := cache.WaitForCacheSync(ctx.Done(), c.controller.apisixUpstreamInformer.HasSynced, c.controller.svcInformer.HasSynced); !ok {
-		log.Errorf("cache sync failed")
+		log.Error("cache sync failed")
 		return
 	}
 	for i := 0; i < c.workers; i++ {
@@ -179,13 +179,13 @@ func (c *apisixUpstreamController) handleSyncErr(obj interface{}, err error) {
 		return
 	}
 	if c.workqueue.NumRequeues(obj) < _maxRetries {
-		log.Infow("sync endpoints failed, will retry",
+		log.Infow("sync ApisixUpstream failed, will retry",
 			zap.Any("object", obj),
 		)
 		c.workqueue.AddRateLimited(obj)
 	} else {
 		c.workqueue.Forget(obj)
-		log.Warnf("drop endpoints %+v out of the queue", obj)
+		log.Warnf("drop ApisixUpstream %+v out of the queue", obj)
 	}
 }
 
@@ -232,7 +232,7 @@ func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
 	})
 }
 
-func (c *apisixUpstreamController) OnDelete(obj interface{}) {
+func (c *apisixUpstreamController) onDelete(obj interface{}) {
 	au, ok := obj.(*configv1.ApisixUpstream)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

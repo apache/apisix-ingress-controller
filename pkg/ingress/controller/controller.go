@@ -69,19 +69,22 @@ type Controller struct {
 	crdInformerFactory externalversions.SharedInformerFactory
 
 	// common informers and listers
-	epInformer             cache.SharedIndexInformer
-	epLister               listerscorev1.EndpointsLister
-	svcInformer            cache.SharedIndexInformer
-	svcLister              listerscorev1.ServiceLister
-	ingressLister          kube.IngressLister
-	ingressInformer        cache.SharedIndexInformer
-	apisixUpstreamInformer cache.SharedIndexInformer
-	apisixUpstreamLister   listersv1.ApisixUpstreamLister
+	epInformer                  cache.SharedIndexInformer
+	epLister                    listerscorev1.EndpointsLister
+	svcInformer                 cache.SharedIndexInformer
+	svcLister                   listerscorev1.ServiceLister
+	ingressLister               kube.IngressLister
+	ingressInformer             cache.SharedIndexInformer
+	apisixUpstreamInformer      cache.SharedIndexInformer
+	apisixUpstreamLister        listersv1.ApisixUpstreamLister
+	apisixRouteV1Informer       cache.SharedIndexInformer
+	apisixRouteV2alpha1Informer cache.SharedIndexInformer
 
 	// resource conrollers
 	endpointsController      *endpointsController
 	ingressController        *ingressController
 	apisixUpstreamController *apisixUpstreamController
+	apisixRouteController    *apisixRouteController
 }
 
 // NewController creates an ingress apisix controller object.
@@ -159,6 +162,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 
 	c.endpointsController = c.newEndpointsController()
 	c.apisixUpstreamController = c.newApisixUpstreamController()
+	c.apisixRouteController = c.newApisixRouteController()
 	c.ingressController = c.newIngressController()
 
 	return c, nil
@@ -299,8 +303,6 @@ func (c *Controller) run(ctx context.Context) {
 		Stop:                      ctx.Done(),
 	}
 
-	// ApisixRoute
-	ac.ApisixRoute(c)
 	// ApisixTLS
 	ac.ApisixTLS(c)
 
@@ -336,17 +338,6 @@ type Api6Controller struct {
 	SharedInformerFactory     externalversions.SharedInformerFactory
 	CoreSharedInformerFactory informers.SharedInformerFactory
 	Stop                      <-chan struct{}
-}
-
-func (api6 *Api6Controller) ApisixRoute(controller *Controller) {
-	arc := BuildApisixRouteController(
-		api6.KubeClientSet,
-		api6.Api6ClientSet,
-		api6.SharedInformerFactory.Apisix().V1().ApisixRoutes(),
-		controller)
-	if err := arc.Run(api6.Stop); err != nil {
-		log.Errorf("failed to run ApisixRouteController: %s", err)
-	}
 }
 
 func (api6 *Api6Controller) ApisixTLS(controller *Controller) {

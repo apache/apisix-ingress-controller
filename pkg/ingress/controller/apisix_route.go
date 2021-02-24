@@ -15,221 +15,86 @@
 package controller
 
 import (
+	"context"
 	"fmt"
-	"time"
 
+	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/ingress/apisix"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
-	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
-	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
-	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v1"
-	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
+	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/seven/state"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
-type ApisixRouteController struct {
-	controller           *Controller
-	kubeclientset        kubernetes.Interface
-	apisixRouteClientset clientset.Interface
-	apisixRouteList      listersv1.ApisixRouteLister
-	apisixRouteSynced    cache.InformerSynced
-	workqueue            workqueue.RateLimitingInterface
+type apisixRouteController struct {
+	controller *Controller
+	workqueue  workqueue.RateLimitingInterface
+	workers    int
 }
 
-type RouteQueueObj struct {
-	Key    string                `json:"key"`
-	OldObj *configv1.ApisixRoute `json:"old_obj"`
-	Ope    string                `json:"ope"` // add / update / delete
+type routeObject struct {
+	key     string
+	version string
 }
 
-func BuildApisixRouteController(
-	kubeclientset kubernetes.Interface,
-	api6RouteClientset clientset.Interface,
-	api6RouteInformer apisixinformers.ApisixRouteInformer,
-	root *Controller) *ApisixRouteController {
-
-	runtime.Must(apisixscheme.AddToScheme(scheme.Scheme))
-	controller := &ApisixRouteController{
-		controller:           root,
-		kubeclientset:        kubeclientset,
-		apisixRouteClientset: api6RouteClientset,
-		apisixRouteList:      api6RouteInformer.Lister(),
-		apisixRouteSynced:    api6RouteInformer.Informer().HasSynced,
-		workqueue:            workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoutes"),
+func (c *Controller) newApisixRouteController() *apisixRouteController {
+	ctl := &apisixRouteController{
+		controller: c,
+		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ApisixRoute"),
+		workers:    1,
 	}
-	api6RouteInformer.Informer().AddEventHandler(
+
+	c.apisixRouteV1Informer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    controller.addFunc,
-			UpdateFunc: controller.updateFunc,
-			DeleteFunc: controller.deleteFunc,
-		})
-	return controller
+			AddFunc:    ctl.onAdd,
+			UpdateFunc: ctl.onUpdate,
+			DeleteFunc: ctl.onDelete,
+		},
+	)
+	c.apisixRouteV2alpha1Informer.AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    ctl.onAdd,
+			UpdateFunc: ctl.onUpdate,
+			DeleteFunc: ctl.onDelete,
+		},
+	)
 }
 
-func (c *ApisixRouteController) addFunc(obj interface{}) {
-	var key string
-	var err error
-	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-		runtime.HandleError(err)
-		return
-	}
-	if !c.controller.namespaceWatching(key) {
-		return
-	}
-	rqo := &RouteQueueObj{Key: key, OldObj: nil, Ope: ADD}
-	c.workqueue.AddRateLimited(rqo)
-}
-
-func (c *ApisixRouteController) updateFunc(oldObj, newObj interface{}) {
-	oldRoute := oldObj.(*configv1.ApisixRoute)
-	newRoute := newObj.(*configv1.ApisixRoute)
-	if oldRoute.ResourceVersion >= newRoute.ResourceVersion {
-		return
-	}
-	//c.addFunc(newObj)
-	var key string
-	var err error
-	if key, err = cache.MetaNamespaceKeyFunc(newObj); err != nil {
-		runtime.HandleError(err)
-		return
-	}
-	if !c.controller.namespaceWatching(key) {
-		return
-	}
-	rqo := &RouteQueueObj{Key: key, OldObj: oldRoute, Ope: UPDATE}
-	c.workqueue.AddRateLimited(rqo)
-}
-
-func (c *ApisixRouteController) deleteFunc(obj interface{}) {
-	oldRoute, ok := obj.(*configv1.ApisixRoute)
+func (c *apisixRouteController) run(ctx context.Context) {
+	log.Info("ApisixRoute controller started")
+	defer log.Info("ApisixRoute controller exited")
+	ok := cache.WaitForCacheSync(ctx.Done(), c.controller.apisixRouteV2alpha1Informer.HasSynced,
+		c.controller.apisixRouteV1Informer.HasSynced)
 	if !ok {
-		oldState, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			return
-		}
-		oldRoute, ok = oldState.Obj.(*configv1.ApisixRoute)
-		if !ok {
-			return
-		}
-	}
-	var key string
-	var err error
-	key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
-	if err != nil {
-		runtime.HandleError(err)
+		log.Error("cache sync failed")
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
-		return
-	}
-	rqo := &RouteQueueObj{Key: key, OldObj: oldRoute, Ope: DELETE}
-	c.workqueue.AddRateLimited(rqo)
-}
 
-func (c *ApisixRouteController) Run(stop <-chan struct{}) error {
-	if ok := cache.WaitForCacheSync(stop); !ok {
-		log.Errorf("同步缓存失败")
-		return fmt.Errorf("failed to wait for caches to sync")
-	}
-	go wait.Until(c.runWorker, time.Second, stop)
-	return nil
-}
-
-func (c *ApisixRouteController) runWorker() {
-	for c.processNextWorkItem() {
+	for i := 0; i < c.workers; i++ {
+		go c.runWorker(ctx)
 	}
 }
 
-func (c *ApisixRouteController) processNextWorkItem() bool {
-	defer recoverException()
-	obj, shutdown := c.workqueue.Get()
-	if shutdown {
-		return false
-	}
-	err := func(obj interface{}) error {
-		defer c.workqueue.Done(obj)
-		var ok bool
-		var rqo *RouteQueueObj
-		if rqo, ok = obj.(*RouteQueueObj); !ok {
-			c.workqueue.Forget(obj)
-			return fmt.Errorf("expected RouteQueueObj in workqueue but got %#v", obj)
+func (c *apisixRouteController) runWorker(ctx context.Context) {
+	for {
+		obj, quit := c.workqueue.Get()
+		if quit {
+			return
 		}
-		if err := c.syncHandler(rqo); err != nil {
-			c.workqueue.AddRateLimited(obj)
-			log.Errorf("sync route %s failed", rqo.Key)
-			return fmt.Errorf("error syncing '%s': %s", rqo.Key, err.Error())
-		}
-
-		c.workqueue.Forget(obj)
-		return nil
-	}(obj)
-	if err != nil {
-		runtime.HandleError(err)
-	}
-	return true
-}
-
-func (c *ApisixRouteController) syncHandler(rqo *RouteQueueObj) error {
-	key := rqo.Key
-	switch {
-	case rqo.Ope == ADD:
-		return c.add(key)
-	case rqo.Ope == UPDATE:
-		// 1.first add new route config
-		if err := c.add(key); err != nil {
-			// log error
-			return err
-		} else {
-			// 2.then delete routes not exist
-			return c.sync(rqo)
-		}
-	case rqo.Ope == DELETE:
-		return c.sync(rqo)
-	default:
-		// log error
-		return fmt.Errorf("RouteQueueObj is not expected")
+		err := c.sync(ctx, obj.(*types.Event))
+		c.workqueue.Done(obj)
+		c.handleSyncErr(obj, err)
 	}
 }
 
-func (c *ApisixRouteController) add(key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		log.Errorf("invalid resource key: %s", key)
-		return fmt.Errorf("invalid resource key: %s", key)
-	}
-
-	apisixIngressRoute, err := c.apisixRouteList.ApisixRoutes(namespace).Get(name)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Infof("apisixRoute %s is removed", key)
-			return nil
-		}
-		log.Errorf("failed to list ApisixRoute %s: %s", key, err.Error())
-		runtime.HandleError(fmt.Errorf("failed to list ApisixRoute %s: %s", key, err.Error()))
-		return err
-	}
-	apisixRoute := apisix.ApisixRoute(*apisixIngressRoute)
-	routes, services, upstreams, _ := apisixRoute.Convert(c.controller.translator)
-	comb := state.ApisixCombination{Routes: routes, Services: services, Upstreams: upstreams}
-	_, err = comb.Solver()
-	return err
-
-}
-
-// sync
-// 1.diff routes between old and new objects
-// 2.delete routes not exist
-func (c *ApisixRouteController) sync(rqo *RouteQueueObj) error {
-	key := rqo.Key
+func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error {
+	key := ev.Object.(string)
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		log.Errorf("invalid resource key: %s", key)
@@ -274,4 +139,159 @@ func (c *ApisixRouteController) sync(rqo *RouteQueueObj) error {
 	default:
 		return fmt.Errorf("not expected in (ApisixRouteController) sync")
 	}
+}
+
+func (c *ApisixRouteController) add(key string) error {
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		log.Errorf("invalid resource key: %s", key)
+		return fmt.Errorf("invalid resource key: %s", key)
+	}
+
+	apisixIngressRoute, err := c.apisixRouteList.ApisixRoutes(namespace).Get(name)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Infof("apisixRoute %s is removed", key)
+			return nil
+		}
+		log.Errorf("failed to list ApisixRoute %s: %s", key, err.Error())
+		runtime.HandleError(fmt.Errorf("failed to list ApisixRoute %s: %s", key, err.Error()))
+		return err
+	}
+	apisixRoute := apisix.ApisixRoute(*apisixIngressRoute)
+	routes, services, upstreams, _ := apisixRoute.Convert(c.controller.translator)
+	comb := state.ApisixCombination{Routes: routes, Services: services, Upstreams: upstreams}
+	_, err = comb.Solver()
+	return err
+
+}
+
+func (c *apisixRouteController) handleSyncErr(obj interface{}, err error) {
+	if err == nil {
+		c.workqueue.Forget(obj)
+		return
+	}
+	if c.workqueue.NumRequeues(obj) < _maxRetries {
+		log.Infow("sync ApisixRoute failed, will retry",
+			zap.Any("object", obj),
+		)
+		c.workqueue.AddRateLimited(obj)
+	} else {
+		c.workqueue.Forget(obj)
+		log.Warnf("drop ApisixRoute %+v out of the queue", obj)
+	}
+}
+
+func (c *apisixRouteController) onAdd(obj interface{}) {
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Errorf("found ApisixRoute resource with bad meta namespace key: %s", err)
+		return
+	}
+	if !c.controller.namespaceWatching(key) {
+		return
+	}
+	log.Debugw("ApisixRoute add event arrived",
+		zap.Any("object", obj))
+
+	var version string
+	switch obj.(type) {
+	case *configv2alpha1.ApisixRoute:
+		version = "v2alpha1"
+	case *configv1.ApisixRoute:
+		version = "v1"
+	}
+
+	c.workqueue.AddRateLimited(&types.Event{
+		Type: types.EventAdd,
+		Object: routeObject{
+			key:     key,
+			version: version,
+		},
+	})
+}
+
+func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
+	var (
+		rv1     string
+		rv2     string
+		version string
+	)
+	switch obj := oldObj.(type) {
+	case *configv1.ApisixRoute:
+		rv1 = obj.ResourceVersion
+		rv2 = newObj.(*configv1.ApisixRoute).ResourceVersion
+		version = "v1"
+	case *configv2alpha1.ApisixRoute:
+		rv1 = obj.ResourceVersion
+		rv2 = newObj.(*configv2alpha1.ApisixRoute).ResourceVersion
+		version = "v2"
+	default:
+		return
+	}
+	if rv1 >= rv2 {
+		return
+	}
+	key, err := cache.MetaNamespaceKeyFunc(newObj)
+	if err != nil {
+		log.Errorf("found ApisixRoute resource with bad meta namespace key: %s", err)
+		return
+	}
+	if !c.controller.namespaceWatching(key) {
+		return
+	}
+	c.workqueue.AddRateLimited(&types.Event{
+		Type: types.EventUpdate,
+		Object: routeObject{
+			key:     key,
+			version: version,
+		},
+	})
+}
+
+func (c *apisixRouteController) onDelete(obj interface{}) {
+	var (
+		version string
+	)
+	ev := &types.Event{
+		Type: types.EventDelete,
+	}
+	switch ar := obj.(type) {
+	case *configv1.ApisixRoute:
+		ev.Tombstone = ar
+		version = "v1"
+	case *configv2alpha1.ApisixRoute:
+		ev.Tombstone = ar
+		version = "v2alpha1"
+	case cache.DeletedFinalStateUnknown:
+		// *configv1.ApisixRoute
+		// *configv2alpha1.ApisixRoute
+		ev.Tombstone = ar.Obj
+		switch ar.Obj.(type) {
+		case *configv1.ApisixRoute:
+			version = "v1"
+		case *configv2alpha1.ApisixRoute:
+			version = "v2alpha1"
+		default:
+			return
+		}
+	default:
+		return
+	}
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Errorf("found ApisixRoute resource with bad meta namesapce key: %s", err)
+		return
+	}
+	if !c.controller.namespaceWatching(key) {
+		return
+	}
+	log.Debugw("ApisixRoute delete event arrived",
+		zap.Any("final state", ev.Tombstone),
+	)
+	ev.Object = routeObject{
+		key:     key,
+		version: version,
+	}
+	c.workqueue.AddRateLimited(ev)
 }
