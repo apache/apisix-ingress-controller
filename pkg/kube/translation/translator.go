@@ -120,7 +120,7 @@ func (t *translator) TranslateUpstream(namespace, name string, port int32) (*api
 	)
 	switch t.EndpointMode {
 	case EndpointSliceOnly:
-		endpointSlice, err = CoreSharedInformerFactory.Discovery().V1beta1().EndpointSlices().Lister().EndpointSlices(namespace).Get(name)
+		endpointSlice, err = kube.CoreSharedInformerFactory.Discovery().V1beta1().EndpointSlices().Lister().EndpointSlices(namespace).Get(name)
 		if err != nil {
 			return nil, &translateError{
 				field:  "endpointslice",
@@ -132,7 +132,7 @@ func (t *translator) TranslateUpstream(namespace, name string, port int32) (*api
 			return nil, err
 		}
 	case EndpointsOnly:
-		endpoints, err = CoreSharedInformerFactory.Core().V1().Endpoints().Lister().Endpoints(namespace).Get(name)
+		endpoints, err = kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister().Endpoints(namespace).Get(name)
 		if err != nil {
 			return nil, &translateError{
 				field:  "endpoints",

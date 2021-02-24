@@ -249,7 +249,6 @@ func TestTranslateIngressV1(t *testing.T) {
 	svcInformer := informersFactory.Core().V1().Services().Informer()
 	svcLister := informersFactory.Core().V1().Services().Lister()
 	epInformer := informersFactory.Core().V1().Endpoints().Informer()
-	epLister := informersFactory.Core().V1().Endpoints().Lister()
 	apisixClient := fakeapisix.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
 	processCh := make(chan struct{})
@@ -278,7 +277,6 @@ func TestTranslateIngressV1(t *testing.T) {
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
 			ServiceLister:        svcLister,
-			EndpointsLister:      epLister,
 			ApisixUpstreamLister: apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister(),
 		},
 	}
@@ -472,7 +470,6 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	svcInformer := informersFactory.Core().V1().Services().Informer()
 	svcLister := informersFactory.Core().V1().Services().Lister()
 	epInformer := informersFactory.Core().V1().Endpoints().Informer()
-	epLister := informersFactory.Core().V1().Endpoints().Lister()
 	apisixClient := fakeapisix.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
 	processCh := make(chan struct{})
@@ -501,7 +498,6 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
 			ServiceLister:        svcLister,
-			EndpointsLister:      epLister,
 			ApisixUpstreamLister: apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister(),
 		},
 	}
