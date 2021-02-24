@@ -21,6 +21,7 @@ import (
 	discoveryv1beta1 "k8s.io/api/discovery/v1beta1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
+	listerdiscoveryv1beta1 "k8s.io/client-go/listers/discovery/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
@@ -68,6 +69,8 @@ type Translator interface {
 type TranslatorOptions struct {
 	// EndpointMode decides which source to use to get endpoint information
 	EndpointMode         EndpointMode
+	EndpointsLister      listerscorev1.EndpointsLister
+	EndpointSliceLister  listerdiscoveryv1beta1.EndpointSliceLister
 	ServiceLister        listerscorev1.ServiceLister
 	ApisixUpstreamLister listersv1.ApisixUpstreamLister
 }
@@ -120,7 +123,7 @@ func (t *translator) TranslateUpstream(namespace, name string, port int32) (*api
 	)
 	switch t.EndpointMode {
 	case EndpointSliceOnly:
-		endpointSlice, err = kube.CoreSharedInformerFactory.Discovery().V1beta1().EndpointSlices().Lister().EndpointSlices(namespace).Get(name)
+		endpointSlice, err = t.EndpointSliceLister.EndpointSlices(namespace).Get(name)
 		if err != nil {
 			return nil, &translateError{
 				field:  "endpointslice",
@@ -132,7 +135,7 @@ func (t *translator) TranslateUpstream(namespace, name string, port int32) (*api
 			return nil, err
 		}
 	case EndpointsOnly:
-		endpoints, err = kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister().Endpoints(namespace).Get(name)
+		endpoints, err = t.EndpointsLister.Endpoints(namespace).Get(name)
 		if err != nil {
 			return nil, &translateError{
 				field:  "endpoints",

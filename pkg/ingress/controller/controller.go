@@ -151,6 +151,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		c.endpointsController = c.newEndpointSliceController()
 		c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 			EndpointMode:         translation.EndpointSliceOnly,
+			EndpointSliceLister:  kube.CoreSharedInformerFactory.Discovery().V1beta1().EndpointSlices().Lister(),
 			ServiceLister:        c.svcLister,
 			ApisixUpstreamLister: c.apisixUpstreamLister,
 		})
@@ -158,6 +159,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		c.endpointsController = c.newEndpointsController()
 		c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 			EndpointMode:         translation.EndpointsOnly,
+			EndpointsLister:      kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
 			ServiceLister:        c.svcLister,
 			ApisixUpstreamLister: c.apisixUpstreamLister,
 		})
