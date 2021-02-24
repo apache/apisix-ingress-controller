@@ -27,7 +27,7 @@ Configure a simple routing rule through the ingress controller CRDs. After synch
 
 As shown below.
 
-![scene](./images/scene.png)
+![scene](../../assets/images/scene.png)
 
 ## A simple example
 
@@ -35,7 +35,7 @@ Define the simplest route to direct traffic to the back-end service, the back-en
 
 As shown below.(The ip list in nodes is an example, no specific meaning)
 
-![first](./images/first.png)
+![first](../../assets/images/first.png)
 
 Now we define with CRDs as follows.
 
