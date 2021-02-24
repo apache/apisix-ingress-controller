@@ -165,7 +165,6 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		})
 	}
 
-	c.endpointsController = c.newEndpointsController()
 	c.apisixUpstreamController = c.newApisixUpstreamController()
 	c.ingressController = c.newIngressController()
 
