@@ -65,7 +65,7 @@ type KubernetesConfig struct {
 	ElectionID          string             `json:"election_id" yaml:"election_id"`
 	IngressClass        string             `json:"ingress_class" yaml:"ingress_class"`
 	IngressVersion      string             `json:"ingress_version" yaml:"ingress_version"`
-	EnableEndpointSlice bool
+	EnableEndpointSlice bool               `json:"enable_endpointslice" yaml:"enable_endpointslice"`
 }
 
 // APISIXConfig contains all APISIX related config items.

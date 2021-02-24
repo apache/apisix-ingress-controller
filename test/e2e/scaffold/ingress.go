@@ -248,7 +248,6 @@ spec:
             - --app-namespace
             - %s
             - --enable-endpointslice
-            - true
       serviceAccount: ingress-apisix-e2e-test-service-account
 `
 )
