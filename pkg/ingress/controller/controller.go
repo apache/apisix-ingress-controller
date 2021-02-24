@@ -20,7 +20,6 @@ import (
 	"sync"
 	"time"
 
-	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -151,14 +150,14 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	if c.cfg.Kubernetes.EnableEndpointSlice {
 		c.endpointsController = c.newEndpointSliceController()
 		c.translator = translation.NewTranslator(&translation.TranslatorOptions{
-			EndpointMode:         kube.EndpointSliceOnly,
+			EndpointMode:         translation.EndpointSliceOnly,
 			ServiceLister:        c.svcLister,
 			ApisixUpstreamLister: c.apisixUpstreamLister,
 		})
 	} else {
 		c.endpointsController = c.newEndpointsController()
 		c.translator = translation.NewTranslator(&translation.TranslatorOptions{
-			EndpointMode:         kube.EndpointsOnly,
+			EndpointMode:         translation.EndpointsOnly,
 			ServiceLister:        c.svcLister,
 			ApisixUpstreamLister: c.apisixUpstreamLister,
 		})
