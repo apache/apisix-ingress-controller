@@ -98,7 +98,7 @@ Get more [implementation details](./docs/en/latest/design.md).
 ## Documents
 
 * [Usage](./docs/en/latest/usage.md)
-* [SDK doc](./docs/en/latest/develop.md)
+* [SDK doc](./docs/en/latest/development.md)
 * [Design introduction](./docs/en/latest/design.md)
 
 ## FAQ
