@@ -85,7 +85,7 @@ Get more [implementation details](./docs/en/latest/design.md).
 
 ## Get started
 
-* [How to install](./docs/en/latest/install.md)
+* [How to install](./install.md)
 
 ## Todos
 
