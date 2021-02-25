@@ -17,9 +17,14 @@
 #
 -->
 
-# Ingress APISIX Use Examples
+---
+
+id: samples
+title: Ingress APISIX Use Examples
+
+---
 
 This is an index page about use examples of Ingress APISIX. Read them if you're trying to learn Ingress APISIX.
 
-* [Proxy the httpbin service](./proxy-the-httpbin-service.md).
-* [Proxy the httpbin service with the native Ingress](./proxy-the-httpbin-service-with-ingress.md).
+- [Proxy the httpbin service](./proxy-the-httpbin-service.md).
+- [Proxy the httpbin service with the native Ingress](./proxy-the-httpbin-service-with-ingress.md).

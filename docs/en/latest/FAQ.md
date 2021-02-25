@@ -17,7 +17,12 @@
 #
 -->
 
-# FAQ
+---
+
+id: faq
+title: FAQ
+
+---
 
 1. How to bind Service and Upstream?
 
