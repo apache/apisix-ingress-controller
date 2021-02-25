@@ -1,3 +1,7 @@
+---
+title: Install Ingress APISIX on Google Cloud GKE
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,22 +21,15 @@
 #
 -->
 
----
-
-id: deployment-on-gke
-title: Install Ingress APISIX on Google Cloud GKE
-
----
-
 This document explains how to install Ingress APISIX on [Google Cloud GKE](https://cloud.google.com/kubernetes-engine).
 
 ## Prerequisites
 
-- Create an Kubernetes Service on GKE.
-- Install [Google Cloud SDK](https://cloud.google.com/sdk) and get the credentials or you can just use the [Cloud Shell](https://cloud.google.com/shell).
-- Install [Helm](https://helm.sh/).
-- Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
-- Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
+* Create an Kubernetes Service on GKE.
+* Install [Google Cloud SDK](https://cloud.google.com/sdk) and get the credentials or you can just use the [Cloud Shell](https://cloud.google.com/shell).
+* Install [Helm](https://helm.sh/).
+* Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
+* Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX
 

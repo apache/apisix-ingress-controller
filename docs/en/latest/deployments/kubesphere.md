@@ -1,3 +1,7 @@
+---
+title: Install Ingress APISIX on KubeSphere
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,23 +21,16 @@
 #
 -->
 
----
-
-id: deployment-on-kubeSphere
-title: Install Ingress APISIX on KubeSphere
-
----
-
 This document explains how to install Ingress APISIX on [KubeSphere](https://kubesphere.io/).
 
 KubeSphere is a distributed operating system managing cloud native applications with Kubernetes as its kernel, and provides plug-and-play architecture for the seamless integration of third-party applications to boost its ecosystem.
 
 ## Prerequisites
 
-- Install [KubeSphere](https://kubesphere.io/docs/quick-start/), you can choose [All-in-one Installation on Linux](https://kubesphere.io/docs/quick-start/all-in-one-on-linux/) or [Minimal KubeSphere on Kubernetes](https://kubesphere.io/docs/quick-start/minimal-kubesphere-on-k8s/).
-- Install [Helm](https://helm.sh/).
-- Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
-- Make sure your target namespace exists, kubectl operations of this document will be executed in namespace `ingress-apisix`.
+* Install [KubeSphere](https://kubesphere.io/docs/quick-start/), you can choose [All-in-one Installation on Linux](https://kubesphere.io/docs/quick-start/all-in-one-on-linux/) or [Minimal KubeSphere on Kubernetes](https://kubesphere.io/docs/quick-start/minimal-kubesphere-on-k8s/).
+* Install [Helm](https://helm.sh/).
+* Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
+* Make sure your target namespace exists, kubectl operations of this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX
 

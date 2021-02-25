@@ -1,3 +1,7 @@
+---
+title: Install Ingress APISIX on K3S and Rancher RKE
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,13 +21,6 @@
 #
 -->
 
----
-
-id: deployment-on-k3s-rke
-title: Install Ingress APISIX on K3S and Rancher RKE
-
----
-
 This document explains how to install Ingress APISIX on [k3S](https://k3s.io/) and [Rancher RKE](https://rancher.com/products/rke/).
 
 K3S is a certified Kubernetes distribution built for IoT and Edge computing, whilst [Apache APISIX](https://apisix.apache.org) is also good at IoT (See [MQTT plugin](https://github.com/apache/apisix/blob/master/doc/plugins/mqtt-proxy.md)) and runs well on ARM architecture.
@@ -31,10 +28,10 @@ It's a good choice to use Ingress APISIX as the north-south API gateway in K3S.
 
 ## Prerequisites
 
-- Install [K3S](https://rancher.com/docs/k3s/latest/en/installation/) or [Rancher RKE](https://rancher.com/docs/rke/latest/en/installation/).
-- Install [Helm](https://helm.sh/).
-- Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
-- Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
+* Install [K3S](https://rancher.com/docs/k3s/latest/en/installation/) or [Rancher RKE](https://rancher.com/docs/rke/latest/en/installation/).
+* Install [Helm](https://helm.sh/).
+* Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
+* Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX
 
@@ -52,7 +49,7 @@ helm install apisix ./charts/apisix \
 kubectl get service --namespace ingress-apisix
 ```
 
-_If you are using K3S, the default kubeconfig file is in /etc/rancher/k3s and root permission may required._
+*If you are using K3S, the default kubeconfig file is in /etc/rancher/k3s and root permission may required.*
 
 Two Service resources were created, one is `apisix-gateway`, which processes the real traffic; another is `apisix-admin`, which acts as the control plane to process all the configuration changes.
 
@@ -76,7 +73,7 @@ helm install apisix-ingress-controller ./charts/apisix-ingress-controller \
   --kubeconfig /etc/rancher/k3s/k3s.yaml
 ```
 
-_If you are using K3S, the default kubeconfig file is in /etc/rancher/k3s and root permission may required._
+*If you are using K3S, the default kubeconfig file is in /etc/rancher/k3s and root permission may required.*
 
 The admin key used in abovementioned commands is the default one, if you change the admin key configuration when you deployed APISIX, please remember to change it here.
 
