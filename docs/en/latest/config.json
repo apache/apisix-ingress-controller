@@ -1,4 +1,51 @@
 {
   "version": "0.3.0",
-  "sidebar": {}
+  "sidebar": {
+    "docs": [
+      {
+        "type": "category",
+        "label": "Getting Started",
+        "items": ["design", "CRD-specification"]
+      },
+      {
+        "type": "category",
+        "label": "Samples",
+        "items": [
+          "samples/index",
+          "samples/proxy-the-httpbin-service-with-ingress",
+          "samples/proxy-the-httpbin-service"
+        ]
+      },
+      {
+        "type": "category",
+        "label": "Deployment",
+        "items": [
+          "deployments/ack",
+          "deployments/aws",
+          "deployments/azure",
+          "deployments/gke",
+          "deployments/k3s-rke",
+          "deployments/kubesphere",
+          "deployments/minikube",
+          "deployments/tke"
+        ]
+      },
+      {
+        "type": "doc",
+        "id": "usage"
+      },
+      {
+        "type": "doc",
+        "id": "development"
+      },
+      {
+        "type": "doc",
+        "id": "contribute"
+      },
+      {
+        "type": "doc",
+        "id": "FAQ"
+      }
+    ]
+  }
 }
