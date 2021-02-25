@@ -38,8 +38,8 @@ func (w *routeWorker) start() {
 	go func() {
 		for {
 			select {
-			case event := <-w.Event:
-				w.trigger(event)
+			case <-w.Event:
+				w.trigger()
 			case <-w.Ctx.Done():
 				return
 			}

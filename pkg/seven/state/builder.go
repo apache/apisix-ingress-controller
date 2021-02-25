@@ -75,13 +75,13 @@ func NewRouteWorkers(ctx context.Context,
 	for _, r := range routes {
 		rw := &routeWorker{Route: r, Ctx: ctx, Wg: wg, ErrorChan: errorChan}
 		rw.start()
-		rwg.Add(r.ServiceName, rw)
+		rwg.Add(r.UpstreamName, rw)
 	}
 	return rwg
 }
 
 // 3.route get the Event and trigger a padding for object,then diff,sync;
-func (r *routeWorker) trigger(event Event) {
+func (r *routeWorker) trigger() {
 	var (
 		op        string
 		errNotify error
@@ -92,10 +92,6 @@ func (r *routeWorker) trigger(event Event) {
 		}
 		r.Wg.Done()
 	}()
-	// consumer Event
-	service := event.Obj.(*v1.Service)
-	r.ServiceId = service.ID
-	log.Infof("trigger routeWorker %s from %s, %s", r.Name, event.Op, service.Name)
 
 	// padding
 	var cluster string
@@ -152,27 +148,14 @@ func (r *routeWorker) sync(op string) error {
 	return nil
 }
 
-// service
-func NewServiceWorkers(ctx context.Context,
-	services []*v1.Service, rwg *RouteWorkerGroup, wg *sync.WaitGroup, errorChan chan CRDStatus) ServiceWorkerGroup {
-	swg := make(ServiceWorkerGroup)
-	for _, s := range services {
-		rw := &serviceWorker{Service: s, Ctx: ctx, Wg: wg, ErrorChan: errorChan}
-		//rw.Wg.Add(1)
-		rw.start(rwg)
-		swg.Add(s.UpstreamName, rw)
-	}
-	return swg
-}
-
 // upstream
-func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitGroup, errorChan chan CRDStatus) {
+func SolverUpstream(upstreams []*v1.Upstream, rwg RouteWorkerGroup, wg *sync.WaitGroup, errorChan chan CRDStatus) {
 	for _, u := range upstreams {
-		go SolverSingleUpstream(u, swg, wg, errorChan)
+		go SolverSingleUpstream(u, rwg, wg, errorChan)
 	}
 }
 
-func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitGroup, errorChan chan CRDStatus) {
+func SolverSingleUpstream(u *v1.Upstream, rwg RouteWorkerGroup, wg *sync.WaitGroup, errorChan chan CRDStatus) {
 	var (
 		op        string
 		errNotify error
@@ -241,10 +224,8 @@ func SolverSingleUpstream(u *v1.Upstream, swg ServiceWorkerGroup, wg *sync.WaitG
 		}
 	}
 	log.Infof("solver upstream %s:%s", op, u.Name)
-	// anyway, broadcast to service
-	serviceWorkers := swg[u.Name]
-	for _, sw := range serviceWorkers {
-		event := &Event{Kind: UpstreamKind, Op: op, Obj: u}
-		sw.Event <- *event
+	// anyway, broadcast to route
+	for _, sw := range rwg[u.Name] {
+		sw.Event <- Event{}
 	}
 }

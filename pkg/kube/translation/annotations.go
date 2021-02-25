@@ -12,47 +12,52 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package apisix
+package translation
 
 import (
-	"strconv"
-
 	seven "github.com/apache/apisix-ingress-controller/pkg/seven/apisix"
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-// BuildAnnotation return plugins and group
-func BuildAnnotation(annotations map[string]string) (apisix.Plugins, string) {
+const (
+	_whitelist        = "k8s.apisix.apache.org/whitelist-source-range"
+	_enableCors       = "k8s.apisix.apache.org/enable-cors"
+	_corsAllowOrigin  = "k8s.apisix.apache.org/cors-allow-origin"
+	_corsAllowHeaders = "k8s.apisix.apache.org/cors-allow-headers"
+	_corsAllowMethods = "k8s.apisix.apache.org/cors-allow-methods"
+)
+
+type cors struct {
+	enable       bool
+	allowOrigin  string
+	allowHeaders string
+	allowMethods string
+}
+
+func (t *translator) TranslateAnnotations(annotations map[string]string) apisix.Plugins {
+	var c cors
 	plugins := make(apisix.Plugins)
-	cors := &CorsYaml{}
-	// ingress.class
-	group := ""
 	for k, v := range annotations {
 		switch {
-		case k == SSLREDIRECT:
-			if b, err := strconv.ParseBool(v); err == nil && b {
-				// todo add ssl-redirect plugin
-			}
-		case k == WHITELIST:
+		case k == _whitelist:
 			ipRestriction := seven.BuildIpRestriction(&v, nil)
 			plugins["ip-restriction"] = ipRestriction
-		case k == ENABLE_CORS:
-			cors.SetEnable(v)
-		case k == CORS_ALLOW_ORIGIN:
-			cors.SetOrigin(v)
-		case k == CORS_ALLOW_HEADERS:
-			cors.SetHeaders(v)
-		case k == CORS_ALLOW_METHODS:
-			cors.SetMethods(v)
-		case k == INGRESS_CLASS:
-			group = v
-		default:
-			// do nothing
+		case k == _enableCors:
+			if v == "true" {
+				c.enable = true
+			}
+		case k == _corsAllowOrigin:
+			c.allowOrigin = v
+		case k == _corsAllowHeaders:
+			c.allowHeaders = v
+		case k == _corsAllowMethods:
+			c.allowMethods = v
 		}
 	}
-	// build CORS plugin
-	if cors.Enable {
-		plugins["aispeech-cors"] = cors.Build()
+	if c.enable {
+		maxAge := int64(3600)
+		plugins["aispeech-cors"] = seven.BuildCors(true, &c.allowOrigin, &c.allowHeaders,
+			&c.allowMethods, &maxAge)
 	}
-	return plugins, group
+	return plugins
 }
