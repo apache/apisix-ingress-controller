@@ -17,7 +17,12 @@
 #
 -->
 
-# Install Ingress APISIX on K3S and Rancher RKE
+---
+
+id: deployment-on-k3s-rke
+title: Install Ingress APISIX on K3S and Rancher RKE
+
+---
 
 This document explains how to install Ingress APISIX on [k3S](https://k3s.io/) and [Rancher RKE](https://rancher.com/products/rke/).
 
@@ -26,10 +31,10 @@ It's a good choice to use Ingress APISIX as the north-south API gateway in K3S.
 
 ## Prerequisites
 
-* Install [K3S](https://rancher.com/docs/k3s/latest/en/installation/) or [Rancher RKE](https://rancher.com/docs/rke/latest/en/installation/).
-* Install [Helm](https://helm.sh/).
-* Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
-* Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
+- Install [K3S](https://rancher.com/docs/k3s/latest/en/installation/) or [Rancher RKE](https://rancher.com/docs/rke/latest/en/installation/).
+- Install [Helm](https://helm.sh/).
+- Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
+- Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX
 
@@ -47,7 +52,7 @@ helm install apisix ./charts/apisix \
 kubectl get service --namespace ingress-apisix
 ```
 
-*If you are using K3S, the default kubeconfig file is in /etc/rancher/k3s and root permission may required.*
+_If you are using K3S, the default kubeconfig file is in /etc/rancher/k3s and root permission may required._
 
 Two Service resources were created, one is `apisix-gateway`, which processes the real traffic; another is `apisix-admin`, which acts as the control plane to process all the configuration changes.
 
@@ -71,7 +76,7 @@ helm install apisix-ingress-controller ./charts/apisix-ingress-controller \
   --kubeconfig /etc/rancher/k3s/k3s.yaml
 ```
 
-*If you are using K3S, the default kubeconfig file is in /etc/rancher/k3s and root permission may required.*
+_If you are using K3S, the default kubeconfig file is in /etc/rancher/k3s and root permission may required._
 
 The admin key used in abovementioned commands is the default one, if you change the admin key configuration when you deployed APISIX, please remember to change it here.
 
