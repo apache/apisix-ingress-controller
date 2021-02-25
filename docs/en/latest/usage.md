@@ -17,12 +17,7 @@
 #
 -->
 
----
-
-id: usage
-title: Usage of Ingress controller
-
----
+# Usage of Ingress controller
 
 In this article, we will use ingress controller CRDs (CustomResourceDefinition) to define routing rules against the admin api of Apache APISIX.
 
@@ -53,11 +48,11 @@ metadata:
   name: foo
 spec:
   ports:
-    - port: 8080
-      loadbalancer:
-        type: chash
-        hashOn: header
-        key: hello
+  - port: 8080
+    loadbalancer:
+      type: chash
+      hashOn: header
+      key: hello
 ```
 
 2. Define Route with `ApisixRoute`
@@ -69,13 +64,13 @@ metadata:
   name: foo-route
 spec:
   rules:
-    - host: test.apisix.apache.org
-      http:
-        paths:
-          - backend:
-              serviceName: foo
-              servicePort: 8080
-            path: /hello*
+  - host: test.apisix.apache.org
+    http:
+      paths:
+      - backend:
+          serviceName: foo
+          servicePort: 8080
+        path: /hello*
 ```
 
 Tips: When defining `ApisixUpstream`, there is no need to define a specific pod ip list, the ingress controller will do service discovery based on namespace/name/port composite index.

@@ -17,20 +17,15 @@
 #
 -->
 
----
-
-id: samples-proxy-the-httpbin-service
-title: Proxy the httpbin service
-
----
+# Proxy the httpbin service
 
 This document explains how apisix-ingress-controller guides Apache APISIX routes traffic to httpbin service correctly.
 
 ## Prerequisites
 
-- Prepare an available Kubernetes cluster in your workstation, we recommend you to use [Minikube](https://github.com/kubernetes/minikube).
-- [Install Apache APISIX in Kubernetes by Helm Chart](https://github.com/apache/apisix-helm-chart).
-- Install [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller/blob/master/docs/install.md).
+* Prepare an available Kubernetes cluster in your workstation, we recommend you to use [Minikube](https://github.com/kubernetes/minikube).
+* [Install Apache APISIX in Kubernetes by Helm Chart](https://github.com/apache/apisix-helm-chart).
+* Install [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller/blob/master/docs/install.md).
 
 ## Deploy httpbin service
 
@@ -55,13 +50,13 @@ metadata:
   name: httpserver-route
 spec:
   rules:
-    - host: local.httpbin.org
-      http:
-        paths:
-          - backend:
-              serviceName: httpbin
-              servicePort: 80
-            path: /*
+  - host: local.httpbin.org
+    http:
+      paths:
+      - backend:
+          serviceName: httpbin
+          servicePort: 80
+        path: /*
 ```
 
 The YAML snippet shows a simple `ApisixRoute` configuration, which tells Apache APISIX to route all requests with Host `local.httpbin.org` to the `httpbin` service.

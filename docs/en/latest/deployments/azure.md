@@ -17,24 +17,17 @@
 #
 -->
 
----
+# Install Ingress APISIX on Azure AKS
 
-id: deployment-azure-aks
-title: Install Ingress APISIX on Azure AKS
-
----
-
-#
-
-This document explains how to install Ingress APISIX on [Auzre AKS](<https://docs.microsoft.com/en-us/azure/aks/intro-kubernetes#:~:text=Azure%20Kubernetes%20Service%20(AKS)%20makes,managed%20Kubernetes%20cluster%20in%20Azure.&text=The%20Kubernetes%20masters%20are%20managed,clusters%2C%20not%20for%20the%20masters.>).
+This document explains how to install Ingress APISIX on [Auzre AKS](https://docs.microsoft.com/en-us/azure/aks/intro-kubernetes#:~:text=Azure%20Kubernetes%20Service%20(AKS)%20makes,managed%20Kubernetes%20cluster%20in%20Azure.&text=The%20Kubernetes%20masters%20are%20managed,clusters%2C%20not%20for%20the%20masters.).
 
 ## Prerequisites
 
-- Create an Kubernetes Service on Azure.
-- Install [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/#:~:text=The%20Azure%20command%2Dline%20interface,with%20an%20emphasis%20on%20automation.) and download the credentials by running `az aks get-credentials`.
-- Install [Helm](https://helm.sh/).
-- Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
-- Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
+* Create an Kubernetes Service on Azure.
+* Install [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/#:~:text=The%20Azure%20command%2Dline%20interface,with%20an%20emphasis%20on%20automation.) and download the credentials by running `az aks get-credentials`.
+* Install [Helm](https://helm.sh/).
+* Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
+* Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX
 
