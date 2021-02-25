@@ -24,6 +24,16 @@ package v1
 func (in *Route) DeepCopyInto(out *Route) {
 	*out = *in
 	out.Metadata = in.Metadata
+	if in.Hosts != nil {
+		in, out := &in.Hosts, &out.Hosts
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.Uris != nil {
+		in, out := &in.Uris, &out.Uris
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Methods != nil {
 		in, out := &in.Methods, &out.Methods
 		*out = make([]string, len(*in))
