@@ -18,9 +18,10 @@ import (
 	"context"
 	"fmt"
 
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+
 	"go.uber.org/zap"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/util/runtime"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -29,7 +30,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/seven/state"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
-	"github.com/api7/ingress-controller/pkg/ingress/apisix"
 )
 
 type apisixRouteController struct {
@@ -41,6 +41,7 @@ type apisixRouteController struct {
 type routeObject struct {
 	key     string
 	version string
+	old     interface{}
 }
 
 func (c *Controller) newApisixRouteController() *apisixRouteController {
@@ -64,6 +65,7 @@ func (c *Controller) newApisixRouteController() *apisixRouteController {
 			DeleteFunc: ctl.onDelete,
 		},
 	)
+	return ctl
 }
 
 func (c *apisixRouteController) run(ctx context.Context) {
@@ -94,34 +96,80 @@ func (c *apisixRouteController) runWorker(ctx context.Context) {
 }
 
 func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error {
-	key := ev.Object.(string)
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	obj := ev.Object.(routeObject)
+	namespace, name, err := cache.SplitMetaNamespaceKey(obj.key)
 	if err != nil {
-		log.Errorf("invalid resource key: %s", key)
-		return fmt.Errorf("invalid resource key: %s", key)
+		log.Errorf("invalid resource key: %s", obj.key)
+		return fmt.Errorf("invalid resource key: %s", obj.key)
 	}
-	switch {
-	case rqo.Ope == UPDATE:
-		apisixIngressRoute, err := c.apisixRouteList.ApisixRoutes(namespace).Get(name)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				log.Errorf("apisixRoute %s is removed", key)
-				return nil
-			}
-			return err // if error occurred, return
+	var (
+		routeV1       *configv1.ApisixRoute
+		routeV2alpha1 *configv2alpha1.ApisixRoute
+		routes        []*apisixv1.Route
+		upstreams     []*apisixv1.Upstream
+	)
+	if ev.Type != types.EventDelete {
+		if obj.version == "v1" {
+			routeV1, err = c.controller.apisixRouteV1Lister.ApisixRoutes(namespace).Get(name)
+		} else {
+			routeV2alpha1, err = c.controller.apisixRouteV2alpha1Lister.ApisixRoutes(namespace).Get(name)
 		}
-		oldRoutes, _, _ := c.controller.translator.TranslateRouteV1(rqo.OldObj)
-		newRoutes, _, _ := c.controller.translator.TranslateRouteV1(apisixIngressRoute)
+	}
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			log.Errorw("failed to get ApisixRoute",
+				zap.String("version", obj.version),
+				zap.String("key", obj.key),
+				zap.Error(err),
+			)
+			return err
+		}
 
-		rc := &state.RouteCompare{OldRoutes: oldRoutes, NewRoutes: newRoutes}
-		return rc.Sync()
-	case rqo.Ope == DELETE:
-		apisixIngressRoute, _ := c.apisixRouteList.ApisixRoutes(namespace).Get(name)
-		if apisixIngressRoute != nil && apisixIngressRoute.ResourceVersion > rqo.OldObj.ResourceVersion {
-			log.Warnf("Route %s has been covered when retry", rqo.Key)
+		if ev.Type != types.EventDelete {
+			log.Warnw("ApisixRoute was deleted before it can be delivered",
+				zap.String("key", obj.key),
+				zap.String("version", obj.version),
+			)
 			return nil
 		}
-		routes, upstreams, _ := c.controller.translator.TranslateRouteV1(rqo.OldObj)
+	}
+	if ev.Type == types.EventDelete {
+		if (obj.version == "v1" && routeV1 != nil) || (obj.version == "v2alpha1" && routeV2alpha1 != nil) {
+			// We still find the resource while we are processing the DELETE event,
+			// that means object with same namespace and name was created, discarding
+			// this stale DELETE event.
+			log.Warnw("discard the stale ApisixRoute delete event since the resource still exists",
+				zap.String("key", obj.key),
+			)
+			return nil
+		}
+		if obj.version == "v1" {
+			routeV1 = ev.Tombstone.(*configv1.ApisixRoute)
+		} else {
+			routeV2alpha1 = ev.Tombstone.(*configv2alpha1.ApisixRoute)
+		}
+	}
+	if obj.version == "v1" {
+		routes, upstreams, err = c.controller.translator.TranslateRouteV1(routeV1)
+		if err != nil {
+			log.Errorw("failed to translate ApisixRoute v1",
+				zap.Error(err),
+				zap.Any("object", routeV1),
+			)
+			return err
+		}
+	} else {
+		routes, upstreams, err = c.controller.translator.TranslateRouteV2alpha1(routeV2alpha1)
+		if err != nil {
+			log.Errorw("failed to translate ApisixRoute v2alpha1",
+				zap.Error(err),
+				zap.Any("object", routeV2alpha1),
+			)
+			return err
+		}
+	}
+
+	if ev.Type == types.EventDelete {
 		rc := &state.RouteCompare{OldRoutes: routes, NewRoutes: nil}
 		if err := rc.Sync(); err != nil {
 			return err
@@ -132,34 +180,22 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			}
 		}
 		return nil
-	default:
-		return fmt.Errorf("not expected in (ApisixRouteController) sync")
-	}
-}
-
-func (c *ApisixRouteController) add(key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		log.Errorf("invalid resource key: %s", key)
-		return fmt.Errorf("invalid resource key: %s", key)
-	}
-
-	apisixIngressRoute, err := c.apisixRouteList.ApisixRoutes(namespace).Get(name)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Infof("apisixRoute %s is removed", key)
-			return nil
+	} else if ev.Type == types.EventAdd {
+		comb := state.ApisixCombination{Routes: routes, Upstreams: upstreams}
+		if _, err := comb.Solver(); err != nil {
+			return err
 		}
-		log.Errorf("failed to list ApisixRoute %s: %s", key, err.Error())
-		runtime.HandleError(fmt.Errorf("failed to list ApisixRoute %s: %s", key, err.Error()))
-		return err
+	} else {
+		var oldRoutes []*apisixv1.Route
+		if obj.version == "v1" {
+			oldRoutes, _, _ = c.controller.translator.TranslateRouteV1(routeV1)
+		} else {
+			oldRoutes, _, _ = c.controller.translator.TranslateRouteV2alpha1(routeV2alpha1)
+		}
+		rc := &state.RouteCompare{OldRoutes: oldRoutes, NewRoutes: routes}
+		return rc.Sync()
 	}
-	apisixRoute := apisix.ApisixRoute(*apisixIngressRoute)
-	routes, services, upstreams, _ := apisixRoute.Convert(c.controller.translator)
-	comb := state.ApisixCombination{Routes: routes, Services: services, Upstreams: upstreams}
-	_, err = comb.Solver()
-	return err
-
+	return nil
 }
 
 func (c *apisixRouteController) handleSyncErr(obj interface{}, err error) {
@@ -241,6 +277,7 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 		Object: routeObject{
 			key:     key,
 			version: version,
+			old:     oldObj,
 		},
 	})
 }

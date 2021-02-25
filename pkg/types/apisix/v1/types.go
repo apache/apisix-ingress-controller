@@ -82,7 +82,9 @@ type Route struct {
 	Metadata `json:",inline" yaml:",inline"`
 
 	Host         string   `json:"host,omitempty" yaml:"host,omitempty"`
+	Hosts        []string `json:"hosts,omitempty" yaml:"hosts,omitempty"`
 	Path         string   `json:"path,omitempty" yaml:"path,omitempty"`
+	Priority     int      `json:"priority,omitempty" yaml:"priority,omitempty"`
 	Uris         []string `json:"uris,omitempty" yaml:"uris,omitempty"`
 	Methods      []string `json:"methods,omitempty" yaml:"methods,omitempty"`
 	ServiceId    string   `json:"service_id,omitempty" yaml:"service_id,omitempty"`
@@ -261,6 +263,23 @@ func ComposeUpstreamName(namespace, name string, port int32) string {
 	buf.WriteString(name)
 	buf.WriteByte('_')
 	buf.WriteString(pstr)
+
+	return buf.String()
+}
+
+// ComposeRouteName uses namespace, name and rule name to compose
+// the route name.
+func ComposeRouteName(namespace, name string, rule string) string {
+	// FIXME Use sync.Pool to reuse this buffer if the upstream
+	// name composing code path is hot.
+	p := make([]byte, 0, len(namespace)+len(name)+len(rule)+2)
+	buf := bytes.NewBuffer(p)
+
+	buf.WriteString(namespace)
+	buf.WriteByte('_')
+	buf.WriteString(name)
+	buf.WriteByte('_')
+	buf.WriteString(rule)
 
 	return buf.String()
 }

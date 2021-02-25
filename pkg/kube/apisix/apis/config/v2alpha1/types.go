@@ -39,6 +39,8 @@ type ApisixRouteSpec struct {
 
 // ApisixRouteHTTP represents a single route in for HTTP traffic.
 type ApisixRouteHTTP struct {
+	// The rule name, cannot be empty.
+	Name string `json:"name"`
 	// Route priority, when multiple routes contains
 	// same URI path (for path matching), route with
 	// higher priority will take effect.

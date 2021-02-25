@@ -39,6 +39,7 @@ import (
 	crdclientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
+	listersv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
@@ -77,6 +78,8 @@ type Controller struct {
 	ingressInformer             cache.SharedIndexInformer
 	apisixUpstreamInformer      cache.SharedIndexInformer
 	apisixUpstreamLister        listersv1.ApisixUpstreamLister
+	apisixRouteV1Lister         listersv1.ApisixRouteLister
+	apisixRouteV2alpha1Lister   listersv2alpha1.ApisixRouteLister
 	apisixRouteV1Informer       cache.SharedIndexInformer
 	apisixRouteV2alpha1Informer cache.SharedIndexInformer
 
