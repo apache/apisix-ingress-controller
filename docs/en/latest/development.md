@@ -1,3 +1,7 @@
+---
+title: Developing for Apache APISIX Ingress Controller
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -16,8 +20,6 @@
 # limitations under the License.
 #
 -->
-
-# Developing for Apache APISIX Ingress Controller
 
 This document explains how to get started with developing for Apache APISIX Ingress controller.
 

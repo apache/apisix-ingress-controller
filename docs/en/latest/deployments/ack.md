@@ -1,3 +1,7 @@
+---
+title: Install Ingress APISIX on ACK
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -16,8 +20,6 @@
 # limitations under the License.
 #
 -->
-
-# Install Ingress APISIX on ACK
 
 This document explains how to install Ingress APISIX on [ali-cloud ACK](https://www.aliyun.com/product/kubernetes).
 

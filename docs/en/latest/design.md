@@ -1,3 +1,7 @@
+---
+title: Ingress Controller
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -16,8 +20,6 @@
 # limitations under the License.
 #
 -->
-
-# ingress-controller
 
 Apache APISIX ingress for Kubernetes.
 

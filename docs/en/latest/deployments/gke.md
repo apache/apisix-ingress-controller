@@ -1,3 +1,7 @@
+---
+title: Install Ingress APISIX on Google Cloud GKE
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -16,8 +20,6 @@
 # limitations under the License.
 #
 -->
-
-# Install Ingress APISIX on Google Cloud GKE
 
 This document explains how to install Ingress APISIX on [Google Cloud GKE](https://cloud.google.com/kubernetes-engine).
 

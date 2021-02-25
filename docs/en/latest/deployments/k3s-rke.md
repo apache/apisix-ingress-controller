@@ -1,3 +1,7 @@
+---
+title: Install Ingress APISIX on K3S and Rancher RKE
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -16,8 +20,6 @@
 # limitations under the License.
 #
 -->
-
-# Install Ingress APISIX on K3S and Rancher RKE
 
 This document explains how to install Ingress APISIX on [k3S](https://k3s.io/) and [Rancher RKE](https://rancher.com/products/rke/).
 

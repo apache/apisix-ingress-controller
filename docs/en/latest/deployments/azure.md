@@ -1,3 +1,7 @@
+---
+title: Install Ingress APISIX on Azure AKS
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -16,8 +20,6 @@
 # limitations under the License.
 #
 -->
-
-# Install Ingress APISIX on Azure AKS
 
 This document explains how to install Ingress APISIX on [Auzre AKS](https://docs.microsoft.com/en-us/azure/aks/intro-kubernetes#:~:text=Azure%20Kubernetes%20Service%20(AKS)%20makes,managed%20Kubernetes%20cluster%20in%20Azure.&text=The%20Kubernetes%20masters%20are%20managed,clusters%2C%20not%20for%20the%20masters.).
 

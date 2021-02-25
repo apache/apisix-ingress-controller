@@ -1,3 +1,7 @@
+---
+title: Proxy the httpbin service with Ingress
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -16,8 +20,6 @@
 # limitations under the License.
 #
 -->
-
-# Proxy the httpbin service
 
 This document explains how apisix-ingress-controller guides Apache APISIX routes traffic to httpbin service correctly by the [Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/).
 

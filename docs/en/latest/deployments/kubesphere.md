@@ -1,3 +1,7 @@
+---
+title: Install Ingress APISIX on KubeSphere
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -16,8 +20,6 @@
 # limitations under the License.
 #
 -->
-
-# Install Ingress APISIX on KubeSphere
 
 This document explains how to install Ingress APISIX on [KubeSphere](https://kubesphere.io/).
 

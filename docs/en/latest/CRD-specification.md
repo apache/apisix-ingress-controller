@@ -1,3 +1,7 @@
+---
+title: CRD specification
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,16 +21,15 @@
 #
 -->
 
-# CRD specification
-
 In order to control the behavior of the proxy ([Apache APISIX](https://github.com/apache/apisix)), the following CRDs should be defined.
 
 ## CRD Types
 
+- [CRD Types](#crd-types)
 - [ApisixRoute](#apisixroute)
 - [ApisixUpstream](#apisixupstream)
   - [Configuring Load Balancer](#configuring-load-balancer)
-  - [Configuring Health Check](#configuring-load-balancer)
+  - [Configuring Health Check](#configuring-health-check)
   - [Configuring Retry and Timeout](#configuring-retry-and-timeout)
   - [Port Level Settings](#port-level-settings)
   - [Configuration References](#configuration-references)

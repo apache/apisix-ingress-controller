@@ -1,3 +1,7 @@
+---
+title: Ingress APISIX Use Examples
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -16,8 +20,6 @@
 # limitations under the License.
 #
 -->
-
-# Ingress APISIX Use Examples
 
 This is an index page about use examples of Ingress APISIX. Read them if you're trying to learn Ingress APISIX.
 

@@ -1,3 +1,7 @@
+---
+title: Contributing to apisix-ingress-controller
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -16,8 +20,6 @@
 # limitations under the License.
 #
 -->
-
-# Contributing to apisix-ingress-controller
 
 Firstly, thanks for your interest in contributing! I hope that this will be a
 pleasant first experience for you, and that you will return to continue
