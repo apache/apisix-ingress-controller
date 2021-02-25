@@ -29,7 +29,7 @@ All configurations in `apisix-ingress-controller` are defined with Kubernetes CR
 
 The technical architecture of `apisix-ingress-controller`:
 
-<img src="./docs/images/module-0.png" alt="Architecture" width="600" height="313" />
+<img src="./docs/assets/images/module-0.png" alt="Architecture" width="600" height="313" />
 
 ## Status
 
@@ -49,7 +49,7 @@ This project is currently considered experimental.
 
 ## Modules
 
-<img src="./docs/images/module-1.png" alt="module" width="600" height="313" />
+<img src="./docs/assets/images/module-1.png" alt="module" width="600" height="313" />
 
 ### 1. `Ingress types` Submodule
 
@@ -81,11 +81,11 @@ This project is currently considered experimental.
 
 - Match and covert Apisix-ingress-types to Apisix-types before handing the control over to the above module `seven`.
 
-Get more [implementation details](./docs/design.md).
+Get more [implementation details](./docs/en/latest/design.md).
 
 ## Get started
 
-* [How to install](./docs/install.md)
+* [How to install](./install.md)
 
 ## Todos
 
@@ -97,13 +97,13 @@ Get more [implementation details](./docs/design.md).
 
 ## Documents
 
-* [Usage](./docs/usage.md)
-* [SDK doc](./docs/develop.md)
-* [Design introduction](./docs/design.md)
+* [Usage](./docs/en/latest/usage.md)
+* [SDK doc](./docs/en/latest/development.md)
+* [Design introduction](./docs/en/latest/design.md)
 
 ## FAQ
 
-* [FAQ](./docs/FAQ.md)
+* [FAQ](./docs/en/latest/FAQ.md)
 
 ## User stories
 
@@ -114,7 +114,7 @@ Get more [implementation details](./docs/design.md).
 
 We welcome all kinds of contributions from the open-source community, individuals and partners.
 
-* [Contributing Guide](./docs/contribute.md)
+* [Contributing Guide](./docs/en/latest/contribute.md)
 
 ## Community
 

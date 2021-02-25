@@ -1,3 +1,4 @@
+<!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -14,24 +15,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+-->
 
-# MD004/ul-style Unordered list style
-MD004: false
+---
 
-# MD013 Line length
-MD013: false
+id: samples
+title: Ingress APISIX Use Examples
 
-#MD029/ol-prefix Ordered list item prefix
-MD029: false
+---
 
-# MD033 Inline HTML
-MD033: false
+This is an index page about use examples of Ingress APISIX. Read them if you're trying to learn Ingress APISIX.
 
-# MD036/no-emphasis-as-heading/no-emphasis-as-header Emphasis used instead of a heading
-MD036: false
-
-MD041: false
-
-# MD024
-no-duplicate-heading:
-  siblings_only: true
+- [Proxy the httpbin service](./proxy-the-httpbin-service.md).
+- [Proxy the httpbin service with the native Ingress](./proxy-the-httpbin-service-with-ingress.md).

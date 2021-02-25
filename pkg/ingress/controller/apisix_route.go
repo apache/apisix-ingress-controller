@@ -24,12 +24,12 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/apache/apisix-ingress-controller/pkg/ingress/apisix"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/seven/state"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
+	"github.com/api7/ingress-controller/pkg/ingress/apisix"
 )
 
 type apisixRouteController struct {
@@ -110,11 +110,8 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			}
 			return err // if error occurred, return
 		}
-		oldApisixRoute := apisix.ApisixRoute(*rqo.OldObj)
-		oldRoutes, _, _, _ := oldApisixRoute.Convert(c.controller.translator)
-
-		newApisixRoute := apisix.ApisixRoute(*apisixIngressRoute)
-		newRoutes, _, _, _ := newApisixRoute.Convert(c.controller.translator)
+		oldRoutes, _, _ := c.controller.translator.TranslateRouteV1(rqo.OldObj)
+		newRoutes, _, _ := c.controller.translator.TranslateRouteV1(apisixIngressRoute)
 
 		rc := &state.RouteCompare{OldRoutes: oldRoutes, NewRoutes: newRoutes}
 		return rc.Sync()
@@ -124,13 +121,12 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			log.Warnf("Route %s has been covered when retry", rqo.Key)
 			return nil
 		}
-		apisixRoute := apisix.ApisixRoute(*rqo.OldObj)
-		routes, services, upstreams, _ := apisixRoute.Convert(c.controller.translator)
+		routes, upstreams, _ := c.controller.translator.TranslateRouteV1(rqo.OldObj)
 		rc := &state.RouteCompare{OldRoutes: routes, NewRoutes: nil}
 		if err := rc.Sync(); err != nil {
 			return err
 		} else {
-			comb := state.ApisixCombination{Routes: nil, Services: services, Upstreams: upstreams}
+			comb := state.ApisixCombination{Routes: nil, Upstreams: upstreams}
 			if err := comb.Remove(); err != nil {
 				return err
 			}

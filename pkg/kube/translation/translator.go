@@ -47,7 +47,7 @@ type Translator interface {
 	TranslateUpstreamNodes(*corev1.Endpoints, int32) ([]apisixv1.UpstreamNode, error)
 	// TranslateUpstreamConfig translates ApisixUpstreamConfig (part of ApisixUpstream)
 	// to APISIX Upstream, it doesn't fill the the Upstream metadata and nodes.
-	TranslateUpstreamConfig(config *configv1.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
+	TranslateUpstreamConfig(*configv1.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
 	// TranslateUpstream composes an upstream according to the
 	// given namespace, name (searching Service/Endpoints) and port (filtering Endpoints).
 	// The returned Upstream doesn't have metadata info.
@@ -57,6 +57,9 @@ type Translator interface {
 	// TranslateIngress composes a couple of APISIX Routes and upstreams according
 	// to the given Ingress resource.
 	TranslateIngress(kube.Ingress) ([]*apisixv1.Route, []*apisixv1.Upstream, error)
+	// TranslateRouteV1 translates the configv1.ApisixRoute object into several Route
+	// and Upstream resources.
+	TranslateRouteV1(*configv1.ApisixRoute) ([]*apisixv1.Route, []*apisixv1.Upstream, error)
 }
 
 // TranslatorOptions contains options to help Translator

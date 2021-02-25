@@ -69,46 +69,6 @@ spec:
 	assert.EqualValues(t, sslExpect.Group, ssl.Group, "group convert error")
 }
 
-func TestConvert_group_annotation(t *testing.T) {
-	atlsStr := `
-apiVersion: apisix.apache.org/v1
-kind: ApisixTls
-metadata:
-  annotations:
-    k8s.apisix.apache.org/ingress.class: 127.0.0.1:9080
-  name: foo
-  namespace: helm
-spec:
-  hosts:
-  - api6.com
-  secret:
-    name: test-atls
-    namespace: helm
-`
-	id := "helm_foo"
-	snis := []string{"api6.com"}
-	status := int(1)
-	cert := "root"
-	key := "123456"
-	group := "127.0.0.1:9080"
-	sslExpect := &apisix.Ssl{
-		ID:     id,
-		Snis:   snis,
-		Cert:   cert,
-		Key:    key,
-		Status: status,
-		Group:  group,
-	}
-	setDummyApisixClient(t)
-	atlsCRD := &ApisixTLSCRD{}
-	err := yaml.Unmarshal([]byte(atlsStr), atlsCRD)
-	assert.Nil(t, err, "yaml decode failed")
-	sc := &SecretClientMock{}
-	ssl, err := atlsCRD.Convert(sc)
-	assert.Nil(t, err)
-	assert.EqualValues(t, sslExpect.Group, ssl.Group, "group convert error")
-}
-
 func TestConvert_Error(t *testing.T) {
 	atlsStr := `
 apiVersion: apisix.apache.org/v1
