@@ -56,7 +56,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) ([]*apisixv1.
 			if pathRule.PathType != nil && *pathRule.PathType == networkingv1.PathTypePrefix {
 				// As per the specification of Ingress path matching rule:
 				// if the last element of the path is a substring of the
-				// last element in request path, it is not a match ,e.g. /foo/bar
+				// last element in request path, it is not a match, e.g. /foo/bar
 				// matches /foo/bar/baz, but does not match /foo/barbaz.
 				// While in APISIX, /foo/bar matches both /foo/bar/baz and
 				// /foo/barbaz.
@@ -116,7 +116,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) ([]
 			if pathRule.PathType != nil && *pathRule.PathType == networkingv1beta1.PathTypePrefix {
 				// As per the specification of Ingress path matching rule:
 				// if the last element of the path is a substring of the
-				// last element in request path, it is not a match ,e.g. /foo/bar
+				// last element in request path, it is not a match, e.g. /foo/bar
 				// matches /foo/bar/baz, but does not match /foo/barbaz.
 				// While in APISIX, /foo/bar matches both /foo/bar/baz and
 				// /foo/barbaz.
