@@ -298,7 +298,7 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		return nil, err
 	}
 	if err := u.cluster.cache.InsertUpstream(ups); err != nil {
-		log.Errorf("failed to reflect upstraem update to cache: %s", err)
+		log.Errorf("failed to reflect upstream update to cache: %s", err)
 		return nil, err
 	}
 	return ups, err

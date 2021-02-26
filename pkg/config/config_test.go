@@ -63,7 +63,7 @@ func TestNewConfigFromFile(t *testing.T) {
 
 	assert.Equal(t, cfg, newCfg, "bad configuration")
 
-	// We constrcuts yaml data manually instead of using yaml.Marshal since
+	// We constructs yaml data manually instead of using yaml.Marshal since
 	// types.TimeDuration doesn't have a `yaml:",inline"` tag, if we add it,
 	// error ",inline needs a struct value field" will be reported.
 	// I don't know why.

@@ -36,7 +36,7 @@ func Short() string {
 	return fmt.Sprintf("%s-%s-%s", _buildVersion, _buildGitRevision, _buildGoVersion)
 }
 
-// Long produes a verbose version info with format:
+// Long produces a verbose version info with format:
 // Version: xxx
 // Git SHA: xxx
 // GO Version: xxx

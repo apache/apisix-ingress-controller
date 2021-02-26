@@ -70,7 +70,7 @@ helm install apisix-ingress-controller ./charts/apisix-ingress-controller \
   --namespace ingress-apisix
 ```
 
-Change the `image.tag` to the apisix-ingress-controller version that you desire. You have to wait for while until the correspdoning pods are running.
+Change the `image.tag` to the apisix-ingress-controller version that you desire. You have to wait for while until the corresponding pods are running.
 
 Now open your [EKS console](https://console.aws.amazon.com/eks/home), choosing your cluster and clicking the Workloads tag, you'll see all pods of Apache APISIX, etcd and apisix-ingress-controller are ready.
 

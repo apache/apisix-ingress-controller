@@ -65,9 +65,9 @@ func paddingUpstream(upstream *v1.Upstream, currentUpstream *v1.Upstream) bool {
 	return false
 }
 
-// NewRouteWorkers make routeWrokers group by service per CRD
+// NewRouteWorkers make routeWorkers group by service per CRD
 // 1.make routes group by (1_2_3) it may be a map like map[1_2_3][]Route;
-// 2.route is listenning Event from the ready of 1_2_3;
+// 2.route is listening Event from the ready of 1_2_3;
 func NewRouteWorkers(ctx context.Context,
 	routes []*v1.Route, wg *sync.WaitGroup, errorChan chan CRDStatus) RouteWorkerGroup {
 

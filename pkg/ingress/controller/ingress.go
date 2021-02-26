@@ -214,7 +214,7 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 func (c *ingressController) onAdd(obj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
-		log.Errorf("found ingress resource with bad meta namesapce key: %s", err)
+		log.Errorf("found ingress resource with bad meta namespace key: %s", err)
 		return
 	}
 	if !c.controller.namespaceWatching(key) {

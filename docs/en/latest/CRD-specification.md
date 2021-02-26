@@ -162,7 +162,7 @@ With the above settings, Apache APISIX will distributes requests according to th
 
 ### Configuring Health Check
 
-Although Kubelet already provides [probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#:~:text=The%20kubelet%20uses%20readiness%20probes,removed%20from%20Service%20load%20balancers.) to detect whether pods are healthy, you may still need more powerful health cheak mechanism,
+Although Kubelet already provides [probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#:~:text=The%20kubelet%20uses%20readiness%20probes,removed%20from%20Service%20load%20balancers.) to detect whether pods are healthy, you may still need more powerful health check mechanism,
 like the passive feedback capability.
 
 ```yaml
@@ -194,7 +194,7 @@ spec:
           - 206
 ```
 
-The above YAML snippet defines a passive health checker to detech the unhealthy state for
+The above YAML snippet defines a passive health checker to detect the unhealthy state for
 endpoints, once there are three consecutive requests with bad status code (one of `500`, `502`, `503`, `504`), the endpoint
 will be set to unhealthy and no requests can be routed there until it's healthy again.
 
@@ -225,7 +225,7 @@ spec:
   retries: 3
 ```
 
-The default connect, read and send timeout are `60s`, which might not proper for some applicartions,
+The default connect, read and send timeout are `60s`, which might not proper for some applications,
 just change them in the `timeout` field.
 
 ```yaml

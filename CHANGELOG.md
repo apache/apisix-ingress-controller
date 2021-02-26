@@ -81,7 +81,7 @@ This release mainly improve basic features, bugfix and adds test cases.
 
 ## Test case
 
-- Add E2E test enviroment. [#101](https://github.com/apache/apisix-ingress-controller/pull/101)
+- Add E2E test environment. [#101](https://github.com/apache/apisix-ingress-controller/pull/101)
 
 ## Bugfix
 

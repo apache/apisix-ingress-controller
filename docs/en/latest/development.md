@@ -72,7 +72,7 @@ The Dockerfile in this repository is only for development, not for release.
 
 ## Run apisix-ingress-controller locally
 
-We assume all prerequisites abovementioned are met, what's more, since we want to run apisix-ingress-controller in bare-metal environment, please make sure both the proxy service and admin api service of Apache APISIX are exposed outside of the Kubernetes cluster, e.g. configuring them as [NodePort](https://kubernetes.io/docs/concepts/services-networking/service/#nodeport) services.
+We assume all prerequisites above mentioned are met, what's more, since we want to run apisix-ingress-controller in bare-metal environment, please make sure both the proxy service and admin api service of Apache APISIX are exposed outside of the Kubernetes cluster, e.g. configuring them as [NodePort](https://kubernetes.io/docs/concepts/services-networking/service/#nodeport) services.
 
 Let's assume the Admin API service address of Apache APISIX is `http://192.168.65.2:31156`. Next launch the ingress-apisix-controller by the following command.
 

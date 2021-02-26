@@ -47,7 +47,7 @@ helm install apisix ./charts/apisix \
 kubectl get service --namespace ingress-apisix
 ```
 
-Please be careful you must configure the `etcd.persistence.size` to multiplese of 10Gi (it's a limitation on TKE), otherwise the [PersistentVolumeClaim](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) creation will fail.
+Please be careful you must configure the `etcd.persistence.size` to multiples of 10Gi (it's a limitation on TKE), otherwise the [PersistentVolumeClaim](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) creation will fail.
 
 Two Service resources were created, one is `apisix-gateway`, which processes the real traffic; another is `apisix-admin`, which acts as the control plane to process all the configuration changes.
 
@@ -73,7 +73,7 @@ helm install apisix-ingress-controller ./charts/apisix-ingress-controller \
   --namespace ingress-apisix
 ```
 
-Change the `image.tag` to the apisix-ingress-controller version that you desire. You have to wait for while until the correspdoning pods are running.
+Change the `image.tag` to the apisix-ingress-controller version that you desire. You have to wait for while until the corresponding pods are running.
 
 Now open your [TKE console](https://console.cloud.tencent.com/tke2/overview), choosing your cluster and clicking the Workloads tag, you'll see all pods of Apache APISIX, etcd and apisix-ingress-controller are ready.
 
