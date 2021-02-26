@@ -16,7 +16,7 @@ package apisix
 
 import "strings"
 
-// ip-restrictio
+// ip-restriction
 type IpRestriction struct {
 	Whitelist []string `json:"whitelist,omitempty"`
 	Blacklist []string `json:"blacklist,omitempty"`

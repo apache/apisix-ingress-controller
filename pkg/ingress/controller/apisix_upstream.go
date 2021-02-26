@@ -192,7 +192,7 @@ func (c *apisixUpstreamController) handleSyncErr(obj interface{}, err error) {
 func (c *apisixUpstreamController) onAdd(obj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
-		log.Errorf("found ApisixUpstream resource with bad meta namesapce key: %s", err)
+		log.Errorf("found ApisixUpstream resource with bad meta namespace key: %s", err)
 		return
 	}
 	if !c.controller.namespaceWatching(key) {
@@ -244,7 +244,7 @@ func (c *apisixUpstreamController) OnDelete(obj interface{}) {
 
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		log.Errorf("found ApisixUpstream resource with bad meta namesapce key: %s", err)
+		log.Errorf("found ApisixUpstream resource with bad meta namespace key: %s", err)
 		return
 	}
 	if !c.controller.namespaceWatching(key) {

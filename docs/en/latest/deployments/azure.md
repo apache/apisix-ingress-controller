@@ -21,7 +21,7 @@ title: Install Ingress APISIX on Azure AKS
 #
 -->
 
-This document explains how to install Ingress APISIX on [Auzre AKS](https://docs.microsoft.com/en-us/azure/aks/intro-kubernetes#:~:text=Azure%20Kubernetes%20Service%20(AKS)%20makes,managed%20Kubernetes%20cluster%20in%20Azure.&text=The%20Kubernetes%20masters%20are%20managed,clusters%2C%20not%20for%20the%20masters.).
+This document explains how to install Ingress APISIX on [Azure AKS](https://docs.microsoft.com/en-us/azure/aks/intro-kubernetes#:~:text=Azure%20Kubernetes%20Service%20(AKS)%20makes,managed%20Kubernetes%20cluster%20in%20Azure.&text=The%20Kubernetes%20masters%20are%20managed,clusters%2C%20not%20for%20the%20masters.).
 
 ## Prerequisites
 
@@ -70,6 +70,6 @@ helm install apisix-ingress-controller ./charts/apisix-ingress-controller \
   --namespace ingress-apisix
 ```
 
-Change the `image.tag` to the apisix-ingress-controller version that you desire. You have to wait for while until the correspdoning pods are running.
+Change the `image.tag` to the apisix-ingress-controller version that you desire. You have to wait for while until the corresponding pods are running.
 
 Now try to create some [resources](../CRD-specification.md) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../samples/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.

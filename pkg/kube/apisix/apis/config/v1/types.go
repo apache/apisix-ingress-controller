@@ -114,7 +114,7 @@ type ApisixUpstreamConfig struct {
 	// +optional
 	Timeout *UpstreamTimeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 
-	// The health check configurtions for the upstream.
+	// The health check configurations for the upstream.
 	// +optional
 	HealthCheck *HealthCheck `json:"healthCheck,omitempty" yaml:"healthCheck,omitempty"`
 }
@@ -183,7 +183,7 @@ type ActiveHealthCheckHealthy struct {
 }
 
 // ActiveHealthCheckUnhealthy defines the conditions to judge whether
-// an upstream node is unhealthy with the active mannger.
+// an upstream node is unhealthy with the active manager.
 type ActiveHealthCheckUnhealthy struct {
 	PassiveHealthCheckUnhealthy `json:",inline" yaml:",inline"`
 
@@ -198,7 +198,7 @@ type PassiveHealthCheckHealthy struct {
 }
 
 // PassiveHealthCheckUnhealthy defines the conditions to judge whether
-// an upstream node is unhealthy with the passive mannger.
+// an upstream node is unhealthy with the passive manager.
 type PassiveHealthCheckUnhealthy struct {
 	HTTPCodes    []int         `json:"httpCodes,omitempty" yaml:"httpCodes,omitempty"`
 	HTTPFailures int           `json:"httpFailures,omitempty" yaml:"http_failures,omitempty"`

@@ -33,7 +33,7 @@ data:
                         # programs easily.
 
    http_listen: ":8080"   # the HTTP Server listen address, default is ":8080"
-   enable_profiling: true # enable profileing via web interfaces
+   enable_profiling: true # enable profiling via web interfaces
                           # host:port/debug/pprof, default is true.
 
    # Kubernetes related configurations.

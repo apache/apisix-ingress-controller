@@ -28,7 +28,7 @@ log_output: "stderr" # the output file path of error log, default is stderr, whe
                      # programs easily.
 
 http_listen: ":8080"   # the HTTP Server listen address, default is ":8080"
-enable_profiling: true # enable profileing via web interfaces
+enable_profiling: true # enable profiling via web interfaces
                        # host:port/debug/pprof, default is true.
 
 # Kubernetes related configurations.
@@ -40,7 +40,7 @@ kubernetes:
                                        # and the minimal resync interval is 30s.
   app_namespaces: ["*"]                # namespace list that controller will watch for resources,
                                        # by default all namespaces (represented by "*") are watched.
-  election_id: "ingress-apisix-leader" # the election id for the controller leader compaign,
+  election_id: "ingress-apisix-leader" # the election id for the controller leader campaign,
                                        # only the leader will watch and delivery resource changes,
                                        # other instances (as candidates) stand by.
   ingress_class: "apisix"              # The class of an Ingress object is set using the field

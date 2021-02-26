@@ -78,7 +78,7 @@ type Controller struct {
 	apisixUpstreamInformer cache.SharedIndexInformer
 	apisixUpstreamLister   listersv1.ApisixUpstreamLister
 
-	// resource conrollers
+	// resource controllers
 	endpointsController      *endpointsController
 	ingressController        *ingressController
 	apisixUpstreamController *apisixUpstreamController
