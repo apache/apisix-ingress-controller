@@ -40,8 +40,8 @@ const (
 
 	// IngressNetworkingV1 represents ingress.networking/v1
 	IngressNetworkingV1 = "networking/v1"
-	// IngressNetworkingV1beta1 represents ingress.networking/v1beta1
-	IngressNetworkingV1beta1 = "networking/v1beta1"
+	// IngressNetworkingV1beta1 represents ingress.networking/v1
+	IngressNetworkingV1beta1 = "networking/v1"
 
 	_minimalResyncInterval = 30 * time.Second
 )

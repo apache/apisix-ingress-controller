@@ -47,7 +47,7 @@ kubernetes:
                                        # IngressClassName in Kubernetes clusters version v1.18.0
                                        # or higher or the annotation "kubernetes.io/ingress.class"
                                        # (deprecated).
-  ingress_version: "networking/v1"     # the supported ingress api group version, can be "networking/v1beta1"
+  ingress_version: "networking/v1"     # the supported ingress api group version, can be "networking/v1"
                                        # or "networking/v1" (for Kubernetes version v1.19.0 or higher), default
                                        # is "networking/v1".
 

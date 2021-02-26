@@ -72,13 +72,13 @@ spec:
         path: /
         pathType: Prefix
 
-# Use ingress.networking.k8s.io/v1beta1 if your Kubernetes cluster
+# Use ingress.networking.k8s.io/v1 if your Kubernetes cluster
 # version is older than v1.19.0.
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: httpserver-ingress
-  # Note for ingress.networking.k8s.io/v1beta1,
+  # Note for ingress.networking.k8s.io/v1,
   # you have to carry annotation kubernetes.io/ingress.class,
   # and its value must be matched with the one configured in
   # apisix-ingress-controller, in our case, it's apisix.

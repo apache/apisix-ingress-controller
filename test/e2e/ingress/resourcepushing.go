@@ -27,7 +27,7 @@ import (
 
 var _ = ginkgo.Describe("ApisixRoute Testing", func() {
 	s := scaffold.NewDefaultScaffold()
-	ginkgo.It("create and then scale upstream pods to 2 ", func() {
+	ginkgo.FIt("create and then scale upstream pods to 2 ", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v1
