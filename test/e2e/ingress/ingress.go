@@ -95,18 +95,18 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("support ingress.networking/v1", func() {
+var _ = ginkgo.Describe("support ingress.networking/v1beta1", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("path exact match", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
-apiVersion: networking.k8s.io/v1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-  name: ingress-v1
+  name: ingress-v1beta1
 spec:
   rules:
   - host: httpbin.org
@@ -132,12 +132,12 @@ spec:
 	ginkgo.It("path prefix match", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
-apiVersion: networking.k8s.io/v1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-  name: ingress-v1
+  name: ingress-v1beta1
 spec:
   rules:
   - host: httpbin.org
