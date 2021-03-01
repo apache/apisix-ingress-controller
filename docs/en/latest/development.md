@@ -1,3 +1,7 @@
+---
+title: Developing for Apache APISIX Ingress Controller
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,26 +21,19 @@
 #
 -->
 
----
-
-id: development
-title: Developing for Apache APISIX Ingress Controller
-
----
-
 This document explains how to get started with developing for Apache APISIX Ingress controller.
 
 ## Prerequisites
 
-- Install [Go 1.13](https://golang.org/dl/) or later, and we use go module to manage the go package dependencies.
-- Prepare an available Kubernetes cluster in your workstation, we recommend you to use [Minikube](https://github.com/kubernetes/minikube).
-- [Install Apache APISIX in Kubernetes by Helm Chart](https://github.com/apache/apisix-helm-chart).
+* Install [Go 1.13](https://golang.org/dl/) or later, and we use go module to manage the go package dependencies.
+* Prepare an available Kubernetes cluster in your workstation, we recommend you to use [Minikube](https://github.com/kubernetes/minikube).
+* [Install Apache APISIX in Kubernetes by Helm Chart](https://github.com/apache/apisix-helm-chart).
 
 ## Fork and Clone
 
-- Fork the repository from [apache/apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller) to your own GitHub account.
-- Clone the forked repository to your workstation.
-- Run `go mod download` to download modules to local cache. By the way, if you are a developer in China, we suggest you setting `GOPROXY` to `https://goproxy.cn` to speed up the downloading.
+* Fork the repository from [apache/apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller) to your own GitHub account.
+* Clone the forked repository to your workstation.
+* Run `go mod download` to download modules to local cache. By the way, if you are a developer in China, we suggest you setting `GOPROXY` to `https://goproxy.cn` to speed up the downloading.
 
 ## Build
 
@@ -75,7 +72,7 @@ The Dockerfile in this repository is only for development, not for release.
 
 ## Run apisix-ingress-controller locally
 
-We assume all prerequisites abovementioned are met, what's more, since we want to run apisix-ingress-controller in bare-metal environment, please make sure both the proxy service and admin api service of Apache APISIX are exposed outside of the Kubernetes cluster, e.g. configuring them as [NodePort](https://kubernetes.io/docs/concepts/services-networking/service/#nodeport) services.
+We assume all prerequisites above mentioned are met, what's more, since we want to run apisix-ingress-controller in bare-metal environment, please make sure both the proxy service and admin api service of Apache APISIX are exposed outside of the Kubernetes cluster, e.g. configuring them as [NodePort](https://kubernetes.io/docs/concepts/services-networking/service/#nodeport) services.
 
 Let's assume the Admin API service address of Apache APISIX is `http://192.168.65.2:31156`. Next launch the ingress-apisix-controller by the following command.
 
@@ -91,5 +88,5 @@ cd /path/to/apisix-ingress-controller
 
 Something you need to pay attention to:
 
-- configuring of `--kubeconfig`, if you are using Minikube, the file path should be `~/.kube/config`.
-- configuring of `--apisix-admin-key`, if you have changed the admin key in Apache APISIX, also changing it here, if you disable the authentication if Apache APISIX, just removing this option.
+* configuring of `--kubeconfig`, if you are using Minikube, the file path should be `~/.kube/config`.
+* configuring of `--apisix-admin-key`, if you have changed the admin key in Apache APISIX, also changing it here, if you disable the authentication if Apache APISIX, just removing this option.

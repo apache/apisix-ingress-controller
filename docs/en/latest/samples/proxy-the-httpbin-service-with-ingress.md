@@ -1,3 +1,7 @@
+---
+title: Proxy the httpbin service with Ingress
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,20 +21,13 @@
 #
 -->
 
----
-
-id: samples-proxy-the-httpbin-service-with-ingress
-title: Proxy the httpbin service with Ingress
-
----
-
 This document explains how apisix-ingress-controller guides Apache APISIX routes traffic to httpbin service correctly by the [Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/).
 
 ## Prerequisites
 
-- Prepare an available Kubernetes cluster in your workstation, we recommend you to use [Minikube](https://github.com/kubernetes/minikube).
-- [Install Apache APISIX in Kubernetes by Helm Chart](https://github.com/apache/apisix-helm-chart).
-- Install [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller/blob/master/docs/install.md).
+* Prepare an available Kubernetes cluster in your workstation, we recommend you to use [Minikube](https://github.com/kubernetes/minikube).
+* [Install Apache APISIX in Kubernetes by Helm Chart](https://github.com/apache/apisix-helm-chart).
+* Install [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller/blob/master/docs/install.md).
 
 ## Deploy httpbin service
 

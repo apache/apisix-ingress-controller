@@ -102,7 +102,7 @@ func (s *Scaffold) RemoveResourceByString(yaml string) error {
 }
 
 // CreateResourceFromStringWithNamespace creates resource from a loaded yaml string
-// and sets its namespace to the sepcified one.
+// and sets its namespace to the specified one.
 func (s *Scaffold) CreateResourceFromStringWithNamespace(yaml, namespace string) error {
 	originalNamespace := s.kubectlOptions.Namespace
 	s.kubectlOptions.Namespace = namespace

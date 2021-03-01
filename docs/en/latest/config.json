@@ -1,51 +1,52 @@
 {
   "version": "0.3.0",
-  "sidebar": {
-    "docs": [
-      {
-        "type": "category",
-        "label": "Getting Started",
-        "items": ["design", "crd-specification"]
-      },
-      {
-        "type": "category",
-        "label": "Samples",
-        "items": [
-          "samples",
-          "samples-proxy-the-httpbin-service-with-ingress",
-          "samples-proxy-the-httpbin-service"
-        ]
-      },
-      {
-        "type": "category",
-        "label": "Deployment",
-        "items": [
-          "deployment-on-ack",
-          "deployment-on-aws",
-          "deployment-on-azure-aks",
-          "deployment-on-gke",
-          "deployment-on-k3s-rke",
-          "deployment-on-kubeSphere",
-          "deployment-on-minikube",
-          "deployment-on-tke"
-        ]
-      },
-      {
-        "type": "doc",
-        "id": "usage"
-      },
-      {
-        "type": "doc",
-        "id": "development"
-      },
-      {
-        "type": "doc",
-        "id": "contributing"
-      },
-      {
-        "type": "doc",
-        "id": "faq"
-      }
-    ]
-  }
+  "sidebar": [
+    {
+      "type": "category",
+      "label": "Getting Started",
+      "items": [
+        "design",
+        "CRD-specification"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Samples",
+      "items": [
+        "samples/index",
+        "samples/proxy-the-httpbin-service-with-ingress",
+        "samples/proxy-the-httpbin-service"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Deployment",
+      "items": [
+        "deployments/ack",
+        "deployments/aws",
+        "deployments/azure",
+        "deployments/gke",
+        "deployments/k3s-rke",
+        "deployments/kubesphere",
+        "deployments/minikube",
+        "deployments/tke"
+      ]
+    },
+    {
+      "type": "doc",
+      "id": "usage"
+    },
+    {
+      "type": "doc",
+      "id": "development"
+    },
+    {
+      "type": "doc",
+      "id": "contribute"
+    },
+    {
+      "type": "doc",
+      "id": "FAQ"
+    }
+  ]
 }

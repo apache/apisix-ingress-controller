@@ -1,3 +1,7 @@
+---
+title: FAQ
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,13 +21,6 @@
 #
 -->
 
----
-
-id: faq
-title: FAQ
-
----
-
 1. How to bind Service and Upstream?
 
 All resource objects are uniquely determined by the namespace / name / port combination Id. If the combined Id is the same, the `service` and `upstream` will be considered as a binding relationship.
@@ -42,7 +39,7 @@ This is because CRDs are generally declared in the file system, and Apply to ent
 
 So far apisix-ingress-controller doesn't support set admin_key for Apache APISIX, so when you deploy your APISIX cluster, admin_key should be removed from config.
 
-Note since APISIX have two configuration files, the first is config.yaml, which contains the user specified configs, the other is config-default.yaml, which has all default items, config items in these two files will be merged. So admin_key in both files should be removed. You can customize these two configuration files and mount them to APISIX deloyment.
+Note since APISIX have two configuration files, the first is config.yaml, which contains the user specified configs, the other is config-default.yaml, which has all default items, config items in these two files will be merged. So admin_key in both files should be removed. You can customize these two configuration files and mount them to APISIX deployment.
 
 5. Failed to create route with `ApisixRoute`?
 

@@ -1,3 +1,7 @@
+---
+title: Install Ingress APISIX on KubeSphere
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,23 +21,16 @@
 #
 -->
 
----
-
-id: deployment-on-kubeSphere
-title: Install Ingress APISIX on KubeSphere
-
----
-
 This document explains how to install Ingress APISIX on [KubeSphere](https://kubesphere.io/).
 
 KubeSphere is a distributed operating system managing cloud native applications with Kubernetes as its kernel, and provides plug-and-play architecture for the seamless integration of third-party applications to boost its ecosystem.
 
 ## Prerequisites
 
-- Install [KubeSphere](https://kubesphere.io/docs/quick-start/), you can choose [All-in-one Installation on Linux](https://kubesphere.io/docs/quick-start/all-in-one-on-linux/) or [Minimal KubeSphere on Kubernetes](https://kubesphere.io/docs/quick-start/minimal-kubesphere-on-k8s/).
-- Install [Helm](https://helm.sh/).
-- Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
-- Make sure your target namespace exists, kubectl operations of this document will be executed in namespace `ingress-apisix`.
+* Install [KubeSphere](https://kubesphere.io/docs/quick-start/), you can choose [All-in-one Installation on Linux](https://kubesphere.io/docs/quick-start/all-in-one-on-linux/) or [Minimal KubeSphere on Kubernetes](https://kubesphere.io/docs/quick-start/minimal-kubesphere-on-k8s/).
+* Install [Helm](https://helm.sh/).
+* Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
+* Make sure your target namespace exists, kubectl operations of this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX
 
@@ -73,6 +70,6 @@ helm install apisix-ingress-controller ./charts/apisix-ingress-controller \
 
 The admin key used above is the default one. If you change the admin key configuration when you deployed APISIX, please remember to change it here.
 
-Change the `image.tag` to the apisix-ingress-controller version that you desire. Wait for the correspdoning pods are running.
+Change the `image.tag` to the apisix-ingress-controller version that you desire. Wait for the corresponding pods are running.
 
 Now try to create some [resources](../CRD-specification.md) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../samples/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.

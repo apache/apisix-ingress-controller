@@ -1,3 +1,7 @@
+---
+title: Install Ingress APISIX on Amazon EKS
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,22 +21,15 @@
 #
 -->
 
----
-
-id: deployment-aws
-title: Install Ingress APISIX on Amazon EKS
-
----
-
 This document explains how to install Ingress APISIX on [Amazon EKS](https://amazonaws-china.com/eks/?whats-new-cards.sort-by=item.additionalFields.postDateTime&whats-new-cards.sort-order=desc&eks-blogs.sort-by=item.additionalFields.createdDate&eks-blogs.sort-order=desc).
 
 ## Prerequisites
 
-- Create an EKS Service on AWS.
-- Install [Helm](https://helm.sh/).
-- Download the kube config for your EKS from [aws cli interface](https://amazonaws-china.com/cli/).
-- Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
-- Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
+* Create an EKS Service on AWS.
+* Install [Helm](https://helm.sh/).
+* Download the kube config for your EKS from [aws cli interface](https://amazonaws-china.com/cli/).
+* Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
+* Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX
 
@@ -73,7 +70,7 @@ helm install apisix-ingress-controller ./charts/apisix-ingress-controller \
   --namespace ingress-apisix
 ```
 
-Change the `image.tag` to the apisix-ingress-controller version that you desire. You have to wait for while until the correspdoning pods are running.
+Change the `image.tag` to the apisix-ingress-controller version that you desire. You have to wait for while until the corresponding pods are running.
 
 Now open your [EKS console](https://console.aws.amazon.com/eks/home), choosing your cluster and clicking the Workloads tag, you'll see all pods of Apache APISIX, etcd and apisix-ingress-controller are ready.
 

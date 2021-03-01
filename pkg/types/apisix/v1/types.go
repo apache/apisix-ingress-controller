@@ -208,7 +208,7 @@ type UpstreamPassiveHealthCheckHealthy struct {
 }
 
 // UpstreamActiveHealthCheckUnhealthy defines the conditions to judge whether
-// an upstream node is unhealthy with the active mannger.
+// an upstream node is unhealthy with the active manager.
 // +k8s:deepcopy-gen=true
 type UpstreamActiveHealthCheckUnhealthy struct {
 	UpstreamPassiveHealthCheckUnhealthy `json:",inline" yaml:",inline"`
@@ -217,7 +217,7 @@ type UpstreamActiveHealthCheckUnhealthy struct {
 }
 
 // UpstreamPassiveHealthCheckUnhealthy defines the conditions to judge whether
-// an upstream node is unhealthy with the passive mannger.
+// an upstream node is unhealthy with the passive manager.
 // +k8s:deepcopy-gen=true
 type UpstreamPassiveHealthCheckUnhealthy struct {
 	HTTPStatuses []int   `json:"http_statuses,omitempty" yaml:"http_statuses,omitempty"`

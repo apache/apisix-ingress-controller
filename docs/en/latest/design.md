@@ -1,3 +1,7 @@
+---
+title: Ingress Controller
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -16,13 +20,6 @@
 # limitations under the License.
 #
 -->
-
----
-
-id: ingress-controller-design
-title: Ingress Controller Design
-
----
 
 Apache APISIX ingress for Kubernetes.
 
@@ -67,8 +64,8 @@ Currently `apisix-ingress-controller` CRDs consist of 3 parts: ApisixRoute/Apisi
 1. The most important part of the gateway is the route part, which is used to define the distribution rules of the gateway traffics.
 2. In order to facilitate understanding and configuration, the design structure of `ApisixRoute` is basically similar to Kubernetes Ingress.
 3. In the design of annotation, the structure of Kubernetes Ingress is used for reference, but the internal implementation is based on the plug-in of Apache APISIX.
-4. In the simplest case, you only need to define `ApisixRoute`, and the Ingress controller will automatically add `ApisixUpstream`.
-5. `ApisixUpstream` can define some details on Apache APISIX upstream, such as load balancing/health check, etc.
+5. In the simplest case, you only need to define `ApisixRoute`, and the Ingress controller will automatically add `ApisixUpstream`.
+7. `ApisixUpstream` can define some details on Apache APISIX upstream, such as load balancing/health check, etc.
 
 ## Monitoring CRDs
 
@@ -78,7 +75,7 @@ Currently `apisix-ingress-controller` CRDs consist of 3 parts: ApisixRoute/Apisi
 
 ![flow](../../assets/images/flow.png)
 
-- Here is a flowchart that introduces the main logic of `ApisixRoute` and other CRDs during synchronization.
+* Here is a flowchart that introduces the main logic of `ApisixRoute` and other CRDs during synchronization.
 
 ![logic](../../assets/images/sync-logic-controller.png)
 
@@ -131,7 +128,8 @@ metadata:
   annotations:
     k8s.apisix.apache.org/whitelist-source-range: 1.2.3.4,2.2.0.0/16
   name: httpserver-route
-spec: ...
+spec:
+    ...
 ```
 
 The black and white list here is implemented by the [ip-restriction](https://github.com/apache/apisix/blob/master/doc/plugins/ip-restriction.md) plugin.

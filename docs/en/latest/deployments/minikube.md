@@ -1,3 +1,7 @@
+---
+title: Install Ingress APISIX on Minikube
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,21 +21,14 @@
 #
 -->
 
----
-
-id: deployment-on-minikube
-title: Install Ingress APISIX on Minikube
-
----
-
 This document explains how to install Ingress APISIX on [Minikube](https://minikube.sigs.k8s.io/).
 
 ## Prerequisites
 
-- Install [Minikube](https://minikube.sigs.k8s.io/docs/start/).
-- Install [Helm](https://helm.sh/).
-- Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
-- Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
+* Install [Minikube](https://minikube.sigs.k8s.io/docs/start/).
+* Install [Helm](https://helm.sh/).
+* Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
+* Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX
 
@@ -65,6 +62,6 @@ helm install apisix-ingress-controller ./charts/apisix-ingress-controller \
   --namespace ingress-apisix
 ```
 
-Change the `image.tag` to the apisix-ingress-controller version that you desire. You have to wait for while until the correspdoning pods are running.
+Change the `image.tag` to the apisix-ingress-controller version that you desire. You have to wait for while until the corresponding pods are running.
 
 Now try to create some [resources](../CRD-specification.md) to verify the running of Ingress APISIX. As a minimalist example, see [proxy-the-httpbin-service](../samples/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.

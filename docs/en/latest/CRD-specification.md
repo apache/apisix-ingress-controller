@@ -1,3 +1,7 @@
+---
+title: CRD specification
+---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -16,13 +20,6 @@
 # limitations under the License.
 #
 -->
-
----
-
-id: crd-specification
-title: CRD specification
-
----
 
 In order to control the behavior of the proxy ([Apache APISIX](https://github.com/apache/apisix)), the following CRDs should be defined.
 
@@ -54,37 +51,37 @@ metadata:
   namespace: cloud
 spec:
   rules:
-    - host: test.apisix.apache.org
-      http:
-        paths:
-          - backend:
-              serviceName: httpserver
-              servicePort: 8080
-            path: /hello*
-            plugins:
-              - name: limit-count
-                enable: true
-                config:
-                  count: 2
-                  time_window: 60
-                  rejected_code: 503
-                  key: remote_addr
+  - host: test.apisix.apache.org
+    http:
+      paths:
+      - backend:
+          serviceName: httpserver
+          servicePort: 8080
+        path: /hello*
+        plugins:
+          - name: limit-count
+            enable: true
+            config:
+              count: 2
+              time_window: 60
+              rejected_code: 503
+              key: remote_addr
 ```
 
-| Field       | Type    | Description                                                                                                                                                                                              |
-| ----------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| rules       | array   | ApisixRoute's request matching rules.                                                                                                                                                                    |
-| host        | string  | The requested host.                                                                                                                                                                                      |
-| http        | object  | Route rules are applied to the scope of layer 7 traffic.                                                                                                                                                 |
-| paths       | array   | Path-based `route` rule matching.                                                                                                                                                                        |
-| backend     | object  | Backend service information configuration.                                                                                                                                                               |
-| serviceName | string  | The name of backend service. `namespace + serviceName + servicePort` form an unique identifier to match the back-end service.                                                                            |
-| servicePort | int     | The port of backend service. `namespace + serviceName + servicePort` form an unique identifier to match the back-end service.                                                                            |
-| path        | string  | The URI matched by the route. Supports exact match and prefix match. Example，exact match: `/hello`, prefix match: `/hello*`.                                                                            |
-| plugins     | array   | Custom plugin collection (Plugins defined in the `route` level). For more plugin information, please refer to the [Apache APISIX plugin docs](https://github.com/apache/apisix/tree/master/doc/plugins). |
-| name        | string  | The name of the plugin. For more information about the example plugin, please check the [limit-count docs](https://github.com/apache/apisix/blob/master/doc/plugins/limit-count.md#Attributes).          |
-| enable      | boolean | Whether to enable the plugin, `true`: means enable, `false`: means disable.                                                                                                                              |
-| config      | object  | Configuration of plugin information. Note: The check of configuration schema is missing now, so please be careful when editing.                                                                          |
+|     Field     |  Type    |                    Description                     |
+|---------------|----------|----------------------------------------------------|
+| rules         | array    | ApisixRoute's request matching rules.              |
+| host          | string   | The requested host.                                |
+| http          | object   | Route rules are applied to the scope of layer 7 traffic.     |
+| paths         | array    | Path-based `route` rule matching.                     |
+| backend       | object   | Backend service information configuration.         |
+| serviceName   | string   | The name of backend service. `namespace + serviceName + servicePort` form an unique identifier to match the back-end service.                      |
+| servicePort   | int      | The port of backend service. `namespace + serviceName + servicePort` form an unique identifier to match the back-end service.                      |
+| path          | string   | The URI matched by the route. Supports exact match and prefix match. Example，exact match: `/hello`, prefix match: `/hello*`.                     |
+| plugins       | array    | Custom plugin collection (Plugins defined in the `route` level). For more plugin information, please refer to the [Apache APISIX plugin docs](https://github.com/apache/apisix/tree/master/doc/plugins).    |
+| name          | string   | The name of the plugin. For more information about the example plugin, please check the [limit-count docs](https://github.com/apache/apisix/blob/master/doc/plugins/limit-count.md#Attributes).             |
+| enable        | boolean  | Whether to enable the plugin, `true`: means enable, `false`: means disable.      |
+| config        | object   | Configuration of plugin information. Note: The check of configuration schema is missing now, so please be careful when editing.    |
 
 **Support partial `annotation`**
 
@@ -96,7 +93,7 @@ kind: ApisixRoute
 metadata:
   annotations:
     k8s.apisix.apache.org/ingress.class: apisix_group
-    k8s.apisix.apache.org/ssl-redirect: "false"
+    k8s.apisix.apache.org/ssl-redirect: 'false'
     k8s.apisix.apache.org/whitelist-source-range:
       - 1.2.3.4/16
       - 4.3.2.1/8
@@ -105,11 +102,11 @@ metadata:
 spec:
 ```
 
-| Field                                          | Type    | Description                                                                                                         |
-| ---------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
-| `k8s.apisix.apache.org/ssl-redirect`           | boolean | Whether to force http redirect to https. `ture`: means to force conversion to https, `false`: means not to convert. |
-| `k8s.apisix.apache.org/ingress.class`          | string  | Grouping of ingress.                                                                                                |
-| `k8s.apisix.apache.org/whitelist-source-range` | array   | Whitelist of IPs allowed to be accessed.                                                                            |
+|         Field                                  |    Type    |                       Description                                  |
+|------------------------------------------------|------------|--------------------------------------------------------------------|
+| `k8s.apisix.apache.org/ssl-redirect`           | boolean    | Whether to force http redirect to https. `ture`: means to force conversion to https, `false`: means not to convert.   |
+| `k8s.apisix.apache.org/ingress.class`          | string     | Grouping of ingress.                                               |
+| `k8s.apisix.apache.org/whitelist-source-range` | array      | Whitelist of IPs allowed to be accessed.                           |
 
 ## ApisixUpstream
 
@@ -140,9 +137,9 @@ spec:
   selector:
     app: httpbin
   ports:
-    - name: http
-      port: 80
-      targetPort: 8080
+  - name: http
+    port: 80
+    targetPort: 8080
 ```
 
 The above example shows that [ewma](https://linkerd.io/2016/03/16/beyond-round-robin-load-balancing-for-latency/) is used as the load balancer for Service `httpbin`.
@@ -165,7 +162,7 @@ With the above settings, Apache APISIX will distributes requests according to th
 
 ### Configuring Health Check
 
-Although Kubelet already provides [probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#:~:text=The%20kubelet%20uses%20readiness%20probes,removed%20from%20Service%20load%20balancers.) to detect whether pods are healthy, you may still need more powerful health cheak mechanism,
+Although Kubelet already provides [probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#:~:text=The%20kubelet%20uses%20readiness%20probes,removed%20from%20Service%20load%20balancers.) to detect whether pods are healthy, you may still need more powerful health check mechanism,
 like the passive feedback capability.
 
 ```yaml
@@ -197,7 +194,7 @@ spec:
           - 206
 ```
 
-The above YAML snippet defines a passive health checker to detech the unhealthy state for
+The above YAML snippet defines a passive health checker to detect the unhealthy state for
 endpoints, once there are three consecutive requests with bad status code (one of `500`, `502`, `503`, `504`), the endpoint
 will be set to unhealthy and no requests can be routed there until it's healthy again.
 
@@ -228,7 +225,7 @@ spec:
   retries: 3
 ```
 
-The default connect, read and send timeout are `60s`, which might not proper for some applicartions,
+The default connect, read and send timeout are `60s`, which might not proper for some applications,
 just change them in the `timeout` field.
 
 ```yaml
@@ -259,10 +256,10 @@ spec:
   loadbalancer:
     type: roundrobin
   portLevelSettings:
-    - port: 7000
-      scheme: http
-    - port: 7001
-      scheme: grpc
+  - port: 7000
+    scheme: http
+  - port: 7001
+    scheme: grpc
 ---
 apiVersion: v1
 kind: Service
@@ -272,12 +269,12 @@ spec:
   selector:
     app: foo
   portLevelSettings:
-    - name: http
-      port: 7000
-      targetPort: 7000
-    - name: grpc
-      port: 7001
-      targetPort: 7001
+  - name: http
+    port: 7000
+    targetPort: 7000
+  - name: grpc
+    port: 7001
+    targetPort: 7001
 ```
 
 The `foo` service exposes two ports, one of them use HTTP protocol and the other uses grpc protocol.
@@ -288,51 +285,51 @@ In the meanwhile, the ApisixUpstream `foo` sets `http` scheme for port `7000` an
 
 ### Configuration References
 
-| Field                                      | Type                                  | Description                                                                                                                                                                                                                                      |
-| ------------------------------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| scheme                                     | string                                | The protocol used to talk to the Service, can be `http`, `grpc`, default is `http`.                                                                                                                                                              |
-| loadbalancer                               | object                                | The load balancing algorithm of this upstream service                                                                                                                                                                                            |
-| loadbalancer.type                          | string                                | The load balancing type, can be `roundrobin`, `ewma`, `least_conn`, `chash`, default is `roundrobin`.                                                                                                                                            |
-| loadbalancer.hashOn                        | string                                | The hash value source scope, only take effects if the `chash` algorithm is in use. Values can `vars`, `header`, `vars_combinations`, `cookie` and `consumers`, default is `vars`.                                                                |
-| loadbalancer.key                           | string                                | The hash key, only in valid if the `chash` algorithm is used.                                                                                                                                                                                    |
-| retries                                    | int                                   | The retry count.                                                                                                                                                                                                                                 |
-| timeout                                    | object                                | The timeout settings.                                                                                                                                                                                                                            |
-| timeout.connect                            | time duration in the form "72h3m0.5s" | The connect timeout.                                                                                                                                                                                                                             |
-| timeout.read                               | time duration in the form "72h3m0.5s" | The read timeout.                                                                                                                                                                                                                                |
-| timeout.send                               | time duration in the form "72h3m0.5s" | The send timeout.                                                                                                                                                                                                                                |
-| healthCheck                                | object                                | The health check parameters, see [Health Check](https://github.com/apache/apisix/blob/master/doc/health-check.md) for more details.                                                                                                              |
-| healthCheck.active                         | object                                | active health check configuration, which is a mandatory field.                                                                                                                                                                                   |
-| healthCheck.active.type                    | string                                | health check type, can be `http`, `https` and `tcp`, default is `http`.                                                                                                                                                                          |
-| healthCheck.active.timeout                 | time duration in the form "72h3m0.5s" | the timeout settings for the probe, default is `1s`.                                                                                                                                                                                             |
-| healthCheck.active.concurrency             | int                                   | how many probes can be sent simultaneously, default is `10`.                                                                                                                                                                                     |
-| healthCheck.active.host                    | string                                | host header in http probe request, only in valid if the active health check type is `http` or `https`.                                                                                                                                           |
-| healthCheck.active.port                    | int                                   | target port to receive probes, it's necessary to specify this field if the health check service exposes by different port, note the port value here is the container port, not the service port.                                                 |
-| healthCheck.active.httpPath                | string                                | the HTTP URI path in http probe, only in valid if the active health check type is `http` or `https`.                                                                                                                                             |
-| healthCheck.active.strictTLS               | boolean                               | whether to use the strict mode when use TLS, only in valid if the active health check type is `https`, default is `true`.                                                                                                                        |
-| healthCheck.active.requestHeaders          | array of string                       | Extra HTTP requests carried in the http probe, only in valid if the active health check type is `http` or `https`.                                                                                                                               |
-| healthCheck.active.healthy                 | object                                | The conditions to judge an endpoint is healthy.                                                                                                                                                                                                  |
-| healthCheck.active.healthy.successes       | int                                   | The number of consecutive requests needed to set an endpoint as healthy, default is `2`.                                                                                                                                                         |
-| healthCheck.active.healthy.httpCodes       | array of integer                      | Good status codes list to check whether a probe is successful, only in valid if the active health check type is `http` or `https`, default is `[200, 302]`.                                                                                      |
-| healthCheck.active.healthy.interval        | time duration in the form "72h3m0.5s" | The probes sent interval (for healthy endpoints).                                                                                                                                                                                                |
-| healthCheck.active.unhealthy               | object                                | The conditions to judge an endpoint is unhealthy.                                                                                                                                                                                                |
-| healthCheck.active.unhealthy.httpFailures  | int                                   | The number of consecutive http requests needed to set an endpoint as unhealthy, only in valid if the active health check type is `http` or `https`, default is `5`.                                                                              |
-| healthCheck.active.unhealthy.tcpFailures   | int                                   | The number of consecutive tcp connections needed to set an endpoint as unhealthy, only in valid if the active health check type is `tcp`, default is `2`.                                                                                        |
-| healthCheck.active.unhealthy.httpCodes     | array of integer                      | Bad status codes list to check whether a probe is failed, only in valid if the active health check type is `http` or `https`, default is `[429, 404, 500, 501, 502, 503, 504, 505]`.                                                             |
-| healthCheck.active.unhealthy.interval      | time duration in the form "72h3m0.5s" | The probes sent interval (for unhealthy endpoints).                                                                                                                                                                                              |
-| healthCheck.passive                        | object                                | passive health check configuration, which is an optional field.                                                                                                                                                                                  |
-| healthCheck.passive.type                   | string                                | health check type, can be `http`, `https` and `tcp`, default is `http`.                                                                                                                                                                          |
-| healthCheck.passive.healthy                | object                                | The conditions to judge an endpoint is healthy.                                                                                                                                                                                                  |
-| healthCheck.passive.healthy.successes      | int                                   | The number of consecutive requests needed to set an endpoint as healthy, default is `5`.                                                                                                                                                         |
-| healthCheck.passive.healthy.httpCodes      | array of integer                      | Good status codes list to check whether a probe is successful, only in valid if the active health check type is `http` or `https`, default is `[200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 305, 306, 307, 308]`. |
-| healthCheck.passive.unhealthy              | object                                | The conditions to judge an endpoint is unhealthy.                                                                                                                                                                                                |
-| healthCheck.passive.unhealthy.httpFailures | int                                   | The number of consecutive http requests needed to set an endpoint as unhealthy, only in valid if the active health check type is `http` or `https`, default is `5`.                                                                              |
-| healthCheck.passive.unhealthy.tcpFailures  | int                                   | The number of consecutive tcp connections needed to set an endpoint as unhealthy, only in valid if the active health check type is `tcp`, default is `2`.                                                                                        |
-| healthCheck.passive.unhealthy.httpCodes    | array of integer                      | Bad status codes list to check whether a probe is failed, only in valid if the active health check type is `http` or `https`, default is `[429, 404, 500, 501, 502, 503, 504, 505]`.                                                             |
-| portLevelSettings                          | array                                 | Settings for each individual port.                                                                                                                                                                                                               |
-| portLevelSettings.port                     | int                                   | The port number defined in the Kubernetes Service, must be a valid port.                                                                                                                                                                         |
-| portLevelSettings.scheme                   | string                                | same as `scheme` but takes higher precedence.                                                                                                                                                                                                    |
-| portLevelSettings.loadbalancer             | object                                | same as `loadbalancer` but takes higher precedence.                                                                                                                                                                                              |
-| portLevelSettings.healthCheck              | object                                | same as `healthCheck` but takes higher precedence.                                                                                                                                                                                               |
+|     Field     |  Type    | Description    |
+|---------------|----------|----------------|
+| scheme        | string   | The protocol used to talk to the Service, can be `http`, `grpc`, default is `http`.   |
+| loadbalancer  | object   | The load balancing algorithm of this upstream service |
+| loadbalancer.type | string | The load balancing type, can be `roundrobin`, `ewma`, `least_conn`, `chash`, default is `roundrobin`. |
+| loadbalancer.hashOn | string | The hash value source scope, only take effects if the `chash` algorithm is in use. Values can `vars`, `header`, `vars_combinations`, `cookie` and `consumers`, default is `vars`. |
+| loadbalancer.key | string | The hash key, only in valid if the `chash` algorithm is used.
+| retries | int | The retry count. |
+| timeout | object | The timeout settings. |
+| timeout.connect | time duration in the form "72h3m0.5s" | The connect timeout. |
+| timeout.read | time duration in the form "72h3m0.5s" | The read timeout. |
+| timeout.send | time duration in the form "72h3m0.5s" | The send timeout. |
+| healthCheck | object | The health check parameters, see [Health Check](https://github.com/apache/apisix/blob/master/doc/health-check.md) for more details. |
+| healthCheck.active | object | active health check configuration, which is a mandatory field. |
+| healthCheck.active.type | string | health check type, can be `http`, `https` and `tcp`, default is `http`. |
+| healthCheck.active.timeout | time duration in the form "72h3m0.5s" | the timeout settings for the probe, default is `1s`. |
+| healthCheck.active.concurrency | int | how many probes can be sent simultaneously, default is `10`. |
+| healthCheck.active.host | string | host header in http probe request, only in valid if the active health check type is `http` or `https`. |
+| healthCheck.active.port | int | target port to receive probes, it's necessary to specify this field if the health check service exposes by different port, note the port value here is the container port, not the service port. |
+| healthCheck.active.httpPath | string | the HTTP URI path in http probe, only in valid if the active health check type is `http` or `https`. |
+| healthCheck.active.strictTLS | boolean | whether to use the strict mode when use TLS, only in valid if the active health check type is `https`, default is `true`. |
+| healthCheck.active.requestHeaders | array of string | Extra HTTP requests carried in the http probe, only in valid if the active health check type is `http` or `https`. |
+| healthCheck.active.healthy | object | The conditions to judge an endpoint is healthy. |
+| healthCheck.active.healthy.successes | int | The number of consecutive requests needed to set an endpoint as healthy, default is `2`. |
+| healthCheck.active.healthy.httpCodes | array of integer | Good status codes list to check whether a probe is successful, only in valid if the active health check type is `http` or `https`, default is `[200, 302]`. |
+| healthCheck.active.healthy.interval | time duration in the form "72h3m0.5s" | The probes sent interval (for healthy endpoints). |
+| healthCheck.active.unhealthy | object | The conditions to judge an endpoint is unhealthy. |
+| healthCheck.active.unhealthy.httpFailures | int | The number of consecutive http requests needed to set an endpoint as unhealthy, only in valid if the active health check type is `http` or `https`, default is `5`. |
+| healthCheck.active.unhealthy.tcpFailures | int | The number of consecutive tcp connections needed to set an endpoint as unhealthy, only in valid if the active health check type is `tcp`, default is `2`. |
+| healthCheck.active.unhealthy.httpCodes | array of integer | Bad status codes list to check whether a probe is failed, only in valid if the active health check type is `http` or `https`, default is `[429, 404, 500, 501, 502, 503, 504, 505]`. |
+| healthCheck.active.unhealthy.interval | time duration in the form "72h3m0.5s" | The probes sent interval (for unhealthy endpoints). |
+| healthCheck.passive | object | passive health check configuration, which is an optional field. |
+| healthCheck.passive.type | string | health check type, can be `http`, `https` and `tcp`, default is `http`. |
+| healthCheck.passive.healthy | object | The conditions to judge an endpoint is healthy. |
+| healthCheck.passive.healthy.successes | int | The number of consecutive requests needed to set an endpoint as healthy, default is `5`. |
+| healthCheck.passive.healthy.httpCodes | array of integer | Good status codes list to check whether a probe is successful, only in valid if the active health check type is `http` or `https`, default is `[200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 305, 306, 307, 308]`. |
+| healthCheck.passive.unhealthy | object | The conditions to judge an endpoint is unhealthy. |
+| healthCheck.passive.unhealthy.httpFailures | int | The number of consecutive http requests needed to set an endpoint as unhealthy, only in valid if the active health check type is `http` or `https`, default is `5`. |
+| healthCheck.passive.unhealthy.tcpFailures | int | The number of consecutive tcp connections needed to set an endpoint as unhealthy, only in valid if the active health check type is `tcp`, default is `2`. |
+| healthCheck.passive.unhealthy.httpCodes | array of integer | Bad status codes list to check whether a probe is failed, only in valid if the active health check type is `http` or `https`, default is `[429, 404, 500, 501, 502, 503, 504, 505]`. |
+| portLevelSettings | array | Settings for each individual port. |
+| portLevelSettings.port | int | The port number defined in the Kubernetes Service, must be a valid port. |
+| portLevelSettings.scheme | string | same as `scheme` but takes higher precedence. |
+| portLevelSettings.loadbalancer | object | same as `loadbalancer` but takes higher precedence. |
+| portLevelSettings.healthCheck | object | same as `healthCheck` but takes higher precedence. |
 
 ## ApisixTls
 
@@ -355,11 +352,11 @@ spec：
     namespace: cloud
 ```
 
-| Field     | Type   | Description                                                                                                  |
-| --------- | ------ | ------------------------------------------------------------------------------------------------------------ |
-| hosts     | array  | The domain list to identify which hosts (matched with SNI) can use the TLS certificate stored in the Secret. |
-| secret    | object | The definition of the related Secret object with current ApisixTls object.                                   |
-| name      | string | The name of secret, the secret contains key and cert for `TLS`.                                              |
-| namespace | string | The namespace of secret , the secret contains key and cert for `TLS`.                                        |
+|     Field     |  Type    | Description                     |
+|---------------|----------|---------------------------------|
+| hosts         | array    | The domain list to identify which hosts (matched with SNI) can use the TLS certificate stored in the Secret.  |
+| secret        | object   | The definition of the related Secret object with current ApisixTls object.                               |
+| name          | string   | The name of secret, the secret contains key and cert for `TLS`.       |
+| namespace     | string   | The namespace of secret, the secret contains key and cert for `TLS`.  |
 
 [Back to top](#crd-types)
