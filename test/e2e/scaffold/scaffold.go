@@ -88,6 +88,9 @@ func GetKubeconfig() string {
 
 // NewScaffold creates an e2e test scaffold.
 func NewScaffold(o *Options) *Scaffold {
+	if o.APISIXRouteVersion == "" {
+		o.APISIXRouteVersion = kube.ApisixRouteV1
+	}
 	defer ginkgo.GinkgoRecover()
 
 	s := &Scaffold{
