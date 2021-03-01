@@ -99,10 +99,6 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		ar, err = c.controller.apisixRouteLister.V2alpha1(namespace, name)
 	}
 
-	log.Debugw("handling apisix route event",
-		zap.String("type", ev.Type.String()),
-		zap.Any("route", ar),
-	)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Errorw("failed to get ApisixRoute",
