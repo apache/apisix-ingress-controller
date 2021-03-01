@@ -51,6 +51,9 @@ kubernetes:
                                        # or "networking/v1" (for Kubernetes version v1.19.0 or higher), default
                                        # is "networking/v1".
 
+  apisix_route_version: "apisix.apache.org/v2alpha1" # the supported apisixroute api group version, can be
+                                                     # "apisix.apache.org/v1" or "apisix.apache.org/v2alpha1",
+                                                     # default is "apisix.apache.org/v2alpha1".
 # APISIX related configurations.
 apisix:
   base_url: "http://127.0.0.1:9080/apisix/admin" # the APISIX admin api / manager api

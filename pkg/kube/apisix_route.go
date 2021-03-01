@@ -66,6 +66,7 @@ type ApisixRoute interface {
 // and the group version message.
 type ApisixRouteEvent struct {
 	Key          string
+	OldObject    ApisixRoute
 	GroupVersion string
 }
 

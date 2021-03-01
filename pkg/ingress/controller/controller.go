@@ -39,7 +39,6 @@ import (
 	crdclientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
-	listersv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
@@ -78,12 +77,11 @@ type Controller struct {
 	ingressInformer             cache.SharedIndexInformer
 	apisixUpstreamInformer      cache.SharedIndexInformer
 	apisixUpstreamLister        listersv1.ApisixUpstreamLister
-	apisixRouteV1Lister         listersv1.ApisixRouteLister
-	apisixRouteV2alpha1Lister   listersv2alpha1.ApisixRouteLister
-	apisixRouteV1Informer       cache.SharedIndexInformer
+	apisixRouteLister           kube.ApisixRouteLister
+	apisixRouteInformer         cache.SharedIndexInformer
 	apisixRouteV2alpha1Informer cache.SharedIndexInformer
 
-	// resource conrollers
+	// resource controllers
 	endpointsController      *endpointsController
 	ingressController        *ingressController
 	apisixUpstreamController *apisixUpstreamController
@@ -116,8 +114,9 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	sharedInformerFactory := externalversions.NewSharedInformerFactory(crdClientset, cfg.Kubernetes.ResyncInterval.Duration)
 
 	var (
-		watchingNamespace map[string]struct{}
-		ingressInformer   cache.SharedIndexInformer
+		watchingNamespace   map[string]struct{}
+		ingressInformer     cache.SharedIndexInformer
+		apisixRouteInformer cache.SharedIndexInformer
 	)
 	if len(cfg.Kubernetes.AppNamespaces) > 1 || cfg.Kubernetes.AppNamespaces[0] != v1.NamespaceAll {
 		watchingNamespace = make(map[string]struct{}, len(cfg.Kubernetes.AppNamespaces))
@@ -129,11 +128,18 @@ func NewController(cfg *config.Config) (*Controller, error) {
 
 	ingressLister := kube.NewIngressLister(kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Lister(),
 		kube.CoreSharedInformerFactory.Networking().V1beta1().Ingresses().Lister())
+	apisixRouteLister := kube.NewApisixRouteLister(sharedInformerFactory.Apisix().V1().ApisixRoutes().Lister(),
+		sharedInformerFactory.Apisix().V2alpha1().ApisixRoutes().Lister())
 
 	if cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1 {
 		ingressInformer = kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Informer()
 	} else {
 		ingressInformer = kube.CoreSharedInformerFactory.Extensions().V1beta1().Ingresses().Informer()
+	}
+	if cfg.Kubernetes.ApisixRouteVersion == config.ApisixRouteV2alpha1 {
+		apisixRouteInformer = sharedInformerFactory.Apisix().V2alpha1().ApisixRoutes().Informer()
+	} else {
+		apisixRouteInformer = sharedInformerFactory.Apisix().V1().ApisixRoutes().Informer()
 	}
 
 	c := &Controller{
@@ -148,18 +154,16 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		crdInformerFactory: sharedInformerFactory,
 		watchingNamespace:  watchingNamespace,
 
-		epInformer:                  kube.CoreSharedInformerFactory.Core().V1().Endpoints().Informer(),
-		epLister:                    kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
-		svcInformer:                 kube.CoreSharedInformerFactory.Core().V1().Services().Informer(),
-		svcLister:                   kube.CoreSharedInformerFactory.Core().V1().Services().Lister(),
-		ingressLister:               ingressLister,
-		ingressInformer:             ingressInformer,
-		apisixRouteV1Informer:       sharedInformerFactory.Apisix().V1().ApisixRoutes().Informer(),
-		apisixRouteV1Lister:         sharedInformerFactory.Apisix().V1().ApisixRoutes().Lister(),
-		apisixRouteV2alpha1Informer: sharedInformerFactory.Apisix().V2alpha1().ApisixRoutes().Informer(),
-		apisixRouteV2alpha1Lister:   sharedInformerFactory.Apisix().V2alpha1().ApisixRoutes().Lister(),
-		apisixUpstreamInformer:      sharedInformerFactory.Apisix().V1().ApisixUpstreams().Informer(),
-		apisixUpstreamLister:        sharedInformerFactory.Apisix().V1().ApisixUpstreams().Lister(),
+		epInformer:             kube.CoreSharedInformerFactory.Core().V1().Endpoints().Informer(),
+		epLister:               kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
+		svcInformer:            kube.CoreSharedInformerFactory.Core().V1().Services().Informer(),
+		svcLister:              kube.CoreSharedInformerFactory.Core().V1().Services().Lister(),
+		ingressLister:          ingressLister,
+		ingressInformer:        ingressInformer,
+		apisixRouteInformer:    apisixRouteInformer,
+		apisixRouteLister:      apisixRouteLister,
+		apisixUpstreamInformer: sharedInformerFactory.Apisix().V1().ApisixUpstreams().Informer(),
+		apisixUpstreamLister:   sharedInformerFactory.Apisix().V1().ApisixUpstreams().Lister(),
 	}
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 		EndpointsLister:      c.epLister,

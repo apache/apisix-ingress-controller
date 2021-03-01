@@ -87,6 +87,7 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(ingEv.Key)
 	if err != nil {
 		log.Errorf("found ingress resource with invalid meta namespace key %s: %s", ingEv.Key, err)
+		return err
 	}
 
 	var ing kube.Ingress
