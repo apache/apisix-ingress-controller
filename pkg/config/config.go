@@ -40,7 +40,7 @@ const (
 
 	// IngressNetworkingV1 represents ingress.networking/v1
 	IngressNetworkingV1 = "networking/v1"
-	// IngressNetworkingV1beta1 represents ingress.networking/v1
+	// IngressNetworkingV1beta1 represents ingress.networking/v1beta1
 	IngressNetworkingV1beta1 = "networking/v1beta1"
 	// ApisixRouteV1 represents apisixroute.apisix.apache.org/v1
 	ApisixRouteV1 = "apisix.apache.org/v1"
