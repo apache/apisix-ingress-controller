@@ -123,7 +123,7 @@ func (l *apisixRouteLister) V2alpha1(namespace, name string) (ApisixRoute, error
 		return nil, err
 	}
 	return &apisixRoute{
-		groupVersion: ApisixRouteV1,
+		groupVersion: ApisixRouteV2alpha1,
 		v2alpha1:     ar,
 	}, nil
 }

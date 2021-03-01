@@ -69,17 +69,16 @@ type Controller struct {
 	crdInformerFactory externalversions.SharedInformerFactory
 
 	// common informers and listers
-	epInformer                  cache.SharedIndexInformer
-	epLister                    listerscorev1.EndpointsLister
-	svcInformer                 cache.SharedIndexInformer
-	svcLister                   listerscorev1.ServiceLister
-	ingressLister               kube.IngressLister
-	ingressInformer             cache.SharedIndexInformer
-	apisixUpstreamInformer      cache.SharedIndexInformer
-	apisixUpstreamLister        listersv1.ApisixUpstreamLister
-	apisixRouteLister           kube.ApisixRouteLister
-	apisixRouteInformer         cache.SharedIndexInformer
-	apisixRouteV2alpha1Informer cache.SharedIndexInformer
+	epInformer             cache.SharedIndexInformer
+	epLister               listerscorev1.EndpointsLister
+	svcInformer            cache.SharedIndexInformer
+	svcLister              listerscorev1.ServiceLister
+	ingressLister          kube.IngressLister
+	ingressInformer        cache.SharedIndexInformer
+	apisixUpstreamInformer cache.SharedIndexInformer
+	apisixUpstreamLister   listersv1.ApisixUpstreamLister
+	apisixRouteLister      kube.ApisixRouteLister
+	apisixRouteInformer    cache.SharedIndexInformer
 
 	// resource controllers
 	endpointsController      *endpointsController
@@ -304,6 +303,9 @@ func (c *Controller) run(ctx context.Context) {
 	})
 	c.goAttach(func() {
 		c.ingressController.run(ctx)
+	})
+	c.goAttach(func() {
+		c.apisixRouteController.run(ctx)
 	})
 
 	ac := &Api6Controller{

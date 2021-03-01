@@ -65,6 +65,8 @@ func (c *apisixRouteController) run(ctx context.Context) {
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
 	}
+	<-ctx.Done()
+	c.workqueue.ShutDown()
 }
 
 func (c *apisixRouteController) runWorker(ctx context.Context) {
@@ -97,6 +99,10 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		ar, err = c.controller.apisixRouteLister.V2alpha1(namespace, name)
 	}
 
+	log.Debugw("handling apisix route event",
+		zap.String("type", ev.Type.String()),
+		zap.Any("route", ar),
+	)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Errorw("failed to get ApisixRoute",
@@ -146,6 +152,12 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			return err
 		}
 	}
+
+	log.Debugw("translated ApisixRoute",
+		zap.Any("routes", routes),
+		zap.Any("upstreams", upstreams),
+		zap.Any("apisix_route", ar),
+	)
 
 	if ev.Type == types.EventDelete {
 		rc := &state.RouteCompare{OldRoutes: routes, NewRoutes: nil}
