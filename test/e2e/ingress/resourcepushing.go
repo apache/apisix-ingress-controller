@@ -26,23 +26,35 @@ import (
 )
 
 var _ = ginkgo.Describe("ApisixRoute Testing", func() {
-	s := scaffold.NewDefaultScaffold()
-	ginkgo.It("create and then scale upstream pods to 2 ", func() {
+
+	opts := &scaffold.Options{
+		Name:                    "default",
+		Kubeconfig:              scaffold.GetKubeconfig(),
+		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
+		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
+		IngressAPISIXReplicas:   1,
+		HTTPBinServicePort:      80,
+		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
+	}
+	s := scaffold.NewScaffold(opts)
+	ginkgo.FIt("create and then scale upstream pods to 2 ", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
   name: httpbin-route
 spec:
-  rules:
-  - host: httpbin.com
-    http:
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
       paths:
-      - backend:
-          serviceName: %s
-          servicePort: %d
-        path: /ip
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
 
@@ -64,19 +76,21 @@ spec:
 	ginkgo.It("create and then remove", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
   name: httpbin-route
 spec:
-  rules:
-  - host: httpbin.com
-    http:
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
       paths:
-      - backend:
-          serviceName: %s
-          servicePort: %d
-        path: /ip
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
