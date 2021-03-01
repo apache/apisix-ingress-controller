@@ -70,12 +70,12 @@ Run from command line options:
 
     apisix-ingress-controller ingress --apisix-base-url http://apisix-service:9180/apisix/admin --kubeconfig /path/to/kubeconfig
 
-For Kubernetes cluster version older than v1.19.0, you should always set the --ingress-version option to networking/v1:
+For Kubernetes cluster version older than v1.19.0, you should always set the --ingress-version option to networking/v1beta1:
 
     apisix-ingress-controller ingress \
       --apisix-base-url http://apisix-service:9180/apisix/admin \
       --kubeconfig /path/to/kubeconfig \
-      --ingress-version networking/v1
+      --ingress-version networking/v1beta1
 
 If you run apisix-ingress-controller outside the Kubernetes cluster, --kubeconfig option (or kubeconfig item in configuration file) should be specified explicitly,
 or if you run it inside cluster, leave it alone and in-cluster configuration will be discovered and used.
@@ -138,7 +138,7 @@ the apisix cluster and others are created`,
 	cmd.PersistentFlags().StringSliceVar(&cfg.Kubernetes.AppNamespaces, "app-namespace", []string{config.NamespaceAll}, "namespaces that controller will watch for resources")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.IngressClass, "ingress-class", config.IngressClass, "the class of an Ingress object is set using the field IngressClassName in Kubernetes clusters version v1.18.0 or higher or the annotation \"kubernetes.io/ingress.class\" (deprecated)")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ElectionID, "election-id", config.IngressAPISIXLeader, "election id used for compaign the controller leader")
-	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.IngressVersion, "ingress-version", config.IngressNetworkingV1, "the supported ingress api group version, can be \"networking/v1\" or \"networking/v1\" (for Kubernetes version v1.19.0 or higher)")
+	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.IngressVersion, "ingress-version", config.IngressNetworkingV1, "the supported ingress api group version, can be \"networking/v1beta1\" or \"networking/v1\" (for Kubernetes version v1.19.0 or higher)")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ApisixRouteVersion, "apisix-route-version", config.ApisixRouteV2alpha1, "the supported apisixroute api group version, can be \"apisix.apache.org/v1\" or \"apisix.apache.org/v2alpha1\"")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.BaseURL, "apisix-base-url", "", "the base URL for APISIX admin api / manager api")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.AdminKey, "apisix-admin-key", "", "admin key used for the authorization of APISIX admin api / manager api")
