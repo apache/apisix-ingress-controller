@@ -40,6 +40,7 @@ It's a good choice to use Ingress APISIX as the north-south API gateway in K3S.
 ```shell
 cd /path/to/apisix-helm-chart
 helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo add apisix https://charts.apiseven.com
 helm dependency update ./charts/apisix
 helm install apisix ./charts/apisix \
   --set gateway.type=NodePort \

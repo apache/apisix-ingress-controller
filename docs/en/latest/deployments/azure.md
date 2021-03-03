@@ -38,6 +38,7 @@ This document explains how to install Ingress APISIX on [Azure AKS](https://docs
 ```shell
 cd /path/to/apisix-helm-chart
 helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo add apisix https://charts.apiseven.com
 helm dependency update ./charts/apisix
 helm install apisix ./charts/apisix \
   --set gateway.type=LoadBalancer \
