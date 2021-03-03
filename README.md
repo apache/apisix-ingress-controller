@@ -29,7 +29,7 @@ All configurations in `apisix-ingress-controller` are defined with Kubernetes CR
 
 The technical architecture of `apisix-ingress-controller`:
 
-<img src="./docs/assets/images/module_0.png" alt="Architecture" width="600" height="313" />
+<img src="./docs/assets/images/module-0.png" alt="Architecture" width="600" height="313" />
 
 ## Status
 
