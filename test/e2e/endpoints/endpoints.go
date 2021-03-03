@@ -105,7 +105,7 @@ spec:
        path: /ip
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
-		time.Sleep(3 * time.Second)
+		time.Sleep(5 * time.Second)
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing APISIX upstreams")
 		assert.Len(ginkgo.GinkgoT(), ups, 1)
