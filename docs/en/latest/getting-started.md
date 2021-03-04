@@ -44,6 +44,10 @@ and will be reflected to nodes in APISIX Upstream.
 * Rich plugins support.
 * Easy to deploy and use.
 
+## How It Works
+
+See [Design](./design.md) for more details.
+
 ## Installation on Cloud
 
 apisix-ingress-controller supports to be installed on some clouds such as AWS, GCP.
