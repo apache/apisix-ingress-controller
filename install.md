@@ -42,4 +42,4 @@ Parameters are hardcoded so if the default values are not good for you, just twe
 
 ## Verify Installation
 
-There are a lot of use examples (See [samples](./docs/en/latest/samples/index.md) for more details), try to follow the operations there to verify the installation.
+There are a lot of use examples (See [samples](docs/en/latest/practices/index.md) for more details), try to follow the operations there to verify the installation.
