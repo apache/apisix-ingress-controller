@@ -45,8 +45,8 @@
       "type": "category",
       "label": "Concepts",
       "items": [
-        "apisix_route",
-        "apisix_upstream"
+        "concepts/apisix_route",
+        "concepts/apisix_upstream"
       ]
     },
     {
