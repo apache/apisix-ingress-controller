@@ -3,10 +3,8 @@ module github.com/apache/apisix-ingress-controller
 go 1.13
 
 require (
-	github.com/gavv/httpexpect/v2 v2.2.0 // indirect
 	github.com/gin-gonic/gin v1.6.3
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
-	github.com/gruntwork-io/terratest v0.32.8 // indirect
 	github.com/hashicorp/go-memdb v1.0.4
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
