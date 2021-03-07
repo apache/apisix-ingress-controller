@@ -105,15 +105,20 @@ func (c *secretController) run(ctx context.Context) {
 }
 
 func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
+	namespace, name, err := cache.SplitMetaNamespaceKey(ev.Key)
+	if err != nil {
+		log.Errorf("invalid resource key: %s", ev.Key)
+		return err
+	}
 	obj := ev.Object.(*corev1.Secret)
-	sec, err := c.controller.secretLister.Secrets(obj.Namespace).Get(obj.Name)
+	sec, err := c.controller.secretLister.Secrets(namespace).Get(name)
 
-	key := obj.Namespace + "_" + obj.Name
+	secretMapkey := obj.Namespace + "_" + obj.Name
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Errorw("failed to get Secret",
 				zap.String("version", obj.ResourceVersion),
-				zap.String("key", key),
+				zap.String("key", secretMapkey),
 				zap.Error(err),
 			)
 			return err
@@ -121,7 +126,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 
 		if ev.Type != types.EventDelete {
 			log.Warnw("Secret was deleted before it can be delivered",
-				zap.String("key", key),
+				zap.String("key", secretMapkey),
 				zap.String("version", obj.ResourceVersion),
 			)
 			return nil
@@ -133,7 +138,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 			// that means object with same namespace and name was created, discarding
 			// this stale DELETE event.
 			log.Warnw("discard the stale secret delete event since the resource still exists",
-				zap.String("key", key),
+				zap.String("key", secretMapkey),
 			)
 			return nil
 		}
@@ -141,7 +146,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 	}
 	// sync SSL in APISIX which is store in secretSSLMap
 	// FixMe Need to update the status of CRD ApisixTls
-	ssls, ok := secretSSLMap.Load(key)
+	ssls, ok := secretSSLMap.Load(secretMapkey)
 	if ok {
 		sslMap := ssls.(sync.Map)
 		sslMap.Range(func(_, v interface{}) bool {
@@ -167,6 +172,7 @@ func (c *secretController) onAdd(obj interface{}) {
 	}
 
 	c.workqueue.AddRateLimited(&types.Event{
+		Key:    key,
 		Type:   types.EventAdd,
 		Object: obj,
 	})
@@ -188,6 +194,7 @@ func (c *secretController) onUpdate(prev, curr interface{}) {
 		return
 	}
 	c.workqueue.AddRateLimited(&types.Event{
+		Key:    key,
 		Type:   types.EventUpdate,
 		Object: curr,
 	})
@@ -204,13 +211,19 @@ func (c *secretController) onDelete(obj interface{}) {
 		sec = tombstone.Obj.(*corev1.Secret)
 	}
 
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Errorf("found secret resource with bad meta namesapce key: %s", err)
+		return
+	}
 	// FIXME Refactor Controller.namespaceWatching to just use
 	// namespace after all controllers use the same way to fetch
 	// the object.
-	if !c.controller.namespaceWatching(sec.Namespace + "/" + sec.Name) {
+	if !c.controller.namespaceWatching(key) {
 		return
 	}
 	c.workqueue.AddRateLimited(&types.Event{
+		Key:       key,
 		Type:      types.EventDelete,
 		Object:    sec,
 		Tombstone: sec,

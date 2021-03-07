@@ -184,7 +184,14 @@ func SyncSecretSSL(key string, ssl *v1.Ssl, operator string) {
 			sslMap.Store(ssl.ID, ssl)
 			secretSSLMap.Store(key, sslMap)
 		}
+	} else {
+		if operator != state.Delete {
+			sslMap := sync.Map{}
+			sslMap.Store(ssl.ID, ssl)
+			secretSSLMap.Store(key, sslMap)
+		}
 	}
+
 }
 
 func (c *ApisixTLSController) addFunc(obj interface{}) {

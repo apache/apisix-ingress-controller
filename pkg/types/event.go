@@ -42,6 +42,7 @@ func (ev EventType) String() string {
 
 // Event represents a typed event.
 type Event struct {
+	Key string
 	// Type is the type of event.
 	Type EventType
 	// Object is the event subject.
