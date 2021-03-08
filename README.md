@@ -47,41 +47,9 @@ This project is currently considered experimental.
 * Ingress controller itself as a pluggable hot-reload component.
 * Multi-cluster configuration distribution.
 
-## Modules
+## Internal Architecture
 
-<img src="./docs/assets/images/module-1.png" alt="module" width="600" height="313" />
-
-### 1. `Ingress types` Submodule
-
-- Define the CRD(CustomResourceDefinition) needed by Apache APISIX
-
-- Currently supports ApisixRoute/ApisixUpstream，and other service and route level plugins.
-
-- Can be packaged as a stand-alone binary, keep in sync with the ingress definition.
-
-- [CRD design](https://github.com/apache/apisix-ingress-controller/issues/3)
-
-### 2. `APISIX types` Submodule
-
-- Define interface objects to match concepts from Apache APISIX like route, service, upstream, and plugin.
-
-- Can be a packaged as a stand-alone binary, need to match with compatible Apache APISIX version.
-
-- Add new types to this module to support new features.
-
-### 3. `Seven` submodule
-
-- Contain main application logic.
-
-- Sync the k8s cluster states to Apache APISIX, based on Apisix-types object.
-
-### 4.`Ingress-controller` Submodule
-
-- Driver process for ingress controller, watches k8s apiserver.
-
-- Match and covert Apisix-ingress-types to Apisix-types before handing the control over to the above module `seven`.
-
-Get more [implementation details](./docs/en/latest/design.md).
+<img src="./docs/assets/images/apisix-ingress-controller-arch.png" alt="module" width="600" height="313" />
 
 ## Get started
 
