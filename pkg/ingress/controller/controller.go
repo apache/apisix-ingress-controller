@@ -75,14 +75,18 @@ type Controller struct {
 	svcLister              listerscorev1.ServiceLister
 	ingressLister          kube.IngressLister
 	ingressInformer        cache.SharedIndexInformer
+	secretInformer         cache.SharedIndexInformer
+	secretLister           listerscorev1.SecretLister
 	apisixUpstreamInformer cache.SharedIndexInformer
 	apisixUpstreamLister   listersv1.ApisixUpstreamLister
 	apisixRouteLister      kube.ApisixRouteLister
 	apisixRouteInformer    cache.SharedIndexInformer
 
 	// resource controllers
-	endpointsController      *endpointsController
-	ingressController        *ingressController
+	endpointsController *endpointsController
+	ingressController   *ingressController
+	secretController    *secretController
+
 	apisixUpstreamController *apisixUpstreamController
 	apisixRouteController    *apisixRouteController
 }
@@ -159,6 +163,8 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		svcLister:              kube.CoreSharedInformerFactory.Core().V1().Services().Lister(),
 		ingressLister:          ingressLister,
 		ingressInformer:        ingressInformer,
+		secretInformer:         kube.CoreSharedInformerFactory.Core().V1().Secrets().Informer(),
+		secretLister:           kube.CoreSharedInformerFactory.Core().V1().Secrets().Lister(),
 		apisixRouteInformer:    apisixRouteInformer,
 		apisixRouteLister:      apisixRouteLister,
 		apisixUpstreamInformer: sharedInformerFactory.Apisix().V1().ApisixUpstreams().Informer(),
@@ -174,6 +180,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	c.apisixUpstreamController = c.newApisixUpstreamController()
 	c.apisixRouteController = c.newApisixRouteController()
 	c.ingressController = c.newIngressController()
+	c.secretController = c.newSecretController()
 
 	return c, nil
 }
@@ -306,6 +313,12 @@ func (c *Controller) run(ctx context.Context) {
 	})
 	c.goAttach(func() {
 		c.apisixRouteController.run(ctx)
+	})
+	c.goAttach(func() {
+		c.secretInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
+		c.secretController.run(ctx)
 	})
 
 	ac := &Api6Controller{

@@ -16,6 +16,7 @@ package controller
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -34,6 +35,13 @@ import (
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/seven/state"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+)
+
+var (
+	// the struct of secretSSLMap is a map[secretKey string]map[sslKey string]bool
+	// the xxxKey is format as namespace + "/" + name
+	secretSSLMap = sync.Map{}
 )
 
 type ApisixTLSController struct {
@@ -153,8 +161,37 @@ func (c *ApisixTLSController) syncHandler(tqo *TlsQueueObj) error {
 		// sync to apisix
 		log.Debug(tls)
 		log.Debug(tqo)
-		return state.SyncSsl(tls, tqo.Ope)
+		err = state.SyncSsl(tls, tqo.Ope)
+		// sync SyncSecretSSL
+		secretKey := fmt.Sprintf("%s_%s", apisixTls.Spec.Secret.Namespace, apisixTls.Spec.Secret.Name)
+		SyncSecretSSL(secretKey, tls, tqo.Ope)
+		return err
 	}
+}
+
+// SyncSecretSSL sync the secretSSLMap
+// the struct of secretSSLMap is a map[secretKey string]map[sslKey string]bool
+// the xxxKey is format as namespace + "_" + name
+func SyncSecretSSL(key string, ssl *v1.Ssl, operator string) {
+	ssls, ok := secretSSLMap.Load(key)
+	if ok {
+		sslMap := ssls.(sync.Map)
+		switch operator {
+		case state.Delete:
+			sslMap.Delete(ssl.ID)
+			secretSSLMap.Store(key, sslMap)
+		default:
+			sslMap.Store(ssl.ID, ssl)
+			secretSSLMap.Store(key, sslMap)
+		}
+	} else {
+		if operator != state.Delete {
+			sslMap := sync.Map{}
+			sslMap.Store(ssl.ID, ssl)
+			secretSSLMap.Store(key, sslMap)
+		}
+	}
+
 }
 
 func (c *ApisixTLSController) addFunc(obj interface{}) {
