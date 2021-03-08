@@ -19,9 +19,28 @@
 
 # Table of Contents
 
+- [0.4.0](#040)
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 0.4.0
+
+This release mainly improves the program robustness and adds some features.
+
+## Core
+
+- Support Kubernetes Ingress resources [#250](https://github.com/apache/apisix-ingress-controller/pull/250)
+- Support ApisixRoute v2alpha1 [#262](https://github.com/apache/apisix-ingress-controller/pull/262)
+- Support healthchecks definition [#117](https://github.com/apache/apisix-ingress-controller/issues/117)
+- Support secret controller [#284](https://github.com/apache/apisix-ingress-controller/pull/284)
+- Project optimization [#92](https://github.com/apache/apisix-ingress-controller/issues/92)
+
+
+## Test
+
+- Add test cases for pkg/kube [#99](https://github.com/apache/apisix-ingress-controller/issues/99)
+
 
 # 0.3.0
 
