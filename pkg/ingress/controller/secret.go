@@ -105,19 +105,18 @@ func (c *secretController) run(ctx context.Context) {
 }
 
 func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(ev.Key)
+	key := ev.Object.(string)
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		log.Errorf("invalid resource key: %s", ev.Key)
+		log.Errorf("invalid resource key: %s", key)
 		return err
 	}
-	obj := ev.Object.(*corev1.Secret)
 	sec, err := c.controller.secretLister.Secrets(namespace).Get(name)
 
-	secretMapkey := obj.Namespace + "_" + obj.Name
+	secretMapkey := namespace + "_" + name
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Errorw("failed to get Secret",
-				zap.String("version", obj.ResourceVersion),
 				zap.String("key", secretMapkey),
 				zap.Error(err),
 			)
@@ -127,7 +126,6 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 		if ev.Type != types.EventDelete {
 			log.Warnw("Secret was deleted before it can be delivered",
 				zap.String("key", secretMapkey),
-				zap.String("version", obj.ResourceVersion),
 			)
 			return nil
 		}
@@ -172,9 +170,8 @@ func (c *secretController) onAdd(obj interface{}) {
 	}
 
 	c.workqueue.AddRateLimited(&types.Event{
-		Key:    key,
 		Type:   types.EventAdd,
-		Object: obj,
+		Object: key,
 	})
 }
 
@@ -194,9 +191,8 @@ func (c *secretController) onUpdate(prev, curr interface{}) {
 		return
 	}
 	c.workqueue.AddRateLimited(&types.Event{
-		Key:    key,
 		Type:   types.EventUpdate,
-		Object: curr,
+		Object: key,
 	})
 }
 
@@ -223,9 +219,8 @@ func (c *secretController) onDelete(obj interface{}) {
 		return
 	}
 	c.workqueue.AddRateLimited(&types.Event{
-		Key:       key,
 		Type:      types.EventDelete,
-		Object:    sec,
+		Object:    key,
 		Tombstone: sec,
 	})
 }
