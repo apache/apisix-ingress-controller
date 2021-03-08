@@ -180,6 +180,7 @@ func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 	log.Debugw("try to delete ssl",
 		zap.String("id", obj.ID),
 		zap.String("cluster", s.clusterName),
+		zap.String("fullName", obj.FullName),
 		zap.String("url", s.url),
 	)
 	if err := s.cluster.HasSynced(ctx); err != nil {

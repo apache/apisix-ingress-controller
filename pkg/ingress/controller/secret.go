@@ -75,15 +75,14 @@ func (c *secretController) run(ctx context.Context) {
 			}
 			err := func(obj interface{}) error {
 				defer c.workqueue.Done(obj)
-				var key string
 				event := obj.(*types.Event)
-				if secret, ok := event.Object.(*corev1.Secret); !ok {
+				if key, ok := event.Object.(string); !ok {
 					c.workqueue.Forget(obj)
 					return fmt.Errorf("expected Secret in workqueue but got %#v", obj)
 				} else {
-					if err := c.sync(ctx, obj.(*types.Event)); err != nil {
+					if err := c.sync(ctx, event); err != nil {
 						c.workqueue.AddRateLimited(obj)
-						log.Errorf("sync secret with ssl %s failed", secret.Namespace+"_"+secret.Name)
+						log.Errorf("sync secret with ssl %s failed", key)
 						return fmt.Errorf("error syncing '%s': %s", key, err.Error())
 					}
 					c.workqueue.Forget(obj)
@@ -149,6 +148,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 		sslMap := ssls.(sync.Map)
 		sslMap.Range(func(_, v interface{}) bool {
 			ssl := v.(*apisixv1.Ssl)
+			ssl.FullName = ssl.ID
 			err = state.SyncSsl(ssl, ev.Type.String())
 			if err != nil {
 				return false
