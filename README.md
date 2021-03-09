@@ -53,7 +53,7 @@ This project is currently considered experimental.
 
 ### 1. `Ingress types` Submodule
 
-- Define the CRD(CustomResourceDefinition) needed by Apache APISIX
+- Define the CRD (CustomResourceDefinition) needed by Apache APISIX
 
 - Currently supports ApisixRoute/ApisixUpstream，and other service and route level plugins.
 
