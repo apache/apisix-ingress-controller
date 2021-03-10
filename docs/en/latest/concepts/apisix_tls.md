@@ -44,5 +44,4 @@ correct certificate, what's more, it also should be matched with the [Server Nam
 extension in TLS, or the TLS handshaking might fail.
 
 The apisix-ingress-controller will watch Secret resources that referred by ApisixTls objects, once a
-Secret changed, apisix-ingress-controller will re translate all referred ApisixTls objects, converting them to
-APISIX SSL resources ultimately.
+Secret changed, apisix-ingress-controller will re translate all referred ApisixTls objects, converting them to APISIX SSL resources ultimately.
