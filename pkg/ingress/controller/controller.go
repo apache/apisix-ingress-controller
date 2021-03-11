@@ -281,7 +281,7 @@ func (c *Controller) run(ctx context.Context) {
 		AdminKey: c.cfg.APISIX.AdminKey,
 		BaseURL:  c.cfg.APISIX.BaseURL,
 	})
-	if err != nil {
+	if err != nil && err != apisix.ErrDuplicatedCluster {
 		// TODO give up the leader role.
 		log.Errorf("failed to add default cluster: %s", err)
 		return
