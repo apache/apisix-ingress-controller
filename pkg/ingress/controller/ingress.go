@@ -165,7 +165,7 @@ func (c *ingressController) syncToCluster(ctx context.Context, clusterName strin
 	}
 	for _, u := range upstreams {
 		old, err := c.controller.apisix.Cluster(clusterName).Upstream().Get(ctx, u.FullName)
-		if err == nil && err != apisixcache.ErrNotFound {
+		if err != nil && err != apisixcache.ErrNotFound {
 			return err
 		}
 		if old == nil {
@@ -180,7 +180,7 @@ func (c *ingressController) syncToCluster(ctx context.Context, clusterName strin
 	}
 	for _, r := range routes {
 		old, err := c.controller.apisix.Cluster(clusterName).Route().Get(ctx, r.FullName)
-		if err == nil && err != apisixcache.ErrNotFound {
+		if err != nil && err != apisixcache.ErrNotFound {
 			return err
 		}
 		if old == nil {

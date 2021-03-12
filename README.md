@@ -51,6 +51,10 @@ This project is currently considered experimental.
 
 <img src="./docs/assets/images/apisix-ingress-controller-arch.png" alt="module" width="600" height="313" />
 
+## Prerequisites
+
+Apisix ingress controller requires Kubernetes version 1.14+.
+
 ## Get started
 
 * [How to install](./install.md)
