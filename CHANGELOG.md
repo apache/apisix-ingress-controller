@@ -36,11 +36,9 @@ This release mainly improves the program robustness and adds some features.
 - Support secret controller [#284](https://github.com/apache/apisix-ingress-controller/pull/284)
 - Project optimization [#92](https://github.com/apache/apisix-ingress-controller/issues/92)
 
-
 ## Test
 
 - Add test cases for pkg/kube [#99](https://github.com/apache/apisix-ingress-controller/issues/99)
-
 
 # 0.3.0
 
