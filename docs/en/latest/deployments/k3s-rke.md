@@ -42,7 +42,7 @@ cd /path/to/apisix-helm-chart
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo add apisix https://charts.apiseven.com
 # Use `hem search repo apisix` to search charts about apisix
-helm dependency update ./charts/apisix
+helm repo update
 helm install apisix ./charts/apisix \
   --set gateway.type=NodePort \
   --set allow.ipList="{0.0.0.0/0}" \
