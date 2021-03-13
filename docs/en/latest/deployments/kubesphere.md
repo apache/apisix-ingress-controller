@@ -63,7 +63,7 @@ You can also install apisix-ingress-controller by Helm Charts. It's recommended 
 ```shell
 cd /path/to/apisix-helm-chart
 # install apisix-ingress-controller
-helm install apisix-ingress-controller ./charts/apisix-ingress-controller \
+helm install apisix-ingress-controller apisix/apisix-ingress-controller \
   --set image.tag=dev \
   --set config.apisix.baseURL=http://apisix-admin:9180/apisix/admin \
   --set config.apisix.adminKey=edd1c9f034335f136f87ad84b625c8f1 \
