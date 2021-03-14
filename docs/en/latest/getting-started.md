@@ -52,13 +52,13 @@ See [Design](./design.md) for more details.
 
 apisix-ingress-controller supports to be installed on some clouds such as AWS, GCP.
 
-* [Install Ingress APISIX on Azure AKS](./docs/en/latest/deployments/azure.md)
-* [Install Ingress APISIX on AWS EKS](./docs/en/latest/deployments/aws.md)
-* [Install Ingress APISIX on ACK](./docs/en/latest/deployments/ack.md)
-* [Install Ingress APISIX on Google Cloud GKE](./docs/en/latest/deployments/gke.md)
-* [Install Ingress APISIX on Minikube](./docs/en/latest/deployments/minikube.md)
-* [Install Ingress APISIX on KubeSphere](./docs/en/latest/deployments/kubesphere.md)
-* [Install Ingress APISIX on K3S and RKE](./docs/en/latest/deployments/k3s-rke.md)
+* [Install Ingress APISIX on Azure AKS](https://apisix.apache.org/docs/ingress-controller/deployments/azure)
+* [Install Ingress APISIX on AWS EKS](https://apisix.apache.org/docs/ingress-controller/deployments/aws)
+* [Install Ingress APISIX on ACK](https://apisix.apache.org/docs/ingress-controller/deployments/ack)
+* [Install Ingress APISIX on Google Cloud GKE](https://apisix.apache.org/docs/ingress-controller/deployments/gke)
+* [Install Ingress APISIX on Minikube](https://apisix.apache.org/docs/ingress-controller/deployments/minikube)
+* [Install Ingress APISIX on KubeSphere](https://apisix.apache.org/docs/ingress-controller/deployments/kubesphere)
+* [Install Ingress APISIX on K3S and RKE](https://apisix.apache.org/docs/ingress-controller/deployments/k3s-rke)
 
 ## Installation on Prem
 
