@@ -38,8 +38,10 @@ This document explains how to install Ingress APISIX on [Azure AKS](https://docs
 ```shell
 cd /path/to/apisix-helm-chart
 helm repo add bitnami https://charts.bitnami.com/bitnami
-helm dependency update ./charts/apisix
-helm install apisix ./charts/apisix \
+helm repo add apisix https://charts.apiseven.com
+# Use `hem search repo apisix` to search charts about apisix
+helm repo update
+helm install apisix apisix/apisix \
   --set gateway.type=LoadBalancer \
   --set allow.ipList="{0.0.0.0/0}" \
   --namespace ingress-apisix
@@ -63,7 +65,7 @@ You can also install apisix-ingress-controller by Helm Charts, it's recommended 
 ```shell
 cd /path/to/apisix-helm-chart
 # install apisix-ingress-controller
-helm install apisix-ingress-controller ./charts/apisix-ingress-controller \
+helm install apisix-ingress-controller apisix/apisix-ingress-controller \
   --set image.tag=dev \
   --set config.apisix.baseURL=http://apisix-admin:9180/apisix/admin \
   --set config.apisix.adminKey=edd1c9f034335f136f87ad84b625c8f1 \
