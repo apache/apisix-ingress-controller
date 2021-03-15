@@ -38,8 +38,9 @@ This document explains how to install Ingress APISIX on [Minikube](https://minik
 cd /path/to/apisix-helm-chart
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo add apisix https://charts.apiseven.com
-helm dependency update ./charts/apisix
-helm install apisix ./charts/apisix \
+helm search repo apisix
+helm repo update
+helm install apisix apisix/apisix \
   --set allow.ipList="{0.0.0.0/0}" \
   --namespace ingress-apisix
 kubectl get service --namespace ingress-apisix
