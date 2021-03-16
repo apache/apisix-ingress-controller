@@ -24,6 +24,37 @@ import (
 // +genclient
 // +genclient:noStatus
 
+const (
+	// OpEqual means the equal ("==") operator in nginxVars.
+	OpEqual = "Equal"
+	// OpNotEqual means the not equal ("~=") operator in nginxVars.
+	OpNotEqual = "NotEqual"
+	// OpGreaterThan means the greater than (">") operator in nginxVars.
+	OpGreaterThan = "GreaterThan"
+	// OpGreaterThanEqual means the greater than (">=") operator in nginxVars.
+	OpGreaterThanEqual = "GreaterThanEqual"
+	// OpLessThan means the less than ("<") operator in nginxVars.
+	OpLessThan = "LessThan"
+	// OpLessThanEqual means the less than equal ("<=") operator in nginxVars.
+	OpLessThanEqual = "LessThanEqual"
+	// OpRegexMatch means the regex match ("~~") operator in nginxVars.
+	OpRegexMatch = "RegexMatch"
+	// OpRegexNotMatch means the regex not match ("!~~") operator in nginxVars.
+	OpRegexNotMatch = "RegexNotMatch"
+	// OpRegexMatchCaseInsensitive means the regex match "~*" (case insensitive mode) operator in nginxVars.
+	OpRegexMatchCaseInsensitive = "RegexMatchCaseInsensitive"
+	// OpRegexNotMatchCaseInsensitive means the regex not match "!~*" (case insensitive mode) operator in nginxVars.
+	OpRegexNotMatchCaseInsensitive = "RegexNotMatchCaseInsensitive"
+	// OpIn means the in operator ("in") in nginxVars.
+	OpIn = "In"
+	// OpNotIn means the not in operator ("not_in") in nginxVars.
+	OpNotIn = "NotIn"
+	// OpContain means the contain operator ("contain") in nginxVars.
+	OpContain = "Contain"
+	// OpNotContain means the not contain operator ("not_contain") in nginxVars.
+	OpNotContain = "NotContain"
+)
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // ApisixRoute is used to define the route rules and upstreams for Apache APISIX.
 type ApisixRoute struct {
@@ -86,28 +117,14 @@ type ApisixRouteHTTPMatchNginxVar struct {
 	// be any string composed by literals and nginx
 	// vars.
 	Subject string `json:"subject"`
-	// Op is the operator, can be:
-	// - "==": equal
-	// - "~=": not equal
-	// - ">": greater than
-	// - ">=": greater than or equal to
-	// - "<": less then
-	// - "<=": less then or equal to
-	// - "~~": regex match
-	// - "!~~": regex not match
-	// - "~*": case insensitive regex match
-	// - "!~*": case insensitive regex not match
-	// - "in": set match, Value should be a string array.
-	// - "not_in": set match, Value should be a string array.
-	// - "contain": subject contains the Value (inclusion relation).
-	// - "not_contain": subject doesn't contain the Value (inclusion relation).
+	// Op is the operator.
 	Op string `json:"op"`
-	// Array is an array type object of the expression.
+	// Set is an array type object of the expression.
 	// It should be used when the Op is "in" or "not_in";
-	Array []string `json:"array"`
+	Set []string `json:"set"`
 	// Value is the normal type object for the expression,
 	// it should be used when the Op is not "in" and "not_in".
-	// Array and Value are exclusive so only of them can be set
+	// Set and Value are exclusive so only of them can be set
 	// in the same time.
 	Value *string `json:"value"`
 }
