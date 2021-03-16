@@ -221,11 +221,9 @@ func SyncSsl(ssl *v1.Ssl, method string) error {
 		_, err := conf.Client.Cluster(cluster).SSL().Create(context.TODO(), ssl)
 		return err
 	case Update:
-		// FIXME we don't know the full name of SSL.
 		_, err := conf.Client.Cluster(cluster).SSL().Update(context.TODO(), ssl)
 		return err
 	case Delete:
-		// FIXME we don't know the full name of SSL.
 		return conf.Client.Cluster(cluster).SSL().Delete(context.TODO(), ssl)
 	}
 	return nil

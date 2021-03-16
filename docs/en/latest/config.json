@@ -5,22 +5,21 @@
       "type": "category",
       "label": "Getting Started",
       "items": [
-        "design",
-        "CRD-specification"
+        "getting-started"
       ]
     },
     {
       "type": "category",
-      "label": "Samples",
+      "label": "Practices",
       "items": [
-        "samples/index",
-        "samples/proxy-the-httpbin-service-with-ingress",
-        "samples/proxy-the-httpbin-service"
+        "practices/index",
+        "practices/proxy-the-httpbin-service-with-ingress",
+        "practices/proxy-the-httpbin-service"
       ]
     },
     {
       "type": "category",
-      "label": "Deployment",
+      "label": "Installation",
       "items": [
         "deployments/ack",
         "deployments/aws",
@@ -33,8 +32,22 @@
       ]
     },
     {
-      "type": "doc",
-      "id": "usage"
+      "type": "category",
+      "label": "References",
+      "items": [
+        "references/apisix_route_v1",
+        "references/apisix_route_v2alpha1",
+        "references/apisix_upstream",
+        "references/apisix_tls"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Concepts",
+      "items": [
+        "concepts/apisix_route",
+        "concepts/apisix_upstream"
+      ]
     },
     {
       "type": "doc",

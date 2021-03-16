@@ -23,6 +23,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -60,6 +61,9 @@ type Translator interface {
 	// TranslateRouteV1 translates the configv1.ApisixRoute object into several Route
 	// and Upstream resources.
 	TranslateRouteV1(*configv1.ApisixRoute) ([]*apisixv1.Route, []*apisixv1.Upstream, error)
+	// TranslateRouteV2alpha1 translates the configv2alph1.ApisixRoute object into several Route
+	// and Upstream resources.
+	TranslateRouteV2alpha1(*configv2alpha1.ApisixRoute) ([]*apisixv1.Route, []*apisixv1.Upstream, error)
 }
 
 // TranslatorOptions contains options to help Translator

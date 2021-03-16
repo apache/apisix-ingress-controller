@@ -15,8 +15,15 @@
 package translation
 
 import (
+	"errors"
+
+	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/util/intstr"
+
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -79,6 +86,116 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) ([]*apisixv1.Rou
 			}
 		}
 	}
+	for _, ups := range upstreamMap {
+		upstreams = append(upstreams, ups)
+	}
+	return routes, upstreams, nil
+}
+
+func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*apisixv1.Route, []*apisixv1.Upstream, error) {
+	var (
+		routes    []*apisixv1.Route
+		upstreams []*apisixv1.Upstream
+	)
+
+	upstreamMap := make(map[string]*apisixv1.Upstream)
+
+	for _, part := range ar.Spec.HTTP {
+		if part.Match == nil {
+			return nil, nil, errors.New("empty route match section")
+		}
+		if len(part.Match.Paths) < 1 {
+			return nil, nil, errors.New("empty route paths match")
+		}
+		svc, err := t.ServiceLister.Services(ar.Namespace).Get(part.Backend.ServiceName)
+		if err != nil {
+			return nil, nil, err
+		}
+		svcPort := int32(-1)
+	loop:
+		for _, port := range svc.Spec.Ports {
+			switch part.Backend.ServicePort.Type {
+			case intstr.Int:
+				if part.Backend.ServicePort.IntVal == port.Port {
+					svcPort = port.Port
+					break loop
+				}
+			case intstr.String:
+				if part.Backend.ServicePort.StrVal == port.Name {
+					svcPort = port.Port
+					break loop
+				}
+			}
+		}
+		if svcPort == -1 {
+			log.Errorw("ApisixRoute refers to non-existent Service port",
+				zap.Any("ApisixRoute", ar),
+				zap.String("port", part.Backend.ServicePort.String()),
+			)
+			return nil, nil, err
+		}
+
+		if part.Backend.ResolveGranularity == "service" && svc.Spec.ClusterIP == "" {
+			log.Errorw("ApisixRoute refers to a headless service but want to use the service level resolve granualrity",
+				zap.Any("ApisixRoute", ar),
+				zap.Any("service", svc),
+			)
+			return nil, nil, errors.New("conflict headless service and backend resolve granularity")
+		}
+
+		pluginMap := make(apisixv1.Plugins)
+		// 2.add route plugins
+		for _, plugin := range part.Plugins {
+			if !plugin.Enable {
+				continue
+			}
+			if plugin.Config != nil {
+				pluginMap[plugin.Name] = plugin.Config
+			} else {
+				pluginMap[plugin.Name] = make(map[string]interface{})
+			}
+		}
+
+		routeName := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
+		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, part.Backend.ServiceName, svcPort)
+		route := &apisixv1.Route{
+			Metadata: apisixv1.Metadata{
+				FullName:        routeName,
+				Name:            routeName,
+				ID:              id.GenID(routeName),
+				ResourceVersion: ar.ResourceVersion,
+			},
+			Hosts:        part.Match.Hosts,
+			Uris:         part.Match.Paths,
+			Methods:      part.Match.Methods,
+			UpstreamName: upstreamName,
+			UpstreamId:   id.GenID(upstreamName),
+			Plugins:      pluginMap,
+		}
+
+		routes = append(routes, route)
+
+		if _, ok := upstreamMap[upstreamName]; !ok {
+			ups, err := t.TranslateUpstream(ar.Namespace, part.Backend.ServiceName, svcPort)
+			if err != nil {
+				return nil, nil, err
+			}
+			if part.Backend.ResolveGranularity == "service" {
+				ups.Nodes = []apisixv1.UpstreamNode{
+					{
+						IP:     svc.Spec.ClusterIP,
+						Port:   int(svcPort),
+						Weight: _defaultWeight,
+					},
+				}
+			}
+			ups.FullName = upstreamName
+			ups.ResourceVersion = ar.ResourceVersion
+			ups.Name = upstreamName
+			upstreamMap[ups.FullName] = ups
+		}
+	}
+
 	for _, ups := range upstreamMap {
 		upstreams = append(upstreams, ups)
 	}
