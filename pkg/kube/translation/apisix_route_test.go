@@ -46,17 +46,7 @@ func TestNginxVars(t *testing.T) {
 		},
 		{
 			Subject: "arg_id",
-			Op:      configv2alpha1.OpGreaterThanEqual,
-			Value:   &value3,
-		},
-		{
-			Subject: "arg_id",
 			Op:      configv2alpha1.OpLessThan,
-			Value:   &value3,
-		},
-		{
-			Subject: "arg_id",
-			Op:      configv2alpha1.OpLessThanEqual,
 			Value:   &value3,
 		},
 		{
@@ -97,5 +87,58 @@ func TestNginxVars(t *testing.T) {
 	}
 	vars, err := tr.translateNginxVars(ngxVars)
 	assert.Nil(t, err)
-	assert.Len(t, vars, 12)
+	assert.Len(t, vars, 10)
+
+	assert.Len(t, vars[0], 3)
+	assert.Equal(t, vars[0][0].StrVal, "http_content_type")
+	assert.Equal(t, vars[0][1].StrVal, "==")
+	assert.Equal(t, vars[0][2].StrVal, "text/plain")
+
+	assert.Len(t, vars[1], 3)
+	assert.Equal(t, vars[1][0].StrVal, "http_content_encoding")
+	assert.Equal(t, vars[1][1].StrVal, "~=")
+	assert.Equal(t, vars[1][2].StrVal, "gzip")
+
+	assert.Len(t, vars[2], 3)
+	assert.Equal(t, vars[2][0].StrVal, "arg_id")
+	assert.Equal(t, vars[2][1].StrVal, ">")
+	assert.Equal(t, vars[2][2].StrVal, "13")
+
+	assert.Len(t, vars[3], 3)
+	assert.Equal(t, vars[3][0].StrVal, "arg_id")
+	assert.Equal(t, vars[3][1].StrVal, "<")
+	assert.Equal(t, vars[3][2].StrVal, "13")
+
+	assert.Len(t, vars[4], 3)
+	assert.Equal(t, vars[4][0].StrVal, "arg_id")
+	assert.Equal(t, vars[4][1].StrVal, "~~")
+	assert.Equal(t, vars[4][2].StrVal, ".*\\.php")
+
+	assert.Len(t, vars[5], 3)
+	assert.Equal(t, vars[5][0].StrVal, "arg_id")
+	assert.Equal(t, vars[5][1].StrVal, "~*")
+	assert.Equal(t, vars[5][2].StrVal, ".*\\.php")
+
+	assert.Len(t, vars[6], 4)
+	assert.Equal(t, vars[6][0].StrVal, "arg_id")
+	assert.Equal(t, vars[6][1].StrVal, "!")
+	assert.Equal(t, vars[6][2].StrVal, "~~")
+	assert.Equal(t, vars[6][3].StrVal, ".*\\.php")
+
+	assert.Len(t, vars[7], 4)
+	assert.Equal(t, vars[7][0].StrVal, "arg_id")
+	assert.Equal(t, vars[7][1].StrVal, "!")
+	assert.Equal(t, vars[7][2].StrVal, "~*")
+	assert.Equal(t, vars[7][3].StrVal, ".*\\.php")
+
+	assert.Len(t, vars[8], 3)
+	assert.Equal(t, vars[8][0].StrVal, "remote_addr")
+	assert.Equal(t, vars[8][1].StrVal, "in")
+	assert.Equal(t, vars[8][2].SliceVal, []string{"10.0.5.3", "10.0.5.4"})
+
+	assert.Len(t, vars[9], 4)
+	assert.Equal(t, vars[9][0].StrVal, "remote_addr")
+	assert.Equal(t, vars[9][1].StrVal, "!")
+	assert.Equal(t, vars[9][2].StrVal, "in")
+	assert.Equal(t, vars[9][3].SliceVal, []string{"10.0.5.6"})
 }
