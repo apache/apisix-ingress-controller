@@ -90,6 +90,33 @@ spec:
         servicePort: 80
 ```
 
+The `nginxVars` allows user to configure match conditions with arbitrary predicates in HTTP, such as queries, HTTP headers and etc.
+It's composed by several expressions, which in turn composed by subject, operator and value/set.
+
+```yaml
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+  name: method-route
+spec:
+  http:
+    - name: method
+      match:
+        paths:
+          - /
+        nginxVars:
+          - subject: arg_id
+            op: Equal
+            value: 2143
+      backend:
+        serviceName: foo
+        servicePort: 80
+```
+
+The above configuration configures an extra route match condition, which asks the
+query `id` must be equal to `2143`. Note the subject is in [Nginx Variables](http://nginx.org/en/docs/varindex.html) style
+(but without the leading `$` symbol).
+
 Service Resolution Granularity
 ------------------------------
 

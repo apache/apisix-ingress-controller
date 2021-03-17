@@ -20,3 +20,55 @@ title: ApisixRoute/v2alpha1 Reference
 # limitations under the License.
 #
 -->
+
+## Spec
+
+Meaning of each field in the spec of ApisixRoute are followed, the top level fields (`apiVersion`, `kind` and `metadata`) are same as other Kubernetes Resources.
+
+|     Field     |  Type    |                    Description                     |
+|---------------|----------|----------------------------------------------------|
+| http         | array    | ApisixRoute's HTTP route rules.              |
+| http[].name          | string (required)  | The route rule name.                                |
+| http[].priority          | integer   | The route priority, it's used to determine which route will be hitted when multile routes contains the same URI. Large number means higher priority.     |
+| http[].match         | object    | Route match conditions.                     |
+| http[].match.paths       | array   | A series of URI that should be matched (oneof) to use this route rule.         |
+| http[].match.hosts   | array   | A series of hosts that should be matched (oneof) to use this route rule.
+| http[].match.methods | array | A series of HTTP methods(`GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, `OPTIONS`, `CONNECT`, `TRACE`) that should be matched (oneof) to use this route rule.
+| http[].match.remote_addrs   | array      | A series of IP address (CIDR format) that should be matched (oneof) to use this route rule.
+| http[].match.nginxVars          | array   | A series expressions that the results should be matched (oneof) to use this route rule.
+| http[].match.nginxVars[].subject       | string    | Expression subject, which is in [Nginx Variables](http://nginx.org/en/docs/varindex.html) style.
+| http[].match.nginxVars[].op | string | Expression operator, see [Expression Operators](#expression-operators) for the detail of enumerations.
+| http[].match.nginxVars[].value | string | Expected expression result, it's exclusive with `http[].match.nginxVars[].set`.
+| http[].match.nginxVars[].set | array | Expected expression result set, only used when the operator is `In` or `NotIn`, it's exclusive with `http[].match.nginxVars[].value`.
+| http[].backend | object | The backend service
+| http[].backend.serviceName | string | The backend service name, note the service and ApisixRoute should be created in the same namespace. Cross namespace referencing is not allowed.
+| http[].backend.servicePort | integer or string | The backend service port, can be the port number of the name defined in the service object.
+| http[].backend.resolveGranualrity | string | See [Service Resolve Granularity](#service-resolve-granularity) for the details.
+| http[].plugins | array | A series of APISIX plugins that will be executed once this route rule is matched |
+| http[].plugins[].name | string | The plugin name, see [docs](http://apisix.apache.org/docs/apisix/getting-started) for learning the available plugins.
+| http[].plugins[].enable | boolean | Whether the plugin is in use |
+| http[].plugins[].config | object | The plugin configuration, fields should be same as in APISIX. |
+
+## Expression Operators
+
+| Operator | Meaning |
+|----------|---------|
+| Equal| The result of `subject` should be equal to the `value` |
+| NotEqual | The result of `subject` should not be equal to `value` |
+| GreaterThan | The result of `subject` should be a number and it must larger then `value`. |
+| LessThan | The result of `subject` should be a number and it must less than `value`. |
+| In | The result of `subject` should be inside the `set`. |
+| NotIn | The result of `subject` should not be inside the `set`. |
+| RegexMatch | The result of `subject` should be matched by the `value` (a PCRE regex pattern). |
+| RegexNotMatch | The result of `subject` should not be matched by the `value` (a PCRE regex pattern). |
+| RegexMatchCaseInsensitive | Similar with `RegexMatch` but the match process is case insensitive |
+| RegexNotMatchCaseInsensitive | Similar with `RegexNotMatchCaseInsensitive` but the match process is case insensitive. |
+
+## Service Resolve Granularity
+
+The service resolve granularity determines whether the [Serivce ClusterIP](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types) or its endpoints should be filled in the target upstream of APISIX.
+
+| Granularity | Meaning |
+| ----------- | ------- |
+| endpoint | Filled upstream nodes by Pods' IP.
+| service | Filled upstream nodes by Service ClusterIP, in such a case, loadbalacing are implemented by [kube-proxy](https://kubernetes.io/docs/concepts/overview/components/#kube-proxy).|
