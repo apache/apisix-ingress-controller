@@ -49,10 +49,6 @@ const (
 	OpIn = "In"
 	// OpNotIn means the not in operator ("not_in") in nginxVars.
 	OpNotIn = "NotIn"
-	// OpContain means the contain operator ("contain") in nginxVars.
-	OpContain = "Contain"
-	// OpNotContain means the not contain operator ("not_contain") in nginxVars.
-	OpNotContain = "NotContain"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

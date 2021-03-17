@@ -220,7 +220,10 @@ func (t *translator) translateNginxVars(nginxVars []configv2alpha1.ApisixRouteHT
 		op   string
 	)
 	for _, expr := range nginxVars {
-		var this []apisixv1.StringOrSlice
+		var (
+			invert bool
+			this   []apisixv1.StringOrSlice
+		)
 		if expr.Subject == "" {
 			return nil, errors.New("empty nginxVar subject")
 		}
@@ -229,41 +232,50 @@ func (t *translator) translateNginxVars(nginxVars []configv2alpha1.ApisixRouteHT
 		})
 
 		switch expr.Op {
-		case configv2alpha1.OpContain:
-			op = "contain"
 		case configv2alpha1.OpEqual:
 			op = "=="
 		case configv2alpha1.OpGreaterThan:
 			op = ">"
-		case configv2alpha1.OpGreaterThanEqual:
-			op = ">="
+		// TODO Implement "<=", ">=" operators after the
+		// lua-resty-expr supports it. See
+		// https://github.com/api7/lua-resty-expr/issues/28
+		// for details.
+		//case configv2alpha1.OpGreaterThanEqual:
+		//	invert = true
+		//	op = "<"
 		case configv2alpha1.OpIn:
 			op = "in"
 		case configv2alpha1.OpLessThan:
 			op = "<"
-		case configv2alpha1.OpLessThanEqual:
-			op = "<="
-		case configv2alpha1.OpNotContain:
-			op = "not_contain"
+		//case configv2alpha1.OpLessThanEqual:
+		//	invert = true
+		//	op = ">"
 		case configv2alpha1.OpNotEqual:
 			op = "~="
 		case configv2alpha1.OpNotIn:
-			op = "not_in"
+			invert = true
+			op = "in"
 		case configv2alpha1.OpRegexMatch:
 			op = "~~"
 		case configv2alpha1.OpRegexMatchCaseInsensitive:
 			op = "~*"
 		case configv2alpha1.OpRegexNotMatch:
-			op = "!~~"
+			invert = true
+			op = "~~"
 		case configv2alpha1.OpRegexNotMatchCaseInsensitive:
-			op = "!~*"
+			invert = true
+			op = "~*"
 		default:
 			return nil, errors.New("unknown operator")
+		}
+		if invert {
+			this = append(this, apisixv1.StringOrSlice{
+				StrVal: "!",
+			})
 		}
 		this = append(this, apisixv1.StringOrSlice{
 			StrVal: op,
 		})
-
 		if expr.Op == configv2alpha1.OpIn || expr.Op == configv2alpha1.OpNotIn {
 			if expr.Set == nil {
 				return nil, errors.New("empty set value")
