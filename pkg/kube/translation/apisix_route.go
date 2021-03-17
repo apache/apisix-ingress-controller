@@ -94,6 +94,7 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) ([]*apisixv1.Rou
 
 func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*apisixv1.Route, []*apisixv1.Upstream, error) {
 	var (
+		vars      [][]apisixv1.StringOrSlice
 		routes    []*apisixv1.Route
 		upstreams []*apisixv1.Upstream
 	)
@@ -136,7 +137,7 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 		}
 
 		if part.Backend.ResolveGranularity == "service" && svc.Spec.ClusterIP == "" {
-			log.Errorw("ApisixRoute refers to a headless service but want to use the service level resolve granualrity",
+			log.Errorw("ApisixRoute refers to a headless service but want to use the service level resolve granularity",
 				zap.Any("ApisixRoute", ar),
 				zap.Any("service", svc),
 			)
@@ -155,6 +156,16 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 				pluginMap[plugin.Name] = make(map[string]interface{})
 			}
 		}
+		if part.Match.NginxVars != nil {
+			vars, err = t.translateNginxVars(part.Match.NginxVars)
+			if err != nil {
+				log.Errorw("ApisixRoute with bad nginxVars",
+					zap.Error(err),
+					zap.Any("ApisixRoute", ar),
+				)
+				return nil, nil, err
+			}
+		}
 
 		routeName := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, part.Backend.ServiceName, svcPort)
@@ -165,6 +176,7 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 				ID:              id.GenID(routeName),
 				ResourceVersion: ar.ResourceVersion,
 			},
+			Vars:         vars,
 			Hosts:        part.Match.Hosts,
 			Uris:         part.Match.Paths,
 			Methods:      part.Match.Methods,
@@ -200,4 +212,86 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 		upstreams = append(upstreams, ups)
 	}
 	return routes, upstreams, nil
+}
+
+func (t *translator) translateNginxVars(nginxVars []configv2alpha1.ApisixRouteHTTPMatchNginxVar) ([][]apisixv1.StringOrSlice, error) {
+	var (
+		vars [][]apisixv1.StringOrSlice
+		op   string
+	)
+	for _, expr := range nginxVars {
+		var (
+			invert bool
+			this   []apisixv1.StringOrSlice
+		)
+		if expr.Subject == "" {
+			return nil, errors.New("empty nginxVar subject")
+		}
+		this = append(this, apisixv1.StringOrSlice{
+			StrVal: expr.Subject,
+		})
+
+		switch expr.Op {
+		case configv2alpha1.OpEqual:
+			op = "=="
+		case configv2alpha1.OpGreaterThan:
+			op = ">"
+		// TODO Implement "<=", ">=" operators after the
+		// lua-resty-expr supports it. See
+		// https://github.com/api7/lua-resty-expr/issues/28
+		// for details.
+		//case configv2alpha1.OpGreaterThanEqual:
+		//	invert = true
+		//	op = "<"
+		case configv2alpha1.OpIn:
+			op = "in"
+		case configv2alpha1.OpLessThan:
+			op = "<"
+		//case configv2alpha1.OpLessThanEqual:
+		//	invert = true
+		//	op = ">"
+		case configv2alpha1.OpNotEqual:
+			op = "~="
+		case configv2alpha1.OpNotIn:
+			invert = true
+			op = "in"
+		case configv2alpha1.OpRegexMatch:
+			op = "~~"
+		case configv2alpha1.OpRegexMatchCaseInsensitive:
+			op = "~*"
+		case configv2alpha1.OpRegexNotMatch:
+			invert = true
+			op = "~~"
+		case configv2alpha1.OpRegexNotMatchCaseInsensitive:
+			invert = true
+			op = "~*"
+		default:
+			return nil, errors.New("unknown operator")
+		}
+		if invert {
+			this = append(this, apisixv1.StringOrSlice{
+				StrVal: "!",
+			})
+		}
+		this = append(this, apisixv1.StringOrSlice{
+			StrVal: op,
+		})
+		if expr.Op == configv2alpha1.OpIn || expr.Op == configv2alpha1.OpNotIn {
+			if expr.Set == nil {
+				return nil, errors.New("empty set value")
+			}
+			this = append(this, apisixv1.StringOrSlice{
+				SliceVal: expr.Set,
+			})
+		} else if expr.Value != nil {
+			this = append(this, apisixv1.StringOrSlice{
+				StrVal: *expr.Value,
+			})
+		} else {
+			return nil, errors.New("neither set nor value is provided")
+		}
+		vars = append(vars, this)
+	}
+
+	return vars, nil
 }

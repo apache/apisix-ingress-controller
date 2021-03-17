@@ -77,6 +77,7 @@ type routeItem struct {
 	ServiceId  string                 `json:"service_id"`
 	Host       string                 `json:"host"`
 	URI        string                 `json:"uri"`
+	Vars       [][]v1.StringOrSlice   `json:"vars"`
 	Uris       []string               `json:"uris"`
 	Desc       string                 `json:"desc"`
 	Methods    []string               `json:"methods"`
@@ -108,6 +109,7 @@ func (i *item) route(clusterName string) (*v1.Route, error) {
 		Host:       route.Host,
 		Path:       route.URI,
 		Uris:       route.Uris,
+		Vars:       route.Vars,
 		Methods:    route.Methods,
 		UpstreamId: route.UpstreamId,
 		ServiceId:  route.ServiceId,

@@ -17,6 +17,7 @@ package v1
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"strconv"
 	"time"
 )
@@ -81,17 +82,52 @@ type Metadata struct {
 type Route struct {
 	Metadata `json:",inline" yaml:",inline"`
 
-	Host         string   `json:"host,omitempty" yaml:"host,omitempty"`
-	Hosts        []string `json:"hosts,omitempty" yaml:"hosts,omitempty"`
-	Path         string   `json:"path,omitempty" yaml:"path,omitempty"`
-	Priority     int      `json:"priority,omitempty" yaml:"priority,omitempty"`
-	Uris         []string `json:"uris,omitempty" yaml:"uris,omitempty"`
-	Methods      []string `json:"methods,omitempty" yaml:"methods,omitempty"`
-	ServiceId    string   `json:"service_id,omitempty" yaml:"service_id,omitempty"`
-	ServiceName  string   `json:"service_name,omitempty" yaml:"service_name,omitempty"`
-	UpstreamId   string   `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
-	UpstreamName string   `json:"upstream_name,omitempty" yaml:"upstream_name,omitempty"`
-	Plugins      Plugins  `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Host         string            `json:"host,omitempty" yaml:"host,omitempty"`
+	Hosts        []string          `json:"hosts,omitempty" yaml:"hosts,omitempty"`
+	Path         string            `json:"path,omitempty" yaml:"path,omitempty"`
+	Priority     int               `json:"priority,omitempty" yaml:"priority,omitempty"`
+	Vars         [][]StringOrSlice `json:"vars,omitempty" yaml:"vars,omitempty"`
+	Uris         []string          `json:"uris,omitempty" yaml:"uris,omitempty"`
+	Methods      []string          `json:"methods,omitempty" yaml:"methods,omitempty"`
+	ServiceId    string            `json:"service_id,omitempty" yaml:"service_id,omitempty"`
+	ServiceName  string            `json:"service_name,omitempty" yaml:"service_name,omitempty"`
+	UpstreamId   string            `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
+	UpstreamName string            `json:"upstream_name,omitempty" yaml:"upstream_name,omitempty"`
+	Plugins      Plugins           `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+}
+
+// TODO Do not use interface{} to avoid the reflection overheads.
+// +k8s:deepcopy-gen=true
+type StringOrSlice struct {
+	StrVal   string   `json:"-"`
+	SliceVal []string `json:"-"`
+}
+
+func (s *StringOrSlice) MarshalJSON() ([]byte, error) {
+	var (
+		p   []byte
+		err error
+	)
+	if s.SliceVal != nil {
+		p, err = json.Marshal(s.SliceVal)
+	} else {
+		p, err = json.Marshal(s.StrVal)
+	}
+	return p, err
+}
+
+func (s *StringOrSlice) UnmarshalJSON(p []byte) error {
+	var err error
+
+	if len(p) == 0 {
+		return errors.New("empty object")
+	}
+	if p[0] == '[' {
+		err = json.Unmarshal(p, &s.SliceVal)
+	} else {
+		err = json.Unmarshal(p, &s.StrVal)
+	}
+	return err
 }
 
 type Plugins map[string]interface{}
