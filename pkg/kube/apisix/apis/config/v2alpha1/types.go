@@ -49,6 +49,15 @@ const (
 	OpIn = "In"
 	// OpNotIn means the not in operator ("not_in") in nginxVars.
 	OpNotIn = "NotIn"
+
+	// ScopeQuery means the route match expression subject is in the querystring.
+	ScopeQuery = "Query"
+	// ScopeHeader means the route match expression subject is in request headers.
+	ScopeHeader = "Header"
+	// ScopePath means the route match expression subject is the uri path.
+	ScopePath = "Path"
+	// ScopeCookie means the route match expression subject is in cookie.
+	ScopeCookie = "Cookie"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -104,15 +113,15 @@ type ApisixRouteHTTPMatch struct {
 	//     value:
 	//       - "127.0.0.1"
 	//       - "10.0.5.11"
-	NginxVars []ApisixRouteHTTPMatchNginxVar `json:"nginxVars,omitempty"`
+	NginxVars []ApisixRouteHTTPMatchExpr `json:"exprs,omitempty"`
 }
 
-// ApisixRouteHTTPMatchNginxVar represents a binary expression for the Nginx vars.
-type ApisixRouteHTTPMatchNginxVar struct {
+// ApisixRouteHTTPMatchExpre represents a binary route match expression .
+type ApisixRouteHTTPMatchExpr struct {
 	// Subject is the expression subject, it can
 	// be any string composed by literals and nginx
 	// vars.
-	Subject string `json:"subject"`
+	Subject ApisixRouteHTTPMatchExprSubject `json:"subject"`
 	// Op is the operator.
 	Op string `json:"op"`
 	// Set is an array type object of the expression.
@@ -123,6 +132,17 @@ type ApisixRouteHTTPMatchNginxVar struct {
 	// Set and Value are exclusive so only of them can be set
 	// in the same time.
 	Value *string `json:"value"`
+}
+
+// ApisixRouteHTTPMatchExprSubject describes the route match expression subject.
+type ApisixRouteHTTPMatchExprSubject struct {
+	// The subject scope, can be:
+	// ScopeQuery, ScopeHeader, ScopePath
+	// when subject is ScopePath, Name field
+	// will be ignored.
+	Scope string `json:"scope"`
+	// The name of subject.
+	Name string `json:"name"`
 }
 
 // ApisixRouteHTTPBackend represents a HTTP backend (a Kuberentes Service).

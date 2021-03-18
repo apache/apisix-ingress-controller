@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var _ = ginkgo.Describe("nginx vars", func() {
+var _ = ginkgo.Describe("route match exprs", func() {
 	opts := &scaffold.Options{
 		Name:                    "default",
 		Kubeconfig:              scaffold.GetKubeconfig(),
@@ -50,8 +50,10 @@ spec:
      - httpbin.org
      paths:
        - /ip
-     nginxVars:
-     - subject: http_x_foo
+     exprs:
+     - subject:
+         scope: Header
+         name: X-Foo
        op: Equal
        value: bar
    backend:
@@ -98,8 +100,10 @@ spec:
      - httpbin.org
      paths:
        - /ip
-     nginxVars:
-     - subject: http_x_foo
+     exprs:
+     - subject:
+         scope: Header
+         name: X-Foo
        op: NotEqual
        value: bar
    backend:
@@ -145,8 +149,10 @@ spec:
      - httpbin.org
      paths:
        - /ip
-     nginxVars:
-     - subject: arg_id
+     exprs:
+     - subject:
+         scope: Query
+         name: id
        op: GreaterThan
        value: "13"
    backend:
@@ -201,8 +207,10 @@ spec:
      - httpbin.org
      paths:
        - /ip
-     nginxVars:
-     - subject: arg_id
+     exprs:
+     - subject:
+         scope: Query
+         name: ID
        op: LessThan
        value: "13"
    backend:
@@ -257,8 +265,10 @@ spec:
      - httpbin.org
      paths:
        - /ip
-     nginxVars:
-     - subject: http_content_type
+     exprs:
+     - subject:
+         scope: Header
+         name: Content-Type
        op: In
        set: ["text/plain", "text/html", "image/jpeg"]
    backend:
@@ -313,8 +323,10 @@ spec:
      - httpbin.org
      paths:
        - /ip
-     nginxVars:
-     - subject: http_content_type
+     exprs:
+     - subject:
+         scope: Header
+         name: Content-Type
        op: NotIn
        set: ["text/plain", "text/html", "image/jpeg"]
    backend:
@@ -368,8 +380,10 @@ spec:
      - httpbin.org
      paths:
        - /ip
-     nginxVars:
-     - subject: http_x_real_uri
+     exprs:
+     - subject:
+         scope: Header
+         name: x-Real-URI
        op: RegexMatch
        value: "^/ip/0\\d{2}/.*$"
    backend:
@@ -424,8 +438,10 @@ spec:
      - httpbin.org
      paths:
        - /ip
-     nginxVars:
-     - subject: http_x_real_uri
+     exprs:
+     - subject:
+         scope: Header
+         name: X-Real-URI
        op: RegexNotMatch
        value: "^/ip/0\\d{2}/.*$"
    backend:
@@ -479,8 +495,10 @@ spec:
      - httpbin.org
      paths:
        - /ip
-     nginxVars:
-     - subject: http_x_real_uri
+     exprs:
+     - subject:
+         scope: Header
+         name: X-Real-URI
        op: RegexMatchCaseInsensitive
        value: "^/ip/0\\d{2}/.*$"
    backend:
@@ -535,8 +553,10 @@ spec:
      - httpbin.org
      paths:
        - /ip
-     nginxVars:
-     - subject: http_x_real_uri
+     exprs:
+     - subject:
+         scope: Header
+         name: X-Real-URI
        op: RegexNotMatchCaseInsensitive
        value: "^/ip/0\\d{2}/.*$"
    backend:
