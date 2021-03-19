@@ -17,14 +17,13 @@ package translation
 import (
 	"errors"
 
-	"github.com/apache/apisix-ingress-controller/pkg/id"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func (t *translator) getServiceClusterIPAndPort(backend *configv2alpha1.ApisixRouteHTTPBackend, ar *configv2alpha1.ApisixRoute) (string, int32, error) {
