@@ -85,9 +85,9 @@ spec:
         - /
         methods:
         - GET
-      backend:
-        serviceName: foo
-        servicePort: 80
+      backends:
+        - serviceName: foo
+          servicePort: 80
 ```
 
 The `nginxVars` allows user to configure match conditions with arbitrary predicates in HTTP, such as queries, HTTP headers and etc.
@@ -108,9 +108,9 @@ spec:
           - subject: arg_id
             op: Equal
             value: 2143
-      backend:
-        serviceName: foo
-        servicePort: 80
+      backends:
+        - serviceName: foo
+          servicePort: 80
 ```
 
 The above configuration configures an extra route match condition, which asks the
@@ -139,11 +139,45 @@ spec:
           - /*
         methods:
           - GET
-      backend:
-        serviceName: foo
-        servicePort: 80
-        resolveGranularity: service
+      backends:
+        - serviceName: foo
+          servicePort: 80
+          resolveGranularity: service
 ```
+
+Weight Based Traffic Split
+--------------------------
+
+There can more than one backend specified in one route rule,
+when multiple backends co-exist there, the traffic split based on weights
+will be applied (which actually uses the [traffic-split](http://apisix.apache.org/docs/apisix/plugins/traffic-split/) plugin in Apache APISIX).
+You can specify weight for each backend, the default weight is `100`.
+
+```yaml
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+  name: method-route
+spec:
+  http:
+    - name: method
+      match:
+        paths:
+          - /*
+        methods:
+          - GET
+      backends:
+        - serviceName: foo
+          servicePort: 80
+          weight: 100
+        - serviceName: bar
+          servicePort: 81
+          weight: 50
+```
+
+The above `ApisixRoute` has one route rule, which contains two backends `foo` and `bar`, the
+weight ratio is `100:50`, which means `2/3` requests will be sent to service `foo` and `1/3` requests
+will be proxied to serivce `bar`.
 
 Plugins
 -------
@@ -164,9 +198,9 @@ spec:
         - local.httpbin.org
         paths:
           - /*
-      backend:
-        serviceName: foo
-        servicePort: 80
+      backends:
+        - serviceName: foo
+          servicePort: 80
       plugins:
         - name: cors
           enable: true
