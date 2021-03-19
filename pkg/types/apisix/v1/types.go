@@ -274,6 +274,24 @@ type Ssl struct {
 	Group    string   `json:"group,omitempty" yaml:"group,omitempty"`
 }
 
+// TrafficSplitConfig is the config of traffic-split plugin.
+// +k8s:deepcopy-gen=true
+type TrafficSplitConfig struct {
+	Rules []TrafficSplitConfigRule `json:"rules"`
+}
+
+// TrafficSplitConfigRule is the rule config in traffic-split plugin config.
+type TrafficSplitConfigRule struct {
+	WeightedUpstreams []TrafficSplitConfigRuleWeightedUpstream `json:"weighted_upstreams"`
+}
+
+// TrafficSplitConfigRuleWeightedUpstream is the weighted upstream config in
+// the traffic split plugin rule.
+type TrafficSplitConfigRuleWeightedUpstream struct {
+	UpstreamID string `json:"upstream_id,omitempty"`
+	Weight     int    `json:"weight"`
+}
+
 // NewDefaultUpstream returns an empty Upstream with default values.
 func NewDefaultUpstream() *Upstream {
 	return &Upstream{

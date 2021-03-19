@@ -18,7 +18,6 @@ import (
 	"errors"
 
 	"go.uber.org/zap"
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
@@ -59,7 +58,7 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) ([]*apisixv1.Rou
 					pluginMap[plugin.Name] = make(map[string]interface{})
 				}
 			}
-
+			upsId := id.GenID(upstreamName)
 			route := &apisixv1.Route{
 				Metadata: apisixv1.Metadata{
 					FullName:        routeName,
@@ -69,7 +68,7 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) ([]*apisixv1.Rou
 				Host:         r.Host,
 				Path:         p.Path,
 				UpstreamName: upstreamName,
-				UpstreamId:   id.GenID(upstreamName),
+				UpstreamId:   upsId,
 				Plugins:      pluginMap,
 			}
 			routes = append(routes, route)
@@ -80,6 +79,7 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) ([]*apisixv1.Rou
 					return nil, nil, err
 				}
 				ups.FullName = upstreamName
+				ups.ID = upsId
 				ups.ResourceVersion = ar.ResourceVersion
 				ups.Name = upstreamName
 				upstreamMap[ups.FullName] = ups
@@ -108,40 +108,29 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 		if len(part.Match.Paths) < 1 {
 			return nil, nil, errors.New("empty route paths match")
 		}
-		svc, err := t.ServiceLister.Services(ar.Namespace).Get(part.Backend.ServiceName)
-		if err != nil {
-			return nil, nil, err
+		if part.Backend != nil && len(part.Backends) > 1 {
+			return nil, nil, errors.New("backend and backends are exclusive")
 		}
-		svcPort := int32(-1)
-	loop:
-		for _, port := range svc.Spec.Ports {
-			switch part.Backend.ServicePort.Type {
-			case intstr.Int:
-				if part.Backend.ServicePort.IntVal == port.Port {
-					svcPort = port.Port
-					break loop
-				}
-			case intstr.String:
-				if part.Backend.ServicePort.StrVal == port.Name {
-					svcPort = port.Port
-					break loop
-				}
-			}
+		if part.Backend == nil && len(part.Backends) == 0 {
+			return nil, nil, errors.New("no specified backend")
 		}
-		if svcPort == -1 {
-			log.Errorw("ApisixRoute refers to non-existent Service port",
-				zap.Any("ApisixRoute", ar),
-				zap.String("port", part.Backend.ServicePort.String()),
-			)
-			return nil, nil, err
-		}
+		backends := part.Backends
+		backend := part.Backend
+		if len(backends) > 1 {
+			// Use the first backend as the default backend in Route,
+			// others will be configured in traffic-split plugin.
+			backend = backends[0]
+			backends = backends[1:]
+		} // else use the deprecated Backend.
 
-		if part.Backend.ResolveGranularity == "service" && svc.Spec.ClusterIP == "" {
-			log.Errorw("ApisixRoute refers to a headless service but want to use the service level resolve granularity",
-				zap.Any("ApisixRoute", ar),
-				zap.Any("service", svc),
+		svcClusterIP, svcPort, err := t.getServiceClusterIPAndPort(backend, ar)
+		if err != nil {
+			log.Errorw("failed to get service port in backend",
+				zap.Any("backend", backend),
+				zap.Any("apisix_route", ar),
+				zap.Error(err),
 			)
-			return nil, nil, errors.New("conflict headless service and backend resolve granularity")
+			return nil, nil, err
 		}
 
 		pluginMap := make(apisixv1.Plugins)
@@ -168,7 +157,8 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 		}
 
 		routeName := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
-		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, part.Backend.ServiceName, svcPort)
+		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, svcPort)
+		upsId := id.GenID(upstreamName)
 		route := &apisixv1.Route{
 			Metadata: apisixv1.Metadata{
 				FullName:        routeName,
@@ -181,29 +171,37 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 			Uris:         part.Match.Paths,
 			Methods:      part.Match.Methods,
 			UpstreamName: upstreamName,
-			UpstreamId:   id.GenID(upstreamName),
+			UpstreamId:   upsId,
 			Plugins:      pluginMap,
 		}
 
-		routes = append(routes, route)
+		if len(backends) > 0 {
+			weight := _defaultWeight
+			if backend.Weight != 0 {
+				weight = backend.Weight
+			}
+			ups, plugin, err := t.translateTrafficSplitPlugin(ar, weight, backends)
+			if err != nil {
+				log.Errorw("failed to translate traffic-split plugin",
+					zap.Error(err),
+					zap.Any("ApisixRoute", ar),
+				)
+				return nil, nil, err
+			}
+			for _, u := range ups {
+				if _, ok := upstreamMap[u.FullName]; !ok {
+					upstreamMap[u.FullName] = u
+				}
+			}
+			route.Plugins["traffic-split"] = plugin
+		}
 
+		routes = append(routes, route)
 		if _, ok := upstreamMap[upstreamName]; !ok {
-			ups, err := t.TranslateUpstream(ar.Namespace, part.Backend.ServiceName, svcPort)
+			ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.ResolveGranularity, svcClusterIP, svcPort)
 			if err != nil {
 				return nil, nil, err
 			}
-			if part.Backend.ResolveGranularity == "service" {
-				ups.Nodes = []apisixv1.UpstreamNode{
-					{
-						IP:     svc.Spec.ClusterIP,
-						Port:   int(svcPort),
-						Weight: _defaultWeight,
-					},
-				}
-			}
-			ups.FullName = upstreamName
-			ups.ResourceVersion = ar.ResourceVersion
-			ups.Name = upstreamName
 			upstreamMap[ups.FullName] = ups
 		}
 	}
