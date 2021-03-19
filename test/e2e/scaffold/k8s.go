@@ -181,7 +181,7 @@ func (s *Scaffold) EnsureNumApisixUpstreamsCreated(desired int) error {
 	return ensureNumApisixCRDsCreated(u.String(), desired)
 }
 
-// ListApisixUpstreams list all upstream from APISIX
+// ListApisixUpstreams list all upstreams from APISIX
 func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 	host, err := s.apisixAdminServiceURL()
 	if err != nil {
@@ -203,6 +203,30 @@ func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 		return nil, err
 	}
 	return cli.Cluster("").Upstream().List(context.TODO())
+}
+
+// ListApisixRoutes list all routes from APISIX.
+func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
+	host, err := s.apisixAdminServiceURL()
+	if err != nil {
+		return nil, err
+	}
+	u := url.URL{
+		Scheme: "http",
+		Host:   host,
+		Path:   "/apisix/admin",
+	}
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(&apisix.ClusterOptions{
+		BaseURL: u.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cli.Cluster("").Route().List(context.TODO())
 }
 
 // ListApisixTls list all ssl from APISIX

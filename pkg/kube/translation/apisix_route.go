@@ -116,7 +116,7 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 		}
 		backends := part.Backends
 		backend := part.Backend
-		if len(backends) > 1 {
+		if len(backends) > 0 {
 			// Use the first backend as the default backend in Route,
 			// others will be configured in traffic-split plugin.
 			backend = backends[0]
