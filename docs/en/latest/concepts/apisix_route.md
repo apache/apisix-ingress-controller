@@ -67,7 +67,7 @@ Advanced route features
 -----------------------
 
 Path based route are most common, but if it's not enough, try
-other route features in `ApisixRoute` such as `methods`, `nginxVars`.
+other route features in `ApisixRoute` such as `methods`, `exprs`.
 
 The `methods` splits traffic according to the HTTP method, the following configurations routes requests
 with `GET` method to `foo` service (a Kubernetes Service).
@@ -90,7 +90,7 @@ spec:
         servicePort: 80
 ```
 
-The `nginxVars` allows user to configure match conditions with arbitrary predicates in HTTP, such as queries, HTTP headers and etc.
+The `exprs` allows user to configure match conditions with arbitrary predicates in HTTP, such as queries, HTTP headers, Cookie.
 It's composed by several expressions, which in turn composed by subject, operator and value/set.
 
 ```yaml
@@ -104,8 +104,10 @@ spec:
       match:
         paths:
           - /
-        nginxVars:
-          - subject: arg_id
+        exprs:
+          - subject:
+              scope: Query
+              name: id
             op: Equal
             value: 2143
       backend:
@@ -114,8 +116,7 @@ spec:
 ```
 
 The above configuration configures an extra route match condition, which asks the
-query `id` must be equal to `2143`. Note the subject is in [Nginx Variables](http://nginx.org/en/docs/varindex.html) style
-(but without the leading `$` symbol).
+query `id` must be equal to `2143`.
 
 Service Resolution Granularity
 ------------------------------

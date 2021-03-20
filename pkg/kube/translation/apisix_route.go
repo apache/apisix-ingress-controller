@@ -16,6 +16,7 @@ package translation
 
 import (
 	"errors"
+	"strings"
 
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -157,7 +158,7 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 			}
 		}
 		if part.Match.NginxVars != nil {
-			vars, err = t.translateNginxVars(part.Match.NginxVars)
+			vars, err = t.translateRouteMatchExprs(part.Match.NginxVars)
 			if err != nil {
 				log.Errorw("ApisixRoute with bad nginxVars",
 					zap.Error(err),
@@ -214,7 +215,7 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 	return routes, upstreams, nil
 }
 
-func (t *translator) translateNginxVars(nginxVars []configv2alpha1.ApisixRouteHTTPMatchNginxVar) ([][]apisixv1.StringOrSlice, error) {
+func (t *translator) translateRouteMatchExprs(nginxVars []configv2alpha1.ApisixRouteHTTPMatchExpr) ([][]apisixv1.StringOrSlice, error) {
 	var (
 		vars [][]apisixv1.StringOrSlice
 		op   string
@@ -222,13 +223,33 @@ func (t *translator) translateNginxVars(nginxVars []configv2alpha1.ApisixRouteHT
 	for _, expr := range nginxVars {
 		var (
 			invert bool
+			subj   string
 			this   []apisixv1.StringOrSlice
 		)
-		if expr.Subject == "" {
+		if expr.Subject.Name == "" && expr.Subject.Scope != configv2alpha1.ScopePath {
+			return nil, errors.New("empty subject name")
+		}
+		switch expr.Subject.Scope {
+		case configv2alpha1.ScopeQuery:
+			subj = "arg_" + strings.ToLower(expr.Subject.Name)
+		case configv2alpha1.ScopeHeader:
+			name := strings.ToLower(expr.Subject.Name)
+			name = strings.ReplaceAll(name, "-", "_")
+			subj = "http_" + name
+		case configv2alpha1.ScopeCookie:
+			name := strings.ToLower(expr.Subject.Name)
+			name = strings.ReplaceAll(name, "-", "_")
+			subj = "cookie_" + name
+		case configv2alpha1.ScopePath:
+			subj = "uri"
+		default:
+			return nil, errors.New("bad subject name")
+		}
+		if expr.Subject.Scope == "" {
 			return nil, errors.New("empty nginxVar subject")
 		}
 		this = append(this, apisixv1.StringOrSlice{
-			StrVal: expr.Subject,
+			StrVal: subj,
 		})
 
 		switch expr.Op {
