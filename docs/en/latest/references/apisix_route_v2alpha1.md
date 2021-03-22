@@ -35,11 +35,13 @@ Meaning of each field in the spec of ApisixRoute are followed, the top level fie
 | http[].match.hosts   | array   | A series of hosts that should be matched (oneof) to use this route rule.
 | http[].match.methods | array | A series of HTTP methods(`GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, `OPTIONS`, `CONNECT`, `TRACE`) that should be matched (oneof) to use this route rule.
 | http[].match.remote_addrs   | array      | A series of IP address (CIDR format) that should be matched (oneof) to use this route rule.
-| http[].match.nginxVars          | array   | A series expressions that the results should be matched (oneof) to use this route rule.
-| http[].match.nginxVars[].subject       | string    | Expression subject, which is in [Nginx Variables](http://nginx.org/en/docs/varindex.html) style.
-| http[].match.nginxVars[].op | string | Expression operator, see [Expression Operators](#expression-operators) for the detail of enumerations.
-| http[].match.nginxVars[].value | string | Expected expression result, it's exclusive with `http[].match.nginxVars[].set`.
-| http[].match.nginxVars[].set | array | Expected expression result set, only used when the operator is `In` or `NotIn`, it's exclusive with `http[].match.nginxVars[].value`.
+| http[].match.exprs          | array   | A series expressions that the results should be matched (oneof) to use this route rule.
+| http[].match.exprs[].subject       | object    | Expression subject.
+| http[].match.exprs[].subject.scope       | string    | Specify where to find the subject, values can be `Header`, `Query`, `Cookie` and `Path`.
+| http[].match.exprs[].subject.name       | string    | Specify subject name, when scope is `Path`, this field can be absent.
+| http[].match.exprs[].op | string | Expression operator, see [Expression Operators](#expression-operators) for the detail of enumerations.
+| http[].match.exprs[].value | string | Expected expression result, it's exclusive with `http[].match.exprs[].set`.
+| http[].match.exprs[].set | array | Expected expression result set, only used when the operator is `In` or `NotIn`, it's exclusive with `http[].match.exprs[].value`.
 | http[].backend | object | The backend service. Deprecated: use http[].backends instead.
 | http[].backend.serviceName | string | The backend service name, note the service and ApisixRoute should be created in the same namespace. Cross namespace referencing is not allowed.
 | http[].backend.servicePort | integer or string | The backend service port, can be the port number of the name defined in the service object.
