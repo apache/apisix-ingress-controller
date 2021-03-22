@@ -80,10 +80,15 @@ type ApisixRouteHTTP struct {
 	// Route priority, when multiple routes contains
 	// same URI path (for path matching), route with
 	// higher priority will take effect.
-	Priority int                      `json:"priority,omitempty"`
-	Match    *ApisixRouteHTTPMatch    `json:"match,omitempty"`
-	Backend  *ApisixRouteHTTPBackend  `json:"backend"`
-	Plugins  []*ApisixRouteHTTPPlugin `json:"plugins,omitempty"`
+	Priority int                   `json:"priority,omitempty"`
+	Match    *ApisixRouteHTTPMatch `json:"match,omitempty"`
+	// Deprecated: Backend will be removed in the future, use Backends instead.
+	Backend *ApisixRouteHTTPBackend `json:"backend"`
+	// Backends represents potential backends to proxy after the route
+	// rule matched. When number of backends are more than one, traffic-split
+	// plugin in APISIX will be used to split traffic based on the backend weight.
+	Backends []*ApisixRouteHTTPBackend `json:"backends"`
+	Plugins  []*ApisixRouteHTTPPlugin  `json:"plugins,omitempty"`
 }
 
 // ApisixRouteHTTPMatch represents the match condition for hitting this route.
@@ -157,6 +162,8 @@ type ApisixRouteHTTPBackend struct {
 	// wise, the service ClusterIP or ExternalIP will be used,
 	// default is endpoints.
 	ResolveGranularity string `json:"resolveGranularity"`
+	// Weight of this backend.
+	Weight int `json:"weight"`
 }
 
 // ApisixRouteHTTPPlugin represents an APISIX plugin.

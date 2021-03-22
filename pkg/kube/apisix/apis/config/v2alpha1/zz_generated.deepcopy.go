@@ -68,6 +68,17 @@ func (in *ApisixRouteHTTP) DeepCopyInto(out *ApisixRouteHTTP) {
 		*out = new(ApisixRouteHTTPBackend)
 		**out = **in
 	}
+	if in.Backends != nil {
+		in, out := &in.Backends, &out.Backends
+		*out = make([]*ApisixRouteHTTPBackend, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(ApisixRouteHTTPBackend)
+				**out = **in
+			}
+		}
+	}
 	if in.Plugins != nil {
 		in, out := &in.Plugins, &out.Plugins
 		*out = make([]*ApisixRouteHTTPPlugin, len(*in))

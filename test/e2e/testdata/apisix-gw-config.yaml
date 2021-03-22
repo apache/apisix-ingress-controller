@@ -161,6 +161,7 @@ plugins:                          # plugin list
   - proxy-mirror
   - request-id
   - hmac-auth
+  - traffic-split
 
 stream_plugins:
   - mqtt-proxy

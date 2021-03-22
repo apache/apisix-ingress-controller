@@ -42,10 +42,15 @@ Meaning of each field in the spec of ApisixRoute are followed, the top level fie
 | http[].match.exprs[].op | string | Expression operator, see [Expression Operators](#expression-operators) for the detail of enumerations.
 | http[].match.exprs[].value | string | Expected expression result, it's exclusive with `http[].match.exprs[].set`.
 | http[].match.exprs[].set | array | Expected expression result set, only used when the operator is `In` or `NotIn`, it's exclusive with `http[].match.exprs[].value`.
-| http[].backend | object | The backend service
+| http[].backend | object | The backend service. Deprecated: use http[].backends instead.
 | http[].backend.serviceName | string | The backend service name, note the service and ApisixRoute should be created in the same namespace. Cross namespace referencing is not allowed.
 | http[].backend.servicePort | integer or string | The backend service port, can be the port number of the name defined in the service object.
 | http[].backend.resolveGranualrity | string | See [Service Resolve Granularity](#service-resolve-granularity) for the details.
+| http[].backends | object | The backend services. When the number of backends more than one, weight based traffic split policy will be applied to shifting traffic between these backends.
+| http[].backends[].serviceName | string | The backend service name, note the service and ApisixRoute should be created in the same namespace. Cross namespace referencing is not allowed.
+| http[].backends[].servicePort | integer or string | The backend service port, can be the port number of the name defined in the service object.
+| http[].backends[].resolveGranualrity | string | See [Service Resolve Granularity](#service-resolve-granularity) for the details.
+| http[].backends[].weight | int | The backend weight, which is critical when shifting traffic between multiple backends, default is `100`. Weight is ignored when there is only one backend.
 | http[].plugins | array | A series of APISIX plugins that will be executed once this route rule is matched |
 | http[].plugins[].name | string | The plugin name, see [docs](http://apisix.apache.org/docs/apisix/getting-started) for learning the available plugins.
 | http[].plugins[].enable | boolean | Whether the plugin is in use |
