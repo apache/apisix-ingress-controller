@@ -167,6 +167,12 @@ spec:
           - /*
         methods:
           - GET
+        exprs:
+          - subject:
+              scope: Header
+              name: User-Agent
+            op: RegexMatch
+            value: ".*Chrome.*"
       backends:
         - serviceName: foo
           servicePort: 80
@@ -176,8 +182,8 @@ spec:
           weight: 50
 ```
 
-The above `ApisixRoute` has one route rule, which contains two backends `foo` and `bar`, the
-weight ratio is `100:50`, which means `2/3` requests will be sent to service `foo` and `1/3` requests
+The above `ApisixRoute` has one route rule, which contains two backends `foo` and `bar`, the weight ratio is `100:50`,
+which means `2/3` requests (with `GET` method and `User-Agent` matching regex pattern `.*Chrome.*`) will be sent to service `foo` and `1/3` requests
 will be proxied to serivce `bar`.
 
 Plugins
