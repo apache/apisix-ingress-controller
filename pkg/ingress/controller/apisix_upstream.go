@@ -16,6 +16,7 @@ package controller
 
 import (
 	"context"
+	"time"
 
 	"go.uber.org/zap"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,7 +39,7 @@ type apisixUpstreamController struct {
 func (c *Controller) newApisixUpstreamController() *apisixUpstreamController {
 	ctl := &apisixUpstreamController{
 		controller: c,
-		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ApisixUpstream"),
+		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixUpstream"),
 		workers:    1,
 	}
 

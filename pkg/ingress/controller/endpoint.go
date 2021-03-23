@@ -16,6 +16,7 @@ package controller
 
 import (
 	"context"
+	"time"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -45,7 +46,7 @@ type endpointsController struct {
 func (c *Controller) newEndpointsController() *endpointsController {
 	ctl := &endpointsController{
 		controller: c,
-		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpoints"),
+		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "endpoints"),
 		workers:    1,
 	}
 
