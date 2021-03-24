@@ -179,15 +179,11 @@ func (c *apisixUpstreamController) handleSyncErr(obj interface{}, err error) {
 		c.workqueue.Forget(obj)
 		return
 	}
-	if c.workqueue.NumRequeues(obj) < _maxRetries {
-		log.Infow("sync ApisixUpstream failed, will retry",
-			zap.Any("object", obj),
-		)
-		c.workqueue.AddRateLimited(obj)
-	} else {
-		c.workqueue.Forget(obj)
-		log.Warnf("drop ApisixUpstream %+v out of the queue", obj)
-	}
+	log.Warnw("sync ApisixUpstream failed, will retry",
+		zap.Any("object", obj),
+		zap.Error(err),
+	)
+	c.workqueue.AddRateLimited(obj)
 }
 
 func (c *apisixUpstreamController) onAdd(obj interface{}) {

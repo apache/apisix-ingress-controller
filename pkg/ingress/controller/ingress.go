@@ -202,15 +202,11 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 		c.workqueue.Forget(obj)
 		return
 	}
-	if c.workqueue.NumRequeues(obj) < _maxRetries {
-		log.Infow("sync ingress failed, will retry",
-			zap.Any("object", obj),
-		)
-		c.workqueue.AddRateLimited(obj)
-	} else {
-		c.workqueue.Forget(obj)
-		log.Warnf("drop ingress %+v out of the queue", obj)
-	}
+	log.Warnw("sync ingress failed, will retry",
+		zap.Any("object", obj),
+		zap.Error(err),
+	)
+	c.workqueue.AddRateLimited(obj)
 }
 
 func (c *ingressController) onAdd(obj interface{}) {

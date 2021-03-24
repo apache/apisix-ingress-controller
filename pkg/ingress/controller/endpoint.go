@@ -32,11 +32,6 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-const (
-	// maxRetries is the number of times an object will be retried before it is dropped out of the queue.
-	_maxRetries = 10
-)
-
 type endpointsController struct {
 	controller *Controller
 	workqueue  workqueue.RateLimitingInterface
@@ -180,15 +175,10 @@ func (c *endpointsController) handleSyncErr(obj interface{}, err error) {
 		c.workqueue.Forget(obj)
 		return
 	}
-	if c.workqueue.NumRequeues(obj) < _maxRetries {
-		log.Infow("sync endpoints failed, will retry",
-			zap.Any("object", obj),
-		)
-		c.workqueue.AddRateLimited(obj)
-	} else {
-		c.workqueue.Forget(obj)
-		log.Warnf("drop endpoints %+v out of the queue", obj)
-	}
+	log.Warnw("sync endpoints failed, will retry",
+		zap.Any("object", obj),
+	)
+	c.workqueue.AddRateLimited(obj)
 }
 
 func (c *endpointsController) onAdd(obj interface{}) {
