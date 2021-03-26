@@ -75,13 +75,20 @@ type Controller struct {
 	svcLister              listerscorev1.ServiceLister
 	ingressLister          kube.IngressLister
 	ingressInformer        cache.SharedIndexInformer
+	secretInformer         cache.SharedIndexInformer
+	secretLister           listerscorev1.SecretLister
 	apisixUpstreamInformer cache.SharedIndexInformer
 	apisixUpstreamLister   listersv1.ApisixUpstreamLister
+	apisixRouteLister      kube.ApisixRouteLister
+	apisixRouteInformer    cache.SharedIndexInformer
 
 	// resource controllers
-	endpointsController      *endpointsController
-	ingressController        *ingressController
+	endpointsController *endpointsController
+	ingressController   *ingressController
+	secretController    *secretController
+
 	apisixUpstreamController *apisixUpstreamController
+	apisixRouteController    *apisixRouteController
 }
 
 // NewController creates an ingress apisix controller object.
@@ -110,8 +117,9 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	sharedInformerFactory := externalversions.NewSharedInformerFactory(crdClientset, cfg.Kubernetes.ResyncInterval.Duration)
 
 	var (
-		watchingNamespace map[string]struct{}
-		ingressInformer   cache.SharedIndexInformer
+		watchingNamespace   map[string]struct{}
+		ingressInformer     cache.SharedIndexInformer
+		apisixRouteInformer cache.SharedIndexInformer
 	)
 	if len(cfg.Kubernetes.AppNamespaces) > 1 || cfg.Kubernetes.AppNamespaces[0] != v1.NamespaceAll {
 		watchingNamespace = make(map[string]struct{}, len(cfg.Kubernetes.AppNamespaces))
@@ -123,11 +131,18 @@ func NewController(cfg *config.Config) (*Controller, error) {
 
 	ingressLister := kube.NewIngressLister(kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Lister(),
 		kube.CoreSharedInformerFactory.Networking().V1beta1().Ingresses().Lister())
+	apisixRouteLister := kube.NewApisixRouteLister(sharedInformerFactory.Apisix().V1().ApisixRoutes().Lister(),
+		sharedInformerFactory.Apisix().V2alpha1().ApisixRoutes().Lister())
 
 	if cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1 {
 		ingressInformer = kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Informer()
 	} else {
-		ingressInformer = kube.CoreSharedInformerFactory.Extensions().V1beta1().Ingresses().Informer()
+		ingressInformer = kube.CoreSharedInformerFactory.Networking().V1beta1().Ingresses().Informer()
+	}
+	if cfg.Kubernetes.ApisixRouteVersion == config.ApisixRouteV2alpha1 {
+		apisixRouteInformer = sharedInformerFactory.Apisix().V2alpha1().ApisixRoutes().Informer()
+	} else {
+		apisixRouteInformer = sharedInformerFactory.Apisix().V1().ApisixRoutes().Informer()
 	}
 
 	c := &Controller{
@@ -148,6 +163,10 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		svcLister:              kube.CoreSharedInformerFactory.Core().V1().Services().Lister(),
 		ingressLister:          ingressLister,
 		ingressInformer:        ingressInformer,
+		secretInformer:         kube.CoreSharedInformerFactory.Core().V1().Secrets().Informer(),
+		secretLister:           kube.CoreSharedInformerFactory.Core().V1().Secrets().Lister(),
+		apisixRouteInformer:    apisixRouteInformer,
+		apisixRouteLister:      apisixRouteLister,
 		apisixUpstreamInformer: sharedInformerFactory.Apisix().V1().ApisixUpstreams().Informer(),
 		apisixUpstreamLister:   sharedInformerFactory.Apisix().V1().ApisixUpstreams().Lister(),
 	}
@@ -159,7 +178,9 @@ func NewController(cfg *config.Config) (*Controller, error) {
 
 	c.endpointsController = c.newEndpointsController()
 	c.apisixUpstreamController = c.newApisixUpstreamController()
+	c.apisixRouteController = c.newApisixRouteController()
 	c.ingressController = c.newIngressController()
+	c.secretController = c.newSecretController()
 
 	return c, nil
 }
@@ -260,7 +281,7 @@ func (c *Controller) run(ctx context.Context) {
 		AdminKey: c.cfg.APISIX.AdminKey,
 		BaseURL:  c.cfg.APISIX.BaseURL,
 	})
-	if err != nil {
+	if err != nil && err != apisix.ErrDuplicatedCluster {
 		// TODO give up the leader role.
 		log.Errorf("failed to add default cluster: %s", err)
 		return
@@ -290,6 +311,15 @@ func (c *Controller) run(ctx context.Context) {
 	c.goAttach(func() {
 		c.ingressController.run(ctx)
 	})
+	c.goAttach(func() {
+		c.apisixRouteController.run(ctx)
+	})
+	c.goAttach(func() {
+		c.secretInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
+		c.secretController.run(ctx)
+	})
 
 	ac := &Api6Controller{
 		KubeClientSet:             c.clientset,
@@ -299,8 +329,6 @@ func (c *Controller) run(ctx context.Context) {
 		Stop:                      ctx.Done(),
 	}
 
-	// ApisixRoute
-	ac.ApisixRoute(c)
 	// ApisixTLS
 	ac.ApisixTLS(c)
 
@@ -336,17 +364,6 @@ type Api6Controller struct {
 	SharedInformerFactory     externalversions.SharedInformerFactory
 	CoreSharedInformerFactory informers.SharedInformerFactory
 	Stop                      <-chan struct{}
-}
-
-func (api6 *Api6Controller) ApisixRoute(controller *Controller) {
-	arc := BuildApisixRouteController(
-		api6.KubeClientSet,
-		api6.Api6ClientSet,
-		api6.SharedInformerFactory.Apisix().V1().ApisixRoutes(),
-		controller)
-	if err := arc.Run(api6.Stop); err != nil {
-		log.Errorf("failed to run ApisixRouteController: %s", err)
-	}
 }
 
 func (api6 *Api6Controller) ApisixTLS(controller *Controller) {

@@ -28,6 +28,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/testing"
@@ -46,6 +47,7 @@ type Options struct {
 	APISIXDefaultConfigPath string
 	IngressAPISIXReplicas   int
 	HTTPBinServicePort      int
+	APISIXRouteVersion      string
 }
 
 type Scaffold struct {
@@ -86,6 +88,9 @@ func GetKubeconfig() string {
 
 // NewScaffold creates an e2e test scaffold.
 func NewScaffold(o *Options) *Scaffold {
+	if o.APISIXRouteVersion == "" {
+		o.APISIXRouteVersion = kube.ApisixRouteV1
+	}
 	defer ginkgo.GinkgoRecover()
 
 	s := &Scaffold{
@@ -108,6 +113,7 @@ func NewDefaultScaffold() *Scaffold {
 		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
 		IngressAPISIXReplicas:   1,
 		HTTPBinServicePort:      80,
+		APISIXRouteVersion:      kube.ApisixRouteV1,
 	}
 	return NewScaffold(opts)
 }

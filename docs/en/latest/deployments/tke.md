@@ -39,7 +39,6 @@ This document explains how to install Ingress APISIX on [Tencent TKE](https://cl
 cd /path/to/apisix-helm-chart
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo add apisix https://charts.apiseven.com
-helm search repo apisix
 helm repo update
 helm install apisix apisix/apisix \
   --set gateway.type=LoadBalancer \
@@ -68,7 +67,7 @@ You can also install apisix-ingress-controller by Helm Charts, it's recommended 
 ```shell
 cd /path/to/apisix-helm-chart
 # install apisix-ingress-controller
-helm install apisix-ingress-controller ./charts/apisix-ingress-controller \
+helm install apisix-ingress-controller apisix/apisix-ingress-controller \
   --set image.tag=dev \
   --set config.apisix.baseURL=http://apisix-admin:9180/apisix/admin \
   --set config.apisix.adminKey=edd1c9f034335f136f87ad84b625c8f1 \
@@ -79,4 +78,4 @@ Change the `image.tag` to the apisix-ingress-controller version that you desire.
 
 Now open your [TKE console](https://console.cloud.tencent.com/tke2/overview), choosing your cluster and clicking the Workloads tag, you'll see all pods of Apache APISIX, etcd and apisix-ingress-controller are ready.
 
-Try to create some [resources](../CRD-specification.md) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../samples/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
+Try to create some [resources](../CRD-specification.md) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../practices/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.

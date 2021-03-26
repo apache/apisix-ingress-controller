@@ -17,6 +17,7 @@ package v1
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"strconv"
 	"time"
 )
@@ -81,15 +82,52 @@ type Metadata struct {
 type Route struct {
 	Metadata `json:",inline" yaml:",inline"`
 
-	Host         string   `json:"host,omitempty" yaml:"host,omitempty"`
-	Path         string   `json:"path,omitempty" yaml:"path,omitempty"`
-	Uris         []string `json:"uris,omitempty" yaml:"uris,omitempty"`
-	Methods      []string `json:"methods,omitempty" yaml:"methods,omitempty"`
-	ServiceId    string   `json:"service_id,omitempty" yaml:"service_id,omitempty"`
-	ServiceName  string   `json:"service_name,omitempty" yaml:"service_name,omitempty"`
-	UpstreamId   string   `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
-	UpstreamName string   `json:"upstream_name,omitempty" yaml:"upstream_name,omitempty"`
-	Plugins      Plugins  `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Host         string            `json:"host,omitempty" yaml:"host,omitempty"`
+	Hosts        []string          `json:"hosts,omitempty" yaml:"hosts,omitempty"`
+	Path         string            `json:"path,omitempty" yaml:"path,omitempty"`
+	Priority     int               `json:"priority,omitempty" yaml:"priority,omitempty"`
+	Vars         [][]StringOrSlice `json:"vars,omitempty" yaml:"vars,omitempty"`
+	Uris         []string          `json:"uris,omitempty" yaml:"uris,omitempty"`
+	Methods      []string          `json:"methods,omitempty" yaml:"methods,omitempty"`
+	ServiceId    string            `json:"service_id,omitempty" yaml:"service_id,omitempty"`
+	ServiceName  string            `json:"service_name,omitempty" yaml:"service_name,omitempty"`
+	UpstreamId   string            `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
+	UpstreamName string            `json:"upstream_name,omitempty" yaml:"upstream_name,omitempty"`
+	Plugins      Plugins           `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+}
+
+// TODO Do not use interface{} to avoid the reflection overheads.
+// +k8s:deepcopy-gen=true
+type StringOrSlice struct {
+	StrVal   string   `json:"-"`
+	SliceVal []string `json:"-"`
+}
+
+func (s *StringOrSlice) MarshalJSON() ([]byte, error) {
+	var (
+		p   []byte
+		err error
+	)
+	if s.SliceVal != nil {
+		p, err = json.Marshal(s.SliceVal)
+	} else {
+		p, err = json.Marshal(s.StrVal)
+	}
+	return p, err
+}
+
+func (s *StringOrSlice) UnmarshalJSON(p []byte) error {
+	var err error
+
+	if len(p) == 0 {
+		return errors.New("empty object")
+	}
+	if p[0] == '[' {
+		err = json.Unmarshal(p, &s.SliceVal)
+	} else {
+		err = json.Unmarshal(p, &s.StrVal)
+	}
+	return err
 }
 
 type Plugins map[string]interface{}
@@ -236,6 +274,24 @@ type Ssl struct {
 	Group    string   `json:"group,omitempty" yaml:"group,omitempty"`
 }
 
+// TrafficSplitConfig is the config of traffic-split plugin.
+// +k8s:deepcopy-gen=true
+type TrafficSplitConfig struct {
+	Rules []TrafficSplitConfigRule `json:"rules"`
+}
+
+// TrafficSplitConfigRule is the rule config in traffic-split plugin config.
+type TrafficSplitConfigRule struct {
+	WeightedUpstreams []TrafficSplitConfigRuleWeightedUpstream `json:"weighted_upstreams"`
+}
+
+// TrafficSplitConfigRuleWeightedUpstream is the weighted upstream config in
+// the traffic split plugin rule.
+type TrafficSplitConfigRuleWeightedUpstream struct {
+	UpstreamID string `json:"upstream_id,omitempty"`
+	Weight     int    `json:"weight"`
+}
+
 // NewDefaultUpstream returns an empty Upstream with default values.
 func NewDefaultUpstream() *Upstream {
 	return &Upstream{
@@ -261,6 +317,23 @@ func ComposeUpstreamName(namespace, name string, port int32) string {
 	buf.WriteString(name)
 	buf.WriteByte('_')
 	buf.WriteString(pstr)
+
+	return buf.String()
+}
+
+// ComposeRouteName uses namespace, name and rule name to compose
+// the route name.
+func ComposeRouteName(namespace, name string, rule string) string {
+	// FIXME Use sync.Pool to reuse this buffer if the upstream
+	// name composing code path is hot.
+	p := make([]byte, 0, len(namespace)+len(name)+len(rule)+2)
+	buf := bytes.NewBuffer(p)
+
+	buf.WriteString(namespace)
+	buf.WriteByte('_')
+	buf.WriteString(name)
+	buf.WriteByte('_')
+	buf.WriteString(rule)
 
 	return buf.String()
 }

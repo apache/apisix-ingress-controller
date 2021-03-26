@@ -24,6 +24,9 @@ spec:
   versions:
     - name: v1
       served: true
+      storage: false
+    - name: v2alpha1
+      served: true
       storage: true
   scope: Namespaced
   names:

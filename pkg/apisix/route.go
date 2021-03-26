@@ -29,13 +29,14 @@ import (
 )
 
 type routeReqBody struct {
-	Desc       string     `json:"desc,omitempty"`
-	URI        string     `json:"uri,omitempty"`
-	Uris       []string   `json:"uris,omitempty"`
-	Host       string     `json:"host,omitempty"`
-	ServiceId  string     `json:"service_id,omitempty"`
-	UpstreamId string     `json:"upstream_id,omitempty"`
-	Plugins    v1.Plugins `json:"plugins,omitempty"`
+	Desc       string               `json:"desc,omitempty"`
+	URI        string               `json:"uri,omitempty"`
+	Uris       []string             `json:"uris,omitempty"`
+	Vars       [][]v1.StringOrSlice `json:"vars,omitempty"`
+	Host       string               `json:"host,omitempty"`
+	ServiceId  string               `json:"service_id,omitempty"`
+	UpstreamId string               `json:"upstream_id,omitempty"`
+	Plugins    v1.Plugins           `json:"plugins,omitempty"`
 }
 
 type routeClient struct {
@@ -165,6 +166,7 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		UpstreamId: obj.UpstreamId,
 		Uris:       obj.Uris,
 		Plugins:    obj.Plugins,
+		Vars:       obj.Vars,
 	})
 	if err != nil {
 		return nil, err
@@ -230,6 +232,7 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		URI:       obj.Path,
 		ServiceId: obj.ServiceId,
 		Plugins:   obj.Plugins,
+		Vars:      obj.Vars,
 	})
 	if err != nil {
 		return nil, err

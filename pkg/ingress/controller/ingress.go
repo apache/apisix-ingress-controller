@@ -87,6 +87,7 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(ingEv.Key)
 	if err != nil {
 		log.Errorf("found ingress resource with invalid meta namespace key %s: %s", ingEv.Key, err)
+		return err
 	}
 
 	var ing kube.Ingress
@@ -164,7 +165,7 @@ func (c *ingressController) syncToCluster(ctx context.Context, clusterName strin
 	}
 	for _, u := range upstreams {
 		old, err := c.controller.apisix.Cluster(clusterName).Upstream().Get(ctx, u.FullName)
-		if err == nil && err != apisixcache.ErrNotFound {
+		if err != nil && err != apisixcache.ErrNotFound {
 			return err
 		}
 		if old == nil {
@@ -179,7 +180,7 @@ func (c *ingressController) syncToCluster(ctx context.Context, clusterName strin
 	}
 	for _, r := range routes {
 		old, err := c.controller.apisix.Cluster(clusterName).Route().Get(ctx, r.FullName)
-		if err == nil && err != apisixcache.ErrNotFound {
+		if err != nil && err != apisixcache.ErrNotFound {
 			return err
 		}
 		if old == nil {

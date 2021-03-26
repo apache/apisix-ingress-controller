@@ -35,40 +35,40 @@ type ApisixRoute struct {
 
 // ApisixRouteSpec is the spec definition for ApisixRouteSpec.
 type ApisixRouteSpec struct {
-	Rules []Rule `json:"rules,omitempty"`
+	Rules []Rule `json:"rules,omitempty" yaml:"rules,omitempty"`
 }
 
 // Rule represents a single route rule in ApisixRoute.
 type Rule struct {
-	Host string `json:"host,omitempty"`
-	Http Http   `json:"http,omitempty"`
+	Host string `json:"host,omitempty" yaml:"host,omitempty"`
+	Http Http   `json:"http,omitempty" yaml:"http,omitempty"`
 }
 
 // Http represents all route rules in HTTP scope.
 type Http struct {
-	Paths []Path `json:"paths,omitempty"`
+	Paths []Path `json:"paths,omitempty" yaml:"paths,omitempty"`
 }
 
 // Path defines an URI based route rule.
 type Path struct {
-	Path    string   `json:"path,omitempty"`
-	Backend Backend  `json:"backend,omitempty"`
-	Plugins []Plugin `json:"plugins,omitempty"`
+	Path    string   `json:"path,omitempty" yaml:"path,omitempty"`
+	Backend Backend  `json:"backend,omitempty" yaml:"backend,omitempty"`
+	Plugins []Plugin `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 // Backend defines an upstream, it should be an existing Kubernetes Service.
 // Note the Service should be in the same namespace with ApisixRoute resource,
 // i.e. cross namespacing is not allowed.
 type Backend struct {
-	ServiceName string `json:"serviceName,omitempty"`
-	ServicePort int    `json:"servicePort,omitempty"`
+	ServiceName string `json:"serviceName,omitempty" yaml:"serviceName,omitempty"`
+	ServicePort int    `json:"servicePort,omitempty" yaml:"servicePort,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ApisixRouteList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-	Items           []ApisixRoute `json:"items,omitempty"`
+	metav1.TypeMeta `json:",inline" yaml:",inline"`
+	metav1.ListMeta `json:"metadata" yaml:"metadata"`
+	Items           []ApisixRoute `json:"items,omitempty" yaml:"items,omitempty"`
 }
 
 // +genclient
@@ -208,16 +208,16 @@ type PassiveHealthCheckUnhealthy struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ApisixUpstreamList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-	Items           []ApisixUpstream `json:"items,omitempty"`
+	metav1.TypeMeta `json:",inline" yaml:",inline"`
+	metav1.ListMeta `json:"metadata" yaml:"metadata"`
+	Items           []ApisixUpstream `json:"items,omitempty" yaml:"items,omitempty"`
 }
 
 type Plugin struct {
-	Name      string    `json:"name,omitempty"`
-	Enable    bool      `json:"enable,omitempty"`
-	Config    Config    `json:"config,omitempty"`
-	ConfigSet ConfigSet `json:"config_set,omitempty"`
+	Name      string    `json:"name,omitempty" yaml:"name,omitempty"`
+	Enable    bool      `json:"enable,omitempty" yaml:"enable,omitempty"`
+	Config    Config    `json:"config,omitempty" yaml:"config,omitempty"`
+	ConfigSet ConfigSet `json:"config_set,omitempty" yaml:"config_set,omitempty"`
 }
 
 type ConfigSet []interface{}
@@ -265,19 +265,19 @@ type ApisixTls struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ApisixTlsList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-	Items           []ApisixTls `json:"items,omitempty"`
+	metav1.TypeMeta `json:",inline" yaml:",inline"`
+	metav1.ListMeta `json:"metadata" yaml:"metadata"`
+	Items           []ApisixTls `json:"items,omitempty" yaml:"items,omitempty"`
 }
 
 // ApisixTlsSpec is the specification of ApisixSSL.
 type ApisixTlsSpec struct {
-	Hosts  []string     `json:"hosts,omitempty"`
-	Secret ApisixSecret `json:"secret,omitempty"`
+	Hosts  []string     `json:"hosts,omitempty" yaml:"hosts,omitempty"`
+	Secret ApisixSecret `json:"secret,omitempty" yaml:"secret,omitempty"`
 }
 
 // ApisixSecret describes the Kubernetes Secret name and namespace.
 type ApisixSecret struct {
-	Name      string `json:"name,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
+	Name      string `json:"name,omitempty" yaml:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
 }

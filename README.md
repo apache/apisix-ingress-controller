@@ -23,13 +23,13 @@
 
 Use [Apache APISIX](https://github.com/apache/apisix#apache-apisix) for Kubernetes [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/).
 
-All configurations in `apisix-ingress-controller` are defined with Kubernetes CRDs (Custom Resource Definitions). Such as configure [plugins](https://github.com/apache/apisix/tree/master/doc/plugins), Support service registration discovery mechanism for upstreams, load balancing and more in Apache APISIX.
+All configurations in `apisix-ingress-controller` are defined with Kubernetes CRDs (Custom Resource Definitions). Such as configure [plugins](https://github.com/apache/apisix/blob/master/docs/en/latest/plugins.md), Support service registration discovery mechanism for upstreams, load balancing and more in Apache APISIX.
 
 `apisix-ingress-controller` is an Apache APISIX control plane component. Currently it serves for Kubernetes clusters. In the future, we plan to separate the submodule to adapt to more deployment modes, such as virtual machine clusters.
 
 The technical architecture of `apisix-ingress-controller`:
 
-<img src="./docs/assets/images/module-0.png" alt="Architecture" width="600" height="313" />
+<img src="./docs/assets/images/module-0.png" alt="Architecture" width="743" height="559" />
 
 ## Status
 
@@ -40,48 +40,20 @@ This project is currently considered experimental.
 * Declarative configuration for Apache APISIX with Custom Resource Definitions(CRDs), using k8s yaml struct with minimum learning curve.
 * Hot-reload during yaml apply.
 * Native Kubernetes Ingress (both `v1` and `v1beta1`) support.
-* Auto register k8s endpoint to upstream(Apache APISIX) node.
+* Auto register k8s endpoint to upstream (Apache APISIX) node.
 * Out of box support for node health check.
 * Support load balancing based on pod (upstream nodes).
 * Plug-in extension supports hot configuration and immediate effect.
 * Ingress controller itself as a pluggable hot-reload component.
 * Multi-cluster configuration distribution.
 
-## Modules
+## Internal Architecture
 
-<img src="./docs/assets/images/module-1.png" alt="module" width="600" height="313" />
+<img src="./docs/assets/images/apisix-ingress-controller-arch.png" alt="module" width="600" height="313" />
 
-### 1. `Ingress types` Submodule
+## Prerequisites
 
-- Define the CRD(CustomResourceDefinition) needed by Apache APISIX
-
-- Currently supports ApisixRoute/ApisixUpstream，and other service and route level plugins.
-
-- Can be packaged as a stand-alone binary, keep in sync with the ingress definition.
-
-- [CRD design](https://github.com/apache/apisix-ingress-controller/issues/3)
-
-### 2. `APISIX types` Submodule
-
-- Define interface objects to match concepts from Apache APISIX like route, service, upstream, and plugin.
-
-- Can be a packaged as a stand-alone binary, need to match with compatible Apache APISIX version.
-
-- Add new types to this module to support new features.
-
-### 3. `Seven` submodule
-
-- Contain main application logic.
-
-- Sync the k8s cluster states to Apache APISIX, based on Apisix-types object.
-
-### 4.`Ingress-controller` Submodule
-
-- Driver process for ingress controller, watches k8s apiserver.
-
-- Match and covert Apisix-ingress-types to Apisix-types before handing the control over to the above module `seven`.
-
-Get more [implementation details](./docs/en/latest/design.md).
+Apisix ingress controller requires Kubernetes version 1.14+.
 
 ## Get started
 
@@ -97,7 +69,7 @@ Get more [implementation details](./docs/en/latest/design.md).
 
 ## Documents
 
-* [Usage](./docs/en/latest/usage.md)
+* [Get Started](./docs/en/latest/getting-started.md)
 * [SDK doc](./docs/en/latest/development.md)
 * [Design introduction](./docs/en/latest/design.md)
 
