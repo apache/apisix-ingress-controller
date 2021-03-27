@@ -161,7 +161,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.FDescribe("support ingress.extensions/v1beta1", func() {
+var _ = ginkgo.Describe("support ingress.extensions/v1beta1", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("path exact match", func() {
