@@ -160,3 +160,69 @@ spec:
 		_ = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
 	})
 })
+
+var _ = ginkgo.Describe("support ingress.extensions/v1beta1", func() {
+	s := scaffold.NewDefaultScaffold()
+
+	ginkgo.It("path exact match", func() {
+		backendSvc, backendPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+  name: ingress-ext-v1beta1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          serviceName: %s
+          servicePort: %d
+`, backendSvc, backendPort[0])
+		err := s.CreateResourceFromString(ing)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		time.Sleep(5 * time.Second)
+
+		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+		// Exact path, doesn't match /ip/aha
+		_ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
+		// Mismatched host
+		_ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
+	})
+
+	ginkgo.It("path prefix match", func() {
+		backendSvc, backendPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+  name: ingress-v1beta1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /status
+        pathType: Prefix
+        backend:
+          serviceName: %s
+          servicePort: %d
+`, backendSvc, backendPort[0])
+		err := s.CreateResourceFromString(ing)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		time.Sleep(5 * time.Second)
+
+		_ = s.NewAPISIXClient().GET("/status/500").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusInternalServerError)
+		_ = s.NewAPISIXClient().GET("/status/504").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusGatewayTimeout)
+		_ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
+		// Mismatched host
+		_ = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
+	})
+})

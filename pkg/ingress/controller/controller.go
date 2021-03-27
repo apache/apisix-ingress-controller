@@ -129,15 +129,20 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	}
 	kube.EndpointsInformer = kube.CoreSharedInformerFactory.Core().V1().Endpoints()
 
-	ingressLister := kube.NewIngressLister(kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Lister(),
-		kube.CoreSharedInformerFactory.Networking().V1beta1().Ingresses().Lister())
+	ingressLister := kube.NewIngressLister(
+		kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Lister(),
+		kube.CoreSharedInformerFactory.Networking().V1beta1().Ingresses().Lister(),
+		kube.CoreSharedInformerFactory.Extensions().V1beta1().Ingresses().Lister(),
+	)
 	apisixRouteLister := kube.NewApisixRouteLister(sharedInformerFactory.Apisix().V1().ApisixRoutes().Lister(),
 		sharedInformerFactory.Apisix().V2alpha1().ApisixRoutes().Lister())
 
 	if cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1 {
 		ingressInformer = kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Informer()
-	} else {
+	} else if cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1beta1 {
 		ingressInformer = kube.CoreSharedInformerFactory.Networking().V1beta1().Ingresses().Informer()
+	} else {
+		ingressInformer = kube.CoreSharedInformerFactory.Extensions().V1beta1().Ingresses().Informer()
 	}
 	if cfg.Kubernetes.ApisixRouteVersion == config.ApisixRouteV2alpha1 {
 		apisixRouteInformer = sharedInformerFactory.Apisix().V2alpha1().ApisixRoutes().Informer()

@@ -42,6 +42,10 @@ const (
 	IngressNetworkingV1 = "networking/v1"
 	// IngressNetworkingV1beta1 represents ingress.networking/v1beta1
 	IngressNetworkingV1beta1 = "networking/v1beta1"
+	// IngressExtensionsV1beta1 represents ingress.extensions/v1beta1
+	// WARNING: ingress.extensions/v1beta1 is deprecated in v1.14+, and will be unavilable
+	// in v1.22.
+	IngressExtensionsV1beta1 = "extensions/v1beta1"
 	// ApisixRouteV1 represents apisixroute.apisix.apache.org/v1
 	ApisixRouteV1 = "apisix.apache.org/v1"
 	// ApisixRouteV2alpha1 represents apisixroute.apisix.apache.org/v2alpha1
@@ -129,7 +133,10 @@ func (cfg *Config) Validate() error {
 	if cfg.APISIX.BaseURL == "" {
 		return errors.New("apisix base url is required")
 	}
-	if cfg.Kubernetes.IngressVersion != IngressNetworkingV1 && cfg.Kubernetes.IngressVersion != IngressNetworkingV1beta1 {
+	switch cfg.Kubernetes.IngressVersion {
+	case IngressNetworkingV1, IngressNetworkingV1beta1, IngressExtensionsV1beta1:
+		break
+	default:
 		return errors.New("unsupported ingress version")
 	}
 	cfg.Kubernetes.AppNamespaces = purifyAppNamespaces(cfg.Kubernetes.AppNamespaces)
