@@ -139,8 +139,10 @@ func NewController(cfg *config.Config) (*Controller, error) {
 
 	if cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1 {
 		ingressInformer = kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Informer()
-	} else {
+	} else if cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1beta1 {
 		ingressInformer = kube.CoreSharedInformerFactory.Networking().V1beta1().Ingresses().Informer()
+	} else {
+		ingressInformer = kube.CoreSharedInformerFactory.Extensions().V1beta1().Ingresses().Informer()
 	}
 	if cfg.Kubernetes.ApisixRouteVersion == config.ApisixRouteV2alpha1 {
 		apisixRouteInformer = sharedInformerFactory.Apisix().V2alpha1().ApisixRoutes().Informer()
