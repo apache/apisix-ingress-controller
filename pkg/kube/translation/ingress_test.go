@@ -18,6 +18,7 @@ import (
 	"context"
 	"testing"
 
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 
 	"github.com/stretchr/testify/assert"
@@ -535,4 +536,192 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	assert.Equal(t, upstreams[1].Nodes[0].IP, "192.168.1.1")
 	assert.Equal(t, upstreams[1].Nodes[1].Port, 9443)
 	assert.Equal(t, upstreams[1].Nodes[1].IP, "192.168.1.2")
+}
+
+func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
+	prefix := extensionsv1beta1.PathTypePrefix
+	// no backend.
+	ing := &extensionsv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
+		},
+		Spec: extensionsv1beta1.IngressSpec{
+			Rules: []extensionsv1beta1.IngressRule{
+				{
+					Host: "apisix.apache.org",
+					IngressRuleValue: extensionsv1beta1.IngressRuleValue{
+						HTTP: &extensionsv1beta1.HTTPIngressRuleValue{
+							Paths: []extensionsv1beta1.HTTPIngressPath{
+								{
+									Path:     "/foo",
+									PathType: &prefix,
+									Backend: extensionsv1beta1.IngressBackend{
+										ServiceName: "test-service",
+										ServicePort: intstr.IntOrString{
+											Type:   intstr.String,
+											StrVal: "port1",
+										},
+									},
+								},
+								{
+									Path: "/bar",
+									Backend: extensionsv1beta1.IngressBackend{
+										ServiceName: "test-service",
+										ServicePort: intstr.IntOrString{
+											Type:   intstr.Int,
+											IntVal: 443,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	svcInformer := informersFactory.Core().V1().Services().Informer()
+	svcLister := informersFactory.Core().V1().Services().Lister()
+	epInformer := informersFactory.Core().V1().Endpoints().Informer()
+	epLister := informersFactory.Core().V1().Endpoints().Lister()
+	apisixClient := fakeapisix.NewSimpleClientset()
+	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
+	processCh := make(chan struct{})
+	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+	epInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	go svcInformer.Run(stopCh)
+	go epInformer.Run(stopCh)
+	cache.WaitForCacheSync(stopCh, svcInformer.HasSynced)
+
+	_, err := client.CoreV1().Services("default").Create(context.Background(), _testSvc, metav1.CreateOptions{})
+	assert.Nil(t, err)
+	_, err = client.CoreV1().Endpoints("default").Create(context.Background(), _testEp, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	tr := &translator{
+		TranslatorOptions: &TranslatorOptions{
+			ServiceLister:        svcLister,
+			EndpointsLister:      epLister,
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister(),
+		},
+	}
+
+	<-processCh
+	<-processCh
+	routes, upstreams, err := tr.translateIngressExtensionsV1beta1(ing)
+	assert.Len(t, routes, 2)
+	assert.Len(t, upstreams, 2)
+	assert.Nil(t, err)
+
+	assert.Equal(t, routes[0].Uris, []string{"/foo", "/foo/*"})
+	assert.Equal(t, routes[0].UpstreamId, upstreams[0].ID)
+	assert.Equal(t, routes[0].Host, "apisix.apache.org")
+	assert.Equal(t, routes[1].Uris, []string{"/bar"})
+	assert.Equal(t, routes[1].UpstreamId, upstreams[1].ID)
+	assert.Equal(t, routes[1].Host, "apisix.apache.org")
+
+	assert.Equal(t, upstreams[0].Type, "roundrobin")
+	assert.Equal(t, upstreams[0].Scheme, "http")
+	assert.Len(t, upstreams[0].Nodes, 2)
+	assert.Equal(t, upstreams[0].Nodes[0].Port, 9080)
+	assert.Equal(t, upstreams[0].Nodes[0].IP, "192.168.1.1")
+	assert.Equal(t, upstreams[0].Nodes[1].Port, 9080)
+	assert.Equal(t, upstreams[0].Nodes[1].IP, "192.168.1.2")
+
+	assert.Equal(t, upstreams[1].Type, "roundrobin")
+	assert.Equal(t, upstreams[1].Scheme, "http")
+	assert.Len(t, upstreams[1].Nodes, 2)
+	assert.Equal(t, upstreams[1].Nodes[0].Port, 9443)
+	assert.Equal(t, upstreams[1].Nodes[0].IP, "192.168.1.1")
+	assert.Equal(t, upstreams[1].Nodes[1].Port, 9443)
+	assert.Equal(t, upstreams[1].Nodes[1].IP, "192.168.1.2")
+}
+
+func TestTranslateIngressExtensionsV1beta1BackendWithInvalidService(t *testing.T) {
+	prefix := extensionsv1beta1.PathTypePrefix
+	// no backend.
+	ing := &extensionsv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
+		},
+		Spec: extensionsv1beta1.IngressSpec{
+			Rules: []extensionsv1beta1.IngressRule{
+				{
+					Host: "apisix.apache.org",
+					IngressRuleValue: extensionsv1beta1.IngressRuleValue{
+						HTTP: &extensionsv1beta1.HTTPIngressRuleValue{
+							Paths: []extensionsv1beta1.HTTPIngressPath{
+								{
+									Path:     "/foo",
+									PathType: &prefix,
+									Backend: extensionsv1beta1.IngressBackend{
+										ServiceName: "test-service",
+										ServicePort: intstr.IntOrString{
+											Type:   intstr.String,
+											StrVal: "undefined-port",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	svcInformer := informersFactory.Core().V1().Services().Informer()
+	svcLister := informersFactory.Core().V1().Services().Lister()
+	tr := &translator{
+		TranslatorOptions: &TranslatorOptions{
+			ServiceLister: svcLister,
+		},
+	}
+	routes, upstreams, err := tr.translateIngressExtensionsV1beta1(ing)
+	assert.Len(t, routes, 0)
+	assert.Len(t, upstreams, 0)
+	assert.NotNil(t, err)
+	assert.Equal(t, err.Error(), "service \"test-service\" not found")
+
+	processCh := make(chan struct{})
+	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	go svcInformer.Run(stopCh)
+	cache.WaitForCacheSync(stopCh, svcInformer.HasSynced)
+
+	_, err = client.CoreV1().Services("default").Create(context.Background(), _testSvc, metav1.CreateOptions{})
+	assert.Nil(t, err)
+	_, err = client.CoreV1().Endpoints("default").Create(context.Background(), _testEp, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	<-processCh
+	routes, upstreams, err = tr.translateIngressExtensionsV1beta1(ing)
+	assert.Len(t, routes, 0)
+	assert.Len(t, upstreams, 0)
+	assert.Equal(t, err, &translateError{
+		field:  "service",
+		reason: "port not found",
+	})
 }

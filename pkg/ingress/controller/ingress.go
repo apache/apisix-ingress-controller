@@ -319,16 +319,27 @@ func (c *ingressController) OnDelete(obj interface{}) {
 }
 
 func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
-	var ingressClass string
+	var (
+		ic  *string
+		ica string
+	)
 	if ing.GroupVersion() == kube.IngressV1 {
-		ic, ok := ing.V1().GetAnnotations()[_ingressKey]
-		if !ok && ing.V1().Spec.IngressClassName != nil {
-			ic = *ing.V1().Spec.IngressClassName
-		}
-		ingressClass = ic
+		ic = ing.V1().Spec.IngressClassName
+		ica = ing.V1().GetAnnotations()[_ingressKey]
+	} else if ing.GroupVersion() == kube.IngressV1beta1 {
+		ic = ing.V1beta1().Spec.IngressClassName
+		ica = ing.V1beta1().GetAnnotations()[_ingressKey]
 	} else {
-		ingressClass = ing.V1beta1().GetAnnotations()[_ingressKey]
+		ic = ing.ExtensionsV1beta1().Spec.IngressClassName
+		ica = ing.ExtensionsV1beta1().GetAnnotations()[_ingressKey]
 	}
 
-	return ingressClass == config.IngressClass
+	// kubernetes.io/ingress.class takes the precedence.
+	if ica != "" {
+		return ica == config.IngressClass
+	}
+	if ic != nil {
+		return *ic == config.IngressClass
+	}
+	return false
 }

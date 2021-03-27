@@ -129,8 +129,11 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	}
 	kube.EndpointsInformer = kube.CoreSharedInformerFactory.Core().V1().Endpoints()
 
-	ingressLister := kube.NewIngressLister(kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Lister(),
-		kube.CoreSharedInformerFactory.Networking().V1beta1().Ingresses().Lister())
+	ingressLister := kube.NewIngressLister(
+		kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Lister(),
+		kube.CoreSharedInformerFactory.Networking().V1beta1().Ingresses().Lister(),
+		kube.CoreSharedInformerFactory.Extensions().V1beta1().Ingresses().Lister(),
+	)
 	apisixRouteLister := kube.NewApisixRouteLister(sharedInformerFactory.Apisix().V1().ApisixRoutes().Lister(),
 		sharedInformerFactory.Apisix().V2alpha1().ApisixRoutes().Lister())
 
