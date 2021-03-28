@@ -40,7 +40,7 @@ KubeSphere is a distributed operating system managing cloud native applications 
 cd /path/to/apisix-helm-chart
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo add apisix https://charts.apiseven.com
-# Use `hem search repo apisix` to search charts about apisix
+# Use `helm search repo apisix` to search charts about apisix
 helm repo update
 helm install apisix apisix/apisix \
   --set gateway.type=NodePort \
