@@ -18,9 +18,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/onsi/ginkgo"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
