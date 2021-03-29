@@ -72,7 +72,7 @@ spec:
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
 	})
 
-	ginkgo.FIt("create and then remove", func() {
+	ginkgo.It("create and then remove", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
