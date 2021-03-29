@@ -62,6 +62,7 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) ([]*apisixv1.Rou
 			upsId := id.GenID(upstreamName)
 			route := &apisixv1.Route{
 				Metadata: apisixv1.Metadata{
+					ID:              id.GenID(routeName),
 					FullName:        routeName,
 					ResourceVersion: ar.ResourceVersion,
 					Name:            routeName,

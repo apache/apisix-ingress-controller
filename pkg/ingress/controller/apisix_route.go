@@ -25,7 +25,6 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/seven/state"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -154,33 +153,48 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		zap.Any("apisix_route", ar),
 	)
 
-	if ev.Type == types.EventDelete {
-		rc := &state.RouteCompare{OldRoutes: routes, NewRoutes: nil}
-		if err := rc.Sync(); err != nil {
-			return err
-		} else {
-			comb := state.ApisixCombination{Routes: nil, Upstreams: upstreams}
-			if err := comb.Remove(); err != nil {
-				return err
-			}
-		}
-		return nil
-	} else if ev.Type == types.EventAdd {
-		comb := state.ApisixCombination{Routes: routes, Upstreams: upstreams}
-		if _, err := comb.Solver(); err != nil {
-			return err
-		}
-	} else {
-		var oldRoutes []*apisixv1.Route
-		if obj.GroupVersion == kube.ApisixRouteV1 {
-			oldRoutes, _, _ = c.controller.translator.TranslateRouteV1(ar.V1())
-		} else {
-			oldRoutes, _, _ = c.controller.translator.TranslateRouteV2alpha1(ar.V2alpha1())
-		}
-		rc := &state.RouteCompare{OldRoutes: oldRoutes, NewRoutes: routes}
-		return rc.Sync()
+	m := &manifest{
+		routes:    routes,
+		upstreams: upstreams,
 	}
-	return nil
+
+	var (
+		added   *manifest
+		updated *manifest
+		deleted *manifest
+	)
+
+	if ev.Type == types.EventDelete {
+		deleted = m
+	} else if ev.Type == types.EventAdd {
+		added = m
+	} else {
+		var (
+			oldRoutes    []*apisixv1.Route
+			oldUpstreams []*apisixv1.Upstream
+		)
+		if obj.GroupVersion == kube.ApisixRouteV1 {
+			oldRoutes, oldUpstreams, err = c.controller.translator.TranslateRouteV1(obj.OldObject.V1())
+		} else {
+			oldRoutes, oldUpstreams, err = c.controller.translator.TranslateRouteV2alpha1(obj.OldObject.V2alpha1())
+		}
+		if err != nil {
+			log.Errorw("failed to translate old ApisixRoute v2alpha1",
+				zap.String("event", "update"),
+				zap.Error(err),
+				zap.Any("ApisixRoute", ar),
+			)
+			return err
+		}
+
+		om := &manifest{
+			routes:    oldRoutes,
+			upstreams: oldUpstreams,
+		}
+		added, updated, deleted = m.diff(om)
+	}
+
+	return c.controller.syncManifests(ctx, added, updated, deleted)
 }
 
 func (c *apisixRouteController) handleSyncErr(obj interface{}, err error) {
@@ -231,6 +245,10 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 	if !c.controller.namespaceWatching(key) {
 		return
 	}
+	log.Debugw("ApisixRoute update event arrived",
+		zap.Any("new object", curr),
+		zap.Any("old object", prev),
+	)
 	c.workqueue.AddRateLimited(&types.Event{
 		Type: types.EventUpdate,
 		Object: kube.ApisixRouteEvent{

@@ -26,7 +26,6 @@ import (
 )
 
 var _ = ginkgo.Describe("ApisixRoute Testing", func() {
-
 	opts := &scaffold.Options{
 		Name:                    "default",
 		Kubeconfig:              scaffold.GetKubeconfig(),
@@ -73,7 +72,7 @@ spec:
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
 	})
 
-	ginkgo.It("create and then remove", func() {
+	ginkgo.FIt("create and then remove", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
@@ -99,14 +98,56 @@ spec:
 		err = s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK)
+
+		// update
+		apisixRoute = fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+      exprs:
+      - subject:
+          scope: Header
+          name: X-Foo
+        op: Equal
+        value: "barbaz"
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
+		// TODO When ingress controller can feedback the lifecycle of CRDs to the
+		// status field, we can poll it rather than sleeping.
+		time.Sleep(10 * time.Second)
+
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+		err = s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").WithHeader("X-Foo", "barbaz").Expect().Status(http.StatusOK)
+
 		// remove
 		assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
-
 		// TODO When ingress controller can feedback the lifecycle of CRDs to the
 		// status field, we can poll it rather than sleeping.
 		time.Sleep(10 * time.Second)
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
 		assert.Len(ginkgo.GinkgoT(), ups, 0, "upstreams nodes not expect")
+
+		body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound).Body().Raw()
+		assert.Contains(ginkgo.GinkgoT(), body, "404 Route Not Found")
 	})
 })

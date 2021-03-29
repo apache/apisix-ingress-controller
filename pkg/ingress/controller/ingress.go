@@ -137,16 +137,42 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		zap.Any("upstreams", upstreams),
 	)
 
-	if err := c.syncToCluster(ctx, "", routes, upstreams, ev.Type); err != nil {
-		log.Errorw("failed to sync ingress artifacts (routes, upstreams)",
-			zap.Error(err),
-			zap.Any("routes", routes),
-			zap.Any("upstreams", upstreams),
-			zap.Any("ingress", ing),
-		)
-		return err
+	m := &manifest{
+		routes:    routes,
+		upstreams: upstreams,
 	}
-	return nil
+
+	var (
+		added   *manifest
+		updated *manifest
+		deleted *manifest
+	)
+
+	if ev.Type == types.EventDelete {
+		deleted = m
+	} else if ev.Type == types.EventAdd {
+		added = m
+	} else {
+		var (
+			oldRoutes    []*apisixv1.Route
+			oldUpstreams []*apisixv1.Upstream
+		)
+		oldRoutes, oldUpstreams, err := c.controller.translator.TranslateIngress(ingEv.OldObject)
+		if err != nil {
+			log.Errorw("failed to translate ingress",
+				zap.String("event", "update"),
+				zap.Error(err),
+				zap.Any("ingress", ingEv.OldObject),
+			)
+			return err
+		}
+		om := &manifest{
+			routes:    oldRoutes,
+			upstreams: oldUpstreams,
+		}
+		added, updated, deleted = m.diff(om)
+	}
+	return c.controller.syncManifests(ctx, added, updated, deleted)
 }
 
 func (c *ingressController) syncToCluster(ctx context.Context, clusterName string, routes []*apisixv1.Route, upstreams []*apisixv1.Upstream, ev types.EventType) error {
@@ -272,6 +298,7 @@ func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 		Object: kube.IngressEvent{
 			Key:          key,
 			GroupVersion: curr.GroupVersion(),
+			OldObject:    prev,
 		},
 	})
 }
