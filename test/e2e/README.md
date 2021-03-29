@@ -20,7 +20,7 @@
 apisix ingress controller e2e test suites
 =========================================
 
-For running e2e test cases, a Kubernetes cluster is needed, [minikube](https://minikube.sigs.k8s.io/docs/start/) is a good choice to build k8s cluster in development environment.
+For running e2e test cases, a Kubernetes cluster is required, [minikube](https://minikube.sigs.k8s.io/docs/start/) is a good choice to build k8s cluster in development environment.
 
 Scaffold
 ---------
@@ -34,3 +34,13 @@ a e2e test scaffold is prepared to run test cases easily. The source codes are i
 * Create a http server with [kennethreitz/httpbin](https://hub.docker.com/r/kennethreitz/httpbin/) as the upstream.
 
 The above mentioned steps are run before each case starts and all resources will be destroyed after the case finishes.
+
+Plugins
+-------
+
+Test cases inside `plugins` directory test the availability about APISIX plugins.
+
+Features
+--------
+
+Test caes inside `features` directory test some features about APISIX, such as traffic-split, health check and so on.
