@@ -76,6 +76,7 @@ type Ingress interface {
 type IngressEvent struct {
 	Key          string
 	GroupVersion string
+	OldObject    Ingress
 }
 
 type ingress struct {
