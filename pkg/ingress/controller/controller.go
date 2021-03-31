@@ -65,7 +65,6 @@ type Controller struct {
 	clientset          kubernetes.Interface
 	crdClientset       crdclientset.Interface
 	metricsCollector   metrics.Collector
-	crdController      *Api6Controller
 	crdInformerFactory externalversions.SharedInformerFactory
 
 	// common informers and listers

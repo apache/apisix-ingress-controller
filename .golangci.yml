@@ -1,0 +1,9 @@
+issues:
+    exclude-rules:
+    - linters:
+      - staticcheck
+      text: SA1019
+linters-settings:
+  govet:
+    disable:
+    - unsafeptr

@@ -166,7 +166,7 @@ type Upstream struct {
 	Metadata `json:",inline" yaml:",inline"`
 
 	Type     string               `json:"type,omitempty" yaml:"type,omitempty"`
-	HashOn   string               `json:"hash_on,omitemtpy" yaml:"hash_on,omitempty"`
+	HashOn   string               `json:"hash_on,omitempty" yaml:"hash_on,omitempty"`
 	Key      string               `json:"key,omitempty" yaml:"key,omitempty"`
 	Checks   *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
 	Nodes    []UpstreamNode       `json:"nodes,omitempty" yaml:"nodes,omitempty"`

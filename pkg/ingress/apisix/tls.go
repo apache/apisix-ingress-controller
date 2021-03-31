@@ -42,10 +42,8 @@ func (as *ApisixTLSCRD) Convert(sc Secreter) (*apisix.Ssl, error) {
 	cert := string(secret.Data["cert"])
 	key := string(secret.Data["key"])
 	status := 1
-	snis := make([]string, 0)
-	for _, host := range as.Spec.Hosts {
-		snis = append(snis, host)
-	}
+	var snis []string
+	snis = append(snis, as.Spec.Hosts...)
 	ssl := &apisix.Ssl{
 		ID:     id,
 		Snis:   snis,

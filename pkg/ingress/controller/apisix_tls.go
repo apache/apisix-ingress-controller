@@ -175,7 +175,7 @@ func (c *ApisixTLSController) syncHandler(tqo *TlsQueueObj) error {
 func SyncSecretSSL(key string, ssl *v1.Ssl, operator string) {
 	ssls, ok := secretSSLMap.Load(key)
 	if ok {
-		sslMap := ssls.(sync.Map)
+		sslMap := ssls.(*sync.Map)
 		switch operator {
 		case state.Delete:
 			sslMap.Delete(ssl.ID)
@@ -186,7 +186,7 @@ func SyncSecretSSL(key string, ssl *v1.Ssl, operator string) {
 		}
 	} else {
 		if operator != state.Delete {
-			sslMap := sync.Map{}
+			sslMap := &sync.Map{}
 			sslMap.Store(ssl.ID, ssl)
 			secretSSLMap.Store(key, sslMap)
 		}

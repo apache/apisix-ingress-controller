@@ -35,7 +35,6 @@ type options struct {
 	writeSyncer zapcore.WriteSyncer
 	outputFile  string
 	logLevel    string
-	context     string
 }
 
 // WithLogLevel sets the log level.

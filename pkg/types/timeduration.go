@@ -38,11 +38,11 @@ func (d *TimeDuration) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &value); err != nil {
 		return err
 	}
-	switch value.(type) {
+	switch v := value.(type) {
 	case float64:
-		d.Duration = time.Duration(value.(float64))
+		d.Duration = time.Duration(v)
 	case string:
-		dur, err := time.ParseDuration(value.(string))
+		dur, err := time.ParseDuration(v)
 		if err != nil {
 			return err
 		}

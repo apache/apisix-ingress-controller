@@ -47,8 +47,8 @@ func (s *ApisixCombination) Solver() (string, error) {
 	// define the result notify
 	timeout := 10 * time.Second
 	resultChan := make(chan CRDStatus)
-	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	go s.SyncWithGroup(ctx, "", resultChan)
 
 	return WaitWorkerGroup("", resultChan)
