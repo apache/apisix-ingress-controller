@@ -109,7 +109,7 @@ func (s *Scaffold) CreateResourceFromStringWithNamespace(yaml, namespace string)
 	defer func() {
 		s.kubectlOptions.Namespace = originalNamespace
 	}()
-	s.addFinializer(func() {
+	s.addFinalizers(func() {
 		originalNamespace := s.kubectlOptions.Namespace
 		s.kubectlOptions.Namespace = namespace
 		defer func() {
@@ -154,13 +154,9 @@ func ensureNumApisixCRDsCreated(url string, desired int) error {
 // EnsureNumApisixRoutesCreated waits until desired number of Routes are created in
 // APISIX cluster.
 func (s *Scaffold) EnsureNumApisixRoutesCreated(desired int) error {
-	host, err := s.apisixAdminServiceURL()
-	if err != nil {
-		return err
-	}
 	u := url.URL{
 		Scheme: "http",
-		Host:   host,
+		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin/routes",
 	}
 	return ensureNumApisixCRDsCreated(u.String(), desired)
@@ -169,13 +165,9 @@ func (s *Scaffold) EnsureNumApisixRoutesCreated(desired int) error {
 // EnsureNumApisixUpstreamsCreated waits until desired number of Upstreams are created in
 // APISIX cluster.
 func (s *Scaffold) EnsureNumApisixUpstreamsCreated(desired int) error {
-	host, err := s.apisixAdminServiceURL()
-	if err != nil {
-		return err
-	}
 	u := url.URL{
 		Scheme: "http",
-		Host:   host,
+		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin/upstreams",
 	}
 	return ensureNumApisixCRDsCreated(u.String(), desired)
@@ -183,13 +175,9 @@ func (s *Scaffold) EnsureNumApisixUpstreamsCreated(desired int) error {
 
 // ListApisixUpstreams list all upstreams from APISIX
 func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
-	host, err := s.apisixAdminServiceURL()
-	if err != nil {
-		return nil, err
-	}
 	u := url.URL{
 		Scheme: "http",
-		Host:   host,
+		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin",
 	}
 	cli, err := apisix.NewClient()
@@ -207,13 +195,9 @@ func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 
 // ListApisixRoutes list all routes from APISIX.
 func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
-	host, err := s.apisixAdminServiceURL()
-	if err != nil {
-		return nil, err
-	}
 	u := url.URL{
 		Scheme: "http",
-		Host:   host,
+		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin",
 	}
 	cli, err := apisix.NewClient()
@@ -231,13 +215,9 @@ func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
 
 // ListApisixTls list all ssl from APISIX
 func (s *Scaffold) ListApisixTls() ([]*v1.Ssl, error) {
-	host, err := s.apisixAdminServiceURL()
-	if err != nil {
-		return nil, err
-	}
 	u := url.URL{
 		Scheme: "http",
-		Host:   host,
+		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin",
 	}
 	cli, err := apisix.NewClient()
@@ -251,4 +231,48 @@ func (s *Scaffold) ListApisixTls() ([]*v1.Ssl, error) {
 		return nil, err
 	}
 	return cli.Cluster("").SSL().List(context.TODO())
+}
+
+func (s *Scaffold) newAPISIXTunnels() error {
+	var (
+		adminNodePort int
+		httpNodePort  int
+		httpsNodePort int
+		adminPort     int
+		httpPort      int
+		httpsPort     int
+	)
+	for _, port := range s.apisixService.Spec.Ports {
+		if port.Name == "http" {
+			httpNodePort = int(port.NodePort)
+			httpPort = int(port.Port)
+		} else if port.Name == "https" {
+			httpsNodePort = int(port.NodePort)
+			httpsPort = int(port.Port)
+		} else if port.Name == "http-admin" {
+			adminNodePort = int(port.NodePort)
+			adminPort = int(port.Port)
+		}
+	}
+
+	s.apisixAdminTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
+		adminNodePort, adminPort)
+	s.apisixHttpTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
+		httpNodePort, httpPort)
+	s.apisixHttpsTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
+		httpsNodePort, httpsPort)
+
+	if err := s.apisixAdminTunnel.ForwardPortE(s.t); err != nil {
+		return err
+	}
+	s.addFinalizers(s.apisixAdminTunnel.Close)
+	if err := s.apisixHttpTunnel.ForwardPortE(s.t); err != nil {
+		return err
+	}
+	s.addFinalizers(s.apisixHttpTunnel.Close)
+	if err := s.apisixHttpsTunnel.ForwardPortE(s.t); err != nil {
+		return err
+	}
+	s.addFinalizers(s.apisixHttpsTunnel.Close)
+	return nil
 }
