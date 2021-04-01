@@ -15,7 +15,20 @@
 package translation
 
 import (
+	"context"
 	"testing"
+
+	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
+	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/cache"
+
+	"k8s.io/apimachinery/pkg/util/intstr"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/stretchr/testify/assert"
 
@@ -155,4 +168,164 @@ func TestRouteMatchExpr(t *testing.T) {
 	assert.Equal(t, results[8][0].StrVal, "cookie_domain")
 	assert.Equal(t, results[8][1].StrVal, "in")
 	assert.Equal(t, results[8][2].SliceVal, []string{"a.com", "b.com"})
+}
+
+func TestTranslateApisixRouteV2alpha1WithEmptyName(t *testing.T) {
+	ar := &configv2alpha1.ApisixRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ar",
+			Namespace: "test",
+		},
+		Spec: &configv2alpha1.ApisixRouteSpec{
+			HTTP: []*configv2alpha1.ApisixRouteHTTP{
+				{
+					Name:     "",
+					Priority: 0,
+				},
+			},
+		},
+	}
+	tr := &translator{}
+	_, _, err := tr.TranslateRouteV2alpha1(ar)
+	assert.Equal(t, err.Error(), "empty route rule name")
+}
+
+func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
+	svc := &corev1.Service{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "svc",
+			Namespace: "test",
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name: "port1",
+					Port: 80,
+					TargetPort: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: 9080,
+					},
+				},
+				{
+					Name: "port2",
+					Port: 443,
+					TargetPort: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: 9443,
+					},
+				},
+			},
+		},
+	}
+	endpoints := &corev1.Endpoints{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "svc",
+			Namespace: "test",
+		},
+		Subsets: []corev1.EndpointSubset{
+			{
+				Ports: []corev1.EndpointPort{
+					{
+						Name: "port1",
+						Port: 9080,
+					},
+					{
+						Name: "port2",
+						Port: 9443,
+					},
+				},
+				Addresses: []corev1.EndpointAddress{
+					{IP: "192.168.1.1"},
+					{IP: "192.168.1.2"},
+				},
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	svcInformer := informersFactory.Core().V1().Services().Informer()
+	svcLister := informersFactory.Core().V1().Services().Lister()
+	epInformer := informersFactory.Core().V1().Endpoints().Informer()
+	epLister := informersFactory.Core().V1().Endpoints().Lister()
+	apisixClient := fakeapisix.NewSimpleClientset()
+	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
+
+	_, err := client.CoreV1().Endpoints("test").Create(context.Background(), endpoints, metav1.CreateOptions{})
+	assert.Nil(t, err)
+	_, err = client.CoreV1().Services("test").Create(context.Background(), svc, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	tr := &translator{
+		&TranslatorOptions{
+			EndpointsLister:      epLister,
+			ServiceLister:        svcLister,
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister(),
+		},
+	}
+
+	processCh := make(chan struct{})
+	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+	epInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	go svcInformer.Run(stopCh)
+	go epInformer.Run(stopCh)
+	cache.WaitForCacheSync(stopCh, svcInformer.HasSynced)
+
+	<-processCh
+	<-processCh
+
+	ar := &configv2alpha1.ApisixRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ar",
+			Namespace: "test",
+		},
+		Spec: &configv2alpha1.ApisixRouteSpec{
+			HTTP: []*configv2alpha1.ApisixRouteHTTP{
+				{
+					Name: "rule1",
+					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Backend: &configv2alpha1.ApisixRouteHTTPBackend{
+						ServiceName: "svc",
+						ServicePort: intstr.IntOrString{
+							IntVal: 80,
+						},
+					},
+				},
+				{
+					Name: "rule1",
+					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Backend: &configv2alpha1.ApisixRouteHTTPBackend{
+						ServiceName: "svc",
+						ServicePort: intstr.IntOrString{
+							IntVal: 80,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, _, err = tr.TranslateRouteV2alpha1(ar)
+	assert.Equal(t, err.Error(), "duplicated route rule name")
 }
