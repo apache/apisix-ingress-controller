@@ -31,6 +31,7 @@ import (
 type routeReqBody struct {
 	Desc       string               `json:"desc,omitempty"`
 	URI        string               `json:"uri,omitempty"`
+	Priority   int                  `json:"priority,omitempty"`
 	Uris       []string             `json:"uris,omitempty"`
 	Vars       [][]v1.StringOrSlice `json:"vars,omitempty"`
 	Host       string               `json:"host,omitempty"`
@@ -159,6 +160,7 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		return nil, err
 	}
 	data, err := json.Marshal(routeReqBody{
+		Priority:   obj.Priority,
 		Desc:       obj.Name,
 		URI:        obj.Path,
 		Host:       obj.Host,
@@ -227,6 +229,7 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		return nil, err
 	}
 	body, err := json.Marshal(routeReqBody{
+		Priority:  obj.Priority,
 		Desc:      obj.Name,
 		Host:      obj.Host,
 		URI:       obj.Path,
