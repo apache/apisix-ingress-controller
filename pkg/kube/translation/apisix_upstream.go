@@ -181,7 +181,7 @@ func (t *translator) translateUpstreamActiveHealthCheck(config *configv1.ActiveH
 	active.HTTPPath = config.HTTPPath
 	active.HTTPRequestHeaders = config.RequestHeaders
 
-	if config.StrictTLS == nil || *config.StrictTLS == true {
+	if config.StrictTLS == nil || *config.StrictTLS {
 		active.HTTPSVerifyCert = true
 	}
 

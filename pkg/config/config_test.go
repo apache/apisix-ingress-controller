@@ -33,7 +33,7 @@ func TestNewConfigFromFile(t *testing.T) {
 		HTTPListen:      ":9090",
 		EnableProfiling: true,
 		Kubernetes: KubernetesConfig{
-			ResyncInterval:     types.TimeDuration{time.Hour},
+			ResyncInterval:     types.TimeDuration{Duration: time.Hour},
 			Kubeconfig:         "/path/to/foo/baz",
 			AppNamespaces:      []string{""},
 			ElectionID:         "my-election-id",

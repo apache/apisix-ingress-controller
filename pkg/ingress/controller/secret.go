@@ -145,15 +145,11 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 	// FixMe Need to update the status of CRD ApisixTls
 	ssls, ok := secretSSLMap.Load(secretMapkey)
 	if ok {
-		sslMap := ssls.(sync.Map)
+		sslMap := ssls.(*sync.Map)
 		sslMap.Range(func(_, v interface{}) bool {
 			ssl := v.(*apisixv1.Ssl)
 			ssl.FullName = ssl.ID
-			err = state.SyncSsl(ssl, ev.Type.String())
-			if err != nil {
-				return false
-			}
-			return true
+			return state.SyncSsl(ssl, ev.Type.String()) == nil
 		})
 	}
 	return err

@@ -37,6 +37,7 @@ func TestMemDBCacheRoute(t *testing.T) {
 	assert.Nil(t, c.InsertRoute(r1), "inserting route 1")
 
 	r, err := c.GetRoute("abc")
+	assert.Nil(t, err)
 	assert.Equal(t, r1, r)
 
 	r2 := &v1.Route{
@@ -57,6 +58,7 @@ func TestMemDBCacheRoute(t *testing.T) {
 	assert.Nil(t, c.InsertRoute(r3), "inserting route r3")
 
 	r, err = c.GetRoute("ghi")
+	assert.Nil(t, err)
 	assert.Equal(t, r3, r)
 
 	assert.Nil(t, c.DeleteRoute(r3), "delete route r3")
@@ -92,6 +94,7 @@ func TestMemDBCacheService(t *testing.T) {
 	assert.Nil(t, c.InsertService(s1), "inserting service 1")
 
 	s, err := c.GetService("abc")
+	assert.Nil(t, err)
 	assert.Equal(t, s1, s)
 
 	s2 := &v1.Service{
@@ -108,6 +111,7 @@ func TestMemDBCacheService(t *testing.T) {
 	assert.Nil(t, c.InsertService(s3), "inserting service 3")
 
 	s, err = c.GetService("ghi")
+	assert.Nil(t, err)
 	assert.Equal(t, s3, s)
 
 	assert.Nil(t, c.DeleteService(s3), "delete service 3")
@@ -140,6 +144,7 @@ func TestMemDBCacheSSL(t *testing.T) {
 	assert.Nil(t, c.InsertSSL(s1), "inserting ssl 1")
 
 	s, err := c.GetSSL("abc")
+	assert.Nil(t, err)
 	assert.Equal(t, s1, s)
 
 	s2 := &v1.Ssl{
@@ -154,6 +159,7 @@ func TestMemDBCacheSSL(t *testing.T) {
 	assert.Nil(t, c.InsertSSL(s3), "inserting ssl 3")
 
 	s, err = c.GetSSL("ghi")
+	assert.Nil(t, err)
 	assert.Equal(t, s3, s)
 
 	assert.Nil(t, c.DeleteSSL(s3), "delete ssl 3")
@@ -183,9 +189,11 @@ func TestMemDBCacheUpstream(t *testing.T) {
 			Name:     "abc",
 		},
 	}
-	assert.Nil(t, c.InsertUpstream(u1), "inserting upstream 1")
+	err = c.InsertUpstream(u1)
+	assert.Nil(t, err, "inserting upstream 1")
 
 	u, err := c.GetUpstream("abc")
+	assert.Nil(t, err)
 	assert.Equal(t, u1, u)
 
 	u2 := &v1.Upstream{
@@ -204,6 +212,7 @@ func TestMemDBCacheUpstream(t *testing.T) {
 	assert.Nil(t, c.InsertUpstream(u3), "inserting upstream 3")
 
 	u, err = c.GetUpstream("ghi")
+	assert.Nil(t, err)
 	assert.Equal(t, u3, u)
 
 	assert.Nil(t, c.DeleteUpstream(u3), "delete upstream 3")

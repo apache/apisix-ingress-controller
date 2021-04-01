@@ -163,21 +163,21 @@ func (l *ingressLister) ExtensionsV1beta1(namespace, name string) (Ingress, erro
 // MustNewIngress creates a kube.Ingress object according to the
 // type of obj.
 func MustNewIngress(obj interface{}) Ingress {
-	switch obj.(type) {
+	switch ing := obj.(type) {
 	case *networkingv1.Ingress:
 		return &ingress{
 			groupVersion: IngressV1,
-			v1:           obj.(*networkingv1.Ingress),
+			v1:           ing,
 		}
 	case *networkingv1beta1.Ingress:
 		return &ingress{
 			groupVersion: IngressV1beta1,
-			v1beta1:      obj.(*networkingv1beta1.Ingress),
+			v1beta1:      ing,
 		}
 	case *extensionsv1beta1.Ingress:
 		return &ingress{
 			groupVersion:      IngressExtensionsV1beta1,
-			extensionsV1beta1: obj.(*extensionsv1beta1.Ingress),
+			extensionsV1beta1: ing,
 		}
 	default:
 		panic("invalid ingress type")
@@ -188,21 +188,21 @@ func MustNewIngress(obj interface{}) Ingress {
 // type of obj. It returns nil and the error reason when the
 // type assertion fails.
 func NewIngress(obj interface{}) (Ingress, error) {
-	switch obj.(type) {
+	switch ing := obj.(type) {
 	case *networkingv1.Ingress:
 		return &ingress{
 			groupVersion: IngressV1,
-			v1:           obj.(*networkingv1.Ingress),
+			v1:           ing,
 		}, nil
 	case *networkingv1beta1.Ingress:
 		return &ingress{
 			groupVersion: IngressV1beta1,
-			v1beta1:      obj.(*networkingv1beta1.Ingress),
+			v1beta1:      ing,
 		}, nil
 	case *extensionsv1beta1.Ingress:
 		return &ingress{
 			groupVersion:      IngressExtensionsV1beta1,
-			extensionsV1beta1: obj.(*extensionsv1beta1.Ingress),
+			extensionsV1beta1: ing,
 		}, nil
 	default:
 		return nil, errors.New("invalid ingress type")

@@ -23,7 +23,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -173,54 +172,6 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		added, updated, deleted = m.diff(om)
 	}
 	return c.controller.syncManifests(ctx, added, updated, deleted)
-}
-
-func (c *ingressController) syncToCluster(ctx context.Context, clusterName string, routes []*apisixv1.Route, upstreams []*apisixv1.Upstream, ev types.EventType) error {
-	// TODO throttle if the number of routes and upstreams are huge.
-	if ev == types.EventDelete {
-		for _, r := range routes {
-			if err := c.controller.apisix.Cluster(clusterName).Route().Delete(ctx, r); err != nil {
-				return err
-			}
-		}
-		for _, u := range upstreams {
-			if err := c.controller.apisix.Cluster(clusterName).Upstream().Delete(ctx, u); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	for _, u := range upstreams {
-		old, err := c.controller.apisix.Cluster(clusterName).Upstream().Get(ctx, u.FullName)
-		if err != nil && err != apisixcache.ErrNotFound {
-			return err
-		}
-		if old == nil {
-			_, err = c.controller.apisix.Cluster(clusterName).Upstream().Create(ctx, u)
-		} else {
-			// TODO diff route.
-			_, err = c.controller.apisix.Cluster(clusterName).Upstream().Update(ctx, u)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	for _, r := range routes {
-		old, err := c.controller.apisix.Cluster(clusterName).Route().Get(ctx, r.FullName)
-		if err != nil && err != apisixcache.ErrNotFound {
-			return err
-		}
-		if old == nil {
-			_, err = c.controller.apisix.Cluster(clusterName).Route().Create(ctx, r)
-		} else {
-			// TODO diff route.
-			_, err = c.controller.apisix.Cluster(clusterName).Route().Update(ctx, r)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (c *ingressController) handleSyncErr(obj interface{}, err error) {
