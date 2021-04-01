@@ -24,7 +24,7 @@ import (
 	"github.com/onsi/ginkgo"
 )
 
-var _ = ginkgo.FDescribe("limit-count plugin", func() {
+var _ = ginkgo.Describe("limit-count plugin", func() {
 	opts := &scaffold.Options{
 		Name:                    "default",
 		Kubeconfig:              scaffold.GetKubeconfig(),
