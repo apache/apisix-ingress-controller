@@ -67,6 +67,7 @@ type upstreamReqBody struct {
 	Key     string                  `json:"key,omitempty"`
 	Nodes   upstreamNodes           `json:"nodes"`
 	Desc    string                  `json:"desc"`
+	Name    string                  `json:"name"`
 	Scheme  string                  `json:"scheme,omitempty"`
 	Retries int                     `json:"retries,omitempty"`
 	Timeout *v1.UpstreamTimeout     `json:"timeout,omitempty"`
@@ -199,6 +200,7 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		Key:     obj.Key,
 		Nodes:   nodes,
 		Desc:    obj.Name,
+		Name:    obj.Name,
 		Scheme:  obj.Scheme,
 		Checks:  obj.Checks,
 		Retries: obj.Retries,
@@ -278,6 +280,7 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		Key:    obj.Key,
 		Nodes:  nodes,
 		Desc:   obj.Name,
+		Name:   obj.Name,
 	})
 	if err != nil {
 		return nil, err

@@ -30,6 +30,7 @@ import (
 
 type routeReqBody struct {
 	Desc       string               `json:"desc,omitempty"`
+	Name       string               `json:"name,omitempty"`
 	URI        string               `json:"uri,omitempty"`
 	Uris       []string             `json:"uris,omitempty"`
 	Vars       [][]v1.StringOrSlice `json:"vars,omitempty"`
@@ -160,6 +161,7 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	}
 	data, err := json.Marshal(routeReqBody{
 		Desc:       obj.Name,
+		Name:       obj.Name,
 		URI:        obj.Path,
 		Host:       obj.Host,
 		ServiceId:  obj.ServiceId,
@@ -228,6 +230,7 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	}
 	body, err := json.Marshal(routeReqBody{
 		Desc:      obj.Name,
+		Name:      obj.Name,
 		Host:      obj.Host,
 		URI:       obj.Path,
 		ServiceId: obj.ServiceId,
