@@ -27,7 +27,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/seven/state"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -156,18 +155,10 @@ func (c *endpointsController) syncToCluster(ctx context.Context, cluster apisix.
 		zap.String("cluster", cluster.String()),
 	)
 
-	upstreams := []*apisixv1.Upstream{upstream}
-	comb := state.ApisixCombination{Routes: nil, Services: nil, Upstreams: upstreams}
-
-	if _, err = comb.Solver(); err != nil {
-		log.Errorw("failed to sync upstream",
-			zap.String("upstream", upsName),
-			zap.String("cluster", cluster.String()),
-			zap.Error(err),
-		)
-		return err
+	updated := &manifest{
+		upstreams: []*apisixv1.Upstream{upstream},
 	}
-	return nil
+	return c.controller.syncManifests(ctx, nil, updated, nil)
 }
 
 func (c *endpointsController) handleSyncErr(obj interface{}, err error) {
@@ -190,6 +181,8 @@ func (c *endpointsController) onAdd(obj interface{}) {
 	if !c.controller.namespaceWatching(key) {
 		return
 	}
+	log.Debugw("endpoints add event arrived",
+		zap.Any("object", obj))
 
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:   types.EventAdd,
@@ -212,6 +205,10 @@ func (c *endpointsController) onUpdate(prev, curr interface{}) {
 	if !c.controller.namespaceWatching(key) {
 		return
 	}
+	log.Debugw("endpoints update event arrived",
+		zap.Any("new object", currEp),
+		zap.Any("old object", prevEp),
+	)
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:   types.EventUpdate,
 		Object: curr,
@@ -235,6 +232,9 @@ func (c *endpointsController) onDelete(obj interface{}) {
 	if !c.controller.namespaceWatching(ep.Namespace + "/" + ep.Name) {
 		return
 	}
+	log.Debugw("endpoints delete event arrived",
+		zap.Any("final state", ep),
+	)
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:   types.EventDelete,
 		Object: ep,

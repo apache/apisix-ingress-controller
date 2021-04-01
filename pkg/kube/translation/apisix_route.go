@@ -62,6 +62,7 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) ([]*apisixv1.Rou
 			upsId := id.GenID(upstreamName)
 			route := &apisixv1.Route{
 				Metadata: apisixv1.Metadata{
+					ID:              id.GenID(routeName),
 					FullName:        routeName,
 					ResourceVersion: ar.ResourceVersion,
 					Name:            routeName,
@@ -95,7 +96,6 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) ([]*apisixv1.Rou
 
 func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*apisixv1.Route, []*apisixv1.Upstream, error) {
 	var (
-		vars      [][]apisixv1.StringOrSlice
 		routes    []*apisixv1.Route
 		upstreams []*apisixv1.Upstream
 	)
@@ -146,8 +146,9 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 				pluginMap[plugin.Name] = make(map[string]interface{})
 			}
 		}
+		var exprs [][]apisixv1.StringOrSlice
 		if part.Match.NginxVars != nil {
-			vars, err = t.translateRouteMatchExprs(part.Match.NginxVars)
+			exprs, err = t.translateRouteMatchExprs(part.Match.NginxVars)
 			if err != nil {
 				log.Errorw("ApisixRoute with bad nginxVars",
 					zap.Error(err),
@@ -167,7 +168,7 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 				ID:              id.GenID(routeName),
 				ResourceVersion: ar.ResourceVersion,
 			},
-			Vars:         vars,
+			Vars:         exprs,
 			Hosts:        part.Match.Hosts,
 			Uris:         part.Match.Paths,
 			Methods:      part.Match.Methods,

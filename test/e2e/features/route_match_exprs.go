@@ -594,3 +594,83 @@ spec:
 			Raw()
 	})
 })
+
+var _ = ginkgo.Describe("route match exprs bugfixes", func() {
+	opts := &scaffold.Options{
+		Name:                    "default",
+		Kubeconfig:              scaffold.GetKubeconfig(),
+		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
+		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
+		IngressAPISIXReplicas:   1,
+		HTTPBinServicePort:      80,
+		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
+	}
+	s := scaffold.NewScaffold(opts)
+	ginkgo.It("exprs scope", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+     exprs:
+     - subject:
+         scope: Header
+         name: X-Real-URI
+       op: RegexMatchCaseInsensitive
+       value: "^/ip/0\\d{2}/.*$"
+   backend:
+     serviceName: %s
+     servicePort: %d
+ - name: rule2
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+     - /headers
+   backend:
+     serviceName: %s
+     servicePort: %d
+`, backendSvc, backendPorts[0], backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+
+		err := s.EnsureNumApisixRoutesCreated(2)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1))
+
+		routes, err := s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), routes, 2)
+
+		_ = s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("X-Real-Uri", "/IP/093/v4").
+			Expect().
+			Status(http.StatusOK)
+
+		_ = s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("X-Real-Uri", "/IP/0981/v4").
+			Expect().
+			Status(http.StatusNotFound).
+			Body().Contains("404 Route Not Found")
+
+		// If the exprs in rule1 escaped to rulel2, then the following request
+		// will throw 404 Route Not Found.
+		_ = s.NewAPISIXClient().GET("/headers").
+			WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(http.StatusOK).
+			Body().Contains("httpbin.org")
+	})
+})
