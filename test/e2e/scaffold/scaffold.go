@@ -154,6 +154,9 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 		BaseURL: u.String(),
 		Client: &http.Client{
 			Transport: &http.Transport{},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
 		},
 		Reporter: httpexpect.NewAssertReporter(
 			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),

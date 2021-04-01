@@ -174,7 +174,7 @@ type ApisixRouteHTTPPlugin struct {
 	Enable bool `json:"enable" yaml:"enable"`
 	// Plugin configuration.
 	// TODO we may use protobuf to define it.
-	Config ApisixRouteHTTPPluginConfig
+	Config ApisixRouteHTTPPluginConfig `json:"config" yaml:"config"`
 }
 
 // ApisixRouteHTTPPluginConfig is the configuration for
