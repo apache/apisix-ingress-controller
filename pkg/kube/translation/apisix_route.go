@@ -100,9 +100,17 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 		upstreams []*apisixv1.Upstream
 	)
 
+	ruleNameMap := make(map[string]struct{})
 	upstreamMap := make(map[string]*apisixv1.Upstream)
 
 	for _, part := range ar.Spec.HTTP {
+		if part.Name == "" {
+			return nil, nil, errors.New("empty route rule name")
+		}
+		if _, ok := ruleNameMap[part.Name]; ok {
+			return nil, nil, errors.New("duplicated route rule name")
+		}
+		ruleNameMap[part.Name] = struct{}{}
 		if part.Match == nil {
 			return nil, nil, errors.New("empty route match section")
 		}
