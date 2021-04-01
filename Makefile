@@ -18,6 +18,7 @@ default: help
 
 VERSION ?= 0.4.0
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
+LOCAL_REGISTRY="localhost:5000"
 IMAGE_TAG ?= dev
 
 GINKGO ?= $(shell which ginkgo)
@@ -36,31 +37,37 @@ GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM
 E2E_CONCURRENCY ?= 1
 E2E_SKIP_BUILD ?= 0
 
-### build:            Build apisix-ingress-controller
+### build:                Build apisix-ingress-controller
+.PHONY: build
 build:
 	go build \
 		-o apisix-ingress-controller \
 		-ldflags $(GO_LDFLAGS) \
 		main.go
 
-### build-image:      Build apisix-ingress-controller image
+### build-image:          Build apisix-ingress-controller image
+.PHONY: build-image
 build-image:
 	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) .
 
-### lint:             Do static lint check
+### lint:                 Do static lint check
+.PHONY: lint
 lint:
 	golangci-lint run
 
-### gofmt:            Format all go codes
+### gofmt:                Format all go codes
+.PHONY: gofmt
 gofmt:
 	find . -type f -name "*.go" | xargs gofmt -w -s
 
-### unit-test:        Run unit test cases
+### unit-test:            Run unit test cases
+.PHONY: unit-test
 unit-test:
 	go test -cover -coverprofile=coverage.txt ./...
 
-### e2e-test:         Run e2e test cases (minikube is required)
-e2e-test: ginkgo-check build-image-to-minikube
+### e2e-test:             Run e2e test cases (kind is required)
+.PHONY: e2e-test
+e2e-test: ginkgo-check push-images-to-kind
 	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixRoute.yaml
 	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml
 	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml
@@ -73,16 +80,38 @@ ifeq ("$(wildcard $(GINKGO))", "")
 	exit 1
 endif
 
-# build images to minikube node directly, it's an internal directive, so don't
-# expose it's help message.
-build-image-to-minikube:
+### push-images-to-kind:  Push images used in e2e test suites to kind.
+.PHONY: push-images-to-kind
+push-images-to-kind: kind-up
 ifeq ($(E2E_SKIP_BUILD), 0)
-	@minikube version > /dev/null 2>&1 || (echo "ERROR: minikube is required."; exit 1)
-	@eval $$(minikube docker-env);\
+	docker pull apache/apisix:dev
+	docker tag apache/apisix:dev $(LOCAL_REGISTRY)/apache/apisix:dev
+	docker push $(LOCAL_REGISTRY)/apache/apisix:dev
+
+	docker pull bitnami/etcd:3.4.14-debian-10-r0
+	docker tag bitnami/etcd:3.4.14-debian-10-r0 $(LOCAL_REGISTRY)/bitnami/etcd:3.4.14-debian-10-r0
+	docker push $(LOCAL_REGISTRY)/bitnami/etcd:3.4.14-debian-10-r0
+
+	docker pull kennethreitz/httpbin
+	docker tag kennethreitz/httpbin $(LOCAL_REGISTRY)/kennethreitz/httpbin
+	docker push $(LOCAL_REGISTRY)/kennethreitz/httpbin
+
 	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) .
+	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(LOCAL_REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+	docker push $(LOCAL_REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 endif
 
-### license-check:    Do Apache License Header check
+### kind-up:              Launch a Kubernetes cluster with a image registry by Kind.
+.PHONY: kind-up
+kind-up:
+	./utils/kind-with-registry.sh
+### kind-reset:           Delete the Kubernetes cluster created by "make kind-up"
+.PHONY: kind-reset
+kind-reset:
+	kind delete cluster --name apisix
+
+### license-check:        Do Apache License Header check
+.PHONY: license-check
 license-check:
 ifeq ("$(wildcard .actions/openwhisk-utilities/scancode/scanCode.py)", "")
 	git clone https://github.com/apache/openwhisk-utilities.git .actions/openwhisk-utilities
@@ -90,13 +119,15 @@ ifeq ("$(wildcard .actions/openwhisk-utilities/scancode/scanCode.py)", "")
 endif
 	.actions/openwhisk-utilities/scancode/scanCode.py --config .actions/ASF-Release.cfg ./
 
-### help:             Show Makefile rules
+### help:                 Show Makefile rules
+.PHONY: help
 help:
 	@echo Makefile rules:
 	@echo
 	@grep -E '^### [-A-Za-z0-9_]+:' Makefile | sed 's/###/   /'
 
-### release-src:      Release source
+### release-src:          Release source
+.PHONY: release-src
 release-src:
 	tar -zcvf $(RELEASE_SRC).tgz \
 	--exclude .github \
@@ -118,6 +149,3 @@ release-src:
 	mv $(RELEASE_SRC).tgz release/$(RELEASE_SRC).tgz
 	mv $(RELEASE_SRC).tgz.asc release/$(RELEASE_SRC).tgz.asc
 	mv $(RELEASE_SRC).tgz.sha512 release/$(RELEASE_SRC).tgz.sha512
-
-.PHONY: build lint help
-

@@ -65,7 +65,7 @@ spec:
             tcpSocket:
               port: 2379
             timeoutSeconds: 2
-          image: "bitnami/etcd:3.4.14-debian-10-r0"
+          image: "localhost:5000/bitnami/etcd:3.4.14-debian-10-r0"
           imagePullPolicy: IfNotPresent
           name: etcd-deployment-e2e-test
           ports:

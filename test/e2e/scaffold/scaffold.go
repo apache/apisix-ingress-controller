@@ -62,6 +62,10 @@ type Scaffold struct {
 	httpbinService    *corev1.Service
 	finializers       []func()
 
+	apisixAdminTunnel *k8s.Tunnel
+	apisixHttpTunnel  *k8s.Tunnel
+	apisixHttpsTunnel *k8s.Tunnel
+
 	// Used for template rendering.
 	EtcdServiceFQDN string
 }
@@ -137,18 +141,11 @@ func (s *Scaffold) DefaultHTTPBackend() (string, []int32) {
 	return s.httpbinService.Name, ports
 }
 
-// GetAPISIXEndpoint returns the service and port (as an endpoint).
-func (s *Scaffold) GetAPISIXEndpoint() (string, error) {
-	return s.apisixServiceURL()
-}
-
 // NewAPISIXClient creates the default HTTP client.
 func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
-	host, err := s.apisixServiceURL()
-	assert.Nil(s.t, err, "getting apisix service url")
 	u := url.URL{
 		Scheme: "http",
-		Host:   host,
+		Host:   s.apisixHttpTunnel.Endpoint(),
 	}
 	return httpexpect.WithConfig(httpexpect.Config{
 		BaseURL: u.String(),
@@ -166,11 +163,9 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 
 // NewAPISIXHttpsClient creates the default HTTPs client.
 func (s *Scaffold) NewAPISIXHttpsClient() *httpexpect.Expect {
-	host, err := s.apisixServiceHttpsURL()
-	assert.Nil(s.t, err, "getting apisix service url")
 	u := url.URL{
 		Scheme: "https",
-		Host:   host,
+		Host:   s.apisixHttpsTunnel.Endpoint(),
 	}
 	return httpexpect.WithConfig(httpexpect.Config{
 		BaseURL: u.String(),
@@ -213,6 +208,9 @@ func (s *Scaffold) beforeEach() {
 	err = s.waitAllAPISIXPodsAvailable()
 	assert.Nil(s.t, err, "waiting for apisix ready")
 
+	err = s.newAPISIXTunnels()
+	assert.Nil(s.t, err, "creating apisix tunnels")
+
 	s.httpbinService, err = s.newHTTPBIN()
 	assert.Nil(s.t, err, "initializing httpbin")
 
@@ -239,7 +237,7 @@ func (s *Scaffold) afterEach() {
 	time.Sleep(3 * time.Second)
 }
 
-func (s *Scaffold) addFinializer(f func()) {
+func (s *Scaffold) addFinalizers(f func()) {
 	s.finializers = append(s.finializers, f)
 }
 
