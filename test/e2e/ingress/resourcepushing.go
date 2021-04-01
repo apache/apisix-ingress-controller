@@ -276,4 +276,61 @@ spec:
 			Contains("headers").
 			Contains("httpbin.com")
 	})
+
+	ginkgo.It("route priority", func() {
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		apisixRoute := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  http:
+  - name: rule1
+    priority: 1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
+  - name: rule2
+    priority: 2
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+      exprs:
+      - subject:
+          scope: Header
+          name: X-Foo
+        op: Equal
+        value: barbazbar
+    backend:
+      serviceName: %s
+      servicePort: %d
+    plugins:
+    - name: request-id
+      enable: true
+`, backendSvc, backendSvcPort[0], backendSvc, backendSvcPort[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1))
+
+		// Hit rule1
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().Contains("origin")
+		resp.Header("X-Request-Id").Empty()
+
+		// Hit rule2
+		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").WithHeader("X-Foo", "barbazbar").Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().Contains("origin")
+		resp.Header("X-Request-Id").NotEmpty()
+	})
 })

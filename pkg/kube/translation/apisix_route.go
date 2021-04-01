@@ -168,6 +168,7 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 				ID:              id.GenID(routeName),
 				ResourceVersion: ar.ResourceVersion,
 			},
+			Priority:     part.Priority,
 			Vars:         exprs,
 			Hosts:        part.Match.Hosts,
 			Uris:         part.Match.Paths,

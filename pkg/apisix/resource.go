@@ -81,6 +81,7 @@ type routeItem struct {
 	Uris       []string               `json:"uris"`
 	Desc       string                 `json:"desc"`
 	Methods    []string               `json:"methods"`
+	Priority   int                    `json:"priority"`
 	Plugins    map[string]interface{} `json:"plugins"`
 }
 
@@ -114,6 +115,7 @@ func (i *item) route(clusterName string) (*v1.Route, error) {
 		UpstreamId: route.UpstreamId,
 		ServiceId:  route.ServiceId,
 		Plugins:    route.Plugins,
+		Priority:   route.Priority,
 	}, nil
 }
 
