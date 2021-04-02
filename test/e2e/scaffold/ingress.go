@@ -227,8 +227,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-          image: "apache/apisix-ingress-controller:dev"
-          imagePullPolicy: Never
+          image: "localhost:5000/apache/apisix-ingress-controller:dev"
+          imagePullPolicy: Always
           name: ingress-apisix-controller-deployment-e2e-test
           ports:
             - containerPort: 8080
@@ -268,11 +268,11 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, crb); err != nil {
 		return err
 	}
-	s.addFinializer(func() {
+	s.addFinalizers(func() {
 		err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, crb)
 		assert.Nil(s.t, err, "deleting ClusterRoleBinding")
 	})
-	s.addFinializer(func() {
+	s.addFinalizers(func() {
 		err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, cr)
 		assert.Nil(s.t, err, "deleting ClusterRole")
 	})
