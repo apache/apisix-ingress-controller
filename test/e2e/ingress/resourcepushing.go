@@ -333,4 +333,46 @@ spec:
 		resp.Body().Contains("origin")
 		resp.Header("X-Request-Id").NotEmpty()
 	})
+
+	ginkgo.It("verify route items", func() {
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		apisixRoute := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  http:
+  - name: rule1
+    priority: 1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1))
+
+		routes, err := s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing routes")
+		assert.Len(ginkgo.GinkgoT(), routes, 1)
+		name := s.Namespace() + "_" + "httpbin-route" + "_" + "rule1"
+		assert.Equal(ginkgo.GinkgoT(), routes[0].Name, name)
+		assert.Equal(ginkgo.GinkgoT(), routes[0].Uris, []string{"/ip"})
+		assert.Equal(ginkgo.GinkgoT(), routes[0].Hosts, []string{"httpbin.com"})
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().Contains("origin")
+
+		resp = s.NewAPISIXClient().GET("/ip").Expect()
+		resp.Status(http.StatusNotFound)
+		resp.Body().Contains("404 Route Not Found")
+	})
 })
