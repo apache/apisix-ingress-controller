@@ -148,6 +148,9 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 		sslMap := ssls.(*sync.Map)
 		sslMap.Range(func(_, v interface{}) bool {
 			ssl := v.(*apisixv1.Ssl)
+			// sync ssl
+			ssl.Cert = string(sec.Data["cert"])
+			ssl.Key = string(sec.Data["key"])
 			ssl.FullName = ssl.ID
 			return state.SyncSsl(ssl, ev.Type.String()) == nil
 		})
