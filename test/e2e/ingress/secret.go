@@ -75,6 +75,8 @@ YOpduE8CgYEAu9k9WOQuRX4f6i5LBIxyaYn6Hw6oJn8e/w+p2+HNBXdyVQNqUHBG
 V5rgnBwhc5LeIFbehKvQOvYSWbwbA1VunMpdYgV6+EBLayumJNqV6jGei4okx2of
 wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 -----END RSA PRIVATE KEY-----`
+		// key compare
+		key_compare := "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"
 		// create secret
 		err := s.NewSecret(secretName, cert, key)
 		assert.Nil(ginkgo.GinkgoT(), err, "create secret error")
@@ -89,6 +91,7 @@ wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 		assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
 		assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
 		assert.Equal(ginkgo.GinkgoT(), cert, tls[0].Cert, "tls cert not expect")
+		assert.Equal(ginkgo.GinkgoT(), key_compare, tls[0].Key, "tls key not expect")
 
 		certUpdate := `-----BEGIN CERTIFICATE-----
 MIIDSDCCAjACCQDf02nwtW2VrzANBgkqhkiG9w0BAQsFADBmMQswCQYDVQQGEwJj
@@ -137,6 +140,7 @@ RU+QPRECgYB6XW24EI5+w3STbpnc6VoTS+sy9I9abTJPYo9LpCJwfMYc9Tg9Cx2K
 29PnmSrLFpU2fvE0ijpyHRr7gGmINTxbrmTmfMBI01m+GpPuvDcBQ2tsFJ+A3DzN
 9xJulR2NZUZdDIIIqx983ANE6S4Zb8rAbsoHQdqpjUrcVxI2OJBp3Q==
 -----END RSA PRIVATE KEY-----`
+		// key update compare
 		err = s.NewSecret(secretName, certUpdate, keyUpdate)
 		assert.Nil(ginkgo.GinkgoT(), err, "create secret error")
 		// check ssl in APISIX
@@ -145,5 +149,15 @@ RU+QPRECgYB6XW24EI5+w3STbpnc6VoTS+sy9I9abTJPYo9LpCJwfMYc9Tg9Cx2K
 		assert.Nil(ginkgo.GinkgoT(), err, "list tlsUpdate error")
 		assert.Len(ginkgo.GinkgoT(), tlsUpdate, 1, "tls number not expect")
 		assert.Equal(ginkgo.GinkgoT(), certUpdate, tlsUpdate[0].Cert, "tls cert not expect")
+		assert.Equal(ginkgo.GinkgoT(), keyUpdate, tlsUpdate[0].Key, "tls key not expect")
+
+		// delete ApisixTls
+		err = s.DeleteApisixTls(tlsName, host, secretName)
+		assert.Nil(ginkgo.GinkgoT(), err, "delete tls error")
+		// check ssl in APISIX
+		time.Sleep(10 * time.Second)
+		tls, err = s.ListApisixTls()
+		assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
+		assert.Len(ginkgo.GinkgoT(), tls, 0, "tls number not expect")
 	})
 })
