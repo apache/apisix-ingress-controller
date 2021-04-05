@@ -22,6 +22,10 @@ RUN rm -rf /etc/localtime \
     && dpkg-reconfigure -f noninteractive tzdata
 
 WORKDIR /build
+COPY go.mod .
+COPY go.sum .
+RUN GOPROXY=https://goproxy.cn,direct go mod download
+
 COPY . .
 RUN GOPROXY=https://goproxy.cn,direct make build
 
