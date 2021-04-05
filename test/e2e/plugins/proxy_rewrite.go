@@ -16,11 +16,11 @@ package plugins
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("proxy-rewrite plugin", func() {
@@ -67,9 +67,9 @@ spec:
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp := s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusOK)
-		resp.Header("Location").Equal("https://httpbin.org/ip")
+		s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(200)
 	})
 
 	ginkgo.It("proxy rewrite request uri and host", func() {
@@ -106,9 +106,8 @@ spec:
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp := s.NewAPISIXClient().GET("/hello").Expect()
-		resp.Status(http.StatusOK)
-		resp.Header("Location").Equal("https://httpbin.org/ip")
+		s.NewAPISIXClient().GET("/hello").Expect().
+			Status(200)
 	})
 
 	ginkgo.It("disable plugin", func() {
@@ -144,7 +143,8 @@ spec:
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp := s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(404)
+		s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(404)
 	})
 })
