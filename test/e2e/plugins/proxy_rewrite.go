@@ -95,7 +95,7 @@ spec:
    - name: proxy-rewrite
      enable: true
      config:
-	   uri: /ip
+       uri: /ip
        host: httpbin.org
 `, backendSvc, backendPorts[0])
 
