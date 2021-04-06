@@ -83,8 +83,6 @@ spec:
  http:
  - name: rule1
    match:
-     hosts:
-     - httpbin.org
      paths:
        - /hello
    backends:
