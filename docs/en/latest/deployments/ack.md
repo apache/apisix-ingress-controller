@@ -61,6 +61,7 @@ kubectl get service apisix-gateway --namespace ingress-apisix -o jsonpath='{.sta
 Another thing should be concerned that the `allow.ipList` field should be customized according to the [Pod CIRD configuration of ACK](https://www.alibabacloud.com/help/en/doc-detail/86500.htm), so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
 
 `ACK` PV require min_size is `20Gi`,cluster with `flexVolume` component select `alicloud-disk-ssd`,if with `helm values.yml` configure startup `apisix`,[more helm etcd configure](https://hub.kubeapps.com/charts/bitnami/etcd),configure format sample:
+
 ```yaml
 etcd:
   persistence:
