@@ -83,7 +83,7 @@ spec:
  http:
  - name: rule1
    match:
-  	 hosts:
+     hosts:
      - test.com
      paths:
        - /hello
