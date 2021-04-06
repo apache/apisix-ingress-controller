@@ -48,7 +48,7 @@ build:
 ### build-image:          Build apisix-ingress-controller image
 .PHONY: build-image
 build-image:
-	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) .
+	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true .
 
 ### lint:                 Do static lint check
 .PHONY: lint
@@ -96,7 +96,7 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker tag kennethreitz/httpbin $(LOCAL_REGISTRY)/kennethreitz/httpbin
 	docker push $(LOCAL_REGISTRY)/kennethreitz/httpbin
 
-	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) .
+	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(LOCAL_REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 	docker push $(LOCAL_REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 endif
