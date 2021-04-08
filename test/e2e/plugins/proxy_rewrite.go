@@ -192,8 +192,6 @@ spec:
 
 		s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
 			Expect().
-			Status(404).
-			Body().
-			Contains("404 Route Not Found")
+			Status(404)
 	})
 })
