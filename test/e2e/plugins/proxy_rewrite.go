@@ -126,8 +126,6 @@ spec:
  http:
  - name: rule1
    match:
-     hosts:
-     - test.com
      paths:
        - /hello/ip
    backends:
@@ -141,7 +139,7 @@ spec:
        regex_uri:
          - ^/hello/(.*)
          - /$1
-       header:
+       headers:
          host: httpbin.org
 `, backendSvc, backendPorts[0])
 
