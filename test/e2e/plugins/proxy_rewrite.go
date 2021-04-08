@@ -194,9 +194,7 @@ spec:
 
 		s.NewAPISIXClient().GET("/hello/ip").
 			Expect().
-			Status(404).
-			Body().
-			Contains("origin")
+			Status(404)
 	})
 
 	ginkgo.It("disable plugin", func() {
