@@ -69,7 +69,9 @@ spec:
 
 		s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
 			Expect().
-			Status(200)
+			Status(200).
+			Body().
+			Contains("origin")
 	})
 
 	ginkgo.It("proxy rewrite request uri and host", func() {
@@ -108,7 +110,53 @@ spec:
 
 		s.NewAPISIXClient().GET("/hello").WithHeader("Host", "test.com").
 			Expect().
-			Status(200)
+			Status(200).
+			Body().
+			Contains("origin")
+	})
+
+	ginkgo.It("proxy rewrite request regex_uri and headers", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - test.com
+     paths:
+       - /hello/ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: proxy-rewrite
+     enable: true
+     config:
+       regex_uri:
+         - ^/hello/(.*)
+         - /$1
+       header:
+         host: httpbin.org
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		s.NewAPISIXClient().GET("/hello/ip").
+			Expect().
+			Status(200).
+			Body().
+			Contains("origin")
 	})
 
 	ginkgo.It("disable plugin", func() {
@@ -146,6 +194,8 @@ spec:
 
 		s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
 			Expect().
-			Status(404)
+			Status(404).
+			Body().
+			Contains("404 Route Not Found")
 	})
 })
