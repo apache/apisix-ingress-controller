@@ -165,6 +165,14 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 				return nil, nil, err
 			}
 		}
+		if err := validateRemoteAddrs(part.Match.RemoteAddrs); err != nil {
+			log.Errorw("ApisixRoute with invalid remote addrs",
+				zap.Error(err),
+				zap.Strings("remote_addrs", part.Match.RemoteAddrs),
+				zap.Any("ApisixRoute", ar),
+			)
+			return nil, nil, err
+		}
 
 		routeName := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, svcPort)
@@ -177,6 +185,7 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 				ResourceVersion: ar.ResourceVersion,
 			},
 			Priority:     part.Priority,
+			RemoteAddrs:  part.Match.RemoteAddrs,
 			Vars:         exprs,
 			Hosts:        part.Match.Hosts,
 			Uris:         part.Match.Paths,
