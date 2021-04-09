@@ -48,7 +48,7 @@ spec:
     kind: ApisixRoute
     shortNames:
       - ar
-  preserveUnknownFields: false
+  preserveUnknownFields: true # we have to enable it since plugin config
   validation:
     openAPIV3Schema:
       type: object
@@ -92,7 +92,7 @@ spec:
                         minItems: 1
                         items:
                           type: string
-                          enum: ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE"]
+                          enum: ["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"]
                       remoteAddrs:
                         type: array
                         minItems: 1
@@ -109,7 +109,7 @@ spec:
                               properties:
                                 scope:
                                   type: string
-                                  enum: ["Header", "Query", "Cookie", "Path"]
+                                  enum: ["Cookie", "Header", "Path", "Query"]
                                 name:
                                   type: string
                                   minLength: 1
