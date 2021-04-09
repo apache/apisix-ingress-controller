@@ -172,4 +172,72 @@ spec:
 		resp = s.NewAPISIXClient().GET("/ip").WithQuery("name", "bob").WithHeader("Host", "httpbin.org").WithHeader("X-Foo", "bar").Expect()
 		resp.Status(http.StatusOK)
 	})
+	ginkgo.It("enable plugin and then delete it", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: fault-injection
+     enable: true
+     config:
+       abort:
+         http_status: 500
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		resp := s.NewAPISIXClient().GET("/ip").WithQuery("name", "bob").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusInternalServerError)
+
+		ar = fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+
+		err = s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		resp = s.NewAPISIXClient().GET("/ip").WithQuery("name", "bob").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().Contains("origin")
+	})
 })

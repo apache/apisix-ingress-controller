@@ -251,4 +251,80 @@ spec:
 		resp.Header("Access-Control-Max-Age").Empty()
 		resp.Body().Contains("origin")
 	})
+	ginkgo.It("enable plugin and then delete it", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: cors
+     enable: true
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+
+		resp.Header("Access-Control-Allow-Origin").Equal("*")
+		resp.Header("Access-Control-Allow-Methods").Equal("*")
+		resp.Header("Access-Control-Allow-Headers").Equal("*")
+		resp.Header("Access-Control-Expose-Headers").Equal("*")
+		resp.Header("Access-Control-Max-Age").Equal("5")
+		resp.Body().Contains("origin")
+
+		ar = fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+		err = s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+
+		// httpbin sets this header by itself.
+		//resp.Header("Access-Control-Allow-Origin").Empty()
+		resp.Header("Access-Control-Allow-Methods").Empty()
+		resp.Header("Access-Control-Allow-Headers").Empty()
+		resp.Header("Access-Control-Expose-Headers").Empty()
+		resp.Header("Access-Control-Max-Age").Empty()
+		resp.Body().Contains("origin")
+	})
 })

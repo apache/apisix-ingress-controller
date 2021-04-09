@@ -355,7 +355,7 @@ func (s *cluster) createResource(ctx context.Context, url string, body io.Reader
 }
 
 func (s *cluster) updateResource(ctx context.Context, url string, body io.Reader) (*updateResponse, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, url, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
 	if err != nil {
 		return nil, err
 	}
