@@ -16,7 +16,9 @@
 package ingress
 
 import (
+	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -161,7 +163,20 @@ jW4KB95bGOTa7r7DM1Up0MbAIwWoeLBGhOIXk7inurZGg+FNjZMA5Lzm6qo=
 		assert.Equal(ginkgo.GinkgoT(), key_compare, tls[0].Key, "tls key not expect")
 
 		// check DP
-		s.NewAPISIXHttpsClient().GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK).Body().Raw()
+		s.NewAPISIXHttpsClient(host).GET("/ip").Expect().Status(http.StatusOK).Body().Raw()
+
+		dialer := &net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}
+
+		http.DefaultTransport.(*http.Transport).DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			if addr == "api6.com:9443" {
+				addr = "localhost:9443"
+			}
+			return dialer.DialContext(ctx, network, addr)
+		}
 
 		certUpdate := `-----BEGIN CERTIFICATE-----
 MIIFcjCCA1qgAwIBAgIJAM7zkxmhGdNEMA0GCSqGSIb3DQEBCwUAMGUxCzAJBgNV
@@ -257,7 +272,7 @@ UnBVSIGJ/c0AhVSDuOAJiF36pvsDysTZXMTFE/9i5bkGOiwtzRNe4Hym/SEZUCpn
 		assert.Equal(ginkgo.GinkgoT(), certUpdate, tlsUpdate[0].Cert, "tls cert not expect")
 		assert.Equal(ginkgo.GinkgoT(), keyUpdate, tlsUpdate[0].Key, "tls key not expect")
 		// check DP
-		s.NewAPISIXHttpsClient().GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK).Body().Raw()
+		s.NewAPISIXHttpsClient(host).GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK).Body().Raw()
 
 		// delete ApisixTls
 		err = s.DeleteApisixTls(tlsName, host, secretName)
