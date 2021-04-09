@@ -37,6 +37,7 @@ var _ = ginkgo.Describe("traffic split", func() {
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("sanity", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		adminSvc, adminPort := s.ApisixAdminServiceAndPort()
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
@@ -54,10 +55,10 @@ spec:
    - serviceName: %s
      servicePort: %d
      weight: 10
-   - serviceName: apisix-service-e2e-test
-     servicePort: 9180
+   - serviceName: %s
+     servicePort: %d
      weight: 5
-`, backendSvc, backendPorts[0])
+`, backendSvc, backendPorts[0], adminSvc, adminPort)
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
