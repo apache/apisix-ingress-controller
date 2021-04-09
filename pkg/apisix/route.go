@@ -239,10 +239,12 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		Priority:    obj.Priority,
 		Desc:        obj.Name,
 		Name:        obj.Name,
+		URI:         obj.Path,
 		Host:        obj.Host,
 		Hosts:       obj.Hosts,
-		URI:         obj.Path,
 		ServiceId:   obj.ServiceId,
+		UpstreamId:  obj.UpstreamId,
+		Uris:        obj.Uris,
 		Plugins:     obj.Plugins,
 		Vars:        obj.Vars,
 		RemoteAddrs: obj.RemoteAddrs,
@@ -251,7 +253,7 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		return nil, err
 	}
 	url := r.url + "/" + obj.ID
-	log.Debugw("updating route", zap.ByteString("body", body), zap.String("url", r.url))
+	log.Debugw("updating route", zap.ByteString("body", body), zap.String("url", url))
 	resp, err := r.cluster.updateResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err

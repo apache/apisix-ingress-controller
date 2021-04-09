@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var _ = ginkgo.Describe("echo plugin", func() {
+var _ = ginkgo.Describe("response rewrite plugin", func() {
 	opts := &scaffold.Options{
 		Name:                    "default",
 		Kubeconfig:              scaffold.GetKubeconfig(),
@@ -34,7 +34,7 @@ var _ = ginkgo.Describe("echo plugin", func() {
 		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
 	}
 	s := scaffold.NewScaffold(opts)
-	ginkgo.It("insert preface and epilogue", func() {
+	ginkgo.It("rewrite status code and headers", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
@@ -54,15 +54,12 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: echo
+   - name: response-rewrite
      enable: true
      config:
-       before_body: "This is the preface"
-       after_body: "This is the epilogue"
+       status_code: 301
        headers:
-         X-Foo: v1
-         X-Foo2: v2
-       
+         location: https://my.location/path
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
@@ -73,15 +70,11 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
 		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusOK)
-		resp.Header("X-Foo").Equal("v1")
-		resp.Header("X-Foo2").Equal("v2")
-		resp.Body().Contains("This is the preface")
-		resp.Body().Contains("origin")
-		resp.Body().Contains("This is the epilogue")
+		resp.Status(http.StatusMovedPermanently)
+		resp.Header("Location").Equal("https://my.location/path")
 	})
 
-	ginkgo.It("replace body", func() {
+	ginkgo.It("rewrite body", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
@@ -101,11 +94,10 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: echo
+   - name: response-rewrite
      enable: true
      config:
-       body: "my custom body"
-       
+       body: "hello\nworld"
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
@@ -117,10 +109,10 @@ spec:
 
 		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
 		resp.Status(http.StatusOK)
-		resp.Body().Equal("my custom body")
+		resp.Body().Equal("hello\nworld")
 	})
 
-	ginkgo.It("auth", func() {
+	ginkgo.It("rewrite body in base64", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
@@ -140,12 +132,11 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: echo
+   - name: response-rewrite
      enable: true
      config:
-       body: "my custom body"
-       auth_value: "Basic cmVkaXM6MTIzNDU2"
-       
+       body: "aGVsbG9cbndvcmxk"
+       body_base64: true
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
@@ -156,13 +147,61 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
 		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusUnauthorized)
-
-		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
-			WithHeader("Authorization", "Basic cmVkaXM6MTIzNDU2").
-			Expect()
 		resp.Status(http.StatusOK)
-		resp.Body().Equal("my custom body")
+		resp.Body().Equal("hello\\nworld")
+	})
+
+	ginkgo.It("conditional execution", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /status/*
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: response-rewrite
+     enable: true
+     config:
+       body: "aGVsbG9cbndvcmxk"
+       body_base64: true
+       status_code: 308
+       headers:
+         location: https://a.com/b/c
+         x-changed-by: apisix
+       vars:
+       - ["status", "==", "200"]
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		// vars unsatisfied
+		resp := s.NewAPISIXClient().GET("/status/500").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusInternalServerError)
+		resp.Header("X-Changed-By").Empty()
+		resp.Header("Location").Empty()
+
+		resp = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusPermanentRedirect)
+		resp.Header("X-Changed-By").Equal("apisix")
+		resp.Header("Location").Equal("https://a.com/b/c")
+		resp.Body().Equal("hello\\nworld")
 	})
 
 	ginkgo.It("disable plugin", func() {
@@ -179,17 +218,16 @@ spec:
      hosts:
      - httpbin.org
      paths:
-       - /ip
+       - /status/*
    backends:
    - serviceName: %s
      servicePort: %d
      weight: 10
    plugins:
-   - name: echo
+   - name: response-rewrite
      enable: false
      config:
-       body: "my custom body"
-       
+       status_code: 206
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
@@ -199,80 +237,7 @@ spec:
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp := s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").Expect()
 		resp.Status(http.StatusOK)
-		resp.Body().Contains("origin")
-		resp.Body().NotContains("my custom body")
-	})
-
-	ginkgo.It("enable plugin and then delete it", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
-kind: ApisixRoute
-metadata:
- name: httpbin-route
-spec:
- http:
- - name: rule1
-   match:
-     hosts:
-     - httpbin.org
-     paths:
-       - /ip
-   backends:
-   - serviceName: %s
-     servicePort: %d
-     weight: 10
-   plugins:
-   - name: echo
-     enable: true
-     config:
-       body: "my custom body"
-       
-`, backendSvc, backendPorts[0])
-
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusOK)
-		resp.Body().Equal("my custom body")
-
-		ar = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
-kind: ApisixRoute
-metadata:
- name: httpbin-route
-spec:
- http:
- - name: rule1
-   match:
-     hosts:
-     - httpbin.org
-     paths:
-       - /ip
-   backends:
-   - serviceName: %s
-     servicePort: %d
-     weight: 10
-       
-`, backendSvc, backendPorts[0])
-
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-
-		err = s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
-		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusOK)
-		resp.Body().NotContains("my custom body")
-		resp.Body().Contains("origin")
 	})
 })

@@ -275,12 +275,16 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		})
 	}
 	body, err := json.Marshal(upstreamReqBody{
-		LBType: obj.Type,
-		HashOn: obj.HashOn,
-		Key:    obj.Key,
-		Nodes:  nodes,
-		Desc:   obj.Name,
-		Name:   obj.Name,
+		LBType:  obj.Type,
+		HashOn:  obj.HashOn,
+		Key:     obj.Key,
+		Nodes:   nodes,
+		Desc:    obj.Name,
+		Name:    obj.Name,
+		Scheme:  obj.Scheme,
+		Checks:  obj.Checks,
+		Retries: obj.Retries,
+		Timeout: obj.Timeout,
 	})
 	if err != nil {
 		return nil, err
