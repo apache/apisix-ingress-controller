@@ -52,3 +52,15 @@ Tips: The failure caused by empty upstream nodes is a limitation of Apache APISI
 If an error occurs during the process of `apisix-ingress-controller` parsing CRD and distributing the configuration to APISIX, a retry will be triggered.
 
 The delayed retry method is adopted. After the first failure, it is retried once per second. After 5 retries are triggered, the slow retry strategy will be enabled, and the retry will be performed every 1 minute until it succeeds.
+
+7. What if the CRDs need to be updated when you upgrading apisix-ingress-controller?
+
+CRDs upgrading is special as helm chart will skip to apply these resources when they already exist.
+
+> With the arrival of Helm 3, we removed the old crd-install hooks for a more simple methodology. There is now a special directory called crds that you can create in your chart to hold your CRDs. These CRDs are not templated, but will be installed by default when running a helm install for the chart. If the CRD already exists, it will be skipped with a warning. If you wish to skip the CRD installation step, you can pass the --skip-crds flag.
+
+In such a case, you may need to apply these CRDs by yourself.
+
+```shell
+kubectl apply -k samples/deploy/crd/
+```
