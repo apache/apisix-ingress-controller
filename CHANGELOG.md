@@ -48,6 +48,7 @@ you upgrade your old release, **manual steps are required to apply the new Apisi
 * Priority field is not passed to APISIX ([#329](https://github.com/apache/apisix-ingress-controller/pull/329))
 * Route rule name in ApisixRoute can be duplicated ([#330](https://github.com/apache/apisix-ingress-controller/pull/330))
 * Use `PUT` instead of `PATCH` method when updating resources ([#353](https://github.com/apache/apisix-ingress-controller/pull/353))
+* Secrets controller doesn't push the newest cert and priv key to APISIX ([#337](https://github.com/apache/apisix-ingress-controller/pull/337))
 
 ## Test
 
