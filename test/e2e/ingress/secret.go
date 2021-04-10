@@ -163,7 +163,7 @@ jW4KB95bGOTa7r7DM1Up0MbAIwWoeLBGhOIXk7inurZGg+FNjZMA5Lzm6qo=
 		assert.Equal(ginkgo.GinkgoT(), key_compare, tls[0].Key, "tls key not expect")
 
 		// check DP
-		s.NewAPISIXHttpsClient(host).GET("/ip").Expect().Status(http.StatusOK).Body().Raw()
+		s.NewAPISIXHttpsClient(host).GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK).Body().Raw()
 
 		dialer := &net.Dialer{
 			Timeout:   30 * time.Second,
