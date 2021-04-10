@@ -168,7 +168,7 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 }
 
 // NewAPISIXHttpsClient creates the default HTTPs client.
-func (s *Scaffold) NewAPISIXHttpsClient() *httpexpect.Expect {
+func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
 	u := url.URL{
 		Scheme: "https",
 		Host:   s.apisixHttpsTunnel.Endpoint(),
@@ -180,6 +180,7 @@ func (s *Scaffold) NewAPISIXHttpsClient() *httpexpect.Expect {
 				TLSClientConfig: &tls.Config{
 					// accept any certificate; for testing only!
 					InsecureSkipVerify: true,
+					ServerName:         host,
 				},
 			},
 		},
