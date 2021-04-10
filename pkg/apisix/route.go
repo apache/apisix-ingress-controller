@@ -29,17 +29,18 @@ import (
 )
 
 type routeReqBody struct {
-	Desc       string               `json:"desc,omitempty"`
-	Name       string               `json:"name,omitempty"`
-	URI        string               `json:"uri,omitempty"`
-	Priority   int                  `json:"priority,omitempty"`
-	Uris       []string             `json:"uris,omitempty"`
-	Vars       [][]v1.StringOrSlice `json:"vars,omitempty"`
-	Host       string               `json:"host,omitempty"`
-	Hosts      []string             `json:"hosts,omitempty"`
-	ServiceId  string               `json:"service_id,omitempty"`
-	UpstreamId string               `json:"upstream_id,omitempty"`
-	Plugins    v1.Plugins           `json:"plugins,omitempty"`
+	Desc        string               `json:"desc,omitempty"`
+	Name        string               `json:"name,omitempty"`
+	URI         string               `json:"uri,omitempty"`
+	Priority    int                  `json:"priority,omitempty"`
+	Uris        []string             `json:"uris,omitempty"`
+	Vars        [][]v1.StringOrSlice `json:"vars,omitempty"`
+	Host        string               `json:"host,omitempty"`
+	Hosts       []string             `json:"hosts,omitempty"`
+	ServiceId   string               `json:"service_id,omitempty"`
+	RemoteAddrs []string             `json:"remote_addrs,omitempty"`
+	UpstreamId  string               `json:"upstream_id,omitempty"`
+	Plugins     v1.Plugins           `json:"plugins,omitempty"`
 }
 
 type routeClient struct {
@@ -162,17 +163,18 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		return nil, err
 	}
 	data, err := json.Marshal(routeReqBody{
-		Priority:   obj.Priority,
-		Desc:       obj.Name,
-		Name:       obj.Name,
-		URI:        obj.Path,
-		Host:       obj.Host,
-		Hosts:      obj.Hosts,
-		ServiceId:  obj.ServiceId,
-		UpstreamId: obj.UpstreamId,
-		Uris:       obj.Uris,
-		Plugins:    obj.Plugins,
-		Vars:       obj.Vars,
+		Priority:    obj.Priority,
+		Desc:        obj.Name,
+		Name:        obj.Name,
+		URI:         obj.Path,
+		Host:        obj.Host,
+		Hosts:       obj.Hosts,
+		ServiceId:   obj.ServiceId,
+		UpstreamId:  obj.UpstreamId,
+		Uris:        obj.Uris,
+		Plugins:     obj.Plugins,
+		Vars:        obj.Vars,
+		RemoteAddrs: obj.RemoteAddrs,
 	})
 	if err != nil {
 		return nil, err
@@ -232,18 +234,20 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	if err := r.cluster.HasSynced(ctx); err != nil {
 		return nil, err
 	}
+	// FIXME use unified v1.Route, removing routeReqBody.
 	body, err := json.Marshal(routeReqBody{
-		Priority:   obj.Priority,
-		Desc:       obj.Name,
-		Name:       obj.Name,
-		URI:        obj.Path,
-		Host:       obj.Host,
-		Hosts:      obj.Hosts,
-		ServiceId:  obj.ServiceId,
-		UpstreamId: obj.UpstreamId,
-		Uris:       obj.Uris,
-		Plugins:    obj.Plugins,
-		Vars:       obj.Vars,
+		Priority:    obj.Priority,
+		Desc:        obj.Name,
+		Name:        obj.Name,
+		URI:         obj.Path,
+		Host:        obj.Host,
+		Hosts:       obj.Hosts,
+		ServiceId:   obj.ServiceId,
+		UpstreamId:  obj.UpstreamId,
+		Uris:        obj.Uris,
+		Plugins:     obj.Plugins,
+		Vars:        obj.Vars,
+		RemoteAddrs: obj.RemoteAddrs,
 	})
 	if err != nil {
 		return nil, err

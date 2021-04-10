@@ -16,6 +16,7 @@ package translation
 
 import (
 	"errors"
+	"net"
 
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -24,6 +25,10 @@ import (
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+)
+
+var (
+	_errInvalidAddress = errors.New("address is neither IP or CIDR")
 )
 
 func (t *translator) getServiceClusterIPAndPort(backend *configv2alpha1.ApisixRouteHTTPBackend, ar *configv2alpha1.ApisixRoute) (string, int32, error) {
@@ -83,4 +88,16 @@ func (t *translator) translateUpstream(namespace, svcName, svcResolveGranularity
 	ups.Name = ups.FullName
 	ups.ID = id.GenID(ups.FullName)
 	return ups, nil
+}
+
+func validateRemoteAddrs(remoteAddrs []string) error {
+	for _, addr := range remoteAddrs {
+		if ip := net.ParseIP(addr); ip == nil {
+			// addr is not an IP address, try to parse it as a CIDR.
+			if _, _, err := net.ParseCIDR(addr); err != nil {
+				return _errInvalidAddress
+			}
+		}
+	}
+	return nil
 }

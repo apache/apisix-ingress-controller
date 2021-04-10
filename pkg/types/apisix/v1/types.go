@@ -89,6 +89,7 @@ type Route struct {
 	Vars         [][]StringOrSlice `json:"vars,omitempty" yaml:"vars,omitempty"`
 	Uris         []string          `json:"uris,omitempty" yaml:"uris,omitempty"`
 	Methods      []string          `json:"methods,omitempty" yaml:"methods,omitempty"`
+	RemoteAddrs  []string          `json:"remote_addrs,omitempty" yaml:"remote_addrs,omitempty"`
 	ServiceId    string            `json:"service_id,omitempty" yaml:"service_id,omitempty"`
 	ServiceName  string            `json:"service_name,omitempty" yaml:"service_name,omitempty"`
 	UpstreamId   string            `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
