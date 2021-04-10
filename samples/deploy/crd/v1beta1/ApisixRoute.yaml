@@ -80,7 +80,7 @@ spec:
                         minItems: 1
                         items:
                           type: string
-                          pattern: "^/" # start with "/"
+                          pattern: "^/[a-zA-Z0-9\\-._~%!$&'()+,;=:@/]*\\*?$"
                       hosts:
                         type: array
                         minItems: 1
