@@ -16,9 +16,7 @@
 package ingress
 
 import (
-	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"time"
 
@@ -28,7 +26,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.FDescribe("secret Testing", func() {
+var _ = ginkgo.Describe("secret Testing", func() {
 	opts := &scaffold.Options{
 		Name:                    "default",
 		Kubeconfig:              scaffold.GetKubeconfig(),
@@ -164,19 +162,6 @@ jW4KB95bGOTa7r7DM1Up0MbAIwWoeLBGhOIXk7inurZGg+FNjZMA5Lzm6qo=
 
 		// check DP
 		s.NewAPISIXHttpsClient(host).GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK).Body().Raw()
-
-		dialer := &net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-			DualStack: true,
-		}
-
-		http.DefaultTransport.(*http.Transport).DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-			if addr == "api6.com:9443" {
-				addr = "localhost:9443"
-			}
-			return dialer.DialContext(ctx, network, addr)
-		}
 
 		certUpdate := `-----BEGIN CERTIFICATE-----
 MIIFcjCCA1qgAwIBAgIJAM7zkxmhGdNEMA0GCSqGSIb3DQEBCwUAMGUxCzAJBgNV
