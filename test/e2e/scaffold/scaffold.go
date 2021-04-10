@@ -19,7 +19,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -170,12 +169,9 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 
 // NewAPISIXHttpsClient creates the default HTTPs client.
 func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
-	ep := s.apisixHttpsTunnel.Endpoint()
-	port := strings.ReplaceAll(ep, "localhost:", "")
-	hp := host + ":" + port
 	u := url.URL{
 		Scheme: "https",
-		Host:   hp,
+		Host:   s.apisixHttpsTunnel.Endpoint(),
 	}
 	return httpexpect.WithConfig(httpexpect.Config{
 		BaseURL: u.String(),
@@ -184,17 +180,7 @@ func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
 				TLSClientConfig: &tls.Config{
 					// accept any certificate; for testing only!
 					InsecureSkipVerify: true,
-				},
-				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-					if addr == hp {
-						addr = "localhost:" + port
-					}
-					dialer := &net.Dialer{
-						Timeout:   30 * time.Second,
-						KeepAlive: 30 * time.Second,
-						DualStack: true,
-					}
-					return dialer.DialContext(ctx, network, addr)
+					ServerName:         host,
 				},
 			},
 		},
