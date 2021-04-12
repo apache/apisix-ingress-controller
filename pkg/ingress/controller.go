@@ -20,10 +20,6 @@ import (
 	"sync"
 	"time"
 
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-
-	"github.com/apache/apisix-ingress-controller/pkg/types"
-
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,6 +40,8 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 // Controller is the ingress apisix controller object.
@@ -311,6 +309,18 @@ func (c *Controller) run(ctx context.Context) {
 		c.ingressInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
+		c.apisixRouteInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
+		c.apisixUpstreamInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
+		c.secretInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
+		c.apisixTlsInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
 		c.endpointsController.run(ctx)
 	})
 	c.goAttach(func() {
@@ -327,12 +337,6 @@ func (c *Controller) run(ctx context.Context) {
 	})
 	c.goAttach(func() {
 		c.secretController.run(ctx)
-	})
-	c.goAttach(func() {
-		c.secretInformer.Run(ctx.Done())
-	})
-	c.goAttach(func() {
-		c.apisixTlsInformer.Run(ctx.Done())
 	})
 
 	<-ctx.Done()
