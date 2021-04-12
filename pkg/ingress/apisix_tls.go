@@ -30,12 +30,6 @@ import (
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-var (
-	// the struct of secretSSLMap is a map[secretKey string]map[sslKey string]bool
-	// the xxxKey is format as namespace + "/" + name
-	secretSSLMap = sync.Map{}
-)
-
 type apisixTlsController struct {
 	controller *Controller
 	workqueue  workqueue.RateLimitingInterface
@@ -129,6 +123,10 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 		zap.Any("ssl", ssl),
 		zap.Any("ApisixTls", tls),
 	)
+
+	secretKey := tls.Spec.Secret.Namespace + "_" + tls.Spec.Secret.Name
+	c.syncSecretSSL(secretKey, ssl, ev.Type)
+
 	if err := c.controller.syncSSL(ctx, ssl, ev.Type); err != nil {
 		log.Errorw("failed to sync SSL to APISIX",
 			zap.Error(err),
@@ -136,8 +134,6 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 		)
 		return err
 	}
-	secretKey := tls.Spec.Secret.Namespace + "_" + tls.Spec.Secret.Name
-	c.syncSecretSSL(secretKey, ssl, ev.Type)
 	return err
 }
 
@@ -155,7 +151,7 @@ func (c *apisixTlsController) syncSecretSSL(key string, ssl *v1.Ssl, event types
 	} else if event != types.EventDelete {
 		sslMap := new(sync.Map)
 		sslMap.Store(ssl.ID, ssl)
-		secretSSLMap.Store(key, sslMap)
+		c.controller.secretSSLMap.Store(key, sslMap)
 	}
 }
 
@@ -180,6 +176,9 @@ func (c *apisixTlsController) onAdd(obj interface{}) {
 	if !c.controller.namespaceWatching(key) {
 		return
 	}
+	log.Debugw("ApisixTls add event arrived",
+		zap.Any("object", obj),
+	)
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
@@ -200,6 +199,10 @@ func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
 	if !c.controller.namespaceWatching(key) {
 		return
 	}
+	log.Debugw("ApisixTls update event arrived",
+		zap.Any("new object", curr),
+		zap.Any("old object", prev),
+	)
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:   types.EventUpdate,
 		Object: key,
@@ -226,6 +229,9 @@ func (c *apisixTlsController) onDelete(obj interface{}) {
 	if !c.controller.namespaceWatching(key) {
 		return
 	}
+	log.Debugw("ApisixTls delete event arrived",
+		zap.Any("final state", obj),
+	)
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:      types.EventDelete,
 		Object:    key,

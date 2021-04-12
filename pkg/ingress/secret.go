@@ -184,6 +184,9 @@ func (c *secretController) onAdd(obj interface{}) {
 		return
 	}
 
+	log.Debugw("secret add event arrived",
+		zap.Any("object", obj),
+	)
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
@@ -205,6 +208,10 @@ func (c *secretController) onUpdate(prev, curr interface{}) {
 	if !c.controller.namespaceWatching(key) {
 		return
 	}
+	log.Debugw("secret update event arrived",
+		zap.Any("new object", curr),
+		zap.Any("old object", prev),
+	)
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:   types.EventUpdate,
 		Object: key,
@@ -233,6 +240,9 @@ func (c *secretController) onDelete(obj interface{}) {
 	if !c.controller.namespaceWatching(key) {
 		return
 	}
+	log.Debugw("secret delete event arrived",
+		zap.Any("final state", sec),
+	)
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:      types.EventDelete,
 		Object:    key,
