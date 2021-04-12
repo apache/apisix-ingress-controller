@@ -13,23 +13,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package controller
+package ingress
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
+
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/seven/state"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -67,40 +66,24 @@ func (c *secretController) run(ctx context.Context) {
 		return
 	}
 
-	handler := func() {
-		for {
-			obj, shutdown := c.workqueue.Get()
-			if shutdown {
-				return
-			}
-			err := func(obj interface{}) error {
-				defer c.workqueue.Done(obj)
-				event := obj.(*types.Event)
-				if key, ok := event.Object.(string); !ok {
-					c.workqueue.Forget(obj)
-					return fmt.Errorf("expected Secret in workqueue but got %#v", obj)
-				} else {
-					if err := c.sync(ctx, event); err != nil {
-						c.workqueue.AddRateLimited(obj)
-						log.Errorf("sync secret with ssl %s failed", key)
-						return fmt.Errorf("error syncing '%s': %s", key, err.Error())
-					}
-					c.workqueue.Forget(obj)
-					return nil
-				}
-			}(obj)
-			if err != nil {
-				runtime.HandleError(err)
-			}
-		}
-	}
-
 	for i := 0; i < c.workers; i++ {
-		go handler()
+		go c.runWorker(ctx)
 	}
 
 	<-ctx.Done()
 	c.workqueue.ShutDown()
+}
+
+func (c *secretController) runWorker(ctx context.Context) {
+	for {
+		obj, quit := c.workqueue.Get()
+		if quit {
+			return
+		}
+		err := c.sync(ctx, obj.(*types.Event))
+		c.workqueue.Done(obj)
+		c.handleSyncErr(obj, err)
+	}
 }
 
 func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
@@ -143,19 +126,53 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 	}
 	// sync SSL in APISIX which is store in secretSSLMap
 	// FixMe Need to update the status of CRD ApisixTls
-	ssls, ok := secretSSLMap.Load(secretMapkey)
-	if ok {
-		sslMap := ssls.(*sync.Map)
-		sslMap.Range(func(_, v interface{}) bool {
-			ssl := v.(*apisixv1.Ssl)
-			// sync ssl
-			ssl.Cert = string(sec.Data["cert"])
-			ssl.Key = string(sec.Data["key"])
-			ssl.FullName = ssl.ID
-			return state.SyncSsl(ssl, ev.Type.String()) == nil
-		})
+	ssls, ok := c.controller.secretSSLMap.Load(secretMapkey)
+	if !ok {
+		// This secret is not concerned.
+		return nil
 	}
+	cert, ok := sec.Data["cert"]
+	if !ok {
+		return translation.ErrEmptyCert
+	}
+	pkey, ok := sec.Data["key"]
+	if !ok {
+		return translation.ErrEmptyPrivKey
+	}
+	sslMap := ssls.(*sync.Map)
+	sslMap.Range(func(_, v interface{}) bool {
+		ssl := v.(*apisixv1.Ssl)
+		// sync ssl
+		ssl.Cert = string(cert)
+		ssl.Key = string(pkey)
+
+		// Use another goroutine to send requests, to avoid
+		// long time lock occupying.
+		go func(ssl *apisixv1.Ssl) {
+			err := c.controller.syncSSL(ctx, ssl, ev.Type)
+			if err != nil {
+				log.Errorw("failed to sync ssl to APISIX",
+					zap.Error(err),
+					zap.Any("ssl", ssl),
+					zap.Any("secret", sec),
+				)
+			}
+		}(ssl)
+		return true
+	})
 	return err
+}
+
+func (c *secretController) handleSyncErr(obj interface{}, err error) {
+	if err == nil {
+		c.workqueue.Forget(obj)
+		return
+	}
+	log.Warnw("sync ApisixTls failed, will retry",
+		zap.Any("object", obj),
+		zap.Error(err),
+	)
+	c.workqueue.AddRateLimited(obj)
 }
 
 func (c *secretController) onAdd(obj interface{}) {
@@ -208,7 +225,7 @@ func (c *secretController) onDelete(obj interface{}) {
 
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		log.Errorf("found secret resource with bad meta namesapce key: %s", err)
+		log.Errorf("found secret resource with bad meta namespace key: %s", err)
 		return
 	}
 	// FIXME Refactor Controller.namespaceWatching to just use

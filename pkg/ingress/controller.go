@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package controller
+package ingress
 
 import (
 	"context"
@@ -20,11 +20,14 @@ import (
 	"sync"
 	"time"
 
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+
+	"github.com/apache/apisix-ingress-controller/pkg/types"
+
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -35,22 +38,13 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
 	crdclientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/seven/conf"
 )
-
-// recover any exception
-func recoverException() {
-	if err := recover(); err != nil {
-		log.Error(err)
-	}
-}
 
 // Controller is the ingress apisix controller object.
 type Controller struct {
@@ -66,6 +60,9 @@ type Controller struct {
 	crdClientset       crdclientset.Interface
 	metricsCollector   metrics.Collector
 	crdInformerFactory externalversions.SharedInformerFactory
+	// this map enrolls which ApisixTls objects refer to a Kubernetes
+	// Secret object.
+	secretSSLMap *sync.Map
 
 	// common informers and listers
 	epInformer             cache.SharedIndexInformer
@@ -80,6 +77,8 @@ type Controller struct {
 	apisixUpstreamLister   listersv1.ApisixUpstreamLister
 	apisixRouteLister      kube.ApisixRouteLister
 	apisixRouteInformer    cache.SharedIndexInformer
+	apisixTlsLister        listersv1.ApisixTlsLister
+	apisixTlsInformer      cache.SharedIndexInformer
 
 	// resource controllers
 	endpointsController *endpointsController
@@ -88,6 +87,7 @@ type Controller struct {
 
 	apisixUpstreamController *apisixUpstreamController
 	apisixRouteController    *apisixRouteController
+	apisixTlsController      *apisixTlsController
 }
 
 // NewController creates an ingress apisix controller object.
@@ -101,7 +101,6 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	if err != nil {
 		return nil, err
 	}
-	conf.SetAPISIXClient(client)
 
 	if err := kube.InitInformer(cfg); err != nil {
 		return nil, err
@@ -160,6 +159,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		crdClientset:       crdClientset,
 		crdInformerFactory: sharedInformerFactory,
 		watchingNamespace:  watchingNamespace,
+		secretSSLMap:       new(sync.Map),
 
 		epInformer:             kube.CoreSharedInformerFactory.Core().V1().Endpoints().Informer(),
 		epLister:               kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
@@ -173,16 +173,20 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		apisixRouteLister:      apisixRouteLister,
 		apisixUpstreamInformer: sharedInformerFactory.Apisix().V1().ApisixUpstreams().Informer(),
 		apisixUpstreamLister:   sharedInformerFactory.Apisix().V1().ApisixUpstreams().Lister(),
+		apisixTlsInformer:      sharedInformerFactory.Apisix().V1().ApisixTlses().Informer(),
+		apisixTlsLister:        sharedInformerFactory.Apisix().V1().ApisixTlses().Lister(),
 	}
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 		EndpointsLister:      c.epLister,
 		ServiceLister:        c.svcLister,
 		ApisixUpstreamLister: c.apisixUpstreamLister,
+		SecretLister:         c.secretLister,
 	})
 
 	c.endpointsController = c.newEndpointsController()
 	c.apisixUpstreamController = c.newApisixUpstreamController()
 	c.apisixRouteController = c.newApisixRouteController()
+	c.apisixTlsController = c.newApisixTlsController()
 	c.ingressController = c.newIngressController()
 	c.secretController = c.newSecretController()
 
@@ -319,25 +323,16 @@ func (c *Controller) run(ctx context.Context) {
 		c.apisixRouteController.run(ctx)
 	})
 	c.goAttach(func() {
-		c.secretInformer.Run(ctx.Done())
+		c.apisixTlsController.run(ctx)
 	})
 	c.goAttach(func() {
 		c.secretController.run(ctx)
 	})
-
-	ac := &Api6Controller{
-		KubeClientSet:             c.clientset,
-		Api6ClientSet:             c.crdClientset,
-		SharedInformerFactory:     c.crdInformerFactory,
-		CoreSharedInformerFactory: kube.CoreSharedInformerFactory,
-		Stop:                      ctx.Done(),
-	}
-
-	// ApisixTLS
-	ac.ApisixTLS(c)
-
 	c.goAttach(func() {
-		ac.SharedInformerFactory.Start(ctx.Done())
+		c.secretInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
+		c.apisixTlsInformer.Run(ctx.Done())
 	})
 
 	<-ctx.Done()
@@ -362,21 +357,16 @@ func (c *Controller) namespaceWatching(key string) (ok bool) {
 	return
 }
 
-type Api6Controller struct {
-	KubeClientSet             kubernetes.Interface
-	Api6ClientSet             clientset.Interface
-	SharedInformerFactory     externalversions.SharedInformerFactory
-	CoreSharedInformerFactory informers.SharedInformerFactory
-	Stop                      <-chan struct{}
-}
-
-func (api6 *Api6Controller) ApisixTLS(controller *Controller) {
-	atc := BuildApisixTlsController(
-		api6.KubeClientSet,
-		api6.Api6ClientSet,
-		api6.SharedInformerFactory.Apisix().V1().ApisixTlses(),
-		controller)
-	if err := atc.Run(api6.Stop); err != nil {
-		log.Errorf("failed to run ApisixTlsController: %s", err)
+func (c *Controller) syncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types.EventType) error {
+	var (
+		err error
+	)
+	if event == types.EventDelete {
+		err = c.apisix.Cluster("").SSL().Delete(ctx, ssl)
+	} else if event == types.EventUpdate {
+		_, err = c.apisix.Cluster("").SSL().Update(ctx, ssl)
+	} else {
+		_, err = c.apisix.Cluster("").SSL().Create(ctx, ssl)
 	}
+	return err
 }

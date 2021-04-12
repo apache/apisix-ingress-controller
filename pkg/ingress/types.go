@@ -12,13 +12,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package conf
+package ingress
 
-import "testing"
-
-func Test_map(t *testing.T) {
-	m1 := make(map[string]string)
-	m1["a"] = "aa"
-	m1["b"] = "bb"
-	t.Log(m1["c"] == "")
-}
+const (
+	ADD           = "ADD"
+	UPDATE        = "UPDATE"
+	DELETE        = "DELETE"
+	WatchFromKind = "watch"
+)

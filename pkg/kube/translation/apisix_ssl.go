@@ -12,55 +12,45 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package apisix
+package translation
 
 import (
-	"context"
+	"errors"
 
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	ingressConf "github.com/apache/apisix-ingress-controller/pkg/kube"
+	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-type ApisixTLSCRD configv1.ApisixTls
+var (
+	// ErrEmptyCert means the cert field in Kubernetes Secret is not found.
+	ErrEmptyCert = errors.New("missing cert field")
+	// ErrEmptyPrivKey means the key field in Kubernetes Secret is not found.
+	ErrEmptyPrivKey = errors.New("missing key field")
+)
 
-// Convert convert to  apisix.Ssl from ingress.ApisixTls CRD
-func (as *ApisixTLSCRD) Convert(sc Secreter) (*apisix.Ssl, error) {
-	name := as.Name
-	namespace := as.Namespace
-
-	id := namespace + "_" + name
-	secretName := as.Spec.Secret.Name
-	secretNamespace := as.Spec.Secret.Namespace
-	secret, err := sc.FindByName(secretNamespace, secretName)
+func (t *translator) TranslateSSL(tls *configv1.ApisixTls) (*apisixv1.Ssl, error) {
+	s, err := t.SecretLister.Secrets(tls.Spec.Secret.Namespace).Get(tls.Spec.Secret.Name)
 	if err != nil {
 		return nil, err
 	}
-	cert := string(secret.Data["cert"])
-	key := string(secret.Data["key"])
-	status := 1
+	cert, ok := s.Data["cert"]
+	if !ok {
+		return nil, ErrEmptyCert
+	}
+	key, ok := s.Data["key"]
+	if !ok {
+		return nil, ErrEmptyPrivKey
+	}
 	var snis []string
-	snis = append(snis, as.Spec.Hosts...)
+	snis = append(snis, tls.Spec.Hosts...)
 	ssl := &apisix.Ssl{
-		ID:     id,
+		ID:     id.GenID(tls.Namespace + "_" + tls.Name),
 		Snis:   snis,
-		Cert:   cert,
-		Key:    key,
-		Status: status,
+		Cert:   string(cert),
+		Key:    string(key),
+		Status: 1,
 	}
 	return ssl, nil
-}
-
-type Secreter interface {
-	FindByName(namespace, name string) (*v1.Secret, error)
-}
-
-type SecretClient struct{}
-
-func (sc *SecretClient) FindByName(namespace, name string) (*v1.Secret, error) {
-	clientSet := ingressConf.GetKubeClient()
-	return clientSet.CoreV1().Secrets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 }
