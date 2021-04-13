@@ -64,6 +64,8 @@ type Translator interface {
 	// TranslateRouteV2alpha1 translates the configv2alph1.ApisixRoute object into several Route
 	// and Upstream resources.
 	TranslateRouteV2alpha1(*configv2alpha1.ApisixRoute) ([]*apisixv1.Route, []*apisixv1.Upstream, error)
+	// TranslateSSL translates the configv2alpha1.ApisixTls object into the APISIX SSL resource.
+	TranslateSSL(*configv1.ApisixTls) (*apisixv1.Ssl, error)
 }
 
 // TranslatorOptions contains options to help Translator
@@ -72,6 +74,7 @@ type TranslatorOptions struct {
 	EndpointsLister      listerscorev1.EndpointsLister
 	ServiceLister        listerscorev1.ServiceLister
 	ApisixUpstreamLister listersv1.ApisixUpstreamLister
+	SecretLister         listerscorev1.SecretLister
 }
 
 type translator struct {
