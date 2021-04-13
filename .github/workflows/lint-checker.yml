@@ -36,3 +36,14 @@ jobs:
           node-version: '12.x'
       - run: npm install -g markdownlint-cli@0.25.0
       - run: markdownlint '**/*.md' --ignore node_modules
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
+          working-directory: ./
+
