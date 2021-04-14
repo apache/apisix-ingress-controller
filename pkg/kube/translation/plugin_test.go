@@ -126,6 +126,8 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 	<-processCh
 	<-processCh
 
+	weight10 := 10
+	weight20 := 20
 	backends := []*configv2alpha1.ApisixRouteHTTPBackend{
 		{
 			ServiceName: "svc-1",
@@ -133,7 +135,7 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 				Type:   intstr.String,
 				StrVal: "port1",
 			},
-			Weight: 10,
+			Weight: &weight10,
 		},
 		{
 			ServiceName: "svc-1",
@@ -142,7 +144,7 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 				IntVal: 443,
 			},
 			ResolveGranularity: "service",
-			Weight:             20,
+			Weight:             &weight20,
 		},
 	}
 
@@ -293,6 +295,9 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 	<-processCh
 	<-processCh
 
+	weigth10 := 10
+	weight20 := 20
+
 	backends := []*configv2alpha1.ApisixRouteHTTPBackend{
 		{
 			ServiceName: "svc-1",
@@ -300,7 +305,7 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 				Type:   intstr.String,
 				StrVal: "port1",
 			},
-			Weight: 10,
+			Weight: &weigth10,
 		},
 		{
 			ServiceName: "svc-1",
@@ -308,7 +313,7 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 				Type:   intstr.String,
 				StrVal: "port1",
 			},
-			Weight: 20,
+			Weight: &weight20,
 		},
 	}
 
@@ -463,6 +468,9 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	<-processCh
 	<-processCh
 
+	weight10 := 10
+	weight20 := 20
+
 	backends := []*configv2alpha1.ApisixRouteHTTPBackend{
 		{
 			ServiceName: "svc-2",
@@ -470,7 +478,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 				Type:   intstr.String,
 				StrVal: "port1",
 			},
-			Weight: 10,
+			Weight: &weight10,
 		},
 		{
 			ServiceName: "svc-1",
@@ -478,7 +486,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 				Type:   intstr.String,
 				StrVal: "port1",
 			},
-			Weight: 20,
+			Weight: &weight20,
 		},
 	}
 
