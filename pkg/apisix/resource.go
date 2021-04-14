@@ -86,6 +86,27 @@ type routeItem struct {
 	Plugins     map[string]interface{} `json:"plugins"`
 }
 
+type ri routeItem
+
+// ri implements json.Unmarshaler interface.
+// lua-cjson doesn't distinguish empty array and table,
+// and by default empty array will be encoded as '{}'.
+// We have to maintain the compatibility.
+func (r *ri) UnmarshalJSON(p []byte) error {
+	if strings.Index(string(p), `"vars":{}`) >= 0 {
+		p = []byte(strings.Replace(string(p), `"vars":{}`, `"vars":[]`, 1))
+	} else if strings.Index(string(p), `"vars":{`) >= 0 {
+		return errors.New("unexpected non-empty object")
+	}
+
+	var data routeItem
+	if err := json.Unmarshal(p, &data); err != nil {
+		return err
+	}
+	*r = ri(data)
+	return nil
+}
+
 // route decodes item.Value and converts it to v1.Route.
 func (i *item) route(clusterName string) (*v1.Route, error) {
 	log.Debugf("got route: %s", string(i.Value))
@@ -94,7 +115,7 @@ func (i *item) route(clusterName string) (*v1.Route, error) {
 		return nil, fmt.Errorf("bad route config key: %s", i.Key)
 	}
 
-	var route routeItem
+	var route ri
 	if err := json.Unmarshal(i.Value, &route); err != nil {
 		return nil, err
 	}

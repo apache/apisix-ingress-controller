@@ -106,6 +106,7 @@ func (r *routeClient) Get(ctx context.Context, fullname string) (*v1.Route, erro
 		log.Errorw("failed to convert route item",
 			zap.String("url", r.url),
 			zap.String("route_key", resp.Item.Key),
+			zap.String("route_value", string(resp.Item.Value)),
 			zap.Error(err),
 		)
 		return nil, err
@@ -138,6 +139,7 @@ func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 			log.Errorw("failed to convert route item",
 				zap.String("url", r.url),
 				zap.String("route_key", item.Key),
+				zap.String("route_value", string(item.Value)),
 				zap.Error(err),
 			)
 			return nil, err
