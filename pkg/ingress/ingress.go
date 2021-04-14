@@ -12,10 +12,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package controller
+package ingress
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go.uber.org/zap"
@@ -91,10 +92,16 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 	}
 
 	var ing kube.Ingress
-	if ingEv.GroupVersion == kube.IngressV1 {
+	switch ingEv.GroupVersion {
+	case kube.IngressV1:
 		ing, err = c.controller.ingressLister.V1(namespace, name)
-	} else {
+	case kube.IngressV1beta1:
 		ing, err = c.controller.ingressLister.V1beta1(namespace, name)
+	case kube.IngressExtensionsV1beta1:
+		ing, err = c.controller.ingressLister.ExtensionsV1beta1(namespace, name)
+	default:
+		err = fmt.Errorf("unsupported group version %s, one of (%s/%s/%s) is expected", ingEv.GroupVersion,
+			kube.IngressV1, kube.IngressV1beta1, kube.IngressExtensionsV1beta1)
 	}
 
 	if err != nil {

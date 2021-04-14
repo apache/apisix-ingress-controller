@@ -16,6 +16,7 @@ package plugins
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/stretchr/testify/assert"
 
@@ -141,6 +142,99 @@ spec:
 			Status(404).
 			Body().
 			Contains("404 Route Not Found")
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(200).
+			Body().
+			Contains("origin")
+	})
+
+	ginkgo.It("enable plugin and then delete it", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+       - /status/200
+       - /headers
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: uri-blocker
+     enable: true
+     config:
+       rejected_code: 403
+       block_rules:
+       - /status/200
+       - /headers
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(http.StatusForbidden)
+		s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(http.StatusForbidden)
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(200).
+			Body().
+			Contains("origin")
+
+		ar = fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+       - /status/200
+       - /headers
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+
+		err = s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(http.StatusOK)
+		s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(http.StatusOK).
+			Body().
+			Contains("httpbin.org")
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
 			Expect().
 			Status(200).

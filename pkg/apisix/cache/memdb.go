@@ -46,18 +46,8 @@ func NewMemDBCache() (Cache, error) {
 }
 
 func (c *dbCache) InsertRoute(r *v1.Route) error {
-	// FIXME this is a work around to bypass the schema index
-	// check. The service id will be removed in the future,
-	// and that time, please remove these codes.
 	route := r.DeepCopy()
-	if route.ServiceId == "" {
-		route.ServiceId = "blackhole"
-	}
 	return c.insert("route", route)
-}
-
-func (c *dbCache) InsertService(s *v1.Service) error {
-	return c.insert("service", s.DeepCopy())
 }
 
 func (c *dbCache) InsertSSL(ssl *v1.Ssl) error {
@@ -84,14 +74,6 @@ func (c *dbCache) GetRoute(key string) (*v1.Route, error) {
 		return nil, err
 	}
 	return obj.(*v1.Route).DeepCopy(), nil
-}
-
-func (c *dbCache) GetService(key string) (*v1.Service, error) {
-	obj, err := c.get("service", key)
-	if err != nil {
-		return nil, err
-	}
-	return obj.(*v1.Service).DeepCopy(), nil
 }
 
 func (c *dbCache) GetSSL(key string) (*v1.Ssl, error) {
@@ -138,18 +120,6 @@ func (c *dbCache) ListRoutes() ([]*v1.Route, error) {
 	return routes, nil
 }
 
-func (c *dbCache) ListServices() ([]*v1.Service, error) {
-	raws, err := c.list("service")
-	if err != nil {
-		return nil, err
-	}
-	services := make([]*v1.Service, 0, len(raws))
-	for _, raw := range raws {
-		services = append(services, raw.(*v1.Service).DeepCopy())
-	}
-	return services, nil
-}
-
 func (c *dbCache) ListSSL() ([]*v1.Ssl, error) {
 	raws, err := c.list("ssl")
 	if err != nil {
@@ -192,13 +162,6 @@ func (c *dbCache) DeleteRoute(r *v1.Route) error {
 	return c.delete("route", r)
 }
 
-func (c *dbCache) DeleteService(s *v1.Service) error {
-	if err := c.checkServiceReference(s); err != nil {
-		return err
-	}
-	return c.delete("service", s)
-}
-
 func (c *dbCache) DeleteSSL(ssl *v1.Ssl) error {
 	return c.delete("ssl", ssl)
 }
@@ -223,28 +186,11 @@ func (c *dbCache) delete(table string, obj interface{}) error {
 	return nil
 }
 
-func (c *dbCache) checkServiceReference(s *v1.Service) error {
-	// Service is referenced by Route.
-	txn := c.db.Txn(false)
-	defer txn.Abort()
-	obj, err := txn.First("route", "service_id", s.FullName)
-	if err != nil {
-		if err == memdb.ErrNotFound {
-			return nil
-		}
-		return err
-	}
-	if obj == nil {
-		return nil
-	}
-	return ErrStillInUse
-}
-
 func (c *dbCache) checkUpstreamReference(u *v1.Upstream) error {
-	// Upstream is referenced by Service.
+	// Upstream is referenced by Route.
 	txn := c.db.Txn(false)
 	defer txn.Abort()
-	obj, err := txn.First("service", "upstream_id", u.FullName)
+	obj, err := txn.First("route", "upstream_id", u.ID)
 	if err != nil {
 		if err == memdb.ErrNotFound {
 			return nil

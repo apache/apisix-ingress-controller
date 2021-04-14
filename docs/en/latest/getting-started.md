@@ -68,3 +68,14 @@ If you want to deploy apisix-ingress-controller on Prem, we recommend you to use
 
 First, your supports and cooperations to make this project better are appreciated.
 But before you start, please read [How to Contribute](./contribute.md) and [How to Develop](./development.md).
+
+## Compatibility with Apache APISIX
+
+The following table describes the compatibility between apisix-ingress-controller and
+[Apache APISIX](https://apisix.apache.org).
+
+| apisix-ingress-controller | Apache APISIX |
+| ----:| ---:|
+| `master` | `>= 2.4`, `2.5` is recommended. |
+| `0.5` | `>= 2.4`, `2.5` is recommended. |
+| `0.4` |`>= 2.4`|

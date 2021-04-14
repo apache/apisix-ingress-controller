@@ -16,6 +16,8 @@ package features
 
 import (
 	"fmt"
+	"math"
+	"net/http"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	"github.com/onsi/ginkgo"
@@ -35,6 +37,7 @@ var _ = ginkgo.Describe("traffic split", func() {
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("sanity", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		adminSvc, adminPort := s.ApisixAdminServiceAndPort()
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
@@ -47,7 +50,7 @@ spec:
      hosts:
      - httpbin.org
      paths:
-       - /ip
+       - /get
    backends:
    - serviceName: %s
      servicePort: %d
@@ -55,39 +58,36 @@ spec:
    - serviceName: %s
      servicePort: %d
      weight: 5
-`, backendSvc, backendPorts[0], backendSvc, backendPorts[0])
+`, backendSvc, backendPorts[0], adminSvc, adminPort)
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
-		err := s.EnsureNumApisixUpstreamsCreated(1)
+		err := s.EnsureNumApisixUpstreamsCreated(2)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		ups, err := s.ListApisixUpstreams()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), ups, 1)
-
-		// TODO Send requests to APISIX. Currently, traffic-split plugin in APISIX has
-		// a bug when using upstream_id.
-		routes, err := s.ListApisixRoutes()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), routes, 1)
-		ts, ok := routes[0].Plugins["traffic-split"]
-		assert.Equal(ginkgo.GinkgoT(), ok, true)
-
-		rawRules, ok := ts.(map[string]interface{})["rules"]
-		assert.Equal(ginkgo.GinkgoT(), ok, true)
-		assert.Len(ginkgo.GinkgoT(), rawRules.([]interface{}), 1)
-		rawWeightedUpstreams, ok := rawRules.([]interface{})[0].(map[string]interface{})["weighted_upstreams"]
-		assert.Equal(ginkgo.GinkgoT(), ok, true)
-		weightedUpstreams := rawWeightedUpstreams.([]interface{})
-		assert.Len(ginkgo.GinkgoT(), weightedUpstreams, 2)
-		assert.Equal(ginkgo.GinkgoT(), ups[0].ID, weightedUpstreams[0].(map[string]interface{})["upstream_id"].(string))
-		assert.Equal(ginkgo.GinkgoT(), float64(5), weightedUpstreams[0].(map[string]interface{})["weight"].(float64))
-
-		assert.Equal(ginkgo.GinkgoT(), float64(10), weightedUpstreams[1].(map[string]interface{})["weight"].(float64))
-		_, ok = weightedUpstreams[1].(map[string]interface{})["upstream_id"]
-		assert.Equal(ginkgo.GinkgoT(), ok, false)
+		// Send requests to APISIX.
+		var (
+			num404 int
+			num200 int
+		)
+		for i := 0; i < 90; i++ {
+			// For requests sent to http-admin, 404 will be given.
+			// For requests sent to httpbin, 200 will be given.
+			resp := s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect()
+			status := resp.Raw().StatusCode
+			if status != http.StatusOK && status != http.StatusNotFound {
+				assert.FailNow(ginkgo.GinkgoT(), "invalid status code")
+			}
+			if status == 200 {
+				num200++
+				resp.Body().Contains("origin")
+			} else {
+				num404++
+			}
+		}
+		dev := math.Abs(float64(num200)/float64(num404) - float64(2))
+		assert.Less(ginkgo.GinkgoT(), dev, 0.2)
 	})
 })

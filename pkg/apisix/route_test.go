@@ -187,7 +187,6 @@ func TestRouteClient(t *testing.T) {
 		},
 		Host:       "www.foo.com",
 		Path:       "/bar",
-		ServiceId:  "1",
 		UpstreamId: "1",
 	})
 	assert.Nil(t, err)
@@ -201,7 +200,6 @@ func TestRouteClient(t *testing.T) {
 		},
 		Host:       "www.foo.com",
 		Path:       "/bar",
-		ServiceId:  "1",
 		UpstreamId: "1",
 	})
 	assert.Nil(t, err)
@@ -230,7 +228,6 @@ func TestRouteClient(t *testing.T) {
 		},
 		Host:       "www.foo.com",
 		Path:       "/bar",
-		ServiceId:  "112",
 		UpstreamId: "112",
 	})
 	assert.Nil(t, err)
@@ -238,5 +235,4 @@ func TestRouteClient(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
 	assert.Equal(t, "2", objs[0].ID)
-	assert.Equal(t, "112", objs[0].ServiceId)
 }

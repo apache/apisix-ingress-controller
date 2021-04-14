@@ -12,48 +12,28 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package utils
+package translation
 
 import (
-	"encoding/json"
+	"testing"
 
-	"github.com/golang/glog"
-	"github.com/yudai/gojsondiff"
+	"github.com/stretchr/testify/assert"
 )
 
-var (
-	differ = gojsondiff.New()
-)
+func TestValidateRemoteAddrs(t *testing.T) {
+	addrs := []string{
+		"192.168.3.4",
+		"192.168.3.3/16",
+		"123",
+	}
+	err := validateRemoteAddrs(addrs)
+	assert.Equal(t, err, _errInvalidAddress)
 
-func HasDiff(a, b interface{}) (bool, error) {
-	aJSON, err := json.Marshal(a)
-	if err != nil {
-		return false, err
+	addrs = []string{
+		"192.168.3.4",
+		"192.168.3.3/16",
+		"2001:db8::68",
+		"2001:db8:a0b:12f0::1/32",
 	}
-	bJSON, err := json.Marshal(b)
-	if err != nil {
-		return false, err
-	}
-	if d, err := differ.Compare(aJSON, bJSON); err != nil {
-		return false, err
-	} else {
-		glog.V(2).Info(d.Deltas())
-		return d.Modified(), nil
-	}
-}
-
-func Diff(a, b interface{}) (gojsondiff.Diff, error) {
-	aJSON, err := json.Marshal(a)
-	if err != nil {
-		return nil, err
-	}
-	bJSON, err := json.Marshal(b)
-	if err != nil {
-		return nil, err
-	}
-	if d, err := differ.Compare(aJSON, bJSON); err != nil {
-		return nil, err
-	} else {
-		return d, nil
-	}
+	assert.Nil(t, validateRemoteAddrs(addrs))
 }

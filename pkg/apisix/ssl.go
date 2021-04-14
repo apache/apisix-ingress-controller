@@ -144,6 +144,7 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 		return nil, err
 	}
 	data, err := json.Marshal(v1.Ssl{
+		ID:     obj.ID,
 		Snis:   obj.Snis,
 		Cert:   obj.Cert,
 		Key:    obj.Key,

@@ -141,6 +141,12 @@ func (s *Scaffold) DefaultHTTPBackend() (string, []int32) {
 	return s.httpbinService.Name, ports
 }
 
+// ApisixAdminServiceAndPort returns the apisix service name and
+// it's admin port.
+func (s *Scaffold) ApisixAdminServiceAndPort() (string, int32) {
+	return "apisix-service-e2e-test", 9180
+}
+
 // NewAPISIXClient creates the default HTTP client.
 func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 	u := url.URL{
@@ -162,7 +168,7 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 }
 
 // NewAPISIXHttpsClient creates the default HTTPs client.
-func (s *Scaffold) NewAPISIXHttpsClient() *httpexpect.Expect {
+func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
 	u := url.URL{
 		Scheme: "https",
 		Host:   s.apisixHttpsTunnel.Endpoint(),
@@ -174,6 +180,7 @@ func (s *Scaffold) NewAPISIXHttpsClient() *httpexpect.Expect {
 				TLSClientConfig: &tls.Config{
 					// accept any certificate; for testing only!
 					InsecureSkipVerify: true,
+					ServerName:         host,
 				},
 			},
 		},

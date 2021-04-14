@@ -17,13 +17,12 @@ package plugins
 import (
 	"fmt"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	"github.com/onsi/ginkgo"
+	"github.com/stretchr/testify/assert"
 )
 
-var _ = ginkgo.Describe("request-id plugin", func() {
+var _ = ginkgo.Describe("redirect plugin", func() {
 	opts := &scaffold.Options{
 		Name:                    "default",
 		Kubeconfig:              scaffold.GetKubeconfig(),
@@ -48,27 +47,71 @@ spec:
      hosts:
      - httpbin.org
      paths:
-       - /ip
+       - /post
    backends:
    - serviceName: %s
      servicePort: %d
      weight: 10
    plugins:
-   - name: request-id
+   - name: request-validation
      enable: true
+     config:
+       body_schema:
+         type: object
+         properties:
+           name:
+             type: string
+             minLength: 5
+           id:
+             type: integer
+             minimum: 20
+         required:
+         - id
+       header_schema:
+         type: object
+         properties:
+           user-agent:
+             type: string
+             pattern: .*Mozilla.*
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-
 		err := s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+		// header schema check failure.
+		resp := s.NewAPISIXClient().POST("/post").WithHeader("Host", "httpbin.org").WithHeader("User-Agent", "bad-ua").Expect()
+		resp.Status(400)
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		payload := []byte(`
+{
+    "name": "bob",
+    "id": 33
+}
+		`)
+		// body schema check failure.
+		resp = s.NewAPISIXClient().POST("/post").WithHeader("Host", "httpbin.org").WithHeader("User-Agent", "aaaMozillabb").WithBytes(payload).Expect()
+		resp.Status(400)
+
+		payload = []byte(`
+{
+    "name": "long-name",
+    "id": 11
+}
+		`)
+		// body schema check failure.
+		resp = s.NewAPISIXClient().POST("/post").WithHeader("Host", "httpbin.org").WithHeader("User-Agent", "aaaMozillabb").WithBytes(payload).Expect()
+		resp.Status(400)
+
+		payload = []byte(`
+{
+    "name": "long-name",
+    "id": 55
+}
+		`)
+		resp = s.NewAPISIXClient().POST("/post").WithHeader("Host", "httpbin.org").WithHeader("User-Agent", "aaaMozillabb").WithBytes(payload).Expect()
 		resp.Status(200)
-		resp.Header("X-Request-Id").NotEmpty()
-		resp.Body().Contains("origin")
 	})
 
 	ginkgo.It("disable plugin", func() {
@@ -85,93 +128,69 @@ spec:
      hosts:
      - httpbin.org
      paths:
-       - /ip
+       - /post
    backends:
    - serviceName: %s
      servicePort: %d
      weight: 10
    plugins:
-   - name: request-id
+   - name: request-validation
      enable: false
+     config:
+       body_schema:
+         type: object
+         properties:
+           name:
+             type: string
+             minLength: 5
+           id:
+             type: integer
+             minimum: 20
+         required:
+         - id
+       header_schema:
+         type: object
+         properties:
+           user-agent:
+             type: string
+             pattern: .*Mozilla.*
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-
 		err := s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp := s.NewAPISIXClient().POST("/post").WithHeader("Host", "httpbin.org").WithHeader("User-Agent", "bad-ua").Expect()
 		resp.Status(200)
-		resp.Header("X-Request-Id").Empty()
-		resp.Body().Contains("origin")
-	})
-	ginkgo.It("enable plugin and then delete it", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
-kind: ApisixRoute
-metadata:
- name: httpbin-route
-spec:
- http:
- - name: rule1
-   match:
-     hosts:
-     - httpbin.org
-     paths:
-       - /ip
-   backends:
-   - serviceName: %s
-     servicePort: %d
-     weight: 10
-   plugins:
-   - name: request-id
-     enable: true
-`, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		payload := []byte(`
+{
+    "name": "bob",
+    "id": 33
+}
+		`)
+		// body schema check failure.
+		resp = s.NewAPISIXClient().POST("/post").WithHeader("Host", "httpbin.org").WithHeader("User-Agent", "aaaMozillabb").WithBytes(payload).Expect()
 		resp.Status(200)
-		resp.Header("X-Request-Id").NotEmpty()
-		resp.Body().Contains("origin")
 
-		ar = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
-kind: ApisixRoute
-metadata:
- name: httpbin-route
-spec:
- http:
- - name: rule1
-   match:
-     hosts:
-     - httpbin.org
-     paths:
-       - /ip
-   backends:
-   - serviceName: %s
-     servicePort: %d
-     weight: 10
-`, backendSvc, backendPorts[0])
-
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-
-		err = s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
-		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		payload = []byte(`
+{
+    "name": "long-name",
+    "id": 11
+}
+		`)
+		// body schema check failure.
+		resp = s.NewAPISIXClient().POST("/post").WithHeader("Host", "httpbin.org").WithHeader("User-Agent", "aaaMozillabb").WithBytes(payload).Expect()
 		resp.Status(200)
-		resp.Header("X-Request-Id").Empty()
-		resp.Body().Contains("origin")
+
+		payload = []byte(`
+{
+    "name": "long-name",
+    "id": 55
+}
+		`)
+		resp = s.NewAPISIXClient().POST("/post").WithHeader("Host", "httpbin.org").WithHeader("User-Agent", "aaaMozillabb").WithBytes(payload).Expect()
+		resp.Status(200)
 	})
 })

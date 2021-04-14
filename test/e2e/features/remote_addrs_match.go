@@ -12,18 +12,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package plugins
+package features
 
 import (
 	"fmt"
-
-	"github.com/stretchr/testify/assert"
+	"net/http"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	"github.com/onsi/ginkgo"
+	"github.com/stretchr/testify/assert"
 )
 
-var _ = ginkgo.Describe("request-id plugin", func() {
+var _ = ginkgo.Describe("traffic split", func() {
 	opts := &scaffold.Options{
 		Name:                    "default",
 		Kubeconfig:              scaffold.GetKubeconfig(),
@@ -49,15 +49,12 @@ spec:
      - httpbin.org
      paths:
        - /ip
+     remoteAddrs:
+       - "10.0.5.0/8"
    backends:
    - serviceName: %s
      servicePort: %d
-     weight: 10
-   plugins:
-   - name: request-id
-     enable: true
 `, backendSvc, backendPorts[0])
-
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
 		err := s.EnsureNumApisixUpstreamsCreated(1)
@@ -66,82 +63,8 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
 		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(200)
-		resp.Header("X-Request-Id").NotEmpty()
-		resp.Body().Contains("origin")
-	})
-
-	ginkgo.It("disable plugin", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
-kind: ApisixRoute
-metadata:
- name: httpbin-route
-spec:
- http:
- - name: rule1
-   match:
-     hosts:
-     - httpbin.org
-     paths:
-       - /ip
-   backends:
-   - serviceName: %s
-     servicePort: %d
-     weight: 10
-   plugins:
-   - name: request-id
-     enable: false
-`, backendSvc, backendPorts[0])
-
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(200)
-		resp.Header("X-Request-Id").Empty()
-		resp.Body().Contains("origin")
-	})
-	ginkgo.It("enable plugin and then delete it", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
-kind: ApisixRoute
-metadata:
- name: httpbin-route
-spec:
- http:
- - name: rule1
-   match:
-     hosts:
-     - httpbin.org
-     paths:
-       - /ip
-   backends:
-   - serviceName: %s
-     servicePort: %d
-     weight: 10
-   plugins:
-   - name: request-id
-     enable: true
-`, backendSvc, backendPorts[0])
-
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(200)
-		resp.Header("X-Request-Id").NotEmpty()
-		resp.Body().Contains("origin")
+		resp.Status(http.StatusNotFound)
+		resp.Body().Contains("404 Route Not Found")
 
 		ar = fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
@@ -156,10 +79,11 @@ spec:
      - httpbin.org
      paths:
        - /ip
+     remoteAddrs:
+       - "127.0.0.1"
    backends:
    - serviceName: %s
      servicePort: %d
-     weight: 10
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
@@ -170,8 +94,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
 		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(200)
-		resp.Header("X-Request-Id").Empty()
+		resp.Status(http.StatusOK)
 		resp.Body().Contains("origin")
 	})
 })
