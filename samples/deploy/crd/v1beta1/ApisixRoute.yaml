@@ -152,6 +152,7 @@ spec:
                         enum: ["endpoint", "service"]
                       weight:
                         type: integer
+                        minimum: 0
                     required:
                       - serviceName
                       - servicePort
@@ -173,6 +174,7 @@ spec:
                           enum: ["endpoint", "service"]
                         weight:
                           type: integer
+                          minimum: 0
                     required:
                       - serviceName
                       - servicePort

@@ -197,8 +197,8 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 
 		if len(backends) > 0 {
 			weight := _defaultWeight
-			if backend.Weight != 0 {
-				weight = backend.Weight
+			if backend.Weight != nil {
+				weight = *backend.Weight
 			}
 			ups, plugin, err := t.translateTrafficSplitPlugin(ar, weight, backends)
 			if err != nil {

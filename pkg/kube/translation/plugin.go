@@ -38,8 +38,8 @@ func (t *translator) translateTrafficSplitPlugin(ar *configv2alpha1.ApisixRoute,
 		upstreams = append(upstreams, ups)
 
 		weight := _defaultWeight
-		if backend.Weight != 0 {
-			weight = backend.Weight
+		if backend.Weight != nil {
+			weight = *backend.Weight
 		}
 		wups = append(wups, apisixv1.TrafficSplitConfigRuleWeightedUpstream{
 			UpstreamID: ups.ID,
