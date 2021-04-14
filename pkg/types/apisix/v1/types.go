@@ -90,8 +90,6 @@ type Route struct {
 	Uris         []string          `json:"uris,omitempty" yaml:"uris,omitempty"`
 	Methods      []string          `json:"methods,omitempty" yaml:"methods,omitempty"`
 	RemoteAddrs  []string          `json:"remote_addrs,omitempty" yaml:"remote_addrs,omitempty"`
-	ServiceId    string            `json:"service_id,omitempty" yaml:"service_id,omitempty"`
-	ServiceName  string            `json:"service_name,omitempty" yaml:"service_name,omitempty"`
 	UpstreamId   string            `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
 	UpstreamName string            `json:"upstream_name,omitempty" yaml:"upstream_name,omitempty"`
 	Plugins      Plugins           `json:"plugins,omitempty" yaml:"plugins,omitempty"`
@@ -147,34 +145,19 @@ func (p *Plugins) DeepCopy() *Plugins {
 	return out
 }
 
-// Service apisix service
-// +k8s:deepcopy-gen=true
-type Service struct {
-	ID              string  `json:"id,omitempty" yaml:"id,omitempty"`
-	FullName        string  `json:"full_name,omitempty" yaml:"full_name,omitempty"`
-	Group           string  `json:"group,omitempty" yaml:"group,omitempty"`
-	ResourceVersion string  `json:"resource_version,omitempty" yaml:"resource_version,omitempty"`
-	Name            string  `json:"name,omitempty" yaml:"name,omitempty"`
-	UpstreamId      string  `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
-	UpstreamName    string  `json:"upstream_name,omitempty" yaml:"upstream_name,omitempty"`
-	Plugins         Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
-	FromKind        string  `json:"from_kind,omitempty" yaml:"from_kind,omitempty"`
-}
-
 // Upstream is the apisix upstream definition.
 // +k8s:deepcopy-gen=true
 type Upstream struct {
 	Metadata `json:",inline" yaml:",inline"`
 
-	Type     string               `json:"type,omitempty" yaml:"type,omitempty"`
-	HashOn   string               `json:"hash_on,omitempty" yaml:"hash_on,omitempty"`
-	Key      string               `json:"key,omitempty" yaml:"key,omitempty"`
-	Checks   *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
-	Nodes    []UpstreamNode       `json:"nodes,omitempty" yaml:"nodes,omitempty"`
-	FromKind string               `json:"from_kind,omitempty" yaml:"from_kind,omitempty"`
-	Scheme   string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
-	Retries  int                  `json:"retries,omitempty" yaml:"retries,omitempty"`
-	Timeout  *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	Type    string               `json:"type,omitempty" yaml:"type,omitempty"`
+	HashOn  string               `json:"hash_on,omitempty" yaml:"hash_on,omitempty"`
+	Key     string               `json:"key,omitempty" yaml:"key,omitempty"`
+	Checks  *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
+	Nodes   []UpstreamNode       `json:"nodes,omitempty" yaml:"nodes,omitempty"`
+	Scheme  string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+	Retries int                  `json:"retries,omitempty" yaml:"retries,omitempty"`
+	Timeout *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
 
 // UpstreamTimeout represents the timeout settings on Upstream.
@@ -282,12 +265,14 @@ type TrafficSplitConfig struct {
 }
 
 // TrafficSplitConfigRule is the rule config in traffic-split plugin config.
+// +k8s:deepcopy-gen=true
 type TrafficSplitConfigRule struct {
 	WeightedUpstreams []TrafficSplitConfigRuleWeightedUpstream `json:"weighted_upstreams"`
 }
 
 // TrafficSplitConfigRuleWeightedUpstream is the weighted upstream config in
 // the traffic split plugin rule.
+// +k8s:deepcopy-gen=true
 type TrafficSplitConfigRuleWeightedUpstream struct {
 	UpstreamID string `json:"upstream_id,omitempty"`
 	Weight     int    `json:"weight"`
@@ -296,11 +281,10 @@ type TrafficSplitConfigRuleWeightedUpstream struct {
 // NewDefaultUpstream returns an empty Upstream with default values.
 func NewDefaultUpstream() *Upstream {
 	return &Upstream{
-		Type:     LbRoundRobin,
-		Key:      "",
-		Nodes:    nil,
-		FromKind: "",
-		Scheme:   SchemeHTTP,
+		Type:   LbRoundRobin,
+		Key:    "",
+		Nodes:  nil,
+		Scheme: SchemeHTTP,
 	}
 }
 

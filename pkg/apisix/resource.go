@@ -74,7 +74,6 @@ type item struct {
 
 type routeItem struct {
 	UpstreamId  string                 `json:"upstream_id"`
-	ServiceId   string                 `json:"service_id"`
 	RemoteAddrs []string               `json:"remote_addrs"`
 	Host        string                 `json:"host"`
 	Hosts       []string               `json:"hosts"`
@@ -116,7 +115,6 @@ func (i *item) route(clusterName string) (*v1.Route, error) {
 		Methods:     route.Methods,
 		RemoteAddrs: route.RemoteAddrs,
 		UpstreamId:  route.UpstreamId,
-		ServiceId:   route.ServiceId,
 		Plugins:     route.Plugins,
 		Hosts:       route.Hosts,
 		Priority:    route.Priority,
@@ -173,35 +171,6 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 		Checks:  ups.Checks,
 		Retries: ups.Retries,
 		Timeout: ups.Timeout,
-	}, nil
-}
-
-// service decodes item.Value and converts it to v1.Service.
-func (i *item) service(clusterName string) (*v1.Service, error) {
-	log.Debugf("got service: %s", string(i.Value))
-	var svc serviceItem
-	if err := json.Unmarshal(i.Value, &svc); err != nil {
-		return nil, err
-	}
-
-	list := strings.Split(i.Key, "/")
-	id := list[len(list)-1]
-	var plugins v1.Plugins
-	if svc.Plugins != nil {
-		plugins := make(v1.Plugins, len(svc.Plugins))
-		for k, v := range svc.Plugins {
-			plugins[k] = v
-		}
-	}
-	fullName := genFullName(svc.Desc, clusterName)
-
-	return &v1.Service{
-		ID:         id,
-		FullName:   fullName,
-		Group:      clusterName,
-		Name:       svc.Desc,
-		UpstreamId: svc.UpstreamId,
-		Plugins:    plugins,
 	}, nil
 }
 

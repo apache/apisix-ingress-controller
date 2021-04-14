@@ -148,7 +148,6 @@ func (c *endpointsController) syncToCluster(ctx context.Context, cluster apisix.
 	}
 
 	upstream.Nodes = nodes
-	upstream.FromKind = WatchFromKind
 
 	log.Debugw("upstream binds new nodes",
 		zap.Any("upstream", upstream),

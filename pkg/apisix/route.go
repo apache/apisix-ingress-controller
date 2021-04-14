@@ -37,7 +37,6 @@ type routeReqBody struct {
 	Vars        [][]v1.StringOrSlice `json:"vars,omitempty"`
 	Host        string               `json:"host,omitempty"`
 	Hosts       []string             `json:"hosts,omitempty"`
-	ServiceId   string               `json:"service_id,omitempty"`
 	RemoteAddrs []string             `json:"remote_addrs,omitempty"`
 	UpstreamId  string               `json:"upstream_id,omitempty"`
 	Plugins     v1.Plugins           `json:"plugins,omitempty"`
@@ -169,7 +168,6 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		URI:         obj.Path,
 		Host:        obj.Host,
 		Hosts:       obj.Hosts,
-		ServiceId:   obj.ServiceId,
 		UpstreamId:  obj.UpstreamId,
 		Uris:        obj.Uris,
 		Plugins:     obj.Plugins,
@@ -242,7 +240,6 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		URI:         obj.Path,
 		Host:        obj.Host,
 		Hosts:       obj.Hosts,
-		ServiceId:   obj.ServiceId,
 		UpstreamId:  obj.UpstreamId,
 		Uris:        obj.Uris,
 		Plugins:     obj.Plugins,

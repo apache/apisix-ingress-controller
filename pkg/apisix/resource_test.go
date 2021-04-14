@@ -57,7 +57,6 @@ func TestItemConvertRoute(t *testing.T) {
 		Value: json.RawMessage(`
 			{
 				"upstream_id": "13",
-				"service_id": "14",
 				"host": "foo.com",
 				"uri": "/shop/133/details",
 				"desc": "unknown",
@@ -69,7 +68,6 @@ func TestItemConvertRoute(t *testing.T) {
 	r, err := item.route("qa")
 	assert.Nil(t, err)
 	assert.Equal(t, r.UpstreamId, "13")
-	assert.Equal(t, r.ServiceId, "14")
 	assert.Equal(t, r.Host, "foo.com")
 	assert.Equal(t, r.Path, "/shop/133/details")
 	assert.Equal(t, r.Methods[0], "GET")

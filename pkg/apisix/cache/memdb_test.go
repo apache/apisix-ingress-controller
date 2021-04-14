@@ -32,7 +32,6 @@ func TestMemDBCacheRoute(t *testing.T) {
 			FullName: "abc",
 			Name:     "abc",
 		},
-		ServiceId: "1",
 	}
 	assert.Nil(t, c.InsertRoute(r1), "inserting route 1")
 
@@ -45,14 +44,12 @@ func TestMemDBCacheRoute(t *testing.T) {
 			FullName: "def",
 			Name:     "def",
 		},
-		ServiceId: "2",
 	}
 	r3 := &v1.Route{
 		Metadata: v1.Metadata{
 			FullName: "ghi",
 			Name:     "ghi",
 		},
-		ServiceId: "3",
 	}
 	assert.Nil(t, c.InsertRoute(r2), "inserting route r2")
 	assert.Nil(t, c.InsertRoute(r3), "inserting route r3")
@@ -77,60 +74,8 @@ func TestMemDBCacheRoute(t *testing.T) {
 			FullName: "name4",
 			Name:     "name4",
 		},
-		ServiceId: "4",
 	}
 	assert.Error(t, ErrNotFound, c.DeleteRoute(r4))
-}
-
-func TestMemDBCacheService(t *testing.T) {
-	c, err := NewMemDBCache()
-	assert.Nil(t, err, "NewMemDBCache")
-
-	s1 := &v1.Service{
-		FullName:   "abc",
-		Name:       "abc",
-		UpstreamId: "1",
-	}
-	assert.Nil(t, c.InsertService(s1), "inserting service 1")
-
-	s, err := c.GetService("abc")
-	assert.Nil(t, err)
-	assert.Equal(t, s1, s)
-
-	s2 := &v1.Service{
-		FullName:   "def",
-		Name:       "def",
-		UpstreamId: "2",
-	}
-	s3 := &v1.Service{
-		FullName:   "ghi",
-		Name:       "ghi",
-		UpstreamId: "3",
-	}
-	assert.Nil(t, c.InsertService(s2), "inserting service 2")
-	assert.Nil(t, c.InsertService(s3), "inserting service 3")
-
-	s, err = c.GetService("ghi")
-	assert.Nil(t, err)
-	assert.Equal(t, s3, s)
-
-	assert.Nil(t, c.DeleteService(s3), "delete service 3")
-
-	services, err := c.ListServices()
-	assert.Nil(t, err, "listing services")
-
-	if services[0].FullName > services[1].FullName {
-		services[0], services[1] = services[1], services[0]
-	}
-	assert.Equal(t, services[0], s1)
-	assert.Equal(t, services[1], s2)
-
-	s4 := &v1.Service{
-		FullName:   "name4",
-		Name:       "name4",
-		UpstreamId: "4",
-	}
-	assert.Error(t, ErrNotFound, c.DeleteService(s4))
 }
 
 func TestMemDBCacheSSL(t *testing.T) {
@@ -241,15 +186,11 @@ func TestMemDBCacheReference(t *testing.T) {
 			FullName: "route",
 			Name:     "route",
 		},
-		ServiceId: "service",
-	}
-	s := &v1.Service{
-		FullName:   "service",
-		Name:       "service",
-		UpstreamId: "upstream",
+		UpstreamId: "1",
 	}
 	u := &v1.Upstream{
 		Metadata: v1.Metadata{
+			ID:       "1",
 			FullName: "upstream",
 			Name:     "upstream",
 		},
@@ -258,12 +199,9 @@ func TestMemDBCacheReference(t *testing.T) {
 	db, err := NewMemDBCache()
 	assert.Nil(t, err, "NewMemDBCache")
 	assert.Nil(t, db.InsertRoute(r))
-	assert.Nil(t, db.InsertService(s))
 	assert.Nil(t, db.InsertUpstream(u))
 
-	assert.Error(t, ErrStillInUse, db.DeleteService(s))
 	assert.Error(t, ErrStillInUse, db.DeleteUpstream(u))
 	assert.Nil(t, db.DeleteRoute(r))
-	assert.Nil(t, db.DeleteService(s))
 	assert.Nil(t, db.DeleteUpstream(u))
 }
