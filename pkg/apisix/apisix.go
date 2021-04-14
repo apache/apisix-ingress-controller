@@ -37,8 +37,6 @@ type Cluster interface {
 	Route() Route
 	// Upstream returns a Upstream interface that can operate Upstream resources.
 	Upstream() Upstream
-	// Service returns a Service interface that can operate Service resources.
-	Service() Service
 	// SSL returns a SSL interface that can operate SSL resources.
 	SSL() SSL
 	// String exposes the client information in human readable format.
@@ -76,16 +74,6 @@ type Upstream interface {
 	Create(context.Context, *v1.Upstream) (*v1.Upstream, error)
 	Delete(context.Context, *v1.Upstream) error
 	Update(context.Context, *v1.Upstream) (*v1.Upstream, error)
-}
-
-// Service is the specific client interface to take over the create, update,
-// list and delete for APISIX's Service resource.
-type Service interface {
-	Get(context.Context, string) (*v1.Service, error)
-	List(context.Context) ([]*v1.Service, error)
-	Create(context.Context, *v1.Service) (*v1.Service, error)
-	Delete(context.Context, *v1.Service) error
-	Update(context.Context, *v1.Service) (*v1.Service, error)
 }
 
 type apisix struct {

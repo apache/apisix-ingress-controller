@@ -71,7 +71,6 @@ type cluster struct {
 	cacheSyncErr error
 	route        Route
 	upstream     Upstream
-	service      Service
 	ssl          SSL
 }
 
@@ -101,7 +100,6 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 	}
 	c.route = newRouteClient(c)
 	c.upstream = newUpstreamClient(c)
-	c.service = newServiceClient(c)
 	c.ssl = newSSLClient(c)
 
 	go c.syncCache()
@@ -157,11 +155,6 @@ func (c *cluster) syncCacheOnce() (bool, error) {
 		log.Errorf("failed to list route in APISIX: %s", err)
 		return false, err
 	}
-	services, err := c.service.List(context.TODO())
-	if err != nil {
-		log.Errorf("failed to list services in APISIX: %s", err)
-		return false, err
-	}
 	upstreams, err := c.upstream.List(context.TODO())
 	if err != nil {
 		log.Errorf("failed to list upstreams in APISIX: %s", err)
@@ -177,16 +170,6 @@ func (c *cluster) syncCacheOnce() (bool, error) {
 		if err := c.cache.InsertRoute(r); err != nil {
 			log.Errorw("failed to insert route to cache",
 				zap.String("route", r.ID),
-				zap.String("cluster", c.name),
-				zap.String("error", err.Error()),
-			)
-			return false, err
-		}
-	}
-	for _, s := range services {
-		if err := c.cache.InsertService(s); err != nil {
-			log.Errorw("failed to insert service to cache",
-				zap.String("service", s.ID),
 				zap.String("cluster", c.name),
 				zap.String("error", err.Error()),
 			)
@@ -251,11 +234,6 @@ func (c *cluster) Route() Route {
 // Upstream implements Cluster.Upstream method.
 func (c *cluster) Upstream() Upstream {
 	return c.upstream
-}
-
-// Service implements Cluster.Service method.
-func (c *cluster) Service() Service {
-	return c.service
 }
 
 // SSL implements Cluster.SSL method.
