@@ -178,7 +178,7 @@ func (t *translator) TranslateUpstreamNodes(endpoints *corev1.Endpoints, port in
 		if epPort != nil {
 			for _, addr := range subset.Addresses {
 				nodes = append(nodes, apisixv1.UpstreamNode{
-					IP:   addr.IP,
+					Host: addr.IP,
 					Port: int(epPort.Port),
 					// FIXME Custom node weight
 					Weight: _defaultWeight,

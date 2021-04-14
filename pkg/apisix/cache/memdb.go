@@ -68,34 +68,34 @@ func (c *dbCache) insert(table string, obj interface{}) error {
 	return nil
 }
 
-func (c *dbCache) GetRoute(key string) (*v1.Route, error) {
-	obj, err := c.get("route", key)
+func (c *dbCache) GetRoute(id string) (*v1.Route, error) {
+	obj, err := c.get("route", id)
 	if err != nil {
 		return nil, err
 	}
 	return obj.(*v1.Route).DeepCopy(), nil
 }
 
-func (c *dbCache) GetSSL(key string) (*v1.Ssl, error) {
-	obj, err := c.get("ssl", key)
+func (c *dbCache) GetSSL(id string) (*v1.Ssl, error) {
+	obj, err := c.get("ssl", id)
 	if err != nil {
 		return nil, err
 	}
 	return obj.(*v1.Ssl).DeepCopy(), nil
 }
 
-func (c *dbCache) GetUpstream(key string) (*v1.Upstream, error) {
-	obj, err := c.get("upstream", key)
+func (c *dbCache) GetUpstream(id string) (*v1.Upstream, error) {
+	obj, err := c.get("upstream", id)
 	if err != nil {
 		return nil, err
 	}
 	return obj.(*v1.Upstream).DeepCopy(), nil
 }
 
-func (c *dbCache) get(table, key string) (interface{}, error) {
+func (c *dbCache) get(table, id string) (interface{}, error) {
 	txn := c.db.Txn(false)
 	defer txn.Abort()
-	obj, err := txn.First(table, "id", key)
+	obj, err := txn.First(table, "id", id)
 	if err != nil {
 		if err == memdb.ErrNotFound {
 			return nil, ErrNotFound

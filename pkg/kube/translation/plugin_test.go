@@ -178,16 +178,16 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Len(t, ups, 2)
-	assert.Equal(t, ups[0].FullName, "test_svc-1_80")
+	assert.Equal(t, ups[0].Name, "test_svc-1_80")
 	assert.Len(t, ups[0].Nodes, 2)
-	assert.Equal(t, ups[0].Nodes[0].IP, "192.168.1.1")
+	assert.Equal(t, ups[0].Nodes[0].Host, "192.168.1.1")
 	assert.Equal(t, ups[0].Nodes[0].Port, 9080)
-	assert.Equal(t, ups[0].Nodes[1].IP, "192.168.1.2")
+	assert.Equal(t, ups[0].Nodes[1].Host, "192.168.1.2")
 	assert.Equal(t, ups[0].Nodes[1].Port, 9080)
 
-	assert.Equal(t, ups[1].FullName, "test_svc-1_443")
+	assert.Equal(t, ups[1].Name, "test_svc-1_443")
 	assert.Len(t, ups[1].Nodes, 1)
-	assert.Equal(t, ups[1].Nodes[0].IP, "10.0.5.3")
+	assert.Equal(t, ups[1].Nodes[0].Host, "10.0.5.3")
 	assert.Equal(t, ups[1].Nodes[0].Port, 443)
 
 	assert.Len(t, cfg.Rules, 1)
@@ -346,18 +346,18 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 	// Here ups has two elements, but the duplicated one will be
 	// removed in TranslateApisixRouteV2alpha1.
 	assert.Len(t, ups, 2)
-	assert.Equal(t, ups[0].FullName, "test_svc-1_80")
+	assert.Equal(t, ups[0].Name, "test_svc-1_80")
 	assert.Len(t, ups[0].Nodes, 2)
-	assert.Equal(t, ups[0].Nodes[0].IP, "192.168.1.1")
+	assert.Equal(t, ups[0].Nodes[0].Host, "192.168.1.1")
 	assert.Equal(t, ups[0].Nodes[0].Port, 9080)
-	assert.Equal(t, ups[0].Nodes[1].IP, "192.168.1.2")
+	assert.Equal(t, ups[0].Nodes[1].Host, "192.168.1.2")
 	assert.Equal(t, ups[0].Nodes[1].Port, 9080)
 
-	assert.Equal(t, ups[1].FullName, "test_svc-1_80")
+	assert.Equal(t, ups[1].Name, "test_svc-1_80")
 	assert.Len(t, ups[1].Nodes, 2)
-	assert.Equal(t, ups[1].Nodes[0].IP, "192.168.1.1")
+	assert.Equal(t, ups[1].Nodes[0].Host, "192.168.1.1")
 	assert.Equal(t, ups[1].Nodes[0].Port, 9080)
-	assert.Equal(t, ups[1].Nodes[1].IP, "192.168.1.2")
+	assert.Equal(t, ups[1].Nodes[1].Host, "192.168.1.2")
 	assert.Equal(t, ups[1].Nodes[1].Port, 9080)
 
 	assert.Len(t, cfg.Rules, 1)

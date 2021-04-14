@@ -186,12 +186,12 @@ func TestTranslateUpstreamNodes(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, nodes, []apisixv1.UpstreamNode{
 		{
-			IP:     "192.168.1.1",
+			Host:   "192.168.1.1",
 			Port:   9080,
 			Weight: 100,
 		},
 		{
-			IP:     "192.168.1.2",
+			Host:   "192.168.1.2",
 			Port:   9080,
 			Weight: 100,
 		},
@@ -201,12 +201,12 @@ func TestTranslateUpstreamNodes(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, nodes, []apisixv1.UpstreamNode{
 		{
-			IP:     "192.168.1.1",
+			Host:   "192.168.1.1",
 			Port:   9443,
 			Weight: 100,
 		},
 		{
-			IP:     "192.168.1.2",
+			Host:   "192.168.1.2",
 			Port:   9443,
 			Weight: 100,
 		},

@@ -45,14 +45,12 @@ func (t *translator) TranslateSSL(tls *configv1.ApisixTls) (*apisixv1.Ssl, error
 	}
 	var snis []string
 	snis = append(snis, tls.Spec.Hosts...)
-	fullname := tls.Namespace + "_" + tls.Name
 	ssl := &apisix.Ssl{
-		ID:       id.GenID(fullname),
-		FullName: fullname,
-		Snis:     snis,
-		Cert:     string(cert),
-		Key:      string(key),
-		Status:   1,
+		ID:     id.GenID(tls.Namespace + "_" + tls.Name),
+		Snis:   snis,
+		Cert:   string(cert),
+		Key:    string(key),
+		Status: 1,
 	}
 	return ssl, nil
 }

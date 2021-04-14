@@ -28,7 +28,7 @@ var (
 					"id": {
 						Name:    "id",
 						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "FullName"},
+						Indexer: &memdb.StringFieldIndex{Field: "ID"},
 					},
 					"name": {
 						Name:         "name",
@@ -50,7 +50,7 @@ var (
 					"id": {
 						Name:    "id",
 						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "FullName"},
+						Indexer: &memdb.StringFieldIndex{Field: "ID"},
 					},
 					"name": {
 						Name:         "name",
@@ -66,7 +66,7 @@ var (
 					"id": {
 						Name:    "id",
 						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "FullName"},
+						Indexer: &memdb.StringFieldIndex{Field: "ID"},
 					},
 				},
 			},

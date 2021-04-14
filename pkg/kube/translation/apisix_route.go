@@ -62,16 +62,13 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) ([]*apisixv1.Rou
 			upsId := id.GenID(upstreamName)
 			route := &apisixv1.Route{
 				Metadata: apisixv1.Metadata{
-					ID:              id.GenID(routeName),
-					FullName:        routeName,
-					ResourceVersion: ar.ResourceVersion,
-					Name:            routeName,
+					ID:   id.GenID(routeName),
+					Name: routeName,
 				},
-				Host:         r.Host,
-				Path:         p.Path,
-				UpstreamName: upstreamName,
-				UpstreamId:   upsId,
-				Plugins:      pluginMap,
+				Host:       r.Host,
+				Uri:        p.Path,
+				UpstreamId: upsId,
+				Plugins:    pluginMap,
 			}
 			routes = append(routes, route)
 
@@ -80,11 +77,9 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) ([]*apisixv1.Rou
 				if err != nil {
 					return nil, nil, err
 				}
-				ups.FullName = upstreamName
 				ups.ID = upsId
-				ups.ResourceVersion = ar.ResourceVersion
 				ups.Name = upstreamName
-				upstreamMap[ups.FullName] = ups
+				upstreamMap[ups.Name] = ups
 			}
 		}
 	}
@@ -179,20 +174,17 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 		upsId := id.GenID(upstreamName)
 		route := &apisixv1.Route{
 			Metadata: apisixv1.Metadata{
-				FullName:        routeName,
-				Name:            routeName,
-				ID:              id.GenID(routeName),
-				ResourceVersion: ar.ResourceVersion,
+				Name: routeName,
+				ID:   id.GenID(routeName),
 			},
-			Priority:     part.Priority,
-			RemoteAddrs:  part.Match.RemoteAddrs,
-			Vars:         exprs,
-			Hosts:        part.Match.Hosts,
-			Uris:         part.Match.Paths,
-			Methods:      part.Match.Methods,
-			UpstreamName: upstreamName,
-			UpstreamId:   upsId,
-			Plugins:      pluginMap,
+			Priority:    part.Priority,
+			RemoteAddrs: part.Match.RemoteAddrs,
+			Vars:        exprs,
+			Hosts:       part.Match.Hosts,
+			Uris:        part.Match.Paths,
+			Methods:     part.Match.Methods,
+			UpstreamId:  upsId,
+			Plugins:     pluginMap,
 		}
 
 		if len(backends) > 0 {
@@ -209,8 +201,8 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 				return nil, nil, err
 			}
 			for _, u := range ups {
-				if _, ok := upstreamMap[u.FullName]; !ok {
-					upstreamMap[u.FullName] = u
+				if _, ok := upstreamMap[u.Name]; !ok {
+					upstreamMap[u.Name] = u
 				}
 			}
 			route.Plugins["traffic-split"] = plugin
@@ -222,7 +214,7 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 			if err != nil {
 				return nil, nil, err
 			}
-			upstreamMap[ups.FullName] = ups
+			upstreamMap[ups.Name] = ups
 		}
 	}
 
