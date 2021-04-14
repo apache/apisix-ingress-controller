@@ -76,7 +76,7 @@ func (t *translator) translateUpstream(namespace, svcName, svcResolveGranularity
 		return nil, err
 	}
 	if svcResolveGranularity == "service" {
-		ups.Nodes = []apisixv1.UpstreamNode{
+		ups.Nodes = apisixv1.UpstreamNodes{
 			{
 				Host:   svcClusterIP,
 				Port:   int(svcPort),
