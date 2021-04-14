@@ -149,7 +149,7 @@ spec:
 		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
 		resp.Status(http.StatusOK)
 	})
-	ginkgo.FIt("enable plugin and then delete it", func() {
+	ginkgo.It("enable plugin and then delete it", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
