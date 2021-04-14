@@ -163,7 +163,7 @@ type ApisixRouteHTTPBackend struct {
 	// default is endpoints.
 	ResolveGranularity string `json:"resolveGranularity" yaml:"resolveGranularity"`
 	// Weight of this backend.
-	Weight int `json:"weight" yaml:"weight"`
+	Weight *int `json:"weight" yaml:"weight"`
 }
 
 // ApisixRouteHTTPPlugin represents an APISIX plugin.
