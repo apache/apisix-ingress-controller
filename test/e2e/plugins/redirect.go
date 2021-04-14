@@ -17,6 +17,7 @@ package plugins
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
@@ -148,7 +149,7 @@ spec:
 		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
 		resp.Status(http.StatusOK)
 	})
-	ginkgo.It("enable plugin and then delete it", func() {
+	ginkgo.FIt("enable plugin and then delete it", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
@@ -176,7 +177,7 @@ spec:
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-
+		time.Sleep(5 * time.Second)
 		err := s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 		err = s.EnsureNumApisixRoutesCreated(1)
