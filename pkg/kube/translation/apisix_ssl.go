@@ -51,6 +51,9 @@ func (t *translator) TranslateSSL(tls *configv1.ApisixTls) (*apisixv1.Ssl, error
 		Cert:   string(cert),
 		Key:    string(key),
 		Status: 1,
+		Labels: map[string]string{
+			"managed-by": "apisix-ingress-controller",
+		},
 	}
 	return ssl, nil
 }

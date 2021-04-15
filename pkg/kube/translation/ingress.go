@@ -71,14 +71,11 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) ([]*apisixv1.
 				}
 				uris = append(uris, prefix)
 			}
-			route := &apisixv1.Route{
-				Metadata: apisixv1.Metadata{
-					Name: composeIngressRouteName(rule.Host, pathRule.Path),
-				},
-				Host: rule.Host,
-				Uris: uris,
-			}
+			route := apisixv1.NewDefaultRoute()
+			route.Name = composeIngressRouteName(rule.Host, pathRule.Path)
 			route.ID = id.GenID(route.Name)
+			route.Host = rule.Host
+			route.Uris = uris
 			if ups != nil {
 				route.UpstreamId = ups.ID
 			}
@@ -130,14 +127,11 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) ([]
 				}
 				uris = append(uris, prefix)
 			}
-			route := &apisixv1.Route{
-				Metadata: apisixv1.Metadata{
-					Name: composeIngressRouteName(rule.Host, pathRule.Path),
-				},
-				Host: rule.Host,
-				Uris: uris,
-			}
+			route := apisixv1.NewDefaultRoute()
+			route.Name = composeIngressRouteName(rule.Host, pathRule.Path)
 			route.ID = id.GenID(route.Name)
+			route.Host = rule.Host
+			route.Uris = uris
 			if ups != nil {
 				route.UpstreamId = ups.ID
 			}
