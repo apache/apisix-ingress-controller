@@ -16,9 +16,9 @@ package plugins
 
 import (
 	"fmt"
-
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
+	"net/http"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
@@ -60,7 +60,6 @@ spec:
        whitelist:
          - test.com
          - *.foo.com
-
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
@@ -70,6 +69,7 @@ spec:
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
+		// Referer match passed
 		resp := s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			WithHeader("Referer", "http://test.com").
@@ -77,20 +77,23 @@ spec:
 		resp.Status(http.StatusOK)
 		resp.Body().Contains("origin")
 
-		resp := s.NewAPISIXClient().GET("/ip").
+		// Referer match failed
+		resp = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			WithHeader("Referer", "http://www.test.com").
 			Expect()
 		resp.Status(http.StatusForbidden)
 
-		resp := s.NewAPISIXClient().GET("/ip").
+		// Referer match passed
+		resp = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			WithHeader("Referer", "http://www.foo.com").
 			Expect()
 		resp.Status(http.StatusOK)
 		resp.Body().Contains("origin")
 
-		resp := s.NewAPISIXClient().GET("/ip").
+		// Referer match passed
+		resp = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			WithHeader("Referer", "http://foo.com").
 			Expect()
@@ -98,7 +101,7 @@ spec:
 		resp.Body().Contains("origin")
 	})
 
-	ginkgo.It("referer-restriction plugin enable bypass_missing", func() {
+	ginkgo.It("the bypass_missing field is true", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
@@ -121,8 +124,9 @@ spec:
    - name: referer-restriction
      enable: true
      config:
-     bypass_missing: true
-
+       whitelist:
+         - test.com
+       bypass_missing: true
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
@@ -132,9 +136,7 @@ spec:
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp := s.NewAPISIXClient().GET("/ip").
-			WithHeader("Host", "httpbin.org").
-			Expect()
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
 		resp.Status(http.StatusOK)
 		resp.Body().Contains("origin")
 	})
@@ -162,9 +164,8 @@ spec:
    - name: referer-restriction
      enable: false
      config:
-     whitelist:
-       - test.com
-       - *.foo.com
+       whitelist:
+         - test.com
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
@@ -174,8 +175,8 @@ spec:
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(404)
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().Contains("origin")
 	})
 })
