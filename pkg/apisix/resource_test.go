@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -73,4 +74,25 @@ func TestItemConvertRoute(t *testing.T) {
 	assert.Equal(t, r.Methods[0], "GET")
 	assert.Equal(t, r.Methods[1], "POST")
 	assert.Equal(t, r.Name, "unknown")
+}
+
+func TestRouteVarsUnmarshalJSONCompatibility(t *testing.T) {
+	var route v1.Route
+	data := `{"vars":{}}`
+	err := json.Unmarshal([]byte(data), &route)
+	assert.Nil(t, err)
+
+	data = `{"vars":{"a":"b"}}`
+	err = json.Unmarshal([]byte(data), &route)
+	assert.Equal(t, err.Error(), "unexpected non-empty object")
+
+	data = `{"vars":[]}`
+	err = json.Unmarshal([]byte(data), &route)
+	assert.Nil(t, err)
+
+	data = `{"vars":[["http_a","==","b"]]}`
+	err = json.Unmarshal([]byte(data), &route)
+	assert.Equal(t, "http_a", route.Vars[0][0].StrVal)
+	assert.Equal(t, "==", route.Vars[0][1].StrVal)
+	assert.Equal(t, "b", route.Vars[0][2].StrVal)
 }

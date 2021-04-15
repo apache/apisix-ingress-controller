@@ -82,16 +82,38 @@ type Metadata struct {
 type Route struct {
 	Metadata `json:",inline" yaml:",inline"`
 
-	Host        string            `json:"host,omitempty" yaml:"host,omitempty"`
-	Hosts       []string          `json:"hosts,omitempty" yaml:"hosts,omitempty"`
-	Uri         string            `json:"uri,omitempty" yaml:"uri,omitempty"`
-	Priority    int               `json:"priority,omitempty" yaml:"priority,omitempty"`
-	Vars        [][]StringOrSlice `json:"vars,omitempty" yaml:"vars,omitempty"`
-	Uris        []string          `json:"uris,omitempty" yaml:"uris,omitempty"`
-	Methods     []string          `json:"methods,omitempty" yaml:"methods,omitempty"`
-	RemoteAddrs []string          `json:"remote_addrs,omitempty" yaml:"remote_addrs,omitempty"`
-	UpstreamId  string            `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
-	Plugins     Plugins           `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Host        string   `json:"host,omitempty" yaml:"host,omitempty"`
+	Hosts       []string `json:"hosts,omitempty" yaml:"hosts,omitempty"`
+	Uri         string   `json:"uri,omitempty" yaml:"uri,omitempty"`
+	Priority    int      `json:"priority,omitempty" yaml:"priority,omitempty"`
+	Vars        Vars     `json:"vars,omitempty" yaml:"vars,omitempty"`
+	Uris        []string `json:"uris,omitempty" yaml:"uris,omitempty"`
+	Methods     []string `json:"methods,omitempty" yaml:"methods,omitempty"`
+	RemoteAddrs []string `json:"remote_addrs,omitempty" yaml:"remote_addrs,omitempty"`
+	UpstreamId  string   `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
+	Plugins     Plugins  `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+}
+
+// Vars represents the route match expressions of APISIX.
+type Vars [][]StringOrSlice
+
+// UnmarshalJSON implements json.Unmarshaler interface.
+// lua-cjson doesn't distinguish empty array and table,
+// and by default empty array will be encoded as '{}'.
+// We have to maintain the compatibility.
+func (vars *Vars) UnmarshalJSON(p []byte) error {
+	if p[0] == '{' {
+		if len(p) != 2 {
+			return errors.New("unexpected non-empty object")
+		}
+		return nil
+	}
+	var data [][]StringOrSlice
+	if err := json.Unmarshal(p, &data); err != nil {
+		return err
+	}
+	*vars = data
+	return nil
 }
 
 // StringOrSlice represents a string or a string slice.
