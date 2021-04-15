@@ -59,7 +59,7 @@ spec:
      config:
        whitelist:
          - test.com
-         - \*.foo.com
+         - "*.foo.com"
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
@@ -88,14 +88,6 @@ spec:
 		resp = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			WithHeader("Referer", "http://www.foo.com").
-			Expect()
-		resp.Status(http.StatusOK)
-		resp.Body().Contains("origin")
-
-		// Referer match passed
-		resp = s.NewAPISIXClient().GET("/ip").
-			WithHeader("Host", "httpbin.org").
-			WithHeader("Referer", "http://foo.com").
 			Expect()
 		resp.Status(http.StatusOK)
 		resp.Body().Contains("origin")
@@ -136,7 +128,16 @@ spec:
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
+		// Referer is missing
 		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().Contains("origin")
+
+		// Referer format is incorrect
+		resp = s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("Referer", "test.com").
+			Expect()
 		resp.Status(http.StatusOK)
 		resp.Body().Contains("origin")
 	})
