@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -76,7 +77,7 @@ func TestItemConvertRoute(t *testing.T) {
 }
 
 func TestRouteVarsUnmarshalJSONCompatibility(t *testing.T) {
-	var route routeWrap
+	var route v1.Route
 	data := `{"vars":{}}`
 	err := json.Unmarshal([]byte(data), &route)
 	assert.Nil(t, err)
