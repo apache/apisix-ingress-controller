@@ -192,8 +192,14 @@ func (t *translator) TranslateUpstreamNodes(endpoints *corev1.Endpoints, port in
 }
 
 func (t *translator) TranslateIngress(ing kube.Ingress) ([]*apisixv1.Route, []*apisixv1.Upstream, error) {
-	if ing.GroupVersion() == kube.IngressV1 {
+	switch ing.GroupVersion() {
+	case kube.IngressV1:
 		return t.translateIngressV1(ing.V1())
+	case kube.IngressV1beta1:
+		return t.translateIngressV1beta1(ing.V1beta1())
+	case kube.IngressExtensionsV1beta1:
+		return t.translateIngressExtensionsV1beta1(ing.ExtensionsV1beta1())
+	default:
+		return nil, nil, fmt.Errorf("translator: source group version not supported: %s", ing.GroupVersion())
 	}
-	return t.translateIngressV1beta1(ing.V1beta1())
 }
