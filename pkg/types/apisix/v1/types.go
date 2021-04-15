@@ -64,14 +64,17 @@ const (
 	// the active health check.
 	ActiveHealthCheckMinInterval = time.Second
 
-	// Default connect, read and send timeout (in seconds) with upstreams.
+	// DefaultUpstreamTimeout represents the default connect,
+	// read and send timeout (in seconds) with upstreams.
 	DefaultUpstreamTimeout = 60
 )
 
 // Metadata contains all meta information about resources.
 type Metadata struct {
-	ID   string `json:"id,omitempty" yaml:"id,omitempty"`
-	Name string `json:"name,omitempty" yaml:"name,omitempty"`
+	ID     string            `json:"id,omitempty" yaml:"id,omitempty"`
+	Name   string            `json:"name,omitempty" yaml:"name,omitempty"`
+	Desc   string            `json:"desc,omitempty" yaml:"desc,omitempty"`
+	Labels map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 }
 
 // Route apisix route object
@@ -268,11 +271,12 @@ type UpstreamPassiveHealthCheckUnhealthy struct {
 // Ssl apisix ssl object
 // +k8s:deepcopy-gen=true
 type Ssl struct {
-	ID     string   `json:"id,omitempty" yaml:"id,omitempty"`
-	Snis   []string `json:"snis,omitempty" yaml:"snis,omitempty"`
-	Cert   string   `json:"cert,omitempty" yaml:"cert,omitempty"`
-	Key    string   `json:"key,omitempty" yaml:"key,omitempty"`
-	Status int      `json:"status,omitempty" yaml:"status,omitempty"`
+	ID     string            `json:"id,omitempty" yaml:"id,omitempty"`
+	Snis   []string          `json:"snis,omitempty" yaml:"snis,omitempty"`
+	Cert   string            `json:"cert,omitempty" yaml:"cert,omitempty"`
+	Key    string            `json:"key,omitempty" yaml:"key,omitempty"`
+	Status int               `json:"status,omitempty" yaml:"status,omitempty"`
+	Labels map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 }
 
 // TrafficSplitConfig is the config of traffic-split plugin.
@@ -300,8 +304,26 @@ func NewDefaultUpstream() *Upstream {
 	return &Upstream{
 		Type:   LbRoundRobin,
 		Key:    "",
-		Nodes:  nil,
+		Nodes:  make(UpstreamNodes, 0),
 		Scheme: SchemeHTTP,
+		Metadata: Metadata{
+			Desc: "Created by apisix-ingress-controller, DO NOT modify it manually",
+			Labels: map[string]string{
+				"managed-by": "apisix-ingress-controller",
+			},
+		},
+	}
+}
+
+// NewDefaultRoute returns an empty Route with default values.
+func NewDefaultRoute() *Route {
+	return &Route{
+		Metadata: Metadata{
+			Desc: "Created by apisix-ingress-controller, DO NOT modify it manually",
+			Labels: map[string]string{
+				"managed-by": "apisix-ingress-controller",
+			},
+		},
 	}
 }
 

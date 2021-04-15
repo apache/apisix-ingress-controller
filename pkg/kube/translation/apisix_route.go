@@ -38,9 +38,6 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) ([]*apisixv1.Rou
 
 	for _, r := range ar.Spec.Rules {
 		for _, p := range r.Http.Paths {
-			routeName := r.Host + p.Path
-			upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, p.Backend.ServiceName, int32(p.Backend.ServicePort))
-
 			pluginMap := make(apisixv1.Plugins)
 			// 1.add annotation plugins
 			for k, v := range plugins {
@@ -59,28 +56,26 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) ([]*apisixv1.Rou
 					pluginMap[plugin.Name] = make(map[string]interface{})
 				}
 			}
-			upsId := id.GenID(upstreamName)
-			route := &apisixv1.Route{
-				Metadata: apisixv1.Metadata{
-					ID:   id.GenID(routeName),
-					Name: routeName,
-				},
-				Host:       r.Host,
-				Uri:        p.Path,
-				UpstreamId: upsId,
-				Plugins:    pluginMap,
-			}
-			routes = append(routes, route)
+
+			upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, p.Backend.ServiceName, int32(p.Backend.ServicePort))
+			route := apisixv1.NewDefaultRoute()
+			route.Name = r.Host + p.Path
+			route.ID = id.GenID(route.Name)
+			route.Host = r.Host
+			route.Uri = p.Path
+			route.Plugins = pluginMap
+			route.UpstreamId = id.GenID(upstreamName)
 
 			if _, ok := upstreamMap[upstreamName]; !ok {
 				ups, err := t.TranslateUpstream(ar.Namespace, p.Backend.ServiceName, int32(p.Backend.ServicePort))
 				if err != nil {
 					return nil, nil, err
 				}
-				ups.ID = upsId
+				ups.ID = route.UpstreamId
 				ups.Name = upstreamName
 				upstreamMap[ups.Name] = ups
 			}
+			routes = append(routes, route)
 		}
 	}
 	for _, ups := range upstreamMap {
@@ -169,23 +164,18 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 			return nil, nil, err
 		}
 
-		routeName := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, svcPort)
-		upsId := id.GenID(upstreamName)
-		route := &apisixv1.Route{
-			Metadata: apisixv1.Metadata{
-				Name: routeName,
-				ID:   id.GenID(routeName),
-			},
-			Priority:    part.Priority,
-			RemoteAddrs: part.Match.RemoteAddrs,
-			Vars:        exprs,
-			Hosts:       part.Match.Hosts,
-			Uris:        part.Match.Paths,
-			Methods:     part.Match.Methods,
-			UpstreamId:  upsId,
-			Plugins:     pluginMap,
-		}
+		route := apisixv1.NewDefaultRoute()
+		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
+		route.ID = id.GenID(route.Name)
+		route.Priority = part.Priority
+		route.RemoteAddrs = part.Match.RemoteAddrs
+		route.Vars = exprs
+		route.Hosts = part.Match.Hosts
+		route.Uris = part.Match.Paths
+		route.Methods = part.Match.Methods
+		route.UpstreamId = id.GenID(upstreamName)
+		route.Plugins = pluginMap
 
 		if len(backends) > 0 {
 			weight := _defaultWeight

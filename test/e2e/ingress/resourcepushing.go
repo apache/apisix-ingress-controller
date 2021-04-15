@@ -334,7 +334,7 @@ spec:
 		resp.Header("X-Request-Id").NotEmpty()
 	})
 
-	ginkgo.It("verify route items", func() {
+	ginkgo.It("verify route/upstream items", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
@@ -366,6 +366,20 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), routes[0].Name, name)
 		assert.Equal(ginkgo.GinkgoT(), routes[0].Uris, []string{"/ip"})
 		assert.Equal(ginkgo.GinkgoT(), routes[0].Hosts, []string{"httpbin.com"})
+		assert.Equal(ginkgo.GinkgoT(), routes[0].Desc,
+			"Created by apisix-ingress-controller, DO NOT modify it manually")
+		assert.Equal(ginkgo.GinkgoT(), routes[0].Labels, map[string]string{
+			"managed-by": "apisix-ingress-controller",
+		})
+
+		ups, err := s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing upstreams")
+		assert.Len(ginkgo.GinkgoT(), ups, 1)
+		assert.Equal(ginkgo.GinkgoT(), ups[0].Desc,
+			"Created by apisix-ingress-controller, DO NOT modify it manually")
+		assert.Equal(ginkgo.GinkgoT(), ups[0].Labels, map[string]string{
+			"managed-by": "apisix-ingress-controller",
+		})
 
 		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect()
 		resp.Status(http.StatusOK)
