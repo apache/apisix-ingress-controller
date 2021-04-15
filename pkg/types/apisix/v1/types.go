@@ -91,6 +91,7 @@ type Route struct {
 	Plugins     Plugins  `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
+// Vars represents the route match expressions of APISIX.
 type Vars [][]StringOrSlice
 
 // UnmarshalJSON implements json.Unmarshaler interface.
