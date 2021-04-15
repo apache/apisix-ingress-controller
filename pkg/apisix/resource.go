@@ -72,13 +72,13 @@ type item struct {
 	Value json.RawMessage `json:"value"`
 }
 
-type ri v1.Route
+type routeWrap v1.Route
 
-// ri implements json.Unmarshaler interface.
+// routeWrap implements json.Unmarshaler interface.
 // lua-cjson doesn't distinguish empty array and table,
 // and by default empty array will be encoded as '{}'.
 // We have to maintain the compatibility.
-func (r *ri) UnmarshalJSON(p []byte) error {
+func (rw *routeWrap) UnmarshalJSON(p []byte) error {
 	if strings.Index(string(p), `"vars":{}`) >= 0 {
 		p = []byte(strings.Replace(string(p), `"vars":{}`, `"vars":[]`, 1))
 	} else if strings.Index(string(p), `"vars":{`) >= 0 {
@@ -89,7 +89,7 @@ func (r *ri) UnmarshalJSON(p []byte) error {
 	if err := json.Unmarshal(p, &data); err != nil {
 		return err
 	}
-	*r = ri(data)
+	*rw = routeWrap(data)
 	return nil
 }
 
@@ -101,11 +101,12 @@ func (i *item) route() (*v1.Route, error) {
 		return nil, fmt.Errorf("bad route config key: %s", i.Key)
 	}
 
-	var route ri
+	var route routeWrap
 	if err := json.Unmarshal(i.Value, &route); err != nil {
 		return nil, err
 	}
-	return &route, nil
+	r := v1.Route(route)
+	return &r, nil
 }
 
 // upstream decodes item.Value and converts it to v1.Upstream.

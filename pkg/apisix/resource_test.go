@@ -75,17 +75,17 @@ func TestItemConvertRoute(t *testing.T) {
 	assert.Equal(t, r.Name, "unknown")
 }
 
-func TestRouteItemVarsUnmarshalJSONCompatibility(t *testing.T) {
-	var routeItem ri
+func TestRouteVarsUnmarshalJSONCompatibility(t *testing.T) {
+	var route routeWrap
 	data := `{"vars":{}}`
-	err := json.Unmarshal([]byte(data), &routeItem)
+	err := json.Unmarshal([]byte(data), &route)
 	assert.Nil(t, err)
 
 	data = `{"vars":{"a":"b"}}`
-	err = json.Unmarshal([]byte(data), &routeItem)
+	err = json.Unmarshal([]byte(data), &route)
 	assert.Equal(t, err.Error(), "unexpected non-empty object")
 
 	data = `{"vars":[]}`
-	err = json.Unmarshal([]byte(data), &routeItem)
+	err = json.Unmarshal([]byte(data), &route)
 	assert.Nil(t, err)
 }
