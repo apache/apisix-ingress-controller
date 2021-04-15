@@ -28,80 +28,66 @@ import (
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-type routeReqBody struct {
-	Desc        string               `json:"desc,omitempty"`
-	Name        string               `json:"name,omitempty"`
-	URI         string               `json:"uri,omitempty"`
-	Priority    int                  `json:"priority,omitempty"`
-	Uris        []string             `json:"uris,omitempty"`
-	Vars        [][]v1.StringOrSlice `json:"vars,omitempty"`
-	Host        string               `json:"host,omitempty"`
-	Hosts       []string             `json:"hosts,omitempty"`
-	RemoteAddrs []string             `json:"remote_addrs,omitempty"`
-	UpstreamId  string               `json:"upstream_id,omitempty"`
-	Plugins     v1.Plugins           `json:"plugins,omitempty"`
-}
-
 type routeClient struct {
-	clusterName string
-	url         string
-	cluster     *cluster
+	url     string
+	cluster *cluster
 }
 
 func newRouteClient(c *cluster) Route {
 	return &routeClient{
-		clusterName: c.name,
-		url:         c.baseURL + "/routes",
-		cluster:     c,
+		url:     c.baseURL + "/routes",
+		cluster: c,
 	}
 }
 
+// Get returns the Route.
 // FIXME, currently if caller pass a non-existent resource, the Get always passes
 // through cache.
-func (r *routeClient) Get(ctx context.Context, fullname string) (*v1.Route, error) {
+func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
 	log.Debugw("try to look up route",
-		zap.String("fullname", fullname),
+		zap.String("name", name),
 		zap.String("url", r.url),
-		zap.String("cluster", r.clusterName),
+		zap.String("cluster", "default"),
 	)
-	route, err := r.cluster.cache.GetRoute(fullname)
+	rid := id.GenID(name)
+	route, err := r.cluster.cache.GetRoute(rid)
 	if err == nil {
 		return route, nil
 	}
 	if err != cache.ErrNotFound {
 		log.Errorw("failed to find route in cache, will try to lookup from APISIX",
-			zap.String("fullname", fullname),
+			zap.String("name", name),
 			zap.Error(err),
 		)
 	} else {
 		log.Debugw("failed to find route in cache, will try to lookup from APISIX",
-			zap.String("fullname", fullname),
+			zap.String("name", name),
 			zap.Error(err),
 		)
 	}
 
 	// TODO Add mutex here to avoid dog-pile effection.
-	url := r.url + "/" + id.GenID(fullname)
+	url := r.url + "/" + rid
 	resp, err := r.cluster.getResource(ctx, url)
 	if err != nil {
 		if err == cache.ErrNotFound {
 			log.Warnw("route not found",
-				zap.String("fullname", fullname),
+				zap.String("name", name),
 				zap.String("url", url),
-				zap.String("cluster", r.clusterName),
+				zap.String("cluster", "default"),
 			)
 		} else {
 			log.Errorw("failed to get route from APISIX",
-				zap.String("fullname", fullname),
+				zap.String("name", name),
 				zap.String("url", url),
-				zap.String("cluster", r.clusterName),
+				zap.String("cluster", "default"),
 				zap.Error(err),
 			)
 		}
 		return nil, err
 	}
 
-	route, err = resp.Item.route(r.clusterName)
+	route, err = resp.Item.route()
 	if err != nil {
 		log.Errorw("failed to convert route item",
 			zap.String("url", r.url),
@@ -123,7 +109,7 @@ func (r *routeClient) Get(ctx context.Context, fullname string) (*v1.Route, erro
 // to APISIX.
 func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 	log.Debugw("try to list routes in APISIX",
-		zap.String("cluster", r.clusterName),
+		zap.String("cluster", "default"),
 		zap.String("url", r.url),
 	)
 	routeItems, err := r.cluster.listResource(ctx, r.url)
@@ -134,7 +120,7 @@ func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 
 	var items []*v1.Route
 	for i, item := range routeItems.Node.Items {
-		route, err := item.route(r.clusterName)
+		route, err := item.route()
 		if err != nil {
 			log.Errorw("failed to convert route item",
 				zap.String("url", r.url),
@@ -155,27 +141,15 @@ func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
 	log.Debugw("try to create route",
 		zap.String("host", obj.Host),
-		zap.String("fullname", obj.FullName),
-		zap.String("cluster", r.clusterName),
+		zap.String("name", obj.Name),
+		zap.String("cluster", "default"),
 		zap.String("url", r.url),
 	)
 
 	if err := r.cluster.HasSynced(ctx); err != nil {
 		return nil, err
 	}
-	data, err := json.Marshal(routeReqBody{
-		Priority:    obj.Priority,
-		Desc:        obj.Name,
-		Name:        obj.Name,
-		URI:         obj.Path,
-		Host:        obj.Host,
-		Hosts:       obj.Hosts,
-		UpstreamId:  obj.UpstreamId,
-		Uris:        obj.Uris,
-		Plugins:     obj.Plugins,
-		Vars:        obj.Vars,
-		RemoteAddrs: obj.RemoteAddrs,
-	})
+	data, err := json.Marshal(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -188,11 +162,7 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		return nil, err
 	}
 
-	var clusterName string
-	if obj.Group != "" {
-		clusterName = obj.Group
-	}
-	route, err := resp.Item.route(clusterName)
+	route, err := resp.Item.route()
 	if err != nil {
 		return nil, err
 	}
@@ -206,8 +176,8 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 	log.Debugw("try to delete route",
 		zap.String("id", obj.ID),
-		zap.String("fullname", obj.FullName),
-		zap.String("cluster", r.clusterName),
+		zap.String("name", obj.Name),
+		zap.String("cluster", "default"),
 		zap.String("url", r.url),
 	)
 	if err := r.cluster.HasSynced(ctx); err != nil {
@@ -227,27 +197,15 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
 	log.Debugw("try to update route",
 		zap.String("id", obj.ID),
-		zap.String("fullname", obj.FullName),
-		zap.String("cluster", r.clusterName),
+		zap.String("name", obj.Name),
+		zap.String("cluster", "default"),
 		zap.String("url", r.url),
 	)
 	if err := r.cluster.HasSynced(ctx); err != nil {
 		return nil, err
 	}
 	// FIXME use unified v1.Route, removing routeReqBody.
-	body, err := json.Marshal(routeReqBody{
-		Priority:    obj.Priority,
-		Desc:        obj.Name,
-		Name:        obj.Name,
-		URI:         obj.Path,
-		Host:        obj.Host,
-		Hosts:       obj.Hosts,
-		UpstreamId:  obj.UpstreamId,
-		Uris:        obj.Uris,
-		Plugins:     obj.Plugins,
-		Vars:        obj.Vars,
-		RemoteAddrs: obj.RemoteAddrs,
-	})
+	body, err := json.Marshal(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -257,11 +215,7 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	if err != nil {
 		return nil, err
 	}
-	var clusterName string
-	if obj.Group != "" {
-		clusterName = obj.Group
-	}
-	route, err := resp.Item.route(clusterName)
+	route, err := resp.Item.route()
 	if err != nil {
 		return nil, err
 	}

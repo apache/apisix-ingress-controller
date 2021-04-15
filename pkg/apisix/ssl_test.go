@@ -158,17 +158,15 @@ func TestSSLClient(t *testing.T) {
 
 	// Create
 	obj, err := cli.Create(context.TODO(), &v1.Ssl{
-		ID:    "1",
-		Group: "default",
-		Snis:  []string{"bar.com"},
+		ID:   "1",
+		Snis: []string{"bar.com"},
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "1")
 
 	obj, err = cli.Create(context.TODO(), &v1.Ssl{
-		ID:    "2",
-		Group: "default",
-		Snis:  []string{"bar.com"},
+		ID:   "2",
+		Snis: []string{"bar.com"},
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "2")

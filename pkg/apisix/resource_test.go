@@ -59,21 +59,20 @@ func TestItemConvertRoute(t *testing.T) {
 				"upstream_id": "13",
 				"host": "foo.com",
 				"uri": "/shop/133/details",
-				"desc": "unknown",
+				"name": "unknown",
 				"methods": ["GET", "POST"]
 			}
 		`),
 	}
 
-	r, err := item.route("qa")
+	r, err := item.route()
 	assert.Nil(t, err)
 	assert.Equal(t, r.UpstreamId, "13")
 	assert.Equal(t, r.Host, "foo.com")
-	assert.Equal(t, r.Path, "/shop/133/details")
+	assert.Equal(t, r.Uri, "/shop/133/details")
 	assert.Equal(t, r.Methods[0], "GET")
 	assert.Equal(t, r.Methods[1], "POST")
 	assert.Equal(t, r.Name, "unknown")
-	assert.Equal(t, r.FullName, "qa_unknown")
 }
 
 func TestRouteItemVarsUnmarshalJSONCompatibility(t *testing.T) {

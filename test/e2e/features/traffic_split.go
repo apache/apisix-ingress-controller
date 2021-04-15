@@ -90,4 +90,60 @@ spec:
 		dev := math.Abs(float64(num200)/float64(num404) - float64(2))
 		assert.Less(ginkgo.GinkgoT(), dev, 0.2)
 	})
+
+	ginkgo.It("zero-weight", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		adminSvc, adminPort := s.ApisixAdminServiceAndPort()
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /get
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 100
+   - serviceName: %s
+     servicePort: %d
+     weight: 0
+`, backendSvc, backendPorts[0], adminSvc, adminPort)
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+
+		err := s.EnsureNumApisixUpstreamsCreated(2)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		// Send requests to APISIX.
+		var (
+			num404 int
+			num200 int
+		)
+		for i := 0; i < 90; i++ {
+			// For requests sent to http-admin, 404 will be given.
+			// For requests sent to httpbin, 200 will be given.
+			resp := s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect()
+			status := resp.Raw().StatusCode
+			if status != http.StatusOK && status != http.StatusNotFound {
+				assert.FailNow(ginkgo.GinkgoT(), "invalid status code")
+			}
+			if status == 200 {
+				num200++
+				resp.Body().Contains("origin")
+			} else {
+				num404++
+			}
+		}
+		assert.Equal(ginkgo.GinkgoT(), num404, 0)
+		assert.Equal(ginkgo.GinkgoT(), num200, 90)
+	})
 })

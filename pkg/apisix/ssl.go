@@ -29,63 +29,61 @@ import (
 )
 
 type sslClient struct {
-	url         string
-	clusterName string
-	cluster     *cluster
+	url     string
+	cluster *cluster
 }
 
 func newSSLClient(c *cluster) SSL {
 	return &sslClient{
-		url:         c.baseURL + "/ssl",
-		cluster:     c,
-		clusterName: c.name,
+		url:     c.baseURL + "/ssl",
+		cluster: c,
 	}
 }
 
-func (s *sslClient) Get(ctx context.Context, fullname string) (*v1.Ssl, error) {
+func (s *sslClient) Get(ctx context.Context, name string) (*v1.Ssl, error) {
 	log.Debugw("try to look up ssl",
-		zap.String("fullname", fullname),
+		zap.String("name", name),
 		zap.String("url", s.url),
-		zap.String("cluster", s.clusterName),
+		zap.String("cluster", "default"),
 	)
-
-	ssl, err := s.cluster.cache.GetSSL(fullname)
+	sid := id.GenID(name)
+	ssl, err := s.cluster.cache.GetSSL(sid)
 	if err == nil {
 		return ssl, nil
 	}
 	if err != cache.ErrNotFound {
 		log.Errorw("failed to find ssl in cache, will try to lookup from APISIX",
-			zap.String("fullname", fullname),
+			zap.String("name", name),
 			zap.Error(err),
 		)
 	} else {
 		log.Debugw("failed to find ssl in cache, will try to lookup from APISIX",
-			zap.String("fullname", fullname),
+			zap.String("name", name),
 			zap.Error(err),
 		)
 	}
 
 	// TODO Add mutex here to avoid dog-pile effection.
-	url := s.url + "/" + id.GenID(fullname)
+	url := s.url + "/" + sid
 	resp, err := s.cluster.getResource(ctx, url)
 	if err != nil {
 		if err == cache.ErrNotFound {
 			log.Warnw("ssl not found",
-				zap.String("fullname", fullname),
+				zap.String("name", name),
 				zap.String("url", url),
-				zap.String("cluster", s.clusterName),
+				zap.String("cluster", "default"),
 			)
 		} else {
 			log.Errorw("failed to get ssl from APISIX",
-				zap.String("fullname", fullname),
+				zap.String("name", name),
 				zap.String("url", url),
-				zap.String("cluster", s.clusterName),
+				zap.String("cluster", "default"),
 				zap.Error(err),
 			)
 		}
 		return nil, err
 	}
-	ssl, err = resp.Item.ssl(s.clusterName)
+	ssl, err = resp.Item.ssl()
 	if err != nil {
 		log.Errorw("failed to convert ssl item",
 			zap.String("url", s.url),
@@ -107,7 +105,7 @@ func (s *sslClient) Get(ctx context.Context, fullname string) (*v1.Ssl, error) {
 func (s *sslClient) List(ctx context.Context) ([]*v1.Ssl, error) {
 	log.Debugw("try to list ssl in APISIX",
 		zap.String("url", s.url),
-		zap.String("cluster", s.clusterName),
+		zap.String("cluster", "default"),
 	)
 
 	sslItems, err := s.cluster.listResource(ctx, s.url)
@@ -118,7 +116,7 @@ func (s *sslClient) List(ctx context.Context) ([]*v1.Ssl, error) {
 
 	var items []*v1.Ssl
 	for i, item := range sslItems.Node.Items {
-		ssl, err := item.ssl(s.clusterName)
+		ssl, err := item.ssl()
 		if err != nil {
 			log.Errorw("failed to convert ssl item",
 				zap.String("url", s.url),
@@ -136,7 +134,7 @@ func (s *sslClient) List(ctx context.Context) ([]*v1.Ssl, error) {
 
 func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	log.Debugw("try to create ssl",
-		zap.String("cluster", s.clusterName),
+		zap.String("cluster", "default"),
 		zap.String("url", s.url),
 		zap.String("id", obj.ID),
 	)
@@ -161,12 +159,7 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 		return nil, err
 	}
 
-	var clusterName string
-	if obj.Group != "" {
-		clusterName = obj.Group
-	}
-
-	ssl, err := resp.Item.ssl(clusterName)
+	ssl, err := resp.Item.ssl()
 	if err != nil {
 		return nil, err
 	}
@@ -180,8 +173,7 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 	log.Debugw("try to delete ssl",
 		zap.String("id", obj.ID),
-		zap.String("cluster", s.clusterName),
-		zap.String("fullName", obj.FullName),
+		zap.String("cluster", "default"),
 		zap.String("url", s.url),
 	)
 	if err := s.cluster.HasSynced(ctx); err != nil {
@@ -201,20 +193,14 @@ func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	log.Debugw("try to update ssl",
 		zap.String("id", obj.ID),
-		zap.String("cluster", s.clusterName),
+		zap.String("cluster", "default"),
 		zap.String("url", s.url),
 	)
 	if err := s.cluster.HasSynced(ctx); err != nil {
 		return nil, err
 	}
 	url := s.url + "/" + obj.ID
-	data, err := json.Marshal(v1.Ssl{
-		ID:     obj.ID,
-		Snis:   obj.Snis,
-		Cert:   obj.Cert,
-		Key:    obj.Key,
-		Status: obj.Status,
-	})
+	data, err := json.Marshal(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -223,11 +209,7 @@ func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
-	var clusterName string
-	if obj.Group != "" {
-		clusterName = obj.Group
-	}
-	ssl, err := resp.Item.ssl(clusterName)
+	ssl, err := resp.Item.ssl()
 	if err != nil {
 		return nil, err
 	}
