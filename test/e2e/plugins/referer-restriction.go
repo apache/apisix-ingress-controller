@@ -59,7 +59,7 @@ spec:
      config:
        whitelist:
          - test.com
-         - *.foo.com
+         - \*.foo.com
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
