@@ -73,13 +73,12 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) ([]*apisixv1.
 			}
 			route := &apisixv1.Route{
 				Metadata: apisixv1.Metadata{
-					FullName: composeIngressRouteName(rule.Host, pathRule.Path),
+					Name: composeIngressRouteName(rule.Host, pathRule.Path),
 				},
 				Host: rule.Host,
 				Uris: uris,
 			}
-			route.ID = id.GenID(route.FullName)
-			route.Name = route.FullName
+			route.ID = id.GenID(route.Name)
 			if ups != nil {
 				route.UpstreamId = ups.ID
 			}
@@ -133,13 +132,12 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) ([]
 			}
 			route := &apisixv1.Route{
 				Metadata: apisixv1.Metadata{
-					FullName: composeIngressRouteName(rule.Host, pathRule.Path),
+					Name: composeIngressRouteName(rule.Host, pathRule.Path),
 				},
 				Host: rule.Host,
 				Uris: uris,
 			}
-			route.Name = route.FullName
-			route.ID = id.GenID(route.FullName)
+			route.ID = id.GenID(route.Name)
 			if ups != nil {
 				route.UpstreamId = ups.ID
 			}
@@ -175,9 +173,8 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 	if err != nil {
 		return nil, err
 	}
-	ups.FullName = apisixv1.ComposeUpstreamName(namespace, backend.Name, svcPort)
-	ups.Name = ups.FullName
-	ups.ID = id.GenID(ups.FullName)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, svcPort)
+	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }
 
@@ -226,13 +223,12 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 			}
 			route := &apisixv1.Route{
 				Metadata: apisixv1.Metadata{
-					FullName: composeIngressRouteName(rule.Host, pathRule.Path),
+					Name: composeIngressRouteName(rule.Host, pathRule.Path),
 				},
 				Host: rule.Host,
 				Uris: uris,
 			}
-			route.Name = route.FullName
-			route.ID = id.GenID(route.FullName)
+			route.ID = id.GenID(route.Name)
 			if ups != nil {
 				route.UpstreamId = ups.ID
 			}
@@ -268,9 +264,8 @@ func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcNa
 	if err != nil {
 		return nil, err
 	}
-	ups.FullName = apisixv1.ComposeUpstreamName(namespace, svcName, portNumber)
-	ups.Name = ups.FullName
-	ups.ID = id.GenID(ups.FullName)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, portNumber)
+	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }
 

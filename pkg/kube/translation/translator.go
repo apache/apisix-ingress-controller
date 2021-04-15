@@ -45,7 +45,7 @@ func (te *translateError) Error() string {
 type Translator interface {
 	// TranslateUpstreamNodes translate Endpoints resources to APISIX Upstream nodes
 	// according to the give port.
-	TranslateUpstreamNodes(*corev1.Endpoints, int32) ([]apisixv1.UpstreamNode, error)
+	TranslateUpstreamNodes(*corev1.Endpoints, int32) (apisixv1.UpstreamNodes, error)
 	// TranslateUpstreamConfig translates ApisixUpstreamConfig (part of ApisixUpstream)
 	// to APISIX Upstream, it doesn't fill the the Upstream metadata and nodes.
 	TranslateUpstreamConfig(*configv1.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
@@ -144,7 +144,7 @@ func (t *translator) TranslateUpstream(namespace, name string, port int32) (*api
 	return ups, nil
 }
 
-func (t *translator) TranslateUpstreamNodes(endpoints *corev1.Endpoints, port int32) ([]apisixv1.UpstreamNode, error) {
+func (t *translator) TranslateUpstreamNodes(endpoints *corev1.Endpoints, port int32) (apisixv1.UpstreamNodes, error) {
 	svc, err := t.ServiceLister.Services(endpoints.Namespace).Get(endpoints.Name)
 	if err != nil {
 		return nil, &translateError{
@@ -166,7 +166,9 @@ func (t *translator) TranslateUpstreamNodes(endpoints *corev1.Endpoints, port in
 			reason: "port not defined",
 		}
 	}
-	var nodes []apisixv1.UpstreamNode
+	// As nodes is not optional, here we create an empty slice,
+	// not a nil slice.
+	nodes := make(apisixv1.UpstreamNodes, 0)
 	for _, subset := range endpoints.Subsets {
 		var epPort *corev1.EndpointPort
 		for _, port := range subset.Ports {
@@ -178,7 +180,7 @@ func (t *translator) TranslateUpstreamNodes(endpoints *corev1.Endpoints, port in
 		if epPort != nil {
 			for _, addr := range subset.Addresses {
 				nodes = append(nodes, apisixv1.UpstreamNode{
-					IP:   addr.IP,
+					Host: addr.IP,
 					Port: int(epPort.Port),
 					// FIXME Custom node weight
 					Weight: _defaultWeight,

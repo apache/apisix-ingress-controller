@@ -302,17 +302,17 @@ func TestTranslateIngressV1(t *testing.T) {
 	assert.Equal(t, upstreams[0].Scheme, "http")
 	assert.Len(t, upstreams[0].Nodes, 2)
 	assert.Equal(t, upstreams[0].Nodes[0].Port, 9080)
-	assert.Equal(t, upstreams[0].Nodes[0].IP, "192.168.1.1")
+	assert.Equal(t, upstreams[0].Nodes[0].Host, "192.168.1.1")
 	assert.Equal(t, upstreams[0].Nodes[1].Port, 9080)
-	assert.Equal(t, upstreams[0].Nodes[1].IP, "192.168.1.2")
+	assert.Equal(t, upstreams[0].Nodes[1].Host, "192.168.1.2")
 
 	assert.Equal(t, upstreams[1].Type, "roundrobin")
 	assert.Equal(t, upstreams[1].Scheme, "http")
 	assert.Len(t, upstreams[1].Nodes, 2)
 	assert.Equal(t, upstreams[1].Nodes[0].Port, 9443)
-	assert.Equal(t, upstreams[1].Nodes[0].IP, "192.168.1.1")
+	assert.Equal(t, upstreams[1].Nodes[0].Host, "192.168.1.1")
 	assert.Equal(t, upstreams[1].Nodes[1].Port, 9443)
-	assert.Equal(t, upstreams[1].Nodes[1].IP, "192.168.1.2")
+	assert.Equal(t, upstreams[1].Nodes[1].Host, "192.168.1.2")
 }
 
 func TestTranslateIngressV1beta1NoBackend(t *testing.T) {
@@ -525,17 +525,17 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	assert.Equal(t, upstreams[0].Scheme, "http")
 	assert.Len(t, upstreams[0].Nodes, 2)
 	assert.Equal(t, upstreams[0].Nodes[0].Port, 9080)
-	assert.Equal(t, upstreams[0].Nodes[0].IP, "192.168.1.1")
+	assert.Equal(t, upstreams[0].Nodes[0].Host, "192.168.1.1")
 	assert.Equal(t, upstreams[0].Nodes[1].Port, 9080)
-	assert.Equal(t, upstreams[0].Nodes[1].IP, "192.168.1.2")
+	assert.Equal(t, upstreams[0].Nodes[1].Host, "192.168.1.2")
 
 	assert.Equal(t, upstreams[1].Type, "roundrobin")
 	assert.Equal(t, upstreams[1].Scheme, "http")
 	assert.Len(t, upstreams[1].Nodes, 2)
 	assert.Equal(t, upstreams[1].Nodes[0].Port, 9443)
-	assert.Equal(t, upstreams[1].Nodes[0].IP, "192.168.1.1")
+	assert.Equal(t, upstreams[1].Nodes[0].Host, "192.168.1.1")
 	assert.Equal(t, upstreams[1].Nodes[1].Port, 9443)
-	assert.Equal(t, upstreams[1].Nodes[1].IP, "192.168.1.2")
+	assert.Equal(t, upstreams[1].Nodes[1].Host, "192.168.1.2")
 }
 
 func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
@@ -638,17 +638,17 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 	assert.Equal(t, upstreams[0].Scheme, "http")
 	assert.Len(t, upstreams[0].Nodes, 2)
 	assert.Equal(t, upstreams[0].Nodes[0].Port, 9080)
-	assert.Equal(t, upstreams[0].Nodes[0].IP, "192.168.1.1")
+	assert.Equal(t, upstreams[0].Nodes[0].Host, "192.168.1.1")
 	assert.Equal(t, upstreams[0].Nodes[1].Port, 9080)
-	assert.Equal(t, upstreams[0].Nodes[1].IP, "192.168.1.2")
+	assert.Equal(t, upstreams[0].Nodes[1].Host, "192.168.1.2")
 
 	assert.Equal(t, upstreams[1].Type, "roundrobin")
 	assert.Equal(t, upstreams[1].Scheme, "http")
 	assert.Len(t, upstreams[1].Nodes, 2)
 	assert.Equal(t, upstreams[1].Nodes[0].Port, 9443)
-	assert.Equal(t, upstreams[1].Nodes[0].IP, "192.168.1.1")
+	assert.Equal(t, upstreams[1].Nodes[0].Host, "192.168.1.1")
 	assert.Equal(t, upstreams[1].Nodes[1].Port, 9443)
-	assert.Equal(t, upstreams[1].Nodes[1].IP, "192.168.1.2")
+	assert.Equal(t, upstreams[1].Nodes[1].Host, "192.168.1.2")
 }
 
 func TestTranslateIngressExtensionsV1beta1BackendWithInvalidService(t *testing.T) {

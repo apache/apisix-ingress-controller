@@ -66,7 +66,7 @@ func (in *ApisixRouteHTTP) DeepCopyInto(out *ApisixRouteHTTP) {
 	if in.Backend != nil {
 		in, out := &in.Backend, &out.Backend
 		*out = new(ApisixRouteHTTPBackend)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Backends != nil {
 		in, out := &in.Backends, &out.Backends
@@ -75,7 +75,7 @@ func (in *ApisixRouteHTTP) DeepCopyInto(out *ApisixRouteHTTP) {
 			if (*in)[i] != nil {
 				in, out := &(*in)[i], &(*out)[i]
 				*out = new(ApisixRouteHTTPBackend)
-				**out = **in
+				(*in).DeepCopyInto(*out)
 			}
 		}
 	}
@@ -107,6 +107,11 @@ func (in *ApisixRouteHTTP) DeepCopy() *ApisixRouteHTTP {
 func (in *ApisixRouteHTTPBackend) DeepCopyInto(out *ApisixRouteHTTPBackend) {
 	*out = *in
 	out.ServicePort = in.ServicePort
+	if in.Weight != nil {
+		in, out := &in.Weight, &out.Weight
+		*out = new(int)
+		**out = **in
+	}
 	return
 }
 

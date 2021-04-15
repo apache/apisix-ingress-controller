@@ -128,7 +128,7 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 	return nil
 }
 
-func (c *endpointsController) syncToCluster(ctx context.Context, cluster apisix.Cluster, nodes []apisixv1.UpstreamNode, upsName string) error {
+func (c *endpointsController) syncToCluster(ctx context.Context, cluster apisix.Cluster, nodes apisixv1.UpstreamNodes, upsName string) error {
 	upstream, err := cluster.Upstream().Get(ctx, upsName)
 	if err != nil {
 		if err == apisixcache.ErrNotFound {

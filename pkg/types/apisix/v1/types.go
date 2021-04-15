@@ -70,11 +70,8 @@ const (
 
 // Metadata contains all meta information about resources.
 type Metadata struct {
-	ID              string `json:"id,omitempty" yaml:"id,omitempty"`
-	FullName        string `json:"full_name,omitempty" yaml:"full_name,omitempty"`
-	Name            string `json:"name,omitempty" yaml:"name,omitempty"`
-	ResourceVersion string `json:"resource_version,omitempty" yaml:"resource_version,omitempty"`
-	Group           string `json:"group,omitempty" yaml:"group,omitempty"`
+	ID   string `json:"id,omitempty" yaml:"id,omitempty"`
+	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 }
 
 // Route apisix route object
@@ -82,19 +79,19 @@ type Metadata struct {
 type Route struct {
 	Metadata `json:",inline" yaml:",inline"`
 
-	Host         string            `json:"host,omitempty" yaml:"host,omitempty"`
-	Hosts        []string          `json:"hosts,omitempty" yaml:"hosts,omitempty"`
-	Path         string            `json:"path,omitempty" yaml:"path,omitempty"`
-	Priority     int               `json:"priority,omitempty" yaml:"priority,omitempty"`
-	Vars         [][]StringOrSlice `json:"vars,omitempty" yaml:"vars,omitempty"`
-	Uris         []string          `json:"uris,omitempty" yaml:"uris,omitempty"`
-	Methods      []string          `json:"methods,omitempty" yaml:"methods,omitempty"`
-	RemoteAddrs  []string          `json:"remote_addrs,omitempty" yaml:"remote_addrs,omitempty"`
-	UpstreamId   string            `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
-	UpstreamName string            `json:"upstream_name,omitempty" yaml:"upstream_name,omitempty"`
-	Plugins      Plugins           `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Host        string            `json:"host,omitempty" yaml:"host,omitempty"`
+	Hosts       []string          `json:"hosts,omitempty" yaml:"hosts,omitempty"`
+	Uri         string            `json:"uri,omitempty" yaml:"uri,omitempty"`
+	Priority    int               `json:"priority,omitempty" yaml:"priority,omitempty"`
+	Vars        [][]StringOrSlice `json:"vars,omitempty" yaml:"vars,omitempty"`
+	Uris        []string          `json:"uris,omitempty" yaml:"uris,omitempty"`
+	Methods     []string          `json:"methods,omitempty" yaml:"methods,omitempty"`
+	RemoteAddrs []string          `json:"remote_addrs,omitempty" yaml:"remote_addrs,omitempty"`
+	UpstreamId  string            `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
+	Plugins     Plugins           `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
+// StringOrSlice represents a string or a string slice.
 // TODO Do not use interface{} to avoid the reflection overheads.
 // +k8s:deepcopy-gen=true
 type StringOrSlice struct {
@@ -154,7 +151,7 @@ type Upstream struct {
 	HashOn  string               `json:"hash_on,omitempty" yaml:"hash_on,omitempty"`
 	Key     string               `json:"key,omitempty" yaml:"key,omitempty"`
 	Checks  *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
-	Nodes   []UpstreamNode       `json:"nodes,omitempty" yaml:"nodes,omitempty"`
+	Nodes   UpstreamNodes        `json:"nodes" yaml:"nodes"`
 	Scheme  string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
 	Retries int                  `json:"retries,omitempty" yaml:"retries,omitempty"`
 	Timeout *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
@@ -170,10 +167,32 @@ type UpstreamTimeout struct {
 	Read int `json:"read" yaml:"read"`
 }
 
-// Node the node in upstream
+// UpstreamNodes is the upstream node list.
+type UpstreamNodes []UpstreamNode
+
+// UnmarshalJSON implements json.Unmarshaler interface.
+// lua-cjson doesn't distinguish empty array and table,
+// and by default empty array will be encoded as '{}'.
+// We have to maintain the compatibility.
+func (n *UpstreamNodes) UnmarshalJSON(p []byte) error {
+	if p[0] == '{' {
+		if len(p) != 2 {
+			return errors.New("unexpected non-empty object")
+		}
+		return nil
+	}
+	var data []UpstreamNode
+	if err := json.Unmarshal(p, &data); err != nil {
+		return err
+	}
+	*n = data
+	return nil
+}
+
+// UpstreamNode is the node in upstream
 // +k8s:deepcopy-gen=true
 type UpstreamNode struct {
-	IP     string `json:"ip,omitempty" yaml:"ip,omitempty"`
+	Host   string `json:"host,omitempty" yaml:"host,omitempty"`
 	Port   int    `json:"port,omitempty" yaml:"port,omitempty"`
 	Weight int    `json:"weight,omitempty" yaml:"weight,omitempty"`
 }
@@ -249,13 +268,11 @@ type UpstreamPassiveHealthCheckUnhealthy struct {
 // Ssl apisix ssl object
 // +k8s:deepcopy-gen=true
 type Ssl struct {
-	ID       string   `json:"id,omitempty" yaml:"id,omitempty"`
-	FullName string   `json:"full_name,omitempty" yaml:"full_name,omitempty"`
-	Snis     []string `json:"snis,omitempty" yaml:"snis,omitempty"`
-	Cert     string   `json:"cert,omitempty" yaml:"cert,omitempty"`
-	Key      string   `json:"key,omitempty" yaml:"key,omitempty"`
-	Status   int      `json:"status,omitempty" yaml:"status,omitempty"`
-	Group    string   `json:"group,omitempty" yaml:"group,omitempty"`
+	ID     string   `json:"id,omitempty" yaml:"id,omitempty"`
+	Snis   []string `json:"snis,omitempty" yaml:"snis,omitempty"`
+	Cert   string   `json:"cert,omitempty" yaml:"cert,omitempty"`
+	Key    string   `json:"key,omitempty" yaml:"key,omitempty"`
+	Status int      `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
 // TrafficSplitConfig is the config of traffic-split plugin.
