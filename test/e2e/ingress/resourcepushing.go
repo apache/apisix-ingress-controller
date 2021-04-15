@@ -216,7 +216,7 @@ spec:
 
 		// Upstream doesn't change.
 		assert.Equal(ginkgo.GinkgoT(), newUpstreams[0].ID, upstreams[0].ID)
-		assert.Equal(ginkgo.GinkgoT(), newUpstreams[0].FullName, upstreams[0].FullName)
+		assert.Equal(ginkgo.GinkgoT(), newUpstreams[0].Name, upstreams[0].Name)
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().
 			Status(http.StatusNotFound).

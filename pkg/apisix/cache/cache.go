@@ -30,11 +30,11 @@ type Cache interface {
 	// InsertUpstream adds or updates upstream to cache.
 	InsertUpstream(*v1.Upstream) error
 
-	// GetRoute finds the route from cache according to the primary index.
+	// GetRoute finds the route from cache according to the primary index (id).
 	GetRoute(string) (*v1.Route, error)
-	// GetSSL finds the ssl from cache according to the primary index.
+	// GetSSL finds the ssl from cache according to the primary index (id).
 	GetSSL(string) (*v1.Ssl, error)
-	// GetUpstream finds the upstream from cache according to the primary index.
+	// GetUpstream finds the upstream from cache according to the primary index (id).
 	GetUpstream(string) (*v1.Upstream, error)
 
 	// ListRoutes lists all routes in cache.

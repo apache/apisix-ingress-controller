@@ -48,7 +48,7 @@ type node struct {
 
 type items []item
 
-// items implements json.Unmarshaler interface.
+// UnmarshalJSON implements json.Unmarshaler interface.
 // lua-cjson doesn't distinguish empty array and table,
 // and by default empty array will be encoded as '{}'.
 // We have to maintain the compatibility.
@@ -72,75 +72,32 @@ type item struct {
 	Value json.RawMessage `json:"value"`
 }
 
-type routeItem struct {
-	UpstreamId  string                 `json:"upstream_id"`
-	RemoteAddrs []string               `json:"remote_addrs"`
-	Host        string                 `json:"host"`
-	Hosts       []string               `json:"hosts"`
-	URI         string                 `json:"uri"`
-	Vars        [][]v1.StringOrSlice   `json:"vars"`
-	Uris        []string               `json:"uris"`
-	Desc        string                 `json:"desc"`
-	Methods     []string               `json:"methods"`
-	Priority    int                    `json:"priority"`
-	Plugins     map[string]interface{} `json:"plugins"`
-}
-
 // route decodes item.Value and converts it to v1.Route.
-func (i *item) route(clusterName string) (*v1.Route, error) {
+func (i *item) route() (*v1.Route, error) {
 	log.Debugf("got route: %s", string(i.Value))
 	list := strings.Split(i.Key, "/")
 	if len(list) < 1 {
 		return nil, fmt.Errorf("bad route config key: %s", i.Key)
 	}
 
-	var route routeItem
+	var route v1.Route
 	if err := json.Unmarshal(i.Value, &route); err != nil {
 		return nil, err
 	}
-
-	fullName := genFullName(route.Desc, clusterName)
-
-	return &v1.Route{
-		Metadata: v1.Metadata{
-			ID:       list[len(list)-1],
-			FullName: fullName,
-			Group:    clusterName,
-			Name:     route.Desc,
-		},
-		Host:        route.Host,
-		Path:        route.URI,
-		Uris:        route.Uris,
-		Vars:        route.Vars,
-		Methods:     route.Methods,
-		RemoteAddrs: route.RemoteAddrs,
-		UpstreamId:  route.UpstreamId,
-		Plugins:     route.Plugins,
-		Hosts:       route.Hosts,
-		Priority:    route.Priority,
-	}, nil
+	return &route, nil
 }
 
 // upstream decodes item.Value and converts it to v1.Upstream.
-func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
+func (i *item) upstream() (*v1.Upstream, error) {
 	log.Debugf("got upstream: %s", string(i.Value))
 	list := strings.Split(i.Key, "/")
 	if len(list) < 1 {
 		return nil, fmt.Errorf("bad upstream config key: %s", i.Key)
 	}
 
-	var ups upstreamItem
+	var ups v1.Upstream
 	if err := json.Unmarshal(i.Value, &ups); err != nil {
 		return nil, err
-	}
-
-	var nodes []v1.UpstreamNode
-	for _, node := range ups.Nodes {
-		nodes = append(nodes, v1.UpstreamNode{
-			IP:     node.Host,
-			Port:   node.Port,
-			Weight: node.Weight,
-		})
 	}
 
 	// This is a work around scheme to avoid APISIX's
@@ -153,47 +110,15 @@ func (i *item) upstream(clusterName string) (*v1.Upstream, error) {
 			ups.Checks.Active.Healthy.Interval = int(v1.ActiveHealthCheckMinInterval.Seconds())
 		}
 	}
-
-	fullName := genFullName(ups.Desc, clusterName)
-
-	return &v1.Upstream{
-		Metadata: v1.Metadata{
-			ID:       list[len(list)-1],
-			FullName: fullName,
-			Group:    clusterName,
-			Name:     ups.Desc,
-		},
-		Type:    ups.LBType,
-		Key:     ups.Key,
-		HashOn:  ups.HashOn,
-		Nodes:   nodes,
-		Scheme:  ups.Scheme,
-		Checks:  ups.Checks,
-		Retries: ups.Retries,
-		Timeout: ups.Timeout,
-	}, nil
+	return &ups, nil
 }
 
 // ssl decodes item.Value and converts it to v1.Ssl.
-func (i *item) ssl(clusterName string) (*v1.Ssl, error) {
+func (i *item) ssl() (*v1.Ssl, error) {
 	log.Debugf("got ssl: %s", string(i.Value))
 	var ssl v1.Ssl
 	if err := json.Unmarshal(i.Value, &ssl); err != nil {
 		return nil, err
 	}
-
-	list := strings.Split(i.Key, "/")
-	id := list[len(list)-1]
-	ssl.ID = id
-	ssl.Group = clusterName
-	ssl.FullName = id
 	return &ssl, nil
-}
-
-func genFullName(name string, clusterName string) string {
-	fullName := name
-	if clusterName != "" {
-		fullName = clusterName + "_" + fullName
-	}
-	return fullName
 }
