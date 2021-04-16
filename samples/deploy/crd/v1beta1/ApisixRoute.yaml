@@ -21,10 +21,10 @@ metadata:
   name: apisixroutes.apisix.apache.org
 spec:
   additionalPrinterColumns:
-    - JSONPath: .spec.http[].match.hosts[]
+    - JSONPath: .spec.http[].match.hosts
       name: Hosts
       type: string
-    - JSONPath: .spec.http[].match.paths[]
+    - JSONPath: .spec.http[].match.paths
       name: URIs
       type: string
     - JSONPath: .spec.http[].match.backends[].serviceName
