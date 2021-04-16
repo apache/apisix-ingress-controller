@@ -69,7 +69,7 @@ spec:
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		// Referer match passed
+		// "Referer" match passed
 		resp := s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			WithHeader("Referer", "http://test.com").
@@ -77,20 +77,28 @@ spec:
 		resp.Status(http.StatusOK)
 		resp.Body().Contains("origin")
 
-		// Referer match failed
+		// "Referer" match failed
 		resp = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			WithHeader("Referer", "http://www.test.com").
 			Expect()
 		resp.Status(http.StatusForbidden)
+		resp.Body().Contains("Your referer host is not allowed")
 
-		// Referer match passed
+		// "Referer" match passed
 		resp = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			WithHeader("Referer", "http://www.foo.com").
 			Expect()
 		resp.Status(http.StatusOK)
 		resp.Body().Contains("origin")
+
+		// "Refere" is missing
+		resp = s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			Expect()
+		resp.Status(http.StatusForbidden)
+		resp.Body().Contains("Your referer host is not allowed")
 	})
 
 	ginkgo.It("the bypass_missing field is true", func() {
@@ -128,12 +136,12 @@ spec:
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		// Referer is missing
+		// "Referer" is missing
 		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
 		resp.Status(http.StatusOK)
 		resp.Body().Contains("origin")
 
-		// Referer format is incorrect
+		// "Referer" format is incorrect
 		resp = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			WithHeader("Referer", "test.com").
@@ -176,7 +184,16 @@ spec:
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		// "Referer" is not in the whitelist.
+		resp := s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("Referer", "http://foo.com").
+			Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().Contains("origin")
+
+		// "Referer" is missing
+		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
 		resp.Status(http.StatusOK)
 		resp.Body().Contains("origin")
 	})
