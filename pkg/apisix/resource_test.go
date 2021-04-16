@@ -92,6 +92,7 @@ func TestRouteVarsUnmarshalJSONCompatibility(t *testing.T) {
 
 	data = `{"vars":[["http_a","==","b"]]}`
 	err = json.Unmarshal([]byte(data), &route)
+	assert.Nil(t, err)
 	assert.Equal(t, "http_a", route.Vars[0][0].StrVal)
 	assert.Equal(t, "==", route.Vars[0][1].StrVal)
 	assert.Equal(t, "b", route.Vars[0][2].StrVal)

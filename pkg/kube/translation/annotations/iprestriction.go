@@ -12,20 +12,25 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package translation
+package annotations
 
-import (
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
-	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+import "strings"
+
+var (
+	_whitelist = "k8s.apisix.apache.org/whitelist-source-range"
 )
 
-func (t *translator) TranslateAnnotations(anno map[string]string) apisix.Plugins {
-	plugins := make(apisix.Plugins)
-	if cors := annotations.BuildCorsPlugin(anno); cors != nil {
-		plugins["cors"] = cors
+// IpRestrictionPlugin is the ip-restriction plugin.
+type IpRestrictionPlugin struct {
+	Whitelist []string `json:"whitelist,omitempty"`
+}
+
+// BuildIpRestrictionPlugin builds the ip-restriction plugin from annotations.
+func BuildIpRestrictionPlugin(annotations map[string]string) *IpRestrictionPlugin {
+	if whitelist, ok := annotations[_whitelist]; ok {
+		return &IpRestrictionPlugin{
+			Whitelist: strings.Split(whitelist, ","),
+		}
 	}
-	if ipRestriction := annotations.BuildIpRestrictionPlugin(anno); ipRestriction != nil {
-		plugins["ip-restriction"] = ipRestriction
-	}
-	return plugins
+	return nil
 }
