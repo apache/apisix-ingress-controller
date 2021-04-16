@@ -16,9 +16,10 @@ package plugins
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
-	"net/http"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
@@ -93,7 +94,7 @@ spec:
 		resp.Status(http.StatusOK)
 		resp.Body().Contains("origin")
 
-		// "Refere" is missing
+		// "Referer" is missing
 		resp = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			Expect()
