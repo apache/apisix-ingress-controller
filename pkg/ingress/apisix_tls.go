@@ -16,12 +16,15 @@ package ingress
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
@@ -30,10 +33,13 @@ import (
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
+const TlsController = "TlsController"
+
 type apisixTlsController struct {
 	controller *Controller
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
+	recorder   record.EventRecorder
 }
 
 func (c *Controller) newApisixTlsController() *apisixTlsController {
@@ -117,6 +123,8 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Error(err),
 			zap.Any("ApisixTls", tls),
 		)
+		message := fmt.Sprintf(MessageResourceFailed, TlsController, err.Error())
+		c.recorder.Event(tls, corev1.EventTypeWarning, FailedSynced, message)
 		return err
 	}
 	log.Debug("got SSL object from ApisixTls",
@@ -132,6 +140,8 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Error(err),
 			zap.Any("ssl", ssl),
 		)
+		message := fmt.Sprintf(MessageResourceFailed, TlsController, err.Error())
+		c.recorder.Event(tls, corev1.EventTypeWarning, FailedSynced, message)
 		return err
 	}
 	return err

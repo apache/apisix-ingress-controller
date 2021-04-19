@@ -16,23 +16,33 @@ package ingress
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go.uber.org/zap"
+	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
+const RouteController = "RouteController"
+
 type apisixRouteController struct {
 	controller *Controller
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
+	recorder   record.EventRecorder
 }
 
 func (c *Controller) newApisixRouteController() *apisixRouteController {
@@ -48,6 +58,8 @@ func (c *Controller) newApisixRouteController() *apisixRouteController {
 			DeleteFunc: ctl.onDelete,
 		},
 	)
+	eventBroadcaster := record.NewBroadcaster()
+	ctl.recorder = eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: RouteController})
 	return ctl
 }
 
@@ -198,7 +210,28 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 }
 
 func (c *apisixRouteController) handleSyncErr(obj interface{}, err error) {
+	event := obj.(*types.Event)
+	route := event.Object.(kube.ApisixRouteEvent).OldObject
+	// conditions
+	condition := metav1.Condition{
+		Type: "APISIXSynced",
+	}
 	if err == nil {
+		message := fmt.Sprintf(MessageResourceSynced, RouteController)
+		if route.GroupVersion() == kube.ApisixRouteV1 {
+			c.recorder.Event(route.V1(), v1.EventTypeNormal, SuccessSynced, message)
+		} else if route.GroupVersion() == kube.ApisixRouteV2alpha1 {
+			c.recorder.Event(route.V2alpha1(), v1.EventTypeNormal, SuccessSynced, message)
+			// build condition
+			condition.Reason = "SyncSuccessfully"
+			condition.Status = "True"
+			condition.Message = "Sync Successfully"
+			// set to status
+			routev2 := route.V2alpha1()
+			meta.SetStatusCondition(routev2.Status.Conditions, condition)
+			v2alpha1.New(kube.GetApisixClient().ApisixV2alpha1().RESTClient()).ApisixRoutes(routev2.Namespace).
+				Update(context.TODO(), routev2, nil)
+		}
 		c.workqueue.Forget(obj)
 		return
 	}
@@ -206,6 +239,21 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, err error) {
 		zap.Any("object", obj),
 		zap.Error(err),
 	)
+	message := fmt.Sprintf(MessageResourceFailed, RouteController, err.Error())
+	if route.GroupVersion() == kube.ApisixRouteV1 {
+		c.recorder.Event(route.V1(), v1.EventTypeWarning, FailedSynced, message)
+	} else if route.GroupVersion() == kube.ApisixRouteV2alpha1 {
+		c.recorder.Event(route.V2alpha1(), v1.EventTypeWarning, FailedSynced, message)
+		// build condition
+		condition.Reason = "SyncFailed"
+		condition.Status = "False"
+		condition.Message = err.Error()
+		// set to status
+		routev2 := route.V2alpha1()
+		meta.SetStatusCondition(routev2.Status.Conditions, condition)
+		v2alpha1.New(kube.GetApisixClient().ApisixV2alpha1().RESTClient()).ApisixRoutes(routev2.Namespace).
+			Update(context.TODO(), routev2, nil)
+	}
 	c.workqueue.AddRateLimited(obj)
 }
 

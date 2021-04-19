@@ -16,11 +16,14 @@ package ingress
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 
 	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
@@ -30,10 +33,13 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
+const UpstreamController = "UpstreamController"
+
 type apisixUpstreamController struct {
 	controller *Controller
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
+	recorder   record.EventRecorder
 }
 
 func (c *Controller) newApisixUpstreamController() *apisixUpstreamController {
@@ -122,6 +128,8 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 	svc, err := c.controller.svcLister.Services(namespace).Get(name)
 	if err != nil {
 		log.Errorf("failed to get service %s: %s", key, err)
+		message := fmt.Sprintf(MessageResourceFailed, UpstreamController, err.Error())
+		c.recorder.Event(au, corev1.EventTypeWarning, FailedSynced, message)
 		return err
 	}
 
@@ -134,6 +142,8 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 				continue
 			}
 			log.Errorf("failed to get upstream %s: %s", upsName, err)
+			message := fmt.Sprintf(MessageResourceFailed, UpstreamController, err.Error())
+			c.recorder.Event(au, corev1.EventTypeWarning, FailedSynced, message)
 			return err
 		}
 		var newUps *apisixv1.Upstream
@@ -149,6 +159,8 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 					zap.Any("object", au),
 					zap.Error(err),
 				)
+				message := fmt.Sprintf(MessageResourceFailed, UpstreamController, err.Error())
+				c.recorder.Event(au, corev1.EventTypeWarning, FailedSynced, message)
 				return err
 			}
 		} else {
@@ -168,10 +180,12 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 				zap.Any("upstream", newUps),
 				zap.Any("ApisixUpstream", au),
 			)
+			message := fmt.Sprintf(MessageResourceFailed, UpstreamController, err.Error())
+			c.recorder.Event(au, corev1.EventTypeWarning, FailedSynced, message)
 			return err
 		}
 	}
-	return nil
+	return err
 }
 
 func (c *apisixUpstreamController) handleSyncErr(obj interface{}, err error) {

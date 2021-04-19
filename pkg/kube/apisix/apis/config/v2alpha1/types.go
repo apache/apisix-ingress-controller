@@ -17,6 +17,7 @@ package v2alpha1
 import (
 	"encoding/json"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -61,11 +62,18 @@ const (
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:subresource:status
 // ApisixRoute is used to define the route rules and upstreams for Apache APISIX.
 type ApisixRoute struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 	Spec              *ApisixRouteSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Status            ApisixStatus     `json:"status,omitempty" yaml:"status,omitempty"`
+}
+
+// ApisixStatus is the status report for Apisix ingress Resources
+type ApisixStatus struct {
+	Conditions *[]v1.Condition
 }
 
 // ApisixRouteSpec is the spec definition for ApisixRouteSpec.

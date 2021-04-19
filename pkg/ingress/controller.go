@@ -44,6 +44,17 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
+const (
+	// SuccessSynced is used when a resource is synced successfully
+	SuccessSynced = "SyncSuccessfully"
+	// MessageResourceSynced is used to specify controller
+	MessageResourceSynced = "%s synced successfully"
+	// FailedSynced is used when a resource synced failed
+	FailedSynced = "SyncFailed"
+	// MessageResourceFailed is used to report error
+	MessageResourceFailed = "%s synced failed, with error: %s"
+)
+
 // Controller is the ingress apisix controller object.
 type Controller struct {
 	name               string
