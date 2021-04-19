@@ -215,3 +215,28 @@ spec:
 
 The above configuration enables [Cors](https://github.com/apache/apisix/blob/master/docs/en/latest/plugins/cors.md) plugin for requests
 which host is `local.httpbin.org`.
+
+Websocket Proxy
+---------------
+
+[Websocket](https://en.wikipedia.org/wiki/WebSocket#:~:text=WebSocket%20is%20a%20computer%20communications,WebSocket%20is%20distinct%20from%20HTTP.) service can be proxied
+by creating a route with specifying the `websocket` field.
+
+```yaml
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+  name: ws-route
+spec:
+  http:
+    - name: websocket
+      match:
+        hosts:
+          - ws.foo.org
+        paths:
+          - /*
+      backends:
+        - serviceName: websocket-server
+          servicePort: 8080
+      websocket: true
+```

@@ -70,6 +70,7 @@ const (
 )
 
 // Metadata contains all meta information about resources.
+// +k8s:deepcopy-gen=true
 type Metadata struct {
 	ID     string            `json:"id,omitempty" yaml:"id,omitempty"`
 	Name   string            `json:"name,omitempty" yaml:"name,omitempty"`
@@ -82,16 +83,17 @@ type Metadata struct {
 type Route struct {
 	Metadata `json:",inline" yaml:",inline"`
 
-	Host        string   `json:"host,omitempty" yaml:"host,omitempty"`
-	Hosts       []string `json:"hosts,omitempty" yaml:"hosts,omitempty"`
-	Uri         string   `json:"uri,omitempty" yaml:"uri,omitempty"`
-	Priority    int      `json:"priority,omitempty" yaml:"priority,omitempty"`
-	Vars        Vars     `json:"vars,omitempty" yaml:"vars,omitempty"`
-	Uris        []string `json:"uris,omitempty" yaml:"uris,omitempty"`
-	Methods     []string `json:"methods,omitempty" yaml:"methods,omitempty"`
-	RemoteAddrs []string `json:"remote_addrs,omitempty" yaml:"remote_addrs,omitempty"`
-	UpstreamId  string   `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
-	Plugins     Plugins  `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Host            string   `json:"host,omitempty" yaml:"host,omitempty"`
+	Hosts           []string `json:"hosts,omitempty" yaml:"hosts,omitempty"`
+	Uri             string   `json:"uri,omitempty" yaml:"uri,omitempty"`
+	Priority        int      `json:"priority,omitempty" yaml:"priority,omitempty"`
+	Vars            Vars     `json:"vars,omitempty" yaml:"vars,omitempty"`
+	Uris            []string `json:"uris,omitempty" yaml:"uris,omitempty"`
+	Methods         []string `json:"methods,omitempty" yaml:"methods,omitempty"`
+	EnableWebsocket bool     `json:"enable_websocket,omitempty" yaml:"enable_websocket,omitempty"`
+	RemoteAddrs     []string `json:"remote_addrs,omitempty" yaml:"remote_addrs,omitempty"`
+	UpstreamId      string   `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
+	Plugins         Plugins  `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 // Vars represents the route match expressions of APISIX.
