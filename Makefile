@@ -99,6 +99,10 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(LOCAL_REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 	docker push $(LOCAL_REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+
+	docker pull jmalloc/echo-server:latest
+	docker tag  jmalloc/echo-server:latest $(LOCAL_REGISTRY)/jmalloc/echo-server:latest
+	docker push $(LOCAL_REGISTRY)/jmalloc/echo-server:latest
 endif
 
 ### kind-up:              Launch a Kubernetes cluster with a image registry by Kind.

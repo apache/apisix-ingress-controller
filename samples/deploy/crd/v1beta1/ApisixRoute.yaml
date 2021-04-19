@@ -137,6 +137,8 @@ spec:
                           oneOf:
                             - required: ["subject", "op", "value"]
                             - required: ["subject", "op", "set"]
+                  websocket:
+                    type: boolean
                   backend:
                     type: object
                     properties:

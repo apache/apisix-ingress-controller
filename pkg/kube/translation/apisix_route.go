@@ -175,6 +175,7 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 		route.Uris = part.Match.Paths
 		route.Methods = part.Match.Methods
 		route.UpstreamId = id.GenID(upstreamName)
+		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
 
 		if len(backends) > 0 {

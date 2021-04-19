@@ -190,6 +190,11 @@ func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
 	})
 }
 
+// APISIXGatewayServiceEndpoint returns the apisix http gateway endpoint.
+func (s *Scaffold) APISIXGatewayServiceEndpoint() string {
+	return s.apisixHttpTunnel.Endpoint()
+}
+
 func (s *Scaffold) beforeEach() {
 	var err error
 	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.opts.Name, time.Now().Nanosecond())

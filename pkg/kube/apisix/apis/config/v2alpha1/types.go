@@ -87,8 +87,9 @@ type ApisixRouteHTTP struct {
 	// Backends represents potential backends to proxy after the route
 	// rule matched. When number of backends are more than one, traffic-split
 	// plugin in APISIX will be used to split traffic based on the backend weight.
-	Backends []*ApisixRouteHTTPBackend `json:"backends" yaml:"backends"`
-	Plugins  []*ApisixRouteHTTPPlugin  `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Backends  []*ApisixRouteHTTPBackend `json:"backends" yaml:"backends"`
+	Websocket bool                      `json:"websocket" yaml:"websocket"`
+	Plugins   []*ApisixRouteHTTPPlugin  `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 // ApisixRouteHTTPMatch represents the match condition for hitting this route.
