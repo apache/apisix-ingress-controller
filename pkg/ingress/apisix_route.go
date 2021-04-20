@@ -216,7 +216,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, err error) {
 	route := event.Object.(kube.ApisixRouteEvent).OldObject
 	// conditions
 	condition := metav1.Condition{
-		Type: "APISIXSynced",
+		Type: "ResourcesReady",
 	}
 	if err == nil {
 		message := fmt.Sprintf(_messageResourceSynced, _routeController)
