@@ -128,8 +128,8 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Error(err),
 			zap.Any("ApisixTls", tls),
 		)
-		message := fmt.Sprintf(_messageResourceFailed, _tlsController, err.Error())
-		c.recorder.Event(tls, corev1.EventTypeWarning, _failedSynced, message)
+		message := fmt.Sprintf(_messageResourceSyncAborted, _tlsController, err.Error())
+		c.recorder.Event(tls, corev1.EventTypeWarning, _resourceSyncAborted, message)
 		return err
 	}
 	log.Debug("got SSL object from ApisixTls",
@@ -145,12 +145,12 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Error(err),
 			zap.Any("ssl", ssl),
 		)
-		message := fmt.Sprintf(_messageResourceFailed, _tlsController, err.Error())
-		c.recorder.Event(tls, corev1.EventTypeWarning, _failedSynced, message)
+		message := fmt.Sprintf(_messageResourceSyncAborted, _tlsController, err.Error())
+		c.recorder.Event(tls, corev1.EventTypeWarning, _resourceSyncAborted, message)
 		return err
 	}
 	message := fmt.Sprintf(_messageResourceSynced, _tlsController)
-	c.recorder.Event(tls, corev1.EventTypeNormal, _successSynced, message)
+	c.recorder.Event(tls, corev1.EventTypeNormal, _resourceSynced, message)
 	return err
 }
 

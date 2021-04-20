@@ -133,8 +133,8 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 	svc, err := c.controller.svcLister.Services(namespace).Get(name)
 	if err != nil {
 		log.Errorf("failed to get service %s: %s", key, err)
-		message := fmt.Sprintf(_messageResourceFailed, _upstreamController, err.Error())
-		c.recorder.Event(au, corev1.EventTypeWarning, _failedSynced, message)
+		message := fmt.Sprintf(_messageResourceSyncAborted, _upstreamController, err.Error())
+		c.recorder.Event(au, corev1.EventTypeWarning, _resourceSyncAborted, message)
 		return err
 	}
 
@@ -147,8 +147,8 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 				continue
 			}
 			log.Errorf("failed to get upstream %s: %s", upsName, err)
-			message := fmt.Sprintf(_messageResourceFailed, _upstreamController, err.Error())
-			c.recorder.Event(au, corev1.EventTypeWarning, _failedSynced, message)
+			message := fmt.Sprintf(_messageResourceSyncAborted, _upstreamController, err.Error())
+			c.recorder.Event(au, corev1.EventTypeWarning, _resourceSyncAborted, message)
 			return err
 		}
 		var newUps *apisixv1.Upstream
@@ -164,8 +164,8 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 					zap.Any("object", au),
 					zap.Error(err),
 				)
-				message := fmt.Sprintf(_messageResourceFailed, _upstreamController, err.Error())
-				c.recorder.Event(au, corev1.EventTypeWarning, _failedSynced, message)
+				message := fmt.Sprintf(_messageResourceSyncAborted, _upstreamController, err.Error())
+				c.recorder.Event(au, corev1.EventTypeWarning, _resourceSyncAborted, message)
 				return err
 			}
 		} else {
@@ -185,13 +185,13 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 				zap.Any("upstream", newUps),
 				zap.Any("ApisixUpstream", au),
 			)
-			message := fmt.Sprintf(_messageResourceFailed, _upstreamController, err.Error())
-			c.recorder.Event(au, corev1.EventTypeWarning, _failedSynced, message)
+			message := fmt.Sprintf(_messageResourceSyncAborted, _upstreamController, err.Error())
+			c.recorder.Event(au, corev1.EventTypeWarning, _resourceSyncAborted, message)
 			return err
 		}
 	}
 	message := fmt.Sprintf(_messageResourceSynced, _upstreamController)
-	c.recorder.Event(au, corev1.EventTypeNormal, _successSynced, message)
+	c.recorder.Event(au, corev1.EventTypeNormal, _resourceSynced, message)
 	return err
 }
 

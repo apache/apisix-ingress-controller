@@ -221,11 +221,11 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		message := fmt.Sprintf(_messageResourceSynced, _routeController)
 		if route.GroupVersion() == kube.ApisixRouteV1 {
-			c.recorder.Event(route.V1(), v1.EventTypeNormal, _successSynced, message)
+			c.recorder.Event(route.V1(), v1.EventTypeNormal, _resourceSynced, message)
 		} else if route.GroupVersion() == kube.ApisixRouteV2alpha1 {
-			c.recorder.Event(route.V2alpha1(), v1.EventTypeNormal, _successSynced, message)
+			c.recorder.Event(route.V2alpha1(), v1.EventTypeNormal, _resourceSynced, message)
 			// build condition
-			condition.Reason = _successSynced
+			condition.Reason = _resourceSynced
 			condition.Status = metav1.ConditionTrue
 			condition.Message = "Sync Successfully"
 			// set to status
@@ -241,13 +241,13 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, err error) {
 		zap.Any("object", obj),
 		zap.Error(err),
 	)
-	message := fmt.Sprintf(_messageResourceFailed, _routeController, err.Error())
+	message := fmt.Sprintf(_messageResourceSyncAborted, _routeController, err.Error())
 	if route.GroupVersion() == kube.ApisixRouteV1 {
-		c.recorder.Event(route.V1(), v1.EventTypeWarning, _failedSynced, message)
+		c.recorder.Event(route.V1(), v1.EventTypeWarning, _resourceSyncAborted, message)
 	} else if route.GroupVersion() == kube.ApisixRouteV2alpha1 {
-		c.recorder.Event(route.V2alpha1(), v1.EventTypeWarning, _failedSynced, message)
+		c.recorder.Event(route.V2alpha1(), v1.EventTypeWarning, _resourceSyncAborted, message)
 		// build condition
-		condition.Reason = "_failedSynced"
+		condition.Reason = "_resourceSyncAborted"
 		condition.Status = metav1.ConditionFalse
 		condition.Message = err.Error()
 		// set to status
