@@ -51,8 +51,8 @@ const (
 	_messageResourceSynced = "%s synced successfully"
 	// _resourceSyncAborted is used when a resource synced failed
 	_resourceSyncAborted = "ResourceSyncAborted"
-	// _messageResourceSyncAborted is used to report error
-	_messageResourceSyncAborted = "%s synced failed, with error: %s"
+	// _messageResourceFailed is used to report error
+	_messageResourceFailed = "%s synced failed, with error: %s"
 )
 
 // Controller is the ingress apisix controller object.

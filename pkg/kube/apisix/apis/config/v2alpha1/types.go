@@ -17,7 +17,6 @@ package v2alpha1
 import (
 	"encoding/json"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -71,7 +70,7 @@ type ApisixRoute struct {
 
 // ApisixStatus is the status report for Apisix ingress Resources
 type ApisixStatus struct {
-	Conditions *[]v1.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
+	Conditions *[]metav1.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
 // ApisixRouteSpec is the spec definition for ApisixRouteSpec.
