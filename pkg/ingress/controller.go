@@ -45,14 +45,14 @@ import (
 )
 
 const (
-	// SuccessSynced is used when a resource is synced successfully
-	SuccessSynced = "SyncSuccessfully"
-	// MessageResourceSynced is used to specify controller
-	MessageResourceSynced = "%s synced successfully"
-	// FailedSynced is used when a resource synced failed
-	FailedSynced = "SyncFailed"
-	// MessageResourceFailed is used to report error
-	MessageResourceFailed = "%s synced failed, with error: %s"
+	// _successSynced is used when a resource is synced successfully
+	_successSynced = "SyncSuccessfully"
+	// _messageResourceSynced is used to specify controller
+	_messageResourceSynced = "%s synced successfully"
+	// _failedSynced is used when a resource synced failed
+	_failedSynced = "SyncFailed"
+	// _messageResourceFailed is used to report error
+	_messageResourceFailed = "%s synced failed, with error: %s"
 )
 
 // Controller is the ingress apisix controller object.

@@ -37,7 +37,7 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-const RouteController = "RouteController"
+const _routeController = "RouteController"
 
 type apisixRouteController struct {
 	controller *Controller
@@ -53,7 +53,7 @@ func (c *Controller) newApisixRouteController() *apisixRouteController {
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),
 		workers:    1,
-		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: RouteController}),
+		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _routeController}),
 	}
 	c.apisixRouteInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -219,14 +219,14 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, err error) {
 		Type: "APISIXSynced",
 	}
 	if err == nil {
-		message := fmt.Sprintf(MessageResourceSynced, RouteController)
+		message := fmt.Sprintf(_messageResourceSynced, _routeController)
 		if route.GroupVersion() == kube.ApisixRouteV1 {
-			c.recorder.Event(route.V1(), v1.EventTypeNormal, SuccessSynced, message)
+			c.recorder.Event(route.V1(), v1.EventTypeNormal, _successSynced, message)
 		} else if route.GroupVersion() == kube.ApisixRouteV2alpha1 {
-			c.recorder.Event(route.V2alpha1(), v1.EventTypeNormal, SuccessSynced, message)
+			c.recorder.Event(route.V2alpha1(), v1.EventTypeNormal, _successSynced, message)
 			// build condition
-			condition.Reason = "SyncSuccessfully"
-			condition.Status = "True"
+			condition.Reason = _successSynced
+			condition.Status = metav1.ConditionTrue
 			condition.Message = "Sync Successfully"
 			// set to status
 			routev2 := route.V2alpha1()
@@ -241,14 +241,14 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, err error) {
 		zap.Any("object", obj),
 		zap.Error(err),
 	)
-	message := fmt.Sprintf(MessageResourceFailed, RouteController, err.Error())
+	message := fmt.Sprintf(_messageResourceFailed, _routeController, err.Error())
 	if route.GroupVersion() == kube.ApisixRouteV1 {
-		c.recorder.Event(route.V1(), v1.EventTypeWarning, FailedSynced, message)
+		c.recorder.Event(route.V1(), v1.EventTypeWarning, _failedSynced, message)
 	} else if route.GroupVersion() == kube.ApisixRouteV2alpha1 {
-		c.recorder.Event(route.V2alpha1(), v1.EventTypeWarning, FailedSynced, message)
+		c.recorder.Event(route.V2alpha1(), v1.EventTypeWarning, _failedSynced, message)
 		// build condition
-		condition.Reason = "SyncFailed"
-		condition.Status = "False"
+		condition.Reason = "_failedSynced"
+		condition.Status = metav1.ConditionFalse
 		condition.Message = err.Error()
 		// set to status
 		routev2 := route.V2alpha1()

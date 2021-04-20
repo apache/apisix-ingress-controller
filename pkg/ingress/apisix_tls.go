@@ -36,7 +36,7 @@ import (
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-const TlsController = "TlsController"
+const _tlsController = "TlsController"
 
 type apisixTlsController struct {
 	controller *Controller
@@ -52,7 +52,7 @@ func (c *Controller) newApisixTlsController() *apisixTlsController {
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixTls"),
 		workers:    1,
-		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: TlsController}),
+		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: _tlsController}),
 	}
 	ctl.controller.apisixTlsInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -128,8 +128,8 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Error(err),
 			zap.Any("ApisixTls", tls),
 		)
-		message := fmt.Sprintf(MessageResourceFailed, TlsController, err.Error())
-		c.recorder.Event(tls, corev1.EventTypeWarning, FailedSynced, message)
+		message := fmt.Sprintf(_messageResourceFailed, _tlsController, err.Error())
+		c.recorder.Event(tls, corev1.EventTypeWarning, _failedSynced, message)
 		return err
 	}
 	log.Debug("got SSL object from ApisixTls",
@@ -145,12 +145,12 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Error(err),
 			zap.Any("ssl", ssl),
 		)
-		message := fmt.Sprintf(MessageResourceFailed, TlsController, err.Error())
-		c.recorder.Event(tls, corev1.EventTypeWarning, FailedSynced, message)
+		message := fmt.Sprintf(_messageResourceFailed, _tlsController, err.Error())
+		c.recorder.Event(tls, corev1.EventTypeWarning, _failedSynced, message)
 		return err
 	}
-	message := fmt.Sprintf(MessageResourceSynced, TlsController)
-	c.recorder.Event(tls, corev1.EventTypeNormal, SuccessSynced, message)
+	message := fmt.Sprintf(_messageResourceSynced, _tlsController)
+	c.recorder.Event(tls, corev1.EventTypeNormal, _successSynced, message)
 	return err
 }
 
