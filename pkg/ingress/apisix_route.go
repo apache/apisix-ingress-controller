@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -46,10 +47,13 @@ type apisixRouteController struct {
 }
 
 func (c *Controller) newApisixRouteController() *apisixRouteController {
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kube.GetKubeClient().CoreV1().Events("")})
 	ctl := &apisixRouteController{
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),
 		workers:    1,
+		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: RouteController}),
 	}
 	c.apisixRouteInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -58,8 +62,6 @@ func (c *Controller) newApisixRouteController() *apisixRouteController {
 			DeleteFunc: ctl.onDelete,
 		},
 	)
-	eventBroadcaster := record.NewBroadcaster()
-	ctl.recorder = eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: RouteController})
 	return ctl
 }
 
@@ -230,7 +232,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, err error) {
 			routev2 := route.V2alpha1()
 			meta.SetStatusCondition(routev2.Status.Conditions, condition)
 			v2alpha1.New(kube.GetApisixClient().ApisixV2alpha1().RESTClient()).ApisixRoutes(routev2.Namespace).
-				Update(context.TODO(), routev2, nil)
+				UpdateStatus(context.TODO(), routev2, metav1.UpdateOptions{})
 		}
 		c.workqueue.Forget(obj)
 		return
@@ -252,7 +254,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, err error) {
 		routev2 := route.V2alpha1()
 		meta.SetStatusCondition(routev2.Status.Conditions, condition)
 		v2alpha1.New(kube.GetApisixClient().ApisixV2alpha1().RESTClient()).ApisixRoutes(routev2.Namespace).
-			Update(context.TODO(), routev2, nil)
+			UpdateStatus(context.TODO(), routev2, metav1.UpdateOptions{})
 	}
 	c.workqueue.AddRateLimited(obj)
 }

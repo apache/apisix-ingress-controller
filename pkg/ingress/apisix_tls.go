@@ -23,10 +23,13 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
@@ -43,12 +46,14 @@ type apisixTlsController struct {
 }
 
 func (c *Controller) newApisixTlsController() *apisixTlsController {
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kube.GetKubeClient().CoreV1().Events("")})
 	ctl := &apisixTlsController{
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixTls"),
 		workers:    1,
+		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: TlsController}),
 	}
-
 	ctl.controller.apisixTlsInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    ctl.onAdd,
@@ -144,6 +149,8 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 		c.recorder.Event(tls, corev1.EventTypeWarning, FailedSynced, message)
 		return err
 	}
+	message := fmt.Sprintf(MessageResourceSynced, TlsController)
+	c.recorder.Event(tls, corev1.EventTypeNormal, SuccessSynced, message)
 	return err
 }
 

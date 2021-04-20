@@ -22,13 +22,12 @@ import (
 	"context"
 	"time"
 
+	v2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	scheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	rest "k8s.io/client-go/rest"
-
-	v2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
-	scheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
 )
 
 // ApisixRoutesGetter has a method to return a ApisixRouteInterface.
@@ -40,7 +39,8 @@ type ApisixRoutesGetter interface {
 // ApisixRouteInterface has methods to work with ApisixRoute resources.
 type ApisixRouteInterface interface {
 	Create(ctx context.Context, apisixRoute *v2alpha1.ApisixRoute, opts v1.CreateOptions) (*v2alpha1.ApisixRoute, error)
-	Update(ctx context.Context, apisixRoute *v2alpha1.ApisixRoute, opts *v1.UpdateOptions) (*v2alpha1.ApisixRoute, error)
+	Update(ctx context.Context, apisixRoute *v2alpha1.ApisixRoute, opts v1.UpdateOptions) (*v2alpha1.ApisixRoute, error)
+	UpdateStatus(ctx context.Context, apisixRoute *v2alpha1.ApisixRoute, opts v1.UpdateOptions) (*v2alpha1.ApisixRoute, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
 	Get(ctx context.Context, name string, opts v1.GetOptions) (*v2alpha1.ApisixRoute, error)
@@ -123,15 +123,30 @@ func (c *apisixRoutes) Create(ctx context.Context, apisixRoute *v2alpha1.ApisixR
 }
 
 // Update takes the representation of a apisixRoute and updates it. Returns the server's representation of the apisixRoute, and an error, if there is any.
-func (c *apisixRoutes) Update(ctx context.Context, apisixRoute *v2alpha1.ApisixRoute, opts *v1.UpdateOptions) (result *v2alpha1.ApisixRoute, err error) {
+func (c *apisixRoutes) Update(ctx context.Context, apisixRoute *v2alpha1.ApisixRoute, opts v1.UpdateOptions) (result *v2alpha1.ApisixRoute, err error) {
+	result = &v2alpha1.ApisixRoute{}
+	err = c.client.Put().
+		Namespace(c.ns).
+		Resource("apisixroutes").
+		Name(apisixRoute.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Body(apisixRoute).
+		Do(ctx).
+		Into(result)
+	return
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *apisixRoutes) UpdateStatus(ctx context.Context, apisixRoute *v2alpha1.ApisixRoute, opts v1.UpdateOptions) (result *v2alpha1.ApisixRoute, err error) {
 	result = &v2alpha1.ApisixRoute{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("apisixroutes").
 		Name(apisixRoute.Name).
 		SubResource("status").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(apisixRoute).
-		VersionedParams(opts, scheme.ParameterCodec).
 		Do(ctx).
 		Into(result)
 	return

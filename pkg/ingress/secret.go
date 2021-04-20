@@ -184,9 +184,9 @@ func (c *secretController) onAdd(obj interface{}) {
 		return
 	}
 
-	log.Debugw("secret add event arrived",
-		zap.Any("object", obj),
-	)
+	//log.Debugw("secret add event arrived",
+	//	zap.Any("object", obj),
+	//)
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
