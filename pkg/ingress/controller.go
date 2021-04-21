@@ -45,6 +45,8 @@ import (
 )
 
 const (
+	// _component is used for event component
+	_component = "ApisixIngress"
 	// _resourceSynced is used when a resource is synced successfully
 	_resourceSynced = "ResourcesSynced"
 	// _messageResourceSynced is used to specify controller

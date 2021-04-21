@@ -36,8 +36,6 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-const _upstreamController = "UpstreamController"
-
 type apisixUpstreamController struct {
 	controller *Controller
 	workqueue  workqueue.RateLimitingInterface
@@ -52,7 +50,7 @@ func (c *Controller) newApisixUpstreamController() *apisixUpstreamController {
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixUpstream"),
 		workers:    1,
-		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: _upstreamController}),
+		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: _component}),
 	}
 	ctl.controller.apisixUpstreamInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -133,7 +131,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 	svc, err := c.controller.svcLister.Services(namespace).Get(name)
 	if err != nil {
 		log.Errorf("failed to get service %s: %s", key, err)
-		message := fmt.Sprintf(_messageResourceFailed, _upstreamController, err.Error())
+		message := fmt.Sprintf(_messageResourceFailed, _component, err.Error())
 		c.recorder.Event(au, corev1.EventTypeWarning, _resourceSyncAborted, message)
 		return err
 	}
@@ -147,7 +145,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 				continue
 			}
 			log.Errorf("failed to get upstream %s: %s", upsName, err)
-			message := fmt.Sprintf(_messageResourceFailed, _upstreamController, err.Error())
+			message := fmt.Sprintf(_messageResourceFailed, _component, err.Error())
 			c.recorder.Event(au, corev1.EventTypeWarning, _resourceSyncAborted, message)
 			return err
 		}
@@ -164,7 +162,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 					zap.Any("object", au),
 					zap.Error(err),
 				)
-				message := fmt.Sprintf(_messageResourceFailed, _upstreamController, err.Error())
+				message := fmt.Sprintf(_messageResourceFailed, _component, err.Error())
 				c.recorder.Event(au, corev1.EventTypeWarning, _resourceSyncAborted, message)
 				return err
 			}
@@ -185,12 +183,12 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 				zap.Any("upstream", newUps),
 				zap.Any("ApisixUpstream", au),
 			)
-			message := fmt.Sprintf(_messageResourceFailed, _upstreamController, err.Error())
+			message := fmt.Sprintf(_messageResourceFailed, _component, err.Error())
 			c.recorder.Event(au, corev1.EventTypeWarning, _resourceSyncAborted, message)
 			return err
 		}
 	}
-	message := fmt.Sprintf(_messageResourceSynced, _upstreamController)
+	message := fmt.Sprintf(_messageResourceSynced, _component)
 	c.recorder.Event(au, corev1.EventTypeNormal, _resourceSynced, message)
 	return err
 }

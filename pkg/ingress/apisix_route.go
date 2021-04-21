@@ -22,7 +22,6 @@ import (
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -31,13 +30,10 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
-
-const _routeController = "RouteController"
 
 type apisixRouteController struct {
 	controller *Controller
@@ -53,7 +49,7 @@ func (c *Controller) newApisixRouteController() *apisixRouteController {
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),
 		workers:    1,
-		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _routeController}),
+		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
 	}
 	c.apisixRouteInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -219,10 +215,6 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	if errLocal != nil {
 		log.Errorf("invalid resource key: %s", event.Key)
 	}
-	// conditions
-	condition := metav1.Condition{
-		Type: "ResourcesReady",
-	}
 	if errOrigin == nil {
 		if ev.Type != types.EventDelete {
 			var ar kube.ApisixRoute
@@ -232,24 +224,12 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 				ar, errLocal = c.controller.apisixRouteLister.V2alpha1(namespace, name)
 			}
 			if errLocal == nil {
-				message := fmt.Sprintf(_messageResourceSynced, _routeController)
+				message := fmt.Sprintf(_messageResourceSynced, _component)
 				if ar.GroupVersion() == kube.ApisixRouteV1 {
 					c.recorder.Event(ar.V1(), v1.EventTypeNormal, _resourceSynced, message)
 				} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
 					c.recorder.Event(ar.V2alpha1(), v1.EventTypeNormal, _resourceSynced, message)
-					// build condition
-					condition.Reason = _resourceSynced
-					condition.Status = metav1.ConditionTrue
-					condition.Message = "Sync Successfully"
-					// set to status
-					routev2 := ar.V2alpha1()
-					if routev2.Status.Conditions == nil {
-						conditions := make([]metav1.Condition, 0)
-						routev2.Status.Conditions = &conditions
-					}
-					meta.SetStatusCondition(routev2.Status.Conditions, condition)
-					v2alpha1.New(kube.GetApisixClient().ApisixV2alpha1().RESTClient()).ApisixRoutes(routev2.Namespace).
-						UpdateStatus(context.TODO(), routev2, metav1.UpdateOptions{})
+					RecordRouteStatus(ar.V2alpha1(), _resourceSynced, CommonSuccessMessage, metav1.ConditionTrue)
 				}
 			} else {
 				log.Errorf("invalid resource key: %s", event.Key)
@@ -269,24 +249,12 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 		ar, errLocal = c.controller.apisixRouteLister.V2alpha1(namespace, name)
 	}
 	if errLocal == nil {
-		message := fmt.Sprintf(_messageResourceFailed, _routeController, errOrigin.Error())
+		message := fmt.Sprintf(_messageResourceFailed, _component, errOrigin.Error())
 		if ar.GroupVersion() == kube.ApisixRouteV1 {
 			c.recorder.Event(ar.V1(), v1.EventTypeWarning, _resourceSyncAborted, message)
 		} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
 			c.recorder.Event(ar.V2alpha1(), v1.EventTypeWarning, _resourceSyncAborted, message)
-			// build condition
-			condition.Reason = _resourceSyncAborted
-			condition.Status = metav1.ConditionFalse
-			condition.Message = errOrigin.Error()
-			// set to status
-			routev2 := ar.V2alpha1()
-			if routev2.Status.Conditions == nil {
-				conditions := make([]metav1.Condition, 0)
-				routev2.Status.Conditions = &conditions
-			}
-			meta.SetStatusCondition(routev2.Status.Conditions, condition)
-			v2alpha1.New(kube.GetApisixClient().ApisixV2alpha1().RESTClient()).ApisixRoutes(routev2.Namespace).
-				UpdateStatus(context.TODO(), routev2, metav1.UpdateOptions{})
+			RecordRouteStatus(ar.V2alpha1(), _resourceSyncAborted, errOrigin.Error(), metav1.ConditionFalse)
 		}
 	} else {
 		log.Errorf("invalid resource key: %s", event.Key)

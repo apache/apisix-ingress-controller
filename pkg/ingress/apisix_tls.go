@@ -36,8 +36,6 @@ import (
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-const _tlsController = "TlsController"
-
 type apisixTlsController struct {
 	controller *Controller
 	workqueue  workqueue.RateLimitingInterface
@@ -52,7 +50,7 @@ func (c *Controller) newApisixTlsController() *apisixTlsController {
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixTls"),
 		workers:    1,
-		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: _tlsController}),
+		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: _component}),
 	}
 	ctl.controller.apisixTlsInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -128,7 +126,7 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Error(err),
 			zap.Any("ApisixTls", tls),
 		)
-		message := fmt.Sprintf(_messageResourceFailed, _tlsController, err.Error())
+		message := fmt.Sprintf(_messageResourceFailed, _component, err.Error())
 		c.recorder.Event(tls, corev1.EventTypeWarning, _resourceSyncAborted, message)
 		return err
 	}
@@ -145,11 +143,11 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Error(err),
 			zap.Any("ssl", ssl),
 		)
-		message := fmt.Sprintf(_messageResourceFailed, _tlsController, err.Error())
+		message := fmt.Sprintf(_messageResourceFailed, _component, err.Error())
 		c.recorder.Event(tls, corev1.EventTypeWarning, _resourceSyncAborted, message)
 		return err
 	}
-	message := fmt.Sprintf(_messageResourceSynced, _tlsController)
+	message := fmt.Sprintf(_messageResourceSynced, _component)
 	c.recorder.Event(tls, corev1.EventTypeNormal, _resourceSynced, message)
 	return err
 }
