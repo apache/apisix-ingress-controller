@@ -214,6 +214,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
 	if errLocal != nil {
 		log.Errorf("invalid resource key: %s", event.Key)
+		return
 	}
 	if errOrigin == nil {
 		if ev.Type != types.EventDelete {
@@ -232,7 +233,11 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 					RecordRouteStatus(ar.V2alpha1(), _resourceSynced, CommonSuccessMessage, metav1.ConditionTrue)
 				}
 			} else {
-				log.Errorf("invalid resource key: %s", event.Key)
+				log.Errorw("failed list ApisixRoute",
+					zap.Error(errLocal),
+					zap.String("name", name),
+					zap.String("namespace", namespace),
+				)
 			}
 		}
 		c.workqueue.Forget(obj)
@@ -257,7 +262,11 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 			RecordRouteStatus(ar.V2alpha1(), _resourceSyncAborted, errOrigin.Error(), metav1.ConditionFalse)
 		}
 	} else {
-		log.Errorf("invalid resource key: %s", event.Key)
+		log.Errorw("failed list ApisixRoute",
+			zap.Error(errLocal),
+			zap.String("name", name),
+			zap.String("namespace", namespace),
+		)
 	}
 	c.workqueue.AddRateLimited(obj)
 }
