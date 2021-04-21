@@ -216,14 +216,14 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 		log.Errorf("invalid resource key: %s", event.Key)
 		return
 	}
+	var ar kube.ApisixRoute
+	if event.GroupVersion == kube.ApisixRouteV1 {
+		ar, errLocal = c.controller.apisixRouteLister.V1(namespace, name)
+	} else {
+		ar, errLocal = c.controller.apisixRouteLister.V2alpha1(namespace, name)
+	}
 	if errOrigin == nil {
 		if ev.Type != types.EventDelete {
-			var ar kube.ApisixRoute
-			if event.GroupVersion == kube.ApisixRouteV1 {
-				ar, errLocal = c.controller.apisixRouteLister.V1(namespace, name)
-			} else {
-				ar, errLocal = c.controller.apisixRouteLister.V2alpha1(namespace, name)
-			}
 			if errLocal == nil {
 				message := fmt.Sprintf(_messageResourceSynced, _component)
 				if ar.GroupVersion() == kube.ApisixRouteV1 {
@@ -247,12 +247,6 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 		zap.Any("object", obj),
 		zap.Error(errOrigin),
 	)
-	var ar kube.ApisixRoute
-	if event.GroupVersion == kube.ApisixRouteV1 {
-		ar, errLocal = c.controller.apisixRouteLister.V1(namespace, name)
-	} else {
-		ar, errLocal = c.controller.apisixRouteLister.V2alpha1(namespace, name)
-	}
 	if errLocal == nil {
 		message := fmt.Sprintf(_messageResourceFailed, _component, errOrigin.Error())
 		if ar.GroupVersion() == kube.ApisixRouteV1 {
