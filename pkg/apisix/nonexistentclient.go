@@ -29,17 +29,19 @@ type nonExistentCluster struct {
 func newNonExistentCluster() *nonExistentCluster {
 	return &nonExistentCluster{
 		embedDummyResourceImplementer{
-			route:    &dummyRoute{},
-			ssl:      &dummySSL{},
-			upstream: &dummyUpstream{},
+			route:       &dummyRoute{},
+			ssl:         &dummySSL{},
+			upstream:    &dummyUpstream{},
+			streamRoute: &dummyStreamRoute{},
 		},
 	}
 }
 
 type embedDummyResourceImplementer struct {
-	route    Route
-	ssl      SSL
-	upstream Upstream
+	route       Route
+	ssl         SSL
+	upstream    Upstream
+	streamRoute StreamRoute
 }
 
 type dummyRoute struct{}
@@ -108,6 +110,28 @@ func (f *dummyUpstream) Update(_ context.Context, _ *v1.Upstream) (*v1.Upstream,
 	return nil, ErrClusterNotExist
 }
 
+type dummyStreamRoute struct{}
+
+func (f *dummyStreamRoute) Get(_ context.Context, _ string) (*v1.StreamRoute, error) {
+	return nil, ErrClusterNotExist
+}
+
+func (f *dummyStreamRoute) List(_ context.Context) ([]*v1.StreamRoute, error) {
+	return nil, ErrClusterNotExist
+}
+
+func (f *dummyStreamRoute) Create(_ context.Context, _ *v1.StreamRoute) (*v1.StreamRoute, error) {
+	return nil, ErrClusterNotExist
+}
+
+func (f *dummyStreamRoute) Delete(_ context.Context, _ *v1.StreamRoute) error {
+	return ErrClusterNotExist
+}
+
+func (f *dummyStreamRoute) Update(_ context.Context, _ *v1.StreamRoute) (*v1.StreamRoute, error) {
+	return nil, ErrClusterNotExist
+}
+
 func (nc *nonExistentCluster) Route() Route {
 	return nc.route
 }
@@ -118,6 +142,10 @@ func (nc *nonExistentCluster) SSL() SSL {
 
 func (nc *nonExistentCluster) Upstream() Upstream {
 	return nc.upstream
+}
+
+func (nc *nonExistentCluster) StreamRoute() StreamRoute {
+	return nc.streamRoute
 }
 
 func (nc *nonExistentCluster) HasSynced(_ context.Context) error {
@@ -132,15 +160,19 @@ type dummyCache struct{}
 
 var _ cache.Cache = &dummyCache{}
 
-func (c *dummyCache) InsertRoute(_ *v1.Route) error              { return nil }
-func (c *dummyCache) InsertSSL(_ *v1.Ssl) error                  { return nil }
-func (c *dummyCache) InsertUpstream(_ *v1.Upstream) error        { return nil }
-func (c *dummyCache) GetRoute(_ string) (*v1.Route, error)       { return nil, cache.ErrNotFound }
-func (c *dummyCache) GetSSL(_ string) (*v1.Ssl, error)           { return nil, cache.ErrNotFound }
-func (c *dummyCache) GetUpstream(_ string) (*v1.Upstream, error) { return nil, cache.ErrNotFound }
-func (c *dummyCache) ListRoutes() ([]*v1.Route, error)           { return nil, nil }
-func (c *dummyCache) ListSSL() ([]*v1.Ssl, error)                { return nil, nil }
-func (c *dummyCache) ListUpstreams() ([]*v1.Upstream, error)     { return nil, nil }
-func (c *dummyCache) DeleteRoute(_ *v1.Route) error              { return nil }
-func (c *dummyCache) DeleteSSL(_ *v1.Ssl) error                  { return nil }
-func (c *dummyCache) DeleteUpstream(_ *v1.Upstream) error        { return nil }
+func (c *dummyCache) InsertRoute(_ *v1.Route) error                    { return nil }
+func (c *dummyCache) InsertSSL(_ *v1.Ssl) error                        { return nil }
+func (c *dummyCache) InsertUpstream(_ *v1.Upstream) error              { return nil }
+func (c *dummyCache) InsertStreamRoute(_ *v1.StreamRoute) error        { return nil }
+func (c *dummyCache) GetRoute(_ string) (*v1.Route, error)             { return nil, cache.ErrNotFound }
+func (c *dummyCache) GetSSL(_ string) (*v1.Ssl, error)                 { return nil, cache.ErrNotFound }
+func (c *dummyCache) GetUpstream(_ string) (*v1.Upstream, error)       { return nil, cache.ErrNotFound }
+func (c *dummyCache) GetStreamRoute(_ string) (*v1.StreamRoute, error) { return nil, cache.ErrNotFound }
+func (c *dummyCache) ListRoutes() ([]*v1.Route, error)                 { return nil, nil }
+func (c *dummyCache) ListSSL() ([]*v1.Ssl, error)                      { return nil, nil }
+func (c *dummyCache) ListUpstreams() ([]*v1.Upstream, error)           { return nil, nil }
+func (c *dummyCache) ListStreamRoutes() ([]*v1.StreamRoute, error)     { return nil, nil }
+func (c *dummyCache) DeleteRoute(_ *v1.Route) error                    { return nil }
+func (c *dummyCache) DeleteSSL(_ *v1.Ssl) error                        { return nil }
+func (c *dummyCache) DeleteUpstream(_ *v1.Upstream) error              { return nil }
+func (c *dummyCache) DeleteStreamRoute(_ *v1.StreamRoute) error        { return nil }

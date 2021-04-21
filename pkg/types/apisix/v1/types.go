@@ -323,6 +323,17 @@ type TrafficSplitConfigRuleWeightedUpstream struct {
 	Weight     int    `json:"weight"`
 }
 
+// StreamRoute represents the stream route object in APISIX.
+// +k8s:deepcopy-gen=true
+type StreamRoute struct {
+	// TODO metadata should use Metadata type
+	ID         string            `json:"id,omitempty" yaml:"id,omitempty"`
+	Desc       string            `json:"desc,omitempty" yaml:"desc,omitempty"`
+	Labels     map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
+	ServerPort int32             `json:"server_port,omitempty" yaml:"server_port,omitempty"`
+	UpstreamId string            `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
+}
+
 // NewDefaultUpstream returns an empty Upstream with default values.
 func NewDefaultUpstream() *Upstream {
 	return &Upstream{

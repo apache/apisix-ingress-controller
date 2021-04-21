@@ -29,6 +29,8 @@ type Cache interface {
 	InsertSSL(*v1.Ssl) error
 	// InsertUpstream adds or updates upstream to cache.
 	InsertUpstream(*v1.Upstream) error
+	// InsertStreamRoute adds or updates stream_route to cache.
+	InsertStreamRoute(*v1.StreamRoute) error
 
 	// GetRoute finds the route from cache according to the primary index (id).
 	GetRoute(string) (*v1.Route, error)
@@ -36,6 +38,8 @@ type Cache interface {
 	GetSSL(string) (*v1.Ssl, error)
 	// GetUpstream finds the upstream from cache according to the primary index (id).
 	GetUpstream(string) (*v1.Upstream, error)
+	// GetStreamRoute finds the stream_route from cache according to the primary index (id).
+	GetStreamRoute(string) (*v1.StreamRoute, error)
 
 	// ListRoutes lists all routes in cache.
 	ListRoutes() ([]*v1.Route, error)
@@ -43,6 +47,8 @@ type Cache interface {
 	ListSSL() ([]*v1.Ssl, error)
 	// ListUpstreams lists all upstreams in cache.
 	ListUpstreams() ([]*v1.Upstream, error)
+	// ListStreamRoutes lists all stream_route in cache.
+	ListStreamRoutes() ([]*v1.StreamRoute, error)
 
 	// DeleteRoute deletes the specified route in cache.
 	DeleteRoute(*v1.Route) error
@@ -50,4 +56,6 @@ type Cache interface {
 	DeleteSSL(*v1.Ssl) error
 	// DeleteUpstream deletes the specified upstream in cache.
 	DeleteUpstream(*v1.Upstream) error
+	// DeleteStreamRoute deletes the specified stream_route in cache.
+	DeleteStreamRoute(*v1.StreamRoute) error
 }

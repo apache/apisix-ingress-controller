@@ -12,7 +12,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 package apisix
 
 import (
@@ -28,39 +27,39 @@ import (
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-type routeClient struct {
+type streamRouteClient struct {
 	url     string
 	cluster *cluster
 }
 
-func newRouteClient(c *cluster) Route {
-	return &routeClient{
-		url:     c.baseURL + "/routes",
+func newStreamRouteClient(c *cluster) StreamRoute {
+	return &streamRouteClient{
+		url:     c.baseURL + "/stream_routes",
 		cluster: c,
 	}
 }
 
-// Get returns the Route.
+// Get returns the StreamRoute.
 // FIXME, currently if caller pass a non-existent resource, the Get always passes
 // through cache.
-func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
-	log.Debugw("try to look up route",
+func (r *streamRouteClient) Get(ctx context.Context, name string) (*v1.StreamRoute, error) {
+	log.Debugw("try to look up stream_route",
 		zap.String("name", name),
 		zap.String("url", r.url),
 		zap.String("cluster", "default"),
 	)
 	rid := id.GenID(name)
-	route, err := r.cluster.cache.GetRoute(rid)
+	streamRoute, err := r.cluster.cache.GetStreamRoute(rid)
 	if err == nil {
-		return route, nil
+		return streamRoute, nil
 	}
 	if err != cache.ErrNotFound {
-		log.Errorw("failed to find route in cache, will try to lookup from APISIX",
+		log.Errorw("failed to find stream_route in cache, will try to lookup from APISIX",
 			zap.String("name", name),
 			zap.Error(err),
 		)
 	} else {
-		log.Debugw("failed to find route in cache, will try to lookup from APISIX",
+		log.Debugw("failed to find stream_route in cache, will try to lookup from APISIX",
 			zap.String("name", name),
 			zap.Error(err),
 		)
@@ -71,13 +70,13 @@ func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
 	resp, err := r.cluster.getResource(ctx, url)
 	if err != nil {
 		if err == cache.ErrNotFound {
-			log.Warnw("route not found",
+			log.Warnw("stream_route not found",
 				zap.String("name", name),
 				zap.String("url", url),
 				zap.String("cluster", "default"),
 			)
 		} else {
-			log.Errorw("failed to get route from APISIX",
+			log.Errorw("failed to get stream_route from APISIX",
 				zap.String("name", name),
 				zap.String("url", url),
 				zap.String("cluster", "default"),
@@ -87,61 +86,60 @@ func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
 		return nil, err
 	}
 
-	route, err = resp.Item.route()
+	streamRoute, err = resp.Item.streamRoute()
 	if err != nil {
-		log.Errorw("failed to convert route item",
+		log.Errorw("failed to convert stream_route item",
 			zap.String("url", r.url),
-			zap.String("route_key", resp.Item.Key),
-			zap.String("route_value", string(resp.Item.Value)),
+			zap.String("stream_route_key", resp.Item.Key),
+			zap.String("stream_route_value", string(resp.Item.Value)),
 			zap.Error(err),
 		)
 		return nil, err
 	}
 
-	if err := r.cluster.cache.InsertRoute(route); err != nil {
+	if err := r.cluster.cache.InsertStreamRoute(streamRoute); err != nil {
 		log.Errorf("failed to reflect route create to cache: %s", err)
 		return nil, err
 	}
-	return route, nil
+	return streamRoute, nil
 }
 
 // List is only used in cache warming up. So here just pass through
 // to APISIX.
-func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
-	log.Debugw("try to list routes in APISIX",
+func (r *streamRouteClient) List(ctx context.Context) ([]*v1.StreamRoute, error) {
+	log.Debugw("try to list stream_routes in APISIX",
 		zap.String("cluster", "default"),
 		zap.String("url", r.url),
 	)
-	routeItems, err := r.cluster.listResource(ctx, r.url)
+	streamRouteItems, err := r.cluster.listResource(ctx, r.url)
 	if err != nil {
-		log.Errorf("failed to list routes: %s", err)
+		log.Errorf("failed to list stream_routes: %s", err)
 		return nil, err
 	}
 
-	var items []*v1.Route
-	for i, item := range routeItems.Node.Items {
-		route, err := item.route()
+	var items []*v1.StreamRoute
+	for i, item := range streamRouteItems.Node.Items {
+		streamRoute, err := item.streamRoute()
 		if err != nil {
-			log.Errorw("failed to convert route item",
+			log.Errorw("failed to convert stream_route item",
 				zap.String("url", r.url),
-				zap.String("route_key", item.Key),
-				zap.String("route_value", string(item.Value)),
+				zap.String("stream_route_key", item.Key),
+				zap.String("stream_route_value", string(item.Value)),
 				zap.Error(err),
 			)
 			return nil, err
 		}
 
-		items = append(items, route)
-		log.Debugf("list route #%d, body: %s", i, string(item.Value))
+		items = append(items, streamRoute)
+		log.Debugf("list stream_route #%d, body: %s", i, string(item.Value))
 	}
-
 	return items, nil
 }
 
-func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
-	log.Debugw("try to create route",
-		zap.Strings("hosts", obj.Hosts),
-		zap.String("name", obj.Name),
+func (r *streamRouteClient) Create(ctx context.Context, obj *v1.StreamRoute) (*v1.StreamRoute, error) {
+	log.Debugw("try to create stream_route",
+		zap.String("id", obj.ID),
+		zap.Int32("server_port", obj.ServerPort),
 		zap.String("cluster", "default"),
 		zap.String("url", r.url),
 	)
@@ -155,28 +153,27 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	}
 
 	url := r.url + "/" + obj.ID
-	log.Debugw("creating route", zap.ByteString("body", data), zap.String("url", url))
+	log.Debugw("creating stream_route", zap.ByteString("body", data), zap.String("url", url))
 	resp, err := r.cluster.createResource(ctx, url, bytes.NewReader(data))
 	if err != nil {
-		log.Errorf("failed to create route: %s", err)
+		log.Errorf("failed to create stream_route: %s", err)
 		return nil, err
 	}
 
-	route, err := resp.Item.route()
+	streamRoute, err := resp.Item.streamRoute()
 	if err != nil {
 		return nil, err
 	}
-	if err := r.cluster.cache.InsertRoute(route); err != nil {
-		log.Errorf("failed to reflect route create to cache: %s", err)
+	if err := r.cluster.cache.InsertStreamRoute(streamRoute); err != nil {
+		log.Errorf("failed to reflect stream_route create to cache: %s", err)
 		return nil, err
 	}
-	return route, nil
+	return streamRoute, nil
 }
 
-func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
-	log.Debugw("try to delete route",
+func (r *streamRouteClient) Delete(ctx context.Context, obj *v1.StreamRoute) error {
+	log.Debugw("try to delete stream_route",
 		zap.String("id", obj.ID),
-		zap.String("name", obj.Name),
 		zap.String("cluster", "default"),
 		zap.String("url", r.url),
 	)
@@ -187,17 +184,16 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 	if err := r.cluster.deleteResource(ctx, url); err != nil {
 		return err
 	}
-	if err := r.cluster.cache.DeleteRoute(obj); err != nil {
-		log.Errorf("failed to reflect route delete to cache: %s", err)
+	if err := r.cluster.cache.DeleteStreamRoute(obj); err != nil {
+		log.Errorf("failed to reflect stream_route delete to cache: %s", err)
 		return err
 	}
 	return nil
 }
 
-func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
-	log.Debugw("try to update route",
+func (r *streamRouteClient) Update(ctx context.Context, obj *v1.StreamRoute) (*v1.StreamRoute, error) {
+	log.Debugw("try to update stream_route",
 		zap.String("id", obj.ID),
-		zap.String("name", obj.Name),
 		zap.String("cluster", "default"),
 		zap.String("url", r.url),
 	)
@@ -210,18 +206,18 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		return nil, err
 	}
 	url := r.url + "/" + obj.ID
-	log.Debugw("updating route", zap.ByteString("body", body), zap.String("url", url))
+	log.Debugw("updating stream_route", zap.ByteString("body", body), zap.String("url", url))
 	resp, err := r.cluster.updateResource(ctx, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
-	route, err := resp.Item.route()
+	streamRoute, err := resp.Item.streamRoute()
 	if err != nil {
 		return nil, err
 	}
-	if err := r.cluster.cache.InsertRoute(route); err != nil {
-		log.Errorf("failed to reflect route update to cache: %s", err)
+	if err := r.cluster.cache.InsertStreamRoute(streamRoute); err != nil {
+		log.Errorf("failed to reflect stream_route update to cache: %s", err)
 		return nil, err
 	}
-	return route, nil
+	return streamRoute, nil
 }

@@ -71,6 +71,7 @@ type ApisixRoute struct {
 // ApisixRouteSpec is the spec definition for ApisixRouteSpec.
 type ApisixRouteSpec struct {
 	HTTP []*ApisixRouteHTTP `json:"http,omitempty" yaml:"http,omitempty"`
+	TCP  []*ApisixRouteTCP  `json:"tcp,omitempty" yaml:"tcp,omitempty"`
 }
 
 // ApisixRouteHTTP represents a single route in for HTTP traffic.
@@ -194,6 +195,35 @@ func (p *ApisixRouteHTTPPluginConfig) DeepCopy() *ApisixRouteHTTPPluginConfig {
 	out := new(ApisixRouteHTTPPluginConfig)
 	p.DeepCopyInto(out)
 	return out
+}
+
+// ApisixRouteTCP is the configuration for tcp route.
+type ApisixRouteTCP struct {
+	// The rule name, cannot be empty.
+	Name    string                `json:"name" yaml:"name"`
+	Match   ApisixRouteTCPMatch   `json:"match" yaml:"match"`
+	Backend ApisixRouteTCPBackend `json:"backend" yaml:"backend"`
+}
+
+// ApisixRouteTCPMatch represents the match conditions of tcp route.
+type ApisixRouteTCPMatch struct {
+	// IngressPort represents the port listening on the Ingress proxy server.
+	// It should be pre-defined as APISIX doesn't support dynamic listening.
+	IngressPort int32 `json:"ingressPort" yaml:"ingressPort"`
+}
+
+// ApisixRouteTCPBackend represents a TCP backend (a Kubernetes Service).
+type ApisixRouteTCPBackend struct {
+	// The name (short) of the service, note cross namespace is forbidden,
+	// so be sure the ApisixRoute and Service are in the same namespace.
+	ServiceName string `json:"serviceName" yaml:"serviceName"`
+	// The service port, could be the name or the port number.
+	ServicePort intstr.IntOrString `json:"servicePort" yaml:"servicePort"`
+	// The resolve granularity, can be "endpoints" or "service",
+	// when set to "endpoints", the pod ips will be used; other
+	// wise, the service ClusterIP or ExternalIP will be used,
+	// default is endpoints.
+	ResolveGranularity string `json:"resolveGranularity" yaml:"resolveGranularity"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

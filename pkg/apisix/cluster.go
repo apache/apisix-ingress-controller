@@ -52,7 +52,7 @@ var (
 	_errReadOnClosedResBody = errors.New("http: read on closed response body")
 )
 
-// Options contains parameters to customize APISIX client.
+// ClusterOptions contains parameters to customize APISIX client.
 type ClusterOptions struct {
 	Name     string
 	AdminKey string
@@ -72,6 +72,7 @@ type cluster struct {
 	route        Route
 	upstream     Upstream
 	ssl          SSL
+	streamRoute  StreamRoute
 }
 
 func newCluster(o *ClusterOptions) (Cluster, error) {
@@ -101,6 +102,7 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 	c.route = newRouteClient(c)
 	c.upstream = newUpstreamClient(c)
 	c.ssl = newSSLClient(c)
+	c.streamRoute = newStreamRouteClient(c)
 
 	go c.syncCache()
 
@@ -239,6 +241,11 @@ func (c *cluster) Upstream() Upstream {
 // SSL implements Cluster.SSL method.
 func (c *cluster) SSL() SSL {
 	return c.ssl
+}
+
+// StreamRoute implements Cluster.StreamRoute method.
+func (c *cluster) StreamRoute() StreamRoute {
+	return c.streamRoute
 }
 
 func (s *cluster) applyAuth(req *http.Request) {
