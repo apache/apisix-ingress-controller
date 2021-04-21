@@ -16,20 +16,15 @@ package ingress
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/kubernetes/scheme"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 
 	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
@@ -40,17 +35,13 @@ type apisixUpstreamController struct {
 	controller *Controller
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
-	recorder   record.EventRecorder
 }
 
 func (c *Controller) newApisixUpstreamController() *apisixUpstreamController {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kube.GetKubeClient().CoreV1().Events("")})
 	ctl := &apisixUpstreamController{
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixUpstream"),
 		workers:    1,
-		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: _component}),
 	}
 	ctl.controller.apisixUpstreamInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -131,8 +122,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 	svc, err := c.controller.svcLister.Services(namespace).Get(name)
 	if err != nil {
 		log.Errorf("failed to get service %s: %s", key, err)
-		message := fmt.Sprintf(_messageResourceFailed, _component, err.Error())
-		c.recorder.Event(au, corev1.EventTypeWarning, _resourceSyncAborted, message)
+		c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
 		return err
 	}
 
@@ -145,8 +135,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 				continue
 			}
 			log.Errorf("failed to get upstream %s: %s", upsName, err)
-			message := fmt.Sprintf(_messageResourceFailed, _component, err.Error())
-			c.recorder.Event(au, corev1.EventTypeWarning, _resourceSyncAborted, message)
+			c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
 			return err
 		}
 		var newUps *apisixv1.Upstream
@@ -162,8 +151,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 					zap.Any("object", au),
 					zap.Error(err),
 				)
-				message := fmt.Sprintf(_messageResourceFailed, _component, err.Error())
-				c.recorder.Event(au, corev1.EventTypeWarning, _resourceSyncAborted, message)
+				c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
 				return err
 			}
 		} else {
@@ -183,13 +171,11 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 				zap.Any("upstream", newUps),
 				zap.Any("ApisixUpstream", au),
 			)
-			message := fmt.Sprintf(_messageResourceFailed, _component, err.Error())
-			c.recorder.Event(au, corev1.EventTypeWarning, _resourceSyncAborted, message)
+			c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
 			return err
 		}
 	}
-	message := fmt.Sprintf(_messageResourceSynced, _component)
-	c.recorder.Event(au, corev1.EventTypeNormal, _resourceSynced, message)
+	c.controller.recorderEvent(au, corev1.EventTypeNormal, _resourceSynced, nil)
 	return err
 }
 

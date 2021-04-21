@@ -16,17 +16,13 @@ package ingress
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
@@ -39,17 +35,13 @@ type apisixRouteController struct {
 	controller *Controller
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
-	recorder   record.EventRecorder
 }
 
 func (c *Controller) newApisixRouteController() *apisixRouteController {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kube.GetKubeClient().CoreV1().Events("")})
 	ctl := &apisixRouteController{
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),
 		workers:    1,
-		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
 	}
 	c.apisixRouteInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -225,11 +217,10 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	if errOrigin == nil {
 		if ev.Type != types.EventDelete {
 			if errLocal == nil {
-				message := fmt.Sprintf(_messageResourceSynced, _component)
 				if ar.GroupVersion() == kube.ApisixRouteV1 {
-					c.recorder.Event(ar.V1(), v1.EventTypeNormal, _resourceSynced, message)
+					c.controller.recorderEvent(ar.V1(), v1.EventTypeNormal, _resourceSynced, nil)
 				} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
-					c.recorder.Event(ar.V2alpha1(), v1.EventTypeNormal, _resourceSynced, message)
+					c.controller.recorderEvent(ar.V2alpha1(), v1.EventTypeNormal, _resourceSynced, nil)
 					recordRouteStatus(ar.V2alpha1(), _resourceSynced, _commonSuccessMessage, metav1.ConditionTrue)
 				}
 			} else {
@@ -248,11 +239,10 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 		zap.Error(errOrigin),
 	)
 	if errLocal == nil {
-		message := fmt.Sprintf(_messageResourceFailed, _component, errOrigin.Error())
 		if ar.GroupVersion() == kube.ApisixRouteV1 {
-			c.recorder.Event(ar.V1(), v1.EventTypeWarning, _resourceSyncAborted, message)
+			c.controller.recorderEvent(ar.V1(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
 		} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
-			c.recorder.Event(ar.V2alpha1(), v1.EventTypeWarning, _resourceSyncAborted, message)
+			c.controller.recorderEvent(ar.V2alpha1(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
 			recordRouteStatus(ar.V2alpha1(), _resourceSyncAborted, errOrigin.Error(), metav1.ConditionFalse)
 		}
 	} else {

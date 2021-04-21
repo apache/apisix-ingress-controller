@@ -16,20 +16,15 @@ package ingress
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/kubernetes/scheme"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
@@ -40,17 +35,13 @@ type apisixTlsController struct {
 	controller *Controller
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
-	recorder   record.EventRecorder
 }
 
 func (c *Controller) newApisixTlsController() *apisixTlsController {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kube.GetKubeClient().CoreV1().Events("")})
 	ctl := &apisixTlsController{
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixTls"),
 		workers:    1,
-		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: _component}),
 	}
 	ctl.controller.apisixTlsInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -126,8 +117,7 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Error(err),
 			zap.Any("ApisixTls", tls),
 		)
-		message := fmt.Sprintf(_messageResourceFailed, _component, err.Error())
-		c.recorder.Event(tls, corev1.EventTypeWarning, _resourceSyncAborted, message)
+		c.controller.recorderEvent(tls, corev1.EventTypeWarning, _resourceSyncAborted, err)
 		return err
 	}
 	log.Debug("got SSL object from ApisixTls",
@@ -143,12 +133,11 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Error(err),
 			zap.Any("ssl", ssl),
 		)
-		message := fmt.Sprintf(_messageResourceFailed, _component, err.Error())
-		c.recorder.Event(tls, corev1.EventTypeWarning, _resourceSyncAborted, message)
+		c.controller.recorderEvent(tls, corev1.EventTypeWarning, _resourceSyncAborted, err)
 		return err
 	}
-	message := fmt.Sprintf(_messageResourceSynced, _component)
-	c.recorder.Event(tls, corev1.EventTypeNormal, _resourceSynced, message)
+
+	c.controller.recorderEvent(tls, corev1.EventTypeNormal, _resourceSynced, nil)
 	return err
 }
 
