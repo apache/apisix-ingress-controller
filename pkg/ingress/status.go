@@ -32,8 +32,8 @@ const (
 	_commonSuccessMessage = "Sync Successfully"
 )
 
-// RecordRouteStatus record ApisixRoute v2alpha1 status
-func RecordRouteStatus(ar *configv2alpha1.ApisixRoute, reason, message string, status v1.ConditionStatus) {
+// recordRouteStatus record ApisixRoute v2alpha1 status
+func recordRouteStatus(ar *configv2alpha1.ApisixRoute, reason, message string, status v1.ConditionStatus) {
 	condition := metav1.Condition{
 		Type: _onditionType,
 	}

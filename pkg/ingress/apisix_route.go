@@ -230,7 +230,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 					c.recorder.Event(ar.V1(), v1.EventTypeNormal, _resourceSynced, message)
 				} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
 					c.recorder.Event(ar.V2alpha1(), v1.EventTypeNormal, _resourceSynced, message)
-					RecordRouteStatus(ar.V2alpha1(), _resourceSynced, _commonSuccessMessage, metav1.ConditionTrue)
+					recordRouteStatus(ar.V2alpha1(), _resourceSynced, _commonSuccessMessage, metav1.ConditionTrue)
 				}
 			} else {
 				log.Errorw("failed list ApisixRoute",
@@ -253,7 +253,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 			c.recorder.Event(ar.V1(), v1.EventTypeWarning, _resourceSyncAborted, message)
 		} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
 			c.recorder.Event(ar.V2alpha1(), v1.EventTypeWarning, _resourceSyncAborted, message)
-			RecordRouteStatus(ar.V2alpha1(), _resourceSyncAborted, errOrigin.Error(), metav1.ConditionFalse)
+			recordRouteStatus(ar.V2alpha1(), _resourceSyncAborted, errOrigin.Error(), metav1.ConditionFalse)
 		}
 	} else {
 		log.Errorw("failed list ApisixRoute",
