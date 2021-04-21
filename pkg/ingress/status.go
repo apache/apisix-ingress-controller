@@ -47,6 +47,6 @@ func RecordRouteStatus(ar *configv2alpha1.ApisixRoute, reason, message string, s
 		ar.Status.Conditions = &conditions
 	}
 	meta.SetStatusCondition(ar.Status.Conditions, condition)
-	v2alpha1.New(kube.GetApisixClient().ApisixV2alpha1().RESTClient()).ApisixRoutes(ar.Namespace).
+	_, _ = v2alpha1.New(kube.GetApisixClient().ApisixV2alpha1().RESTClient()).ApisixRoutes(ar.Namespace).
 		UpdateStatus(context.TODO(), ar, metav1.UpdateOptions{})
 }
