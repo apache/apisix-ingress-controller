@@ -162,6 +162,17 @@ func (s *Scaffold) EnsureNumApisixRoutesCreated(desired int) error {
 	return ensureNumApisixCRDsCreated(u.String(), desired)
 }
 
+// EnsureNumApisixStreamRoutesCreated waits until desired number of Stream Routes are created in
+// APISIX cluster.
+func (s *Scaffold) EnsureNumApisixStreamRoutesCreated(desired int) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/stream_routes",
+	}
+	return ensureNumApisixCRDsCreated(u.String(), desired)
+}
+
 // EnsureNumApisixUpstreamsCreated waits until desired number of Upstreams are created in
 // APISIX cluster.
 func (s *Scaffold) EnsureNumApisixUpstreamsCreated(desired int) error {
@@ -213,6 +224,26 @@ func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
 	return cli.Cluster("").Route().List(context.TODO())
 }
 
+// ListApisixStreamRoutes list all stream_routes from APISIX.
+func (s *Scaffold) ListApisixStreamRoutes() ([]*v1.StreamRoute, error) {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin",
+	}
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(&apisix.ClusterOptions{
+		BaseURL: u.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cli.Cluster("").StreamRoute().List(context.TODO())
+}
+
 // ListApisixTls list all ssl from APISIX
 func (s *Scaffold) ListApisixTls() ([]*v1.Ssl, error) {
 	u := url.URL{
@@ -241,6 +272,8 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		adminPort     int
 		httpPort      int
 		httpsPort     int
+		tcpPort       int
+		tcpNodePort   int
 	)
 	for _, port := range s.apisixService.Spec.Ports {
 		if port.Name == "http" {
@@ -252,6 +285,9 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		} else if port.Name == "http-admin" {
 			adminNodePort = int(port.NodePort)
 			adminPort = int(port.Port)
+		} else if port.Name == "tcp" {
+			tcpNodePort = int(port.NodePort)
+			tcpPort = int(port.Port)
 		}
 	}
 
@@ -261,6 +297,8 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		httpNodePort, httpPort)
 	s.apisixHttpsTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
 		httpsNodePort, httpsPort)
+	s.apisixTCPTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
+		tcpNodePort, tcpPort)
 
 	if err := s.apisixAdminTunnel.ForwardPortE(s.t); err != nil {
 		return err
@@ -274,6 +312,10 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		return err
 	}
 	s.addFinalizers(s.apisixHttpsTunnel.Close)
+	if err := s.apisixTCPTunnel.ForwardPortE(s.t); err != nil {
+		return err
+	}
+	s.addFinalizers(s.apisixTCPTunnel.Close)
 	return nil
 }
 
