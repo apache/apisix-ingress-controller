@@ -204,7 +204,6 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	if err := r.cluster.HasSynced(ctx); err != nil {
 		return nil, err
 	}
-	// FIXME use unified v1.Route, removing routeReqBody.
 	body, err := json.Marshal(obj)
 	if err != nil {
 		return nil, err
