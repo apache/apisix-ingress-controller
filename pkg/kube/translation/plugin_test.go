@@ -176,21 +176,24 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 		EndpointsLister:      epLister,
 		ApisixUpstreamLister: auLister,
 	}}
-	ups, cfg, err := tr.translateTrafficSplitPlugin(ar1, 30, backends)
+	ctx := &TranslateContext{
+		upstreamMap: make(map[string]struct{}),
+	}
+	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1, 30, backends)
 	assert.Nil(t, err)
 
-	assert.Len(t, ups, 2)
-	assert.Equal(t, ups[0].Name, "test_svc-1_80")
-	assert.Len(t, ups[0].Nodes, 2)
-	assert.Equal(t, ups[0].Nodes[0].Host, "192.168.1.1")
-	assert.Equal(t, ups[0].Nodes[0].Port, 9080)
-	assert.Equal(t, ups[0].Nodes[1].Host, "192.168.1.2")
-	assert.Equal(t, ups[0].Nodes[1].Port, 9080)
+	assert.Len(t, ctx.Upstreams, 2)
+	assert.Equal(t, ctx.Upstreams[0].Name, "test_svc-1_80")
+	assert.Len(t, ctx.Upstreams[0].Nodes, 2)
+	assert.Equal(t, ctx.Upstreams[0].Nodes[0].Host, "192.168.1.1")
+	assert.Equal(t, ctx.Upstreams[0].Nodes[0].Port, 9080)
+	assert.Equal(t, ctx.Upstreams[0].Nodes[1].Host, "192.168.1.2")
+	assert.Equal(t, ctx.Upstreams[0].Nodes[1].Port, 9080)
 
-	assert.Equal(t, ups[1].Name, "test_svc-1_443")
-	assert.Len(t, ups[1].Nodes, 1)
-	assert.Equal(t, ups[1].Nodes[0].Host, "10.0.5.3")
-	assert.Equal(t, ups[1].Nodes[0].Port, 443)
+	assert.Equal(t, ctx.Upstreams[1].Name, "test_svc-1_443")
+	assert.Len(t, ctx.Upstreams[1].Nodes, 1)
+	assert.Equal(t, ctx.Upstreams[1].Nodes[0].Host, "10.0.5.3")
+	assert.Equal(t, ctx.Upstreams[1].Nodes[0].Port, 443)
 
 	assert.Len(t, cfg.Rules, 1)
 	assert.Len(t, cfg.Rules[0].WeightedUpstreams, 3)
@@ -345,25 +348,17 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 		EndpointsLister:      epLister,
 		ApisixUpstreamLister: auLister,
 	}}
-	ups, cfg, err := tr.translateTrafficSplitPlugin(ar1, 30, backends)
+	ctx := &TranslateContext{upstreamMap: make(map[string]struct{})}
+	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1, 30, backends)
 	assert.Nil(t, err)
 
-	// Here ups has two elements, but the duplicated one will be
-	// removed in TranslateApisixRouteV2alpha1.
-	assert.Len(t, ups, 2)
-	assert.Equal(t, ups[0].Name, "test_svc-1_80")
-	assert.Len(t, ups[0].Nodes, 2)
-	assert.Equal(t, ups[0].Nodes[0].Host, "192.168.1.1")
-	assert.Equal(t, ups[0].Nodes[0].Port, 9080)
-	assert.Equal(t, ups[0].Nodes[1].Host, "192.168.1.2")
-	assert.Equal(t, ups[0].Nodes[1].Port, 9080)
-
-	assert.Equal(t, ups[1].Name, "test_svc-1_80")
-	assert.Len(t, ups[1].Nodes, 2)
-	assert.Equal(t, ups[1].Nodes[0].Host, "192.168.1.1")
-	assert.Equal(t, ups[1].Nodes[0].Port, 9080)
-	assert.Equal(t, ups[1].Nodes[1].Host, "192.168.1.2")
-	assert.Equal(t, ups[1].Nodes[1].Port, 9080)
+	assert.Len(t, ctx.Upstreams, 1)
+	assert.Equal(t, ctx.Upstreams[0].Name, "test_svc-1_80")
+	assert.Len(t, ctx.Upstreams[0].Nodes, 2)
+	assert.Equal(t, ctx.Upstreams[0].Nodes[0].Host, "192.168.1.1")
+	assert.Equal(t, ctx.Upstreams[0].Nodes[0].Port, 9080)
+	assert.Equal(t, ctx.Upstreams[0].Nodes[1].Host, "192.168.1.2")
+	assert.Equal(t, ctx.Upstreams[0].Nodes[1].Port, 9080)
 
 	assert.Len(t, cfg.Rules, 1)
 	assert.Len(t, cfg.Rules[0].WeightedUpstreams, 3)
@@ -518,22 +513,23 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 		EndpointsLister:      epLister,
 		ApisixUpstreamLister: auLister,
 	}}
-	ups, cfg, err := tr.translateTrafficSplitPlugin(ar1, 30, backends)
-	assert.Nil(t, ups)
+	ctx := &TranslateContext{upstreamMap: make(map[string]struct{})}
+	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1, 30, backends)
 	assert.Nil(t, cfg)
+	assert.Len(t, ctx.Upstreams, 0)
 	assert.Equal(t, err.Error(), "service \"svc-2\" not found")
 
 	backends[0].ServiceName = "svc-1"
 	backends[1].ServicePort.StrVal = "port-not-found"
-	ups, cfg, err = tr.translateTrafficSplitPlugin(ar1, 30, backends)
-	assert.Nil(t, ups)
+	ctx = &TranslateContext{upstreamMap: make(map[string]struct{})}
+	cfg, err = tr.translateTrafficSplitPlugin(ctx, ar1, 30, backends)
 	assert.Nil(t, cfg)
 	assert.Equal(t, err.Error(), "service.spec.ports: port not defined")
 
 	backends[1].ServicePort.StrVal = "port2"
 	backends[1].ResolveGranularity = "service"
-	ups, cfg, err = tr.translateTrafficSplitPlugin(ar1, 30, backends)
-	assert.Nil(t, ups)
+	ctx = &TranslateContext{upstreamMap: make(map[string]struct{})}
+	cfg, err = tr.translateTrafficSplitPlugin(ctx, ar1, 30, backends)
 	assert.Nil(t, cfg)
 	assert.Equal(t, err.Error(), "conflict headless service and backend resolve granularity")
 }

@@ -57,13 +57,13 @@ type Translator interface {
 	TranslateUpstream(string, string, int32) (*apisixv1.Upstream, error)
 	// TranslateIngress composes a couple of APISIX Routes and upstreams according
 	// to the given Ingress resource.
-	TranslateIngress(kube.Ingress) ([]*apisixv1.Route, []*apisixv1.Upstream, error)
+	TranslateIngress(kube.Ingress) (*TranslateContext, error)
 	// TranslateRouteV1 translates the configv1.ApisixRoute object into several Route
 	// and Upstream resources.
-	TranslateRouteV1(*configv1.ApisixRoute) ([]*apisixv1.Route, []*apisixv1.Upstream, error)
-	// TranslateRouteV2alpha1 translates the configv2alph1.ApisixRoute object into several Route
+	TranslateRouteV1(*configv1.ApisixRoute) (*TranslateContext, error)
+	// TranslateRouteV2alpha1 translates the configv2alpha1.ApisixRoute object into several Route
 	// and Upstream resources.
-	TranslateRouteV2alpha1(*configv2alpha1.ApisixRoute) ([]*apisixv1.Route, []*apisixv1.Upstream, error)
+	TranslateRouteV2alpha1(*configv2alpha1.ApisixRoute) (*TranslateContext, error)
 	// TranslateSSL translates the configv2alpha1.ApisixTls object into the APISIX SSL resource.
 	TranslateSSL(*configv1.ApisixTls) (*apisixv1.Ssl, error)
 }
@@ -191,7 +191,7 @@ func (t *translator) TranslateUpstreamNodes(endpoints *corev1.Endpoints, port in
 	return nodes, nil
 }
 
-func (t *translator) TranslateIngress(ing kube.Ingress) ([]*apisixv1.Route, []*apisixv1.Upstream, error) {
+func (t *translator) TranslateIngress(ing kube.Ingress) (*TranslateContext, error) {
 	switch ing.GroupVersion() {
 	case kube.IngressV1:
 		return t.translateIngressV1(ing.V1())
@@ -200,6 +200,6 @@ func (t *translator) TranslateIngress(ing kube.Ingress) ([]*apisixv1.Route, []*a
 	case kube.IngressExtensionsV1beta1:
 		return t.translateIngressExtensionsV1beta1(ing.ExtensionsV1beta1())
 	default:
-		return nil, nil, fmt.Errorf("translator: source group version not supported: %s", ing.GroupVersion())
+		return nil, fmt.Errorf("translator: source group version not supported: %s", ing.GroupVersion())
 	}
 }

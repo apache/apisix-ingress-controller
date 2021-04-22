@@ -19,23 +19,22 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func (t *translator) translateTrafficSplitPlugin(ar *configv2alpha1.ApisixRoute, defaultBackendWeight int,
-	backends []*configv2alpha1.ApisixRouteHTTPBackend) ([]*apisixv1.Upstream, *apisixv1.TrafficSplitConfig, error) {
+func (t *translator) translateTrafficSplitPlugin(ctx *TranslateContext, ar *configv2alpha1.ApisixRoute, defaultBackendWeight int,
+	backends []*configv2alpha1.ApisixRouteHTTPBackend) (*apisixv1.TrafficSplitConfig, error) {
 	var (
-		upstreams []*apisixv1.Upstream
-		wups      []apisixv1.TrafficSplitConfigRuleWeightedUpstream
+		wups []apisixv1.TrafficSplitConfigRuleWeightedUpstream
 	)
 
 	for _, backend := range backends {
 		svcClusterIP, svcPort, err := t.getServiceClusterIPAndPort(backend, ar)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.ResolveGranularity, svcClusterIP, svcPort)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
-		upstreams = append(upstreams, ups)
+		ctx.addUpstream(ups)
 
 		weight := _defaultWeight
 		if backend.Weight != nil {
@@ -59,5 +58,5 @@ func (t *translator) translateTrafficSplitPlugin(ar *configv2alpha1.ApisixRoute,
 			},
 		},
 	}
-	return upstreams, tsCfg, nil
+	return tsCfg, nil
 }

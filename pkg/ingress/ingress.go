@@ -28,7 +28,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
@@ -127,8 +126,7 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		ing = ev.Tombstone.(kube.Ingress)
 	}
 
-	// Translator should generate ID, fullname and name.
-	routes, upstreams, err := c.controller.translator.TranslateIngress(ing)
+	tctx, err := c.controller.translator.TranslateIngress(ing)
 	if err != nil {
 		log.Errorw("failed to translate ingress",
 			zap.Error(err),
@@ -139,13 +137,13 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 
 	log.Debugw("translated ingress resource to a couple of routes and upstreams",
 		zap.Any("ingress", ing),
-		zap.Any("routes", routes),
-		zap.Any("upstreams", upstreams),
+		zap.Any("routes", tctx.Routes),
+		zap.Any("upstreams", tctx.Upstreams),
 	)
 
 	m := &manifest{
-		routes:    routes,
-		upstreams: upstreams,
+		routes:    tctx.Routes,
+		upstreams: tctx.Upstreams,
 	}
 
 	var (
@@ -159,11 +157,7 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 	} else if ev.Type == types.EventAdd {
 		added = m
 	} else {
-		var (
-			oldRoutes    []*apisixv1.Route
-			oldUpstreams []*apisixv1.Upstream
-		)
-		oldRoutes, oldUpstreams, err := c.controller.translator.TranslateIngress(ingEv.OldObject)
+		oldCtx, err := c.controller.translator.TranslateIngress(ingEv.OldObject)
 		if err != nil {
 			log.Errorw("failed to translate ingress",
 				zap.String("event", "update"),
@@ -173,8 +167,8 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 			return err
 		}
 		om := &manifest{
-			routes:    oldRoutes,
-			upstreams: oldUpstreams,
+			routes:    oldCtx.Routes,
+			upstreams: oldCtx.Upstreams,
 		}
 		added, updated, deleted = m.diff(om)
 	}
