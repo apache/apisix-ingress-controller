@@ -24,7 +24,6 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2alpha1"
 )
 
 const (
@@ -47,6 +46,6 @@ func recordRouteStatus(ar *configv2alpha1.ApisixRoute, reason, message string, s
 		ar.Status.Conditions = &conditions
 	}
 	meta.SetStatusCondition(ar.Status.Conditions, condition)
-	_, _ = v2alpha1.New(kube.GetApisixClient().ApisixV2alpha1().RESTClient()).ApisixRoutes(ar.Namespace).
+	_, _ = kube.GetApisixClient().ApisixV2alpha1().ApisixRoutes(ar.Namespace).
 		UpdateStatus(context.TODO(), ar, metav1.UpdateOptions{})
 }
