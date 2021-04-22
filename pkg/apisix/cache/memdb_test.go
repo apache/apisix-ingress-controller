@@ -191,13 +191,71 @@ func TestMemDBCacheReference(t *testing.T) {
 			Name: "upstream",
 		},
 	}
+	u2 := &v1.Upstream{
+		Metadata: v1.Metadata{
+			ID:   "2",
+			Name: "upstream",
+		},
+	}
+	sr := &v1.StreamRoute{
+		ID:         "1",
+		UpstreamId: "2",
+	}
 
 	db, err := NewMemDBCache()
 	assert.Nil(t, err, "NewMemDBCache")
 	assert.Nil(t, db.InsertRoute(r))
 	assert.Nil(t, db.InsertUpstream(u))
+	assert.Nil(t, db.InsertStreamRoute(sr))
+	assert.Nil(t, db.InsertUpstream(u2))
 
 	assert.Error(t, ErrStillInUse, db.DeleteUpstream(u))
+	assert.Error(t, ErrStillInUse, db.DeleteUpstream(u2))
 	assert.Nil(t, db.DeleteRoute(r))
 	assert.Nil(t, db.DeleteUpstream(u))
+	assert.Nil(t, db.DeleteStreamRoute(sr))
+	assert.Nil(t, db.DeleteUpstream(u2))
+}
+
+func TestMemDBCacheStreamRoute(t *testing.T) {
+	c, err := NewMemDBCache()
+	assert.Nil(t, err, "NewMemDBCache")
+
+	r1 := &v1.StreamRoute{
+		ID: "1",
+	}
+	assert.Nil(t, c.InsertStreamRoute(r1), "inserting stream route 1")
+
+	r, err := c.GetStreamRoute("1")
+	assert.Nil(t, err)
+	assert.Equal(t, r1, r)
+
+	r2 := &v1.StreamRoute{
+		ID: "2",
+	}
+	r3 := &v1.StreamRoute{
+		ID: "3",
+	}
+	assert.Nil(t, c.InsertStreamRoute(r2), "inserting stream route r2")
+	assert.Nil(t, c.InsertStreamRoute(r3), "inserting stream route r3")
+
+	r, err = c.GetStreamRoute("3")
+	assert.Nil(t, err)
+	assert.Equal(t, r3, r)
+
+	assert.Nil(t, c.DeleteStreamRoute(r3), "delete stream route r3")
+
+	routes, err := c.ListStreamRoutes()
+	assert.Nil(t, err, "listing streams routes")
+
+	if routes[0].ID > routes[1].ID {
+		routes[0], routes[1] = routes[1], routes[0]
+	}
+	assert.Equal(t, routes[0], r1)
+	assert.Equal(t, routes[1], r2)
+
+	r4 := &v1.StreamRoute{
+		ID: "4",
+	}
+	assert.Error(t, ErrNotFound, c.DeleteStreamRoute(r4))
 }

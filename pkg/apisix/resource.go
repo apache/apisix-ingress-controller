@@ -87,6 +87,21 @@ func (i *item) route() (*v1.Route, error) {
 	return &route, nil
 }
 
+// streamRoute decodes item.Value and converts it to v1.StreamRoute.
+func (i *item) streamRoute() (*v1.StreamRoute, error) {
+	log.Debugf("got stream_route: %s", string(i.Value))
+	list := strings.Split(i.Key, "/")
+	if len(list) < 1 {
+		return nil, fmt.Errorf("bad stream_route config key: %s", i.Key)
+	}
+
+	var streamRoute v1.StreamRoute
+	if err := json.Unmarshal(i.Value, &streamRoute); err != nil {
+		return nil, err
+	}
+	return &streamRoute, nil
+}
+
 // upstream decodes item.Value and converts it to v1.Upstream.
 func (i *item) upstream() (*v1.Upstream, error) {
 	log.Debugf("got upstream: %s", string(i.Value))

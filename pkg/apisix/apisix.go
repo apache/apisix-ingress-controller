@@ -39,10 +39,11 @@ type Cluster interface {
 	Upstream() Upstream
 	// SSL returns a SSL interface that can operate SSL resources.
 	SSL() SSL
+	// StreamRoute returns a StreamRoute interface that can operate StreamRoute resources.
+	StreamRoute() StreamRoute
 	// String exposes the client information in human readable format.
 	String() string
-	// Ready waits until all resources in APISIX cluster is synced to
-	// cache.
+	// HasSynced checks whether all resources in APISIX cluster is synced to cache.
 	HasSynced(context.Context) error
 }
 
@@ -74,6 +75,16 @@ type Upstream interface {
 	Create(context.Context, *v1.Upstream) (*v1.Upstream, error)
 	Delete(context.Context, *v1.Upstream) error
 	Update(context.Context, *v1.Upstream) (*v1.Upstream, error)
+}
+
+// StreamRoute is the specific client interface to take over the create, update,
+// list and delete for APISIX's Stream Route resource.
+type StreamRoute interface {
+	Get(context.Context, string) (*v1.StreamRoute, error)
+	List(context.Context) ([]*v1.StreamRoute, error)
+	Create(context.Context, *v1.StreamRoute) (*v1.StreamRoute, error)
+	Delete(context.Context, *v1.StreamRoute) error
+	Update(context.Context, *v1.StreamRoute) (*v1.StreamRoute, error)
 }
 
 type apisix struct {

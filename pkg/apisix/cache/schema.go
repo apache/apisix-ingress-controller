@@ -70,6 +70,22 @@ var (
 					},
 				},
 			},
+			"stream_route": {
+				Name: "stream_route",
+				Indexes: map[string]*memdb.IndexSchema{
+					"id": {
+						Name:    "id",
+						Unique:  true,
+						Indexer: &memdb.StringFieldIndex{Field: "ID"},
+					},
+					"upstream_id": {
+						Name:         "upstream_id",
+						Unique:       false,
+						Indexer:      &memdb.StringFieldIndex{Field: "UpstreamId"},
+						AllowMissing: true,
+					},
+				},
+			},
 		},
 	}
 )
