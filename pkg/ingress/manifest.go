@@ -80,30 +80,60 @@ func diffUpstreams(olds, news []*apisixv1.Upstream) (added, updated, deleted []*
 	return
 }
 
+func diffStreamRoutes(olds, news []*apisixv1.StreamRoute) (added, updated, deleted []*apisixv1.StreamRoute) {
+	oldMap := make(map[string]*apisixv1.StreamRoute, len(olds))
+	newMap := make(map[string]*apisixv1.StreamRoute, len(news))
+	for _, sr := range olds {
+		oldMap[sr.ID] = sr
+	}
+	for _, sr := range news {
+		newMap[sr.ID] = sr
+	}
+
+	for _, sr := range news {
+		if ou, ok := oldMap[sr.ID]; !ok {
+			added = append(added, sr)
+		} else if !reflect.DeepEqual(ou, sr) {
+			updated = append(updated, sr)
+		}
+	}
+	for _, sr := range olds {
+		if _, ok := newMap[sr.ID]; !ok {
+			deleted = append(deleted, sr)
+		}
+	}
+	return
+}
+
 type manifest struct {
-	routes    []*apisixv1.Route
-	upstreams []*apisixv1.Upstream
+	routes       []*apisixv1.Route
+	upstreams    []*apisixv1.Upstream
+	streamRoutes []*apisixv1.StreamRoute
 }
 
 func (m *manifest) diff(om *manifest) (added, updated, deleted *manifest) {
 	ar, ur, dr := diffRoutes(om.routes, m.routes)
 	au, uu, du := diffUpstreams(om.upstreams, m.upstreams)
-	if ar != nil || au != nil {
+	asr, usr, dsr := diffStreamRoutes(om.streamRoutes, m.streamRoutes)
+	if ar != nil || au != nil || asr != nil {
 		added = &manifest{
-			routes:    ar,
-			upstreams: au,
+			routes:       ar,
+			upstreams:    au,
+			streamRoutes: asr,
 		}
 	}
-	if ur != nil || uu != nil {
+	if ur != nil || uu != nil || usr != nil {
 		updated = &manifest{
-			routes:    ur,
-			upstreams: uu,
+			routes:       ur,
+			upstreams:    uu,
+			streamRoutes: usr,
 		}
 	}
-	if dr != nil || du != nil {
+	if dr != nil || du != nil || dsr != nil {
 		deleted = &manifest{
-			routes:    dr,
-			upstreams: du,
+			routes:       dr,
+			upstreams:    du,
+			streamRoutes: dsr,
 		}
 	}
 	return
@@ -122,6 +152,11 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 				merr = multierror.Append(merr, err)
 			}
 		}
+		for _, sr := range deleted.streamRoutes {
+			if err := c.apisix.Cluster("").StreamRoute().Delete(ctx, sr); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
 	}
 	if added != nil {
 		// Should create upstreams firstly due to the dependencies.
@@ -135,6 +170,11 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 				merr = multierror.Append(merr, err)
 			}
 		}
+		for _, sr := range added.streamRoutes {
+			if _, err := c.apisix.Cluster("").StreamRoute().Create(ctx, sr); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
 	}
 	if updated != nil {
 		for _, r := range updated.upstreams {
@@ -144,6 +184,11 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 		}
 		for _, r := range updated.routes {
 			if _, err := c.apisix.Cluster("").Route().Update(ctx, r); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
+		for _, sr := range updated.streamRoutes {
+			if _, err := c.apisix.Cluster("").StreamRoute().Create(ctx, sr); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}

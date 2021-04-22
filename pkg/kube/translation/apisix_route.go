@@ -294,5 +294,36 @@ func (t *translator) translateRouteMatchExprs(nginxVars []configv2alpha1.ApisixR
 }
 
 func (t *translator) translateTCPRoute(ctx *TranslateContext, ar *configv2alpha1.ApisixRoute) error {
+	ruleNameMap := make(map[string]struct{})
+	for _, part := range ar.Spec.TCP {
+		if _, ok := ruleNameMap[part.Name]; ok {
+			return errors.New("duplicated route rule name")
+		}
+		ruleNameMap[part.Name] = struct{}{}
+		backend := &part.Backend
+		svcClusterIP, svcPort, err := t.getTCPServiceClusterIPAndPort(backend, ar)
+		if err != nil {
+			log.Errorw("failed to get service port in backend",
+				zap.Any("backend", backend),
+				zap.Any("apisix_route", ar),
+				zap.Error(err),
+			)
+			return err
+		}
+		sr := apisixv1.NewDefaultStreamRoute()
+		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
+		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, svcPort)
+		sr.ID = id.GenID(name)
+		sr.UpstreamId = id.GenID(upstreamName)
+		sr.ServerPort = part.Match.IngressPort
+		ctx.addStreamRoute(sr)
+		if !ctx.checkUpstreamExist(upstreamName) {
+			ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.ResolveGranularity, svcClusterIP, svcPort)
+			if err != nil {
+				return err
+			}
+			ctx.addUpstream(ups)
+		}
+	}
 	return nil
 }

@@ -153,8 +153,9 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	)
 
 	m := &manifest{
-		routes:    tctx.Routes,
-		upstreams: tctx.Upstreams,
+		routes:       tctx.Routes,
+		upstreams:    tctx.Upstreams,
+		streamRoutes: tctx.StreamRoutes,
 	}
 
 	var (
@@ -184,8 +185,9 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		}
 
 		om := &manifest{
-			routes:    oldCtx.Routes,
-			upstreams: oldCtx.Upstreams,
+			routes:       oldCtx.Routes,
+			upstreams:    oldCtx.Upstreams,
+			streamRoutes: oldCtx.StreamRoutes,
 		}
 		added, updated, deleted = m.diff(om)
 	}
