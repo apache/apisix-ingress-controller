@@ -35,7 +35,7 @@ var _ = ginkgo.Describe("ApisixRoute Testing", func() {
 		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
 	}
 	s := scaffold.NewScaffold(opts)
-	ginkgo.FIt("tcp proxy", func() {
+	ginkgo.It("tcp proxy", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
