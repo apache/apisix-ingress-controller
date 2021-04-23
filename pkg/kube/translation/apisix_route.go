@@ -312,18 +312,17 @@ func (t *translator) translateTCPRoute(ctx *TranslateContext, ar *configv2alpha1
 		}
 		sr := apisixv1.NewDefaultStreamRoute()
 		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
-		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, svcPort)
 		sr.ID = id.GenID(name)
-		sr.UpstreamId = id.GenID(upstreamName)
 		sr.ServerPort = part.Match.IngressPort
-		ctx.addStreamRoute(sr)
-		if !ctx.checkUpstreamExist(upstreamName) {
-			ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.ResolveGranularity, svcClusterIP, svcPort)
-			if err != nil {
-				return err
-			}
-			ctx.addUpstream(ups)
+		// TODO use upstream id to refer the upstream object.
+		// Currently, APISIX doesn't use upstream_id field in
+		// APISIX, so we have to embed the entire upstream.
+		ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.ResolveGranularity, svcClusterIP, svcPort)
+		if err != nil {
+			return err
 		}
+		sr.Upstream = ups
+		ctx.addStreamRoute(sr)
 	}
 	return nil
 }

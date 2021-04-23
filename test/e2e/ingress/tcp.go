@@ -16,6 +16,7 @@ package ingress
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
@@ -34,7 +35,7 @@ var _ = ginkgo.Describe("ApisixRoute Testing", func() {
 		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
 	}
 	s := scaffold.NewScaffold(opts)
-	ginkgo.It("tcp proxy", func() {
+	ginkgo.FIt("tcp proxy", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
@@ -52,11 +53,9 @@ spec:
 `, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
+		time.Sleep(3 * time.Second)
 
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-
-		err = s.EnsureNumApisixStreamRoutesCreated(1)
+		err := s.EnsureNumApisixStreamRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
 		sr, err := s.ListApisixStreamRoutes()
@@ -64,8 +63,10 @@ spec:
 		assert.Len(ginkgo.GinkgoT(), sr, 1)
 		assert.Equal(ginkgo.GinkgoT(), sr[0].ServerPort, int32(9100))
 
-		// TODO uncomment these lines after APISIX fixed the upstream_id bug in stream_routes.
-		//resp := s.NewAPISIXClientWithTCPProxy().GET("/ip").Expect()
-		//resp.Body().Contains("origin")
+		resp := s.NewAPISIXClientWithTCPProxy().GET("/ip").Expect()
+		resp.Body().Contains("origin")
+
+		resp = s.NewAPISIXClientWithTCPProxy().GET("/get").WithHeader("x-my-header", "x-my-value").Expect()
+		resp.Body().Contains("x-my-value")
 	})
 })
