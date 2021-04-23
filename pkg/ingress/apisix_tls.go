@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -42,7 +43,6 @@ func (c *Controller) newApisixTlsController() *apisixTlsController {
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixTls"),
 		workers:    1,
 	}
-
 	ctl.controller.apisixTlsInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    ctl.onAdd,
@@ -117,6 +117,7 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Error(err),
 			zap.Any("ApisixTls", tls),
 		)
+		c.controller.recorderEvent(tls, corev1.EventTypeWarning, _resourceSyncAborted, err)
 		return err
 	}
 	log.Debug("got SSL object from ApisixTls",
@@ -132,8 +133,11 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Error(err),
 			zap.Any("ssl", ssl),
 		)
+		c.controller.recorderEvent(tls, corev1.EventTypeWarning, _resourceSyncAborted, err)
 		return err
 	}
+
+	c.controller.recorderEvent(tls, corev1.EventTypeNormal, _resourceSynced, nil)
 	return err
 }
 

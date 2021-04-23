@@ -16,6 +16,7 @@ package ingress
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -25,10 +26,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"k8s.io/client-go/tools/record"
 
 	"github.com/apache/apisix-ingress-controller/pkg/api"
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
@@ -42,6 +46,19 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+)
+
+const (
+	// _component is used for event component
+	_component = "ApisixIngress"
+	// _resourceSynced is used when a resource is synced successfully
+	_resourceSynced = "ResourcesSynced"
+	// _messageResourceSynced is used to specify controller
+	_messageResourceSynced = "%s synced successfully"
+	// _resourceSyncAborted is used when a resource synced failed
+	_resourceSyncAborted = "ResourceSyncAborted"
+	// _messageResourceFailed is used to report error
+	_messageResourceFailed = "%s synced failed, with error: %s"
 )
 
 // Controller is the ingress apisix controller object.
@@ -58,6 +75,8 @@ type Controller struct {
 	crdClientset       crdclientset.Interface
 	metricsCollector   metrics.Collector
 	crdInformerFactory externalversions.SharedInformerFactory
+	// recorder event
+	recorder record.EventRecorder
 	// this map enrolls which ApisixTls objects refer to a Kubernetes
 	// Secret object.
 	secretSSLMap *sync.Map
@@ -146,6 +165,10 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		apisixRouteInformer = sharedInformerFactory.Apisix().V1().ApisixRoutes().Informer()
 	}
 
+	// recorder
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kube.GetKubeClient().CoreV1().Events("")})
+
 	c := &Controller{
 		name:               podName,
 		namespace:          podNamespace,
@@ -158,6 +181,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		crdInformerFactory: sharedInformerFactory,
 		watchingNamespace:  watchingNamespace,
 		secretSSLMap:       new(sync.Map),
+		recorder:           eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
 
 		epInformer:             kube.CoreSharedInformerFactory.Core().V1().Endpoints().Informer(),
 		epLister:               kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
@@ -189,6 +213,17 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	c.secretController = c.newSecretController()
 
 	return c, nil
+}
+
+// recorderEvent recorder events for resources
+func (c *Controller) recorderEvent(object runtime.Object, eventtype, reason string, err error) {
+	if err != nil {
+		message := fmt.Sprintf(_messageResourceFailed, _component, err.Error())
+		c.recorder.Event(object, eventtype, reason, message)
+	} else {
+		message := fmt.Sprintf(_messageResourceSynced, _component)
+		c.recorder.Event(object, eventtype, reason, message)
+	}
 }
 
 func (c *Controller) goAttach(handler func()) {

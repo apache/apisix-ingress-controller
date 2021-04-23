@@ -21,9 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-// +genclient
-// +genclient:noStatus
-
 const (
 	// OpEqual means the equal ("==") operator in nginxVars.
 	OpEqual = "Equal"
@@ -60,12 +57,20 @@ const (
 	ScopeCookie = "Cookie"
 )
 
+// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:subresource:status
 // ApisixRoute is used to define the route rules and upstreams for Apache APISIX.
 type ApisixRoute struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 	Spec              *ApisixRouteSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Status            ApisixStatus     `json:"status,omitempty" yaml:"status,omitempty"`
+}
+
+// ApisixStatus is the status report for Apisix ingress Resources
+type ApisixStatus struct {
+	Conditions *[]metav1.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
 // ApisixRouteSpec is the spec definition for ApisixRouteSpec.
