@@ -27,19 +27,20 @@ import (
 )
 
 const (
-	_onditionType         = "ResourcesAvailable"
+	_conditionType        = "ResourcesAvailable"
 	_commonSuccessMessage = "Sync Successfully"
 )
 
 // recordRouteStatus record ApisixRoute v2alpha1 status
 func recordRouteStatus(ar *configv2alpha1.ApisixRoute, reason, message string, status v1.ConditionStatus) {
-	condition := metav1.Condition{
-		Type: _onditionType,
-	}
 	// build condition
-	condition.Reason = reason
-	condition.Status = status
-	condition.Message = message
+	condition := metav1.Condition{
+		Type:    _conditionType,
+		Reason:  reason,
+		Status:  status,
+		Message: message,
+	}
+
 	// set to status
 	if ar.Status.Conditions == nil {
 		conditions := make([]metav1.Condition, 0)
