@@ -18,6 +18,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -28,7 +29,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type apisixRouteController struct {
@@ -89,9 +89,8 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		return err
 	}
 	var (
-		ar        kube.ApisixRoute
-		routes    []*apisixv1.Route
-		upstreams []*apisixv1.Upstream
+		ar   kube.ApisixRoute
+		tctx *translation.TranslateContext
 	)
 	if obj.GroupVersion == kube.ApisixRouteV1 {
 		ar, err = c.controller.apisixRouteLister.V1(namespace, name)
@@ -130,7 +129,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		ar = ev.Tombstone.(kube.ApisixRoute)
 	}
 	if obj.GroupVersion == kube.ApisixRouteV1 {
-		routes, upstreams, err = c.controller.translator.TranslateRouteV1(ar.V1())
+		tctx, err = c.controller.translator.TranslateRouteV1(ar.V1())
 		if err != nil {
 			log.Errorw("failed to translate ApisixRoute v1",
 				zap.Error(err),
@@ -139,7 +138,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			return err
 		}
 	} else {
-		routes, upstreams, err = c.controller.translator.TranslateRouteV2alpha1(ar.V2alpha1())
+		tctx, err = c.controller.translator.TranslateRouteV2alpha1(ar.V2alpha1())
 		if err != nil {
 			log.Errorw("failed to translate ApisixRoute v2alpha1",
 				zap.Error(err),
@@ -150,14 +149,14 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	}
 
 	log.Debugw("translated ApisixRoute",
-		zap.Any("routes", routes),
-		zap.Any("upstreams", upstreams),
+		zap.Any("routes", tctx.Routes),
+		zap.Any("upstreams", tctx.Upstreams),
 		zap.Any("apisix_route", ar),
 	)
 
 	m := &manifest{
-		routes:    routes,
-		upstreams: upstreams,
+		routes:    tctx.Routes,
+		upstreams: tctx.Upstreams,
 	}
 
 	var (
@@ -171,14 +170,11 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	} else if ev.Type == types.EventAdd {
 		added = m
 	} else {
-		var (
-			oldRoutes    []*apisixv1.Route
-			oldUpstreams []*apisixv1.Upstream
-		)
+		var oldCtx *translation.TranslateContext
 		if obj.GroupVersion == kube.ApisixRouteV1 {
-			oldRoutes, oldUpstreams, err = c.controller.translator.TranslateRouteV1(obj.OldObject.V1())
+			oldCtx, err = c.controller.translator.TranslateRouteV1(obj.OldObject.V1())
 		} else {
-			oldRoutes, oldUpstreams, err = c.controller.translator.TranslateRouteV2alpha1(obj.OldObject.V2alpha1())
+			oldCtx, err = c.controller.translator.TranslateRouteV2alpha1(obj.OldObject.V2alpha1())
 		}
 		if err != nil {
 			log.Errorw("failed to translate old ApisixRoute v2alpha1",
@@ -191,8 +187,8 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		}
 
 		om := &manifest{
-			routes:    oldRoutes,
-			upstreams: oldUpstreams,
+			routes:    oldCtx.Routes,
+			upstreams: oldCtx.Upstreams,
 		}
 		added, updated, deleted = m.diff(om)
 	}

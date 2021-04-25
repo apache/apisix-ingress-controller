@@ -27,14 +27,11 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) ([]*apisixv1.Route, []*apisixv1.Upstream, error) {
-	var (
-		routes    []*apisixv1.Route
-		upstreams []*apisixv1.Upstream
-	)
-
+func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) (*TranslateContext, error) {
+	ctx := &TranslateContext{
+		upstreamMap: make(map[string]struct{}),
+	}
 	plugins := t.TranslateAnnotations(ar.Annotations)
-	upstreamMap := make(map[string]*apisixv1.Upstream)
 
 	for _, r := range ar.Spec.Rules {
 		for _, p := range r.Http.Paths {
@@ -66,53 +63,42 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) ([]*apisixv1.Rou
 			route.Plugins = pluginMap
 			route.UpstreamId = id.GenID(upstreamName)
 
-			if _, ok := upstreamMap[upstreamName]; !ok {
+			if !ctx.checkUpstreamExist(upstreamName) {
 				ups, err := t.TranslateUpstream(ar.Namespace, p.Backend.ServiceName, int32(p.Backend.ServicePort))
 				if err != nil {
-					return nil, nil, err
+					return nil, err
 				}
 				ups.ID = route.UpstreamId
 				ups.Name = upstreamName
-				upstreamMap[ups.Name] = ups
+				ctx.addUpstream(ups)
 			}
-			routes = append(routes, route)
+			ctx.addRoute(route)
 		}
 	}
-	for _, ups := range upstreamMap {
-		upstreams = append(upstreams, ups)
-	}
-	return routes, upstreams, nil
+	return ctx, nil
 }
 
-func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*apisixv1.Route, []*apisixv1.Upstream, error) {
-	var (
-		routes    []*apisixv1.Route
-		upstreams []*apisixv1.Upstream
-	)
+func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) (*TranslateContext, error) {
+	ctx := &TranslateContext{
+		upstreamMap: make(map[string]struct{}),
+	}
 
+	if err := t.translateHTTPRoute(ctx, ar); err != nil {
+		return nil, err
+	}
+	if err := t.translateTCPRoute(ctx, ar); err != nil {
+		return nil, err
+	}
+	return ctx, nil
+}
+
+func (t *translator) translateHTTPRoute(ctx *TranslateContext, ar *configv2alpha1.ApisixRoute) error {
 	ruleNameMap := make(map[string]struct{})
-	upstreamMap := make(map[string]*apisixv1.Upstream)
-
 	for _, part := range ar.Spec.HTTP {
-		if part.Name == "" {
-			return nil, nil, errors.New("empty route rule name")
-		}
 		if _, ok := ruleNameMap[part.Name]; ok {
-			return nil, nil, errors.New("duplicated route rule name")
+			return errors.New("duplicated route rule name")
 		}
 		ruleNameMap[part.Name] = struct{}{}
-		if part.Match == nil {
-			return nil, nil, errors.New("empty route match section")
-		}
-		if len(part.Match.Paths) < 1 {
-			return nil, nil, errors.New("empty route paths match")
-		}
-		if part.Backend != nil && len(part.Backends) > 1 {
-			return nil, nil, errors.New("backend and backends are exclusive")
-		}
-		if part.Backend == nil && len(part.Backends) == 0 {
-			return nil, nil, errors.New("no specified backend")
-		}
 		backends := part.Backends
 		backend := part.Backend
 		if len(backends) > 0 {
@@ -129,7 +115,7 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 				zap.Any("apisix_route", ar),
 				zap.Error(err),
 			)
-			return nil, nil, err
+			return err
 		}
 
 		pluginMap := make(apisixv1.Plugins)
@@ -152,7 +138,7 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 					zap.Error(err),
 					zap.Any("ApisixRoute", ar),
 				)
-				return nil, nil, err
+				return err
 			}
 		}
 		if err := validateRemoteAddrs(part.Match.RemoteAddrs); err != nil {
@@ -161,7 +147,7 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 				zap.Strings("remote_addrs", part.Match.RemoteAddrs),
 				zap.Any("ApisixRoute", ar),
 			)
-			return nil, nil, err
+			return err
 		}
 
 		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, svcPort)
@@ -183,36 +169,26 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) ([]*
 			if backend.Weight != nil {
 				weight = *backend.Weight
 			}
-			ups, plugin, err := t.translateTrafficSplitPlugin(ar, weight, backends)
+			plugin, err := t.translateTrafficSplitPlugin(ctx, ar, weight, backends)
 			if err != nil {
 				log.Errorw("failed to translate traffic-split plugin",
 					zap.Error(err),
 					zap.Any("ApisixRoute", ar),
 				)
-				return nil, nil, err
-			}
-			for _, u := range ups {
-				if _, ok := upstreamMap[u.Name]; !ok {
-					upstreamMap[u.Name] = u
-				}
+				return err
 			}
 			route.Plugins["traffic-split"] = plugin
 		}
-
-		routes = append(routes, route)
-		if _, ok := upstreamMap[upstreamName]; !ok {
+		ctx.addRoute(route)
+		if !ctx.checkUpstreamExist(upstreamName) {
 			ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.ResolveGranularity, svcClusterIP, svcPort)
 			if err != nil {
-				return nil, nil, err
+				return err
 			}
-			upstreamMap[ups.Name] = ups
+			ctx.addUpstream(ups)
 		}
 	}
-
-	for _, ups := range upstreamMap {
-		upstreams = append(upstreams, ups)
-	}
-	return routes, upstreams, nil
+	return nil
 }
 
 func (t *translator) translateRouteMatchExprs(nginxVars []configv2alpha1.ApisixRouteHTTPMatchExpr) ([][]apisixv1.StringOrSlice, error) {
@@ -315,4 +291,8 @@ func (t *translator) translateRouteMatchExprs(nginxVars []configv2alpha1.ApisixR
 	}
 
 	return vars, nil
+}
+
+func (t *translator) translateTCPRoute(ctx *TranslateContext, ar *configv2alpha1.ApisixRoute) error {
+	return nil
 }

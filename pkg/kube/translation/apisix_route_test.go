@@ -170,26 +170,6 @@ func TestRouteMatchExpr(t *testing.T) {
 	assert.Equal(t, results[8][2].SliceVal, []string{"a.com", "b.com"})
 }
 
-func TestTranslateApisixRouteV2alpha1WithEmptyName(t *testing.T) {
-	ar := &configv2alpha1.ApisixRoute{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ar",
-			Namespace: "test",
-		},
-		Spec: &configv2alpha1.ApisixRouteSpec{
-			HTTP: []*configv2alpha1.ApisixRouteHTTP{
-				{
-					Name:     "",
-					Priority: 0,
-				},
-			},
-		},
-	}
-	tr := &translator{}
-	_, _, err := tr.TranslateRouteV2alpha1(ar)
-	assert.Equal(t, err.Error(), "empty route rule name")
-}
-
 func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 	svc := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{},
@@ -326,6 +306,6 @@ func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 		},
 	}
 
-	_, _, err = tr.TranslateRouteV2alpha1(ar)
+	_, err = tr.TranslateRouteV2alpha1(ar)
 	assert.Equal(t, err.Error(), "duplicated route rule name")
 }

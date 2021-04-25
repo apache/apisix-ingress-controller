@@ -116,12 +116,12 @@ func TestTranslateIngressV1NoBackend(t *testing.T) {
 		},
 	}
 	tr := &translator{}
-	routes, upstreams, err := tr.translateIngressV1(ing)
-	assert.Len(t, routes, 1)
-	assert.Len(t, upstreams, 0)
+	ctx, err := tr.translateIngressV1(ing)
+	assert.Len(t, ctx.Routes, 1)
+	assert.Len(t, ctx.Upstreams, 0)
 	assert.Nil(t, err)
-	assert.Equal(t, routes[0].UpstreamId, "")
-	assert.Equal(t, routes[0].Uris, []string{"/foo", "/foo/*"})
+	assert.Equal(t, ctx.Routes[0].UpstreamId, "")
+	assert.Equal(t, ctx.Routes[0].Uris, []string{"/foo", "/foo/*"})
 }
 
 func TestTranslateIngressV1BackendWithInvalidService(t *testing.T) {
@@ -167,10 +167,9 @@ func TestTranslateIngressV1BackendWithInvalidService(t *testing.T) {
 			ServiceLister: svcLister,
 		},
 	}
-	routes, upstreams, err := tr.translateIngressV1(ing)
-	assert.Len(t, routes, 0)
-	assert.Len(t, upstreams, 0)
+	ctx, err := tr.translateIngressV1(ing)
 	assert.NotNil(t, err)
+	assert.Nil(t, ctx)
 	assert.Equal(t, err.Error(), "service \"test-service\" not found")
 
 	processCh := make(chan struct{})
@@ -191,9 +190,8 @@ func TestTranslateIngressV1BackendWithInvalidService(t *testing.T) {
 	assert.Nil(t, err)
 
 	<-processCh
-	routes, upstreams, err = tr.translateIngressV1(ing)
-	assert.Len(t, routes, 0)
-	assert.Len(t, upstreams, 0)
+	ctx, err = tr.translateIngressV1(ing)
+	assert.Nil(t, ctx, nil)
 	assert.Equal(t, err, &translateError{
 		field:  "service",
 		reason: "port not found",
@@ -286,33 +284,33 @@ func TestTranslateIngressV1(t *testing.T) {
 
 	<-processCh
 	<-processCh
-	routes, upstreams, err := tr.translateIngressV1(ing)
-	assert.Len(t, routes, 2)
-	assert.Len(t, upstreams, 2)
+	ctx, err := tr.translateIngressV1(ing)
+	assert.Len(t, ctx.Routes, 2)
+	assert.Len(t, ctx.Upstreams, 2)
 	assert.Nil(t, err)
 
-	assert.Equal(t, routes[0].Uris, []string{"/foo", "/foo/*"})
-	assert.Equal(t, routes[0].UpstreamId, upstreams[0].ID)
-	assert.Equal(t, routes[0].Host, "apisix.apache.org")
-	assert.Equal(t, routes[1].Uris, []string{"/bar"})
-	assert.Equal(t, routes[1].UpstreamId, upstreams[1].ID)
-	assert.Equal(t, routes[1].Host, "apisix.apache.org")
+	assert.Equal(t, ctx.Routes[0].Uris, []string{"/foo", "/foo/*"})
+	assert.Equal(t, ctx.Routes[0].UpstreamId, ctx.Upstreams[0].ID)
+	assert.Equal(t, ctx.Routes[0].Host, "apisix.apache.org")
+	assert.Equal(t, ctx.Routes[1].Uris, []string{"/bar"})
+	assert.Equal(t, ctx.Routes[1].UpstreamId, ctx.Upstreams[1].ID)
+	assert.Equal(t, ctx.Routes[1].Host, "apisix.apache.org")
 
-	assert.Equal(t, upstreams[0].Type, "roundrobin")
-	assert.Equal(t, upstreams[0].Scheme, "http")
-	assert.Len(t, upstreams[0].Nodes, 2)
-	assert.Equal(t, upstreams[0].Nodes[0].Port, 9080)
-	assert.Equal(t, upstreams[0].Nodes[0].Host, "192.168.1.1")
-	assert.Equal(t, upstreams[0].Nodes[1].Port, 9080)
-	assert.Equal(t, upstreams[0].Nodes[1].Host, "192.168.1.2")
+	assert.Equal(t, ctx.Upstreams[0].Type, "roundrobin")
+	assert.Equal(t, ctx.Upstreams[0].Scheme, "http")
+	assert.Len(t, ctx.Upstreams[0].Nodes, 2)
+	assert.Equal(t, ctx.Upstreams[0].Nodes[0].Port, 9080)
+	assert.Equal(t, ctx.Upstreams[0].Nodes[0].Host, "192.168.1.1")
+	assert.Equal(t, ctx.Upstreams[0].Nodes[1].Port, 9080)
+	assert.Equal(t, ctx.Upstreams[0].Nodes[1].Host, "192.168.1.2")
 
-	assert.Equal(t, upstreams[1].Type, "roundrobin")
-	assert.Equal(t, upstreams[1].Scheme, "http")
-	assert.Len(t, upstreams[1].Nodes, 2)
-	assert.Equal(t, upstreams[1].Nodes[0].Port, 9443)
-	assert.Equal(t, upstreams[1].Nodes[0].Host, "192.168.1.1")
-	assert.Equal(t, upstreams[1].Nodes[1].Port, 9443)
-	assert.Equal(t, upstreams[1].Nodes[1].Host, "192.168.1.2")
+	assert.Equal(t, ctx.Upstreams[1].Type, "roundrobin")
+	assert.Equal(t, ctx.Upstreams[1].Scheme, "http")
+	assert.Len(t, ctx.Upstreams[1].Nodes, 2)
+	assert.Equal(t, ctx.Upstreams[1].Nodes[0].Port, 9443)
+	assert.Equal(t, ctx.Upstreams[1].Nodes[0].Host, "192.168.1.1")
+	assert.Equal(t, ctx.Upstreams[1].Nodes[1].Port, 9443)
+	assert.Equal(t, ctx.Upstreams[1].Nodes[1].Host, "192.168.1.2")
 }
 
 func TestTranslateIngressV1beta1NoBackend(t *testing.T) {
@@ -342,12 +340,12 @@ func TestTranslateIngressV1beta1NoBackend(t *testing.T) {
 		},
 	}
 	tr := &translator{}
-	routes, upstreams, err := tr.translateIngressV1beta1(ing)
-	assert.Len(t, routes, 1)
-	assert.Len(t, upstreams, 0)
+	ctx, err := tr.translateIngressV1beta1(ing)
+	assert.Len(t, ctx.Routes, 1)
+	assert.Len(t, ctx.Upstreams, 0)
 	assert.Nil(t, err)
-	assert.Equal(t, routes[0].UpstreamId, "")
-	assert.Equal(t, routes[0].Uris, []string{"/foo", "/foo/*"})
+	assert.Equal(t, ctx.Routes[0].UpstreamId, "")
+	assert.Equal(t, ctx.Routes[0].Uris, []string{"/foo", "/foo/*"})
 }
 
 func TestTranslateIngressV1beta1BackendWithInvalidService(t *testing.T) {
@@ -392,10 +390,9 @@ func TestTranslateIngressV1beta1BackendWithInvalidService(t *testing.T) {
 			ServiceLister: svcLister,
 		},
 	}
-	routes, upstreams, err := tr.translateIngressV1beta1(ing)
-	assert.Len(t, routes, 0)
-	assert.Len(t, upstreams, 0)
+	ctx, err := tr.translateIngressV1beta1(ing)
 	assert.NotNil(t, err)
+	assert.Nil(t, ctx)
 	assert.Equal(t, err.Error(), "service \"test-service\" not found")
 
 	processCh := make(chan struct{})
@@ -416,9 +413,8 @@ func TestTranslateIngressV1beta1BackendWithInvalidService(t *testing.T) {
 	assert.Nil(t, err)
 
 	<-processCh
-	routes, upstreams, err = tr.translateIngressV1beta1(ing)
-	assert.Len(t, routes, 0)
-	assert.Len(t, upstreams, 0)
+	ctx, err = tr.translateIngressV1beta1(ing)
+	assert.Nil(t, ctx)
 	assert.Equal(t, err, &translateError{
 		field:  "service",
 		reason: "port not found",
@@ -509,33 +505,33 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 
 	<-processCh
 	<-processCh
-	routes, upstreams, err := tr.translateIngressV1beta1(ing)
-	assert.Len(t, routes, 2)
-	assert.Len(t, upstreams, 2)
+	ctx, err := tr.translateIngressV1beta1(ing)
+	assert.Len(t, ctx.Routes, 2)
+	assert.Len(t, ctx.Upstreams, 2)
 	assert.Nil(t, err)
 
-	assert.Equal(t, routes[0].Uris, []string{"/foo", "/foo/*"})
-	assert.Equal(t, routes[0].UpstreamId, upstreams[0].ID)
-	assert.Equal(t, routes[0].Host, "apisix.apache.org")
-	assert.Equal(t, routes[1].Uris, []string{"/bar"})
-	assert.Equal(t, routes[1].UpstreamId, upstreams[1].ID)
-	assert.Equal(t, routes[1].Host, "apisix.apache.org")
+	assert.Equal(t, ctx.Routes[0].Uris, []string{"/foo", "/foo/*"})
+	assert.Equal(t, ctx.Routes[0].UpstreamId, ctx.Upstreams[0].ID)
+	assert.Equal(t, ctx.Routes[0].Host, "apisix.apache.org")
+	assert.Equal(t, ctx.Routes[1].Uris, []string{"/bar"})
+	assert.Equal(t, ctx.Routes[1].UpstreamId, ctx.Upstreams[1].ID)
+	assert.Equal(t, ctx.Routes[1].Host, "apisix.apache.org")
 
-	assert.Equal(t, upstreams[0].Type, "roundrobin")
-	assert.Equal(t, upstreams[0].Scheme, "http")
-	assert.Len(t, upstreams[0].Nodes, 2)
-	assert.Equal(t, upstreams[0].Nodes[0].Port, 9080)
-	assert.Equal(t, upstreams[0].Nodes[0].Host, "192.168.1.1")
-	assert.Equal(t, upstreams[0].Nodes[1].Port, 9080)
-	assert.Equal(t, upstreams[0].Nodes[1].Host, "192.168.1.2")
+	assert.Equal(t, ctx.Upstreams[0].Type, "roundrobin")
+	assert.Equal(t, ctx.Upstreams[0].Scheme, "http")
+	assert.Len(t, ctx.Upstreams[0].Nodes, 2)
+	assert.Equal(t, ctx.Upstreams[0].Nodes[0].Port, 9080)
+	assert.Equal(t, ctx.Upstreams[0].Nodes[0].Host, "192.168.1.1")
+	assert.Equal(t, ctx.Upstreams[0].Nodes[1].Port, 9080)
+	assert.Equal(t, ctx.Upstreams[0].Nodes[1].Host, "192.168.1.2")
 
-	assert.Equal(t, upstreams[1].Type, "roundrobin")
-	assert.Equal(t, upstreams[1].Scheme, "http")
-	assert.Len(t, upstreams[1].Nodes, 2)
-	assert.Equal(t, upstreams[1].Nodes[0].Port, 9443)
-	assert.Equal(t, upstreams[1].Nodes[0].Host, "192.168.1.1")
-	assert.Equal(t, upstreams[1].Nodes[1].Port, 9443)
-	assert.Equal(t, upstreams[1].Nodes[1].Host, "192.168.1.2")
+	assert.Equal(t, ctx.Upstreams[1].Type, "roundrobin")
+	assert.Equal(t, ctx.Upstreams[1].Scheme, "http")
+	assert.Len(t, ctx.Upstreams[1].Nodes, 2)
+	assert.Equal(t, ctx.Upstreams[1].Nodes[0].Port, 9443)
+	assert.Equal(t, ctx.Upstreams[1].Nodes[0].Host, "192.168.1.1")
+	assert.Equal(t, ctx.Upstreams[1].Nodes[1].Port, 9443)
+	assert.Equal(t, ctx.Upstreams[1].Nodes[1].Host, "192.168.1.2")
 }
 
 func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
@@ -622,33 +618,33 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 
 	<-processCh
 	<-processCh
-	routes, upstreams, err := tr.translateIngressExtensionsV1beta1(ing)
-	assert.Len(t, routes, 2)
-	assert.Len(t, upstreams, 2)
+	ctx, err := tr.translateIngressExtensionsV1beta1(ing)
+	assert.Len(t, ctx.Routes, 2)
+	assert.Len(t, ctx.Upstreams, 2)
 	assert.Nil(t, err)
 
-	assert.Equal(t, routes[0].Uris, []string{"/foo", "/foo/*"})
-	assert.Equal(t, routes[0].UpstreamId, upstreams[0].ID)
-	assert.Equal(t, routes[0].Host, "apisix.apache.org")
-	assert.Equal(t, routes[1].Uris, []string{"/bar"})
-	assert.Equal(t, routes[1].UpstreamId, upstreams[1].ID)
-	assert.Equal(t, routes[1].Host, "apisix.apache.org")
+	assert.Equal(t, ctx.Routes[0].Uris, []string{"/foo", "/foo/*"})
+	assert.Equal(t, ctx.Routes[0].UpstreamId, ctx.Upstreams[0].ID)
+	assert.Equal(t, ctx.Routes[0].Host, "apisix.apache.org")
+	assert.Equal(t, ctx.Routes[1].Uris, []string{"/bar"})
+	assert.Equal(t, ctx.Routes[1].UpstreamId, ctx.Upstreams[1].ID)
+	assert.Equal(t, ctx.Routes[1].Host, "apisix.apache.org")
 
-	assert.Equal(t, upstreams[0].Type, "roundrobin")
-	assert.Equal(t, upstreams[0].Scheme, "http")
-	assert.Len(t, upstreams[0].Nodes, 2)
-	assert.Equal(t, upstreams[0].Nodes[0].Port, 9080)
-	assert.Equal(t, upstreams[0].Nodes[0].Host, "192.168.1.1")
-	assert.Equal(t, upstreams[0].Nodes[1].Port, 9080)
-	assert.Equal(t, upstreams[0].Nodes[1].Host, "192.168.1.2")
+	assert.Equal(t, ctx.Upstreams[0].Type, "roundrobin")
+	assert.Equal(t, ctx.Upstreams[0].Scheme, "http")
+	assert.Len(t, ctx.Upstreams[0].Nodes, 2)
+	assert.Equal(t, ctx.Upstreams[0].Nodes[0].Port, 9080)
+	assert.Equal(t, ctx.Upstreams[0].Nodes[0].Host, "192.168.1.1")
+	assert.Equal(t, ctx.Upstreams[0].Nodes[1].Port, 9080)
+	assert.Equal(t, ctx.Upstreams[0].Nodes[1].Host, "192.168.1.2")
 
-	assert.Equal(t, upstreams[1].Type, "roundrobin")
-	assert.Equal(t, upstreams[1].Scheme, "http")
-	assert.Len(t, upstreams[1].Nodes, 2)
-	assert.Equal(t, upstreams[1].Nodes[0].Port, 9443)
-	assert.Equal(t, upstreams[1].Nodes[0].Host, "192.168.1.1")
-	assert.Equal(t, upstreams[1].Nodes[1].Port, 9443)
-	assert.Equal(t, upstreams[1].Nodes[1].Host, "192.168.1.2")
+	assert.Equal(t, ctx.Upstreams[1].Type, "roundrobin")
+	assert.Equal(t, ctx.Upstreams[1].Scheme, "http")
+	assert.Len(t, ctx.Upstreams[1].Nodes, 2)
+	assert.Equal(t, ctx.Upstreams[1].Nodes[0].Port, 9443)
+	assert.Equal(t, ctx.Upstreams[1].Nodes[0].Host, "192.168.1.1")
+	assert.Equal(t, ctx.Upstreams[1].Nodes[1].Port, 9443)
+	assert.Equal(t, ctx.Upstreams[1].Nodes[1].Host, "192.168.1.2")
 }
 
 func TestTranslateIngressExtensionsV1beta1BackendWithInvalidService(t *testing.T) {
@@ -693,9 +689,8 @@ func TestTranslateIngressExtensionsV1beta1BackendWithInvalidService(t *testing.T
 			ServiceLister: svcLister,
 		},
 	}
-	routes, upstreams, err := tr.translateIngressExtensionsV1beta1(ing)
-	assert.Len(t, routes, 0)
-	assert.Len(t, upstreams, 0)
+	ctx, err := tr.translateIngressExtensionsV1beta1(ing)
+	assert.Nil(t, ctx)
 	assert.NotNil(t, err)
 	assert.Equal(t, err.Error(), "service \"test-service\" not found")
 
@@ -717,9 +712,8 @@ func TestTranslateIngressExtensionsV1beta1BackendWithInvalidService(t *testing.T
 	assert.Nil(t, err)
 
 	<-processCh
-	routes, upstreams, err = tr.translateIngressExtensionsV1beta1(ing)
-	assert.Len(t, routes, 0)
-	assert.Len(t, upstreams, 0)
+	ctx, err = tr.translateIngressExtensionsV1beta1(ing)
+	assert.Nil(t, ctx)
 	assert.Equal(t, err, &translateError{
 		field:  "service",
 		reason: "port not found",
