@@ -23,6 +23,7 @@ apisix:
   node_listen: 9080              # APISIX listening port
   enable_admin: true
   enable_admin_cors: true         # Admin API support CORS response headers.
+  enable_control: true
   enable_debug: false
   enable_dev_mode: false          # Sets nginx worker_processes to 1 if set to true
   enable_reuseport: true          # Enable nginx SO_REUSEPORT switch if set to true.
@@ -137,6 +138,7 @@ plugins:                          # plugin list
   - ip-restriction
   - referer-restriction
   - grpc-transcode
+  - server-info
   - serverless-pre-function
   - serverless-post-function
   - openid-connect

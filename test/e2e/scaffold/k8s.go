@@ -173,6 +173,30 @@ func (s *Scaffold) EnsureNumApisixUpstreamsCreated(desired int) error {
 	return ensureNumApisixCRDsCreated(u.String(), desired)
 }
 
+// GetServerInfo collect server info from "/v1/server_info" (Control API) exposed by server-info plugin
+func (s *Scaffold) GetServerInfo() (map[string]interface{}, error) {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixControlTunnel.Endpoint(),
+		Path:   "/v1/server_info",
+	}
+	resp, err := http.Get(u.String())
+if err != nil {
+		ginkgo.GinkgoT().Logf("failed to get response from Control API: %s", err.Error())
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		ginkgo.GinkgoT().Logf("got status code %d from Control API", resp.StatusCode)
+		return nil, err
+	}
+	var ret map[string]interface{}
+	dec := json.NewDecoder(resp.Body)
+	if err := dec.Decode(&ret); err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
 // ListApisixUpstreams list all upstreams from APISIX
 func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 	u := url.URL{
@@ -241,6 +265,7 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		adminPort     int
 		httpPort      int
 		httpsPort     int
+		controlPort     int
 	)
 	for _, port := range s.apisixService.Spec.Ports {
 		if port.Name == "http" {
@@ -252,6 +277,9 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		} else if port.Name == "http-admin" {
 			adminNodePort = int(port.NodePort)
 			adminPort = int(port.Port)
+		} else if port.Name == "http-control" {
+			controlNodePort = int(port.NodePort)
+			controlPort = int(port.Port)
 		}
 	}
 
@@ -261,6 +289,8 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		httpNodePort, httpPort)
 	s.apisixHttpsTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
 		httpsNodePort, httpsPort)
+	s.apisixControlTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
+		controlNodePort, controlPort)
 
 	if err := s.apisixAdminTunnel.ForwardPortE(s.t); err != nil {
 		return err
@@ -274,6 +304,10 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		return err
 	}
 	s.addFinalizers(s.apisixHttpsTunnel.Close)
+	if err := s.apisixControlTunnel.ForwardPortE(s.t); err != nil {
+		return err
+	}
+	s.addFinalizers(s.apisixControlTunnel.Close)
 	return nil
 }
 
