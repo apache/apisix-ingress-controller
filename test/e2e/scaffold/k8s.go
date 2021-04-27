@@ -181,7 +181,7 @@ func (s *Scaffold) GetServerInfo() (map[string]interface{}, error) {
 		Path:   "/v1/server_info",
 	}
 	resp, err := http.Get(u.String())
-if err != nil {
+	if err != nil {
 		ginkgo.GinkgoT().Logf("failed to get response from Control API: %s", err.Error())
 		return nil, err
 	}
@@ -259,12 +259,13 @@ func (s *Scaffold) ListApisixTls() ([]*v1.Ssl, error) {
 
 func (s *Scaffold) newAPISIXTunnels() error {
 	var (
-		adminNodePort int
-		httpNodePort  int
-		httpsNodePort int
-		adminPort     int
-		httpPort      int
-		httpsPort     int
+		adminNodePort   int
+		httpNodePort    int
+		httpsNodePort   int
+		controlNodePort int
+		adminPort       int
+		httpPort        int
+		httpsPort       int
 		controlPort     int
 	)
 	for _, port := range s.apisixService.Spec.Ports {
@@ -291,7 +292,6 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		httpsNodePort, httpsPort)
 	s.apisixControlTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
 		controlNodePort, controlPort)
-
 	if err := s.apisixAdminTunnel.ForwardPortE(s.t); err != nil {
 		return err
 	}
