@@ -17,12 +17,14 @@ package ingress
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 )
 
@@ -49,4 +51,50 @@ func recordRouteStatus(ar *configv2alpha1.ApisixRoute, reason, message string, s
 	meta.SetStatusCondition(ar.Status.Conditions, condition)
 	_, _ = kube.GetApisixClient().ApisixV2alpha1().ApisixRoutes(ar.Namespace).
 		UpdateStatus(context.TODO(), ar, metav1.UpdateOptions{})
+}
+
+// recordStatus record  resources status
+func recordStatus(at interface{}, reason string, err error, status v1.ConditionStatus) {
+	// build condition
+	message := fmt.Sprintf(_messageResourceSynced, _component)
+	if err != nil {
+		message = err.Error()
+	}
+	condition := metav1.Condition{
+		Type:    _conditionType,
+		Reason:  reason,
+		Status:  status,
+		Message: message,
+	}
+
+	switch v := at.(type) {
+	case *configv1.ApisixTls:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = &conditions
+		}
+		meta.SetStatusCondition(v.Status.Conditions, condition)
+		_, _ = kube.GetApisixClient().ApisixV1().ApisixTlses(v.Namespace).
+			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{})
+	case *configv1.ApisixUpstream:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = &conditions
+		}
+		meta.SetStatusCondition(v.Status.Conditions, condition)
+		_, _ = kube.GetApisixClient().ApisixV1().ApisixUpstreams(v.Namespace).
+			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{})
+	case *configv2alpha1.ApisixRoute:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = &conditions
+		}
+		meta.SetStatusCondition(v.Status.Conditions, condition)
+		_, _ = kube.GetApisixClient().ApisixV2alpha1().ApisixRoutes(v.Namespace).
+			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{})
+	}
+
 }

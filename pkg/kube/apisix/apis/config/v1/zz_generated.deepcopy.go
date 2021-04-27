@@ -209,6 +209,7 @@ func (in *ApisixTls) DeepCopyInto(out *ApisixTls) {
 		*out = new(ApisixTlsSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	in.Status.DeepCopyInto(&out.Status)
 	return
 }
 
@@ -295,6 +296,7 @@ func (in *ApisixUpstream) DeepCopyInto(out *ApisixUpstream) {
 		*out = new(ApisixUpstreamSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	in.Status.DeepCopyInto(&out.Status)
 	return
 }
 

@@ -19,6 +19,8 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 )
 
 // +genclient
@@ -72,9 +74,8 @@ type ApisixRouteList struct {
 }
 
 // +genclient
-// +genclient:noStatus
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:subresource:status
 // ApisixUpstream is a decorator for Kubernetes Service, it arms the Service
 // with rich features like health check, retry policies, load balancer and others.
 // It's designed to have same name with the Kubernetes Service and can be customized
@@ -83,7 +84,8 @@ type ApisixUpstream struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 
-	Spec *ApisixUpstreamSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Spec   *ApisixUpstreamSpec   `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Status v2alpha1.ApisixStatus `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
 // ApisixUpstreamSpec describes the specification of ApisixUpstream.
@@ -253,14 +255,14 @@ func (p *Config) DeepCopy() *Config {
 }
 
 // +genclient
-// +genclient:noStatus
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:subresource:status
 // ApisixTls defines SSL resource in APISIX.
 type ApisixTls struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-	Spec              *ApisixTlsSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Spec              *ApisixTlsSpec        `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Status            v2alpha1.ApisixStatus `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
