@@ -18,4 +18,6 @@ limitations under the License.
 
 package v2alpha1
 
+type ApisixClusterConfigExpansion interface{}
+
 type ApisixRouteExpansion interface{}
