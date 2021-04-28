@@ -55,8 +55,10 @@ func recordStatus(at interface{}, reason string, err error, status v1.ConditionS
 			v.Status.Conditions = &conditions
 		}
 		meta.SetStatusCondition(v.Status.Conditions, condition)
-		_, _ = kube.GetApisixClient().ApisixV1().ApisixTlses(v.Namespace).
-			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{})
+		if _, errRecord := kube.GetApisixClient().ApisixV1().ApisixTlses(v.Namespace).
+			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+			log.Errorf("resource record error: %s/%s, with err %s", v.Namespace, v.Name, errRecord.Error())
+		}
 	case *configv1.ApisixUpstream:
 		// set to status
 		if v.Status.Conditions == nil {
@@ -64,8 +66,10 @@ func recordStatus(at interface{}, reason string, err error, status v1.ConditionS
 			v.Status.Conditions = &conditions
 		}
 		meta.SetStatusCondition(v.Status.Conditions, condition)
-		_, _ = kube.GetApisixClient().ApisixV1().ApisixUpstreams(v.Namespace).
-			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{})
+		if _, errRecord := kube.GetApisixClient().ApisixV1().ApisixUpstreams(v.Namespace).
+			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+			log.Errorf("resource record error: %s/%s, with err %s", v.Namespace, v.Name, errRecord.Error())
+		}
 	case *configv2alpha1.ApisixRoute:
 		// set to status
 		if v.Status.Conditions == nil {
@@ -73,8 +77,10 @@ func recordStatus(at interface{}, reason string, err error, status v1.ConditionS
 			v.Status.Conditions = &conditions
 		}
 		meta.SetStatusCondition(v.Status.Conditions, condition)
-		_, _ = kube.GetApisixClient().ApisixV2alpha1().ApisixRoutes(v.Namespace).
-			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{})
+		if _, errRecord := kube.GetApisixClient().ApisixV2alpha1().ApisixRoutes(v.Namespace).
+			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+			log.Errorf("resource record error: %s/%s, with err %s", v.Namespace, v.Name, errRecord.Error())
+		}
 	default:
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
