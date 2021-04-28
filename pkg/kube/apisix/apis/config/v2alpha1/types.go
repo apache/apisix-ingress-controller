@@ -284,6 +284,8 @@ type ApisixClusterSkywalkingConfig struct {
 	SampleRatio float64 `json:"sampleRatio" yaml:"sampleRatio"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // ApisixClusterConfigList contains a list of ApisixClusterConfig.
 type ApisixClusterConfigList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
