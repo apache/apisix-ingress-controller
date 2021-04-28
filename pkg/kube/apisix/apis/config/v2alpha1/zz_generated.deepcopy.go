@@ -29,7 +29,7 @@ import (
 func (in *ApisixClusterConfig) DeepCopyInto(out *ApisixClusterConfig) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 	in.Spec.DeepCopyInto(&out.Spec)
 	return
 }

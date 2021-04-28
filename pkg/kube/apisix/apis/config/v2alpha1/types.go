@@ -246,8 +246,8 @@ type ApisixRouteList struct {
 
 // ApisixClusterConfig is the Schema for the ApisixClusterConfig resource.
 type ApisixClusterConfig struct {
-	metav1.TypeMeta `json:",inline" yaml:",inline"`
-	metav1.ListMeta `json:"metadata" yaml:"metadata"`
+	metav1.TypeMeta   `json:",inline" yaml:",inline"`
+	metav1.ObjectMeta `json:"metadata" yaml:"metadata"`
 
 	// Spec defines the desired state of ApisixClusterConfigSpec.
 	Spec ApisixClusterConfigSpec `json:"spec" yaml:"spec"`

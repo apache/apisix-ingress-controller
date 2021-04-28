@@ -23,6 +23,7 @@ import (
 
 	v2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -58,7 +59,18 @@ func (c *FakeApisixClusterConfigs) List(ctx context.Context, opts v1.ListOptions
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v2alpha1.ApisixClusterConfigList), err
+
+	label, _, _ := testing.ExtractFromListOptions(opts)
+	if label == nil {
+		label = labels.Everything()
+	}
+	list := &v2alpha1.ApisixClusterConfigList{ListMeta: obj.(*v2alpha1.ApisixClusterConfigList).ListMeta}
+	for _, item := range obj.(*v2alpha1.ApisixClusterConfigList).Items {
+		if label.Matches(labels.Set(item.Labels)) {
+			list.Items = append(list.Items, item)
+		}
+	}
+	return list, err
 }
 
 // Watch returns a watch.Interface that watches the requested apisixClusterConfigs.
