@@ -27,5 +27,8 @@ func (t *translator) TranslateAnnotations(anno map[string]string) apisix.Plugins
 	if ipRestriction := annotations.BuildIpRestrictionPlugin(anno); ipRestriction != nil {
 		plugins["ip-restriction"] = ipRestriction
 	}
+	if trafficSplit := annotations.BuildTrafficSplitPlugin(anno); trafficSplit != nil {
+		plugins["traffic-split"] = trafficSplit
+	}
 	return plugins
 }
