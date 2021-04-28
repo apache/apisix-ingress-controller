@@ -73,6 +73,7 @@ type cluster struct {
 	upstream     Upstream
 	ssl          SSL
 	streamRoute  StreamRoute
+	globalRules  GlobalRule
 }
 
 func newCluster(o *ClusterOptions) (Cluster, error) {
@@ -103,6 +104,7 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 	c.upstream = newUpstreamClient(c)
 	c.ssl = newSSLClient(c)
 	c.streamRoute = newStreamRouteClient(c)
+	c.globalRules = newGlobalRuleClient(c)
 
 	go c.syncCache()
 
@@ -167,6 +169,16 @@ func (c *cluster) syncCacheOnce() (bool, error) {
 		log.Errorf("failed to list ssl in APISIX: %s", err)
 		return false, err
 	}
+	streamRoutes, err := c.streamRoute.List(context.TODO())
+	if err != nil {
+		log.Errorf("failed to list stream_routes in APISIX: %s", err)
+		return false, err
+	}
+	globalRules, err := c.globalRules.List(context.TODO())
+	if err != nil {
+		log.Errorf("failed to list global_rules in APISIX: %s", err)
+		return false, err
+	}
 
 	for _, r := range routes {
 		if err := c.cache.InsertRoute(r); err != nil {
@@ -192,6 +204,26 @@ func (c *cluster) syncCacheOnce() (bool, error) {
 		if err := c.cache.InsertSSL(s); err != nil {
 			log.Errorw("failed to insert ssl to cache",
 				zap.String("ssl", s.ID),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
+			return false, err
+		}
+	}
+	for _, sr := range streamRoutes {
+		if err := c.cache.InsertStreamRoute(sr); err != nil {
+			log.Errorw("failed to insert stream_route to cache",
+				zap.Any("stream_route", sr),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
+			return false, err
+		}
+	}
+	for _, gr := range globalRules {
+		if err := c.cache.InsertGlobalRule(gr); err != nil {
+			log.Errorw("failed to insert global_rule to cache",
+				zap.Any("global_rule", gr),
 				zap.String("cluster", c.name),
 				zap.String("error", err.Error()),
 			)

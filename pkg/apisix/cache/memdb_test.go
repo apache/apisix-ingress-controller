@@ -259,3 +259,46 @@ func TestMemDBCacheStreamRoute(t *testing.T) {
 	}
 	assert.Error(t, ErrNotFound, c.DeleteStreamRoute(r4))
 }
+
+func TestMemDBCacheGlobalRule(t *testing.T) {
+	c, err := NewMemDBCache()
+	assert.Nil(t, err, "NewMemDBCache")
+
+	gr1 := &v1.GlobalRule{
+		ID: "1",
+	}
+	assert.Nil(t, c.InsertGlobalRule(gr1), "inserting global rule 1")
+
+	gr, err := c.GetGlobalRule("1")
+	assert.Nil(t, err)
+	assert.Equal(t, gr1, gr)
+
+	gr2 := &v1.GlobalRule{
+		ID: "2",
+	}
+	gr3 := &v1.GlobalRule{
+		ID: "3",
+	}
+	assert.Nil(t, c.InsertGlobalRule(gr2), "inserting global_rule r2")
+	assert.Nil(t, c.InsertGlobalRule(gr3), "inserting global_rule r3")
+
+	gr, err = c.GetGlobalRule("3")
+	assert.Nil(t, err)
+	assert.Equal(t, gr, gr)
+
+	assert.Nil(t, c.DeleteGlobalRule(gr), "delete global_rule r3")
+
+	grs, err := c.ListGlobalRules()
+	assert.Nil(t, err, "listing global rules")
+
+	if grs[0].ID > grs[1].ID {
+		grs[0], grs[1] = grs[1], grs[0]
+	}
+	assert.Equal(t, grs[0], gr1)
+	assert.Equal(t, grs[1], gr2)
+
+	gr4 := &v1.GlobalRule{
+		ID: "4",
+	}
+	assert.Error(t, ErrNotFound, c.DeleteGlobalRule(gr4))
+}

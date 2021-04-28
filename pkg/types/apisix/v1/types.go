@@ -323,7 +323,7 @@ type TrafficSplitConfigRuleWeightedUpstream struct {
 	Weight     int    `json:"weight"`
 }
 
-// StreamRoute represents the stream route object in APISIX.
+// StreamRoute represents the stream_route object in APISIX.
 // +k8s:deepcopy-gen=true
 type StreamRoute struct {
 	// TODO metadata should use Metadata type
@@ -332,6 +332,13 @@ type StreamRoute struct {
 	Labels     map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 	ServerPort int32             `json:"server_port,omitempty" yaml:"server_port,omitempty"`
 	UpstreamId string            `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
+}
+
+// GlobalRule represents the global_rule object in APISIX.
+// +k8s:deepcopy-gen=true
+type GlobalRule struct {
+	ID      string  `json:"id,omitempty" yaml:"id,omitempty"`
+	Plugins Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 // NewDefaultUpstream returns an empty Upstream with default values.

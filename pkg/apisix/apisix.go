@@ -87,6 +87,16 @@ type StreamRoute interface {
 	Update(context.Context, *v1.StreamRoute) (*v1.StreamRoute, error)
 }
 
+// GlobalRule is the specific client interface to take over the create, update,
+// list and delete for APISIX's Global Rule resource.
+type GlobalRule interface {
+	Get(context.Context, string) (*v1.GlobalRule, error)
+	List(context.Context) ([]*v1.GlobalRule, error)
+	Create(context.Context, *v1.GlobalRule) (*v1.GlobalRule, error)
+	Delete(context.Context, *v1.GlobalRule) error
+	Update(context.Context, *v1.GlobalRule) (*v1.GlobalRule, error)
+}
+
 type apisix struct {
 	nonExistentCluster Cluster
 	clusters           map[string]Cluster
