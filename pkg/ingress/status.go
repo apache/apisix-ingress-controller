@@ -32,7 +32,7 @@ const (
 	_commonSuccessMessage = "Sync Successfully"
 )
 
-// recordStatus record  resources status
+// recordStatus record resources status
 func recordStatus(at interface{}, reason string, err error, status v1.ConditionStatus) {
 	// build condition
 	message := _commonSuccessMessage
