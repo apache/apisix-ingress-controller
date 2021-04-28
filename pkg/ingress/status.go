@@ -17,7 +17,6 @@ package ingress
 
 import (
 	"context"
-	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,30 +32,10 @@ const (
 	_commonSuccessMessage = "Sync Successfully"
 )
 
-// recordRouteStatus record ApisixRoute v2alpha1 status
-func recordRouteStatus(ar *configv2alpha1.ApisixRoute, reason, message string, status v1.ConditionStatus) {
-	// build condition
-	condition := metav1.Condition{
-		Type:    _conditionType,
-		Reason:  reason,
-		Status:  status,
-		Message: message,
-	}
-
-	// set to status
-	if ar.Status.Conditions == nil {
-		conditions := make([]metav1.Condition, 0)
-		ar.Status.Conditions = &conditions
-	}
-	meta.SetStatusCondition(ar.Status.Conditions, condition)
-	_, _ = kube.GetApisixClient().ApisixV2alpha1().ApisixRoutes(ar.Namespace).
-		UpdateStatus(context.TODO(), ar, metav1.UpdateOptions{})
-}
-
 // recordStatus record  resources status
 func recordStatus(at interface{}, reason string, err error, status v1.ConditionStatus) {
 	// build condition
-	message := fmt.Sprintf(_messageResourceSynced, _component)
+	message := _commonSuccessMessage
 	if err != nil {
 		message = err.Error()
 	}
