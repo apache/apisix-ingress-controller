@@ -25,7 +25,7 @@ spec:
     - name: v2alpha1
       served: true
       storage: true
-  scope: Namespaced
+  scope: Cluster
   names:
     plural: apisixclusterconfigs
     singular: apisixclusterconfig
