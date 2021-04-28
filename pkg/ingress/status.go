@@ -25,6 +25,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
 const (
@@ -74,6 +75,9 @@ func recordStatus(at interface{}, reason string, err error, status v1.ConditionS
 		meta.SetStatusCondition(v.Status.Conditions, condition)
 		_, _ = kube.GetApisixClient().ApisixV2alpha1().ApisixRoutes(v.Namespace).
 			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{})
+	default:
+		// This should not be executed
+		log.Errorf("unsupported resource record: %s", v)
 	}
 
 }
