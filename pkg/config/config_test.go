@@ -42,8 +42,9 @@ func TestNewConfigFromFile(t *testing.T) {
 			ApisixRouteVersion: ApisixRouteV2alpha1,
 		},
 		APISIX: APISIXConfig{
-			BaseURL:  "http://127.0.0.1:8080/apisix",
-			AdminKey: "123456",
+			DefaultClusterName:     "default",
+			DefaultClusterBaseURL:  "http://127.0.0.1:8080/apisix",
+			DefaultClusterAdminKey: "123456",
 		},
 	}
 
@@ -80,8 +81,8 @@ kubernetes:
   ingress_class: apisix
   ingress_version: networking/v1
 apisix:
-  base_url: http://127.0.0.1:8080/apisix
-  admin_key: "123456"
+  default_cluster_base_url: http://127.0.0.1:8080/apisix
+  default_cluster_admin_key: "123456"
 `
 	tmpYAML, err := ioutil.TempFile("/tmp", "config-*.yaml")
 	assert.Nil(t, err, "failed to create temporary yaml configuration file: ", err)
@@ -101,7 +102,7 @@ apisix:
 func TestConfigDefaultValue(t *testing.T) {
 	yamlData := `
 apisix:
-  base_url: http://127.0.0.1:8080/apisix
+  default_cluster_base_url: http://127.0.0.1:8080/apisix
 `
 	tmpYAML, err := ioutil.TempFile("/tmp", "config-*.yaml")
 	assert.Nil(t, err, "failed to create temporary yaml configuration file: ", err)
@@ -116,7 +117,8 @@ apisix:
 	assert.Nil(t, newCfg.Validate(), "failed to validate config")
 
 	defaultCfg := NewDefaultConfig()
-	defaultCfg.APISIX.BaseURL = "http://127.0.0.1:8080/apisix"
+	defaultCfg.APISIX.DefaultClusterBaseURL = "http://127.0.0.1:8080/apisix"
+	defaultCfg.APISIX.DefaultClusterName = "default"
 
 	assert.Equal(t, defaultCfg, newCfg, "bad configuration")
 }
