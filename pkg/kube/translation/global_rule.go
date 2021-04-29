@@ -34,10 +34,10 @@ func (t *translator) TranslateClusterConfig(acc *configv2alpha1.ApisixClusterCon
 	if acc.Spec.Monitoring != nil {
 		globalRule.Plugins = make(apisixv1.Plugins)
 		if acc.Spec.Monitoring.Prometheus.Enable {
-			globalRule.Plugins["prometheus"] = prometheusPluginConfig{}
+			globalRule.Plugins["prometheus"] = &prometheusPluginConfig{}
 		}
 		if acc.Spec.Monitoring.Skywalking.Enable {
-			globalRule.Plugins["skywalking"] = skywalkingPluginConfig{
+			globalRule.Plugins["skywalking"] = &skywalkingPluginConfig{
 				SampleRatio: acc.Spec.Monitoring.Skywalking.SampleRatio,
 			}
 		}
