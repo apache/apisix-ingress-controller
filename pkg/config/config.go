@@ -78,8 +78,18 @@ type KubernetesConfig struct {
 
 // APISIXConfig contains all APISIX related config items.
 type APISIXConfig struct {
-	BaseURL string `json:"base_url" yaml:"base_url"`
+	// DefaultClusterName is the name of default cluster.
+	DefaultClusterName string `json:"default_cluster_name"`
+	// DefaultClusterBaseURL is the base url configuration for the default cluster.
+	DefaultClusterBaseURL string `json:"default_cluster_base_url" yaml:"default_cluster_base_url"`
+	// DefaultClusterAdminKey is the admin key for the default cluster.
 	// TODO: Obsolete the plain way to specify admin_key, which is insecure.
+	DefaultClusterAdminKey string `json:"default_cluster_admin_key" yaml:"default_cluster_admin_key"`
+	// BaseURL is same to DefaultClusterBaseURL.
+	// Deprecated: use DefaultClusterBaseURL instead.
+	BaseURL string `json:"base_url" yaml:"base_url"`
+	// AdminKey is same to DefaultClusterAdminKey.
+	// Deprecated: use DefaultClusterAdminKey instead.
 	AdminKey string `json:"admin_key" yaml:"admin_key"`
 }
 
@@ -130,7 +140,17 @@ func (cfg *Config) Validate() error {
 	if cfg.Kubernetes.ResyncInterval.Duration < _minimalResyncInterval {
 		return errors.New("controller resync interval too small")
 	}
-	if cfg.APISIX.BaseURL == "" {
+	if cfg.APISIX.DefaultClusterAdminKey == "" {
+		cfg.APISIX.DefaultClusterAdminKey = cfg.APISIX.AdminKey
+	}
+	if cfg.APISIX.DefaultClusterBaseURL == "" {
+		cfg.APISIX.DefaultClusterBaseURL = cfg.APISIX.BaseURL
+	}
+	if cfg.APISIX.DefaultClusterName == "" {
+		cfg.APISIX.DefaultClusterName = "default"
+	}
+
+	if cfg.APISIX.DefaultClusterBaseURL == "" {
 		return errors.New("apisix base url is required")
 	}
 	switch cfg.Kubernetes.IngressVersion {

@@ -126,10 +126,11 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 		return err
 	}
 
+	clusterName := c.controller.cfg.APISIX.DefaultClusterName
 	for _, port := range svc.Spec.Ports {
 		upsName := apisixv1.ComposeUpstreamName(namespace, name, port.Port)
 		// TODO: multiple cluster
-		ups, err := c.controller.apisix.Cluster("").Upstream().Get(ctx, upsName)
+		ups, err := c.controller.apisix.Cluster(clusterName).Upstream().Get(ctx, upsName)
 		if err != nil {
 			if err == apisixcache.ErrNotFound {
 				continue
@@ -165,11 +166,12 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 			zap.Any("upstream", newUps),
 			zap.Any("ApisixUpstream", au),
 		)
-		if _, err := c.controller.apisix.Cluster("").Upstream().Update(ctx, newUps); err != nil {
+		if _, err := c.controller.apisix.Cluster(clusterName).Upstream().Update(ctx, newUps); err != nil {
 			log.Errorw("failed to update upstream",
 				zap.Error(err),
 				zap.Any("upstream", newUps),
 				zap.Any("ApisixUpstream", au),
+				zap.String("cluster", clusterName),
 			)
 			c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
 			return err

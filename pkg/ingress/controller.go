@@ -318,9 +318,9 @@ func (c *Controller) run(ctx context.Context) {
 	c.metricsCollector.ResetLeader(true)
 
 	err := c.apisix.AddCluster(&apisix.ClusterOptions{
-		Name:     "",
-		AdminKey: c.cfg.APISIX.AdminKey,
-		BaseURL:  c.cfg.APISIX.BaseURL,
+		Name:     c.cfg.APISIX.DefaultClusterName,
+		AdminKey: c.cfg.APISIX.DefaultClusterAdminKey,
+		BaseURL:  c.cfg.APISIX.DefaultClusterBaseURL,
 	})
 	if err != nil && err != apisix.ErrDuplicatedCluster {
 		// TODO give up the leader role.
@@ -328,7 +328,7 @@ func (c *Controller) run(ctx context.Context) {
 		return
 	}
 
-	if err := c.apisix.Cluster("").HasSynced(ctx); err != nil {
+	if err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).HasSynced(ctx); err != nil {
 		// TODO give up the leader role.
 		log.Errorf("failed to wait the default cluster to be ready: %s", err)
 		return
@@ -400,12 +400,13 @@ func (c *Controller) syncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types
 	var (
 		err error
 	)
+	clusterName := c.cfg.APISIX.DefaultClusterName
 	if event == types.EventDelete {
-		err = c.apisix.Cluster("").SSL().Delete(ctx, ssl)
+		err = c.apisix.Cluster(clusterName).SSL().Delete(ctx, ssl)
 	} else if event == types.EventUpdate {
-		_, err = c.apisix.Cluster("").SSL().Update(ctx, ssl)
+		_, err = c.apisix.Cluster(clusterName).SSL().Update(ctx, ssl)
 	} else {
-		_, err = c.apisix.Cluster("").SSL().Create(ctx, ssl)
+		_, err = c.apisix.Cluster(clusterName).SSL().Create(ctx, ssl)
 	}
 	return err
 }

@@ -16,6 +16,7 @@ package apisix
 
 import (
 	"context"
+	"sync"
 
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -26,6 +27,8 @@ type APISIX interface {
 	Cluster(string) Cluster
 	// AddCluster adds a new cluster.
 	AddCluster(*ClusterOptions) error
+	// UpdateCluster updates an existing cluster.
+	UpdateCluster(*ClusterOptions) error
 	// ListClusters lists all APISIX clusters.
 	ListClusters() []Cluster
 }
@@ -88,6 +91,7 @@ type StreamRoute interface {
 }
 
 type apisix struct {
+	mu                 sync.RWMutex
 	nonExistentCluster Cluster
 	clusters           map[string]Cluster
 }
@@ -102,6 +106,8 @@ func NewClient() (APISIX, error) {
 
 // Cluster implements APISIX.Cluster method.
 func (c *apisix) Cluster(name string) Cluster {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	cluster, ok := c.clusters[name]
 	if !ok {
 		return c.nonExistentCluster
@@ -111,6 +117,8 @@ func (c *apisix) Cluster(name string) Cluster {
 
 // ListClusters implements APISIX.ListClusters method.
 func (c *apisix) ListClusters() []Cluster {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	clusters := make([]Cluster, 0, len(c.clusters))
 	for _, cluster := range c.clusters {
 		clusters = append(clusters, cluster)
@@ -120,6 +128,8 @@ func (c *apisix) ListClusters() []Cluster {
 
 // AddCluster implements APISIX.AddCluster method.
 func (c *apisix) AddCluster(co *ClusterOptions) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	_, ok := c.clusters[co.Name]
 	if ok {
 		return ErrDuplicatedCluster
@@ -131,6 +141,22 @@ func (c *apisix) AddCluster(co *ClusterOptions) error {
 	if c.clusters == nil {
 		c.clusters = make(map[string]Cluster)
 	}
+	c.clusters[co.Name] = cluster
+	return nil
+}
+
+func (c *apisix) UpdateCluster(co *ClusterOptions) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if _, ok := c.clusters[co.Name]; !ok {
+		return ErrClusterNotExist
+	}
+
+	cluster, err := newCluster(co)
+	if err != nil {
+		return err
+	}
+
 	c.clusters[co.Name] = cluster
 	return nil
 }
