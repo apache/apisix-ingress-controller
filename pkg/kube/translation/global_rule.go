@@ -28,11 +28,12 @@ type skywalkingPluginConfig struct {
 }
 
 func (t *translator) TranslateClusterConfig(acc *configv2alpha1.ApisixClusterConfig) (*apisixv1.GlobalRule, error) {
-	var globalRule apisixv1.GlobalRule
-	globalRule.ID = id.GenID(acc.Name)
+	globalRule := &apisixv1.GlobalRule{
+		ID:      id.GenID(acc.Name),
+		Plugins: make(apisixv1.Plugins),
+	}
 
 	if acc.Spec.Monitoring != nil {
-		globalRule.Plugins = make(apisixv1.Plugins)
 		if acc.Spec.Monitoring.Prometheus.Enable {
 			globalRule.Plugins["prometheus"] = &prometheusPluginConfig{}
 		}
@@ -43,5 +44,5 @@ func (t *translator) TranslateClusterConfig(acc *configv2alpha1.ApisixClusterCon
 		}
 	}
 
-	return &globalRule, nil
+	return globalRule, nil
 }
