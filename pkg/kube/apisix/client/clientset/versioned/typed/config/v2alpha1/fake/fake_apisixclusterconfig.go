@@ -33,7 +33,6 @@ import (
 // FakeApisixClusterConfigs implements ApisixClusterConfigInterface
 type FakeApisixClusterConfigs struct {
 	Fake *FakeApisixV2alpha1
-	ns   string
 }
 
 var apisixclusterconfigsResource = schema.GroupVersionResource{Group: "apisix.apache.org", Version: "v2alpha1", Resource: "apisixclusterconfigs"}
@@ -43,8 +42,7 @@ var apisixclusterconfigsKind = schema.GroupVersionKind{Group: "apisix.apache.org
 // Get takes name of the apisixClusterConfig, and returns the corresponding apisixClusterConfig object, and an error if there is any.
 func (c *FakeApisixClusterConfigs) Get(ctx context.Context, name string, options v1.GetOptions) (result *v2alpha1.ApisixClusterConfig, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(apisixclusterconfigsResource, c.ns, name), &v2alpha1.ApisixClusterConfig{})
-
+		Invokes(testing.NewRootGetAction(apisixclusterconfigsResource, name), &v2alpha1.ApisixClusterConfig{})
 	if obj == nil {
 		return nil, err
 	}
@@ -54,8 +52,7 @@ func (c *FakeApisixClusterConfigs) Get(ctx context.Context, name string, options
 // List takes label and field selectors, and returns the list of ApisixClusterConfigs that match those selectors.
 func (c *FakeApisixClusterConfigs) List(ctx context.Context, opts v1.ListOptions) (result *v2alpha1.ApisixClusterConfigList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(apisixclusterconfigsResource, apisixclusterconfigsKind, c.ns, opts), &v2alpha1.ApisixClusterConfigList{})
-
+		Invokes(testing.NewRootListAction(apisixclusterconfigsResource, apisixclusterconfigsKind, opts), &v2alpha1.ApisixClusterConfigList{})
 	if obj == nil {
 		return nil, err
 	}
@@ -76,15 +73,13 @@ func (c *FakeApisixClusterConfigs) List(ctx context.Context, opts v1.ListOptions
 // Watch returns a watch.Interface that watches the requested apisixClusterConfigs.
 func (c *FakeApisixClusterConfigs) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(apisixclusterconfigsResource, c.ns, opts))
-
+		InvokesWatch(testing.NewRootWatchAction(apisixclusterconfigsResource, opts))
 }
 
 // Create takes the representation of a apisixClusterConfig and creates it.  Returns the server's representation of the apisixClusterConfig, and an error, if there is any.
 func (c *FakeApisixClusterConfigs) Create(ctx context.Context, apisixClusterConfig *v2alpha1.ApisixClusterConfig, opts v1.CreateOptions) (result *v2alpha1.ApisixClusterConfig, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(apisixclusterconfigsResource, c.ns, apisixClusterConfig), &v2alpha1.ApisixClusterConfig{})
-
+		Invokes(testing.NewRootCreateAction(apisixclusterconfigsResource, apisixClusterConfig), &v2alpha1.ApisixClusterConfig{})
 	if obj == nil {
 		return nil, err
 	}
@@ -94,8 +89,7 @@ func (c *FakeApisixClusterConfigs) Create(ctx context.Context, apisixClusterConf
 // Update takes the representation of a apisixClusterConfig and updates it. Returns the server's representation of the apisixClusterConfig, and an error, if there is any.
 func (c *FakeApisixClusterConfigs) Update(ctx context.Context, apisixClusterConfig *v2alpha1.ApisixClusterConfig, opts v1.UpdateOptions) (result *v2alpha1.ApisixClusterConfig, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(apisixclusterconfigsResource, c.ns, apisixClusterConfig), &v2alpha1.ApisixClusterConfig{})
-
+		Invokes(testing.NewRootUpdateAction(apisixclusterconfigsResource, apisixClusterConfig), &v2alpha1.ApisixClusterConfig{})
 	if obj == nil {
 		return nil, err
 	}
@@ -105,14 +99,13 @@ func (c *FakeApisixClusterConfigs) Update(ctx context.Context, apisixClusterConf
 // Delete takes name of the apisixClusterConfig and deletes it. Returns an error if one occurs.
 func (c *FakeApisixClusterConfigs) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(apisixclusterconfigsResource, c.ns, name), &v2alpha1.ApisixClusterConfig{})
-
+		Invokes(testing.NewRootDeleteAction(apisixclusterconfigsResource, name), &v2alpha1.ApisixClusterConfig{})
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeApisixClusterConfigs) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(apisixclusterconfigsResource, c.ns, listOpts)
+	action := testing.NewRootDeleteCollectionAction(apisixclusterconfigsResource, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v2alpha1.ApisixClusterConfigList{})
 	return err
@@ -121,8 +114,7 @@ func (c *FakeApisixClusterConfigs) DeleteCollection(ctx context.Context, opts v1
 // Patch applies the patch and returns the patched apisixClusterConfig.
 func (c *FakeApisixClusterConfigs) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v2alpha1.ApisixClusterConfig, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(apisixclusterconfigsResource, c.ns, name, pt, data, subresources...), &v2alpha1.ApisixClusterConfig{})
-
+		Invokes(testing.NewRootPatchSubresourceAction(apisixclusterconfigsResource, name, pt, data, subresources...), &v2alpha1.ApisixClusterConfig{})
 	if obj == nil {
 		return nil, err
 	}

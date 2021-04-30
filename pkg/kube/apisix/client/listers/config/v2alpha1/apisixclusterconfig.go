@@ -31,8 +31,9 @@ type ApisixClusterConfigLister interface {
 	// List lists all ApisixClusterConfigs in the indexer.
 	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v2alpha1.ApisixClusterConfig, err error)
-	// ApisixClusterConfigs returns an object that can list and get ApisixClusterConfigs.
-	ApisixClusterConfigs(namespace string) ApisixClusterConfigNamespaceLister
+	// Get retrieves the ApisixClusterConfig from the index for a given name.
+	// Objects returned here must be treated as read-only.
+	Get(name string) (*v2alpha1.ApisixClusterConfig, error)
 	ApisixClusterConfigListerExpansion
 }
 
@@ -54,41 +55,9 @@ func (s *apisixClusterConfigLister) List(selector labels.Selector) (ret []*v2alp
 	return ret, err
 }
 
-// ApisixClusterConfigs returns an object that can list and get ApisixClusterConfigs.
-func (s *apisixClusterConfigLister) ApisixClusterConfigs(namespace string) ApisixClusterConfigNamespaceLister {
-	return apisixClusterConfigNamespaceLister{indexer: s.indexer, namespace: namespace}
-}
-
-// ApisixClusterConfigNamespaceLister helps list and get ApisixClusterConfigs.
-// All objects returned here must be treated as read-only.
-type ApisixClusterConfigNamespaceLister interface {
-	// List lists all ApisixClusterConfigs in the indexer for a given namespace.
-	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v2alpha1.ApisixClusterConfig, err error)
-	// Get retrieves the ApisixClusterConfig from the indexer for a given namespace and name.
-	// Objects returned here must be treated as read-only.
-	Get(name string) (*v2alpha1.ApisixClusterConfig, error)
-	ApisixClusterConfigNamespaceListerExpansion
-}
-
-// apisixClusterConfigNamespaceLister implements the ApisixClusterConfigNamespaceLister
-// interface.
-type apisixClusterConfigNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all ApisixClusterConfigs in the indexer for a given namespace.
-func (s apisixClusterConfigNamespaceLister) List(selector labels.Selector) (ret []*v2alpha1.ApisixClusterConfig, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v2alpha1.ApisixClusterConfig))
-	})
-	return ret, err
-}
-
-// Get retrieves the ApisixClusterConfig from the indexer for a given namespace and name.
-func (s apisixClusterConfigNamespaceLister) Get(name string) (*v2alpha1.ApisixClusterConfig, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+// Get retrieves the ApisixClusterConfig from the index for a given name.
+func (s *apisixClusterConfigLister) Get(name string) (*v2alpha1.ApisixClusterConfig, error) {
+	obj, exists, err := s.indexer.GetByKey(name)
 	if err != nil {
 		return nil, err
 	}
