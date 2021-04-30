@@ -18,6 +18,7 @@ package ingress
 import (
 	"context"
 
+	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -57,7 +58,11 @@ func recordStatus(at interface{}, reason string, err error, status v1.ConditionS
 		meta.SetStatusCondition(v.Status.Conditions, condition)
 		if _, errRecord := kube.GetApisixClient().ApisixV1().ApisixTlses(v.Namespace).
 			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-			log.Errorf("resource record error: %s/%s, with err %s", v.Namespace, v.Name, errRecord.Error())
+			log.Errorw("failed to record status change for ApisixTls",
+				zap.Error(errRecord),
+				zap.String("name", v.Name),
+				zap.String("namespace", v.Namespace),
+			)
 		}
 	case *configv1.ApisixUpstream:
 		// set to status
@@ -68,7 +73,11 @@ func recordStatus(at interface{}, reason string, err error, status v1.ConditionS
 		meta.SetStatusCondition(v.Status.Conditions, condition)
 		if _, errRecord := kube.GetApisixClient().ApisixV1().ApisixUpstreams(v.Namespace).
 			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-			log.Errorf("resource record error: %s/%s, with err %s", v.Namespace, v.Name, errRecord.Error())
+			log.Errorw("failed to record status change for ApisixUpstream",
+				zap.Error(errRecord),
+				zap.String("name", v.Name),
+				zap.String("namespace", v.Namespace),
+			)
 		}
 	case *configv2alpha1.ApisixRoute:
 		// set to status
@@ -79,7 +88,11 @@ func recordStatus(at interface{}, reason string, err error, status v1.ConditionS
 		meta.SetStatusCondition(v.Status.Conditions, condition)
 		if _, errRecord := kube.GetApisixClient().ApisixV2alpha1().ApisixRoutes(v.Namespace).
 			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-			log.Errorf("resource record error: %s/%s, with err %s", v.Namespace, v.Name, errRecord.Error())
+			log.Errorw("failed to record status change for ApisixRoute",
+				zap.Error(errRecord),
+				zap.String("name", v.Name),
+				zap.String("namespace", v.Namespace),
+			)
 		}
 	default:
 		// This should not be executed
