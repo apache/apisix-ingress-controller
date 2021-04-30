@@ -44,6 +44,8 @@ type Cluster interface {
 	SSL() SSL
 	// StreamRoute returns a StreamRoute interface that can operate StreamRoute resources.
 	StreamRoute() StreamRoute
+	// GlobalRule returns a GlobalRule interface that can operate GlobalRule resources.
+	GlobalRule() GlobalRule
 	// String exposes the client information in human readable format.
 	String() string
 	// HasSynced checks whether all resources in APISIX cluster is synced to cache.

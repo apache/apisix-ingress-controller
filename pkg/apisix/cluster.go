@@ -280,23 +280,28 @@ func (c *cluster) StreamRoute() StreamRoute {
 	return c.streamRoute
 }
 
-func (s *cluster) applyAuth(req *http.Request) {
-	if s.adminKey != "" {
-		req.Header.Set("X-API-Key", s.adminKey)
+// GlobalRule implements Cluster.GlobalRule method.
+func (c *cluster) GlobalRule() GlobalRule {
+	return c.globalRules
+}
+
+func (c *cluster) applyAuth(req *http.Request) {
+	if c.adminKey != "" {
+		req.Header.Set("X-API-Key", c.adminKey)
 	}
 }
 
-func (s *cluster) do(req *http.Request) (*http.Response, error) {
-	s.applyAuth(req)
-	return s.cli.Do(req)
+func (c *cluster) do(req *http.Request) (*http.Response, error) {
+	c.applyAuth(req)
+	return c.cli.Do(req)
 }
 
-func (s *cluster) getResource(ctx context.Context, url string) (*getResponse, error) {
+func (c *cluster) getResource(ctx context.Context, url string) (*getResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := s.do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -320,12 +325,12 @@ func (s *cluster) getResource(ctx context.Context, url string) (*getResponse, er
 	return &res, nil
 }
 
-func (s *cluster) listResource(ctx context.Context, url string) (*listResponse, error) {
+func (c *cluster) listResource(ctx context.Context, url string) (*listResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := s.do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -345,12 +350,12 @@ func (s *cluster) listResource(ctx context.Context, url string) (*listResponse, 
 	return &list, nil
 }
 
-func (s *cluster) createResource(ctx context.Context, url string, body io.Reader) (*createResponse, error) {
+func (c *cluster) createResource(ctx context.Context, url string, body io.Reader) (*createResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := s.do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -371,12 +376,12 @@ func (s *cluster) createResource(ctx context.Context, url string, body io.Reader
 	return &cr, nil
 }
 
-func (s *cluster) updateResource(ctx context.Context, url string, body io.Reader) (*updateResponse, error) {
+func (c *cluster) updateResource(ctx context.Context, url string, body io.Reader) (*updateResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := s.do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -395,12 +400,12 @@ func (s *cluster) updateResource(ctx context.Context, url string, body io.Reader
 	return &ur, nil
 }
 
-func (s *cluster) deleteResource(ctx context.Context, url string) error {
+func (c *cluster) deleteResource(ctx context.Context, url string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
 	if err != nil {
 		return err
 	}
-	resp, err := s.do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
