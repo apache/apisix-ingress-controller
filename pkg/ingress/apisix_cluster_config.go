@@ -89,7 +89,7 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 		log.Errorf("found ApisixClusterConfig resource with invalid meta key %s: %s", key, err)
 		return err
 	}
-	acc, err := c.controller.apisixClusterConfigLister.ApisixClusterConfigs("").Get(name)
+	acc, err := c.controller.apisixClusterConfigLister.Get(name)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Errorf("failed to get ApisixClusterConfig %s: %s", key, err)
