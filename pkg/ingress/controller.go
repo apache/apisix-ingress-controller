@@ -358,6 +358,9 @@ func (c *Controller) run(ctx context.Context) {
 		c.apisixUpstreamInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
+		c.apisixClusterConfigInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
 		c.secretInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {

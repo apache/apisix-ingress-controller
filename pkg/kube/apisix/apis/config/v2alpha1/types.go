@@ -271,10 +271,10 @@ type ApisixClusterConfigSpec struct {
 type ApisixClusterMonitoringConfig struct {
 	// Prometheus is the config for using Prometheus in APISIX Cluster.
 	// +optional
-	Prometheus ApisixClusterPrometheusConfig
+	Prometheus ApisixClusterPrometheusConfig `json:"prometheus" yaml:"prometheus"`
 	// Skywalking is the config for using Skywalking in APISIX Cluster.
 	// +optional
-	Skywalking ApisixClusterSkywalkingConfig
+	Skywalking ApisixClusterSkywalkingConfig `json:"skywalking" yaml:"skywalking"`
 }
 
 // ApisixClusterPrometheusConfig is the config for using Prometheus in APISIX Cluster.
@@ -295,9 +295,9 @@ type ApisixClusterSkywalkingConfig struct {
 type ApisixClusterAdminConfig struct {
 	// BaseURL is the base URL for the APISIX Admin API.
 	// It looks like "http://apisix-admin.default.svc.cluster.local:9080/apisix/admin"
-	BaseURL string
+	BaseURL string `json:"baseURL" yaml:"baseURL"`
 	// AdminKey is used to verify the admin API user.
-	AdminKey string
+	AdminKey string `json:"adminKey" yaml:"adminKey"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

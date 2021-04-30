@@ -44,7 +44,7 @@ func (c *Controller) newApisixClusterConfigController() *apisixClusterConfigCont
 	ctl := &apisixClusterConfigController{
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(time.Second, 60*time.Second, 5), "ApisixClusterConfig"),
-		workers:    0,
+		workers:    1,
 	}
 	c.apisixClusterConfigInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -158,6 +158,9 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 		)
 		return err
 	}
+	log.Debugw("translated global_rule",
+		zap.Any("object", globalRule),
+	)
 
 	// TODO multiple cluster support
 	if ev.Type == types.EventAdd {
