@@ -64,7 +64,7 @@ spec:
             tcpSocket:
               port: 80
             timeoutSeconds: 2
-          image: "kennethreitz/httpbin"
+          image: "localhost:5000/kennethreitz/httpbin"
           imagePullPolicy: IfNotPresent
           name: httpbin-deployment-e2e-test
           ports:

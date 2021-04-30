@@ -181,13 +181,11 @@ func TestRouteClient(t *testing.T) {
 	// Create
 	obj, err := cli.Create(context.Background(), &v1.Route{
 		Metadata: v1.Metadata{
-			ID:       "1",
-			Name:     "test",
-			FullName: "test",
+			ID:   "1",
+			Name: "test",
 		},
 		Host:       "www.foo.com",
-		Path:       "/bar",
-		ServiceId:  "1",
+		Uri:        "/bar",
 		UpstreamId: "1",
 	})
 	assert.Nil(t, err)
@@ -195,13 +193,11 @@ func TestRouteClient(t *testing.T) {
 
 	obj, err = cli.Create(context.Background(), &v1.Route{
 		Metadata: v1.Metadata{
-			ID:       "2",
-			Name:     "test",
-			FullName: "test",
+			ID:   "2",
+			Name: "test",
 		},
 		Host:       "www.foo.com",
-		Path:       "/bar",
-		ServiceId:  "1",
+		Uri:        "/bar",
 		UpstreamId: "1",
 	})
 	assert.Nil(t, err)
@@ -224,13 +220,11 @@ func TestRouteClient(t *testing.T) {
 	// Patch then List
 	_, err = cli.Update(context.Background(), &v1.Route{
 		Metadata: v1.Metadata{
-			ID:       "2",
-			Name:     "test",
-			FullName: "test",
+			ID:   "2",
+			Name: "test",
 		},
 		Host:       "www.foo.com",
-		Path:       "/bar",
-		ServiceId:  "112",
+		Uri:        "/bar",
 		UpstreamId: "112",
 	})
 	assert.Nil(t, err)
@@ -238,5 +232,4 @@ func TestRouteClient(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, objs, 1)
 	assert.Equal(t, "2", objs[0].ID)
-	assert.Equal(t, "112", objs[0].ServiceId)
 }

@@ -1,0 +1,283 @@
+// Licensed to the Apache Software Foundation (ASF) under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// The ASF licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+package scaffold
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/url"
+	"strconv"
+	"time"
+
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/gruntwork-io/terratest/modules/k8s"
+	"github.com/onsi/ginkgo"
+	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+)
+
+type counter struct {
+	Count string `json:"count"`
+}
+
+// ApisixRoute is the ApisixRoute CRD definition.
+// We don't use the definition in apisix-ingress-controller,
+// since the k8s dependencies in terratest and
+// apisix-ingress-controller are conflicted.
+type apisixRoute struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	Spec              apisixRouteSpec `json:"spec"`
+}
+
+type apisixRouteSpec struct {
+	Rules []ApisixRouteRule `json:"rules"`
+}
+
+// ApisixRouteRule defines the route policies of ApisixRoute.
+type ApisixRouteRule struct {
+	Host string              `json:"host"`
+	HTTP ApisixRouteRuleHTTP `json:"http"`
+}
+
+// ApisixRouteRuleHTTP defines the HTTP part of route policies.
+type ApisixRouteRuleHTTP struct {
+	Paths []ApisixRouteRuleHTTPPath `json:"paths"`
+}
+
+// ApisixRouteRuleHTTP defines a route in the HTTP part of ApisixRoute.
+type ApisixRouteRuleHTTPPath struct {
+	Path    string                     `json:"path"`
+	Backend ApisixRouteRuleHTTPBackend `json:"backend"`
+}
+
+// ApisixRouteRuleHTTPBackend defines a HTTP backend.
+type ApisixRouteRuleHTTPBackend struct {
+	ServiceName string `json:"serviceName"`
+	ServicePort int32  `json:"servicePort"`
+}
+
+// CreateApisixRoute creates an ApisixRoute object.
+func (s *Scaffold) CreateApisixRoute(name string, rules []ApisixRouteRule) {
+	route := &apisixRoute{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ApisixRoute",
+			APIVersion: "apisix.apache.org/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: apisixRouteSpec{
+			Rules: rules,
+		},
+	}
+	data, err := json.Marshal(route)
+	assert.Nil(s.t, err)
+	k8s.KubectlApplyFromString(s.t, s.kubectlOptions, string(data))
+}
+
+// CreateResourceFromString creates resource from a loaded yaml string.
+func (s *Scaffold) CreateResourceFromString(yaml string) error {
+	return k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
+}
+
+// RemoveResourceByString remove resource from a loaded yaml string.
+func (s *Scaffold) RemoveResourceByString(yaml string) error {
+	return k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
+}
+
+// CreateResourceFromStringWithNamespace creates resource from a loaded yaml string
+// and sets its namespace to the specified one.
+func (s *Scaffold) CreateResourceFromStringWithNamespace(yaml, namespace string) error {
+	originalNamespace := s.kubectlOptions.Namespace
+	s.kubectlOptions.Namespace = namespace
+	defer func() {
+		s.kubectlOptions.Namespace = originalNamespace
+	}()
+	s.addFinalizers(func() {
+		originalNamespace := s.kubectlOptions.Namespace
+		s.kubectlOptions.Namespace = namespace
+		defer func() {
+			s.kubectlOptions.Namespace = originalNamespace
+		}()
+		assert.Nil(s.t, k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml))
+	})
+	return k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
+}
+
+func ensureNumApisixCRDsCreated(url string, desired int) error {
+	condFunc := func() (bool, error) {
+		resp, err := http.Get(url)
+		if err != nil {
+			ginkgo.GinkgoT().Logf("failed to get resources from APISIX: %s", err.Error())
+			return false, nil
+		}
+		if resp.StatusCode != http.StatusOK {
+			ginkgo.GinkgoT().Logf("got status code %d from APISIX", resp.StatusCode)
+			return false, nil
+		}
+		var c counter
+		dec := json.NewDecoder(resp.Body)
+		if err := dec.Decode(&c); err != nil {
+			return false, err
+		}
+		// NOTE count field is a string.
+		count, err := strconv.Atoi(c.Count)
+		if err != nil {
+			return false, err
+		}
+		// 1 for dir.
+		if count != desired+1 {
+			ginkgo.GinkgoT().Logf("mismatched number of items, expected %d but found %d", desired, count-1)
+			return false, nil
+		}
+		return true, nil
+	}
+	return wait.Poll(3*time.Second, 35*time.Second, condFunc)
+}
+
+// EnsureNumApisixRoutesCreated waits until desired number of Routes are created in
+// APISIX cluster.
+func (s *Scaffold) EnsureNumApisixRoutesCreated(desired int) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/routes",
+	}
+	return ensureNumApisixCRDsCreated(u.String(), desired)
+}
+
+// EnsureNumApisixUpstreamsCreated waits until desired number of Upstreams are created in
+// APISIX cluster.
+func (s *Scaffold) EnsureNumApisixUpstreamsCreated(desired int) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/upstreams",
+	}
+	return ensureNumApisixCRDsCreated(u.String(), desired)
+}
+
+// ListApisixUpstreams list all upstreams from APISIX
+func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin",
+	}
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(&apisix.ClusterOptions{
+		BaseURL: u.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cli.Cluster("").Upstream().List(context.TODO())
+}
+
+// ListApisixRoutes list all routes from APISIX.
+func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin",
+	}
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(&apisix.ClusterOptions{
+		BaseURL: u.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cli.Cluster("").Route().List(context.TODO())
+}
+
+// ListApisixTls list all ssl from APISIX
+func (s *Scaffold) ListApisixTls() ([]*v1.Ssl, error) {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin",
+	}
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(&apisix.ClusterOptions{
+		BaseURL: u.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cli.Cluster("").SSL().List(context.TODO())
+}
+
+func (s *Scaffold) newAPISIXTunnels() error {
+	var (
+		adminNodePort int
+		httpNodePort  int
+		httpsNodePort int
+		adminPort     int
+		httpPort      int
+		httpsPort     int
+	)
+	for _, port := range s.apisixService.Spec.Ports {
+		if port.Name == "http" {
+			httpNodePort = int(port.NodePort)
+			httpPort = int(port.Port)
+		} else if port.Name == "https" {
+			httpsNodePort = int(port.NodePort)
+			httpsPort = int(port.Port)
+		} else if port.Name == "http-admin" {
+			adminNodePort = int(port.NodePort)
+			adminPort = int(port.Port)
+		}
+	}
+
+	s.apisixAdminTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
+		adminNodePort, adminPort)
+	s.apisixHttpTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
+		httpNodePort, httpPort)
+	s.apisixHttpsTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
+		httpsNodePort, httpsPort)
+
+	if err := s.apisixAdminTunnel.ForwardPortE(s.t); err != nil {
+		return err
+	}
+	s.addFinalizers(s.apisixAdminTunnel.Close)
+	if err := s.apisixHttpTunnel.ForwardPortE(s.t); err != nil {
+		return err
+	}
+	s.addFinalizers(s.apisixHttpTunnel.Close)
+	if err := s.apisixHttpsTunnel.ForwardPortE(s.t); err != nil {
+		return err
+	}
+	s.addFinalizers(s.apisixHttpsTunnel.Close)
+	return nil
+}
+
+// Namespace returns the current working namespace.
+func (s *Scaffold) Namespace() string {
+	return s.kubectlOptions.Namespace
+}

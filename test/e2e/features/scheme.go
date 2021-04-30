@@ -59,15 +59,10 @@ kind: ApisixUpstream
 metadata:
   name: grpc-server-service
 spec:
-  ports:
+  portLevelSettings:
     - port: 50051
       scheme: grpc
 `))
-		time.Sleep(2 * time.Second)
-		ups, err := s.ListApisixUpstreams()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), ups, 1)
-
 		err = s.CreateResourceFromString(`
 apiVersion: apisix.apache.org/v1
 kind: ApisixRoute
@@ -84,6 +79,11 @@ spec:
        path: /helloworld.Greeter/SayHello
 `)
 		assert.Nil(ginkgo.GinkgoT(), err)
+		time.Sleep(2 * time.Second)
+		ups, err := s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), ups, 1)
+		assert.Equal(ginkgo.GinkgoT(), ups[0].Scheme, "grpc")
 
 		// TODO enable the following test cases once APISIX supports HTTP/2 in plain.
 		//ep, err := s.GetAPISIXEndpoint()

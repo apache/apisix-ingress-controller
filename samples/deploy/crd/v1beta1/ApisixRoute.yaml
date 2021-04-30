@@ -20,9 +20,25 @@ kind: CustomResourceDefinition
 metadata:
   name: apisixroutes.apisix.apache.org
 spec:
+  additionalPrinterColumns:
+    - JSONPath: .spec.http[].match.hosts
+      name: Hosts
+      type: string
+    - JSONPath: .spec.http[].match.paths
+      name: URIs
+      type: string
+    - JSONPath: .spec.http[].match.backends[].serviceName
+      name: Target Service
+      type: string
+    - JSONPath: .metadata.creationTimestamp
+      name: Age
+      type: date
   group: apisix.apache.org
   versions:
     - name: v1
+      served: true
+      storage: false
+    - name: v2alpha1
       served: true
       storage: true
   scope: Namespaced
@@ -32,3 +48,152 @@ spec:
     kind: ApisixRoute
     shortNames:
       - ar
+  preserveUnknownFields: true # we have to enable it since plugin config
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      type: object
+      properties:
+        spec:
+          type: object
+          properties:
+            http:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                oneOf:
+                  - required: ["name", "match", "backend"]
+                  - required: ["name", "match", "backends"]
+                properties:
+                  name:
+                    type: string
+                    minLength: 1
+                  priority:
+                    type: integer
+                  match:
+                    type: object
+                    required:
+                    - paths
+                    properties:
+                      paths:
+                        type: array
+                        minItems: 1
+                        items:
+                          type: string
+                          pattern: "^/[a-zA-Z0-9\\-._~%!$&'()+,;=:@/]*\\*?$"
+                      hosts:
+                        type: array
+                        minItems: 1
+                        items:
+                          type: string
+                          pattern: "^\\*?[0-9a-zA-Z-._]+$"
+                      methods:
+                        type: array
+                        minItems: 1
+                        items:
+                          type: string
+                          enum: ["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"]
+                      remoteAddrs:
+                        type: array
+                        minItems: 1
+                        items:
+                          type: string
+                      exprs:
+                        type: array
+                        minItems: 1
+                        items:
+                          type: object
+                          properties:
+                            subject:
+                              type: object
+                              properties:
+                                scope:
+                                  type: string
+                                  enum: ["Cookie", "Header", "Path", "Query"]
+                                name:
+                                  type: string
+                                  minLength: 1
+                              required:
+                              - scope
+                            op:
+                              type: string
+                              enum:
+                                - Equal
+                                - NotEqual
+                                - GreaterThan
+                                - LessThan
+                                - In
+                                - NotIn
+                                - RegexMatch
+                                - RegexNotMatch
+                                - RegexMatchCaseInsensitive
+                                - RegexNotMatchCaseInsensitive
+                            value:
+                              type: string
+                            set:
+                              type: array
+                              items:
+                                type: string
+                          oneOf:
+                            - required: ["subject", "op", "value"]
+                            - required: ["subject", "op", "set"]
+                  websocket:
+                    type: boolean
+                  backend:
+                    type: object
+                    properties:
+                      serviceName:
+                        type: string
+                        minLength: 1
+                      servicePort:
+                        type: integer
+                        minimum: 1
+                        maximum: 65535
+                      resolveGranualrity:
+                        type: string
+                        enum: ["endpoint", "service"]
+                      weight:
+                        type: integer
+                        minimum: 0
+                    required:
+                      - serviceName
+                      - servicePort
+                  backends:
+                    type: array
+                    minItems: 1
+                    items:
+                      type: object
+                      properties:
+                        serviceName:
+                          type: string
+                          minLength: 1
+                        servicePort:
+                          type: integer
+                          minimum: 1
+                          maximum: 65535
+                        resolveGranualrity:
+                          type: string
+                          enum: ["endpoint", "service"]
+                        weight:
+                          type: integer
+                          minimum: 0
+                    required:
+                      - serviceName
+                      - servicePort
+                  plugins:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          minLength: 1
+                        enable:
+                          type: boolean
+                        config:
+                          type: object
+                    required:
+                      - name
+                      - enable

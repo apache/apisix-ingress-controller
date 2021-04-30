@@ -33,10 +33,13 @@ func TestNewConfigFromFile(t *testing.T) {
 		HTTPListen:      ":9090",
 		EnableProfiling: true,
 		Kubernetes: KubernetesConfig{
-			ResyncInterval: types.TimeDuration{time.Hour},
-			Kubeconfig:     "/path/to/foo/baz",
-			AppNamespaces:  []string{""},
-			ElectionID:     "my-election-id",
+			ResyncInterval:     types.TimeDuration{Duration: time.Hour},
+			Kubeconfig:         "/path/to/foo/baz",
+			AppNamespaces:      []string{""},
+			ElectionID:         "my-election-id",
+			IngressClass:       IngressClass,
+			IngressVersion:     IngressNetworkingV1,
+			ApisixRouteVersion: ApisixRouteV2alpha1,
 		},
 		APISIX: APISIXConfig{
 			BaseURL:  "http://127.0.0.1:8080/apisix",
@@ -61,7 +64,7 @@ func TestNewConfigFromFile(t *testing.T) {
 
 	assert.Equal(t, cfg, newCfg, "bad configuration")
 
-	// We constrcuts yaml data manually instead of using yaml.Marshal since
+	// We constructs yaml data manually instead of using yaml.Marshal since
 	// types.TimeDuration doesn't have a `yaml:",inline"` tag, if we add it,
 	// error ",inline needs a struct value field" will be reported.
 	// I don't know why.
@@ -74,6 +77,8 @@ kubernetes:
   kubeconfig: /path/to/foo/baz
   resync_interval: 1h0m0s
   election_id: my-election-id
+  ingress_class: apisix
+  ingress_version: networking/v1
 apisix:
   base_url: http://127.0.0.1:8080/apisix
   admin_key: "123456"

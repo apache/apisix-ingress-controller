@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"go.uber.org/multierr"
@@ -35,6 +36,10 @@ import (
 
 const (
 	_defaultTimeout = 5 * time.Second
+
+	_cacheNotSync = iota
+	_cacheSyncing
+	_cacheSynced
 )
 
 var (
@@ -47,7 +52,7 @@ var (
 	_errReadOnClosedResBody = errors.New("http: read on closed response body")
 )
 
-// Options contains parameters to customize APISIX client.
+// ClusterOptions contains parameters to customize APISIX client.
 type ClusterOptions struct {
 	Name     string
 	AdminKey string
@@ -60,13 +65,14 @@ type cluster struct {
 	baseURL      string
 	adminKey     string
 	cli          *http.Client
+	cacheState   int32
 	cache        cache.Cache
 	cacheSynced  chan struct{}
 	cacheSyncErr error
 	route        Route
 	upstream     Upstream
-	service      Service
 	ssl          SSL
+	streamRoute  StreamRoute
 }
 
 func newCluster(o *ClusterOptions) (Cluster, error) {
@@ -90,12 +96,13 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 			},
 		},
 		cache:       nil,
+		cacheState:  _cacheNotSync,
 		cacheSynced: make(chan struct{}),
 	}
 	c.route = newRouteClient(c)
 	c.upstream = newUpstreamClient(c)
-	c.service = newServiceClient(c)
 	c.ssl = newSSLClient(c)
+	c.streamRoute = newStreamRouteClient(c)
 
 	go c.syncCache()
 
@@ -105,6 +112,9 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 func (c *cluster) syncCache() {
 	log.Infow("syncing cache", zap.String("cluster", c.name))
 	now := time.Now()
+	if !atomic.CompareAndSwapInt32(&c.cacheState, _cacheNotSync, _cacheSyncing) {
+		panic("dubious state when sync cache")
+	}
 	defer func() {
 		if c.cacheSyncErr == nil {
 			log.Infow("cache synced",
@@ -129,6 +139,10 @@ func (c *cluster) syncCache() {
 		c.cacheSyncErr = err
 	}
 	close(c.cacheSynced)
+
+	if !atomic.CompareAndSwapInt32(&c.cacheState, _cacheSyncing, _cacheSynced) {
+		panic("dubious state when sync cache")
+	}
 }
 
 func (c *cluster) syncCacheOnce() (bool, error) {
@@ -141,11 +155,6 @@ func (c *cluster) syncCacheOnce() (bool, error) {
 	routes, err := c.route.List(context.TODO())
 	if err != nil {
 		log.Errorf("failed to list route in APISIX: %s", err)
-		return false, err
-	}
-	services, err := c.service.List(context.TODO())
-	if err != nil {
-		log.Errorf("failed to list services in APISIX: %s", err)
 		return false, err
 	}
 	upstreams, err := c.upstream.List(context.TODO())
@@ -163,16 +172,6 @@ func (c *cluster) syncCacheOnce() (bool, error) {
 		if err := c.cache.InsertRoute(r); err != nil {
 			log.Errorw("failed to insert route to cache",
 				zap.String("route", r.ID),
-				zap.String("cluster", c.name),
-				zap.String("error", err.Error()),
-			)
-			return false, err
-		}
-	}
-	for _, s := range services {
-		if err := c.cache.InsertService(s); err != nil {
-			log.Errorw("failed to insert service to cache",
-				zap.String("service", s.ID),
 				zap.String("cluster", c.name),
 				zap.String("error", err.Error()),
 			)
@@ -212,6 +211,11 @@ func (c *cluster) HasSynced(ctx context.Context) error {
 	if c.cacheSyncErr != nil {
 		return c.cacheSyncErr
 	}
+	if atomic.LoadInt32(&c.cacheState) == _cacheSynced {
+		return nil
+	}
+
+	// still in sync
 	now := time.Now()
 	log.Warnf("waiting cluster %s to ready, it may takes a while", c.name)
 	select {
@@ -234,14 +238,14 @@ func (c *cluster) Upstream() Upstream {
 	return c.upstream
 }
 
-// Service implements Cluster.Service method.
-func (c *cluster) Service() Service {
-	return c.service
-}
-
 // SSL implements Cluster.SSL method.
 func (c *cluster) SSL() SSL {
 	return c.ssl
+}
+
+// StreamRoute implements Cluster.StreamRoute method.
+func (c *cluster) StreamRoute() StreamRoute {
+	return c.streamRoute
 }
 
 func (s *cluster) applyAuth(req *http.Request) {
@@ -336,7 +340,7 @@ func (s *cluster) createResource(ctx context.Context, url string, body io.Reader
 }
 
 func (s *cluster) updateResource(ctx context.Context, url string, body io.Reader) (*updateResponse, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, url, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
 	if err != nil {
 		return nil, err
 	}

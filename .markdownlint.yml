@@ -30,6 +30,8 @@ MD033: false
 # MD036/no-emphasis-as-heading/no-emphasis-as-header Emphasis used instead of a heading
 MD036: false
 
+MD041: false
+
 # MD024
 no-duplicate-heading:
   siblings_only: true

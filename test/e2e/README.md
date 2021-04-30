@@ -20,8 +20,6 @@
 apisix ingress controller e2e test suites
 =========================================
 
-For running e2e test cases, a Kubernetes cluster is needed, [minikube](https://minikube.sigs.k8s.io/docs/start/) is a good choice to build k8s cluster in development environment.
-
 Scaffold
 ---------
 
@@ -33,4 +31,28 @@ a e2e test scaffold is prepared to run test cases easily. The source codes are i
 * Create apisix-ingress-controller deployment in the specified namespace;
 * Create a http server with [kennethreitz/httpbin](https://hub.docker.com/r/kennethreitz/httpbin/) as the upstream.
 
-The abovementioned steps are run before each case starts and all resources will be destroyed after the case finishes.
+The above mentioned steps are run before each case starts and all resources will be destroyed after the case finishes.
+
+Plugins
+-------
+
+Test cases inside `plugins` directory test the availability about APISIX plugins.
+
+Features
+--------
+
+Test caes inside `features` directory test some features about APISIX, such as traffic-split, health check and so on.
+
+Quick Start
+-----------
+
+Run `make e2e-test` to run the e2e test suites in your development environment, a several stuffs that this command will do:
+
+1. Create a Kubernetes cluster by [kind](https://kind.sigs.k8s.io/), please installing in advance.
+2. Build and push all related images to this cluster.
+3. Run e2e test suites.
+
+Step `1` and `2` can be skipped by passing `E2E_SKIP_BUILD=1` to this directive, also, you can customize the
+running concurrency of e2e test suites by passing `E2E_CONCURRENCY=X` where `X` is the desired number of cases running in parallel.
+
+Run `make kind-reset` to delete the cluster that created by `make e2e-test`.

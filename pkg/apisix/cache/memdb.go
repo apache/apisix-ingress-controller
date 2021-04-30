@@ -46,11 +46,8 @@ func NewMemDBCache() (Cache, error) {
 }
 
 func (c *dbCache) InsertRoute(r *v1.Route) error {
-	return c.insert("route", r.DeepCopy())
-}
-
-func (c *dbCache) InsertService(s *v1.Service) error {
-	return c.insert("service", s.DeepCopy())
+	route := r.DeepCopy()
+	return c.insert("route", route)
 }
 
 func (c *dbCache) InsertSSL(ssl *v1.Ssl) error {
@@ -59,6 +56,10 @@ func (c *dbCache) InsertSSL(ssl *v1.Ssl) error {
 
 func (c *dbCache) InsertUpstream(u *v1.Upstream) error {
 	return c.insert("upstream", u.DeepCopy())
+}
+
+func (c *dbCache) InsertStreamRoute(sr *v1.StreamRoute) error {
+	return c.insert("stream_route", sr.DeepCopy())
 }
 
 func (c *dbCache) insert(table string, obj interface{}) error {
@@ -71,42 +72,42 @@ func (c *dbCache) insert(table string, obj interface{}) error {
 	return nil
 }
 
-func (c *dbCache) GetRoute(key string) (*v1.Route, error) {
-	obj, err := c.get("route", key)
+func (c *dbCache) GetRoute(id string) (*v1.Route, error) {
+	obj, err := c.get("route", id)
 	if err != nil {
 		return nil, err
 	}
 	return obj.(*v1.Route).DeepCopy(), nil
 }
 
-func (c *dbCache) GetService(key string) (*v1.Service, error) {
-	obj, err := c.get("service", key)
-	if err != nil {
-		return nil, err
-	}
-	return obj.(*v1.Service).DeepCopy(), nil
-}
-
-func (c *dbCache) GetSSL(key string) (*v1.Ssl, error) {
-	obj, err := c.get("ssl", key)
+func (c *dbCache) GetSSL(id string) (*v1.Ssl, error) {
+	obj, err := c.get("ssl", id)
 	if err != nil {
 		return nil, err
 	}
 	return obj.(*v1.Ssl).DeepCopy(), nil
 }
 
-func (c *dbCache) GetUpstream(key string) (*v1.Upstream, error) {
-	obj, err := c.get("upstream", key)
+func (c *dbCache) GetUpstream(id string) (*v1.Upstream, error) {
+	obj, err := c.get("upstream", id)
 	if err != nil {
 		return nil, err
 	}
 	return obj.(*v1.Upstream).DeepCopy(), nil
 }
 
-func (c *dbCache) get(table, key string) (interface{}, error) {
+func (c *dbCache) GetStreamRoute(id string) (*v1.StreamRoute, error) {
+	obj, err := c.get("stream_route", id)
+	if err != nil {
+		return nil, err
+	}
+	return obj.(*v1.StreamRoute).DeepCopy(), nil
+}
+
+func (c *dbCache) get(table, id string) (interface{}, error) {
 	txn := c.db.Txn(false)
 	defer txn.Abort()
-	obj, err := txn.First(table, "id", key)
+	obj, err := txn.First(table, "id", id)
 	if err != nil {
 		if err == memdb.ErrNotFound {
 			return nil, ErrNotFound
@@ -129,18 +130,6 @@ func (c *dbCache) ListRoutes() ([]*v1.Route, error) {
 		routes = append(routes, raw.(*v1.Route).DeepCopy())
 	}
 	return routes, nil
-}
-
-func (c *dbCache) ListServices() ([]*v1.Service, error) {
-	raws, err := c.list("service")
-	if err != nil {
-		return nil, err
-	}
-	services := make([]*v1.Service, 0, len(raws))
-	for _, raw := range raws {
-		services = append(services, raw.(*v1.Service).DeepCopy())
-	}
-	return services, nil
 }
 
 func (c *dbCache) ListSSL() ([]*v1.Ssl, error) {
@@ -167,6 +156,18 @@ func (c *dbCache) ListUpstreams() ([]*v1.Upstream, error) {
 	return upstreams, nil
 }
 
+func (c *dbCache) ListStreamRoutes() ([]*v1.StreamRoute, error) {
+	raws, err := c.list("stream_route")
+	if err != nil {
+		return nil, err
+	}
+	streamRoutes := make([]*v1.StreamRoute, 0, len(raws))
+	for _, raw := range raws {
+		streamRoutes = append(streamRoutes, raw.(*v1.StreamRoute).DeepCopy())
+	}
+	return streamRoutes, nil
+}
+
 func (c *dbCache) list(table string) ([]interface{}, error) {
 	txn := c.db.Txn(false)
 	defer txn.Abort()
@@ -185,13 +186,6 @@ func (c *dbCache) DeleteRoute(r *v1.Route) error {
 	return c.delete("route", r)
 }
 
-func (c *dbCache) DeleteService(s *v1.Service) error {
-	if err := c.checkServiceReference(s); err != nil {
-		return err
-	}
-	return c.delete("service", s)
-}
-
 func (c *dbCache) DeleteSSL(ssl *v1.Ssl) error {
 	return c.delete("ssl", ssl)
 }
@@ -201,6 +195,10 @@ func (c *dbCache) DeleteUpstream(u *v1.Upstream) error {
 		return err
 	}
 	return c.delete("upstream", u)
+}
+
+func (c *dbCache) DeleteStreamRoute(sr *v1.StreamRoute) error {
+	return c.delete("stream_route", sr)
 }
 
 func (c *dbCache) delete(table string, obj interface{}) error {
@@ -216,36 +214,24 @@ func (c *dbCache) delete(table string, obj interface{}) error {
 	return nil
 }
 
-func (c *dbCache) checkServiceReference(s *v1.Service) error {
-	// Service is referenced by Route.
-	txn := c.db.Txn(false)
-	defer txn.Abort()
-	obj, err := txn.First("route", "service_id", s.FullName)
-	if err != nil {
-		if err == memdb.ErrNotFound {
-			return nil
-		}
-		return err
-	}
-	if obj == nil {
-		return nil
-	}
-	return ErrStillInUse
-}
-
 func (c *dbCache) checkUpstreamReference(u *v1.Upstream) error {
-	// Upstream is referenced by Service.
+	// Upstream is referenced by Route.
 	txn := c.db.Txn(false)
 	defer txn.Abort()
-	obj, err := txn.First("service", "upstream_id", u.FullName)
-	if err != nil {
-		if err == memdb.ErrNotFound {
-			return nil
-		}
+	obj, err := txn.First("route", "upstream_id", u.ID)
+	if err != nil && err != memdb.ErrNotFound {
 		return err
 	}
-	if obj == nil {
-		return nil
+	if obj != nil {
+		return ErrStillInUse
 	}
-	return ErrStillInUse
+
+	obj, err = txn.First("stream_route", "upstream_id", u.ID)
+	if err != nil && err != memdb.ErrNotFound {
+		return err
+	}
+	if obj != nil {
+		return ErrStillInUse
+	}
+	return nil
 }

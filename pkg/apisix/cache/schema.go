@@ -28,28 +28,7 @@ var (
 					"id": {
 						Name:    "id",
 						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "FullName"},
-					},
-					"name": {
-						Name:         "name",
-						Unique:       true,
-						Indexer:      &memdb.StringFieldIndex{Field: "Name"},
-						AllowMissing: true,
-					},
-					"service_id": {
-						Name:    "service_id",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "ServiceId"},
-					},
-				},
-			},
-			"service": {
-				Name: "service",
-				Indexes: map[string]*memdb.IndexSchema{
-					"id": {
-						Name:    "id",
-						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "FullName"},
+						Indexer: &memdb.StringFieldIndex{Field: "ID"},
 					},
 					"name": {
 						Name:         "name",
@@ -71,7 +50,7 @@ var (
 					"id": {
 						Name:    "id",
 						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "FullName"},
+						Indexer: &memdb.StringFieldIndex{Field: "ID"},
 					},
 					"name": {
 						Name:         "name",
@@ -87,7 +66,23 @@ var (
 					"id": {
 						Name:    "id",
 						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "FullName"},
+						Indexer: &memdb.StringFieldIndex{Field: "ID"},
+					},
+				},
+			},
+			"stream_route": {
+				Name: "stream_route",
+				Indexes: map[string]*memdb.IndexSchema{
+					"id": {
+						Name:    "id",
+						Unique:  true,
+						Indexer: &memdb.StringFieldIndex{Field: "ID"},
+					},
+					"upstream_id": {
+						Name:         "upstream_id",
+						Unique:       false,
+						Indexer:      &memdb.StringFieldIndex{Field: "UpstreamId"},
+						AllowMissing: true,
 					},
 				},
 			},

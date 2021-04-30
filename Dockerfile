@@ -17,13 +17,21 @@
 FROM golang:1.13.8 AS build-env
 LABEL maintainer="gxthrj@163.com"
 
+ARG ENABLE_PROXY=false
+
 RUN rm -rf /etc/localtime \
     && ln -s /usr/share/zoneinfo/Hongkong /etc/localtime \
     && dpkg-reconfigure -f noninteractive tzdata
 
 WORKDIR /build
+COPY go.mod .
+COPY go.sum .
+
+RUN if [ "$ENABLE_PROXY" = "true" ] ; then go env -w GOPROXY=https://goproxy.cn,direct ; fi \
+    && go mod download
+
 COPY . .
-RUN GOPROXY=https://goproxy.io,direct make build
+RUN make build
 
 FROM centos:centos7
 LABEL maintainer="gxthrj@163.com"

@@ -28,6 +28,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/testing"
@@ -45,6 +46,8 @@ type Options struct {
 	APISIXConfigPath        string
 	APISIXDefaultConfigPath string
 	IngressAPISIXReplicas   int
+	HTTPBinServicePort      int
+	APISIXRouteVersion      string
 }
 
 type Scaffold struct {
@@ -58,6 +61,10 @@ type Scaffold struct {
 	httpbinDeployment *appsv1.Deployment
 	httpbinService    *corev1.Service
 	finializers       []func()
+
+	apisixAdminTunnel *k8s.Tunnel
+	apisixHttpTunnel  *k8s.Tunnel
+	apisixHttpsTunnel *k8s.Tunnel
 
 	// Used for template rendering.
 	EtcdServiceFQDN string
@@ -85,6 +92,9 @@ func GetKubeconfig() string {
 
 // NewScaffold creates an e2e test scaffold.
 func NewScaffold(o *Options) *Scaffold {
+	if o.APISIXRouteVersion == "" {
+		o.APISIXRouteVersion = kube.ApisixRouteV1
+	}
 	defer ginkgo.GinkgoRecover()
 
 	s := &Scaffold{
@@ -106,6 +116,8 @@ func NewDefaultScaffold() *Scaffold {
 		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
 		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
 		IngressAPISIXReplicas:   1,
+		HTTPBinServicePort:      80,
+		APISIXRouteVersion:      kube.ApisixRouteV1,
 	}
 	return NewScaffold(opts)
 }
@@ -129,23 +141,25 @@ func (s *Scaffold) DefaultHTTPBackend() (string, []int32) {
 	return s.httpbinService.Name, ports
 }
 
-// GetAPISIXEndpoint returns the service and port (as an endpoint).
-func (s *Scaffold) GetAPISIXEndpoint() (string, error) {
-	return s.apisixServiceURL()
+// ApisixAdminServiceAndPort returns the apisix service name and
+// it's admin port.
+func (s *Scaffold) ApisixAdminServiceAndPort() (string, int32) {
+	return "apisix-service-e2e-test", 9180
 }
 
 // NewAPISIXClient creates the default HTTP client.
 func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
-	host, err := s.apisixServiceURL()
-	assert.Nil(s.t, err, "getting apisix service url")
 	u := url.URL{
 		Scheme: "http",
-		Host:   host,
+		Host:   s.apisixHttpTunnel.Endpoint(),
 	}
 	return httpexpect.WithConfig(httpexpect.Config{
 		BaseURL: u.String(),
 		Client: &http.Client{
 			Transport: &http.Transport{},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
 		},
 		Reporter: httpexpect.NewAssertReporter(
 			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
@@ -154,12 +168,10 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 }
 
 // NewAPISIXHttpsClient creates the default HTTPs client.
-func (s *Scaffold) NewAPISIXHttpsClient() *httpexpect.Expect {
-	host, err := s.apisixServiceHttpsURL()
-	assert.Nil(s.t, err, "getting apisix service url")
+func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
 	u := url.URL{
 		Scheme: "https",
-		Host:   host,
+		Host:   s.apisixHttpsTunnel.Endpoint(),
 	}
 	return httpexpect.WithConfig(httpexpect.Config{
 		BaseURL: u.String(),
@@ -168,6 +180,7 @@ func (s *Scaffold) NewAPISIXHttpsClient() *httpexpect.Expect {
 				TLSClientConfig: &tls.Config{
 					// accept any certificate; for testing only!
 					InsecureSkipVerify: true,
+					ServerName:         host,
 				},
 			},
 		},
@@ -175,6 +188,11 @@ func (s *Scaffold) NewAPISIXHttpsClient() *httpexpect.Expect {
 			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
 		),
 	})
+}
+
+// APISIXGatewayServiceEndpoint returns the apisix http gateway endpoint.
+func (s *Scaffold) APISIXGatewayServiceEndpoint() string {
+	return s.apisixHttpTunnel.Endpoint()
 }
 
 func (s *Scaffold) beforeEach() {
@@ -202,6 +220,9 @@ func (s *Scaffold) beforeEach() {
 	err = s.waitAllAPISIXPodsAvailable()
 	assert.Nil(s.t, err, "waiting for apisix ready")
 
+	err = s.newAPISIXTunnels()
+	assert.Nil(s.t, err, "creating apisix tunnels")
+
 	s.httpbinService, err = s.newHTTPBIN()
 	assert.Nil(s.t, err, "initializing httpbin")
 
@@ -228,7 +249,7 @@ func (s *Scaffold) afterEach() {
 	time.Sleep(3 * time.Second)
 }
 
-func (s *Scaffold) addFinializer(f func()) {
+func (s *Scaffold) addFinalizers(f func()) {
 	s.finializers = append(s.finializers, f)
 }
 

@@ -159,15 +159,13 @@ func TestUpstreamClient(t *testing.T) {
 	// Create
 	key := "upstream/abc"
 	lbType := "roundrobin"
-	fullName := "default_test"
-	group := "default"
 	name := "test"
 	ip := "10.0.11.153"
 	port := 15006
 	weight := 100
-	nodes := []v1.Node{
+	nodes := v1.UpstreamNodes{
 		{
-			IP:     ip,
+			Host:   ip,
 			Port:   port,
 			Weight: weight,
 		},
@@ -175,10 +173,8 @@ func TestUpstreamClient(t *testing.T) {
 
 	obj, err := cli.Create(context.TODO(), &v1.Upstream{
 		Metadata: v1.Metadata{
-			ID:       "1",
-			FullName: fullName,
-			Group:    group,
-			Name:     name,
+			ID:   "1",
+			Name: name,
 		},
 		Type:  lbType,
 		Key:   key,
@@ -190,10 +186,8 @@ func TestUpstreamClient(t *testing.T) {
 	id2 := "2"
 	obj, err = cli.Create(context.TODO(), &v1.Upstream{
 		Metadata: v1.Metadata{
-			ID:       id2,
-			FullName: fullName,
-			Group:    group,
-			Name:     name,
+			ID:   id2,
+			Name: name,
 		},
 		Type:  lbType,
 		Key:   key,
@@ -219,10 +213,8 @@ func TestUpstreamClient(t *testing.T) {
 	// Patch then List
 	_, err = cli.Update(context.Background(), &v1.Upstream{
 		Metadata: v1.Metadata{
-			ID:       "2",
-			FullName: fullName,
-			Group:    group,
-			Name:     name,
+			ID:   "2",
+			Name: name,
 		},
 		Type:  "chash",
 		Key:   key,

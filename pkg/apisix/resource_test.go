@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -57,23 +58,42 @@ func TestItemConvertRoute(t *testing.T) {
 		Value: json.RawMessage(`
 			{
 				"upstream_id": "13",
-				"service_id": "14",
 				"host": "foo.com",
 				"uri": "/shop/133/details",
-				"desc": "unknown",
+				"name": "unknown",
 				"methods": ["GET", "POST"]
 			}
 		`),
 	}
 
-	r, err := item.route("qa")
+	r, err := item.route()
 	assert.Nil(t, err)
 	assert.Equal(t, r.UpstreamId, "13")
-	assert.Equal(t, r.ServiceId, "14")
 	assert.Equal(t, r.Host, "foo.com")
-	assert.Equal(t, r.Path, "/shop/133/details")
+	assert.Equal(t, r.Uri, "/shop/133/details")
 	assert.Equal(t, r.Methods[0], "GET")
 	assert.Equal(t, r.Methods[1], "POST")
 	assert.Equal(t, r.Name, "unknown")
-	assert.Equal(t, r.FullName, "qa_unknown")
+}
+
+func TestRouteVarsUnmarshalJSONCompatibility(t *testing.T) {
+	var route v1.Route
+	data := `{"vars":{}}`
+	err := json.Unmarshal([]byte(data), &route)
+	assert.Nil(t, err)
+
+	data = `{"vars":{"a":"b"}}`
+	err = json.Unmarshal([]byte(data), &route)
+	assert.Equal(t, err.Error(), "unexpected non-empty object")
+
+	data = `{"vars":[]}`
+	err = json.Unmarshal([]byte(data), &route)
+	assert.Nil(t, err)
+
+	data = `{"vars":[["http_a","==","b"]]}`
+	err = json.Unmarshal([]byte(data), &route)
+	assert.Nil(t, err)
+	assert.Equal(t, "http_a", route.Vars[0][0].StrVal)
+	assert.Equal(t, "==", route.Vars[0][1].StrVal)
+	assert.Equal(t, "b", route.Vars[0][2].StrVal)
 }

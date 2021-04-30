@@ -1,0 +1,76 @@
+{
+  "version": "0.3.0",
+  "sidebar": [
+    {
+      "type": "link",
+      "label": "Apache APISIX Ingress Controller",
+      "href": "https://apisix.apache.org/docs/ingress-controller/getting-started/"
+    },
+    {
+      "type": "doc",
+      "id": "getting-started"
+    },
+    {
+      "type": "category",
+      "label": "Practices",
+      "items": [
+        "practices/index",
+        "practices/proxy-the-httpbin-service-with-ingress",
+        "practices/proxy-the-httpbin-service"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Installation",
+      "items": [
+        "deployments/ack",
+        "deployments/aws",
+        "deployments/azure",
+        "deployments/gke",
+        "deployments/k3s-rke",
+        "deployments/kubesphere",
+        "deployments/minikube",
+        "deployments/tke"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "References",
+      "items": [
+        "references/apisix_route_v1",
+        "references/apisix_route_v2alpha1",
+        "references/apisix_upstream",
+        "references/apisix_tls"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Concepts",
+      "items": [
+        "concepts/apisix_route",
+        "concepts/apisix_upstream"
+      ]
+    },
+    {
+      "type": "doc",
+      "id": "design"
+    },
+    {
+      "type": "doc",
+      "id": "development"
+    },
+    {
+      "type": "doc",
+      "id": "contribute"
+    },
+    {
+      "type": "doc",
+      "id": "FAQ"
+    },
+    {
+      "type": "link",
+      "label": "CHANGELOG",
+      "href": "https://github.com/apache/apisix-ingress-controller/blob/master/CHANGELOG.md"
+    }
+  ]
+}

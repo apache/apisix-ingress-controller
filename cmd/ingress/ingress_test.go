@@ -55,14 +55,6 @@ func (fws *fakeWriteSyncer) Write(p []byte) (int, error) {
 	return fws.buf.Write(p)
 }
 
-func (fws *fakeWriteSyncer) bytes() (p []byte) {
-	s := fws.buf.Bytes()
-	p = make([]byte, len(s))
-	copy(p, s)
-	fws.buf.Reset()
-	return
-}
-
 func getRandomListen() string {
 	port := rand.Intn(10000) + 10000
 	return fmt.Sprintf("127.0.0.1:%d", port)
@@ -89,7 +81,7 @@ func TestSignalHandler(t *testing.T) {
 		close(waitCh)
 	}()
 
-	time.Sleep(time.Second)
+	time.Sleep(5 * time.Second)
 	fws := &fakeWriteSyncer{}
 	logger, err := log.NewLogger(log.WithLogLevel("info"), log.WithWriteSyncer(fws))
 	assert.Nil(t, err)
@@ -125,7 +117,7 @@ func TestNewIngressCommandEffectiveLog(t *testing.T) {
 		close(stopCh)
 	}()
 
-	time.Sleep(time.Second)
+	time.Sleep(5 * time.Second)
 	assert.Nil(t, syscall.Kill(os.Getpid(), syscall.SIGINT))
 	<-stopCh
 
@@ -155,7 +147,7 @@ func TestNewIngressCommandEffectiveLog(t *testing.T) {
 	assert.Equal(t, cfg.HTTPListen, listen)
 	assert.Equal(t, cfg.EnableProfiling, true)
 	assert.Equal(t, cfg.Kubernetes.Kubeconfig, "/foo/bar/baz")
-	assert.Equal(t, cfg.Kubernetes.ResyncInterval, types.TimeDuration{24 * time.Hour})
+	assert.Equal(t, cfg.Kubernetes.ResyncInterval, types.TimeDuration{Duration: 24 * time.Hour})
 	assert.Equal(t, cfg.APISIX.AdminKey, "0x123")
 	assert.Equal(t, cfg.APISIX.BaseURL, "http://apisixgw.default.cluster.local/apisix")
 }
