@@ -42,6 +42,16 @@ spec:
         spec:
           type: object
           properties:
+            admin:
+              type: object
+              required:
+                - baseURL
+              properties:
+                baseURL:
+                  type: string
+                  pattern: "https?://[^:]+:(\\d+)"
+                adminKey:
+                  type: string
             monitoring:
               type: object
               properties:
