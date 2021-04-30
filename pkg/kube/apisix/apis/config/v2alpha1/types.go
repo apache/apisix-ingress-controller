@@ -245,6 +245,9 @@ type ApisixRouteList struct {
 // +kubebuilder:subresource:status
 
 // ApisixClusterConfig is the Schema for the ApisixClusterConfig resource.
+// An ApisixClusterConfig is used to identify an APISIX cluster, it's a
+// ClusterScoped resource so the name is unique.
+// It also contains some cluster-level configurations like monitoring.
 type ApisixClusterConfig struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata" yaml:"metadata"`
@@ -258,6 +261,9 @@ type ApisixClusterConfigSpec struct {
 	// Monitoring categories all monitoring related features.
 	// +optional
 	Monitoring *ApisixClusterMonitoringConfig `json:"monitoring" yaml:"monitoring"`
+	// Admin contains the Admin API information about APISIX cluster.
+	// +optional
+	Admin *ApisixClusterAdminConfig `json:"admin" yaml:"admin"`
 }
 
 // ApisixClusterMonitoringConfig categories all monitoring related features.
@@ -282,6 +288,15 @@ type ApisixClusterSkywalkingConfig struct {
 	Enable bool `json:"enable" yaml:"enable"`
 	// SampleRatio means the ratio to collect
 	SampleRatio float64 `json:"sampleRatio" yaml:"sampleRatio"`
+}
+
+// ApisixClusterAdminConfig is the admin config for the corresponding APISIX Cluster.
+type ApisixClusterAdminConfig struct {
+	// BaseURL is the base URL for the APISIX Admin API.
+	// It looks like "http://apisix-admin.default.svc.cluster.local:9080/apisix/admin"
+	BaseURL string
+	// AdminKey is used to verify the admin API user.
+	AdminKey string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
