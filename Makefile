@@ -68,9 +68,7 @@ unit-test:
 ### e2e-test:             Run e2e test cases (kind is required)
 .PHONY: e2e-test
 e2e-test: ginkgo-check push-images-to-kind
-	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixRoute.yaml
-	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml
-	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml
+	kubectl apply -k $(PWD)/samples/deploy/crd/v1beta1
 	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=$(E2E_CONCURRENCY)
 
 .PHONY: ginkgo-check

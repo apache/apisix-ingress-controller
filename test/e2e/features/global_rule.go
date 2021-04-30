@@ -32,7 +32,7 @@ var _ = ginkgo.Describe("traffic split", func() {
 		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
 	}
 	s := scaffold.NewScaffold(opts)
-	ginkgo.FIt("enable prometheus", func() {
+	ginkgo.It("enable prometheus", func() {
 		acc := `
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixClusterConfig
