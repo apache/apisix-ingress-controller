@@ -35,8 +35,8 @@ type ApisixV2alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ApisixV2alpha1Client) ApisixClusterConfigs(namespace string) ApisixClusterConfigInterface {
-	return newApisixClusterConfigs(c, namespace)
+func (c *ApisixV2alpha1Client) ApisixClusterConfigs() ApisixClusterConfigInterface {
+	return newApisixClusterConfigs(c)
 }
 
 func (c *ApisixV2alpha1Client) ApisixRoutes(namespace string) ApisixRouteInterface {
