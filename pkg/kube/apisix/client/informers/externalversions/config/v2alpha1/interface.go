@@ -43,7 +43,7 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 
 // ApisixClusterConfigs returns a ApisixClusterConfigInformer.
 func (v *version) ApisixClusterConfigs() ApisixClusterConfigInformer {
-	return &apisixClusterConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &apisixClusterConfigInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // ApisixRoutes returns a ApisixRouteInformer.

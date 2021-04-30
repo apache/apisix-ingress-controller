@@ -33,7 +33,7 @@ import (
 // ApisixClusterConfigsGetter has a method to return a ApisixClusterConfigInterface.
 // A group's client should implement this interface.
 type ApisixClusterConfigsGetter interface {
-	ApisixClusterConfigs(namespace string) ApisixClusterConfigInterface
+	ApisixClusterConfigs() ApisixClusterConfigInterface
 }
 
 // ApisixClusterConfigInterface has methods to work with ApisixClusterConfig resources.
@@ -52,14 +52,12 @@ type ApisixClusterConfigInterface interface {
 // apisixClusterConfigs implements ApisixClusterConfigInterface
 type apisixClusterConfigs struct {
 	client rest.Interface
-	ns     string
 }
 
 // newApisixClusterConfigs returns a ApisixClusterConfigs
-func newApisixClusterConfigs(c *ApisixV2alpha1Client, namespace string) *apisixClusterConfigs {
+func newApisixClusterConfigs(c *ApisixV2alpha1Client) *apisixClusterConfigs {
 	return &apisixClusterConfigs{
 		client: c.RESTClient(),
-		ns:     namespace,
 	}
 }
 
@@ -67,7 +65,6 @@ func newApisixClusterConfigs(c *ApisixV2alpha1Client, namespace string) *apisixC
 func (c *apisixClusterConfigs) Get(ctx context.Context, name string, options v1.GetOptions) (result *v2alpha1.ApisixClusterConfig, err error) {
 	result = &v2alpha1.ApisixClusterConfig{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("apisixclusterconfigs").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -84,7 +81,6 @@ func (c *apisixClusterConfigs) List(ctx context.Context, opts v1.ListOptions) (r
 	}
 	result = &v2alpha1.ApisixClusterConfigList{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("apisixclusterconfigs").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -101,7 +97,6 @@ func (c *apisixClusterConfigs) Watch(ctx context.Context, opts v1.ListOptions) (
 	}
 	opts.Watch = true
 	return c.client.Get().
-		Namespace(c.ns).
 		Resource("apisixclusterconfigs").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -112,7 +107,6 @@ func (c *apisixClusterConfigs) Watch(ctx context.Context, opts v1.ListOptions) (
 func (c *apisixClusterConfigs) Create(ctx context.Context, apisixClusterConfig *v2alpha1.ApisixClusterConfig, opts v1.CreateOptions) (result *v2alpha1.ApisixClusterConfig, err error) {
 	result = &v2alpha1.ApisixClusterConfig{}
 	err = c.client.Post().
-		Namespace(c.ns).
 		Resource("apisixclusterconfigs").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(apisixClusterConfig).
@@ -125,7 +119,6 @@ func (c *apisixClusterConfigs) Create(ctx context.Context, apisixClusterConfig *
 func (c *apisixClusterConfigs) Update(ctx context.Context, apisixClusterConfig *v2alpha1.ApisixClusterConfig, opts v1.UpdateOptions) (result *v2alpha1.ApisixClusterConfig, err error) {
 	result = &v2alpha1.ApisixClusterConfig{}
 	err = c.client.Put().
-		Namespace(c.ns).
 		Resource("apisixclusterconfigs").
 		Name(apisixClusterConfig.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -138,7 +131,6 @@ func (c *apisixClusterConfigs) Update(ctx context.Context, apisixClusterConfig *
 // Delete takes name of the apisixClusterConfig and deletes it. Returns an error if one occurs.
 func (c *apisixClusterConfigs) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("apisixclusterconfigs").
 		Name(name).
 		Body(&opts).
@@ -153,7 +145,6 @@ func (c *apisixClusterConfigs) DeleteCollection(ctx context.Context, opts v1.Del
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("apisixclusterconfigs").
 		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -166,7 +157,6 @@ func (c *apisixClusterConfigs) DeleteCollection(ctx context.Context, opts v1.Del
 func (c *apisixClusterConfigs) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v2alpha1.ApisixClusterConfig, err error) {
 	result = &v2alpha1.ApisixClusterConfig{}
 	err = c.client.Patch(pt).
-		Namespace(c.ns).
 		Resource("apisixclusterconfigs").
 		Name(name).
 		SubResource(subresources...).

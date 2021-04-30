@@ -42,33 +42,32 @@ type ApisixClusterConfigInformer interface {
 type apisixClusterConfigInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
-	namespace        string
 }
 
 // NewApisixClusterConfigInformer constructs a new informer for ApisixClusterConfig type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewApisixClusterConfigInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredApisixClusterConfigInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewApisixClusterConfigInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredApisixClusterConfigInformer(client, resyncPeriod, indexers, nil)
 }
 
 // NewFilteredApisixClusterConfigInformer constructs a new informer for ApisixClusterConfig type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredApisixClusterConfigInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredApisixClusterConfigInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ApisixV2alpha1().ApisixClusterConfigs(namespace).List(context.TODO(), options)
+				return client.ApisixV2alpha1().ApisixClusterConfigs().List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ApisixV2alpha1().ApisixClusterConfigs(namespace).Watch(context.TODO(), options)
+				return client.ApisixV2alpha1().ApisixClusterConfigs().Watch(context.TODO(), options)
 			},
 		},
 		&configv2alpha1.ApisixClusterConfig{},
@@ -78,7 +77,7 @@ func NewFilteredApisixClusterConfigInformer(client versioned.Interface, namespac
 }
 
 func (f *apisixClusterConfigInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredApisixClusterConfigInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewFilteredApisixClusterConfigInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
 func (f *apisixClusterConfigInformer) Informer() cache.SharedIndexInformer {
