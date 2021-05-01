@@ -42,7 +42,7 @@ kubectl expose pod httpbin --port 80
 
 ## Resource Delivery
 
-In order to let Apache APISIX proxies requests to httpbin, we need to create an `ApisixRoute` resource, if you're not familiar with it, see the [reference](https://github.com/apache/apisix-ingress-controller/blob/master/docs/en/latest/concepts/apisix_route.md) for the details.
+In order to let Apache APISIX proxies requests to httpbin, we need to create an `ApisixRoute` resource, if you're not familiar with it, see the [reference](https://github.com/apache/apisix-ingress-controller/blob/master/docs/en/latest/references/apisix_route_v2alpha1.md) for the details.
 
 ```yaml
 # httpbin-route.yaml
