@@ -26,8 +26,8 @@ This document explains how apisix-ingress-controller guides Apache APISIX routes
 ## Prerequisites
 
 * Prepare an available Kubernetes cluster in your workstation, we recommend you to use [Minikube](https://github.com/kubernetes/minikube).
-* [Install Apache APISIX in Kubernetes by Helm Chart](https://github.com/apache/apisix-helm-chart).
-* Install [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller/blob/master/docs/install.md).
+* Install Apache APISIX in Kubernetes by [Helm Chart](https://github.com/apache/apisix-helm-chart).
+* Install [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller/blob/master/install.md).
 
 ## Deploy httpbin service
 
@@ -42,7 +42,7 @@ kubectl expose pod httpbin --port 80
 
 ## Resource Delivery
 
-In order to let Apache APISIX proxies requests to httpbin, we need to create an `ApisixRoute` resource, if you're not familiar with it, see the [reference](https://github.com/apache/apisix-ingress-controller/blob/master/docs/CRD-specification.md#apisixroute) for the details.
+In order to let Apache APISIX proxies requests to httpbin, we need to create an `ApisixRoute` resource, if you're not familiar with it, see the [reference](https://github.com/apache/apisix-ingress-controller/blob/master/docs/en/latest/concepts/apisix_route.md) for the details.
 
 ```yaml
 # httpbin-route.yaml
