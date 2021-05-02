@@ -26,8 +26,8 @@ This document explains how apisix-ingress-controller guides Apache APISIX routes
 ## Prerequisites
 
 * Prepare an available Kubernetes cluster in your workstation, we recommend you to use [Minikube](https://github.com/kubernetes/minikube).
-* [Install Apache APISIX in Kubernetes by Helm Chart](https://github.com/apache/apisix-helm-chart).
-* Install [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller/blob/master/docs/install.md).
+* Install Apache APISIX in Kubernetes by [Helm Chart](https://github.com/apache/apisix-helm-chart).
+* Install [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller/blob/master/install.md).
 
 ## Deploy httpbin service
 
