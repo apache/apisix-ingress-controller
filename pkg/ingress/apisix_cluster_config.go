@@ -123,7 +123,7 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 	// Cluster delete is dangerous.
 	// TODO handle delete?
 	if ev.Type == types.EventDelete {
-		log.Error("delete of ApisixClusterConfig for default apisix cluster will be ignored")
+		log.Error("ApisixClusterConfig delete event for default apisix cluster will be ignored")
 		return nil
 	}
 

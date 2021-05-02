@@ -15,13 +15,15 @@
 package features
 
 import (
+	"time"
+
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 )
 
-var _ = ginkgo.Describe("traffic split", func() {
+var _ = ginkgo.Describe("ApisixClusterConfig", func() {
 	opts := &scaffold.Options{
 		Name:                    "default",
 		Kubeconfig:              scaffold.GetKubeconfig(),
@@ -45,6 +47,14 @@ spec:
 `
 		err := s.CreateResourceFromString(acc)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ApisixClusterConfig")
+
+		defer func() {
+			err := s.RemoveResourceByString(acc)
+			assert.Nil(ginkgo.GinkgoT(), err)
+		}()
+
+		// Wait until the ApisixClusterConfig create event was delivered.
+		time.Sleep(3 * time.Second)
 
 		grs, err := s.ListApisixGlobalRules()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing global_rules")
