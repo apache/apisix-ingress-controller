@@ -141,14 +141,16 @@ func (m *manifest) diff(om *manifest) (added, updated, deleted *manifest) {
 
 func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted *manifest) error {
 	var merr *multierror.Error
+
+	clusterName := c.cfg.APISIX.DefaultClusterName
 	if deleted != nil {
 		for _, r := range deleted.routes {
-			if err := c.apisix.Cluster("").Route().Delete(ctx, r); err != nil {
+			if err := c.apisix.Cluster(clusterName).Route().Delete(ctx, r); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
 		for _, u := range deleted.upstreams {
-			if err := c.apisix.Cluster("").Upstream().Delete(ctx, u); err != nil {
+			if err := c.apisix.Cluster(clusterName).Upstream().Delete(ctx, u); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
@@ -161,12 +163,12 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 	if added != nil {
 		// Should create upstreams firstly due to the dependencies.
 		for _, u := range added.upstreams {
-			if _, err := c.apisix.Cluster("").Upstream().Create(ctx, u); err != nil {
+			if _, err := c.apisix.Cluster(clusterName).Upstream().Create(ctx, u); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
 		for _, r := range added.routes {
-			if _, err := c.apisix.Cluster("").Route().Create(ctx, r); err != nil {
+			if _, err := c.apisix.Cluster(clusterName).Route().Create(ctx, r); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
@@ -178,12 +180,12 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 	}
 	if updated != nil {
 		for _, r := range updated.upstreams {
-			if _, err := c.apisix.Cluster("").Upstream().Update(ctx, r); err != nil {
+			if _, err := c.apisix.Cluster(clusterName).Upstream().Update(ctx, r); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
 		for _, r := range updated.routes {
-			if _, err := c.apisix.Cluster("").Route().Update(ctx, r); err != nil {
+			if _, err := c.apisix.Cluster(clusterName).Route().Update(ctx, r); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
