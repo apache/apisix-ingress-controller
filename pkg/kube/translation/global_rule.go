@@ -15,10 +15,9 @@
 package translation
 
 import (
+	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-
-	"github.com/apache/apisix-ingress-controller/pkg/id"
 )
 
 type prometheusPluginConfig struct{}

@@ -18,20 +18,15 @@ import (
 	"context"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-
-	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
-
-	"github.com/apache/apisix-ingress-controller/pkg/types"
-
 	"go.uber.org/zap"
-
-	"github.com/apache/apisix-ingress-controller/pkg/log"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
-
 	"k8s.io/client-go/util/workqueue"
+
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 type apisixClusterConfigController struct {
