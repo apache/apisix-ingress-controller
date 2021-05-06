@@ -102,6 +102,18 @@ func (c *FakeApisixUpstreams) Update(ctx context.Context, apisixUpstream *config
 	return obj.(*configv1.ApisixUpstream), err
 }
 
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *FakeApisixUpstreams) UpdateStatus(ctx context.Context, apisixUpstream *configv1.ApisixUpstream, opts v1.UpdateOptions) (*configv1.ApisixUpstream, error) {
+	obj, err := c.Fake.
+		Invokes(testing.NewUpdateSubresourceAction(apisixupstreamsResource, "status", c.ns, apisixUpstream), &configv1.ApisixUpstream{})
+
+	if obj == nil {
+		return nil, err
+	}
+	return obj.(*configv1.ApisixUpstream), err
+}
+
 // Delete takes name of the apisixUpstream and deletes it. Returns an error if one occurs.
 func (c *FakeApisixUpstreams) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.

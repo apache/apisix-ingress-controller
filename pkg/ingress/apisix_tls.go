@@ -22,6 +22,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -118,6 +119,7 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Any("ApisixTls", tls),
 		)
 		c.controller.recorderEvent(tls, corev1.EventTypeWarning, _resourceSyncAborted, err)
+		recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse)
 		return err
 	}
 	log.Debug("got SSL object from ApisixTls",
@@ -134,10 +136,12 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Any("ssl", ssl),
 		)
 		c.controller.recorderEvent(tls, corev1.EventTypeWarning, _resourceSyncAborted, err)
+		recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse)
 		return err
 	}
 
 	c.controller.recorderEvent(tls, corev1.EventTypeNormal, _resourceSynced, nil)
+	recordStatus(tls, _resourceSynced, nil, metav1.ConditionTrue)
 	return err
 }
 
