@@ -132,7 +132,7 @@ spec:
     ...
 ```
 
-The black and white list here is implemented by the [ip-restriction](https://github.com/apache/apisix/blob/master/doc/plugins/ip-restriction.md) plugin.
+The black and white list here is implemented by the [ip-restriction](https://github.com/apache/apisix/blob/master/docs/en/latest/plugins/ip-restriction.md) plugin.
 
 There will be more annotation implementations in the future to facilitate the definition of some common configurations, such as CORS.
 

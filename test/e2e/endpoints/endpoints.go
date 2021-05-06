@@ -19,9 +19,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("endpoints", func() {
@@ -132,7 +133,7 @@ spec:
 
 		// scale HTTPBIN, so the endpoints controller has the opportunity to update upstream.
 		assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(3))
-		time.Sleep(10 * time.Second)
+		time.Sleep(15 * time.Second)
 		ups, err = s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing APISIX upstreams")
 		assert.Len(ginkgo.GinkgoT(), ups, 1)

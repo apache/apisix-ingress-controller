@@ -18,6 +18,10 @@ limitations under the License.
 
 package v2alpha1
 
+// ApisixClusterConfigListerExpansion allows custom methods to be added to
+// ApisixClusterConfigLister.
+type ApisixClusterConfigListerExpansion interface{}
+
 // ApisixRouteListerExpansion allows custom methods to be added to
 // ApisixRouteLister.
 type ApisixRouteListerExpansion interface{}

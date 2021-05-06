@@ -20,11 +20,14 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"go.uber.org/zap"
+	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
@@ -181,6 +184,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 				zap.Error(err),
 				zap.Any("ApisixRoute", ar),
 			)
+
 			return err
 		}
 
@@ -195,15 +199,58 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	return c.controller.syncManifests(ctx, added, updated, deleted)
 }
 
-func (c *apisixRouteController) handleSyncErr(obj interface{}, err error) {
-	if err == nil {
+func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) {
+	ev := obj.(*types.Event)
+	event := ev.Object.(kube.ApisixRouteEvent)
+	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
+	if errLocal != nil {
+		log.Errorf("invalid resource key: %s", event.Key)
+		return
+	}
+	var ar kube.ApisixRoute
+	if event.GroupVersion == kube.ApisixRouteV1 {
+		ar, errLocal = c.controller.apisixRouteLister.V1(namespace, name)
+	} else {
+		ar, errLocal = c.controller.apisixRouteLister.V2alpha1(namespace, name)
+	}
+	if errOrigin == nil {
+		if ev.Type != types.EventDelete {
+			if errLocal == nil {
+				if ar.GroupVersion() == kube.ApisixRouteV1 {
+					c.controller.recorderEvent(ar.V1(), v1.EventTypeNormal, _resourceSynced, nil)
+				} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
+					c.controller.recorderEvent(ar.V2alpha1(), v1.EventTypeNormal, _resourceSynced, nil)
+					recordStatus(ar.V2alpha1(), _resourceSynced, nil, metav1.ConditionTrue)
+				}
+			} else {
+				log.Errorw("failed list ApisixRoute",
+					zap.Error(errLocal),
+					zap.String("name", name),
+					zap.String("namespace", namespace),
+				)
+			}
+		}
 		c.workqueue.Forget(obj)
 		return
 	}
 	log.Warnw("sync ApisixRoute failed, will retry",
 		zap.Any("object", obj),
-		zap.Error(err),
+		zap.Error(errOrigin),
 	)
+	if errLocal == nil {
+		if ar.GroupVersion() == kube.ApisixRouteV1 {
+			c.controller.recorderEvent(ar.V1(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
+		} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
+			c.controller.recorderEvent(ar.V2alpha1(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
+			recordStatus(ar.V2alpha1(), _resourceSyncAborted, errOrigin, metav1.ConditionFalse)
+		}
+	} else {
+		log.Errorw("failed list ApisixRoute",
+			zap.Error(errLocal),
+			zap.String("name", name),
+			zap.String("namespace", namespace),
+		)
+	}
 	c.workqueue.AddRateLimited(obj)
 }
 

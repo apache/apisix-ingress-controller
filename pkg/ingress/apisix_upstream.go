@@ -19,7 +19,9 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -42,7 +44,6 @@ func (c *Controller) newApisixUpstreamController() *apisixUpstreamController {
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixUpstream"),
 		workers:    1,
 	}
-
 	ctl.controller.apisixUpstreamInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    ctl.onAdd,
@@ -122,6 +123,8 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 	svc, err := c.controller.svcLister.Services(namespace).Get(name)
 	if err != nil {
 		log.Errorf("failed to get service %s: %s", key, err)
+		c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
+		recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
 		return err
 	}
 
@@ -134,6 +137,8 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 				continue
 			}
 			log.Errorf("failed to get upstream %s: %s", upsName, err)
+			c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
+			recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
 			return err
 		}
 		var newUps *apisixv1.Upstream
@@ -149,6 +154,8 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 					zap.Any("object", au),
 					zap.Error(err),
 				)
+				c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
+				recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
 				return err
 			}
 		} else {
@@ -168,10 +175,14 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 				zap.Any("upstream", newUps),
 				zap.Any("ApisixUpstream", au),
 			)
+			c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
+			recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
 			return err
 		}
 	}
-	return nil
+	c.controller.recorderEvent(au, corev1.EventTypeNormal, _resourceSynced, nil)
+	recordStatus(au, _resourceSynced, nil, metav1.ConditionTrue)
+	return err
 }
 
 func (c *apisixUpstreamController) handleSyncErr(obj interface{}, err error) {

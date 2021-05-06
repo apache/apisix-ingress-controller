@@ -102,6 +102,18 @@ func (c *FakeApisixRoutes) Update(ctx context.Context, apisixRoute *v2alpha1.Api
 	return obj.(*v2alpha1.ApisixRoute), err
 }
 
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *FakeApisixRoutes) UpdateStatus(ctx context.Context, apisixRoute *v2alpha1.ApisixRoute, opts v1.UpdateOptions) (*v2alpha1.ApisixRoute, error) {
+	obj, err := c.Fake.
+		Invokes(testing.NewUpdateSubresourceAction(apisixroutesResource, "status", c.ns, apisixRoute), &v2alpha1.ApisixRoute{})
+
+	if obj == nil {
+		return nil, err
+	}
+	return obj.(*v2alpha1.ApisixRoute), err
+}
+
 // Delete takes name of the apisixRoute and deletes it. Returns an error if one occurs.
 func (c *FakeApisixRoutes) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.

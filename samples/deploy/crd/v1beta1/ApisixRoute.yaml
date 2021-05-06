@@ -55,6 +55,8 @@ spec:
     shortNames:
       - ar
   preserveUnknownFields: true # we have to enable it since plugin config
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       type: object

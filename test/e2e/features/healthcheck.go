@@ -50,9 +50,9 @@ spec:
       httpPath: /status/502
       healthy:
         httpCodes: [200]
-        httpFailures: 2
         interval: 1s
       unhealthy:
+        httpFailures: 2
         interval: 1s
 `, backendSvc)
 		err := s.CreateResourceFromString(au)
@@ -86,7 +86,7 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), ups[0].Checks.Active.Healthy.Interval, 1)
 		assert.Equal(ginkgo.GinkgoT(), ups[0].Checks.Active.Healthy.HTTPStatuses, []int{200})
 		assert.Equal(ginkgo.GinkgoT(), ups[0].Checks.Active.Unhealthy.Interval, 1)
-		assert.Equal(ginkgo.GinkgoT(), ups[0].Checks.Active.Unhealthy.Interval, 1)
+		assert.Equal(ginkgo.GinkgoT(), ups[0].Checks.Active.Unhealthy.HTTPFailures, 2)
 
 		// It's difficult to test healthchecker since we cannot let partial httpbin endpoints
 		// down, if all of them are down, apisix in turn uses all of them.
@@ -107,9 +107,9 @@ spec:
       httpPath: /status/200
       healthy:
         httpCodes: [200]
-        httpFailures: 2
         interval: 1s
       unhealthy:
+        httpFailures: 2
         interval: 1s
     passive:
       healthy:
