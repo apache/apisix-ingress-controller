@@ -155,7 +155,7 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 			}
 		}
 		for _, sr := range deleted.streamRoutes {
-			if err := c.apisix.Cluster("").StreamRoute().Delete(ctx, sr); err != nil {
+			if err := c.apisix.Cluster(clusterName).StreamRoute().Delete(ctx, sr); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
@@ -173,7 +173,7 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 			}
 		}
 		for _, sr := range added.streamRoutes {
-			if _, err := c.apisix.Cluster("").StreamRoute().Create(ctx, sr); err != nil {
+			if _, err := c.apisix.Cluster(clusterName).StreamRoute().Create(ctx, sr); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
@@ -190,7 +190,7 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 			}
 		}
 		for _, sr := range updated.streamRoutes {
-			if _, err := c.apisix.Cluster("").StreamRoute().Create(ctx, sr); err != nil {
+			if _, err := c.apisix.Cluster(clusterName).StreamRoute().Create(ctx, sr); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
