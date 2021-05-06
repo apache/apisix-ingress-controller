@@ -49,7 +49,7 @@ spec:
 ```
 
 The above example enables both the Prometheus and Skywalking for the APISIX cluster which name is "default".
-Please see [Promethues in APISIX](http://apisix.apache.org/docs/apisix/plugins/prometheus) and [Skywalking in APISIX](http://apisix.apache.org/docs/apisix/plugins/skywalking) for the details.
+Please see [Prometheus in APISIX](http://apisix.apache.org/docs/apisix/plugins/prometheus) and [Skywalking in APISIX](http://apisix.apache.org/docs/apisix/plugins/skywalking) for the details.
 
 Admin Config
 ------------
