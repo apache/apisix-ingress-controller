@@ -137,3 +137,13 @@ func (i *item) ssl() (*v1.Ssl, error) {
 	}
 	return &ssl, nil
 }
+
+// globalRule decodes item.Value and converts it to v1.GlobalRule.
+func (i *item) globalRule() (*v1.GlobalRule, error) {
+	log.Debugf("got global_rule: %s", string(i.Value))
+	var globalRule v1.GlobalRule
+	if err := json.Unmarshal(i.Value, &globalRule); err != nil {
+		return nil, err
+	}
+	return &globalRule, nil
+}

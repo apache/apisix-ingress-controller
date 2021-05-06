@@ -232,8 +232,80 @@ type ApisixRouteTCPBackend struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ApisixRouteList contains a list of ApisixRoute.
 type ApisixRouteList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
 	metav1.ListMeta `json:"metadata" yaml:"metadata"`
 	Items           []ApisixRoute `json:"items,omitempty" yaml:"items,omitempty"`
+}
+
+// +genclient
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:subresource:status
+
+// ApisixClusterConfig is the Schema for the ApisixClusterConfig resource.
+// An ApisixClusterConfig is used to identify an APISIX cluster, it's a
+// ClusterScoped resource so the name is unique.
+// It also contains some cluster-level configurations like monitoring.
+type ApisixClusterConfig struct {
+	metav1.TypeMeta   `json:",inline" yaml:",inline"`
+	metav1.ObjectMeta `json:"metadata" yaml:"metadata"`
+
+	// Spec defines the desired state of ApisixClusterConfigSpec.
+	Spec ApisixClusterConfigSpec `json:"spec" yaml:"spec"`
+}
+
+// ApisixClusterConfigSpec defines the desired state of ApisixClusterConfigSpec.
+type ApisixClusterConfigSpec struct {
+	// Monitoring categories all monitoring related features.
+	// +optional
+	Monitoring *ApisixClusterMonitoringConfig `json:"monitoring" yaml:"monitoring"`
+	// Admin contains the Admin API information about APISIX cluster.
+	// +optional
+	Admin *ApisixClusterAdminConfig `json:"admin" yaml:"admin"`
+}
+
+// ApisixClusterMonitoringConfig categories all monitoring related features.
+type ApisixClusterMonitoringConfig struct {
+	// Prometheus is the config for using Prometheus in APISIX Cluster.
+	// +optional
+	Prometheus ApisixClusterPrometheusConfig
+	// Skywalking is the config for using Skywalking in APISIX Cluster.
+	// +optional
+	Skywalking ApisixClusterSkywalkingConfig
+}
+
+// ApisixClusterPrometheusConfig is the config for using Prometheus in APISIX Cluster.
+type ApisixClusterPrometheusConfig struct {
+	// Enable means whether enable Prometheus or not.
+	Enable bool `json:"enable" yaml:"enable"`
+}
+
+// ApisixClusterSkywalkingConfig is the config for using Skywalking in APISIX Cluster.
+type ApisixClusterSkywalkingConfig struct {
+	// Enable means whether enable Skywalking or not.
+	Enable bool `json:"enable" yaml:"enable"`
+	// SampleRatio means the ratio to collect
+	SampleRatio float64 `json:"sampleRatio" yaml:"sampleRatio"`
+}
+
+// ApisixClusterAdminConfig is the admin config for the corresponding APISIX Cluster.
+type ApisixClusterAdminConfig struct {
+	// BaseURL is the base URL for the APISIX Admin API.
+	// It looks like "http://apisix-admin.default.svc.cluster.local:9080/apisix/admin"
+	BaseURL string
+	// AdminKey is used to verify the admin API user.
+	AdminKey string
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ApisixClusterConfigList contains a list of ApisixClusterConfig.
+type ApisixClusterConfigList struct {
+	metav1.TypeMeta `json:",inline" yaml:",inline"`
+	metav1.ListMeta `json:"metadata" yaml:"metadata"`
+
+	Items []ApisixClusterConfig `json:"items" yaml:"items"`
 }
