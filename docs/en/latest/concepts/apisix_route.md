@@ -38,7 +38,7 @@ should be:
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
-  name: foor-bar-route
+  name: foo-bar-route
 spec:
   http:
   - name: foo
