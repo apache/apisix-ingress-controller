@@ -18,7 +18,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
