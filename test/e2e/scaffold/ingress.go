@@ -155,6 +155,7 @@ rules:
       - apisixupstreams
       - apisixservices
       - apisixtlses
+      - apisixclusterconfigs
     verbs:
       - get
       - list
@@ -243,7 +244,9 @@ spec:
             - stdout
             - --http-listen
             - :8080
-            - --apisix-base-url
+            - --default-apisix-cluster-name
+            - default
+            - --default-apisix-cluster-base-url
             - http://apisix-service-e2e-test:9180/apisix/admin
             - --app-namespace
             - %s

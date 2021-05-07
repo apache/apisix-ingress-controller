@@ -91,7 +91,7 @@ type APISIXConfig struct {
 	BaseURL string `json:"base_url" yaml:"base_url"`
 	// AdminKey is same to DefaultClusterAdminKey.
 	// Deprecated: use DefaultClusterAdminKey instead. AdminKey will be removed
-	//	// once v1.0.0 is released.
+	// once v1.0.0 is released.
 	AdminKey string `json:"admin_key" yaml:"admin_key"`
 }
 

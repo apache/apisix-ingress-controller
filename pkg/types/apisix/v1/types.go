@@ -25,7 +25,7 @@ import (
 const (
 	// HashOnVars means the hash scope is variable.
 	HashOnVars = "vars"
-	// HashVarsCombination means the hash scope is the
+	// HashOnVarsCombination means the hash scope is the
 	// variable combination.
 	HashOnVarsCombination = "vars_combinations"
 	// HashOnHeader means the hash scope is HTTP request

@@ -66,6 +66,9 @@ type Translator interface {
 	TranslateRouteV2alpha1(*configv2alpha1.ApisixRoute) (*TranslateContext, error)
 	// TranslateSSL translates the configv2alpha1.ApisixTls object into the APISIX SSL resource.
 	TranslateSSL(*configv1.ApisixTls) (*apisixv1.Ssl, error)
+	// TranslateClusterConfig translates the configv2alpha1.ApisixClusterConfig object into the APISIX
+	// Global Rule resource.
+	TranslateClusterConfig(config *configv2alpha1.ApisixClusterConfig) (*apisixv1.GlobalRule, error)
 }
 
 // TranslatorOptions contains options to help Translator

@@ -172,6 +172,10 @@ func (nc *nonExistentCluster) StreamRoute() StreamRoute {
 	return nc.streamRoute
 }
 
+func (nc *nonExistentCluster) GlobalRule() GlobalRule {
+	return nc.globalRule
+}
+
 func (nc *nonExistentCluster) HasSynced(_ context.Context) error {
 	return nil
 }

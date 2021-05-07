@@ -41,6 +41,7 @@ import (
 	crdclientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
+	listersv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
@@ -82,29 +83,32 @@ type Controller struct {
 	secretSSLMap *sync.Map
 
 	// common informers and listers
-	epInformer             cache.SharedIndexInformer
-	epLister               listerscorev1.EndpointsLister
-	svcInformer            cache.SharedIndexInformer
-	svcLister              listerscorev1.ServiceLister
-	ingressLister          kube.IngressLister
-	ingressInformer        cache.SharedIndexInformer
-	secretInformer         cache.SharedIndexInformer
-	secretLister           listerscorev1.SecretLister
-	apisixUpstreamInformer cache.SharedIndexInformer
-	apisixUpstreamLister   listersv1.ApisixUpstreamLister
-	apisixRouteLister      kube.ApisixRouteLister
-	apisixRouteInformer    cache.SharedIndexInformer
-	apisixTlsLister        listersv1.ApisixTlsLister
-	apisixTlsInformer      cache.SharedIndexInformer
+	epInformer                  cache.SharedIndexInformer
+	epLister                    listerscorev1.EndpointsLister
+	svcInformer                 cache.SharedIndexInformer
+	svcLister                   listerscorev1.ServiceLister
+	ingressLister               kube.IngressLister
+	ingressInformer             cache.SharedIndexInformer
+	secretInformer              cache.SharedIndexInformer
+	secretLister                listerscorev1.SecretLister
+	apisixUpstreamInformer      cache.SharedIndexInformer
+	apisixUpstreamLister        listersv1.ApisixUpstreamLister
+	apisixRouteLister           kube.ApisixRouteLister
+	apisixRouteInformer         cache.SharedIndexInformer
+	apisixTlsLister             listersv1.ApisixTlsLister
+	apisixTlsInformer           cache.SharedIndexInformer
+	apisixClusterConfigLister   listersv2alpha1.ApisixClusterConfigLister
+	apisixClusterConfigInformer cache.SharedIndexInformer
 
 	// resource controllers
 	endpointsController *endpointsController
 	ingressController   *ingressController
 	secretController    *secretController
 
-	apisixUpstreamController *apisixUpstreamController
-	apisixRouteController    *apisixRouteController
-	apisixTlsController      *apisixTlsController
+	apisixUpstreamController      *apisixUpstreamController
+	apisixRouteController         *apisixRouteController
+	apisixTlsController           *apisixTlsController
+	apisixClusterConfigController *apisixClusterConfigController
 }
 
 // NewController creates an ingress apisix controller object.
@@ -183,20 +187,22 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		secretSSLMap:       new(sync.Map),
 		recorder:           eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
 
-		epInformer:             kube.CoreSharedInformerFactory.Core().V1().Endpoints().Informer(),
-		epLister:               kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
-		svcInformer:            kube.CoreSharedInformerFactory.Core().V1().Services().Informer(),
-		svcLister:              kube.CoreSharedInformerFactory.Core().V1().Services().Lister(),
-		ingressLister:          ingressLister,
-		ingressInformer:        ingressInformer,
-		secretInformer:         kube.CoreSharedInformerFactory.Core().V1().Secrets().Informer(),
-		secretLister:           kube.CoreSharedInformerFactory.Core().V1().Secrets().Lister(),
-		apisixRouteInformer:    apisixRouteInformer,
-		apisixRouteLister:      apisixRouteLister,
-		apisixUpstreamInformer: sharedInformerFactory.Apisix().V1().ApisixUpstreams().Informer(),
-		apisixUpstreamLister:   sharedInformerFactory.Apisix().V1().ApisixUpstreams().Lister(),
-		apisixTlsInformer:      sharedInformerFactory.Apisix().V1().ApisixTlses().Informer(),
-		apisixTlsLister:        sharedInformerFactory.Apisix().V1().ApisixTlses().Lister(),
+		epInformer:                  kube.CoreSharedInformerFactory.Core().V1().Endpoints().Informer(),
+		epLister:                    kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
+		svcInformer:                 kube.CoreSharedInformerFactory.Core().V1().Services().Informer(),
+		svcLister:                   kube.CoreSharedInformerFactory.Core().V1().Services().Lister(),
+		ingressLister:               ingressLister,
+		ingressInformer:             ingressInformer,
+		secretInformer:              kube.CoreSharedInformerFactory.Core().V1().Secrets().Informer(),
+		secretLister:                kube.CoreSharedInformerFactory.Core().V1().Secrets().Lister(),
+		apisixRouteInformer:         apisixRouteInformer,
+		apisixRouteLister:           apisixRouteLister,
+		apisixUpstreamInformer:      sharedInformerFactory.Apisix().V1().ApisixUpstreams().Informer(),
+		apisixUpstreamLister:        sharedInformerFactory.Apisix().V1().ApisixUpstreams().Lister(),
+		apisixTlsInformer:           sharedInformerFactory.Apisix().V1().ApisixTlses().Informer(),
+		apisixTlsLister:             sharedInformerFactory.Apisix().V1().ApisixTlses().Lister(),
+		apisixClusterConfigInformer: sharedInformerFactory.Apisix().V2alpha1().ApisixClusterConfigs().Informer(),
+		apisixClusterConfigLister:   sharedInformerFactory.Apisix().V2alpha1().ApisixClusterConfigs().Lister(),
 	}
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 		EndpointsLister:      c.epLister,
@@ -208,6 +214,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	c.endpointsController = c.newEndpointsController()
 	c.apisixUpstreamController = c.newApisixUpstreamController()
 	c.apisixRouteController = c.newApisixRouteController()
+	c.apisixClusterConfigController = c.newApisixClusterConfigController()
 	c.apisixTlsController = c.newApisixTlsController()
 	c.ingressController = c.newIngressController()
 	c.secretController = c.newSecretController()
@@ -350,6 +357,9 @@ func (c *Controller) run(ctx context.Context) {
 		c.apisixUpstreamInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
+		c.apisixClusterConfigInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
 		c.secretInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
@@ -366,6 +376,9 @@ func (c *Controller) run(ctx context.Context) {
 	})
 	c.goAttach(func() {
 		c.apisixRouteController.run(ctx)
+	})
+	c.goAttach(func() {
+		c.apisixClusterConfigController.run(ctx)
 	})
 	c.goAttach(func() {
 		c.apisixTlsController.run(ctx)
