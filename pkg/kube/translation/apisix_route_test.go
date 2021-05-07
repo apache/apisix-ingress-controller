@@ -18,21 +18,17 @@ import (
 	"context"
 	"testing"
 
-	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
-	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
-
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 
-	"k8s.io/apimachinery/pkg/util/intstr"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/stretchr/testify/assert"
-
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
+	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 )
 
 func TestRouteMatchExpr(t *testing.T) {
@@ -117,6 +113,16 @@ func TestRouteMatchExpr(t *testing.T) {
 				"b.com",
 			},
 		},
+		{
+			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
+				Scope: configv2alpha1.ScopeCookie,
+				Name:  "X-Foo",
+			},
+			Op: configv2alpha1.OpIn,
+			Set: []string{
+				"foo.com",
+			},
+		},
 	}
 	results, err := tr.translateRouteMatchExprs(exprs)
 	assert.Nil(t, err)
@@ -168,6 +174,11 @@ func TestRouteMatchExpr(t *testing.T) {
 	assert.Equal(t, results[8][0].StrVal, "cookie_domain")
 	assert.Equal(t, results[8][1].StrVal, "in")
 	assert.Equal(t, results[8][2].SliceVal, []string{"a.com", "b.com"})
+
+	assert.Len(t, results[9], 3)
+	assert.Equal(t, results[8][0].StrVal, "cookie_X-Foo")
+	assert.Equal(t, results[8][1].StrVal, "in")
+	assert.Equal(t, results[8][2].SliceVal, []string{"foo.com"})
 }
 
 func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
