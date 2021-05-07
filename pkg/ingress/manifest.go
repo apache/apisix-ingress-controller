@@ -18,14 +18,11 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-
 	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
-
-	"github.com/hashicorp/go-multierror"
-
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
