@@ -65,6 +65,7 @@ type Scaffold struct {
 	apisixAdminTunnel *k8s.Tunnel
 	apisixHttpTunnel  *k8s.Tunnel
 	apisixHttpsTunnel *k8s.Tunnel
+	apisixTCPTunnel   *k8s.Tunnel
 
 	// Used for template rendering.
 	EtcdServiceFQDN string
@@ -152,6 +153,26 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 	u := url.URL{
 		Scheme: "http",
 		Host:   s.apisixHttpTunnel.Endpoint(),
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
+		),
+	})
+}
+
+// NewAPISIXClientWithTCPProxy creates the HTTP client but with the TCP proxy of APISIX.
+func (s *Scaffold) NewAPISIXClientWithTCPProxy() *httpexpect.Expect {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixTCPTunnel.Endpoint(),
 	}
 	return httpexpect.WithConfig(httpexpect.Config{
 		BaseURL: u.String(),

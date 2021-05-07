@@ -332,6 +332,7 @@ type StreamRoute struct {
 	Labels     map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 	ServerPort int32             `json:"server_port,omitempty" yaml:"server_port,omitempty"`
 	UpstreamId string            `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
+	Upstream   *Upstream         `json:"upstream,omitempty" yaml:"upstream,omitempty"`
 }
 
 // GlobalRule represents the global_rule object in APISIX.
@@ -369,6 +370,16 @@ func NewDefaultRoute() *Route {
 	}
 }
 
+// NewDefaultStreamRoute returns an empty StreamRoute with default values.
+func NewDefaultStreamRoute() *StreamRoute {
+	return &StreamRoute{
+		Desc: "Created by apisix-ingress-controller, DO NOT modify it manually",
+		Labels: map[string]string{
+			"managed-by": "apisix-ingress-controller",
+		},
+	}
+}
+
 // ComposeUpstreamName uses namespace, name and port info to compose
 // the upstream name.
 func ComposeUpstreamName(namespace, name string, port int32) string {
@@ -400,6 +411,24 @@ func ComposeRouteName(namespace, name string, rule string) string {
 	buf.WriteString(name)
 	buf.WriteByte('_')
 	buf.WriteString(rule)
+
+	return buf.String()
+}
+
+// ComposeStreamRouteName uses namespace, name and rule name to compose
+// the stream_route name.
+func ComposeStreamRouteName(namespace, name string, rule string) string {
+	// FIXME Use sync.Pool to reuse this buffer if the upstream
+	// name composing code path is hot.
+	p := make([]byte, 0, len(namespace)+len(name)+len(rule)+6)
+	buf := bytes.NewBuffer(p)
+
+	buf.WriteString(namespace)
+	buf.WriteByte('_')
+	buf.WriteString(name)
+	buf.WriteByte('_')
+	buf.WriteString(rule)
+	buf.WriteString("_tcp")
 
 	return buf.String()
 }

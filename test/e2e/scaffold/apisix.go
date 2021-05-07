@@ -120,6 +120,10 @@ spec:
       port: 9443
       protocol: TCP
       targetPort: 9443
+    - name: tcp
+      port: 9100
+      protocol: TCP
+      targetPort: 9100
   type: NodePort
 `
 )
