@@ -390,7 +390,7 @@ spec:
 		resp.Body().Contains("404 Route Not Found")
 	})
 
-	ginkgo.FIt("service is referenced by two ApisixRoutes", func() {
+	ginkgo.It("service is referenced by two ApisixRoutes", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		ar1 := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
