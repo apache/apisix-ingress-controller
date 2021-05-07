@@ -182,7 +182,9 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 	}
 	if err := u.cluster.cache.DeleteUpstream(obj); err != nil {
 		log.Errorf("failed to reflect upstream delete to cache: %s", err.Error())
-		return err
+		if err != cache.ErrNotFound {
+			return err
+		}
 	}
 	return nil
 }

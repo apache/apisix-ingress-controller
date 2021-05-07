@@ -189,7 +189,9 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 	}
 	if err := r.cluster.cache.DeleteRoute(obj); err != nil {
 		log.Errorf("failed to reflect route delete to cache: %s", err)
-		return err
+		if err != cache.ErrNotFound {
+			return err
+		}
 	}
 	return nil
 }
