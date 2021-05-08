@@ -126,7 +126,7 @@ func TestRouteMatchExpr(t *testing.T) {
 	}
 	results, err := tr.translateRouteMatchExprs(exprs)
 	assert.Nil(t, err)
-	assert.Len(t, results, 9)
+	assert.Len(t, results, 10)
 
 	assert.Len(t, results[0], 3)
 	assert.Equal(t, results[0][0].StrVal, "http_content_type")
