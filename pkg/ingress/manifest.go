@@ -19,7 +19,10 @@ import (
 	"reflect"
 
 	"github.com/hashicorp/go-multierror"
+	"go.uber.org/zap"
 
+	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -149,14 +152,22 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 				merr = multierror.Append(merr, err)
 			}
 		}
-		for _, u := range deleted.upstreams {
-			if err := c.apisix.Cluster(clusterName).Upstream().Delete(ctx, u); err != nil {
-				merr = multierror.Append(merr, err)
-			}
-		}
 		for _, sr := range deleted.streamRoutes {
 			if err := c.apisix.Cluster(clusterName).StreamRoute().Delete(ctx, sr); err != nil {
 				merr = multierror.Append(merr, err)
+			}
+		}
+		for _, u := range deleted.upstreams {
+			if err := c.apisix.Cluster(clusterName).Upstream().Delete(ctx, u); err != nil {
+				// Upstream might be referenced by other routes.
+				if err != cache.ErrStillInUse {
+					merr = multierror.Append(merr, err)
+				} else {
+					log.Infow("upstream was referenced by other routes",
+						zap.String("upstream_id", u.ID),
+						zap.String("upstream_name", u.Name),
+					)
+				}
 			}
 		}
 	}

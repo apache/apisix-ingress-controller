@@ -389,4 +389,106 @@ spec:
 		resp.Status(http.StatusNotFound)
 		resp.Body().Contains("404 Route Not Found")
 	})
+
+	ginkgo.It("service is referenced by two ApisixRoutes", func() {
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		ar1 := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+  name: httpbin-route-1
+spec:
+  http:
+  - name: rule1
+    priority: 1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
+		ar2 := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+  name: httpbin-route-2
+spec:
+  http:
+  - name: rule1
+    priority: 1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /status/200
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
+
+		err := s.CreateResourceFromString(ar1)
+		assert.Nil(ginkgo.GinkgoT(), err)
+		err = s.CreateResourceFromString(ar2)
+		assert.Nil(ginkgo.GinkgoT(), err)
+
+		time.Sleep(3 * time.Second)
+
+		routes, err := s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing routes")
+		assert.Len(ginkgo.GinkgoT(), routes, 2)
+
+		ups, err := s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing upstreams")
+		assert.Len(ginkgo.GinkgoT(), ups, 1)
+		assert.Equal(ginkgo.GinkgoT(), ups[0].ID, routes[0].UpstreamId)
+		assert.Equal(ginkgo.GinkgoT(), ups[0].ID, routes[1].UpstreamId)
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().Contains("origin")
+
+		resp = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.com").Expect()
+		resp.Status(http.StatusOK)
+
+		// Delete ar1
+		err = s.RemoveResourceByString(ar1)
+		assert.Nil(ginkgo.GinkgoT(), err)
+		time.Sleep(3 * time.Second)
+
+		routes, err = s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing routes")
+		assert.Len(ginkgo.GinkgoT(), routes, 1)
+		name := s.Namespace() + "_" + "httpbin-route-2" + "_" + "rule1"
+		assert.Equal(ginkgo.GinkgoT(), routes[0].Name, name)
+
+		// As httpbin service is referenced by ar2, the corresponding upstream still exists.
+		ups, err = s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing upstreams")
+		assert.Len(ginkgo.GinkgoT(), ups, 1)
+		assert.Equal(ginkgo.GinkgoT(), ups[0].ID, routes[0].UpstreamId)
+
+		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect()
+		resp.Status(http.StatusNotFound)
+		resp = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.com").Expect()
+		resp.Status(http.StatusOK)
+
+		// Delete ar2
+		err = s.RemoveResourceByString(ar2)
+		assert.Nil(ginkgo.GinkgoT(), err)
+		time.Sleep(3 * time.Second)
+
+		routes, err = s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing routes")
+		assert.Len(ginkgo.GinkgoT(), routes, 0)
+
+		ups, err = s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing upstreams")
+		assert.Len(ginkgo.GinkgoT(), ups, 0)
+
+		resp = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.com").Expect()
+		resp.Status(http.StatusNotFound)
+	})
 })
