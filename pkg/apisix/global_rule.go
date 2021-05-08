@@ -187,7 +187,9 @@ func (r *globalRuleClient) Delete(ctx context.Context, obj *v1.GlobalRule) error
 	}
 	if err := r.cluster.cache.DeleteGlobalRule(obj); err != nil {
 		log.Errorf("failed to reflect global_rule delete to cache: %s", err)
-		return err
+		if err != cache.ErrNotFound {
+			return err
+		}
 	}
 	return nil
 }
