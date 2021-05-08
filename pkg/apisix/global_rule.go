@@ -19,11 +19,12 @@ import (
 	"context"
 	"encoding/json"
 
+	"go.uber.org/zap"
+
 	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-	"go.uber.org/zap"
 )
 
 type globalRuleClient struct {
