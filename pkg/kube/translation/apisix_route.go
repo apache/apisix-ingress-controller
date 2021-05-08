@@ -213,9 +213,7 @@ func (t *translator) translateRouteMatchExprs(nginxVars []configv2alpha1.ApisixR
 			name = strings.ReplaceAll(name, "-", "_")
 			subj = "http_" + name
 		case configv2alpha1.ScopeCookie:
-			name := strings.ToLower(expr.Subject.Name)
-			name = strings.ReplaceAll(name, "-", "_")
-			subj = "cookie_" + name
+			subj = "cookie_" + expr.Subject.Name
 		case configv2alpha1.ScopePath:
 			subj = "uri"
 		default:
