@@ -176,9 +176,9 @@ func TestRouteMatchExpr(t *testing.T) {
 	assert.Equal(t, results[8][2].SliceVal, []string{"a.com", "b.com"})
 
 	assert.Len(t, results[9], 3)
-	assert.Equal(t, results[8][0].StrVal, "cookie_X-Foo")
-	assert.Equal(t, results[8][1].StrVal, "in")
-	assert.Equal(t, results[8][2].SliceVal, []string{"foo.com"})
+	assert.Equal(t, results[9][0].StrVal, "cookie_X-Foo")
+	assert.Equal(t, results[9][1].StrVal, "in")
+	assert.Equal(t, results[9][2].SliceVal, []string{"foo.com"})
 }
 
 func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
