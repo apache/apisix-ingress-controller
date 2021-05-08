@@ -172,7 +172,13 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		}
 		added, updated, deleted = m.diff(om)
 	}
-	return c.controller.syncManifests(ctx, added, updated, deleted)
+	if err := c.controller.syncManifests(ctx, added, updated, deleted); err != nil {
+		log.Errorw("failed to sync ingress artifacts",
+			zap.Error(err),
+		)
+		return err
+	}
+	return nil
 }
 
 func (c *ingressController) handleSyncErr(obj interface{}, err error) {
@@ -201,11 +207,11 @@ func (c *ingressController) onAdd(obj interface{}) {
 	valid := c.isIngressEffective(ing)
 	if valid {
 		log.Debugw("ingress add event arrived",
-			zap.Any("object", obj),
+			zap.Any("object", ing),
 		)
 	} else {
 		log.Debugw("ignore noneffective ingress add event",
-			zap.Any("object", obj),
+			zap.Any("object", ing),
 		)
 		return
 	}
