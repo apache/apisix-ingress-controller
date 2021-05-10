@@ -19,11 +19,33 @@
 
 # Table of Contents
 
+- [0.6.0](#060)
 - [0.5.0](#050)
 - [0.4.0](#040)
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 0.6.0
+
+We have added some new features, fixed some bugs, and made some optimizations to the internal code.
+
+**Note: The CRDs should be re-applied because of some new features**
+
+## Core
+
+* Support TCP definition [#115](https://github.com/apache/apisix-ingress-controller/issues/115)
+* Add labels to mark resources are pushed by ingress controller [#242](https://github.com/apache/apisix-ingress-controller/issues/242)
+* Add jsonschema validate for ApisixUpstream and ApisixTls resource [#371](https://github.com/apache/apisix-ingress-controller/issues/371) [#372](https://github.com/apache/apisix-ingress-controller/issues/372)
+* Support to record kubernetes events for resources processing [#394](https://github.com/apache/apisix-ingress-controller/issues/394)
+* Support to report resources status [#395](https://github.com/apache/apisix-ingress-controller/issues/395)
+* Support global_rules for cluster scoped plugins [#402](https://github.com/apache/apisix-ingress-controller/issues/402)
+
+## Fix
+
+* Remove upstream caching correctly [#421](https://github.com/apache/apisix-ingress-controller/issues/421)
+* Avoid retrying caused by 404 when deleting cache [#424](https://github.com/apache/apisix-ingress-controller/pull/424)
+* Handle cookie exprs correctly [#425](https://github.com/apache/apisix-ingress-controller/pull/425)
 
 # 0.5.0
 
