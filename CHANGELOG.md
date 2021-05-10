@@ -30,6 +30,8 @@
 
 We have added some new features, fixed some bugs, and made some optimizations to the internal code.
 
+**Note: The CRDs should be re-applied because of some new features**
+
 ## Core
 
 * Support TCP definition [#115](https://github.com/apache/apisix-ingress-controller/issues/115)
