@@ -28,7 +28,7 @@
 
 # 0.6.0
 
-这个版本我们新增了一些特性，修复了一些bug,同时也对内部代码做了一些优化。
+We have added some new features, fixed some bugs, and made some optimizations to the internal code.
 
 ## Core
 
