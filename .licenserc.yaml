@@ -32,10 +32,10 @@ header:
     - '**/assets/lcs-templates/**'
     - '**/assets/languages.yaml'
     - '**/assets/assets.gen.go'
-    - 'pkg/kube/apisix/**'
     - '**/*.json'
     - '.github/ISSUE_TEMPLATE'
     - '.github/PULL_REQUEST_TEMPLATE'
+    - 'pkg/kube/apisix/client/**'
     - 'pkg/types/apisix/v1/zz_generated.deepcopy.go'
 
   comment: on-failure
