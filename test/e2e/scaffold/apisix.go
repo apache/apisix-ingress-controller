@@ -87,9 +87,6 @@ spec:
             - containerPort: 9443
               name: "https"
               protocol: "TCP"
-            - containerPort: 9090
-              name: "http-control"
-              protocol: "TCP"
           volumeMounts:
             - mountPath: /usr/local/apisix/conf/config.yaml
               name: apisix-config-yaml-configmap
@@ -123,6 +120,10 @@ spec:
       port: 9443
       protocol: TCP
       targetPort: 9443
+    - name: tcp
+      port: 9100
+      protocol: TCP
+      targetPort: 9100
     - name: http-control
       port: 9090
       protocol: TCP

@@ -262,10 +262,12 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		adminNodePort   int
 		httpNodePort    int
 		httpsNodePort   int
+		tcpNodePort     int
 		controlNodePort int
 		adminPort       int
 		httpPort        int
 		httpsPort       int
+		tcpPort         int
 		controlPort     int
 	)
 	for _, port := range s.apisixService.Spec.Ports {
@@ -278,6 +280,9 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		} else if port.Name == "http-admin" {
 			adminNodePort = int(port.NodePort)
 			adminPort = int(port.Port)
+		} else if port.Name == "tcp" {
+			tcpNodePort = int(port.NodePort)
+			tcpPort = int(port.Port)
 		} else if port.Name == "http-control" {
 			controlNodePort = int(port.NodePort)
 			controlPort = int(port.Port)
@@ -290,6 +295,8 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		httpNodePort, httpPort)
 	s.apisixHttpsTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
 		httpsNodePort, httpsPort)
+	s.apisixTCPTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
+		tcpNodePort, tcpPort)
 	s.apisixControlTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
 		controlNodePort, controlPort)
 	if err := s.apisixAdminTunnel.ForwardPortE(s.t); err != nil {
@@ -304,6 +311,10 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		return err
 	}
 	s.addFinalizers(s.apisixHttpsTunnel.Close)
+	if err := s.apisixTCPTunnel.ForwardPortE(s.t); err != nil {
+			return err
+		}
+	s.addFinalizers(s.apisixTCPTunnel.Close)
 	if err := s.apisixControlTunnel.ForwardPortE(s.t); err != nil {
 		return err
 	}

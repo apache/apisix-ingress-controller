@@ -15,16 +15,10 @@
 package plugins
 
 import (
-	"io/ioutil"
-	"strings"
-	"errors"
-
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 )
-
-var serverInfoKey = [...]string{"etcd_version", "up_time", "last_report_time", "id", "hostname", "version", "boot_time"}
 
 var _ = ginkgo.FDescribe("server-info plugin", func() {
 	opts := &scaffold.Options{
@@ -36,11 +30,11 @@ var _ = ginkgo.FDescribe("server-info plugin", func() {
 		HTTPBinServicePort:      80,
 		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
 	}
-	s := scaffold.NewScaffold(opts)
-	ginkgo.It("check server info", func() {
-		err := setServerInfoPluginStatus(opts.APISIXConfigPath, true)
-		assert.Nil(ginkgo.GinkgoT(), err, "Enabling server-info plugin")
-		serverInfo, err := s.GetServerInfo()
+	sEnabled := scaffold.NewScaffold(opts)
+
+	ginkgo.It("enable server-info plugin", func() {
+		serverInfoKey := [...]string{"etcd_version", "up_time", "last_report_time", "id", "hostname", "version", "boot_time"}
+		serverInfo, err := sEnabled.GetServerInfo()
 		assert.Nil(ginkgo.GinkgoT(), err)
 		if assert.NotNil(ginkgo.GinkgoT(), serverInfo) {
 			for _, key := range serverInfoKey {
@@ -48,62 +42,23 @@ var _ = ginkgo.FDescribe("server-info plugin", func() {
 				assert.True(ginkgo.GinkgoT(), ok)
 			}
 		}
+
 	})
+
+	optsDisabled := &scaffold.Options{
+		Name:                    "default",
+		Kubeconfig:              scaffold.GetKubeconfig(),
+		APISIXConfigPath:        "testdata/apisix-gw-config-srv-info-disabled.yaml",
+		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
+		IngressAPISIXReplicas:   1,
+		HTTPBinServicePort:      80,
+		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
+	}
+	sDisabled := scaffold.NewScaffold(optsDisabled)
 
 	ginkgo.It("disable plugin", func() {
-		err := setServerInfoPluginStatus(opts.APISIXConfigPath, false)
-		assert.Nil(ginkgo.GinkgoT(), err, "Disabling server-info plugin")
-		serverInfo, err := s.GetServerInfo()
-		assert.Nil(ginkgo.GinkgoT(), serverInfo)
-		assert.NotNil(ginkgo.GinkgoT(), err)
-	})
-
-	ginkgo.It("enable plugin and then delete it", func() {
-		err := setServerInfoPluginStatus(opts.APISIXConfigPath, true)
-		assert.Nil(ginkgo.GinkgoT(), err, "Enabling server-info plugin")
-		serverInfo, err := s.GetServerInfo()
+		serverInfo, err := sDisabled.GetServerInfo()
+		assert.Equal(ginkgo.GinkgoT(), len(serverInfo), 0)
 		assert.Nil(ginkgo.GinkgoT(), err)
-		if assert.NotNil(ginkgo.GinkgoT(), serverInfo) {
-			for _, key := range serverInfoKey {
-				_, ok := serverInfo[key]
-				assert.True(ginkgo.GinkgoT(), ok)
-			}
-		}
-
-		err = setServerInfoPluginStatus(opts.APISIXConfigPath, false)
-		assert.Nil(ginkgo.GinkgoT(), err, "Disabling server-info plugin")
-		serverInfo, err = s.GetServerInfo()
-		assert.Nil(ginkgo.GinkgoT(), serverInfo)
-		assert.NotNil(ginkgo.GinkgoT(), err)
 	})
 })
-
-// enable/disable server-info plugin in config file by (un)comment, assmue "server-info" exists
-func setServerInfoPluginStatus(apisixConfigPath string, setEnable bool) error {
-	yamlConfig, err := ioutil.ReadFile(apisixConfigPath)
-	if err != nil {
-		return err
-	}
-	lines := strings.Split(string(yamlConfig), "\n")
-	hasServerInfo := false
-	for i, line := range lines {
-		if strings.Contains(line, "server-info") {
-			hasServerInfo = true
-			if setEnable {
-				lines[i] = "  - server-info"
-			} else {
-				lines[i] = "//  - server-info"
-			}
-			break
-		}
-	}
-	if !hasServerInfo {
-		return errors.New("no server-info plugin in config")
-	}
-	newYamlConfig := strings.Join(lines, "\n")
-	err = ioutil.WriteFile(apisixConfigPath, []byte(newYamlConfig), 0644)
-	if err != nil {
-		return err
-	}
-	return nil
-}
