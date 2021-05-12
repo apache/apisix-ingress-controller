@@ -26,25 +26,36 @@ import (
 )
 
 var _ = ginkgo.Describe("endpoints", func() {
-	s := scaffold.NewDefaultScaffold()
+	opts := &scaffold.Options{
+		Name:                    "default",
+		Kubeconfig:              scaffold.GetKubeconfig(),
+		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
+		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
+		IngressAPISIXReplicas:   1,
+		HTTPBinServicePort:      80,
+		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
+	}
+	s := scaffold.NewScaffold(opts)
 	ginkgo.It("ignore applied only if there is an ApisixRoute referenced", func() {
 		time.Sleep(5 * time.Second)
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(0), "checking number of upstreams")
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		ups := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
   name: httpbin-route
 spec:
-   rules:
-   - host: httpbin.org
-     http:
-       paths:
-       - backend:
-           serviceName: %s
-           servicePort: %d
-         path: /ip
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ups))
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
@@ -54,19 +65,20 @@ spec:
 		ginkgo.Skip("now we don't handle endpoints delete event")
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
  name: httpbin-route
 spec:
- rules:
- - host: httpbin.com
-   http:
-     paths:
-     - backend:
-         serviceName: %s
-         servicePort: %d
-       path: /ip
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths: /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
@@ -80,30 +92,34 @@ spec:
 })
 
 var _ = ginkgo.Describe("port usage", func() {
-	s := scaffold.NewScaffold(&scaffold.Options{
+	opts := &scaffold.Options{
 		Name:                    "endpoints-port",
 		Kubeconfig:              scaffold.GetKubeconfig(),
 		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
 		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
 		IngressAPISIXReplicas:   1,
-		HTTPBinServicePort:      8080, // use service port which is different from target port (80)
-	})
+		HTTPBinServicePort:      8080,
+		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
+	}
+	s := scaffold.NewScaffold(opts)
 	ginkgo.It("service port != target port", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
  name: httpbin-route
 spec:
- rules:
- - host: httpbin.com
-   http:
-     paths:
-     - backend:
-         serviceName: %s
-         servicePort: %d
-       path: /ip
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
 		time.Sleep(5 * time.Second)

@@ -25,7 +25,7 @@ ApisixUpstream is the decorator of Kubernetes Service. It's designed to have sam
 load balancing, health check, retry, timeout parameters and etc.
 
 Resort to `ApisixUpstream` and the Kubernetes Service, apisix ingress controller will generates the APISIX Upstream(s).
-To learn more, please check the [Apache APISIX architecture-design docs](https://github.com/apache/apisix/blob/master/doc/architecture-design.md#upstream).
+To learn more, please check the [Apache APISIX architecture-design docs](https://github.com/apache/apisix/blob/master/docs/en/latest/architecture-design/upstream.md).
 
 ### Configuring Load Balancer
 

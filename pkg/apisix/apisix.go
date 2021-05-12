@@ -16,6 +16,7 @@ package apisix
 
 import (
 	"context"
+	"sync"
 
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -26,6 +27,8 @@ type APISIX interface {
 	Cluster(string) Cluster
 	// AddCluster adds a new cluster.
 	AddCluster(*ClusterOptions) error
+	// UpdateCluster updates an existing cluster.
+	UpdateCluster(*ClusterOptions) error
 	// ListClusters lists all APISIX clusters.
 	ListClusters() []Cluster
 }
@@ -41,6 +44,8 @@ type Cluster interface {
 	SSL() SSL
 	// StreamRoute returns a StreamRoute interface that can operate StreamRoute resources.
 	StreamRoute() StreamRoute
+	// GlobalRule returns a GlobalRule interface that can operate GlobalRule resources.
+	GlobalRule() GlobalRule
 	// String exposes the client information in human readable format.
 	String() string
 	// HasSynced checks whether all resources in APISIX cluster is synced to cache.
@@ -87,7 +92,18 @@ type StreamRoute interface {
 	Update(context.Context, *v1.StreamRoute) (*v1.StreamRoute, error)
 }
 
+// GlobalRule is the specific client interface to take over the create, update,
+// list and delete for APISIX's Global Rule resource.
+type GlobalRule interface {
+	Get(context.Context, string) (*v1.GlobalRule, error)
+	List(context.Context) ([]*v1.GlobalRule, error)
+	Create(context.Context, *v1.GlobalRule) (*v1.GlobalRule, error)
+	Delete(context.Context, *v1.GlobalRule) error
+	Update(context.Context, *v1.GlobalRule) (*v1.GlobalRule, error)
+}
+
 type apisix struct {
+	mu                 sync.RWMutex
 	nonExistentCluster Cluster
 	clusters           map[string]Cluster
 }
@@ -102,6 +118,8 @@ func NewClient() (APISIX, error) {
 
 // Cluster implements APISIX.Cluster method.
 func (c *apisix) Cluster(name string) Cluster {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	cluster, ok := c.clusters[name]
 	if !ok {
 		return c.nonExistentCluster
@@ -111,6 +129,8 @@ func (c *apisix) Cluster(name string) Cluster {
 
 // ListClusters implements APISIX.ListClusters method.
 func (c *apisix) ListClusters() []Cluster {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	clusters := make([]Cluster, 0, len(c.clusters))
 	for _, cluster := range c.clusters {
 		clusters = append(clusters, cluster)
@@ -120,6 +140,8 @@ func (c *apisix) ListClusters() []Cluster {
 
 // AddCluster implements APISIX.AddCluster method.
 func (c *apisix) AddCluster(co *ClusterOptions) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	_, ok := c.clusters[co.Name]
 	if ok {
 		return ErrDuplicatedCluster
@@ -131,6 +153,22 @@ func (c *apisix) AddCluster(co *ClusterOptions) error {
 	if c.clusters == nil {
 		c.clusters = make(map[string]Cluster)
 	}
+	c.clusters[co.Name] = cluster
+	return nil
+}
+
+func (c *apisix) UpdateCluster(co *ClusterOptions) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if _, ok := c.clusters[co.Name]; !ok {
+		return ErrClusterNotExist
+	}
+
+	cluster, err := newCluster(co)
+	if err != nil {
+		return err
+	}
+
 	c.clusters[co.Name] = cluster
 	return nil
 }

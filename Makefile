@@ -16,7 +16,7 @@
 #
 default: help
 
-VERSION ?= 0.5.0
+VERSION ?= 0.6.0
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 LOCAL_REGISTRY="localhost:5000"
 IMAGE_TAG ?= dev
@@ -68,9 +68,7 @@ unit-test:
 ### e2e-test:             Run e2e test cases (kind is required)
 .PHONY: e2e-test
 e2e-test: ginkgo-check push-images-to-kind
-	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixRoute.yaml
-	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml
-	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml
+	kubectl apply -k $(PWD)/samples/deploy/crd/v1beta1
 	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=$(E2E_CONCURRENCY)
 
 .PHONY: ginkgo-check
@@ -113,15 +111,6 @@ kind-up:
 .PHONY: kind-reset
 kind-reset:
 	kind delete cluster --name apisix
-
-### license-check:        Do Apache License Header check
-.PHONY: license-check
-license-check:
-ifeq ("$(wildcard .actions/openwhisk-utilities/scancode/scanCode.py)", "")
-	git clone https://github.com/apache/openwhisk-utilities.git .actions/openwhisk-utilities
-	cp .actions/ASF* .actions/openwhisk-utilities/scancode/
-endif
-	.actions/openwhisk-utilities/scancode/scanCode.py --config .actions/ASF-Release.cfg ./
 
 ### help:                 Show Makefile rules
 .PHONY: help

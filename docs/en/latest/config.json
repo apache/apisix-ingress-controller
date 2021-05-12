@@ -7,11 +7,8 @@
       "href": "https://apisix.apache.org/docs/ingress-controller/getting-started/"
     },
     {
-      "type": "category",
-      "label": "Getting Started",
-      "items": [
-        "getting-started"
-      ]
+      "type": "doc",
+      "id": "getting-started"
     },
     {
       "type": "category",
@@ -53,6 +50,10 @@
         "concepts/apisix_route",
         "concepts/apisix_upstream"
       ]
+    },
+    {
+      "type": "doc",
+      "id": "design"
     },
     {
       "type": "doc",

@@ -38,7 +38,7 @@ should be:
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
-  name: foor-bar-route
+  name: foo-bar-route
 spec:
   http:
   - name: foo
@@ -240,3 +240,27 @@ spec:
           servicePort: 8080
       websocket: true
 ```
+
+TCP Route
+---------
+
+apisix-ingress-controller supports the port-based tcp route.
+
+```yaml
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+  name: tcp-route
+spec:
+  tcp:
+    - name: tcp-route-rule1
+      match:
+        ingressPort: 9100
+      backend:
+        serviceName: tcp-server
+        servicePort: 8080
+```
+
+The above yaml configuration guides TCP traffic entered to the Ingress proxy server (i.e. [APISIX](https://apisix.apache.org)) port `9100` should be routed to the backend service `tcp-server`.
+
+Note since APISIX doesn't support dynamic listening, so here the `9100` port should be pre-defined in APISIX [configuration](https://github.com/apache/apisix/blob/master/conf/config-default.yaml#L101).

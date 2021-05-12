@@ -162,6 +162,17 @@ func (s *Scaffold) EnsureNumApisixRoutesCreated(desired int) error {
 	return ensureNumApisixCRDsCreated(u.String(), desired)
 }
 
+// EnsureNumApisixStreamRoutesCreated waits until desired number of Stream Routes are created in
+// APISIX cluster.
+func (s *Scaffold) EnsureNumApisixStreamRoutesCreated(desired int) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/stream_routes",
+	}
+	return ensureNumApisixCRDsCreated(u.String(), desired)
+}
+
 // EnsureNumApisixUpstreamsCreated waits until desired number of Upstreams are created in
 // APISIX cluster.
 func (s *Scaffold) EnsureNumApisixUpstreamsCreated(desired int) error {
@@ -217,6 +228,26 @@ func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 	return cli.Cluster("").Upstream().List(context.TODO())
 }
 
+// ListApisixGlobalRules list all global_rules from APISIX
+func (s *Scaffold) ListApisixGlobalRules() ([]*v1.GlobalRule, error) {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin",
+	}
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(&apisix.ClusterOptions{
+		BaseURL: u.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cli.Cluster("").GlobalRule().List(context.TODO())
+}
+
 // ListApisixRoutes list all routes from APISIX.
 func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
 	u := url.URL{
@@ -235,6 +266,26 @@ func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
 		return nil, err
 	}
 	return cli.Cluster("").Route().List(context.TODO())
+}
+
+// ListApisixStreamRoutes list all stream_routes from APISIX.
+func (s *Scaffold) ListApisixStreamRoutes() ([]*v1.StreamRoute, error) {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin",
+	}
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(&apisix.ClusterOptions{
+		BaseURL: u.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cli.Cluster("").StreamRoute().List(context.TODO())
 }
 
 // ListApisixTls list all ssl from APISIX
@@ -299,6 +350,7 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		tcpNodePort, tcpPort)
 	s.apisixControlTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
 		controlNodePort, controlPort)
+
 	if err := s.apisixAdminTunnel.ForwardPortE(s.t); err != nil {
 		return err
 	}
@@ -312,8 +364,8 @@ func (s *Scaffold) newAPISIXTunnels() error {
 	}
 	s.addFinalizers(s.apisixHttpsTunnel.Close)
 	if err := s.apisixTCPTunnel.ForwardPortE(s.t); err != nil {
-			return err
-		}
+		return err
+	}
 	s.addFinalizers(s.apisixTCPTunnel.Close)
 	if err := s.apisixControlTunnel.ForwardPortE(s.t); err != nil {
 		return err

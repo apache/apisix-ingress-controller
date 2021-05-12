@@ -26,12 +26,17 @@ import (
 
 type ApisixV2alpha1Interface interface {
 	RESTClient() rest.Interface
+	ApisixClusterConfigsGetter
 	ApisixRoutesGetter
 }
 
 // ApisixV2alpha1Client is used to interact with features provided by the apisix.apache.org group.
 type ApisixV2alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *ApisixV2alpha1Client) ApisixClusterConfigs() ApisixClusterConfigInterface {
+	return newApisixClusterConfigs(c)
 }
 
 func (c *ApisixV2alpha1Client) ApisixRoutes(namespace string) ApisixRouteInterface {

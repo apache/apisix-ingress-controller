@@ -40,6 +40,7 @@ type ApisixUpstreamsGetter interface {
 type ApisixUpstreamInterface interface {
 	Create(ctx context.Context, apisixUpstream *v1.ApisixUpstream, opts metav1.CreateOptions) (*v1.ApisixUpstream, error)
 	Update(ctx context.Context, apisixUpstream *v1.ApisixUpstream, opts metav1.UpdateOptions) (*v1.ApisixUpstream, error)
+	UpdateStatus(ctx context.Context, apisixUpstream *v1.ApisixUpstream, opts metav1.UpdateOptions) (*v1.ApisixUpstream, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
 	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.ApisixUpstream, error)
@@ -128,6 +129,22 @@ func (c *apisixUpstreams) Update(ctx context.Context, apisixUpstream *v1.ApisixU
 		Namespace(c.ns).
 		Resource("apisixupstreams").
 		Name(apisixUpstream.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Body(apisixUpstream).
+		Do(ctx).
+		Into(result)
+	return
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *apisixUpstreams) UpdateStatus(ctx context.Context, apisixUpstream *v1.ApisixUpstream, opts metav1.UpdateOptions) (result *v1.ApisixUpstream, err error) {
+	result = &v1.ApisixUpstream{}
+	err = c.client.Put().
+		Namespace(c.ns).
+		Resource("apisixupstreams").
+		Name(apisixUpstream.Name).
+		SubResource("status").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(apisixUpstream).
 		Do(ctx).

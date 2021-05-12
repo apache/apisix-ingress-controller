@@ -169,6 +169,26 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 	})
 }
 
+// NewAPISIXClientWithTCPProxy creates the HTTP client but with the TCP proxy of APISIX.
+func (s *Scaffold) NewAPISIXClientWithTCPProxy() *httpexpect.Expect {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixTCPTunnel.Endpoint(),
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
+		),
+	})
+}
+
 // NewAPISIXHttpsClient creates the default HTTPs client.
 func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
 	u := url.URL{

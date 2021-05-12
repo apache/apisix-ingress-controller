@@ -18,12 +18,15 @@ package ingress
 import (
 	"context"
 
+	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
 const (
@@ -31,9 +34,13 @@ const (
 	_commonSuccessMessage = "Sync Successfully"
 )
 
-// recordRouteStatus record ApisixRoute v2alpha1 status
-func recordRouteStatus(ar *configv2alpha1.ApisixRoute, reason, message string, status v1.ConditionStatus) {
+// recordStatus record resources status
+func recordStatus(at interface{}, reason string, err error, status v1.ConditionStatus) {
 	// build condition
+	message := _commonSuccessMessage
+	if err != nil {
+		message = err.Error()
+	}
 	condition := metav1.Condition{
 		Type:    _conditionType,
 		Reason:  reason,
@@ -41,12 +48,55 @@ func recordRouteStatus(ar *configv2alpha1.ApisixRoute, reason, message string, s
 		Message: message,
 	}
 
-	// set to status
-	if ar.Status.Conditions == nil {
-		conditions := make([]metav1.Condition, 0)
-		ar.Status.Conditions = &conditions
+	switch v := at.(type) {
+	case *configv1.ApisixTls:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = &conditions
+		}
+		meta.SetStatusCondition(v.Status.Conditions, condition)
+		if _, errRecord := kube.GetApisixClient().ApisixV1().ApisixTlses(v.Namespace).
+			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+			log.Errorw("failed to record status change for ApisixTls",
+				zap.Error(errRecord),
+				zap.String("name", v.Name),
+				zap.String("namespace", v.Namespace),
+			)
+		}
+	case *configv1.ApisixUpstream:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = &conditions
+		}
+		meta.SetStatusCondition(v.Status.Conditions, condition)
+		if _, errRecord := kube.GetApisixClient().ApisixV1().ApisixUpstreams(v.Namespace).
+			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+			log.Errorw("failed to record status change for ApisixUpstream",
+				zap.Error(errRecord),
+				zap.String("name", v.Name),
+				zap.String("namespace", v.Namespace),
+			)
+		}
+	case *configv2alpha1.ApisixRoute:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = &conditions
+		}
+		meta.SetStatusCondition(v.Status.Conditions, condition)
+		if _, errRecord := kube.GetApisixClient().ApisixV2alpha1().ApisixRoutes(v.Namespace).
+			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+			log.Errorw("failed to record status change for ApisixRoute",
+				zap.Error(errRecord),
+				zap.String("name", v.Name),
+				zap.String("namespace", v.Namespace),
+			)
+		}
+	default:
+		// This should not be executed
+		log.Errorf("unsupported resource record: %s", v)
 	}
-	meta.SetStatusCondition(ar.Status.Conditions, condition)
-	_, _ = kube.GetApisixClient().ApisixV2alpha1().ApisixRoutes(ar.Namespace).
-		UpdateStatus(context.TODO(), ar, metav1.UpdateOptions{})
+
 }

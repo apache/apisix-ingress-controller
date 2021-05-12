@@ -213,9 +213,7 @@ func (t *translator) translateRouteMatchExprs(nginxVars []configv2alpha1.ApisixR
 			name = strings.ReplaceAll(name, "-", "_")
 			subj = "http_" + name
 		case configv2alpha1.ScopeCookie:
-			name := strings.ToLower(expr.Subject.Name)
-			name = strings.ReplaceAll(name, "-", "_")
-			subj = "cookie_" + name
+			subj = "cookie_" + expr.Subject.Name
 		case configv2alpha1.ScopePath:
 			subj = "uri"
 		default:
@@ -294,5 +292,35 @@ func (t *translator) translateRouteMatchExprs(nginxVars []configv2alpha1.ApisixR
 }
 
 func (t *translator) translateTCPRoute(ctx *TranslateContext, ar *configv2alpha1.ApisixRoute) error {
+	ruleNameMap := make(map[string]struct{})
+	for _, part := range ar.Spec.TCP {
+		if _, ok := ruleNameMap[part.Name]; ok {
+			return errors.New("duplicated route rule name")
+		}
+		ruleNameMap[part.Name] = struct{}{}
+		backend := &part.Backend
+		svcClusterIP, svcPort, err := t.getTCPServiceClusterIPAndPort(backend, ar)
+		if err != nil {
+			log.Errorw("failed to get service port in backend",
+				zap.Any("backend", backend),
+				zap.Any("apisix_route", ar),
+				zap.Error(err),
+			)
+			return err
+		}
+		sr := apisixv1.NewDefaultStreamRoute()
+		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
+		sr.ID = id.GenID(name)
+		sr.ServerPort = part.Match.IngressPort
+		// TODO use upstream id to refer the upstream object.
+		// Currently, APISIX doesn't use upstream_id field in
+		// APISIX, so we have to embed the entire upstream.
+		ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.ResolveGranularity, svcClusterIP, svcPort)
+		if err != nil {
+			return err
+		}
+		sr.Upstream = ups
+		ctx.addStreamRoute(sr)
+	}
 	return nil
 }

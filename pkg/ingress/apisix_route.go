@@ -18,7 +18,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -27,6 +26,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
@@ -155,8 +155,9 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	)
 
 	m := &manifest{
-		routes:    tctx.Routes,
-		upstreams: tctx.Upstreams,
+		routes:       tctx.Routes,
+		upstreams:    tctx.Upstreams,
+		streamRoutes: tctx.StreamRoutes,
 	}
 
 	var (
@@ -187,8 +188,9 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		}
 
 		om := &manifest{
-			routes:    oldCtx.Routes,
-			upstreams: oldCtx.Upstreams,
+			routes:       oldCtx.Routes,
+			upstreams:    oldCtx.Upstreams,
+			streamRoutes: oldCtx.StreamRoutes,
 		}
 		added, updated, deleted = m.diff(om)
 	}
@@ -217,7 +219,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 					c.controller.recorderEvent(ar.V1(), v1.EventTypeNormal, _resourceSynced, nil)
 				} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
 					c.controller.recorderEvent(ar.V2alpha1(), v1.EventTypeNormal, _resourceSynced, nil)
-					recordRouteStatus(ar.V2alpha1(), _resourceSynced, _commonSuccessMessage, metav1.ConditionTrue)
+					recordStatus(ar.V2alpha1(), _resourceSynced, nil, metav1.ConditionTrue)
 				}
 			} else {
 				log.Errorw("failed list ApisixRoute",
@@ -239,7 +241,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 			c.controller.recorderEvent(ar.V1(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
 		} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
 			c.controller.recorderEvent(ar.V2alpha1(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
-			recordRouteStatus(ar.V2alpha1(), _resourceSyncAborted, errOrigin.Error(), metav1.ConditionFalse)
+			recordStatus(ar.V2alpha1(), _resourceSyncAborted, errOrigin, metav1.ConditionFalse)
 		}
 	} else {
 		log.Errorw("failed list ApisixRoute",
