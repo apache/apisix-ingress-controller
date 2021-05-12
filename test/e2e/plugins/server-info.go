@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var _ = ginkgo.FDescribe("server-info plugin", func() {
+var _ = ginkgo.Describe("server-info plugin", func() {
 	opts := &scaffold.Options{
 		Name:                    "default",
 		Kubeconfig:              scaffold.GetKubeconfig(),
@@ -30,11 +30,11 @@ var _ = ginkgo.FDescribe("server-info plugin", func() {
 		HTTPBinServicePort:      80,
 		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
 	}
-	sEnabled := scaffold.NewScaffold(opts)
+	s := scaffold.NewScaffold(opts)
 
 	ginkgo.It("enable server-info plugin", func() {
 		serverInfoKey := [...]string{"etcd_version", "up_time", "last_report_time", "id", "hostname", "version", "boot_time"}
-		serverInfo, err := sEnabled.GetServerInfo()
+		serverInfo, err := s.GetServerInfo()
 		assert.Nil(ginkgo.GinkgoT(), err)
 		if assert.NotNil(ginkgo.GinkgoT(), serverInfo) {
 			for _, key := range serverInfoKey {
@@ -43,22 +43,5 @@ var _ = ginkgo.FDescribe("server-info plugin", func() {
 			}
 		}
 
-	})
-
-	optsDisabled := &scaffold.Options{
-		Name:                    "default",
-		Kubeconfig:              scaffold.GetKubeconfig(),
-		APISIXConfigPath:        "testdata/apisix-gw-config-srv-info-disabled.yaml",
-		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
-		IngressAPISIXReplicas:   1,
-		HTTPBinServicePort:      80,
-		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
-	}
-	sDisabled := scaffold.NewScaffold(optsDisabled)
-
-	ginkgo.It("disable plugin", func() {
-		serverInfo, err := sDisabled.GetServerInfo()
-		assert.Equal(ginkgo.GinkgoT(), len(serverInfo), 0)
-		assert.Nil(ginkgo.GinkgoT(), err)
 	})
 })
