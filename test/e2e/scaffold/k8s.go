@@ -196,6 +196,7 @@ func (s *Scaffold) GetServerInfo() (map[string]interface{}, error) {
 		ginkgo.GinkgoT().Logf("failed to get response from Control API: %s", err.Error())
 		return nil, err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		ginkgo.GinkgoT().Logf("got status code %d from Control API", resp.StatusCode)
 		return nil, err

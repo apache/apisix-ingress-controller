@@ -36,12 +36,9 @@ var _ = ginkgo.Describe("server-info plugin", func() {
 		serverInfoKey := [...]string{"etcd_version", "up_time", "last_report_time", "id", "hostname", "version", "boot_time"}
 		serverInfo, err := s.GetServerInfo()
 		assert.Nil(ginkgo.GinkgoT(), err)
-		if assert.NotNil(ginkgo.GinkgoT(), serverInfo) {
-			for _, key := range serverInfoKey {
-				_, ok := serverInfo[key]
-				assert.True(ginkgo.GinkgoT(), ok)
-			}
+		for _, key := range serverInfoKey {
+			_, ok := serverInfo[key]
+			assert.True(ginkgo.GinkgoT(), ok)
 		}
-
 	})
 })
