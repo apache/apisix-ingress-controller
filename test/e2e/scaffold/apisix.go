@@ -124,6 +124,10 @@ spec:
       port: 9100
       protocol: TCP
       targetPort: 9100
+    - name: http-control
+      port: 9090
+      protocol: TCP
+      targetPort: 9090
   type: NodePort
 `
 )

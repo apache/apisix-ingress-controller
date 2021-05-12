@@ -62,10 +62,11 @@ type Scaffold struct {
 	httpbinService    *corev1.Service
 	finializers       []func()
 
-	apisixAdminTunnel *k8s.Tunnel
-	apisixHttpTunnel  *k8s.Tunnel
-	apisixHttpsTunnel *k8s.Tunnel
-	apisixTCPTunnel   *k8s.Tunnel
+	apisixAdminTunnel   *k8s.Tunnel
+	apisixHttpTunnel    *k8s.Tunnel
+	apisixHttpsTunnel   *k8s.Tunnel
+	apisixTCPTunnel     *k8s.Tunnel
+	apisixControlTunnel *k8s.Tunnel
 
 	// Used for template rendering.
 	EtcdServiceFQDN string
