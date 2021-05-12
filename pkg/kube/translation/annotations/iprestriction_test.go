@@ -12,37 +12,27 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package translation
+package annotations
 
 import (
-	"go.uber.org/zap"
+	"testing"
 
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/stretchr/testify/assert"
+
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-var (
-	_handlers = []annotations.Handler{
-		annotations.NewCorsHandler(),
-		annotations.NewIPRestrictionHandler(),
+func TestIPRestrictionHandler(t *testing.T) {
+	annotations := map[string]string{
+		_allowlistSourceRange: "10.2.2.2,192.168.0.0/16",
 	}
-)
+	p := NewIPRestrictionHandler()
+	out, err := p.Handle(NewExtractor(annotations))
+	assert.Nil(t, err, "checking given error")
+	config := out.(*apisixv1.IPRestrictConfig)
+	assert.Len(t, config.Whitelist, 2, "checking size of white list")
+	assert.Equal(t, config.Whitelist[0], "10.2.2.2")
+	assert.Equal(t, config.Whitelist[1], "192.168.0.0/16")
 
-func (t *translator) translateAnnotations(anno map[string]string) apisix.Plugins {
-	extractor := annotations.NewExtractor(anno)
-	plugins := make(apisix.Plugins)
-	for _, handler := range _handlers {
-		out, err := handler.Handle(extractor)
-		if err != nil {
-			log.Warnw("failed to handle annotations",
-				zap.Error(err),
-			)
-			continue
-		}
-		if out != nil {
-			plugins[handler.PluginName()] = out
-		}
-	}
-	return plugins
+	assert.Equal(t, p.PluginName(), "ip-restriction")
 }
