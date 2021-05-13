@@ -24,8 +24,8 @@ type Extractor interface {
 	// When the target annoatation is missing, empty string will be given.
 	GetStringAnnotation(string) string
 	// GetStringsAnnotation returns a string slice which splits the value of target
-	// annotation by the comma symbol. When the target annotation is missing, an empty
-	// slice (not a nil slice) will be given.
+	// annotation by the comma symbol. When the target annotation is missing, a nil
+	// slice will be given.
 	GetStringsAnnotation(string) []string
 	// GetBoolAnnotation returns a boolean value from the given annotation.
 	// When value is "true", true will be given, other values will be treated as
@@ -53,6 +53,10 @@ func (e *extractor) GetStringAnnotation(name string) string {
 }
 
 func (e *extractor) GetStringsAnnotation(name string) []string {
+	value := e.GetStringAnnotation(name)
+	if value == "" {
+		return nil
+	}
 	return strings.Split(e.annotations[name], ",")
 }
 

@@ -13,33 +13,3 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 package annotations
-
-import (
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-)
-
-const (
-	_allowlistSourceRange = "k8s.apisix.apache.org/allowlist-source-range"
-)
-
-type ipRestriction struct{}
-
-// NewIPRestrictionHandler creates a handler to convert
-// annotations about client ips control to APISIX ip-restrict plugin.
-func NewIPRestrictionHandler() Handler {
-	return &ipRestriction{}
-}
-
-func (i *ipRestriction) PluginName() string {
-	return "ip-restriction"
-}
-
-func (i *ipRestriction) Handle(e Extractor) (interface{}, error) {
-	var plugin apisixv1.IPRestrictConfig
-	if allowlist := e.GetStringsAnnotation(_allowlistSourceRange); len(allowlist) > 0 {
-		plugin.Whitelist = allowlist
-	} else {
-		return nil, nil
-	}
-	return &plugin, nil
-}

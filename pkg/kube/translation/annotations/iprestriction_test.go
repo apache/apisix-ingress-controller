@@ -35,4 +35,9 @@ func TestIPRestrictionHandler(t *testing.T) {
 	assert.Equal(t, config.Whitelist[1], "192.168.0.0/16")
 
 	assert.Equal(t, p.PluginName(), "ip-restriction")
+
+	delete(annotations, _allowlistSourceRange)
+	out, err = p.Handle(NewExtractor(annotations))
+	assert.Nil(t, err, "checking given error")
+	assert.Nil(t, out, "checking the given ip-restrction plugin config")
 }
