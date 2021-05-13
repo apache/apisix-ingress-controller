@@ -33,10 +33,21 @@ func TestIPRestrictionHandler(t *testing.T) {
 	assert.Len(t, config.Whitelist, 2, "checking size of white list")
 	assert.Equal(t, config.Whitelist[0], "10.2.2.2")
 	assert.Equal(t, config.Whitelist[1], "192.168.0.0/16")
-
 	assert.Equal(t, p.PluginName(), "ip-restriction")
 
+	annotations[_blocklistSourceRange] = "172.17.0.0/16,127.0.0.1"
+	out, err = p.Handle(NewExtractor(annotations))
+	assert.Nil(t, err, "checking given error")
+	config = out.(*apisixv1.IPRestrictConfig)
+	assert.Len(t, config.Whitelist, 2, "checking size of white list")
+	assert.Equal(t, config.Whitelist[0], "10.2.2.2")
+	assert.Equal(t, config.Whitelist[1], "192.168.0.0/16")
+	assert.Len(t, config.Blacklist, 2, "checking size of black list")
+	assert.Equal(t, config.Blacklist[0], "172.17.0.0/16")
+	assert.Equal(t, config.Blacklist[1], "127.0.0.1")
+
 	delete(annotations, _allowlistSourceRange)
+	delete(annotations, _blocklistSourceRange)
 	out, err = p.Handle(NewExtractor(annotations))
 	assert.Nil(t, err, "checking given error")
 	assert.Nil(t, out, "checking the given ip-restrction plugin config")

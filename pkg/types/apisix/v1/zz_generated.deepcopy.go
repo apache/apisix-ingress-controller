@@ -61,6 +61,11 @@ func (in *IPRestrictConfig) DeepCopyInto(out *IPRestrictConfig) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.Blacklist != nil {
+		in, out := &in.Blacklist, &out.Blacklist
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
