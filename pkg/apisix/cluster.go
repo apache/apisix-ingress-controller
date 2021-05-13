@@ -255,6 +255,11 @@ func (c *cluster) HasSynced(ctx context.Context) error {
 		log.Errorf("failed to wait cluster to ready: %s", ctx.Err())
 		return ctx.Err()
 	case <-c.cacheSynced:
+		if c.cacheSyncErr != nil {
+			// See https://github.com/apache/apisix-ingress-controller/issues/448
+			// for more details.
+			return c.cacheSyncErr
+		}
 		log.Warnf("cluster %s now is ready, cost time %s", c.name, time.Since(now).String())
 		return nil
 	}
