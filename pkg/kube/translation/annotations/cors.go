@@ -28,7 +28,7 @@ const (
 type cors struct{}
 
 // NewCorsHandler creates a handler to convert annotations about
-// cors to APISIX cors plugin.
+// CORS to APISIX cors plugin.
 func NewCorsHandler() Handler {
 	return &cors{}
 }

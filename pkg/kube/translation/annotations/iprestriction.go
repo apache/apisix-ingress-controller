@@ -40,8 +40,8 @@ func (i *ipRestriction) Handle(e Extractor) (interface{}, error) {
 	allowlist := e.GetStringsAnnotation(_allowlistSourceRange)
 	blocklist := e.GetStringsAnnotation(_blocklistSourceRange)
 	if allowlist != nil || blocklist != nil {
-		plugin.Whitelist = allowlist
-		plugin.Blacklist = blocklist
+		plugin.Allowlist = allowlist
+		plugin.Blocklist = blocklist
 		return &plugin, nil
 	}
 	return nil, nil
