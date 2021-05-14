@@ -25,10 +25,10 @@ This document describes all supported annotations and their functions. You can a
 
 > Note all keys and values of annotations are strings, so boolean value like `true` and `false` should be represented as `"true"` and `"false"`.
 
-Cors Support
+CORS Support
 ------------
 
-In order to enable [Cors](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing), the annotation `k8s.apisix.apache.org/enable-cors` should be set to `"true"`, also, there are some other annotations to customize the cors behavior.
+In order to enable [CORS](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing), the annotation `k8s.apisix.apache.org/enable-cors` should be set to `"true"`, also, there are some other annotations to customize the cors behavior.
 
 * `k8s.apisix.apache.org/cors-allow-origin`
 
