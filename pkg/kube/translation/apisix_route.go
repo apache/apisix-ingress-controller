@@ -31,7 +31,7 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) (*TranslateConte
 	ctx := &TranslateContext{
 		upstreamMap: make(map[string]struct{}),
 	}
-	plugins := t.TranslateAnnotations(ar.Annotations)
+	plugins := t.translateAnnotations(ar.Annotations)
 
 	for _, r := range ar.Spec.Rules {
 		for _, p := range r.Http.Paths {
