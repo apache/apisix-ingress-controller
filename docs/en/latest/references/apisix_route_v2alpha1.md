@@ -34,7 +34,7 @@ Meaning of each field in the spec of ApisixRoute are followed, the top level fie
 | http[].match.paths       | array   | A series of URI that should be matched (oneof) to use this route rule.         |
 | http[].match.hosts   | array   | A series of hosts that should be matched (oneof) to use this route rule.
 | http[].match.methods | array | A series of HTTP methods(`GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, `OPTIONS`, `CONNECT`, `TRACE`) that should be matched (oneof) to use this route rule.
-| http[].match.remote_addrs   | array      | A series of IP address (CIDR format) that should be matched (oneof) to use this route rule.
+| http[].match.remoteAddrs   | array      | A series of IP address (CIDR format) that should be matched (oneof) to use this route rule.
 | http[].match.exprs          | array   | A series expressions that the results should be matched (oneof) to use this route rule.
 | http[].match.exprs[].subject       | object    | Expression subject.
 | http[].match.exprs[].subject.scope       | string    | Specify where to find the subject, values can be `Header`, `Query`, `Cookie` and `Path`.

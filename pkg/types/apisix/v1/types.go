@@ -303,26 +303,6 @@ type Ssl struct {
 	Labels map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 }
 
-// TrafficSplitConfig is the config of traffic-split plugin.
-// +k8s:deepcopy-gen=true
-type TrafficSplitConfig struct {
-	Rules []TrafficSplitConfigRule `json:"rules"`
-}
-
-// TrafficSplitConfigRule is the rule config in traffic-split plugin config.
-// +k8s:deepcopy-gen=true
-type TrafficSplitConfigRule struct {
-	WeightedUpstreams []TrafficSplitConfigRuleWeightedUpstream `json:"weighted_upstreams"`
-}
-
-// TrafficSplitConfigRuleWeightedUpstream is the weighted upstream config in
-// the traffic split plugin rule.
-// +k8s:deepcopy-gen=true
-type TrafficSplitConfigRuleWeightedUpstream struct {
-	UpstreamID string `json:"upstream_id,omitempty"`
-	Weight     int    `json:"weight"`
-}
-
 // StreamRoute represents the stream_route object in APISIX.
 // +k8s:deepcopy-gen=true
 type StreamRoute struct {
