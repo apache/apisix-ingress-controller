@@ -20,6 +20,7 @@ import (
 
 const (
 	_allowlistSourceRange = "k8s.apisix.apache.org/allowlist-source-range"
+	_blocklistSourceRange = "k8s.apisix.apache.org/blocklist-source-range"
 )
 
 type ipRestriction struct{}
@@ -36,10 +37,12 @@ func (i *ipRestriction) PluginName() string {
 
 func (i *ipRestriction) Handle(e Extractor) (interface{}, error) {
 	var plugin apisixv1.IPRestrictConfig
-	if allowlist := e.GetStringsAnnotation(_allowlistSourceRange); len(allowlist) > 0 {
-		plugin.Whitelist = allowlist
-	} else {
-		return nil, nil
+	allowlist := e.GetStringsAnnotation(_allowlistSourceRange)
+	blocklist := e.GetStringsAnnotation(_blocklistSourceRange)
+	if allowlist != nil || blocklist != nil {
+		plugin.Allowlist = allowlist
+		plugin.Blocklist = blocklist
+		return &plugin, nil
 	}
-	return &plugin, nil
+	return nil, nil
 }

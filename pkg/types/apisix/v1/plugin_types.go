@@ -37,7 +37,8 @@ type TrafficSplitConfigRuleWeightedUpstream struct {
 // IPRestrictConfig is the rule config for ip-restriction plugin.
 // +k8s:deepcopy-gen=true
 type IPRestrictConfig struct {
-	Whitelist []string `json:"whitelist,omitempty"`
+	Allowlist []string `json:"whitelist,omitempty"`
+	Blocklist []string `json:"blacklist,omitempty"`
 }
 
 // CorsConfig is the rule config for cors plugin.
