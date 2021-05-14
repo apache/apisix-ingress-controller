@@ -25,7 +25,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
@@ -38,8 +37,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	crdclientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	listersv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
@@ -64,18 +61,16 @@ const (
 
 // Controller is the ingress apisix controller object.
 type Controller struct {
-	name               string
-	namespace          string
-	cfg                *config.Config
-	wg                 sync.WaitGroup
-	watchingNamespace  map[string]struct{}
-	apisix             apisix.APISIX
-	translator         translation.Translator
-	apiServer          *api.Server
-	clientset          kubernetes.Interface
-	crdClientset       crdclientset.Interface
-	metricsCollector   metrics.Collector
-	crdInformerFactory externalversions.SharedInformerFactory
+	name              string
+	namespace         string
+	cfg               *config.Config
+	wg                sync.WaitGroup
+	watchingNamespace map[string]struct{}
+	apisix            apisix.APISIX
+	translator        translation.Translator
+	apiServer         *api.Server
+	metricsCollector  metrics.Collector
+	kubeClient        *kube.KubeClient
 	// recorder event
 	recorder record.EventRecorder
 	// this map enrolls which ApisixTls objects refer to a Kubernetes
@@ -123,7 +118,8 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		return nil, err
 	}
 
-	if err := kube.InitInformer(cfg); err != nil {
+	kubeClient, err := kube.NewKubeClient(cfg)
+	if err != nil {
 		return nil, err
 	}
 
@@ -131,9 +127,6 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	crdClientset := kube.GetApisixClient()
-	sharedInformerFactory := externalversions.NewSharedInformerFactory(crdClientset, cfg.Kubernetes.ResyncInterval.Duration)
 
 	var (
 		watchingNamespace   map[string]struct{}
@@ -146,63 +139,60 @@ func NewController(cfg *config.Config) (*Controller, error) {
 			watchingNamespace[ns] = struct{}{}
 		}
 	}
-	kube.EndpointsInformer = kube.CoreSharedInformerFactory.Core().V1().Endpoints()
 
 	ingressLister := kube.NewIngressLister(
-		kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Lister(),
-		kube.CoreSharedInformerFactory.Networking().V1beta1().Ingresses().Lister(),
-		kube.CoreSharedInformerFactory.Extensions().V1beta1().Ingresses().Lister(),
+		kubeClient.SharedIndexInformerFactory.Networking().V1().Ingresses().Lister(),
+		kubeClient.SharedIndexInformerFactory.Networking().V1beta1().Ingresses().Lister(),
+		kubeClient.SharedIndexInformerFactory.Extensions().V1beta1().Ingresses().Lister(),
 	)
-	apisixRouteLister := kube.NewApisixRouteLister(sharedInformerFactory.Apisix().V1().ApisixRoutes().Lister(),
-		sharedInformerFactory.Apisix().V2alpha1().ApisixRoutes().Lister())
+	apisixRouteLister := kube.NewApisixRouteLister(kubeClient.APISIXSharedIndexInformerFactory.Apisix().V1().ApisixRoutes().Lister(),
+		kubeClient.APISIXSharedIndexInformerFactory.Apisix().V2alpha1().ApisixRoutes().Lister())
 
 	if cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1 {
-		ingressInformer = kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Informer()
+		ingressInformer = kubeClient.SharedIndexInformerFactory.Networking().V1().Ingresses().Informer()
 	} else if cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1beta1 {
-		ingressInformer = kube.CoreSharedInformerFactory.Networking().V1beta1().Ingresses().Informer()
+		ingressInformer = kubeClient.SharedIndexInformerFactory.Networking().V1beta1().Ingresses().Informer()
 	} else {
-		ingressInformer = kube.CoreSharedInformerFactory.Extensions().V1beta1().Ingresses().Informer()
+		ingressInformer = kubeClient.SharedIndexInformerFactory.Extensions().V1beta1().Ingresses().Informer()
 	}
 	if cfg.Kubernetes.ApisixRouteVersion == config.ApisixRouteV2alpha1 {
-		apisixRouteInformer = sharedInformerFactory.Apisix().V2alpha1().ApisixRoutes().Informer()
+		apisixRouteInformer = kubeClient.APISIXSharedIndexInformerFactory.Apisix().V2alpha1().ApisixRoutes().Informer()
 	} else {
-		apisixRouteInformer = sharedInformerFactory.Apisix().V1().ApisixRoutes().Informer()
+		apisixRouteInformer = kubeClient.APISIXSharedIndexInformerFactory.Apisix().V1().ApisixRoutes().Informer()
 	}
 
 	// recorder
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kube.GetKubeClient().CoreV1().Events("")})
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.Client.CoreV1().Events("")})
 
 	c := &Controller{
-		name:               podName,
-		namespace:          podNamespace,
-		cfg:                cfg,
-		apiServer:          apiSrv,
-		apisix:             client,
-		metricsCollector:   metrics.NewPrometheusCollector(podName, podNamespace),
-		clientset:          kube.GetKubeClient(),
-		crdClientset:       crdClientset,
-		crdInformerFactory: sharedInformerFactory,
-		watchingNamespace:  watchingNamespace,
-		secretSSLMap:       new(sync.Map),
-		recorder:           eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
+		name:              podName,
+		namespace:         podNamespace,
+		cfg:               cfg,
+		apiServer:         apiSrv,
+		apisix:            client,
+		metricsCollector:  metrics.NewPrometheusCollector(podName, podNamespace),
+		kubeClient:        kubeClient,
+		watchingNamespace: watchingNamespace,
+		secretSSLMap:      new(sync.Map),
+		recorder:          eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
 
-		epInformer:                  kube.CoreSharedInformerFactory.Core().V1().Endpoints().Informer(),
-		epLister:                    kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
-		svcInformer:                 kube.CoreSharedInformerFactory.Core().V1().Services().Informer(),
-		svcLister:                   kube.CoreSharedInformerFactory.Core().V1().Services().Lister(),
+		epInformer:                  kubeClient.SharedIndexInformerFactory.Core().V1().Endpoints().Informer(),
+		epLister:                    kubeClient.SharedIndexInformerFactory.Core().V1().Endpoints().Lister(),
+		svcInformer:                 kubeClient.SharedIndexInformerFactory.Core().V1().Services().Informer(),
+		svcLister:                   kubeClient.SharedIndexInformerFactory.Core().V1().Services().Lister(),
 		ingressLister:               ingressLister,
 		ingressInformer:             ingressInformer,
-		secretInformer:              kube.CoreSharedInformerFactory.Core().V1().Secrets().Informer(),
-		secretLister:                kube.CoreSharedInformerFactory.Core().V1().Secrets().Lister(),
+		secretInformer:              kubeClient.SharedIndexInformerFactory.Core().V1().Secrets().Informer(),
+		secretLister:                kubeClient.SharedIndexInformerFactory.Core().V1().Secrets().Lister(),
 		apisixRouteInformer:         apisixRouteInformer,
 		apisixRouteLister:           apisixRouteLister,
-		apisixUpstreamInformer:      sharedInformerFactory.Apisix().V1().ApisixUpstreams().Informer(),
-		apisixUpstreamLister:        sharedInformerFactory.Apisix().V1().ApisixUpstreams().Lister(),
-		apisixTlsInformer:           sharedInformerFactory.Apisix().V1().ApisixTlses().Informer(),
-		apisixTlsLister:             sharedInformerFactory.Apisix().V1().ApisixTlses().Lister(),
-		apisixClusterConfigInformer: sharedInformerFactory.Apisix().V2alpha1().ApisixClusterConfigs().Informer(),
-		apisixClusterConfigLister:   sharedInformerFactory.Apisix().V2alpha1().ApisixClusterConfigs().Lister(),
+		apisixUpstreamInformer:      kubeClient.APISIXSharedIndexInformerFactory.Apisix().V1().ApisixUpstreams().Informer(),
+		apisixUpstreamLister:        kubeClient.APISIXSharedIndexInformerFactory.Apisix().V1().ApisixUpstreams().Lister(),
+		apisixTlsInformer:           kubeClient.APISIXSharedIndexInformerFactory.Apisix().V1().ApisixTlses().Informer(),
+		apisixTlsLister:             kubeClient.APISIXSharedIndexInformerFactory.Apisix().V1().ApisixTlses().Lister(),
+		apisixClusterConfigInformer: kubeClient.APISIXSharedIndexInformerFactory.Apisix().V2alpha1().ApisixClusterConfigs().Informer(),
+		apisixClusterConfigLister:   kubeClient.APISIXSharedIndexInformerFactory.Apisix().V2alpha1().ApisixClusterConfigs().Lister(),
 	}
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 		EndpointsLister:      c.epLister,
@@ -267,7 +257,7 @@ func (c *Controller) Run(stop chan struct{}) error {
 			Namespace: c.namespace,
 			Name:      c.cfg.Kubernetes.ElectionID,
 		},
-		Client: c.clientset.CoordinationV1(),
+		Client: c.kubeClient.Client.CoordinationV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
 			Identity:      c.name,
 			EventRecorder: c,

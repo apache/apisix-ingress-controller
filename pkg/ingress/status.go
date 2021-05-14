@@ -23,7 +23,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -35,7 +34,7 @@ const (
 )
 
 // recordStatus record resources status
-func recordStatus(at interface{}, reason string, err error, status v1.ConditionStatus) {
+func (c *Controller) recordStatus(at interface{}, reason string, err error, status v1.ConditionStatus) {
 	// build condition
 	message := _commonSuccessMessage
 	if err != nil {
@@ -47,6 +46,7 @@ func recordStatus(at interface{}, reason string, err error, status v1.ConditionS
 		Status:  status,
 		Message: message,
 	}
+	client := c.kubeClient.APISIXClient
 
 	switch v := at.(type) {
 	case *configv1.ApisixTls:
@@ -56,7 +56,7 @@ func recordStatus(at interface{}, reason string, err error, status v1.ConditionS
 			v.Status.Conditions = &conditions
 		}
 		meta.SetStatusCondition(v.Status.Conditions, condition)
-		if _, errRecord := kube.GetApisixClient().ApisixV1().ApisixTlses(v.Namespace).
+		if _, errRecord := client.ApisixV1().ApisixTlses(v.Namespace).
 			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 			log.Errorw("failed to record status change for ApisixTls",
 				zap.Error(errRecord),
@@ -71,7 +71,7 @@ func recordStatus(at interface{}, reason string, err error, status v1.ConditionS
 			v.Status.Conditions = &conditions
 		}
 		meta.SetStatusCondition(v.Status.Conditions, condition)
-		if _, errRecord := kube.GetApisixClient().ApisixV1().ApisixUpstreams(v.Namespace).
+		if _, errRecord := client.ApisixV1().ApisixUpstreams(v.Namespace).
 			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 			log.Errorw("failed to record status change for ApisixUpstream",
 				zap.Error(errRecord),
@@ -86,7 +86,7 @@ func recordStatus(at interface{}, reason string, err error, status v1.ConditionS
 			v.Status.Conditions = &conditions
 		}
 		meta.SetStatusCondition(v.Status.Conditions, condition)
-		if _, errRecord := kube.GetApisixClient().ApisixV2alpha1().ApisixRoutes(v.Namespace).
+		if _, errRecord := client.ApisixV2alpha1().ApisixRoutes(v.Namespace).
 			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 			log.Errorw("failed to record status change for ApisixRoute",
 				zap.Error(errRecord),
@@ -98,5 +98,4 @@ func recordStatus(at interface{}, reason string, err error, status v1.ConditionS
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
 	}
-
 }
