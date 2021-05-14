@@ -77,6 +77,10 @@ type Controller struct {
 	// Secret object.
 	secretSSLMap *sync.Map
 
+	// leaderContextCancelFunc will be called when apisix-ingress-controller
+	// decides to give up its leader role.
+	leaderContextCancelFunc context.CancelFunc
+
 	// common informers and listers
 	epInformer                  cache.SharedIndexInformer
 	epLister                    listerscorev1.EndpointsLister
@@ -287,7 +291,10 @@ func (c *Controller) Run(stop chan struct{}) error {
 				c.metricsCollector.ResetLeader(false)
 			},
 		},
-		ReleaseOnCancel: true,
+		// Set it to false as current leaderelection implementation will report
+		// "Failed to release lock: resource name may not be empty" error when
+		// ReleaseOnCancel is true and the Run context is cancelled.
+		ReleaseOnCancel: false,
 		Name:            "ingress-apisix",
 	}
 
@@ -298,7 +305,9 @@ func (c *Controller) Run(stop chan struct{}) error {
 	}
 
 election:
-	elector.Run(rootCtx)
+	curCtx, cancel := context.WithCancel(rootCtx)
+	c.leaderContextCancelFunc = cancel
+	elector.Run(curCtx)
 	select {
 	case <-rootCtx.Done():
 		return nil
@@ -312,6 +321,7 @@ func (c *Controller) run(ctx context.Context) {
 		zap.String("namespace", c.namespace),
 		zap.String("pod", c.name),
 	)
+	defer c.leaderContextCancelFunc()
 	c.metricsCollector.ResetLeader(true)
 
 	err := c.apisix.AddCluster(&apisix.ClusterOptions{
