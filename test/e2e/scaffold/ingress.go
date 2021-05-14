@@ -135,11 +135,10 @@ rules:
       - networking.k8s.io
     resources:
       - ingresses
+      - ingresses/status
       - networkpolicies
     verbs:
-      - get
-      - list
-      - watch
+      - '*'
   - apiGroups:
       - metrics.k8s.io
     resources:
@@ -152,14 +151,15 @@ rules:
       - apisix.apache.org
     resources:
       - apisixroutes
+      - apisixroutes/status
       - apisixupstreams
+      - apisixupstreams/status
       - apisixservices
       - apisixtlses
+      - apisixtlses/status
       - apisixclusterconfigs
     verbs:
-      - get
-      - list
-      - watch
+      - '*'
   - apiGroups:
     - coordination.k8s.io
     resources:
