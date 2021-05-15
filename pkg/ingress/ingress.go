@@ -58,6 +58,7 @@ func (c *Controller) newIngressController() *ingressController {
 func (c *ingressController) run(ctx context.Context) {
 	log.Info("ingress controller started")
 	defer log.Infof("ingress controller exited")
+	defer c.workqueue.ShutDown()
 
 	if !cache.WaitForCacheSync(ctx.Done(), c.controller.ingressInformer.HasSynced) {
 		log.Errorf("cache sync failed")
@@ -67,7 +68,6 @@ func (c *ingressController) run(ctx context.Context) {
 		go c.runWorker(ctx)
 	}
 	<-ctx.Done()
-	c.workqueue.ShutDown()
 }
 
 func (c *ingressController) runWorker(ctx context.Context) {
