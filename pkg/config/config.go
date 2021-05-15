@@ -85,6 +85,8 @@ type APISIXConfig struct {
 	// DefaultClusterAdminKey is the admin key for the default cluster.
 	// TODO: Obsolete the plain way to specify admin_key, which is insecure.
 	DefaultClusterAdminKey string `json:"default_cluster_admin_key" yaml:"default_cluster_admin_key"`
+	// DefaultClusterClientTimeout is the request timeout for default cluster client.
+	DefaultClusterClientTimeout types.TimeDuration `json:"default_cluster_client_timeout" yaml:"default_cluster_client_timeout"`
 	// BaseURL is same to DefaultClusterBaseURL.
 	// Deprecated: use DefaultClusterBaseURL instead. BaseURL will be removed
 	// once v1.0.0 is released.

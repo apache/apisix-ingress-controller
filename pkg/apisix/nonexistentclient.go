@@ -20,6 +20,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type nonExistentCluster struct {
@@ -177,6 +178,10 @@ func (nc *nonExistentCluster) GlobalRule() GlobalRule {
 }
 
 func (nc *nonExistentCluster) HasSynced(_ context.Context) error {
+	return nil
+}
+
+func (nc *nonExistentCluster) HealthCheck(_ context.Context, backoff wait.Backoff) error {
 	return nil
 }
 

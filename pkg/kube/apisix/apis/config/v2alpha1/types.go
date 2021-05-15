@@ -17,6 +17,7 @@ package v2alpha1
 import (
 	"encoding/json"
 
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -298,6 +299,8 @@ type ApisixClusterAdminConfig struct {
 	BaseURL string `json:"baseURL" yaml:"baseURL"`
 	// AdminKey is used to verify the admin API user.
 	AdminKey string `json:"adminKey" yaml:"adminKey"`
+	// ClientTimeout is request timeout for the APISIX Admin API client
+	ClientTimeout types.TimeDuration `json:"clientTimeout" yaml:"clientTimeout"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

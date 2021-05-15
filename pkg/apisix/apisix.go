@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 // APISIX is the unified client tool to communicate with APISIX.
@@ -50,6 +51,8 @@ type Cluster interface {
 	String() string
 	// HasSynced checks whether all resources in APISIX cluster is synced to cache.
 	HasSynced(context.Context) error
+	// HealthCheck checks apisix cluster health in realtime.
+	HealthCheck(context.Context, wait.Backoff) error
 }
 
 // Route is the specific client interface to take over the create, update,
@@ -112,6 +115,7 @@ type apisix struct {
 func NewClient() (APISIX, error) {
 	cli := &apisix{
 		nonExistentCluster: newNonExistentCluster(),
+		clusters:           make(map[string]Cluster),
 	}
 	return cli, nil
 }
@@ -149,9 +153,6 @@ func (c *apisix) AddCluster(co *ClusterOptions) error {
 	cluster, err := newCluster(co)
 	if err != nil {
 		return err
-	}
-	if c.clusters == nil {
-		c.clusters = make(map[string]Cluster)
 	}
 	c.clusters[co.Name] = cluster
 	return nil

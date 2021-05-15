@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -37,8 +38,7 @@ import (
 const (
 	_defaultTimeout = 5 * time.Second
 
-	_cacheNotSync = iota
-	_cacheSyncing
+	_cacheSyncing = iota
 	_cacheSynced
 )
 
@@ -50,6 +50,19 @@ var (
 	ErrDuplicatedCluster = errors.New("duplicated cluster")
 
 	_errReadOnClosedResBody = errors.New("http: read on closed response body")
+
+	// Default shared transport if apisix client
+	defaultTransport = &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		Dial: (&net.Dialer{
+			Timeout: 3 * time.Second,
+		}).Dial,
+		DialContext: (&net.Dialer{
+			Timeout: 3 * time.Second,
+		}).DialContext,
+		ResponseHeaderTimeout: 30 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
 )
 
 // ClusterOptions contains parameters to customize APISIX client.
@@ -90,14 +103,10 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 		baseURL:  o.BaseURL,
 		adminKey: o.AdminKey,
 		cli: &http.Client{
-			Timeout: o.Timeout,
-			Transport: &http.Transport{
-				ResponseHeaderTimeout: o.Timeout,
-				ExpectContinueTimeout: o.Timeout,
-			},
+			Timeout:   o.Timeout,
+			Transport: defaultTransport,
 		},
-		cache:       nil,
-		cacheState:  _cacheNotSync,
+		cacheState:  _cacheSyncing, // default state
 		cacheSynced: make(chan struct{}),
 	}
 	c.route = newRouteClient(c)
@@ -105,6 +114,12 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 	c.ssl = newSSLClient(c)
 	c.streamRoute = newStreamRouteClient(c)
 	c.globalRules = newGlobalRuleClient(c)
+
+	var err error
+	c.cache, err = cache.NewMemDBCache()
+	if err != nil {
+		return nil, err
+	}
 
 	go c.syncCache()
 
@@ -114,9 +129,6 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 func (c *cluster) syncCache() {
 	log.Infow("syncing cache", zap.String("cluster", c.name))
 	now := time.Now()
-	if !atomic.CompareAndSwapInt32(&c.cacheState, _cacheNotSync, _cacheSyncing) {
-		panic("dubious state when sync cache")
-	}
 	defer func() {
 		if c.cacheSyncErr == nil {
 			log.Infow("cache synced",
@@ -132,13 +144,20 @@ func (c *cluster) syncCache() {
 	}()
 
 	backoff := wait.Backoff{
-		Duration: time.Second,
-		Factor:   2,
-		Steps:    6,
+		Duration: 2 * time.Second,
+		Factor:   1,
+		Steps:    5,
 	}
-	err := wait.ExponentialBackoff(backoff, c.syncCacheOnce)
+	var lastSyncErr error
+	err := wait.ExponentialBackoff(backoff, func() (done bool, _ error) {
+		// not possible return: false, nil
+		// so can safe used
+		done, lastSyncErr = c.syncCacheOnce()
+		return
+	})
 	if err != nil {
-		c.cacheSyncErr = err
+		// if ErrWaitTimeout then set lastSyncErr
+		c.cacheSyncErr = lastSyncErr
 	}
 	close(c.cacheSynced)
 
@@ -148,12 +167,6 @@ func (c *cluster) syncCache() {
 }
 
 func (c *cluster) syncCacheOnce() (bool, error) {
-	dbcache, err := cache.NewMemDBCache()
-	if err != nil {
-		return false, err
-	}
-	c.cache = dbcache
-
 	routes, err := c.route.List(context.TODO())
 	if err != nil {
 		log.Errorf("failed to list route in APISIX: %s", err)
@@ -288,6 +301,39 @@ func (c *cluster) StreamRoute() StreamRoute {
 // GlobalRule implements Cluster.GlobalRule method.
 func (c *cluster) GlobalRule() GlobalRule {
 	return c.globalRules
+}
+
+// HealthCheck implements Cluster.HealthCheck method.
+func (c *cluster) HealthCheck(ctx context.Context, backoff wait.Backoff) (err error) {
+	if c.cacheSyncErr != nil {
+		err = c.cacheSyncErr
+		return
+	}
+	if atomic.LoadInt32(&c.cacheState) == _cacheSyncing {
+		return
+	}
+	var lastCheckErr error
+	err = wait.ExponentialBackoffWithContext(ctx, backoff, func() (done bool, _ error) {
+		if lastCheckErr = c.healthCheck(ctx); lastCheckErr != nil {
+			log.Warnf("failed to HealthCheck for cluster %s: %s, will retry", c.name, lastCheckErr)
+			return
+		}
+		done = true
+		return
+	})
+	if err != nil {
+		// if ErrWaitTimeout then set lastSyncErr
+		c.cacheSyncErr = lastCheckErr
+	}
+	return err
+}
+
+func (c *cluster) healthCheck(ctx context.Context) (err error) {
+	// TODO
+	// Apisix not have an healthcheck admin api
+	// May be can use control api healthcheck.
+	_, err = c.upstream.List(ctx)
+	return
 }
 
 func (c *cluster) applyAuth(req *http.Request) {
