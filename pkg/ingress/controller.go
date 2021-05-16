@@ -330,8 +330,12 @@ func (c *Controller) run(ctx context.Context) {
 		zap.String("pod", c.name),
 	)
 
+	var cancelFunc context.CancelFunc
+	ctx, cancelFunc = context.WithCancel(ctx)
+	defer cancelFunc()
+
+	// give up leader
 	defer c.leaderContextCancelFunc()
-	c.metricsCollector.ResetLeader(true)
 
 	clusterOpts := &apisix.ClusterOptions{
 		Name:     c.cfg.APISIX.DefaultClusterName,
@@ -359,7 +363,7 @@ func (c *Controller) run(ctx context.Context) {
 	c.initWhenStartLeading()
 
 	c.goAttach(func() {
-		c.checkClusterHealth(ctx)
+		c.checkClusterHealth(ctx, cancelFunc)
 	})
 	c.goAttach(func() {
 		c.epInformer.Run(ctx.Done())
@@ -407,6 +411,8 @@ func (c *Controller) run(ctx context.Context) {
 		c.secretController.run(ctx)
 	})
 
+	c.metricsCollector.ResetLeader(true)
+
 	log.Infow("controller now is running as leader",
 		zap.String("namespace", c.namespace),
 		zap.String("pod", c.name),
@@ -449,7 +455,7 @@ func (c *Controller) syncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types
 	return err
 }
 
-func (c *Controller) checkClusterHealth(ctx context.Context) {
+func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.CancelFunc) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -459,9 +465,10 @@ func (c *Controller) checkClusterHealth(ctx context.Context) {
 		err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).HealthCheck(ctx)
 		if err != nil {
 			// Finally failed health check, then give up leader.
-			c.leaderContextCancelFunc()
 			log.Warnf("failed to check health for default cluster: %s, give up leader", err)
+			cancelFunc()
 			return
 		}
+		log.Debugf("success check health for default cluster")
 	}
 }
