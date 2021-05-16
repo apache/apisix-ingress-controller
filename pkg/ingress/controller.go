@@ -344,11 +344,13 @@ func (c *Controller) run(ctx context.Context) {
 	}
 	err := c.apisix.AddCluster(clusterOpts)
 	if err != nil && err != apisix.ErrDuplicatedCluster {
+		// TODO give up the leader role
 		log.Errorf("failed to add default cluster: %s", err)
 		return
 	}
 
 	if err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).HasSynced(ctx); err != nil {
+		// TODO give up the leader role
 		log.Errorf("failed to wait the default cluster to be ready: %s", err)
 
 		// re-create apisix cluster, used in next c.run
