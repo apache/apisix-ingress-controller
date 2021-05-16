@@ -341,7 +341,6 @@ func (c *Controller) run(ctx context.Context) {
 		Name:     c.cfg.APISIX.DefaultClusterName,
 		AdminKey: c.cfg.APISIX.DefaultClusterAdminKey,
 		BaseURL:  c.cfg.APISIX.DefaultClusterBaseURL,
-		Timeout:  c.cfg.APISIX.DefaultClusterClientTimeout.Duration,
 	}
 	err := c.apisix.AddCluster(clusterOpts)
 	if err != nil && err != apisix.ErrDuplicatedCluster {
