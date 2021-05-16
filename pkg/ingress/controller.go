@@ -25,7 +25,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
@@ -162,7 +161,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	return c, nil
 }
 
-func (c *Controller) initWhenStartLeader() {
+func (c *Controller) initWhenStartLeading() {
 	var (
 		ingressInformer     cache.SharedIndexInformer
 		apisixRouteInformer cache.SharedIndexInformer
@@ -326,7 +325,7 @@ election:
 }
 
 func (c *Controller) run(ctx context.Context) {
-	log.Infow("controller is start leading ...",
+	log.Infow("controller tries to leading ...",
 		zap.String("namespace", c.namespace),
 		zap.String("pod", c.name),
 	)
@@ -357,10 +356,10 @@ func (c *Controller) run(ctx context.Context) {
 		return
 	}
 
-	c.initWhenStartLeader()
+	c.initWhenStartLeading()
 
 	c.goAttach(func() {
-		c.checkClusterHealthy(ctx)
+		c.checkClusterHealth(ctx)
 	})
 	c.goAttach(func() {
 		c.epInformer.Run(ctx.Done())
@@ -450,24 +449,18 @@ func (c *Controller) syncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types
 	return err
 }
 
-func (c *Controller) checkClusterHealthy(ctx context.Context) {
+func (c *Controller) checkClusterHealth(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 		case <-time.After(5 * time.Second):
 		}
 
-		// Retry three times in a row, and exit if all of them fail.
-		backoff := wait.Backoff{
-			Duration: 5 * time.Second,
-			Factor:   1,
-			Steps:    3,
-		}
-		err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).HealthCheck(ctx, backoff)
+		err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).HealthCheck(ctx)
 		if err != nil {
 			// Finally failed health check, then give up leader.
 			c.leaderContextCancelFunc()
-			log.Warnf("failed to HealthCheck for default cluster: %s, give up leader", err)
+			log.Warnf("failed to check health for default cluster: %s, give up leader", err)
 			return
 		}
 	}

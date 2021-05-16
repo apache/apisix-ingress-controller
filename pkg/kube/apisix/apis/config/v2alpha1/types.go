@@ -17,9 +17,10 @@ package v2alpha1
 import (
 	"encoding/json"
 
-	"github.com/apache/apisix-ingress-controller/pkg/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 const (

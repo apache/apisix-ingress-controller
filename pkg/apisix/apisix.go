@@ -19,7 +19,6 @@ import (
 	"sync"
 
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 // APISIX is the unified client tool to communicate with APISIX.
@@ -52,7 +51,7 @@ type Cluster interface {
 	// HasSynced checks whether all resources in APISIX cluster is synced to cache.
 	HasSynced(context.Context) error
 	// HealthCheck checks apisix cluster health in realtime.
-	HealthCheck(context.Context, wait.Backoff) error
+	HealthCheck(context.Context) error
 }
 
 // Route is the specific client interface to take over the create, update,

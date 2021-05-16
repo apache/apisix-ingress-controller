@@ -52,7 +52,7 @@ var (
 	_errReadOnClosedResBody = errors.New("http: read on closed response body")
 
 	// Default shared transport if apisix client
-	defaultTransport = &http.Transport{
+	_defaultTransport = &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		Dial: (&net.Dialer{
 			Timeout: 3 * time.Second,
@@ -104,7 +104,7 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 		adminKey: o.AdminKey,
 		cli: &http.Client{
 			Timeout:   o.Timeout,
-			Transport: defaultTransport,
+			Transport: _defaultTransport,
 		},
 		cacheState:  _cacheSyncing, // default state
 		cacheSynced: make(chan struct{}),
@@ -304,7 +304,7 @@ func (c *cluster) GlobalRule() GlobalRule {
 }
 
 // HealthCheck implements Cluster.HealthCheck method.
-func (c *cluster) HealthCheck(ctx context.Context, backoff wait.Backoff) (err error) {
+func (c *cluster) HealthCheck(ctx context.Context) (err error) {
 	if c.cacheSyncErr != nil {
 		err = c.cacheSyncErr
 		return
@@ -312,10 +312,17 @@ func (c *cluster) HealthCheck(ctx context.Context, backoff wait.Backoff) (err er
 	if atomic.LoadInt32(&c.cacheState) == _cacheSyncing {
 		return
 	}
+
+	// Retry three times in a row, and exit if all of them fail.
+	backoff := wait.Backoff{
+		Duration: 5 * time.Second,
+		Factor:   1,
+		Steps:    3,
+	}
 	var lastCheckErr error
 	err = wait.ExponentialBackoffWithContext(ctx, backoff, func() (done bool, _ error) {
 		if lastCheckErr = c.healthCheck(ctx); lastCheckErr != nil {
-			log.Warnf("failed to HealthCheck for cluster %s: %s, will retry", c.name, lastCheckErr)
+			log.Warnf("failed to check health for cluster %s: %s, will retry", c.name, lastCheckErr)
 			return
 		}
 		done = true
