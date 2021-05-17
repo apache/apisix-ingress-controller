@@ -43,7 +43,7 @@ helm repo add apisix https://charts.apiseven.com
 helm repo update
 helm install apisix apisix/apisix \
   --set gateway.type=LoadBalancer \
-  --set allow.ipList="{0.0.0.0/0}" \
+  --set admin.allow.ipList="{0.0.0.0/0}" \
   --set etcd.persistence.storageClass="alicloud-disk-ssd" \
   --set etcd.persistence.size="20Gi" \
   --namespace ingress-apisix \
