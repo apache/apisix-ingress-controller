@@ -157,7 +157,7 @@ func (c *cluster) syncCache() {
 	}
 	var lastSyncErr error
 	err := wait.ExponentialBackoff(backoff, func() (done bool, _ error) {
-		// not possible return: false, nil
+		// impossibly return: false, nil
 		// so can safe used
 		done, lastSyncErr = c.syncCacheOnce()
 		return

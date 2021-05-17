@@ -457,6 +457,7 @@ func (c *Controller) syncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types
 }
 
 func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.CancelFunc) {
+	defer cancelFunc()
 	for {
 		select {
 		case <-ctx.Done():
@@ -467,7 +468,6 @@ func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.
 		if err != nil {
 			// Finally failed health check, then give up leader.
 			log.Warnf("failed to check health for default cluster: %s, give up leader", err)
-			cancelFunc()
 			return
 		}
 		log.Debugf("success check health for default cluster")
