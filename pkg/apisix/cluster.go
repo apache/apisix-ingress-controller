@@ -350,7 +350,7 @@ func (c *cluster) healthCheck(ctx context.Context) (err error) {
 		return err
 	}
 	if er := conn.Close(); er != nil {
-		log.Warnf("failed close tcp socket", er)
+		log.Warnf("failed close tcp socket: %s", er)
 	}
 	return
 }
