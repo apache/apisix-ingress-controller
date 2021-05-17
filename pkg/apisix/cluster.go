@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -76,6 +77,7 @@ type ClusterOptions struct {
 type cluster struct {
 	name         string
 	baseURL      string
+	baseURLHost  string
 	adminKey     string
 	cli          *http.Client
 	cacheState   int32
@@ -98,10 +100,16 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 	}
 	o.BaseURL = strings.TrimSuffix(o.BaseURL, "/")
 
+	u, err := url.Parse(o.BaseURL)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &cluster{
-		name:     o.Name,
-		baseURL:  o.BaseURL,
-		adminKey: o.AdminKey,
+		name:        o.Name,
+		baseURL:     o.BaseURL,
+		baseURLHost: u.Host,
+		adminKey:    o.AdminKey,
 		cli: &http.Client{
 			Timeout:   o.Timeout,
 			Transport: _defaultTransport,
@@ -115,7 +123,6 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 	c.streamRoute = newStreamRouteClient(c)
 	c.globalRules = newGlobalRuleClient(c)
 
-	var err error
 	c.cache, err = cache.NewMemDBCache()
 	if err != nil {
 		return nil, err
@@ -336,10 +343,15 @@ func (c *cluster) HealthCheck(ctx context.Context) (err error) {
 }
 
 func (c *cluster) healthCheck(ctx context.Context) (err error) {
-	// TODO
-	// Apisix not have an healthcheck admin api
-	// May be can use control api healthcheck.
-	_, err = c.upstream.List(ctx)
+	// tcp socket probe
+	d := net.Dialer{Timeout: 3 * time.Second}
+	conn, err := d.DialContext(ctx, "tcp", c.baseURLHost)
+	if err != nil {
+		return err
+	}
+	if er := conn.Close(); er != nil {
+		log.Warnf("failed close tcp socket", er)
+	}
 	return
 }
 
