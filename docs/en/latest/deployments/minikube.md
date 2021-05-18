@@ -41,14 +41,14 @@ helm repo add apisix https://charts.apiseven.com
 # Use `helm search repo apisix` to search charts about apisix
 helm repo update
 helm install apisix apisix/apisix \
-  --set allow.ipList="{0.0.0.0/0}" \
+  --set admin.allow.ipList="{0.0.0.0/0}" \
   --namespace ingress-apisix
 kubectl get service --namespace ingress-apisix
 ```
 
 Two Service resources were created, one is `apisix-gateway`, which processes the real traffic; another is `apisix-admin`, which acts as the control plane to process all the configuration changes.
 
-One thing should be concerned that the `allow.ipList` field should be customized according to the Pod CIRD configuration of Minikube, so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
+One thing should be concerned that the `admin.allow.ipList` field should be customized according to the Pod CIRD configuration of Minikube, so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
 
 ## Install apisix-ingress-controller
 

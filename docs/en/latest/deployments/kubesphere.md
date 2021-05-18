@@ -44,7 +44,7 @@ helm repo add apisix https://charts.apiseven.com
 helm repo update
 helm install apisix apisix/apisix \
   --set gateway.type=NodePort \
-  --set allow.ipList="{0.0.0.0/0}" \
+  --set admin.allow.ipList="{0.0.0.0/0}" \
   --namespace ingress-apisix \
 kubectl get service --namespace ingress-apisix
 ```
@@ -54,7 +54,7 @@ Two Service resources were created, one is `apisix-gateway`, which processes the
 The gateway service type is set to `NodePort`, so that clients can access Apache APISIX through the Node IPs and the assigned port.
 If you want to expose a `LoadBalancer` service, try to use [Porter](https://github.com/kubesphere/porter).
 
-Another thing that should be concerned that the `allow.ipList` field should be customized according to the Pod CIDR settings, so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
+Another thing that should be concerned that the `admin.allow.ipList` field should be customized according to the Pod CIDR settings, so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
 
 ## Install apisix-ingress-controller
 

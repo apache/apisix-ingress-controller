@@ -43,7 +43,7 @@ helm repo add apisix https://charts.apiseven.com
 helm repo update
 helm install apisix apisix/apisix \
   --set gateway.type=LoadBalancer \
-  --set allow.ipList="{0.0.0.0/0}" \
+  --set admin.allow.ipList="{0.0.0.0/0}" \
   --set etcd.persistence.size=10Gi \
   --namespace ingress-apisix \
 kubectl get service --namespace ingress-apisix
@@ -59,7 +59,7 @@ The gateway service type is set to `LoadBalancer` (see [TKE Service Management](
 kubectl get service apisix-gateway --namespace ingress-apisix -o jsonpath='{.status.loadBalancer.ingress[].ip}'
 ```
 
-Another thing should be concerned that the `allow.ipList` field should be customized according to the [TKE Network Settings](https://cloud.tencent.com/document/product/457/50353), so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
+Another thing should be concerned that the `admin.allow.ipList` field should be customized according to the [TKE Network Settings](https://cloud.tencent.com/document/product/457/50353), so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
 
 ## Install apisix-ingress-controller
 
