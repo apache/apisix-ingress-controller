@@ -41,7 +41,7 @@ helm repo add apisix https://charts.apiseven.com
 # Use `helm search repo apisix` to search charts about apisix
 helm repo update
 helm install apisix apisix/apisix \
-  --set allow.ipList="{0.0.0.0/0}" \
+  --set admin.allow.ipList="{0.0.0.0/0}" \
   --namespace ingress-apisix
 kubectl get service --namespace ingress-apisix
 ```
