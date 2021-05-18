@@ -52,7 +52,7 @@ var (
 
 	_errReadOnClosedResBody = errors.New("http: read on closed response body")
 
-	// Default shared transport if apisix client
+	// Default shared transport for apisix client
 	_defaultTransport = &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		Dial: (&net.Dialer{
@@ -350,7 +350,10 @@ func (c *cluster) healthCheck(ctx context.Context) (err error) {
 		return err
 	}
 	if er := conn.Close(); er != nil {
-		log.Warnf("failed close tcp socket: %s", er)
+		log.Warnw("failed to close tcp probe connection",
+			zap.Error(err),
+			zap.String("cluster", c.name),
+		)
 	}
 	return
 }
