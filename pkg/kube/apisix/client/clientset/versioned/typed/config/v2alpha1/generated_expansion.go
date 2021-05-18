@@ -20,4 +20,6 @@ package v2alpha1
 
 type ApisixClusterConfigExpansion interface{}
 
+type ApisixConsumerExpansion interface{}
+
 type ApisixRouteExpansion interface{}

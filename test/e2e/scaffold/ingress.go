@@ -158,6 +158,7 @@ rules:
       - apisixtlses
       - apisixtlses/status
       - apisixclusterconfigs
+      - apisixconsumers
     verbs:
       - '*'
   - apiGroups:
