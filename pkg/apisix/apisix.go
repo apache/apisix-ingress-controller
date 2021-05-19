@@ -53,7 +53,7 @@ type Cluster interface {
 }
 
 // Route is the specific client interface to take over the create, update,
-// list and delete for APISIX's Route resource.
+// list and delete for APISIX Route resource.
 type Route interface {
 	Get(context.Context, string) (*v1.Route, error)
 	List(context.Context) ([]*v1.Route, error)
@@ -63,7 +63,7 @@ type Route interface {
 }
 
 // SSL is the specific client interface to take over the create, update,
-// list and delete for APISIX's SSL resource.
+// list and delete for APISIX SSL resource.
 type SSL interface {
 	Get(context.Context, string) (*v1.Ssl, error)
 	List(context.Context) ([]*v1.Ssl, error)
@@ -73,7 +73,7 @@ type SSL interface {
 }
 
 // Upstream is the specific client interface to take over the create, update,
-// list and delete for APISIX's Upstream resource.
+// list and delete for APISIX Upstream resource.
 type Upstream interface {
 	Get(context.Context, string) (*v1.Upstream, error)
 	List(context.Context) ([]*v1.Upstream, error)
@@ -83,7 +83,7 @@ type Upstream interface {
 }
 
 // StreamRoute is the specific client interface to take over the create, update,
-// list and delete for APISIX's Stream Route resource.
+// list and delete for APISIX Stream Route resource.
 type StreamRoute interface {
 	Get(context.Context, string) (*v1.StreamRoute, error)
 	List(context.Context) ([]*v1.StreamRoute, error)
@@ -93,13 +93,23 @@ type StreamRoute interface {
 }
 
 // GlobalRule is the specific client interface to take over the create, update,
-// list and delete for APISIX's Global Rule resource.
+// list and delete for APISIX Global Rule resource.
 type GlobalRule interface {
 	Get(context.Context, string) (*v1.GlobalRule, error)
 	List(context.Context) ([]*v1.GlobalRule, error)
 	Create(context.Context, *v1.GlobalRule) (*v1.GlobalRule, error)
 	Delete(context.Context, *v1.GlobalRule) error
 	Update(context.Context, *v1.GlobalRule) (*v1.GlobalRule, error)
+}
+
+// Consumer it the specific client interface to take over the create, update,
+// list and delete for APISIX Consumer resource.
+type Consumer interface {
+	Get(context.Context, string) (*v1.Consumer, error)
+	List(context.Context) ([]*v1.Consumer, error)
+	Create(context.Context, *v1.Consumer) (*v1.Consumer, error)
+	Delete(context.Context, *v1.Consumer) error
+	Update(context.Context, *v1.Consumer) (*v1.Consumer, error)
 }
 
 type apisix struct {

@@ -74,6 +74,7 @@ type cluster struct {
 	ssl          SSL
 	streamRoute  StreamRoute
 	globalRules  GlobalRule
+	consumer     Consumer
 }
 
 func newCluster(o *ClusterOptions) (Cluster, error) {
@@ -105,6 +106,7 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 	c.ssl = newSSLClient(c)
 	c.streamRoute = newStreamRouteClient(c)
 	c.globalRules = newGlobalRuleClient(c)
+	c.consumer = newConsumerClient(c)
 
 	go c.syncCache()
 
@@ -179,6 +181,11 @@ func (c *cluster) syncCacheOnce() (bool, error) {
 		log.Errorf("failed to list global_rules in APISIX: %s", err)
 		return false, err
 	}
+	consumers, err := c.consumer.List(context.TODO())
+	if err != nil {
+		log.Errorf("failed to list consumers in APISIX: %s", err)
+		return false, err
+	}
 
 	for _, r := range routes {
 		if err := c.cache.InsertRoute(r); err != nil {
@@ -228,6 +235,15 @@ func (c *cluster) syncCacheOnce() (bool, error) {
 				zap.String("error", err.Error()),
 			)
 			return false, err
+		}
+	}
+	for _, consumer := range consumers {
+		if err := c.cache.InsertConsumer(consumer); err != nil {
+			log.Errorw("failed to insert consumer to cache",
+				zap.Any("consumer", consumer),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
 		}
 	}
 	return true, nil
