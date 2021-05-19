@@ -248,8 +248,10 @@ spec:
   clusterIP: None
 `
 
-	var backendSvc string
-	var backendPort []int32
+	var (
+		backendSvc  string
+		backendPort []int32
+	)
 	ginkgo.BeforeEach(func() {
 		err := s.CreateResourceFromString(_httpHeadlessService)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating headless service")
