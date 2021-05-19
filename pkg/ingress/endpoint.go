@@ -90,7 +90,7 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 	svc, err := c.controller.svcLister.Services(ep.Namespace).Get(ep.Name)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			log.Warnf("service %s/%s was deleted", ep.Namespace, ep.Name)
+			log.Infof("service %s/%s not found", ep.Namespace, ep.Name)
 			return nil
 		}
 		log.Errorf("failed to get service %s/%s: %s", ep.Namespace, ep.Name, err)
