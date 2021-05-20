@@ -348,6 +348,7 @@ type ApisixConsumerBasicAuthValue struct {
 // ApisixConsumerKeyAuth defines the configuration for the key auth.
 type ApisixConsumerKeyAuth struct {
 	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
+	Value     *ApisixConsumerKeyAuthValue  `json:"value,omitempty" yaml:"value,omitempty"`
 }
 
 // ApisixConsumerKeyAuthValue defines the in-place configuration for basic auth.

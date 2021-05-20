@@ -281,6 +281,11 @@ func (in *ApisixConsumerKeyAuth) DeepCopyInto(out *ApisixConsumerKeyAuth) {
 		*out = new(v1.LocalObjectReference)
 		**out = **in
 	}
+	if in.Value != nil {
+		in, out := &in.Value, &out.Value
+		*out = new(ApisixConsumerKeyAuthValue)
+		**out = **in
+	}
 	return
 }
 
