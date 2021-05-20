@@ -418,7 +418,11 @@ func (c *cluster) deleteResource(ctx context.Context, url string) error {
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
 		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
-		err = multierr.Append(err, fmt.Errorf("error message: %s", readBody(resp.Body, url)))
+		message := readBody(resp.Body, url)
+		err = multierr.Append(err, fmt.Errorf("error message: %s", message))
+		if strings.Contains(message, "still using") {
+			return cache.ErrStillInUse
+		}
 		return err
 	}
 	return nil
