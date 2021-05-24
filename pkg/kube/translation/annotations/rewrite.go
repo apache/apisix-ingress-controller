@@ -15,7 +15,8 @@
 package annotations
 
 import (
-	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"regexp"
+
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -27,8 +28,8 @@ const (
 
 type rewrite struct{}
 
-// NewIPRestrictionHandler creates a handler to convert
-// annotations about client ips control to APISIX ip-restrict plugin.
+// NewRewriteHandler creates a handler to convert
+// annotations about request rewrite control to APISIX proxy-rewrite plugin.
 func NewRewriteHandler() Handler {
 	return &rewrite{}
 }
@@ -39,13 +40,16 @@ func (i *rewrite) PluginName() string {
 
 func (i *rewrite) Handle(e Extractor) (interface{}, error) {
 	var plugin apisixv1.RewriteConfig
-	log.Errorw("handle rewrite annotations")
 	rewriteTarget := e.GetStringAnnotation(_rewriteTarget)
 	rewriteTargetRegex := e.GetStringAnnotation(_rewriteTargetRegex)
 	rewriteTemplate := e.GetStringAnnotation(_rewriteTargetRegexTemplate)
 	if rewriteTarget != "" || rewriteTargetRegex != "" || rewriteTemplate != "" {
 		plugin.RewriteTarget = rewriteTarget
 		if rewriteTargetRegex != "" && rewriteTemplate != "" {
+			_, err := regexp.Compile(rewriteTargetRegex)
+			if err != nil {
+				return nil, err
+			}
 			plugin.RewriteTargetRegex = []string{rewriteTargetRegex, rewriteTemplate}
 		}
 		return &plugin, nil
