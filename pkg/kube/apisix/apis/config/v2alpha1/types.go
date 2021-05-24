@@ -321,6 +321,7 @@ type ApisixConsumer struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 	Spec              ApisixConsumerSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Status            ApisixStatus       `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
 // ApisixConsumerSpec defines the desired state of ApisixConsumer.

@@ -184,6 +184,7 @@ func (in *ApisixConsumer) DeepCopyInto(out *ApisixConsumer) {
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 	in.Spec.DeepCopyInto(&out.Spec)
+	in.Status.DeepCopyInto(&out.Status)
 	return
 }
 
