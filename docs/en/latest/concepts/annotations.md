@@ -59,3 +59,12 @@ Blocklist Source Range
 
 You can specify the denied client IP addresses or nets by the annotation `k8s.apisix.apache.org/blocklist-source-range`, multiple IP addresses or nets join together with `,`,
 for instance, `k8s.apisix.apache.org/blocklist-source-range: 127.0.0.1,172.17.0.0/16`. Default value is *empty*, which means the sources are not limited.
+
+Rewrite Target
+--------------
+
+You can rewrite requests by specifying the annotation `k8s.apisix.apache.org/rewrite-target` or `k8s.apisix.apache.org/rewrite-target-regex`.
+
+The annotation `k8s.apisix.apache.org/rewrite-target` controls where the request will be forwarded to.
+
+If you want to use regex and match groups, use annotation `k8s.apisix.apache.org/rewrite-target-regex` and `k8s.apisix.apache.org/rewrite-target-regex-template`. The first annotation contains the matching rule (regex), the second one contains the rewrite rule. For example, `/app(/|$)(.*)` and `/$2`. Both annotations must be used together, otherwise they will be ignored.

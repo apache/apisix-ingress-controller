@@ -48,3 +48,10 @@ type CorsConfig struct {
 	AllowMethods string `json:"allow_methods,omitempty"`
 	AllowHeaders string `json:"allow_headers,omitempty"`
 }
+
+// RewriteConfig is the rule config for proxy-rewrite plugin.
+// +k8s:deepcopy-gen=true
+type RewriteConfig struct {
+	RewriteTarget      string   `json:"uri,omitempty"`
+	RewriteTargetRegex []string `json:"regex_uri,omitempty"`
+}
