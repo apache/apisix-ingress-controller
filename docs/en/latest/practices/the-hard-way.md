@@ -675,7 +675,7 @@ data:
       - "*"
       ingress_class: "apisix"
       ingress_version: "networking/v1"
-      apisix_route_version: "apisix.apache.org/v1"
+      apisix_route_version: "apisix.apache.org/v2alpha1"
     apisix:
       base_url: "http://apisix-admin.apisix:9180/apisix/admin"
       admin_key: "edd1c9f034335f136f87ad84b625c8f1"
@@ -711,7 +711,7 @@ spec:
 Because currently APISIX ingress controller doesn't 100% compatible with APISIX, we need to delete the previously created route in case of some data structure mismatch.
 
 ```bash
-kubectl -n apisix exec -it $(kngp -l app.kubernetes.io/name=apisix -o name) -- curl "http://127.0.0.1:9180/apisix/admin/routes/1" -X DELETE -H "X-API-KEY: edd1c9f034335f136f87ad84b625c8f1"
+kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name) -- curl "http://127.0.0.1:9180/apisix/admin/routes/1" -X DELETE -H "X-API-KEY: edd1c9f034335f136f87ad84b625c8f1"
 ```
 
 After these configurations, we could deploy the ingress controller now.
@@ -776,19 +776,21 @@ After the ingress controller status is converted to `Running`, we could create a
 Here is an example ApisixRoute:
 
 ```yaml
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
   name: httpserver-route
 spec:
-  rules:
-  - host: local.httpbin.org
-    http:
-      paths:
-      - backend:
-          serviceName: httpbin
-          servicePort: 80
-        path: /*
+  http:
+    - name: httpbin
+      match:
+        hosts:
+          - local.httpbin.org
+        paths:
+          - "/*"
+      backend:
+        serviceName: httpbin
+        servicePort: 80
 ```
 
 Note that the apiVersion field should match the configmap above. And the serviceName should match the exposed service name, it's `httpbin` here.
@@ -805,13 +807,13 @@ It will return:
 {"error_msg":"404 Route Not Found"}
 ```
 
-Let's apply the ApisixRoute to the `demo` namespace.
+The ApisixRoute should be applied in the same namespace with the target service, in this case is `demo`. After applying it, let's check if it works.
 
 ```bash
-kubectl -n apisix exec -it $(kngp -l app.kubernetes.io/name=apisix -o name) -- curl "http://127.0.0.1:9080/get" -H "Host: local.httpbin.org"
+kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name) -- curl "http://127.0.0.1:9080/get" -H "Host: local.httpbin.org"
 ```
 
-It will return:
+It should return:
 
 ```json
 {
