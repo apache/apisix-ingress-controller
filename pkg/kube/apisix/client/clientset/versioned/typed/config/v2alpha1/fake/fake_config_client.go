@@ -32,6 +32,10 @@ func (c *FakeApisixV2alpha1) ApisixClusterConfigs() v2alpha1.ApisixClusterConfig
 	return &FakeApisixClusterConfigs{c}
 }
 
+func (c *FakeApisixV2alpha1) ApisixConsumers(namespace string) v2alpha1.ApisixConsumerInterface {
+	return &FakeApisixConsumers{c, namespace}
+}
+
 func (c *FakeApisixV2alpha1) ApisixRoutes(namespace string) v2alpha1.ApisixRouteInterface {
 	return &FakeApisixRoutes{c, namespace}
 }

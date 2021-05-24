@@ -22,6 +22,14 @@ package v2alpha1
 // ApisixClusterConfigLister.
 type ApisixClusterConfigListerExpansion interface{}
 
+// ApisixConsumerListerExpansion allows custom methods to be added to
+// ApisixConsumerLister.
+type ApisixConsumerListerExpansion interface{}
+
+// ApisixConsumerNamespaceListerExpansion allows custom methods to be added to
+// ApisixConsumerNamespaceLister.
+type ApisixConsumerNamespaceListerExpansion interface{}
+
 // ApisixRouteListerExpansion allows custom methods to be added to
 // ApisixRouteLister.
 type ApisixRouteListerExpansion interface{}
