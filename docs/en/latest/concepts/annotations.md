@@ -97,3 +97,37 @@ spec:
 ```
 
 With this Ingress, any requests with `/app` prefix will be forwarded to backend without the `/app/` part, e.g. request `/app/ip` will be forwarded to `/ip`.  
+
+Redirect
+---------
+
+You can use the following annotations to control the redirect behavior.
+
+* `k8s.apisix.apache.org/http-to-https`
+
+If this annotation set to `true` and the request is HTTP, it will be automatically redirected to HTTPS with 301 response code,
+and the URI will keep the same as client request.
+
+For example, the following Ingress, if we set `k8s.apisix.apache.org/http-to-https: "true"`. The client will get a response with 301 status code, and the response header `Location`  will be `https://httpbin.org/sample`.
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/http-to-https: "true"
+  name: ingress-v1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /sample
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin
+            port:
+              number: 80
+```
