@@ -1,4 +1,25 @@
-# APISIX Step by Step
+---
+title: APISIX Step by Step
+---
+
+<!--
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+-->
 
 In this tutorial, we will install APISIX in Kubernetes from native yaml.
 
@@ -14,7 +35,7 @@ In this tutorial, all our operations will be performed at namespace `apisix`.
 
 ## ETCD Installation
 
-Here, we will deploy a none authentication 1 member etcd server inside the Kubernetes cluster.
+Here, we will deploy a single-node ETCD cluster without authentication inside the Kubernetes cluster.
 
 In this case, we assume you have a storage provisioner. If you are using KiND, a local path provisioner will be created automatically. If you don't have a storage provisioner or don't want to use persistence volume, you could use an `emptyDir` as volume.
 
@@ -40,7 +61,6 @@ spec:
       targetPort: peer
   selector:
     app.kubernetes.io/name: etcd
-
 ---
 # etcd.yaml
 apiVersion: apps/v1
@@ -129,7 +149,9 @@ Please notice that this etcd installation is quite simple and lack of many neces
 
 ## APISIX Installation
 
-Create a config file for our APISIX. Notice that in the `apisix.allow_admin` config, we set `0.0.0.0/0` here just for test.
+Create a config file for our APISIX. We are going to deploy APISIX version 2.5.
+
+Note that the APISIX ingress controller needs to communicate with the APISIX admin API, so we set `apisix.allow_admin` to `0.0.0.0/0` for test.
 
 ```yaml
 apisix:
@@ -408,7 +430,7 @@ It will output like:
 
 ## Install APISIX Ingress Controller
 
-APISIX ingress controller can help you manage your configurations declaratively by using Kubernetes resources.
+APISIX ingress controller can help you manage your configurations declaratively by using Kubernetes resources. Here we will install version 0.5.0.
 
 Currently, the APISIX ingress controller supports both official Ingress resource or APISIX's CustomResourceDefinitions, which includes ApisixRoute and ApisixUpstream.
 
