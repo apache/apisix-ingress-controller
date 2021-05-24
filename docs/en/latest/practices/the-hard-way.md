@@ -1,5 +1,5 @@
 ---
-title: APISIX Step by Step
+title: APISIX Ingress Controller the Hard Way
 ---
 
 <!--
@@ -21,7 +21,7 @@ title: APISIX Step by Step
 #
 -->
 
-In this tutorial, we will install APISIX in Kubernetes from native yaml.
+In this tutorial, we will install APISIX and APISIX Ingress Controller in Kubernetes from native yaml.
 
 ## Prerequisites
 
