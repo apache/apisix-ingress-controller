@@ -145,7 +145,7 @@ $ kubectl -n apisix exec -it etcd-0 -- etcdctl endpoint health
 127.0.0.1:2379 is healthy: successfully committed proposal: took = 1.741883ms
 ```
 
-Please notice that this etcd installation is quite simple and lack of many necessary production features, it should only be used for learning case. If you want to deploy a production-ready etcd, please refer [bitnami/etcd](https://bitnami.com/stack/etcd/helm).
+Please notice that this etcd installation is quite simple and lack of many necessary production features, it should only be used for learning case. If you want to deploy a production-ready etcd, please refer to [bitnami/etcd](https://bitnami.com/stack/etcd/helm).
 
 ## APISIX Installation
 
@@ -256,7 +256,7 @@ stream_plugins:
 
 Please make sure `etcd.host` matches the headless service we created at first. In our case, it's `http://etcd-headless.apisix.svc.cluster.local:2379`.
 
-In this config, we defined an access key with the `admin` name under the `apisix.admin_key` section. This key is our API key, will be used to control APISIX later.
+In this config, we defined an access key with the `admin` name under the `apisix.admin_key` section. This key is our API key, will be used to control APISIX later. This key is the default API key for APISIX, and it should be changed in production environments.
 
 Save this as `config.yaml`, then run `kubectl -n apisix create cm apisix-conf --from-file ./config.yaml` to create configmap. Later we will mount this configmap into APISIX deployment.
 
@@ -335,7 +335,7 @@ If APISIX works properly, it should output: `{"error_msg":"404 Route Not Found"}
 
 ## HTTPBIN service
 
-Before configuring the APISIX, we need to create a test service. We use [kennethreitz/httpbin] here. We put this httpbin service in `demo` namespace.
+Before configuring the APISIX, we need to create a test service. We use [kennethreitz/httpbin](https://hub.docker.com/r/kennethreitz/httpbin/) here. We put this httpbin service in `demo` namespace.
 
 ```bash
 kubectl create ns demo
@@ -368,7 +368,7 @@ To read more, please refer to [Getting Started](https://apisix.apache.org/docs/a
 
 ## Define Route
 
-Now, we can define the route for APISIX.
+Now, we can define the route for proxying HTTPBIN service traffic through APISIX.
 
 Assuming we want to route all traffic which URI has `/httpbin` prefix and the request contains `Host: httpbin.org` header.
 
@@ -655,6 +655,8 @@ spec:
       - au
 ```
 
+This yaml doesn't contain all the CRDs for APISIX Ingress Controller. Please refer to [samples](http://github.com/apache/apisix-ingress-controller/blob/master/samples/deploy/crd) for details.
+
 To make the ingress controller works properly with APISIX, we need to create a config file containing the APISIX admin API URL and API key as below:
 
 ```yaml
@@ -683,6 +685,8 @@ metadata:
   labels:
     app.kubernetes.io/name: ingress-controller
 ```
+
+If you want to learn all the configuration items, see [conf/config-default.yaml](http://github.com/apache/apisix-ingress-controller/blob/master/conf/config-default.yaml) for details.
 
 Because the ingress controller needs to access APISIX admin API, we need to create a service for APISIX.
 
