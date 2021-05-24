@@ -102,6 +102,18 @@ func (c *FakeApisixConsumers) Update(ctx context.Context, apisixConsumer *v2alph
 	return obj.(*v2alpha1.ApisixConsumer), err
 }
 
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *FakeApisixConsumers) UpdateStatus(ctx context.Context, apisixConsumer *v2alpha1.ApisixConsumer, opts v1.UpdateOptions) (*v2alpha1.ApisixConsumer, error) {
+	obj, err := c.Fake.
+		Invokes(testing.NewUpdateSubresourceAction(apisixconsumersResource, "status", c.ns, apisixConsumer), &v2alpha1.ApisixConsumer{})
+
+	if obj == nil {
+		return nil, err
+	}
+	return obj.(*v2alpha1.ApisixConsumer), err
+}
+
 // Delete takes name of the apisixConsumer and deletes it. Returns an error if one occurs.
 func (c *FakeApisixConsumers) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.

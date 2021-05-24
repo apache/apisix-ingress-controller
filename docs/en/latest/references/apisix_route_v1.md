@@ -33,7 +33,7 @@ title: ApisixRoute/v1 (Deprecated) Reference
 | serviceName   | string   | The name of backend service. `namespace + serviceName + servicePort` form an unique identifier to match the back-end service.                      |
 | servicePort   | int      | The port of backend service. `namespace + serviceName + servicePort` form an unique identifier to match the back-end service.                      |
 | path          | string   | The URI matched by the route. Supports exact match and prefix match. Example，exact match: `/hello`, prefix match: `/hello*`.                     |
-| plugins       | array    | Custom plugin collection (Plugins defined in the `route` level). For more plugin information, please refer to the [Apache APISIX plugin docs](https://github.com/apache/apisix/tree/master/doc/plugins).    |
-| name          | string   | The name of the plugin. For more information about the example plugin, please check the [limit-count docs](https://github.com/apache/apisix/blob/master/doc/plugins/limit-count.md#Attributes).             |
+| plugins       | array    | Custom plugin collection (Plugins defined in the `route` level). For more plugin information, please refer to the [Apache APISIX plugin docs](https://github.com/apache/apisix/tree/master/docs/en/latest/plugins).    |
+| name          | string   | The name of the plugin. For more information about the example plugin, please check the [limit-count docs](https://github.com/apache/apisix/blob/master/docs/en/latest/plugins/limit-count.md#Attributes).             |
 | enable        | boolean  | Whether to enable the plugin, `true`: means enable, `false`: means disable.      |
 | config        | object   | Configuration of plugin information. Note: The check of configuration schema is missing now, so please be careful when editing.    |

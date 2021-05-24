@@ -27,6 +27,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -99,6 +100,10 @@ func (s *Scaffold) CreateResourceFromString(yaml string) error {
 // RemoveResourceByString remove resource from a loaded yaml string.
 func (s *Scaffold) RemoveResourceByString(yaml string) error {
 	return k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
+}
+
+func (s *Scaffold) GetServiceByName(name string) (*corev1.Service, error) {
+	return k8s.GetServiceE(s.t, s.kubectlOptions, name)
 }
 
 // CreateResourceFromStringWithNamespace creates resource from a loaded yaml string
