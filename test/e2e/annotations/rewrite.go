@@ -56,6 +56,7 @@ spec:
 		time.Sleep(5 * time.Second)
 
 		_ = s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
 	})
 
 	ginkgo.It("enable in ingress networking/v1beta1", func() {
@@ -84,6 +85,7 @@ spec:
 		time.Sleep(5 * time.Second)
 
 		_ = s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
 	})
 
 	ginkgo.It("enable in ingress extensions/v1beta1", func() {
@@ -112,6 +114,7 @@ spec:
 		time.Sleep(5 * time.Second)
 
 		_ = s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
 	})
 })
 
