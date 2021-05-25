@@ -21,7 +21,7 @@ RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 LOCAL_REGISTRY="localhost:5000"
 IMAGE_TAG ?= dev
 
-GITSHA ?= "No-git-module"
+GITSHA ?= "no-git-module"
 ifneq ("$(wildcard .git)", "")
 	GITSHA = $(shell git rev-parse --short=7 HEAD)
 endif
