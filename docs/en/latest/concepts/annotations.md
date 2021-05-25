@@ -96,7 +96,7 @@ spec:
               number: 80
 ```
 
-With this Ingress, any requests with `/app` prefix will be forwarded to backend without the `/app/` part, e.g. request `/app/ip` will be forwarded to `/ip`.  
+With this Ingress, any requests with `/app` prefix will be forwarded to backend without the `/app/` part, e.g. request `/app/ip` will be forwarded to `/ip`.
 
 Redirect
 ---------
