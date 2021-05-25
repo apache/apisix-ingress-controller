@@ -147,3 +147,13 @@ func (i *item) globalRule() (*v1.GlobalRule, error) {
 	}
 	return &globalRule, nil
 }
+
+// consumer decodes item.Value and converts it to v1.Consumer.
+func (i *item) consumer() (*v1.Consumer, error) {
+	log.Debugf("got consumer: %s", string(i.Value))
+	var consumer v1.Consumer
+	if err := json.Unmarshal(i.Value, &consumer); err != nil {
+		return nil, err
+	}
+	return &consumer, nil
+}
