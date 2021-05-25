@@ -69,6 +69,7 @@ type Controller struct {
 	wg                sync.WaitGroup
 	watchingNamespace map[string]struct{}
 	apisix            apisix.APISIX
+	podCache          types.PodCache
 	translator        translation.Translator
 	apiServer         *api.Server
 	metricsCollector  metrics.Collector
@@ -84,6 +85,8 @@ type Controller struct {
 	leaderContextCancelFunc context.CancelFunc
 
 	// common informers and listers
+	podInformer                 cache.SharedIndexInformer
+	podLister                   listerscorev1.PodLister
 	epInformer                  cache.SharedIndexInformer
 	epLister                    listerscorev1.EndpointsLister
 	svcInformer                 cache.SharedIndexInformer
@@ -102,6 +105,7 @@ type Controller struct {
 	apisixClusterConfigInformer cache.SharedIndexInformer
 
 	// resource controllers
+	podController       *podController
 	endpointsController *endpointsController
 	ingressController   *ingressController
 	secretController    *secretController
@@ -183,7 +187,10 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		watchingNamespace: watchingNamespace,
 		secretSSLMap:      new(sync.Map),
 		recorder:          eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
+		podCache:          types.NewPodCache(),
 
+		podInformer:                 kubeClient.SharedIndexInformerFactory.Core().V1().Pods().Informer(),
+		podLister:                   kubeClient.SharedIndexInformerFactory.Core().V1().Pods().Lister(),
 		epInformer:                  kubeClient.SharedIndexInformerFactory.Core().V1().Endpoints().Informer(),
 		epLister:                    kubeClient.SharedIndexInformerFactory.Core().V1().Endpoints().Lister(),
 		svcInformer:                 kubeClient.SharedIndexInformerFactory.Core().V1().Services().Informer(),
@@ -208,6 +215,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		SecretLister:         c.secretLister,
 	})
 
+	c.podController = c.newPodController()
 	c.endpointsController = c.newEndpointsController()
 	c.apisixUpstreamController = c.newApisixUpstreamController()
 	c.apisixRouteController = c.newApisixRouteController()
@@ -345,6 +353,9 @@ func (c *Controller) run(ctx context.Context) {
 	}
 
 	c.goAttach(func() {
+		c.podInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
 		c.epInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
@@ -367,6 +378,9 @@ func (c *Controller) run(ctx context.Context) {
 	})
 	c.goAttach(func() {
 		c.apisixTlsInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
+		c.podController.run(ctx)
 	})
 	c.goAttach(func() {
 		c.endpointsController.run(ctx)
