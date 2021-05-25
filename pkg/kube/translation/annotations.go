@@ -26,6 +26,7 @@ var (
 	_handlers = []annotations.Handler{
 		annotations.NewCorsHandler(),
 		annotations.NewIPRestrictionHandler(),
+		annotations.NewRewriteHandler(),
 	}
 )
 
