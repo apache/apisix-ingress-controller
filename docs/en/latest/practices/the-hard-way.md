@@ -677,8 +677,8 @@ data:
       ingress_version: "networking/v1"
       apisix_route_version: "apisix.apache.org/v2alpha1"
     apisix:
-      base_url: "http://apisix-admin.apisix:9180/apisix/admin"
-      admin_key: "edd1c9f034335f136f87ad84b625c8f1"
+      default_cluster_base_url: "http://apisix-admin.apisix:9180/apisix/admin"
+      default_cluster_admin_key: "edd1c9f034335f136f87ad84b625c8f1"
 kind: ConfigMap
 metadata:
   name: apisix-configmap
