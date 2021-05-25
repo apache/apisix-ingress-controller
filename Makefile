@@ -21,8 +21,11 @@ RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 LOCAL_REGISTRY="localhost:5000"
 IMAGE_TAG ?= dev
 
+GITSHA ?= "no-git-module"
+ifneq ("$(wildcard .git)", "")
+	GITSHA = $(shell git rev-parse --short=7 HEAD)
+endif
 GINKGO ?= $(shell which ginkgo)
-GITSHA ?= $(shell git rev-parse --short=7 HEAD)
 OSNAME ?= $(shell uname -s | tr A-Z a-z)
 OSARCH ?= $(shell uname -m | tr A-Z a-z)
 PWD ?= $(shell pwd)
