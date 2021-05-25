@@ -1,0 +1,15 @@
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+  name: httpserver-route
+spec:
+  http:
+    - name: httpbin
+      match:
+        hosts:
+          - mtls.httpbin.local
+        paths:
+          - "/*"
+      backend:
+        serviceName: httpbin
+        servicePort: 80

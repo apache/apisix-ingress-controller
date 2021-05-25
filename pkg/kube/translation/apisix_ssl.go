@@ -19,7 +19,6 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
-	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -45,7 +44,7 @@ func (t *translator) TranslateSSL(tls *configv1.ApisixTls) (*apisixv1.Ssl, error
 	}
 	var snis []string
 	snis = append(snis, tls.Spec.Hosts...)
-	ssl := &apisix.Ssl{
+	ssl := &apisixv1.Ssl{
 		ID:     id.GenID(tls.Namespace + "_" + tls.Name),
 		Snis:   snis,
 		Cert:   string(cert),
@@ -55,5 +54,20 @@ func (t *translator) TranslateSSL(tls *configv1.ApisixTls) (*apisixv1.Ssl, error
 			"managed-by": "apisix-ingress-controller",
 		},
 	}
+	if tls.Spec.Client != nil {
+		caSecret, err := t.SecretLister.Secrets(tls.Spec.Client.CA.Namespace).Get(tls.Spec.Client.CA.Name)
+		if err != nil {
+			return nil, err
+		}
+		ca, ok := caSecret.Data["cert"]
+		if !ok {
+			return nil, ErrEmptyCert
+		}
+		ssl.Client = &apisixv1.MutualTLSClientConfig{
+			CA:    string(ca),
+			Depth: tls.Spec.Client.Depth,
+		}
+	}
+
 	return ssl, nil
 }

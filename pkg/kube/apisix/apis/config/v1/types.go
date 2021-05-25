@@ -286,12 +286,19 @@ type ApisixTlsList struct {
 
 // ApisixTlsSpec is the specification of ApisixSSL.
 type ApisixTlsSpec struct {
-	Hosts  []string     `json:"hosts,omitempty" yaml:"hosts,omitempty"`
-	Secret ApisixSecret `json:"secret,omitempty" yaml:"secret,omitempty"`
+	Hosts  []string                     `json:"hosts,omitempty" yaml:"hosts,omitempty"`
+	Secret ApisixSecret                 `json:"secret,omitempty" yaml:"secret,omitempty"`
+	Client *ApisixMutualTlsClientConfig `json:"client,omitempty" yaml:"client,omitempty"`
 }
 
 // ApisixSecret describes the Kubernetes Secret name and namespace.
 type ApisixSecret struct {
 	Name      string `json:"name,omitempty" yaml:"name,omitempty"`
 	Namespace string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
+}
+
+// ApisixMutualTlsClientConfig describes the mutual TLS CA and verify depth
+type ApisixMutualTlsClientConfig struct {
+	CA    ApisixSecret `json:"ca,omitempty" yaml:"ca,omitempty"`
+	Depth int          `json:"depth,omitempty" yaml:"depth,omitempty"`
 }

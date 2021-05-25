@@ -26,6 +26,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
+// TODO: FIXME
 var _ = ginkgo.Describe("secret Testing", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
@@ -153,7 +154,7 @@ jW4KB95bGOTa7r7DM1Up0MbAIwWoeLBGhOIXk7inurZGg+FNjZMA5Lzm6qo=
 		assert.Nil(ginkgo.GinkgoT(), err, "create tls error")
 		// check ssl in APISIX
 		time.Sleep(10 * time.Second)
-		tls, err := s.ListApisixTls()
+		tls, err := s.ListApisixSsl()
 		assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
 		assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
 		assert.Equal(ginkgo.GinkgoT(), cert, tls[0].Cert, "tls cert not expect")
@@ -251,7 +252,7 @@ UnBVSIGJ/c0AhVSDuOAJiF36pvsDysTZXMTFE/9i5bkGOiwtzRNe4Hym/SEZUCpn
 		assert.Nil(ginkgo.GinkgoT(), err, "create secret error")
 		// check ssl in APISIX
 		time.Sleep(10 * time.Second)
-		tlsUpdate, err := s.ListApisixTls()
+		tlsUpdate, err := s.ListApisixSsl()
 		assert.Nil(ginkgo.GinkgoT(), err, "list tlsUpdate error")
 		assert.Len(ginkgo.GinkgoT(), tlsUpdate, 1, "tls number not expect")
 		assert.Equal(ginkgo.GinkgoT(), certUpdate, tlsUpdate[0].Cert, "tls cert not expect")
@@ -264,7 +265,7 @@ UnBVSIGJ/c0AhVSDuOAJiF36pvsDysTZXMTFE/9i5bkGOiwtzRNe4Hym/SEZUCpn
 		assert.Nil(ginkgo.GinkgoT(), err, "delete tls error")
 		// check ssl in APISIX
 		time.Sleep(10 * time.Second)
-		tls, err = s.ListApisixTls()
+		tls, err = s.ListApisixSsl()
 		assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
 		assert.Len(ginkgo.GinkgoT(), tls, 0, "tls number not expect")
 	})

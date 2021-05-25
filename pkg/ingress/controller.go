@@ -38,6 +38,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	listersv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2alpha1"
@@ -444,7 +445,7 @@ func (c *Controller) namespaceWatching(key string) (ok bool) {
 	return
 }
 
-func (c *Controller) syncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types.EventType) error {
+func (c *Controller) syncSSL(ctx context.Context, tls *configv1.ApisixTls, ssl *apisixv1.Ssl, event types.EventType) error {
 	var (
 		err error
 	)
@@ -456,6 +457,7 @@ func (c *Controller) syncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types
 	} else {
 		_, err = c.apisix.Cluster(clusterName).SSL().Create(ctx, ssl)
 	}
+	c.recorderEvent(tls, v1.EventTypeNormal, "sync from secret change", err)
 	return err
 }
 

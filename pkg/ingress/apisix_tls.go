@@ -123,15 +123,21 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 		c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse)
 		return err
 	}
-	log.Debug("got SSL object from ApisixTls",
+	log.Debugw("got SSL object from ApisixTls",
 		zap.Any("ssl", ssl),
 		zap.Any("ApisixTls", tls),
 	)
 
 	secretKey := tls.Spec.Secret.Namespace + "_" + tls.Spec.Secret.Name
 	c.syncSecretSSL(secretKey, ssl, ev.Type)
+	if tls.Spec.Client != nil {
+		caSecretKey := tls.Spec.Client.CA.Namespace + "_" + tls.Spec.Client.CA.Name
+		if caSecretKey != secretKey {
+			c.syncSecretSSL(caSecretKey, ssl, ev.Type)
+		}
+	}
 
-	if err := c.controller.syncSSL(ctx, ssl, ev.Type); err != nil {
+	if err := c.controller.syncSSL(ctx, tls, ssl, ev.Type); err != nil {
 		log.Errorw("failed to sync SSL to APISIX",
 			zap.Error(err),
 			zap.Any("ssl", ssl),

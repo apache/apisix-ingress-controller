@@ -295,12 +295,20 @@ type UpstreamPassiveHealthCheckUnhealthy struct {
 // Ssl apisix ssl object
 // +k8s:deepcopy-gen=true
 type Ssl struct {
-	ID     string            `json:"id,omitempty" yaml:"id,omitempty"`
-	Snis   []string          `json:"snis,omitempty" yaml:"snis,omitempty"`
-	Cert   string            `json:"cert,omitempty" yaml:"cert,omitempty"`
-	Key    string            `json:"key,omitempty" yaml:"key,omitempty"`
-	Status int               `json:"status,omitempty" yaml:"status,omitempty"`
-	Labels map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
+	ID     string                 `json:"id,omitempty" yaml:"id,omitempty"`
+	Snis   []string               `json:"snis,omitempty" yaml:"snis,omitempty"`
+	Cert   string                 `json:"cert,omitempty" yaml:"cert,omitempty"`
+	Key    string                 `json:"key,omitempty" yaml:"key,omitempty"`
+	Status int                    `json:"status,omitempty" yaml:"status,omitempty"`
+	Labels map[string]string      `json:"labels,omitempty" yaml:"labels,omitempty"`
+	Client *MutualTLSClientConfig `json:"client,omitempty" yaml:"client,omitempty"`
+}
+
+// MutualTLSClientConfig apisix SSL client field
+// +k8s:deepcopy-gen=true
+type MutualTLSClientConfig struct {
+	CA    string `json:"ca,omitempty" yaml:"ca,omitempty"`
+	Depth int    `json:"depth,omitempty" yaml:"depth,omitempty"`
 }
 
 // StreamRoute represents the stream_route object in APISIX.

@@ -1,0 +1,10 @@
+apiVersion: apisix.apache.org/v1
+kind: ApisixTls
+metadata:
+  name: sample-tls
+spec:
+  hosts:
+    - mtls.httpbin.local
+  secret:
+    name: server-secret
+    namespace: default
