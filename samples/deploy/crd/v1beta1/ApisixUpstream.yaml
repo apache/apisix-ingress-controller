@@ -40,6 +40,17 @@ spec:
         spec:
           type: object
           properties:
+            subsets:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    minLength: 1
+                  labels:
+                    type: object
+                required: ["name", "labels"]
             loadbalancer:
               type: object
               properties:
