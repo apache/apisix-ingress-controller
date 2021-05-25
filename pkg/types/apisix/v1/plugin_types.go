@@ -74,3 +74,10 @@ type BasicAuthConsumerConfig struct {
 // used in Route object.
 // +k8s:deepcopy-gen=true
 type BasicAuthRouteConfig struct{}
+
+// RewriteConfig is the rule config for proxy-rewrite plugin.
+// +k8s:deepcopy-gen=true
+type RewriteConfig struct {
+	RewriteTarget      string   `json:"uri,omitempty"`
+	RewriteTargetRegex []string `json:"regex_uri,omitempty"`
+}

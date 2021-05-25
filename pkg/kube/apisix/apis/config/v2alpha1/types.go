@@ -129,7 +129,7 @@ type ApisixRouteHTTPMatch struct {
 	NginxVars []ApisixRouteHTTPMatchExpr `json:"exprs,omitempty" yaml:"exprs,omitempty"`
 }
 
-// ApisixRouteHTTPMatchExpre represents a binary route match expression .
+// ApisixRouteHTTPMatchExpr represents a binary route match expression .
 type ApisixRouteHTTPMatchExpr struct {
 	// Subject is the expression subject, it can
 	// be any string composed by literals and nginx

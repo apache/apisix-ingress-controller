@@ -403,7 +403,7 @@ func (c *Controller) namespaceWatching(key string) (ok bool) {
 	}
 	ns, _, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		// Ignore resource with invalid key.
+		// Ignore resource pkg/types/apisix/v1/plugin_types.gowith invalid key.
 		ok = false
 		log.Warnf("resource %s was ignored since: %s", key, err)
 		return
