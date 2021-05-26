@@ -21,8 +21,11 @@ RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 LOCAL_REGISTRY="localhost:5000"
 IMAGE_TAG ?= dev
 
+GITSHA ?= "no-git-module"
+ifneq ("$(wildcard .git)", "")
+	GITSHA = $(shell git rev-parse --short=7 HEAD)
+endif
 GINKGO ?= $(shell which ginkgo)
-GITSHA ?= $(shell git rev-parse --short=7 HEAD)
 OSNAME ?= $(shell uname -s | tr A-Z a-z)
 OSARCH ?= $(shell uname -m | tr A-Z a-z)
 PWD ?= $(shell pwd)
@@ -142,3 +145,12 @@ release-src:
 	mv $(RELEASE_SRC).tgz release/$(RELEASE_SRC).tgz
 	mv $(RELEASE_SRC).tgz.asc release/$(RELEASE_SRC).tgz.asc
 	mv $(RELEASE_SRC).tgz.sha512 release/$(RELEASE_SRC).tgz.sha512
+
+.PHONY: gen-tools
+gen-tools:
+	go mod download
+	go install k8s.io/code-generator/cmd/{client-gen,lister-gen,informer-gen,deepcopy-gen}
+
+.PHONY: codegen
+codegen: gen-tools
+	./utils/update-codegen.sh

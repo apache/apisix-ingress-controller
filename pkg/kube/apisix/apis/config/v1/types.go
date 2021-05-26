@@ -119,6 +119,18 @@ type ApisixUpstreamConfig struct {
 	// The health check configurations for the upstream.
 	// +optional
 	HealthCheck *HealthCheck `json:"healthCheck,omitempty" yaml:"healthCheck,omitempty"`
+	// Subsets groups the service endpoints by their labels. Usually used to differentiate
+	// service versions.
+	// +optional
+	Subsets []ApisixUpstreamSubset `json:"subsets,omitempty" yaml:"subsets,omitempty"`
+}
+
+// ApisixUpstreamSubset defines a single endpoints group of one Service.
+type ApisixUpstreamSubset struct {
+	// Name is the name of subset.
+	Name string `json:"name" yaml:"name"`
+	// Labels is the label set of this subset.
+	Labels map[string]string `json:"labels" yaml:"labels"`
 }
 
 // UpstreamTimeout is settings for the read, send and connect to the upstream.

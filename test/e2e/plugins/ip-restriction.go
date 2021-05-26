@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var _ = ginkgo.Describe("proxy-rewrite plugin", func() {
+var _ = ginkgo.Describe("ip-restriction plugin", func() {
 	opts := &scaffold.Options{
 		Name:                    "default",
 		Kubeconfig:              scaffold.GetKubeconfig(),

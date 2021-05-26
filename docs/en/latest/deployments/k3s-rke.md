@@ -45,7 +45,7 @@ helm repo add apisix https://charts.apiseven.com
 helm repo update
 helm install apisix apisix/apisix \
   --set gateway.type=NodePort \
-  --set allow.ipList="{0.0.0.0/0}" \
+  --set admin.allow.ipList="{0.0.0.0/0}" \
   --namespace ingress-apisix \
   --kubeconfig /etc/rancher/k3s/k3s.yaml
 kubectl get service --namespace ingress-apisix
