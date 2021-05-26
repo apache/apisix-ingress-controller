@@ -34,3 +34,6 @@ etcd:
     - "http://{{ .EtcdServiceFQDN }}:2379"     # multiple etcd address
   prefix: "/apisix"               # apisix configurations prefix
   timeout: 30                     # 30 seconds
+plugin_attr:
+  prometheus:
+    enable_export_server: false
