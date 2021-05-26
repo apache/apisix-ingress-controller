@@ -30,7 +30,7 @@ func (t *translator) translateTrafficSplitPlugin(ctx *TranslateContext, ar *conf
 		if err != nil {
 			return nil, err
 		}
-		ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.ResolveGranularity, svcClusterIP, svcPort)
+		ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
 		if err != nil {
 			return nil, err
 		}
