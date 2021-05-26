@@ -57,6 +57,8 @@ func (c *Controller) newApisixTlsController() *apisixTlsController {
 func (c *apisixTlsController) run(ctx context.Context) {
 	log.Info("ApisixTls controller started")
 	defer log.Info("ApisixTls controller exited")
+	defer c.workqueue.ShutDown()
+
 	if ok := cache.WaitForCacheSync(ctx.Done(), c.controller.apisixTlsInformer.HasSynced, c.controller.secretInformer.HasSynced); !ok {
 		log.Errorf("informers sync failed")
 		return
@@ -66,7 +68,6 @@ func (c *apisixTlsController) run(ctx context.Context) {
 	}
 
 	<-ctx.Done()
-	c.workqueue.ShutDown()
 }
 
 func (c *apisixTlsController) runWorker(ctx context.Context) {
