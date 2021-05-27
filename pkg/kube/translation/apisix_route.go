@@ -54,7 +54,7 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) (*TranslateConte
 				}
 			}
 
-			upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, p.Backend.ServiceName, int32(p.Backend.ServicePort))
+			upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, p.Backend.ServiceName, "", int32(p.Backend.ServicePort))
 			route := apisixv1.NewDefaultRoute()
 			route.Name = r.Host + p.Path
 			route.ID = id.GenID(route.Name)
@@ -150,7 +150,7 @@ func (t *translator) translateHTTPRoute(ctx *TranslateContext, ar *configv2alpha
 			return err
 		}
 
-		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, svcPort)
+		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, svcPort)
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)

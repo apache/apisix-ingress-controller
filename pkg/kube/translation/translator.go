@@ -46,8 +46,9 @@ func (te *translateError) Error() string {
 // Translator translates Apisix* CRD resources to the description in APISIX.
 type Translator interface {
 	// TranslateUpstreamNodes translate Endpoints resources to APISIX Upstream nodes
-	// according to the give port.
-	TranslateUpstreamNodes(*corev1.Endpoints, int32) (apisixv1.UpstreamNodes, error)
+	// according to the give port. Extra labels can be passed to filter the ultimate
+	// upstream nodes.
+	TranslateUpstreamNodes(*corev1.Endpoints, int32, types.Labels) (apisixv1.UpstreamNodes, error)
 	// TranslateUpstreamConfig translates ApisixUpstreamConfig (part of ApisixUpstream)
 	// to APISIX Upstream, it doesn't fill the the Upstream metadata and nodes.
 	TranslateUpstreamConfig(*configv1.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
@@ -124,39 +125,40 @@ func (t *translator) TranslateUpstream(namespace, name, subset string, port int3
 			reason: err.Error(),
 		}
 	}
-	nodes, err := t.TranslateUpstreamNodes(endpoints, port)
-	if err != nil {
-		return nil, err
-	}
-	ups := apisixv1.NewDefaultUpstream()
 	au, err := t.ApisixUpstreamLister.ApisixUpstreams(namespace).Get(name)
+	ups := apisixv1.NewDefaultUpstream()
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			// If subset in ApisixRoute is not empty but the ApisixUpstream resouce not found,
 			// just set an empty node list.
 			if subset != "" {
 				ups.Nodes = apisixv1.UpstreamNodes{}
-			} else {
-				ups.Nodes = nodes
+				return ups, nil
 			}
-			return ups, nil
-		}
-		return nil, &translateError{
-			field:  "ApisixUpstream",
-			reason: err.Error(),
+		} else {
+			return nil, &translateError{
+				field:  "ApisixUpstream",
+				reason: err.Error(),
+			}
 		}
 	}
-
-	// Filter nodes by subset.
+	var labels types.Labels
 	if subset != "" {
-		var labels types.Labels
 		for _, ss := range au.Spec.Subsets {
 			if ss.Name == subset {
 				labels = ss.Labels
 				break
 			}
 		}
-		nodes = t.filterNodesByLabels(nodes, labels, au.Namespace)
+	}
+	// Filter nodes by subset.
+	nodes, err := t.TranslateUpstreamNodes(endpoints, port, labels)
+	if err != nil {
+		return nil, err
+	}
+	ups.Nodes = nodes
+	if au == nil {
+		return ups, nil
 	}
 
 	upsCfg := &au.Spec.ApisixUpstreamConfig
@@ -170,11 +172,10 @@ func (t *translator) TranslateUpstream(namespace, name, subset string, port int3
 	if err != nil {
 		return nil, err
 	}
-	ups.Nodes = nodes
 	return ups, nil
 }
 
-func (t *translator) TranslateUpstreamNodes(endpoints *corev1.Endpoints, port int32) (apisixv1.UpstreamNodes, error) {
+func (t *translator) TranslateUpstreamNodes(endpoints *corev1.Endpoints, port int32, labels types.Labels) (apisixv1.UpstreamNodes, error) {
 	svc, err := t.ServiceLister.Services(endpoints.Namespace).Get(endpoints.Name)
 	if err != nil {
 		return nil, &translateError{
@@ -217,6 +218,9 @@ func (t *translator) TranslateUpstreamNodes(endpoints *corev1.Endpoints, port in
 				})
 			}
 		}
+	}
+	if labels != nil {
+		return t.filterNodesByLabels(nodes, labels, endpoints.Namespace), nil
 	}
 	return nodes, nil
 }

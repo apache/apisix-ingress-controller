@@ -124,7 +124,7 @@ func (t *translator) translateUpstream(namespace, svcName, subset, svcResolveGra
 			},
 		}
 	}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, svcPort)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, subset, svcPort)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }

@@ -129,58 +129,65 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 		return err
 	}
 
+	var subsets []configv1.ApisixUpstreamSubset
+	subsets = append(subsets, configv1.ApisixUpstreamSubset{})
+	if len(au.Spec.Subsets) > 0 {
+		subsets = append(subsets, au.Spec.Subsets...)
+	}
 	clusterName := c.controller.cfg.APISIX.DefaultClusterName
 	for _, port := range svc.Spec.Ports {
-		upsName := apisixv1.ComposeUpstreamName(namespace, name, port.Port)
-		// TODO: multiple cluster
-		ups, err := c.controller.apisix.Cluster(clusterName).Upstream().Get(ctx, upsName)
-		if err != nil {
-			if err == apisixcache.ErrNotFound {
-				continue
-			}
-			log.Errorf("failed to get upstream %s: %s", upsName, err)
-			c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
-			c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
-			return err
-		}
-		var newUps *apisixv1.Upstream
-		if ev.Type != types.EventDelete {
-			cfg, ok := portLevelSettings[port.Port]
-			if !ok {
-				cfg = &au.Spec.ApisixUpstreamConfig
-			}
-			// FIXME Same ApisixUpstreamConfig might be translated multiple times.
-			newUps, err = c.controller.translator.TranslateUpstreamConfig(cfg)
+		for _, subset := range subsets {
+			upsName := apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port)
+			// TODO: multiple cluster
+			ups, err := c.controller.apisix.Cluster(clusterName).Upstream().Get(ctx, upsName)
 			if err != nil {
-				log.Errorw("found malformed ApisixUpstream",
-					zap.Any("object", au),
+				if err == apisixcache.ErrNotFound {
+					continue
+				}
+				log.Errorf("failed to get upstream %s: %s", upsName, err)
+				c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
+				c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
+				return err
+			}
+			var newUps *apisixv1.Upstream
+			if ev.Type != types.EventDelete {
+				cfg, ok := portLevelSettings[port.Port]
+				if !ok {
+					cfg = &au.Spec.ApisixUpstreamConfig
+				}
+				// FIXME Same ApisixUpstreamConfig might be translated multiple times.
+				newUps, err = c.controller.translator.TranslateUpstreamConfig(cfg)
+				if err != nil {
+					log.Errorw("found malformed ApisixUpstream",
+						zap.Any("object", au),
+						zap.Error(err),
+					)
+					c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
+					c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
+					return err
+				}
+			} else {
+				newUps = apisixv1.NewDefaultUpstream()
+			}
+
+			newUps.Metadata = ups.Metadata
+			newUps.Nodes = ups.Nodes
+			log.Debugw("updating upstream since ApisixUpstream changed",
+				zap.String("event", ev.Type.String()),
+				zap.Any("upstream", newUps),
+				zap.Any("ApisixUpstream", au),
+			)
+			if _, err := c.controller.apisix.Cluster(clusterName).Upstream().Update(ctx, newUps); err != nil {
+				log.Errorw("failed to update upstream",
 					zap.Error(err),
+					zap.Any("upstream", newUps),
+					zap.Any("ApisixUpstream", au),
+					zap.String("cluster", clusterName),
 				)
 				c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
 				c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
 				return err
 			}
-		} else {
-			newUps = apisixv1.NewDefaultUpstream()
-		}
-
-		newUps.Metadata = ups.Metadata
-		newUps.Nodes = ups.Nodes
-		log.Debugw("updating upstream since ApisixUpstream changed",
-			zap.String("event", ev.Type.String()),
-			zap.Any("upstream", newUps),
-			zap.Any("ApisixUpstream", au),
-		)
-		if _, err := c.controller.apisix.Cluster(clusterName).Upstream().Update(ctx, newUps); err != nil {
-			log.Errorw("failed to update upstream",
-				zap.Error(err),
-				zap.Any("upstream", newUps),
-				zap.Any("ApisixUpstream", au),
-				zap.String("cluster", clusterName),
-			)
-			c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
-			c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
-			return err
 		}
 	}
 	c.controller.recorderEvent(au, corev1.EventTypeNormal, _resourceSynced, nil)
