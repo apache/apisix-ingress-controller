@@ -57,6 +57,8 @@ func (c *Controller) newApisixUpstreamController() *apisixUpstreamController {
 func (c *apisixUpstreamController) run(ctx context.Context) {
 	log.Info("ApisixUpstream controller started")
 	defer log.Info("ApisixUpstream controller exited")
+	defer c.workqueue.ShutDown()
+
 	if ok := cache.WaitForCacheSync(ctx.Done(), c.controller.apisixUpstreamInformer.HasSynced, c.controller.svcInformer.HasSynced); !ok {
 		log.Error("cache sync failed")
 		return
@@ -66,7 +68,6 @@ func (c *apisixUpstreamController) run(ctx context.Context) {
 	}
 
 	<-ctx.Done()
-	c.workqueue.ShutDown()
 }
 
 func (c *apisixUpstreamController) runWorker(ctx context.Context) {

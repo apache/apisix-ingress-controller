@@ -25,16 +25,12 @@ import (
 
 // KubeClient contains some objects used to communicate with Kubernetes API Server.
 type KubeClient struct {
+	cfg *config.Config
+
 	// Client is the object used to operate Kubernetes builtin resources.
 	Client kubernetes.Interface
 	// APISIXClient is the object used to operate resources under apisix.apache.org group.
 	APISIXClient clientset.Interface
-	// SharedIndexInformerFactory is the index informer factory object used to watch and
-	// list Kubernetes builtin resources.
-	SharedIndexInformerFactory informers.SharedInformerFactory
-	// APISIXSharedIndexInformerFactory is the index informer factory object used to watch
-	// and list Kubernetes resources in apisix.apache.org group.
-	APISIXSharedIndexInformerFactory externalversions.SharedInformerFactory
 }
 
 // NewKubeClient creates a high-level Kubernetes client.
@@ -52,13 +48,22 @@ func NewKubeClient(cfg *config.Config) (*KubeClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	factory := informers.NewSharedInformerFactory(kubeClient, cfg.Kubernetes.ResyncInterval.Duration)
-	apisixFactory := externalversions.NewSharedInformerFactory(apisixKubeClient, cfg.Kubernetes.ResyncInterval.Duration)
 
 	return &KubeClient{
-		Client:                           kubeClient,
-		APISIXClient:                     apisixKubeClient,
-		SharedIndexInformerFactory:       factory,
-		APISIXSharedIndexInformerFactory: apisixFactory,
+		cfg:          cfg,
+		Client:       kubeClient,
+		APISIXClient: apisixKubeClient,
 	}, nil
+}
+
+// SharedIndexInformerFactory is the index informer factory object used to watch and
+// list Kubernetes builtin resources.
+func (k *KubeClient) NewSharedIndexInformerFactory() informers.SharedInformerFactory {
+	return informers.NewSharedInformerFactory(k.Client, k.cfg.Kubernetes.ResyncInterval.Duration)
+}
+
+// APISIXSharedIndexInformerFactory is the index informer factory object used to watch
+// and list Kubernetes resources in apisix.apache.org group.
+func (k *KubeClient) NewAPISIXSharedIndexInformerFactory() externalversions.SharedInformerFactory {
+	return externalversions.NewSharedInformerFactory(k.APISIXClient, k.cfg.Kubernetes.ResyncInterval.Duration)
 }

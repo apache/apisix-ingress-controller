@@ -15,6 +15,7 @@
       "label": "Practices",
       "items": [
         "practices/index",
+        "practices/the-hard-way",
         "practices/proxy-the-httpbin-service-with-ingress",
         "practices/proxy-the-httpbin-service"
       ]

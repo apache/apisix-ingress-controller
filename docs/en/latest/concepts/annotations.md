@@ -59,3 +59,75 @@ Blocklist Source Range
 
 You can specify the denied client IP addresses or nets by the annotation `k8s.apisix.apache.org/blocklist-source-range`, multiple IP addresses or nets join together with `,`,
 for instance, `k8s.apisix.apache.org/blocklist-source-range: 127.0.0.1,172.17.0.0/16`. Default value is *empty*, which means the sources are not limited.
+
+Rewrite Target
+--------------
+
+You can rewrite requests by specifying the annotation `k8s.apisix.apache.org/rewrite-target` or `k8s.apisix.apache.org/rewrite-target-regex`.
+
+The annotation `k8s.apisix.apache.org/rewrite-target` controls where the request will be forwarded to.
+
+If you want to use regex and match groups, use annotation `k8s.apisix.apache.org/rewrite-target-regex` and `k8s.apisix.apache.org/rewrite-target-regex-template`. The first annotation contains the matching rule (regex), the second one contains the rewrite rule.
+
+Both annotations must be used together, otherwise they will be ignored.
+
+For example, we have an Ingress matches prefix path `/app`, and we set `k8s.apisix.apache.org/rewrite-target-regex` to `/app/(.*)` and set `k8s.apisix.apache.org/rewrite-target-regex-template` to `/$1`.
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/rewrite-target-regex: "/app/(.*)"
+    k8s.apisix.apache.org/rewrite-target-regex-template: "/$1"
+  name: ingress-v1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /app
+        pathType: Prefix
+        backend:
+          service:
+            name: httpbin
+            port:
+              number: 80
+```
+
+With this Ingress, any requests with `/app` prefix will be forwarded to backend without the `/app/` part, e.g. request `/app/ip` will be forwarded to `/ip`.
+
+Redirect
+---------
+
+You can use the following annotations to control the redirect behavior.
+
+* `k8s.apisix.apache.org/http-to-https`
+
+If this annotation set to `true` and the request is HTTP, it will be automatically redirected to HTTPS with 301 response code,
+and the URI will keep the same as client request.
+
+For example, the following Ingress, if we set `k8s.apisix.apache.org/http-to-https: "true"`. The client will get a response with 301 status code, and the response header `Location`  will be `https://httpbin.org/sample`.
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/http-to-https: "true"
+  name: ingress-v1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /sample
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin
+            port:
+              number: 80
+```
