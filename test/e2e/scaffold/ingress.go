@@ -158,7 +158,9 @@ rules:
       - apisixtlses
       - apisixtlses/status
       - apisixclusterconfigs
+      - apisixclusterconfigs/status
       - apisixconsumers
+      - apisixconsumers/status
     verbs:
       - '*'
   - apiGroups:
