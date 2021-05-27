@@ -1,0 +1,10 @@
+# Allowlist
+
+*
+!cmd
+!conf
+!pkg
+!go.mod
+!go.sum
+!Makefile
+!main.go
