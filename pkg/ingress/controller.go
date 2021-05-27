@@ -100,6 +100,8 @@ type Controller struct {
 	apisixTlsInformer           cache.SharedIndexInformer
 	apisixClusterConfigLister   listersv2alpha1.ApisixClusterConfigLister
 	apisixClusterConfigInformer cache.SharedIndexInformer
+	apisixConsumerInformer      cache.SharedIndexInformer
+	apisixConsumerLister        listersv2alpha1.ApisixConsumerLister
 
 	// resource controllers
 	endpointsController *endpointsController
@@ -110,6 +112,7 @@ type Controller struct {
 	apisixRouteController         *apisixRouteController
 	apisixTlsController           *apisixTlsController
 	apisixClusterConfigController *apisixClusterConfigController
+	apisixConsumerController      *apisixConsumerController
 }
 
 // NewController creates an ingress apisix controller object.
@@ -200,6 +203,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		apisixTlsLister:             kubeClient.APISIXSharedIndexInformerFactory.Apisix().V1().ApisixTlses().Lister(),
 		apisixClusterConfigInformer: kubeClient.APISIXSharedIndexInformerFactory.Apisix().V2alpha1().ApisixClusterConfigs().Informer(),
 		apisixClusterConfigLister:   kubeClient.APISIXSharedIndexInformerFactory.Apisix().V2alpha1().ApisixClusterConfigs().Lister(),
+		apisixConsumerInformer:      kubeClient.APISIXSharedIndexInformerFactory.Apisix().V2alpha1().ApisixConsumers().Informer(),
 	}
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 		EndpointsLister:      c.epLister,
@@ -215,6 +219,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	c.apisixTlsController = c.newApisixTlsController()
 	c.ingressController = c.newIngressController()
 	c.secretController = c.newSecretController()
+	c.apisixConsumerController = c.newApisixConsumerController()
 
 	return c, nil
 }
@@ -369,6 +374,9 @@ func (c *Controller) run(ctx context.Context) {
 		c.apisixTlsInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
+		c.apisixConsumerInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
 		c.endpointsController.run(ctx)
 	})
 	c.goAttach(func() {
@@ -388,6 +396,9 @@ func (c *Controller) run(ctx context.Context) {
 	})
 	c.goAttach(func() {
 		c.secretController.run(ctx)
+	})
+	c.goAttach(func() {
+		c.apisixConsumerController.run(ctx)
 	})
 
 	<-ctx.Done()
