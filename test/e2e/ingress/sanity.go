@@ -32,13 +32,12 @@ type ip struct {
 
 var _ = ginkgo.Describe("single-route", func() {
 	opts := &scaffold.Options{
-		Name:                    "default",
-		Kubeconfig:              scaffold.GetKubeconfig(),
-		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
-		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
-		IngressAPISIXReplicas:   1,
-		HTTPBinServicePort:      80,
-		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("/ip should return your ip", func() {
@@ -79,13 +78,12 @@ spec:
 
 var _ = ginkgo.Describe("double-routes", func() {
 	opts := &scaffold.Options{
-		Name:                    "default",
-		Kubeconfig:              scaffold.GetKubeconfig(),
-		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
-		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
-		IngressAPISIXReplicas:   1,
-		HTTPBinServicePort:      80,
-		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("double routes work independently", func() {
@@ -137,11 +135,10 @@ spec:
 
 var _ = ginkgo.Describe("leader election", func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
-		Name:                    "leaderelection",
-		Kubeconfig:              scaffold.GetKubeconfig(),
-		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
-		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
-		IngressAPISIXReplicas:   2,
+		Name:                  "leaderelection",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 2,
 	})
 	ginkgo.It("lease check", func() {
 		pods, err := s.GetIngressPodDetails()

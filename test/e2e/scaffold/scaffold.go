@@ -41,13 +41,13 @@ import (
 )
 
 type Options struct {
-	Name                    string
-	Kubeconfig              string
-	APISIXConfigPath        string
-	APISIXDefaultConfigPath string
-	IngressAPISIXReplicas   int
-	HTTPBinServicePort      int
-	APISIXRouteVersion      string
+	Name                  string
+	Kubeconfig            string
+	APISIXConfigPath      string
+	IngressAPISIXReplicas int
+	HTTPBinServicePort    int
+	APISIXRouteVersion    string
+	APISIXAdminAPIKey     string
 }
 
 type Scaffold struct {
@@ -97,6 +97,9 @@ func NewScaffold(o *Options) *Scaffold {
 	if o.APISIXRouteVersion == "" {
 		o.APISIXRouteVersion = kube.ApisixRouteV1
 	}
+	if o.APISIXAdminAPIKey == "" {
+		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
+	}
 	defer ginkgo.GinkgoRecover()
 
 	s := &Scaffold{
@@ -113,13 +116,12 @@ func NewScaffold(o *Options) *Scaffold {
 // NewDefaultScaffold creates a scaffold with some default options.
 func NewDefaultScaffold() *Scaffold {
 	opts := &Options{
-		Name:                    "default",
-		Kubeconfig:              GetKubeconfig(),
-		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
-		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
-		IngressAPISIXReplicas:   1,
-		HTTPBinServicePort:      80,
-		APISIXRouteVersion:      kube.ApisixRouteV1,
+		Name:                  "default",
+		Kubeconfig:            GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    kube.ApisixRouteV1,
 	}
 	return NewScaffold(opts)
 }

@@ -37,5 +37,9 @@ func (r *redirect) PluginName() string {
 func (r *redirect) Handle(e Extractor) (interface{}, error) {
 	var plugin apisixv1.RedirectConfig
 	plugin.HttpToHttps = e.GetBoolAnnotation(_httpToHttps)
-	return &plugin, nil
+	// To avoid empty redirect plugin config, adding the check about the redirect.
+	if plugin.HttpToHttps {
+		return &plugin, nil
+	}
+	return nil, nil
 }
