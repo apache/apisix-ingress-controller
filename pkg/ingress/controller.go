@@ -178,7 +178,7 @@ func (c *Controller) initWhenStartLeading() {
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
 	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
 
-	c.podLister = kubeFactory.Core().V1().Pods().Lister(),
+	c.podLister = kubeFactory.Core().V1().Pods().Lister()
 	c.epLister = kubeFactory.Core().V1().Endpoints().Lister()
 	c.svcLister = kubeFactory.Core().V1().Services().Lister()
 	c.ingressLister = kube.NewIngressLister(
