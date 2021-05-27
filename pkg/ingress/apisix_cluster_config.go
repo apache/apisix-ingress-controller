@@ -54,6 +54,8 @@ func (c *Controller) newApisixClusterConfigController() *apisixClusterConfigCont
 func (c *apisixClusterConfigController) run(ctx context.Context) {
 	log.Info("ApisixClusterConfig controller started")
 	defer log.Info("ApisixClusterConfig controller exited")
+	defer c.workqueue.ShutDown()
+
 	if ok := cache.WaitForCacheSync(ctx.Done(), c.controller.apisixClusterConfigInformer.HasSynced); !ok {
 		log.Error("cache sync failed")
 		return
@@ -62,7 +64,6 @@ func (c *apisixClusterConfigController) run(ctx context.Context) {
 		go c.runWorker(ctx)
 	}
 	<-ctx.Done()
-	c.workqueue.ShutDown()
 }
 
 func (c *apisixClusterConfigController) runWorker(ctx context.Context) {

@@ -81,3 +81,9 @@ type RewriteConfig struct {
 	RewriteTarget      string   `json:"uri,omitempty"`
 	RewriteTargetRegex []string `json:"regex_uri,omitempty"`
 }
+
+// RedirectConfig is the rule config for redirect plugin.
+// +k8s:deepcopy-gen=true
+type RedirectConfig struct {
+	HttpToHttps bool `json:"http_to_https,omitempty"`
+}
