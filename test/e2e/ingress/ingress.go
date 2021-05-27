@@ -99,7 +99,7 @@ spec:
 var _ = ginkgo.Describe("support ingress.networking/v1beta1", func() {
 	s := scaffold.NewDefaultScaffold()
 
-	ginkgo.It("path exact match", func() {
+	ginkgo.FIt("path exact match", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
