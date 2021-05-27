@@ -23,11 +23,16 @@ import (
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 )
 
 func TestIsIngressEffective(t *testing.T) {
-	c := &ingressController{}
+	c := &ingressController{
+		controller: &Controller{
+			cfg: config.NewDefaultConfig(),
+		},
+	}
 	cn := "ingress"
 	ingV1 := &networkingv1.Ingress{
 		TypeMeta: metav1.TypeMeta{

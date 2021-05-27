@@ -27,6 +27,7 @@ var (
 		annotations.NewCorsHandler(),
 		annotations.NewIPRestrictionHandler(),
 		annotations.NewRewriteHandler(),
+		annotations.NewRedirectHandler(),
 	}
 )
 

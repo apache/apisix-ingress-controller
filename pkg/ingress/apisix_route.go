@@ -56,6 +56,8 @@ func (c *Controller) newApisixRouteController() *apisixRouteController {
 func (c *apisixRouteController) run(ctx context.Context) {
 	log.Info("ApisixRoute controller started")
 	defer log.Info("ApisixRoute controller exited")
+	defer c.workqueue.ShutDown()
+
 	ok := cache.WaitForCacheSync(ctx.Done(), c.controller.apisixRouteInformer.HasSynced)
 	if !ok {
 		log.Error("cache sync failed")
@@ -66,7 +68,6 @@ func (c *apisixRouteController) run(ctx context.Context) {
 		go c.runWorker(ctx)
 	}
 	<-ctx.Done()
-	c.workqueue.ShutDown()
 }
 
 func (c *apisixRouteController) runWorker(ctx context.Context) {
