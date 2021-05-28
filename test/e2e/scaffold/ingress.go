@@ -135,11 +135,10 @@ rules:
       - networking.k8s.io
     resources:
       - ingresses
+      - ingresses/status
       - networkpolicies
     verbs:
-      - get
-      - list
-      - watch
+      - '*'
   - apiGroups:
       - metrics.k8s.io
     resources:
@@ -152,14 +151,16 @@ rules:
       - apisix.apache.org
     resources:
       - apisixroutes
+      - apisixroutes/status
       - apisixupstreams
+      - apisixupstreams/status
       - apisixservices
       - apisixtlses
+      - apisixtlses/status
       - apisixclusterconfigs
+      - apisixconsumers
     verbs:
-      - get
-      - list
-      - watch
+      - '*'
   - apiGroups:
     - coordination.k8s.io
     resources:
@@ -248,6 +249,8 @@ spec:
             - default
             - --default-apisix-cluster-base-url
             - http://apisix-service-e2e-test:9180/apisix/admin
+            - --default-apisix-cluster-admin-key
+            - edd1c9f034335f136f87ad84b625c8f1
             - --app-namespace
             - %s
             - --apisix-route-version

@@ -58,6 +58,7 @@ func (c *Controller) newEndpointsController() *endpointsController {
 func (c *endpointsController) run(ctx context.Context) {
 	log.Info("endpoints controller started")
 	defer log.Info("endpoints controller exited")
+	defer c.workqueue.ShutDown()
 
 	if ok := cache.WaitForCacheSync(ctx.Done(), c.controller.epInformer.HasSynced); !ok {
 		log.Error("informers sync failed")
@@ -82,7 +83,6 @@ func (c *endpointsController) run(ctx context.Context) {
 	}
 
 	<-ctx.Done()
-	c.workqueue.ShutDown()
 }
 
 func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
@@ -90,7 +90,7 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 	svc, err := c.controller.svcLister.Services(ep.Namespace).Get(ep.Name)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			log.Warnf("service %s/%s was deleted", ep.Namespace, ep.Name)
+			log.Infof("service %s/%s not found", ep.Namespace, ep.Name)
 			return nil
 		}
 		log.Errorf("failed to get service %s/%s: %s", ep.Namespace, ep.Name, err)

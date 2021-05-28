@@ -36,3 +36,5 @@ coverage.txt
 test/e2e/coverage.txt
 apisix-ingress-controller
 .actions/openwhisk-utilities
+
+.generated

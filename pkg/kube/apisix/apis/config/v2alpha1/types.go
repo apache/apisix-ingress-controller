@@ -17,8 +17,11 @@ package v2alpha1
 import (
 	"encoding/json"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 const (
@@ -128,7 +131,7 @@ type ApisixRouteHTTPMatch struct {
 	NginxVars []ApisixRouteHTTPMatchExpr `json:"exprs,omitempty" yaml:"exprs,omitempty"`
 }
 
-// ApisixRouteHTTPMatchExpre represents a binary route match expression .
+// ApisixRouteHTTPMatchExpr represents a binary route match expression .
 type ApisixRouteHTTPMatchExpr struct {
 	// Subject is the expression subject, it can
 	// be any string composed by literals and nginx
@@ -298,6 +301,8 @@ type ApisixClusterAdminConfig struct {
 	BaseURL string `json:"baseURL" yaml:"baseURL"`
 	// AdminKey is used to verify the admin API user.
 	AdminKey string `json:"adminKey" yaml:"adminKey"`
+	// ClientTimeout is request timeout for the APISIX Admin API client
+	ClientTimeout types.TimeDuration `json:"clientTimeout" yaml:"clientTimeout"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -308,4 +313,59 @@ type ApisixClusterConfigList struct {
 	metav1.ListMeta `json:"metadata" yaml:"metadata"`
 
 	Items []ApisixClusterConfig `json:"items" yaml:"items"`
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:subresource:status
+
+// ApisixConsumer is the Schema for the ApisixConsumer resource.
+// An ApisixConsumer is used to identify a consumer.
+type ApisixConsumer struct {
+	metav1.TypeMeta   `json:",inline" yaml:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	Spec              ApisixConsumerSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Status            ApisixStatus       `json:"status,omitempty" yaml:"status,omitempty"`
+}
+
+// ApisixConsumerSpec defines the desired state of ApisixConsumer.
+type ApisixConsumerSpec struct {
+	AuthParameter ApisixConsumerAuthParameter `json:"authParameter" yaml:"authParameter"`
+}
+
+type ApisixConsumerAuthParameter struct {
+	BasicAuth *ApisixConsumerBasicAuth `json:"basicAuth,omitempty" yaml:"basicAuth"`
+	KeyAuth   *ApisixConsumerKeyAuth   `json:"keyAuth,omitempty" yaml:"keyAuth"`
+}
+
+// ApisixConsumerBasicAuth defines the configuration for basic auth.
+type ApisixConsumerBasicAuth struct {
+	SecretRef *corev1.LocalObjectReference  `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
+	Value     *ApisixConsumerBasicAuthValue `json:"value,omitempty" yaml:"value,omitempty"`
+}
+
+// ApisixConsumerBasicAuthValue defines the in-place username and password configuration for basic auth.
+type ApisixConsumerBasicAuthValue struct {
+	Username string `json:"username" yaml:"username"`
+	Password string `json:"password" yaml:"username"`
+}
+
+// ApisixConsumerKeyAuth defines the configuration for the key auth.
+type ApisixConsumerKeyAuth struct {
+	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
+	Value     *ApisixConsumerKeyAuthValue  `json:"value,omitempty" yaml:"value,omitempty"`
+}
+
+// ApisixConsumerKeyAuthValue defines the in-place configuration for basic auth.
+type ApisixConsumerKeyAuthValue struct {
+	Key string `json:"key" yaml:"key"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ApisixConsumerList contains a list of ApisixConsumer.
+type ApisixConsumerList struct {
+	metav1.TypeMeta `json:",inline" yaml:",inline"`
+	metav1.ListMeta `json:"metadata" yaml:"metadata"`
+	Items           []ApisixRoute `json:"items,omitempty" yaml:"items,omitempty"`
 }

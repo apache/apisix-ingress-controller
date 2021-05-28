@@ -31,8 +31,6 @@ apiVersion: v1
 metadata:
   name: apisix-gw-config.yaml
 data:
-  config-default.yaml: |
-%s
   config.yaml: |
 %s
 `
@@ -91,9 +89,6 @@ spec:
             - mountPath: /usr/local/apisix/conf/config.yaml
               name: apisix-config-yaml-configmap
               subPath: config.yaml
-            - mountPath: /usr/local/apisix/conf/config-default.yaml
-              name: apisix-config-yaml-configmap
-              subPath: config-default.yaml
       volumes:
         - configMap:
             name: apisix-gw-config.yaml
@@ -133,17 +128,12 @@ spec:
 )
 
 func (s *Scaffold) newAPISIX() (*corev1.Service, error) {
-	defaultData, err := s.renderConfig(s.opts.APISIXDefaultConfigPath)
-	if err != nil {
-		return nil, err
-	}
 	data, err := s.renderConfig(s.opts.APISIXConfigPath)
 	if err != nil {
 		return nil, err
 	}
-	defaultData = indent(defaultData)
 	data = indent(data)
-	configData := fmt.Sprintf(_apisixConfigMap, defaultData, data)
+	configData := fmt.Sprintf(_apisixConfigMap, data)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, configData); err != nil {
 		return nil, err
 	}

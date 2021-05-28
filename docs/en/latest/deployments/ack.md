@@ -43,7 +43,7 @@ helm repo add apisix https://charts.apiseven.com
 helm repo update
 helm install apisix apisix/apisix \
   --set gateway.type=LoadBalancer \
-  --set allow.ipList="{0.0.0.0/0}" \
+  --set admin.allow.ipList="{0.0.0.0/0}" \
   --set etcd.persistence.storageClass="alicloud-disk-ssd" \
   --set etcd.persistence.size="20Gi" \
   --namespace ingress-apisix \
@@ -52,7 +52,7 @@ kubectl get service --namespace ingress-apisix
 
 Two Service resources were created, one is `apisix-gateway`, which processes the real traffic; another is `apisix-admin`, which acts as the control plane to process all the configuration changes.
 
-The gateway service type is set to `LoadBalancer` (See [Access services through SLB](https://help.aliyun.com/document_detail/182218.html) for more details), so that clients can access Apache APISIX through a load balancer. You can find the load balancer ip by running:
+The gateway service type is set to `LoadBalancer` (See [Access services through SLB](https://www.alibabacloud.com/help/doc-detail/182218.htm) for more details), so that clients can access Apache APISIX through a load balancer. You can find the load balancer ip by running:
 
 ```shell
 kubectl get service apisix-gateway --namespace ingress-apisix -o jsonpath='{.status.loadBalancer.ingress[].ip}'

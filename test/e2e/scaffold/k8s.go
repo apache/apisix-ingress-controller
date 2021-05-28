@@ -27,6 +27,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -101,6 +102,10 @@ func (s *Scaffold) RemoveResourceByString(yaml string) error {
 	return k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
 }
 
+func (s *Scaffold) GetServiceByName(name string) (*corev1.Service, error) {
+	return k8s.GetServiceE(s.t, s.kubectlOptions, name)
+}
+
 // CreateResourceFromStringWithNamespace creates resource from a loaded yaml string
 // and sets its namespace to the specified one.
 func (s *Scaffold) CreateResourceFromStringWithNamespace(yaml, namespace string) error {
@@ -120,9 +125,16 @@ func (s *Scaffold) CreateResourceFromStringWithNamespace(yaml, namespace string)
 	return k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
 }
 
-func ensureNumApisixCRDsCreated(url string, desired int) error {
+func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 	condFunc := func() (bool, error) {
-		resp, err := http.Get(url)
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return false, err
+		}
+		if s.opts.APISIXAdminAPIKey != "" {
+			req.Header.Set("X-API-Key", s.opts.APISIXAdminAPIKey)
+		}
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			ginkgo.GinkgoT().Logf("failed to get resources from APISIX: %s", err.Error())
 			return false, nil
@@ -159,7 +171,7 @@ func (s *Scaffold) EnsureNumApisixRoutesCreated(desired int) error {
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin/routes",
 	}
-	return ensureNumApisixCRDsCreated(u.String(), desired)
+	return s.ensureNumApisixCRDsCreated(u.String(), desired)
 }
 
 // EnsureNumApisixStreamRoutesCreated waits until desired number of Stream Routes are created in
@@ -170,7 +182,7 @@ func (s *Scaffold) EnsureNumApisixStreamRoutesCreated(desired int) error {
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin/stream_routes",
 	}
-	return ensureNumApisixCRDsCreated(u.String(), desired)
+	return s.ensureNumApisixCRDsCreated(u.String(), desired)
 }
 
 // EnsureNumApisixUpstreamsCreated waits until desired number of Upstreams are created in
@@ -181,7 +193,7 @@ func (s *Scaffold) EnsureNumApisixUpstreamsCreated(desired int) error {
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin/upstreams",
 	}
-	return ensureNumApisixCRDsCreated(u.String(), desired)
+	return s.ensureNumApisixCRDsCreated(u.String(), desired)
 }
 
 // GetServerInfo collect server info from "/v1/server_info" (Control API) exposed by server-info plugin
@@ -221,7 +233,8 @@ func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(&apisix.ClusterOptions{
-		BaseURL: u.String(),
+		BaseURL:  u.String(),
+		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
 	if err != nil {
 		return nil, err
@@ -241,7 +254,8 @@ func (s *Scaffold) ListApisixGlobalRules() ([]*v1.GlobalRule, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(&apisix.ClusterOptions{
-		BaseURL: u.String(),
+		BaseURL:  u.String(),
+		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
 	if err != nil {
 		return nil, err
@@ -261,7 +275,8 @@ func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(&apisix.ClusterOptions{
-		BaseURL: u.String(),
+		BaseURL:  u.String(),
+		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
 	if err != nil {
 		return nil, err
@@ -281,7 +296,8 @@ func (s *Scaffold) ListApisixStreamRoutes() ([]*v1.StreamRoute, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(&apisix.ClusterOptions{
-		BaseURL: u.String(),
+		BaseURL:  u.String(),
+		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
 	if err != nil {
 		return nil, err
@@ -301,7 +317,8 @@ func (s *Scaffold) ListApisixTls() ([]*v1.Ssl, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(&apisix.ClusterOptions{
-		BaseURL: u.String(),
+		BaseURL:  u.String(),
+		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
 	if err != nil {
 		return nil, err

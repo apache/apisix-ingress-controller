@@ -59,6 +59,7 @@ func (c *Controller) newSecretController() *secretController {
 func (c *secretController) run(ctx context.Context) {
 	log.Info("secret controller started")
 	defer log.Info("secret controller exited")
+	defer c.workqueue.ShutDown()
 
 	if ok := cache.WaitForCacheSync(ctx.Done(), c.controller.secretInformer.HasSynced); !ok {
 		log.Error("informers sync failed")
@@ -70,7 +71,6 @@ func (c *secretController) run(ctx context.Context) {
 	}
 
 	<-ctx.Done()
-	c.workqueue.ShutDown()
 }
 
 func (c *secretController) runWorker(ctx context.Context) {

@@ -26,13 +26,12 @@ import (
 
 var _ = ginkgo.Describe("ApisixRoute Testing", func() {
 	opts := &scaffold.Options{
-		Name:                    "default",
-		Kubeconfig:              scaffold.GetKubeconfig(),
-		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
-		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
-		IngressAPISIXReplicas:   1,
-		HTTPBinServicePort:      80,
-		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("tcp proxy", func() {
@@ -53,7 +52,7 @@ spec:
 `, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
-		time.Sleep(3 * time.Second)
+		time.Sleep(9 * time.Second)
 
 		err := s.EnsureNumApisixStreamRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")

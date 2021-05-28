@@ -24,13 +24,12 @@ import (
 
 var _ = ginkgo.Describe("redirect plugin", func() {
 	opts := &scaffold.Options{
-		Name:                    "default",
-		Kubeconfig:              scaffold.GetKubeconfig(),
-		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
-		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
-		IngressAPISIXReplicas:   1,
-		HTTPBinServicePort:      80,
-		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("sanity", func() {

@@ -48,3 +48,42 @@ type CorsConfig struct {
 	AllowMethods string `json:"allow_methods,omitempty"`
 	AllowHeaders string `json:"allow_headers,omitempty"`
 }
+
+// KeyAuthConsumerConfig is the rule config for key-auth plugin
+// used in Consumer object.
+// +k8s:deepcopy-gen=true
+type KeyAuthConsumerConfig struct {
+	Key string `json:"key"`
+}
+
+// KeyAuthRouteConfig is the rule config for key-auth plugin
+// used in Route object.
+type KeyAuthRouteConfig struct {
+	Header string `json:"header,omitempty"`
+}
+
+// BasicAuthConsumerConfig is the rule config for basic-auth plugin
+// used in Consumer object.
+// +k8s:deepcopy-gen=true
+type BasicAuthConsumerConfig struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// BasicAuthRouteConfig is the rule config for basic-auth plugin
+// used in Route object.
+// +k8s:deepcopy-gen=true
+type BasicAuthRouteConfig struct{}
+
+// RewriteConfig is the rule config for proxy-rewrite plugin.
+// +k8s:deepcopy-gen=true
+type RewriteConfig struct {
+	RewriteTarget      string   `json:"uri,omitempty"`
+	RewriteTargetRegex []string `json:"regex_uri,omitempty"`
+}
+
+// RedirectConfig is the rule config for redirect plugin.
+// +k8s:deepcopy-gen=true
+type RedirectConfig struct {
+	HttpToHttps bool `json:"http_to_https,omitempty"`
+}

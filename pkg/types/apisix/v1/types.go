@@ -322,6 +322,15 @@ type GlobalRule struct {
 	Plugins Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
+// Consumer represents the consumer object in APISIX.
+// +k8s:deepcopy-gen=true
+type Consumer struct {
+	Username string            `json:"username" yaml:"username"`
+	Desc     string            `json:"desc,omitempty" yaml:"desc,omitempty"`
+	Labels   map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
+	Plugins  Plugins           `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+}
+
 // NewDefaultUpstream returns an empty Upstream with default values.
 func NewDefaultUpstream() *Upstream {
 	return &Upstream{
@@ -353,6 +362,16 @@ func NewDefaultRoute() *Route {
 // NewDefaultStreamRoute returns an empty StreamRoute with default values.
 func NewDefaultStreamRoute() *StreamRoute {
 	return &StreamRoute{
+		Desc: "Created by apisix-ingress-controller, DO NOT modify it manually",
+		Labels: map[string]string{
+			"managed-by": "apisix-ingress-controller",
+		},
+	}
+}
+
+// NewDefaultConsumer returns an empty Consumer with default values.
+func NewDefaultConsumer() *Consumer {
+	return &Consumer{
 		Desc: "Created by apisix-ingress-controller, DO NOT modify it manually",
 		Labels: map[string]string{
 			"managed-by": "apisix-ingress-controller",
@@ -409,6 +428,19 @@ func ComposeStreamRouteName(namespace, name string, rule string) string {
 	buf.WriteByte('_')
 	buf.WriteString(rule)
 	buf.WriteString("_tcp")
+
+	return buf.String()
+}
+
+// ComposeConsumerName uses namespace and name of ApisixConsumer to compose
+// the Consumer name.
+func ComposeConsumerName(namespace, name string) string {
+	p := make([]byte, 0, len(namespace)+len(name)+1)
+	buf := bytes.NewBuffer(p)
+
+	buf.WriteString(namespace)
+	buf.WriteString("_")
+	buf.WriteString(name)
 
 	return buf.String()
 }
