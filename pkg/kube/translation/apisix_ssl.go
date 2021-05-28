@@ -43,7 +43,9 @@ func (t *translator) TranslateSSL(tls *configv1.ApisixTls) (*apisixv1.Ssl, error
 		return nil, ErrEmptyPrivKey
 	}
 	var snis []string
-	snis = append(snis, tls.Spec.Hosts...)
+	for _, host := range tls.Spec.Hosts {
+		snis = append(snis, string(host))
+	}
 	ssl := &apisixv1.Ssl{
 		ID:     id.GenID(tls.Namespace + "_" + tls.Name),
 		Snis:   snis,
