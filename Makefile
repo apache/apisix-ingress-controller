@@ -154,3 +154,18 @@ gen-tools:
 .PHONY: codegen
 codegen: gen-tools
 	./utils/update-codegen.sh
+
+.PHONY: verify-codegen
+verify-codegen: gen-tools
+	./utils/verify-codegen.sh
+
+.PHONY: verify-license
+verify-license:
+	docker run -it --rm -v $(PWD):/github/workspace apache/skywalking-eyes header check -v info
+
+.PHONY: verify-mdlint
+verify-mdlint:
+	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' --ignore node_modules
+
+.PHONY: verify-all
+verify-all: verify-codegen verify-license verify-mdlint
