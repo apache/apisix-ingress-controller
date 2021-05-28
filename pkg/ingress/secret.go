@@ -17,13 +17,14 @@ package ingress
 
 import (
 	"context"
-	"strings"
+	"fmt"
 	"sync"
 	"time"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -134,16 +135,12 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 	sslMap := ssls.(*sync.Map)
 	sslMap.Range(func(k, v interface{}) bool {
 		ssl := v.(*apisixv1.Ssl)
-		tlsID := strings.Split(k.(string), "_")
-		if len(tlsID) < 2 {
-			// sanity check, shouldn't happen
-			log.Errorf("invalid cached resource key: %s", ssl.ID)
+		tlsMetaKey := k.(string)
+		tlsNamespace, tlsName, err := cache.SplitMetaNamespaceKey(tlsMetaKey)
+		if err != nil {
+			log.Errorf("invalid cached ApisixTls key: %s", tlsMetaKey)
 			return true
 		}
-		// TODO add test for empty namespace (default ns)
-		tlsNamespace := tlsID[0]
-		tlsName := tlsID[1]
-		tlsMetaKey := tlsNamespace + "/" + tlsName
 		tls, err := c.controller.apisixTlsLister.ApisixTlses(tlsNamespace).Get(tlsName)
 		if err != nil {
 			log.Warnw("secret related ApisixTls resource not found, skip",
@@ -194,13 +191,20 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 		// Use another goroutine to send requests, to avoid
 		// long time lock occupying.
 		go func(ssl *apisixv1.Ssl) {
-			err := c.controller.syncSSL(ctx, tls, ssl, ev.Type)
+			err := c.controller.syncSSL(ctx, ssl, ev.Type)
 			if err != nil {
 				log.Errorw("failed to sync ssl to APISIX",
 					zap.Error(err),
 					zap.Any("ssl", ssl),
 					zap.Any("secret", sec),
 				)
+				c.controller.recorderEventS(tls, corev1.EventTypeWarning, _resourceSyncAborted,
+					fmt.Sprintf("sync from secret %s changes failed, error: %s", key, err.Error()))
+				c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse)
+			} else {
+				c.controller.recorderEventS(tls, corev1.EventTypeNormal, _resourceSynced,
+					fmt.Sprintf("sync from secret %s changes", key))
+				c.controller.recordStatus(tls, _resourceSynced, nil, metav1.ConditionTrue)
 			}
 		}(ssl)
 		return true

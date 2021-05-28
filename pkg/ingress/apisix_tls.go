@@ -129,15 +129,15 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 	)
 
 	secretKey := tls.Spec.Secret.Namespace + "_" + tls.Spec.Secret.Name
-	c.syncSecretSSL(secretKey, ssl, ev.Type)
+	c.syncSecretSSL(secretKey, key, ssl, ev.Type)
 	if tls.Spec.Client != nil {
 		caSecretKey := tls.Spec.Client.CA.Namespace + "_" + tls.Spec.Client.CA.Name
 		if caSecretKey != secretKey {
-			c.syncSecretSSL(caSecretKey, ssl, ev.Type)
+			c.syncSecretSSL(caSecretKey, key, ssl, ev.Type)
 		}
 	}
 
-	if err := c.controller.syncSSL(ctx, tls, ssl, ev.Type); err != nil {
+	if err := c.controller.syncSSL(ctx, ssl, ev.Type); err != nil {
 		log.Errorw("failed to sync SSL to APISIX",
 			zap.Error(err),
 			zap.Any("ssl", ssl),
@@ -152,21 +152,21 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 	return err
 }
 
-func (c *apisixTlsController) syncSecretSSL(key string, ssl *v1.Ssl, event types.EventType) {
-	if ssls, ok := c.controller.secretSSLMap.Load(key); ok {
+func (c *apisixTlsController) syncSecretSSL(secretKey string, apisixTlsKey string, ssl *v1.Ssl, event types.EventType) {
+	if ssls, ok := c.controller.secretSSLMap.Load(secretKey); ok {
 		sslMap := ssls.(*sync.Map)
 		switch event {
 		case types.EventDelete:
-			sslMap.Delete(ssl.ID)
-			c.controller.secretSSLMap.Store(key, sslMap)
+			sslMap.Delete(apisixTlsKey)
+			c.controller.secretSSLMap.Store(secretKey, sslMap)
 		default:
-			sslMap.Store(ssl.ID, ssl)
-			c.controller.secretSSLMap.Store(key, sslMap)
+			sslMap.Store(apisixTlsKey, ssl)
+			c.controller.secretSSLMap.Store(secretKey, sslMap)
 		}
 	} else if event != types.EventDelete {
 		sslMap := new(sync.Map)
-		sslMap.Store(ssl.ID, ssl)
-		c.controller.secretSSLMap.Store(key, sslMap)
+		sslMap.Store(apisixTlsKey, ssl)
+		c.controller.secretSSLMap.Store(secretKey, sslMap)
 	}
 }
 
