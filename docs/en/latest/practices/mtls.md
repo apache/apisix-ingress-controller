@@ -1,5 +1,5 @@
 ---
-title: Proxy the httpbin service
+title: Configuring Mutual Authentication via ApisixTls
 ---
 
 <!--
