@@ -149,7 +149,7 @@ release-src:
 .PHONY: gen-tools
 gen-tools:
 	go mod download
-	go install k8s.io/code-generator/cmd/{client-gen,lister-gen,informer-gen,deepcopy-gen}
+	@bash -c 'go install k8s.io/code-generator/cmd/{client-gen,lister-gen,informer-gen,deepcopy-gen}'
 
 .PHONY: codegen
 codegen: gen-tools

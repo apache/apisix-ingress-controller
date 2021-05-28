@@ -16,7 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-name: unit-test-ci
+name: verify-codegen
 
 on:
   push:
@@ -34,7 +34,7 @@ jobs:
       uses: actions/setup-go@v1
       with:
         go-version: '1.13'
-    - name: run unit test
+    - name: make verify-codegen
       working-directory: ./
       run: |
         make verify-codegen
