@@ -77,6 +77,7 @@ type Translator interface {
 // TranslatorOptions contains options to help Translator
 // work well.
 type TranslatorOptions struct {
+	PodLister            listerscorev1.PodLister
 	EndpointsLister      listerscorev1.EndpointsLister
 	ServiceLister        listerscorev1.ServiceLister
 	ApisixUpstreamLister listersv1.ApisixUpstreamLister
