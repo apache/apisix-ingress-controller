@@ -142,13 +142,13 @@ kubectl -n apisix exec -it <APISIX_POD_NAME> -- curl --resolve 'mtls.httpbin.loc
 Some major changes here:
 
 - Use `--resolve` parameter to resolve our domain.
-  - No `Host` header set explicit. 
+  - No `Host` header set explicit.
 - We are using `https` and SSL port `9443`.
 - Parameter `-k` to allow insecure connections when using SSL. Because our self-signed certificate is not trusted.
 
 Without the domain `mtls.httpbin.local`, the request won't succeed.
 
-You can add parameter `-v` to log the handshake process. 
+You can add parameter `-v` to log the handshake process.
 
 Now, we configured SSL successfully.
 
