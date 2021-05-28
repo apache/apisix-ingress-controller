@@ -37,7 +37,7 @@ var _ = ginkgo.Describe("secret Testing", func() {
 		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
 	}
 	s := scaffold.NewScaffold(opts)
-	ginkgo.It("create a SSL and then update secret ", func() {
+	ginkgo.FIt("create a SSL and then update secret ", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
