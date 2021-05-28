@@ -28,6 +28,7 @@ PKG_NAME="github.com/apache/apisix-ingress-controller"
 
 # Make sure no pollution
 rm -rf "$GENERATED_ROOT"
+trap 'rm -rf "$GENERATED_ROOT"' EXIT
 
 # Prepare existed codes
 mkdir -p "${GENERATED_ROOT}/${PKG_NAME}/pkg/kube/apisix"
@@ -69,5 +70,3 @@ else
   echo "Generated codes out of date. Please run \`make codegen\`"
   exit 1
 fi
-
-rm -rf "$GENERATED_ROOT"

@@ -151,21 +151,26 @@ gen-tools:
 	go mod download
 	@bash -c 'go install k8s.io/code-generator/cmd/{client-gen,lister-gen,informer-gen,deepcopy-gen}'
 
+### codegen:              Generate codes for clientset, informer, deepcopy, etc.
 .PHONY: codegen
 codegen: gen-tools
 	./utils/update-codegen.sh
 
+### verify-codegen:       Verify whether the generated codes (clientset, informer, deepcopy, etc) are up to date.
 .PHONY: verify-codegen
 verify-codegen: gen-tools
 	./utils/verify-codegen.sh
 
+### verify-license:       Verify license headers.
 .PHONY: verify-license
 verify-license:
 	docker run -it --rm -v $(PWD):/github/workspace apache/skywalking-eyes header check -v info
 
+### verify-mdlint:        Verify markdown files lint rules.
 .PHONY: verify-mdlint
 verify-mdlint:
 	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' --ignore node_modules
 
+### verify-all:           Verify all verify- rules.
 .PHONY: verify-all
 verify-all: verify-codegen verify-license verify-mdlint
