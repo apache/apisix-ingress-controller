@@ -285,7 +285,7 @@ func (in *ApisixTlsSpec) DeepCopyInto(out *ApisixTlsSpec) {
 	*out = *in
 	if in.Hosts != nil {
 		in, out := &in.Hosts, &out.Hosts
-		*out = make([]string, len(*in))
+		*out = make([]HostType, len(*in))
 		copy(*out, *in)
 	}
 	out.Secret = in.Secret
