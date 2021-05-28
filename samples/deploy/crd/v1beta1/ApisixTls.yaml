@@ -46,6 +46,8 @@ spec:
     shortNames:
     - atls
   preserveUnknownFields: false
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       type: object

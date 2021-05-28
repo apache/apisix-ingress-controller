@@ -23,6 +23,12 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - events
+  verbs:
+    - "*"
+- apiGroups:
+  - ""
+  resources:
   - configmaps
   - endpoints
   - persistentvolumeclaims
@@ -40,7 +46,6 @@ rules:
   - ""
   resources:
   - bindings
-  - events
   - limitranges
   - namespaces/status
   - pods/log
