@@ -369,6 +369,16 @@ func NewDefaultStreamRoute() *StreamRoute {
 	}
 }
 
+// NewDefaultConsumer returns an empty Consumer with default values.
+func NewDefaultConsumer() *Consumer {
+	return &Consumer{
+		Desc: "Created by apisix-ingress-controller, DO NOT modify it manually",
+		Labels: map[string]string{
+			"managed-by": "apisix-ingress-controller",
+		},
+	}
+}
+
 // ComposeUpstreamName uses namespace, name, subset (optional) and port info to compose
 // the upstream name.
 func ComposeUpstreamName(namespace, name, subset string, port int32) string {
@@ -427,6 +437,19 @@ func ComposeStreamRouteName(namespace, name string, rule string) string {
 	buf.WriteByte('_')
 	buf.WriteString(rule)
 	buf.WriteString("_tcp")
+
+	return buf.String()
+}
+
+// ComposeConsumerName uses namespace and name of ApisixConsumer to compose
+// the Consumer name.
+func ComposeConsumerName(namespace, name string) string {
+	p := make([]byte, 0, len(namespace)+len(name)+1)
+	buf := bytes.NewBuffer(p)
+
+	buf.WriteString(namespace)
+	buf.WriteString("_")
+	buf.WriteString(name)
 
 	return buf.String()
 }

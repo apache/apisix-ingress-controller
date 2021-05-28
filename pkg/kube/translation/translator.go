@@ -75,7 +75,10 @@ type Translator interface {
 	TranslateSSL(*configv1.ApisixTls) (*apisixv1.Ssl, error)
 	// TranslateClusterConfig translates the configv2alpha1.ApisixClusterConfig object into the APISIX
 	// Global Rule resource.
-	TranslateClusterConfig(config *configv2alpha1.ApisixClusterConfig) (*apisixv1.GlobalRule, error)
+	TranslateClusterConfig(*configv2alpha1.ApisixClusterConfig) (*apisixv1.GlobalRule, error)
+	// TranslateApisixConsumer translates the configv2alpha1.APisixConsumer object into the APISIX Consumer
+	// resource.
+	TranslateApisixConsumer(*configv2alpha1.ApisixConsumer) (*apisixv1.Consumer, error)
 }
 
 // TranslatorOptions contains options to help Translator
