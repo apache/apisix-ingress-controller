@@ -204,6 +204,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		apisixClusterConfigInformer: kubeClient.APISIXSharedIndexInformerFactory.Apisix().V2alpha1().ApisixClusterConfigs().Informer(),
 		apisixClusterConfigLister:   kubeClient.APISIXSharedIndexInformerFactory.Apisix().V2alpha1().ApisixClusterConfigs().Lister(),
 		apisixConsumerInformer:      kubeClient.APISIXSharedIndexInformerFactory.Apisix().V2alpha1().ApisixConsumers().Informer(),
+		apisixConsumerLister:        kubeClient.APISIXSharedIndexInformerFactory.Apisix().V2alpha1().ApisixConsumers().Lister(),
 	}
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 		EndpointsLister:      c.epLister,
