@@ -64,7 +64,7 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) (*TranslateConte
 			route.UpstreamId = id.GenID(upstreamName)
 
 			if !ctx.checkUpstreamExist(upstreamName) {
-				ups, err := t.TranslateUpstream(ar.Namespace, p.Backend.ServiceName, int32(p.Backend.ServicePort))
+				ups, err := t.TranslateUpstream(ar.Namespace, p.Backend.ServiceName, "", int32(p.Backend.ServicePort))
 				if err != nil {
 					return nil, err
 				}
@@ -181,7 +181,7 @@ func (t *translator) translateHTTPRoute(ctx *TranslateContext, ar *configv2alpha
 		}
 		ctx.addRoute(route)
 		if !ctx.checkUpstreamExist(upstreamName) {
-			ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.ResolveGranularity, svcClusterIP, svcPort)
+			ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
 			if err != nil {
 				return err
 			}
@@ -312,10 +312,7 @@ func (t *translator) translateTCPRoute(ctx *TranslateContext, ar *configv2alpha1
 		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
 		sr.ID = id.GenID(name)
 		sr.ServerPort = part.Match.IngressPort
-		// TODO use upstream id to refer the upstream object.
-		// Currently, APISIX doesn't use upstream_id field in
-		// APISIX, so we have to embed the entire upstream.
-		ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.ResolveGranularity, svcClusterIP, svcPort)
+		ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
 		if err != nil {
 			return err
 		}

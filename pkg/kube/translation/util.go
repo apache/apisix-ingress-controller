@@ -24,6 +24,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -109,8 +110,8 @@ loop:
 	return svc.Spec.ClusterIP, svcPort, nil
 }
 
-func (t *translator) translateUpstream(namespace, svcName, svcResolveGranularity, svcClusterIP string, svcPort int32) (*apisixv1.Upstream, error) {
-	ups, err := t.TranslateUpstream(namespace, svcName, svcPort)
+func (t *translator) translateUpstream(namespace, svcName, subset, svcResolveGranularity, svcClusterIP string, svcPort int32) (*apisixv1.Upstream, error) {
+	ups, err := t.TranslateUpstream(namespace, svcName, subset, svcPort)
 	if err != nil {
 		return nil, err
 	}
@@ -126,6 +127,36 @@ func (t *translator) translateUpstream(namespace, svcName, svcResolveGranularity
 	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, svcPort)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
+}
+
+func (t *translator) filterNodesByLabels(nodes apisixv1.UpstreamNodes, labels types.Labels, namespace string) apisixv1.UpstreamNodes {
+	if labels == nil {
+		return nodes
+	}
+
+	var filteredNodes apisixv1.UpstreamNodes
+	for _, node := range nodes {
+		podName, err := t.PodCache.GetNameByIP(node.Host)
+		if err != nil {
+			log.Errorw("failed to find pod name by ip, ignore it",
+				zap.Error(err),
+				zap.String("pod_ip", node.Host),
+			)
+			continue
+		}
+		pod, err := t.PodLister.Pods(namespace).Get(podName)
+		if err != nil {
+			log.Errorw("failed to find pod, ignore it",
+				zap.Error(err),
+				zap.String("pod_name", podName),
+			)
+			continue
+		}
+		if labels.IsSubsetOf(pod.Labels) {
+			filteredNodes = append(filteredNodes, node)
+		}
+	}
+	return filteredNodes
 }
 
 func validateRemoteAddrs(remoteAddrs []string) error {
