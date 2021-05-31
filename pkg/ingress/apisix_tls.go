@@ -131,7 +131,7 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 	secretKey := tls.Spec.Secret.Namespace + "_" + tls.Spec.Secret.Name
 	c.syncSecretSSL(secretKey, key, ssl, ev.Type)
 	if tls.Spec.Client != nil {
-		caSecretKey := tls.Spec.Client.CA.Namespace + "_" + tls.Spec.Client.CA.Name
+		caSecretKey := tls.Spec.Client.CASecret.Namespace + "_" + tls.Spec.Client.CASecret.Name
 		if caSecretKey != secretKey {
 			c.syncSecretSSL(caSecretKey, key, ssl, ev.Type)
 		}

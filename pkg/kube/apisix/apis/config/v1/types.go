@@ -322,6 +322,6 @@ type ApisixSecret struct {
 
 // ApisixMutualTlsClientConfig describes the mutual TLS CA and verify depth
 type ApisixMutualTlsClientConfig struct {
-	CA    ApisixSecret `json:"ca,omitempty" yaml:"ca,omitempty"`
-	Depth int          `json:"depth,omitempty" yaml:"depth,omitempty"`
+	CASecret ApisixSecret `json:"caSecret,omitempty" yaml:"caSecret,omitempty"`
+	Depth    int          `json:"depth,omitempty" yaml:"depth,omitempty"`
 }

@@ -169,7 +169,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 			ssl.Cert = string(cert)
 			ssl.Key = string(pkey)
 		} else if tls.Spec.Client != nil &&
-			tls.Spec.Client.CA.Namespace == sec.Namespace && tls.Spec.Client.CA.Name == sec.Name {
+			tls.Spec.Client.CASecret.Namespace == sec.Namespace && tls.Spec.Client.CASecret.Name == sec.Name {
 			ca, ok := sec.Data["cert"]
 			if !ok {
 				log.Warnw("secret required by ApisixTls invalid",

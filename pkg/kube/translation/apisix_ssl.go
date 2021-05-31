@@ -57,7 +57,7 @@ func (t *translator) TranslateSSL(tls *configv1.ApisixTls) (*apisixv1.Ssl, error
 		},
 	}
 	if tls.Spec.Client != nil {
-		caSecret, err := t.SecretLister.Secrets(tls.Spec.Client.CA.Namespace).Get(tls.Spec.Client.CA.Name)
+		caSecret, err := t.SecretLister.Secrets(tls.Spec.Client.CASecret.Namespace).Get(tls.Spec.Client.CASecret.Name)
 		if err != nil {
 			return nil, err
 		}
