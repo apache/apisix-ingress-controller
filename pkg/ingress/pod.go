@@ -71,7 +71,7 @@ func (c *podController) onAdd(obj interface{}) {
 	pod := obj.(*corev1.Pod)
 	if err := c.controller.podCache.Add(pod); err != nil {
 		if err == types.ErrPodNoAssignedIP {
-			log.Debugw("pod no assigned ip",
+			log.Debugw("pod no assigned ip, postpone the adding in subsequent update event",
 				zap.Any("pod", pod),
 			)
 		} else {
@@ -95,6 +95,14 @@ func (c *podController) onUpdate(_, cur interface{}) {
 	if pod.DeletionTimestamp != nil {
 		if err := c.controller.podCache.Delete(pod); err != nil {
 			log.Errorw("failed to delete pod from cache",
+				zap.Error(err),
+				zap.Any("pod", pod),
+			)
+		}
+	}
+	if pod.Status.PodIP != "" {
+		if err := c.controller.podCache.Add(pod); err != nil {
+			log.Errorw("failed to add pod to cache",
 				zap.Error(err),
 				zap.Any("pod", pod),
 			)

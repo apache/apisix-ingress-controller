@@ -32,7 +32,6 @@ spec:
     kind: ApisixUpstream
     shortNames:
       - au
-  preserveUnknownFields: false
   validation:
     openAPIV3Schema:
       type: object

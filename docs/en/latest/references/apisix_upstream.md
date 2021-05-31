@@ -66,3 +66,6 @@ title: ApisixUpstream Reference
 | portLevelSettings.scheme | string | same as `scheme` but takes higher precedence. |
 | portLevelSettings.loadbalancer | object | same as `loadbalancer` but takes higher precedence. |
 | portLevelSettings.healthCheck | object | same as `healthCheck` but takes higher precedence. |
+| subsets | array | service subset list, use pod labels to organize service endpoints to different groups. |
+| subsets[].name | string | the subset name. |
+| subsets[].labels | object | the subset label map. |
