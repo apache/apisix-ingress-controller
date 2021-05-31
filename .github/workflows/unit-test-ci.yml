@@ -26,7 +26,28 @@ on:
     branches:
       - master
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - uses: ./.github/actions/paths-filter
+        id: filter
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          filters: |
+            docs:
+              - 'docs/**/*'
+
   run-test:
+    needs: changes
+    if: |
+      (needs.changes.outputs.docs == 'false')
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
