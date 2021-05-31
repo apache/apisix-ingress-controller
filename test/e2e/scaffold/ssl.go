@@ -64,7 +64,7 @@ spec:
     name: %s
     namespace: %s
   client:
-    ca:
+    caSecret:
       name: %s
       namespace: %s
     depth: 10

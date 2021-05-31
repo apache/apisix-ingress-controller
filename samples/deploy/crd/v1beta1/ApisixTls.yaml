@@ -75,7 +75,7 @@ spec:
                 and verify depth
               type: object
               properties:
-                ca:
+                caSecret:
                   description: ApisixSecret describes the Kubernetes Secret name and
                     namespace.
                   type: object

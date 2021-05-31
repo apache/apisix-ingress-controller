@@ -25,7 +25,7 @@ spec:
     name: server-secret
     namespace: default
   client:
-    ca:
+    caSecret:
       name: client-ca-secret
       namespace: default
     depth: 10
