@@ -32,6 +32,14 @@ data:
   cert: %s
   key: %s
 `
+	_clientCASecretTemplate = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+data:
+  cert: %s
+`
 	_api6tlsTemplate = `
 apiVersion: apisix.apache.org/v1
 kind: ApisixTls
@@ -43,6 +51,23 @@ spec:
   secret:
     name: %s
     namespace: %s
+`
+	_api6tlsWithClientCATemplate = `
+apiVersion: apisix.apache.org/v1
+kind: ApisixTls
+metadata:
+  name: %s
+spec:
+  hosts:
+  - %s
+  secret:
+    name: %s
+    namespace: %s
+  client:
+    caSecret:
+      name: %s
+      namespace: %s
+    depth: 10
 `
 )
 
@@ -57,9 +82,28 @@ func (s *Scaffold) NewSecret(name, cert, key string) error {
 	return nil
 }
 
+// NewSecret new a k8s secret
+func (s *Scaffold) NewClientCASecret(name, cert, key string) error {
+	certBase64 := base64.StdEncoding.EncodeToString([]byte(cert))
+	secret := fmt.Sprintf(_clientCASecretTemplate, name, certBase64)
+	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, secret); err != nil {
+		return err
+	}
+	return nil
+}
+
 // NewApisixTls new a ApisixTls CRD
 func (s *Scaffold) NewApisixTls(name, host, secretName string) error {
 	tls := fmt.Sprintf(_api6tlsTemplate, name, host, secretName, s.kubectlOptions.Namespace)
+	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, tls); err != nil {
+		return err
+	}
+	return nil
+}
+
+// NewApisixTlsWithClientCA new a ApisixTls CRD
+func (s *Scaffold) NewApisixTlsWithClientCA(name, host, secretName, clientCASecret string) error {
+	tls := fmt.Sprintf(_api6tlsWithClientCATemplate, name, host, secretName, s.kubectlOptions.Namespace, clientCASecret, s.kubectlOptions.Namespace)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, tls); err != nil {
 		return err
 	}

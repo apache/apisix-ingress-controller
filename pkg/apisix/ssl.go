@@ -141,13 +141,7 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err := s.cluster.HasSynced(ctx); err != nil {
 		return nil, err
 	}
-	data, err := json.Marshal(v1.Ssl{
-		ID:     obj.ID,
-		Snis:   obj.Snis,
-		Cert:   obj.Cert,
-		Key:    obj.Key,
-		Status: obj.Status,
-	})
+	data, err := json.Marshal(obj)
 	if err != nil {
 		return nil, err
 	}

@@ -263,7 +263,8 @@ type ApisixClusterConfig struct {
 	metav1.ObjectMeta `json:"metadata" yaml:"metadata"`
 
 	// Spec defines the desired state of ApisixClusterConfigSpec.
-	Spec ApisixClusterConfigSpec `json:"spec" yaml:"spec"`
+	Spec   ApisixClusterConfigSpec `json:"spec" yaml:"spec"`
+	Status ApisixStatus            `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
 // ApisixClusterConfigSpec defines the desired state of ApisixClusterConfigSpec.

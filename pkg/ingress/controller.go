@@ -248,6 +248,11 @@ func (c *Controller) recorderEvent(object runtime.Object, eventtype, reason stri
 	}
 }
 
+// recorderEvent recorder events for resources
+func (c *Controller) recorderEventS(object runtime.Object, eventtype, reason string, msg string) {
+	c.recorder.Event(object, eventtype, reason, msg)
+}
+
 func (c *Controller) goAttach(handler func()) {
 	c.wg.Add(1)
 	go func() {

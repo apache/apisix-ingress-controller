@@ -16,6 +16,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-[submodule ".github/actions/gitleaks-action"]
-	path = .github/actions/gitleaks-action
-	url = https://github.com/zricethezav/gitleaks-action
+[submodule ".github/actions/cancel-workflow-runs"]
+	path = .github/actions/cancel-workflow-runs
+	url = https://github.com/potiuk/cancel-workflow-runs

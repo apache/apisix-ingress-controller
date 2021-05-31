@@ -32,6 +32,8 @@ spec:
     kind: ApisixUpstream
     shortNames:
       - au
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       type: object
