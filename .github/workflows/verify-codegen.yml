@@ -16,7 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-name: License checker
+name: verify-codegen
 
 on:
   push:
@@ -25,14 +25,36 @@ on:
   pull_request:
     branches:
       - master
-
 jobs:
-  check-license:
+  changes:
     runs-on: ubuntu-latest
-
+    outputs:
+      docs: ${{ steps.filter.outputs.docs }}
     steps:
-      - uses: actions/checkout@v2
-      - name: Check License Header
-        uses: apache/skywalking-eyes@main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - uses: ./.github/actions/paths-filter
+        id: filter
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          filters: |
+            docs:
+              - 'docs/**/*'
+  run-test:
+    needs: changes
+    if: |
+      (needs.changes.outputs.docs == 'false')
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: setup go
+      uses: actions/setup-go@v1
+      with:
+        go-version: '1.13'
+    - name: make verify-codegen
+      working-directory: ./
+      run: |
+        make verify-codegen

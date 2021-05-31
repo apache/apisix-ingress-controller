@@ -17,6 +17,7 @@ package scaffold
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -126,6 +127,19 @@ func NewDefaultScaffold() *Scaffold {
 	return NewScaffold(opts)
 }
 
+// NewDefaultV2Scaffold creates a scaffold with some default options.
+func NewDefaultV2Scaffold() *Scaffold {
+	opts := &Options{
+		Name:                  "default",
+		Kubeconfig:            GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    kube.ApisixRouteV2alpha1,
+	}
+	return NewScaffold(opts)
+}
+
 // KillPod kill the pod which name is podName.
 func (s *Scaffold) KillPod(podName string) error {
 	cli, err := k8s.GetKubernetesClientE(s.t)
@@ -191,7 +205,7 @@ func (s *Scaffold) NewAPISIXClientWithTCPProxy() *httpexpect.Expect {
 	})
 }
 
-// NewAPISIXHttpsClient creates the default HTTPs client.
+// NewAPISIXHttpsClient creates the default HTTPS client.
 func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
 	u := url.URL{
 		Scheme: "https",
@@ -205,6 +219,30 @@ func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
 					// accept any certificate; for testing only!
 					InsecureSkipVerify: true,
 					ServerName:         host,
+				},
+			},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
+		),
+	})
+}
+
+// NewAPISIXHttpsClientWithCertificates creates the default HTTPS client with giving trusted CA and client certs.
+func (s *Scaffold) NewAPISIXHttpsClientWithCertificates(host string, insecure bool, ca *x509.CertPool, certs []tls.Certificate) *httpexpect.Expect {
+	u := url.URL{
+		Scheme: "https",
+		Host:   s.apisixHttpsTunnel.Endpoint(),
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: insecure,
+					ServerName:         host,
+					RootCAs:            ca,
+					Certificates:       certs,
 				},
 			},
 		},

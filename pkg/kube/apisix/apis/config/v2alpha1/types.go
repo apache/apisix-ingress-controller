@@ -174,6 +174,9 @@ type ApisixRouteHTTPBackend struct {
 	ResolveGranularity string `json:"resolveGranularity" yaml:"resolveGranularity"`
 	// Weight of this backend.
 	Weight *int `json:"weight" yaml:"weight"`
+	// Subset specifies a subset for the target Service. The subset should be pre-defined
+	// in ApisixUpstream about this service.
+	Subset string `json:"subset" yaml:"subset"`
 }
 
 // ApisixRouteHTTPPlugin represents an APISIX plugin.
@@ -232,6 +235,9 @@ type ApisixRouteTCPBackend struct {
 	// wise, the service ClusterIP or ExternalIP will be used,
 	// default is endpoints.
 	ResolveGranularity string `json:"resolveGranularity" yaml:"resolveGranularity"`
+	// Subset specifies a subset for the target Service. The subset should be pre-defined
+	// in ApisixUpstream about this service.
+	Subset string `json:"subset" yaml:"subset"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -257,7 +263,8 @@ type ApisixClusterConfig struct {
 	metav1.ObjectMeta `json:"metadata" yaml:"metadata"`
 
 	// Spec defines the desired state of ApisixClusterConfigSpec.
-	Spec ApisixClusterConfigSpec `json:"spec" yaml:"spec"`
+	Spec   ApisixClusterConfigSpec `json:"spec" yaml:"spec"`
+	Status ApisixStatus            `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
 // ApisixClusterConfigSpec defines the desired state of ApisixClusterConfigSpec.

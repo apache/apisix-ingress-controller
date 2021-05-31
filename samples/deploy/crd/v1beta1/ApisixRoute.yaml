@@ -166,6 +166,8 @@ spec:
                       weight:
                         type: integer
                         minimum: 0
+                      subset:
+                        type: string
                     required:
                       - serviceName
                       - servicePort
@@ -188,6 +190,8 @@ spec:
                         weight:
                           type: integer
                           minimum: 0
+                        subset:
+                          type: string
                     required:
                       - serviceName
                       - servicePort
@@ -238,6 +242,8 @@ spec:
                       resolveGranualrity:
                         type: string
                         enum: ["endpoint", "service"]
+                      subset:
+                        type: string
                     required:
                       - serviceName
                       - servicePort

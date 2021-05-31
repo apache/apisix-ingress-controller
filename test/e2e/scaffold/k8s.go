@@ -305,8 +305,8 @@ func (s *Scaffold) ListApisixStreamRoutes() ([]*v1.StreamRoute, error) {
 	return cli.Cluster("").StreamRoute().List(context.TODO())
 }
 
-// ListApisixTls list all ssl from APISIX
-func (s *Scaffold) ListApisixTls() ([]*v1.Ssl, error) {
+// ListApisixSsl list all ssl from APISIX
+func (s *Scaffold) ListApisixSsl() ([]*v1.Ssl, error) {
 	u := url.URL{
 		Scheme: "http",
 		Host:   s.apisixAdminTunnel.Endpoint(),
