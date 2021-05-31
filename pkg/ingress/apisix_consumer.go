@@ -21,7 +21,9 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -106,7 +108,24 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 		}
 		ac = ev.Tombstone.(*configv2alpha1.ApisixConsumer)
 	}
-	// TODO: need translate
+
+	consumer, err := c.controller.translator.TranslateApisixConsumer(ac)
+	if err != nil {
+		log.Errorw("failed to translate ApisixConsumer",
+			zap.Error(err),
+			zap.Any("ApisixConsumer", ac),
+		)
+		c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
+		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse)
+	}
+	log.Debug("got consumer object from ApisixConsumer",
+		zap.Any("consumer", consumer),
+		zap.Any("ApisixConsumer", ac),
+	)
+
+	c.controller.recorderEvent(ac, corev1.EventTypeNormal, _resourceSynced, nil)
+	c.controller.recordStatus(ac, _resourceSynced, nil, metav1.ConditionTrue)
+
 	return nil
 }
 

@@ -363,5 +363,5 @@ type ApisixConsumerKeyAuthValue struct {
 type ApisixConsumerList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
 	metav1.ListMeta `json:"metadata" yaml:"metadata"`
-	Items           []ApisixRoute `json:"items,omitempty" yaml:"items,omitempty"`
+	Items           []ApisixConsumer `json:"items,omitempty" yaml:"items,omitempty"`
 }
