@@ -205,7 +205,7 @@ func (s *Scaffold) NewAPISIXClientWithTCPProxy() *httpexpect.Expect {
 	})
 }
 
-// NewAPISIXHttpsClient creates the default HTTPs client.
+// NewAPISIXHttpsClient creates the default HTTPS client.
 func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
 	u := url.URL{
 		Scheme: "https",
@@ -228,7 +228,7 @@ func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
 	})
 }
 
-// NewAPISIXHttpsClient creates the default HTTPs client.
+// NewAPISIXHttpsClientWithCertificates creates the default HTTPS client with giving trusted CA and client certs.
 func (s *Scaffold) NewAPISIXHttpsClientWithCertificates(host string, insecure bool, ca *x509.CertPool, certs []tls.Certificate) *httpexpect.Expect {
 	u := url.URL{
 		Scheme: "https",
