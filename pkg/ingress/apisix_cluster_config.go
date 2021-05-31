@@ -19,7 +19,9 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -140,6 +142,8 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 				zap.Error(err),
 				zap.Any("opts", clusterOpts),
 			)
+			c.controller.recorderEvent(acc, corev1.EventTypeWarning, _resourceSyncAborted, err)
+			c.controller.recordStatus(acc, _resourceSyncAborted, err, metav1.ConditionFalse)
 			return err
 		}
 	}
@@ -152,6 +156,8 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 			zap.String("key", key),
 			zap.Any("object", acc),
 		)
+		c.controller.recorderEvent(acc, corev1.EventTypeWarning, _resourceSyncAborted, err)
+		c.controller.recordStatus(acc, _resourceSyncAborted, err, metav1.ConditionFalse)
 		return err
 	}
 	log.Debugw("translated global_rule",
@@ -169,8 +175,12 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 			zap.Any("global_rule", globalRule),
 			zap.Any("cluster", acc.Name),
 		)
+		c.controller.recorderEvent(acc, corev1.EventTypeWarning, _resourceSyncAborted, err)
+		c.controller.recordStatus(acc, _resourceSyncAborted, err, metav1.ConditionFalse)
 		return err
 	}
+	c.controller.recorderEvent(acc, corev1.EventTypeNormal, _resourceSynced, nil)
+	c.controller.recordStatus(acc, _resourceSynced, nil, metav1.ConditionTrue)
 	return nil
 }
 

@@ -39,6 +39,7 @@ type ApisixClusterConfigsGetter interface {
 type ApisixClusterConfigInterface interface {
 	Create(ctx context.Context, apisixClusterConfig *v2alpha1.ApisixClusterConfig, opts v1.CreateOptions) (*v2alpha1.ApisixClusterConfig, error)
 	Update(ctx context.Context, apisixClusterConfig *v2alpha1.ApisixClusterConfig, opts v1.UpdateOptions) (*v2alpha1.ApisixClusterConfig, error)
+	UpdateStatus(ctx context.Context, apisixClusterConfig *v2alpha1.ApisixClusterConfig, opts v1.UpdateOptions) (*v2alpha1.ApisixClusterConfig, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
 	Get(ctx context.Context, name string, opts v1.GetOptions) (*v2alpha1.ApisixClusterConfig, error)
@@ -120,6 +121,21 @@ func (c *apisixClusterConfigs) Update(ctx context.Context, apisixClusterConfig *
 	err = c.client.Put().
 		Resource("apisixclusterconfigs").
 		Name(apisixClusterConfig.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Body(apisixClusterConfig).
+		Do(ctx).
+		Into(result)
+	return
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *apisixClusterConfigs) UpdateStatus(ctx context.Context, apisixClusterConfig *v2alpha1.ApisixClusterConfig, opts v1.UpdateOptions) (result *v2alpha1.ApisixClusterConfig, err error) {
+	result = &v2alpha1.ApisixClusterConfig{}
+	err = c.client.Put().
+		Resource("apisixclusterconfigs").
+		Name(apisixClusterConfig.Name).
+		SubResource("status").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(apisixClusterConfig).
 		Do(ctx).
