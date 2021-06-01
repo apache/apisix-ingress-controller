@@ -160,7 +160,8 @@ func (c *apisixConsumerController) onAdd(obj interface{}) {
 		return
 	}
 	log.Debugw("ApisixConsumer add event arrived",
-		zap.Any("object", obj))
+		zap.Any("object", obj),
+	)
 
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:   types.EventAdd,
