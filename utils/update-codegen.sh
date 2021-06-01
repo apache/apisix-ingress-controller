@@ -24,20 +24,24 @@ SCRIPT_ROOT=$(dirname "${BASH_SOURCE[0]}")
 PROJECT_ROOT="$SCRIPT_ROOT/.."
 GENERATED_ROOT="$PROJECT_ROOT/.generated"
 
+PKG_NAME="github.com/apache/apisix-ingress-controller"
+
 # Make sure no pollution
 rm -rf "$GENERATED_ROOT"
 
 bash "${SCRIPT_ROOT}"/generate-groups.sh "deepcopy,client,informer,lister" \
-  github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis \
-  config:v1,v2alpha1 github.com/apache/apisix-ingress-controller \
+  ${PKG_NAME}/pkg/kube/apisix/client ${PKG_NAME}/pkg/kube/apisix/apis \
+  config:v1,v2alpha1 ${PKG_NAME} \
   --output-base "$GENERATED_ROOT" \
-  --go-header-file "${SCRIPT_ROOT}"/boilerplate.go.txt
+  --go-header-file "${SCRIPT_ROOT}"/boilerplate.go.txt \
+  "$@"
 
 bash "${SCRIPT_ROOT}"/generate-groups.sh "deepcopy" \
-  github.com/apache/apisix-ingress-controller/pkg/types github.com/apache/apisix-ingress-controller/pkg/types \
-  apisix:v1 github.com/apache/apisix-ingress-controller \
+  ${PKG_NAME}/pkg/types ${PKG_NAME}/pkg/types \
+  apisix:v1 ${PKG_NAME} \
   --output-base "$GENERATED_ROOT" \
-  --go-header-file "${SCRIPT_ROOT}"/boilerplate.go.txt
+  --go-header-file "${SCRIPT_ROOT}"/boilerplate.go.txt \
+  "$@"
 
-cp -r "$GENERATED_ROOT/github.com/apache/apisix-ingress-controller/"** "$PROJECT_ROOT"
+cp -r "$GENERATED_ROOT/${PKG_NAME}/"** "$PROJECT_ROOT"
 rm -rf "$GENERATED_ROOT"

@@ -33,6 +33,8 @@ spec:
     shortNames:
       - au
   preserveUnknownFields: false
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       type: object

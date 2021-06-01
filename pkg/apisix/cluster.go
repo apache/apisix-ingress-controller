@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -37,8 +39,7 @@ import (
 const (
 	_defaultTimeout = 5 * time.Second
 
-	_cacheNotSync = iota
-	_cacheSyncing
+	_cacheSyncing = iota
 	_cacheSynced
 )
 
@@ -50,6 +51,19 @@ var (
 	ErrDuplicatedCluster = errors.New("duplicated cluster")
 
 	_errReadOnClosedResBody = errors.New("http: read on closed response body")
+
+	// Default shared transport for apisix client
+	_defaultTransport = &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		Dial: (&net.Dialer{
+			Timeout: 3 * time.Second,
+		}).Dial,
+		DialContext: (&net.Dialer{
+			Timeout: 3 * time.Second,
+		}).DialContext,
+		ResponseHeaderTimeout: 30 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
 )
 
 // ClusterOptions contains parameters to customize APISIX client.
@@ -63,6 +77,7 @@ type ClusterOptions struct {
 type cluster struct {
 	name         string
 	baseURL      string
+	baseURLHost  string
 	adminKey     string
 	cli          *http.Client
 	cacheState   int32
@@ -86,19 +101,21 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 	}
 	o.BaseURL = strings.TrimSuffix(o.BaseURL, "/")
 
+	u, err := url.Parse(o.BaseURL)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &cluster{
-		name:     o.Name,
-		baseURL:  o.BaseURL,
-		adminKey: o.AdminKey,
+		name:        o.Name,
+		baseURL:     o.BaseURL,
+		baseURLHost: u.Host,
+		adminKey:    o.AdminKey,
 		cli: &http.Client{
-			Timeout: o.Timeout,
-			Transport: &http.Transport{
-				ResponseHeaderTimeout: o.Timeout,
-				ExpectContinueTimeout: o.Timeout,
-			},
+			Timeout:   o.Timeout,
+			Transport: _defaultTransport,
 		},
-		cache:       nil,
-		cacheState:  _cacheNotSync,
+		cacheState:  _cacheSyncing, // default state
 		cacheSynced: make(chan struct{}),
 	}
 	c.route = newRouteClient(c)
@@ -108,6 +125,11 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 	c.globalRules = newGlobalRuleClient(c)
 	c.consumer = newConsumerClient(c)
 
+	c.cache, err = cache.NewMemDBCache()
+	if err != nil {
+		return nil, err
+	}
+
 	go c.syncCache()
 
 	return c, nil
@@ -116,9 +138,6 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 func (c *cluster) syncCache() {
 	log.Infow("syncing cache", zap.String("cluster", c.name))
 	now := time.Now()
-	if !atomic.CompareAndSwapInt32(&c.cacheState, _cacheNotSync, _cacheSyncing) {
-		panic("dubious state when sync cache")
-	}
 	defer func() {
 		if c.cacheSyncErr == nil {
 			log.Infow("cache synced",
@@ -134,13 +153,20 @@ func (c *cluster) syncCache() {
 	}()
 
 	backoff := wait.Backoff{
-		Duration: time.Second,
-		Factor:   2,
-		Steps:    6,
+		Duration: 2 * time.Second,
+		Factor:   1,
+		Steps:    5,
 	}
-	err := wait.ExponentialBackoff(backoff, c.syncCacheOnce)
+	var lastSyncErr error
+	err := wait.ExponentialBackoff(backoff, func() (done bool, _ error) {
+		// impossibly return: false, nil
+		// so can safe used
+		done, lastSyncErr = c.syncCacheOnce()
+		return
+	})
 	if err != nil {
-		c.cacheSyncErr = err
+		// if ErrWaitTimeout then set lastSyncErr
+		c.cacheSyncErr = lastSyncErr
 	}
 	close(c.cacheSynced)
 
@@ -150,12 +176,6 @@ func (c *cluster) syncCache() {
 }
 
 func (c *cluster) syncCacheOnce() (bool, error) {
-	dbcache, err := cache.NewMemDBCache()
-	if err != nil {
-		return false, err
-	}
-	c.cache = dbcache
-
 	routes, err := c.route.List(context.TODO())
 	if err != nil {
 		log.Errorf("failed to list route in APISIX: %s", err)
@@ -309,6 +329,54 @@ func (c *cluster) GlobalRule() GlobalRule {
 // Consumer implements Cluster.Consumer method.
 func (c *cluster) Consumer() Consumer {
 	return c.consumer
+}
+
+// HealthCheck implements Cluster.HealthCheck method.
+func (c *cluster) HealthCheck(ctx context.Context) (err error) {
+	if c.cacheSyncErr != nil {
+		err = c.cacheSyncErr
+		return
+	}
+	if atomic.LoadInt32(&c.cacheState) == _cacheSyncing {
+		return
+	}
+
+	// Retry three times in a row, and exit if all of them fail.
+	backoff := wait.Backoff{
+		Duration: 5 * time.Second,
+		Factor:   1,
+		Steps:    3,
+	}
+	var lastCheckErr error
+	err = wait.ExponentialBackoffWithContext(ctx, backoff, func() (done bool, _ error) {
+		if lastCheckErr = c.healthCheck(ctx); lastCheckErr != nil {
+			log.Warnf("failed to check health for cluster %s: %s, will retry", c.name, lastCheckErr)
+			return
+		}
+		done = true
+		return
+	})
+	if err != nil {
+		// if ErrWaitTimeout then set lastSyncErr
+		c.cacheSyncErr = lastCheckErr
+	}
+	return err
+}
+
+func (c *cluster) healthCheck(ctx context.Context) (err error) {
+	// tcp socket probe
+	d := net.Dialer{Timeout: 3 * time.Second}
+	conn, err := d.DialContext(ctx, "tcp", c.baseURLHost)
+	if err != nil {
+		return err
+	}
+	if er := conn.Close(); er != nil {
+		log.Warnw("failed to close tcp probe connection",
+			zap.Error(err),
+			zap.String("cluster", c.name),
+		)
+	}
+	return
 }
 
 func (c *cluster) applyAuth(req *http.Request) {

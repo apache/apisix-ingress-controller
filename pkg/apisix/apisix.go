@@ -52,6 +52,8 @@ type Cluster interface {
 	HasSynced(context.Context) error
 	// Consumer returns a Consumer interface that can operate Consumer resources.
 	Consumer() Consumer
+	// HealthCheck checks apisix cluster health in realtime.
+	HealthCheck(context.Context) error
 }
 
 // Route is the specific client interface to take over the create, update,
@@ -124,6 +126,7 @@ type apisix struct {
 func NewClient() (APISIX, error) {
 	cli := &apisix{
 		nonExistentCluster: newNonExistentCluster(),
+		clusters:           make(map[string]Cluster),
 	}
 	return cli, nil
 }
@@ -161,9 +164,6 @@ func (c *apisix) AddCluster(co *ClusterOptions) error {
 	cluster, err := newCluster(co)
 	if err != nil {
 		return err
-	}
-	if c.clusters == nil {
-		c.clusters = make(map[string]Cluster)
 	}
 	c.clusters[co.Name] = cluster
 	return nil

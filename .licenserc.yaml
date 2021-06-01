@@ -38,4 +38,6 @@ header:
     - 'pkg/kube/apisix/client/**'
     - '**/zz_generated.deepcopy.go'
     - 'utils/generate-groups.sh'
+    - '**/*.pem'
+    - '**/*.key'
   comment: on-failure

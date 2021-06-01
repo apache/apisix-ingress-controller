@@ -95,6 +95,17 @@ func (c *FakeApisixClusterConfigs) Update(ctx context.Context, apisixClusterConf
 	return obj.(*v2alpha1.ApisixClusterConfig), err
 }
 
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *FakeApisixClusterConfigs) UpdateStatus(ctx context.Context, apisixClusterConfig *v2alpha1.ApisixClusterConfig, opts v1.UpdateOptions) (*v2alpha1.ApisixClusterConfig, error) {
+	obj, err := c.Fake.
+		Invokes(testing.NewRootUpdateSubresourceAction(apisixclusterconfigsResource, "status", apisixClusterConfig), &v2alpha1.ApisixClusterConfig{})
+	if obj == nil {
+		return nil, err
+	}
+	return obj.(*v2alpha1.ApisixClusterConfig), err
+}
+
 // Delete takes name of the apisixClusterConfig and deletes it. Returns an error if one occurs.
 func (c *FakeApisixClusterConfigs) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.

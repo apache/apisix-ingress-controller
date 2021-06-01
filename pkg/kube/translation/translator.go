@@ -25,6 +25,7 @@ import (
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -54,7 +55,11 @@ type Translator interface {
 	// The returned Upstream doesn't have metadata info.
 	// It doesn't assign any metadata fields, so it's caller's responsibility to decide
 	// the metadata.
-	TranslateUpstream(string, string, int32) (*apisixv1.Upstream, error)
+	// Note the subset is used to filter the ultimate node list, only pods whose labels
+	// matching the subset labels (defined in ApisixUpstream) will be selected.
+	// When the subset is not found, the node list will be empty. When the subset is empty,
+	// all pods IP will be filled.
+	TranslateUpstream(string, string, string, int32) (*apisixv1.Upstream, error)
 	// TranslateIngress composes a couple of APISIX Routes and upstreams according
 	// to the given Ingress resource.
 	TranslateIngress(kube.Ingress) (*TranslateContext, error)
@@ -77,6 +82,8 @@ type Translator interface {
 // TranslatorOptions contains options to help Translator
 // work well.
 type TranslatorOptions struct {
+	PodCache             types.PodCache
+	PodLister            listerscorev1.PodLister
 	EndpointsLister      listerscorev1.EndpointsLister
 	ServiceLister        listerscorev1.ServiceLister
 	ApisixUpstreamLister listersv1.ApisixUpstreamLister
@@ -111,7 +118,7 @@ func (t *translator) TranslateUpstreamConfig(au *configv1.ApisixUpstreamConfig) 
 	return ups, nil
 }
 
-func (t *translator) TranslateUpstream(namespace, name string, port int32) (*apisixv1.Upstream, error) {
+func (t *translator) TranslateUpstream(namespace, name, subset string, port int32) (*apisixv1.Upstream, error) {
 	endpoints, err := t.EndpointsLister.Endpoints(namespace).Get(name)
 	if err != nil {
 		return nil, &translateError{
@@ -127,7 +134,13 @@ func (t *translator) TranslateUpstream(namespace, name string, port int32) (*api
 	au, err := t.ApisixUpstreamLister.ApisixUpstreams(namespace).Get(name)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			ups.Nodes = nodes
+			// If subset in ApisixRoute is not empty but the ApisixUpstream resouce not found,
+			// just set an empty node list.
+			if subset != "" {
+				ups.Nodes = apisixv1.UpstreamNodes{}
+			} else {
+				ups.Nodes = nodes
+			}
 			return ups, nil
 		}
 		return nil, &translateError{
@@ -135,6 +148,19 @@ func (t *translator) TranslateUpstream(namespace, name string, port int32) (*api
 			reason: err.Error(),
 		}
 	}
+
+	// Filter nodes by subset.
+	if subset != "" {
+		var labels types.Labels
+		for _, ss := range au.Spec.Subsets {
+			if ss.Name == subset {
+				labels = ss.Labels
+				break
+			}
+		}
+		nodes = t.filterNodesByLabels(nodes, labels, au.Namespace)
+	}
+
 	upsCfg := &au.Spec.ApisixUpstreamConfig
 	for _, pls := range au.Spec.PortLevelSettings {
 		if pls.Port == port {

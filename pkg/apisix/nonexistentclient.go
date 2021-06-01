@@ -208,6 +208,10 @@ func (nc *nonExistentCluster) HasSynced(_ context.Context) error {
 	return nil
 }
 
+func (nc *nonExistentCluster) HealthCheck(_ context.Context) error {
+	return nil
+}
+
 func (nc *nonExistentCluster) String() string {
 	return "non-existent cluster"
 }
