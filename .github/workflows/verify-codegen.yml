@@ -26,7 +26,39 @@ on:
     branches:
       - master
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      docs: ${{ steps.filter.outputs.docs }}
+      go: ${{ steps.filter.outputs.go }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - uses: ./.github/actions/paths-filter
+        id: filter
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          filters: |
+            docs:
+              - 'docs/**/*'
+              - '*.md'
+            go:
+              - '*.go'
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Makefile'
+              - 'Dockerfile'
+              - 'test/e2e/**/*'
+              - 'conf/**'
+              - 'utils/**'
   run-test:
+    needs: changes
+    if: |
+      (needs.changes.outputs.go == 'true')
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2

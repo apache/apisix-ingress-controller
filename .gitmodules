@@ -19,3 +19,6 @@
 [submodule ".github/actions/cancel-workflow-runs"]
 	path = .github/actions/cancel-workflow-runs
 	url = https://github.com/potiuk/cancel-workflow-runs
+[submodule ".github/actions/paths-filter"]
+	path = .github/actions/paths-filter
+	url = https://github.com/dorny/paths-filter.git
