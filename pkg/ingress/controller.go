@@ -498,7 +498,7 @@ func (c *Controller) syncConsumer(ctx context.Context, consumer *apisixv1.Consum
 	} else {
 		_, err = c.apisix.Cluster(clusterName).Consumer().Create(ctx, consumer)
 	}
-	return err
+	return
 }
 func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.CancelFunc) {
 	defer cancelFunc()
