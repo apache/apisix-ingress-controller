@@ -34,6 +34,7 @@ func newNonExistentCluster() *nonExistentCluster {
 			upstream:    &dummyUpstream{},
 			streamRoute: &dummyStreamRoute{},
 			globalRule:  &dummyGlobalRule{},
+			consumer:    &dummyConsumer{},
 		},
 	}
 }
@@ -44,6 +45,7 @@ type embedDummyResourceImplementer struct {
 	upstream    Upstream
 	streamRoute StreamRoute
 	globalRule  GlobalRule
+	consumer    Consumer
 }
 
 type dummyRoute struct{}
@@ -156,6 +158,28 @@ func (f *dummyGlobalRule) Update(_ context.Context, _ *v1.GlobalRule) (*v1.Globa
 	return nil, ErrClusterNotExist
 }
 
+type dummyConsumer struct{}
+
+func (f *dummyConsumer) Get(_ context.Context, _ string) (*v1.Consumer, error) {
+	return nil, ErrClusterNotExist
+}
+
+func (f *dummyConsumer) List(_ context.Context) ([]*v1.Consumer, error) {
+	return nil, ErrClusterNotExist
+}
+
+func (f *dummyConsumer) Create(_ context.Context, _ *v1.Consumer) (*v1.Consumer, error) {
+	return nil, ErrClusterNotExist
+}
+
+func (f *dummyConsumer) Delete(_ context.Context, _ *v1.Consumer) error {
+	return ErrClusterNotExist
+}
+
+func (f *dummyConsumer) Update(_ context.Context, _ *v1.Consumer) (*v1.Consumer, error) {
+	return nil, ErrClusterNotExist
+}
+
 func (nc *nonExistentCluster) Route() Route {
 	return nc.route
 }
@@ -174,6 +198,10 @@ func (nc *nonExistentCluster) StreamRoute() StreamRoute {
 
 func (nc *nonExistentCluster) GlobalRule() GlobalRule {
 	return nc.globalRule
+}
+
+func (nc *nonExistentCluster) Consumer() Consumer {
+	return nc.consumer
 }
 
 func (nc *nonExistentCluster) HasSynced(_ context.Context) error {

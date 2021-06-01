@@ -306,6 +306,11 @@ func (c *cluster) GlobalRule() GlobalRule {
 	return c.globalRules
 }
 
+// Consumer implements Cluster.Consumer method.
+func (c *cluster) Consumer() Consumer {
+	return c.consumer
+}
+
 func (c *cluster) applyAuth(req *http.Request) {
 	if c.adminKey != "" {
 		req.Header.Set("X-API-Key", c.adminKey)

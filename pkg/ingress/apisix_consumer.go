@@ -117,15 +117,24 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 		)
 		c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
 		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse)
+		return err
 	}
 	log.Debug("got consumer object from ApisixConsumer",
 		zap.Any("consumer", consumer),
 		zap.Any("ApisixConsumer", ac),
 	)
 
-	c.controller.recorderEvent(ac, corev1.EventTypeNormal, _resourceSynced, nil)
-	c.controller.recordStatus(ac, _resourceSynced, nil, metav1.ConditionTrue)
+	if err := c.controller.syncConsumer(ctx, consumer, ev.Type); err != nil {
+		log.Errorw("failed to sync Consumer to APISIX",
+			zap.Error(err),
+			zap.Any("consumer", consumer),
+		)
+		c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
+		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse)
+		return err
+	}
 
+	c.controller.recorderEvent(ac, corev1.EventTypeNormal, _resourceSynced, nil)
 	return nil
 }
 

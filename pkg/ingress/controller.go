@@ -438,3 +438,15 @@ func (c *Controller) syncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types
 	}
 	return err
 }
+
+func (c *Controller) syncConsumer(ctx context.Context, consumer *apisixv1.Consumer, event types.EventType) (err error) {
+	clusterName := c.cfg.APISIX.DefaultClusterName
+	if event == types.EventDelete {
+		err = c.apisix.Cluster(clusterName).Consumer().Delete(ctx, consumer)
+	} else if event == types.EventUpdate {
+		_, err = c.apisix.Cluster(clusterName).Consumer().Update(ctx, consumer)
+	} else {
+		_, err = c.apisix.Cluster(clusterName).Consumer().Create(ctx, consumer)
+	}
+	return err
+}

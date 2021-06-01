@@ -50,6 +50,8 @@ type Cluster interface {
 	String() string
 	// HasSynced checks whether all resources in APISIX cluster is synced to cache.
 	HasSynced(context.Context) error
+	// Consumer returns a Consumer interface that can operate Consumer resources.
+	Consumer() Consumer
 }
 
 // Route is the specific client interface to take over the create, update,
