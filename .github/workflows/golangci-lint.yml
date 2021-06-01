@@ -47,6 +47,7 @@ jobs:
               - 'docs/**/*'
               - '*.md'
             go:
+              - '*.go'
               - '**/*.go'
               - 'go.mod'
               - 'go.sum'
