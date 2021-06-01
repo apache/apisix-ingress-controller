@@ -448,5 +448,5 @@ func (c *Controller) syncConsumer(ctx context.Context, consumer *apisixv1.Consum
 	} else {
 		_, err = c.apisix.Cluster(clusterName).Consumer().Create(ctx, consumer)
 	}
-	return err
+	return
 }
