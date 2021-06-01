@@ -137,8 +137,8 @@ func TestPodOnUpdate(t *testing.T) {
 
 	ctl.onUpdate(nil, pod)
 	name, err := ctl.controller.podCache.GetNameByIP("10.0.5.12")
-	assert.Empty(t, name)
-	assert.Equal(t, err, types.ErrPodNotFound)
+	assert.Equal(t, name, "nginx")
+	assert.Equal(t, err, nil)
 
 	pod2 := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{

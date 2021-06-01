@@ -134,7 +134,7 @@ func (t *translator) filterNodesByLabels(nodes apisixv1.UpstreamNodes, labels ty
 		return nodes
 	}
 
-	var filteredNodes apisixv1.UpstreamNodes
+	filteredNodes := make(apisixv1.UpstreamNodes, 0)
 	for _, node := range nodes {
 		podName, err := t.PodCache.GetNameByIP(node.Host)
 		if err != nil {
