@@ -291,6 +291,26 @@ func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
 	return cli.Cluster("").Route().List(context.TODO())
 }
 
+// ListApisixConsumers list all consumers from APISIX.
+func (s *Scaffold) ListApisixConsumers() ([]*v1.Consumer, error) {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "apisix/admin",
+	}
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(&apisix.ClusterOptions{
+		BaseURL: u.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cli.Cluster("").Consumer().List(context.TODO())
+}
+
 // ListApisixStreamRoutes list all stream_routes from APISIX.
 func (s *Scaffold) ListApisixStreamRoutes() ([]*v1.StreamRoute, error) {
 	u := url.URL{

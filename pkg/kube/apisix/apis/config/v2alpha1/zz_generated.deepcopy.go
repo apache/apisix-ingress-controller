@@ -324,7 +324,7 @@ func (in *ApisixConsumerList) DeepCopyInto(out *ApisixConsumerList) {
 	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
-		*out = make([]ApisixRoute, len(*in))
+		*out = make([]ApisixConsumer, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
