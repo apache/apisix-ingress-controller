@@ -18,8 +18,6 @@ import (
 	"context"
 	"time"
 
-	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
-
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -28,6 +26,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"

@@ -17,13 +17,12 @@ package ingress
 import (
 	"context"
 
-	"github.com/apache/apisix-ingress-controller/pkg/types"
-
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 type podController struct {
