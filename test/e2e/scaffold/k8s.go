@@ -106,6 +106,13 @@ func (s *Scaffold) GetServiceByName(name string) (*corev1.Service, error) {
 	return k8s.GetServiceE(s.t, s.kubectlOptions, name)
 }
 
+// ListPodsByLabels lists all pods which matching the label selector.
+func (s *Scaffold) ListPodsByLabels(labels string) ([]corev1.Pod, error) {
+	return k8s.ListPodsE(s.t, s.kubectlOptions, metav1.ListOptions{
+		LabelSelector: labels,
+	})
+}
+
 // CreateResourceFromStringWithNamespace creates resource from a loaded yaml string
 // and sets its namespace to the specified one.
 func (s *Scaffold) CreateResourceFromStringWithNamespace(yaml, namespace string) error {

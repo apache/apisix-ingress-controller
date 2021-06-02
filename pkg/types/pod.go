@@ -22,9 +22,9 @@ import (
 )
 
 var (
-	// ErrPodNotRunning represents that PodCache operation is failed due to the
+	// ErrPodNoAssignedIP represents that PodCache operation is failed due to the
 	// target Pod is not in Running phase.
-	ErrPodNotRunning = errors.New("pod not running")
+	ErrPodNoAssignedIP = errors.New("pod not running")
 	// ErrPodNotFound represents that the target pod not found from the PodCache.
 	ErrPodNotFound = errors.New("pod not found")
 )
@@ -43,6 +43,7 @@ type PodCache interface {
 
 type podCache struct {
 	sync.RWMutex
+
 	nameByIP map[string]string
 }
 
@@ -54,22 +55,24 @@ func NewPodCache() PodCache {
 }
 
 func (p *podCache) Add(pod *corev1.Pod) error {
-	if pod.Status.Phase != corev1.PodRunning {
-		return ErrPodNotRunning
+	ip := pod.Status.PodIP
+	if len(ip) == 0 {
+		return ErrPodNoAssignedIP
 	}
 	p.Lock()
 	defer p.Unlock()
-	p.nameByIP[pod.Status.PodIP] = pod.Name
+	p.nameByIP[ip] = pod.Name
 	return nil
 }
 
 func (p *podCache) Delete(pod *corev1.Pod) error {
+	ip := pod.Status.PodIP
+	if len(ip) == 0 {
+		return ErrPodNoAssignedIP
+	}
 	p.Lock()
 	defer p.Unlock()
-	if _, ok := p.nameByIP[pod.Status.PodIP]; !ok {
-		return ErrPodNotFound
-	}
-	delete(p.nameByIP, pod.Status.PodIP)
+	delete(p.nameByIP, ip)
 	return nil
 }
 
