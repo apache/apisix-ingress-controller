@@ -124,8 +124,8 @@ func (s *Scaffold) DeleteHTTPBINService() error {
 	return nil
 }
 
-// WaitAllHTTPBINPods waits until all httpbin pods ready.
-func (s *Scaffold) WaitAllHTTPBINPoddsAvailable() error {
+// WaitAllHTTPBINPodsAvailable waits until all httpbin pods ready.
+func (s *Scaffold) WaitAllHTTPBINPodsAvailable() error {
 	opts := metav1.ListOptions{
 		LabelSelector: "app=httpbin-deployment-e2e-test",
 	}

@@ -200,6 +200,8 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixClusterConfigLister = apisixFactory.Apisix().V2alpha1().ApisixClusterConfigs().Lister()
 
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
+		PodCache:             c.podCache,
+		PodLister:            c.podLister,
 		EndpointsLister:      c.epLister,
 		ServiceLister:        c.svcLister,
 		ApisixUpstreamLister: c.apisixUpstreamLister,

@@ -124,7 +124,7 @@ func (t *translator) translateUpstream(namespace, svcName, subset, svcResolveGra
 			},
 		}
 	}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, svcPort)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, subset, svcPort)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }
@@ -134,7 +134,7 @@ func (t *translator) filterNodesByLabels(nodes apisixv1.UpstreamNodes, labels ty
 		return nodes
 	}
 
-	var filteredNodes apisixv1.UpstreamNodes
+	filteredNodes := make(apisixv1.UpstreamNodes, 0)
 	for _, node := range nodes {
 		podName, err := t.PodCache.GetNameByIP(node.Host)
 		if err != nil {

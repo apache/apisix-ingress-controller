@@ -175,14 +175,14 @@ func TestTranslateUpstreamNodes(t *testing.T) {
 	}}
 	<-processCh
 
-	nodes, err := tr.TranslateUpstreamNodes(endpoints, 10080)
+	nodes, err := tr.TranslateUpstreamNodes(endpoints, 10080, nil)
 	assert.Nil(t, nodes)
 	assert.Equal(t, err, &translateError{
 		field:  "service.spec.ports",
 		reason: "port not defined",
 	})
 
-	nodes, err = tr.TranslateUpstreamNodes(endpoints, 80)
+	nodes, err = tr.TranslateUpstreamNodes(endpoints, 80, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, nodes, apisixv1.UpstreamNodes{
 		{
@@ -197,7 +197,7 @@ func TestTranslateUpstreamNodes(t *testing.T) {
 		},
 	})
 
-	nodes, err = tr.TranslateUpstreamNodes(endpoints, 443)
+	nodes, err = tr.TranslateUpstreamNodes(endpoints, 443, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, nodes, apisixv1.UpstreamNodes{
 		{

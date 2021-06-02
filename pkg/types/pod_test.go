@@ -35,8 +35,8 @@ func TestPodCacheBadCases(t *testing.T) {
 			Phase: corev1.PodPending,
 		},
 	}
-	assert.Equal(t, pc.Add(pod1), ErrPodNotRunning, "adding pod")
-	assert.Equal(t, pc.Delete(pod1), ErrPodNotFound, "deleting pod")
+	assert.Equal(t, pc.Add(pod1), ErrPodNoAssignedIP, "adding pod")
+	assert.Equal(t, pc.Delete(pod1), ErrPodNoAssignedIP, "deleting pod")
 }
 
 func TestPodCache(t *testing.T) {
