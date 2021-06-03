@@ -26,3 +26,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: apisix-view-serviceaccount
+  namespace: default
