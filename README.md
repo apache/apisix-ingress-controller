@@ -47,7 +47,7 @@ This project is currently considered experimental.
 * Ingress controller itself as a pluggable hot-reload component.
 * Multi-cluster configuration distribution.
 
-[More about Ingress feature comparison.](https://docs.google.com/spreadsheets/d/191WWNpjJ2za6-nbG4ZoUMXMpUK8KlCIosvQB0f-oq3k/edit?ts=5fd6c769#gid=907731238)
+[More about comparison among multiple Ingress Controllers.](https://docs.google.com/spreadsheets/d/191WWNpjJ2za6-nbG4ZoUMXMpUK8KlCIosvQB0f-oq3k/edit?ts=5fd6c769#gid=907731238)
 
 ## Internal Architecture
 
