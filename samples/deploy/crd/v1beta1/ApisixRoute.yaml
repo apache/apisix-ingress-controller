@@ -210,6 +210,22 @@ spec:
                     required:
                       - name
                       - enable
+                  authentication:
+                    type: object
+                    properties:
+                      enable:
+                        type: boolean
+                      type:
+                        type: string
+                        enum: ["basicAuth", "keyAuth"]
+                      keyAuth:
+                        type: object
+                        properties:
+                          header:
+                            type: string
+                    required:
+                      - enable
+                      - type
             tcp:
               type: array
               minItems: 1
