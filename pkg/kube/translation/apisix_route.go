@@ -130,6 +130,17 @@ func (t *translator) translateHTTPRoute(ctx *TranslateContext, ar *configv2alpha
 				pluginMap[plugin.Name] = make(map[string]interface{})
 			}
 		}
+
+		// add KeyAuth and basicAuth plugin
+		if part.Authentication.Enable {
+			switch part.Authentication.Type {
+			case "keyAuth":
+				pluginMap["key-auth"] = part.Authentication.KeyAuth
+			case "basicAuth":
+				pluginMap["basic-auth"] = make(map[string]interface{})
+			}
+		}
+
 		var exprs [][]apisixv1.StringOrSlice
 		if part.Match.NginxVars != nil {
 			exprs, err = t.translateRouteMatchExprs(part.Match.NginxVars)
