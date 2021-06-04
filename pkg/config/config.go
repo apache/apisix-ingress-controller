@@ -51,6 +51,9 @@ const (
 	// ApisixRouteV2alpha1 represents apisixroute.apisix.apache.org/v2alpha1
 	ApisixRouteV2alpha1 = "apisix.apache.org/v2alpha1"
 
+	// KnativeIngressNetworkingV1alpha1 represents knative.ingress.networking/v1
+	KnativeIngressNetworkingV1alpha1 = "networking/v1alpha1"
+
 	_minimalResyncInterval = 30 * time.Second
 )
 
@@ -67,13 +70,14 @@ type Config struct {
 
 // KubernetesConfig contains all Kubernetes related config items.
 type KubernetesConfig struct {
-	Kubeconfig         string             `json:"kubeconfig" yaml:"kubeconfig"`
-	ResyncInterval     types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
-	AppNamespaces      []string           `json:"app_namespaces" yaml:"app_namespaces"`
-	ElectionID         string             `json:"election_id" yaml:"election_id"`
-	IngressClass       string             `json:"ingress_class" yaml:"ingress_class"`
-	IngressVersion     string             `json:"ingress_version" yaml:"ingress_version"`
-	ApisixRouteVersion string             `json:"apisix_route_version" yaml:"apisix_route_version"`
+	Kubeconfig            string             `json:"kubeconfig" yaml:"kubeconfig"`
+	ResyncInterval        types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
+	AppNamespaces         []string           `json:"app_namespaces" yaml:"app_namespaces"`
+	ElectionID            string             `json:"election_id" yaml:"election_id"`
+	IngressClass          string             `json:"ingress_class" yaml:"ingress_class"`
+	IngressVersion        string             `json:"ingress_version" yaml:"ingress_version"`
+	ApisixRouteVersion    string             `json:"apisix_route_version" yaml:"apisix_route_version"`
+	KnativeIngressVersion string             `json:"knative_ingress_version" yaml:"knative_ingress_version"`
 }
 
 // APISIXConfig contains all APISIX related config items.
@@ -104,13 +108,14 @@ func NewDefaultConfig() *Config {
 		HTTPListen:      ":8080",
 		EnableProfiling: true,
 		Kubernetes: KubernetesConfig{
-			Kubeconfig:         "", // Use in-cluster configurations.
-			ResyncInterval:     types.TimeDuration{Duration: 6 * time.Hour},
-			AppNamespaces:      []string{v1.NamespaceAll},
-			ElectionID:         IngressAPISIXLeader,
-			IngressClass:       IngressClass,
-			IngressVersion:     IngressNetworkingV1,
-			ApisixRouteVersion: ApisixRouteV2alpha1,
+			Kubeconfig:            "", // Use in-cluster configurations.
+			ResyncInterval:        types.TimeDuration{Duration: 6 * time.Hour},
+			AppNamespaces:         []string{v1.NamespaceAll},
+			ElectionID:            IngressAPISIXLeader,
+			IngressClass:          IngressClass,
+			IngressVersion:        IngressNetworkingV1,
+			ApisixRouteVersion:    ApisixRouteV2alpha1,
+			KnativeIngressVersion: KnativeIngressNetworkingV1alpha1,
 		},
 	}
 }
@@ -160,6 +165,12 @@ func (cfg *Config) Validate() error {
 		break
 	default:
 		return errors.New("unsupported ingress version")
+	}
+	switch cfg.Kubernetes.KnativeIngressVersion {
+	case KnativeIngressNetworkingV1alpha1:
+		break
+	default:
+		return errors.New("unsupported knative ingress version")
 	}
 	cfg.Kubernetes.AppNamespaces = purifyAppNamespaces(cfg.Kubernetes.AppNamespaces)
 	return nil
