@@ -303,7 +303,8 @@ func (s *Scaffold) ListApisixConsumers() ([]*v1.Consumer, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(&apisix.ClusterOptions{
-		BaseURL: u.String(),
+		BaseURL:  u.String(),
+		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
 	if err != nil {
 		return nil, err
