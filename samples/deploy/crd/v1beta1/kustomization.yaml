@@ -20,3 +20,4 @@ resources:
   - ./ApisixUpstream.yaml
   - ./ApisixTls.yaml
   - ./ApisixClusterConfig.yaml
+  - ./ApisixConsumer.yaml

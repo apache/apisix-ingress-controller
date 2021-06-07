@@ -23,7 +23,7 @@ import (
 )
 
 var _ = ginkgo.Describe("ApisixConsumer", func() {
-	s := scaffold.NewDefaultScaffold()
+	s := scaffold.NewDefaultV2Scaffold()
 
 	ginkgo.It("create basicAuth consumer using value", func() {
 		ac := `
@@ -38,8 +38,7 @@ spec:
         username: foo
         password: bar
 `
-		err := s.CreateResourceFromString(ac)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ApisixConsumer")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac), "creating ApisixConsumer")
 
 		defer func() {
 			err := s.RemoveResourceByString(ac)
@@ -47,15 +46,14 @@ spec:
 		}()
 
 		// Wait until the ApisixConsumer create event was delivered.
-		time.Sleep(3 * time.Second)
+		time.Sleep(6 * time.Second)
 
 		grs, err := s.ListApisixConsumers()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
 		assert.Len(ginkgo.GinkgoT(), grs, 1)
-		assert.Equal(ginkgo.GinkgoT(), grs[0].Username, "default_basicvalue")
 		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
-		_, basicAuth := grs[0].Plugins["basic-auth"]
-		assert.Equal(ginkgo.GinkgoT(), basicAuth, map[string]string{
+		basicAuth, _ := grs[0].Plugins["basic-auth"]
+		assert.Equal(ginkgo.GinkgoT(), basicAuth, map[string]interface{}{
 			"username": "foo",
 			"password": "bar",
 		})
