@@ -21,7 +21,7 @@ title: How to quickly check the synchronization status of CRD
 #
 -->
 
-When using the APISIX ingress declarative configuration, we often use the `kubectl apply` command. If the configuration is verified by the schema and validation webhook, the configuration will be accepted by Kubernetes.
+When using the APISIX ingress declarative configuration, often use the `kubectl apply` command. If the configuration is verified by the schema and validation webhook, the configuration will be accepted by Kubernetes.
 
 When the Ingress Controller watches the resource change, the logic unit of the Ingress Controller has just started to work. 
 In various operations of the Ingress Controller, object conversion and more verification will be performed. 
@@ -39,3 +39,55 @@ In this practice, we will show how to  check the status of CRD.
 
 ## deploy and check ApisixRoute resource
 
+1. first deploy an ApisixRoute resource
+
+e.g.
+   
+```yaml
+kubectl apply -f - <<EOF
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+  namespace: test
+spec:
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backend:
+      serviceName: httpbin-service-e2e-test
+      servicePort: 80
+EOF
+```
+
+2. After apply the ApisixRoute resource, now check the status of CRD
+
+```shell
+kubectl describe ar -n test httpbin-route
+```
+
+Then, will see the status of `httpbin-route` resource.
+
+```yaml
+...
+Status:
+  Conditions:
+    Last Transition time:  2021-06-06T09:50:22Z
+    Message:               Sync Successfully
+    Reason:                ResourceSynced
+    Status:                True
+    Type:                  ReousrceReady
+...
+```
+
+## Frequent Questions
+
+If can not see the Status information, please check the following points:
+
+1. The version of APISIX Ingress needs to be >= 1.0.
+2. Use the latest CRD definition file, refer to [here](https://github.com/apache/apisix-ingress-controller/tree/master/samples/deploy/crd/v1beta1).
+3. Use the latest RBAC configuration, refer to [here](https://github.com/apache/apisix-ingress-controller/tree/master/samples/deploy/rbac).
