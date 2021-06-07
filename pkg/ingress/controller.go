@@ -198,6 +198,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixUpstreamLister = apisixFactory.Apisix().V1().ApisixUpstreams().Lister()
 	c.apisixTlsLister = apisixFactory.Apisix().V1().ApisixTlses().Lister()
 	c.apisixClusterConfigLister = apisixFactory.Apisix().V2alpha1().ApisixClusterConfigs().Lister()
+	c.apisixConsumerLister = apisixFactory.Apisix().V2alpha1().ApisixConsumers().Lister()
 
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 		PodCache:             c.podCache,
@@ -230,6 +231,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixClusterConfigInformer = apisixFactory.Apisix().V2alpha1().ApisixClusterConfigs().Informer()
 	c.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
 	c.apisixTlsInformer = apisixFactory.Apisix().V1().ApisixTlses().Informer()
+	c.apisixConsumerInformer = apisixFactory.Apisix().V2alpha1().ApisixConsumers().Informer()
 
 	c.podController = c.newPodController()
 	c.endpointsController = c.newEndpointsController()
