@@ -132,7 +132,7 @@ func (t *translator) translateHTTPRoute(ctx *TranslateContext, ar *configv2alpha
 		}
 
 		// add KeyAuth and basicAuth plugin
-		if part.Authentication.Enable {
+		if part.Authentication != nil && part.Authentication.Enable {
 			switch part.Authentication.Type {
 			case "keyAuth":
 				pluginMap["key-auth"] = part.Authentication.KeyAuth
