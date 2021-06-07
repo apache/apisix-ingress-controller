@@ -37,7 +37,9 @@ In this practice, we will show how to  check the status of CRD.
 - an available Kubernetes cluster
 - an available APISIX and APISIX Ingress Controller installation
 
-## deploy and check ApisixRoute resource
+## Take ApisixRoute resource as an example 
+
+### deploy and check ApisixRoute resource
 
 1. first deploy an ApisixRoute resource
 
@@ -83,6 +85,13 @@ Status:
     Type:                  ReousrceReady
 ...
 ```
+
+### Also supports checking the status of other resources
+
+`ApisixUpstream`
+`ApisixTls`
+`ApisixClusterConfig`
+`ApisixConsumer`
 
 ## Frequent Questions
 
