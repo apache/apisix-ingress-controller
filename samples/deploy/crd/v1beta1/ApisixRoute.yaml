@@ -225,7 +225,6 @@ spec:
                             type: string
                     required:
                       - enable
-                      - type
             tcp:
               type: array
               minItems: 1

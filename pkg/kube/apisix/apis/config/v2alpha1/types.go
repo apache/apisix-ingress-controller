@@ -195,12 +195,16 @@ type ApisixRouteHTTPPlugin struct {
 // any plugins.
 type ApisixRouteHTTPPluginConfig map[string]interface{}
 
+// ApisixRouteAuthentication is the authentication-related
+// configuration in ApisixRoute.
 type ApisixRouteAuthentication struct {
 	Enable  bool                             `json:"enable" yaml:"enable"`
 	Type    string                           `json:"type" yaml:"type"`
 	KeyAuth ApisixRouteAuthenticationKeyAuth `json:"keyauth,omitempty" yaml:"keyauth,omitempty"`
 }
 
+// ApisixRouteAuthenticationKeyAuth is the keyAuth-related
+// configuration in ApisixRouteAuthentication.
 type ApisixRouteAuthenticationKeyAuth struct {
 	Header string `json:"header,omitempty" yaml:"header,omitempty"`
 }
