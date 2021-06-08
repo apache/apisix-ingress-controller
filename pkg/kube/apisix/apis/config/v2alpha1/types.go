@@ -202,7 +202,7 @@ type ApisixRouteAuthentication struct {
 }
 
 type ApisixRouteAuthenticationKeyAuth struct {
-	Header string `json:"header" yaml:"header"`
+	Header string `json:"header,omitempty" yaml:"header,omitempty"`
 }
 
 func (p ApisixRouteHTTPPluginConfig) DeepCopyInto(out *ApisixRouteHTTPPluginConfig) {
