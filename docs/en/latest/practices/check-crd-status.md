@@ -21,11 +21,11 @@ title: How to quickly check the synchronization status of CRD
 #
 -->
 
-When using the APISIX ingress declarative configuration, often use the `kubectl apply` command. If the configuration is verified by the schema and validation webhook, the configuration will be accepted by Kubernetes.
+When using the Apache APISIX Ingress Controller declarative configuration, often use the `kubectl apply` command. Only if the configuration was verified by its [Open API V3 Schema definition](https://swagger.io/specification/) and its validation webhooks (if any), can the configuration be accepted by Kubernetes.
 
-When the Ingress Controller watches the resource change, the logic unit of the Ingress Controller has just started to work. 
-In various operations of the Ingress Controller, object conversion and more verification will be performed. 
-When the verification fails, the Ingress Controller will throw an error message and will continue to retry 
+When the Apache APISIX Ingress Controller watches the resource change, the logic unit of the Apache APISIX Ingress Controller has just started to work. 
+In various operations of the Apache APISIX Ingress Controller, object conversion and more verification will be performed. 
+When the verification fails, the Apache APISIX Ingress Controller will throw an error message and will continue to retry 
 until the declared state is successfully synchronized to APISIX.
 
 Therefore, after the declarative configuration is accepted by Kubernetes, it does not mean that the configuration is synchronized to APISIX.
@@ -35,7 +35,7 @@ In this practice, we will show how to  check the status of CRD.
 ## Prerequisites
 
 - an available Kubernetes cluster
-- an available APISIX and APISIX Ingress Controller installation
+- an available Apache APISIX and Apache APISIX Ingress Controller installation
 
 ## Take ApisixRoute resource as an example 
 
@@ -97,6 +97,6 @@ Status:
 
 If can not see the Status information, please check the following points:
 
-1. The version of APISIX Ingress needs to be >= 1.0.
+1. The version of Apache APISIX Ingress Controller needs to be >= 1.0.
 2. Use the latest CRD definition file, refer to [here](https://github.com/apache/apisix-ingress-controller/tree/master/samples/deploy/crd/v1beta1).
 3. Use the latest RBAC configuration, refer to [here](https://github.com/apache/apisix-ingress-controller/tree/master/samples/deploy/rbac).
