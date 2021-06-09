@@ -96,9 +96,10 @@ type ApisixRouteHTTP struct {
 	// Backends represents potential backends to proxy after the route
 	// rule matched. When number of backends are more than one, traffic-split
 	// plugin in APISIX will be used to split traffic based on the backend weight.
-	Backends  []*ApisixRouteHTTPBackend `json:"backends" yaml:"backends"`
-	Websocket bool                      `json:"websocket" yaml:"websocket"`
-	Plugins   []*ApisixRouteHTTPPlugin  `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Backends       []*ApisixRouteHTTPBackend  `json:"backends" yaml:"backends"`
+	Websocket      bool                       `json:"websocket" yaml:"websocket"`
+	Plugins        []*ApisixRouteHTTPPlugin   `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Authentication *ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
 // ApisixRouteHTTPMatch represents the match condition for hitting this route.
@@ -193,6 +194,20 @@ type ApisixRouteHTTPPlugin struct {
 // ApisixRouteHTTPPluginConfig is the configuration for
 // any plugins.
 type ApisixRouteHTTPPluginConfig map[string]interface{}
+
+// ApisixRouteAuthentication is the authentication-related
+// configuration in ApisixRoute.
+type ApisixRouteAuthentication struct {
+	Enable  bool                             `json:"enable" yaml:"enable"`
+	Type    string                           `json:"type" yaml:"type"`
+	KeyAuth ApisixRouteAuthenticationKeyAuth `json:"keyauth,omitempty" yaml:"keyauth,omitempty"`
+}
+
+// ApisixRouteAuthenticationKeyAuth is the keyAuth-related
+// configuration in ApisixRouteAuthentication.
+type ApisixRouteAuthenticationKeyAuth struct {
+	Header string `json:"header,omitempty" yaml:"header,omitempty"`
+}
 
 func (p ApisixRouteHTTPPluginConfig) DeepCopyInto(out *ApisixRouteHTTPPluginConfig) {
 	b, _ := json.Marshal(&p)
