@@ -138,6 +138,8 @@ func (t *translator) translateHTTPRoute(ctx *TranslateContext, ar *configv2alpha
 				pluginMap["key-auth"] = part.Authentication.KeyAuth
 			case "basicAuth":
 				pluginMap["basic-auth"] = make(map[string]interface{})
+			default:
+				pluginMap["basic-auth"] = make(map[string]interface{})
 			}
 		}
 
