@@ -78,6 +78,21 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) (*TranslateConte
 	return ctx, nil
 }
 
+// TranslateRouteV2alpha1NotStrictly is not strictly translation, only generate ID and Name for delete Event.
+func (t *translator) TranslateRouteV2alpha1NotStrictly(ar *configv2alpha1.ApisixRoute) (*TranslateContext, error) {
+	ctx := &TranslateContext{
+		upstreamMap: make(map[string]struct{}),
+	}
+
+	if err := t.translateHTTPRouteNotStrictly(ctx, ar); err != nil {
+		return nil, err
+	}
+	if err := t.translateTCPRouteNotStrictly(ctx, ar); err != nil {
+		return nil, err
+	}
+	return ctx, nil
+}
+
 func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) (*TranslateContext, error) {
 	ctx := &TranslateContext{
 		upstreamMap: make(map[string]struct{}),
@@ -90,6 +105,33 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) (*Tr
 		return nil, err
 	}
 	return ctx, nil
+}
+
+// translateHTTPRouteNotStrictly is not strictly translation, only generate ID and Name for delete Event.
+func (t *translator) translateHTTPRouteNotStrictly(ctx *TranslateContext, ar *configv2alpha1.ApisixRoute) error {
+	for _, part := range ar.Spec.HTTP {
+		backends := part.Backends
+		backend := part.Backend
+		if len(backends) > 0 {
+			// Use the first backend as the default backend in Route,
+			// others will be configured in traffic-split plugin.
+			backend = backends[0]
+			backends = backends[1:]
+		} // else use the deprecated Backend.
+		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
+		route := apisixv1.NewDefaultRoute()
+		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
+		route.ID = id.GenID(route.Name)
+		ctx.addRoute(route)
+		if !ctx.checkUpstreamExist(upstreamName) {
+			ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
+			if err != nil {
+				return err
+			}
+			ctx.addUpstream(ups)
+		}
+	}
+	return nil
 }
 
 func (t *translator) translateHTTPRoute(ctx *TranslateContext, ar *configv2alpha1.ApisixRoute) error {
@@ -302,6 +344,24 @@ func (t *translator) translateRouteMatchExprs(nginxVars []configv2alpha1.ApisixR
 	}
 
 	return vars, nil
+}
+
+// translateTCPRouteNotStrictly is not strictly translation, only generate ID and Name for delete Event.
+func (t *translator) translateTCPRouteNotStrictly(ctx *TranslateContext, ar *configv2alpha1.ApisixRoute) error {
+	for _, part := range ar.Spec.TCP {
+		backend := &part.Backend
+		sr := apisixv1.NewDefaultStreamRoute()
+		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
+		sr.ID = id.GenID(name)
+		sr.ServerPort = part.Match.IngressPort
+		ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
+		if err != nil {
+			return err
+		}
+		sr.Upstream = ups
+		ctx.addStreamRoute(sr)
+	}
+	return nil
 }
 
 func (t *translator) translateTCPRoute(ctx *TranslateContext, ar *configv2alpha1.ApisixRoute) error {
