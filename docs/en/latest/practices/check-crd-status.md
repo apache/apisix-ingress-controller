@@ -25,17 +25,17 @@ When using the Apache APISIX Ingress Controller declarative configuration, often
 
 When the Apache APISIX Ingress Controller watches the resource change, the logic unit of the Apache APISIX Ingress Controller has just started to work. 
 In various operations of the Apache APISIX Ingress Controller, object conversion and more verification will be performed. 
-When the verification fails, the Apache APISIX Ingress Controller will throw an error message and will continue to retry 
+When the verification fails, the Apache APISIX Ingress Controller will log an error message and will continue to retry 
 until the declared state is successfully synchronized to APISIX.
 
 Therefore, after the declarative configuration is accepted by Kubernetes, it does not mean that the configuration is synchronized to APISIX.
 
-In this practice, we will show how to  check the status of CRD.
+In this practice, we will show how to check the status of CRD.
 
 ## Prerequisites
 
-- an available Kubernetes cluster
-- an available Apache APISIX and Apache APISIX Ingress Controller installation
+- an available Kubernetes cluster (version >= 1.14)
+- an available Apache APISIX (version >= 2.6) and Apache APISIX Ingress Controller (version >= 0.6.0) installation
 
 ## Take ApisixRoute resource as an example 
 
@@ -51,7 +51,6 @@ apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
   name: httpbin-route
-  namespace: test
 spec:
   http:
   - name: rule1
