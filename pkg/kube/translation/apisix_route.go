@@ -357,7 +357,7 @@ func (t *translator) translateTCPRouteNotStrictly(ctx *TranslateContext, ar *con
 		if err != nil {
 			return err
 		}
-		sr.Upstream = ups
+		sr.UpstreamId = ups.ID
 		ctx.addStreamRoute(sr)
 		ctx.addUpstream(ups)
 	}
@@ -389,7 +389,7 @@ func (t *translator) translateTCPRoute(ctx *TranslateContext, ar *configv2alpha1
 		if err != nil {
 			return err
 		}
-		sr.Upstream = ups
+		sr.UpstreamId = ups.ID
 		ctx.addStreamRoute(sr)
 		ctx.addUpstream(ups)
 	}
