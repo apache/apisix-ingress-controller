@@ -110,7 +110,7 @@ loop:
 	return svc.Spec.ClusterIP, svcPort, nil
 }
 
-// translateUpstreamNotStrictly is not strictly translation, only generate ID and Name for delete Event.
+// translateUpstreamNotStrictly translates Upstream nodes with a loose way, only generate ID and Name for delete Event.
 func (t *translator) translateUpstreamNotStrictly(namespace, svcName, subset string, svcPort int32) (*apisixv1.Upstream, error) {
 	ups := &apisixv1.Upstream{}
 	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, subset, svcPort)

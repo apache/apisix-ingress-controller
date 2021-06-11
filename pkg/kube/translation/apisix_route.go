@@ -78,7 +78,7 @@ func (t *translator) TranslateRouteV1(ar *configv1.ApisixRoute) (*TranslateConte
 	return ctx, nil
 }
 
-// TranslateRouteV2alpha1NotStrictly is not strictly translation, only generate ID and Name for delete Event.
+// TranslateRouteV2alpha1NotStrictly translates route v2alpha1 with a loose way, only generate ID and Name for delete Event.
 func (t *translator) TranslateRouteV2alpha1NotStrictly(ar *configv2alpha1.ApisixRoute) (*TranslateContext, error) {
 	ctx := &TranslateContext{
 		upstreamMap: make(map[string]struct{}),
@@ -107,7 +107,7 @@ func (t *translator) TranslateRouteV2alpha1(ar *configv2alpha1.ApisixRoute) (*Tr
 	return ctx, nil
 }
 
-// translateHTTPRouteNotStrictly is not strictly translation, only generate ID and Name for delete Event.
+// translateHTTPRouteNotStrictly translates http route with a loose way, only generate ID and Name for delete Event.
 func (t *translator) translateHTTPRouteNotStrictly(ctx *TranslateContext, ar *configv2alpha1.ApisixRoute) error {
 	for _, part := range ar.Spec.HTTP {
 		backends := part.Backends
@@ -116,7 +116,6 @@ func (t *translator) translateHTTPRouteNotStrictly(ctx *TranslateContext, ar *co
 			// Use the first backend as the default backend in Route,
 			// others will be configured in traffic-split plugin.
 			backend = backends[0]
-			backends = backends[1:]
 		} // else use the deprecated Backend.
 		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
 		route := apisixv1.NewDefaultRoute()
@@ -346,7 +345,7 @@ func (t *translator) translateRouteMatchExprs(nginxVars []configv2alpha1.ApisixR
 	return vars, nil
 }
 
-// translateTCPRouteNotStrictly is not strictly translation, only generate ID and Name for delete Event.
+// translateTCPRouteNotStrictly translates tcp route with a loose way, only generate ID and Name for delete Event.
 func (t *translator) translateTCPRouteNotStrictly(ctx *TranslateContext, ar *configv2alpha1.ApisixRoute) error {
 	for _, part := range ar.Spec.TCP {
 		backend := &part.Backend
