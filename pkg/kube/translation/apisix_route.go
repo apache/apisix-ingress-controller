@@ -359,6 +359,7 @@ func (t *translator) translateTCPRouteNotStrictly(ctx *TranslateContext, ar *con
 		}
 		sr.Upstream = ups
 		ctx.addStreamRoute(sr)
+		ctx.addUpstream(ups)
 	}
 	return nil
 }
@@ -390,6 +391,7 @@ func (t *translator) translateTCPRoute(ctx *TranslateContext, ar *configv2alpha1
 		}
 		sr.Upstream = ups
 		ctx.addStreamRoute(sr)
+		ctx.addUpstream(ups)
 	}
 	return nil
 }
