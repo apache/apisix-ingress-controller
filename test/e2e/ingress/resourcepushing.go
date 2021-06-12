@@ -25,7 +25,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("ApisixRoute Testing", func() {
+var _ = ginkgo.FDescribe("ApisixRoute Testing", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
@@ -77,19 +77,19 @@ spec:
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
- name: httpbin-route
+  name: httpbin-route
 spec:
- http:
- - name: rule1
-   match:
-	 hosts:
-	 - httpbin.com
-	 paths:
-	 - /ip
-   backend:
-	 serviceName: %s
-	 servicePort: %d
-	`, backendSvc, backendSvcPort[0])
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
 		err := s.EnsureNumApisixRoutesCreated(1)
@@ -104,25 +104,25 @@ spec:
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
- name: httpbin-route
+  name: httpbin-route
 spec:
- http:
- - name: rule1
-   match:
-	 hosts:
-	 - httpbin.com
-	 paths:
-	 - /ip
-	 exprs:
-	 - subject:
-		 scope: Header
-		 name: X-Foo
-	   op: Equal
-	   value: "barbaz"
-   backend:
-	 serviceName: %s
-	 servicePort: %d
-	`, backendSvc, backendSvcPort[0])
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+      exprs:
+      - subject:
+          scope: Header
+          name: X-Foo
+        op: Equal
+        value: "barbaz"
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
 		// TODO When ingress controller can feedback the lifecycle of CRDs to the
@@ -150,25 +150,25 @@ spec:
 		assert.Contains(ginkgo.GinkgoT(), body, "404 Route Not Found")
 	})
 
-	ginkgo.It("create, update, then remove k8s service , remove ApisixRoute", func() {
+	ginkgo.It("create, update, remove k8s service, remove ApisixRoute", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
- name: httpbin-route
+  name: httpbin-route
 spec:
- http:
- - name: rule1
-   match:
-	 hosts:
-	 - httpbin.com
-	 paths:
-	 - /ip
-   backend:
-	 serviceName: %s
-	 servicePort: %d
-	`, backendSvc, backendSvcPort[0])
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
 		err := s.EnsureNumApisixRoutesCreated(1)
@@ -183,25 +183,25 @@ spec:
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
- name: httpbin-route
+  name: httpbin-route
 spec:
- http:
- - name: rule1
-   match:
-	 hosts:
-	 - httpbin.com
-	 paths:
-	 - /ip
-	 exprs:
-	 - subject:
-		 scope: Header
-		 name: X-Foo
-	   op: Equal
-	   value: "barbaz"
-   backend:
-	 serviceName: %s
-	 servicePort: %d
-	`, backendSvc, backendSvcPort[0])
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+      exprs:
+      - subject:
+          scope: Header
+          name: X-Foo
+        op: Equal
+        value: "barbaz"
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
 		// TODO When ingress controller can feedback the lifecycle of CRDs to the
@@ -215,10 +215,8 @@ spec:
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").WithHeader("X-Foo", "barbaz").Expect().Status(http.StatusOK)
-
-		// remove the k8s service
-		err = s.DeleteHTTPBINService()
-		assert.NoError(ginkgo.GinkgoT(), err, "Remove httpbinService error")
+		// remove k8s service first
+		s.DeleteHTTPBINService()
 		// remove
 		assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
 		// TODO When ingress controller can feedback the lifecycle of CRDs to the
@@ -238,19 +236,19 @@ spec:
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
- name: httpbin-route
+  name: httpbin-route
 spec:
- http:
- - name: rule1
-   match:
-	 hosts:
-	 - httpbin.com
-	 paths:
-	 - /ip
-   backend:
-	 serviceName: %s
-	 servicePort: %d
-	`, backendSvc, backendSvcPort[0])
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
@@ -270,19 +268,19 @@ spec:
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
- name: httpbin-route
+  name: httpbin-route
 spec:
- http:
- - name: rule1_1
-   match:
-	 hosts:
-	 - httpbin.com
-	 paths:
-	 - /headers
-   backend:
-	 serviceName: %s
-	 servicePort: %d
-	`, backendSvc, backendSvcPort[0])
+  http:
+  - name: rule1_1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /headers
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
@@ -313,35 +311,35 @@ spec:
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
- name: httpbin-route
+  name: httpbin-route
 spec:
- http:
- - name: rule1
-   match:
-	 hosts:
-	 - httpbin.com
-	 paths:
-	 - /ip
-   backend:
-	 serviceName: %s
-	 servicePort: %d
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
 ---
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
- name: httpbin-route-2
+  name: httpbin-route-2
 spec:
- http:
- - name: rule1
-   match:
-	 hosts:
-	 - httpbin.com
-	 paths:
-	 - /headers
-   backend:
-	 serviceName: %s
-	 servicePort: %d
-	`, backendSvc, backendSvcPort[0], backendSvc, backendSvcPort[0])
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /headers
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0], backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2))
@@ -364,39 +362,39 @@ spec:
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
- name: httpbin-route
+  name: httpbin-route
 spec:
- http:
- - name: rule1
-   priority: 1
-   match:
-	 hosts:
-	 - httpbin.com
-	 paths:
-	 - /ip
-   backend:
-	 serviceName: %s
-	 servicePort: %d
- - name: rule2
-   priority: 2
-   match:
-	 hosts:
-	 - httpbin.com
-	 paths:
-	 - /ip
-	 exprs:
-	 - subject:
-		 scope: Header
-		 name: X-Foo
-	   op: Equal
-	   value: barbazbar
-   backend:
-	 serviceName: %s
-	 servicePort: %d
-   plugins:
-   - name: request-id
-	 enable: true
-	`, backendSvc, backendSvcPort[0], backendSvc, backendSvcPort[0])
+  http:
+  - name: rule1
+    priority: 1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
+  - name: rule2
+    priority: 2
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+      exprs:
+      - subject:
+          scope: Header
+          name: X-Foo
+        op: Equal
+        value: barbazbar
+    backend:
+      serviceName: %s
+      servicePort: %d
+    plugins:
+    - name: request-id
+      enable: true
+`, backendSvc, backendSvcPort[0], backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2))
@@ -421,20 +419,20 @@ spec:
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
- name: httpbin-route
+  name: httpbin-route
 spec:
- http:
- - name: rule1
-   priority: 1
-   match:
-	 hosts:
-	 - httpbin.com
-	 paths:
-	 - /ip
-   backend:
-	 serviceName: %s
-	 servicePort: %d
-	`, backendSvc, backendSvcPort[0])
+  http:
+  - name: rule1
+    priority: 1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
@@ -477,38 +475,38 @@ spec:
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
- name: httpbin-route-1
+  name: httpbin-route-1
 spec:
- http:
- - name: rule1
-   priority: 1
-   match:
-	 hosts:
-	 - httpbin.com
-	 paths:
-	 - /ip
-   backend:
-	 serviceName: %s
-	 servicePort: %d
-	`, backendSvc, backendSvcPort[0])
+  http:
+  - name: rule1
+    priority: 1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
 		ar2 := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
- name: httpbin-route-2
+  name: httpbin-route-2
 spec:
- http:
- - name: rule1
-   priority: 1
-   match:
-	 hosts:
-	 - httpbin.com
-	 paths:
-	 - /status/200
-   backend:
-	 serviceName: %s
-	 servicePort: %d
-	`, backendSvc, backendSvcPort[0])
+  http:
+  - name: rule1
+    priority: 1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /status/200
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
 
 		err := s.CreateResourceFromString(ar1)
 		assert.Nil(ginkgo.GinkgoT(), err)
