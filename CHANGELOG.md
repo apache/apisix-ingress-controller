@@ -29,9 +29,21 @@
 
 # 1.0.0
 
-Welcome to the v1.0.0 release of apisix-ingress-controller!
+Welcome to the 1.0.0 release of apisix-ingress-controller!
 
-This is the first GA release.
+This is the first **GA** release.
+
+## Highlights
+
+### New Features
+
+* **Support blocklist-source-range annotation for Ingress source** [#446](https://github.com/apache/apisix-ingress-controller/pull/446)
+* **Add ApisixConsumer CRD** [#462](https://github.com/apache/apisix-ingress-controller/pull/462)
+* **Support rewrite annotation for Ingress source** [#480](https://github.com/apache/apisix-ingress-controller/pull/480)
+* **Support http-to-https redirect annotation for Ingress source** [#484](https://github.com/apache/apisix-ingress-controller/pull/484)
+* **Add health check to apisix-admin and make the leader election recyclable** [499](https://github.com/apache/apisix-ingress-controller/pull/499)
+* **Support mTLS for ApisixTls** [#492](https://github.com/apache/apisix-ingress-controller/pull/492)
+* **Support authentication for ApisixRoute** [#528](https://github.com/apache/apisix-ingress-controller/pull/528)
 
 Please try out the release binaries and report any issues at
 https://github.com/apache/apisix-ingress-controller/issues.
