@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
@@ -28,12 +30,26 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type counter struct {
-	Count intstr.IntOrString `json:"count"`
+	Count intOrString `json:"count"`
+}
+
+// intOrString processing number and string types, after json deserialization will output int
+type intOrString struct {
+	IntValue int `json:"int_value"`
+}
+
+func (ios *intOrString) UnmarshalJSON(p []byte) error {
+	result := strings.Trim(string(p), "\"")
+	count, err := strconv.Atoi(result)
+	if err != nil {
+		return err
+	}
+	ios.IntValue = count
+	return nil
 }
 
 // ApisixRoute is the ApisixRoute CRD definition.
@@ -156,7 +172,7 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 			return false, err
 		}
 		// NOTE count field is a string.
-		count := c.Count.IntValue()
+		count := c.Count.IntValue
 		// 1 for dir.
 		if count != desired+1 {
 			ginkgo.GinkgoT().Logf("mismatched number of items, expected %d but found %d", desired, count-1)
