@@ -20,8 +20,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
@@ -35,22 +33,7 @@ import (
 )
 
 type counter struct {
-	Count intOrString `json:"count"`
-}
-
-// intOrString processing number and string types, after json deserialization will output int
-type intOrString struct {
-	IntValue int `json:"int_value"`
-}
-
-func (ios *intOrString) UnmarshalJSON(p []byte) error {
-	result := strings.Trim(string(p), "\"")
-	count, err := strconv.Atoi(result)
-	if err != nil {
-		return err
-	}
-	ios.IntValue = count
-	return nil
+	Count apisix.IntOrString `json:"count"`
 }
 
 // ApisixRoute is the ApisixRoute CRD definition.
