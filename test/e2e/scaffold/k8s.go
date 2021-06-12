@@ -160,9 +160,8 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 			return false, err
 		}
 		count := c.Count.IntValue
-		// 1 for dir.
-		if count != desired+1 {
-			ginkgo.GinkgoT().Logf("mismatched number of items, expected %d but found %d", desired, count-1)
+		if count != desired {
+			ginkgo.GinkgoT().Logf("mismatched number of items, expected %d but found %d", desired, count)
 			return false, nil
 		}
 		return true, nil
