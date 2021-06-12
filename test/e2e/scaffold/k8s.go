@@ -17,6 +17,7 @@ package scaffold
 import (
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -166,12 +167,15 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 			ginkgo.GinkgoT().Logf("got status code %d from APISIX", resp.StatusCode)
 			return false, nil
 		}
-		var c counter
-		dec := json.NewDecoder(resp.Body)
-		if err := dec.Decode(&c); err != nil {
+		c := &counter{}
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
 			return false, err
 		}
-		// NOTE count field is a string.
+		err = json.Unmarshal(b, c)
+		if err != nil {
+			return false, err
+		}
 		count := c.Count.IntValue
 		// 1 for dir.
 		if count != desired+1 {
