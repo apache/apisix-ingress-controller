@@ -26,6 +26,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -96,6 +97,18 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 		log.Errorf("failed to get service %s/%s: %s", ep.Namespace, ep.Name, err)
 		return err
 	}
+	var subsets []configv1.ApisixUpstreamSubset
+	subsets = append(subsets, configv1.ApisixUpstreamSubset{})
+	au, err := c.controller.apisixUpstreamLister.ApisixUpstreams(ep.Namespace).Get(ep.Name)
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			log.Errorf("failed to get ApisixUpstream %s/%s: %s", ep.Namespace, ep.Name, err)
+			return err
+		}
+	} else if len(au.Spec.Subsets) > 0 {
+		subsets = append(subsets, au.Spec.Subsets...)
+	}
+
 	portMap := make(map[string]int32)
 	for _, port := range svc.Spec.Ports {
 		portMap[port.Name] = port.Port
@@ -109,18 +122,20 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 				log.Errorf("port %s in endpoints %s/%s but not in service", port.Name, ep.Namespace, ep.Name)
 				continue
 			}
-			nodes, err := c.controller.translator.TranslateUpstreamNodes(ep, svcPort)
-			if err != nil {
-				log.Errorw("failed to translate upstream nodes",
-					zap.Error(err),
-					zap.Any("endpoints", ep),
-					zap.Int32("port", svcPort),
-				)
-			}
-			name := apisixv1.ComposeUpstreamName(ep.Namespace, ep.Name, svcPort)
-			for _, cluster := range clusters {
-				if err := c.syncToCluster(ctx, cluster, nodes, name); err != nil {
-					return err
+			for _, subset := range subsets {
+				nodes, err := c.controller.translator.TranslateUpstreamNodes(ep, svcPort, subset.Labels)
+				if err != nil {
+					log.Errorw("failed to translate upstream nodes",
+						zap.Error(err),
+						zap.Any("endpoints", ep),
+						zap.Int32("port", svcPort),
+					)
+				}
+				name := apisixv1.ComposeUpstreamName(ep.Namespace, ep.Name, subset.Name, svcPort)
+				for _, cluster := range clusters {
+					if err := c.syncToCluster(ctx, cluster, nodes, name); err != nil {
+						return err
+					}
 				}
 			}
 		}

@@ -25,11 +25,13 @@ on:
   pull_request:
     branches:
       - master
+    type: [review_requested, ready_for_review]
 jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
+      go: ${{ steps.filter.outputs.go }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -43,11 +45,22 @@ jobs:
           filters: |
             docs:
               - 'docs/**/*'
+              - '*.md'
+            go:
+              - '*.go'
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Makefile'
+              - 'Dockerfile'
+              - 'test/e2e/**/*'
+              - 'conf/**'
+              - 'utils/**'
 
   run-test:
     needs: changes
     if: |
-      (needs.changes.outputs.docs == 'false')
+      (needs.changes.outputs.go == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -77,4 +90,4 @@ jobs:
         with:
           node-version: '12.x'
       - run: npm install -g markdownlint-cli@0.25.0
-      - run: markdownlint '**/*.md' --ignore node_modules
+      - run: markdownlint '**/*.md' --ignore node_modules --ignore CHANGELOG.md

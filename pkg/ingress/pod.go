@@ -22,6 +22,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 type podController struct {
@@ -35,6 +36,7 @@ func (c *Controller) newPodController() *podController {
 	ctl.controller.podInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    ctl.onAdd,
+			UpdateFunc: ctl.onUpdate,
 			DeleteFunc: ctl.onDelete,
 		},
 	)
@@ -67,10 +69,43 @@ func (c *podController) onAdd(obj interface{}) {
 	)
 	pod := obj.(*corev1.Pod)
 	if err := c.controller.podCache.Add(pod); err != nil {
-		log.Errorw("failed to add pod to cache",
-			zap.Error(err),
-			zap.Any("pod", pod),
-		)
+		if err == types.ErrPodNoAssignedIP {
+			log.Debugw("pod no assigned ip, postpone the adding in subsequent update event",
+				zap.Any("pod", pod),
+			)
+		} else {
+			log.Errorw("failed to add pod to cache",
+				zap.Error(err),
+				zap.Any("pod", pod),
+			)
+		}
+	}
+}
+
+func (c *podController) onUpdate(_, cur interface{}) {
+	pod := cur.(*corev1.Pod)
+
+	if !c.controller.namespaceWatching(pod.Namespace + "/" + pod.Name) {
+		return
+	}
+	log.Debugw("pod update event arrived",
+		zap.Any("final state", pod),
+	)
+	if pod.DeletionTimestamp != nil {
+		if err := c.controller.podCache.Delete(pod); err != nil {
+			log.Errorw("failed to delete pod from cache",
+				zap.Error(err),
+				zap.Any("pod", pod),
+			)
+		}
+	}
+	if pod.Status.PodIP != "" {
+		if err := c.controller.podCache.Add(pod); err != nil {
+			log.Errorw("failed to add pod to cache",
+				zap.Error(err),
+				zap.Any("pod", pod),
+			)
+		}
 	}
 }
 

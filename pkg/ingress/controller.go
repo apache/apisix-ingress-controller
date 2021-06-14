@@ -103,6 +103,8 @@ type Controller struct {
 	apisixTlsInformer           cache.SharedIndexInformer
 	apisixClusterConfigLister   listersv2alpha1.ApisixClusterConfigLister
 	apisixClusterConfigInformer cache.SharedIndexInformer
+	apisixConsumerInformer      cache.SharedIndexInformer
+	apisixConsumerLister        listersv2alpha1.ApisixConsumerLister
 
 	// resource controllers
 	podController       *podController
@@ -114,6 +116,7 @@ type Controller struct {
 	apisixRouteController         *apisixRouteController
 	apisixTlsController           *apisixTlsController
 	apisixClusterConfigController *apisixClusterConfigController
+	apisixConsumerController      *apisixConsumerController
 }
 
 // NewController creates an ingress apisix controller object.
@@ -164,7 +167,8 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		watchingNamespace: watchingNamespace,
 		secretSSLMap:      new(sync.Map),
 		recorder:          eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
-		podCache:          types.NewPodCache(),
+
+		podCache: types.NewPodCache(),
 	}
 	return c, nil
 }
@@ -194,8 +198,11 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixUpstreamLister = apisixFactory.Apisix().V1().ApisixUpstreams().Lister()
 	c.apisixTlsLister = apisixFactory.Apisix().V1().ApisixTlses().Lister()
 	c.apisixClusterConfigLister = apisixFactory.Apisix().V2alpha1().ApisixClusterConfigs().Lister()
+	c.apisixConsumerLister = apisixFactory.Apisix().V2alpha1().ApisixConsumers().Lister()
 
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
+		PodCache:             c.podCache,
+		PodLister:            c.podLister,
 		EndpointsLister:      c.epLister,
 		ServiceLister:        c.svcLister,
 		ApisixUpstreamLister: c.apisixUpstreamLister,
@@ -224,6 +231,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixClusterConfigInformer = apisixFactory.Apisix().V2alpha1().ApisixClusterConfigs().Informer()
 	c.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
 	c.apisixTlsInformer = apisixFactory.Apisix().V1().ApisixTlses().Informer()
+	c.apisixConsumerInformer = apisixFactory.Apisix().V2alpha1().ApisixConsumers().Informer()
 
 	c.podController = c.newPodController()
 	c.endpointsController = c.newEndpointsController()
@@ -233,6 +241,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixClusterConfigController = c.newApisixClusterConfigController()
 	c.apisixTlsController = c.newApisixTlsController()
 	c.secretController = c.newSecretController()
+	c.apisixConsumerController = c.newApisixConsumerController()
 }
 
 // recorderEvent recorder events for resources
@@ -410,6 +419,9 @@ func (c *Controller) run(ctx context.Context) {
 		c.apisixTlsInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
+		c.apisixConsumerInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
 		c.podController.run(ctx)
 	})
 	c.goAttach(func() {
@@ -433,6 +445,9 @@ func (c *Controller) run(ctx context.Context) {
 	c.goAttach(func() {
 		c.secretController.run(ctx)
 	})
+	c.goAttach(func() {
+		c.apisixConsumerController.run(ctx)
+	})
 
 	c.metricsCollector.ResetLeader(true)
 
@@ -454,7 +469,7 @@ func (c *Controller) namespaceWatching(key string) (ok bool) {
 	}
 	ns, _, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		// Ignore resource pkg/types/apisix/v1/plugin_types.gowith invalid key.
+		// Ignore resource with invalid key.
 		ok = false
 		log.Warnf("resource %s was ignored since: %s", key, err)
 		return
@@ -478,6 +493,17 @@ func (c *Controller) syncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types
 	return err
 }
 
+func (c *Controller) syncConsumer(ctx context.Context, consumer *apisixv1.Consumer, event types.EventType) (err error) {
+	clusterName := c.cfg.APISIX.DefaultClusterName
+	if event == types.EventDelete {
+		err = c.apisix.Cluster(clusterName).Consumer().Delete(ctx, consumer)
+	} else if event == types.EventUpdate {
+		_, err = c.apisix.Cluster(clusterName).Consumer().Update(ctx, consumer)
+	} else {
+		_, err = c.apisix.Cluster(clusterName).Consumer().Create(ctx, consumer)
+	}
+	return
+}
 func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.CancelFunc) {
 	defer cancelFunc()
 	for {
