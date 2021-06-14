@@ -46,19 +46,21 @@ In order to let Apache APISIX proxies requests to httpbin, we need to create an 
 
 ```yaml
 # httpbin-route.yaml
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
   name: httpserver-route
 spec:
-  rules:
-  - host: local.httpbin.org
-    http:
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - local.httpbin.org
       paths:
-      - backend:
-          serviceName: httpbin
-          servicePort: 80
-        path: /*
+      - /*
+    backend:
+        serviceName: httpbin
+        servicePort: 80
 ```
 
 The YAML snippet shows a simple `ApisixRoute` configuration, which tells Apache APISIX to route all requests with Host `local.httpbin.org` to the `httpbin` service.
