@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -387,19 +388,28 @@ func NewDefaultConsumer() *Consumer {
 	}
 }
 
-// ComposeUpstreamName uses namespace, name and port info to compose
+// ComposeUpstreamName uses namespace, name, subset (optional) and port info to compose
 // the upstream name.
-func ComposeUpstreamName(namespace, name string, port int32) string {
+func ComposeUpstreamName(namespace, name, subset string, port int32) string {
 	pstr := strconv.Itoa(int(port))
 	// FIXME Use sync.Pool to reuse this buffer if the upstream
 	// name composing code path is hot.
-	p := make([]byte, 0, len(namespace)+len(name)+len(pstr)+2)
-	buf := bytes.NewBuffer(p)
+	var p []byte
+	if subset == "" {
+		p = make([]byte, 0, len(namespace)+len(name)+len(pstr)+2)
+	} else {
+		p = make([]byte, 0, len(namespace)+len(name)+len(subset)+len(pstr)+3)
+	}
 
+	buf := bytes.NewBuffer(p)
 	buf.WriteString(namespace)
 	buf.WriteByte('_')
 	buf.WriteString(name)
 	buf.WriteByte('_')
+	if subset != "" {
+		buf.WriteString(subset)
+		buf.WriteByte('_')
+	}
 	buf.WriteString(pstr)
 
 	return buf.String()
@@ -446,7 +456,8 @@ func ComposeConsumerName(namespace, name string) string {
 	p := make([]byte, 0, len(namespace)+len(name)+1)
 	buf := bytes.NewBuffer(p)
 
-	buf.WriteString(namespace)
+	// TODO If APISIX modifies the consumer name schema, we can drop this.
+	buf.WriteString(strings.Replace(namespace, "-", "_", -1))
 	buf.WriteString("_")
 	buf.WriteString(name)
 

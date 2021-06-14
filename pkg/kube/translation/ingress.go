@@ -173,7 +173,7 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 	if err != nil {
 		return nil, err
 	}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, svcPort)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, "", svcPort)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }
@@ -264,7 +264,7 @@ func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcNa
 	if err != nil {
 		return nil, err
 	}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, portNumber)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }

@@ -110,6 +110,14 @@ loop:
 	return svc.Spec.ClusterIP, svcPort, nil
 }
 
+// translateUpstreamNotStrictly translates Upstream nodes with a loose way, only generate ID and Name for delete Event.
+func (t *translator) translateUpstreamNotStrictly(namespace, svcName, subset string, svcPort int32) (*apisixv1.Upstream, error) {
+	ups := &apisixv1.Upstream{}
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, subset, svcPort)
+	ups.ID = id.GenID(ups.Name)
+	return ups, nil
+}
+
 func (t *translator) translateUpstream(namespace, svcName, subset, svcResolveGranularity, svcClusterIP string, svcPort int32) (*apisixv1.Upstream, error) {
 	ups, err := t.TranslateUpstream(namespace, svcName, subset, svcPort)
 	if err != nil {
@@ -124,7 +132,7 @@ func (t *translator) translateUpstream(namespace, svcName, subset, svcResolveGra
 			},
 		}
 	}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, svcPort)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, subset, svcPort)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }
@@ -134,7 +142,7 @@ func (t *translator) filterNodesByLabels(nodes apisixv1.UpstreamNodes, labels ty
 		return nodes
 	}
 
-	var filteredNodes apisixv1.UpstreamNodes
+	filteredNodes := make(apisixv1.UpstreamNodes, 0)
 	for _, node := range nodes {
 		podName, err := t.PodCache.GetNameByIP(node.Host)
 		if err != nil {

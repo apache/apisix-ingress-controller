@@ -326,6 +326,11 @@ func (c *cluster) GlobalRule() GlobalRule {
 	return c.globalRules
 }
 
+// Consumer implements Cluster.Consumer method.
+func (c *cluster) Consumer() Consumer {
+	return c.consumer
+}
+
 // HealthCheck implements Cluster.HealthCheck method.
 func (c *cluster) HealthCheck(ctx context.Context) (err error) {
 	if c.cacheSyncErr != nil {

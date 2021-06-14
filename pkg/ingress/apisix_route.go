@@ -139,7 +139,14 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			return err
 		}
 	} else {
-		tctx, err = c.controller.translator.TranslateRouteV2alpha1(ar.V2alpha1())
+		if ev.Type != types.EventDelete {
+			tctx, err = c.controller.translator.TranslateRouteV2alpha1(ar.V2alpha1())
+		} else {
+			// Use TranslateRouteV2alpha1NotStrictly in EventDelete.
+			// if K8S service has been removed before ApisixRoute resource, the translation about nodes
+			// of upstream will be failed.
+			tctx, err = c.controller.translator.TranslateRouteV2alpha1NotStrictly(ar.V2alpha1())
+		}
 		if err != nil {
 			log.Errorw("failed to translate ApisixRoute v2alpha1",
 				zap.Error(err),
