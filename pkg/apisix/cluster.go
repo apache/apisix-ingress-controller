@@ -68,10 +68,11 @@ var (
 
 // ClusterOptions contains parameters to customize APISIX client.
 type ClusterOptions struct {
-	Name     string
-	AdminKey string
-	BaseURL  string
-	Timeout  time.Duration
+	Name        string
+	AdminKey    string
+	BaseURL     string
+	BypassCache bool
+	Timeout     time.Duration
 }
 
 type cluster struct {
@@ -84,6 +85,7 @@ type cluster struct {
 	cache        cache.Cache
 	cacheSynced  chan struct{}
 	cacheSyncErr error
+	bypassCache  bool
 	route        Route
 	upstream     Upstream
 	ssl          SSL
@@ -117,6 +119,7 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 		},
 		cacheState:  _cacheSyncing, // default state
 		cacheSynced: make(chan struct{}),
+		bypassCache: o.BypassCache,
 	}
 	c.route = newRouteClient(c)
 	c.upstream = newUpstreamClient(c)
@@ -130,7 +133,9 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 		return nil, err
 	}
 
-	go c.syncCache()
+	if !o.BypassCache {
+		go c.syncCache()
+	}
 
 	return c, nil
 }
@@ -276,6 +281,11 @@ func (c *cluster) String() string {
 
 // HasSynced implements Cluster.HasSynced method.
 func (c *cluster) HasSynced(ctx context.Context) error {
+	// if bypass cache no need to sync
+	if !c.bypassCache {
+		return nil
+	}
+
 	if c.cacheSyncErr != nil {
 		return c.cacheSyncErr
 	}

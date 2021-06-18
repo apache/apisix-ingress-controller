@@ -54,6 +54,10 @@ func (f *dummyRoute) Get(_ context.Context, _ string) (*v1.Route, error) {
 	return nil, ErrClusterNotExist
 }
 
+func (f *dummyRoute) GetByID(_ context.Context, _ string) (*v1.Route, error) {
+	return nil, ErrClusterNotExist
+}
+
 func (f *dummyRoute) List(_ context.Context) ([]*v1.Route, error) {
 	return nil, ErrClusterNotExist
 }

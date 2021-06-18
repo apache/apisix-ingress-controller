@@ -42,6 +42,10 @@ type fakeListResp struct {
 	Node  fakeNode `json:"node"`
 }
 
+type fakeGetResp struct {
+	Item fakeItem `json:"node"`
+}
+
 type fakeCreateResp struct {
 	Action string   `json:"action"`
 	Node   fakeItem `json:"node"`
@@ -66,25 +70,38 @@ func (srv *fakeAPISIXRouteSrv) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	if r.Method == http.MethodGet {
-		resp := fakeListResp{
-			Count: strconv.Itoa(len(srv.route)),
-			Node: fakeNode{
-				Key: "/apisix/routes",
-			},
-		}
-		var keys []string
-		for key := range srv.route {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			resp.Node.Items = append(resp.Node.Items, fakeItem{
-				Key:   key,
-				Value: srv.route[key],
-			})
+		var data []byte
+		if strings.HasSuffix(r.URL.Path, "routes") {
+			resp := fakeListResp{
+				Count: strconv.Itoa(len(srv.route)),
+				Node: fakeNode{
+					Key: "/apisix/routes",
+				},
+			}
+			var keys []string
+			for key := range srv.route {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
+			for _, key := range keys {
+				resp.Node.Items = append(resp.Node.Items, fakeItem{
+					Key:   key,
+					Value: srv.route[key],
+				})
+			}
+			data, _ = json.Marshal(resp)
+		} else {
+			paths := strings.Split(r.URL.Path, "/")
+			key := fmt.Sprintf("/apisix/routes/%s", paths[len(paths)-1])
+			resp := fakeGetResp{
+				Item: fakeItem{
+					Key:   key,
+					Value: json.RawMessage(srv.route[key]),
+				},
+			}
+			data, _ = json.Marshal(resp)
 		}
 		w.WriteHeader(http.StatusOK)
-		data, _ := json.Marshal(resp)
 		_, _ = w.Write(data)
 		return
 	}
@@ -200,6 +217,11 @@ func TestRouteClient(t *testing.T) {
 		Uri:        "/bar",
 		UpstreamId: "1",
 	})
+	assert.Nil(t, err)
+	assert.Equal(t, obj.ID, "2")
+
+	// GetByID
+	obj, err = cli.GetByID(context.Background(), "2")
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "2")
 

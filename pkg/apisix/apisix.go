@@ -60,6 +60,7 @@ type Cluster interface {
 // list and delete for APISIX Route resource.
 type Route interface {
 	Get(context.Context, string) (*v1.Route, error)
+	GetByID(context.Context, string) (*v1.Route, error)
 	List(context.Context) ([]*v1.Route, error)
 	Create(context.Context, *v1.Route) (*v1.Route, error)
 	Delete(context.Context, *v1.Route) error

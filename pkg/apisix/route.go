@@ -41,16 +41,24 @@ func newRouteClient(c *cluster) Route {
 }
 
 // Get returns the Route.
+func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
+	return r.get(ctx, id.GenID(name), name)
+}
+
+// GetByName returns the Route with route name
+func (r *routeClient) GetByID(ctx context.Context, realID string) (*v1.Route, error) {
+	return r.get(ctx, realID, realID)
+}
+
 // FIXME, currently if caller pass a non-existent resource, the Get always passes
 // through cache.
-func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
+func (r *routeClient) get(ctx context.Context, id string, name string) (*v1.Route, error) {
 	log.Debugw("try to look up route",
 		zap.String("name", name),
 		zap.String("url", r.url),
 		zap.String("cluster", "default"),
 	)
-	rid := id.GenID(name)
-	route, err := r.cluster.cache.GetRoute(rid)
+	route, err := r.cluster.cache.GetRoute(id)
 	if err == nil {
 		return route, nil
 	}
@@ -67,7 +75,7 @@ func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
 	}
 
 	// TODO Add mutex here to avoid dog-pile effection.
-	url := r.url + "/" + rid
+	url := r.url + "/" + id
 	resp, err := r.cluster.getResource(ctx, url)
 	if err != nil {
 		if err == cache.ErrNotFound {
