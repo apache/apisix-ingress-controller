@@ -128,7 +128,7 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 	c.globalRules = newGlobalRuleClient(c)
 	c.consumer = newConsumerClient(c)
 
-	c.cache, err = cache.NewMemDBCache()
+	c.cache, err = cache.NewMemDBCache(o.BypassCache)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +282,7 @@ func (c *cluster) String() string {
 // HasSynced implements Cluster.HasSynced method.
 func (c *cluster) HasSynced(ctx context.Context) error {
 	// if bypass cache no need to sync
-	if !c.bypassCache {
+	if c.bypassCache {
 		return nil
 	}
 

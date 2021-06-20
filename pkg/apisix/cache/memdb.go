@@ -31,17 +31,19 @@ var (
 )
 
 type dbCache struct {
-	db *memdb.MemDB
+	db          *memdb.MemDB
+	bypassCache bool
 }
 
 // NewMemDBCache creates a Cache object backs with a memory DB.
-func NewMemDBCache() (Cache, error) {
+func NewMemDBCache(bypassCache bool) (Cache, error) {
 	db, err := memdb.NewMemDB(_schema)
 	if err != nil {
 		return nil, err
 	}
 	return &dbCache{
-		db: db,
+		db:          db,
+		bypassCache: bypassCache,
 	}, nil
 }
 
@@ -71,6 +73,9 @@ func (c *dbCache) InsertConsumer(consumer *v1.Consumer) error {
 }
 
 func (c *dbCache) insert(table string, obj interface{}) error {
+	if c.bypassCache {
+		return nil
+	}
 	txn := c.db.Txn(true)
 	defer txn.Abort()
 	if err := txn.Insert(table, obj); err != nil {
@@ -129,6 +134,9 @@ func (c *dbCache) GetConsumer(username string) (*v1.Consumer, error) {
 }
 
 func (c *dbCache) get(table, id string) (interface{}, error) {
+	if c.bypassCache {
+		return nil, nil
+	}
 	txn := c.db.Txn(false)
 	defer txn.Abort()
 	obj, err := txn.First(table, "id", id)
@@ -217,6 +225,9 @@ func (c *dbCache) ListConsumers() ([]*v1.Consumer, error) {
 }
 
 func (c *dbCache) list(table string) ([]interface{}, error) {
+	if c.bypassCache {
+		return nil, nil
+	}
 	txn := c.db.Txn(false)
 	defer txn.Abort()
 	iter, err := txn.Get(table, "id")
@@ -258,6 +269,9 @@ func (c *dbCache) DeleteConsumer(consumer *v1.Consumer) error {
 }
 
 func (c *dbCache) delete(table string, obj interface{}) error {
+	if c.bypassCache {
+		return nil
+	}
 	txn := c.db.Txn(true)
 	defer txn.Abort()
 	if err := txn.Delete(table, obj); err != nil {
@@ -271,6 +285,9 @@ func (c *dbCache) delete(table string, obj interface{}) error {
 }
 
 func (c *dbCache) checkUpstreamReference(u *v1.Upstream) error {
+	if c.bypassCache {
+		return nil
+	}
 	// Upstream is referenced by Route.
 	txn := c.db.Txn(false)
 	defer txn.Abort()
