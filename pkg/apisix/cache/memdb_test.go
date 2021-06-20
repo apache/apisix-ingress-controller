@@ -24,7 +24,7 @@ import (
 )
 
 func TestMemDBCacheRoute(t *testing.T) {
-	c, err := NewMemDBCache(false)
+	c, err := NewMemDBCache()
 	assert.Nil(t, err, "NewMemDBCache")
 
 	r1 := &v1.Route{
@@ -79,7 +79,7 @@ func TestMemDBCacheRoute(t *testing.T) {
 }
 
 func TestMemDBCacheSSL(t *testing.T) {
-	c, err := NewMemDBCache(false)
+	c, err := NewMemDBCache()
 	assert.Nil(t, err, "NewMemDBCache")
 
 	s1 := &v1.Ssl{
@@ -122,7 +122,7 @@ func TestMemDBCacheSSL(t *testing.T) {
 }
 
 func TestMemDBCacheUpstream(t *testing.T) {
-	c, err := NewMemDBCache(false)
+	c, err := NewMemDBCache()
 	assert.Nil(t, err, "NewMemDBCache")
 
 	u1 := &v1.Upstream{
@@ -202,7 +202,7 @@ func TestMemDBCacheReference(t *testing.T) {
 		UpstreamId: "2",
 	}
 
-	db, err := NewMemDBCache(false)
+	db, err := NewMemDBCache()
 	assert.Nil(t, err, "NewMemDBCache")
 	assert.Nil(t, db.InsertRoute(r))
 	assert.Nil(t, db.InsertUpstream(u))
@@ -218,7 +218,7 @@ func TestMemDBCacheReference(t *testing.T) {
 }
 
 func TestMemDBCacheStreamRoute(t *testing.T) {
-	c, err := NewMemDBCache(false)
+	c, err := NewMemDBCache()
 	assert.Nil(t, err, "NewMemDBCache")
 
 	r1 := &v1.StreamRoute{
@@ -261,7 +261,7 @@ func TestMemDBCacheStreamRoute(t *testing.T) {
 }
 
 func TestMemDBCacheGlobalRule(t *testing.T) {
-	c, err := NewMemDBCache(false)
+	c, err := NewMemDBCache()
 	assert.Nil(t, err, "NewMemDBCache")
 
 	gr1 := &v1.GlobalRule{
@@ -304,7 +304,7 @@ func TestMemDBCacheGlobalRule(t *testing.T) {
 }
 
 func TestMemDBCacheConsumer(t *testing.T) {
-	c, err := NewMemDBCache(false)
+	c, err := NewMemDBCache()
 	assert.Nil(t, err, "NewMemDBCache")
 
 	c1 := &v1.Consumer{

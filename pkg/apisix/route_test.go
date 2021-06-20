@@ -96,7 +96,7 @@ func (srv *fakeAPISIXRouteSrv) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			resp := fakeGetResp{
 				Item: fakeItem{
 					Key:   key,
-					Value: json.RawMessage(srv.route[key]),
+					Value: srv.route[key],
 				},
 			}
 			data, _ = json.Marshal(resp)

@@ -44,25 +44,38 @@ func (srv *fakeAPISIXStreamRouteSrv) ServeHTTP(w http.ResponseWriter, r *http.Re
 	}
 
 	if r.Method == http.MethodGet {
-		resp := fakeListResp{
-			Count: strconv.Itoa(len(srv.streamRoute)),
-			Node: fakeNode{
-				Key: "/apisix/stream_routes",
-			},
-		}
-		var keys []string
-		for key := range srv.streamRoute {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			resp.Node.Items = append(resp.Node.Items, fakeItem{
-				Key:   key,
-				Value: srv.streamRoute[key],
-			})
+		var data []byte
+		if strings.HasSuffix(r.URL.Path, "stream_routes") {
+			resp := fakeListResp{
+				Count: strconv.Itoa(len(srv.streamRoute)),
+				Node: fakeNode{
+					Key: "/apisix/stream_routes",
+				},
+			}
+			var keys []string
+			for key := range srv.streamRoute {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
+			for _, key := range keys {
+				resp.Node.Items = append(resp.Node.Items, fakeItem{
+					Key:   key,
+					Value: srv.streamRoute[key],
+				})
+			}
+			data, _ = json.Marshal(resp)
+		} else {
+			paths := strings.Split(r.URL.Path, "/")
+			key := fmt.Sprintf("/apisix/stream_routes/%s", paths[len(paths)-1])
+			resp := fakeGetResp{
+				Item: fakeItem{
+					Key:   key,
+					Value: srv.streamRoute[key],
+				},
+			}
+			data, _ = json.Marshal(resp)
 		}
 		w.WriteHeader(http.StatusOK)
-		data, _ := json.Marshal(resp)
 		_, _ = w.Write(data)
 		return
 	}
@@ -170,6 +183,11 @@ func TestStreamRouteClient(t *testing.T) {
 		ServerPort: 8002,
 		UpstreamId: "1",
 	})
+	assert.Nil(t, err)
+	assert.Equal(t, obj.ID, "2")
+
+	// GetByID
+	obj, err = cli.GetByID(context.Background(), "2")
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "2")
 

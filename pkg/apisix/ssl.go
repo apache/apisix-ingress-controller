@@ -40,31 +40,45 @@ func newSSLClient(c *cluster) SSL {
 	}
 }
 
+// Get returns the GlobalRule.
 func (s *sslClient) Get(ctx context.Context, name string) (*v1.Ssl, error) {
+	return s.get(ctx, id.GenID(name), name)
+}
+
+// GetByName returns the GlobalRule with global rule id
+func (s *sslClient) GetByID(ctx context.Context, realID string) (*v1.Ssl, error) {
+	return s.get(ctx, realID, realID)
+}
+
+func (s *sslClient) get(ctx context.Context, id string, name string) (*v1.Ssl, error) {
 	log.Debugw("try to look up ssl",
-		zap.String("name", name),
+		zap.String("name/id", name),
 		zap.String("url", s.url),
 		zap.String("cluster", "default"),
 	)
-	sid := id.GenID(name)
-	ssl, err := s.cluster.cache.GetSSL(sid)
-	if err == nil {
-		return ssl, nil
-	}
-	if err != cache.ErrNotFound {
-		log.Errorw("failed to find ssl in cache, will try to lookup from APISIX",
-			zap.String("name", name),
-			zap.Error(err),
-		)
-	} else {
-		log.Debugw("failed to find ssl in cache, will try to lookup from APISIX",
-			zap.String("name", name),
-			zap.Error(err),
-		)
+
+	var ssl *v1.Ssl
+	var err error
+	if !s.cluster.bypassCache {
+		ssl, err = s.cluster.cache.GetSSL(id)
+		if err == nil {
+			return ssl, nil
+		}
+		if err != cache.ErrNotFound {
+			log.Errorw("failed to find ssl in cache, will try to lookup from APISIX",
+				zap.String("name", name),
+				zap.Error(err),
+			)
+		} else {
+			log.Debugw("failed to find ssl in cache, will try to lookup from APISIX",
+				zap.String("name", name),
+				zap.Error(err),
+			)
+		}
 	}
 
 	// TODO Add mutex here to avoid dog-pile effection.
-	url := s.url + "/" + sid
+	url := s.url + "/" + id
 	resp, err := s.cluster.getResource(ctx, url)
 	if err != nil {
 		if err == cache.ErrNotFound {
@@ -93,9 +107,11 @@ func (s *sslClient) Get(ctx context.Context, name string) (*v1.Ssl, error) {
 		return nil, err
 	}
 
-	if err := s.cluster.cache.InsertSSL(ssl); err != nil {
-		log.Errorf("failed to reflect ssl create to cache: %s", err)
-		return nil, err
+	if !s.cluster.bypassCache {
+		if err := s.cluster.cache.InsertSSL(ssl); err != nil {
+			log.Errorf("failed to reflect ssl create to cache: %s", err)
+			return nil, err
+		}
 	}
 	return ssl, nil
 }
@@ -157,9 +173,11 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := s.cluster.cache.InsertSSL(ssl); err != nil {
-		log.Errorf("failed to reflect ssl create to cache: %s", err)
-		return nil, err
+	if !s.cluster.bypassCache {
+		if err := s.cluster.cache.InsertSSL(ssl); err != nil {
+			log.Errorf("failed to reflect ssl create to cache: %s", err)
+			return nil, err
+		}
 	}
 	return ssl, nil
 }
@@ -177,10 +195,12 @@ func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 	if err := s.cluster.deleteResource(ctx, url); err != nil {
 		return err
 	}
-	if err := s.cluster.cache.DeleteSSL(obj); err != nil {
-		log.Errorf("failed to reflect ssl delete to cache: %s", err)
-		if err != cache.ErrNotFound {
-			return err
+	if !s.cluster.bypassCache {
+		if err := s.cluster.cache.DeleteSSL(obj); err != nil {
+			log.Errorf("failed to reflect ssl delete to cache: %s", err)
+			if err != cache.ErrNotFound {
+				return err
+			}
 		}
 	}
 	return nil
@@ -209,9 +229,11 @@ func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := s.cluster.cache.InsertSSL(ssl); err != nil {
-		log.Errorf("failed to reflect ssl update to cache: %s", err)
-		return nil, err
+	if !s.cluster.bypassCache {
+		if err := s.cluster.cache.InsertSSL(ssl); err != nil {
+			log.Errorf("failed to reflect ssl update to cache: %s", err)
+			return nil, err
+		}
 	}
 	return ssl, nil
 }

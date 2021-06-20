@@ -80,6 +80,10 @@ func (f *dummySSL) Get(_ context.Context, _ string) (*v1.Ssl, error) {
 	return nil, ErrClusterNotExist
 }
 
+func (f *dummySSL) GetByID(_ context.Context, _ string) (*v1.Ssl, error) {
+	return nil, ErrClusterNotExist
+}
+
 func (f *dummySSL) List(_ context.Context) ([]*v1.Ssl, error) {
 	return nil, ErrClusterNotExist
 }
@@ -99,6 +103,10 @@ func (f *dummySSL) Update(_ context.Context, _ *v1.Ssl) (*v1.Ssl, error) {
 type dummyUpstream struct{}
 
 func (f *dummyUpstream) Get(_ context.Context, _ string) (*v1.Upstream, error) {
+	return nil, ErrClusterNotExist
+}
+
+func (f *dummyUpstream) GetByID(_ context.Context, _ string) (*v1.Upstream, error) {
 	return nil, ErrClusterNotExist
 }
 
@@ -124,6 +132,10 @@ func (f *dummyStreamRoute) Get(_ context.Context, _ string) (*v1.StreamRoute, er
 	return nil, ErrClusterNotExist
 }
 
+func (f *dummyStreamRoute) GetByID(_ context.Context, _ string) (*v1.StreamRoute, error) {
+	return nil, ErrClusterNotExist
+}
+
 func (f *dummyStreamRoute) List(_ context.Context) ([]*v1.StreamRoute, error) {
 	return nil, ErrClusterNotExist
 }
@@ -143,6 +155,10 @@ func (f *dummyStreamRoute) Update(_ context.Context, _ *v1.StreamRoute) (*v1.Str
 type dummyGlobalRule struct{}
 
 func (f *dummyGlobalRule) Get(_ context.Context, _ string) (*v1.GlobalRule, error) {
+	return nil, ErrClusterNotExist
+}
+
+func (f *dummyGlobalRule) GetByID(_ context.Context, _ string) (*v1.GlobalRule, error) {
 	return nil, ErrClusterNotExist
 }
 

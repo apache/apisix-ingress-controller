@@ -40,33 +40,46 @@ func newGlobalRuleClient(c *cluster) GlobalRule {
 }
 
 // Get returns the GlobalRule.
+func (r *globalRuleClient) Get(ctx context.Context, name string) (*v1.GlobalRule, error) {
+	return r.get(ctx, id.GenID(name), name)
+}
+
+// GetByName returns the GlobalRule with global rule id
+func (r *globalRuleClient) GetByID(ctx context.Context, realID string) (*v1.GlobalRule, error) {
+	return r.get(ctx, realID, realID)
+}
+
 // FIXME, currently if caller pass a non-existent resource, the Get always passes
 // through cache.
-func (r *globalRuleClient) Get(ctx context.Context, name string) (*v1.GlobalRule, error) {
+func (r *globalRuleClient) get(ctx context.Context, id string, name string) (*v1.GlobalRule, error) {
 	log.Debugw("try to look up global_rule",
-		zap.String("name", name),
+		zap.String("name/id", name),
 		zap.String("url", r.url),
 		zap.String("cluster", "default"),
 	)
-	rid := id.GenID(name)
-	globalRule, err := r.cluster.cache.GetGlobalRule(rid)
-	if err == nil {
-		return globalRule, nil
-	}
-	if err != cache.ErrNotFound {
-		log.Errorw("failed to find global_rule in cache, will try to lookup from APISIX",
-			zap.String("name", name),
-			zap.Error(err),
-		)
-	} else {
-		log.Debugw("failed to find global_rule in cache, will try to lookup from APISIX",
-			zap.String("name", name),
-			zap.Error(err),
-		)
+
+	var globalRule *v1.GlobalRule
+	var err error
+	if !r.cluster.bypassCache {
+		globalRule, err = r.cluster.cache.GetGlobalRule(id)
+		if err == nil {
+			return globalRule, nil
+		}
+		if err != cache.ErrNotFound {
+			log.Errorw("failed to find global_rule in cache, will try to lookup from APISIX",
+				zap.String("name", name),
+				zap.Error(err),
+			)
+		} else {
+			log.Debugw("failed to find global_rule in cache, will try to lookup from APISIX",
+				zap.String("name", name),
+				zap.Error(err),
+			)
+		}
 	}
 
 	// TODO Add mutex here to avoid dog-pile effect.
-	url := r.url + "/" + rid
+	url := r.url + "/" + id
 	resp, err := r.cluster.getResource(ctx, url)
 	if err != nil {
 		if err == cache.ErrNotFound {
@@ -97,9 +110,11 @@ func (r *globalRuleClient) Get(ctx context.Context, name string) (*v1.GlobalRule
 		return nil, err
 	}
 
-	if err := r.cluster.cache.InsertGlobalRule(globalRule); err != nil {
-		log.Errorf("failed to reflect global_rule create to cache: %s", err)
-		return nil, err
+	if !r.cluster.bypassCache {
+		if err := r.cluster.cache.InsertGlobalRule(globalRule); err != nil {
+			log.Errorf("failed to reflect global_rule create to cache: %s", err)
+			return nil, err
+		}
 	}
 	return globalRule, nil
 }
@@ -165,9 +180,11 @@ func (r *globalRuleClient) Create(ctx context.Context, obj *v1.GlobalRule) (*v1.
 	if err != nil {
 		return nil, err
 	}
-	if err := r.cluster.cache.InsertGlobalRule(globalRules); err != nil {
-		log.Errorf("failed to reflect global_rules create to cache: %s", err)
-		return nil, err
+	if !r.cluster.bypassCache {
+		if err := r.cluster.cache.InsertGlobalRule(globalRules); err != nil {
+			log.Errorf("failed to reflect global_rules create to cache: %s", err)
+			return nil, err
+		}
 	}
 	return globalRules, nil
 }
@@ -185,10 +202,12 @@ func (r *globalRuleClient) Delete(ctx context.Context, obj *v1.GlobalRule) error
 	if err := r.cluster.deleteResource(ctx, url); err != nil {
 		return err
 	}
-	if err := r.cluster.cache.DeleteGlobalRule(obj); err != nil {
-		log.Errorf("failed to reflect global_rule delete to cache: %s", err)
-		if err != cache.ErrNotFound {
-			return err
+	if !r.cluster.bypassCache {
+		if err := r.cluster.cache.DeleteGlobalRule(obj); err != nil {
+			log.Errorf("failed to reflect global_rule delete to cache: %s", err)
+			if err != cache.ErrNotFound {
+				return err
+			}
 		}
 	}
 	return nil
@@ -218,9 +237,11 @@ func (r *globalRuleClient) Update(ctx context.Context, obj *v1.GlobalRule) (*v1.
 	if err != nil {
 		return nil, err
 	}
-	if err := r.cluster.cache.InsertGlobalRule(globalRule); err != nil {
-		log.Errorf("failed to reflect global_rule update to cache: %s", err)
-		return nil, err
+	if !r.cluster.bypassCache {
+		if err := r.cluster.cache.InsertGlobalRule(globalRule); err != nil {
+			log.Errorf("failed to reflect global_rule update to cache: %s", err)
+			return nil, err
+		}
 	}
 	return globalRule, nil
 }

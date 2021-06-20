@@ -46,25 +46,38 @@ func (srv *fakeAPISIXUpstreamSrv) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	}
 
 	if r.Method == http.MethodGet {
-		resp := fakeListResp{
-			Count: strconv.Itoa(len(srv.upstream)),
-			Node: fakeNode{
-				Key: "/apisix/upstreams",
-			},
-		}
-		var keys []string
-		for key := range srv.upstream {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			resp.Node.Items = append(resp.Node.Items, fakeItem{
-				Key:   key,
-				Value: srv.upstream[key],
-			})
+		var data []byte
+		if strings.HasSuffix(r.URL.Path, "upstreams") {
+			resp := fakeListResp{
+				Count: strconv.Itoa(len(srv.upstream)),
+				Node: fakeNode{
+					Key: "/apisix/upstreams",
+				},
+			}
+			var keys []string
+			for key := range srv.upstream {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
+			for _, key := range keys {
+				resp.Node.Items = append(resp.Node.Items, fakeItem{
+					Key:   key,
+					Value: srv.upstream[key],
+				})
+			}
+			data, _ = json.Marshal(resp)
+		} else {
+			paths := strings.Split(r.URL.Path, "/")
+			key := fmt.Sprintf("/apisix/upstreams/%s", paths[len(paths)-1])
+			resp := fakeGetResp{
+				Item: fakeItem{
+					Key:   key,
+					Value: srv.upstream[key],
+				},
+			}
+			data, _ = json.Marshal(resp)
 		}
 		w.WriteHeader(http.StatusOK)
-		data, _ := json.Marshal(resp)
 		_, _ = w.Write(data)
 		return
 	}
@@ -193,6 +206,11 @@ func TestUpstreamClient(t *testing.T) {
 		Key:   key,
 		Nodes: nodes,
 	})
+	assert.Nil(t, err)
+	assert.Equal(t, obj.ID, "2")
+
+	// GetByID
+	obj, err = cli.GetByID(context.Background(), "2")
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "2")
 

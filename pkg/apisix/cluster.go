@@ -128,7 +128,7 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 	c.globalRules = newGlobalRuleClient(c)
 	c.consumer = newConsumerClient(c)
 
-	c.cache, err = cache.NewMemDBCache(o.BypassCache)
+	c.cache, err = cache.NewMemDBCache()
 	if err != nil {
 		return nil, err
 	}

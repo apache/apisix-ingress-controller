@@ -45,25 +45,38 @@ func (srv *fakeAPISIXSSLSrv) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
-		resp := fakeListResp{
-			Count: strconv.Itoa(len(srv.ssl)),
-			Node: fakeNode{
-				Key: "/apisix/ssl",
-			},
-		}
-		var keys []string
-		for key := range srv.ssl {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			resp.Node.Items = append(resp.Node.Items, fakeItem{
-				Key:   key,
-				Value: srv.ssl[key],
-			})
+		var data []byte
+		if strings.HasSuffix(r.URL.Path, "ssl") {
+			resp := fakeListResp{
+				Count: strconv.Itoa(len(srv.ssl)),
+				Node: fakeNode{
+					Key: "/apisix/ssl",
+				},
+			}
+			var keys []string
+			for key := range srv.ssl {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
+			for _, key := range keys {
+				resp.Node.Items = append(resp.Node.Items, fakeItem{
+					Key:   key,
+					Value: srv.ssl[key],
+				})
+			}
+			data, _ = json.Marshal(resp)
+		} else {
+			paths := strings.Split(r.URL.Path, "/")
+			key := fmt.Sprintf("/apisix/ssl/%s", paths[len(paths)-1])
+			resp := fakeGetResp{
+				Item: fakeItem{
+					Key:   key,
+					Value: srv.ssl[key],
+				},
+			}
+			data, _ = json.Marshal(resp)
 		}
 		w.WriteHeader(http.StatusOK)
-		data, _ := json.Marshal(resp)
 		_, _ = w.Write(data)
 		return
 	}
@@ -168,6 +181,11 @@ func TestSSLClient(t *testing.T) {
 		ID:   "2",
 		Snis: []string{"bar.com"},
 	})
+	assert.Nil(t, err)
+	assert.Equal(t, obj.ID, "2")
+
+	// GetByID
+	obj, err = cli.GetByID(context.Background(), "2")
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "2")
 

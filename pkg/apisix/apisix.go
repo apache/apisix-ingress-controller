@@ -71,6 +71,7 @@ type Route interface {
 // list and delete for APISIX SSL resource.
 type SSL interface {
 	Get(context.Context, string) (*v1.Ssl, error)
+	GetByID(context.Context, string) (*v1.Ssl, error)
 	List(context.Context) ([]*v1.Ssl, error)
 	Create(context.Context, *v1.Ssl) (*v1.Ssl, error)
 	Delete(context.Context, *v1.Ssl) error
@@ -81,6 +82,7 @@ type SSL interface {
 // list and delete for APISIX Upstream resource.
 type Upstream interface {
 	Get(context.Context, string) (*v1.Upstream, error)
+	GetByID(context.Context, string) (*v1.Upstream, error)
 	List(context.Context) ([]*v1.Upstream, error)
 	Create(context.Context, *v1.Upstream) (*v1.Upstream, error)
 	Delete(context.Context, *v1.Upstream) error
@@ -91,6 +93,7 @@ type Upstream interface {
 // list and delete for APISIX Stream Route resource.
 type StreamRoute interface {
 	Get(context.Context, string) (*v1.StreamRoute, error)
+	GetByID(context.Context, string) (*v1.StreamRoute, error)
 	List(context.Context) ([]*v1.StreamRoute, error)
 	Create(context.Context, *v1.StreamRoute) (*v1.StreamRoute, error)
 	Delete(context.Context, *v1.StreamRoute) error
@@ -101,6 +104,7 @@ type StreamRoute interface {
 // list and delete for APISIX Global Rule resource.
 type GlobalRule interface {
 	Get(context.Context, string) (*v1.GlobalRule, error)
+	GetByID(context.Context, string) (*v1.GlobalRule, error)
 	List(context.Context) ([]*v1.GlobalRule, error)
 	Create(context.Context, *v1.GlobalRule) (*v1.GlobalRule, error)
 	Delete(context.Context, *v1.GlobalRule) error

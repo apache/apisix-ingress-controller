@@ -45,7 +45,7 @@ func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
 	return r.get(ctx, id.GenID(name), name)
 }
 
-// GetByName returns the Route with route name
+// GetByName returns the Route with route id
 func (r *routeClient) GetByID(ctx context.Context, realID string) (*v1.Route, error) {
 	return r.get(ctx, realID, realID)
 }
@@ -58,20 +58,25 @@ func (r *routeClient) get(ctx context.Context, id string, name string) (*v1.Rout
 		zap.String("url", r.url),
 		zap.String("cluster", "default"),
 	)
-	route, err := r.cluster.cache.GetRoute(id)
-	if err == nil {
-		return route, nil
-	}
-	if err != cache.ErrNotFound {
-		log.Errorw("failed to find route in cache, will try to lookup from APISIX",
-			zap.String("name", name),
-			zap.Error(err),
-		)
-	} else {
-		log.Debugw("failed to find route in cache, will try to lookup from APISIX",
-			zap.String("name", name),
-			zap.Error(err),
-		)
+
+	var route *v1.Route
+	var err error
+	if !r.cluster.bypassCache {
+		route, err = r.cluster.cache.GetRoute(id)
+		if err == nil {
+			return route, nil
+		}
+		if err != cache.ErrNotFound {
+			log.Errorw("failed to find route in cache, will try to lookup from APISIX",
+				zap.String("name", name),
+				zap.Error(err),
+			)
+		} else {
+			log.Debugw("failed to find route in cache, will try to lookup from APISIX",
+				zap.String("name", name),
+				zap.Error(err),
+			)
+		}
 	}
 
 	// TODO Add mutex here to avoid dog-pile effection.
@@ -106,9 +111,11 @@ func (r *routeClient) get(ctx context.Context, id string, name string) (*v1.Rout
 		return nil, err
 	}
 
-	if err := r.cluster.cache.InsertRoute(route); err != nil {
-		log.Errorf("failed to reflect route create to cache: %s", err)
-		return nil, err
+	if !r.cluster.bypassCache {
+		if err := r.cluster.cache.InsertRoute(route); err != nil {
+			log.Errorf("failed to reflect route create to cache: %s", err)
+			return nil, err
+		}
 	}
 	return route, nil
 }
@@ -174,9 +181,11 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	if err != nil {
 		return nil, err
 	}
-	if err := r.cluster.cache.InsertRoute(route); err != nil {
-		log.Errorf("failed to reflect route create to cache: %s", err)
-		return nil, err
+	if !r.cluster.bypassCache {
+		if err := r.cluster.cache.InsertRoute(route); err != nil {
+			log.Errorf("failed to reflect route create to cache: %s", err)
+			return nil, err
+		}
 	}
 	return route, nil
 }
@@ -195,10 +204,12 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 	if err := r.cluster.deleteResource(ctx, url); err != nil {
 		return err
 	}
-	if err := r.cluster.cache.DeleteRoute(obj); err != nil {
-		log.Errorf("failed to reflect route delete to cache: %s", err)
-		if err != cache.ErrNotFound {
-			return err
+	if !r.cluster.bypassCache {
+		if err := r.cluster.cache.DeleteRoute(obj); err != nil {
+			log.Errorf("failed to reflect route delete to cache: %s", err)
+			if err != cache.ErrNotFound {
+				return err
+			}
 		}
 	}
 	return nil
@@ -228,9 +239,11 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	if err != nil {
 		return nil, err
 	}
-	if err := r.cluster.cache.InsertRoute(route); err != nil {
-		log.Errorf("failed to reflect route update to cache: %s", err)
-		return nil, err
+	if !r.cluster.bypassCache {
+		if err := r.cluster.cache.InsertRoute(route); err != nil {
+			log.Errorf("failed to reflect route update to cache: %s", err)
+			return nil, err
+		}
 	}
 	return route, nil
 }

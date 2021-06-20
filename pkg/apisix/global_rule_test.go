@@ -45,32 +45,45 @@ func (srv *fakeAPISIXGlobalRuleSrv) ServeHTTP(w http.ResponseWriter, r *http.Req
 	}
 
 	if r.Method == http.MethodGet {
-		resp := fakeListResp{
-			Count: strconv.Itoa(len(srv.globalRule)),
-			Node: fakeNode{
-				Key: "/apisix/global_rules",
-			},
-		}
-		var keys []string
-		for key := range srv.globalRule {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			resp.Node.Items = append(resp.Node.Items, fakeItem{
-				Key:   key,
-				Value: srv.globalRule[key],
-			})
+		var data []byte
+		if strings.HasSuffix(r.URL.Path, "global_rules") {
+			resp := fakeListResp{
+				Count: strconv.Itoa(len(srv.globalRule)),
+				Node: fakeNode{
+					Key: "/apisix/global_rules",
+				},
+			}
+			var keys []string
+			for key := range srv.globalRule {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
+			for _, key := range keys {
+				resp.Node.Items = append(resp.Node.Items, fakeItem{
+					Key:   key,
+					Value: srv.globalRule[key],
+				})
+			}
+			data, _ = json.Marshal(resp)
+		} else {
+			paths := strings.Split(r.URL.Path, "/")
+			key := fmt.Sprintf("/apisix/global_rules/%s", paths[len(paths)-1])
+			resp := fakeGetResp{
+				Item: fakeItem{
+					Key:   key,
+					Value: srv.globalRule[key],
+				},
+			}
+			data, _ = json.Marshal(resp)
 		}
 		w.WriteHeader(http.StatusOK)
-		data, _ := json.Marshal(resp)
 		_, _ = w.Write(data)
 		return
 	}
 
 	if r.Method == http.MethodDelete {
 		id := strings.TrimPrefix(r.URL.Path, "/apisix/admin/global_rules/")
-		id = "/apisix/admin/global_rules/" + id
+		id = "/apisix/global_rules/" + id
 		code := http.StatusNotFound
 		if _, ok := srv.globalRule[id]; ok {
 			delete(srv.globalRule, id)
@@ -81,7 +94,7 @@ func (srv *fakeAPISIXGlobalRuleSrv) ServeHTTP(w http.ResponseWriter, r *http.Req
 
 	if r.Method == http.MethodPut {
 		paths := strings.Split(r.URL.Path, "/")
-		key := fmt.Sprintf("/apisix/admin/global_rules/%s", paths[len(paths)-1])
+		key := fmt.Sprintf("/apisix/global_rules/%s", paths[len(paths)-1])
 		data, _ := ioutil.ReadAll(r.Body)
 		srv.globalRule[key] = data
 		w.WriteHeader(http.StatusCreated)
@@ -167,6 +180,11 @@ func TestGlobalRuleClient(t *testing.T) {
 	obj, err = cli.Create(context.Background(), &v1.GlobalRule{
 		ID: "2",
 	})
+	assert.Nil(t, err)
+	assert.Equal(t, obj.ID, "2")
+
+	// GetByID
+	obj, err = cli.GetByID(context.Background(), "2")
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "2")
 

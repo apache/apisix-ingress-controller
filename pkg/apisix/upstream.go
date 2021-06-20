@@ -39,14 +39,23 @@ func newUpstreamClient(c *cluster) Upstream {
 	}
 }
 
+// Get returns the GlobalRule.
 func (u *upstreamClient) Get(ctx context.Context, name string) (*v1.Upstream, error) {
+	return u.get(ctx, id.GenID(name), name)
+}
+
+// GetByName returns the GlobalRule with global rule id
+func (u *upstreamClient) GetByID(ctx context.Context, realID string) (*v1.Upstream, error) {
+	return u.get(ctx, realID, realID)
+}
+
+func (u *upstreamClient) get(ctx context.Context, id string, name string) (*v1.Upstream, error) {
 	log.Debugw("try to look up upstream",
-		zap.String("name", name),
+		zap.String("name/id", name),
 		zap.String("url", u.url),
 		zap.String("cluster", "default"),
 	)
-	uid := id.GenID(name)
-	ups, err := u.cluster.cache.GetUpstream(uid)
+	ups, err := u.cluster.cache.GetUpstream(id)
 	if err == nil {
 		return ups, nil
 	}
@@ -63,7 +72,7 @@ func (u *upstreamClient) Get(ctx context.Context, name string) (*v1.Upstream, er
 	}
 
 	// TODO Add mutex here to avoid dog-pile effection.
-	url := u.url + "/" + uid
+	url := u.url + "/" + id
 	resp, err := u.cluster.getResource(ctx, url)
 	if err != nil {
 		if err == cache.ErrNotFound {

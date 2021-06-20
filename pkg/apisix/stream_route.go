@@ -40,33 +40,46 @@ func newStreamRouteClient(c *cluster) StreamRoute {
 }
 
 // Get returns the StreamRoute.
+func (r *streamRouteClient) Get(ctx context.Context, name string) (*v1.StreamRoute, error) {
+	return r.get(ctx, id.GenID(name), name)
+}
+
+// GetByName returns the StreamRoute with stream route id
+func (r *streamRouteClient) GetByID(ctx context.Context, realID string) (*v1.StreamRoute, error) {
+	return r.get(ctx, realID, realID)
+}
+
 // FIXME, currently if caller pass a non-existent resource, the Get always passes
 // through cache.
-func (r *streamRouteClient) Get(ctx context.Context, name string) (*v1.StreamRoute, error) {
+func (r *streamRouteClient) get(ctx context.Context, id string, name string) (*v1.StreamRoute, error) {
 	log.Debugw("try to look up stream_route",
-		zap.String("name", name),
+		zap.String("name/id", name),
 		zap.String("url", r.url),
 		zap.String("cluster", "default"),
 	)
-	rid := id.GenID(name)
-	streamRoute, err := r.cluster.cache.GetStreamRoute(rid)
-	if err == nil {
-		return streamRoute, nil
-	}
-	if err != cache.ErrNotFound {
-		log.Errorw("failed to find stream_route in cache, will try to lookup from APISIX",
-			zap.String("name", name),
-			zap.Error(err),
-		)
-	} else {
-		log.Debugw("failed to find stream_route in cache, will try to lookup from APISIX",
-			zap.String("name", name),
-			zap.Error(err),
-		)
+
+	var streamRoute *v1.StreamRoute
+	var err error
+	if !r.cluster.bypassCache {
+		streamRoute, err = r.cluster.cache.GetStreamRoute(id)
+		if err == nil {
+			return streamRoute, nil
+		}
+		if err != cache.ErrNotFound {
+			log.Errorw("failed to find stream_route in cache, will try to lookup from APISIX",
+				zap.String("name", name),
+				zap.Error(err),
+			)
+		} else {
+			log.Debugw("failed to find stream_route in cache, will try to lookup from APISIX",
+				zap.String("name", name),
+				zap.Error(err),
+			)
+		}
 	}
 
 	// TODO Add mutex here to avoid dog-pile effection.
-	url := r.url + "/" + rid
+	url := r.url + "/" + id
 	resp, err := r.cluster.getResource(ctx, url)
 	if err != nil {
 		if err == cache.ErrNotFound {
@@ -97,9 +110,11 @@ func (r *streamRouteClient) Get(ctx context.Context, name string) (*v1.StreamRou
 		return nil, err
 	}
 
-	if err := r.cluster.cache.InsertStreamRoute(streamRoute); err != nil {
-		log.Errorf("failed to reflect route create to cache: %s", err)
-		return nil, err
+	if !r.cluster.bypassCache {
+		if err := r.cluster.cache.InsertStreamRoute(streamRoute); err != nil {
+			log.Errorf("failed to reflect route create to cache: %s", err)
+			return nil, err
+		}
 	}
 	return streamRoute, nil
 }
@@ -164,9 +179,11 @@ func (r *streamRouteClient) Create(ctx context.Context, obj *v1.StreamRoute) (*v
 	if err != nil {
 		return nil, err
 	}
-	if err := r.cluster.cache.InsertStreamRoute(streamRoute); err != nil {
-		log.Errorf("failed to reflect stream_route create to cache: %s", err)
-		return nil, err
+	if !r.cluster.bypassCache {
+		if err := r.cluster.cache.InsertStreamRoute(streamRoute); err != nil {
+			log.Errorf("failed to reflect stream_route create to cache: %s", err)
+			return nil, err
+		}
 	}
 	return streamRoute, nil
 }
@@ -184,10 +201,12 @@ func (r *streamRouteClient) Delete(ctx context.Context, obj *v1.StreamRoute) err
 	if err := r.cluster.deleteResource(ctx, url); err != nil {
 		return err
 	}
-	if err := r.cluster.cache.DeleteStreamRoute(obj); err != nil {
-		log.Errorf("failed to reflect stream_route delete to cache: %s", err)
-		if err != cache.ErrNotFound {
-			return err
+	if !r.cluster.bypassCache {
+		if err := r.cluster.cache.DeleteStreamRoute(obj); err != nil {
+			log.Errorf("failed to reflect stream_route delete to cache: %s", err)
+			if err != cache.ErrNotFound {
+				return err
+			}
 		}
 	}
 	return nil
@@ -216,9 +235,11 @@ func (r *streamRouteClient) Update(ctx context.Context, obj *v1.StreamRoute) (*v
 	if err != nil {
 		return nil, err
 	}
-	if err := r.cluster.cache.InsertStreamRoute(streamRoute); err != nil {
-		log.Errorf("failed to reflect stream_route update to cache: %s", err)
-		return nil, err
+	if !r.cluster.bypassCache {
+		if err := r.cluster.cache.InsertStreamRoute(streamRoute); err != nil {
+			log.Errorf("failed to reflect stream_route update to cache: %s", err)
+			return nil, err
+		}
 	}
 	return streamRoute, nil
 }
