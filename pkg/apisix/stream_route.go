@@ -58,8 +58,10 @@ func (r *streamRouteClient) get(ctx context.Context, id string, name string) (*v
 		zap.String("cluster", "default"),
 	)
 
-	var streamRoute *v1.StreamRoute
-	var err error
+	var (
+		streamRoute *v1.StreamRoute
+		err         error
+	)
 	if !r.cluster.bypassCache {
 		streamRoute, err = r.cluster.cache.GetStreamRoute(id)
 		if err == nil {

@@ -57,8 +57,10 @@ func (s *sslClient) get(ctx context.Context, id string, name string) (*v1.Ssl, e
 		zap.String("cluster", "default"),
 	)
 
-	var ssl *v1.Ssl
-	var err error
+	var (
+		ssl *v1.Ssl
+		err error
+	)
 	if !s.cluster.bypassCache {
 		ssl, err = s.cluster.cache.GetSSL(id)
 		if err == nil {

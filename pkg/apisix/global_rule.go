@@ -58,8 +58,10 @@ func (r *globalRuleClient) get(ctx context.Context, id string, name string) (*v1
 		zap.String("cluster", "default"),
 	)
 
-	var globalRule *v1.GlobalRule
-	var err error
+	var (
+		globalRule *v1.GlobalRule
+		err        error
+	)
 	if !r.cluster.bypassCache {
 		globalRule, err = r.cluster.cache.GetGlobalRule(id)
 		if err == nil {

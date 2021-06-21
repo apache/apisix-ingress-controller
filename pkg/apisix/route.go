@@ -59,8 +59,10 @@ func (r *routeClient) get(ctx context.Context, id string, name string) (*v1.Rout
 		zap.String("cluster", "default"),
 	)
 
-	var route *v1.Route
-	var err error
+	var (
+		route *v1.Route
+		err   error
+	)
 	if !r.cluster.bypassCache {
 		route, err = r.cluster.cache.GetRoute(id)
 		if err == nil {

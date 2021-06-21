@@ -55,20 +55,26 @@ func (u *upstreamClient) get(ctx context.Context, id string, name string) (*v1.U
 		zap.String("url", u.url),
 		zap.String("cluster", "default"),
 	)
-	ups, err := u.cluster.cache.GetUpstream(id)
-	if err == nil {
-		return ups, nil
-	}
-	if err != cache.ErrNotFound {
-		log.Errorw("failed to find upstream in cache, will try to lookup from APISIX",
-			zap.String("name", name),
-			zap.Error(err),
-		)
-	} else {
-		log.Debugw("failed to find upstream in cache, will try to lookup from APISIX",
-			zap.String("name", name),
-			zap.Error(err),
-		)
+	var (
+		ups *v1.Upstream
+		err error
+	)
+	if !u.cluster.bypassCache {
+		ups, err := u.cluster.cache.GetUpstream(id)
+		if err == nil {
+			return ups, nil
+		}
+		if err != cache.ErrNotFound {
+			log.Errorw("failed to find upstream in cache, will try to lookup from APISIX",
+				zap.String("name", name),
+				zap.Error(err),
+			)
+		} else {
+			log.Debugw("failed to find upstream in cache, will try to lookup from APISIX",
+				zap.String("name", name),
+				zap.Error(err),
+			)
+		}
 	}
 
 	// TODO Add mutex here to avoid dog-pile effection.
@@ -102,9 +108,11 @@ func (u *upstreamClient) get(ctx context.Context, id string, name string) (*v1.U
 		return nil, err
 	}
 
-	if err := u.cluster.cache.InsertUpstream(ups); err != nil {
-		log.Errorf("failed to reflect upstream create to cache: %s", err)
-		return nil, err
+	if !u.cluster.bypassCache {
+		if err := u.cluster.cache.InsertUpstream(ups); err != nil {
+			log.Errorf("failed to reflect upstream create to cache: %s", err)
+			return nil, err
+		}
 	}
 	return ups, nil
 }
@@ -167,9 +175,11 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	if err != nil {
 		return nil, err
 	}
-	if err := u.cluster.cache.InsertUpstream(ups); err != nil {
-		log.Errorf("failed to reflect upstream create to cache: %s", err)
-		return nil, err
+	if !u.cluster.bypassCache {
+		if err := u.cluster.cache.InsertUpstream(ups); err != nil {
+			log.Errorf("failed to reflect upstream create to cache: %s", err)
+			return nil, err
+		}
 	}
 	return ups, err
 }
@@ -189,10 +199,12 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 	if err := u.cluster.deleteResource(ctx, url); err != nil {
 		return err
 	}
-	if err := u.cluster.cache.DeleteUpstream(obj); err != nil {
-		log.Errorf("failed to reflect upstream delete to cache: %s", err.Error())
-		if err != cache.ErrNotFound {
-			return err
+	if !u.cluster.bypassCache {
+		if err := u.cluster.cache.DeleteUpstream(obj); err != nil {
+			log.Errorf("failed to reflect upstream delete to cache: %s", err.Error())
+			if err != cache.ErrNotFound {
+				return err
+			}
 		}
 	}
 	return nil
@@ -225,9 +237,11 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	if err != nil {
 		return nil, err
 	}
-	if err := u.cluster.cache.InsertUpstream(ups); err != nil {
-		log.Errorf("failed to reflect upstream update to cache: %s", err)
-		return nil, err
+	if !u.cluster.bypassCache {
+		if err := u.cluster.cache.InsertUpstream(ups); err != nil {
+			log.Errorf("failed to reflect upstream update to cache: %s", err)
+			return nil, err
+		}
 	}
 	return ups, err
 }
