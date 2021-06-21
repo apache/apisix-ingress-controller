@@ -60,7 +60,7 @@ func (u *upstreamClient) get(ctx context.Context, id string, name string) (*v1.U
 		err error
 	)
 	if !u.cluster.bypassCache {
-		ups, err := u.cluster.cache.GetUpstream(id)
+		ups, err = u.cluster.cache.GetUpstream(id)
 		if err == nil {
 			return ups, nil
 		}
