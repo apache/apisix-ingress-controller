@@ -131,7 +131,7 @@ func (t *translator) translateUpstreamFromKnativeIngressV1alpha1(namespace strin
 	if err != nil {
 		return nil, err
 	}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, portNumber)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }
