@@ -54,7 +54,7 @@ func (r *routeClient) GetByID(ctx context.Context, realID string) (*v1.Route, er
 // through cache.
 func (r *routeClient) get(ctx context.Context, id string, name string) (*v1.Route, error) {
 	log.Debugw("try to look up route",
-		zap.String("name", name),
+		zap.String("name/id", name),
 		zap.String("url", r.url),
 		zap.String("cluster", "default"),
 	)
