@@ -51,11 +51,8 @@ func (t *translator) translateKnativeIngressV1alpha1(ing *knativev1alpha1.Ingres
 				err error
 			)
 			knativeBackend := knativeSelectSplit(httpPath.Splits)
-			servicePort := knativeBackend.ServicePort
-			serviceName := fmt.Sprintf("%s.%s.%s", knativeBackend.ServiceNamespace, knativeBackend.ServiceName,
-				servicePort)
-			//serviceHost := fmt.Sprintf("%s.%s.%s.svc", knativeBackend.ServiceName, knativeBackend.ServiceNamespace,
-			//	servicePort.String())
+			serviceName := knativeBackend.IngressBackend.ServiceName
+			servicePort := knativeBackend.IngressBackend.ServicePort
 
 			if serviceName != "" {
 				ups, err = t.translateUpstreamFromKnativeIngressV1alpha1(ing.Namespace, serviceName, servicePort)
@@ -93,6 +90,19 @@ func (t *translator) translateKnativeIngressV1alpha1(ing *knativev1alpha1.Ingres
 			route.ID = id.GenID(route.Name)
 			route.Hosts = hosts
 			route.Uris = uris
+
+			// add APISIX plugin "proxy-rewrite" to support KIngress' `appendHeaders` property
+			var proxyRewritePlugin apisixv1.RewriteConfig
+			headers := make(map[string]string)
+			for key, value := range knativeBackend.AppendHeaders {
+				headers[key] = value
+			}
+			for key, value := range httpPath.AppendHeaders {
+				headers[key] = value
+			}
+			proxyRewritePlugin.RewriteHeaders = headers
+			plugins["proxy-rewrite"] = proxyRewritePlugin
+
 			if len(plugins) > 0 {
 				route.Plugins = *(plugins.DeepCopy())
 			}
