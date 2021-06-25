@@ -21,7 +21,6 @@ function upload_test_images() {
         `# ko resolve is being used for the side-effect of publishing images,` \
         `# so the resulting yaml produced is ignored.` \
         | ko resolve ${tag_option} -RBf- > /dev/null
-      break
     done
   )
 }
