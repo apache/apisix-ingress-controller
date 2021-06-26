@@ -35,9 +35,13 @@ export APISIX_GATEWAY_AUTHORITY=${NODE_IP}:${GATEWAY_PORT}
 echo "You can connect to APISIX Admin at ${APISIX_ADMIN_AUTHORITY}"
 echo "Example usage: 'curl \"http://${APISIX_ADMIN_AUTHORITY}/apisix/admin/services/\" -H 'X-API-KEY: edd1c9f034335f136f87ad84b625c8f1'"
 
+echo "Wait for APISIX deployment to be up (timeout=300s)"
+kubectl -n ${APISIX_NAMESPACE} wait --timeout=300s --for=condition=Available deployments --all
+
 echo "Deploying APISIX ingress controller"
 # https://github.com/google/ko#does-ko-work-with-kustomize
 # https://github.com/apache/apisix-ingress-controller/blob/master/install.md#kustomize-support
+# TODO: add GO_LDFLAGS when build and see whether it can change the version 'unknown' build by ko publish
 kubectl kustomize samples/deploy |
   sed 's/LoadBalancer/NodePort/g' |
   ko resolve -f - |
