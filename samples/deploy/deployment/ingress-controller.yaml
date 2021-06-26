@@ -43,6 +43,7 @@ spec:
       containers:
       - image: ko://../apisix-ingress-controller
         imagePullPolicy: IfNotPresent
+        args: ["ingress", "--config-path", "/ingress-apisix/conf/config.yaml"]
         name: ingress-controller
         ports:
         - containerPort: 8080

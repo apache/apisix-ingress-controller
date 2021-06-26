@@ -100,8 +100,10 @@ func (t *translator) translateKnativeIngressV1alpha1(ing *knativev1alpha1.Ingres
 			for key, value := range httpPath.AppendHeaders {
 				headers[key] = value
 			}
-			proxyRewritePlugin.RewriteHeaders = headers
-			plugins["proxy-rewrite"] = proxyRewritePlugin
+			if len(headers) > 0 {
+				proxyRewritePlugin.RewriteHeaders = headers
+				plugins["proxy-rewrite"] = proxyRewritePlugin
+			}
 
 			if len(plugins) > 0 {
 				route.Plugins = *(plugins.DeepCopy())
