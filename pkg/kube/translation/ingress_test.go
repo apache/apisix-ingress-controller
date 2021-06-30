@@ -16,6 +16,7 @@ package translation
 
 import (
 	"context"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"testing"
 
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -247,8 +248,7 @@ func TestTranslateIngressV1(t *testing.T) {
 	informersFactory := informers.NewSharedInformerFactory(client, 0)
 	svcInformer := informersFactory.Core().V1().Services().Informer()
 	svcLister := informersFactory.Core().V1().Services().Lister()
-	epInformer := informersFactory.Core().V1().Endpoints().Informer()
-	epLister := informersFactory.Core().V1().Endpoints().Lister()
+	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := fakeapisix.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
 	processCh := make(chan struct{})
@@ -277,7 +277,7 @@ func TestTranslateIngressV1(t *testing.T) {
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
 			ServiceLister:        svcLister,
-			EndpointsLister:      epLister,
+			EndpointLister:      epLister,
 			ApisixUpstreamLister: apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister(),
 		},
 	}
@@ -468,8 +468,7 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	informersFactory := informers.NewSharedInformerFactory(client, 0)
 	svcInformer := informersFactory.Core().V1().Services().Informer()
 	svcLister := informersFactory.Core().V1().Services().Lister()
-	epInformer := informersFactory.Core().V1().Endpoints().Informer()
-	epLister := informersFactory.Core().V1().Endpoints().Lister()
+	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := fakeapisix.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
 	processCh := make(chan struct{})
@@ -498,7 +497,7 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
 			ServiceLister:        svcLister,
-			EndpointsLister:      epLister,
+			EndpointLister:      epLister,
 			ApisixUpstreamLister: apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister(),
 		},
 	}
@@ -581,8 +580,7 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 	informersFactory := informers.NewSharedInformerFactory(client, 0)
 	svcInformer := informersFactory.Core().V1().Services().Informer()
 	svcLister := informersFactory.Core().V1().Services().Lister()
-	epInformer := informersFactory.Core().V1().Endpoints().Informer()
-	epLister := informersFactory.Core().V1().Endpoints().Lister()
+	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := fakeapisix.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
 	processCh := make(chan struct{})
@@ -611,7 +609,7 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
 			ServiceLister:        svcLister,
-			EndpointsLister:      epLister,
+			EndpointLister:      epLister,
 			ApisixUpstreamLister: apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister(),
 		},
 	}

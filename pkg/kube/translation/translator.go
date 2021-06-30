@@ -214,10 +214,10 @@ func (t *translator) TranslateUpstreamNodes(endpoint kube.Endpoint, port int32, 
 	// As nodes is not optional, here we create an empty slice,
 	// not a nil slice.
 	nodes := make(apisixv1.UpstreamNodes, 0)
-	for _, addr := range endpoint.Addresses(port) {
+	for _, hostport := range endpoint.Endpoints(svcPort) {
 		nodes = append(nodes, apisixv1.UpstreamNode{
-			Host: addr,
-			Port: int(port),
+			Host: hostport.Host,
+			Port: hostport.Port,
 			// FIXME Custom node weight
 			Weight: _defaultWeight,
 		})

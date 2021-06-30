@@ -94,10 +94,10 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 	svc, err := c.controller.svcLister.Services(ep.Namespace()).Get(svcName)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			log.Infof("service %s/%s not found", ep.Namespace, svcName)
+			log.Infof("service %s/%s not found", ep.Namespace(), svcName)
 			return nil
 		}
-		log.Errorf("failed to get service %s/%s: %s", ep.Namespace, svcName, err)
+		log.Errorf("failed to get service %s/%s: %s", ep.Namespace(), svcName, err)
 		return err
 	}
 	var subsets []configv1.ApisixUpstreamSubset
@@ -105,7 +105,7 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 	au, err := c.controller.apisixUpstreamLister.ApisixUpstreams(namespace).Get(svcName)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
-			log.Errorf("failed to get ApisixUpstream %s/%s: %s", ep.Namespace, svcName, err)
+			log.Errorf("failed to get ApisixUpstream %s/%s: %s", ep.Namespace(), svcName, err)
 			return err
 		}
 	} else if len(au.Spec.Subsets) > 0 {

@@ -24,6 +24,11 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+type HostPort struct {
+	Host string
+	Port int
+}
+
 // EndpointLister is an encapsulation for the lister of Kubernetes
 // Endpoint and EndpointSlice.
 type EndpointLister interface {
@@ -75,8 +80,8 @@ type Endpoint interface {
 	ServiceName() string
 	// Namespace returns the residing namespace.
 	Namespace() string
-	// Addresses returns the Pod IP list which exposing the given port.
-	Addresses(int32) []string
+	// Endpoints returns the corresponding endpoints which matches the ServicePort.
+	Endpoints(port *corev1.ServicePort) []HostPort
 }
 
 type endpoint struct {
@@ -98,40 +103,48 @@ func (e *endpoint) Namespace() string {
 	return e.endpointSlices[0].Namespace
 }
 
-func (e *endpoint) Addresses(port int32) []string{
-	var addrs []string
+func (e *endpoint) Endpoints(svcPort *corev1.ServicePort) []HostPort {
+	var addrs []HostPort
 	if e.endpoint != nil {
 		for _, subset := range e.endpoint.Subsets {
-			var found bool
+			epPort := -1
 			for _, subsetPort := range subset.Ports {
-				if subsetPort.Port == port {
-					found = true
+				if subsetPort.Name == svcPort.Name {
+					epPort = int(subsetPort.Port)
 					break
 				}
 			}
-			if found {
+			if epPort != -1 {
 				for _, addr := range subset.Addresses {
-					addrs = append(addrs, addr.IP)
+					addrs = append(addrs, HostPort{
+						Host: addr.IP,
+						Port: epPort,
+					})
 				}
 			}
 		}
 	} else {
 		for _, slice := range e.endpointSlices {
-			var found bool
+			epPort := -1
 			for _, slicePort := range slice.Ports {
 				// TODO Consider the case that port not restricted.
-				if slicePort.Port != nil && *slicePort.Port == port {
-					found = true
+				if slicePort.Name != nil && *slicePort.Name == svcPort.Name && slicePort.Port != nil {
+					epPort = int(*slicePort.Port)
 					break
 				}
 			}
-			if found {
+			if epPort != -1 {
 				for _, ep := range slice.Endpoints {
-					if ep.Conditions.Ready != nil && *ep.Conditions.Ready != true {
+					if ep.Conditions.Ready != nil && !*ep.Conditions.Ready {
 						// Ignore not ready endpoints.
 						continue
 					}
-					addrs = append(addrs, ep.Addresses...)
+					for _, addr := range ep.Addresses {
+						addrs = append(addrs, HostPort{
+							Host: addr,
+							Port: epPort,
+						})
+					}
 				}
 			}
 		}
@@ -145,7 +158,7 @@ func NewEndpointListerAndInformer(factory informers.SharedInformerFactory, useEn
 		epLister endpointLister
 		informer cache.SharedIndexInformer
 	)
-	if useEndpointSlice {
+	if !useEndpointSlice {
 		epLister.epLister = factory.Core().V1().Endpoints().Lister()
 		informer = factory.Core().V1().Endpoints().Informer()
 	} else {
@@ -153,4 +166,11 @@ func NewEndpointListerAndInformer(factory informers.SharedInformerFactory, useEn
 		informer = factory.Discovery().V1().EndpointSlices().Informer()
 	}
 	return &epLister, informer
+}
+
+// NewEndpoint creates an Endpoint which entity is Kubernetes Endpoints.
+func NewEndpoint(ep *corev1.Endpoints) Endpoint {
+	return &endpoint{
+		endpoint: ep,
+	}
 }

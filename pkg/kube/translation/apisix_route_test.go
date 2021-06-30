@@ -16,6 +16,7 @@ package translation
 
 import (
 	"context"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -239,8 +240,7 @@ func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 	informersFactory := informers.NewSharedInformerFactory(client, 0)
 	svcInformer := informersFactory.Core().V1().Services().Informer()
 	svcLister := informersFactory.Core().V1().Services().Lister()
-	epInformer := informersFactory.Core().V1().Endpoints().Informer()
-	epLister := informersFactory.Core().V1().Endpoints().Lister()
+	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := fakeapisix.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
 
@@ -251,7 +251,7 @@ func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 
 	tr := &translator{
 		&TranslatorOptions{
-			EndpointsLister:      epLister,
+			EndpointLister:      epLister,
 			ServiceLister:        svcLister,
 			ApisixUpstreamLister: apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister(),
 		},
