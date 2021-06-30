@@ -73,6 +73,7 @@ type KubernetesConfig struct {
 	ElectionID         string             `json:"election_id" yaml:"election_id"`
 	IngressClass       string             `json:"ingress_class" yaml:"ingress_class"`
 	IngressVersion     string             `json:"ingress_version" yaml:"ingress_version"`
+	WatchEndpointSlices bool 			  `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
 	ApisixRouteVersion string             `json:"apisix_route_version" yaml:"apisix_route_version"`
 }
 
@@ -111,6 +112,7 @@ func NewDefaultConfig() *Config {
 			IngressClass:       IngressClass,
 			IngressVersion:     IngressNetworkingV1,
 			ApisixRouteVersion: ApisixRouteV2alpha1,
+			WatchEndpointSlices: false,
 		},
 	}
 }

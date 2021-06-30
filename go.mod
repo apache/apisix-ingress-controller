@@ -3,6 +3,7 @@ module github.com/apache/apisix-ingress-controller
 go 1.13
 
 require (
+	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gin-gonic/gin v1.6.3
 	github.com/hashicorp/go-memdb v1.0.4
 	github.com/hashicorp/go-multierror v1.0.0
@@ -19,8 +20,8 @@ require (
 	go.uber.org/zap v1.13.0
 	golang.org/x/net v0.0.0-20210224082022-3d97a244fca7
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.20.2
-	k8s.io/apimachinery v0.20.2
-	k8s.io/client-go v0.20.2
+	k8s.io/api v0.21.1
+	k8s.io/apimachinery v0.21.1
+	k8s.io/client-go v0.21.1
 	k8s.io/code-generator v0.21.1
 )
