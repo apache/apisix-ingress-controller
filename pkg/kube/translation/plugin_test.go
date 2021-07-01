@@ -172,7 +172,7 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 
 	tr := &translator{&TranslatorOptions{
 		ServiceLister:        svcLister,
-		EndpointLister:      epLister,
+		EndpointLister:       epLister,
 		ApisixUpstreamLister: auLister,
 	}}
 	ctx := &TranslateContext{
@@ -343,7 +343,7 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 
 	tr := &translator{&TranslatorOptions{
 		ServiceLister:        svcLister,
-		EndpointLister:      epLister,
+		EndpointLister:       epLister,
 		ApisixUpstreamLister: auLister,
 	}}
 	ctx := &TranslateContext{upstreamMap: make(map[string]struct{})}
@@ -507,7 +507,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 
 	tr := &translator{&TranslatorOptions{
 		ServiceLister:        svcLister,
-		EndpointLister:      epLister,
+		EndpointLister:       epLister,
 		ApisixUpstreamLister: auLister,
 	}}
 	ctx := &TranslateContext{upstreamMap: make(map[string]struct{})}

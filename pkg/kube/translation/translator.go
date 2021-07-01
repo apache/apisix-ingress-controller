@@ -70,6 +70,9 @@ type Translator interface {
 	// TranslateRouteV2alpha1 translates the configv2alpha1.ApisixRoute object into several Route
 	// and Upstream resources.
 	TranslateRouteV2alpha1(*configv2alpha1.ApisixRoute) (*TranslateContext, error)
+	// TranslateRouteV2alpha1NotStrictly translates the configv2alpha1.ApisixRoute object into several Route
+	// and Upstream resources not strictly, only used for delete event.
+	TranslateRouteV2alpha1NotStrictly(*configv2alpha1.ApisixRoute) (*TranslateContext, error)
 	// TranslateSSL translates the configv2alpha1.ApisixTls object into the APISIX SSL resource.
 	TranslateSSL(*configv1.ApisixTls) (*apisixv1.Ssl, error)
 	// TranslateClusterConfig translates the configv2alpha1.ApisixClusterConfig object into the APISIX
@@ -123,7 +126,7 @@ func (t *translator) TranslateUpstreamConfig(au *configv1.ApisixUpstreamConfig) 
 func (t *translator) TranslateUpstream(namespace, name, subset string, port int32) (*apisixv1.Upstream, error) {
 	var (
 		endpoint kube.Endpoint
-		err error
+		err      error
 	)
 	if t.UseEndpointSlices {
 		endpoint, err = t.EndpointLister.GetEndpointSlices(namespace, name)

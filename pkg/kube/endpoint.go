@@ -41,7 +41,7 @@ type EndpointLister interface {
 }
 
 type endpointLister struct {
-	epLister listerscorev1.EndpointsLister
+	epLister  listerscorev1.EndpointsLister
 	epsLister listersdiscoveryv1.EndpointSliceLister
 }
 
@@ -85,7 +85,7 @@ type Endpoint interface {
 }
 
 type endpoint struct {
-	endpoint *corev1.Endpoints
+	endpoint       *corev1.Endpoints
 	endpointSlices []*discoveryv1.EndpointSlice
 }
 

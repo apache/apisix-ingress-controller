@@ -94,6 +94,21 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 				zap.String("namespace", v.Namespace),
 			)
 		}
+	case *configv2alpha1.ApisixConsumer:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = &conditions
+		}
+		meta.SetStatusCondition(v.Status.Conditions, condition)
+		if _, errRecord := client.ApisixV2alpha1().ApisixConsumers(v.Namespace).
+			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+			log.Errorw("failed to record status change for ApisixConsumer",
+				zap.Error(errRecord),
+				zap.String("name", v.Name),
+				zap.String("namespace", v.Namespace),
+			)
+		}
 	default:
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
