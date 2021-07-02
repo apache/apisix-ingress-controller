@@ -565,9 +565,15 @@ rules:
       - apisix.apache.org
     resources:
       - apisixroutes
+      - apisixroutes/status
       - apisixupstreams
-      - apisixservices
+      - apisixupstreams/status
       - apisixtlses
+      - apisixtlses/status
+      - apisixclusterconfigs
+      - apisixclusterconfigs/status
+      - apisixconsumers
+      - apisixconsumers/status
     verbs:
       - get
       - list
