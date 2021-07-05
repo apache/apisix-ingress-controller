@@ -73,7 +73,7 @@ jobs:
           submodules: recursive
       - name: Install kind
         run: |
-          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.10.0/kind-linux-amd64
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
           chmod +x ./kind
           sudo mv kind /usr/local/bin
       - name: Setup Go Env
@@ -84,6 +84,10 @@ jobs:
         run: |
           go get -u github.com/onsi/ginkgo/ginkgo
           sudo cp ~/go/bin/ginkgo /usr/local/bin
+      - name: Create K8s cluster
+        run: |
+          make kind-up
+          kubectl wait --for=condition=Ready nodes --all
       - name: Run e2e test cases
         working-directory: ./
         run: |
