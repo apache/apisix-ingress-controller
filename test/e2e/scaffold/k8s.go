@@ -32,8 +32,26 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
+type resourceCount struct {
+	StrValue string
+	IntValue int
+}
+
+func (rc resourceCount) UnmarshalJSON(p []byte) error {
+	if p[0] == '"' {
+		rc.StrValue = string(p[1:len(p)-1])
+	} else {
+		intVal, err := strconv.Atoi(string(p))
+		if err != nil {
+			return err
+		}
+		rc.IntValue = intVal
+	}
+	return nil
+}
+
 type counter struct {
-	Count string `json:"count"`
+	Count  resourceCount `json:"count"`
 }
 
 // ApisixRoute is the ApisixRoute CRD definition.
@@ -150,18 +168,26 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 			ginkgo.GinkgoT().Logf("got status code %d from APISIX", resp.StatusCode)
 			return false, nil
 		}
-		var c counter
+		var (
+			c counter
+			count int
+		)
 		dec := json.NewDecoder(resp.Body)
 		if err := dec.Decode(&c); err != nil {
 			return false, err
 		}
 		// NOTE count field is a string.
-		count, err := strconv.Atoi(c.Count)
-		if err != nil {
-			return false, err
+		if c.Count.StrValue == "" {
+			count = c.Count.IntValue
+		} else {
+			count, err = strconv.Atoi(c.Count.StrValue)
+			if err != nil {
+				return false, err
+			}
+			count--
 		}
 		// 1 for dir.
-		if count != desired+1 {
+		if count != desired {
 			ginkgo.GinkgoT().Logf("mismatched number of items, expected %d but found %d", desired, count-1)
 			return false, nil
 		}
@@ -402,4 +428,8 @@ func (s *Scaffold) newAPISIXTunnels() error {
 // Namespace returns the current working namespace.
 func (s *Scaffold) Namespace() string {
 	return s.kubectlOptions.Namespace
+}
+
+func (s *Scaffold) NamespaceContent() string {
+	return ""
 }

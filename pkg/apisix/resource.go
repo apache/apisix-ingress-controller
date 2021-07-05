@@ -18,11 +18,30 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
+
+type resourceCount struct {
+	StrValue string
+	IntValue int
+}
+
+func (rc resourceCount) UnmarshalJSON(p []byte) error {
+	if p[0] == '"' {
+		rc.StrValue = string(p[1:len(p)-1])
+	} else {
+		intVal, err := strconv.Atoi(string(p))
+		if err != nil {
+			return err
+		}
+		rc.IntValue = intVal
+	}
+	return nil
+}
 
 type getResponse struct {
 	Item item `json:"node"`
@@ -30,7 +49,7 @@ type getResponse struct {
 
 // listResponse is the unified LIST response mapping of APISIX.
 type listResponse struct {
-	Count string `json:"count"`
+	Count resourceCount `json:"count"`
 	Node  node   `json:"node"`
 }
 
