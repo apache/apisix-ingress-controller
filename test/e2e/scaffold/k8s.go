@@ -33,24 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-type resourceCount struct {
-	StrValue string
-	IntValue int
-}
-
-func (rc resourceCount) UnmarshalJSON(p []byte) error {
-	if p[0] == '"' {
-		rc.StrValue = string(p[1:len(p)-1])
-	} else {
-		intVal, err := strconv.Atoi(string(p))
-		if err != nil {
-			return err
-		}
-		rc.IntValue = intVal
-	}
-	return nil
-}
-
 type counter struct {
 	Count apisix.IntOrString `json:"count"`
 }
