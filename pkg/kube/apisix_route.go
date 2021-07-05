@@ -19,6 +19,7 @@ import (
 
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	configv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	listersv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2alpha1"
 )
@@ -28,6 +29,8 @@ const (
 	ApisixRouteV1 = "apisix.apache.org/v1"
 	// ApisixRouteV2alpha1 represents the APisixRoute in apisix.apache.org/v2alpha1 group version
 	ApisixRouteV2alpha1 = "apisix.apache.org/v2alpha1"
+	// ApisixRouteV2beta1 represents the APisixRoute in apisix.apache.org/v2beta1 group version
+	ApisixRouteV2beta1 = "apisix.apache.org/v2beta1"
 )
 
 // ApisixRouteLister is an encapsulation for the lister of ApisixRoute,
@@ -52,11 +55,14 @@ type ApisixRoute interface {
 	// real ApisixRoute.
 	GroupVersion() string
 	// V1 returns the ApisixRoute in apisix.apache.org/v1, the real
-	// ApisixRoute must be in this group version, or V1() will panic.
+	// ApisixRoute must be in this group version, otherwise will panic.
 	V1() *configv1.ApisixRoute
-	// V2alpha1 returns the ApisixRoute in apisix.apache.org/v1alpha1, the real
-	// ApisixRoute must be in this group version, or V2alpha1() will panic.
+	// V2alpha1 returns the ApisixRoute in apisix.apache.org/v2alpha1, the real
+	// ApisixRoute must be in this group version, otherwise will panic.
 	V2alpha1() *configv2alpha1.ApisixRoute
+	// V2beta1 returns the ApisixRoute in apisix.apache.org/v2beta1, the real
+	// ApisixRoute must be in this group version, otherwise will panic.
+	V2beta1() *configv2beta1.ApisixRoute
 	// ResourceVersion returns the the resource version field inside
 	// the real ApisixRoute.
 	ResourceVersion() string
@@ -74,6 +80,7 @@ type apisixRoute struct {
 	groupVersion string
 	v1           *configv1.ApisixRoute
 	v2alpha1     *configv2alpha1.ApisixRoute
+	v2beta1      *configv2beta1.ApisixRoute
 }
 
 func (ar *apisixRoute) V1() *configv1.ApisixRoute {
@@ -88,6 +95,13 @@ func (ar *apisixRoute) V2alpha1() *configv2alpha1.ApisixRoute {
 		panic("not a apisix.apache.org/v2alpha1 ingress")
 	}
 	return ar.v2alpha1
+}
+
+func (ar *apisixRoute) V2beta1() *configv2beta1.ApisixRoute {
+	if ar.groupVersion != ApisixRouteV2beta1 {
+		panic("not a apisix.apache.org/v2beta1 ingress")
+	}
+	return ar.v2beta1
 }
 
 func (ar *apisixRoute) GroupVersion() string {
