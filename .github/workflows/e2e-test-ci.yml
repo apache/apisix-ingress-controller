@@ -84,6 +84,10 @@ jobs:
         run: |
           go get -u github.com/onsi/ginkgo/ginkgo
           sudo cp ~/go/bin/ginkgo /usr/local/bin
+      - name: Create K8s cluster
+        run: |
+          make kind-up
+          kubectl get nodes
       - name: Run e2e test cases
         working-directory: ./
         run: |
