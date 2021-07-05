@@ -20,7 +20,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
@@ -423,8 +422,4 @@ func (s *Scaffold) newAPISIXTunnels() error {
 // Namespace returns the current working namespace.
 func (s *Scaffold) Namespace() string {
 	return s.kubectlOptions.Namespace
-}
-
-func (s *Scaffold) NamespaceContent() string {
-	return ""
 }
