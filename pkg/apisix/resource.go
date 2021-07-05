@@ -25,11 +25,6 @@ import (
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-type resourceCount struct {
-	StrValue string
-	IntValue int
-}
-
 func (rc resourceCount) UnmarshalJSON(p []byte) error {
 	if p[0] == '"' {
 		rc.StrValue = string(p[1:len(p)-1])
@@ -49,8 +44,23 @@ type getResponse struct {
 
 // listResponse is the unified LIST response mapping of APISIX.
 type listResponse struct {
-	Count resourceCount `json:"count"`
-	Node  node   `json:"node"`
+	Count IntOrString `json:"count"`
+	Node  node        `json:"node"`
+}
+
+// IntOrString processing number and string types, after json deserialization will output int
+type IntOrString struct {
+	IntValue int `json:"int_value"`
+}
+
+func (ios *IntOrString) UnmarshalJSON(p []byte) error {
+	result := strings.Trim(string(p), "\"")
+	count, err := strconv.Atoi(result)
+	if err != nil {
+		return err
+	}
+	ios.IntValue = count
+	return nil
 }
 
 type createResponse struct {

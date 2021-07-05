@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -455,7 +456,8 @@ func ComposeConsumerName(namespace, name string) string {
 	p := make([]byte, 0, len(namespace)+len(name)+1)
 	buf := bytes.NewBuffer(p)
 
-	buf.WriteString(namespace)
+	// TODO If APISIX modifies the consumer name schema, we can drop this.
+	buf.WriteString(strings.Replace(namespace, "-", "_", -1))
 	buf.WriteString("_")
 	buf.WriteString(name)
 

@@ -17,6 +17,7 @@ package scaffold
 import (
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -51,7 +52,7 @@ func (rc resourceCount) UnmarshalJSON(p []byte) error {
 }
 
 type counter struct {
-	Count  resourceCount `json:"count"`
+	Count apisix.IntOrString `json:"count"`
 }
 
 // ApisixRoute is the ApisixRoute CRD definition.
@@ -168,27 +169,18 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 			ginkgo.GinkgoT().Logf("got status code %d from APISIX", resp.StatusCode)
 			return false, nil
 		}
-		var (
-			c counter
-			count int
-		)
-		dec := json.NewDecoder(resp.Body)
-		if err := dec.Decode(&c); err != nil {
+		var c counter
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
 			return false, err
 		}
-		// NOTE count field is a string.
-		if c.Count.StrValue == "" {
-			count = c.Count.IntValue
-		} else {
-			count, err = strconv.Atoi(c.Count.StrValue)
-			if err != nil {
-				return false, err
-			}
-			count--
+		err = json.Unmarshal(b, &c)
+		if err != nil {
+			return false, err
 		}
-		// 1 for dir.
+		count := c.Count.IntValue
 		if count != desired {
-			ginkgo.GinkgoT().Logf("mismatched number of items, expected %d but found %d", desired, count-1)
+			ginkgo.GinkgoT().Logf("mismatched number of items, expected %d but found %d", desired, count)
 			return false, nil
 		}
 		return true, nil
@@ -315,6 +307,27 @@ func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
 		return nil, err
 	}
 	return cli.Cluster("").Route().List(context.TODO())
+}
+
+// ListApisixConsumers list all consumers from APISIX.
+func (s *Scaffold) ListApisixConsumers() ([]*v1.Consumer, error) {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "apisix/admin",
+	}
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(&apisix.ClusterOptions{
+		BaseURL:  u.String(),
+		AdminKey: s.opts.APISIXAdminAPIKey,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cli.Cluster("").Consumer().List(context.TODO())
 }
 
 // ListApisixStreamRoutes list all stream_routes from APISIX.

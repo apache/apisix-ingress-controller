@@ -46,8 +46,9 @@ data:
 
    # APISIX related configurations.
    apisix:
-     base_url: "http://127.0.0.1:9080/apisix/admin" # the APISIX admin api / manager api
+     base_url: "http://apisix-admin:9180/apisix/admin" # the APISIX admin api / manager api
                                               # base url, it's required.
+     admin_key: "edd1c9f034335f136f87ad84b625c8f1"
 kind: ConfigMap
 metadata:
   name: apisix-ingress-cm

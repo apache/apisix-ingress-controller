@@ -16,6 +16,7 @@ package translation
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,6 +27,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 
+	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
@@ -319,4 +321,64 @@ func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 
 	_, err = tr.TranslateRouteV2alpha1(ar)
 	assert.Equal(t, err.Error(), "duplicated route rule name")
+}
+
+func TestTranslateApisixRouteV2alpha1NotStrictly(t *testing.T) {
+	tr := &translator{
+		&TranslatorOptions{},
+	}
+	ar := &configv2alpha1.ApisixRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ar",
+			Namespace: "test",
+		},
+		Spec: &configv2alpha1.ApisixRouteSpec{
+			HTTP: []*configv2alpha1.ApisixRouteHTTP{
+				{
+					Name: "rule1",
+					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Backend: &configv2alpha1.ApisixRouteHTTPBackend{
+						ServiceName: "svc1",
+						ServicePort: intstr.IntOrString{
+							IntVal: 81,
+						},
+					},
+				},
+				{
+					Name: "rule2",
+					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Backend: &configv2alpha1.ApisixRouteHTTPBackend{
+						ServiceName: "svc2",
+						ServicePort: intstr.IntOrString{
+							IntVal: 82,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	tx, err := tr.TranslateRouteV2alpha1NotStrictly(ar)
+	fmt.Println(tx)
+	assert.NoError(t, err, "translateRoute not strictly should be no error")
+	assert.Equal(t, len(tx.Routes), 2, "There should be 2 routes")
+	assert.Equal(t, len(tx.Upstreams), 2, "There should be 2 upstreams")
+	assert.Equal(t, tx.Routes[0].Name, "test_ar_rule1", "route1 name error")
+	assert.Equal(t, tx.Routes[1].Name, "test_ar_rule2", "route2 name error")
+	assert.Equal(t, tx.Upstreams[0].Name, "test_svc1_81", "upstream1 name error")
+	assert.Equal(t, tx.Upstreams[1].Name, "test_svc2_82", "upstream2 name error")
+
+	assert.Equal(t, tx.Routes[0].ID, id.GenID("test_ar_rule1"), "route1 id error")
+	assert.Equal(t, tx.Routes[1].ID, id.GenID("test_ar_rule2"), "route2 id error")
+	assert.Equal(t, tx.Upstreams[0].ID, id.GenID("test_svc1_81"), "upstream1 id error")
+	assert.Equal(t, tx.Upstreams[1].ID, id.GenID("test_svc2_82"), "upstream2 id error")
+
 }

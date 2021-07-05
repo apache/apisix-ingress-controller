@@ -2,11 +2,6 @@
   "version": "0.3.0",
   "sidebar": [
     {
-      "type": "link",
-      "label": "Apache APISIX Ingress Controller",
-      "href": "https://apisix.apache.org/docs/ingress-controller/getting-started/"
-    },
-    {
       "type": "doc",
       "id": "getting-started"
     },
