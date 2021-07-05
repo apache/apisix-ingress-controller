@@ -306,6 +306,10 @@ func (s *Scaffold) afterEach() {
 		if output != "" {
 			fmt.Fprintln(ginkgo.GinkgoWriter, output)
 		}
+		output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "describe", "pods")
+		if output != "" {
+			fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		}
 	}
 
 	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
