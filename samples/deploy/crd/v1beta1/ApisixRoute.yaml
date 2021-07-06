@@ -44,9 +44,10 @@ spec:
     - name: v1
       served: true
       storage: false
+      deprecated: true
     - name: v2alpha1
       served: true
-      storage: true
+      storage: false
     - name: v2beta1
       served: true
       storage: true
