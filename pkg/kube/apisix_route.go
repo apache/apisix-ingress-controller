@@ -27,7 +27,7 @@ import (
 const (
 	// ApisixRouteV1 represents the ApisixRoute in apisix.apache.org/v1 group version.
 	ApisixRouteV1 = "apisix.apache.org/v1"
-	// ApisixRouteV2alpha1 represents the APisixRoute in apisix.apache.org/v2alpha1 group version
+	// ApisixRouteV2alpha1 represents the ApisixRoute in apisix.apache.org/v2alpha1 group version
 	ApisixRouteV2alpha1 = "apisix.apache.org/v2alpha1"
 	// ApisixRouteV2beta1 represents the ApisixRoute in apisix.apache.org/v2beta1 group version
 	ApisixRouteV2beta1 = "apisix.apache.org/v2beta1"
