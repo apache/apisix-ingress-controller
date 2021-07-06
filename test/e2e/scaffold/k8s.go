@@ -150,12 +150,12 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 			ginkgo.GinkgoT().Logf("got status code %d from APISIX", resp.StatusCode)
 			return false, nil
 		}
-		c := &counter{}
+		var c counter
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return false, err
 		}
-		err = json.Unmarshal(b, c)
+		err = json.Unmarshal(b, &c)
 		if err != nil {
 			return false, err
 		}
