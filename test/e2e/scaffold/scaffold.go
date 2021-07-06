@@ -299,6 +299,19 @@ func (s *Scaffold) beforeEach() {
 
 func (s *Scaffold) afterEach() {
 	defer ginkgo.GinkgoRecover()
+
+	if ginkgo.CurrentGinkgoTestDescription().Failed {
+		fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
+		output, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods")
+		if output != "" {
+			fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		}
+		output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "describe", "pods")
+		if output != "" {
+			fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		}
+	}
+
 	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
 	assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
 
