@@ -47,10 +47,10 @@ spec:
       deprecated: true
     - name: v2alpha1
       served: true
-      storage: false
+      storage: true
     - name: v2beta1
       served: true
-      storage: true
+      storage: false
   scope: Namespaced
   names:
     plural: apisixroutes
