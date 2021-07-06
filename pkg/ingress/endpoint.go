@@ -192,7 +192,8 @@ func (c *endpointsController) onAdd(obj interface{}) {
 
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:   types.EventAdd,
-		Object: obj,
+		// TODO pass key.
+		Object: kube.NewEndpoint(obj.(*corev1.Endpoints)),
 	})
 }
 
@@ -217,7 +218,8 @@ func (c *endpointsController) onUpdate(prev, curr interface{}) {
 	)
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:   types.EventUpdate,
-		Object: curr,
+		// TODO pass key.
+		Object: kube.NewEndpoint(currEp),
 	})
 }
 
@@ -243,6 +245,6 @@ func (c *endpointsController) onDelete(obj interface{}) {
 	)
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:   types.EventDelete,
-		Object: ep,
+		Object: kube.NewEndpoint(ep),
 	})
 }
