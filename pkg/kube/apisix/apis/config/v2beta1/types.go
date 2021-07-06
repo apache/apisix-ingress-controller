@@ -28,19 +28,19 @@ import (
 type ApisixRoute struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-	Spec              *ApisixRouteSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
-	Status            ApisixStatus     `json:"status,omitempty" yaml:"status,omitempty"`
+	Spec              ApisixRouteSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Status            ApisixStatus    `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
 // ApisixStatus is the status report for Apisix ingress Resources
 type ApisixStatus struct {
-	Conditions *[]metav1.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
 // ApisixRouteSpec is the spec definition for ApisixRouteSpec.
 type ApisixRouteSpec struct {
-	HTTP   []*ApisixRouteHTTP   `json:"http,omitempty" yaml:"http,omitempty"`
-	Stream []*ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
+	HTTP   []ApisixRouteHTTP   `json:"http,omitempty" yaml:"http,omitempty"`
+	Stream []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
 }
 
 // ApisixRouteHTTP represents a single route in for HTTP traffic.
@@ -50,17 +50,17 @@ type ApisixRouteHTTP struct {
 	// Route priority, when multiple routes contains
 	// same URI path (for path matching), route with
 	// higher priority will take effect.
-	Priority int                   `json:"priority,omitempty" yaml:"priority,omitempty"`
-	Match    *ApisixRouteHTTPMatch `json:"match,omitempty" yaml:"match,omitempty"`
+	Priority int                  `json:"priority,omitempty" yaml:"priority,omitempty"`
+	Match    ApisixRouteHTTPMatch `json:"match,omitempty" yaml:"match,omitempty"`
 	// Deprecated: Backend will be removed in the future, use Backends instead.
-	Backend *ApisixRouteHTTPBackend `json:"backend" yaml:"backend"`
+	Backend ApisixRouteHTTPBackend `json:"backend" yaml:"backend"`
 	// Backends represents potential backends to proxy after the route
 	// rule matched. When number of backends are more than one, traffic-split
 	// plugin in APISIX will be used to split traffic based on the backend weight.
-	Backends       []*ApisixRouteHTTPBackend  `json:"backends" yaml:"backends"`
-	Websocket      bool                       `json:"websocket" yaml:"websocket"`
-	Plugins        []*ApisixRouteHTTPPlugin   `json:"plugins,omitempty" yaml:"plugins,omitempty"`
-	Authentication *ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
+	Backends       []ApisixRouteHTTPBackend  `json:"backends" yaml:"backends"`
+	Websocket      bool                      `json:"websocket" yaml:"websocket"`
+	Plugins        []ApisixRouteHTTPPlugin   `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Authentication ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
 // ApisixRouteHTTPMatch represents the match condition for hitting this route.
@@ -108,7 +108,7 @@ type ApisixRouteHTTPMatchExpr struct {
 	// it should be used when the Op is not "in" and "not_in".
 	// Set and Value are exclusive so only of them can be set
 	// in the same time.
-	Value *string `json:"value" yaml:"value"`
+	Value string `json:"value" yaml:"value"`
 }
 
 // ApisixRouteHTTPMatchExprSubject describes the route match expression subject.
@@ -135,7 +135,7 @@ type ApisixRouteHTTPBackend struct {
 	// default is endpoints.
 	ResolveGranularity string `json:"resolveGranularity" yaml:"resolveGranularity"`
 	// Weight of this backend.
-	Weight *int `json:"weight" yaml:"weight"`
+	Weight int `json:"weight" yaml:"weight"`
 	// Subset specifies a subset for the target Service. The subset should be pre-defined
 	// in ApisixUpstream about this service.
 	Subset string `json:"subset" yaml:"subset"`
@@ -148,7 +148,6 @@ type ApisixRouteHTTPPlugin struct {
 	// Whether this plugin is in use, default is true.
 	Enable bool `json:"enable" yaml:"enable"`
 	// Plugin configuration.
-	// TODO we may use protobuf to define it.
 	Config ApisixRouteHTTPPluginConfig `json:"config" yaml:"config"`
 }
 
