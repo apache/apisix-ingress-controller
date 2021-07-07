@@ -50,6 +50,7 @@ kubernetes:
   ingress_version: "networking/v1"     # the supported ingress api group version, can be "networking/v1beta1"
                                        # , "networking/v1" (for Kubernetes version v1.19.0 or higher), and
                                        # "extensions/v1beta1", default is "networking/v1".
+  watch_endpointslices: false          # whether to watch EndpointSlices rather than Endpoints.
 
   apisix_route_version: "apisix.apache.org/v2alpha1" # the supported apisixroute api group version, can be
                                                      # "apisix.apache.org/v1" or "apisix.apache.org/v2alpha1",

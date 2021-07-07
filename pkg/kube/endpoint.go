@@ -59,7 +59,7 @@ func (lister *endpointLister) GetEndpoint(namespace, name string) (Endpoint, err
 }
 
 func (lister *endpointLister) GetEndpointSlices(namespace, svcName string) (Endpoint, error) {
-	if lister.epsLister != nil {
+	if lister.epsLister == nil {
 		panic("not a endpointSlice lister")
 	}
 	selector := labels.SelectorFromSet(labels.Set{

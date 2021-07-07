@@ -169,6 +169,14 @@ rules:
     - leases
     verbs:
     - '*'
+  - apiGroups:
+    - discovery.k8s.io
+    resources:
+    - endpointslices
+    verbs:
+    - get
+    - list
+    - watch
 `
 	_clusterRoleBinding = `
 apiVersion: rbac.authorization.k8s.io/v1
@@ -257,6 +265,7 @@ spec:
             - %s
             - --apisix-route-version
             - %s
+            - --watch-endpointslices
       serviceAccount: ingress-apisix-e2e-test-service-account
 `
 )
