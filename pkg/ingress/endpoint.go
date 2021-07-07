@@ -191,7 +191,7 @@ func (c *endpointsController) onAdd(obj interface{}) {
 		zap.String("object-key", key))
 
 	c.workqueue.AddRateLimited(&types.Event{
-		Type:   types.EventAdd,
+		Type: types.EventAdd,
 		// TODO pass key.
 		Object: kube.NewEndpoint(obj.(*corev1.Endpoints)),
 	})
@@ -217,7 +217,7 @@ func (c *endpointsController) onUpdate(prev, curr interface{}) {
 		zap.Any("old object", prevEp),
 	)
 	c.workqueue.AddRateLimited(&types.Event{
-		Type:   types.EventUpdate,
+		Type: types.EventUpdate,
 		// TODO pass key.
 		Object: kube.NewEndpoint(currEp),
 	})
