@@ -194,6 +194,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixRouteLister = kube.NewApisixRouteLister(
 		apisixFactory.Apisix().V1().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2alpha1().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2beta1().ApisixRoutes().Lister(),
 	)
 	c.apisixUpstreamLister = apisixFactory.Apisix().V1().ApisixUpstreams().Lister()
 	c.apisixTlsLister = apisixFactory.Apisix().V1().ApisixTlses().Lister()

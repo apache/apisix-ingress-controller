@@ -23,6 +23,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	configv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -32,8 +33,8 @@ var (
 	_errInvalidAddress = errors.New("address is neither IP or CIDR")
 )
 
-func (t *translator) getServiceClusterIPAndPort(backend *configv2alpha1.ApisixRouteHTTPBackend, ar *configv2alpha1.ApisixRoute) (string, int32, error) {
-	svc, err := t.ServiceLister.Services(ar.Namespace).Get(backend.ServiceName)
+func (t *translator) getServiceClusterIPAndPort(backend *configv2alpha1.ApisixRouteHTTPBackend, ns string) (string, int32, error) {
+	svc, err := t.ServiceLister.Services(ns).Get(backend.ServiceName)
 	if err != nil {
 		return "", 0, err
 	}
@@ -55,7 +56,7 @@ loop:
 	}
 	if svcPort == -1 {
 		log.Errorw("ApisixRoute refers to non-existent Service port",
-			zap.Any("ApisixRoute", ar),
+			zap.String("namespace", ns),
 			zap.String("port", backend.ServicePort.String()),
 		)
 		return "", 0, err
@@ -63,7 +64,7 @@ loop:
 
 	if backend.ResolveGranularity == "service" && svc.Spec.ClusterIP == "" {
 		log.Errorw("ApisixRoute refers to a headless service but want to use the service level resolve granularity",
-			zap.Any("ApisixRoute", ar),
+			zap.Any("namespace", ns),
 			zap.Any("service", svc),
 		)
 		return "", 0, errors.New("conflict headless service and backend resolve granularity")
@@ -103,6 +104,46 @@ loop:
 	if backend.ResolveGranularity == "service" && svc.Spec.ClusterIP == "" {
 		log.Errorw("ApisixRoute refers to a headless service but want to use the service level resolve granularity",
 			zap.Any("ApisixRoute", ar),
+			zap.Any("service", svc),
+		)
+		return "", 0, errors.New("conflict headless service and backend resolve granularity")
+	}
+	return svc.Spec.ClusterIP, svcPort, nil
+}
+
+// getStreamServiceClusterIPAndPort is for v2beta1 streamRoute
+func (t *translator) getStreamServiceClusterIPAndPort(backend configv2beta1.ApisixRouteStreamBackend, ns string) (string, int32, error) {
+	svc, err := t.ServiceLister.Services(ns).Get(backend.ServiceName)
+	if err != nil {
+		return "", 0, err
+	}
+	svcPort := int32(-1)
+loop:
+	for _, port := range svc.Spec.Ports {
+		switch backend.ServicePort.Type {
+		case intstr.Int:
+			if backend.ServicePort.IntVal == port.Port {
+				svcPort = port.Port
+				break loop
+			}
+		case intstr.String:
+			if backend.ServicePort.StrVal == port.Name {
+				svcPort = port.Port
+				break loop
+			}
+		}
+	}
+	if svcPort == -1 {
+		log.Errorw("ApisixRoute refers to non-existent Service port",
+			zap.String("ApisixRoute namespace", ns),
+			zap.String("port", backend.ServicePort.String()),
+		)
+		return "", 0, err
+	}
+
+	if backend.ResolveGranularity == "service" && svc.Spec.ClusterIP == "" {
+		log.Errorw("ApisixRoute refers to a headless service but want to use the service level resolve granularity",
+			zap.String("ApisixRoute namespace", ns),
 			zap.Any("service", svc),
 		)
 		return "", 0, errors.New("conflict headless service and backend resolve granularity")
