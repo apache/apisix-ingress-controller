@@ -64,9 +64,9 @@ func (c *podController) onAdd(obj interface{}) {
 	if !c.controller.namespaceWatching(key) {
 		return
 	}
-	log.Debugw("pod add event arrived",
-		zap.Any("object", obj),
-	)
+	//log.Debugw("pod add event arrived",
+	//	zap.Any("object", obj),
+	//)
 	pod := obj.(*corev1.Pod)
 	if err := c.controller.podCache.Add(pod); err != nil {
 		if err == types.ErrPodNoAssignedIP {

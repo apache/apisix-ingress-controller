@@ -171,6 +171,11 @@ func MustNewApisixRoute(obj interface{}) ApisixRoute {
 			groupVersion: ApisixRouteV2alpha1,
 			v2alpha1:     ar,
 		}
+	case *configv2beta1.ApisixRoute:
+		return &apisixRoute{
+			groupVersion: ApisixRouteV2beta1,
+			v2beta1:      ar,
+		}
 	default:
 		panic("invalid ApisixRoute type")
 	}

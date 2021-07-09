@@ -119,6 +119,10 @@ spec:
       port: 9100
       protocol: TCP
       targetPort: 9100
+    - name: udp
+      port: 9200
+      protocol: UDP
+      targetPort: 9200
     - name: http-control
       port: 9090
       protocol: TCP

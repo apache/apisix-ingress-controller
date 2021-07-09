@@ -217,10 +217,13 @@ func (c *Controller) initWhenStartLeading() {
 	} else {
 		ingressInformer = kubeFactory.Extensions().V1beta1().Ingresses().Informer()
 	}
-	if c.cfg.Kubernetes.ApisixRouteVersion == config.ApisixRouteV2alpha1 {
-		apisixRouteInformer = apisixFactory.Apisix().V2alpha1().ApisixRoutes().Informer()
-	} else {
+	switch c.cfg.Kubernetes.ApisixRouteVersion {
+	case config.ApisixRouteV1:
 		apisixRouteInformer = apisixFactory.Apisix().V1().ApisixRoutes().Informer()
+	case config.ApisixRouteV2alpha1:
+		apisixRouteInformer = apisixFactory.Apisix().V2alpha1().ApisixRoutes().Informer()
+	case config.ApisixRouteV2beta1:
+		apisixRouteInformer = apisixFactory.Apisix().V2beta1().ApisixRoutes().Informer()
 	}
 
 	c.podInformer = kubeFactory.Core().V1().Pods().Informer()
