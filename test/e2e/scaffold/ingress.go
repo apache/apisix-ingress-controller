@@ -154,7 +154,6 @@ rules:
       - apisixroutes/status
       - apisixupstreams
       - apisixupstreams/status
-      - apisixservices
       - apisixtlses
       - apisixtlses/status
       - apisixclusterconfigs
