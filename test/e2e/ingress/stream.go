@@ -16,6 +16,7 @@
 package ingress
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -25,7 +26,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("ApisixRoute stream Testing with v2beta1", func() {
+var _ = ginkgo.FDescribe("ApisixRoute stream Testing with v2beta1", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
@@ -49,7 +50,7 @@ spec:
     match:
       ingressPort: 9100
     backend:
-      serviceName: %s
+      serviceName: kube-dns
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
@@ -71,7 +72,6 @@ spec:
 		resp.Body().Contains("x-my-value")
 	})
 	ginkgo.It("stream udp proxy", func() {
-		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
@@ -84,10 +84,11 @@ spec:
     match:
       ingressPort: 9200
     backend:
-      serviceName: %s
-      servicePort: %d
-`, backendSvc, backendSvcPort[0])
-
+      serviceName: kube-dns
+      servicePort: 53
+`)
+		// update namespace only for this case
+		s.UpdateNamespace("kube-system")
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
 		time.Sleep(9 * time.Second)
 
@@ -98,6 +99,10 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), sr, 1)
 		assert.Equal(ginkgo.GinkgoT(), sr[0].ServerPort, int32(9200))
-
+		// test dns query
+		r := s.DNSResolver()
+		host := "httpbin.org"
+		_, err = r.LookupIPAddr(context.Background(), host)
+		assert.Nil(ginkgo.GinkgoT(), err, "dns query error")
 	})
 })

@@ -20,6 +20,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -204,6 +205,22 @@ func (s *Scaffold) NewAPISIXClientWithTCPProxy() *httpexpect.Expect {
 			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
 		),
 	})
+}
+
+func (s *Scaffold) DNSResolver() *net.Resolver {
+	return &net.Resolver{
+		PreferGo: false,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{
+				Timeout: time.Millisecond * time.Duration(10000),
+			}
+			return d.DialContext(ctx, "udp", s.apisixUDPTunnel.Endpoint())
+		},
+	}
+}
+
+func (s *Scaffold) UpdateNamespace(ns string) {
+	s.kubectlOptions.Namespace = ns
 }
 
 // NewAPISIXHttpsClient creates the default HTTPS client.
