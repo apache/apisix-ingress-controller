@@ -50,7 +50,7 @@ spec:
     match:
       ingressPort: 9100
     backend:
-      serviceName: kube-dns
+      serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
