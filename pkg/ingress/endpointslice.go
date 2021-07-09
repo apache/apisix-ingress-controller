@@ -27,6 +27,10 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
+const (
+	_endpointSlicesManagedBy = "endpointslice-controller.k8s.io"
+)
+
 type endpointSliceEvent struct {
 	Key         string
 	ServiceName string
@@ -126,6 +130,11 @@ func (c *endpointSliceController) onAdd(obj interface{}) {
 	if svcName == "" {
 		return
 	}
+	if ep.Labels[discoveryv1.LabelManagedBy] != _endpointSlicesManagedBy {
+		// We only care about endpointSlice objects managed by the EndpointSlices
+		// controller.
+		return
+	}
 
 	log.Debugw("endpointSlice add event arrived",
 		zap.String("object-key", key),
@@ -153,6 +162,11 @@ func (c *endpointSliceController) onUpdate(prev, curr interface{}) {
 		return
 	}
 	if !c.controller.namespaceWatching(key) {
+		return
+	}
+	if currEp.Labels[discoveryv1.LabelManagedBy] != _endpointSlicesManagedBy {
+		// We only care about endpointSlice objects managed by the EndpointSlices
+		// controller.
 		return
 	}
 	svcName := currEp.Labels[discoveryv1.LabelServiceName]
@@ -190,6 +204,11 @@ func (c *endpointSliceController) onDelete(obj interface{}) {
 		return
 	}
 	if !c.controller.namespaceWatching(key) {
+		return
+	}
+	if ep.Labels[discoveryv1.LabelManagedBy] != _endpointSlicesManagedBy {
+		// We only care about endpointSlice objects managed by the EndpointSlices
+		// controller.
 		return
 	}
 	svcName := ep.Labels[discoveryv1.LabelServiceName]
