@@ -88,7 +88,7 @@ type Controller struct {
 	podInformer                 cache.SharedIndexInformer
 	podLister                   listerscorev1.PodLister
 	epInformer                  cache.SharedIndexInformer
-	epLister                    listerscorev1.EndpointsLister
+	epLister                    kube.EndpointLister
 	svcInformer                 cache.SharedIndexInformer
 	svcLister                   listerscorev1.ServiceLister
 	ingressLister               kube.IngressLister
@@ -183,7 +183,7 @@ func (c *Controller) initWhenStartLeading() {
 	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
 
 	c.podLister = kubeFactory.Core().V1().Pods().Lister()
-	c.epLister = kubeFactory.Core().V1().Endpoints().Lister()
+	c.epLister, c.epInformer = kube.NewEndpointListerAndInformer(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
 	c.svcLister = kubeFactory.Core().V1().Services().Lister()
 	c.ingressLister = kube.NewIngressLister(
 		kubeFactory.Networking().V1().Ingresses().Lister(),
@@ -203,10 +203,11 @@ func (c *Controller) initWhenStartLeading() {
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 		PodCache:             c.podCache,
 		PodLister:            c.podLister,
-		EndpointsLister:      c.epLister,
+		EndpointLister:       c.epLister,
 		ServiceLister:        c.svcLister,
 		ApisixUpstreamLister: c.apisixUpstreamLister,
 		SecretLister:         c.secretLister,
+		UseEndpointSlices:    c.cfg.Kubernetes.WatchEndpointSlices,
 	})
 
 	if c.cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1 {
@@ -223,7 +224,6 @@ func (c *Controller) initWhenStartLeading() {
 	}
 
 	c.podInformer = kubeFactory.Core().V1().Pods().Informer()
-	c.epInformer = kubeFactory.Core().V1().Endpoints().Informer()
 	c.svcInformer = kubeFactory.Core().V1().Services().Informer()
 	c.ingressInformer = ingressInformer
 	c.apisixRouteInformer = apisixRouteInformer

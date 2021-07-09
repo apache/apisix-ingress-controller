@@ -56,13 +56,13 @@ func NewKubeClient(cfg *config.Config) (*KubeClient, error) {
 	}, nil
 }
 
-// SharedIndexInformerFactory is the index informer factory object used to watch and
+// NewSharedIndexInformerFactory returns an index informer factory object used to watch and
 // list Kubernetes builtin resources.
 func (k *KubeClient) NewSharedIndexInformerFactory() informers.SharedInformerFactory {
 	return informers.NewSharedInformerFactory(k.Client, k.cfg.Kubernetes.ResyncInterval.Duration)
 }
 
-// APISIXSharedIndexInformerFactory is the index informer factory object used to watch
+// NewAPISIXSharedIndexInformerFactory returns an index informer factory object used to watch
 // and list Kubernetes resources in apisix.apache.org group.
 func (k *KubeClient) NewAPISIXSharedIndexInformerFactory() externalversions.SharedInformerFactory {
 	return externalversions.NewSharedInformerFactory(k.APISIXClient, k.cfg.Kubernetes.ResyncInterval.Duration)

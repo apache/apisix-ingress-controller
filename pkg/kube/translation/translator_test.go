@@ -16,6 +16,7 @@ package translation
 
 import (
 	"context"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"testing"
 
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -175,14 +176,14 @@ func TestTranslateUpstreamNodes(t *testing.T) {
 	}}
 	<-processCh
 
-	nodes, err := tr.TranslateUpstreamNodes(endpoints, 10080, nil)
+	nodes, err := tr.TranslateUpstreamNodes(kube.NewEndpoint(endpoints), 10080, nil)
 	assert.Nil(t, nodes)
 	assert.Equal(t, err, &translateError{
 		field:  "service.spec.ports",
 		reason: "port not defined",
 	})
 
-	nodes, err = tr.TranslateUpstreamNodes(endpoints, 80, nil)
+	nodes, err = tr.TranslateUpstreamNodes(kube.NewEndpoint(endpoints), 80, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, nodes, apisixv1.UpstreamNodes{
 		{
@@ -197,7 +198,7 @@ func TestTranslateUpstreamNodes(t *testing.T) {
 		},
 	})
 
-	nodes, err = tr.TranslateUpstreamNodes(endpoints, 443, nil)
+	nodes, err = tr.TranslateUpstreamNodes(kube.NewEndpoint(endpoints), 443, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, nodes, apisixv1.UpstreamNodes{
 		{

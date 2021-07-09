@@ -67,13 +67,14 @@ type Config struct {
 
 // KubernetesConfig contains all Kubernetes related config items.
 type KubernetesConfig struct {
-	Kubeconfig         string             `json:"kubeconfig" yaml:"kubeconfig"`
-	ResyncInterval     types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
-	AppNamespaces      []string           `json:"app_namespaces" yaml:"app_namespaces"`
-	ElectionID         string             `json:"election_id" yaml:"election_id"`
-	IngressClass       string             `json:"ingress_class" yaml:"ingress_class"`
-	IngressVersion     string             `json:"ingress_version" yaml:"ingress_version"`
-	ApisixRouteVersion string             `json:"apisix_route_version" yaml:"apisix_route_version"`
+	Kubeconfig          string             `json:"kubeconfig" yaml:"kubeconfig"`
+	ResyncInterval      types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
+	AppNamespaces       []string           `json:"app_namespaces" yaml:"app_namespaces"`
+	ElectionID          string             `json:"election_id" yaml:"election_id"`
+	IngressClass        string             `json:"ingress_class" yaml:"ingress_class"`
+	IngressVersion      string             `json:"ingress_version" yaml:"ingress_version"`
+	WatchEndpointSlices bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
+	ApisixRouteVersion  string             `json:"apisix_route_version" yaml:"apisix_route_version"`
 }
 
 // APISIXConfig contains all APISIX related config items.
@@ -104,13 +105,14 @@ func NewDefaultConfig() *Config {
 		HTTPListen:      ":8080",
 		EnableProfiling: true,
 		Kubernetes: KubernetesConfig{
-			Kubeconfig:         "", // Use in-cluster configurations.
-			ResyncInterval:     types.TimeDuration{Duration: 6 * time.Hour},
-			AppNamespaces:      []string{v1.NamespaceAll},
-			ElectionID:         IngressAPISIXLeader,
-			IngressClass:       IngressClass,
-			IngressVersion:     IngressNetworkingV1,
-			ApisixRouteVersion: ApisixRouteV2alpha1,
+			Kubeconfig:          "", // Use in-cluster configurations.
+			ResyncInterval:      types.TimeDuration{Duration: 6 * time.Hour},
+			AppNamespaces:       []string{v1.NamespaceAll},
+			ElectionID:          IngressAPISIXLeader,
+			IngressClass:        IngressClass,
+			IngressVersion:      IngressNetworkingV1,
+			ApisixRouteVersion:  ApisixRouteV2alpha1,
+			WatchEndpointSlices: false,
 		},
 	}
 }

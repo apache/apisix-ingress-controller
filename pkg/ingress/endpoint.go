@@ -16,6 +16,7 @@ package ingress
 
 import (
 	"context"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"time"
 
 	"go.uber.org/zap"
@@ -87,59 +88,50 @@ func (c *endpointsController) run(ctx context.Context) {
 }
 
 func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
-	ep := ev.Object.(*corev1.Endpoints)
-	svc, err := c.controller.svcLister.Services(ep.Namespace).Get(ep.Name)
+	ep := ev.Object.(kube.Endpoint)
+	namespace := ep.Namespace()
+	svcName := ep.ServiceName()
+	svc, err := c.controller.svcLister.Services(ep.Namespace()).Get(svcName)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			log.Infof("service %s/%s not found", ep.Namespace, ep.Name)
+			log.Infof("service %s/%s not found", ep.Namespace(), svcName)
 			return nil
 		}
-		log.Errorf("failed to get service %s/%s: %s", ep.Namespace, ep.Name, err)
+		log.Errorf("failed to get service %s/%s: %s", ep.Namespace(), svcName, err)
 		return err
 	}
 	var subsets []configv1.ApisixUpstreamSubset
 	subsets = append(subsets, configv1.ApisixUpstreamSubset{})
-	au, err := c.controller.apisixUpstreamLister.ApisixUpstreams(ep.Namespace).Get(ep.Name)
+	au, err := c.controller.apisixUpstreamLister.ApisixUpstreams(namespace).Get(svcName)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
-			log.Errorf("failed to get ApisixUpstream %s/%s: %s", ep.Namespace, ep.Name, err)
+			log.Errorf("failed to get ApisixUpstream %s/%s: %s", ep.Namespace(), svcName, err)
 			return err
 		}
 	} else if len(au.Spec.Subsets) > 0 {
 		subsets = append(subsets, au.Spec.Subsets...)
 	}
 
-	portMap := make(map[string]int32)
-	for _, port := range svc.Spec.Ports {
-		portMap[port.Name] = port.Port
-	}
 	clusters := c.controller.apisix.ListClusters()
-	for _, s := range ep.Subsets {
-		for _, port := range s.Ports {
-			svcPort, ok := portMap[port.Name]
-			if !ok {
-				// This shouldn't happen.
-				log.Errorf("port %s in endpoints %s/%s but not in service", port.Name, ep.Namespace, ep.Name)
-				continue
+	for _, port := range svc.Spec.Ports {
+		for _, subset := range subsets {
+			nodes, err := c.controller.translator.TranslateUpstreamNodes(ep, port.Port, subset.Labels)
+			if err != nil {
+				log.Errorw("failed to translate upstream nodes",
+					zap.Error(err),
+					zap.Any("endpoints", ep),
+					zap.Int32("port", port.Port),
+				)
 			}
-			for _, subset := range subsets {
-				nodes, err := c.controller.translator.TranslateUpstreamNodes(ep, svcPort, subset.Labels)
-				if err != nil {
-					log.Errorw("failed to translate upstream nodes",
-						zap.Error(err),
-						zap.Any("endpoints", ep),
-						zap.Int32("port", svcPort),
-					)
-				}
-				name := apisixv1.ComposeUpstreamName(ep.Namespace, ep.Name, subset.Name, svcPort)
-				for _, cluster := range clusters {
-					if err := c.syncToCluster(ctx, cluster, nodes, name); err != nil {
-						return err
-					}
+			name := apisixv1.ComposeUpstreamName(namespace, svcName, subset.Name, port.Port)
+			for _, cluster := range clusters {
+				if err := c.syncToCluster(ctx, cluster, nodes, name); err != nil {
+					return err
 				}
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -199,8 +191,9 @@ func (c *endpointsController) onAdd(obj interface{}) {
 		zap.String("object-key", key))
 
 	c.workqueue.AddRateLimited(&types.Event{
-		Type:   types.EventAdd,
-		Object: obj,
+		Type: types.EventAdd,
+		// TODO pass key.
+		Object: kube.NewEndpoint(obj.(*corev1.Endpoints)),
 	})
 }
 
@@ -224,8 +217,9 @@ func (c *endpointsController) onUpdate(prev, curr interface{}) {
 		zap.Any("old object", prevEp),
 	)
 	c.workqueue.AddRateLimited(&types.Event{
-		Type:   types.EventUpdate,
-		Object: curr,
+		Type: types.EventUpdate,
+		// TODO pass key.
+		Object: kube.NewEndpoint(currEp),
 	})
 }
 
@@ -251,6 +245,6 @@ func (c *endpointsController) onDelete(obj interface{}) {
 	)
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:   types.EventDelete,
-		Object: ep,
+		Object: kube.NewEndpoint(ep),
 	})
 }
