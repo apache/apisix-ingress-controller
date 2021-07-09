@@ -174,3 +174,10 @@ func NewEndpoint(ep *corev1.Endpoints) Endpoint {
 		endpoint: ep,
 	}
 }
+
+// NewEndpointWithSlice creates an Endpoint which entity is Kubernetes EndpointSlices.
+func NewEndpointWithSlice(ep *discoveryv1.EndpointSlice) Endpoint {
+	return &endpoint{
+		endpointSlices: []*discoveryv1.EndpointSlice{ep},
+	}
+}
