@@ -18,12 +18,21 @@ package ingress
 import (
 	"context"
 	"fmt"
+	"net"
+	"sort"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
+	apiv1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+	knative "knative.dev/networking/pkg/apis/networking/v1alpha1"
+	knativeApis "knative.dev/pkg/apis"
+	"knative.dev/pkg/network"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -37,6 +46,8 @@ type knativeIngressController struct {
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
 }
+
+var ingressCondSet = knativeApis.NewLivingConditionSet()
 
 func (c *Controller) newKnativeIngressController() *knativeIngressController {
 	ctl := &knativeIngressController{
@@ -93,7 +104,7 @@ func (c *knativeIngressController) sync(ctx context.Context, ev *types.Event) er
 	case kube.KnativeIngressV1alpha1:
 		ing, err = c.controller.knativeIngressLister.V1alpha1(namespace, name)
 	default:
-		err = fmt.Errorf("unsupported group version %s, one of (%s/%s/%s) is expected", ingEv.GroupVersion,
+		err = fmt.Errorf("unsupported group version %s, one of (%s) is expected", ingEv.GroupVersion,
 			kube.KnativeIngressV1alpha1)
 	}
 
@@ -171,6 +182,61 @@ func (c *knativeIngressController) sync(ctx context.Context, ev *types.Event) er
 			zap.Error(err),
 		)
 		return err
+	}
+
+	addrs, err := c.runningAddresses(ctx)
+	if err != nil {
+		return err
+	}
+	log.Infow("output of runningAddresses()",
+		zap.Any("addrs", addrs))
+	status := sliceToStatus(addrs)
+	log.Infow("output of sliceToStatus()",
+		zap.Any("status", status))
+	switch ing.GroupVersion() {
+	case kube.KnativeIngressV1alpha1:
+		currIng := ing.V1alpha1()
+		log.Infow("begin syncing Knative Ingress",
+			zap.String("ingress_namespace", currIng.Namespace),
+			zap.String("ingress_name", currIng.Name))
+		sort.SliceStable(status, lessLoadBalancerIngress(status)) // BUG: data race - see issue #829
+		curIPs := toCoreLBStatus(currIng.Status.PublicLoadBalancer)
+		sort.SliceStable(curIPs, lessLoadBalancerIngress(curIPs))
+
+		ingClient := c.controller.kubeClient.KnativeClient.NetworkingV1alpha1().Ingresses(namespace)
+
+		if ingressSliceEqual(status, curIPs) &&
+			currIng.Status.ObservedGeneration == currIng.GetObjectMeta().GetGeneration() {
+			log.Infow("no change in status, update skipped")
+			return nil
+		}
+
+		log.Infow("attempting to update Knative Ingress status", zap.Any("ingress_status", status))
+		lbStatus := toKnativeLBStatus(status)
+
+		svcNamespace, svcName := "ingress-apisix", "apisix-gateway"
+		clusterDomain := network.GetClusterDomainName()
+
+		for i := 0; i < len(lbStatus); i++ {
+			lbStatus[i].DomainInternal = fmt.Sprintf("%s.%s.svc.%s",
+				svcName, svcNamespace, clusterDomain)
+		}
+
+		currIng.Status.MarkLoadBalancerReady(lbStatus, lbStatus)
+		ingressCondSet.Manage(&currIng.Status).MarkTrue(knative.IngressConditionReady)
+		ingressCondSet.Manage(&currIng.Status).MarkTrue(knative.IngressConditionNetworkConfigured)
+		currIng.Status.ObservedGeneration = currIng.GetObjectMeta().GetGeneration()
+
+		_, err = ingClient.UpdateStatus(ctx, currIng, metav1.UpdateOptions{})
+		if err != nil {
+			log.Errorf("failed to update ingress status: %v", err)
+		} else {
+			log.Debugw("successfully updated ingress status",
+				zap.Any("Knative Ingress", currIng))
+		}
+	default:
+		err = fmt.Errorf("unsupported group version %s, one of (%s) is expected", ing.GroupVersion(),
+			kube.KnativeIngressV1alpha1)
 	}
 	return nil
 }
@@ -324,3 +390,210 @@ func (c *knativeIngressController) isKnativeIngressEffective(ing kube.KnativeIng
 //	ingressAnnotationValue := objectMeta.GetAnnotations()[knativeIngressClassKey]
 //	return ingressAnnotationValue == s.ingressClass
 //}
+
+// runningAddresses returns a list of IP addresses and/or FQDN where the
+// ingress controller is currently running
+func (c *knativeIngressController) runningAddresses(ctx context.Context) ([]string, error) {
+	addrs := []string{}
+	coreClient := c.controller.kubeClient.Client
+
+	// TODO: Not sure whether he name should be ingress-controller service while it does not exist, so replace it with gateway
+	// It should fall into the default case
+	ns, name := "ingress-apisix", "apisix-gateway"
+	svc, err := coreClient.CoreV1().Services(ns).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	switch svc.Spec.Type {
+	case apiv1.ServiceTypeLoadBalancer:
+		for _, ip := range svc.Status.LoadBalancer.Ingress {
+			if ip.IP == "" {
+				addrs = append(addrs, ip.Hostname)
+			} else {
+				addrs = append(addrs, ip.IP)
+			}
+		}
+
+		addrs = append(addrs, svc.Spec.ExternalIPs...)
+		return addrs, nil
+	default:
+		//podNs := c.controller.namespace
+		podNs := "ingress-apisix"
+		// TODO: should we get information about all the pods running the "ingress controller"?
+		// or instead we should get pods running "apisix-gateway"
+		podsList, err := coreClient.CoreV1().Pods(podNs).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		log.Infow("In runningAddresses(): ",
+			zap.Any("podsList", podsList))
+		var pods []*apiv1.Pod
+		log.Infow("In runningAddresses(), begin iterating pod: ")
+		for _, currPod := range podsList.Items {
+			if strings.Contains(currPod.ObjectMeta.Name, "apisix-etcd") {
+				continue
+			}
+			if strings.Contains(currPod.ObjectMeta.Name, "apisix-") {
+				log.Infow("In runningAddresses(), matched pod: ",
+					zap.String("currPod_name", currPod.ObjectMeta.Name))
+				pods = append(pods, &currPod)
+			}
+		}
+		for _, pod := range pods {
+			// only Running pods are valid
+			if pod.Status.Phase != apiv1.PodRunning {
+				continue
+			}
+
+			name := GetNodeIPOrName(ctx, coreClient, pod.Spec.NodeName)
+			if !inSlice(name, addrs) {
+				addrs = append(addrs, name)
+			}
+		}
+		/*
+			podName := c.controller.name
+			pod, err := coreClient.CoreV1().Pods(podNs).Get(ctx, podName, metav1.GetOptions{})
+			if err != nil {
+				return nil, err
+			}
+			labelSet := pod.GetLabels()
+			pods, err := coreClient.CoreV1().Pods(podNs).List(ctx, metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(labelSet).String(),
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			for _, pod := range pods.Items {
+				// only Running pods are valid
+				if pod.Status.Phase != apiv1.PodRunning {
+					continue
+				}
+
+				name := GetNodeIPOrName(ctx, coreClient, pod.Spec.NodeName)
+				if !inSlice(name, addrs) {
+					addrs = append(addrs, name)
+				}
+			}
+		*/
+
+		return addrs, nil
+	}
+}
+
+func inSlice(e string, arr []string) bool {
+	for _, v := range arr {
+		if v == e {
+			return true
+		}
+	}
+
+	return false
+}
+
+// sliceToStatus converts a slice of IP and/or hostnames to LoadBalancerIngress
+func sliceToStatus(endpoints []string) []apiv1.LoadBalancerIngress {
+	lbi := []apiv1.LoadBalancerIngress{}
+	for _, ep := range endpoints {
+		if net.ParseIP(ep) == nil {
+			lbi = append(lbi, apiv1.LoadBalancerIngress{Hostname: ep})
+		} else {
+			lbi = append(lbi, apiv1.LoadBalancerIngress{IP: ep})
+		}
+	}
+
+	sort.SliceStable(lbi, func(a, b int) bool {
+		return lbi[a].IP < lbi[b].IP
+	})
+
+	return lbi
+}
+
+func toCoreLBStatus(knativeLBStatus *knative.LoadBalancerStatus) []apiv1.LoadBalancerIngress {
+	var res []apiv1.LoadBalancerIngress
+	if knativeLBStatus == nil {
+		return res
+	}
+	for _, status := range knativeLBStatus.Ingress {
+		res = append(res, apiv1.LoadBalancerIngress{
+			IP:       status.IP,
+			Hostname: status.Domain,
+		})
+	}
+	return res
+}
+
+func toKnativeLBStatus(coreLBStatus []apiv1.LoadBalancerIngress) []knative.LoadBalancerIngressStatus {
+	var res []knative.LoadBalancerIngressStatus
+	for _, status := range coreLBStatus {
+		res = append(res, knative.LoadBalancerIngressStatus{
+			IP:     status.IP,
+			Domain: status.Hostname,
+		})
+	}
+	return res
+}
+
+func lessLoadBalancerIngress(addrs []apiv1.LoadBalancerIngress) func(int, int) bool {
+	return func(a, b int) bool {
+		switch strings.Compare(addrs[a].Hostname, addrs[b].Hostname) {
+		case -1:
+			return true
+		case 1:
+			return false
+		}
+		return addrs[a].IP < addrs[b].IP
+	}
+}
+
+func ingressSliceEqual(lhs, rhs []apiv1.LoadBalancerIngress) bool {
+	if len(lhs) != len(rhs) {
+		return false
+	}
+
+	for i := range lhs {
+		if lhs[i].IP != rhs[i].IP {
+			return false
+		}
+		if lhs[i].Hostname != rhs[i].Hostname {
+			return false
+		}
+	}
+	return true
+}
+
+// GetNodeIPOrName returns the IP address or the name of a node in the cluster
+func GetNodeIPOrName(ctx context.Context, kubeClient clientset.Interface, name string) string {
+	node, err := kubeClient.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return ""
+	}
+
+	ip := ""
+
+	for _, address := range node.Status.Addresses {
+		if address.Type == apiv1.NodeExternalIP {
+			if address.Address != "" {
+				ip = address.Address
+				break
+			}
+		}
+	}
+
+	// Report the external IP address of the node
+	if ip != "" {
+		return ip
+	}
+
+	for _, address := range node.Status.Addresses {
+		if address.Type == apiv1.NodeInternalIP {
+			if address.Address != "" {
+				ip = address.Address
+				break
+			}
+		}
+	}
+
+	return ip
+}
