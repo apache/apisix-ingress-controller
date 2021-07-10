@@ -29,6 +29,8 @@ apisix:
   stream_proxy:                 # TCP/UDP proxy
     tcp:                        # TCP proxy port list
       - 9100
+    udp:
+      - 9200
 etcd:
   host:                           # it's possible to define multiple etcd hosts addresses of the same etcd cluster.
     - "http://{{ .EtcdServiceFQDN }}:2379"     # multiple etcd address

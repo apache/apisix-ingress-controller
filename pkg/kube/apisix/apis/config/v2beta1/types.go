@@ -19,6 +19,8 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 )
 
 // +genclient
@@ -53,14 +55,14 @@ type ApisixRouteHTTP struct {
 	Priority int                  `json:"priority,omitempty" yaml:"priority,omitempty"`
 	Match    ApisixRouteHTTPMatch `json:"match,omitempty" yaml:"match,omitempty"`
 	// Deprecated: Backend will be removed in the future, use Backends instead.
-	Backend ApisixRouteHTTPBackend `json:"backend" yaml:"backend"`
+	Backend v2alpha1.ApisixRouteHTTPBackend `json:"backend" yaml:"backend"`
 	// Backends represents potential backends to proxy after the route
 	// rule matched. When number of backends are more than one, traffic-split
 	// plugin in APISIX will be used to split traffic based on the backend weight.
-	Backends       []ApisixRouteHTTPBackend  `json:"backends" yaml:"backends"`
-	Websocket      bool                      `json:"websocket" yaml:"websocket"`
-	Plugins        []ApisixRouteHTTPPlugin   `json:"plugins,omitempty" yaml:"plugins,omitempty"`
-	Authentication ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
+	Backends       []v2alpha1.ApisixRouteHTTPBackend `json:"backends" yaml:"backends"`
+	Websocket      bool                              `json:"websocket" yaml:"websocket"`
+	Plugins        []ApisixRouteHTTPPlugin           `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Authentication ApisixRouteAuthentication         `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
 // ApisixRouteHTTPMatch represents the match condition for hitting this route.
@@ -90,25 +92,7 @@ type ApisixRouteHTTPMatch struct {
 	//     value:
 	//       - "127.0.0.1"
 	//       - "10.0.5.11"
-	NginxVars []ApisixRouteHTTPMatchExpr `json:"exprs,omitempty" yaml:"exprs,omitempty"`
-}
-
-// ApisixRouteHTTPMatchExpr represents a binary route match expression .
-type ApisixRouteHTTPMatchExpr struct {
-	// Subject is the expression subject, it can
-	// be any string composed by literals and nginx
-	// vars.
-	Subject ApisixRouteHTTPMatchExprSubject `json:"subject" yaml:"subject"`
-	// Op is the operator.
-	Op string `json:"op" yaml:"op"`
-	// Set is an array type object of the expression.
-	// It should be used when the Op is "in" or "not_in";
-	Set []string `json:"set" yaml:"set"`
-	// Value is the normal type object for the expression,
-	// it should be used when the Op is not "in" and "not_in".
-	// Set and Value are exclusive so only of them can be set
-	// in the same time.
-	Value string `json:"value" yaml:"value"`
+	NginxVars []v2alpha1.ApisixRouteHTTPMatchExpr `json:"exprs,omitempty" yaml:"exprs,omitempty"`
 }
 
 // ApisixRouteHTTPMatchExprSubject describes the route match expression subject.
@@ -120,25 +104,6 @@ type ApisixRouteHTTPMatchExprSubject struct {
 	Scope string `json:"scope" yaml:"scope"`
 	// The name of subject.
 	Name string `json:"name" yaml:"name"`
-}
-
-// ApisixRouteHTTPBackend represents a HTTP backend (a Kuberentes Service).
-type ApisixRouteHTTPBackend struct {
-	// The name (short) of the service, note cross namespace is forbidden,
-	// so be sure the ApisixRoute and Service are in the same namespace.
-	ServiceName string `json:"serviceName" yaml:"serviceName"`
-	// The service port, could be the name or the port number.
-	ServicePort intstr.IntOrString `json:"servicePort" yaml:"servicePort"`
-	// The resolve granularity, can be "endpoints" or "service",
-	// when set to "endpoints", the pod ips will be used; other
-	// wise, the service ClusterIP or ExternalIP will be used,
-	// default is endpoints.
-	ResolveGranularity string `json:"resolveGranularity" yaml:"resolveGranularity"`
-	// Weight of this backend.
-	Weight int `json:"weight" yaml:"weight"`
-	// Subset specifies a subset for the target Service. The subset should be pre-defined
-	// in ApisixUpstream about this service.
-	Subset string `json:"subset" yaml:"subset"`
 }
 
 // ApisixRouteHTTPPlugin represents an APISIX plugin.

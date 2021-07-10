@@ -253,7 +253,7 @@ spec:
             - --default-apisix-cluster-admin-key
             - edd1c9f034335f136f87ad84b625c8f1
             - --app-namespace
-            - %s
+            - %s,kube-system
             - --apisix-route-version
             - %s
       serviceAccount: ingress-apisix-e2e-test-service-account

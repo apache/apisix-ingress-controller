@@ -50,6 +50,8 @@ const (
 	ApisixRouteV1 = "apisix.apache.org/v1"
 	// ApisixRouteV2alpha1 represents apisixroute.apisix.apache.org/v2alpha1
 	ApisixRouteV2alpha1 = "apisix.apache.org/v2alpha1"
+	// ApisixRouteV2beta1 represents apisixroute.apisix.apache.org/v2beta1
+	ApisixRouteV2beta1 = "apisix.apache.org/v2beta1"
 
 	_minimalResyncInterval = 30 * time.Second
 )

@@ -24,6 +24,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	configv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -73,6 +74,12 @@ type Translator interface {
 	// TranslateRouteV2alpha1NotStrictly translates the configv2alpha1.ApisixRoute object into several Route
 	// and Upstream resources not strictly, only used for delete event.
 	TranslateRouteV2alpha1NotStrictly(*configv2alpha1.ApisixRoute) (*TranslateContext, error)
+	// TranslateRouteV2beta1 translates the configv2beta1.ApisixRoute object into several Route
+	// and Upstream resources.
+	TranslateRouteV2beta1(*configv2beta1.ApisixRoute) (*TranslateContext, error)
+	// TranslateRouteV2beta1NotStrictly translates the configv2beta1.ApisixRoute object into several Route
+	// and Upstream resources not strictly, only used for delete event.
+	TranslateRouteV2beta1NotStrictly(*configv2beta1.ApisixRoute) (*TranslateContext, error)
 	// TranslateSSL translates the configv2alpha1.ApisixTls object into the APISIX SSL resource.
 	TranslateSSL(*configv1.ApisixTls) (*apisixv1.Ssl, error)
 	// TranslateClusterConfig translates the configv2alpha1.ApisixClusterConfig object into the APISIX

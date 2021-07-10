@@ -22,6 +22,7 @@ import (
 	configv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	listersv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2alpha1"
+	listersv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta1"
 )
 
 const (
@@ -40,6 +41,8 @@ type ApisixRouteLister interface {
 	V1(string, string) (ApisixRoute, error)
 	// V2alpha1 gets the ApisixRoute in apisix.apache.org/v2alpha1.
 	V2alpha1(string, string) (ApisixRoute, error)
+	// V2beta1 gets the ApisixRoute in apisix.apache.org/v2beta1.
+	V2beta1(string, string) (ApisixRoute, error)
 }
 
 // ApisixRouteInformer is an encapsulation for the informer of ApisixRoute,
@@ -118,6 +121,7 @@ func (ar *apisixRoute) ResourceVersion() string {
 type apisixRouteLister struct {
 	v1Lister       listersv1.ApisixRouteLister
 	v2alpha1Lister listersv2alpha1.ApisixRouteLister
+	v2beta1Lister  listersv2beta1.ApisixRouteLister
 }
 
 func (l *apisixRouteLister) V1(namespace, name string) (ApisixRoute, error) {
@@ -142,6 +146,17 @@ func (l *apisixRouteLister) V2alpha1(namespace, name string) (ApisixRoute, error
 	}, nil
 }
 
+func (l *apisixRouteLister) V2beta1(namespace, name string) (ApisixRoute, error) {
+	ar, err := l.v2beta1Lister.ApisixRoutes(namespace).Get(name)
+	if err != nil {
+		return nil, err
+	}
+	return &apisixRoute{
+		groupVersion: ApisixRouteV2beta1,
+		v2beta1:      ar,
+	}, nil
+}
+
 // MustNewApisixRoute creates a kube.ApisixRoute object according to the
 // type of obj.
 func MustNewApisixRoute(obj interface{}) ApisixRoute {
@@ -155,6 +170,11 @@ func MustNewApisixRoute(obj interface{}) ApisixRoute {
 		return &apisixRoute{
 			groupVersion: ApisixRouteV2alpha1,
 			v2alpha1:     ar,
+		}
+	case *configv2beta1.ApisixRoute:
+		return &apisixRoute{
+			groupVersion: ApisixRouteV2beta1,
+			v2beta1:      ar,
 		}
 	default:
 		panic("invalid ApisixRoute type")
@@ -181,9 +201,10 @@ func NewApisixRoute(obj interface{}) (ApisixRoute, error) {
 	}
 }
 
-func NewApisixRouteLister(v1 listersv1.ApisixRouteLister, v2alpha1 listersv2alpha1.ApisixRouteLister) ApisixRouteLister {
+func NewApisixRouteLister(v1 listersv1.ApisixRouteLister, v2alpha1 listersv2alpha1.ApisixRouteLister, v2beta1 listersv2beta1.ApisixRouteLister) ApisixRouteLister {
 	return &apisixRouteLister{
 		v1Lister:       v1,
 		v2alpha1Lister: v2alpha1,
+		v2beta1Lister:  v2beta1,
 	}
 }

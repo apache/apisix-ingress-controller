@@ -65,7 +65,7 @@ func (c *podController) onAdd(obj interface{}) {
 		return
 	}
 	log.Debugw("pod add event arrived",
-		zap.Any("object", obj),
+		zap.String("obj.key", key),
 	)
 	pod := obj.(*corev1.Pod)
 	if err := c.controller.podCache.Add(pod); err != nil {
