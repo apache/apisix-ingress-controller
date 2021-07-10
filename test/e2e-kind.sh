@@ -22,6 +22,6 @@ export "GATEWAY_NAMESPACE_OVERRIDE=${APISIX_NAMESPACE}"
 
 echo ">> Running conformance tests"
 # timeout is 1m to failfast since the test always timed out
-go test -count=1 -short -timeout=1m -tags=e2e -test.v ./test/conformance/... ./test/e2eknative/... \
+go test -count=1 -short -timeout=5m -tags=e2e -test.v ./test/conformance/... ./test/e2eknative/... \
   --ingressendpoint=${NODE_IP} \
   --ingressClass=apisix
