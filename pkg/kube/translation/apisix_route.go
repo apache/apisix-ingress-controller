@@ -189,7 +189,7 @@ func (t *translator) translateHTTPRouteV2beta1(ctx *TranslateContext, ar *config
 		}
 
 		pluginMap := make(apisixv1.Plugins)
-		// 2.add route plugins
+		// add route plugins
 		for _, plugin := range part.Plugins {
 			if !plugin.Enable {
 				continue
