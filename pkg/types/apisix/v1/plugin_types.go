@@ -81,6 +81,7 @@ type RewriteConfig struct {
 	RewriteTarget      string            `json:"uri,omitempty"`
 	RewriteTargetRegex []string          `json:"regex_uri,omitempty"`
 	RewriteHeaders     map[string]string `json:"headers,omitempty"`
+	RewriteHost        string            `json:"host,omitempty"`
 }
 
 // RedirectConfig is the rule config for redirect plugin.
