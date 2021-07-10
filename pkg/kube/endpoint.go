@@ -59,7 +59,7 @@ func (lister *endpointLister) GetEndpoint(namespace, name string) (Endpoint, err
 }
 
 func (lister *endpointLister) GetEndpointSlices(namespace, svcName string) (Endpoint, error) {
-	if lister.epsLister != nil {
+	if lister.epsLister == nil {
 		panic("not a endpointSlice lister")
 	}
 	selector := labels.SelectorFromSet(labels.Set{
@@ -172,5 +172,12 @@ func NewEndpointListerAndInformer(factory informers.SharedInformerFactory, useEn
 func NewEndpoint(ep *corev1.Endpoints) Endpoint {
 	return &endpoint{
 		endpoint: ep,
+	}
+}
+
+// NewEndpointWithSlice creates an Endpoint which entity is Kubernetes EndpointSlices.
+func NewEndpointWithSlice(ep *discoveryv1.EndpointSlice) Endpoint {
+	return &endpoint{
+		endpointSlices: []*discoveryv1.EndpointSlice{ep},
 	}
 }

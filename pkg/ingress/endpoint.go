@@ -16,21 +16,16 @@ package ingress
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"time"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
-	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type endpointsController struct {
@@ -89,82 +84,7 @@ func (c *endpointsController) run(ctx context.Context) {
 
 func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 	ep := ev.Object.(kube.Endpoint)
-	namespace := ep.Namespace()
-	svcName := ep.ServiceName()
-	svc, err := c.controller.svcLister.Services(ep.Namespace()).Get(svcName)
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			log.Infof("service %s/%s not found", ep.Namespace(), svcName)
-			return nil
-		}
-		log.Errorf("failed to get service %s/%s: %s", ep.Namespace(), svcName, err)
-		return err
-	}
-	var subsets []configv1.ApisixUpstreamSubset
-	subsets = append(subsets, configv1.ApisixUpstreamSubset{})
-	au, err := c.controller.apisixUpstreamLister.ApisixUpstreams(namespace).Get(svcName)
-	if err != nil {
-		if !k8serrors.IsNotFound(err) {
-			log.Errorf("failed to get ApisixUpstream %s/%s: %s", ep.Namespace(), svcName, err)
-			return err
-		}
-	} else if len(au.Spec.Subsets) > 0 {
-		subsets = append(subsets, au.Spec.Subsets...)
-	}
-
-	clusters := c.controller.apisix.ListClusters()
-	for _, port := range svc.Spec.Ports {
-		for _, subset := range subsets {
-			nodes, err := c.controller.translator.TranslateUpstreamNodes(ep, port.Port, subset.Labels)
-			if err != nil {
-				log.Errorw("failed to translate upstream nodes",
-					zap.Error(err),
-					zap.Any("endpoints", ep),
-					zap.Int32("port", port.Port),
-				)
-			}
-			name := apisixv1.ComposeUpstreamName(namespace, svcName, subset.Name, port.Port)
-			for _, cluster := range clusters {
-				if err := c.syncToCluster(ctx, cluster, nodes, name); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func (c *endpointsController) syncToCluster(ctx context.Context, cluster apisix.Cluster, nodes apisixv1.UpstreamNodes, upsName string) error {
-	upstream, err := cluster.Upstream().Get(ctx, upsName)
-	if err != nil {
-		if err == apisixcache.ErrNotFound {
-			log.Warnw("upstream is not referenced",
-				zap.String("cluster", cluster.String()),
-				zap.String("upstream", upsName),
-			)
-			return nil
-		} else {
-			log.Errorw("failed to get upstream",
-				zap.String("upstream", upsName),
-				zap.String("cluster", cluster.String()),
-				zap.Error(err),
-			)
-			return err
-		}
-	}
-
-	upstream.Nodes = nodes
-
-	log.Debugw("upstream binds new nodes",
-		zap.Any("upstream", upstream),
-		zap.String("cluster", cluster.String()),
-	)
-
-	updated := &manifest{
-		upstreams: []*apisixv1.Upstream{upstream},
-	}
-	return c.controller.syncManifests(ctx, nil, updated, nil)
+	return c.controller.syncEndpoint(ctx, ep)
 }
 
 func (c *endpointsController) handleSyncErr(obj interface{}, err error) {

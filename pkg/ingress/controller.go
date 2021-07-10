@@ -21,8 +21,11 @@ import (
 	"sync"
 	"time"
 
+	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -107,10 +110,11 @@ type Controller struct {
 	apisixConsumerLister        listersv2alpha1.ApisixConsumerLister
 
 	// resource controllers
-	podController       *podController
-	endpointsController *endpointsController
-	ingressController   *ingressController
-	secretController    *secretController
+	podController           *podController
+	endpointsController     *endpointsController
+	endpointSliceController *endpointSliceController
+	ingressController       *ingressController
+	secretController        *secretController
 
 	apisixUpstreamController      *apisixUpstreamController
 	apisixRouteController         *apisixRouteController
@@ -237,8 +241,12 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixTlsInformer = apisixFactory.Apisix().V1().ApisixTlses().Informer()
 	c.apisixConsumerInformer = apisixFactory.Apisix().V2alpha1().ApisixConsumers().Informer()
 
+	if c.cfg.Kubernetes.WatchEndpointSlices {
+		c.endpointSliceController = c.newEndpointSliceController()
+	} else {
+		c.endpointsController = c.newEndpointsController()
+	}
 	c.podController = c.newPodController()
-	c.endpointsController = c.newEndpointsController()
 	c.apisixUpstreamController = c.newApisixUpstreamController()
 	c.ingressController = c.newIngressController()
 	c.apisixRouteController = c.newApisixRouteController()
@@ -429,7 +437,11 @@ func (c *Controller) run(ctx context.Context) {
 		c.podController.run(ctx)
 	})
 	c.goAttach(func() {
-		c.endpointsController.run(ctx)
+		if c.cfg.Kubernetes.WatchEndpointSlices {
+			c.endpointSliceController.run(ctx)
+		} else {
+			c.endpointsController.run(ctx)
+		}
 	})
 	c.goAttach(func() {
 		c.apisixUpstreamController.run(ctx)
@@ -508,6 +520,85 @@ func (c *Controller) syncConsumer(ctx context.Context, consumer *apisixv1.Consum
 	}
 	return
 }
+
+func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
+	namespace := ep.Namespace()
+	svcName := ep.ServiceName()
+	svc, err := c.svcLister.Services(ep.Namespace()).Get(svcName)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			log.Infof("service %s/%s not found", ep.Namespace(), svcName)
+			return nil
+		}
+		log.Errorf("failed to get service %s/%s: %s", ep.Namespace(), svcName, err)
+		return err
+	}
+	var subsets []configv1.ApisixUpstreamSubset
+	subsets = append(subsets, configv1.ApisixUpstreamSubset{})
+	au, err := c.apisixUpstreamLister.ApisixUpstreams(namespace).Get(svcName)
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			log.Errorf("failed to get ApisixUpstream %s/%s: %s", ep.Namespace(), svcName, err)
+			return err
+		}
+	} else if len(au.Spec.Subsets) > 0 {
+		subsets = append(subsets, au.Spec.Subsets...)
+	}
+
+	clusters := c.apisix.ListClusters()
+	for _, port := range svc.Spec.Ports {
+		for _, subset := range subsets {
+			nodes, err := c.translator.TranslateUpstreamNodes(ep, port.Port, subset.Labels)
+			if err != nil {
+				log.Errorw("failed to translate upstream nodes",
+					zap.Error(err),
+					zap.Any("endpoints", ep),
+					zap.Int32("port", port.Port),
+				)
+			}
+			name := apisixv1.ComposeUpstreamName(namespace, svcName, subset.Name, port.Port)
+			for _, cluster := range clusters {
+				if err := c.syncUpstreamNodesChangeToCluster(ctx, cluster, nodes, name); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (c *Controller) syncUpstreamNodesChangeToCluster(ctx context.Context, cluster apisix.Cluster, nodes apisixv1.UpstreamNodes, upsName string) error {
+	upstream, err := cluster.Upstream().Get(ctx, upsName)
+	if err != nil {
+		if err == apisixcache.ErrNotFound {
+			log.Warnw("upstream is not referenced",
+				zap.String("cluster", cluster.String()),
+				zap.String("upstream", upsName),
+			)
+			return nil
+		} else {
+			log.Errorw("failed to get upstream",
+				zap.String("upstream", upsName),
+				zap.String("cluster", cluster.String()),
+				zap.Error(err),
+			)
+			return err
+		}
+	}
+
+	upstream.Nodes = nodes
+
+	log.Debugw("upstream binds new nodes",
+		zap.Any("upstream", upstream),
+		zap.String("cluster", cluster.String()),
+	)
+
+	updated := &manifest{
+		upstreams: []*apisixv1.Upstream{upstream},
+	}
+	return c.syncManifests(ctx, nil, updated, nil)
+}
+
 func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.CancelFunc) {
 	defer cancelFunc()
 	for {
