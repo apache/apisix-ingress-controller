@@ -4,12 +4,15 @@ go 1.13
 
 require (
 	github.com/aws/aws-sdk-go v1.37.1 // indirect
+	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gin-gonic/gin v1.6.3
 	github.com/gogo/protobuf v1.3.2
 	github.com/googleapis/gnostic v0.5.3 // indirect
 	github.com/gorilla/websocket v1.4.2
+	github.com/gruntwork-io/terratest v0.32.8 // indirect
 	github.com/hashicorp/go-memdb v1.0.4
-	github.com/hashicorp/go-multierror v1.0.0
+	github.com/hashicorp/go-multierror v1.1.0
+	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/onsi/gomega v1.10.3 // indirect
 	github.com/prometheus/client_golang v1.10.0
@@ -26,9 +29,9 @@ require (
 	google.golang.org/grpc v1.37.0
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.20.2
-	k8s.io/apimachinery v0.20.2
-	k8s.io/client-go v0.20.2
+	k8s.io/api v0.21.1
+	k8s.io/apimachinery v0.21.1
+	k8s.io/client-go v0.21.1
 	k8s.io/code-generator v0.21.1
 	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009 // indirect
 	knative.dev/networking v0.0.0-20210512050647-ace2d3306f0b

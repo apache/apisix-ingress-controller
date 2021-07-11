@@ -27,18 +27,18 @@ var (
 	_errPasswordNotFoundOrInvalid = errors.New("key \"password\" not found or invalid in secret")
 )
 
-func (t *translator) translateTrafficSplitPlugin(ctx *TranslateContext, ar *configv2alpha1.ApisixRoute, defaultBackendWeight int,
+func (t *translator) translateTrafficSplitPlugin(ctx *TranslateContext, ns string, defaultBackendWeight int,
 	backends []*configv2alpha1.ApisixRouteHTTPBackend) (*apisixv1.TrafficSplitConfig, error) {
 	var (
 		wups []apisixv1.TrafficSplitConfigRuleWeightedUpstream
 	)
 
 	for _, backend := range backends {
-		svcClusterIP, svcPort, err := t.getServiceClusterIPAndPort(backend, ar)
+		svcClusterIP, svcPort, err := t.getServiceClusterIPAndPort(backend, ns)
 		if err != nil {
 			return nil, err
 		}
-		ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
+		ups, err := t.translateUpstream(ns, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
 		if err != nil {
 			return nil, err
 		}

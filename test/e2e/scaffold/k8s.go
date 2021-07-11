@@ -150,12 +150,12 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 			ginkgo.GinkgoT().Logf("got status code %d from APISIX", resp.StatusCode)
 			return false, nil
 		}
-		c := &counter{}
+		var c counter
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return false, err
 		}
-		err = json.Unmarshal(b, c)
+		err = json.Unmarshal(b, &c)
 		if err != nil {
 			return false, err
 		}
@@ -359,11 +359,13 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		httpNodePort    int
 		httpsNodePort   int
 		tcpNodePort     int
+		udpNodePort     int
 		controlNodePort int
 		adminPort       int
 		httpPort        int
 		httpsPort       int
 		tcpPort         int
+		udpPort         int
 		controlPort     int
 	)
 	for _, port := range s.apisixService.Spec.Ports {
@@ -379,6 +381,9 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		} else if port.Name == "tcp" {
 			tcpNodePort = int(port.NodePort)
 			tcpPort = int(port.Port)
+		} else if port.Name == "udp" {
+			udpNodePort = int(port.NodePort)
+			udpPort = int(port.Port)
 		} else if port.Name == "http-control" {
 			controlNodePort = int(port.NodePort)
 			controlPort = int(port.Port)
@@ -393,6 +398,8 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		httpsNodePort, httpsPort)
 	s.apisixTCPTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
 		tcpNodePort, tcpPort)
+	s.apisixUDPTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
+		udpNodePort, udpPort)
 	s.apisixControlTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
 		controlNodePort, controlPort)
 
@@ -412,6 +419,10 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		return err
 	}
 	s.addFinalizers(s.apisixTCPTunnel.Close)
+	if err := s.apisixUDPTunnel.ForwardPortE(s.t); err != nil {
+		return err
+	}
+	s.addFinalizers(s.apisixUDPTunnel.Close)
 	if err := s.apisixControlTunnel.ForwardPortE(s.t); err != nil {
 		return err
 	}

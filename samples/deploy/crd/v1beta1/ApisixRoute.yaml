@@ -44,7 +44,11 @@ spec:
     - name: v1
       served: true
       storage: false
+      deprecated: true
     - name: v2alpha1
+      served: true
+      storage: false
+    - name: v2beta1
       served: true
       storage: true
   scope: Namespaced
@@ -66,6 +70,7 @@ spec:
           anyOf:
             - required: ["http"]
             - required: ["tcp"]
+            - required: ["stream"]
           properties:
             http:
               type: array
@@ -257,6 +262,46 @@ spec:
                       resolveGranualrity:
                         type: string
                         enum: ["endpoint", "service"]
+                      subset:
+                        type: string
+                    required:
+                      - serviceName
+                      - servicePort
+            stream:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                required: [ "name", "match", "backend", "protocol" ]
+                properties:
+                  "protocol":
+                    type: string
+                    enum: [ "TCP", "UDP" ]
+                  name:
+                    type: string
+                    minLength: 1
+                  match:
+                    type: object
+                    properties:
+                      ingressPort:
+                        type: integer
+                        minimum: 1
+                        maximum: 65535
+                    required:
+                      - ingressPort
+                  backend:
+                    type: object
+                    properties:
+                      serviceName:
+                        type: string
+                        minLength: 1
+                      servicePort:
+                        type: integer
+                        minimum: 1
+                        maximum: 65535
+                      resolveGranualrity:
+                        type: string
+                        enum: [ "endpoint", "service" ]
                       subset:
                         type: string
                     required:

@@ -158,6 +158,14 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+    - discovery.k8s.io
+  resources:
+    - endpointslices
+  verbs:
+    - get
+    - list
+    - watch
+- apiGroups:
   - networking.internal.knative.dev
   resources:
   - ingresses

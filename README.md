@@ -58,7 +58,7 @@ This project is currently general availability.
 
 ## Prerequisites
 
-Apisix ingress controller requires Kubernetes version 1.14+.
+Apisix ingress controller requires Kubernetes version 1.15+.
 
 ## Apache APISIX Ingress vs. Kubernetes Ingress Nginx
 

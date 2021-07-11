@@ -93,12 +93,14 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		ar   kube.ApisixRoute
 		tctx *translation.TranslateContext
 	)
-	if obj.GroupVersion == kube.ApisixRouteV1 {
+	switch obj.GroupVersion {
+	case kube.ApisixRouteV1:
 		ar, err = c.controller.apisixRouteLister.V1(namespace, name)
-	} else {
+	case kube.ApisixRouteV2alpha1:
 		ar, err = c.controller.apisixRouteLister.V2alpha1(namespace, name)
+	case kube.ApisixRouteV2beta1:
+		ar, err = c.controller.apisixRouteLister.V2beta1(namespace, name)
 	}
-
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Errorw("failed to get ApisixRoute",
@@ -129,7 +131,9 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		}
 		ar = ev.Tombstone.(kube.ApisixRoute)
 	}
-	if obj.GroupVersion == kube.ApisixRouteV1 {
+	//
+	switch obj.GroupVersion {
+	case kube.ApisixRouteV1:
 		tctx, err = c.controller.translator.TranslateRouteV1(ar.V1())
 		if err != nil {
 			log.Errorw("failed to translate ApisixRoute v1",
@@ -138,7 +142,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			)
 			return err
 		}
-	} else {
+	case kube.ApisixRouteV2alpha1:
 		if ev.Type != types.EventDelete {
 			tctx, err = c.controller.translator.TranslateRouteV2alpha1(ar.V2alpha1())
 		} else {
@@ -149,6 +153,19 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		}
 		if err != nil {
 			log.Errorw("failed to translate ApisixRoute v2alpha1",
+				zap.Error(err),
+				zap.Any("object", ar),
+			)
+			return err
+		}
+	case kube.ApisixRouteV2beta1:
+		if ev.Type != types.EventDelete {
+			tctx, err = c.controller.translator.TranslateRouteV2beta1(ar.V2beta1())
+		} else {
+			tctx, err = c.controller.translator.TranslateRouteV2beta1NotStrictly(ar.V2beta1())
+		}
+		if err != nil {
+			log.Errorw("failed to translate ApisixRoute v2beta1",
 				zap.Error(err),
 				zap.Any("object", ar),
 			)
@@ -180,18 +197,21 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		added = m
 	} else {
 		var oldCtx *translation.TranslateContext
-		if obj.GroupVersion == kube.ApisixRouteV1 {
+		switch obj.GroupVersion {
+		case kube.ApisixRouteV1:
 			oldCtx, err = c.controller.translator.TranslateRouteV1(obj.OldObject.V1())
-		} else {
+		case kube.ApisixRouteV2alpha1:
 			oldCtx, err = c.controller.translator.TranslateRouteV2alpha1(obj.OldObject.V2alpha1())
+		case kube.ApisixRouteV2beta1:
+			oldCtx, err = c.controller.translator.TranslateRouteV2beta1(obj.OldObject.V2beta1())
 		}
 		if err != nil {
-			log.Errorw("failed to translate old ApisixRoute v2alpha1",
+			log.Errorw("failed to translate old ApisixRoute",
+				zap.String("version", obj.GroupVersion),
 				zap.String("event", "update"),
 				zap.Error(err),
 				zap.Any("ApisixRoute", ar),
 			)
-
 			return err
 		}
 
@@ -215,19 +235,26 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 		return
 	}
 	var ar kube.ApisixRoute
-	if event.GroupVersion == kube.ApisixRouteV1 {
+	switch event.GroupVersion {
+	case kube.ApisixRouteV1:
 		ar, errLocal = c.controller.apisixRouteLister.V1(namespace, name)
-	} else {
+	case kube.ApisixRouteV2alpha1:
 		ar, errLocal = c.controller.apisixRouteLister.V2alpha1(namespace, name)
+	case kube.ApisixRouteV2beta1:
+		ar, errLocal = c.controller.apisixRouteLister.V2beta1(namespace, name)
 	}
 	if errOrigin == nil {
 		if ev.Type != types.EventDelete {
 			if errLocal == nil {
-				if ar.GroupVersion() == kube.ApisixRouteV1 {
+				switch ar.GroupVersion() {
+				case kube.ApisixRouteV1:
 					c.controller.recorderEvent(ar.V1(), v1.EventTypeNormal, _resourceSynced, nil)
-				} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
+				case kube.ApisixRouteV2alpha1:
 					c.controller.recorderEvent(ar.V2alpha1(), v1.EventTypeNormal, _resourceSynced, nil)
 					c.controller.recordStatus(ar.V2alpha1(), _resourceSynced, nil, metav1.ConditionTrue)
+				case kube.ApisixRouteV2beta1:
+					c.controller.recorderEvent(ar.V2beta1(), v1.EventTypeNormal, _resourceSynced, nil)
+					c.controller.recordStatus(ar.V2beta1(), _resourceSynced, nil, metav1.ConditionTrue)
 				}
 			} else {
 				log.Errorw("failed list ApisixRoute",
@@ -245,11 +272,15 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 		zap.Error(errOrigin),
 	)
 	if errLocal == nil {
-		if ar.GroupVersion() == kube.ApisixRouteV1 {
+		switch ar.GroupVersion() {
+		case kube.ApisixRouteV1:
 			c.controller.recorderEvent(ar.V1(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
-		} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
+		case kube.ApisixRouteV2alpha1:
 			c.controller.recorderEvent(ar.V2alpha1(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
 			c.controller.recordStatus(ar.V2alpha1(), _resourceSyncAborted, errOrigin, metav1.ConditionFalse)
+		case kube.ApisixRouteV2beta1:
+			c.controller.recorderEvent(ar.V2beta1(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
+			c.controller.recordStatus(ar.V2beta1(), _resourceSyncAborted, errOrigin, metav1.ConditionFalse)
 		}
 	} else {
 		log.Errorw("failed list ApisixRoute",

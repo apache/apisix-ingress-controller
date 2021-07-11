@@ -20,6 +20,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -67,6 +68,7 @@ type Scaffold struct {
 	apisixHttpTunnel    *k8s.Tunnel
 	apisixHttpsTunnel   *k8s.Tunnel
 	apisixTCPTunnel     *k8s.Tunnel
+	apisixUDPTunnel     *k8s.Tunnel
 	apisixControlTunnel *k8s.Tunnel
 
 	// Used for template rendering.
@@ -205,6 +207,22 @@ func (s *Scaffold) NewAPISIXClientWithTCPProxy() *httpexpect.Expect {
 	})
 }
 
+func (s *Scaffold) DNSResolver() *net.Resolver {
+	return &net.Resolver{
+		PreferGo: false,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{
+				Timeout: time.Millisecond * time.Duration(10000),
+			}
+			return d.DialContext(ctx, "udp", s.apisixUDPTunnel.Endpoint())
+		},
+	}
+}
+
+func (s *Scaffold) UpdateNamespace(ns string) {
+	s.kubectlOptions.Namespace = ns
+}
+
 // NewAPISIXHttpsClient creates the default HTTPS client.
 func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
 	u := url.URL{
@@ -299,6 +317,19 @@ func (s *Scaffold) beforeEach() {
 
 func (s *Scaffold) afterEach() {
 	defer ginkgo.GinkgoRecover()
+
+	if ginkgo.CurrentGinkgoTestDescription().Failed {
+		fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
+		output, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods")
+		if output != "" {
+			fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		}
+		output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "describe", "pods")
+		if output != "" {
+			fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		}
+	}
+
 	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
 	assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
 

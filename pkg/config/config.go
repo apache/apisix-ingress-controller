@@ -50,6 +50,8 @@ const (
 	ApisixRouteV1 = "apisix.apache.org/v1"
 	// ApisixRouteV2alpha1 represents apisixroute.apisix.apache.org/v2alpha1
 	ApisixRouteV2alpha1 = "apisix.apache.org/v2alpha1"
+	// ApisixRouteV2beta1 represents apisixroute.apisix.apache.org/v2beta1
+	ApisixRouteV2beta1 = "apisix.apache.org/v2beta1"
 
 	// KnativeIngressNetworkingV1alpha1 represents knative.ingress.networking/v1
 	KnativeIngressNetworkingV1alpha1 = "networking/v1alpha1"
@@ -76,6 +78,7 @@ type KubernetesConfig struct {
 	ElectionID            string             `json:"election_id" yaml:"election_id"`
 	IngressClass          string             `json:"ingress_class" yaml:"ingress_class"`
 	IngressVersion        string             `json:"ingress_version" yaml:"ingress_version"`
+	WatchEndpointSlices   bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
 	ApisixRouteVersion    string             `json:"apisix_route_version" yaml:"apisix_route_version"`
 	KnativeIngressVersion string             `json:"knative_ingress_version" yaml:"knative_ingress_version"`
 }
@@ -108,13 +111,14 @@ func NewDefaultConfig() *Config {
 		HTTPListen:      ":8080",
 		EnableProfiling: true,
 		Kubernetes: KubernetesConfig{
-			Kubeconfig:            "", // Use in-cluster configurations.
-			ResyncInterval:        types.TimeDuration{Duration: 6 * time.Hour},
-			AppNamespaces:         []string{v1.NamespaceAll},
-			ElectionID:            IngressAPISIXLeader,
-			IngressClass:          IngressClass,
-			IngressVersion:        IngressNetworkingV1,
-			ApisixRouteVersion:    ApisixRouteV2alpha1,
+			Kubeconfig:          "", // Use in-cluster configurations.
+			ResyncInterval:      types.TimeDuration{Duration: 6 * time.Hour},
+			AppNamespaces:       []string{v1.NamespaceAll},
+			ElectionID:          IngressAPISIXLeader,
+			IngressClass:        IngressClass,
+			IngressVersion:      IngressNetworkingV1,
+			ApisixRouteVersion:  ApisixRouteV2alpha1,
+			WatchEndpointSlices: false,
 			KnativeIngressVersion: KnativeIngressNetworkingV1alpha1,
 		},
 	}

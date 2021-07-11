@@ -16,6 +16,7 @@ package translation
 
 import (
 	"context"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,8 +38,7 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 	informersFactory := informers.NewSharedInformerFactory(client, 0)
 	svcInformer := informersFactory.Core().V1().Services().Informer()
 	svcLister := informersFactory.Core().V1().Services().Lister()
-	epInformer := informersFactory.Core().V1().Endpoints().Informer()
-	epLister := informersFactory.Core().V1().Endpoints().Lister()
+	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := apisixfake.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
 	auInformer := apisixInformersFactory.Apisix().V1().ApisixUpstreams().Informer()
@@ -172,13 +172,13 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 
 	tr := &translator{&TranslatorOptions{
 		ServiceLister:        svcLister,
-		EndpointsLister:      epLister,
+		EndpointLister:       epLister,
 		ApisixUpstreamLister: auLister,
 	}}
 	ctx := &TranslateContext{
 		upstreamMap: make(map[string]struct{}),
 	}
-	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1, 30, backends)
+	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, err)
 
 	assert.Len(t, ctx.Upstreams, 2)
@@ -209,8 +209,7 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 	informersFactory := informers.NewSharedInformerFactory(client, 0)
 	svcInformer := informersFactory.Core().V1().Services().Informer()
 	svcLister := informersFactory.Core().V1().Services().Lister()
-	epInformer := informersFactory.Core().V1().Endpoints().Informer()
-	epLister := informersFactory.Core().V1().Endpoints().Lister()
+	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := apisixfake.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
 	auInformer := apisixInformersFactory.Apisix().V1().ApisixUpstreams().Informer()
@@ -344,11 +343,11 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 
 	tr := &translator{&TranslatorOptions{
 		ServiceLister:        svcLister,
-		EndpointsLister:      epLister,
+		EndpointLister:       epLister,
 		ApisixUpstreamLister: auLister,
 	}}
 	ctx := &TranslateContext{upstreamMap: make(map[string]struct{})}
-	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1, 30, backends)
+	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, err)
 
 	assert.Len(t, ctx.Upstreams, 1)
@@ -374,8 +373,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	informersFactory := informers.NewSharedInformerFactory(client, 0)
 	svcInformer := informersFactory.Core().V1().Services().Informer()
 	svcLister := informersFactory.Core().V1().Services().Lister()
-	epInformer := informersFactory.Core().V1().Endpoints().Informer()
-	epLister := informersFactory.Core().V1().Endpoints().Lister()
+	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := apisixfake.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
 	auInformer := apisixInformersFactory.Apisix().V1().ApisixUpstreams().Informer()
@@ -509,11 +507,11 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 
 	tr := &translator{&TranslatorOptions{
 		ServiceLister:        svcLister,
-		EndpointsLister:      epLister,
+		EndpointLister:       epLister,
 		ApisixUpstreamLister: auLister,
 	}}
 	ctx := &TranslateContext{upstreamMap: make(map[string]struct{})}
-	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1, 30, backends)
+	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, cfg)
 	assert.Len(t, ctx.Upstreams, 0)
 	assert.Equal(t, err.Error(), "service \"svc-2\" not found")
@@ -521,14 +519,14 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	backends[0].ServiceName = "svc-1"
 	backends[1].ServicePort.StrVal = "port-not-found"
 	ctx = &TranslateContext{upstreamMap: make(map[string]struct{})}
-	cfg, err = tr.translateTrafficSplitPlugin(ctx, ar1, 30, backends)
+	cfg, err = tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, cfg)
 	assert.Equal(t, err.Error(), "service.spec.ports: port not defined")
 
 	backends[1].ServicePort.StrVal = "port2"
 	backends[1].ResolveGranularity = "service"
 	ctx = &TranslateContext{upstreamMap: make(map[string]struct{})}
-	cfg, err = tr.translateTrafficSplitPlugin(ctx, ar1, 30, backends)
+	cfg, err = tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, cfg)
 	assert.Equal(t, err.Error(), "conflict headless service and backend resolve granularity")
 }
