@@ -5,7 +5,6 @@ go 1.13
 require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gin-gonic/gin v1.6.3
-	github.com/gruntwork-io/terratest v0.32.8 // indirect
 	github.com/hashicorp/go-memdb v1.0.4
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.3 // indirect

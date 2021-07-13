@@ -82,6 +82,10 @@ func (c *apisixUpstreamController) runWorker(ctx context.Context) {
 	}
 }
 
+// sync Used to synchronize ApisixUpstream resources, because upstream alone exists in APISIX and will not be affected,
+// the synchronization logic only includes upsttream's unique configuration management
+// So when ApisixUpstream was deleted, only the scheme / load balancer / healthcheck / retry / timeout
+// on ApisixUpstream was cleaned up
 func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) error {
 	key := ev.Object.(string)
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
@@ -190,8 +194,10 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 			}
 		}
 	}
-	c.controller.recorderEvent(au, corev1.EventTypeNormal, _resourceSynced, nil)
-	c.controller.recordStatus(au, _resourceSynced, nil, metav1.ConditionTrue)
+	if ev.Type != types.EventDelete {
+		c.controller.recorderEvent(au, corev1.EventTypeNormal, _resourceSynced, nil)
+		c.controller.recordStatus(au, _resourceSynced, nil, metav1.ConditionTrue)
+	}
 	return err
 }
 
