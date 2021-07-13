@@ -46,7 +46,7 @@ e.g.
 
 ```yaml
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpbin-route

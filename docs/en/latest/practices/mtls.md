@@ -51,7 +51,7 @@ Since SSL is not configured in ApisixRoute, we can use the config similar to the
 
 ```yaml
 # route.yaml
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpserver-route
