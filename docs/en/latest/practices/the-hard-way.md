@@ -782,7 +782,7 @@ After the ingress controller status is converted to `Running`, we could create a
 Here is an example ApisixRoute:
 
 ```yaml
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpserver-route
