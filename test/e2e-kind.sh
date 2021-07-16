@@ -7,7 +7,7 @@ set -euo pipefail
 APISIX_NAMESPACE=ingress-apisix
 
 export KO_DOCKER_REPO=kind.local
-export KIND_CLUSTER_NAME="ingress-apisix-integration"
+export KIND_CLUSTER_NAME="ingress-apisix-knative"
 $(dirname $0)/upload-test-images.sh
 
 echo ">> Setup test resources"

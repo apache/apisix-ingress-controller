@@ -5,7 +5,7 @@ set -euo pipefail
 KNATIVE_NAMESPACE=knative-serving
 APISIX_NAMESPACE=ingress-apisix
 
-export KIND_CLUSTER_NAME="ingress-apisix-integration"
+export KIND_CLUSTER_NAME="ingress-apisix-knative"
 kind delete cluster
 kind create cluster
 
