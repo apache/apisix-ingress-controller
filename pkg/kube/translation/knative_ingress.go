@@ -26,6 +26,9 @@ import (
 )
 
 func (t *translator) translateKnativeIngressV1alpha1(ing *knativev1alpha1.Ingress) (*TranslateContext, error) {
+	if ing == nil {
+		return nil, nil
+	}
 	ctx := &TranslateContext{
 		upstreamMap: make(map[string]struct{}),
 	}

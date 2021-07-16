@@ -4,15 +4,12 @@ go 1.13
 
 require (
 	github.com/aws/aws-sdk-go v1.37.1 // indirect
-	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gin-gonic/gin v1.6.3
 	github.com/gogo/protobuf v1.3.2
 	github.com/googleapis/gnostic v0.5.3 // indirect
 	github.com/gorilla/websocket v1.4.2
-	github.com/gruntwork-io/terratest v0.32.8 // indirect
 	github.com/hashicorp/go-memdb v1.0.4
 	github.com/hashicorp/go-multierror v1.1.0
-	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/onsi/gomega v1.10.3 // indirect
 	github.com/prometheus/client_golang v1.10.0
@@ -25,7 +22,6 @@ require (
 	go.uber.org/zap v1.16.0
 	golang.org/x/mod v0.4.1 // indirect
 	golang.org/x/net v0.0.0-20210415231046-e915ea6b2b7d
-	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf // indirect
 	google.golang.org/grpc v1.37.0
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 	gopkg.in/yaml.v2 v2.4.0
