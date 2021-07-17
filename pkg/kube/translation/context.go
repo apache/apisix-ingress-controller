@@ -21,15 +21,15 @@ type TranslateContext struct {
 	Routes       []*apisix.Route
 	StreamRoutes []*apisix.StreamRoute
 	Upstreams    []*apisix.Upstream
-	upstreamMap map[string]struct{}
-	SSL []*apisix.Ssl
+	upstreamMap  map[string]struct{}
+	SSL          []*apisix.Ssl
 }
 
 func (tc *TranslateContext) addRoute(r *apisix.Route) {
 	tc.Routes = append(tc.Routes, r)
 }
 
-func (tc *TranslateContext)addSSL(ssl *apisix.Ssl){
+func (tc *TranslateContext) addSSL(ssl *apisix.Ssl) {
 	tc.SSL = append(tc.SSL, ssl)
 }
 
