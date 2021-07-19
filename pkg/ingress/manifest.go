@@ -26,7 +26,7 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func diffSSLes(olds, news []*apisixv1.Ssl) (added, updated, deleted []*apisixv1.Ssl) {
+func diffSSL(olds, news []*apisixv1.Ssl) (added, updated, deleted []*apisixv1.Ssl) {
 	if olds == nil {
 		return news, nil, nil
 	}
@@ -149,7 +149,7 @@ type manifest struct {
 
 func (m *manifest) diff(om *manifest) (added, updated, deleted *manifest) {
 	// add diff ssl
-	sa, su, sd := diffSSLes(om.ssl, m.ssl)
+	sa, su, sd := diffSSL(om.ssl, m.ssl)
 	ar, ur, dr := diffRoutes(om.routes, m.routes)
 	au, uu, du := diffUpstreams(om.upstreams, m.upstreams)
 	asr, usr, dsr := diffStreamRoutes(om.streamRoutes, m.streamRoutes)

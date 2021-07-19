@@ -118,7 +118,7 @@ w174RSQoNMc+odHxn95mxtYdYVE5PKkzgrfxqymLa5Y0LMPCpKOq4XB0paZPtrOt
 k1XbogS6EYyEdbkTDdXdUENvDrU7hzJXSVxJYADiqr44DGfWm6hK0bq9ZPc=
 -----END RSA PRIVATE KEY-----
 `
-	ginkgo.It("create a ingress support https", func() {
+	ginkgo.It("create an ingress resource with tls", func() {
 		// create secrets
 		err := s.NewSecret(serverCertSecret, serverCert, serverKey)
 		assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
