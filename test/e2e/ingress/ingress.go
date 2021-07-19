@@ -129,7 +129,7 @@ k1XbogS6EYyEdbkTDdXdUENvDrU7hzJXSVxJYADiqr44DGfWm6hK0bq9ZPc=
 		// create route
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
-apiVersion: networking.k8s.io/v1beta11
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: httpbin-ingress-https
