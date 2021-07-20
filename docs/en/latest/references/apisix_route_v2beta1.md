@@ -56,7 +56,7 @@ Meaning of each field in the spec of ApisixRoute are followed, the top level fie
 | http[].plugins[].enable | boolean | Whether the plugin is in use |
 | http[].plugins[].config | object | The plugin configuration, fields should be same as in APISIX. |
 | http[].websocket | boolean | Whether enable websocket proxy. |
-| stream | array | ApisixRoutes' tcp route rules. |
+| stream | array | ApisixRoutes' stream route rules, which contains TCP or UDP rules.|
 | stream[].protocol | string (required) | The protocol of rule. Support `TCP` or `UDP`|
 | stream[].name | string (required) | The Route rule name. |
 | stream[].match | object (required) | The Route match conditions. |
