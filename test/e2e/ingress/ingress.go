@@ -27,7 +27,7 @@ import (
 )
 
 var _ = ginkgo.Describe("support ingress.networking/v1beta1 https", func() {
-	s:=scaffold.NewDefaultV2Scaffold()
+	s := scaffold.NewDefaultV2Scaffold()
 
 	serverCertSecret := `server-secret`
 	serverCert := `-----BEGIN CERTIFICATE-----
@@ -148,7 +148,7 @@ spec:
         backend:
           serviceName: %s
           servicePort: %d
-`,host,serverCertSecret,host, backendSvc, backendSvcPort[0])
+`, host, serverCertSecret, host, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 		time.Sleep(10 * time.Second)
 
