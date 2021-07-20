@@ -124,7 +124,7 @@ k1XbogS6EYyEdbkTDdXdUENvDrU7hzJXSVxJYADiqr44DGfWm6hK0bq9ZPc=
 		assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
 
 		// create ingress
-		tlsName := "tls-with-client-ca"
+		//tlsName := "tls-with-client-ca"
 		host := "mtls.httpbin.local"
 		// create route
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -148,7 +148,7 @@ spec:
         backend:
           serviceName: %s
           servicePort: %d
-`,host,tlsName, backendSvc, backendSvcPort[0])
+`,host,serverCertSecret,host, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 		time.Sleep(10 * time.Second)
 
