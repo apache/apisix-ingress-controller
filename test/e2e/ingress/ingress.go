@@ -156,8 +156,6 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
 		assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
 
-		// https request
-		s.NewAPISIXHttpsClient(host).GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK).Body().Raw()
 	})
 
 })
