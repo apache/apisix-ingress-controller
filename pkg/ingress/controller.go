@@ -108,6 +108,8 @@ type Controller struct {
 	apisixClusterConfigInformer cache.SharedIndexInformer
 	apisixConsumerInformer      cache.SharedIndexInformer
 	apisixConsumerLister        listersv2alpha1.ApisixConsumerLister
+	knativeIngressInformer      cache.SharedIndexInformer
+	knativeIngressLister        kube.KnativeIngressLister
 
 	// resource controllers
 	podController           *podController
@@ -121,6 +123,8 @@ type Controller struct {
 	apisixTlsController           *apisixTlsController
 	apisixClusterConfigController *apisixClusterConfigController
 	apisixConsumerController      *apisixConsumerController
+
+	knativeIngressController *knativeIngressController
 }
 
 // NewController creates an ingress apisix controller object.
@@ -179,12 +183,14 @@ func NewController(cfg *config.Config) (*Controller, error) {
 
 func (c *Controller) initWhenStartLeading() {
 	var (
-		ingressInformer     cache.SharedIndexInformer
-		apisixRouteInformer cache.SharedIndexInformer
+		ingressInformer        cache.SharedIndexInformer
+		apisixRouteInformer    cache.SharedIndexInformer
+		knativeIngressInformer cache.SharedIndexInformer
 	)
 
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
 	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
+	knativeFactory := c.kubeClient.NewKnativeSharedIndexInformerFactory()
 
 	c.podLister = kubeFactory.Core().V1().Pods().Lister()
 	c.epLister, c.epInformer = kube.NewEndpointListerAndInformer(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
@@ -204,6 +210,10 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixTlsLister = apisixFactory.Apisix().V1().ApisixTlses().Lister()
 	c.apisixClusterConfigLister = apisixFactory.Apisix().V2alpha1().ApisixClusterConfigs().Lister()
 	c.apisixConsumerLister = apisixFactory.Apisix().V2alpha1().ApisixConsumers().Lister()
+
+	c.knativeIngressLister = kube.NewKnativeIngressLister(
+		knativeFactory.Networking().V1alpha1().Ingresses().Lister(),
+	)
 
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 		PodCache:             c.podCache,
@@ -230,6 +240,9 @@ func (c *Controller) initWhenStartLeading() {
 	case config.ApisixRouteV2beta1:
 		apisixRouteInformer = apisixFactory.Apisix().V2beta1().ApisixRoutes().Informer()
 	}
+	if c.cfg.Kubernetes.KnativeIngressVersion == config.KnativeIngressNetworkingV1alpha1 {
+		knativeIngressInformer = knativeFactory.Networking().V1alpha1().Ingresses().Informer()
+	}
 
 	c.podInformer = kubeFactory.Core().V1().Pods().Informer()
 	c.svcInformer = kubeFactory.Core().V1().Services().Informer()
@@ -240,6 +253,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
 	c.apisixTlsInformer = apisixFactory.Apisix().V1().ApisixTlses().Informer()
 	c.apisixConsumerInformer = apisixFactory.Apisix().V2alpha1().ApisixConsumers().Informer()
+	c.knativeIngressInformer = knativeIngressInformer
 
 	if c.cfg.Kubernetes.WatchEndpointSlices {
 		c.endpointSliceController = c.newEndpointSliceController()
@@ -254,6 +268,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixTlsController = c.newApisixTlsController()
 	c.secretController = c.newSecretController()
 	c.apisixConsumerController = c.newApisixConsumerController()
+	c.knativeIngressController = c.newKnativeIngressController()
 }
 
 // recorderEvent recorder events for resources
@@ -434,6 +449,9 @@ func (c *Controller) run(ctx context.Context) {
 		c.apisixConsumerInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
+		c.knativeIngressInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
 		c.podController.run(ctx)
 	})
 	c.goAttach(func() {
@@ -463,6 +481,9 @@ func (c *Controller) run(ctx context.Context) {
 	})
 	c.goAttach(func() {
 		c.apisixConsumerController.run(ctx)
+	})
+	c.goAttach(func() {
+		c.knativeIngressController.run(ctx)
 	})
 
 	c.metricsCollector.ResetLeader(true)
