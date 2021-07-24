@@ -33,13 +33,14 @@ func TestNewConfigFromFile(t *testing.T) {
 		HTTPListen:      ":9090",
 		EnableProfiling: true,
 		Kubernetes: KubernetesConfig{
-			ResyncInterval:     types.TimeDuration{Duration: time.Hour},
-			Kubeconfig:         "/path/to/foo/baz",
-			AppNamespaces:      []string{""},
-			ElectionID:         "my-election-id",
-			IngressClass:       IngressClass,
-			IngressVersion:     IngressNetworkingV1,
-			ApisixRouteVersion: ApisixRouteV2alpha1,
+			ResyncInterval:        types.TimeDuration{Duration: time.Hour},
+			Kubeconfig:            "/path/to/foo/baz",
+			AppNamespaces:         []string{""},
+			ElectionID:            "my-election-id",
+			IngressClass:          IngressClass,
+			IngressVersion:        IngressNetworkingV1,
+			ApisixRouteVersion:    ApisixRouteV2alpha1,
+			KnativeIngressVersion: KnativeIngressNetworkingV1alpha1,
 		},
 		APISIX: APISIXConfig{
 			DefaultClusterName:     "default",
@@ -80,6 +81,7 @@ kubernetes:
   election_id: my-election-id
   ingress_class: apisix
   ingress_version: networking/v1
+  knative_ingress_version: networking/v1alpha1
 apisix:
   default_cluster_base_url: http://127.0.0.1:8080/apisix
   default_cluster_admin_key: "123456"
