@@ -92,7 +92,7 @@ func (c *knativeIngressController) sync(ctx context.Context, ev *types.Event) er
 	case kube.KnativeIngressV1alpha1:
 		ing, err = c.controller.knativeIngressLister.V1alpha1(namespace, name)
 	default:
-		err = fmt.Errorf("unsupported group version %s, one of (%s/%s/%s) is expected", ingEv.GroupVersion,
+		err = fmt.Errorf("unsupported group version %s, one of (%s) is expected", ingEv.GroupVersion,
 			kube.KnativeIngressV1alpha1)
 	}
 

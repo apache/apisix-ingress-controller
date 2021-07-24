@@ -39,11 +39,6 @@ func (t *translator) translateKnativeIngressV1alpha1(ing *knativev1alpha1.Ingres
 			continue
 		}
 		for j, httpPath := range rule.HTTP.Paths {
-			// Default the path to "/" if none is passed.
-			path := httpPath.Path
-			if path == "" {
-				path = "/"
-			}
 			var (
 				ups *apisixv1.Upstream
 				err error
@@ -51,7 +46,7 @@ func (t *translator) translateKnativeIngressV1alpha1(ing *knativev1alpha1.Ingres
 			knativeBackend := knativeSelectSplit(httpPath.Splits)
 			servicePort := knativeBackend.ServicePort
 			serviceName := fmt.Sprintf("%s.%s.%s", knativeBackend.ServiceNamespace, knativeBackend.ServiceName,
-				servicePort)
+				servicePort.String())
 
 			if serviceName != "" {
 				ups, err = t.translateUpstreamFromKnativeIngressV1alpha1(ing.Namespace, serviceName, servicePort)
