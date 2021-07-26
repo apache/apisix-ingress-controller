@@ -40,13 +40,16 @@ func (t *translator) translateKnativeIngressV1alpha1(ing *knativev1alpha1.Ingres
 		}
 		for j, httpPath := range rule.HTTP.Paths {
 			var (
-				ups *apisixv1.Upstream
-				err error
+				ups            *apisixv1.Upstream
+				err            error
+				knativeBackend knativev1alpha1.IngressBackendSplit
 			)
-			knativeBackend := knativeSelectSplit(httpPath.Splits)
+			// TODO: implement traffic-split, now only picks the first split if it exists
+			if len(httpPath.Splits) > 0 {
+				knativeBackend = httpPath.Splits[0]
+			}
 			servicePort := knativeBackend.ServicePort
-			serviceName := fmt.Sprintf("%s.%s.%s", knativeBackend.ServiceNamespace, knativeBackend.ServiceName,
-				servicePort.String())
+			serviceName := knativeBackend.ServiceName
 
 			if serviceName != "" {
 				ups, err = t.translateUpstreamFromKnativeIngressV1alpha1(ing.Namespace, serviceName, servicePort)
@@ -124,24 +127,6 @@ func (t *translator) translateUpstreamFromKnativeIngressV1alpha1(namespace strin
 	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
-}
-
-func knativeSelectSplit(splits []knativev1alpha1.IngressBackendSplit) knativev1alpha1.IngressBackendSplit {
-	if len(splits) == 0 {
-		return knativev1alpha1.IngressBackendSplit{}
-	}
-	res := splits[0]
-	maxPercentage := splits[0].Percent
-	if len(splits) == 1 {
-		return res
-	}
-	for i := 1; i < len(splits); i++ {
-		if splits[i].Percent > maxPercentage {
-			res = splits[i]
-			maxPercentage = res.Percent
-		}
-	}
-	return res
 }
 
 func composeKnativeIngressRouteName(knativeIngressNamespace, knativeIngressName string, i, j int) string {

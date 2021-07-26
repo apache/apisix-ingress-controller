@@ -29,7 +29,9 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
-//const knativeIngressClassKey = "networking.knative.dev/ingress.class"
+const (
+	_knativeIngressClassKey = "networking.knative.dev/ingress.class"
+)
 
 type knativeIngressController struct {
 	controller *Controller
@@ -294,6 +296,12 @@ func (c *knativeIngressController) OnDelete(obj interface{}) {
 }
 
 func (c *knativeIngressController) isKnativeIngressEffective(ing kube.KnativeIngress) bool {
-	// TODO: add Knative Ingress effectiveness check
-	return true
+	var ica string
+	if ing.GroupVersion() == kube.KnativeIngressV1alpha1 {
+		ica = ing.V1alpha1().GetAnnotations()[_knativeIngressClassKey]
+	}
+	if ica != "" {
+		return ica == c.controller.cfg.Kubernetes.IngressClass
+	}
+	return false
 }
