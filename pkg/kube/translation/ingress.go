@@ -15,11 +15,11 @@
 package translation
 
 import (
-	"go.uber.org/zap"
-
 	"bytes"
 	"fmt"
 	"strings"
+
+	"go.uber.org/zap"
 
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
