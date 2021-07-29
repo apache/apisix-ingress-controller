@@ -24,7 +24,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
@@ -58,6 +57,7 @@ func (c *Controller) newIngressController() *ingressController {
 func (c *ingressController) run(ctx context.Context) {
 	log.Info("ingress controller started")
 	defer log.Infof("ingress controller exited")
+	defer c.workqueue.ShutDown()
 
 	if !cache.WaitForCacheSync(ctx.Done(), c.controller.ingressInformer.HasSynced) {
 		log.Errorf("cache sync failed")
@@ -67,7 +67,6 @@ func (c *ingressController) run(ctx context.Context) {
 		go c.runWorker(ctx)
 	}
 	<-ctx.Done()
-	c.workqueue.ShutDown()
 }
 
 func (c *ingressController) runWorker(ctx context.Context) {
@@ -172,7 +171,13 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		}
 		added, updated, deleted = m.diff(om)
 	}
-	return c.controller.syncManifests(ctx, added, updated, deleted)
+	if err := c.controller.syncManifests(ctx, added, updated, deleted); err != nil {
+		log.Errorw("failed to sync ingress artifacts",
+			zap.Error(err),
+		)
+		return err
+	}
+	return nil
 }
 
 func (c *ingressController) handleSyncErr(obj interface{}, err error) {
@@ -201,11 +206,11 @@ func (c *ingressController) onAdd(obj interface{}) {
 	valid := c.isIngressEffective(ing)
 	if valid {
 		log.Debugw("ingress add event arrived",
-			zap.Any("object", obj),
+			zap.Any("object", ing),
 		)
 	} else {
 		log.Debugw("ignore noneffective ingress add event",
-			zap.Any("object", obj),
+			zap.Any("object", ing),
 		)
 		return
 	}
@@ -312,10 +317,10 @@ func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 
 	// kubernetes.io/ingress.class takes the precedence.
 	if ica != "" {
-		return ica == config.IngressClass
+		return ica == c.controller.cfg.Kubernetes.IngressClass
 	}
 	if ic != nil {
-		return *ic == config.IngressClass
+		return *ic == c.controller.cfg.Kubernetes.IngressClass
 	}
 	return false
 }

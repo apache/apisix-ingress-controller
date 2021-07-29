@@ -31,6 +31,10 @@ type Cache interface {
 	InsertUpstream(*v1.Upstream) error
 	// InsertStreamRoute adds or updates stream_route to cache.
 	InsertStreamRoute(*v1.StreamRoute) error
+	// InsertGlobalRule adds or updates global_rule to cache.
+	InsertGlobalRule(*v1.GlobalRule) error
+	// InsertConsumer adds or updates consumer to cache.
+	InsertConsumer(*v1.Consumer) error
 
 	// GetRoute finds the route from cache according to the primary index (id).
 	GetRoute(string) (*v1.Route, error)
@@ -40,6 +44,10 @@ type Cache interface {
 	GetUpstream(string) (*v1.Upstream, error)
 	// GetStreamRoute finds the stream_route from cache according to the primary index (id).
 	GetStreamRoute(string) (*v1.StreamRoute, error)
+	// GetGlobalRule finds the global_rule from cache according to the primary index (id).
+	GetGlobalRule(string) (*v1.GlobalRule, error)
+	// GetConsumer finds the consumer from cache according to the primary index (id).
+	GetConsumer(string) (*v1.Consumer, error)
 
 	// ListRoutes lists all routes in cache.
 	ListRoutes() ([]*v1.Route, error)
@@ -49,6 +57,10 @@ type Cache interface {
 	ListUpstreams() ([]*v1.Upstream, error)
 	// ListStreamRoutes lists all stream_route in cache.
 	ListStreamRoutes() ([]*v1.StreamRoute, error)
+	// ListGlobalRules lists all global_rule objects in cache.
+	ListGlobalRules() ([]*v1.GlobalRule, error)
+	// ListConsumers lists all consumer objects in cache.
+	ListConsumers() ([]*v1.Consumer, error)
 
 	// DeleteRoute deletes the specified route in cache.
 	DeleteRoute(*v1.Route) error
@@ -58,4 +70,8 @@ type Cache interface {
 	DeleteUpstream(*v1.Upstream) error
 	// DeleteStreamRoute deletes the specified stream_route in cache.
 	DeleteStreamRoute(*v1.StreamRoute) error
+	// DeleteGlobalRule deletes the specified stream_route in cache.
+	DeleteGlobalRule(*v1.GlobalRule) error
+	// DeleteConsumer deletes the specified consumer in cache.
+	DeleteConsumer(*v1.Consumer) error
 }

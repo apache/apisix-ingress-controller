@@ -23,6 +23,12 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - events
+  verbs:
+    - "*"
+- apiGroups:
+  - ""
+  resources:
   - configmaps
   - endpoints
   - persistentvolumeclaims
@@ -40,7 +46,6 @@ rules:
   - ""
   resources:
   - bindings
-  - events
   - limitranges
   - namespaces/status
   - pods/log
@@ -119,11 +124,10 @@ rules:
   - networking.k8s.io
   resources:
   - ingresses
+  - ingresses/status
   - networkpolicies
   verbs:
-  - get
-  - list
-  - watch
+  - '*'
 - apiGroups:
   - metrics.k8s.io
   resources:
@@ -136,15 +140,28 @@ rules:
   - apisix.apache.org
   resources:
   - apisixroutes
+  - apisixroutes/status
   - apisixupstreams
+  - apisixupstreams/status
   - apisixtlses
+  - apisixtlses/status
+  - apisixclusterconfigs
+  - apisixclusterconfigs/status
+  - apisixconsumers
+  - apisixconsumers/status
   verbs:
-  - get
-  - list
-  - watch
+  - '*'
 - apiGroups:
   - coordination.k8s.io
   resources:
   - leases
   verbs:
   - '*'
+- apiGroups:
+    - discovery.k8s.io
+  resources:
+    - endpointslices
+  verbs:
+    - get
+    - list
+    - watch

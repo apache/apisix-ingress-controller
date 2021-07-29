@@ -186,7 +186,9 @@ func (r *streamRouteClient) Delete(ctx context.Context, obj *v1.StreamRoute) err
 	}
 	if err := r.cluster.cache.DeleteStreamRoute(obj); err != nil {
 		log.Errorf("failed to reflect stream_route delete to cache: %s", err)
-		return err
+		if err != cache.ErrNotFound {
+			return err
+		}
 	}
 	return nil
 }

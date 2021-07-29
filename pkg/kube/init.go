@@ -16,46 +16,54 @@ package kube
 
 import (
 	"k8s.io/client-go/informers"
-	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 )
 
-var (
-	EndpointsInformer         coreinformers.EndpointsInformer
-	kubeClient                kubernetes.Interface
-	apisixKubeClient          *clientset.Clientset
-	CoreSharedInformerFactory informers.SharedInformerFactory
-)
+// KubeClient contains some objects used to communicate with Kubernetes API Server.
+type KubeClient struct {
+	cfg *config.Config
 
-func GetKubeClient() kubernetes.Interface {
-	return kubeClient
+	// Client is the object used to operate Kubernetes builtin resources.
+	Client kubernetes.Interface
+	// APISIXClient is the object used to operate resources under apisix.apache.org group.
+	APISIXClient clientset.Interface
 }
 
-func GetApisixClient() clientset.Interface {
-	return apisixKubeClient
-}
-
-// initInformer initializes all related shared informers.
-// Deprecate: will be refactored in the future without notification.
-func InitInformer(cfg *config.Config) error {
-	var err error
+// NewKubeClient creates a high-level Kubernetes client.
+func NewKubeClient(cfg *config.Config) (*KubeClient, error) {
 	restConfig, err := BuildRestConfig(cfg.Kubernetes.Kubeconfig, "")
 	if err != nil {
-		return err
+		return nil, err
 	}
-	kubeClient, err = kubernetes.NewForConfig(restConfig)
+	kubeClient, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	apisixKubeClient, err = clientset.NewForConfig(restConfig)
+	apisixKubeClient, err := clientset.NewForConfig(restConfig)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	CoreSharedInformerFactory = informers.NewSharedInformerFactory(kubeClient, cfg.Kubernetes.ResyncInterval.Duration)
 
-	return nil
+	return &KubeClient{
+		cfg:          cfg,
+		Client:       kubeClient,
+		APISIXClient: apisixKubeClient,
+	}, nil
+}
+
+// NewSharedIndexInformerFactory returns an index informer factory object used to watch and
+// list Kubernetes builtin resources.
+func (k *KubeClient) NewSharedIndexInformerFactory() informers.SharedInformerFactory {
+	return informers.NewSharedInformerFactory(k.Client, k.cfg.Kubernetes.ResyncInterval.Duration)
+}
+
+// NewAPISIXSharedIndexInformerFactory returns an index informer factory object used to watch
+// and list Kubernetes resources in apisix.apache.org group.
+func (k *KubeClient) NewAPISIXSharedIndexInformerFactory() externalversions.SharedInformerFactory {
+	return externalversions.NewSharedInformerFactory(k.APISIXClient, k.cfg.Kubernetes.ResyncInterval.Duration)
 }

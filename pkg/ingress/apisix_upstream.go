@@ -21,6 +21,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -56,6 +57,8 @@ func (c *Controller) newApisixUpstreamController() *apisixUpstreamController {
 func (c *apisixUpstreamController) run(ctx context.Context) {
 	log.Info("ApisixUpstream controller started")
 	defer log.Info("ApisixUpstream controller exited")
+	defer c.workqueue.ShutDown()
+
 	if ok := cache.WaitForCacheSync(ctx.Done(), c.controller.apisixUpstreamInformer.HasSynced, c.controller.svcInformer.HasSynced); !ok {
 		log.Error("cache sync failed")
 		return
@@ -65,7 +68,6 @@ func (c *apisixUpstreamController) run(ctx context.Context) {
 	}
 
 	<-ctx.Done()
-	c.workqueue.ShutDown()
 }
 
 func (c *apisixUpstreamController) runWorker(ctx context.Context) {
@@ -80,6 +82,10 @@ func (c *apisixUpstreamController) runWorker(ctx context.Context) {
 	}
 }
 
+// sync Used to synchronize ApisixUpstream resources, because upstream alone exists in APISIX and will not be affected,
+// the synchronization logic only includes upsttream's unique configuration management
+// So when ApisixUpstream was deleted, only the scheme / load balancer / healthcheck / retry / timeout
+// on ApisixUpstream was cleaned up
 func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) error {
 	key := ev.Object.(string)
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
@@ -123,59 +129,75 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 	if err != nil {
 		log.Errorf("failed to get service %s: %s", key, err)
 		c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
+		c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
 		return err
 	}
 
+	var subsets []configv1.ApisixUpstreamSubset
+	subsets = append(subsets, configv1.ApisixUpstreamSubset{})
+	if len(au.Spec.Subsets) > 0 {
+		subsets = append(subsets, au.Spec.Subsets...)
+	}
+	clusterName := c.controller.cfg.APISIX.DefaultClusterName
 	for _, port := range svc.Spec.Ports {
-		upsName := apisixv1.ComposeUpstreamName(namespace, name, port.Port)
-		// TODO: multiple cluster
-		ups, err := c.controller.apisix.Cluster("").Upstream().Get(ctx, upsName)
-		if err != nil {
-			if err == apisixcache.ErrNotFound {
-				continue
-			}
-			log.Errorf("failed to get upstream %s: %s", upsName, err)
-			c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
-			return err
-		}
-		var newUps *apisixv1.Upstream
-		if ev.Type != types.EventDelete {
-			cfg, ok := portLevelSettings[port.Port]
-			if !ok {
-				cfg = &au.Spec.ApisixUpstreamConfig
-			}
-			// FIXME Same ApisixUpstreamConfig might be translated multiple times.
-			newUps, err = c.controller.translator.TranslateUpstreamConfig(cfg)
+		for _, subset := range subsets {
+			upsName := apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port)
+			// TODO: multiple cluster
+			ups, err := c.controller.apisix.Cluster(clusterName).Upstream().Get(ctx, upsName)
 			if err != nil {
-				log.Errorw("found malformed ApisixUpstream",
-					zap.Any("object", au),
-					zap.Error(err),
-				)
+				if err == apisixcache.ErrNotFound {
+					continue
+				}
+				log.Errorf("failed to get upstream %s: %s", upsName, err)
 				c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
+				c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
 				return err
 			}
-		} else {
-			newUps = apisixv1.NewDefaultUpstream()
-		}
+			var newUps *apisixv1.Upstream
+			if ev.Type != types.EventDelete {
+				cfg, ok := portLevelSettings[port.Port]
+				if !ok {
+					cfg = &au.Spec.ApisixUpstreamConfig
+				}
+				// FIXME Same ApisixUpstreamConfig might be translated multiple times.
+				newUps, err = c.controller.translator.TranslateUpstreamConfig(cfg)
+				if err != nil {
+					log.Errorw("found malformed ApisixUpstream",
+						zap.Any("object", au),
+						zap.Error(err),
+					)
+					c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
+					c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
+					return err
+				}
+			} else {
+				newUps = apisixv1.NewDefaultUpstream()
+			}
 
-		newUps.Metadata = ups.Metadata
-		newUps.Nodes = ups.Nodes
-		log.Debugw("updating upstream since ApisixUpstream changed",
-			zap.String("event", ev.Type.String()),
-			zap.Any("upstream", newUps),
-			zap.Any("ApisixUpstream", au),
-		)
-		if _, err := c.controller.apisix.Cluster("").Upstream().Update(ctx, newUps); err != nil {
-			log.Errorw("failed to update upstream",
-				zap.Error(err),
+			newUps.Metadata = ups.Metadata
+			newUps.Nodes = ups.Nodes
+			log.Debugw("updating upstream since ApisixUpstream changed",
+				zap.String("event", ev.Type.String()),
 				zap.Any("upstream", newUps),
 				zap.Any("ApisixUpstream", au),
 			)
-			c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
-			return err
+			if _, err := c.controller.apisix.Cluster(clusterName).Upstream().Update(ctx, newUps); err != nil {
+				log.Errorw("failed to update upstream",
+					zap.Error(err),
+					zap.Any("upstream", newUps),
+					zap.Any("ApisixUpstream", au),
+					zap.String("cluster", clusterName),
+				)
+				c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
+				c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
+				return err
+			}
 		}
 	}
-	c.controller.recorderEvent(au, corev1.EventTypeNormal, _resourceSynced, nil)
+	if ev.Type != types.EventDelete {
+		c.controller.recorderEvent(au, corev1.EventTypeNormal, _resourceSynced, nil)
+		c.controller.recordStatus(au, _resourceSynced, nil, metav1.ConditionTrue)
+	}
 	return err
 }
 

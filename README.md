@@ -33,7 +33,7 @@ The technical architecture of `apisix-ingress-controller`:
 
 ## Status
 
-This project is currently considered experimental.
+This project is currently general availability.
 
 ## Features
 
@@ -41,11 +41,16 @@ This project is currently considered experimental.
 * Hot-reload during yaml apply.
 * Native Kubernetes Ingress (both `v1` and `v1beta1`) support.
 * Auto register k8s endpoint to upstream (Apache APISIX) node.
-* Out of box support for node health check.
 * Support load balancing based on pod (upstream nodes).
+* Out of box support for node health check.
 * Plug-in extension supports hot configuration and immediate effect.
+* Support SSL and mTLS for routes.
+* Support traffic split and canary deployments.
+* Support TCP 4 layer proxy.
 * Ingress controller itself as a pluggable hot-reload component.
 * Multi-cluster configuration distribution.
+
+[More about comparison among multiple Ingress Controllers.](https://docs.google.com/spreadsheets/d/191WWNpjJ2za6-nbG4ZoUMXMpUK8KlCIosvQB0f-oq3k/edit?ts=5fd6c769#gid=907731238)
 
 ## Internal Architecture
 
@@ -53,7 +58,20 @@ This project is currently considered experimental.
 
 ## Prerequisites
 
-Apisix ingress controller requires Kubernetes version 1.14+.
+Apisix ingress controller requires Kubernetes version 1.15+.
+
+## Apache APISIX Ingress vs. Kubernetes Ingress Nginx
+
+* Hot-reload during yaml apply.
+* [More convenient canary deployment.](./docs/assets/en/latest/concepts/apisix_route.md)
+* Verify the correctness of the configuration, safe and reliable.
+* [Rich plugins and ecology.](https://github.com/apache/apisix/tree/master/docs/en/latest/plugins)
+* Supports APISIX custom resources and Kubernetes native Ingress resources.
+* More active community
+
+## Contributor over time
+
+[![Contributor over time](https://contributor-graph-api.apiseven.com/contributors-svg?chart=contributorOverTime&repo=apache/apisix-ingress-controller)](https://www.apiseven.com/en/contributor-graph?chart=contributorOverTime&repo=apache/apisix-ingress-controller)
 
 ## Get started
 
@@ -62,7 +80,6 @@ Apisix ingress controller requires Kubernetes version 1.14+.
 ## Todos
 
 * Support UDP definition. [#116](https://github.com/apache/apisix-ingress-controller/issues/116)
-* Support TCP definition. [#115](https://github.com/apache/apisix-ingress-controller/issues/115)
 * Support GRPC definition. [#114](https://github.com/apache/apisix-ingress-controller/issues/114)
 * Add a complete demo. [#9](https://github.com/apache/apisix-ingress-controller/issues/9)
 * More todos will display in [issues](https://github.com/apache/apisix-ingress-controller/issues)

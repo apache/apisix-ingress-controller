@@ -33,7 +33,7 @@ title: ApisixUpstream Reference
 | timeout.connect | time duration in the form "72h3m0.5s" | The connect timeout. |
 | timeout.read | time duration in the form "72h3m0.5s" | The read timeout. |
 | timeout.send | time duration in the form "72h3m0.5s" | The send timeout. |
-| healthCheck | object | The health check parameters, see [Health Check](https://github.com/apache/apisix/blob/master/doc/health-check.md) for more details. |
+| healthCheck | object | The health check parameters, see [Health Check](https://github.com/apache/apisix/blob/master/docs/en/latest/health-check.md) for more details. |
 | healthCheck.active | object | active health check configuration, which is a mandatory field. |
 | healthCheck.active.type | string | health check type, can be `http`, `https` and `tcp`, default is `http`. |
 | healthCheck.active.timeout | time duration in the form "72h3m0.5s" | the timeout settings for the probe, default is `1s`. |
@@ -66,3 +66,6 @@ title: ApisixUpstream Reference
 | portLevelSettings.scheme | string | same as `scheme` but takes higher precedence. |
 | portLevelSettings.loadbalancer | object | same as `loadbalancer` but takes higher precedence. |
 | portLevelSettings.healthCheck | object | same as `healthCheck` but takes higher precedence. |
+| subsets | array | service subset list, use pod labels to organize service endpoints to different groups. |
+| subsets[].name | string | the subset name. |
+| subsets[].labels | object | the subset label map. |

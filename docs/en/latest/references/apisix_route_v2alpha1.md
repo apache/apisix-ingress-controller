@@ -34,7 +34,7 @@ Meaning of each field in the spec of ApisixRoute are followed, the top level fie
 | http[].match.paths       | array   | A series of URI that should be matched (oneof) to use this route rule.         |
 | http[].match.hosts   | array   | A series of hosts that should be matched (oneof) to use this route rule.
 | http[].match.methods | array | A series of HTTP methods(`GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, `OPTIONS`, `CONNECT`, `TRACE`) that should be matched (oneof) to use this route rule.
-| http[].match.remote_addrs   | array      | A series of IP address (CIDR format) that should be matched (oneof) to use this route rule.
+| http[].match.remoteAddrs   | array      | A series of IP address (CIDR format) that should be matched (oneof) to use this route rule.
 | http[].match.exprs          | array   | A series expressions that the results should be matched (oneof) to use this route rule.
 | http[].match.exprs[].subject       | object    | Expression subject.
 | http[].match.exprs[].subject.scope       | string    | Specify where to find the subject, values can be `Header`, `Query`, `Cookie` and `Path`.
@@ -44,18 +44,26 @@ Meaning of each field in the spec of ApisixRoute are followed, the top level fie
 | http[].match.exprs[].set | array | Expected expression result set, only used when the operator is `In` or `NotIn`, it's exclusive with `http[].match.exprs[].value`.
 | http[].backend | object | The backend service. Deprecated: use http[].backends instead.
 | http[].backend.serviceName | string | The backend service name, note the service and ApisixRoute should be created in the same namespace. Cross namespace referencing is not allowed.
-| http[].backend.servicePort | integer or string | The backend service port, can be the port number of the name defined in the service object.
-| http[].backend.resolveGranualrity | string | See [Service Resolve Granularity](#service-resolve-granularity) for the details.
+| http[].backend.servicePort | integer or string | The backend service port, can be the port number or the name defined in the service object.
+| http[].backend.resolveGranularity | string | See [Service Resolve Granularity](#service-resolve-granularity) for the details.
 | http[].backends | object | The backend services. When the number of backends more than one, weight based traffic split policy will be applied to shifting traffic between these backends.
 | http[].backends[].serviceName | string | The backend service name, note the service and ApisixRoute should be created in the same namespace. Cross namespace referencing is not allowed.
-| http[].backends[].servicePort | integer or string | The backend service port, can be the port number of the name defined in the service object.
-| http[].backends[].resolveGranualrity | string | See [Service Resolve Granularity](#service-resolve-granularity) for the details.
+| http[].backends[].servicePort | integer or string | The backend service port, can be the port number or the name defined in the service object.
+| http[].backends[].resolveGranularity | string | See [Service Resolve Granularity](#service-resolve-granularity) for the details.
 | http[].backends[].weight | int | The backend weight, which is critical when shifting traffic between multiple backends, default is `100`. Weight is ignored when there is only one backend.
 | http[].plugins | array | A series of APISIX plugins that will be executed once this route rule is matched |
 | http[].plugins[].name | string | The plugin name, see [docs](http://apisix.apache.org/docs/apisix/getting-started) for learning the available plugins.
 | http[].plugins[].enable | boolean | Whether the plugin is in use |
 | http[].plugins[].config | object | The plugin configuration, fields should be same as in APISIX. |
 | http[].websocket | boolean | Whether enable websocket proxy. |
+| tcp | array | ApisixRoutes' tcp route rules. |
+| tcp[].name | string (required) | The Route rule name. |
+| tcp[].match | object (required) | The Route match conditions. |
+| tcp[].match.ingressPort | integer (required) | the Ingress proxy server listening port, note since APISIX doesn't support dynamic listening, this port should be defined in [apisix configuration](https://github.com/apache/apisix/blob/master/conf/config-default.yaml#L101).|
+| tcp[].backend | object | The backend service. Deprecated: use http[].backends instead.
+| tcp[].backend.serviceName | string | The backend service name, note the service and ApisixRoute should be created in the same namespace. Cross namespace referencing is not allowed.
+| tcp[].backend.servicePort | integer or string | The backend service port, can be the port number or the name defined in the service object.
+| tcp[].backend.resolveGranularity | string | See [Service Resolve Granularity](#service-resolve-granularity) for the details.
 
 ## Expression Operators
 

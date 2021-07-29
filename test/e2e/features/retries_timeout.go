@@ -24,7 +24,15 @@ import (
 )
 
 var _ = ginkgo.Describe("retries", func() {
-	s := scaffold.NewDefaultScaffold()
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+	}
+	s := scaffold.NewScaffold(opts)
 	ginkgo.It("active check", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
@@ -41,19 +49,21 @@ spec:
 		time.Sleep(2 * time.Second)
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
- name: httpbin-route
+  name: httpbin-route
 spec:
- rules:
- - host: httpbin.org
-   http:
-     paths:
-     - backend:
-         serviceName: %s
-         servicePort: %d
-       path: /*
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /*
+    backend:
+      serviceName: %s
+      servicePort: %d
 `, backendSvc, backendPorts[0])
 		err = s.CreateResourceFromString(ar)
 		assert.Nil(ginkgo.GinkgoT(), err)
@@ -67,7 +77,15 @@ spec:
 })
 
 var _ = ginkgo.Describe("timeout", func() {
-	s := scaffold.NewDefaultScaffold()
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+	}
+	s := scaffold.NewScaffold(opts)
 	ginkgo.It("active check", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
@@ -86,19 +104,21 @@ spec:
 		time.Sleep(2 * time.Second)
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
  name: httpbin-route
 spec:
- rules:
- - host: httpbin.org
-   http:
-     paths:
-     - backend:
-         serviceName: %s
-         servicePort: %d
-       path: /*
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /*
+    backend:
+      serviceName: %s
+      servicePort: %d
 `, backendSvc, backendPorts[0])
 		err = s.CreateResourceFromString(ar)
 		assert.Nil(ginkgo.GinkgoT(), err)

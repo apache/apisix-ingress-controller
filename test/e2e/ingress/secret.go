@@ -26,15 +26,15 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
+// TODO: FIXME
 var _ = ginkgo.Describe("secret Testing", func() {
 	opts := &scaffold.Options{
-		Name:                    "default",
-		Kubeconfig:              scaffold.GetKubeconfig(),
-		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
-		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
-		IngressAPISIXReplicas:   1,
-		HTTPBinServicePort:      80,
-		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("create a SSL and then update secret ", func() {
@@ -154,7 +154,7 @@ jW4KB95bGOTa7r7DM1Up0MbAIwWoeLBGhOIXk7inurZGg+FNjZMA5Lzm6qo=
 		assert.Nil(ginkgo.GinkgoT(), err, "create tls error")
 		// check ssl in APISIX
 		time.Sleep(10 * time.Second)
-		tls, err := s.ListApisixTls()
+		tls, err := s.ListApisixSsl()
 		assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
 		assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
 		assert.Equal(ginkgo.GinkgoT(), cert, tls[0].Cert, "tls cert not expect")
@@ -246,17 +246,17 @@ UnBVSIGJ/c0AhVSDuOAJiF36pvsDysTZXMTFE/9i5bkGOiwtzRNe4Hym/SEZUCpn
 8Z1U5/a5LhrDtIKAsCCpRx99P++Eqt2M2YV7jZcTfEbEvxP4XBYcdh30nbq1uEhs
 4zEnK1pMx5PnEljN1mcgmL2TPsMVN5DN9zXHW5eNQ6wfXR8rCfHwVIVcUuaB
 -----END RSA PRIVATE KEY-----`
-		key_compare_update := "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"
+		keyCompareUpdate := "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"
 		// key update compare
 		err = s.NewSecret(secretName, certUpdate, keyUpdate)
 		assert.Nil(ginkgo.GinkgoT(), err, "create secret error")
 		// check ssl in APISIX
 		time.Sleep(10 * time.Second)
-		tlsUpdate, err := s.ListApisixTls()
+		tlsUpdate, err := s.ListApisixSsl()
 		assert.Nil(ginkgo.GinkgoT(), err, "list tlsUpdate error")
 		assert.Len(ginkgo.GinkgoT(), tlsUpdate, 1, "tls number not expect")
 		assert.Equal(ginkgo.GinkgoT(), certUpdate, tlsUpdate[0].Cert, "tls cert not expect")
-		assert.Equal(ginkgo.GinkgoT(), key_compare_update, tlsUpdate[0].Key, "tls key not expect")
+		assert.Equal(ginkgo.GinkgoT(), keyCompareUpdate, tlsUpdate[0].Key, "tls key not expect")
 		// check DP
 		s.NewAPISIXHttpsClient(host).GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK).Body().Raw()
 
@@ -265,7 +265,7 @@ UnBVSIGJ/c0AhVSDuOAJiF36pvsDysTZXMTFE/9i5bkGOiwtzRNe4Hym/SEZUCpn
 		assert.Nil(ginkgo.GinkgoT(), err, "delete tls error")
 		// check ssl in APISIX
 		time.Sleep(10 * time.Second)
-		tls, err = s.ListApisixTls()
+		tls, err = s.ListApisixSsl()
 		assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
 		assert.Len(ginkgo.GinkgoT(), tls, 0, "tls number not expect")
 	})

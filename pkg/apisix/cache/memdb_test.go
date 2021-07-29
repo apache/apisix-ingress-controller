@@ -259,3 +259,89 @@ func TestMemDBCacheStreamRoute(t *testing.T) {
 	}
 	assert.Error(t, ErrNotFound, c.DeleteStreamRoute(r4))
 }
+
+func TestMemDBCacheGlobalRule(t *testing.T) {
+	c, err := NewMemDBCache()
+	assert.Nil(t, err, "NewMemDBCache")
+
+	gr1 := &v1.GlobalRule{
+		ID: "1",
+	}
+	assert.Nil(t, c.InsertGlobalRule(gr1), "inserting global rule 1")
+
+	gr, err := c.GetGlobalRule("1")
+	assert.Nil(t, err)
+	assert.Equal(t, gr1, gr)
+
+	gr2 := &v1.GlobalRule{
+		ID: "2",
+	}
+	gr3 := &v1.GlobalRule{
+		ID: "3",
+	}
+	assert.Nil(t, c.InsertGlobalRule(gr2), "inserting global_rule r2")
+	assert.Nil(t, c.InsertGlobalRule(gr3), "inserting global_rule r3")
+
+	gr, err = c.GetGlobalRule("3")
+	assert.Nil(t, err)
+	assert.Equal(t, gr, gr3)
+
+	assert.Nil(t, c.DeleteGlobalRule(gr), "delete global_rule r3")
+
+	grs, err := c.ListGlobalRules()
+	assert.Nil(t, err, "listing global rules")
+
+	if grs[0].ID > grs[1].ID {
+		grs[0], grs[1] = grs[1], grs[0]
+	}
+	assert.Equal(t, grs[0], gr1)
+	assert.Equal(t, grs[1], gr2)
+
+	gr4 := &v1.GlobalRule{
+		ID: "4",
+	}
+	assert.Error(t, ErrNotFound, c.DeleteGlobalRule(gr4))
+}
+
+func TestMemDBCacheConsumer(t *testing.T) {
+	c, err := NewMemDBCache()
+	assert.Nil(t, err, "NewMemDBCache")
+
+	c1 := &v1.Consumer{
+		Username: "jack",
+	}
+	assert.Nil(t, c.InsertConsumer(c1), "inserting consumer c1")
+
+	c11, err := c.GetConsumer("jack")
+	assert.Nil(t, err)
+	assert.Equal(t, c1, c11)
+
+	c2 := &v1.Consumer{
+		Username: "tom",
+	}
+	c3 := &v1.Consumer{
+		Username: "jerry",
+	}
+	assert.Nil(t, c.InsertConsumer(c2), "inserting consumer c2")
+	assert.Nil(t, c.InsertConsumer(c3), "inserting consumer c3")
+
+	c22, err := c.GetConsumer("tom")
+	assert.Nil(t, err)
+	assert.Equal(t, c2, c22)
+
+	assert.Nil(t, c.DeleteConsumer(c3), "delete consumer c3")
+
+	consumers, err := c.ListConsumers()
+	assert.Nil(t, err, "listing consumers")
+
+	if consumers[0].Username > consumers[1].Username {
+		consumers[0], consumers[1] = consumers[1], consumers[0]
+	}
+	assert.Equal(t, consumers[0], c1)
+	assert.Equal(t, consumers[1], c2)
+
+	c4 := &v1.Consumer{
+		Username: "chandler",
+	}
+	assert.Error(t, ErrNotFound, c.DeleteConsumer(c4))
+}

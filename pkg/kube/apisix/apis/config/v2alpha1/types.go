@@ -17,8 +17,11 @@ package v2alpha1
 import (
 	"encoding/json"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 const (
@@ -93,9 +96,10 @@ type ApisixRouteHTTP struct {
 	// Backends represents potential backends to proxy after the route
 	// rule matched. When number of backends are more than one, traffic-split
 	// plugin in APISIX will be used to split traffic based on the backend weight.
-	Backends  []*ApisixRouteHTTPBackend `json:"backends" yaml:"backends"`
-	Websocket bool                      `json:"websocket" yaml:"websocket"`
-	Plugins   []*ApisixRouteHTTPPlugin  `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Backends       []*ApisixRouteHTTPBackend  `json:"backends" yaml:"backends"`
+	Websocket      bool                       `json:"websocket" yaml:"websocket"`
+	Plugins        []*ApisixRouteHTTPPlugin   `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Authentication *ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
 // ApisixRouteHTTPMatch represents the match condition for hitting this route.
@@ -128,7 +132,7 @@ type ApisixRouteHTTPMatch struct {
 	NginxVars []ApisixRouteHTTPMatchExpr `json:"exprs,omitempty" yaml:"exprs,omitempty"`
 }
 
-// ApisixRouteHTTPMatchExpre represents a binary route match expression .
+// ApisixRouteHTTPMatchExpr represents a binary route match expression .
 type ApisixRouteHTTPMatchExpr struct {
 	// Subject is the expression subject, it can
 	// be any string composed by literals and nginx
@@ -171,6 +175,9 @@ type ApisixRouteHTTPBackend struct {
 	ResolveGranularity string `json:"resolveGranularity" yaml:"resolveGranularity"`
 	// Weight of this backend.
 	Weight *int `json:"weight" yaml:"weight"`
+	// Subset specifies a subset for the target Service. The subset should be pre-defined
+	// in ApisixUpstream about this service.
+	Subset string `json:"subset" yaml:"subset"`
 }
 
 // ApisixRouteHTTPPlugin represents an APISIX plugin.
@@ -187,6 +194,20 @@ type ApisixRouteHTTPPlugin struct {
 // ApisixRouteHTTPPluginConfig is the configuration for
 // any plugins.
 type ApisixRouteHTTPPluginConfig map[string]interface{}
+
+// ApisixRouteAuthentication is the authentication-related
+// configuration in ApisixRoute.
+type ApisixRouteAuthentication struct {
+	Enable  bool                             `json:"enable" yaml:"enable"`
+	Type    string                           `json:"type" yaml:"type"`
+	KeyAuth ApisixRouteAuthenticationKeyAuth `json:"keyauth,omitempty" yaml:"keyauth,omitempty"`
+}
+
+// ApisixRouteAuthenticationKeyAuth is the keyAuth-related
+// configuration in ApisixRouteAuthentication.
+type ApisixRouteAuthenticationKeyAuth struct {
+	Header string `json:"header,omitempty" yaml:"header,omitempty"`
+}
 
 func (p ApisixRouteHTTPPluginConfig) DeepCopyInto(out *ApisixRouteHTTPPluginConfig) {
 	b, _ := json.Marshal(&p)
@@ -229,11 +250,144 @@ type ApisixRouteTCPBackend struct {
 	// wise, the service ClusterIP or ExternalIP will be used,
 	// default is endpoints.
 	ResolveGranularity string `json:"resolveGranularity" yaml:"resolveGranularity"`
+	// Subset specifies a subset for the target Service. The subset should be pre-defined
+	// in ApisixUpstream about this service.
+	Subset string `json:"subset" yaml:"subset"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ApisixRouteList contains a list of ApisixRoute.
 type ApisixRouteList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
 	metav1.ListMeta `json:"metadata" yaml:"metadata"`
 	Items           []ApisixRoute `json:"items,omitempty" yaml:"items,omitempty"`
+}
+
+// +genclient
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:subresource:status
+
+// ApisixClusterConfig is the Schema for the ApisixClusterConfig resource.
+// An ApisixClusterConfig is used to identify an APISIX cluster, it's a
+// ClusterScoped resource so the name is unique.
+// It also contains some cluster-level configurations like monitoring.
+type ApisixClusterConfig struct {
+	metav1.TypeMeta   `json:",inline" yaml:",inline"`
+	metav1.ObjectMeta `json:"metadata" yaml:"metadata"`
+
+	// Spec defines the desired state of ApisixClusterConfigSpec.
+	Spec   ApisixClusterConfigSpec `json:"spec" yaml:"spec"`
+	Status ApisixStatus            `json:"status,omitempty" yaml:"status,omitempty"`
+}
+
+// ApisixClusterConfigSpec defines the desired state of ApisixClusterConfigSpec.
+type ApisixClusterConfigSpec struct {
+	// Monitoring categories all monitoring related features.
+	// +optional
+	Monitoring *ApisixClusterMonitoringConfig `json:"monitoring" yaml:"monitoring"`
+	// Admin contains the Admin API information about APISIX cluster.
+	// +optional
+	Admin *ApisixClusterAdminConfig `json:"admin" yaml:"admin"`
+}
+
+// ApisixClusterMonitoringConfig categories all monitoring related features.
+type ApisixClusterMonitoringConfig struct {
+	// Prometheus is the config for using Prometheus in APISIX Cluster.
+	// +optional
+	Prometheus ApisixClusterPrometheusConfig `json:"prometheus" yaml:"prometheus"`
+	// Skywalking is the config for using Skywalking in APISIX Cluster.
+	// +optional
+	Skywalking ApisixClusterSkywalkingConfig `json:"skywalking" yaml:"skywalking"`
+}
+
+// ApisixClusterPrometheusConfig is the config for using Prometheus in APISIX Cluster.
+type ApisixClusterPrometheusConfig struct {
+	// Enable means whether enable Prometheus or not.
+	Enable bool `json:"enable" yaml:"enable"`
+}
+
+// ApisixClusterSkywalkingConfig is the config for using Skywalking in APISIX Cluster.
+type ApisixClusterSkywalkingConfig struct {
+	// Enable means whether enable Skywalking or not.
+	Enable bool `json:"enable" yaml:"enable"`
+	// SampleRatio means the ratio to collect
+	SampleRatio float64 `json:"sampleRatio" yaml:"sampleRatio"`
+}
+
+// ApisixClusterAdminConfig is the admin config for the corresponding APISIX Cluster.
+type ApisixClusterAdminConfig struct {
+	// BaseURL is the base URL for the APISIX Admin API.
+	// It looks like "http://apisix-admin.default.svc.cluster.local:9080/apisix/admin"
+	BaseURL string `json:"baseURL" yaml:"baseURL"`
+	// AdminKey is used to verify the admin API user.
+	AdminKey string `json:"adminKey" yaml:"adminKey"`
+	// ClientTimeout is request timeout for the APISIX Admin API client
+	ClientTimeout types.TimeDuration `json:"clientTimeout" yaml:"clientTimeout"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ApisixClusterConfigList contains a list of ApisixClusterConfig.
+type ApisixClusterConfigList struct {
+	metav1.TypeMeta `json:",inline" yaml:",inline"`
+	metav1.ListMeta `json:"metadata" yaml:"metadata"`
+
+	Items []ApisixClusterConfig `json:"items" yaml:"items"`
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:subresource:status
+
+// ApisixConsumer is the Schema for the ApisixConsumer resource.
+// An ApisixConsumer is used to identify a consumer.
+type ApisixConsumer struct {
+	metav1.TypeMeta   `json:",inline" yaml:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	Spec              ApisixConsumerSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Status            ApisixStatus       `json:"status,omitempty" yaml:"status,omitempty"`
+}
+
+// ApisixConsumerSpec defines the desired state of ApisixConsumer.
+type ApisixConsumerSpec struct {
+	AuthParameter ApisixConsumerAuthParameter `json:"authParameter" yaml:"authParameter"`
+}
+
+type ApisixConsumerAuthParameter struct {
+	BasicAuth *ApisixConsumerBasicAuth `json:"basicAuth,omitempty" yaml:"basicAuth"`
+	KeyAuth   *ApisixConsumerKeyAuth   `json:"keyAuth,omitempty" yaml:"keyAuth"`
+}
+
+// ApisixConsumerBasicAuth defines the configuration for basic auth.
+type ApisixConsumerBasicAuth struct {
+	SecretRef *corev1.LocalObjectReference  `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
+	Value     *ApisixConsumerBasicAuthValue `json:"value,omitempty" yaml:"value,omitempty"`
+}
+
+// ApisixConsumerBasicAuthValue defines the in-place username and password configuration for basic auth.
+type ApisixConsumerBasicAuthValue struct {
+	Username string `json:"username" yaml:"username"`
+	Password string `json:"password" yaml:"username"`
+}
+
+// ApisixConsumerKeyAuth defines the configuration for the key auth.
+type ApisixConsumerKeyAuth struct {
+	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
+	Value     *ApisixConsumerKeyAuthValue  `json:"value,omitempty" yaml:"value,omitempty"`
+}
+
+// ApisixConsumerKeyAuthValue defines the in-place configuration for basic auth.
+type ApisixConsumerKeyAuthValue struct {
+	Key string `json:"key" yaml:"key"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ApisixConsumerList contains a list of ApisixConsumer.
+type ApisixConsumerList struct {
+	metav1.TypeMeta `json:",inline" yaml:",inline"`
+	metav1.ListMeta `json:"metadata" yaml:"metadata"`
+	Items           []ApisixConsumer `json:"items,omitempty" yaml:"items,omitempty"`
 }

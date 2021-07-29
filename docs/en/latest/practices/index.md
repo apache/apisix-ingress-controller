@@ -23,5 +23,6 @@ title: Ingress APISIX Use Examples
 
 This is an index page about use examples of Ingress APISIX. Read them if you're trying to learn Ingress APISIX.
 
+* [APISIX Ingress Controller the Hard Way](./the-hard-way.md).
 * [Proxy the httpbin service](./proxy-the-httpbin-service.md).
 * [Proxy the httpbin service with the native Ingress](./proxy-the-httpbin-service-with-ingress.md).

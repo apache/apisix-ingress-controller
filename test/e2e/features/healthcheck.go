@@ -25,7 +25,15 @@ import (
 )
 
 var _ = ginkgo.Describe("health check", func() {
-	s := scaffold.NewDefaultScaffold()
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+	}
+	s := scaffold.NewScaffold(opts)
 	ginkgo.It("active check", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
@@ -41,28 +49,30 @@ spec:
       httpPath: /status/502
       healthy:
         httpCodes: [200]
-        httpFailures: 2
         interval: 1s
       unhealthy:
+        httpFailures: 2
         interval: 1s
 `, backendSvc)
 		err := s.CreateResourceFromString(au)
 		assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
  name: httpbin-route
 spec:
- rules:
- - host: httpbin.org
-   http:
-     paths:
-     - backend:
-         serviceName: %s
-         servicePort: %d
-       path: /*
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /*
+    backend:
+      serviceName: %s
+      servicePort: %d
 `, backendSvc, backendPorts[0])
 		err = s.CreateResourceFromString(ar)
 		assert.Nil(ginkgo.GinkgoT(), err)
@@ -75,7 +85,7 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), ups[0].Checks.Active.Healthy.Interval, 1)
 		assert.Equal(ginkgo.GinkgoT(), ups[0].Checks.Active.Healthy.HTTPStatuses, []int{200})
 		assert.Equal(ginkgo.GinkgoT(), ups[0].Checks.Active.Unhealthy.Interval, 1)
-		assert.Equal(ginkgo.GinkgoT(), ups[0].Checks.Active.Unhealthy.Interval, 1)
+		assert.Equal(ginkgo.GinkgoT(), ups[0].Checks.Active.Unhealthy.HTTPFailures, 2)
 
 		// It's difficult to test healthchecker since we cannot let partial httpbin endpoints
 		// down, if all of them are down, apisix in turn uses all of them.
@@ -96,9 +106,9 @@ spec:
       httpPath: /status/200
       healthy:
         httpCodes: [200]
-        httpFailures: 2
         interval: 1s
       unhealthy:
+        httpFailures: 2
         interval: 1s
     passive:
       healthy:
@@ -110,19 +120,21 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
  name: httpbin-route
 spec:
- rules:
- - host: httpbin.org
-   http:
-     paths:
-     - backend:
-         serviceName: %s
-         servicePort: %d
-       path: /*
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /*
+    backend:
+      serviceName: %s
+      servicePort: %d
 `, backendSvc, backendPorts[0])
 		err = s.CreateResourceFromString(ar)
 		assert.Nil(ginkgo.GinkgoT(), err)

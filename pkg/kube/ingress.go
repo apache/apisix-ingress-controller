@@ -155,7 +155,7 @@ func (l *ingressLister) ExtensionsV1beta1(namespace, name string) (Ingress, erro
 		return nil, err
 	}
 	return &ingress{
-		groupVersion:      IngressV1beta1,
+		groupVersion:      IngressExtensionsV1beta1,
 		extensionsV1beta1: ing,
 	}, nil
 }

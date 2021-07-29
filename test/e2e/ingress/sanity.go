@@ -16,6 +16,7 @@ package ingress
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -30,25 +31,33 @@ type ip struct {
 }
 
 var _ = ginkgo.Describe("single-route", func() {
-	s := scaffold.NewDefaultScaffold()
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+	}
+	s := scaffold.NewScaffold(opts)
 	ginkgo.It("/ip should return your ip", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
-		s.CreateApisixRoute("httpbin-route", []scaffold.ApisixRouteRule{
-			{
-				Host: "httpbin.com",
-				HTTP: scaffold.ApisixRouteRuleHTTP{
-					Paths: []scaffold.ApisixRouteRuleHTTPPath{
-						{
-							Path: "/ip",
-							Backend: scaffold.ApisixRouteRuleHTTPBackend{
-								ServiceName: backendSvc,
-								ServicePort: backendSvcPort[0],
-							},
-						},
-					},
-				},
-			},
-		})
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  http:
+  - name: rule1
+    match:
+      paths:
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 		err := s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
@@ -68,32 +77,42 @@ var _ = ginkgo.Describe("single-route", func() {
 })
 
 var _ = ginkgo.Describe("double-routes", func() {
-	s := scaffold.NewDefaultScaffold()
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+	}
+	s := scaffold.NewScaffold(opts)
 	ginkgo.It("double routes work independently", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
-		s.CreateApisixRoute("httpbin-route", []scaffold.ApisixRouteRule{
-			{
-				Host: "httpbin.com",
-				HTTP: scaffold.ApisixRouteRuleHTTP{
-					Paths: []scaffold.ApisixRouteRuleHTTPPath{
-						{
-							Path: "/ip",
-							Backend: scaffold.ApisixRouteRuleHTTPBackend{
-								ServiceName: backendSvc,
-								ServicePort: backendSvcPort[0],
-							},
-						},
-						{
-							Path: "/json",
-							Backend: scaffold.ApisixRouteRuleHTTPBackend{
-								ServiceName: backendSvc,
-								ServicePort: backendSvcPort[0],
-							},
-						},
-					},
-				},
-			},
-		})
+		ar := `
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  http:
+  - name: rule1
+    match:
+      paths:
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
+  - name: rule2
+    match:
+      paths:
+      - /json
+    backend:
+      serviceName: %s
+      servicePort: %d
+`
+		ar = fmt.Sprintf(ar, backendSvc, backendSvcPort[0], backendSvc, backendSvcPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+
 		err := s.EnsureNumApisixRoutesCreated(2)
 		assert.Nil(ginkgo.GinkgoT(), err, "checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
@@ -116,11 +135,10 @@ var _ = ginkgo.Describe("double-routes", func() {
 
 var _ = ginkgo.Describe("leader election", func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
-		Name:                    "leaderelection",
-		Kubeconfig:              scaffold.GetKubeconfig(),
-		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
-		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
-		IngressAPISIXReplicas:   2,
+		Name:                  "leaderelection",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 2,
 	})
 	ginkgo.It("lease check", func() {
 		pods, err := s.GetIngressPodDetails()

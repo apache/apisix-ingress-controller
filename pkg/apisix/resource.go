@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -30,8 +31,23 @@ type getResponse struct {
 
 // listResponse is the unified LIST response mapping of APISIX.
 type listResponse struct {
-	Count string `json:"count"`
-	Node  node   `json:"node"`
+	Count IntOrString `json:"count"`
+	Node  node        `json:"node"`
+}
+
+// IntOrString processing number and string types, after json deserialization will output int
+type IntOrString struct {
+	IntValue int `json:"int_value"`
+}
+
+func (ios *IntOrString) UnmarshalJSON(p []byte) error {
+	result := strings.Trim(string(p), "\"")
+	count, err := strconv.Atoi(result)
+	if err != nil {
+		return err
+	}
+	ios.IntValue = count
+	return nil
 }
 
 type createResponse struct {
@@ -136,4 +152,24 @@ func (i *item) ssl() (*v1.Ssl, error) {
 		return nil, err
 	}
 	return &ssl, nil
+}
+
+// globalRule decodes item.Value and converts it to v1.GlobalRule.
+func (i *item) globalRule() (*v1.GlobalRule, error) {
+	log.Debugf("got global_rule: %s", string(i.Value))
+	var globalRule v1.GlobalRule
+	if err := json.Unmarshal(i.Value, &globalRule); err != nil {
+		return nil, err
+	}
+	return &globalRule, nil
+}
+
+// consumer decodes item.Value and converts it to v1.Consumer.
+func (i *item) consumer() (*v1.Consumer, error) {
+	log.Debugf("got consumer: %s", string(i.Value))
+	var consumer v1.Consumer
+	if err := json.Unmarshal(i.Value, &consumer); err != nil {
+		return nil, err
+	}
+	return &consumer, nil
 }

@@ -25,7 +25,15 @@ import (
 )
 
 var _ = ginkgo.Describe("choose scheme", func() {
-	s := scaffold.NewDefaultScaffold()
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+	}
+	s := scaffold.NewScaffold(opts)
 	ginkgo.It("grpc", func() {
 		err := s.CreateResourceFromString(`
 apiVersion: v1
@@ -64,19 +72,21 @@ spec:
       scheme: grpc
 `))
 		err = s.CreateResourceFromString(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
  name: grpc-route
 spec:
- rules:
- - host: grpc.local
-   http:
-     paths:
-     - backend:
-         serviceName: grpc-server-service
-         servicePort: 50051
-       path: /helloworld.Greeter/SayHello
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - grpc.local
+      paths:
+      - /helloworld.Greeter/SayHello
+    backend:
+       serviceName: grpc-server-service
+       servicePort: 50051
 `)
 		assert.Nil(ginkgo.GinkgoT(), err)
 		time.Sleep(2 * time.Second)

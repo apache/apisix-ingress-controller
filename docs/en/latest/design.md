@@ -122,7 +122,7 @@ Unlike the implementation of Kubernetes Nginx Ingress, the implementation of Ann
 For example, the settings of the black and white list can be configured through the `k8s.apisix.apache.org/whitelist-source-range` annotation in the `ApisixRoute` resource object.
 
 ```yaml
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   annotations:
@@ -132,7 +132,7 @@ spec:
     ...
 ```
 
-The black and white list here is implemented by the [ip-restriction](https://github.com/apache/apisix/blob/master/doc/plugins/ip-restriction.md) plugin.
+The black and white list here is implemented by the [ip-restriction](https://github.com/apache/apisix/blob/master/docs/en/latest/plugins/ip-restriction.md) plugin.
 
 There will be more annotation implementations in the future to facilitate the definition of some common configurations, such as CORS.
 

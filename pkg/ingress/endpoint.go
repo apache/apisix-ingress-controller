@@ -20,15 +20,12 @@ import (
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type endpointsController struct {
@@ -58,6 +55,7 @@ func (c *Controller) newEndpointsController() *endpointsController {
 func (c *endpointsController) run(ctx context.Context) {
 	log.Info("endpoints controller started")
 	defer log.Info("endpoints controller exited")
+	defer c.workqueue.ShutDown()
 
 	if ok := cache.WaitForCacheSync(ctx.Done(), c.controller.epInformer.HasSynced); !ok {
 		log.Error("informers sync failed")
@@ -82,82 +80,11 @@ func (c *endpointsController) run(ctx context.Context) {
 	}
 
 	<-ctx.Done()
-	c.workqueue.ShutDown()
 }
 
 func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
-	ep := ev.Object.(*corev1.Endpoints)
-	svc, err := c.controller.svcLister.Services(ep.Namespace).Get(ep.Name)
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			log.Warnf("service %s/%s was deleted", ep.Namespace, ep.Name)
-			return nil
-		}
-		log.Errorf("failed to get service %s/%s: %s", ep.Namespace, ep.Name, err)
-		return err
-	}
-	portMap := make(map[string]int32)
-	for _, port := range svc.Spec.Ports {
-		portMap[port.Name] = port.Port
-	}
-	clusters := c.controller.apisix.ListClusters()
-	for _, s := range ep.Subsets {
-		for _, port := range s.Ports {
-			svcPort, ok := portMap[port.Name]
-			if !ok {
-				// This shouldn't happen.
-				log.Errorf("port %s in endpoints %s/%s but not in service", port.Name, ep.Namespace, ep.Name)
-				continue
-			}
-			nodes, err := c.controller.translator.TranslateUpstreamNodes(ep, svcPort)
-			if err != nil {
-				log.Errorw("failed to translate upstream nodes",
-					zap.Error(err),
-					zap.Any("endpoints", ep),
-					zap.Int32("port", svcPort),
-				)
-			}
-			name := apisixv1.ComposeUpstreamName(ep.Namespace, ep.Name, svcPort)
-			for _, cluster := range clusters {
-				if err := c.syncToCluster(ctx, cluster, nodes, name); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func (c *endpointsController) syncToCluster(ctx context.Context, cluster apisix.Cluster, nodes apisixv1.UpstreamNodes, upsName string) error {
-	upstream, err := cluster.Upstream().Get(ctx, upsName)
-	if err != nil {
-		if err == apisixcache.ErrNotFound {
-			log.Warnw("upstream is not referenced",
-				zap.String("cluster", cluster.String()),
-				zap.String("upstream", upsName),
-			)
-			return nil
-		} else {
-			log.Errorw("failed to get upstream",
-				zap.String("upstream", upsName),
-				zap.String("cluster", cluster.String()),
-				zap.Error(err),
-			)
-			return err
-		}
-	}
-
-	upstream.Nodes = nodes
-
-	log.Debugw("upstream binds new nodes",
-		zap.Any("upstream", upstream),
-		zap.String("cluster", cluster.String()),
-	)
-
-	updated := &manifest{
-		upstreams: []*apisixv1.Upstream{upstream},
-	}
-	return c.controller.syncManifests(ctx, nil, updated, nil)
+	ep := ev.Object.(kube.Endpoint)
+	return c.controller.syncEndpoint(ctx, ep)
 }
 
 func (c *endpointsController) handleSyncErr(obj interface{}, err error) {
@@ -184,8 +111,9 @@ func (c *endpointsController) onAdd(obj interface{}) {
 		zap.String("object-key", key))
 
 	c.workqueue.AddRateLimited(&types.Event{
-		Type:   types.EventAdd,
-		Object: obj,
+		Type: types.EventAdd,
+		// TODO pass key.
+		Object: kube.NewEndpoint(obj.(*corev1.Endpoints)),
 	})
 }
 
@@ -209,8 +137,9 @@ func (c *endpointsController) onUpdate(prev, curr interface{}) {
 		zap.Any("old object", prevEp),
 	)
 	c.workqueue.AddRateLimited(&types.Event{
-		Type:   types.EventUpdate,
-		Object: curr,
+		Type: types.EventUpdate,
+		// TODO pass key.
+		Object: kube.NewEndpoint(currEp),
 	})
 }
 
@@ -236,6 +165,6 @@ func (c *endpointsController) onDelete(obj interface{}) {
 	)
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:   types.EventDelete,
-		Object: ep,
+		Object: kube.NewEndpoint(ep),
 	})
 }

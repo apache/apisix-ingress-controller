@@ -19,6 +19,8 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 )
 
 // +genclient
@@ -27,6 +29,8 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // ApisixRoute is used to define the route rules and upstreams for Apache APISIX.
 // The definition closes the Kubernetes Ingress resource.
+// +kubebuilder:resource:shortName=ar
+// +kubebuilder:pruning:PreserveUnknownFields
 type ApisixRoute struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
@@ -72,9 +76,8 @@ type ApisixRouteList struct {
 }
 
 // +genclient
-// +genclient:noStatus
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:subresource:status
 // ApisixUpstream is a decorator for Kubernetes Service, it arms the Service
 // with rich features like health check, retry policies, load balancer and others.
 // It's designed to have same name with the Kubernetes Service and can be customized
@@ -83,7 +86,8 @@ type ApisixUpstream struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 
-	Spec *ApisixUpstreamSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Spec   *ApisixUpstreamSpec   `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Status v2alpha1.ApisixStatus `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
 // ApisixUpstreamSpec describes the specification of ApisixUpstream.
@@ -117,6 +121,18 @@ type ApisixUpstreamConfig struct {
 	// The health check configurations for the upstream.
 	// +optional
 	HealthCheck *HealthCheck `json:"healthCheck,omitempty" yaml:"healthCheck,omitempty"`
+	// Subsets groups the service endpoints by their labels. Usually used to differentiate
+	// service versions.
+	// +optional
+	Subsets []ApisixUpstreamSubset `json:"subsets,omitempty" yaml:"subsets,omitempty"`
+}
+
+// ApisixUpstreamSubset defines a single endpoints group of one Service.
+type ApisixUpstreamSubset struct {
+	// Name is the name of subset.
+	Name string `json:"name" yaml:"name"`
+	// Labels is the label set of this subset.
+	Labels map[string]string `json:"labels" yaml:"labels"`
 }
 
 // UpstreamTimeout is settings for the read, send and connect to the upstream.
@@ -253,31 +269,59 @@ func (p *Config) DeepCopy() *Config {
 }
 
 // +genclient
-// +genclient:noStatus
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:resource:shortName=atls
+// +kubebuilder:subresource:status
 // ApisixTls defines SSL resource in APISIX.
 type ApisixTls struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 	Spec              *ApisixTlsSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
+	// +optional
+	Status v2alpha1.ApisixStatus `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:printcolumn:name="SNIs",type=string,JSONPath=`.spec.hosts`
+// +kubebuilder:printcolumn:name="Secret Name",type=string,JSONPath=`.spec.secret.name`
+// +kubebuilder:printcolumn:name="Secret Namespace",type=string,JSONPath=`.spec.secret.namespace`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+// +kubebuilder:printcolumn:name="Client CA Secret Name",type=string,JSONPath=`.spec.client.ca.name`
+// +kubebuilder:printcolumn:name="Client CA Secret Namespace",type=string,JSONPath=`.spec.client.ca.namespace`
 type ApisixTlsList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
 	metav1.ListMeta `json:"metadata" yaml:"metadata"`
 	Items           []ApisixTls `json:"items,omitempty" yaml:"items,omitempty"`
 }
 
+// +kubebuilder:validation:Pattern="^\\*?[0-9a-zA-Z-.]+$"
+type HostType string
+
 // ApisixTlsSpec is the specification of ApisixSSL.
 type ApisixTlsSpec struct {
-	Hosts  []string     `json:"hosts,omitempty" yaml:"hosts,omitempty"`
-	Secret ApisixSecret `json:"secret,omitempty" yaml:"secret,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinItems=1
+	Hosts []HostType `json:"hosts" yaml:"hosts,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
+	Secret ApisixSecret `json:"secret" yaml:"secret"`
+	// +optional
+	Client *ApisixMutualTlsClientConfig `json:"client,omitempty" yaml:"client,omitempty"`
 }
 
 // ApisixSecret describes the Kubernetes Secret name and namespace.
 type ApisixSecret struct {
-	Name      string `json:"name,omitempty" yaml:"name,omitempty"`
-	Namespace string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:Required
+	Name string `json:"name" yaml:"name"`
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:Required
+	Namespace string `json:"namespace" yaml:"namespace"`
+}
+
+// ApisixMutualTlsClientConfig describes the mutual TLS CA and verify depth
+type ApisixMutualTlsClientConfig struct {
+	CASecret ApisixSecret `json:"caSecret,omitempty" yaml:"caSecret,omitempty"`
+	Depth    int          `json:"depth,omitempty" yaml:"depth,omitempty"`
 }

@@ -14,23 +14,35 @@
 // limitations under the License.
 package annotations
 
-import "strings"
-
-var (
-	_whitelist = "k8s.apisix.apache.org/whitelist-source-range"
+import (
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-// IpRestrictionPlugin is the ip-restriction plugin.
-type IpRestrictionPlugin struct {
-	Whitelist []string `json:"whitelist,omitempty"`
+const (
+	_allowlistSourceRange = "k8s.apisix.apache.org/allowlist-source-range"
+	_blocklistSourceRange = "k8s.apisix.apache.org/blocklist-source-range"
+)
+
+type ipRestriction struct{}
+
+// NewIPRestrictionHandler creates a handler to convert
+// annotations about client ips control to APISIX ip-restrict plugin.
+func NewIPRestrictionHandler() Handler {
+	return &ipRestriction{}
 }
 
-// BuildIpRestrictionPlugin builds the ip-restriction plugin from annotations.
-func BuildIpRestrictionPlugin(annotations map[string]string) *IpRestrictionPlugin {
-	if whitelist, ok := annotations[_whitelist]; ok {
-		return &IpRestrictionPlugin{
-			Whitelist: strings.Split(whitelist, ","),
-		}
+func (i *ipRestriction) PluginName() string {
+	return "ip-restriction"
+}
+
+func (i *ipRestriction) Handle(e Extractor) (interface{}, error) {
+	var plugin apisixv1.IPRestrictConfig
+	allowlist := e.GetStringsAnnotation(_allowlistSourceRange)
+	blocklist := e.GetStringsAnnotation(_blocklistSourceRange)
+	if allowlist != nil || blocklist != nil {
+		plugin.Allowlist = allowlist
+		plugin.Blocklist = blocklist
+		return &plugin, nil
 	}
-	return nil
+	return nil, nil
 }

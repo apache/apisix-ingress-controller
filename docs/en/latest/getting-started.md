@@ -25,7 +25,7 @@ title: Getting Started
 
 apisix-ingress-controller is yet another Ingress controller for Kubernetes using [Apache APISIX](https://apisix.apache.org) as the high performance reverse proxy.
 
-It's configured by using the declarative configurations like [ApisixRoute](./concepts/apisix_route.md), [ApisixUpstream](./concepts/apisix), [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/).
+It's configured by using the declarative configurations like [ApisixRoute](./concepts/apisix_route.md), [ApisixUpstream](./concepts/apisix_upstream.md), [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/).
 All these resources are watched and converted to corresponding resources in Apache APISIX.
 
 Service Discovery are also supported through [Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/),
@@ -62,7 +62,7 @@ apisix-ingress-controller supports to be installed on some clouds such as AWS, G
 
 ## Installation on Prem
 
-If you want to deploy apisix-ingress-controller on Prem, we recommend you to use [Helm](https://helm.io). Just a few steps
+If you want to deploy apisix-ingress-controller on Prem, we recommend you to use [Helm](https://helm.sh/). Just a few steps
 
 ## Get Involved to Contribute
 
@@ -77,5 +77,6 @@ The following table describes the compatibility between apisix-ingress-controlle
 | apisix-ingress-controller | Apache APISIX |
 | ----:| ---:|
 | `master` | `>= 2.4`, `2.5` is recommended. |
+| `0.6` | `>= 2.6`, `2.6` is recommended. |
 | `0.5` | `>= 2.4`, `2.5` is recommended. |
 | `0.4` |`>= 2.4`|

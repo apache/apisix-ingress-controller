@@ -16,13 +16,16 @@
 #
 default: help
 
-VERSION ?= 0.5.0
+VERSION ?= 1.1.0
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 LOCAL_REGISTRY="localhost:5000"
 IMAGE_TAG ?= dev
 
+GITSHA ?= "no-git-module"
+ifneq ("$(wildcard .git)", "")
+	GITSHA = $(shell git rev-parse --short=7 HEAD)
+endif
 GINKGO ?= $(shell which ginkgo)
-GITSHA ?= $(shell git rev-parse --short=7 HEAD)
 OSNAME ?= $(shell uname -s | tr A-Z a-z)
 OSARCH ?= $(shell uname -m | tr A-Z a-z)
 PWD ?= $(shell pwd)
@@ -68,9 +71,7 @@ unit-test:
 ### e2e-test:             Run e2e test cases (kind is required)
 .PHONY: e2e-test
 e2e-test: ginkgo-check push-images-to-kind
-	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixRoute.yaml
-	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixUpstream.yaml
-	kubectl apply -f $(PWD)/samples/deploy/crd/v1beta1/ApisixTls.yaml
+	kubectl apply -k $(PWD)/samples/deploy/crd/v1beta1
 	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=$(E2E_CONCURRENCY)
 
 .PHONY: ginkgo-check
@@ -114,15 +115,6 @@ kind-up:
 kind-reset:
 	kind delete cluster --name apisix
 
-### license-check:        Do Apache License Header check
-.PHONY: license-check
-license-check:
-ifeq ("$(wildcard .actions/openwhisk-utilities/scancode/scanCode.py)", "")
-	git clone https://github.com/apache/openwhisk-utilities.git .actions/openwhisk-utilities
-	cp .actions/ASF* .actions/openwhisk-utilities/scancode/
-endif
-	.actions/openwhisk-utilities/scancode/scanCode.py --config .actions/ASF-Release.cfg ./
-
 ### help:                 Show Makefile rules
 .PHONY: help
 help:
@@ -153,3 +145,32 @@ release-src:
 	mv $(RELEASE_SRC).tgz release/$(RELEASE_SRC).tgz
 	mv $(RELEASE_SRC).tgz.asc release/$(RELEASE_SRC).tgz.asc
 	mv $(RELEASE_SRC).tgz.sha512 release/$(RELEASE_SRC).tgz.sha512
+
+.PHONY: gen-tools
+gen-tools:
+	go mod download
+	@bash -c 'go install k8s.io/code-generator/cmd/{client-gen,lister-gen,informer-gen,deepcopy-gen}'
+
+### codegen:              Generate codes for clientset, informer, deepcopy, etc.
+.PHONY: codegen
+codegen: gen-tools
+	./utils/update-codegen.sh
+
+### verify-codegen:       Verify whether the generated codes (clientset, informer, deepcopy, etc) are up to date.
+.PHONY: verify-codegen
+verify-codegen: gen-tools
+	./utils/verify-codegen.sh
+
+### verify-license:       Verify license headers.
+.PHONY: verify-license
+verify-license:
+	docker run -it --rm -v $(PWD):/github/workspace apache/skywalking-eyes header check -v info
+
+### verify-mdlint:        Verify markdown files lint rules.
+.PHONY: verify-mdlint
+verify-mdlint:
+	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' --ignore node_modules
+
+### verify-all:           Verify all verify- rules.
+.PHONY: verify-all
+verify-all: verify-codegen verify-license verify-mdlint

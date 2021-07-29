@@ -28,23 +28,33 @@ import (
 )
 
 var _ = ginkgo.Describe("namespacing filtering", func() {
-	s := scaffold.NewDefaultScaffold()
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+	}
+	s := scaffold.NewScaffold(opts)
 	ginkgo.It("resources in other namespaces should be ignored", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		route := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
   name: httpbin-route
 spec:
-  rules:
-  - host: httpbin.com
-    http:
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
       paths:
-      - backend:
-          serviceName: %s
-          servicePort: %d
-        path: /ip
+      - /ip
+    backend:
+      serviceName: %s
+      servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "creating ApisixRoute")
@@ -62,19 +72,21 @@ spec:
 
 		// Now create another ApisixRoute in default namespace.
 		route = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
  name: httpbin-route
 spec:
- rules:
- - host: httpbin.com
-   http:
-     paths:
-     - backend:
-         serviceName: %s
-         servicePort: %d
-       path: /headers
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /headers
+    backend:
+      serviceName: %s
+      servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route, "default"), "creating ApisixRoute")

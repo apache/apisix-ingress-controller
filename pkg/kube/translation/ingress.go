@@ -33,6 +33,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 	ctx := &TranslateContext{
 		upstreamMap: make(map[string]struct{}),
 	}
+	plugins := t.translateAnnotations(ing.Annotations)
 
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
@@ -75,6 +76,9 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
+			if len(plugins) > 0 {
+				route.Plugins = *(plugins.DeepCopy())
+			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
 			}
@@ -88,6 +92,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 	ctx := &TranslateContext{
 		upstreamMap: make(map[string]struct{}),
 	}
+	plugins := t.translateAnnotations(ing.Annotations)
 
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
@@ -130,6 +135,9 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
+			if len(plugins) > 0 {
+				route.Plugins = *(plugins.DeepCopy())
+			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
 			}
@@ -161,11 +169,11 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 	} else {
 		svcPort = backend.Port.Number
 	}
-	ups, err := t.TranslateUpstream(namespace, backend.Name, svcPort)
+	ups, err := t.TranslateUpstream(namespace, backend.Name, "", svcPort)
 	if err != nil {
 		return nil, err
 	}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, svcPort)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, "", svcPort)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }
@@ -174,6 +182,7 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 	ctx := &TranslateContext{
 		upstreamMap: make(map[string]struct{}),
 	}
+	plugins := t.translateAnnotations(ing.Annotations)
 
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
@@ -212,14 +221,14 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 				}
 				uris = append(uris, prefix)
 			}
-			route := &apisixv1.Route{
-				Metadata: apisixv1.Metadata{
-					Name: composeIngressRouteName(rule.Host, pathRule.Path),
-				},
-				Host: rule.Host,
-				Uris: uris,
-			}
+			route := apisixv1.NewDefaultRoute()
+			route.Name = composeIngressRouteName(rule.Host, pathRule.Path)
 			route.ID = id.GenID(route.Name)
+			route.Host = rule.Host
+			route.Uris = uris
+			if len(plugins) > 0 {
+				route.Plugins = *(plugins.DeepCopy())
+			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
 			}
@@ -251,11 +260,11 @@ func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcNa
 	} else {
 		portNumber = svcPort.IntVal
 	}
-	ups, err := t.TranslateUpstream(namespace, svcName, portNumber)
+	ups, err := t.TranslateUpstream(namespace, svcName, "", portNumber)
 	if err != nil {
 		return nil, err
 	}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, portNumber)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }

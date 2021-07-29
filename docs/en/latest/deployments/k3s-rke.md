@@ -23,7 +23,7 @@ title: Install Ingress APISIX on K3S and Rancher RKE
 
 This document explains how to install Ingress APISIX on [k3S](https://k3s.io/) and [Rancher RKE](https://rancher.com/products/rke/).
 
-K3S is a certified Kubernetes distribution built for IoT and Edge computing, whilst [Apache APISIX](https://apisix.apache.org) is also good at IoT (See [MQTT plugin](https://github.com/apache/apisix/blob/master/doc/plugins/mqtt-proxy.md)) and runs well on ARM architecture.
+K3S is a certified Kubernetes distribution built for IoT and Edge computing, whilst [Apache APISIX](https://apisix.apache.org) is also good at IoT (See [MQTT plugin](https://github.com/apache/apisix/blob/master/docs/en/latest/plugins/mqtt-proxy.md)) and runs well on ARM architecture.
 It's a good choice to use Ingress APISIX as the north-south API gateway in K3S.
 
 ## Prerequisites
@@ -31,7 +31,7 @@ It's a good choice to use Ingress APISIX as the north-south API gateway in K3S.
 * Install [K3S](https://rancher.com/docs/k3s/latest/en/installation/) or [Rancher RKE](https://rancher.com/docs/rke/latest/en/installation/).
 * Install [Helm](https://helm.sh/).
 * Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
-* Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
+* Make sure your target namespace exists, kubectl operations through this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX
 
@@ -45,7 +45,7 @@ helm repo add apisix https://charts.apiseven.com
 helm repo update
 helm install apisix apisix/apisix \
   --set gateway.type=NodePort \
-  --set allow.ipList="{0.0.0.0/0}" \
+  --set admin.allow.ipList="{0.0.0.0/0}" \
   --namespace ingress-apisix \
   --kubeconfig /etc/rancher/k3s/k3s.yaml
 kubectl get service --namespace ingress-apisix
@@ -81,4 +81,4 @@ The admin key used in above mentioned commands is the default one, if you change
 
 Change the `image.tag` to the apisix-ingress-controller version that you desire. You have to wait for while until the corresponding pods are running.
 
-Now try to create some [resources](../CRD-specification.md) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../practices/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
+Now try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../practices/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.

@@ -17,8 +17,10 @@ package scaffold
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -41,13 +43,13 @@ import (
 )
 
 type Options struct {
-	Name                    string
-	Kubeconfig              string
-	APISIXConfigPath        string
-	APISIXDefaultConfigPath string
-	IngressAPISIXReplicas   int
-	HTTPBinServicePort      int
-	APISIXRouteVersion      string
+	Name                  string
+	Kubeconfig            string
+	APISIXConfigPath      string
+	IngressAPISIXReplicas int
+	HTTPBinServicePort    int
+	APISIXRouteVersion    string
+	APISIXAdminAPIKey     string
 }
 
 type Scaffold struct {
@@ -62,9 +64,12 @@ type Scaffold struct {
 	httpbinService    *corev1.Service
 	finializers       []func()
 
-	apisixAdminTunnel *k8s.Tunnel
-	apisixHttpTunnel  *k8s.Tunnel
-	apisixHttpsTunnel *k8s.Tunnel
+	apisixAdminTunnel   *k8s.Tunnel
+	apisixHttpTunnel    *k8s.Tunnel
+	apisixHttpsTunnel   *k8s.Tunnel
+	apisixTCPTunnel     *k8s.Tunnel
+	apisixUDPTunnel     *k8s.Tunnel
+	apisixControlTunnel *k8s.Tunnel
 
 	// Used for template rendering.
 	EtcdServiceFQDN string
@@ -95,6 +100,9 @@ func NewScaffold(o *Options) *Scaffold {
 	if o.APISIXRouteVersion == "" {
 		o.APISIXRouteVersion = kube.ApisixRouteV1
 	}
+	if o.APISIXAdminAPIKey == "" {
+		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
+	}
 	defer ginkgo.GinkgoRecover()
 
 	s := &Scaffold{
@@ -111,13 +119,25 @@ func NewScaffold(o *Options) *Scaffold {
 // NewDefaultScaffold creates a scaffold with some default options.
 func NewDefaultScaffold() *Scaffold {
 	opts := &Options{
-		Name:                    "default",
-		Kubeconfig:              GetKubeconfig(),
-		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
-		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
-		IngressAPISIXReplicas:   1,
-		HTTPBinServicePort:      80,
-		APISIXRouteVersion:      kube.ApisixRouteV1,
+		Name:                  "default",
+		Kubeconfig:            GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    kube.ApisixRouteV1,
+	}
+	return NewScaffold(opts)
+}
+
+// NewDefaultV2Scaffold creates a scaffold with some default options.
+func NewDefaultV2Scaffold() *Scaffold {
+	opts := &Options{
+		Name:                  "default",
+		Kubeconfig:            GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    kube.ApisixRouteV2alpha1,
 	}
 	return NewScaffold(opts)
 }
@@ -167,7 +187,43 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 	})
 }
 
-// NewAPISIXHttpsClient creates the default HTTPs client.
+// NewAPISIXClientWithTCPProxy creates the HTTP client but with the TCP proxy of APISIX.
+func (s *Scaffold) NewAPISIXClientWithTCPProxy() *httpexpect.Expect {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixTCPTunnel.Endpoint(),
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
+		),
+	})
+}
+
+func (s *Scaffold) DNSResolver() *net.Resolver {
+	return &net.Resolver{
+		PreferGo: false,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{
+				Timeout: time.Millisecond * time.Duration(10000),
+			}
+			return d.DialContext(ctx, "udp", s.apisixUDPTunnel.Endpoint())
+		},
+	}
+}
+
+func (s *Scaffold) UpdateNamespace(ns string) {
+	s.kubectlOptions.Namespace = ns
+}
+
+// NewAPISIXHttpsClient creates the default HTTPS client.
 func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
 	u := url.URL{
 		Scheme: "https",
@@ -181,6 +237,30 @@ func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
 					// accept any certificate; for testing only!
 					InsecureSkipVerify: true,
 					ServerName:         host,
+				},
+			},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
+		),
+	})
+}
+
+// NewAPISIXHttpsClientWithCertificates creates the default HTTPS client with giving trusted CA and client certs.
+func (s *Scaffold) NewAPISIXHttpsClientWithCertificates(host string, insecure bool, ca *x509.CertPool, certs []tls.Certificate) *httpexpect.Expect {
+	u := url.URL{
+		Scheme: "https",
+		Host:   s.apisixHttpsTunnel.Endpoint(),
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: insecure,
+					ServerName:         host,
+					RootCAs:            ca,
+					Certificates:       certs,
 				},
 			},
 		},
@@ -237,6 +317,19 @@ func (s *Scaffold) beforeEach() {
 
 func (s *Scaffold) afterEach() {
 	defer ginkgo.GinkgoRecover()
+
+	if ginkgo.CurrentGinkgoTestDescription().Failed {
+		fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
+		output, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods")
+		if output != "" {
+			fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		}
+		output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "describe", "pods")
+		if output != "" {
+			fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		}
+	}
+
 	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
 	assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
 

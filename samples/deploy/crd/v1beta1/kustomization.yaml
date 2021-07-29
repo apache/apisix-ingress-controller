@@ -19,3 +19,5 @@ resources:
   - ./ApisixRoute.yaml
   - ./ApisixUpstream.yaml
   - ./ApisixTls.yaml
+  - ./ApisixClusterConfig.yaml
+  - ./ApisixConsumer.yaml

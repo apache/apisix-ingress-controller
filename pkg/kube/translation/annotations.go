@@ -15,17 +15,36 @@
 package translation
 
 import (
+	"go.uber.org/zap"
+
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func (t *translator) TranslateAnnotations(anno map[string]string) apisix.Plugins {
-	plugins := make(apisix.Plugins)
-	if cors := annotations.BuildCorsPlugin(anno); cors != nil {
-		plugins["cors"] = cors
+var (
+	_handlers = []annotations.Handler{
+		annotations.NewCorsHandler(),
+		annotations.NewIPRestrictionHandler(),
+		annotations.NewRewriteHandler(),
+		annotations.NewRedirectHandler(),
 	}
-	if ipRestriction := annotations.BuildIpRestrictionPlugin(anno); ipRestriction != nil {
-		plugins["ip-restriction"] = ipRestriction
+)
+
+func (t *translator) translateAnnotations(anno map[string]string) apisix.Plugins {
+	extractor := annotations.NewExtractor(anno)
+	plugins := make(apisix.Plugins)
+	for _, handler := range _handlers {
+		out, err := handler.Handle(extractor)
+		if err != nil {
+			log.Warnw("failed to handle annotations",
+				zap.Error(err),
+			)
+			continue
+		}
+		if out != nil {
+			plugins[handler.PluginName()] = out
+		}
 	}
 	return plugins
 }

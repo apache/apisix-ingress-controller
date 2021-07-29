@@ -21,11 +21,14 @@ import (
 	"sync"
 	"time"
 
+	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
@@ -38,9 +41,9 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	crdclientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
+	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
+	listersv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
@@ -63,48 +66,61 @@ const (
 
 // Controller is the ingress apisix controller object.
 type Controller struct {
-	name               string
-	namespace          string
-	cfg                *config.Config
-	wg                 sync.WaitGroup
-	watchingNamespace  map[string]struct{}
-	apisix             apisix.APISIX
-	translator         translation.Translator
-	apiServer          *api.Server
-	clientset          kubernetes.Interface
-	crdClientset       crdclientset.Interface
-	metricsCollector   metrics.Collector
-	crdInformerFactory externalversions.SharedInformerFactory
+	name              string
+	namespace         string
+	cfg               *config.Config
+	wg                sync.WaitGroup
+	watchingNamespace map[string]struct{}
+	apisix            apisix.APISIX
+	podCache          types.PodCache
+	translator        translation.Translator
+	apiServer         *api.Server
+	metricsCollector  metrics.Collector
+	kubeClient        *kube.KubeClient
 	// recorder event
 	recorder record.EventRecorder
 	// this map enrolls which ApisixTls objects refer to a Kubernetes
 	// Secret object.
 	secretSSLMap *sync.Map
 
+	// leaderContextCancelFunc will be called when apisix-ingress-controller
+	// decides to give up its leader role.
+	leaderContextCancelFunc context.CancelFunc
+
 	// common informers and listers
-	epInformer             cache.SharedIndexInformer
-	epLister               listerscorev1.EndpointsLister
-	svcInformer            cache.SharedIndexInformer
-	svcLister              listerscorev1.ServiceLister
-	ingressLister          kube.IngressLister
-	ingressInformer        cache.SharedIndexInformer
-	secretInformer         cache.SharedIndexInformer
-	secretLister           listerscorev1.SecretLister
-	apisixUpstreamInformer cache.SharedIndexInformer
-	apisixUpstreamLister   listersv1.ApisixUpstreamLister
-	apisixRouteLister      kube.ApisixRouteLister
-	apisixRouteInformer    cache.SharedIndexInformer
-	apisixTlsLister        listersv1.ApisixTlsLister
-	apisixTlsInformer      cache.SharedIndexInformer
+	podInformer                 cache.SharedIndexInformer
+	podLister                   listerscorev1.PodLister
+	epInformer                  cache.SharedIndexInformer
+	epLister                    kube.EndpointLister
+	svcInformer                 cache.SharedIndexInformer
+	svcLister                   listerscorev1.ServiceLister
+	ingressLister               kube.IngressLister
+	ingressInformer             cache.SharedIndexInformer
+	secretInformer              cache.SharedIndexInformer
+	secretLister                listerscorev1.SecretLister
+	apisixUpstreamInformer      cache.SharedIndexInformer
+	apisixUpstreamLister        listersv1.ApisixUpstreamLister
+	apisixRouteLister           kube.ApisixRouteLister
+	apisixRouteInformer         cache.SharedIndexInformer
+	apisixTlsLister             listersv1.ApisixTlsLister
+	apisixTlsInformer           cache.SharedIndexInformer
+	apisixClusterConfigLister   listersv2alpha1.ApisixClusterConfigLister
+	apisixClusterConfigInformer cache.SharedIndexInformer
+	apisixConsumerInformer      cache.SharedIndexInformer
+	apisixConsumerLister        listersv2alpha1.ApisixConsumerLister
 
 	// resource controllers
-	endpointsController *endpointsController
-	ingressController   *ingressController
-	secretController    *secretController
+	podController           *podController
+	endpointsController     *endpointsController
+	endpointSliceController *endpointSliceController
+	ingressController       *ingressController
+	secretController        *secretController
 
-	apisixUpstreamController *apisixUpstreamController
-	apisixRouteController    *apisixRouteController
-	apisixTlsController      *apisixTlsController
+	apisixUpstreamController      *apisixUpstreamController
+	apisixRouteController         *apisixRouteController
+	apisixTlsController           *apisixTlsController
+	apisixClusterConfigController *apisixClusterConfigController
+	apisixConsumerController      *apisixConsumerController
 }
 
 // NewController creates an ingress apisix controller object.
@@ -119,7 +135,8 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		return nil, err
 	}
 
-	if err := kube.InitInformer(cfg); err != nil {
+	kubeClient, err := kube.NewKubeClient(cfg)
+	if err != nil {
 		return nil, err
 	}
 
@@ -128,13 +145,8 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		return nil, err
 	}
 
-	crdClientset := kube.GetApisixClient()
-	sharedInformerFactory := externalversions.NewSharedInformerFactory(crdClientset, cfg.Kubernetes.ResyncInterval.Duration)
-
 	var (
-		watchingNamespace   map[string]struct{}
-		ingressInformer     cache.SharedIndexInformer
-		apisixRouteInformer cache.SharedIndexInformer
+		watchingNamespace map[string]struct{}
 	)
 	if len(cfg.Kubernetes.AppNamespaces) > 1 || cfg.Kubernetes.AppNamespaces[0] != v1.NamespaceAll {
 		watchingNamespace = make(map[string]struct{}, len(cfg.Kubernetes.AppNamespaces))
@@ -142,77 +154,106 @@ func NewController(cfg *config.Config) (*Controller, error) {
 			watchingNamespace[ns] = struct{}{}
 		}
 	}
-	kube.EndpointsInformer = kube.CoreSharedInformerFactory.Core().V1().Endpoints()
-
-	ingressLister := kube.NewIngressLister(
-		kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Lister(),
-		kube.CoreSharedInformerFactory.Networking().V1beta1().Ingresses().Lister(),
-		kube.CoreSharedInformerFactory.Extensions().V1beta1().Ingresses().Lister(),
-	)
-	apisixRouteLister := kube.NewApisixRouteLister(sharedInformerFactory.Apisix().V1().ApisixRoutes().Lister(),
-		sharedInformerFactory.Apisix().V2alpha1().ApisixRoutes().Lister())
-
-	if cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1 {
-		ingressInformer = kube.CoreSharedInformerFactory.Networking().V1().Ingresses().Informer()
-	} else if cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1beta1 {
-		ingressInformer = kube.CoreSharedInformerFactory.Networking().V1beta1().Ingresses().Informer()
-	} else {
-		ingressInformer = kube.CoreSharedInformerFactory.Extensions().V1beta1().Ingresses().Informer()
-	}
-	if cfg.Kubernetes.ApisixRouteVersion == config.ApisixRouteV2alpha1 {
-		apisixRouteInformer = sharedInformerFactory.Apisix().V2alpha1().ApisixRoutes().Informer()
-	} else {
-		apisixRouteInformer = sharedInformerFactory.Apisix().V1().ApisixRoutes().Informer()
-	}
 
 	// recorder
+	utilruntime.Must(apisixscheme.AddToScheme(scheme.Scheme))
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kube.GetKubeClient().CoreV1().Events("")})
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.Client.CoreV1().Events("")})
 
 	c := &Controller{
-		name:               podName,
-		namespace:          podNamespace,
-		cfg:                cfg,
-		apiServer:          apiSrv,
-		apisix:             client,
-		metricsCollector:   metrics.NewPrometheusCollector(podName, podNamespace),
-		clientset:          kube.GetKubeClient(),
-		crdClientset:       crdClientset,
-		crdInformerFactory: sharedInformerFactory,
-		watchingNamespace:  watchingNamespace,
-		secretSSLMap:       new(sync.Map),
-		recorder:           eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
+		name:              podName,
+		namespace:         podNamespace,
+		cfg:               cfg,
+		apiServer:         apiSrv,
+		apisix:            client,
+		metricsCollector:  metrics.NewPrometheusCollector(podName, podNamespace),
+		kubeClient:        kubeClient,
+		watchingNamespace: watchingNamespace,
+		secretSSLMap:      new(sync.Map),
+		recorder:          eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
 
-		epInformer:             kube.CoreSharedInformerFactory.Core().V1().Endpoints().Informer(),
-		epLister:               kube.CoreSharedInformerFactory.Core().V1().Endpoints().Lister(),
-		svcInformer:            kube.CoreSharedInformerFactory.Core().V1().Services().Informer(),
-		svcLister:              kube.CoreSharedInformerFactory.Core().V1().Services().Lister(),
-		ingressLister:          ingressLister,
-		ingressInformer:        ingressInformer,
-		secretInformer:         kube.CoreSharedInformerFactory.Core().V1().Secrets().Informer(),
-		secretLister:           kube.CoreSharedInformerFactory.Core().V1().Secrets().Lister(),
-		apisixRouteInformer:    apisixRouteInformer,
-		apisixRouteLister:      apisixRouteLister,
-		apisixUpstreamInformer: sharedInformerFactory.Apisix().V1().ApisixUpstreams().Informer(),
-		apisixUpstreamLister:   sharedInformerFactory.Apisix().V1().ApisixUpstreams().Lister(),
-		apisixTlsInformer:      sharedInformerFactory.Apisix().V1().ApisixTlses().Informer(),
-		apisixTlsLister:        sharedInformerFactory.Apisix().V1().ApisixTlses().Lister(),
+		podCache: types.NewPodCache(),
 	}
+	return c, nil
+}
+
+func (c *Controller) initWhenStartLeading() {
+	var (
+		ingressInformer     cache.SharedIndexInformer
+		apisixRouteInformer cache.SharedIndexInformer
+	)
+
+	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
+	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
+
+	c.podLister = kubeFactory.Core().V1().Pods().Lister()
+	c.epLister, c.epInformer = kube.NewEndpointListerAndInformer(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
+	c.svcLister = kubeFactory.Core().V1().Services().Lister()
+	c.ingressLister = kube.NewIngressLister(
+		kubeFactory.Networking().V1().Ingresses().Lister(),
+		kubeFactory.Networking().V1beta1().Ingresses().Lister(),
+		kubeFactory.Extensions().V1beta1().Ingresses().Lister(),
+	)
+	c.secretLister = kubeFactory.Core().V1().Secrets().Lister()
+	c.apisixRouteLister = kube.NewApisixRouteLister(
+		apisixFactory.Apisix().V1().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2alpha1().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2beta1().ApisixRoutes().Lister(),
+	)
+	c.apisixUpstreamLister = apisixFactory.Apisix().V1().ApisixUpstreams().Lister()
+	c.apisixTlsLister = apisixFactory.Apisix().V1().ApisixTlses().Lister()
+	c.apisixClusterConfigLister = apisixFactory.Apisix().V2alpha1().ApisixClusterConfigs().Lister()
+	c.apisixConsumerLister = apisixFactory.Apisix().V2alpha1().ApisixConsumers().Lister()
+
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
-		EndpointsLister:      c.epLister,
+		PodCache:             c.podCache,
+		PodLister:            c.podLister,
+		EndpointLister:       c.epLister,
 		ServiceLister:        c.svcLister,
 		ApisixUpstreamLister: c.apisixUpstreamLister,
 		SecretLister:         c.secretLister,
+		UseEndpointSlices:    c.cfg.Kubernetes.WatchEndpointSlices,
 	})
 
-	c.endpointsController = c.newEndpointsController()
-	c.apisixUpstreamController = c.newApisixUpstreamController()
-	c.apisixRouteController = c.newApisixRouteController()
-	c.apisixTlsController = c.newApisixTlsController()
-	c.ingressController = c.newIngressController()
-	c.secretController = c.newSecretController()
+	if c.cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1 {
+		ingressInformer = kubeFactory.Networking().V1().Ingresses().Informer()
+	} else if c.cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1beta1 {
+		ingressInformer = kubeFactory.Networking().V1beta1().Ingresses().Informer()
+	} else {
+		ingressInformer = kubeFactory.Extensions().V1beta1().Ingresses().Informer()
+	}
+	switch c.cfg.Kubernetes.ApisixRouteVersion {
+	case config.ApisixRouteV1:
+		apisixRouteInformer = apisixFactory.Apisix().V1().ApisixRoutes().Informer()
+	case config.ApisixRouteV2alpha1:
+		apisixRouteInformer = apisixFactory.Apisix().V2alpha1().ApisixRoutes().Informer()
+	case config.ApisixRouteV2beta1:
+		apisixRouteInformer = apisixFactory.Apisix().V2beta1().ApisixRoutes().Informer()
+	}
 
-	return c, nil
+	c.podInformer = kubeFactory.Core().V1().Pods().Informer()
+	c.svcInformer = kubeFactory.Core().V1().Services().Informer()
+	c.ingressInformer = ingressInformer
+	c.apisixRouteInformer = apisixRouteInformer
+	c.apisixUpstreamInformer = apisixFactory.Apisix().V1().ApisixUpstreams().Informer()
+	c.apisixClusterConfigInformer = apisixFactory.Apisix().V2alpha1().ApisixClusterConfigs().Informer()
+	c.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
+	c.apisixTlsInformer = apisixFactory.Apisix().V1().ApisixTlses().Informer()
+	c.apisixConsumerInformer = apisixFactory.Apisix().V2alpha1().ApisixConsumers().Informer()
+
+	if c.cfg.Kubernetes.WatchEndpointSlices {
+		c.endpointSliceController = c.newEndpointSliceController()
+	} else {
+		c.endpointsController = c.newEndpointsController()
+	}
+	c.podController = c.newPodController()
+	c.apisixUpstreamController = c.newApisixUpstreamController()
+	c.ingressController = c.newIngressController()
+	c.apisixRouteController = c.newApisixRouteController()
+	c.apisixClusterConfigController = c.newApisixClusterConfigController()
+	c.apisixTlsController = c.newApisixTlsController()
+	c.secretController = c.newSecretController()
+	c.apisixConsumerController = c.newApisixConsumerController()
 }
 
 // recorderEvent recorder events for resources
@@ -224,6 +265,11 @@ func (c *Controller) recorderEvent(object runtime.Object, eventtype, reason stri
 		message := fmt.Sprintf(_messageResourceSynced, _component)
 		c.recorder.Event(object, eventtype, reason, message)
 	}
+}
+
+// recorderEvent recorder events for resources
+func (c *Controller) recorderEventS(object runtime.Object, eventtype, reason string, msg string) {
+	c.recorder.Event(object, eventtype, reason, msg)
 }
 
 func (c *Controller) goAttach(handler func()) {
@@ -260,7 +306,7 @@ func (c *Controller) Run(stop chan struct{}) error {
 			Namespace: c.namespace,
 			Name:      c.cfg.Kubernetes.ElectionID,
 		},
-		Client: c.clientset.CoordinationV1(),
+		Client: c.kubeClient.Client.CoordinationV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
 			Identity:      c.name,
 			EventRecorder: c,
@@ -290,7 +336,10 @@ func (c *Controller) Run(stop chan struct{}) error {
 				c.metricsCollector.ResetLeader(false)
 			},
 		},
-		ReleaseOnCancel: true,
+		// Set it to false as current leaderelection implementation will report
+		// "Failed to release lock: resource name may not be empty" error when
+		// ReleaseOnCancel is true and the Run context is cancelled.
+		ReleaseOnCancel: false,
 		Name:            "ingress-apisix",
 	}
 
@@ -301,7 +350,9 @@ func (c *Controller) Run(stop chan struct{}) error {
 	}
 
 election:
-	elector.Run(rootCtx)
+	curCtx, cancel := context.WithCancel(rootCtx)
+	c.leaderContextCancelFunc = cancel
+	elector.Run(curCtx)
 	select {
 	case <-rootCtx.Done():
 		return nil
@@ -311,29 +362,50 @@ election:
 }
 
 func (c *Controller) run(ctx context.Context) {
-	log.Infow("controller now is running as leader",
+	log.Infow("controller tries to leading ...",
 		zap.String("namespace", c.namespace),
 		zap.String("pod", c.name),
 	)
-	c.metricsCollector.ResetLeader(true)
 
-	err := c.apisix.AddCluster(&apisix.ClusterOptions{
-		Name:     "",
-		AdminKey: c.cfg.APISIX.AdminKey,
-		BaseURL:  c.cfg.APISIX.BaseURL,
-	})
+	var cancelFunc context.CancelFunc
+	ctx, cancelFunc = context.WithCancel(ctx)
+	defer cancelFunc()
+
+	// give up leader
+	defer c.leaderContextCancelFunc()
+
+	clusterOpts := &apisix.ClusterOptions{
+		Name:     c.cfg.APISIX.DefaultClusterName,
+		AdminKey: c.cfg.APISIX.DefaultClusterAdminKey,
+		BaseURL:  c.cfg.APISIX.DefaultClusterBaseURL,
+	}
+	err := c.apisix.AddCluster(clusterOpts)
 	if err != nil && err != apisix.ErrDuplicatedCluster {
-		// TODO give up the leader role.
+		// TODO give up the leader role
 		log.Errorf("failed to add default cluster: %s", err)
 		return
 	}
 
-	if err := c.apisix.Cluster("").HasSynced(ctx); err != nil {
-		// TODO give up the leader role.
+	if err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).HasSynced(ctx); err != nil {
+		// TODO give up the leader role
 		log.Errorf("failed to wait the default cluster to be ready: %s", err)
+
+		// re-create apisix cluster, used in next c.run
+		if err = c.apisix.UpdateCluster(clusterOpts); err != nil {
+			log.Errorf("failed to update default cluster: %s", err)
+			return
+		}
 		return
 	}
 
+	c.initWhenStartLeading()
+
+	c.goAttach(func() {
+		c.checkClusterHealth(ctx, cancelFunc)
+	})
+	c.goAttach(func() {
+		c.podInformer.Run(ctx.Done())
+	})
 	c.goAttach(func() {
 		c.epInformer.Run(ctx.Done())
 	})
@@ -350,13 +422,26 @@ func (c *Controller) run(ctx context.Context) {
 		c.apisixUpstreamInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
+		c.apisixClusterConfigInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
 		c.secretInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
 		c.apisixTlsInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
-		c.endpointsController.run(ctx)
+		c.apisixConsumerInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
+		c.podController.run(ctx)
+	})
+	c.goAttach(func() {
+		if c.cfg.Kubernetes.WatchEndpointSlices {
+			c.endpointSliceController.run(ctx)
+		} else {
+			c.endpointsController.run(ctx)
+		}
 	})
 	c.goAttach(func() {
 		c.apisixUpstreamController.run(ctx)
@@ -368,11 +453,24 @@ func (c *Controller) run(ctx context.Context) {
 		c.apisixRouteController.run(ctx)
 	})
 	c.goAttach(func() {
+		c.apisixClusterConfigController.run(ctx)
+	})
+	c.goAttach(func() {
 		c.apisixTlsController.run(ctx)
 	})
 	c.goAttach(func() {
 		c.secretController.run(ctx)
 	})
+	c.goAttach(func() {
+		c.apisixConsumerController.run(ctx)
+	})
+
+	c.metricsCollector.ResetLeader(true)
+
+	log.Infow("controller now is running as leader",
+		zap.String("namespace", c.namespace),
+		zap.String("pod", c.name),
+	)
 
 	<-ctx.Done()
 	c.wg.Wait()
@@ -400,12 +498,122 @@ func (c *Controller) syncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types
 	var (
 		err error
 	)
+	clusterName := c.cfg.APISIX.DefaultClusterName
 	if event == types.EventDelete {
-		err = c.apisix.Cluster("").SSL().Delete(ctx, ssl)
+		err = c.apisix.Cluster(clusterName).SSL().Delete(ctx, ssl)
 	} else if event == types.EventUpdate {
-		_, err = c.apisix.Cluster("").SSL().Update(ctx, ssl)
+		_, err = c.apisix.Cluster(clusterName).SSL().Update(ctx, ssl)
 	} else {
-		_, err = c.apisix.Cluster("").SSL().Create(ctx, ssl)
+		_, err = c.apisix.Cluster(clusterName).SSL().Create(ctx, ssl)
 	}
 	return err
+}
+
+func (c *Controller) syncConsumer(ctx context.Context, consumer *apisixv1.Consumer, event types.EventType) (err error) {
+	clusterName := c.cfg.APISIX.DefaultClusterName
+	if event == types.EventDelete {
+		err = c.apisix.Cluster(clusterName).Consumer().Delete(ctx, consumer)
+	} else if event == types.EventUpdate {
+		_, err = c.apisix.Cluster(clusterName).Consumer().Update(ctx, consumer)
+	} else {
+		_, err = c.apisix.Cluster(clusterName).Consumer().Create(ctx, consumer)
+	}
+	return
+}
+
+func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
+	namespace := ep.Namespace()
+	svcName := ep.ServiceName()
+	svc, err := c.svcLister.Services(ep.Namespace()).Get(svcName)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			log.Infof("service %s/%s not found", ep.Namespace(), svcName)
+			return nil
+		}
+		log.Errorf("failed to get service %s/%s: %s", ep.Namespace(), svcName, err)
+		return err
+	}
+	var subsets []configv1.ApisixUpstreamSubset
+	subsets = append(subsets, configv1.ApisixUpstreamSubset{})
+	au, err := c.apisixUpstreamLister.ApisixUpstreams(namespace).Get(svcName)
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			log.Errorf("failed to get ApisixUpstream %s/%s: %s", ep.Namespace(), svcName, err)
+			return err
+		}
+	} else if len(au.Spec.Subsets) > 0 {
+		subsets = append(subsets, au.Spec.Subsets...)
+	}
+
+	clusters := c.apisix.ListClusters()
+	for _, port := range svc.Spec.Ports {
+		for _, subset := range subsets {
+			nodes, err := c.translator.TranslateUpstreamNodes(ep, port.Port, subset.Labels)
+			if err != nil {
+				log.Errorw("failed to translate upstream nodes",
+					zap.Error(err),
+					zap.Any("endpoints", ep),
+					zap.Int32("port", port.Port),
+				)
+			}
+			name := apisixv1.ComposeUpstreamName(namespace, svcName, subset.Name, port.Port)
+			for _, cluster := range clusters {
+				if err := c.syncUpstreamNodesChangeToCluster(ctx, cluster, nodes, name); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (c *Controller) syncUpstreamNodesChangeToCluster(ctx context.Context, cluster apisix.Cluster, nodes apisixv1.UpstreamNodes, upsName string) error {
+	upstream, err := cluster.Upstream().Get(ctx, upsName)
+	if err != nil {
+		if err == apisixcache.ErrNotFound {
+			log.Warnw("upstream is not referenced",
+				zap.String("cluster", cluster.String()),
+				zap.String("upstream", upsName),
+			)
+			return nil
+		} else {
+			log.Errorw("failed to get upstream",
+				zap.String("upstream", upsName),
+				zap.String("cluster", cluster.String()),
+				zap.Error(err),
+			)
+			return err
+		}
+	}
+
+	upstream.Nodes = nodes
+
+	log.Debugw("upstream binds new nodes",
+		zap.Any("upstream", upstream),
+		zap.String("cluster", cluster.String()),
+	)
+
+	updated := &manifest{
+		upstreams: []*apisixv1.Upstream{upstream},
+	}
+	return c.syncManifests(ctx, nil, updated, nil)
+}
+
+func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.CancelFunc) {
+	defer cancelFunc()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(5 * time.Second):
+		}
+
+		err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).HealthCheck(ctx)
+		if err != nil {
+			// Finally failed health check, then give up leader.
+			log.Warnf("failed to check health for default cluster: %s, give up leader", err)
+			return
+		}
+		log.Debugf("success check health for default cluster")
+	}
 }

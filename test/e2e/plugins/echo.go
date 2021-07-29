@@ -25,13 +25,12 @@ import (
 
 var _ = ginkgo.Describe("echo plugin", func() {
 	opts := &scaffold.Options{
-		Name:                    "default",
-		Kubeconfig:              scaffold.GetKubeconfig(),
-		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
-		APISIXDefaultConfigPath: "testdata/apisix-gw-config-default.yaml",
-		IngressAPISIXReplicas:   1,
-		HTTPBinServicePort:      80,
-		APISIXRouteVersion:      "apisix.apache.org/v2alpha1",
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("insert preface and epilogue", func() {
@@ -116,51 +115,6 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
 		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusOK)
-		resp.Body().Equal("my custom body")
-	})
-
-	ginkgo.It("auth", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
-kind: ApisixRoute
-metadata:
- name: httpbin-route
-spec:
- http:
- - name: rule1
-   match:
-     hosts:
-     - httpbin.org
-     paths:
-       - /ip
-   backends:
-   - serviceName: %s
-     servicePort: %d
-     weight: 10
-   plugins:
-   - name: echo
-     enable: true
-     config:
-       body: "my custom body"
-       auth_value: "Basic cmVkaXM6MTIzNDU2"
-       
-`, backendSvc, backendPorts[0])
-
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusUnauthorized)
-
-		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
-			WithHeader("Authorization", "Basic cmVkaXM6MTIzNDU2").
-			Expect()
 		resp.Status(http.StatusOK)
 		resp.Body().Equal("my custom body")
 	})

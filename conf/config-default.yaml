@@ -43,18 +43,30 @@ kubernetes:
   election_id: "ingress-apisix-leader" # the election id for the controller leader campaign,
                                        # only the leader will watch and delivery resource changes,
                                        # other instances (as candidates) stand by.
-  ingress_class: "apisix"              # The class of an Ingress object is set using the field
+  ingress_class: "apisix"              # the class of an Ingress object is set using the field
                                        # IngressClassName in Kubernetes clusters version v1.18.0
                                        # or higher or the annotation "kubernetes.io/ingress.class"
                                        # (deprecated).
   ingress_version: "networking/v1"     # the supported ingress api group version, can be "networking/v1beta1"
                                        # , "networking/v1" (for Kubernetes version v1.19.0 or higher), and
                                        # "extensions/v1beta1", default is "networking/v1".
+  watch_endpointslices: false          # whether to watch EndpointSlices rather than Endpoints.
 
   apisix_route_version: "apisix.apache.org/v2alpha1" # the supported apisixroute api group version, can be
                                                      # "apisix.apache.org/v1" or "apisix.apache.org/v2alpha1",
                                                      # default is "apisix.apache.org/v2alpha1".
 # APISIX related configurations.
 apisix:
-  base_url: "http://127.0.0.1:9080/apisix/admin" # the APISIX admin api / manager api
+  base_url: "http://127.0.0.1:9080/apisix/admin" # (Deprecated, use default_cluster_base_url) the APISIX admin api / manager api
                                                  # base url, it's required.
+
+  default_cluster_base_url: "http://127.0.0.1:9080/apisix/admin" # The base url of admin api / manager api
+                                                                 # of the default APISIX cluster
+
+  admin_key: "" # (Deprecated, use default_cluster_admin_key) the admin key used for the authentication of
+                # admin api / manager api in the default APISIX cluster, by default this field is unset.
+
+  default_cluster_admin_key: "" # the admin key used for the authentication of admin api / manager api in the
+                                # default APISIX cluster, by default this field is unset.
+
+  default_cluster_name: "default" # name of the default APISIX cluster.

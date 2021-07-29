@@ -39,8 +39,9 @@ spec:
         tier: backend
     spec:
       hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       containers:
-      - image: apache/apisix-ingress-controller:0.1.0
+      - image: apache/apisix-ingress-controller:1.0.0
         imagePullPolicy: IfNotPresent
         name: ingress-controller
         ports:

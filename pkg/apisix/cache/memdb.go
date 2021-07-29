@@ -62,6 +62,14 @@ func (c *dbCache) InsertStreamRoute(sr *v1.StreamRoute) error {
 	return c.insert("stream_route", sr.DeepCopy())
 }
 
+func (c *dbCache) InsertGlobalRule(gr *v1.GlobalRule) error {
+	return c.insert("global_rule", gr.DeepCopy())
+}
+
+func (c *dbCache) InsertConsumer(consumer *v1.Consumer) error {
+	return c.insert("consumer", consumer.DeepCopy())
+}
+
 func (c *dbCache) insert(table string, obj interface{}) error {
 	txn := c.db.Txn(true)
 	defer txn.Abort()
@@ -102,6 +110,22 @@ func (c *dbCache) GetStreamRoute(id string) (*v1.StreamRoute, error) {
 		return nil, err
 	}
 	return obj.(*v1.StreamRoute).DeepCopy(), nil
+}
+
+func (c *dbCache) GetGlobalRule(id string) (*v1.GlobalRule, error) {
+	obj, err := c.get("global_rule", id)
+	if err != nil {
+		return nil, err
+	}
+	return obj.(*v1.GlobalRule).DeepCopy(), nil
+}
+
+func (c *dbCache) GetConsumer(username string) (*v1.Consumer, error) {
+	obj, err := c.get("consumer", username)
+	if err != nil {
+		return nil, err
+	}
+	return obj.(*v1.Consumer).DeepCopy(), nil
 }
 
 func (c *dbCache) get(table, id string) (interface{}, error) {
@@ -168,6 +192,30 @@ func (c *dbCache) ListStreamRoutes() ([]*v1.StreamRoute, error) {
 	return streamRoutes, nil
 }
 
+func (c *dbCache) ListGlobalRules() ([]*v1.GlobalRule, error) {
+	raws, err := c.list("global_rule")
+	if err != nil {
+		return nil, err
+	}
+	globalRules := make([]*v1.GlobalRule, 0, len(raws))
+	for _, raw := range raws {
+		globalRules = append(globalRules, raw.(*v1.GlobalRule).DeepCopy())
+	}
+	return globalRules, nil
+}
+
+func (c *dbCache) ListConsumers() ([]*v1.Consumer, error) {
+	raws, err := c.list("consumer")
+	if err != nil {
+		return nil, err
+	}
+	consumers := make([]*v1.Consumer, 0, len(raws))
+	for _, raw := range raws {
+		consumers = append(consumers, raw.(*v1.Consumer).DeepCopy())
+	}
+	return consumers, nil
+}
+
 func (c *dbCache) list(table string) ([]interface{}, error) {
 	txn := c.db.Txn(false)
 	defer txn.Abort()
@@ -199,6 +247,14 @@ func (c *dbCache) DeleteUpstream(u *v1.Upstream) error {
 
 func (c *dbCache) DeleteStreamRoute(sr *v1.StreamRoute) error {
 	return c.delete("stream_route", sr)
+}
+
+func (c *dbCache) DeleteGlobalRule(gr *v1.GlobalRule) error {
+	return c.delete("global_rule", gr)
+}
+
+func (c *dbCache) DeleteConsumer(consumer *v1.Consumer) error {
+	return c.delete("consumer", consumer)
 }
 
 func (c *dbCache) delete(table string, obj interface{}) error {

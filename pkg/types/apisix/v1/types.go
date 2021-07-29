@@ -19,13 +19,14 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 )
 
 const (
 	// HashOnVars means the hash scope is variable.
 	HashOnVars = "vars"
-	// HashVarsCombination means the hash scope is the
+	// HashOnVarsCombination means the hash scope is the
 	// variable combination.
 	HashOnVarsCombination = "vars_combinations"
 	// HashOnHeader means the hash scope is HTTP request
@@ -295,35 +296,23 @@ type UpstreamPassiveHealthCheckUnhealthy struct {
 // Ssl apisix ssl object
 // +k8s:deepcopy-gen=true
 type Ssl struct {
-	ID     string            `json:"id,omitempty" yaml:"id,omitempty"`
-	Snis   []string          `json:"snis,omitempty" yaml:"snis,omitempty"`
-	Cert   string            `json:"cert,omitempty" yaml:"cert,omitempty"`
-	Key    string            `json:"key,omitempty" yaml:"key,omitempty"`
-	Status int               `json:"status,omitempty" yaml:"status,omitempty"`
-	Labels map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
+	ID     string                 `json:"id,omitempty" yaml:"id,omitempty"`
+	Snis   []string               `json:"snis,omitempty" yaml:"snis,omitempty"`
+	Cert   string                 `json:"cert,omitempty" yaml:"cert,omitempty"`
+	Key    string                 `json:"key,omitempty" yaml:"key,omitempty"`
+	Status int                    `json:"status,omitempty" yaml:"status,omitempty"`
+	Labels map[string]string      `json:"labels,omitempty" yaml:"labels,omitempty"`
+	Client *MutualTLSClientConfig `json:"client,omitempty" yaml:"client,omitempty"`
 }
 
-// TrafficSplitConfig is the config of traffic-split plugin.
+// MutualTLSClientConfig apisix SSL client field
 // +k8s:deepcopy-gen=true
-type TrafficSplitConfig struct {
-	Rules []TrafficSplitConfigRule `json:"rules"`
+type MutualTLSClientConfig struct {
+	CA    string `json:"ca,omitempty" yaml:"ca,omitempty"`
+	Depth int    `json:"depth,omitempty" yaml:"depth,omitempty"`
 }
 
-// TrafficSplitConfigRule is the rule config in traffic-split plugin config.
-// +k8s:deepcopy-gen=true
-type TrafficSplitConfigRule struct {
-	WeightedUpstreams []TrafficSplitConfigRuleWeightedUpstream `json:"weighted_upstreams"`
-}
-
-// TrafficSplitConfigRuleWeightedUpstream is the weighted upstream config in
-// the traffic split plugin rule.
-// +k8s:deepcopy-gen=true
-type TrafficSplitConfigRuleWeightedUpstream struct {
-	UpstreamID string `json:"upstream_id,omitempty"`
-	Weight     int    `json:"weight"`
-}
-
-// StreamRoute represents the stream route object in APISIX.
+// StreamRoute represents the stream_route object in APISIX.
 // +k8s:deepcopy-gen=true
 type StreamRoute struct {
 	// TODO metadata should use Metadata type
@@ -332,6 +321,23 @@ type StreamRoute struct {
 	Labels     map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 	ServerPort int32             `json:"server_port,omitempty" yaml:"server_port,omitempty"`
 	UpstreamId string            `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
+	Upstream   *Upstream         `json:"upstream,omitempty" yaml:"upstream,omitempty"`
+}
+
+// GlobalRule represents the global_rule object in APISIX.
+// +k8s:deepcopy-gen=true
+type GlobalRule struct {
+	ID      string  `json:"id,omitempty" yaml:"id,omitempty"`
+	Plugins Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+}
+
+// Consumer represents the consumer object in APISIX.
+// +k8s:deepcopy-gen=true
+type Consumer struct {
+	Username string            `json:"username" yaml:"username"`
+	Desc     string            `json:"desc,omitempty" yaml:"desc,omitempty"`
+	Labels   map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
+	Plugins  Plugins           `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 // NewDefaultUpstream returns an empty Upstream with default values.
@@ -362,19 +368,48 @@ func NewDefaultRoute() *Route {
 	}
 }
 
-// ComposeUpstreamName uses namespace, name and port info to compose
+// NewDefaultStreamRoute returns an empty StreamRoute with default values.
+func NewDefaultStreamRoute() *StreamRoute {
+	return &StreamRoute{
+		Desc: "Created by apisix-ingress-controller, DO NOT modify it manually",
+		Labels: map[string]string{
+			"managed-by": "apisix-ingress-controller",
+		},
+	}
+}
+
+// NewDefaultConsumer returns an empty Consumer with default values.
+func NewDefaultConsumer() *Consumer {
+	return &Consumer{
+		Desc: "Created by apisix-ingress-controller, DO NOT modify it manually",
+		Labels: map[string]string{
+			"managed-by": "apisix-ingress-controller",
+		},
+	}
+}
+
+// ComposeUpstreamName uses namespace, name, subset (optional) and port info to compose
 // the upstream name.
-func ComposeUpstreamName(namespace, name string, port int32) string {
+func ComposeUpstreamName(namespace, name, subset string, port int32) string {
 	pstr := strconv.Itoa(int(port))
 	// FIXME Use sync.Pool to reuse this buffer if the upstream
 	// name composing code path is hot.
-	p := make([]byte, 0, len(namespace)+len(name)+len(pstr)+2)
-	buf := bytes.NewBuffer(p)
+	var p []byte
+	if subset == "" {
+		p = make([]byte, 0, len(namespace)+len(name)+len(pstr)+2)
+	} else {
+		p = make([]byte, 0, len(namespace)+len(name)+len(subset)+len(pstr)+3)
+	}
 
+	buf := bytes.NewBuffer(p)
 	buf.WriteString(namespace)
 	buf.WriteByte('_')
 	buf.WriteString(name)
 	buf.WriteByte('_')
+	if subset != "" {
+		buf.WriteString(subset)
+		buf.WriteByte('_')
+	}
 	buf.WriteString(pstr)
 
 	return buf.String()
@@ -393,6 +428,38 @@ func ComposeRouteName(namespace, name string, rule string) string {
 	buf.WriteString(name)
 	buf.WriteByte('_')
 	buf.WriteString(rule)
+
+	return buf.String()
+}
+
+// ComposeStreamRouteName uses namespace, name and rule name to compose
+// the stream_route name.
+func ComposeStreamRouteName(namespace, name string, rule string) string {
+	// FIXME Use sync.Pool to reuse this buffer if the upstream
+	// name composing code path is hot.
+	p := make([]byte, 0, len(namespace)+len(name)+len(rule)+6)
+	buf := bytes.NewBuffer(p)
+
+	buf.WriteString(namespace)
+	buf.WriteByte('_')
+	buf.WriteString(name)
+	buf.WriteByte('_')
+	buf.WriteString(rule)
+	buf.WriteString("_tcp")
+
+	return buf.String()
+}
+
+// ComposeConsumerName uses namespace and name of ApisixConsumer to compose
+// the Consumer name.
+func ComposeConsumerName(namespace, name string) string {
+	p := make([]byte, 0, len(namespace)+len(name)+1)
+	buf := bytes.NewBuffer(p)
+
+	// TODO If APISIX modifies the consumer name schema, we can drop this.
+	buf.WriteString(strings.Replace(namespace, "-", "_", -1))
+	buf.WriteString("_")
+	buf.WriteString(name)
 
 	return buf.String()
 }

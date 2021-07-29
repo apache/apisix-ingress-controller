@@ -14,37 +14,36 @@
 // limitations under the License.
 package annotations
 
-// CorsPlugin is the cors plugin.
-type CorsPlugin struct {
-	Origins string `json:"origins,omitempty"`
-	Headers string `json:"headers,omitempty"`
-	Methods string `json:"methods,omitempty"`
-	MaxAge  int64  `json:"max_age,omitempty"`
-}
+import (
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+)
 
-var (
+const (
 	_enableCors       = "k8s.apisix.apache.org/enable-cors"
 	_corsAllowOrigin  = "k8s.apisix.apache.org/cors-allow-origin"
 	_corsAllowHeaders = "k8s.apisix.apache.org/cors-allow-headers"
 	_corsAllowMethods = "k8s.apisix.apache.org/cors-allow-methods"
 )
 
-// BuildCorsPlugin build the cors plugin config body.
-func BuildCorsPlugin(annotations map[string]string) *CorsPlugin {
-	enable, ok := annotations[_enableCors]
-	if !ok || enable == "false" {
-		return nil
-	}
+type cors struct{}
 
-	var cors CorsPlugin
-	if ao, ok := annotations[_corsAllowOrigin]; ok {
-		cors.Origins = ao
+// NewCorsHandler creates a handler to convert annotations about
+// CORS to APISIX cors plugin.
+func NewCorsHandler() Handler {
+	return &cors{}
+}
+
+func (c *cors) PluginName() string {
+	return "cors"
+}
+
+func (c *cors) Handle(e Extractor) (interface{}, error) {
+	if !e.GetBoolAnnotation(_enableCors) {
+		return nil, nil
 	}
-	if ah, ok := annotations[_corsAllowHeaders]; ok {
-		cors.Headers = ah
-	}
-	if am, ok := annotations[_corsAllowMethods]; ok {
-		cors.Methods = am
-	}
-	return &cors
+	return &apisixv1.CorsConfig{
+		AllowOrigins: e.GetStringAnnotation(_corsAllowOrigin),
+		AllowMethods: e.GetStringAnnotation(_corsAllowMethods),
+		AllowHeaders: e.GetStringAnnotation(_corsAllowHeaders),
+	}, nil
 }

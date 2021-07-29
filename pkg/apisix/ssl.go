@@ -141,13 +141,7 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err := s.cluster.HasSynced(ctx); err != nil {
 		return nil, err
 	}
-	data, err := json.Marshal(v1.Ssl{
-		ID:     obj.ID,
-		Snis:   obj.Snis,
-		Cert:   obj.Cert,
-		Key:    obj.Key,
-		Status: obj.Status,
-	})
+	data, err := json.Marshal(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +179,9 @@ func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 	}
 	if err := s.cluster.cache.DeleteSSL(obj); err != nil {
 		log.Errorf("failed to reflect ssl delete to cache: %s", err)
-		return err
+		if err != cache.ErrNotFound {
+			return err
+		}
 	}
 	return nil
 }

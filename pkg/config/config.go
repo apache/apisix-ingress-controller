@@ -50,6 +50,8 @@ const (
 	ApisixRouteV1 = "apisix.apache.org/v1"
 	// ApisixRouteV2alpha1 represents apisixroute.apisix.apache.org/v2alpha1
 	ApisixRouteV2alpha1 = "apisix.apache.org/v2alpha1"
+	// ApisixRouteV2beta1 represents apisixroute.apisix.apache.org/v2beta1
+	ApisixRouteV2beta1 = "apisix.apache.org/v2beta1"
 
 	_minimalResyncInterval = 30 * time.Second
 )
@@ -67,19 +69,32 @@ type Config struct {
 
 // KubernetesConfig contains all Kubernetes related config items.
 type KubernetesConfig struct {
-	Kubeconfig         string             `json:"kubeconfig" yaml:"kubeconfig"`
-	ResyncInterval     types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
-	AppNamespaces      []string           `json:"app_namespaces" yaml:"app_namespaces"`
-	ElectionID         string             `json:"election_id" yaml:"election_id"`
-	IngressClass       string             `json:"ingress_class" yaml:"ingress_class"`
-	IngressVersion     string             `json:"ingress_version" yaml:"ingress_version"`
-	ApisixRouteVersion string             `json:"apisix_route_version" yaml:"apisix_route_version"`
+	Kubeconfig          string             `json:"kubeconfig" yaml:"kubeconfig"`
+	ResyncInterval      types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
+	AppNamespaces       []string           `json:"app_namespaces" yaml:"app_namespaces"`
+	ElectionID          string             `json:"election_id" yaml:"election_id"`
+	IngressClass        string             `json:"ingress_class" yaml:"ingress_class"`
+	IngressVersion      string             `json:"ingress_version" yaml:"ingress_version"`
+	WatchEndpointSlices bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
+	ApisixRouteVersion  string             `json:"apisix_route_version" yaml:"apisix_route_version"`
 }
 
 // APISIXConfig contains all APISIX related config items.
 type APISIXConfig struct {
-	BaseURL string `json:"base_url" yaml:"base_url"`
+	// DefaultClusterName is the name of default cluster.
+	DefaultClusterName string `json:"default_cluster_name"`
+	// DefaultClusterBaseURL is the base url configuration for the default cluster.
+	DefaultClusterBaseURL string `json:"default_cluster_base_url" yaml:"default_cluster_base_url"`
+	// DefaultClusterAdminKey is the admin key for the default cluster.
 	// TODO: Obsolete the plain way to specify admin_key, which is insecure.
+	DefaultClusterAdminKey string `json:"default_cluster_admin_key" yaml:"default_cluster_admin_key"`
+	// BaseURL is same to DefaultClusterBaseURL.
+	// Deprecated: use DefaultClusterBaseURL instead. BaseURL will be removed
+	// once v1.0.0 is released.
+	BaseURL string `json:"base_url" yaml:"base_url"`
+	// AdminKey is same to DefaultClusterAdminKey.
+	// Deprecated: use DefaultClusterAdminKey instead. AdminKey will be removed
+	// once v1.0.0 is released.
 	AdminKey string `json:"admin_key" yaml:"admin_key"`
 }
 
@@ -92,13 +107,14 @@ func NewDefaultConfig() *Config {
 		HTTPListen:      ":8080",
 		EnableProfiling: true,
 		Kubernetes: KubernetesConfig{
-			Kubeconfig:         "", // Use in-cluster configurations.
-			ResyncInterval:     types.TimeDuration{Duration: 6 * time.Hour},
-			AppNamespaces:      []string{v1.NamespaceAll},
-			ElectionID:         IngressAPISIXLeader,
-			IngressClass:       IngressClass,
-			IngressVersion:     IngressNetworkingV1,
-			ApisixRouteVersion: ApisixRouteV2alpha1,
+			Kubeconfig:          "", // Use in-cluster configurations.
+			ResyncInterval:      types.TimeDuration{Duration: 6 * time.Hour},
+			AppNamespaces:       []string{v1.NamespaceAll},
+			ElectionID:          IngressAPISIXLeader,
+			IngressClass:        IngressClass,
+			IngressVersion:      IngressNetworkingV1,
+			ApisixRouteVersion:  ApisixRouteV2alpha1,
+			WatchEndpointSlices: false,
 		},
 	}
 }
@@ -130,7 +146,17 @@ func (cfg *Config) Validate() error {
 	if cfg.Kubernetes.ResyncInterval.Duration < _minimalResyncInterval {
 		return errors.New("controller resync interval too small")
 	}
-	if cfg.APISIX.BaseURL == "" {
+	if cfg.APISIX.DefaultClusterAdminKey == "" {
+		cfg.APISIX.DefaultClusterAdminKey = cfg.APISIX.AdminKey
+	}
+	if cfg.APISIX.DefaultClusterBaseURL == "" {
+		cfg.APISIX.DefaultClusterBaseURL = cfg.APISIX.BaseURL
+	}
+	if cfg.APISIX.DefaultClusterName == "" {
+		cfg.APISIX.DefaultClusterName = "default"
+	}
+
+	if cfg.APISIX.DefaultClusterBaseURL == "" {
 		return errors.New("apisix base url is required")
 	}
 	switch cfg.Kubernetes.IngressVersion {

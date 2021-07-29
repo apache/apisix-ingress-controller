@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -37,8 +39,7 @@ import (
 const (
 	_defaultTimeout = 5 * time.Second
 
-	_cacheNotSync = iota
-	_cacheSyncing
+	_cacheSyncing = iota
 	_cacheSynced
 )
 
@@ -50,6 +51,19 @@ var (
 	ErrDuplicatedCluster = errors.New("duplicated cluster")
 
 	_errReadOnClosedResBody = errors.New("http: read on closed response body")
+
+	// Default shared transport for apisix client
+	_defaultTransport = &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		Dial: (&net.Dialer{
+			Timeout: 3 * time.Second,
+		}).Dial,
+		DialContext: (&net.Dialer{
+			Timeout: 3 * time.Second,
+		}).DialContext,
+		ResponseHeaderTimeout: 30 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
 )
 
 // ClusterOptions contains parameters to customize APISIX client.
@@ -63,6 +77,7 @@ type ClusterOptions struct {
 type cluster struct {
 	name         string
 	baseURL      string
+	baseURLHost  string
 	adminKey     string
 	cli          *http.Client
 	cacheState   int32
@@ -73,6 +88,8 @@ type cluster struct {
 	upstream     Upstream
 	ssl          SSL
 	streamRoute  StreamRoute
+	globalRules  GlobalRule
+	consumer     Consumer
 }
 
 func newCluster(o *ClusterOptions) (Cluster, error) {
@@ -84,25 +101,34 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 	}
 	o.BaseURL = strings.TrimSuffix(o.BaseURL, "/")
 
+	u, err := url.Parse(o.BaseURL)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &cluster{
-		name:     o.Name,
-		baseURL:  o.BaseURL,
-		adminKey: o.AdminKey,
+		name:        o.Name,
+		baseURL:     o.BaseURL,
+		baseURLHost: u.Host,
+		adminKey:    o.AdminKey,
 		cli: &http.Client{
-			Timeout: o.Timeout,
-			Transport: &http.Transport{
-				ResponseHeaderTimeout: o.Timeout,
-				ExpectContinueTimeout: o.Timeout,
-			},
+			Timeout:   o.Timeout,
+			Transport: _defaultTransport,
 		},
-		cache:       nil,
-		cacheState:  _cacheNotSync,
+		cacheState:  _cacheSyncing, // default state
 		cacheSynced: make(chan struct{}),
 	}
 	c.route = newRouteClient(c)
 	c.upstream = newUpstreamClient(c)
 	c.ssl = newSSLClient(c)
 	c.streamRoute = newStreamRouteClient(c)
+	c.globalRules = newGlobalRuleClient(c)
+	c.consumer = newConsumerClient(c)
+
+	c.cache, err = cache.NewMemDBCache()
+	if err != nil {
+		return nil, err
+	}
 
 	go c.syncCache()
 
@@ -112,9 +138,6 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 func (c *cluster) syncCache() {
 	log.Infow("syncing cache", zap.String("cluster", c.name))
 	now := time.Now()
-	if !atomic.CompareAndSwapInt32(&c.cacheState, _cacheNotSync, _cacheSyncing) {
-		panic("dubious state when sync cache")
-	}
 	defer func() {
 		if c.cacheSyncErr == nil {
 			log.Infow("cache synced",
@@ -130,13 +153,20 @@ func (c *cluster) syncCache() {
 	}()
 
 	backoff := wait.Backoff{
-		Duration: time.Second,
-		Factor:   2,
-		Steps:    6,
+		Duration: 2 * time.Second,
+		Factor:   1,
+		Steps:    5,
 	}
-	err := wait.ExponentialBackoff(backoff, c.syncCacheOnce)
+	var lastSyncErr error
+	err := wait.ExponentialBackoff(backoff, func() (done bool, _ error) {
+		// impossibly return: false, nil
+		// so can safe used
+		done, lastSyncErr = c.syncCacheOnce()
+		return
+	})
 	if err != nil {
-		c.cacheSyncErr = err
+		// if ErrWaitTimeout then set lastSyncErr
+		c.cacheSyncErr = lastSyncErr
 	}
 	close(c.cacheSynced)
 
@@ -146,12 +176,6 @@ func (c *cluster) syncCache() {
 }
 
 func (c *cluster) syncCacheOnce() (bool, error) {
-	dbcache, err := cache.NewMemDBCache()
-	if err != nil {
-		return false, err
-	}
-	c.cache = dbcache
-
 	routes, err := c.route.List(context.TODO())
 	if err != nil {
 		log.Errorf("failed to list route in APISIX: %s", err)
@@ -165,6 +189,21 @@ func (c *cluster) syncCacheOnce() (bool, error) {
 	ssl, err := c.ssl.List(context.TODO())
 	if err != nil {
 		log.Errorf("failed to list ssl in APISIX: %s", err)
+		return false, err
+	}
+	streamRoutes, err := c.streamRoute.List(context.TODO())
+	if err != nil {
+		log.Errorf("failed to list stream_routes in APISIX: %s", err)
+		return false, err
+	}
+	globalRules, err := c.globalRules.List(context.TODO())
+	if err != nil {
+		log.Errorf("failed to list global_rules in APISIX: %s", err)
+		return false, err
+	}
+	consumers, err := c.consumer.List(context.TODO())
+	if err != nil {
+		log.Errorf("failed to list consumers in APISIX: %s", err)
 		return false, err
 	}
 
@@ -198,6 +237,35 @@ func (c *cluster) syncCacheOnce() (bool, error) {
 			return false, err
 		}
 	}
+	for _, sr := range streamRoutes {
+		if err := c.cache.InsertStreamRoute(sr); err != nil {
+			log.Errorw("failed to insert stream_route to cache",
+				zap.Any("stream_route", sr),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
+			return false, err
+		}
+	}
+	for _, gr := range globalRules {
+		if err := c.cache.InsertGlobalRule(gr); err != nil {
+			log.Errorw("failed to insert global_rule to cache",
+				zap.Any("global_rule", gr),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
+			return false, err
+		}
+	}
+	for _, consumer := range consumers {
+		if err := c.cache.InsertConsumer(consumer); err != nil {
+			log.Errorw("failed to insert consumer to cache",
+				zap.Any("consumer", consumer),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
+		}
+	}
 	return true, nil
 }
 
@@ -223,6 +291,11 @@ func (c *cluster) HasSynced(ctx context.Context) error {
 		log.Errorf("failed to wait cluster to ready: %s", ctx.Err())
 		return ctx.Err()
 	case <-c.cacheSynced:
+		if c.cacheSyncErr != nil {
+			// See https://github.com/apache/apisix-ingress-controller/issues/448
+			// for more details.
+			return c.cacheSyncErr
+		}
 		log.Warnf("cluster %s now is ready, cost time %s", c.name, time.Since(now).String())
 		return nil
 	}
@@ -248,23 +321,81 @@ func (c *cluster) StreamRoute() StreamRoute {
 	return c.streamRoute
 }
 
-func (s *cluster) applyAuth(req *http.Request) {
-	if s.adminKey != "" {
-		req.Header.Set("X-API-Key", s.adminKey)
+// GlobalRule implements Cluster.GlobalRule method.
+func (c *cluster) GlobalRule() GlobalRule {
+	return c.globalRules
+}
+
+// Consumer implements Cluster.Consumer method.
+func (c *cluster) Consumer() Consumer {
+	return c.consumer
+}
+
+// HealthCheck implements Cluster.HealthCheck method.
+func (c *cluster) HealthCheck(ctx context.Context) (err error) {
+	if c.cacheSyncErr != nil {
+		err = c.cacheSyncErr
+		return
+	}
+	if atomic.LoadInt32(&c.cacheState) == _cacheSyncing {
+		return
+	}
+
+	// Retry three times in a row, and exit if all of them fail.
+	backoff := wait.Backoff{
+		Duration: 5 * time.Second,
+		Factor:   1,
+		Steps:    3,
+	}
+	var lastCheckErr error
+	err = wait.ExponentialBackoffWithContext(ctx, backoff, func() (done bool, _ error) {
+		if lastCheckErr = c.healthCheck(ctx); lastCheckErr != nil {
+			log.Warnf("failed to check health for cluster %s: %s, will retry", c.name, lastCheckErr)
+			return
+		}
+		done = true
+		return
+	})
+	if err != nil {
+		// if ErrWaitTimeout then set lastSyncErr
+		c.cacheSyncErr = lastCheckErr
+	}
+	return err
+}
+
+func (c *cluster) healthCheck(ctx context.Context) (err error) {
+	// tcp socket probe
+	d := net.Dialer{Timeout: 3 * time.Second}
+	conn, err := d.DialContext(ctx, "tcp", c.baseURLHost)
+	if err != nil {
+		return err
+	}
+	if er := conn.Close(); er != nil {
+		log.Warnw("failed to close tcp probe connection",
+			zap.Error(err),
+			zap.String("cluster", c.name),
+		)
+	}
+	return
+}
+
+func (c *cluster) applyAuth(req *http.Request) {
+	if c.adminKey != "" {
+		req.Header.Set("X-API-Key", c.adminKey)
 	}
 }
 
-func (s *cluster) do(req *http.Request) (*http.Response, error) {
-	s.applyAuth(req)
-	return s.cli.Do(req)
+func (c *cluster) do(req *http.Request) (*http.Response, error) {
+	c.applyAuth(req)
+	return c.cli.Do(req)
 }
 
-func (s *cluster) getResource(ctx context.Context, url string) (*getResponse, error) {
+func (c *cluster) getResource(ctx context.Context, url string) (*getResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := s.do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -288,12 +419,12 @@ func (s *cluster) getResource(ctx context.Context, url string) (*getResponse, er
 	return &res, nil
 }
 
-func (s *cluster) listResource(ctx context.Context, url string) (*listResponse, error) {
+func (c *cluster) listResource(ctx context.Context, url string) (*listResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := s.do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -313,12 +444,12 @@ func (s *cluster) listResource(ctx context.Context, url string) (*listResponse, 
 	return &list, nil
 }
 
-func (s *cluster) createResource(ctx context.Context, url string, body io.Reader) (*createResponse, error) {
+func (c *cluster) createResource(ctx context.Context, url string, body io.Reader) (*createResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := s.do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -339,12 +470,12 @@ func (s *cluster) createResource(ctx context.Context, url string, body io.Reader
 	return &cr, nil
 }
 
-func (s *cluster) updateResource(ctx context.Context, url string, body io.Reader) (*updateResponse, error) {
+func (c *cluster) updateResource(ctx context.Context, url string, body io.Reader) (*updateResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := s.do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -363,12 +494,12 @@ func (s *cluster) updateResource(ctx context.Context, url string, body io.Reader
 	return &ur, nil
 }
 
-func (s *cluster) deleteResource(ctx context.Context, url string) error {
+func (c *cluster) deleteResource(ctx context.Context, url string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
 	if err != nil {
 		return err
 	}
-	resp, err := s.do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
@@ -376,7 +507,11 @@ func (s *cluster) deleteResource(ctx context.Context, url string) error {
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
 		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
-		err = multierr.Append(err, fmt.Errorf("error message: %s", readBody(resp.Body, url)))
+		message := readBody(resp.Body, url)
+		err = multierr.Append(err, fmt.Errorf("error message: %s", message))
+		if strings.Contains(message, "still using") {
+			return cache.ErrStillInUse
+		}
 		return err
 	}
 	return nil
