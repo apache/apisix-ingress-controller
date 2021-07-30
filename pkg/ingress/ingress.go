@@ -379,6 +379,9 @@ func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 		ic  *string
 		ica string
 	)
+	if c.controller.cfg.Kubernetes.IngressClass == "*" {
+		return true
+	}
 	if ing.GroupVersion() == kube.IngressV1 {
 		ic = ing.V1().Spec.IngressClassName
 		ica = ing.V1().GetAnnotations()[_ingressKey]

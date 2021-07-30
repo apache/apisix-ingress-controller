@@ -146,7 +146,7 @@ the apisix cluster and others are created`,
 	cmd.PersistentFlags().StringVar(&cfg.HTTPListen, "http-listen", ":8080", "the HTTP Server listen address")
 	cmd.PersistentFlags().StringVar(&cfg.HTTPSListen, "https-listen", ":8443", "the HTTPS Server listen address")
 	cmd.PersistentFlags().StringVar(&cfg.IngressPublishService, "ingress-publish-service", "",
-		`the controller will use the Endpoint of this Service to update the status information of the Ingress resource. 
+		`the controller will use the Endpoint of this Service to update the status information of the Ingress resource.
 The format is "namespace/svc-name" to solve the situation that the data plane and the controller are not deployed in the same namespace.`)
 	cmd.PersistentFlags().StringSliceVar(&cfg.IngressStatusAddress, "ingress-status-address", []string{},
 		`when there is no available information on the Service used for publishing on the data plane,
@@ -158,8 +158,7 @@ For example, no available LB exists in the bare metal environment.`)
 	cmd.PersistentFlags().DurationVar(&cfg.Kubernetes.ResyncInterval.Duration, "resync-interval", time.Minute, "the controller resync (with Kubernetes) interval, the minimum resync interval is 30s")
 	cmd.PersistentFlags().StringSliceVar(&cfg.Kubernetes.AppNamespaces, "app-namespace", []string{config.NamespaceAll}, "namespaces that controller will watch for resources.")
 	cmd.PersistentFlags().StringSliceVar(&cfg.Kubernetes.NamespaceSelector, "namespace-selector", []string{""}, "labels that controller used to select namespaces which will watch for resources")
-	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.IngressClass, "ingress-class", config.IngressClass, "the class of an Ingress object is set using the field IngressClassName in Kubernetes clusters version v1.18.0 or higher or the annotation \"kubernetes.io/ingress.class\" (deprecated)")
-	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ApisixRouteClass, "apisix-route-class", config.ApisixRouteClass, "the class of an ApisixRoute object is set using the field ApisixRouteClassName in Kubernetes")
+	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.IngressClass, "ingress-class", config.IngressClass, "the class of an Ingress object is set using the field IngressClassName in Kubernetes clusters version v1.18.0 or higher or the annotation \"kubernetes.io/ingress.class\" (deprecated). a wildcard '*' listen all ApisixRoutes or Ingress")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ElectionID, "election-id", config.IngressAPISIXLeader, "election id used for campaign the controller leader")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.IngressVersion, "ingress-version", config.IngressNetworkingV1, "the supported ingress api group version, can be \"networking/v1beta1\", \"networking/v1\" (for Kubernetes version v1.19.0 or higher) and \"extensions/v1beta1\"")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ApisixRouteVersion, "apisix-route-version", config.ApisixRouteV2beta3, "the supported apisixroute api group version, can be \"apisix.apache.org/v2beta2\" or \"apisix.apache.org/v2beta3\"")

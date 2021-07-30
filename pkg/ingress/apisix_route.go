@@ -34,10 +34,6 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-const (
-	_apisixrouteKey = "kubernetes.io/apisixroute.class"
-)
-
 type apisixRouteController struct {
 	controller *Controller
 	workqueue  workqueue.RateLimitingInterface
@@ -320,16 +316,16 @@ func (c *apisixRouteController) isApisixRouteEffective(ar kube.ApisixRoute) bool
 	var ara string
 
 	if ar.GroupVersion() == kube.ApisixRouteV1 {
-		ara = ar.V1().GetAnnotations()[_apisixrouteKey]
+		ara = ar.V1().Spec.IngressClass
 	} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
-		ara = ar.V2alpha1().GetAnnotations()[_apisixrouteKey]
+		ara = ar.V2alpha1().Spec.IngressClass
 	} else if ar.GroupVersion() == kube.ApisixRouteV2beta1 {
-		ara = ar.V2beta1().GetAnnotations()[_apisixrouteKey]
+		ara = ar.V2beta1().Spec.IngressClass
 	} else {
-		ara = c.controller.cfg.Kubernetes.ApisixRouteClass
+		ara = c.controller.cfg.Kubernetes.IngressClass
 	}
 
-	if c.controller.cfg.Kubernetes.ApisixRouteClass == "" || c.controller.cfg.Kubernetes.ApisixRouteClass == ara {
+	if c.controller.cfg.Kubernetes.IngressClass == "*" || c.controller.cfg.Kubernetes.IngressClass == ara {
 		return true
 	}
 

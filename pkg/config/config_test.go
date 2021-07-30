@@ -43,7 +43,6 @@ func TestNewConfigFromFile(t *testing.T) {
 			AppNamespaces:      []string{""},
 			ElectionID:         "my-election-id",
 			IngressClass:       IngressClass,
-			ApisixRouteClass:   ApisixRouteClass,
 			IngressVersion:     IngressNetworkingV1,
 			ApisixRouteVersion: ApisixRouteV2beta3,
 		},
