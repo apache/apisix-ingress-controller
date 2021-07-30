@@ -55,9 +55,11 @@ type Http struct {
 
 // Path defines an URI based route rule.
 type Path struct {
-	Path    string   `json:"path,omitempty" yaml:"path,omitempty"`
-	Backend Backend  `json:"backend,omitempty" yaml:"backend,omitempty"`
-	Plugins []Plugin `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Path           string           `json:"path,omitempty" yaml:"path,omitempty"`
+	Backend        Backend          `json:"backend,omitempty" yaml:"backend,omitempty"`
+	Timeout        *UpstreamTimeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	Plugins        []Plugin         `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	PluginConfigID string           `json:"plugin_config_id,omitempty" yaml:"plugin_config_id,omitempty"`
 }
 
 // Backend defines an upstream, it should be an existing Kubernetes Service.

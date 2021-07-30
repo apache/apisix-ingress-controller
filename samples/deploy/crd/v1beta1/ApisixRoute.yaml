@@ -86,6 +86,15 @@ spec:
                     minLength: 1
                   priority:
                     type: integer
+                  timeout:
+                    type: object
+                    properties:
+                      connect:
+                        type: string
+                      send:
+                        type: string
+                      read:
+                        type: string
                   match:
                     type: object
                     required:
@@ -215,6 +224,8 @@ spec:
                     required:
                       - name
                       - enable
+                  plugin_config_id:
+                    type: string
                   authentication:
                     type: object
                     properties:

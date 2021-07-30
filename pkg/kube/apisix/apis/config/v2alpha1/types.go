@@ -90,6 +90,7 @@ type ApisixRouteHTTP struct {
 	// same URI path (for path matching), route with
 	// higher priority will take effect.
 	Priority int                   `json:"priority,omitempty" yaml:"priority,omitempty"`
+	Timeout  *UpstreamTimeout      `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	Match    *ApisixRouteHTTPMatch `json:"match,omitempty" yaml:"match,omitempty"`
 	// Deprecated: Backend will be removed in the future, use Backends instead.
 	Backend *ApisixRouteHTTPBackend `json:"backend" yaml:"backend"`
@@ -99,6 +100,7 @@ type ApisixRouteHTTP struct {
 	Backends       []*ApisixRouteHTTPBackend  `json:"backends" yaml:"backends"`
 	Websocket      bool                       `json:"websocket" yaml:"websocket"`
 	Plugins        []*ApisixRouteHTTPPlugin   `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	PluginConfigID string                     `json:"plugin_config_id,omitempty" yaml:"plugin_config_id,omitempty"`
 	Authentication *ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
@@ -194,6 +196,13 @@ type ApisixRouteHTTPPlugin struct {
 // ApisixRouteHTTPPluginConfig is the configuration for
 // any plugins.
 type ApisixRouteHTTPPluginConfig map[string]interface{}
+
+// UpstreamTimeout is settings for the read, send and connect to the upstream.
+type UpstreamTimeout struct {
+	Connect metav1.Duration `json:"connect,omitempty" yaml:"connect,omitempty"`
+	Send    metav1.Duration `json:"send,omitempty" yaml:"send,omitempty"`
+	Read    metav1.Duration `json:"read,omitempty" yaml:"read,omitempty"`
+}
 
 // ApisixRouteAuthentication is the authentication-related
 // configuration in ApisixRoute.
