@@ -72,6 +72,8 @@ spec:
             - required: ["tcp"]
             - required: ["stream"]
           properties:
+            ingressClass:
+              type: string
             http:
               type: array
               minItems: 1
