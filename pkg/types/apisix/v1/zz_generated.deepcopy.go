@@ -235,6 +235,11 @@ func (in *Route) DeepCopyInto(out *Route) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.Timeout != nil {
+		in, out := &in.Timeout, &out.Timeout
+		*out = new(UpstreamTimeout)
+		**out = **in
+	}
 	if in.Vars != nil {
 		in, out := &in.Vars, &out.Vars
 		*out = make(Vars, len(*in))
