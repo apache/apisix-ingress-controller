@@ -136,7 +136,7 @@ func TestConfigInvalidation(t *testing.T) {
 	newCfg, err := NewConfigFromFile(tmpYAML.Name())
 	assert.Nil(t, err, "failed to new config from file: ", err)
 	err = newCfg.Validate()
-	assert.Equal(t, err.Error(), "apisix base url is required", "bad error: ", err)
+	assert.True(t, err != nil && err.Error() == "apisix base url is required", "bad error: ", err)
 
 	yamlData = `
 kubernetes:
@@ -155,5 +155,5 @@ apisix:
 	newCfg, err = NewConfigFromFile(tmpYAML.Name())
 	assert.Nil(t, err, "failed to new config from file: ", err)
 	err = newCfg.Validate()
-	assert.Equal(t, err.Error(), "controller resync interval too small", "bad error: ", err)
+	assert.True(t, err != nil && err.Error() == "controller resync interval too small", "bad error: ", err)
 }
