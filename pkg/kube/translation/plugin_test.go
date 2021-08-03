@@ -514,30 +514,24 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, cfg)
 	assert.Len(t, ctx.Upstreams, 0)
-	assert.True(t,
-		assert.NotNil(t, err) &&
-			assert.Equal(t, err.Error(), "service \"svc-2\" not found"),
-	)
+	assert.NotNil(t, err)
+	assert.Equal(t, err.Error(), "service \"svc-2\" not found")
 
 	backends[0].ServiceName = "svc-1"
 	backends[1].ServicePort.StrVal = "port-not-found"
 	ctx = &TranslateContext{upstreamMap: make(map[string]struct{})}
 	cfg, err = tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, cfg)
-	assert.True(t,
-		assert.NotNil(t, err) &&
-			assert.Equal(t, err.Error(), "service.spec.ports: port not defined"),
-	)
+	assert.NotNil(t, err)
+	assert.Equal(t, err.Error(), "service.spec.ports: port not defined")
 
 	backends[1].ServicePort.StrVal = "port2"
 	backends[1].ResolveGranularity = "service"
 	ctx = &TranslateContext{upstreamMap: make(map[string]struct{})}
 	cfg, err = tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, cfg)
-	assert.True(t,
-		assert.NotNil(t, err) &&
-			assert.Equal(t, err.Error(), "conflict headless service and backend resolve granularity"),
-	)
+	assert.NotNil(t, err)
+	assert.Equal(t, err.Error(), "conflict headless service and backend resolve granularity")
 }
 
 func TestTranslateConsumerKeyAuthPluginWithInPlaceValue(t *testing.T) {
@@ -593,10 +587,8 @@ func TestTranslateConsumerKeyAuthWithSecretRef(t *testing.T) {
 
 	cfg, err = tr.translateConsumerKeyAuthPlugin("default2", keyAuth)
 	assert.Nil(t, cfg)
-	assert.True(t,
-		assert.NotNil(t, err) &&
-			assert.Contains(t, err.Error(), "not found"),
-	)
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "not found")
 
 	delete(sec.Data, "key")
 	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
@@ -670,10 +662,8 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 
 	cfg, err = tr.translateConsumerBasicAuthPlugin("default2", basicAuth)
 	assert.Nil(t, cfg)
-	assert.True(t,
-		assert.NotNil(t, err) &&
-			assert.Contains(t, err.Error(), "not found"),
-	)
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "not found")
 
 	delete(sec.Data, "password")
 	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})

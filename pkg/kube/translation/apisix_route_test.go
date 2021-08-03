@@ -320,10 +320,8 @@ func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 	}
 
 	_, err = tr.TranslateRouteV2alpha1(ar)
-	assert.True(t,
-		assert.NotNil(t, err) &&
-			assert.Equal(t, err.Error(), "duplicated route rule name"),
-	)
+	assert.NotNil(t, err)
+	assert.Equal(t, err.Error(), "duplicated route rule name")
 }
 
 func TestTranslateApisixRouteV2alpha1NotStrictly(t *testing.T) {
