@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strings"
@@ -327,6 +328,16 @@ func (s *Scaffold) afterEach() {
 		output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "describe", "pods")
 		if output != "" {
 			fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		}
+		// Get the logs of ingress
+		command := "kubectl get pod -n " + s.kubectlOptions.Namespace + " | grep ingress | awk '{print $1}'"
+		excution := exec.Command("/bin/sh", "-c", command)
+		ingressName, err := excution.Output()
+		if err != nil {
+			fmt.Fprintln(ginkgo.GinkgoWriter, err.Error())
+		} else {
+			ingressLog, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "logs", strings.ReplaceAll(string(ingressName), "\n", ""))
+			fmt.Fprintln(ginkgo.GinkgoWriter, ingressLog)
 		}
 	}
 
