@@ -12,6 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package apisix
 
 import (
@@ -26,9 +27,9 @@ type APISIX interface {
 	// Cluster specifies the target cluster to talk.
 	Cluster(string) Cluster
 	// AddCluster adds a new cluster.
-	AddCluster(*ClusterOptions) error
+	AddCluster(context.Context, *ClusterOptions) error
 	// UpdateCluster updates an existing cluster.
-	UpdateCluster(*ClusterOptions) error
+	UpdateCluster(context.Context, *ClusterOptions) error
 	// ListClusters lists all APISIX clusters.
 	ListClusters() []Cluster
 }
@@ -168,14 +169,14 @@ func (c *apisix) ListClusters() []Cluster {
 }
 
 // AddCluster implements APISIX.AddCluster method.
-func (c *apisix) AddCluster(co *ClusterOptions) error {
+func (c *apisix) AddCluster(ctx context.Context, co *ClusterOptions) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	_, ok := c.clusters[co.Name]
 	if ok {
 		return ErrDuplicatedCluster
 	}
-	cluster, err := newCluster(co)
+	cluster, err := newCluster(ctx, co)
 	if err != nil {
 		return err
 	}
@@ -183,14 +184,14 @@ func (c *apisix) AddCluster(co *ClusterOptions) error {
 	return nil
 }
 
-func (c *apisix) UpdateCluster(co *ClusterOptions) error {
+func (c *apisix) UpdateCluster(ctx context.Context, co *ClusterOptions) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if _, ok := c.clusters[co.Name]; !ok {
 		return ErrClusterNotExist
 	}
 
-	cluster, err := newCluster(co)
+	cluster, err := newCluster(ctx, co)
 	if err != nil {
 		return err
 	}

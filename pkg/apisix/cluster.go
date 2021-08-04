@@ -25,11 +25,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
-	"os/signal"
 	"strings"
 	"sync/atomic"
-	"syscall"
 	"time"
 
 	"go.uber.org/multierr"
@@ -102,7 +99,7 @@ type cluster struct {
 	schema       Schema
 }
 
-func newCluster(o *ClusterOptions) (Cluster, error) {
+func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 	if o.BaseURL == "" {
 		return nil, errors.New("empty base url")
 	}
@@ -146,7 +143,7 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 	}
 
 	go c.syncCache()
-	go c.syncSchema(o.SyncInterval.Duration)
+	go c.syncSchema(ctx, o.SyncInterval.Duration)
 
 	return c, nil
 }
@@ -318,14 +315,10 @@ func (c *cluster) HasSynced(ctx context.Context) error {
 }
 
 // syncSchema syncs schema from APISIX regularly according to the interval.
-func (c *cluster) syncSchema(interval time.Duration) {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
+func (c *cluster) syncSchema(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-loop:
 	for {
 		if err := c.syncSchemaOnce(); err != nil {
 			log.Warnf("failed to sync schema: %s", err)
@@ -334,8 +327,8 @@ loop:
 		select {
 		case <-ticker.C:
 			continue
-		case <-sigCh:
-			break loop
+		case <-ctx.Done():
+			break
 		}
 	}
 }
@@ -344,6 +337,8 @@ loop:
 // It firstly deletes all the schema in the cache,
 // then queries and inserts to the cache.
 func (c *cluster) syncSchemaOnce() error {
+	log.Infow("syncing schema", zap.String("cluster", c.name))
+
 	schemaList, err := c.cache.ListSchema()
 	if err != nil {
 		log.Errorf("failed to list schema in the cache: %s", err)

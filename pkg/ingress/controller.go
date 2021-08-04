@@ -379,7 +379,7 @@ func (c *Controller) run(ctx context.Context) {
 		AdminKey: c.cfg.APISIX.DefaultClusterAdminKey,
 		BaseURL:  c.cfg.APISIX.DefaultClusterBaseURL,
 	}
-	err := c.apisix.AddCluster(clusterOpts)
+	err := c.apisix.AddCluster(ctx, clusterOpts)
 	if err != nil && err != apisix.ErrDuplicatedCluster {
 		// TODO give up the leader role
 		log.Errorf("failed to add default cluster: %s", err)
@@ -391,7 +391,7 @@ func (c *Controller) run(ctx context.Context) {
 		log.Errorf("failed to wait the default cluster to be ready: %s", err)
 
 		// re-create apisix cluster, used in next c.run
-		if err = c.apisix.UpdateCluster(clusterOpts); err != nil {
+		if err = c.apisix.UpdateCluster(ctx, clusterOpts); err != nil {
 			log.Errorf("failed to update default cluster: %s", err)
 			return
 		}
