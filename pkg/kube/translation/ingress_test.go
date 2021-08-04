@@ -118,9 +118,9 @@ func TestTranslateIngressV1NoBackend(t *testing.T) {
 	}
 	tr := &translator{}
 	ctx, err := tr.translateIngressV1(ing)
+	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 0)
-	assert.Nil(t, err)
 	assert.Equal(t, ctx.Routes[0].UpstreamId, "")
 	assert.Equal(t, ctx.Routes[0].Uris, []string{"/foo", "/foo/*"})
 }
@@ -285,9 +285,9 @@ func TestTranslateIngressV1(t *testing.T) {
 	<-processCh
 	<-processCh
 	ctx, err := tr.translateIngressV1(ing)
+	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
-	assert.Nil(t, err)
 
 	assert.Equal(t, ctx.Routes[0].Uris, []string{"/foo", "/foo/*"})
 	assert.Equal(t, ctx.Routes[0].UpstreamId, ctx.Upstreams[0].ID)
@@ -341,9 +341,9 @@ func TestTranslateIngressV1beta1NoBackend(t *testing.T) {
 	}
 	tr := &translator{}
 	ctx, err := tr.translateIngressV1beta1(ing)
+	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 0)
-	assert.Nil(t, err)
 	assert.Equal(t, ctx.Routes[0].UpstreamId, "")
 	assert.Equal(t, ctx.Routes[0].Uris, []string{"/foo", "/foo/*"})
 }
@@ -505,9 +505,9 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	<-processCh
 	<-processCh
 	ctx, err := tr.translateIngressV1beta1(ing)
+	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
-	assert.Nil(t, err)
 
 	assert.Equal(t, ctx.Routes[0].Uris, []string{"/foo", "/foo/*"})
 	assert.Equal(t, ctx.Routes[0].UpstreamId, ctx.Upstreams[0].ID)
@@ -617,9 +617,9 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 	<-processCh
 	<-processCh
 	ctx, err := tr.translateIngressExtensionsV1beta1(ing)
+	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
-	assert.Nil(t, err)
 
 	assert.Equal(t, ctx.Routes[0].Uris, []string{"/foo", "/foo/*"})
 	assert.Equal(t, ctx.Routes[0].UpstreamId, ctx.Upstreams[0].ID)

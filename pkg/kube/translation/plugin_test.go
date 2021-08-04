@@ -514,6 +514,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, cfg)
 	assert.Len(t, ctx.Upstreams, 0)
+	assert.NotNil(t, err)
 	assert.Equal(t, err.Error(), "service \"svc-2\" not found")
 
 	backends[0].ServiceName = "svc-1"
@@ -521,6 +522,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	ctx = &TranslateContext{upstreamMap: make(map[string]struct{})}
 	cfg, err = tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, cfg)
+	assert.NotNil(t, err)
 	assert.Equal(t, err.Error(), "service.spec.ports: port not defined")
 
 	backends[1].ServicePort.StrVal = "port2"
@@ -528,6 +530,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	ctx = &TranslateContext{upstreamMap: make(map[string]struct{})}
 	cfg, err = tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, cfg)
+	assert.NotNil(t, err)
 	assert.Equal(t, err.Error(), "conflict headless service and backend resolve granularity")
 }
 
@@ -584,6 +587,7 @@ func TestTranslateConsumerKeyAuthWithSecretRef(t *testing.T) {
 
 	cfg, err = tr.translateConsumerKeyAuthPlugin("default2", keyAuth)
 	assert.Nil(t, cfg)
+	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "not found")
 
 	delete(sec.Data, "key")
@@ -658,6 +662,7 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 
 	cfg, err = tr.translateConsumerBasicAuthPlugin("default2", basicAuth)
 	assert.Nil(t, cfg)
+	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "not found")
 
 	delete(sec.Data, "password")
