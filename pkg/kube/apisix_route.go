@@ -114,8 +114,10 @@ func (ar *apisixRoute) GroupVersion() string {
 func (ar *apisixRoute) ResourceVersion() string {
 	if ar.groupVersion == ApisixRouteV1 {
 		return ar.V1().ResourceVersion
+	} else if ar.groupVersion == ApisixRouteV2alpha1 {
+		return ar.V2alpha1().ResourceVersion
 	}
-	return ar.V2alpha1().ResourceVersion
+	return ar.V2beta1().ResourceVersion
 }
 
 type apisixRouteLister struct {

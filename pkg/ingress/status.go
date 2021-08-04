@@ -25,6 +25,7 @@ import (
 
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	configv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
@@ -87,6 +88,21 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 		}
 		meta.SetStatusCondition(v.Status.Conditions, condition)
 		if _, errRecord := client.ApisixV2alpha1().ApisixRoutes(v.Namespace).
+			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+			log.Errorw("failed to record status change for ApisixRoute",
+				zap.Error(errRecord),
+				zap.String("name", v.Name),
+				zap.String("namespace", v.Namespace),
+			)
+		}
+	case *configv2beta1.ApisixRoute:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		meta.SetStatusCondition(&v.Status.Conditions, condition)
+		if _, errRecord := client.ApisixV2beta1().ApisixRoutes(v.Namespace).
 			UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 			log.Errorw("failed to record status change for ApisixRoute",
 				zap.Error(errRecord),
