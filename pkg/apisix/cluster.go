@@ -142,13 +142,13 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 		return nil, err
 	}
 
-	go c.syncCache()
+	go c.syncCache(ctx)
 	go c.syncSchema(ctx, o.SyncInterval.Duration)
 
 	return c, nil
 }
 
-func (c *cluster) syncCache() {
+func (c *cluster) syncCache(ctx context.Context) {
 	log.Infow("syncing cache", zap.String("cluster", c.name))
 	now := time.Now()
 	defer func() {
@@ -174,7 +174,7 @@ func (c *cluster) syncCache() {
 	err := wait.ExponentialBackoff(backoff, func() (done bool, _ error) {
 		// impossibly return: false, nil
 		// so can safe used
-		done, lastSyncErr = c.syncCacheOnce()
+		done, lastSyncErr = c.syncCacheOnce(ctx)
 		return
 	})
 	if err != nil {
@@ -188,33 +188,33 @@ func (c *cluster) syncCache() {
 	}
 }
 
-func (c *cluster) syncCacheOnce() (bool, error) {
-	routes, err := c.route.List(context.TODO())
+func (c *cluster) syncCacheOnce(ctx context.Context) (bool, error) {
+	routes, err := c.route.List(ctx)
 	if err != nil {
 		log.Errorf("failed to list route in APISIX: %s", err)
 		return false, err
 	}
-	upstreams, err := c.upstream.List(context.TODO())
+	upstreams, err := c.upstream.List(ctx)
 	if err != nil {
 		log.Errorf("failed to list upstreams in APISIX: %s", err)
 		return false, err
 	}
-	ssl, err := c.ssl.List(context.TODO())
+	ssl, err := c.ssl.List(ctx)
 	if err != nil {
 		log.Errorf("failed to list ssl in APISIX: %s", err)
 		return false, err
 	}
-	streamRoutes, err := c.streamRoute.List(context.TODO())
+	streamRoutes, err := c.streamRoute.List(ctx)
 	if err != nil {
 		log.Errorf("failed to list stream_routes in APISIX: %s", err)
 		return false, err
 	}
-	globalRules, err := c.globalRules.List(context.TODO())
+	globalRules, err := c.globalRules.List(ctx)
 	if err != nil {
 		log.Errorf("failed to list global_rules in APISIX: %s", err)
 		return false, err
 	}
-	consumers, err := c.consumer.List(context.TODO())
+	consumers, err := c.consumer.List(ctx)
 	if err != nil {
 		log.Errorf("failed to list consumers in APISIX: %s", err)
 		return false, err
@@ -320,7 +320,7 @@ func (c *cluster) syncSchema(ctx context.Context, interval time.Duration) {
 	defer ticker.Stop()
 
 	for {
-		if err := c.syncSchemaOnce(); err != nil {
+		if err := c.syncSchemaOnce(ctx); err != nil {
 			log.Warnf("failed to sync schema: %s", err)
 		}
 
@@ -336,7 +336,7 @@ func (c *cluster) syncSchema(ctx context.Context, interval time.Duration) {
 // syncSchemaOnce syncs schema from APISIX once.
 // It firstly deletes all the schema in the cache,
 // then queries and inserts to the cache.
-func (c *cluster) syncSchemaOnce() error {
+func (c *cluster) syncSchemaOnce(ctx context.Context) error {
 	log.Infow("syncing schema", zap.String("cluster", c.name))
 
 	schemaList, err := c.cache.ListSchema()
@@ -355,13 +355,13 @@ func (c *cluster) syncSchemaOnce() error {
 	}
 
 	// update plugins' schema.
-	pluginList, err := c.plugin.List(context.TODO())
+	pluginList, err := c.plugin.List(ctx)
 	if err != nil {
 		log.Errorf("failed to list plugin names in APISIX: %s", err)
 		return err
 	}
 	for _, p := range pluginList {
-		ps, err := c.schema.GetPluginSchema(context.TODO(), p)
+		ps, err := c.schema.GetPluginSchema(ctx, p)
 		if err != nil {
 			log.Warnw("failed to get plugin schema",
 				zap.String("plugin", p),
