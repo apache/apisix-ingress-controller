@@ -328,7 +328,7 @@ func (c *cluster) syncSchema(ctx context.Context, interval time.Duration) {
 		case <-ticker.C:
 			continue
 		case <-ctx.Done():
-			break
+			return
 		}
 	}
 }
