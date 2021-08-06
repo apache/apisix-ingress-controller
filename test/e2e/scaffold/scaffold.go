@@ -319,14 +319,19 @@ func (s *Scaffold) afterEach() {
 	defer ginkgo.GinkgoRecover()
 
 	if ginkgo.CurrentGinkgoTestDescription().Failed {
-		fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
+		_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
 		output, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods")
 		if output != "" {
-			fmt.Fprintln(ginkgo.GinkgoWriter, output)
+			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
 		}
 		output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "describe", "pods")
 		if output != "" {
-			fmt.Fprintln(ginkgo.GinkgoWriter, output)
+			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		}
+		// Get the logs of ingress
+		output = s.getDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
+		if output != "" {
+			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
 		}
 	}
 
@@ -340,6 +345,35 @@ func (s *Scaffold) afterEach() {
 	// Wait for a while to prevent the worker node being overwhelming
 	// (new cases will be run).
 	time.Sleep(3 * time.Second)
+}
+
+func (s *Scaffold) getDeploymentLogs(name string) string {
+	cli, err := k8s.GetKubernetesClientE(s.t)
+	if err != nil {
+		assert.Nilf(ginkgo.GinkgoT(), err, "get client error: %s", err.Error())
+	}
+	pods, err := cli.CoreV1().Pods(s.namespace).List(context.TODO(), metav1.ListOptions{
+		LabelSelector: "app=" + name,
+	})
+	if err != nil {
+		return ""
+	}
+	var buf strings.Builder
+	for _, pod := range pods.Items {
+		buf.WriteString(fmt.Sprintf("=== pod: %s ===\n", pod.Name))
+		logs, err := cli.CoreV1().RESTClient().Get().
+			Resource("pods").
+			Namespace(s.namespace).
+			Name(pod.Name).SubResource("log").
+			Param("container", name).
+			Do(context.TODO()).
+			Raw()
+		if err == nil {
+			buf.Write(logs)
+		}
+		buf.WriteByte('\n')
+	}
+	return buf.String()
 }
 
 func (s *Scaffold) addFinalizers(f func()) {
