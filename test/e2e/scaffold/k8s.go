@@ -238,7 +238,7 @@ func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = cli.AddCluster(&apisix.ClusterOptions{
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
 		BaseURL:  u.String(),
 		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
@@ -259,7 +259,7 @@ func (s *Scaffold) ListApisixGlobalRules() ([]*v1.GlobalRule, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = cli.AddCluster(&apisix.ClusterOptions{
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
 		BaseURL:  u.String(),
 		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
@@ -280,7 +280,7 @@ func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = cli.AddCluster(&apisix.ClusterOptions{
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
 		BaseURL:  u.String(),
 		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
@@ -301,7 +301,7 @@ func (s *Scaffold) ListApisixConsumers() ([]*v1.Consumer, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = cli.AddCluster(&apisix.ClusterOptions{
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
 		BaseURL:  u.String(),
 		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
@@ -322,7 +322,7 @@ func (s *Scaffold) ListApisixStreamRoutes() ([]*v1.StreamRoute, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = cli.AddCluster(&apisix.ClusterOptions{
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
 		BaseURL:  u.String(),
 		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
@@ -343,7 +343,7 @@ func (s *Scaffold) ListApisixSsl() ([]*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = cli.AddCluster(&apisix.ClusterOptions{
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
 		BaseURL:  u.String(),
 		AdminKey: s.opts.APISIXAdminAPIKey,
 	})

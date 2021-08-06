@@ -136,7 +136,7 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 		)
 		// TODO we may first call AddCluster.
 		// Since now we already have the default cluster, we just call UpdateCluster.
-		if err := c.controller.apisix.UpdateCluster(clusterOpts); err != nil {
+		if err := c.controller.apisix.UpdateCluster(ctx, clusterOpts); err != nil {
 			log.Errorw("failed to update cluster",
 				zap.String("cluster_name", acc.Name),
 				zap.Error(err),
