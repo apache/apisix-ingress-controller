@@ -24,21 +24,27 @@ spec:
     - JSONPath: .spec.http[].match.hosts
       name: Hosts
       type: string
+      priority: 0
     - JSONPath: .spec.http[].match.paths
       name: URIs
       type: string
-    - JSONPath: .spec.http[].match.backends[].serviceName
-      name: Target Service
+      priority: 0
+    - JSONPath: ".spec.http[].backend.serviceName"
+      name: Target Service(HTTP)
       type: string
+      priority: 1
     - JSONPath: .spec.tcp[].match.ingressPort
-      name: Ingress Server Port
+      name: Ingress Server Port(TCP)
       type: integer
+      priority: 1
     - JSONPath: .spec.tcp[].match.backend.serviceName
-      name: Target Service
+      name: Target Service(TCP)
       type: string
+      priority: 1
     - JSONPath: .metadata.creationTimestamp
       name: Age
       type: date
+      priority: 0
   group: apisix.apache.org
   versions:
     - name: v1
