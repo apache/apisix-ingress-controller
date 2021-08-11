@@ -1,5 +1,5 @@
 ---
-title: ApisixRoute/v2alpha1 Reference
+title: ApisixClusterConfig/v2alpha1 Reference
 ---
 
 <!--
