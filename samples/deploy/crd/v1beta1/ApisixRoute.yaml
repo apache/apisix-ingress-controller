@@ -29,7 +29,7 @@ spec:
       name: URIs
       type: string
       priority: 0
-    - JSONPath: ".spec.http[].backend.serviceName"
+    - JSONPath: .spec.http[].backend.serviceName
       name: Target Service(HTTP)
       type: string
       priority: 1
