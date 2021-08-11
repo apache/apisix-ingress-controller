@@ -21,9 +21,14 @@ title: ApisixTls Reference
 #
 -->
 
-|     Field     |  Type    | Description                     |
-|---------------|----------|---------------------------------|
-| hosts         | array    | The domain list to identify which hosts (matched with SNI) can use the TLS certificate stored in the Secret.  |
-| secret        | object   | The definition of the related Secret object with current ApisixTls object.                               |
-| name          | string   | The name of secret, the secret contains key and cert for `TLS`.       |
-| namespace     | string   | The namespace of secret, the secret contains key and cert for `TLS`.  |
+|     Field                     |  Type    | Description                                                                                                   |
+|-------------------------------|----------|---------------------------------------------------------------------------------------------------------------|
+| hosts                         | array    | The domain list to identify which hosts (matched with SNI) can use the TLS certificate stored in the Secret.  |
+| secret                        | object   | The definition of the related Secret object with current ApisixTls object.                                    |
+| secret.name                   | string   | The name of the related Secret object with current ApisixTls object.                                          |
+| secret.namespace              | string   | The namespace of the related Secret object with current ApisixTls object.                                     |
+| client                        | object   | The configuration of the certificate provided by the client.                                                  |
+| client.caSecret               | object   | The definition of the related Secret object with the certificate provided by the client.                      |
+| client.caSecret.name          | string   | The name of the related Secret object with the certificate provided by the client.                            |
+| client.caSecret.namespace     | string   | The namespace of the related Secret object with the certificate provided by the client.                       |
+| client.depth                  | int      | The max certificate of chain length.                                                                          |
