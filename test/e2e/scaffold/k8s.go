@@ -94,12 +94,16 @@ func (s *Scaffold) CreateApisixRoute(name string, rules []ApisixRouteRule) {
 
 // CreateResourceFromString creates resource from a loaded yaml string.
 func (s *Scaffold) CreateResourceFromString(yaml string) error {
-	return k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
+	err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
+	time.Sleep(5 * time.Second)
+	return err
 }
 
 // RemoveResourceByString remove resource from a loaded yaml string.
 func (s *Scaffold) RemoveResourceByString(yaml string) error {
-	return k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
+	err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
+	time.Sleep(5 * time.Second)
+	return err
 }
 
 func (s *Scaffold) GetServiceByName(name string) (*corev1.Service, error) {

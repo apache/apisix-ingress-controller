@@ -328,6 +328,11 @@ func (s *Scaffold) afterEach() {
 		if output != "" {
 			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
 		}
+		// Get the logs of apisix
+		output = s.getDeploymentLogs("apisix-deployment-e2e-test")
+		if output != "" {
+			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		}
 		// Get the logs of ingress
 		output = s.getDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
 		if output != "" {

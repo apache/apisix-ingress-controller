@@ -32,13 +32,13 @@ var _ = ginkgo.Describe("ApisixRoute Testing", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta1",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("create and then scale upstream pods to 2 ", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -74,7 +74,7 @@ spec:
 	ginkgo.It("create, update, then remove", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -101,7 +101,7 @@ spec:
 
 		// update
 		apisixRoute = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -153,7 +153,7 @@ spec:
 	ginkgo.It("create, update, remove k8s service, remove ApisixRoute", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -180,7 +180,7 @@ spec:
 
 		// update
 		apisixRoute = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -233,7 +233,7 @@ spec:
 	ginkgo.It("change route rule name", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -265,7 +265,7 @@ spec:
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK)
 
 		apisixRoute = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -308,7 +308,7 @@ spec:
 	ginkgo.It("same route rule name between two ApisixRoute objects", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -324,7 +324,7 @@ spec:
       serviceName: %s
       servicePort: %d
 ---
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpbin-route-2
@@ -359,7 +359,7 @@ spec:
 	ginkgo.It("route priority", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -416,7 +416,7 @@ spec:
 	ginkgo.It("verify route/upstream items", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -472,7 +472,7 @@ spec:
 	ginkgo.It("service is referenced by two ApisixRoutes", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		ar1 := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpbin-route-1
@@ -490,7 +490,7 @@ spec:
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 		ar2 := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpbin-route-2
