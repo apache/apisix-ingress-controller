@@ -146,7 +146,6 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 		c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse)
 		return err
 	}
-
 	c.controller.recorderEvent(tls, corev1.EventTypeNormal, _resourceSynced, nil)
 	c.controller.recordStatus(tls, _resourceSynced, nil, metav1.ConditionTrue)
 	return err
@@ -173,6 +172,7 @@ func (c *apisixTlsController) syncSecretSSL(secretKey string, apisixTlsKey strin
 func (c *apisixTlsController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
+		c.controller.metricsCollector.IncrSyncOperation("ssl", "success")
 		return
 	}
 	log.Warnw("sync ApisixTls failed, will retry",
@@ -180,6 +180,7 @@ func (c *apisixTlsController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
+	c.controller.metricsCollector.IncrSyncOperation("ssl", "failure")
 }
 
 func (c *apisixTlsController) onAdd(obj interface{}) {
