@@ -166,7 +166,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		cfg:               cfg,
 		apiServer:         apiSrv,
 		apisix:            client,
-		metricsCollector:  metrics.NewPrometheusCollector(podName, podNamespace),
+		metricsCollector:  metrics.NewPrometheusCollector(),
 		kubeClient:        kubeClient,
 		watchingNamespace: watchingNamespace,
 		secretSSLMap:      new(sync.Map),
@@ -617,5 +617,6 @@ func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.
 			return
 		}
 		log.Debugf("success check health for default cluster")
+		c.metricsCollector.IncrCheckClusterHealth(c.name)
 	}
 }

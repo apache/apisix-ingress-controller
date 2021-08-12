@@ -30,11 +30,12 @@ func apisixBadStatusCodesTestHandler(t *testing.T, metrics []*io_prometheus_clie
 		assert.Equal(t, metric.Type.String(), "GAUGE")
 		m := metric.GetMetric()
 		assert.Len(t, m, 2)
+
 		assert.Equal(t, *m[0].Gauge.Value, float64(1))
 		assert.Equal(t, *m[0].Label[0].Name, "controller_namespace")
 		assert.Equal(t, *m[0].Label[0].Value, "default")
 		assert.Equal(t, *m[0].Label[1].Name, "controller_pod")
-		assert.Equal(t, *m[0].Label[1].Value, "test")
+		assert.Equal(t, *m[0].Label[1].Value, "")
 		assert.Equal(t, *m[0].Label[2].Name, "resource")
 		assert.Equal(t, *m[0].Label[2].Value, "route")
 		assert.Equal(t, *m[0].Label[3].Name, "status_code")
@@ -44,7 +45,7 @@ func apisixBadStatusCodesTestHandler(t *testing.T, metrics []*io_prometheus_clie
 		assert.Equal(t, *m[1].Label[0].Name, "controller_namespace")
 		assert.Equal(t, *m[1].Label[0].Value, "default")
 		assert.Equal(t, *m[1].Label[1].Name, "controller_pod")
-		assert.Equal(t, *m[1].Label[1].Value, "test")
+		assert.Equal(t, *m[1].Label[1].Value, "")
 		assert.Equal(t, *m[1].Label[2].Name, "resource")
 		assert.Equal(t, *m[1].Label[2].Value, "upstream")
 		assert.Equal(t, *m[1].Label[3].Name, "status_code")
@@ -64,7 +65,7 @@ func isLeaderTestHandler(t *testing.T, metrics []*io_prometheus_client.MetricFam
 		assert.Equal(t, *m[0].Label[0].Name, "controller_namespace")
 		assert.Equal(t, *m[0].Label[0].Value, "default")
 		assert.Equal(t, *m[0].Label[1].Name, "controller_pod")
-		assert.Equal(t, *m[0].Label[1].Value, "test")
+		assert.Equal(t, *m[0].Label[1].Value, "")
 	}
 }
 
@@ -81,7 +82,7 @@ func apisixLatencyTestHandler(t *testing.T, metrics []*io_prometheus_client.Metr
 		assert.Equal(t, *m[0].Label[0].Name, "controller_namespace")
 		assert.Equal(t, *m[0].Label[0].Value, "default")
 		assert.Equal(t, *m[0].Label[1].Name, "controller_pod")
-		assert.Equal(t, *m[0].Label[1].Value, "test")
+		assert.Equal(t, *m[0].Label[1].Value, "")
 	}
 }
 
@@ -97,7 +98,7 @@ func apisixRequestTestHandler(t *testing.T, metrics []*io_prometheus_client.Metr
 		assert.Equal(t, *m[0].Label[0].Name, "controller_namespace")
 		assert.Equal(t, *m[0].Label[0].Value, "default")
 		assert.Equal(t, *m[0].Label[1].Name, "controller_pod")
-		assert.Equal(t, *m[0].Label[1].Value, "test")
+		assert.Equal(t, *m[0].Label[1].Value, "")
 		assert.Equal(t, *m[0].Label[2].Name, "resource")
 		assert.Equal(t, *m[0].Label[2].Value, "route")
 
@@ -105,14 +106,62 @@ func apisixRequestTestHandler(t *testing.T, metrics []*io_prometheus_client.Metr
 		assert.Equal(t, *m[1].Label[0].Name, "controller_namespace")
 		assert.Equal(t, *m[1].Label[0].Value, "default")
 		assert.Equal(t, *m[1].Label[1].Name, "controller_pod")
-		assert.Equal(t, *m[1].Label[1].Value, "test")
+		assert.Equal(t, *m[1].Label[1].Value, "")
 		assert.Equal(t, *m[1].Label[2].Name, "resource")
 		assert.Equal(t, *m[1].Label[2].Value, "upstream")
 	}
 }
 
+func checkClusterHealthTestHandler(t *testing.T, metrics []*io_prometheus_client.MetricFamily) func(t *testing.T) {
+	return func(t *testing.T) {
+		metric := findMetric("apisix_ingress_controller_check_cluster_health_total", metrics)
+		assert.NotNil(t, metric)
+		assert.Equal(t, metric.Type.String(), "COUNTER")
+		m := metric.GetMetric()
+		assert.Len(t, m, 1)
+
+		assert.Equal(t, *m[0].Counter.Value, float64(1))
+		assert.Equal(t, *m[0].Label[0].Name, "controller_namespace")
+		assert.Equal(t, *m[0].Label[0].Value, "default")
+		assert.Equal(t, *m[0].Label[1].Name, "controller_pod")
+		assert.Equal(t, *m[0].Label[1].Value, "")
+		assert.Equal(t, *m[0].Label[2].Name, "name")
+		assert.Equal(t, *m[0].Label[2].Value, "test")
+	}
+}
+
+func syncOperationTestHandler(t *testing.T, metrics []*io_prometheus_client.MetricFamily) func(t *testing.T) {
+	return func(t *testing.T) {
+		metric := findMetric("apisix_ingress_controller_sync_operation_total", metrics)
+		assert.NotNil(t, metric)
+		assert.Equal(t, metric.Type.String(), "COUNTER")
+		m := metric.GetMetric()
+		assert.Len(t, m, 2)
+
+		assert.Equal(t, *m[0].Counter.Value, float64(1))
+		assert.Equal(t, *m[0].Label[0].Name, "controller_namespace")
+		assert.Equal(t, *m[0].Label[0].Value, "default")
+		assert.Equal(t, *m[0].Label[1].Name, "controller_pod")
+		assert.Equal(t, *m[0].Label[1].Value, "")
+		assert.Equal(t, *m[0].Label[2].Name, "resource")
+		assert.Equal(t, *m[0].Label[2].Value, "endpoint")
+		assert.Equal(t, *m[0].Label[3].Name, "result")
+		assert.Equal(t, *m[0].Label[3].Value, "success")
+
+		assert.Equal(t, *m[1].Counter.Value, float64(1))
+		assert.Equal(t, *m[1].Label[0].Name, "controller_namespace")
+		assert.Equal(t, *m[1].Label[0].Value, "default")
+		assert.Equal(t, *m[1].Label[1].Name, "controller_pod")
+		assert.Equal(t, *m[1].Label[1].Value, "")
+		assert.Equal(t, *m[1].Label[2].Name, "resource")
+		assert.Equal(t, *m[1].Label[2].Value, "schema")
+		assert.Equal(t, *m[1].Label[3].Name, "result")
+		assert.Equal(t, *m[1].Label[3].Value, "failure")
+	}
+}
+
 func TestPrometheusCollector(t *testing.T) {
-	c := NewPrometheusCollector("test", "default")
+	c := NewPrometheusCollector()
 	c.ResetLeader(true)
 	c.RecordAPISIXCode(404, "route")
 	c.RecordAPISIXCode(500, "upstream")
@@ -120,6 +169,9 @@ func TestPrometheusCollector(t *testing.T) {
 	c.IncrAPISIXRequest("route")
 	c.IncrAPISIXRequest("route")
 	c.IncrAPISIXRequest("upstream")
+	c.IncrCheckClusterHealth("test")
+	c.IncrSyncOperation("schema", "failure")
+	c.IncrSyncOperation("endpoint", "success")
 
 	metrics, err := prometheus.DefaultGatherer.Gather()
 	assert.Nil(t, err)
@@ -128,6 +180,8 @@ func TestPrometheusCollector(t *testing.T) {
 	t.Run("is_leader", isLeaderTestHandler(t, metrics))
 	t.Run("apisix_request_latencies", apisixLatencyTestHandler(t, metrics))
 	t.Run("apisix_requests", apisixRequestTestHandler(t, metrics))
+	t.Run("check_cluster_health_total", checkClusterHealthTestHandler(t, metrics))
+	t.Run("sync_operation_total", syncOperationTestHandler(t, metrics))
 }
 
 func findMetric(name string, metrics []*io_prometheus_client.MetricFamily) *io_prometheus_client.MetricFamily {
