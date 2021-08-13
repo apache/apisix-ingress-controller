@@ -12,6 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package apisix
 
 import (
@@ -34,10 +35,12 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 const (
-	_defaultTimeout = 5 * time.Second
+	_defaultTimeout      = 5 * time.Second
+	_defaultSyncInterval = 6 * time.Hour
 
 	_cacheSyncing = iota
 	_cacheSynced
@@ -72,6 +75,8 @@ type ClusterOptions struct {
 	AdminKey string
 	BaseURL  string
 	Timeout  time.Duration
+	// SyncInterval is the interval to sync schema.
+	SyncInterval types.TimeDuration
 }
 
 type cluster struct {
@@ -90,14 +95,19 @@ type cluster struct {
 	streamRoute  StreamRoute
 	globalRules  GlobalRule
 	consumer     Consumer
+	plugin       Plugin
+	schema       Schema
 }
 
-func newCluster(o *ClusterOptions) (Cluster, error) {
+func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 	if o.BaseURL == "" {
 		return nil, errors.New("empty base url")
 	}
 	if o.Timeout == time.Duration(0) {
 		o.Timeout = _defaultTimeout
+	}
+	if o.SyncInterval.Duration == time.Duration(0) {
+		o.SyncInterval = types.TimeDuration{Duration: _defaultSyncInterval}
 	}
 	o.BaseURL = strings.TrimSuffix(o.BaseURL, "/")
 
@@ -124,18 +134,21 @@ func newCluster(o *ClusterOptions) (Cluster, error) {
 	c.streamRoute = newStreamRouteClient(c)
 	c.globalRules = newGlobalRuleClient(c)
 	c.consumer = newConsumerClient(c)
+	c.plugin = newPluginClient(c)
+	c.schema = newSchemaClient(c)
 
 	c.cache, err = cache.NewMemDBCache()
 	if err != nil {
 		return nil, err
 	}
 
-	go c.syncCache()
+	go c.syncCache(ctx)
+	go c.syncSchema(ctx, o.SyncInterval.Duration)
 
 	return c, nil
 }
 
-func (c *cluster) syncCache() {
+func (c *cluster) syncCache(ctx context.Context) {
 	log.Infow("syncing cache", zap.String("cluster", c.name))
 	now := time.Now()
 	defer func() {
@@ -161,7 +174,7 @@ func (c *cluster) syncCache() {
 	err := wait.ExponentialBackoff(backoff, func() (done bool, _ error) {
 		// impossibly return: false, nil
 		// so can safe used
-		done, lastSyncErr = c.syncCacheOnce()
+		done, lastSyncErr = c.syncCacheOnce(ctx)
 		return
 	})
 	if err != nil {
@@ -175,33 +188,33 @@ func (c *cluster) syncCache() {
 	}
 }
 
-func (c *cluster) syncCacheOnce() (bool, error) {
-	routes, err := c.route.List(context.TODO())
+func (c *cluster) syncCacheOnce(ctx context.Context) (bool, error) {
+	routes, err := c.route.List(ctx)
 	if err != nil {
 		log.Errorf("failed to list route in APISIX: %s", err)
 		return false, err
 	}
-	upstreams, err := c.upstream.List(context.TODO())
+	upstreams, err := c.upstream.List(ctx)
 	if err != nil {
 		log.Errorf("failed to list upstreams in APISIX: %s", err)
 		return false, err
 	}
-	ssl, err := c.ssl.List(context.TODO())
+	ssl, err := c.ssl.List(ctx)
 	if err != nil {
 		log.Errorf("failed to list ssl in APISIX: %s", err)
 		return false, err
 	}
-	streamRoutes, err := c.streamRoute.List(context.TODO())
+	streamRoutes, err := c.streamRoute.List(ctx)
 	if err != nil {
 		log.Errorf("failed to list stream_routes in APISIX: %s", err)
 		return false, err
 	}
-	globalRules, err := c.globalRules.List(context.TODO())
+	globalRules, err := c.globalRules.List(ctx)
 	if err != nil {
 		log.Errorf("failed to list global_rules in APISIX: %s", err)
 		return false, err
 	}
-	consumers, err := c.consumer.List(context.TODO())
+	consumers, err := c.consumer.List(ctx)
 	if err != nil {
 		log.Errorf("failed to list consumers in APISIX: %s", err)
 		return false, err
@@ -301,6 +314,74 @@ func (c *cluster) HasSynced(ctx context.Context) error {
 	}
 }
 
+// syncSchema syncs schema from APISIX regularly according to the interval.
+func (c *cluster) syncSchema(ctx context.Context, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		if err := c.syncSchemaOnce(ctx); err != nil {
+			log.Warnf("failed to sync schema: %s", err)
+		}
+
+		select {
+		case <-ticker.C:
+			continue
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+// syncSchemaOnce syncs schema from APISIX once.
+// It firstly deletes all the schema in the cache,
+// then queries and inserts to the cache.
+func (c *cluster) syncSchemaOnce(ctx context.Context) error {
+	log.Infow("syncing schema", zap.String("cluster", c.name))
+
+	schemaList, err := c.cache.ListSchema()
+	if err != nil {
+		log.Errorf("failed to list schema in the cache: %s", err)
+		return err
+	}
+	for _, s := range schemaList {
+		if err := c.cache.DeleteSchema(s); err != nil {
+			log.Warnw("failed to delete schema in cache",
+				zap.String("schemaName", s.Name),
+				zap.String("schemaContent", s.Content),
+				zap.String("error", err.Error()),
+			)
+		}
+	}
+
+	// update plugins' schema.
+	pluginList, err := c.plugin.List(ctx)
+	if err != nil {
+		log.Errorf("failed to list plugin names in APISIX: %s", err)
+		return err
+	}
+	for _, p := range pluginList {
+		ps, err := c.schema.GetPluginSchema(ctx, p)
+		if err != nil {
+			log.Warnw("failed to get plugin schema",
+				zap.String("plugin", p),
+				zap.String("error", err.Error()),
+			)
+			continue
+		}
+
+		if err := c.cache.InsertSchema(ps); err != nil {
+			log.Warnw("failed to insert schema to cache",
+				zap.String("plugin", p),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
+			continue
+		}
+	}
+	return nil
+}
+
 // Route implements Cluster.Route method.
 func (c *cluster) Route() Route {
 	return c.route
@@ -329,6 +410,16 @@ func (c *cluster) GlobalRule() GlobalRule {
 // Consumer implements Cluster.Consumer method.
 func (c *cluster) Consumer() Consumer {
 	return c.consumer
+}
+
+// Plugin implements Cluster.Plugin method.
+func (c *cluster) Plugin() Plugin {
+	return c.plugin
+}
+
+// Schema implements Cluster.Schema method.
+func (c *cluster) Schema() Schema {
+	return c.schema
 }
 
 // HealthCheck implements Cluster.HealthCheck method.
@@ -549,4 +640,57 @@ func readBody(r io.ReadCloser, url string) string {
 		return ""
 	}
 	return string(data)
+}
+
+// getSchema returns the schema of APISIX object.
+func (c *cluster) getSchema(ctx context.Context, url string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := c.do(req)
+	if err != nil {
+		return "", err
+	}
+	defer drainBody(resp.Body, url)
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return "", cache.ErrNotFound
+		} else {
+			err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
+			err = multierr.Append(err, fmt.Errorf("error message: %s", readBody(resp.Body, url)))
+		}
+		return "", err
+	}
+
+	return readBody(resp.Body, url), nil
+}
+
+// getList returns a list of string.
+func (c *cluster) getList(ctx context.Context, url string) ([]string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer drainBody(resp.Body, url)
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, cache.ErrNotFound
+		} else {
+			err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
+			err = multierr.Append(err, fmt.Errorf("error message: %s", readBody(resp.Body, url)))
+		}
+		return nil, err
+	}
+
+	var listResponse []string
+	dec := json.NewDecoder(resp.Body)
+	if err := dec.Decode(&listResponse); err != nil {
+		return nil, err
+	}
+	return listResponse, nil
 }

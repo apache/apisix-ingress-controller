@@ -12,6 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package apisix
 
 import (
@@ -26,9 +27,9 @@ type APISIX interface {
 	// Cluster specifies the target cluster to talk.
 	Cluster(string) Cluster
 	// AddCluster adds a new cluster.
-	AddCluster(*ClusterOptions) error
+	AddCluster(context.Context, *ClusterOptions) error
 	// UpdateCluster updates an existing cluster.
-	UpdateCluster(*ClusterOptions) error
+	UpdateCluster(context.Context, *ClusterOptions) error
 	// ListClusters lists all APISIX clusters.
 	ListClusters() []Cluster
 }
@@ -54,6 +55,10 @@ type Cluster interface {
 	Consumer() Consumer
 	// HealthCheck checks apisix cluster health in realtime.
 	HealthCheck(context.Context) error
+	// Plugin returns a Plugin interface that can operate Plugin resources.
+	Plugin() Plugin
+	// Schema returns a Schema interface that can fetch schema of APISIX objects.
+	Schema() Schema
 }
 
 // Route is the specific client interface to take over the create, update,
@@ -106,7 +111,7 @@ type GlobalRule interface {
 	Update(context.Context, *v1.GlobalRule) (*v1.GlobalRule, error)
 }
 
-// Consumer it the specific client interface to take over the create, update,
+// Consumer is the specific client interface to take over the create, update,
 // list and delete for APISIX Consumer resource.
 type Consumer interface {
 	Get(context.Context, string) (*v1.Consumer, error)
@@ -114,6 +119,16 @@ type Consumer interface {
 	Create(context.Context, *v1.Consumer) (*v1.Consumer, error)
 	Delete(context.Context, *v1.Consumer) error
 	Update(context.Context, *v1.Consumer) (*v1.Consumer, error)
+}
+
+// Plugin is the specific client interface to fetch APISIX Plugin resource.
+type Plugin interface {
+	List(context.Context) ([]string, error)
+}
+
+// Schema is the specific client interface to fetch the schema of APISIX objects.
+type Schema interface {
+	GetPluginSchema(context.Context, string) (*v1.Schema, error)
 }
 
 type apisix struct {
@@ -154,14 +169,14 @@ func (c *apisix) ListClusters() []Cluster {
 }
 
 // AddCluster implements APISIX.AddCluster method.
-func (c *apisix) AddCluster(co *ClusterOptions) error {
+func (c *apisix) AddCluster(ctx context.Context, co *ClusterOptions) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	_, ok := c.clusters[co.Name]
 	if ok {
 		return ErrDuplicatedCluster
 	}
-	cluster, err := newCluster(co)
+	cluster, err := newCluster(ctx, co)
 	if err != nil {
 		return err
 	}
@@ -169,14 +184,14 @@ func (c *apisix) AddCluster(co *ClusterOptions) error {
 	return nil
 }
 
-func (c *apisix) UpdateCluster(co *ClusterOptions) error {
+func (c *apisix) UpdateCluster(ctx context.Context, co *ClusterOptions) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if _, ok := c.clusters[co.Name]; !ok {
 		return ErrClusterNotExist
 	}
 
-	cluster, err := newCluster(co)
+	cluster, err := newCluster(ctx, co)
 	if err != nil {
 		return err
 	}

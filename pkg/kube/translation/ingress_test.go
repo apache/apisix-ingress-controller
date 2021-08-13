@@ -16,21 +16,20 @@ package translation
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"testing"
-
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
-	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
+	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 )
@@ -118,9 +117,9 @@ func TestTranslateIngressV1NoBackend(t *testing.T) {
 	}
 	tr := &translator{}
 	ctx, err := tr.translateIngressV1(ing)
+	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 0)
-	assert.Nil(t, err)
 	assert.Equal(t, ctx.Routes[0].UpstreamId, "")
 	assert.Equal(t, ctx.Routes[0].Uris, []string{"/foo", "/foo/*"})
 }
@@ -285,9 +284,9 @@ func TestTranslateIngressV1(t *testing.T) {
 	<-processCh
 	<-processCh
 	ctx, err := tr.translateIngressV1(ing)
+	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
-	assert.Nil(t, err)
 
 	assert.Equal(t, ctx.Routes[0].Uris, []string{"/foo", "/foo/*"})
 	assert.Equal(t, ctx.Routes[0].UpstreamId, ctx.Upstreams[0].ID)
@@ -341,9 +340,9 @@ func TestTranslateIngressV1beta1NoBackend(t *testing.T) {
 	}
 	tr := &translator{}
 	ctx, err := tr.translateIngressV1beta1(ing)
+	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 0)
-	assert.Nil(t, err)
 	assert.Equal(t, ctx.Routes[0].UpstreamId, "")
 	assert.Equal(t, ctx.Routes[0].Uris, []string{"/foo", "/foo/*"})
 }
@@ -505,9 +504,9 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	<-processCh
 	<-processCh
 	ctx, err := tr.translateIngressV1beta1(ing)
+	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
-	assert.Nil(t, err)
 
 	assert.Equal(t, ctx.Routes[0].Uris, []string{"/foo", "/foo/*"})
 	assert.Equal(t, ctx.Routes[0].UpstreamId, ctx.Upstreams[0].ID)
@@ -617,9 +616,9 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 	<-processCh
 	<-processCh
 	ctx, err := tr.translateIngressExtensionsV1beta1(ing)
+	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
-	assert.Nil(t, err)
 
 	assert.Equal(t, ctx.Routes[0].Uris, []string{"/foo", "/foo/*"})
 	assert.Equal(t, ctx.Routes[0].UpstreamId, ctx.Upstreams[0].ID)

@@ -21,8 +21,6 @@ import (
 	"sync"
 	"time"
 
-	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
-	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -39,8 +37,10 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/api"
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	listersv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2alpha1"
@@ -379,7 +379,7 @@ func (c *Controller) run(ctx context.Context) {
 		AdminKey: c.cfg.APISIX.DefaultClusterAdminKey,
 		BaseURL:  c.cfg.APISIX.DefaultClusterBaseURL,
 	}
-	err := c.apisix.AddCluster(clusterOpts)
+	err := c.apisix.AddCluster(ctx, clusterOpts)
 	if err != nil && err != apisix.ErrDuplicatedCluster {
 		// TODO give up the leader role
 		log.Errorf("failed to add default cluster: %s", err)
@@ -391,7 +391,7 @@ func (c *Controller) run(ctx context.Context) {
 		log.Errorf("failed to wait the default cluster to be ready: %s", err)
 
 		// re-create apisix cluster, used in next c.run
-		if err = c.apisix.UpdateCluster(clusterOpts); err != nil {
+		if err = c.apisix.UpdateCluster(ctx, clusterOpts); err != nil {
 			log.Errorf("failed to update default cluster: %s", err)
 			return
 		}
@@ -601,11 +601,13 @@ func (c *Controller) syncUpstreamNodesChangeToCluster(ctx context.Context, clust
 
 func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.CancelFunc) {
 	defer cancelFunc()
+	t := time.NewTicker(5 * time.Second)
+	defer t.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(5 * time.Second):
+		case <-t.C:
 		}
 
 		err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).HealthCheck(ctx)

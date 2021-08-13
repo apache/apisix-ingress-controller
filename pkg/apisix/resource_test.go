@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -40,6 +41,7 @@ func TestItemUnmarshalJSON(t *testing.T) {
 }
 `
 	err = json.Unmarshal([]byte(emptyData), &items)
+	assert.NotNil(t, err)
 	assert.Equal(t, err.Error(), "unexpected non-empty object")
 
 	emptyArray := `
@@ -84,6 +86,7 @@ func TestRouteVarsUnmarshalJSONCompatibility(t *testing.T) {
 
 	data = `{"vars":{"a":"b"}}`
 	err = json.Unmarshal([]byte(data), &route)
+	assert.NotNil(t, err)
 	assert.Equal(t, err.Error(), "unexpected non-empty object")
 
 	data = `{"vars":[]}`

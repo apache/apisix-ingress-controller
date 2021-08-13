@@ -94,12 +94,16 @@ func (s *Scaffold) CreateApisixRoute(name string, rules []ApisixRouteRule) {
 
 // CreateResourceFromString creates resource from a loaded yaml string.
 func (s *Scaffold) CreateResourceFromString(yaml string) error {
-	return k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
+	err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
+	time.Sleep(5 * time.Second)
+	return err
 }
 
 // RemoveResourceByString remove resource from a loaded yaml string.
 func (s *Scaffold) RemoveResourceByString(yaml string) error {
-	return k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
+	err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
+	time.Sleep(5 * time.Second)
+	return err
 }
 
 func (s *Scaffold) GetServiceByName(name string) (*corev1.Service, error) {
@@ -238,7 +242,7 @@ func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = cli.AddCluster(&apisix.ClusterOptions{
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
 		BaseURL:  u.String(),
 		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
@@ -259,7 +263,7 @@ func (s *Scaffold) ListApisixGlobalRules() ([]*v1.GlobalRule, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = cli.AddCluster(&apisix.ClusterOptions{
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
 		BaseURL:  u.String(),
 		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
@@ -280,7 +284,7 @@ func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = cli.AddCluster(&apisix.ClusterOptions{
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
 		BaseURL:  u.String(),
 		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
@@ -301,7 +305,7 @@ func (s *Scaffold) ListApisixConsumers() ([]*v1.Consumer, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = cli.AddCluster(&apisix.ClusterOptions{
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
 		BaseURL:  u.String(),
 		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
@@ -322,7 +326,7 @@ func (s *Scaffold) ListApisixStreamRoutes() ([]*v1.StreamRoute, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = cli.AddCluster(&apisix.ClusterOptions{
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
 		BaseURL:  u.String(),
 		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
@@ -343,7 +347,7 @@ func (s *Scaffold) ListApisixSsl() ([]*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = cli.AddCluster(&apisix.ClusterOptions{
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
 		BaseURL:  u.String(),
 		AdminKey: s.opts.APISIXAdminAPIKey,
 	})
