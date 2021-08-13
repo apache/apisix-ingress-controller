@@ -118,10 +118,7 @@ func (s *Scaffold) ScaleHTTPBIN(desired int) error {
 
 // DeleteHTTPBINService deletes the HTTPBIN service object.
 func (s *Scaffold) DeleteHTTPBINService() error {
-	if err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, _httpService); err != nil {
-		return err
-	}
-	return nil
+	return k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, _httpService)
 }
 
 // WaitAllHTTPBINPodsAvailable waits until all httpbin pods ready.

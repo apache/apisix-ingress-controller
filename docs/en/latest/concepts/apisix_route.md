@@ -35,7 +35,7 @@ should be routed to service `bar`, in the manner of `ApisixRoute`, the configura
 should be:
 
 ```yaml
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: foo-bar-route
@@ -73,7 +73,7 @@ The `methods` splits traffic according to the HTTP method, the following configu
 with `GET` method to `foo` service (a Kubernetes Service).
 
 ```yaml
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: method-route
@@ -94,7 +94,7 @@ The `exprs` allows user to configure match conditions with arbitrary predicates 
 It's composed by several expressions, which in turn composed by subject, operator and value/set.
 
 ```yaml
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: method-route
@@ -128,7 +128,7 @@ the `ClusterIP` of this service, if that's what you want, just set
 the `resolveGranularity` to `service` (default is `endpoint`).
 
 ```yaml
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: method-route
@@ -155,7 +155,7 @@ will be applied (which actually uses the [traffic-split](http://apisix.apache.or
 You can specify weight for each backend, the default weight is `100`.
 
 ```yaml
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: method-route
@@ -193,7 +193,7 @@ Apache APISIX provides more than 40 [plugins](https://github.com/apache/apisix/t
 in `ApisixRoute`. All configuration items are named same to the one in APISIX.
 
 ```yaml
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -223,7 +223,7 @@ Websocket Proxy
 by creating a route with specifying the `websocket` field.
 
 ```yaml
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: ws-route
@@ -247,13 +247,14 @@ TCP Route
 apisix-ingress-controller supports the port-based tcp route.
 
 ```yaml
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: tcp-route
 spec:
-  tcp:
+  stream:
     - name: tcp-route-rule1
+      protocol: TCP
       match:
         ingressPort: 9100
       backend:
@@ -264,3 +265,28 @@ spec:
 The above yaml configuration guides TCP traffic entered to the Ingress proxy server (i.e. [APISIX](https://apisix.apache.org)) port `9100` should be routed to the backend service `tcp-server`.
 
 Note since APISIX doesn't support dynamic listening, so here the `9100` port should be pre-defined in APISIX [configuration](https://github.com/apache/apisix/blob/master/conf/config-default.yaml#L101).
+
+UDP Route
+---------
+
+apisix-ingress-controller supports the port-based udp route.
+
+```yaml
+apiVersion: apisix.apache.org/v2beta1
+kind: ApisixRoute
+metadata:
+  name: udp-route
+spec:
+  stream:
+    - name: udp-route-rule1
+      protocol: UDP
+      match:
+        ingressPort: 9200
+      backend:
+        serviceName: udp-server
+        servicePort: 53
+```
+
+The above yaml configuration guides UDP traffic entered to the Ingress proxy server (i.e. [APISIX](https://apisix.apache.org)) port `9200` should be routed to the backend service `udp-server`.
+
+Note since APISIX doesn't support dynamic listening, so here the `9200` port should be pre-defined in APISIX [configuration](https://github.com/apache/apisix/blob/master/conf/config-default.yaml#L105).

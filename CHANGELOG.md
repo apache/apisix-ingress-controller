@@ -19,6 +19,7 @@
 
 # Table of Contents
 
+- [1.1.0](#110)
 - [1.0.0](#100)
 - [0.6.0](#060)
 - [0.5.0](#050)
@@ -27,11 +28,69 @@
 - [0.2.0](#020)
 - [0.1.0](#010)
 
+# 1.1.0
+
+Welcome to the 1.1.0 release of apisix-ingress-controller!
+
+This is a **GA** release.
+- an available Kubernetes cluster (version >= 1.15)
+- an available Apache APISIX (version >= 2.7)
+
+## Highlights
+
+### New Features
+
+* **Support EndpointSlices** [#563](https://github.com/apache/apisix-ingress-controller/pull/563) [#574](https://github.com/apache/apisix-ingress-controller/pull/574)
+* **Support UDP definition** [#572](https://github.com/apache/apisix-ingress-controller/pull/572) [#576](https://github.com/apache/apisix-ingress-controller/pull/576)
+
+Please try out the release binaries and report any issues at
+https://github.com/apache/apisix-ingress-controller/issues.
+
+### Contributors
+
+* Alex Zhang
+* Fang
+* kv
+* Jintao Zhang
+* Shuyang Wu
+* benson211
+
+### Changes
+<details><summary>11 commits</summary>
+<p>
+
+* [`67f3fd9`](https://github.com/apache/apisix-ingress-controller/commit/67f3fd934b8a8b935440227a5c8ba7923ba91a2a) chore: endpointslice controller (#574)
+* [`1c17b41`](https://github.com/apache/apisix-ingress-controller/commit/1c17b41249361444b5b10f4a8897f62484b545b0) feat: add logic for ApisixRoute v2beta1 (#576)
+* [`a754f69`](https://github.com/apache/apisix-ingress-controller/commit/a754f69d3f2a7b637db039690ad849976178c148) feat: abstract the endpoints-related logic (#563)
+* [`4b16e28`](https://github.com/apache/apisix-ingress-controller/commit/4b16e289073ad88dc6be49ae621294ecf6c92cb4) chore: cleanup apisixservice. (#566)
+* [`534fab3`](https://github.com/apache/apisix-ingress-controller/commit/534fab34a6e046a46fb174d2a3620eacb431006f) feat: add v2beta1 structure for ApisixRoute (#572)
+* [`c871bdf`](https://github.com/apache/apisix-ingress-controller/commit/c871bdfb76fee37227d7de5a246cd94b867aad1d) test: dump the namespace content when e2e test cases failed (#571)
+* [`dbc8133`](https://github.com/apache/apisix-ingress-controller/commit/dbc8133805122947bbad21711d66d0782e66bbb5) doc: update k3s-rke.md (#568)
+* [`70d0100`](https://github.com/apache/apisix-ingress-controller/commit/70d010092b626c9c6959bd026e669dbb60153608) chore: update config of installation by Kustomize (#557)
+* [`2122d76`](https://github.com/apache/apisix-ingress-controller/commit/2122d76fd28cc7bce54e8f52e2d4c9d04a1e852a) docs: clarify installation by Kustomize (#558)
+* [`b4a6889`](https://github.com/apache/apisix-ingress-controller/commit/b4a6889e1564be61de6736af32a2075579c9b51f) Update default version in Makefile (#556)
+* [`f5cc76e`](https://github.com/apache/apisix-ingress-controller/commit/f5cc76ec6ac671772063d38a09f508db71ac2e48) chore: remove cancel-workflow.yml since no use (#550)
+</p>
+</details>
+
+### Dependency Changes
+
+* **github.com/fsnotify/fsnotify**        v1.4.9 **_new_**
+* **github.com/gruntwork-io/terratest**   v0.32.8 **_new_**
+* **github.com/hashicorp/go-multierror**  v1.0.0 -> v1.1.0
+* **k8s.io/api**                          v0.20.2 -> v0.21.1
+* **k8s.io/apimachinery**                 v0.20.2 -> v0.21.1
+* **k8s.io/client-go**                    v0.20.2 -> v0.21.1
+
+Previous release can be found at [1.0.0](https://github.com/apache/apisix-ingress-controller/releases/tag/1.0.0)
+
 # 1.0.0
 
 Welcome to the 1.0.0 release of apisix-ingress-controller!
 
 This is the first **GA** release.
+- an available Kubernetes cluster (version >= 1.14)
+- an available Apache APISIX (version >= 2.7)
 
 ## Highlights
 

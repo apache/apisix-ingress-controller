@@ -21,7 +21,7 @@ title: ApisixRoute/v1 (Deprecated) Reference
 #
 -->
 
-**WARNINIG**: `ApisixRoute/v1` is obsolete and will be unsupported in the future, please use `ApisixRoute/v2alpha1`!
+**WARNINIG**: `ApisixRoute/v1` is obsolete and will be unsupported in the future, please use `ApisixRoute/v2beta1`!
 
 |     Field     |  Type    |                    Description                     |
 |---------------|----------|----------------------------------------------------|

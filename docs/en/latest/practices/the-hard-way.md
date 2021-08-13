@@ -615,6 +615,9 @@ spec:
       storage: false
     - name: v2alpha1
       served: true
+      storage: false
+    - name: v2beta1
+      served: true
       storage: true
   scope: Namespaced
   names:
@@ -681,7 +684,7 @@ data:
       - "*"
       ingress_class: "apisix"
       ingress_version: "networking/v1"
-      apisix_route_version: "apisix.apache.org/v2alpha1"
+      apisix_route_version: "apisix.apache.org/v2beta1"
     apisix:
       default_cluster_base_url: "http://apisix-admin.apisix:9180/apisix/admin"
       default_cluster_admin_key: "edd1c9f034335f136f87ad84b625c8f1"
@@ -782,7 +785,7 @@ After the ingress controller status is converted to `Running`, we could create a
 Here is an example ApisixRoute:
 
 ```yaml
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta1
 kind: ApisixRoute
 metadata:
   name: httpserver-route
