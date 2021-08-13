@@ -33,19 +33,18 @@ It's a good choice to use Ingress APISIX as the north-south API gateway in K3S.
 * Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
 * Make sure your target namespace exists, kubectl operations through this document will be executed in namespace `ingress-apisix`.
 
-## Install APISIX
+## Install APISIX and apisix-ingress-controller
 
-[Apache APISIX](http://apisix.apache.org/) as the proxy plane of apisix-ingress-controller, should be deployed in advance.
+As the data plane of apisix-ingress-controller, [Apache APISIX](http://apisix.apache.org/) can be deployed at the same time using Helm chart.
 
 ```shell
 cd /path/to/apisix-helm-chart
 helm repo add bitnami https://charts.bitnami.com/bitnami
-helm repo add apisix https://charts.apiseven.com
-# Use `helm search repo apisix` to search charts about apisix
 helm repo update
-helm install apisix apisix/apisix \
+kubectl create ns ingress-apisix
+helm install apisix charts/apisix \
   --set gateway.type=NodePort \
-  --set admin.allow.ipList="{0.0.0.0/0}" \
+  --set ingress-controller.enabled=true \
   --namespace ingress-apisix \
   --kubeconfig /etc/rancher/k3s/k3s.yaml
 kubectl get service --namespace ingress-apisix
@@ -53,32 +52,15 @@ kubectl get service --namespace ingress-apisix
 
 *If you are using K3S, the default kubeconfig file is in /etc/rancher/k3s and root permission may required.*
 
-Two Service resources were created, one is `apisix-gateway`, which processes the real traffic; another is `apisix-admin`, which acts as the control plane to process all the configuration changes.
+Five Service resources were created.
+
+* `apisix-gateway`, which processes the real traffic;
+* `apisix-admin`, which acts as the control plane to process all the configuration changes.
+* `apisix-ingress-controller`, which exposes apisix-ingress-controller's metrics.
+* `apisix-etcd` and `apisix-etcd-headless` for etcd service and internal communication.
 
 The gateway service type is set to `NodePort`, so that clients can access Apache APISIX through the Node IPs and the assigned port.
 If you are using K3S and you want to expose a `LoadBalancer` service, try to use [Klipper](https://github.com/k3s-io/klipper-lb).
 
-Another thing should be concerned that the `allow.ipList` field should be customized according to the Pod CIDR settings(see [K3S](https://rancher.com/docs/k3s/latest/en/installation/install-options/server-config/#networking) or [Rancher RKE](https://rancher.com/docs/rancher/v2.x/en/cluster-provisioning/rke-clusters/options/#cluster-config-file), so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
-
-## Install apisix-ingress-controller
-
-You can also install apisix-ingress-controller by Helm Charts, it's recommended to install it in the same namespace with Apache APISIX.
-
-```shell
-cd /path/to/apisix-helm-chart
-# install apisix-ingress-controller
-helm install apisix-ingress-controller apisix/apisix-ingress-controller \
-  --set image.tag=dev \
-  --set config.apisix.baseURL=http://apisix-admin:9180/apisix/admin \
-  --set config.apisix.adminKey=edd1c9f034335f136f87ad84b625c8f1 \
-  --namespace ingress-apisix \
-  --kubeconfig /etc/rancher/k3s/k3s.yaml
-```
-
-*If you are using K3S, the default kubeconfig file is in /etc/rancher/k3s and root permission may required.*
-
-The admin key used in above mentioned commands is the default one, if you change the admin key configuration when you deployed APISIX, please remember to change it here.
-
-Change the `image.tag` to the apisix-ingress-controller version that you desire. You have to wait for while until the corresponding pods are running.
 
 Now try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../practices/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
