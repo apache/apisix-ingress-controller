@@ -16,8 +16,9 @@
 package router
 
 import (
-	"github.com/apache/apisix-ingress-controller/pkg/api/validation"
 	"github.com/gin-gonic/gin"
+
+	"github.com/apache/apisix-ingress-controller/pkg/api/validation"
 )
 
 func mountWebhook(r *gin.Engine) {
