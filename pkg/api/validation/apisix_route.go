@@ -22,21 +22,21 @@ import (
 	"net/http"
 	"strings"
 
-	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-
 	kwhhttp "github.com/slok/kubewebhook/v2/pkg/http"
 	kwhmodel "github.com/slok/kubewebhook/v2/pkg/model"
 	kwhvalidating "github.com/slok/kubewebhook/v2/pkg/webhook/validating"
-	"github.com/xeipuuv/gojsonschema"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
 func NewPluginValidatorHandler() http.Handler {
 	// Create a validating webhook.
 	wh, err := kwhvalidating.NewWebhook(kwhvalidating.WebhookConfig{
-		ID:        "apisixRoutes-plugin",
+		ID:        "apisixRoute-plugin",
 		Validator: pluginValidator,
 	})
 	if err != nil {
@@ -54,22 +54,28 @@ func NewPluginValidatorHandler() http.Handler {
 // ErrNotApisixRoute will be used when the validating object is not ApisixRoute.
 var ErrNotApisixRoute = errors.New("object is not ApisixRoute")
 
+type apisixRoutePlugin struct {
+	Name   string
+	Config interface{}
+}
+
+// pluginValidator validates plugins in ApisixRoute.
+// When the validation of one plugin fails, it will continue to validate the rest of plugins.
 var pluginValidator = kwhvalidating.ValidatorFunc(
 	func(ctx context.Context, review *kwhmodel.AdmissionReview, object metav1.Object) (result *kwhvalidating.ValidatorResult, err error) {
 		valid := true
-		var msg []string
+
+		var plugins []apisixRoutePlugin
+
 		switch ar := object.(type) {
 		case *v2alpha1.ApisixRoute:
 			for _, h := range ar.Spec.HTTP {
 				for _, p := range h.Plugins {
+					// only check plugins that are enabled.
 					if p.Enable {
-						if err, re := validateSchema(PluginSchema[p.Name], p.Config); err != nil {
-							valid = false
-							msg = append(msg, fmt.Sprintf("%s plugin's config is invalid\n", p.Name))
-							for _, desc := range re {
-								msg = append(msg, desc.String())
-							}
-						}
+						plugins = append(plugins, apisixRoutePlugin{
+							p.Name, p.Config,
+						})
 					}
 				}
 			}
@@ -78,13 +84,9 @@ var pluginValidator = kwhvalidating.ValidatorFunc(
 				for _, path := range r.Http.Paths {
 					for _, p := range path.Plugins {
 						if p.Enable {
-							if err, re := validateSchema(PluginSchema[p.Name], p.Config); err != nil {
-								valid = false
-								msg = append(msg, fmt.Sprintf("%s plugin's config is invalid\n", p.Name))
-								for _, desc := range re {
-									msg = append(msg, desc.String())
-								}
-							}
+							plugins = append(plugins, apisixRoutePlugin{
+								p.Name, p.Config,
+							})
 						}
 					}
 				}
@@ -93,28 +95,46 @@ var pluginValidator = kwhvalidating.ValidatorFunc(
 			return &kwhvalidating.ValidatorResult{Valid: false, Message: ErrNotApisixRoute.Error()}, ErrNotApisixRoute
 		}
 
+		client, err := GetSchemaClient()
+		if err != nil {
+			log.Errorf("failed to get the schema client: %s", err)
+			return &kwhvalidating.ValidatorResult{Valid: false, Message: "failed to get the schema client"}, err
+		}
+
+		var msg []string
+		for _, p := range plugins {
+			if v, m, err := validatePlugin(client, p.Name, p.Config); !v {
+				valid = false
+				msg = append(msg, m)
+				log.Warnf("failed to validate plugin %s: %s", p.Name, err)
+			}
+		}
+
 		return &kwhvalidating.ValidatorResult{Valid: valid, Message: strings.Join(msg, "\n")}, nil
 	})
 
-func validateSchema(schema string, config interface{}) (error, []gojsonschema.ResultError) {
-	schemaLoader := gojsonschema.NewStringLoader(schema)
-	configLoader := gojsonschema.NewGoLoader(config)
+func validatePlugin(client apisix.Schema, pluginName string, pluginConfig interface{}) (valid bool, msg string, err error) {
+	valid = true
 
-	result, err := gojsonschema.Validate(schemaLoader, configLoader)
+	pluginSchema, err := client.GetPluginSchema(context.TODO(), pluginName)
 	if err != nil {
-		log.Errorf("failed to load and validate the schema: %s", err)
-		return err, nil
+		log.Errorf("failed to get the schema of plugin %s: %s", pluginName, err)
+		valid = false
+		msg = fmt.Sprintf("failed to get the schema of plugin %s", pluginName)
+		return
 	}
 
-	if result.Valid() {
-		log.Info("the plugin's configLoader is valid")
-	} else {
-		log.Error("the plugin's configLoader is not valid. see errors:")
-		for _, desc := range result.Errors() {
-			log.Errorf("- %s\n", desc)
+	var errorMsg []string
+	if err, re := validateSchema(pluginSchema.Content, pluginConfig); err != nil {
+		valid = false
+		msg = fmt.Sprintf("%s plugin's config is invalid\n", pluginName)
+		for _, desc := range re {
+			errorMsg = append(errorMsg, desc.String())
 		}
-		return fmt.Errorf("invalid plugin config"), result.Errors()
 	}
 
-	return nil, nil
+	if len(errorMsg) > 0 {
+		msg = strings.Join(errorMsg, "\n")
+	}
+	return
 }
