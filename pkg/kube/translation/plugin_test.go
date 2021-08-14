@@ -16,7 +16,6 @@ package translation
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
