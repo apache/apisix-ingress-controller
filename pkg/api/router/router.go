@@ -12,6 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package router
 
 import (
@@ -19,6 +20,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/apache/apisix-ingress-controller/pkg/api/validation"
 )
 
 type healthzResponse struct {
@@ -42,9 +45,16 @@ func metrics(c *gin.Context) {
 	promhttp.Handler().ServeHTTP(c.Writer, c.Request)
 }
 
-// Mount mounts all api routers.
+func mountWebhooks(r *gin.Engine) {
+	validating := r.Group("/validation")
+	{
+		validating.POST("/apisixRoute/plugin", gin.WrapH(validation.NewPluginValidatorHandler()))
+	}
+}
+
+// Mount mounts all api routers and webhooks.
 func Mount(r *gin.Engine) {
 	mountHealthz(r)
 	mountMetrics(r)
-	mountWebhook(r)
+	mountWebhooks(r)
 }

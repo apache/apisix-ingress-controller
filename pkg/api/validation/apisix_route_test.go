@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	api "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
