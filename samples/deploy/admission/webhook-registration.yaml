@@ -28,7 +28,7 @@ webhooks:
       service:
         name: apisix-admission-server
         namespace: ingress-apisix
-        path: "/validating/apisixRoute/plugin"
+        path: "/validation/apisixRoute/plugin"
       caBundle: ""
     rules:
       - operations: [ "CREATE", "UPDATE" ]

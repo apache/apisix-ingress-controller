@@ -22,7 +22,7 @@ import (
 )
 
 func mountWebhook(r *gin.Engine) {
-	validating := r.Group("/validating")
+	validating := r.Group("/validation")
 	{
 		validating.POST("/apisixRoute/plugin", gin.WrapH(validation.NewPluginValidatorHandler()))
 	}

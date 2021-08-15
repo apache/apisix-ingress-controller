@@ -21,17 +21,19 @@ import (
 	"testing"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
-	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
+	api "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type fakeSchemaClient struct {
 	schema map[string]string
 }
 
-func (c fakeSchemaClient) GetPluginSchema(ctx context.Context, name string) (*v1.Schema, error) {
+func (c fakeSchemaClient) GetPluginSchema(ctx context.Context, name string) (*api.Schema, error) {
 	if s, ok := c.schema[name]; ok {
-		return &v1.Schema{
+		return &api.Schema{
 			Name:    name,
 			Content: s,
 		}, nil
@@ -52,13 +54,13 @@ func Test_validatePlugin(t *testing.T) {
 	tests := []struct {
 		name         string
 		pluginName   string
-		pluginConfig interface{}
+		pluginConfig map[string]interface{}
 		wantValid    bool
 	}{
 		{
 			name:       "validating is successes",
 			pluginName: "api-breaker",
-			pluginConfig: v2alpha1.ApisixRouteHTTPPluginConfig{
+			pluginConfig: map[string]interface{}{
 				"break_response_code": 200,
 			},
 			wantValid: true,
@@ -66,7 +68,7 @@ func Test_validatePlugin(t *testing.T) {
 		{
 			name:       "validating is failed due to missing required fields",
 			pluginName: "api-breaker",
-			pluginConfig: v2alpha1.ApisixRouteHTTPPluginConfig{
+			pluginConfig: map[string]interface{}{
 				"max_breaker_sec": 60,
 			},
 			wantValid: false,
@@ -74,7 +76,7 @@ func Test_validatePlugin(t *testing.T) {
 		{
 			name:       "validating is failed due to invalid break_response_code",
 			pluginName: "api-breaker",
-			pluginConfig: v2alpha1.ApisixRouteHTTPPluginConfig{
+			pluginConfig: map[string]interface{}{
 				"break_response_code": 100,
 			},
 			wantValid: false,
@@ -82,16 +84,16 @@ func Test_validatePlugin(t *testing.T) {
 		{
 			name:       "validating is failed due to invalid max_breaker_sec",
 			pluginName: "api-breaker",
-			pluginConfig: v2alpha1.ApisixRouteHTTPPluginConfig{
+			pluginConfig: map[string]interface{}{
 				"break_response_code": 200,
 				"max_breaker_sec":     2,
 			},
 			wantValid: false,
 		},
 		{
-			name:       "unknown plugin name",
+			name:       "validating is failed due to unknown plugin name",
 			pluginName: "Not-A-Plugin",
-			pluginConfig: v2alpha1.ApisixRouteHTTPPluginConfig{
+			pluginConfig: map[string]interface{}{
 				"break_response_code": 200,
 				"max_breaker_sec":     2,
 			},
@@ -102,7 +104,17 @@ func Test_validatePlugin(t *testing.T) {
 	fakeClient := newFakeSchemaClient()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotValid, _, _ := validatePlugin(fakeClient, tt.pluginName, tt.pluginConfig)
+			gotValid, _, _ := validatePlugin(fakeClient, tt.pluginName, v2beta1.ApisixRouteHTTPPluginConfig(tt.pluginConfig))
+			if gotValid != tt.wantValid {
+				t.Errorf("validatePlugin() gotValid = %v, want %v", gotValid, tt.wantValid)
+			}
+
+			gotValid, _, _ = validatePlugin(fakeClient, tt.pluginName, v2alpha1.ApisixRouteHTTPPluginConfig(tt.pluginConfig))
+			if gotValid != tt.wantValid {
+				t.Errorf("validatePlugin() gotValid = %v, want %v", gotValid, tt.wantValid)
+			}
+
+			gotValid, _, _ = validatePlugin(fakeClient, tt.pluginName, v1.Config(tt.pluginConfig))
 			if gotValid != tt.wantValid {
 				t.Errorf("validatePlugin() gotValid = %v, want %v", gotValid, tt.wantValid)
 			}
