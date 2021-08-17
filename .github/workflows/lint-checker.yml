@@ -95,24 +95,17 @@ jobs:
     needs: changes
     if: |
       (needs.changes.outputs.docs == 'true')
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-        node_version:
-          - 14
-        architecture:
-          - x64
-    name: Check Markdown links (NodeJS ${{ matrix.node_version }} - ${{ matrix.architecture }} on ${{ matrix.os }})
+    runs-on: ubuntu-latest
+    name: Check Markdown links
     steps:
       - uses: actions/checkout@v2
-      - name: Setup node
-        uses: actions/setup-node@v2
+      - uses: gaurav-nelson/github-action-markdown-link-check@v1
         with:
-          node-version: ${{ matrix.node_version }}
-          architecture: ${{ matrix.architecture }}
-      - name: Install
-        run: npm install -g markdown-link-check
-      - name: Run
-        run: git ls-files . -m | xargs markdown-link-check -c link-check-config.json -q -v  # modified files only, quiet mode, verbose mode
+          use-quiet-mode: 'yes'
+          use-verbose-mode: 'yes'
+          config-file: 'link-check-config.json'
+          folder-path: 'docs/en'
+          file-path: './README.md, ./install.md, ./test/e2e/README.md'
+          max-depth: -1
+          file-extension: ".md"
+          check-modified-files-only: "no"
