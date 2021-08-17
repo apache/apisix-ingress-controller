@@ -293,19 +293,19 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 }
 
 func (c *apisixRouteController) isApisixRouteEffective(ar kube.ApisixRoute) bool {
-	var ara string
+	var class string
 
 	if ar.GroupVersion() == kube.ApisixRouteV1 {
-		ara = ar.V1().Spec.IngressClass
+		class = ar.V1().Spec.IngressClass
 	} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
-		ara = ar.V2alpha1().Spec.IngressClass
+		class = ar.V2alpha1().Spec.IngressClass
 	} else if ar.GroupVersion() == kube.ApisixRouteV2beta1 {
-		ara = ar.V2beta1().Spec.IngressClass
+		class = ar.V2beta1().Spec.IngressClass
 	} else {
-		ara = c.controller.cfg.Kubernetes.IngressClass
+		class = c.controller.cfg.Kubernetes.IngressClass
 	}
 
-	if c.controller.cfg.Kubernetes.IngressClass == "*" || c.controller.cfg.Kubernetes.IngressClass == ara {
+	if c.controller.cfg.Kubernetes.IngressClass == "*" || c.controller.cfg.Kubernetes.IngressClass == class {
 		return true
 	}
 
