@@ -18,6 +18,10 @@
     {
       "pattern": "^https://github.com/apache/apisix-ingress-controller/tree/master/",
       "replacement": "{{BASEURL}}/"
+    },
+    {
+      "pattern": "^https://apisix.apache.org/docs/ingress-controller/(.*?)$",
+      "replacement": "{{BASEURL}}/docs/en/latest/$1.md"
     }
   ],
   "timeout": "20s",
