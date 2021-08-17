@@ -101,7 +101,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
-      - uses: ./.github/actions/markdown-link-check@v1
+      - uses: ./.github/actions/markdown-link-check
         with:
           use-quiet-mode: 'yes'
           use-verbose-mode: 'yes'
