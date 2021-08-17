@@ -19,11 +19,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/apache/apisix-ingress-controller/pkg/id"
+	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
-	ginkgo "github.com/onsi/ginkgo"
-	corev1 "k8s.io/api/core/v1"
 )
 
 var _ = ginkgo.Describe("support ingress.networking/v1beta1 https", func() {
@@ -118,13 +119,12 @@ w174RSQoNMc+odHxn95mxtYdYVE5PKkzgrfxqymLa5Y0LMPCpKOq4XB0paZPtrOt
 k1XbogS6EYyEdbkTDdXdUENvDrU7hzJXSVxJYADiqr44DGfWm6hK0bq9ZPc=
 -----END RSA PRIVATE KEY-----
 `
-	ginkgo.It("create an ingress resource with tls", func() {
+	ginkgo.It("should support ingress v1beta1 with tls", func() {
 		// create secrets
 		err := s.NewSecret(serverCertSecret, serverCert, serverKey)
 		assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
 
 		// create ingress
-		//tlsName := "tls-with-client-ca"
 		host := "mtls.httpbin.local"
 		// create route
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -156,8 +156,59 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
 		assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
 
+		apisixSsls, err := s.ListApisixSsl()
+		assert.Nil(ginkgo.GinkgoT(), err, "list SSLs error")
+		assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "SSL number should be 1")
+		assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls"), apisixSsls[0].ID, "SSL name")
+		assert.Equal(ginkgo.GinkgoT(), apisixSsls[0].Snis, []string{host}, "SSL configuration")
 	})
 
+	ginkgo.It("should support ingress v1 with tls", func() {
+		// create secrets
+		err := s.NewSecret(serverCertSecret, serverCert, serverKey)
+		assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
+
+		// create ingress
+		host := "mtls.httpbin.local"
+		// create route
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: httpbin-ingress-https
+  annotations:
+    kubernetes.io/ingress.class: apisix
+spec:
+  tls:
+  - hosts:
+    - %s
+    secretName: %s
+  rules:
+  - host: %s
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, host, serverCertSecret, host, backendSvc, backendSvcPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+		time.Sleep(10 * time.Second)
+
+		apisixRoutes, err := s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
+		assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
+
+		apisixSsls, err := s.ListApisixSsl()
+		assert.Nil(ginkgo.GinkgoT(), err, "list SSLs error")
+		assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "SSL number should be 1")
+		assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls"), apisixSsls[0].ID, "SSL name")
+		assert.Equal(ginkgo.GinkgoT(), apisixSsls[0].Snis, []string{host}, "SSL configuration")
+	})
 })
 
 var _ = ginkgo.Describe("support ingress.networking/v1", func() {
