@@ -91,3 +91,28 @@ jobs:
           node-version: '12.x'
       - run: npm install -g markdownlint-cli@0.25.0
       - run: markdownlint '**/*.md' --ignore node_modules --ignore CHANGELOG.md
+  markdown-link-check:
+    needs: changes
+    if: |
+      (needs.changes.outputs.docs == 'true')
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+        node_version:
+          - 14
+        architecture:
+          - x64
+    name: Check Markdown links (NodeJS ${{ matrix.node_version }} - ${{ matrix.architecture }} on ${{ matrix.os }})
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup node
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node_version }}
+          architecture: ${{ matrix.architecture }}
+      - name: Install
+        run: npm install -g markdown-link-check
+      - name: Run
+        run: git ls-files . -m | xargs markdown-link-check -c link-check-config.json -q -v  # modified files only, quiet mode, verbose mode

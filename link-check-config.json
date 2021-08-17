@@ -1,0 +1,28 @@
+{
+  "ignorePatterns": [
+    {
+      "pattern": "^https://github.com/.*?/issue"
+    },
+    {
+      "pattern": "^https://github.com/.*?/pull"
+    },
+    {
+      "pattern": "^#"
+    }
+  ],
+  "replacementPatterns": [
+    {
+      "pattern": "^https://github.com/apache/apisix-ingress-controller/blob/master/",
+      "replacement": "{{BASEURL}}/"
+    },
+    {
+      "pattern": "^https://github.com/apache/apisix-ingress-controller/tree/master/",
+      "replacement": "{{BASEURL}}/"
+    }
+  ],
+  "timeout": "20s",
+  "retryOn429": true,
+  "retryCount": 5,
+  "fallbackRetryDelay": "30s",
+  "aliveStatusCodes": [200, 206]
+}
