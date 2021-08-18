@@ -378,7 +378,6 @@ func (t *translator) translateHTTPRoute(ctx *TranslateContext, ar *configv2alpha
 		route.UpstreamId = id.GenID(upstreamName)
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
-		route.PluginConfigID = part.PluginConfigID
 		route.Timeout = timeout
 
 		if len(backends) > 0 {

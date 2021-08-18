@@ -96,7 +96,6 @@ type Route struct {
 	RemoteAddrs     []string         `json:"remote_addrs,omitempty" yaml:"remote_addrs,omitempty"`
 	UpstreamId      string           `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
 	Plugins         Plugins          `json:"plugins,omitempty" yaml:"plugins,omitempty"`
-	PluginConfigID  string           `json:"plugin_config_id,omitempty" yaml:"plugin_config_id,omitempty"`
 }
 
 // Vars represents the route match expressions of APISIX.

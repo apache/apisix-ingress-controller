@@ -100,7 +100,6 @@ type ApisixRouteHTTP struct {
 	Backends       []*ApisixRouteHTTPBackend  `json:"backends" yaml:"backends"`
 	Websocket      bool                       `json:"websocket" yaml:"websocket"`
 	Plugins        []*ApisixRouteHTTPPlugin   `json:"plugins,omitempty" yaml:"plugins,omitempty"`
-	PluginConfigID string                     `json:"plugin_config_id,omitempty" yaml:"plugin_config_id,omitempty"`
 	Authentication *ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 

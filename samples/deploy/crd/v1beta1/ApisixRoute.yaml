@@ -224,8 +224,6 @@ spec:
                     required:
                       - name
                       - enable
-                  plugin_config_id:
-                    type: string
                   authentication:
                     type: object
                     properties:
