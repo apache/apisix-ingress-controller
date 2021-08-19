@@ -20,6 +20,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
@@ -33,7 +35,26 @@ import (
 )
 
 type counter struct {
-	Count apisix.IntOrString `json:"count"`
+	Count intOrDescOneString `json:"count"`
+}
+
+// intOrDescOneString will decrease 1 if incoming value is string formatted number
+type intOrDescOneString struct {
+	Value int `json:"value"`
+}
+
+func (ios *intOrDescOneString) UnmarshalJSON(p []byte) error {
+	delta := 0
+	if strings.HasPrefix(string(p), `"`) {
+		delta = -1
+	}
+	result := strings.Trim(string(p), `"`)
+	count, err := strconv.Atoi(result)
+	if err != nil {
+		return err
+	}
+	ios.Value = count + delta
+	return nil
 }
 
 // ApisixRoute is the ApisixRoute CRD definition.
@@ -163,7 +184,7 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 		if err != nil {
 			return false, err
 		}
-		count := c.Count.IntValue
+		count := c.Count.Value
 		if count != desired {
 			ginkgo.GinkgoT().Logf("mismatched number of items, expected %d but found %d", desired, count)
 			return false, nil
