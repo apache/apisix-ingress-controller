@@ -76,6 +76,7 @@ func TestNewConfigFromFile(t *testing.T) {
 log_level: warn
 log_output: stdout
 http_listen: :9090
+https_listen: :9443
 enable_profiling: true
 kubernetes:
   kubeconfig: /path/to/foo/baz

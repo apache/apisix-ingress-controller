@@ -106,6 +106,13 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker push $(LOCAL_REGISTRY)/jmalloc/echo-server:latest
 endif
 
+# rebuild ingress controller image and push to the local registry for e2e tests.
+.PHONY: rebuild
+rebuild:
+	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true .
+	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(LOCAL_REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+	docker push $(LOCAL_REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+
 ### kind-up:              Launch a Kubernetes cluster with a image registry by Kind.
 .PHONY: kind-up
 kind-up:
