@@ -24,6 +24,6 @@ metadata:
 spec:
   ports:
     - port: 443
-      targetPort: 8080
+      targetPort: 443
   selector:
     app: apisix-ingress-controller

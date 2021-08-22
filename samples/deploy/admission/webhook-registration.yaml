@@ -29,11 +29,11 @@ webhooks:
         name: apisix-admission-server
         namespace: ingress-apisix
         path: "/validation/apisixRoute/plugin"
-      caBundle: ""
+      caBundle: ${CA_BUNDLE}
     rules:
       - operations: [ "CREATE", "UPDATE" ]
         apiGroups: ["apisix.apache.org"]
         apiVersions: ["*"]
-        resources: ["ApisixRoutes"]
+        resources: ["apisixroutes"]
     timeoutSeconds: 30
     failurePolicy: Fail
