@@ -64,6 +64,7 @@ type Config struct {
 	LogLevel        string           `json:"log_level" yaml:"log_level"`
 	LogOutput       string           `json:"log_output" yaml:"log_output"`
 	HTTPListen      string           `json:"http_listen" yaml:"http_listen"`
+	HTTPSListen     string           `json:"https_listen" yaml:"https_listen"`
 	EnableProfiling bool             `json:"enable_profiling" yaml:"enable_profiling"`
 	Kubernetes      KubernetesConfig `json:"kubernetes" yaml:"kubernetes"`
 	APISIX          APISIXConfig     `json:"apisix" yaml:"apisix"`
@@ -107,6 +108,9 @@ func NewDefaultConfig() *Config {
 		LogLevel:        "warn",
 		LogOutput:       "stderr",
 		HTTPListen:      ":8080",
+		HTTPSListen:     ":443",
+		CertFilePath:    "/etc/webhook/certs/cert.pem",
+		KeyFilePath:     "/etc/webhook/certs/key.pem",
 		EnableProfiling: true,
 		Kubernetes: KubernetesConfig{
 			Kubeconfig:          "", // Use in-cluster configurations.

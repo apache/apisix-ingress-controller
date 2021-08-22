@@ -57,7 +57,7 @@ func TestWebhooks(t *testing.T) {
 	req, err := http.NewRequest("POST", "/validation", nil)
 	assert.Nil(t, err, nil)
 	c.Request = req
-	mountWebhooks(r)
+	MountWebhooks(r)
 
 	assert.Equal(t, w.Code, http.StatusOK)
 }

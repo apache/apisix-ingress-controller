@@ -64,8 +64,9 @@ type apisixRoutePlugin struct {
 // When the validation of one plugin fails, it will continue to validate the rest of plugins.
 var pluginValidator = kwhvalidating.ValidatorFunc(
 	func(ctx context.Context, review *kwhmodel.AdmissionReview, object metav1.Object) (result *kwhvalidating.ValidatorResult, err error) {
-		valid := true
+		log.Debug("arrive plugin validator webhook")
 
+		valid := true
 		var plugins []apisixRoutePlugin
 
 		switch ar := object.(type) {

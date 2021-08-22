@@ -16,11 +16,14 @@
 package api
 
 import (
+	"context"
+	"crypto/tls"
 	"net"
 	"net/http"
 	"net/http/pprof"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 
 	apirouter "github.com/apache/apisix-ingress-controller/pkg/api/router"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
@@ -30,12 +33,10 @@ import (
 
 // Server represents the API Server in ingress-apisix-controller.
 type Server struct {
-	router       *gin.Engine
-	httpListener net.Listener
-	pprofMu      *http.ServeMux
-	certFile     string
-	keyFile      string
-	addr         string
+	httpServer      *gin.Engine
+	admissionServer *http.Server
+	httpListener    net.Listener
+	pprofMu         *http.ServeMux
 }
 
 // NewServer initializes the API Server.
@@ -45,18 +46,14 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		return nil, err
 	}
 	gin.SetMode(gin.ReleaseMode)
-	router := gin.New()
-	router.Use(gin.Recovery(), gin.Logger())
-	apirouter.Mount(router)
+	httpServer := gin.New()
+	httpServer.Use(gin.Recovery(), gin.Logger())
+	apirouter.Mount(httpServer)
 
 	srv := &Server{
-		router:       router,
+		httpServer:   httpServer,
 		httpListener: httpListener,
-		certFile:     cfg.CertFilePath,
-		keyFile:      cfg.KeyFilePath,
-		addr:         cfg.HTTPListen,
 	}
-
 	if cfg.EnableProfiling {
 		srv.pprofMu = new(http.ServeMux)
 		srv.pprofMu.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
@@ -64,7 +61,28 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		srv.pprofMu.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 		srv.pprofMu.HandleFunc("/debug/pprof/trace", pprof.Trace)
 		srv.pprofMu.HandleFunc("/debug/pprof/", pprof.Index)
-		router.GET("/debug/pprof/*profile", gin.WrapF(srv.pprofMu.ServeHTTP))
+		httpServer.GET("/debug/pprof/*profile", gin.WrapF(srv.pprofMu.ServeHTTP))
+	}
+
+	cert, err := tls.LoadX509KeyPair(cfg.CertFilePath, cfg.KeyFilePath)
+	if err != nil {
+		log.Warnw("failed to load x509 key pair, will not start admission server",
+			zap.String("Error", err.Error()),
+			zap.String("CertFilePath", cfg.CertFilePath),
+			zap.String("KeyFilePath", cfg.KeyFilePath),
+		)
+	} else {
+		admission := gin.New()
+		admission.Use(gin.Recovery(), gin.Logger())
+		apirouter.MountWebhooks(admission)
+
+		srv.admissionServer = &http.Server{
+			Addr:    cfg.HTTPSListen,
+			Handler: admission,
+			TLSConfig: &tls.Config{
+				Certificates: []tls.Certificate{cert},
+			},
+		}
 	}
 
 	return srv, nil
@@ -77,18 +95,29 @@ func (srv *Server) Run(stopCh <-chan struct{}) error {
 		if err := srv.httpListener.Close(); err != nil {
 			log.Errorf("failed to close http listener: %s", err)
 		}
+
+		if srv.admissionServer != nil {
+			if err := srv.admissionServer.Shutdown(context.TODO()); err != nil {
+				log.Errorf("failed to shutdown admission server: %s", err)
+			}
+		}
 	}()
 
-	if srv.keyFile == "" || srv.certFile == "" {
-		if err := srv.router.RunListener(srv.httpListener); err != nil && !types.IsUseOfClosedNetConnErr(err) {
-			log.Errorf("failed to start API Server: %s", err)
-			return err
+	go func() {
+		log.Debug("starting http server")
+		if err := srv.httpServer.RunListener(srv.httpListener); err != nil && !types.IsUseOfClosedNetConnErr(err) {
+			log.Errorf("failed to start http server: %s", err)
 		}
-	} else {
-		if err := srv.router.RunTLS(srv.addr, srv.certFile, srv.keyFile); err != nil && !types.IsUseOfClosedNetConnErr(err) {
-			log.Errorf("failed to start API Server with TLS: %s", err)
-			return err
-		}
+	}()
+
+	if srv.admissionServer != nil {
+		go func() {
+			log.Debug("starting admission server")
+			if err := srv.admissionServer.ListenAndServeTLS("", ""); err != nil && !types.IsUseOfClosedNetConnErr(err) {
+				log.Errorf("failed to start admission server: %s", err)
+			}
+		}()
 	}
+
 	return nil
 }
