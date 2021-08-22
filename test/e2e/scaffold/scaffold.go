@@ -12,6 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package scaffold
 
 import (
@@ -50,6 +51,7 @@ type Options struct {
 	HTTPBinServicePort    int
 	APISIXRouteVersion    string
 	APISIXAdminAPIKey     string
+	EnableWebhooks        bool
 }
 
 type Scaffold struct {
@@ -125,6 +127,7 @@ func NewDefaultScaffold() *Scaffold {
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
 		APISIXRouteVersion:    kube.ApisixRouteV1,
+		EnableWebhooks:        true,
 	}
 	return NewScaffold(opts)
 }
@@ -138,6 +141,7 @@ func NewDefaultV2Scaffold() *Scaffold {
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
 		APISIXRouteVersion:    kube.ApisixRouteV2alpha1,
+		EnableWebhooks:        true,
 	}
 	return NewScaffold(opts)
 }

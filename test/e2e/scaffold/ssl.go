@@ -29,8 +29,8 @@ kind: Secret
 metadata:
   name: %s
 data:
-  cert: %s
-  key: %s
+  cert.pem: %s
+  key.pem: %s
 `
 	_clientCASecretTemplate = `
 apiVersion: v1
@@ -82,7 +82,7 @@ func (s *Scaffold) NewSecret(name, cert, key string) error {
 	return nil
 }
 
-// NewSecret new a k8s secret
+// NewClientCASecret new a k8s secret
 func (s *Scaffold) NewClientCASecret(name, cert, key string) error {
 	certBase64 := base64.StdEncoding.EncodeToString([]byte(cert))
 	secret := fmt.Sprintf(_clientCASecretTemplate, name, certBase64)
