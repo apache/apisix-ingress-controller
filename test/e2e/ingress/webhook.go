@@ -24,7 +24,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.FDescribe("Enable webhooks", func() {
+var _ = ginkgo.Describe("Enable webhooks", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
@@ -35,37 +35,6 @@ var _ = ginkgo.FDescribe("Enable webhooks", func() {
 		EnableWebhooks:        true,
 	}
 	s := scaffold.NewScaffold(opts)
-
-	//	ginkgo.It("should create the ApisixRoute with valid plugin configuration successfully", func() {
-	//		backendSvc, backendPorts := s.DefaultHTTPBackend()
-	//		ar := fmt.Sprintf(`
-	//apiVersion: apisix.apache.org/v2alpha1
-	//kind: ApisixRoute
-	//metadata:
-	//name: httpbin-route
-	//spec:
-	//http:
-	//- name: rule1
-	//  match:
-	//    hosts:
-	//    - httpbin.org
-	//    paths:
-	//      - /status/*
-	//  backends:
-	//  - serviceName: %s
-	//    servicePort: %d
-	//    resolveGranularity: service
-	//  plugins:
-	//  - name: api-breaker
-	//    enable: true
-	//    config:
-	//      break_response_code: 502
-	//`, backendSvc, backendPorts[0])
-	//
-	//		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-	//		err := s.EnsureNumApisixRoutesCreated(1)
-	//		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-	//	})
 
 	ginkgo.It("should fail to create the ApisixRoute with invalid plugin configuration", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
