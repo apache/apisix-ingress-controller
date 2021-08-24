@@ -39,7 +39,7 @@ As the data plane of apisix-ingress-controller, [Apache APISIX](http://apisix.ap
 
 ```shell
 cd /path/to/apisix-helm-chart
-helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo add apisix https://charts.apisix.com
 helm repo update
 kubectl create ns ingress-apisix
 helm install apisix charts/apisix \
