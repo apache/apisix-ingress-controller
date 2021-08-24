@@ -27,6 +27,7 @@ apisix:
     - 0.0.0.0/0
   port_admin: 9180
   stream_proxy:                 # TCP/UDP proxy
+    only: false
     tcp:                        # TCP proxy port list
       - 9100
     udp:

@@ -31,25 +31,31 @@ This document explains how to install Ingress APISIX on [Tencent TKE](https://cl
 * Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
 * Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
 
-## Install APISIX
+## Install APISIX and apisix-ingress-controller
 
-[Apache APISIX](http://apisix.apache.org/) as the proxy plane of apisix-ingress-controller, should be deployed in advance.
+As the data plane of apisix-ingress-controller, [Apache APISIX](http://apisix.apache.org/) can be deployed at the same time using Helm chart.
 
 ```shell
 cd /path/to/apisix-helm-chart
 helm repo add bitnami https://charts.bitnami.com/bitnami
-helm repo add apisix https://charts.apiseven.com
-# Use `helm search repo apisix` to search charts about apisix
 helm repo update
-helm install apisix apisix/apisix \
+kubectl create ns ingress-apisix
+helm install apisix charts/apisix \
   --set gateway.type=LoadBalancer \
-  --set admin.allow.ipList="{0.0.0.0/0}" \
-  --set etcd.persistence.size=10Gi \
-  --namespace ingress-apisix \
+  --set ingress-controller.enabled=true \
+  --set etcd.persistence.size="10Gi" \
+  --namespace ingress-apisix
 kubectl get service --namespace ingress-apisix
 ```
 
 Please be careful you must configure the `etcd.persistence.size` to multiples of 10Gi (it's a limitation on TKE), otherwise the [PersistentVolumeClaim](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) creation will fail.
+
+Five Service resources were created.
+
+* `apisix-gateway`, which processes the real traffic;
+* `apisix-admin`, which acts as the control plane to process all the configuration changes.
+* `apisix-ingress-controller`, which exposes apisix-ingress-controller's metrics.
+* `apisix-etcd` and `apisix-etcd-headless` for etcd service and internal communication.
 
 Two Service resources were created, one is `apisix-gateway`, which processes the real traffic; another is `apisix-admin`, which acts as the control plane to process all the configuration changes.
 
@@ -58,24 +64,6 @@ The gateway service type is set to `LoadBalancer` (see [TKE Service Management](
 ```shell
 kubectl get service apisix-gateway --namespace ingress-apisix -o jsonpath='{.status.loadBalancer.ingress[].ip}'
 ```
-
-Another thing should be concerned that the `allow.ipList` field should be customized according to the [TKE Network Settings](https://cloud.tencent.com/document/product/457/50353), so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
-
-## Install apisix-ingress-controller
-
-You can also install apisix-ingress-controller by Helm Charts, it's recommended to install it in the same namespace with Apache APISIX.
-
-```shell
-cd /path/to/apisix-helm-chart
-# install apisix-ingress-controller
-helm install apisix-ingress-controller apisix/apisix-ingress-controller \
-  --set image.tag=dev \
-  --set config.apisix.baseURL=http://apisix-admin:9180/apisix/admin \
-  --set config.apisix.adminKey=edd1c9f034335f136f87ad84b625c8f1 \
-  --namespace ingress-apisix
-```
-
-Change the `image.tag` to the apisix-ingress-controller version that you desire. You have to wait for while until the corresponding pods are running.
 
 Now open your [TKE console](https://console.cloud.tencent.com/tke2/overview), choosing your cluster and clicking the Workloads tag, you'll see all pods of Apache APISIX, etcd and apisix-ingress-controller are ready.
 

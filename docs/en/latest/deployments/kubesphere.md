@@ -32,46 +32,30 @@ KubeSphere is a distributed operating system managing cloud native applications 
 * Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
 * Make sure your target namespace exists, kubectl operations of this document will be executed in namespace `ingress-apisix`.
 
-## Install APISIX
+## Install APISIX and apisix-ingress-controller
 
-[Apache APISIX](http://apisix.apache.org/) as the proxy plane of apisix-ingress-controller, should be deployed in advance.
+As the data plane of apisix-ingress-controller, [Apache APISIX](http://apisix.apache.org/) can be deployed at the same time using Helm chart.
 
 ```shell
 cd /path/to/apisix-helm-chart
 helm repo add bitnami https://charts.bitnami.com/bitnami
-helm repo add apisix https://charts.apiseven.com
-# Use `helm search repo apisix` to search charts about apisix
 helm repo update
-helm install apisix apisix/apisix \
+kubectl create ns ingress-apisix
+helm install apisix charts/apisix \
   --set gateway.type=NodePort \
-  --set admin.allow.ipList="{0.0.0.0/0}" \
-  --namespace ingress-apisix \
+  --set ingress-controller.enabled=true \
+  --namespace ingress-apisix
 kubectl get service --namespace ingress-apisix
 ```
 
-Two Service resources were created, one is `apisix-gateway`, which processes the real traffic; another is `apisix-admin`, which acts as the control plane to process all the configuration changes.
+Five Service resources were created.
+
+* `apisix-gateway`, which processes the real traffic;
+* `apisix-admin`, which acts as the control plane to process all the configuration changes.
+* `apisix-ingress-controller`, which exposes apisix-ingress-controller's metrics.
+* `apisix-etcd` and `apisix-etcd-headless` for etcd service and internal communication.
 
 The gateway service type is set to `NodePort`, so that clients can access Apache APISIX through the Node IPs and the assigned port.
 If you want to expose a `LoadBalancer` service, try to use [Porter](https://github.com/kubesphere/porter).
-
-Another thing that should be concerned that the `allow.ipList` field should be customized according to the Pod CIDR settings, so that the apisix-ingress-controller instances can access the APISIX instances (resources pushing).
-
-## Install apisix-ingress-controller
-
-You can also install apisix-ingress-controller by Helm Charts. It's recommended to install it in the same namespace with Apache APISIX.
-
-```shell
-cd /path/to/apisix-helm-chart
-# install apisix-ingress-controller
-helm install apisix-ingress-controller apisix/apisix-ingress-controller \
-  --set image.tag=dev \
-  --set config.apisix.baseURL=http://apisix-admin:9180/apisix/admin \
-  --set config.apisix.adminKey=edd1c9f034335f136f87ad84b625c8f1 \
-  --namespace ingress-apisix
-```
-
-The admin key used above is the default one. If you change the admin key configuration when you deployed APISIX, please remember to change it here.
-
-Change the `image.tag` to the apisix-ingress-controller version that you desire. Wait for the corresponding pods are running.
 
 Now try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../practices/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
