@@ -139,7 +139,7 @@ the apisix cluster and others are created`,
 	cmd.PersistentFlags().StringVar(&cfg.LogLevel, "log-level", "info", "error log level")
 	cmd.PersistentFlags().StringVar(&cfg.LogOutput, "log-output", "stderr", "error log output file")
 	cmd.PersistentFlags().StringVar(&cfg.HTTPListen, "http-listen", ":8080", "the HTTP Server listen address")
-	cmd.PersistentFlags().StringVar(&cfg.HTTPSListen, "https-listen", ":443", "the HTTPS Server listen address")
+	cmd.PersistentFlags().StringVar(&cfg.HTTPSListen, "https-listen", ":8443", "the HTTPS Server listen address")
 	cmd.PersistentFlags().BoolVar(&cfg.EnableProfiling, "enable-profiling", true, "enable profiling via web interface host:port/debug/pprof")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.Kubeconfig, "kubeconfig", "", "Kubernetes configuration file (by default in-cluster configuration will be used)")
 	cmd.PersistentFlags().DurationVar(&cfg.Kubernetes.ResyncInterval.Duration, "resync-interval", time.Minute, "the controller resync (with Kubernetes) interval, the minimum resync interval is 30s")

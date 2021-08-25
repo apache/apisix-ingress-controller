@@ -19,8 +19,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/apache/apisix-ingress-controller/pkg/api/validation"
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 )
 
-func MountWebhooks(r *gin.Engine) {
+func MountWebhooks(r *gin.Engine, co *apisix.ClusterOptions) {
+	// init the schema client
+	_, _ = validation.GetSchemaClient(co)
 	r.POST("/validation/apisixroute/plugin", gin.WrapH(validation.NewPluginValidatorHandler()))
 }

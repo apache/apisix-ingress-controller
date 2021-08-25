@@ -28,8 +28,7 @@ import (
 )
 
 const (
-	certFileName = "cert.pem"
-	_tlsCert     = `-----BEGIN CERTIFICATE-----
+	_tlsCert = `-----BEGIN CERTIFICATE-----
 MIIDBTCCAe0CFHoW964zOGe29tXJwA4WWsrUxyggMA0GCSqGSIb3DQEBCwUAMD8x
 PTA7BgNVBAMMNGFwaXNpeC1pbmdyZXNzLWNvbnRyb2xsZXItd2ViaG9vay5pbmdy
 ZXNzLWFwaXNpeC5zdmMwHhcNMjEwODIxMDgxNDQzWhcNMjIwODIxMDgxNDQzWjA/
@@ -49,8 +48,7 @@ S3BTAjguuygwbpo4M+S6hyObMpdNbr9dVhFLGj02lzL3a+mM1C19kJCpbJggu1Y3
 oXDF4V2XHbzJ
 -----END CERTIFICATE-----
 `
-	keyFileName = "key.pem"
-	_tlsKey     = `-----BEGIN RSA PRIVATE KEY-----
+	_tlsKey = `-----BEGIN RSA PRIVATE KEY-----
 MIIEpgIBAAKCAQEA2mMDnAkHbpmMPMgZHTh5VKnUXRrHKMY3OEzTyDs4MxBSrxBs
 IrRYXjXBi6A75IRUXD9/W8DyIENclLRTrYdLt03OD8n5a2Z6+DW8XfAO0FZ058Qn
 yKOo9v1/RKqHkPtVPwbCjUvCCClsgihOSzxcgcF2oHm2x1JaATBicWNS4cze6Lrk
@@ -80,14 +78,21 @@ bKS1uxKukPFp6zxFwR7YZIiwo3tGkcudpHdTNurNMQiSTN97LTo8KL8y
 `
 )
 
-func generateCertFiles() {
-	_ = ioutil.WriteFile(certFileName, []byte(_tlsCert), 0644)
-	_ = ioutil.WriteFile(keyFileName, []byte(_tlsKey), 0644)
+func generateCertFiles() (certFileName string, keyFileName string) {
+	certFile, _ := ioutil.TempFile("", "cert.*.pem")
+	certFileName = certFile.Name()
+	_, _ = certFile.Write([]byte(_tlsCert))
+
+	keyFile, _ := ioutil.TempFile("", "key.*.pem")
+	keyFileName = keyFile.Name()
+	_, _ = keyFile.Write([]byte(_tlsKey))
+	return
 }
 
-func deleteCertFiles() {
-	_ = os.Remove(certFileName)
-	_ = os.Remove(keyFileName)
+func deleteFiles(filename ...string) {
+	for _, fn := range filename {
+		_ = os.Remove(fn)
+	}
 }
 
 func TestServer(t *testing.T) {
@@ -97,14 +102,15 @@ func TestServer(t *testing.T) {
 }
 
 func TestServerRun(t *testing.T) {
+	certFileName, keyFileName := generateCertFiles()
+	defer deleteFiles(certFileName, keyFileName)
+
 	cfg := &config.Config{
 		HTTPListen:   "127.0.0.1:0",
 		HTTPSListen:  "127.0.0.1:0",
 		CertFilePath: certFileName,
 		KeyFilePath:  keyFileName,
 	}
-	generateCertFiles()
-	defer deleteCertFiles()
 
 	srv, err := NewServer(cfg)
 	assert.Nil(t, err, "see non-nil error: ", err)

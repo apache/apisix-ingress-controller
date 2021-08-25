@@ -108,7 +108,7 @@ func NewDefaultConfig() *Config {
 		LogLevel:        "warn",
 		LogOutput:       "stderr",
 		HTTPListen:      ":8080",
-		HTTPSListen:     ":443",
+		HTTPSListen:     ":8443",
 		CertFilePath:    "/etc/webhook/certs/cert.pem",
 		KeyFilePath:     "/etc/webhook/certs/key.pem",
 		EnableProfiling: true,

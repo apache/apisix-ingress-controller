@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	kwhhttp "github.com/slok/kubewebhook/v2/pkg/http"
 	kwhmodel "github.com/slok/kubewebhook/v2/pkg/model"
 	kwhvalidating "github.com/slok/kubewebhook/v2/pkg/webhook/validating"
@@ -34,6 +35,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
+// NewPluginValidatorHandler returns a new http.Handler ready to handle admission reviews using the pluginValidator.
 func NewPluginValidatorHandler() http.Handler {
 	// Create a validating webhook.
 	wh, err := kwhvalidating.NewWebhook(kwhvalidating.WebhookConfig{
@@ -107,7 +109,7 @@ var pluginValidator = kwhvalidating.ValidatorFunc(
 			return &kwhvalidating.ValidatorResult{Valid: false, Message: ErrNotApisixRoute.Error()}, ErrNotApisixRoute
 		}
 
-		client, err := GetSchemaClient()
+		client, err := GetSchemaClient(&apisix.ClusterOptions{})
 		if err != nil {
 			log.Errorf("failed to get the schema client: %s", err)
 			return &kwhvalidating.ValidatorResult{Valid: false, Message: "failed to get the schema client"}, err
@@ -125,28 +127,23 @@ var pluginValidator = kwhvalidating.ValidatorFunc(
 		return &kwhvalidating.ValidatorResult{Valid: valid, Message: strings.Join(msg, "\n")}, nil
 	})
 
-func validatePlugin(client apisix.Schema, pluginName string, pluginConfig interface{}) (valid bool, msg string, err error) {
+func validatePlugin(client apisix.Schema, pluginName string, pluginConfig interface{}) (valid bool, msg string, result error) {
 	valid = true
 
 	pluginSchema, err := client.GetPluginSchema(context.TODO(), pluginName)
 	if err != nil {
-		log.Errorf("failed to get the schema of plugin %s: %s", pluginName, err)
+		result = fmt.Errorf("failed to get the schema of plugin %s: %s", pluginName, err)
+		log.Error(result)
 		valid = false
-		msg = fmt.Sprintf("failed to get the schema of plugin %s", pluginName)
+		msg = result.Error()
 		return
 	}
 
-	var errorMsg []string
-	if err, re := validateSchema(pluginSchema.Content, pluginConfig); err != nil {
+	if _, err := validateSchema(pluginSchema.Content, pluginConfig); err != nil {
 		valid = false
 		msg = fmt.Sprintf("%s plugin's config is invalid\n", pluginName)
-		for _, desc := range re {
-			errorMsg = append(errorMsg, desc.String())
-		}
+		result = multierror.Append(result, err)
 	}
 
-	if len(errorMsg) > 0 {
-		msg = strings.Join(errorMsg, "\n")
-	}
 	return
 }

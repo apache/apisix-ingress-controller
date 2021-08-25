@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/xeipuuv/gojsonschema"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
@@ -35,7 +35,7 @@ var (
 
 // GetSchemaClient returns a Schema client in the singleton way.
 // It can query the schema of objects from APISIX.
-func GetSchemaClient() (apisix.Schema, error) {
+func GetSchemaClient(co *apisix.ClusterOptions) (apisix.Schema, error) {
 	once.Do(func() {
 		client, err := apisix.NewClient()
 		if err != nil {
@@ -43,47 +43,38 @@ func GetSchemaClient() (apisix.Schema, error) {
 			return
 		}
 
-		cfg := config.NewDefaultConfig()
-		if err := cfg.Validate(); err != nil {
+		if err := client.AddCluster(context.TODO(), co); err != nil {
 			onceErr = err
 			return
 		}
 
-		clusterOpts := &apisix.ClusterOptions{
-			Name:     cfg.APISIX.DefaultClusterName,
-			AdminKey: cfg.APISIX.DefaultClusterAdminKey,
-			BaseURL:  cfg.APISIX.DefaultClusterBaseURL,
-		}
-		if err := client.AddCluster(context.TODO(), clusterOpts); err != nil {
-			onceErr = err
-			return
-		}
-
-		schemaClient = client.Cluster(cfg.APISIX.DefaultClusterName).Schema()
+		schemaClient = client.Cluster(co.Name).Schema()
 	})
 	return schemaClient, onceErr
 }
 
 // TODO: make this helper function more generic so that it can be used by other validating webhooks.
-func validateSchema(schema string, config interface{}) (error, []gojsonschema.ResultError) {
+func validateSchema(schema string, config interface{}) (bool, error) {
+	// TODO: cache the schema loader
 	schemaLoader := gojsonschema.NewStringLoader(schema)
 	configLoader := gojsonschema.NewGoLoader(config)
 
 	result, err := gojsonschema.Validate(schemaLoader, configLoader)
 	if err != nil {
 		log.Errorf("failed to load and validate the schema: %s", err)
-		return err, nil
+		return false, err
 	}
 
 	if result.Valid() {
-		log.Info("the plugin's configLoader is valid")
-	} else {
-		log.Error("the plugin's configLoader is not valid. see errors:")
-		for _, desc := range result.Errors() {
-			log.Errorf("- %s\n", desc)
-		}
-		return fmt.Errorf("invalid plugin config"), result.Errors()
+		return true, nil
 	}
 
-	return nil, nil
+	log.Warn("the given document is not valid. see errors:\n")
+	var resultErr error
+	for _, desc := range result.Errors() {
+		resultErr = multierror.Append(resultErr, fmt.Errorf("%s\n", desc.Description()))
+		log.Errorf("- %s\n", desc)
+	}
+
+	return false, resultErr
 }

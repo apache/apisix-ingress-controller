@@ -21,6 +21,9 @@ import (
 	"net"
 	"net/http"
 	"net/http/pprof"
+	"time"
+
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -74,7 +77,11 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	} else {
 		admission := gin.New()
 		admission.Use(gin.Recovery(), gin.Logger())
-		apirouter.MountWebhooks(admission)
+		apirouter.MountWebhooks(admission, &apisix.ClusterOptions{
+			Name:     cfg.APISIX.DefaultClusterName,
+			AdminKey: cfg.APISIX.DefaultClusterAdminKey,
+			BaseURL:  cfg.APISIX.DefaultClusterBaseURL,
+		})
 
 		srv.admissionServer = &http.Server{
 			Addr:    cfg.HTTPSListen,
@@ -92,14 +99,18 @@ func NewServer(cfg *config.Config) (*Server, error) {
 func (srv *Server) Run(stopCh <-chan struct{}) error {
 	go func() {
 		<-stopCh
-		if err := srv.httpListener.Close(); err != nil {
-			log.Errorf("failed to close http listener: %s", err)
-		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
-		if srv.admissionServer != nil {
-			if err := srv.admissionServer.Shutdown(context.TODO()); err != nil {
-				log.Errorf("failed to shutdown admission server: %s", err)
-			}
+		closeHttp := make(chan struct{})
+		go srv.closeHttpServer(closeHttp)
+
+		select {
+		case <-ctx.Done():
+			log.Warnf("close http server timeout")
+			srv.closeAdmissionServer()
+		case <-closeHttp:
+			srv.closeAdmissionServer()
 		}
 	}()
 
@@ -120,4 +131,19 @@ func (srv *Server) Run(stopCh <-chan struct{}) error {
 	}
 
 	return nil
+}
+
+func (srv *Server) closeHttpServer(closed chan struct{}) {
+	if err := srv.httpListener.Close(); err != nil {
+		log.Errorf("failed to close http listener: %s", err)
+	}
+	closed <- struct{}{}
+}
+
+func (srv *Server) closeAdmissionServer() {
+	if srv.admissionServer != nil {
+		if err := srv.admissionServer.Shutdown(context.TODO()); err != nil {
+			log.Errorf("failed to shutdown admission server: %s", err)
+		}
+	}
 }

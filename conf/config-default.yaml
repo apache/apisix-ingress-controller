@@ -31,7 +31,7 @@ cert_file: "/etc/webhook/certs/cert.pem" # the TLS certificate file path.
 key_file: "/etc/webhook/certs/key.pem"   # the TLS key file path.
 
 http_listen: ":8080"   # the HTTP Server listen address, default is ":8080"
-https_listen: ":443"   # the HTTPS Server listen address, default is ":443"
+https_listen: ":8443"   # the HTTPS Server listen address, default is ":8443"
 enable_profiling: true # enable profiling via web interfaces
                        # host:port/debug/pprof, default is true.
 
