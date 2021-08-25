@@ -281,7 +281,8 @@ func (s *Scaffold) APISIXGatewayServiceEndpoint() string {
 
 func (s *Scaffold) beforeEach() {
 	var err error
-	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.opts.Name, time.Now().Nanosecond())
+	s.namespace = "ingress-apisix"
+	//s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.opts.Name, time.Now().Nanosecond())
 	s.kubectlOptions = &k8s.KubectlOptions{
 		ConfigPath: s.opts.Kubeconfig,
 		Namespace:  s.namespace,

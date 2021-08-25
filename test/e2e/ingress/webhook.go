@@ -62,6 +62,9 @@ spec:
        break_response_code: 100 # should in [200, 599]
 `, backendSvc, backendPorts[0])
 
-		assert.Error(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "Failed to create ApisixRoute")
+		err := s.CreateResourceFromString(ar)
+		assert.Error(ginkgo.GinkgoT(), err, "Failed to create ApisixRoute")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "admission webhook")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request: api-breaker plugin's config is invalid")
 	})
 })
