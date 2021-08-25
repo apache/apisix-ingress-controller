@@ -347,6 +347,11 @@ func (in *ApisixUpstreamConfig) DeepCopyInto(out *ApisixUpstreamConfig) {
 		*out = new(LoadBalancer)
 		**out = **in
 	}
+	if in.Retries != nil {
+		in, out := &in.Retries, &out.Retries
+		*out = new(int)
+		**out = **in
+	}
 	if in.Timeout != nil {
 		in, out := &in.Timeout, &out.Timeout
 		*out = new(UpstreamTimeout)

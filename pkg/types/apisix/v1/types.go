@@ -181,7 +181,7 @@ type Upstream struct {
 	Checks  *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
 	Nodes   UpstreamNodes        `json:"nodes" yaml:"nodes"`
 	Scheme  string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
-	Retries int                  `json:"retries,omitempty" yaml:"retries,omitempty"`
+	Retries *int                 `json:"retries,omitempty" yaml:"retries,omitempty"`
 	Timeout *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
 
