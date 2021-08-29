@@ -29,8 +29,8 @@ kind: Secret
 metadata:
   name: %s
 data:
-  cert.pem: %s
-  key.pem: %s
+  cert: %s
+  key: %s
 `
 	_clientCASecretTemplate = `
 apiVersion: v1

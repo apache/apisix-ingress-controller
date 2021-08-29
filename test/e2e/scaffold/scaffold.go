@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strings"
@@ -77,7 +78,7 @@ type Scaffold struct {
 	EtcdServiceFQDN string
 }
 
-// Getkubeconfig returns the kubeconfig file path.
+// GetKubeconfig returns the kubeconfig file path.
 // Order:
 // env KUBECONFIG;
 // ~/.kube/config;
@@ -127,7 +128,7 @@ func NewDefaultScaffold() *Scaffold {
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
 		APISIXRouteVersion:    kube.ApisixRouteV1,
-		EnableWebhooks:        true,
+		EnableWebhooks:        false,
 	}
 	return NewScaffold(opts)
 }
@@ -141,7 +142,7 @@ func NewDefaultV2Scaffold() *Scaffold {
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
 		APISIXRouteVersion:    kube.ApisixRouteV2alpha1,
-		EnableWebhooks:        true,
+		EnableWebhooks:        false,
 	}
 	return NewScaffold(opts)
 }
@@ -281,8 +282,7 @@ func (s *Scaffold) APISIXGatewayServiceEndpoint() string {
 
 func (s *Scaffold) beforeEach() {
 	var err error
-	s.namespace = "ingress-apisix"
-	//s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.opts.Name, time.Now().Nanosecond())
+	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.opts.Name, time.Now().Nanosecond())
 	s.kubectlOptions = &k8s.KubectlOptions{
 		ConfigPath: s.opts.Kubeconfig,
 		Namespace:  s.namespace,
@@ -312,6 +312,11 @@ func (s *Scaffold) beforeEach() {
 	assert.Nil(s.t, err, "initializing httpbin")
 
 	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.httpbinService.Name, 3, 2*time.Second)
+
+	if s.opts.EnableWebhooks {
+		err := generateWebhookCert(s.namespace)
+		assert.Nil(s.t, err, "generate certs and create webhook secret")
+	}
 
 	err = s.newIngressAPISIXController()
 	assert.Nil(s.t, err, "initializing ingress apisix controller")
@@ -411,4 +416,17 @@ func waitExponentialBackoff(condFunc func() (bool, error)) error {
 		Steps:    8,
 	}
 	return wait.ExponentialBackoff(backoff, condFunc)
+}
+
+// generateWebhookCert generates signed certs of webhook and create the corresponding secret by running a script.
+func generateWebhookCert(ns string) error {
+	commandTemplate := `../../utils/webhook-create-signed-cert.sh`
+	cmd := exec.Command("/bin/sh", commandTemplate, "--namespace", ns)
+
+	_, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to execute the scrpt: %v", err)
+	}
+
+	return nil
 }

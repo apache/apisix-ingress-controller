@@ -1,6 +1,22 @@
 #!/bin/sh
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
-# This script is copied from the istio project.
+# This script is mostly copied from the istio project.
 # https://github.com/istio/istio/blob/release-0.7/install/kubernetes/webhook-create-signed-cert.sh
 
 set -e
@@ -76,11 +92,13 @@ EOF
 openssl genrsa -out ${tmpdir}/server-key.pem 2048
 openssl req -new -key ${tmpdir}/server-key.pem -subj "/CN=${service}.${namespace}.svc" -out ${tmpdir}/server.csr -config ${tmpdir}/csr.conf
 
-# clean-up any previously created CSR for our service. Ignore errors if not present.
-kubectl delete csr ${csrName} 2>/dev/null || true
+KIND_CTX=`kubectl config get-contexts --output=name | grep "kind-"`
 
-# create server cert/key CSR and  send to k8s API
-cat <<EOF | kubectl create -f -
+# clean-up any previously created CSR for our service. Ignore errors if not present.
+kubectl --context "${KIND_CTX}" delete csr ${csrName} 2>/dev/null || true
+
+# create server cert/key CSR and send to k8s API
+cat <<EOF | kubectl --context "${KIND_CTX}" create -f -
 apiVersion: certificates.k8s.io/v1beta1
 kind: CertificateSigningRequest
 metadata:
@@ -97,14 +115,15 @@ EOF
 
 # verify CSR has been created
 while true; do
-    kubectl get csr ${csrName}
+    kubectl --context "${KIND_CTX}" get csr ${csrName}
     if [ "$?" -eq 0 ]; then
         break
     fi
 done
 
 # approve and fetch the signed certificate
-kubectl certificate approve ${csrName}
+kubectl --context "${KIND_CTX}" certificate approve ${csrName}
+
 # verify certificate has been signed
 for x in $(seq 10); do
     serverCert=$(kubectl get csr ${csrName} -o jsonpath='{.status.certificate}')
@@ -117,11 +136,15 @@ if [[ ${serverCert} == '' ]]; then
     echo "ERROR: After approving csr ${csrName}, the signed certificate did not appear on the resource. Giving up after 10 attempts." >&2
     exit 1
 fi
+
 echo ${serverCert} | openssl base64 -d -A -out ${tmpdir}/server-cert.pem
 
+# clean-up any previously created secret for webhook. Ignore errors if not present.
+kubectl --context "${KIND_CTX}" -n ${namespace} delete secret ${secret} 2>/dev/null || true
 
 # create the secret with CA cert and server cert/key
-kubectl create secret generic ${secret} \
+kubectl --context "${KIND_CTX}" -n ${namespace} create secret generic ${secret} \
         --from-file=key.pem=${tmpdir}/server-key.pem \
-        --from-file=cert.pem=${tmpdir}/server-cert.pem \
-        --dry-run -o yaml > samples/deploy/admission/webhook-certs.yaml
+        --from-file=cert.pem=${tmpdir}/server-cert.pem
+
+rm -f "${tmpdir}/*"

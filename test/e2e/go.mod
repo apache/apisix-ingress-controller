@@ -8,8 +8,8 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/gruntwork-io/terratest v0.32.8
 	github.com/onsi/ginkgo v1.16.4
-	github.com/stretchr/testify v1.7.0
 	github.com/onsi/gomega v1.10.1
+	github.com/stretchr/testify v1.7.0
 	k8s.io/api v0.21.1
 	k8s.io/apimachinery v0.21.1
 )
