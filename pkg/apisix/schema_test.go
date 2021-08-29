@@ -138,10 +138,10 @@ func TestSchemaClient(t *testing.T) {
 	// Test `GetRouteSchema`
 	upstreamSchema, err := cli.GetUpstreamSchema(ctx)
 	assert.Nil(t, err)
-	assert.Equal(t, routeSchema.Content, testData["upstream"])
+	assert.Equal(t, upstreamSchema.Content, testData["upstream"])
 
 	// Test `GetConsumerSchema`
 	consumerSchema, err := cli.GetConsumerSchema(ctx)
 	assert.Nil(t, err)
-	assert.Equal(t, routeSchema.Content, testData["consumer"])
+	assert.Equal(t, consumerSchema.Content, testData["consumer"])
 }
