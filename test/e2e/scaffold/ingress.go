@@ -247,7 +247,7 @@ spec:
             - containerPort: 8080
               name: "http"
               protocol: "TCP"
-            - containerPort: 443
+            - containerPort: 8443
               name: "https"
               protocol: "TCP"
           command:
@@ -292,7 +292,7 @@ spec:
   ports:
     - name: https
       protocol: TCP
-      port: 443
+      port: 8443
       targetPort: 8443
   selector:
     app: ingress-apisix-controller-deployment-e2e-test
@@ -308,6 +308,7 @@ webhooks:
       service:
         name: webhook
         namespace: %s
+        port: 8443
         path: "/validation/apisixroute/plugin"
       caBundle: %s
     rules:
