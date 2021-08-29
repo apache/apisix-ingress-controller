@@ -22,6 +22,7 @@ commonLabels:
   apisix.apache.org/app: ingress-apisix
 bases:
   - ./configmap
+  - ./admission
   - ./deployment
   - ./rbac
   - ./crd/v1beta1

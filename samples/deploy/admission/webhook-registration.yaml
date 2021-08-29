@@ -28,6 +28,7 @@ webhooks:
       service:
         name: apisix-admission-server
         namespace: ingress-apisix
+        port: 8443
         path: "/validation/apisixRoute/plugin"
       caBundle: ${CA_BUNDLE}
     rules:
@@ -36,4 +37,4 @@ webhooks:
         apiVersions: ["*"]
         resources: ["apisixroutes"]
     timeoutSeconds: 30
-    failurePolicy: Fail
+    failurePolicy: Ignore

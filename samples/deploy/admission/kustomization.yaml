@@ -16,5 +16,6 @@
 #
 
 resources:
+  - ./webhook-certs.yaml
   - ./webhook-service.yaml
   - ./webhook-registration.yaml

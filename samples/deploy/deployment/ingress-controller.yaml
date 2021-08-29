@@ -69,5 +69,8 @@ spec:
         - configMap:
             name: apisix-ingress-cm
           name: apisix-ingress-configmap
+        - name: webhook-certs
+          secret:
+            secretName: webhook-certs
       terminationGracePeriodSeconds: 60
       serviceAccountName: apisix-view-serviceaccount
