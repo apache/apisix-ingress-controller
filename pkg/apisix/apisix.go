@@ -129,6 +129,9 @@ type Plugin interface {
 // Schema is the specific client interface to fetch the schema of APISIX objects.
 type Schema interface {
 	GetPluginSchema(context.Context, string) (*v1.Schema, error)
+	GetRouteSchema(context.Context) (*v1.Schema, error)
+	GetUpstreamSchema(context.Context) (*v1.Schema, error)
+	GetConsumerSchema(context.Context) (*v1.Schema, error)
 }
 
 type apisix struct {

@@ -90,3 +90,18 @@ func (sc schemaClient) getSchema(ctx context.Context, name string) (*v1.Schema, 
 func (sc schemaClient) GetPluginSchema(ctx context.Context, pluginName string) (*v1.Schema, error) {
 	return sc.getSchema(ctx, "plugins/"+pluginName)
 }
+
+// GetRouteSchema returns route's schema.
+func (sc schemaClient) GetRouteSchema(ctx context.Context) (*v1.Schema, error) {
+	return sc.getSchema(ctx, "route")
+}
+
+// GetUpstreamSchema returns upstream's schema.
+func (sc schemaClient) GetUpstreamSchema(ctx context.Context) (*v1.Schema, error) {
+	return sc.getSchema(ctx, "upstream")
+}
+
+// GetConsumerSchema returns consumer's schema.
+func (sc schemaClient) GetConsumerSchema(ctx context.Context) (*v1.Schema, error) {
+	return sc.getSchema(ctx, "consumer")
+}
