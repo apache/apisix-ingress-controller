@@ -23,12 +23,11 @@ import (
 	"net/http/pprof"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
 	apirouter "github.com/apache/apisix-ingress-controller/pkg/api/router"
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
@@ -99,18 +98,23 @@ func NewServer(cfg *config.Config) (*Server, error) {
 func (srv *Server) Run(stopCh <-chan struct{}) error {
 	go func() {
 		<-stopCh
+
+		closed := make(chan struct{}, 2)
+		go srv.closeHttpServer(closed)
+		go srv.closeAdmissionServer(closed)
+
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-
-		closeHttp := make(chan struct{})
-		go srv.closeHttpServer(closeHttp)
-
-		select {
-		case <-ctx.Done():
-			log.Warnf("close http server timeout")
-			srv.closeAdmissionServer()
-		case <-closeHttp:
-			srv.closeAdmissionServer()
+		cnt := 2
+		for cnt > 0 {
+			select {
+			case <-ctx.Done():
+				log.Errorf("close servers timeout")
+				return
+			case <-closed:
+				cnt--
+				log.Debug("close a server")
+			}
 		}
 	}()
 
@@ -140,10 +144,11 @@ func (srv *Server) closeHttpServer(closed chan struct{}) {
 	closed <- struct{}{}
 }
 
-func (srv *Server) closeAdmissionServer() {
+func (srv *Server) closeAdmissionServer(closed chan struct{}) {
 	if srv.admissionServer != nil {
 		if err := srv.admissionServer.Shutdown(context.TODO()); err != nil {
 			log.Errorf("failed to shutdown admission server: %s", err)
 		}
 	}
+	closed <- struct{}{}
 }

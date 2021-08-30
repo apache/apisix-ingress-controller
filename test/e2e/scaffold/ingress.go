@@ -309,7 +309,7 @@ webhooks:
         name: webhook
         namespace: %s
         port: 8443
-        path: "/validation/apisixroute/plugin"
+        path: "/validation/apisixroutes/plugin"
       caBundle: %s
     rules:
       - operations: [ "CREATE", "UPDATE" ]

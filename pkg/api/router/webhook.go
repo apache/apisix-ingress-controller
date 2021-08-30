@@ -22,8 +22,9 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 )
 
+// MountWebhooks mounts webhook related routes.
 func MountWebhooks(r *gin.Engine, co *apisix.ClusterOptions) {
-	// init the schema client
+	// init the schema client, it will be used to query schema of objects.
 	_, _ = validation.GetSchemaClient(co)
-	r.POST("/validation/apisixroute/plugin", gin.WrapH(validation.NewPluginValidatorHandler()))
+	r.POST("/validation/apisixroutes/plugin", gin.WrapH(validation.NewPluginValidatorHandler()))
 }

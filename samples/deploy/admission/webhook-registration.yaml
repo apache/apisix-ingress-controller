@@ -29,7 +29,7 @@ webhooks:
         name: apisix-admission-server
         namespace: ingress-apisix
         port: 8443
-        path: "/validation/apisixRoute/plugin"
+        path: "/validation/apisixroutes/plugin"
       caBundle: ${CA_BUNDLE}
     rules:
       - operations: [ "CREATE", "UPDATE" ]

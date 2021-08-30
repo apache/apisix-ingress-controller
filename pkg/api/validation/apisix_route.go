@@ -125,7 +125,8 @@ var pluginValidator = kwhvalidating.ValidatorFunc(
 		}
 
 		return &kwhvalidating.ValidatorResult{Valid: valid, Message: strings.Join(msg, "\n")}, nil
-	})
+	},
+)
 
 func validatePlugin(client apisix.Schema, pluginName string, pluginConfig interface{}) (valid bool, msg string, result error) {
 	valid = true

@@ -350,12 +350,12 @@ func (s *Scaffold) afterEach() {
 		}
 	}
 
-	//err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
-	//assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
-	//
-	//for _, f := range s.finializers {
-	//	f()
-	//}
+	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
+	assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
+
+	for _, f := range s.finializers {
+		f()
+	}
 
 	// Wait for a while to prevent the worker node being overwhelming
 	// (new cases will be run).
@@ -420,7 +420,7 @@ func waitExponentialBackoff(condFunc func() (bool, error)) error {
 
 // generateWebhookCert generates signed certs of webhook and create the corresponding secret by running a script.
 func generateWebhookCert(ns string) error {
-	commandTemplate := `../../utils/webhook-create-signed-cert.sh`
+	commandTemplate := `testdata/webhook-create-signed-cert.sh`
 	cmd := exec.Command("/bin/sh", commandTemplate, "--namespace", ns)
 
 	_, err := cmd.Output()
