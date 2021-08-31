@@ -35,11 +35,10 @@ This document explains how to install Ingress APISIX on [Minikube](https://minik
 As the data plane of apisix-ingress-controller, [Apache APISIX](http://apisix.apache.org/) can be deployed at the same time using Helm chart.
 
 ```shell
-cd /path/to/apisix-helm-chart
-helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo add apisix https://charts.apiseven.com
 helm repo update
 kubectl create ns ingress-apisix
-helm install apisix charts/apisix \
+helm install apisix apisix/apisix \
   --set gateway.type=NodePort \
   --set ingress-controller.enabled=true \
   --namespace ingress-apisix
