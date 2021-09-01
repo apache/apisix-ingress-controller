@@ -304,6 +304,22 @@ func (t *translator) translateHTTPRoute(ctx *TranslateContext, ar *configv2alpha
 			return err
 		}
 
+		timeout := &apisixv1.UpstreamTimeout{
+			Connect: apisixv1.DefaultUpstreamTimeout,
+			Read:    apisixv1.DefaultUpstreamTimeout,
+			Send:    apisixv1.DefaultUpstreamTimeout,
+		}
+		if part.Timeout != nil {
+			if part.Timeout.Connect.Duration > 0 {
+				timeout.Connect = int(part.Timeout.Connect.Seconds())
+			}
+			if part.Timeout.Read.Duration > 0 {
+				timeout.Read = int(part.Timeout.Read.Seconds())
+			}
+			if part.Timeout.Send.Duration > 0 {
+				timeout.Send = int(part.Timeout.Send.Seconds())
+			}
+		}
 		pluginMap := make(apisixv1.Plugins)
 		// 2.add route plugins
 		for _, plugin := range part.Plugins {
@@ -362,6 +378,7 @@ func (t *translator) translateHTTPRoute(ctx *TranslateContext, ar *configv2alpha
 		route.UpstreamId = id.GenID(upstreamName)
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
+		route.Timeout = timeout
 
 		if len(backends) > 0 {
 			weight := _defaultWeight
