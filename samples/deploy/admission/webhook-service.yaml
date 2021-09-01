@@ -15,14 +15,15 @@
 # limitations under the License.
 #
 
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-namespace: ingress-apisix
-commonLabels:
-  apisix.apache.org/app: ingress-apisix
-bases:
-  - ./configmap
-  - ./admission
-  - ./deployment
-  - ./rbac
-  - ./crd/v1beta1
+apiVersion: v1
+kind: Service
+metadata:
+  name: apisix-admission-server
+  labels:
+    app: apisix-admission-server
+spec:
+  ports:
+    - port: 8443
+      targetPort: 8443
+  selector:
+    app: apisix-ingress-controller

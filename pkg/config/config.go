@@ -59,9 +59,12 @@ const (
 // Config contains all config items which are necessary for
 // apisix-ingress-controller's running.
 type Config struct {
+	CertFilePath    string           `json:"cert_file" yaml:"cert_file"`
+	KeyFilePath     string           `json:"key_file" yaml:"key_file"`
 	LogLevel        string           `json:"log_level" yaml:"log_level"`
 	LogOutput       string           `json:"log_output" yaml:"log_output"`
 	HTTPListen      string           `json:"http_listen" yaml:"http_listen"`
+	HTTPSListen     string           `json:"https_listen" yaml:"https_listen"`
 	EnableProfiling bool             `json:"enable_profiling" yaml:"enable_profiling"`
 	Kubernetes      KubernetesConfig `json:"kubernetes" yaml:"kubernetes"`
 	APISIX          APISIXConfig     `json:"apisix" yaml:"apisix"`
@@ -105,6 +108,9 @@ func NewDefaultConfig() *Config {
 		LogLevel:        "warn",
 		LogOutput:       "stderr",
 		HTTPListen:      ":8080",
+		HTTPSListen:     ":8443",
+		CertFilePath:    "/etc/webhook/certs/cert.pem",
+		KeyFilePath:     "/etc/webhook/certs/key.pem",
 		EnableProfiling: true,
 		Kubernetes: KubernetesConfig{
 			Kubeconfig:          "", // Use in-cluster configurations.

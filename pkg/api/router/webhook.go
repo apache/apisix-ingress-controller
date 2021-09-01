@@ -16,35 +16,15 @@
 package router
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/apache/apisix-ingress-controller/pkg/api/validation"
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 )
 
-type healthzResponse struct {
-	Status string `json:"status"`
-}
-
-func mountHealthz(r *gin.Engine) {
-	r.GET("/healthz", healthz)
-	r.GET("/apisix/healthz", healthz)
-}
-
-func healthz(c *gin.Context) {
-	c.AbortWithStatusJSON(http.StatusOK, healthzResponse{Status: "ok"})
-}
-
-func mountMetrics(r *gin.Engine) {
-	r.GET("/metrics", metrics)
-}
-
-func metrics(c *gin.Context) {
-	promhttp.Handler().ServeHTTP(c.Writer, c.Request)
-}
-
-// Mount mounts all api routers.
-func Mount(r *gin.Engine) {
-	mountHealthz(r)
-	mountMetrics(r)
+// MountWebhooks mounts webhook related routes.
+func MountWebhooks(r *gin.Engine, co *apisix.ClusterOptions) {
+	// init the schema client, it will be used to query schema of objects.
+	_, _ = validation.GetSchemaClient(co)
+	r.POST("/validation/apisixroutes/plugin", gin.WrapH(validation.NewPluginValidatorHandler()))
 }

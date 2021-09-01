@@ -15,14 +15,7 @@
 # limitations under the License.
 #
 
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-namespace: ingress-apisix
-commonLabels:
-  apisix.apache.org/app: ingress-apisix
-bases:
-  - ./configmap
-  - ./admission
-  - ./deployment
-  - ./rbac
-  - ./crd/v1beta1
+resources:
+  - ./webhook-certs.yaml
+  - ./webhook-service.yaml
+  - ./webhook-registration.yaml

@@ -12,10 +12,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package scaffold
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
@@ -215,7 +217,7 @@ spec:
       containers:
         - livenessProbe:
             failureThreshold: 3
-            initialDelaySeconds: 1
+            initialDelaySeconds: 5
             periodSeconds: 2
             successThreshold: 1
             tcpSocket:
@@ -223,7 +225,7 @@ spec:
             timeoutSeconds: 2
           readinessProbe:
             failureThreshold: 3
-            initialDelaySeconds: 1
+            initialDelaySeconds: 5
             periodSeconds: 2
             successThreshold: 1
             tcpSocket:
@@ -245,6 +247,9 @@ spec:
             - containerPort: 8080
               name: "http"
               protocol: "TCP"
+            - containerPort: 8443
+              name: "https"
+              protocol: "TCP"
           command:
             - /ingress-apisix/apisix-ingress-controller
             - ingress
@@ -254,6 +259,8 @@ spec:
             - stdout
             - --http-listen
             - :8080
+            - --https-listen
+            - :8443
             - --default-apisix-cluster-name
             - default
             - --default-apisix-cluster-base-url
@@ -265,25 +272,68 @@ spec:
             - --apisix-route-version
             - %s
             - --watch-endpointslices
+          volumeMounts:
+           - name: webhook-certs
+             mountPath: /etc/webhook/certs
+             readOnly: true
+      volumes:
+       - name: webhook-certs
+         secret:
+           secretName: %s
       serviceAccount: ingress-apisix-e2e-test-service-account
 `
+	_ingressAPISIXAdmissionService = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: webhook
+  namespace: %s
+spec:
+  ports:
+    - name: https
+      protocol: TCP
+      port: 8443
+      targetPort: 8443
+  selector:
+    app: ingress-apisix-controller-deployment-e2e-test
+`
+	_ingressAPISIXAdmissionWebhook = `
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: apisix-validation-webhooks-e2e-test
+webhooks:
+  - name: apisixroute-plugin-validator-webhook.apisix.apache.org
+    clientConfig:
+      service:
+        name: webhook
+        namespace: %s
+        port: 8443
+        path: "/validation/apisixroutes/plugin"
+      caBundle: %s
+    rules:
+      - operations: [ "CREATE", "UPDATE" ]
+        apiGroups: ["apisix.apache.org"]
+        apiVersions: ["*"]
+        resources: ["apisixroutes"]
+    timeoutSeconds: 30
+    failurePolicy: Fail
+`
+	_webhookCertSecret = "webhook-certs"
 )
 
 func (s *Scaffold) newIngressAPISIXController() error {
-	ingressAPISIXDeployment := fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXRouteVersion)
-	if err := k8s.CreateServiceAccountE(s.t, s.kubectlOptions, _serviceAccount); err != nil {
-		return err
-	}
+	err := k8s.CreateServiceAccountE(s.t, s.kubectlOptions, _serviceAccount)
+	assert.Nil(s.t, err, "create service account")
 
 	cr := fmt.Sprintf(_clusterRole, s.namespace)
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, cr); err != nil {
-		return err
-	}
+	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, cr)
+	assert.Nil(s.t, err, "create cluster role")
 
 	crb := fmt.Sprintf(_clusterRoleBinding, s.namespace, s.namespace, s.namespace)
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, crb); err != nil {
-		return err
-	}
+	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, crb)
+	assert.Nil(s.t, err, "create cluster role binding")
+
 	s.addFinalizers(func() {
 		err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, crb)
 		assert.Nil(s.t, err, "deleting ClusterRoleBinding")
@@ -292,9 +342,37 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, cr)
 		assert.Nil(s.t, err, "deleting ClusterRole")
 	})
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment); err != nil {
-		return err
+
+	ingressAPISIXDeployment := fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXRouteVersion, _webhookCertSecret)
+	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment)
+	assert.Nil(s.t, err, "create deployment")
+
+	if s.opts.EnableWebhooks {
+		admissionSvc := fmt.Sprintf(_ingressAPISIXAdmissionService, s.namespace)
+		err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, admissionSvc)
+		assert.Nil(s.t, err, "create admission webhook service")
+
+		// get caBundle from the secret
+		secret, err := k8s.GetSecretE(s.t, s.kubectlOptions, _webhookCertSecret)
+		assert.Nil(s.t, err, "get webhook secret")
+		cert, ok := secret.Data["cert.pem"]
+		assert.True(s.t, ok, "get cert.pem from the secret")
+		caBundle := base64.StdEncoding.EncodeToString(cert)
+
+		webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, caBundle)
+		err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, webhookReg)
+		assert.Nil(s.t, err, "create webhook registration")
+
+		s.addFinalizers(func() {
+			err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, admissionSvc)
+			assert.Nil(s.t, err, "deleting admission service")
+		})
+		s.addFinalizers(func() {
+			err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, webhookReg)
+			assert.Nil(s.t, err, "deleting webhook registration")
+		})
 	}
+
 	return nil
 }
 

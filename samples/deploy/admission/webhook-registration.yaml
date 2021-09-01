@@ -15,14 +15,26 @@
 # limitations under the License.
 #
 
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-namespace: ingress-apisix
-commonLabels:
-  apisix.apache.org/app: ingress-apisix
-bases:
-  - ./configmap
-  - ./admission
-  - ./deployment
-  - ./rbac
-  - ./crd/v1beta1
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: apisix-validations
+  labels:
+    app: apisixroute-plugin-validator-webhook
+    kind: validating
+webhooks:
+  - name: apisixroute-plugin-validator-webhook
+    clientConfig:
+      service:
+        name: apisix-admission-server
+        namespace: ingress-apisix
+        port: 8443
+        path: "/validation/apisixroutes/plugin"
+      caBundle: ${CA_BUNDLE}
+    rules:
+      - operations: [ "CREATE", "UPDATE" ]
+        apiGroups: ["apisix.apache.org"]
+        apiVersions: ["*"]
+        resources: ["apisixroutes"]
+    timeoutSeconds: 30
+    failurePolicy: Ignore
