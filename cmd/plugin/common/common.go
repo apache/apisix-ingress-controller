@@ -93,10 +93,10 @@ func (pc *PluginConf) GetApisixSvcName() (string, error) {
 
 func CheckPort() bool {
 	_, err := net.Dial("tcp", "127.0.0.1:9180")
-	if err != nil {
-		return false
+	if err == nil {
+		return true
 	}
-	return true
+	return false
 }
 
 func Show(data [][]string, adjust int) {
