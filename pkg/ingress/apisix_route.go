@@ -302,7 +302,8 @@ func (c *apisixRouteController) isApisixRouteEffective(ar kube.ApisixRoute) bool
 	} else if ar.GroupVersion() == kube.ApisixRouteV2beta1 {
 		class = ar.V2beta1().Spec.IngressClassName
 	} else {
-		class = c.controller.cfg.Kubernetes.IngressClass
+		log.Errorf("not support group version: %s", ar.GroupVersion())
+		return false
 	}
 
 	if c.controller.cfg.Kubernetes.IngressClass == "*" || c.controller.cfg.Kubernetes.IngressClass == class {
