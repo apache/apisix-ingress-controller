@@ -28,7 +28,6 @@ import (
 )
 
 func CreateCommand(flags *genericclioptions.ConfigFlags) *cobra.Command {
-	//var routeId string
 	var upstreamId string
 	cmd := &cobra.Command{
 		Use:   "upstreams",
@@ -38,11 +37,11 @@ func CreateCommand(flags *genericclioptions.ConfigFlags) *cobra.Command {
 			return
 		},
 	}
-	//cmd.Flags().StringVar(&routeId, "route-id", "", "apisix routes id")
 	cmd.Flags().StringVar(&upstreamId, "upstream-id", "", "apisix routes id")
 	return cmd
 }
 
+// getUpstreams get apisix upstream informations.
 func getUpstreams(flags *genericclioptions.ConfigFlags, upstreamId string) {
 	pconf := common.NewPluginConfig(flags)
 
@@ -62,6 +61,7 @@ func getUpstreams(flags *genericclioptions.ConfigFlags, upstreamId string) {
 		"PassHost",
 	}
 
+	// wait port-forward ready
 	for {
 		if common.CheckPort() {
 			log.Info("the k8s port-forward is ready")
@@ -86,7 +86,7 @@ func getUpstreams(flags *genericclioptions.ConfigFlags, upstreamId string) {
 	if upstreamId == "" {
 		printDatas = fullUpstream(s, header)
 	} else {
-		printDatas = specificUpstream(s)
+		printDatas = specificUpstream(pconf, s)
 	}
 	if len(printDatas) != 0 {
 		common.Show(printDatas, 2)
@@ -95,6 +95,7 @@ func getUpstreams(flags *genericclioptions.ConfigFlags, upstreamId string) {
 	kubectl.ClosePortForward(pid)
 }
 
+// fullUpstream Make the result data  for all upstream information.
 func fullUpstream(data []byte, header []string) [][]string {
 	var printDatas [][]string
 	printDatas = append(printDatas, header)
@@ -117,26 +118,31 @@ func fullUpstream(data []byte, header []string) [][]string {
 	return printDatas
 }
 
-func specificUpstream(data []byte) [][]string {
+// specificUpstream Only make the upstream-id information
+func specificUpstream(pc *common.PluginConf, data []byte) [][]string {
 	var printDatas [][]string
 	specificHeader := []string{
-		"ID",
+		"PodName",
 		"Host",
 		"Port",
 		"Weight",
 		"Priority",
+		"Node",
 	}
 	printDatas = append(printDatas, specificHeader)
 	tmp := jsoniter.Get(data, "node", "value")
+	appns := strings.Split(tmp.Get("name").ToString(), "_")
 	size := tmp.Get("nodes").Size()
 	for i := 0; i < size; i++ {
-		id := strconv.Itoa(i + 1)
+		podIp := tmp.Get("nodes", i).Get("host").ToString()
+		appPodInfo := pc.GetPodInfo(appns[0], podIp)
 		iterms := []string{
-			id,
-			tmp.Get("nodes", i).Get("host").ToString(),
+			appPodInfo.PodName,
+			podIp,
 			tmp.Get("nodes", i).Get("port").ToString(),
 			tmp.Get("nodes", i).Get("weight").ToString(),
 			tmp.Get("nodes", i).Get("priority").ToString(),
+			appPodInfo.NodeName,
 		}
 
 		printDatas = append(printDatas, iterms)

@@ -1,5 +1,3 @@
-// Licensed to the Apache Software Foundation (ASF) under one or more
-// contributor license agreements.  See the NOTICE file distributed with
 // this work for additional information regarding copyright ownership.
 // The ASF licenses this file to You under the Apache License, Version 2.0
 // (the "License"); you may not use this file except in compliance with
@@ -39,6 +37,12 @@ type PluginConf struct {
 	NameSpace string
 	Ctx       context.Context
 	Kubecli   *kube.KubeClient
+}
+
+type AppInfo struct {
+	PodName  string
+	NodeName string
+	Err      error
 }
 
 // NewPluginConfig init the plugin config.
@@ -90,6 +94,7 @@ func (pc *PluginConf) GetApisixSvcName() (string, error) {
 	svcs, err := pc.Kubecli.Client.CoreV1().Services(pc.NameSpace).List(pc.Ctx, metav1.ListOptions{})
 	if err != nil {
 		errs := fmt.Sprintf("The %s not fond apisix-admin service", pc.NameSpace)
+		log.Error(err)
 		return svcName, errors.New(errs)
 	}
 	for _, svc := range svcs.Items {
@@ -100,6 +105,25 @@ func (pc *PluginConf) GetApisixSvcName() (string, error) {
 		}
 	}
 	return svcName, nil
+}
+
+func (pc *PluginConf) GetPodInfo(appNamespace, podIP string) AppInfo {
+	var appInfo AppInfo
+	pods, err := pc.Kubecli.Client.CoreV1().Pods(appNamespace).List(pc.Ctx, metav1.ListOptions{})
+	if err != nil {
+		log.Error(err)
+		appInfo.Err = err
+		return appInfo
+	}
+
+	for _, pod := range pods.Items {
+		if pod.Status.PodIP == podIP {
+			appInfo.NodeName = pod.Spec.NodeName
+			appInfo.PodName = pod.Name
+			break
+		}
+	}
+	return appInfo
 }
 
 // CheckPort check the k8s port-forward open is successfull.
