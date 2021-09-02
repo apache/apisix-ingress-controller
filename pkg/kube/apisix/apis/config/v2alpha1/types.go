@@ -78,9 +78,9 @@ type ApisixStatus struct {
 
 // ApisixRouteSpec is the spec definition for ApisixRouteSpec.
 type ApisixRouteSpec struct {
-	IngressClass string             `json:"ingressClass,omitempty" yaml:"ingressClass,omitempty"`
-	HTTP         []*ApisixRouteHTTP `json:"http,omitempty" yaml:"http,omitempty"`
-	TCP          []*ApisixRouteTCP  `json:"tcp,omitempty" yaml:"tcp,omitempty"`
+	IngressClassName string             `json:"IngressClassName,omitempty" yaml:"IngressClassName,omitempty"`
+	HTTP             []*ApisixRouteHTTP `json:"http,omitempty" yaml:"http,omitempty"`
+	TCP              []*ApisixRouteTCP  `json:"tcp,omitempty" yaml:"tcp,omitempty"`
 }
 
 // ApisixRouteHTTP represents a single route in for HTTP traffic.

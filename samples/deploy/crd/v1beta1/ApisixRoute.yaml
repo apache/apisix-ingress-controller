@@ -72,7 +72,7 @@ spec:
             - required: ["tcp"]
             - required: ["stream"]
           properties:
-            ingressClass:
+            ingressClassName:
               type: string
             http:
               type: array
