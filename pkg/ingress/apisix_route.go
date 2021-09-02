@@ -316,11 +316,11 @@ func (c *apisixRouteController) isApisixRouteEffective(ar kube.ApisixRoute) bool
 	var class string
 
 	if ar.GroupVersion() == kube.ApisixRouteV1 {
-		class = ar.V1().Spec.IngressClass
+		class = ar.V1().Spec.IngressClassName
 	} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
-		class = ar.V2alpha1().Spec.IngressClass
+		class = ar.V2alpha1().Spec.IngressClassName
 	} else if ar.GroupVersion() == kube.ApisixRouteV2beta1 {
-		class = ar.V2beta1().Spec.IngressClass
+		class = ar.V2beta1().Spec.IngressClassName
 	} else {
 		class = c.controller.cfg.Kubernetes.IngressClass
 	}
