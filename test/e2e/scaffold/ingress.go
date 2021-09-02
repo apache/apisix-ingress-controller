@@ -214,6 +214,10 @@ spec:
         app: ingress-apisix-controller-deployment-e2e-test
     spec:
       terminationGracePeriodSeconds: 0
+      initContainers:
+      - name: wait-apisix-admin
+        image: localhost:5000/busybox:1.28
+        command: ['sh', '-c', "until nc -z apisix-service-e2e-test.%s.svc.cluster.local 9080 ; do echo waiting for apisix-admin; sleep 2; done;"]
       containers:
         - livenessProbe:
             failureThreshold: 3
@@ -343,7 +347,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		assert.Nil(s.t, err, "deleting ClusterRole")
 	})
 
-	ingressAPISIXDeployment := fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXRouteVersion, _webhookCertSecret)
+	ingressAPISIXDeployment := fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, s.namespace, s.opts.APISIXRouteVersion, _webhookCertSecret)
 	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
 
