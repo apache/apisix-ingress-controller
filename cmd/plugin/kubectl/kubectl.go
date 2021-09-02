@@ -38,5 +38,7 @@ func OpenPortForward(ctx context.Context, namespace, svcName string) int {
 func ClosePortForward(pid int) {
 	str := fmt.Sprintf("-s QUIT %v", pid)
 	cmd := exec.Command("kill", str)
-	cmd.Start()
+	if err := cmd.Start(); err != nil {
+		return
+	}
 }

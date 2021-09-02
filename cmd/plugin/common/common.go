@@ -33,6 +33,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
+// PluginConf base config for apisix-ingress-controller plugin
 type PluginConf struct {
 	Cfg       config.Config
 	NameSpace string
@@ -40,6 +41,7 @@ type PluginConf struct {
 	Kubecli   *kube.KubeClient
 }
 
+// NewPluginConfig init the plugin config.
 func NewPluginConfig(flags *genericclioptions.ConfigFlags) *PluginConf {
 	var pConf PluginConf
 	pConf.NameSpace = pluginutil.GetNamespaces(flags)
@@ -47,6 +49,7 @@ func NewPluginConfig(flags *genericclioptions.ConfigFlags) *PluginConf {
 	pConf.Ctx = context.Background()
 	cli, err := kube.NewKubeClient(&pConf.Cfg)
 	if err != nil {
+		log.Error("new a new kube client is failed.", err)
 		return &pConf
 	}
 	pConf.Kubecli = cli
@@ -54,6 +57,7 @@ func NewPluginConfig(flags *genericclioptions.ConfigFlags) *PluginConf {
 	return &pConf
 }
 
+// GetConfigMapsData The apisix-ingress-controller data from kubernetes configmaps.
 func (pc *PluginConf) GetConfigMapsData() {
 	var apisixIngressControllerConfig string
 	configmaps, err := pc.Kubecli.Client.CoreV1().ConfigMaps(pc.NameSpace).List(pc.Ctx, metav1.ListOptions{})
@@ -68,12 +72,19 @@ func (pc *PluginConf) GetConfigMapsData() {
 			apisixIngressControllerConfig = cm.Data["config.yaml"]
 		}
 	}
+	if apisixIngressControllerConfig == "" {
+		log.Error("The apisix-ingress-controller configmaps resource not found.")
+		fmt.Println("The apisix-ingress-controller configmaps resource not found.")
+		os.Exit(0)
+		return
+	}
 	viper.SetConfigType("yaml")
 	viper.ReadConfig(bytes.NewBuffer([]byte(apisixIngressControllerConfig)))
 	pc.Cfg.APISIX.AdminKey = viper.Get("apisix.admin_key").(string)
 	log.Infof("The apisix admin key is => %v\n", pc.Cfg.APISIX.AdminKey)
 }
 
+// GetApisixSvcName Get apisix service name for open the kubernetes port-forward.
 func (pc *PluginConf) GetApisixSvcName() (string, error) {
 	var svcName string
 	svcs, err := pc.Kubecli.Client.CoreV1().Services(pc.NameSpace).List(pc.Ctx, metav1.ListOptions{})
@@ -91,6 +102,7 @@ func (pc *PluginConf) GetApisixSvcName() (string, error) {
 	return svcName, nil
 }
 
+// CheckPort check the k8s port-forward open is successfull.
 func CheckPort() bool {
 	_, err := net.Dial("tcp", "127.0.0.1:9180")
 	if err == nil {
@@ -99,6 +111,7 @@ func CheckPort() bool {
 	return false
 }
 
+// Show The result data will print screen.
 func Show(data [][]string, adjust int) {
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 8, adjust, '\t', 0)

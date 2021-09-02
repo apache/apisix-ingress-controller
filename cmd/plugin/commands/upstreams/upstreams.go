@@ -12,9 +12,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package routes
+
+package upstreams
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/apache/apisix-ingress-controller/cmd/plugin/common"
@@ -26,36 +28,38 @@ import (
 )
 
 func CreateCommand(flags *genericclioptions.ConfigFlags) *cobra.Command {
-	var routeId string
+	//var routeId string
+	var upstreamId string
 	cmd := &cobra.Command{
-		Use:   "routes",
+		Use:   "upstreams",
 		Short: "Show the apisix routes",
 		Run: func(cmd *cobra.Command, args []string) {
-			getRoutes(flags, routeId)
+			getUpstreams(flags, upstreamId)
 			return
 		},
 	}
-	cmd.Flags().StringVar(&routeId, "route-id", "", "apisix route id")
+	//cmd.Flags().StringVar(&routeId, "route-id", "", "apisix routes id")
+	cmd.Flags().StringVar(&upstreamId, "upstream-id", "", "apisix routes id")
 	return cmd
 }
 
-// getRoutes get apisix route informations.
-func getRoutes(flags *genericclioptions.ConfigFlags, routeId string) {
+func getUpstreams(flags *genericclioptions.ConfigFlags, upstreamId string) {
 	pconf := common.NewPluginConfig(flags)
+
 	log.Infof("namespaces: %v \n", pconf.NameSpace)
 	pconf.GetConfigMapsData()
 
 	svcName, _ := pconf.GetApisixSvcName()
+
 	pid := kubectl.OpenPortForward(pconf.Ctx, pconf.NameSpace, svcName)
 	header := []string{
 		"ID",
 		"Name",
-		"Host",
-		"URI",
-		"Status",
-		"UpstreamId",
-		"CreateTime",
-		"UpdateTime",
+		"NodeNumbers",
+		"Scheme",
+		"Type",
+		"HashOn",
+		"PassHost",
 	}
 
 	for {
@@ -68,62 +72,76 @@ func getRoutes(flags *genericclioptions.ConfigFlags, routeId string) {
 	var reqApisix common.RequestConf
 	reqApisix.AdminKey = pconf.Cfg.APISIX.AdminKey
 	reqApisix.URL = "http://127.0.0.1:9180/apisix/admin"
-	routes := []string{
-		"routes",
-		routeId,
+	upstreams := []string{
+		"upstreams",
+		upstreamId,
 	}
-	s, err := reqApisix.Get(strings.Join(routes, "/"))
+	s, err := reqApisix.Get(strings.Join(upstreams, "/"))
 	if err != nil {
+		log.Error(err)
 		return
 	}
-	//fmt.Printf("Requests data => %v\n", s)
-	if routeId == "" {
-		data := fullRoute(s, header)
-		common.Show(data, 2)
+	log.Info(string(s))
+	var printDatas [][]string
+	if upstreamId == "" {
+		printDatas = fullUpstream(s, header)
 	} else {
-		onlyOneRouteID := specificRoute(s, header)
-		common.Show(onlyOneRouteID, 2)
+		printDatas = specificUpstream(s)
 	}
+	if len(printDatas) != 0 {
+		common.Show(printDatas, 2)
+	}
+
 	kubectl.ClosePortForward(pid)
 }
 
-// fullRoute Make all route's informations.
-func fullRoute(data []byte, header []string) [][]string {
+func fullUpstream(data []byte, header []string) [][]string {
 	var printDatas [][]string
 	printDatas = append(printDatas, header)
 	size := jsoniter.Get(data, "node", "nodes").Size()
 	for i := 0; i < size; i++ {
 		tmp := jsoniter.Get(data, "node", "nodes", i).Get("value")
+		nodes := strconv.Itoa(tmp.Get("nodes").Size())
 		iterms := []string{
 			tmp.Get("id").ToString(),
 			tmp.Get("name").ToString(),
-			tmp.Get("host").ToString(),
-			tmp.Get("uri").ToString(),
-			tmp.Get("status").ToString(),
-			tmp.Get("upstream_id").ToString(),
-			tmp.Get("create_time").ToString(),
-			tmp.Get("update_time").ToString(),
+			nodes,
+			tmp.Get("scheme").ToString(),
+			tmp.Get("type").ToString(),
+			tmp.Get("hash_on").ToString(),
+			tmp.Get("pass_host").ToString(),
+			//tmp.Get("update_time").ToString(),
 		}
 		printDatas = append(printDatas, iterms)
 	}
 	return printDatas
 }
 
-// specificRoute Make specific route information's.
-func specificRoute(data []byte, header []string) [][]string {
-	var printData [][]string
-	printData = append(printData, header)
-	tmp := jsoniter.Get(data, "node", "value")
-	iterms := []string{
-		tmp.Get("id").ToString(),
-		tmp.Get("name").ToString(),
-		tmp.Get("host").ToString(),
-		tmp.Get("uri").ToString(),
-		tmp.Get("status").ToString(),
-		tmp.Get("upstream_id").ToString(),
-		tmp.Get("create_time").ToString(),
-		tmp.Get("update_time").ToString(),
+func specificUpstream(data []byte) [][]string {
+	var printDatas [][]string
+	specificHeader := []string{
+		"ID",
+		"Host",
+		"Port",
+		"Weight",
+		"Priority",
 	}
-	printData = append(printData, iterms)
-	return printData
+	printDatas = append(printDatas, specificHeader)
+	tmp := jsoniter.Get(data, "node", "value")
+	size := tmp.Get("nodes").Size()
+	for i := 0; i < size; i++ {
+		id := strconv.Itoa(i + 1)
+		iterms := []string{
+			id,
+			tmp.Get("nodes", i).Get("host").ToString(),
+			tmp.Get("nodes", i).Get("port").ToString(),
+			tmp.Get("nodes", i).Get("weight").ToString(),
+			tmp.Get("nodes", i).Get("priority").ToString(),
+		}
+
+		printDatas = append(printDatas, iterms)
+	}
+	return printDatas
 }
+
+func describeUpstream() {}

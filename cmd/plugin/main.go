@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/apache/apisix-ingress-controller/cmd/plugin/commands/routes"
+	"github.com/apache/apisix-ingress-controller/cmd/plugin/commands/upstreams"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 
 	"github.com/spf13/cobra"
@@ -52,6 +53,7 @@ func main() {
 	flags.AddFlags(rootCmd.PersistentFlags())
 
 	rootCmd.AddCommand(routes.CreateCommand(flags))
+	rootCmd.AddCommand(upstreams.CreateCommand(flags))
 	if err := rootCmd.Execute(); err != nil {
 		log.Error(err)
 		os.Exit(1)
