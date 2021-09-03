@@ -37,8 +37,7 @@ KubeSphere is a distributed operating system managing cloud native applications 
 As the data plane of apisix-ingress-controller, [Apache APISIX](http://apisix.apache.org/) can be deployed at the same time using Helm chart.
 
 ```shell
-git clone https://github.com/apache/apisix-helm-chart.git
-cd apisix-helm-chart/
+helm repo add apisix https://charts.apiseven.com
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update
 kubectl create ns ingress-apisix
