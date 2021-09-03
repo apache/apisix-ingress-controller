@@ -149,5 +149,3 @@ func specificUpstream(pc *common.PluginConf, data []byte) [][]string {
 	}
 	return printDatas
 }
-
-func describeUpstream() {}
