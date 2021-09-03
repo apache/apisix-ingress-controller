@@ -27,7 +27,6 @@ This document explains how to install Ingress APISIX on [Minikube](https://minik
 
 * Install [Minikube](https://minikube.sigs.k8s.io/docs/start/).
 * Install [Helm](https://helm.sh/).
-* Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
 * Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX and apisix-ingress-controller

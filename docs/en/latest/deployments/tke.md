@@ -28,7 +28,6 @@ This document explains how to install Ingress APISIX on [Tencent TKE](https://cl
 * Create a TKE Service on Tencent Cloud and make sure the API Server is accessible from your workspace.
 * Install [Helm](https://helm.sh/).
 * Download the kube config for your TKE Console.
-* Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
 * Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX and apisix-ingress-controller

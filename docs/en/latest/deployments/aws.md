@@ -28,7 +28,6 @@ This document explains how to install Ingress APISIX on [Amazon EKS](https://ama
 * Create an EKS Service on AWS.
 * Download the kube config for your EKS from [aws cli interface](https://amazonaws-china.com/cli/).
 * Install [Helm](https://helm.sh/).
-* Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
 * Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX and apisix-ingress-controller

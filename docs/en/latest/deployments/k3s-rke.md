@@ -30,7 +30,6 @@ It's a good choice to use Ingress APISIX as the north-south API gateway in K3S.
 
 * Install [K3S](https://rancher.com/docs/k3s/latest/en/installation/) or [Rancher RKE](https://rancher.com/docs/rke/latest/en/installation/).
 * Install [Helm](https://helm.sh/).
-* Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
 * Make sure your target namespace exists, kubectl operations through this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX and apisix-ingress-controller

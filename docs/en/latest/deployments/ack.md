@@ -28,7 +28,6 @@ This document explains how to install Ingress APISIX on [ali-cloud ACK](https://
 * Create an ACK Service on ali-cloud.
 * Download the kube config for your ACK, follow the [introduction](https://www.alibabacloud.com/help/zh/doc-detail/86378.html).
 * Install [Helm](https://helm.sh/).
-* Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
 * **Make sure your target namespace exists**, `kubectl` operations thorough this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX and apisix-ingress-controller
