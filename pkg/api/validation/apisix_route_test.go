@@ -41,6 +41,16 @@ func (c fakeSchemaClient) GetPluginSchema(ctx context.Context, name string) (*ap
 	return nil, fmt.Errorf("can't find the plugin schema")
 }
 
+func (c fakeSchemaClient) GetRouteSchema(context.Context) (*api.Schema, error) {
+	return nil, nil
+}
+func (c fakeSchemaClient) GetUpstreamSchema(context.Context) (*api.Schema, error) {
+	return nil, nil
+}
+func (c fakeSchemaClient) GetConsumerSchema(context.Context) (*api.Schema, error) {
+	return nil, nil
+}
+
 func newFakeSchemaClient() apisix.Schema {
 	testData := map[string]string{
 		"api-breaker": `{"required":["break_response_code"],"$comment":"this is a mark for our injected plugin schema","type":"object","properties":{"healthy":{"properties":{"successes":{"minimum":1,"type":"integer","default":3},"http_statuses":{"items":{"minimum":200,"type":"integer","maximum":499},"uniqueItems":true,"type":"array","minItems":1,"default":[200]}},"type":"object","default":{"successes":3,"http_statuses":[200]}},"break_response_code":{"minimum":200,"type":"integer","maximum":599},"max_breaker_sec":{"minimum":3,"type":"integer","default":300},"unhealthy":{"properties":{"failures":{"minimum":1,"type":"integer","default":3},"http_statuses":{"items":{"minimum":500,"type":"integer","maximum":599},"uniqueItems":true,"type":"array","minItems":1,"default":[500]}},"type":"object","default":{"failures":3,"http_statuses":[500]}},"disable":{"type":"boolean"}}}`,

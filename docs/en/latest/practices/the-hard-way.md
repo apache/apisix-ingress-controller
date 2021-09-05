@@ -750,6 +750,10 @@ spec:
             items:
               - key: config.yaml
                 path: config.yaml
+      initContainers:
+        - name: wait-apisix-admin
+          image: busybox:1.28
+          command: ['sh', '-c', "until nc -z apisix-service.apisix.svc.cluster.local 9180 ; do echo waiting for apisix-admin; sleep 2; done;"]
       containers:
         - name: ingress-controller
           command:
