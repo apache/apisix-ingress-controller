@@ -41,13 +41,19 @@ func (c fakeSchemaClient) GetPluginSchema(ctx context.Context, name string) (*ap
 	return nil, fmt.Errorf("can't find the plugin schema")
 }
 
-func (c fakeSchemaClient) GetRouteSchema(context.Context) (*api.Schema, error) {
+func (c fakeSchemaClient) GetRouteSchema(_ context.Context) (*api.Schema, error) {
 	return nil, nil
 }
-func (c fakeSchemaClient) GetUpstreamSchema(context.Context) (*api.Schema, error) {
+
+func (c fakeSchemaClient) GetUpstreamSchema(_ context.Context) (*api.Schema, error) {
 	return nil, nil
 }
-func (c fakeSchemaClient) GetConsumerSchema(context.Context) (*api.Schema, error) {
+
+func (c fakeSchemaClient) GetConsumerSchema(_ context.Context) (*api.Schema, error) {
+	return nil, nil
+}
+
+func (c fakeSchemaClient) GetSslSchema(_ context.Context) (*api.Schema, error) {
 	return nil, nil
 }
 

@@ -105,3 +105,8 @@ func (sc schemaClient) GetUpstreamSchema(ctx context.Context) (*v1.Schema, error
 func (sc schemaClient) GetConsumerSchema(ctx context.Context) (*v1.Schema, error) {
 	return sc.getSchema(ctx, "consumer")
 }
+
+// GetSslSchema returns SSL's schema.
+func (sc schemaClient) GetSslSchema(ctx context.Context) (*v1.Schema, error) {
+	return sc.getSchema(ctx, "ssl")
+}

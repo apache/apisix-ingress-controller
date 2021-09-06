@@ -19,13 +19,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	kwhhttp "github.com/slok/kubewebhook/v2/pkg/http"
 	kwhmodel "github.com/slok/kubewebhook/v2/pkg/model"
 	kwhvalidating "github.com/slok/kubewebhook/v2/pkg/webhook/validating"
+	"github.com/xeipuuv/gojsonschema"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
@@ -35,25 +34,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
-// NewPluginValidatorHandler returns a new http.Handler ready to handle admission reviews using the pluginValidator.
-func NewPluginValidatorHandler() http.Handler {
-	// Create a validating webhook.
-	wh, err := kwhvalidating.NewWebhook(kwhvalidating.WebhookConfig{
-		ID:        "apisixRoute-plugin",
-		Validator: pluginValidator,
-	})
-	if err != nil {
-		log.Errorf("failed to create webhook: %s", err)
-	}
-
-	h, err := kwhhttp.HandlerFor(kwhhttp.HandlerConfig{Webhook: wh})
-	if err != nil {
-		log.Errorf("failed to create webhook handle: %s", err)
-	}
-
-	return h
-}
-
 // ErrNotApisixRoute will be used when the validating object is not ApisixRoute.
 var ErrNotApisixRoute = errors.New("object is not ApisixRoute")
 
@@ -62,17 +42,21 @@ type apisixRoutePlugin struct {
 	Config interface{}
 }
 
-// pluginValidator validates plugins in ApisixRoute.
+// ApisixRouteValidator validates ApisixRoute and its plugins.
 // When the validation of one plugin fails, it will continue to validate the rest of plugins.
-var pluginValidator = kwhvalidating.ValidatorFunc(
+var ApisixRouteValidator = kwhvalidating.ValidatorFunc(
 	func(ctx context.Context, review *kwhmodel.AdmissionReview, object metav1.Object) (result *kwhvalidating.ValidatorResult, err error) {
-		log.Debug("arrive plugin validator webhook")
+		log.Debug("arrive ApisixRoute validator webhook")
 
 		valid := true
 		var plugins []apisixRoutePlugin
+		var spec interface{}
 
 		switch ar := object.(type) {
 		case *v2beta1.ApisixRoute:
+			spec = ar.Spec
+
+			// validate plugins
 			for _, h := range ar.Spec.HTTP {
 				for _, p := range h.Plugins {
 					// only check plugins that are enabled.
@@ -84,6 +68,8 @@ var pluginValidator = kwhvalidating.ValidatorFunc(
 				}
 			}
 		case *v2alpha1.ApisixRoute:
+			spec = ar.Spec
+
 			for _, h := range ar.Spec.HTTP {
 				for _, p := range h.Plugins {
 					if p.Enable {
@@ -94,6 +80,8 @@ var pluginValidator = kwhvalidating.ValidatorFunc(
 				}
 			}
 		case *v1.ApisixRoute:
+			spec = ar.Spec
+
 			for _, r := range ar.Spec.Rules {
 				for _, path := range r.Http.Paths {
 					for _, p := range path.Plugins {
@@ -111,11 +99,26 @@ var pluginValidator = kwhvalidating.ValidatorFunc(
 
 		client, err := GetSchemaClient(&apisix.ClusterOptions{})
 		if err != nil {
-			log.Errorf("failed to get the schema client: %s", err)
-			return &kwhvalidating.ValidatorResult{Valid: false, Message: "failed to get the schema client"}, err
+			msg := "failed to get the schema client"
+			log.Errorf("%s: %s", msg, err)
+			return &kwhvalidating.ValidatorResult{Valid: false, Message: msg}, err
 		}
 
+		rs, err := client.GetRouteSchema(ctx)
+		if err != nil {
+			msg := "failed to get route's schema"
+			log.Errorf("%s: %s", msg, err)
+			return &kwhvalidating.ValidatorResult{Valid: false, Message: msg}, err
+		}
+		arSchemaLoader := gojsonschema.NewStringLoader(rs.Content)
+
 		var msg []string
+		if _, err := validateSchema(&arSchemaLoader, spec); err != nil {
+			valid = false
+			msg = append(msg, err.Error())
+			log.Warnf("failed to validate ApisixRoute: %s", err)
+		}
+
 		for _, p := range plugins {
 			if v, m, err := validatePlugin(client, p.Name, p.Config); !v {
 				valid = false
@@ -140,7 +143,8 @@ func validatePlugin(client apisix.Schema, pluginName string, pluginConfig interf
 		return
 	}
 
-	if _, err := validateSchema(pluginSchema.Content, pluginConfig); err != nil {
+	pluginSchemaLoader := gojsonschema.NewStringLoader(pluginSchema.Content)
+	if _, err := validateSchema(&pluginSchemaLoader, pluginConfig); err != nil {
 		valid = false
 		msg = fmt.Sprintf("%s plugin's config is invalid\n", pluginName)
 		result = multierror.Append(result, err)
