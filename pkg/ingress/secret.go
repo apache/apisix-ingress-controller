@@ -243,6 +243,8 @@ func (c *secretController) onAdd(obj interface{}) {
 		Type:   types.EventAdd,
 		Object: key,
 	})
+
+	c.controller.metricsCollector.IncrEvents("secret", "add")
 }
 
 func (c *secretController) onUpdate(prev, curr interface{}) {
@@ -268,6 +270,8 @@ func (c *secretController) onUpdate(prev, curr interface{}) {
 		Type:   types.EventUpdate,
 		Object: key,
 	})
+
+	c.controller.metricsCollector.IncrEvents("secret", "update")
 }
 
 func (c *secretController) onDelete(obj interface{}) {
@@ -300,4 +304,6 @@ func (c *secretController) onDelete(obj interface{}) {
 		Object:    key,
 		Tombstone: sec,
 	})
+
+	c.controller.metricsCollector.IncrEvents("secret", "delete")
 }
