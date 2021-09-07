@@ -34,29 +34,30 @@ var _ = ginkgo.Describe("retries", func() {
 	}
 	s := scaffold.NewScaffold(opts)
 
-	backendSvc, backendPorts := s.DefaultHTTPBackend()
-	ar := fmt.Sprintf(`
+	routeTpl := `
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
-  name: httpbin-route
+	name: httpbin-route
 spec:
-  http:
-  - name: rule1
-    match:
-      hosts:
-      - httpbin.org
-      paths:
-      - /*
-    backend:
-      serviceName: %s
-      servicePort: %d
-`, backendSvc, backendPorts[0])
-	err := s.CreateResourceFromString(ar)
-	assert.Nil(ginkgo.GinkgoT(), err)
-	time.Sleep(5 * time.Second)
-
+	http:
+	- name: rule1
+	match:
+		hosts:
+		- httpbin.org
+		paths:
+		- /*
+	backend:
+		serviceName: %s
+		servicePort: %d
+`
 	ginkgo.It("is missing", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(routeTpl, backendSvc, backendPorts[0])
+		err := s.CreateResourceFromString(ar)
+		assert.Nil(ginkgo.GinkgoT(), err)
+		time.Sleep(5 * time.Second)
+
 		au := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v1
 kind: ApisixUpstream
@@ -64,7 +65,7 @@ metadata:
   name: %s
 spec:
 `, backendSvc)
-		err := s.CreateResourceFromString(au)
+		err = s.CreateResourceFromString(au)
 		assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 		time.Sleep(2 * time.Second)
 
@@ -75,6 +76,12 @@ spec:
 	})
 
 	ginkgo.It("is zero", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(routeTpl, backendSvc, backendPorts[0])
+		err := s.CreateResourceFromString(ar)
+		assert.Nil(ginkgo.GinkgoT(), err)
+		time.Sleep(5 * time.Second)
+
 		au := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v1
 kind: ApisixUpstream
@@ -83,7 +90,7 @@ metadata:
 spec:
   retries: 0
 `, backendSvc)
-		err := s.CreateResourceFromString(au)
+		err = s.CreateResourceFromString(au)
 		assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 		time.Sleep(2 * time.Second)
 
@@ -94,6 +101,12 @@ spec:
 	})
 
 	ginkgo.It("is a positive number", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(routeTpl, backendSvc, backendPorts[0])
+		err := s.CreateResourceFromString(ar)
+		assert.Nil(ginkgo.GinkgoT(), err)
+		time.Sleep(5 * time.Second)
+
 		au := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v1
 kind: ApisixUpstream
@@ -102,7 +115,7 @@ metadata:
 spec:
   retries: 3
 `, backendSvc)
-		err := s.CreateResourceFromString(au)
+		err = s.CreateResourceFromString(au)
 		assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 		time.Sleep(2 * time.Second)
 
