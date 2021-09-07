@@ -109,14 +109,14 @@ func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) err
 func (c *endpointSliceController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
-		c.controller.metricsCollector.IncrSyncOperation("endpointSlices", "success")
+		c.controller.metricsCollector.IncrSyncOperation("endpointSlice", "success")
 		return
 	}
 	log.Warnw("sync endpointSlice failed, will retry",
 		zap.Any("object", obj),
 	)
 	c.workqueue.AddRateLimited(obj)
-	c.controller.metricsCollector.IncrSyncOperation("endpointSlices", "failure")
+	c.controller.metricsCollector.IncrSyncOperation("endpointSlice", "failure")
 }
 
 func (c *endpointSliceController) onAdd(obj interface{}) {
@@ -149,6 +149,8 @@ func (c *endpointSliceController) onAdd(obj interface{}) {
 			ServiceName: svcName,
 		},
 	})
+
+	c.controller.metricsCollector.IncrEvents("endpointSlice", "add")
 }
 
 func (c *endpointSliceController) onUpdate(prev, curr interface{}) {
@@ -188,6 +190,8 @@ func (c *endpointSliceController) onUpdate(prev, curr interface{}) {
 			ServiceName: svcName,
 		},
 	})
+
+	c.controller.metricsCollector.IncrEvents("endpointSlice", "update")
 }
 
 func (c *endpointSliceController) onDelete(obj interface{}) {
@@ -224,4 +228,6 @@ func (c *endpointSliceController) onDelete(obj interface{}) {
 			ServiceName: svcName,
 		},
 	})
+
+	c.controller.metricsCollector.IncrEvents("endpointSlice", "delete")
 }
