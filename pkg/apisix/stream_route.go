@@ -67,7 +67,7 @@ func (r *streamRouteClient) Get(ctx context.Context, name string) (*v1.StreamRou
 
 	// TODO Add mutex here to avoid dog-pile effection.
 	url := r.url + "/" + rid
-	resp, err := r.cluster.getResource(ctx, url)
+	resp, err := r.cluster.getResource(ctx, url, "streamRoute")
 	if err != nil {
 		if err == cache.ErrNotFound {
 			log.Warnw("stream_route not found",

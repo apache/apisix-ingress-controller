@@ -64,7 +64,7 @@ func (u *upstreamClient) Get(ctx context.Context, name string) (*v1.Upstream, er
 
 	// TODO Add mutex here to avoid dog-pile effection.
 	url := u.url + "/" + uid
-	resp, err := u.cluster.getResource(ctx, url)
+	resp, err := u.cluster.getResource(ctx, url, "upstream")
 	if err != nil {
 		if err == cache.ErrNotFound {
 			log.Warnw("upstream not found",

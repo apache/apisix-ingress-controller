@@ -488,14 +488,15 @@ func (c *cluster) do(req *http.Request) (*http.Response, error) {
 	return c.cli.Do(req)
 }
 
-func (c *cluster) getResource(ctx context.Context, url string) (*getResponse, error) {
+func (c *cluster) getResource(ctx context.Context, url, resource string) (*getResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 	start := time.Now()
 	resp, err := c.do(req)
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start))
+	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "get")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 	if err != nil {
 		return nil, err
 	}
@@ -526,14 +527,14 @@ func (c *cluster) listResource(ctx context.Context, url, resource string) (*list
 	}
 	start := time.Now()
 	resp, err := c.do(req)
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start))
+	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "list")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 	if err != nil {
 		return nil, err
 	}
 	defer drainBody(resp.Body, url)
 	if resp.StatusCode != http.StatusOK {
 		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
-		c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 		err = multierr.Append(err, fmt.Errorf("error message: %s", readBody(resp.Body, url)))
 		return nil, err
 	}
@@ -554,7 +555,8 @@ func (c *cluster) createResource(ctx context.Context, url, resource string, body
 	}
 	start := time.Now()
 	resp, err := c.do(req)
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start))
+	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "create")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 	if err != nil {
 		return nil, err
 	}
@@ -563,7 +565,6 @@ func (c *cluster) createResource(ctx context.Context, url, resource string, body
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
-		c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 		err = multierr.Append(err, fmt.Errorf("error message: %s", readBody(resp.Body, url)))
 		return nil, err
 	}
@@ -583,7 +584,8 @@ func (c *cluster) updateResource(ctx context.Context, url, resource string, body
 	}
 	start := time.Now()
 	resp, err := c.do(req)
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start))
+	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "update")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 	if err != nil {
 		return nil, err
 	}
@@ -591,7 +593,6 @@ func (c *cluster) updateResource(ctx context.Context, url, resource string, body
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
-		c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 		err = multierr.Append(err, fmt.Errorf("error message: %s", readBody(resp.Body, url)))
 		return nil, err
 	}
@@ -610,7 +611,8 @@ func (c *cluster) deleteResource(ctx context.Context, url, resource string) erro
 	}
 	start := time.Now()
 	resp, err := c.do(req)
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start))
+	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "delete")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 	if err != nil {
 		return err
 	}
@@ -618,7 +620,6 @@ func (c *cluster) deleteResource(ctx context.Context, url, resource string) erro
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
 		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
-		c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 		message := readBody(resp.Body, url)
 		err = multierr.Append(err, fmt.Errorf("error message: %s", message))
 		if strings.Contains(message, "still using") {
@@ -664,14 +665,15 @@ func readBody(r io.ReadCloser, url string) string {
 }
 
 // getSchema returns the schema of APISIX object.
-func (c *cluster) getSchema(ctx context.Context, url string) (string, error) {
+func (c *cluster) getSchema(ctx context.Context, url, resource string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
 	}
 	start := time.Now()
 	resp, err := c.do(req)
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start))
+	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "getSchema")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 	if err != nil {
 		return "", err
 	}
@@ -690,14 +692,15 @@ func (c *cluster) getSchema(ctx context.Context, url string) (string, error) {
 }
 
 // getList returns a list of string.
-func (c *cluster) getList(ctx context.Context, url string) ([]string, error) {
+func (c *cluster) getList(ctx context.Context, url, resource string) ([]string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 	start := time.Now()
 	resp, err := c.do(req)
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start))
+	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "getList")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 	if err != nil {
 		return nil, err
 	}

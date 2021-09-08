@@ -83,6 +83,8 @@ func apisixLatencyTestHandler(t *testing.T, metrics []*io_prometheus_client.Metr
 		assert.Equal(t, *m[0].Label[0].Value, "default")
 		assert.Equal(t, *m[0].Label[1].Name, "controller_pod")
 		assert.Equal(t, *m[0].Label[1].Value, "")
+		assert.Equal(t, *m[0].Label[2].Name, "operation")
+		assert.Equal(t, *m[0].Label[2].Value, "create")
 	}
 }
 
@@ -203,7 +205,7 @@ func TestPrometheusCollector(t *testing.T) {
 	c.ResetLeader(true)
 	c.RecordAPISIXCode(404, "route")
 	c.RecordAPISIXCode(500, "upstream")
-	c.RecordAPISIXLatency(500 * time.Millisecond)
+	c.RecordAPISIXLatency(500*time.Millisecond, "create")
 	c.IncrAPISIXRequest("route")
 	c.IncrAPISIXRequest("route")
 	c.IncrAPISIXRequest("upstream")

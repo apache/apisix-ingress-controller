@@ -65,7 +65,7 @@ func (r *consumerClient) Get(ctx context.Context, name string) (*v1.Consumer, er
 
 	// TODO Add mutex here to avoid dog-pile effect.
 	url := r.url + "/" + name
-	resp, err := r.cluster.getResource(ctx, url)
+	resp, err := r.cluster.getResource(ctx, url, "consumer")
 	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err != nil {
 		if err == cache.ErrNotFound {

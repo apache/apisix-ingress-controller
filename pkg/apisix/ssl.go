@@ -65,7 +65,7 @@ func (s *sslClient) Get(ctx context.Context, name string) (*v1.Ssl, error) {
 
 	// TODO Add mutex here to avoid dog-pile effection.
 	url := s.url + "/" + sid
-	resp, err := s.cluster.getResource(ctx, url)
+	resp, err := s.cluster.getResource(ctx, url, "ssl")
 	if err != nil {
 		if err == cache.ErrNotFound {
 			log.Warnw("ssl not found",
