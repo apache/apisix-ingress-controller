@@ -172,7 +172,7 @@ func (c *apisixTlsController) syncSecretSSL(secretKey string, apisixTlsKey strin
 func (c *apisixTlsController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
-		c.controller.metricsCollector.IncrSyncOperation("Tls", "success")
+		c.controller.metricsCollector.IncrSyncOperation("TLS", "success")
 		return
 	}
 	log.Warnw("sync ApisixTls failed, will retry",
@@ -180,7 +180,7 @@ func (c *apisixTlsController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
-	c.controller.metricsCollector.IncrSyncOperation("Tls", "failure")
+	c.controller.metricsCollector.IncrSyncOperation("TLS", "failure")
 }
 
 func (c *apisixTlsController) onAdd(obj interface{}) {
@@ -200,7 +200,7 @@ func (c *apisixTlsController) onAdd(obj interface{}) {
 		Object: key,
 	})
 
-	c.controller.metricsCollector.IncrEvents("Tls", "add")
+	c.controller.metricsCollector.IncrEvents("TLS", "add")
 }
 
 func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
@@ -226,7 +226,7 @@ func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
 		Object: key,
 	})
 
-	c.controller.metricsCollector.IncrEvents("Tls", "update")
+	c.controller.metricsCollector.IncrEvents("TLS", "update")
 }
 
 func (c *apisixTlsController) onDelete(obj interface{}) {
@@ -258,5 +258,5 @@ func (c *apisixTlsController) onDelete(obj interface{}) {
 		Tombstone: tls,
 	})
 
-	c.controller.metricsCollector.IncrEvents("Tls", "delete")
+	c.controller.metricsCollector.IncrEvents("TLS", "delete")
 }

@@ -67,7 +67,7 @@ func (r *globalRuleClient) Get(ctx context.Context, name string) (*v1.GlobalRule
 
 	// TODO Add mutex here to avoid dog-pile effect.
 	url := r.url + "/" + rid
-	resp, err := r.cluster.getResource(ctx, url)
+	resp, err := r.cluster.getResource(ctx, url, "globalRule")
 	r.cluster.metricsCollector.IncrAPISIXRequest("globalRule")
 	if err != nil {
 		if err == cache.ErrNotFound {

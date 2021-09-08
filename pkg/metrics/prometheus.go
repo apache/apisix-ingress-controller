@@ -35,7 +35,7 @@ type Collector interface {
 	RecordAPISIXCode(int, string)
 	// RecordAPISIXLatency records the latency for a round trip from ingress apisix
 	// to apisix.
-	RecordAPISIXLatency(time.Duration)
+	RecordAPISIXLatency(time.Duration, string)
 	// IncrAPISIXRequest increases the number of requests to apisix.
 	IncrAPISIXRequest(string)
 	// IncrCheckClusterHealth increases the number of cluster health check operations
@@ -55,7 +55,7 @@ type Collector interface {
 // collector contains necessary messages to collect Prometheus metrics.
 type collector struct {
 	isLeader           prometheus.Gauge
-	apisixLatency      prometheus.Summary
+	apisixLatency      *prometheus.SummaryVec
 	apisixRequests     *prometheus.CounterVec
 	apisixCodes        *prometheus.GaugeVec
 	checkClusterHealth *prometheus.CounterVec
@@ -91,18 +91,19 @@ func NewPrometheusCollector() Collector {
 			prometheus.GaugeOpts{
 				Name:        "apisix_bad_status_codes",
 				Namespace:   _namespace,
-				Help:        "Bad status codes of requests to APISIX",
+				Help:        "Status codes of requests to APISIX",
 				ConstLabels: constLabels,
 			},
 			[]string{"resource", "status_code"},
 		),
-		apisixLatency: prometheus.NewSummary(
+		apisixLatency: prometheus.NewSummaryVec(
 			prometheus.SummaryOpts{
 				Namespace:   _namespace,
 				Name:        "apisix_request_latencies",
 				Help:        "Request latencies with APISIX",
 				ConstLabels: constLabels,
 			},
+			[]string{"operation"},
 		),
 		apisixRequests: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
@@ -196,8 +197,8 @@ func (c *collector) RecordAPISIXCode(code int, resource string) {
 
 // RecordAPISIXLatency records the latency for a complete round trip
 // from controller to APISIX.
-func (c *collector) RecordAPISIXLatency(latency time.Duration) {
-	c.apisixLatency.Observe(float64(latency.Nanoseconds()))
+func (c *collector) RecordAPISIXLatency(latency time.Duration, resource string) {
+	c.apisixLatency.WithLabelValues(resource).Observe(float64(latency.Nanoseconds()))
 }
 
 // IncrAPISIXRequest increases the number of requests for specific

@@ -68,7 +68,7 @@ func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
 
 	// TODO Add mutex here to avoid dog-pile effection.
 	url := r.url + "/" + rid
-	resp, err := r.cluster.getResource(ctx, url)
+	resp, err := r.cluster.getResource(ctx, url, "route")
 	r.cluster.metricsCollector.IncrAPISIXRequest("route")
 	if err != nil {
 		if err == cache.ErrNotFound {
