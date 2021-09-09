@@ -217,7 +217,7 @@ spec:
       initContainers:
       - name: wait-apisix-admin
         image: localhost:5000/busybox:1.28
-        command: ['sh', '-c', "until nc -z apisix-service-e2e-test.%s.svc.cluster.local 9180 ; do echo waiting for apisix-admin; sleep 2; done;"]
+        command: ['sh', '-c', "until nc -z apisix-service-e2e-test.%s.svc.cluster.local 9180; do echo waiting for apisix-admin; sleep 2; done"]
       containers:
         - livenessProbe:
             failureThreshold: 3
@@ -276,14 +276,6 @@ spec:
             - --apisix-route-version
             - %s
             - --watch-endpointslices
-          volumeMounts:
-           - name: webhook-certs
-             mountPath: /etc/webhook/certs
-             readOnly: true
-      volumes:
-       - name: webhook-certs
-         secret:
-           secretName: %s
       serviceAccount: ingress-apisix-e2e-test-service-account
 `
 	_ingressAPISIXAdmissionService = `
@@ -347,7 +339,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		assert.Nil(s.t, err, "deleting ClusterRole")
 	})
 
-	ingressAPISIXDeployment := fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, s.namespace, s.opts.APISIXRouteVersion, _webhookCertSecret)
+	ingressAPISIXDeployment := fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, s.namespace, s.opts.APISIXRouteVersion)
 	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
 
