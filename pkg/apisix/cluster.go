@@ -495,11 +495,12 @@ func (c *cluster) getResource(ctx context.Context, url, resource string) (*getRe
 	}
 	start := time.Now()
 	resp, err := c.do(req)
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "get")
-	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 	if err != nil {
 		return nil, err
 	}
+	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "get")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+
 	defer drainBody(resp.Body, url)
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
@@ -527,11 +528,12 @@ func (c *cluster) listResource(ctx context.Context, url, resource string) (*list
 	}
 	start := time.Now()
 	resp, err := c.do(req)
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "list")
-	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 	if err != nil {
 		return nil, err
 	}
+	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "list")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+
 	defer drainBody(resp.Body, url)
 	if resp.StatusCode != http.StatusOK {
 		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
@@ -555,11 +557,11 @@ func (c *cluster) createResource(ctx context.Context, url, resource string, body
 	}
 	start := time.Now()
 	resp, err := c.do(req)
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "create")
-	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 	if err != nil {
 		return nil, err
 	}
+	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "create")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 
 	defer drainBody(resp.Body, url)
 
@@ -584,11 +586,12 @@ func (c *cluster) updateResource(ctx context.Context, url, resource string, body
 	}
 	start := time.Now()
 	resp, err := c.do(req)
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "update")
-	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 	if err != nil {
 		return nil, err
 	}
+	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "update")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+
 	defer drainBody(resp.Body, url)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
@@ -611,11 +614,12 @@ func (c *cluster) deleteResource(ctx context.Context, url, resource string) erro
 	}
 	start := time.Now()
 	resp, err := c.do(req)
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "delete")
-	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 	if err != nil {
 		return err
 	}
+	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "delete")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+
 	defer drainBody(resp.Body, url)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
@@ -672,11 +676,12 @@ func (c *cluster) getSchema(ctx context.Context, url, resource string) (string, 
 	}
 	start := time.Now()
 	resp, err := c.do(req)
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "getSchema")
-	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 	if err != nil {
 		return "", err
 	}
+	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "getSchema")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+
 	defer drainBody(resp.Body, url)
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
@@ -699,11 +704,12 @@ func (c *cluster) getList(ctx context.Context, url, resource string) ([]string, 
 	}
 	start := time.Now()
 	resp, err := c.do(req)
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "getList")
-	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 	if err != nil {
 		return nil, err
 	}
+	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "getList")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+
 	defer drainBody(resp.Body, url)
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
