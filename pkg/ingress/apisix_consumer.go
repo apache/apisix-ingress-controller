@@ -131,9 +131,11 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 		)
 		c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
 		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse)
+		c.controller.metricsCollector.IncrSyncOperation("consumer", "failure")
 		return err
 	}
 
+	c.controller.metricsCollector.IncrSyncOperation("consumer", "success")
 	c.controller.recorderEvent(ac, corev1.EventTypeNormal, _resourceSynced, nil)
 	return nil
 }
