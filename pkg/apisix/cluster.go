@@ -35,6 +35,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
@@ -80,23 +81,24 @@ type ClusterOptions struct {
 }
 
 type cluster struct {
-	name         string
-	baseURL      string
-	baseURLHost  string
-	adminKey     string
-	cli          *http.Client
-	cacheState   int32
-	cache        cache.Cache
-	cacheSynced  chan struct{}
-	cacheSyncErr error
-	route        Route
-	upstream     Upstream
-	ssl          SSL
-	streamRoute  StreamRoute
-	globalRules  GlobalRule
-	consumer     Consumer
-	plugin       Plugin
-	schema       Schema
+	name             string
+	baseURL          string
+	baseURLHost      string
+	adminKey         string
+	cli              *http.Client
+	cacheState       int32
+	cache            cache.Cache
+	cacheSynced      chan struct{}
+	cacheSyncErr     error
+	route            Route
+	upstream         Upstream
+	ssl              SSL
+	streamRoute      StreamRoute
+	globalRules      GlobalRule
+	consumer         Consumer
+	plugin           Plugin
+	schema           Schema
+	metricsCollector metrics.Collector
 }
 
 func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
@@ -125,8 +127,9 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 			Timeout:   o.Timeout,
 			Transport: _defaultTransport,
 		},
-		cacheState:  _cacheSyncing, // default state
-		cacheSynced: make(chan struct{}),
+		cacheState:       _cacheSyncing, // default state
+		cacheSynced:      make(chan struct{}),
+		metricsCollector: metrics.NewPrometheusCollector(),
 	}
 	c.route = newRouteClient(c)
 	c.upstream = newUpstreamClient(c)
@@ -322,6 +325,7 @@ func (c *cluster) syncSchema(ctx context.Context, interval time.Duration) {
 	for {
 		if err := c.syncSchemaOnce(ctx); err != nil {
 			log.Warnf("failed to sync schema: %s", err)
+			c.metricsCollector.IncrSyncOperation("schema", "failure")
 		}
 
 		select {
@@ -379,6 +383,7 @@ func (c *cluster) syncSchemaOnce(ctx context.Context) error {
 			continue
 		}
 	}
+	c.metricsCollector.IncrSyncOperation("schema", "success")
 	return nil
 }
 

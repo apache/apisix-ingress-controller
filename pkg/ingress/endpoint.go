@@ -90,12 +90,14 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 func (c *endpointsController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
+		c.controller.metricsCollector.IncrSyncOperation("endpoint", "success")
 		return
 	}
 	log.Warnw("sync endpoints failed, will retry",
 		zap.Any("object", obj),
 	)
 	c.workqueue.AddRateLimited(obj)
+	c.controller.metricsCollector.IncrSyncOperation("endpoint", "failure")
 }
 
 func (c *endpointsController) onAdd(obj interface{}) {
