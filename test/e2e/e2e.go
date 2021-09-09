@@ -15,11 +15,7 @@
 package e2e
 
 import (
-	_ "github.com/apache/apisix-ingress-controller/test/e2e/annotations"
-	_ "github.com/apache/apisix-ingress-controller/test/e2e/endpoints"
-	_ "github.com/apache/apisix-ingress-controller/test/e2e/features"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/ingress"
-	_ "github.com/apache/apisix-ingress-controller/test/e2e/plugins"
 )
 
 func runE2E() {}
