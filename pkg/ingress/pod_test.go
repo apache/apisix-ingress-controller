@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
@@ -31,7 +32,8 @@ func TestPodOnAdd(t *testing.T) {
 			watchingNamespace: map[string]struct{}{
 				"default": {},
 			},
-			podCache: types.NewPodCache(),
+			podCache:         types.NewPodCache(),
+			metricsCollector: metrics.NewPrometheusCollector(),
 		},
 	}
 
@@ -72,7 +74,8 @@ func TestPodOnDelete(t *testing.T) {
 			watchingNamespace: map[string]struct{}{
 				"default": {},
 			},
-			podCache: types.NewPodCache(),
+			podCache:         types.NewPodCache(),
+			metricsCollector: metrics.NewPrometheusCollector(),
 		},
 	}
 
@@ -116,7 +119,8 @@ func TestPodOnUpdate(t *testing.T) {
 			watchingNamespace: map[string]struct{}{
 				"default": {},
 			},
-			podCache: types.NewPodCache(),
+			podCache:         types.NewPodCache(),
+			metricsCollector: metrics.NewPrometheusCollector(),
 		},
 	}
 
