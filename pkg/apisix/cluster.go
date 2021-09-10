@@ -498,7 +498,7 @@ func (c *cluster) getResource(ctx context.Context, url, resource string) (*getRe
 	if err != nil {
 		return nil, err
 	}
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "get")
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "get")
 	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 
 	defer drainBody(resp.Body, url)
@@ -531,7 +531,7 @@ func (c *cluster) listResource(ctx context.Context, url, resource string) (*list
 	if err != nil {
 		return nil, err
 	}
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "list")
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "list")
 	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 
 	defer drainBody(resp.Body, url)
@@ -560,7 +560,7 @@ func (c *cluster) createResource(ctx context.Context, url, resource string, body
 	if err != nil {
 		return nil, err
 	}
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "create")
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "create")
 	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 
 	defer drainBody(resp.Body, url)
@@ -589,7 +589,7 @@ func (c *cluster) updateResource(ctx context.Context, url, resource string, body
 	if err != nil {
 		return nil, err
 	}
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "update")
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "update")
 	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 
 	defer drainBody(resp.Body, url)
@@ -617,7 +617,7 @@ func (c *cluster) deleteResource(ctx context.Context, url, resource string) erro
 	if err != nil {
 		return err
 	}
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "delete")
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "delete")
 	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 
 	defer drainBody(resp.Body, url)
@@ -679,7 +679,7 @@ func (c *cluster) getSchema(ctx context.Context, url, resource string) (string, 
 	if err != nil {
 		return "", err
 	}
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "getSchema")
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "getSchema")
 	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 
 	defer drainBody(resp.Body, url)
@@ -707,7 +707,7 @@ func (c *cluster) getList(ctx context.Context, url, resource string) ([]string, 
 	if err != nil {
 		return nil, err
 	}
-	c.metricsCollector.RecordAPISIXLatency(time.Now().Sub(start), "getList")
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "getList")
 	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 
 	defer drainBody(resp.Body, url)
