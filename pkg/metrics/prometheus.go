@@ -35,7 +35,7 @@ type Collector interface {
 	RecordAPISIXCode(int, string)
 	// RecordAPISIXLatency records the latency for a round trip from ingress apisix
 	// to apisix.
-	RecordAPISIXLatency(time.Duration)
+	RecordAPISIXLatency(time.Duration, string)
 	// IncrAPISIXRequest increases the number of requests to apisix.
 	IncrAPISIXRequest(string)
 	// IncrCheckClusterHealth increases the number of cluster health check operations
@@ -44,16 +44,24 @@ type Collector interface {
 	// IncrSyncOperation increases the number of sync operations with the resource
 	// type label.
 	IncrSyncOperation(string, string)
+	// IncrCacheSyncOperation increases the number of cache sync operations with the
+	// resource type label.
+	IncrCacheSyncOperation(string)
+	// IncrEvents increases the number of events handled by controllers with the
+	// operation label.
+	IncrEvents(string, string)
 }
 
 // collector contains necessary messages to collect Prometheus metrics.
 type collector struct {
 	isLeader           prometheus.Gauge
-	apisixLatency      prometheus.Summary
+	apisixLatency      *prometheus.SummaryVec
 	apisixRequests     *prometheus.CounterVec
 	apisixCodes        *prometheus.GaugeVec
 	checkClusterHealth *prometheus.CounterVec
 	syncOperation      *prometheus.CounterVec
+	cacheSyncOperation *prometheus.CounterVec
+	controllerEvents   *prometheus.CounterVec
 }
 
 // NewPrometheusCollectors creates the Prometheus metrics collector.
@@ -83,18 +91,19 @@ func NewPrometheusCollector() Collector {
 			prometheus.GaugeOpts{
 				Name:        "apisix_bad_status_codes",
 				Namespace:   _namespace,
-				Help:        "Whether the role of controller instance is leader",
+				Help:        "Status codes of requests to APISIX",
 				ConstLabels: constLabels,
 			},
 			[]string{"resource", "status_code"},
 		),
-		apisixLatency: prometheus.NewSummary(
+		apisixLatency: prometheus.NewSummaryVec(
 			prometheus.SummaryOpts{
 				Namespace:   _namespace,
 				Name:        "apisix_request_latencies",
 				Help:        "Request latencies with APISIX",
 				ConstLabels: constLabels,
 			},
+			[]string{"operation"},
 		),
 		apisixRequests: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
@@ -123,6 +132,24 @@ func NewPrometheusCollector() Collector {
 			},
 			[]string{"resource", "result"},
 		),
+		cacheSyncOperation: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace:   _namespace,
+				Name:        "cache_sync_total",
+				Help:        "Number of cache sync operations",
+				ConstLabels: constLabels,
+			},
+			[]string{"result"},
+		),
+		controllerEvents: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace:   _namespace,
+				Name:        "events_total",
+				Help:        "Number of events handled by the controller",
+				ConstLabels: constLabels,
+			},
+			[]string{"resource", "operation"},
+		),
 	}
 
 	// Since we use the DefaultRegisterer, in test cases, the metrics
@@ -133,6 +160,8 @@ func NewPrometheusCollector() Collector {
 	prometheus.Unregister(collector.apisixRequests)
 	prometheus.Unregister(collector.checkClusterHealth)
 	prometheus.Unregister(collector.syncOperation)
+	prometheus.Unregister(collector.cacheSyncOperation)
+	prometheus.Unregister(collector.controllerEvents)
 
 	prometheus.MustRegister(
 		collector.isLeader,
@@ -141,6 +170,8 @@ func NewPrometheusCollector() Collector {
 		collector.apisixRequests,
 		collector.checkClusterHealth,
 		collector.syncOperation,
+		collector.cacheSyncOperation,
+		collector.controllerEvents,
 	)
 
 	return collector
@@ -166,8 +197,8 @@ func (c *collector) RecordAPISIXCode(code int, resource string) {
 
 // RecordAPISIXLatency records the latency for a complete round trip
 // from controller to APISIX.
-func (c *collector) RecordAPISIXLatency(latency time.Duration) {
-	c.apisixLatency.Observe(float64(latency.Nanoseconds()))
+func (c *collector) RecordAPISIXLatency(latency time.Duration, resource string) {
+	c.apisixLatency.WithLabelValues(resource).Observe(float64(latency.Nanoseconds()))
 }
 
 // IncrAPISIXRequest increases the number of requests for specific
@@ -191,15 +222,31 @@ func (c *collector) IncrSyncOperation(resource, result string) {
 	}).Inc()
 }
 
+// IncrCacheSync increases the number of cache sync operations for
+// cluster.
+func (c *collector) IncrCacheSyncOperation(result string) {
+	c.cacheSyncOperation.WithLabelValues(result).Inc()
+}
+
+// IncrEvents increases the number of events handled by controllers for
+// specific operation.
+func (c *collector) IncrEvents(resource, operation string) {
+	c.controllerEvents.With(prometheus.Labels{
+		"resource":  resource,
+		"operation": operation,
+	}).Inc()
+}
+
 // Collect collects the prometheus.Collect.
 func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	c.isLeader.Collect(ch)
 	c.apisixLatency.Collect(ch)
 	c.apisixRequests.Collect(ch)
-	c.apisixLatency.Collect(ch)
 	c.apisixCodes.Collect(ch)
 	c.checkClusterHealth.Collect(ch)
 	c.syncOperation.Collect(ch)
+	c.cacheSyncOperation.Collect(ch)
+	c.controllerEvents.Collect(ch)
 }
 
 // Describe describes the prometheus.Describe.
@@ -207,8 +254,9 @@ func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 	c.isLeader.Describe(ch)
 	c.apisixLatency.Describe(ch)
 	c.apisixRequests.Describe(ch)
-	c.apisixLatency.Describe(ch)
 	c.apisixCodes.Describe(ch)
 	c.checkClusterHealth.Describe(ch)
 	c.syncOperation.Describe(ch)
+	c.cacheSyncOperation.Describe(ch)
+	c.controllerEvents.Describe(ch)
 }

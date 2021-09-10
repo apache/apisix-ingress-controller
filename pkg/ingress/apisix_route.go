@@ -232,6 +232,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
 	if errLocal != nil {
 		log.Errorf("invalid resource key: %s", event.Key)
+		c.controller.metricsCollector.IncrSyncOperation("route", "failure")
 		return
 	}
 	var ar kube.ApisixRoute
@@ -265,6 +266,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 			}
 		}
 		c.workqueue.Forget(obj)
+		c.controller.metricsCollector.IncrSyncOperation("route", "success")
 		return
 	}
 	log.Warnw("sync ApisixRoute failed, will retry",
@@ -290,6 +292,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 		)
 	}
 	c.workqueue.AddRateLimited(obj)
+	c.controller.metricsCollector.IncrSyncOperation("route", "failure")
 }
 
 func (c *apisixRouteController) onAdd(obj interface{}) {
@@ -312,6 +315,8 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 			GroupVersion: ar.GroupVersion(),
 		},
 	})
+
+	c.controller.metricsCollector.IncrEvents("route", "add")
 }
 
 func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
@@ -340,6 +345,8 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 			OldObject:    prev,
 		},
 	})
+
+	c.controller.metricsCollector.IncrEvents("route", "update")
 }
 
 func (c *apisixRouteController) onDelete(obj interface{}) {
@@ -370,4 +377,6 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 		},
 		Tombstone: ar,
 	})
+
+	c.controller.metricsCollector.IncrEvents("route", "delete")
 }

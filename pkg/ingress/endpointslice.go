@@ -149,6 +149,8 @@ func (c *endpointSliceController) onAdd(obj interface{}) {
 			ServiceName: svcName,
 		},
 	})
+
+	c.controller.metricsCollector.IncrEvents("endpointSlice", "add")
 }
 
 func (c *endpointSliceController) onUpdate(prev, curr interface{}) {
@@ -188,6 +190,8 @@ func (c *endpointSliceController) onUpdate(prev, curr interface{}) {
 			ServiceName: svcName,
 		},
 	})
+
+	c.controller.metricsCollector.IncrEvents("endpointSlice", "update")
 }
 
 func (c *endpointSliceController) onDelete(obj interface{}) {
@@ -224,4 +228,6 @@ func (c *endpointSliceController) onDelete(obj interface{}) {
 			ServiceName: svcName,
 		},
 	})
+
+	c.controller.metricsCollector.IncrEvents("endpointSlice", "delete")
 }
