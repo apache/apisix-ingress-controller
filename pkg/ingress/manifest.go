@@ -17,6 +17,7 @@ package ingress
 import (
 	"context"
 	"reflect"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
@@ -201,6 +202,7 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 			}
 		}
 		for _, u := range deleted.upstreams {
+			time.Sleep(5 * time.Second)
 			if err := c.apisix.Cluster(clusterName).Upstream().Delete(ctx, u); err != nil {
 				// Upstream might be referenced by other routes.
 				if err != cache.ErrStillInUse {
