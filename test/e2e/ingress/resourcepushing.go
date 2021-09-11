@@ -203,10 +203,10 @@ spec:
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
+		//assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
 		// TODO When ingress controller can feedback the lifecycle of CRDs to the
 		// status field, we can poll it rather than sleeping.
-		time.Sleep(10 * time.Second)
+		//time.Sleep(10 * time.Second)
 
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
