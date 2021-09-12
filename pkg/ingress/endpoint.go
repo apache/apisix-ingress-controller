@@ -163,7 +163,8 @@ func (c *endpointsController) onDelete(obj interface{}) {
 		return
 	}
 	log.Debugw("endpoints delete event arrived",
-		zap.Any("final state", ep),
+		zap.String("ep namespace", ep.Namespace),
+		zap.String("ep name", ep.Name),
 	)
 	c.workqueue.AddRateLimited(&types.Event{
 		Type:   types.EventDelete,

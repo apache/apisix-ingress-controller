@@ -89,7 +89,8 @@ func (c *podController) onUpdate(_, cur interface{}) {
 		return
 	}
 	log.Debugw("pod update event arrived",
-		zap.Any("final state", pod),
+		zap.String("pod namespace", pod.Namespace),
+		zap.String("pod name", pod.Name),
 	)
 	if pod.DeletionTimestamp != nil {
 		if err := c.controller.podCache.Delete(pod); err != nil {
