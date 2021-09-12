@@ -216,7 +216,7 @@ spec:
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").WithHeader("X-Foo", "barbaz").Expect().Status(http.StatusOK)
 		// remove k8s service first
-		assert.Nil(ginkgo.GinkgoT(), s.DeleteHTTPBINService())
+		//assert.Nil(ginkgo.GinkgoT(), s.DeleteHTTPBINService())
 		// remove
 		assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
 		// TODO When ingress controller can feedback the lifecycle of CRDs to the
