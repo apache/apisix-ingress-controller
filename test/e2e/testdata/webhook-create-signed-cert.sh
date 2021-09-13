@@ -19,7 +19,7 @@
 # This script is mostly copied from the istio project.
 # https://github.com/istio/istio/blob/release-0.7/install/kubernetes/webhook-create-signed-cert.sh
 
-set -e
+set -ex
 
 usage() {
     cat <<EOF
