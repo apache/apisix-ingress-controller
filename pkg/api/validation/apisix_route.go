@@ -34,8 +34,8 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
-// ErrNotApisixRoute will be used when the validating object is not ApisixRoute.
-var ErrNotApisixRoute = errors.New("object is not ApisixRoute")
+// errNotApisixRoute will be used when the validating object is not ApisixRoute.
+var errNotApisixRoute = errors.New("object is not ApisixRoute")
 
 type apisixRoutePlugin struct {
 	Name   string
@@ -94,7 +94,7 @@ var ApisixRouteValidator = kwhvalidating.ValidatorFunc(
 				}
 			}
 		default:
-			return &kwhvalidating.ValidatorResult{Valid: false, Message: ErrNotApisixRoute.Error()}, ErrNotApisixRoute
+			return &kwhvalidating.ValidatorResult{Valid: false, Message: errNotApisixRoute.Error()}, errNotApisixRoute
 		}
 
 		client, err := GetSchemaClient(&apisix.ClusterOptions{})
@@ -112,22 +112,22 @@ var ApisixRouteValidator = kwhvalidating.ValidatorFunc(
 		}
 		arSchemaLoader := gojsonschema.NewStringLoader(rs.Content)
 
-		var msg []string
+		var msgs []string
 		if _, err := validateSchema(&arSchemaLoader, spec); err != nil {
 			valid = false
-			msg = append(msg, err.Error())
+			msgs = append(msgs, err.Error())
 			log.Warnf("failed to validate ApisixRoute: %s", err)
 		}
 
 		for _, p := range plugins {
 			if v, m, err := validatePlugin(client, p.Name, p.Config); !v {
 				valid = false
-				msg = append(msg, m)
+				msgs = append(msgs, m)
 				log.Warnf("failed to validate plugin %s: %s", p.Name, err)
 			}
 		}
 
-		return &kwhvalidating.ValidatorResult{Valid: valid, Message: strings.Join(msg, "\n")}, nil
+		return &kwhvalidating.ValidatorResult{Valid: valid, Message: strings.Join(msgs, "\n")}, nil
 	},
 )
 

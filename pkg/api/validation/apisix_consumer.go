@@ -32,8 +32,8 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
-// ErrNotApisixConsumer will be used when the validating object is not ApisixConsumer.
-var ErrNotApisixConsumer = errors.New("object is not ApisixConsumer")
+// errNotApisixConsumer will be used when the validating object is not ApisixConsumer.
+var errNotApisixConsumer = errors.New("object is not ApisixConsumer")
 
 // ApisixConsumerValidator validates ApisixConsumer's spec.
 var ApisixConsumerValidator = kwhvalidating.ValidatorFunc(
@@ -51,7 +51,7 @@ var ApisixConsumerValidator = kwhvalidating.ValidatorFunc(
 		case *v1.ApisixRoute:
 			spec = ac.Spec
 		default:
-			return &kwhvalidating.ValidatorResult{Valid: false, Message: ErrNotApisixConsumer.Error()}, ErrNotApisixConsumer
+			return &kwhvalidating.ValidatorResult{Valid: false, Message: errNotApisixConsumer.Error()}, errNotApisixConsumer
 		}
 
 		client, err := GetSchemaClient(&apisix.ClusterOptions{})
@@ -69,12 +69,12 @@ var ApisixConsumerValidator = kwhvalidating.ValidatorFunc(
 		}
 		acSchemaLoader := gojsonschema.NewStringLoader(cs.Content)
 
-		var msg []string
+		var msgs []string
 		if _, err := validateSchema(&acSchemaLoader, spec); err != nil {
 			valid = false
-			msg = append(msg, err.Error())
+			msgs = append(msgs, err.Error())
 		}
 
-		return &kwhvalidating.ValidatorResult{Valid: valid, Message: strings.Join(msg, "\n")}, nil
+		return &kwhvalidating.ValidatorResult{Valid: valid, Message: strings.Join(msgs, "\n")}, nil
 	},
 )

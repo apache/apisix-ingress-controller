@@ -32,8 +32,8 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
-// ErrNotApisixTls will be used when the validating object is not ApisixTls.
-var ErrNotApisixTls = errors.New("object is not ApisixTls")
+// errNotApisixTls will be used when the validating object is not ApisixTls.
+var errNotApisixTls = errors.New("object is not ApisixTls")
 
 // ApisixTlsValidator validates ApisixTls's spec.
 var ApisixTlsValidator = kwhvalidating.ValidatorFunc(
@@ -51,7 +51,7 @@ var ApisixTlsValidator = kwhvalidating.ValidatorFunc(
 		case *v1.ApisixRoute:
 			spec = at.Spec
 		default:
-			return &kwhvalidating.ValidatorResult{Valid: false, Message: ErrNotApisixTls.Error()}, ErrNotApisixTls
+			return &kwhvalidating.ValidatorResult{Valid: false, Message: errNotApisixTls.Error()}, errNotApisixTls
 		}
 
 		client, err := GetSchemaClient(&apisix.ClusterOptions{})
@@ -69,12 +69,12 @@ var ApisixTlsValidator = kwhvalidating.ValidatorFunc(
 		}
 		atSchemaLoader := gojsonschema.NewStringLoader(ss.Content)
 
-		var msg []string
+		var msgs []string
 		if _, err := validateSchema(&atSchemaLoader, spec); err != nil {
 			valid = false
-			msg = append(msg, err.Error())
+			msgs = append(msgs, err.Error())
 		}
 
-		return &kwhvalidating.ValidatorResult{Valid: valid, Message: strings.Join(msg, "\n")}, nil
+		return &kwhvalidating.ValidatorResult{Valid: valid, Message: strings.Join(msgs, "\n")}, nil
 	},
 )

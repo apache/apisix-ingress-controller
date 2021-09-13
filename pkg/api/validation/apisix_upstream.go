@@ -32,8 +32,8 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
-// ErrNotApisixUpstream will be used when the validating object is not ApisixUpstream.
-var ErrNotApisixUpstream = errors.New("object is not ApisixUpstream")
+// errNotApisixUpstream will be used when the validating object is not ApisixUpstream.
+var errNotApisixUpstream = errors.New("object is not ApisixUpstream")
 
 // ApisixUpstreamValidator validates ApisixUpstream's spec.
 var ApisixUpstreamValidator = kwhvalidating.ValidatorFunc(
@@ -51,7 +51,7 @@ var ApisixUpstreamValidator = kwhvalidating.ValidatorFunc(
 		case *v1.ApisixRoute:
 			spec = au.Spec
 		default:
-			return &kwhvalidating.ValidatorResult{Valid: false, Message: ErrNotApisixUpstream.Error()}, ErrNotApisixUpstream
+			return &kwhvalidating.ValidatorResult{Valid: false, Message: errNotApisixUpstream.Error()}, errNotApisixUpstream
 		}
 
 		client, err := GetSchemaClient(&apisix.ClusterOptions{})
@@ -69,12 +69,12 @@ var ApisixUpstreamValidator = kwhvalidating.ValidatorFunc(
 		}
 		auSchemaLoader := gojsonschema.NewStringLoader(us.Content)
 
-		var msg []string
+		var msgs []string
 		if _, err := validateSchema(&auSchemaLoader, spec); err != nil {
 			valid = false
-			msg = append(msg, err.Error())
+			msgs = append(msgs, err.Error())
 		}
 
-		return &kwhvalidating.ValidatorResult{Valid: valid, Message: strings.Join(msg, "\n")}, nil
+		return &kwhvalidating.ValidatorResult{Valid: valid, Message: strings.Join(msgs, "\n")}, nil
 	},
 )
