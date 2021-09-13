@@ -400,6 +400,9 @@ func (c *Controller) run(ctx context.Context) {
 
 	c.initWhenStartLeading()
 
+	// compare resources of k8s with objects of APISIX
+	c.CompareResources()
+
 	c.goAttach(func() {
 		c.checkClusterHealth(ctx, cancelFunc)
 	})
@@ -416,6 +419,7 @@ func (c *Controller) run(ctx context.Context) {
 		c.ingressInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
+
 		c.apisixRouteInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
