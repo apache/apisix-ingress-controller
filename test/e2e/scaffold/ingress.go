@@ -304,19 +304,34 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: apisix-validation-webhooks-e2e-test
 webhooks:
-  - name: apisixroute-plugin-validator-webhook.apisix.apache.org
+  - name: apisixroute-validator-webhook.apisix.apache.org
     clientConfig:
       service:
         name: webhook
         namespace: %s
         port: 8443
-        path: "/validation/apisixroutes/plugin"
+        path: "/validation/apisixroutes"
       caBundle: %s
     rules:
       - operations: [ "CREATE", "UPDATE" ]
         apiGroups: ["apisix.apache.org"]
         apiVersions: ["*"]
         resources: ["apisixroutes"]
+    timeoutSeconds: 30
+    failurePolicy: Fail
+  - name: apisixconsumer-validator-webhook.apisix.apache.org
+    clientConfig:
+      service:
+        name: webhook
+        namespace: %s
+        port: 8443
+        path: "/validation/apisixconsumers"
+      caBundle: %s
+    rules:
+      - operations: [ "CREATE", "UPDATE" ]
+        apiGroups: ["apisix.apache.org"]
+        apiVersions: ["*"]
+        resources: ["apisixconsumers"]
     timeoutSeconds: 30
     failurePolicy: Fail
 `

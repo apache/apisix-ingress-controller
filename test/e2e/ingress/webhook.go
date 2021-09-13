@@ -24,7 +24,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("Enable webhooks", func() {
+var _ = ginkgo.FDescribe("Enable webhooks", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
@@ -35,6 +35,27 @@ var _ = ginkgo.Describe("Enable webhooks", func() {
 		EnableWebhooks:        true,
 	}
 	s := scaffold.NewScaffold(opts)
+
+	ginkgo.It("should fail to create the ApisixRoute with invalid schema", func() {
+		ar := `
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - match: # name is required
+     hosts:
+     - httpbin.org
+     paths:
+       - /status/*
+`
+
+		err := s.CreateResourceFromString(ar)
+		assert.Error(ginkgo.GinkgoT(), err, "Failed to create ApisixRoute")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "admission webhook")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request: ")
+	})
 
 	ginkgo.It("should fail to create the ApisixRoute with invalid plugin configuration", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
@@ -66,5 +87,25 @@ spec:
 		assert.Error(ginkgo.GinkgoT(), err, "Failed to create ApisixRoute")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "admission webhook")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request: api-breaker plugin's config is invalid")
+	})
+
+	ginkgo.It("should fail to create the ApisixConsumer with invalid schema", func() {
+		ac := `
+apiVersion: apisix.apache.org/v2alpha1
+kind: ApisixConsumer
+metadata:
+  name: basicvalue
+spec:
+  authParameter:
+    basicAuth:
+      value:
+        password: foo
+        # username is required
+`
+
+		err := s.CreateResourceFromString(ac)
+		assert.Error(ginkgo.GinkgoT(), err, "Failed to create ApisixConsumer")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "admission webhook")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request: ")
 	})
 })
