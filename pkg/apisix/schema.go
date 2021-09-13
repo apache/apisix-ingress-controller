@@ -63,7 +63,7 @@ func (sc schemaClient) getSchema(ctx context.Context, name string) (*v1.Schema, 
 		)
 	}
 
-	url := sc.url + "/" + name
+	url := sc.url + name
 	content, err := sc.cluster.getSchema(ctx, url)
 	if err != nil {
 		log.Errorw("failed to get schema from APISIX",
