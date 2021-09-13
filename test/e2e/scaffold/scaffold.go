@@ -423,8 +423,9 @@ func generateWebhookCert(ns string) error {
 	commandTemplate := `testdata/webhook-create-signed-cert.sh`
 	cmd := exec.Command("/bin/sh", commandTemplate, "--namespace", ns)
 
-	_, err := cmd.Output()
+	output, err := cmd.Output()
 	if err != nil {
+		_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
 		return fmt.Errorf("failed to execute the scrpt: %v", err)
 	}
 
