@@ -3,6 +3,7 @@ package ingress
 import (
 	"context"
 	"sync"
+	"time"
 
 	"C"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -10,6 +11,9 @@ import (
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
+// CompareResources use to compare the object IDs in resources and APISIX
+// Find out the rest of objects in APISIX
+// AND remove them.
 func (c *Controller) CompareResources() {
 	var (
 		routeMapK8S       = new(sync.Map)
@@ -25,6 +29,20 @@ func (c *Controller) CompareResources() {
 		consumerMapA6    = new(sync.Map)
 	)
 	// todo if watchingNamespace == nil
+	if c.watchingNamespace == nil {
+		opts := v1.ListOptions{}
+		// list all apisixroute resources in all namespaces
+		nsList, err := c.kubeClient.Client.CoreV1().Namespaces().List(context.TODO(), opts)
+		if err != nil {
+			panic(err)
+		} else {
+			wns := make(map[string]struct{}, len(nsList.Items))
+			for _, v := range nsList.Items {
+				wns[v.Name] = struct{}{}
+			}
+			c.watchingNamespace = wns
+		}
+	}
 	for ns, _ := range c.watchingNamespace {
 		// ApisixRoute
 		opts := v1.ListOptions{}
@@ -96,18 +114,18 @@ func (c *Controller) CompareResources() {
 	c.listSSLCache(sslMapA6)
 	c.listConsumerCache(consumerMapA6)
 	// 3.compare
-	routeReult := findRedundant(routeMapK8S, routeMapA6)
-	streamRouteReult := findRedundant(streamRouteMapK8S, streamRouteMapA6)
-	upstreamReult := findRedundant(upstreamMapK8S, upstreamMapA6)
-	sslReult := findRedundant(sslMapK8S, sslMapA6)
-	consuemrReult := findRedundant(consumerMapK8S, consumerMapA6)
+	routeReult := findRedundant(routeMapA6, routeMapK8S)
+	streamRouteReult := findRedundant(streamRouteMapA6, streamRouteMapK8S)
+	upstreamReult := findRedundant(upstreamMapA6, upstreamMapK8S)
+	sslReult := findRedundant(sslMapA6, sslMapK8S)
+	consuemrReult := findRedundant(consumerMapA6, consumerMapK8S)
 	// 4.remove from APISIX
 	c.removeRouteFromA6(routeReult)
 	c.removeStreamRouteFromA6(streamRouteReult)
-	c.removeUpstreamFromA6(upstreamReult)
 	c.removeSSLFromA6(sslReult)
 	c.removeConsumerFromA6(consuemrReult)
-
+	time.Sleep(5 * time.Second)
+	c.removeUpstreamFromA6(upstreamReult)
 }
 
 // findRedundant find redundant item which in src and do not in dest
@@ -127,7 +145,10 @@ func (c *Controller) removeConsumerFromA6(consumers *sync.Map) {
 	consumers.Range(func(k, v interface{}) bool {
 		r := &apisix.Consumer{}
 		r.Username = k.(string)
-		c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Consumer().Delete(context.TODO(), r)
+		err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Consumer().Delete(context.TODO(), r)
+		if err != nil {
+			panic(err)
+		}
 		return true
 	})
 }
@@ -136,7 +157,10 @@ func (c *Controller) removeSSLFromA6(sslReult *sync.Map) {
 	sslReult.Range(func(k, v interface{}) bool {
 		r := &apisix.Ssl{}
 		r.ID = k.(string)
-		c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).SSL().Delete(context.TODO(), r)
+		err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).SSL().Delete(context.TODO(), r)
+		if err != nil {
+			panic(err)
+		}
 		return true
 	})
 }
@@ -145,7 +169,10 @@ func (c *Controller) removeUpstreamFromA6(upstreamReult *sync.Map) {
 	upstreamReult.Range(func(k, v interface{}) bool {
 		r := &apisix.Upstream{}
 		r.ID = k.(string)
-		c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Upstream().Delete(context.TODO(), r)
+		err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Upstream().Delete(context.TODO(), r)
+		if err != nil {
+			panic(err)
+		}
 		return true
 	})
 }
@@ -154,7 +181,10 @@ func (c *Controller) removeStreamRouteFromA6(streamRouteReult *sync.Map) {
 	streamRouteReult.Range(func(k, v interface{}) bool {
 		r := &apisix.StreamRoute{}
 		r.ID = k.(string)
-		c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).StreamRoute().Delete(context.TODO(), r)
+		err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).StreamRoute().Delete(context.TODO(), r)
+		if err != nil {
+			panic(err)
+		}
 		return true
 	})
 }
@@ -163,7 +193,10 @@ func (c *Controller) removeRouteFromA6(routeReult *sync.Map) {
 	routeReult.Range(func(k, v interface{}) bool {
 		r := &apisix.Route{}
 		r.ID = k.(string)
-		c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Route().Delete(context.TODO(), r)
+		err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Route().Delete(context.TODO(), r)
+		if err != nil {
+			panic(err)
+		}
 		return true
 	})
 }
