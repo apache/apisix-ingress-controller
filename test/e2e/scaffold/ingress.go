@@ -276,10 +276,7 @@ spec:
             - --apisix-route-version
             - %s
             - --watch-endpointslices
-          volumeMounts:
-           - name: webhook-certs
-             mountPath: /etc/webhook/certs
-             readOnly: true
+          %s
       volumes:
        - name: webhook-certs
          secret:
@@ -324,6 +321,11 @@ webhooks:
     failurePolicy: Fail
 `
 	_webhookCertSecret = "webhook-certs"
+	_volumeMounts      = `volumeMounts:
+           - name: webhook-certs
+             mountPath: /etc/webhook/certs
+             readOnly: true
+`
 )
 
 func (s *Scaffold) newIngressAPISIXController() error {
@@ -347,7 +349,13 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		assert.Nil(s.t, err, "deleting ClusterRole")
 	})
 
-	ingressAPISIXDeployment := fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, s.namespace, s.opts.APISIXRouteVersion, _webhookCertSecret)
+	var ingressAPISIXDeployment string
+	if s.opts.EnableWebhooks {
+		ingressAPISIXDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, s.namespace, s.opts.APISIXRouteVersion, _volumeMounts, _webhookCertSecret)
+	} else {
+		ingressAPISIXDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, s.namespace, s.opts.APISIXRouteVersion, "", _webhookCertSecret)
+	}
+
 	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
 
