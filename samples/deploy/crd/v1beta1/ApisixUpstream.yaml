@@ -82,6 +82,7 @@ spec:
             retries:
               type: integer
               minimum: 0
+              nullable: true
             timeout:
               type: object
               properties:
@@ -252,6 +253,7 @@ spec:
                   retries:
                     type: integer
                     minimum: 0
+                    nullable: true
                   timeout:
                     type: object
                     properties:

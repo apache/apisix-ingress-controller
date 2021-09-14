@@ -38,18 +38,18 @@ var _ = ginkgo.Describe("retries", func() {
 apiVersion: apisix.apache.org/v2alpha1
 kind: ApisixRoute
 metadata:
-	name: httpbin-route
+  name: httpbin-route
 spec:
-	http:
-	- name: rule1
-	match:
-		hosts:
-		- httpbin.org
-		paths:
-		- /*
-	backend:
-		serviceName: %s
-		servicePort: %d
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /*
+    backend:
+      serviceName: %s
+      servicePort: %d
 `
 	ginkgo.It("is missing", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
