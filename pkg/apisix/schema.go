@@ -17,7 +17,6 @@ package apisix
 
 import (
 	"context"
-
 	"go.uber.org/zap"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
@@ -63,7 +62,7 @@ func (sc schemaClient) getSchema(ctx context.Context, name string) (*v1.Schema, 
 		)
 	}
 
-	url := sc.url + "/" + name
+	url := sc.url + name
 	content, err := sc.cluster.getSchema(ctx, url)
 	if err != nil {
 		log.Errorw("failed to get schema from APISIX",
