@@ -17,6 +17,7 @@ package apisix
 
 import (
 	"context"
+	"path"
 
 	"go.uber.org/zap"
 
@@ -33,7 +34,7 @@ type schemaClient struct {
 
 func newSchemaClient(c *cluster) Schema {
 	return &schemaClient{
-		url:     c.baseURL + "/schema/",
+		url:     path.Join(c.baseURL, "schema"),
 		cluster: c,
 	}
 }
@@ -63,7 +64,7 @@ func (sc schemaClient) getSchema(ctx context.Context, name string) (*v1.Schema, 
 		)
 	}
 
-	url := sc.url + name
+	url := path.Join(sc.url, name)
 	content, err := sc.cluster.getSchema(ctx, url)
 	if err != nil {
 		log.Errorw("failed to get schema from APISIX",

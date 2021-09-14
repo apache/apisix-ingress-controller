@@ -425,7 +425,7 @@ func generateWebhookCert(ns string) error {
 
 	output, err := cmd.Output()
 	if err != nil {
-		_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		ginkgo.GinkgoT().Errorf("%s", output)
 		return fmt.Errorf("failed to execute the script: %v", err)
 	}
 
