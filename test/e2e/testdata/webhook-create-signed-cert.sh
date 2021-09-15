@@ -19,7 +19,7 @@
 # This script is mostly copied from the istio project.
 # https://github.com/istio/istio/blob/release-0.7/install/kubernetes/webhook-create-signed-cert.sh
 
-set -e
+set -ex
 
 usage() {
     cat <<EOF
@@ -146,5 +146,7 @@ kubectl --context "${KIND_CTX}" -n ${namespace} delete secret ${secret} 2>/dev/n
 kubectl --context "${KIND_CTX}" -n ${namespace} create secret generic ${secret} \
         --from-file=key.pem=${tmpdir}/server-key.pem \
         --from-file=cert.pem=${tmpdir}/server-cert.pem
+
+echo "INFO: generate tls certs successfully"
 
 rm -f "${tmpdir}/*"
