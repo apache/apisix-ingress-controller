@@ -57,7 +57,7 @@ func (c *Controller) CompareResources() {
 			c.watchingNamespace = wns
 		}
 	}
-	for ns, _ := range c.watchingNamespace {
+	for ns := range c.watchingNamespace {
 		// ApisixRoute
 		opts := v1.ListOptions{}
 		retRoutes, err := c.kubeClient.APISIXClient.ApisixV2beta1().ApisixRoutes(ns).List(context.TODO(), opts)
