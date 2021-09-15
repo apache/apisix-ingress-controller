@@ -51,7 +51,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
 		// scale Ingres Controller --replicas=1
 		assert.Nil(ginkgo.GinkgoT(), s.ScaleIngressController(1), "scaling ingress controller instances = 1")
-		time.Sleep(10 * time.Second)
+		time.Sleep(15 * time.Second)
 		routes, err := s.ListApisixRoutes()
 		assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
 		assert.Len(ginkgo.GinkgoT(), routes, 0, "route should be removed")
