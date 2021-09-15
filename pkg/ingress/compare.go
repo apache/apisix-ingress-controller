@@ -42,10 +42,10 @@ func (c *Controller) CompareResources() {
 		sslMapA6         = new(sync.Map)
 		consumerMapA6    = new(sync.Map)
 	)
-	// todo if watchingNamespace == nil
+	// watchingNamespace == nil means to monitor all namespaces
 	if c.watchingNamespace == nil {
 		opts := v1.ListOptions{}
-		// list all apisixroute resources in all namespaces
+		// list all namespaces
 		nsList, err := c.kubeClient.Client.CoreV1().Namespaces().List(context.TODO(), opts)
 		if err != nil {
 			panic(err)
