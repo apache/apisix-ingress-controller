@@ -18,7 +18,6 @@ package ingress
 import (
 	"context"
 	"fmt"
-	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"sync"
 	"time"
 
@@ -29,6 +28,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -156,7 +156,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 					zap.String("ApisixTls", tlsMetaKey),
 					zap.Error(err),
 				)
-				go func(tls *v1.ApisixTls) {
+				go func(tls *configv1.ApisixTls) {
 					c.controller.recorderEventS(tls, corev1.EventTypeWarning, _resourceSyncAborted,
 						fmt.Sprintf("sync from secret %s changes failed, error: %s", key, err.Error()))
 					c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse)
@@ -174,7 +174,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 					zap.String("ApisixTls", tlsMetaKey),
 					zap.Error(err),
 				)
-				go func(tls *v1.ApisixTls) {
+				go func(tls *configv1.ApisixTls) {
 					c.controller.recorderEventS(tls, corev1.EventTypeWarning, _resourceSyncAborted,
 						fmt.Sprintf("sync from ca secret %s changes failed, error: %s", key, err.Error()))
 					c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse)
@@ -193,7 +193,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 		}
 		// Use another goroutine to send requests, to avoid
 		// long time lock occupying.
-		go func(ssl *apisixv1.Ssl, tls *v1.ApisixTls) {
+		go func(ssl *apisixv1.Ssl, tls *configv1.ApisixTls) {
 			err := c.controller.syncSSL(ctx, ssl, ev.Type)
 			if err != nil {
 				log.Errorw("failed to sync ssl to APISIX",
