@@ -17,11 +17,10 @@ package ingress
 import (
 	"context"
 	"sync"
-	"time"
 
-	"C"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -30,17 +29,18 @@ import (
 // AND remove them.
 func (c *Controller) CompareResources() {
 	var (
+		wg                sync.WaitGroup
 		routeMapK8S       = new(sync.Map)
 		streamRouteMapK8S = new(sync.Map)
 		upstreamMapK8S    = new(sync.Map)
 		sslMapK8S         = new(sync.Map)
 		consumerMapK8S    = new(sync.Map)
 
-		routeMapA6       = new(sync.Map)
-		streamRouteMapA6 = new(sync.Map)
-		upstreamMapA6    = new(sync.Map)
-		sslMapA6         = new(sync.Map)
-		consumerMapA6    = new(sync.Map)
+		routeMapA6       = make(map[string]string)
+		streamRouteMapA6 = make(map[string]string)
+		upstreamMapA6    = make(map[string]string)
+		sslMapA6         = make(map[string]string)
+		consumerMapA6    = make(map[string]string)
 	)
 	// watchingNamespace == nil means to monitor all namespaces
 	if c.watchingNamespace == nil {
@@ -57,69 +57,76 @@ func (c *Controller) CompareResources() {
 			c.watchingNamespace = wns
 		}
 	}
+	if len(c.watchingNamespace) > 0 {
+		wg.Add(len(c.watchingNamespace))
+	}
 	for ns := range c.watchingNamespace {
-		// ApisixRoute
-		opts := v1.ListOptions{}
-		retRoutes, err := c.kubeClient.APISIXClient.ApisixV2beta1().ApisixRoutes(ns).List(context.TODO(), opts)
-		if err != nil {
-			panic(err)
-		} else {
-			for _, r := range retRoutes.Items {
-				tc, err := c.translator.TranslateRouteV2beta1NotStrictly(&r)
-				if err != nil {
-					panic(err)
-				} else {
-					// routes
-					for _, route := range tc.Routes {
-						routeMapK8S.Store(route.ID, route.ID)
+		go func() {
+			// ApisixRoute
+			opts := v1.ListOptions{}
+			retRoutes, err := c.kubeClient.APISIXClient.ApisixV2beta1().ApisixRoutes(ns).List(context.TODO(), opts)
+			if err != nil {
+				panic(err)
+			} else {
+				for _, r := range retRoutes.Items {
+					tc, err := c.translator.TranslateRouteV2beta1NotStrictly(&r)
+					if err != nil {
+						panic(err)
+					} else {
+						// routes
+						for _, route := range tc.Routes {
+							routeMapK8S.Store(route.ID, route.ID)
+						}
+						// streamRoutes
+						for _, stRoute := range tc.StreamRoutes {
+							streamRouteMapK8S.Store(stRoute.ID, stRoute.ID)
+						}
+						// upstreams
+						for _, upstream := range tc.Upstreams {
+							upstreamMapK8S.Store(upstream.ID, upstream.ID)
+						}
+						// ssl
+						for _, ssl := range tc.SSL {
+							sslMapK8S.Store(ssl.ID, ssl.ID)
+						}
 					}
-					// streamRoutes
-					for _, stRoute := range tc.StreamRoutes {
-						streamRouteMapK8S.Store(stRoute.ID, stRoute.ID)
-					}
-					// upstreams
-					for _, upstream := range tc.Upstreams {
-						upstreamMapK8S.Store(upstream.ID, upstream.ID)
-					}
-					// ssl
-					for _, ssl := range tc.SSL {
+				}
+			}
+			// todo ApisixUpstream
+			// ApisixUpstream should be synced with ApisixRoute resource
+
+			// ApisixSSL
+			retSSL, err := c.kubeClient.APISIXClient.ApisixV1().ApisixTlses(ns).List(context.TODO(), opts)
+			if err != nil {
+				panic(err)
+			} else {
+				for _, s := range retSSL.Items {
+					ssl, err := c.translator.TranslateSSL(&s)
+					if err != nil {
+						panic(err)
+					} else {
 						sslMapK8S.Store(ssl.ID, ssl.ID)
 					}
 				}
 			}
-		}
-		// todo ApisixUpstream
-		// ApisixUpstream should be synced with ApisixRoute resource
-
-		// ApisixSSL
-		retSSL, err := c.kubeClient.APISIXClient.ApisixV1().ApisixTlses(ns).List(context.TODO(), opts)
-		if err != nil {
-			panic(err)
-		} else {
-			for _, s := range retSSL.Items {
-				ssl, err := c.translator.TranslateSSL(&s)
-				if err != nil {
-					panic(err)
-				} else {
-					sslMapK8S.Store(ssl.ID, ssl.ID)
+			// ApisixConsumer
+			retConsumer, err := c.kubeClient.APISIXClient.ApisixV2alpha1().ApisixConsumers(ns).List(context.TODO(), opts)
+			if err != nil {
+				panic(err)
+			} else {
+				for _, con := range retConsumer.Items {
+					consumer, err := c.translator.TranslateApisixConsumer(&con)
+					if err != nil {
+						panic(err)
+					} else {
+						consumerMapK8S.Store(consumer.Username, consumer.Username)
+					}
 				}
 			}
-		}
-		// ApisixConsumer
-		retConsumer, err := c.kubeClient.APISIXClient.ApisixV2alpha1().ApisixConsumers(ns).List(context.TODO(), opts)
-		if err != nil {
-			panic(err)
-		} else {
-			for _, con := range retConsumer.Items {
-				consumer, err := c.translator.TranslateApisixConsumer(&con)
-				if err != nil {
-					panic(err)
-				} else {
-					consumerMapK8S.Store(consumer.Username, consumer.Username)
-				}
-			}
-		}
+			wg.Done()
+		}()
 	}
+	wg.Wait()
 
 	// 2.get all cache routes
 	c.listRouteCache(routeMapA6)
@@ -133,25 +140,30 @@ func (c *Controller) CompareResources() {
 	upstreamReult := findRedundant(upstreamMapA6, upstreamMapK8S)
 	sslReult := findRedundant(sslMapA6, sslMapK8S)
 	consuemrReult := findRedundant(consumerMapA6, consumerMapK8S)
-	// 4.remove from APISIX
-	c.removeRouteFromA6(routeReult)
-	c.removeStreamRouteFromA6(streamRouteReult)
-	c.removeSSLFromA6(sslReult)
-	c.removeConsumerFromA6(consuemrReult)
-	time.Sleep(5 * time.Second)
-	c.removeUpstreamFromA6(upstreamReult)
+	// 4.warn
+	warnRedundantResources(routeReult, "route")
+	warnRedundantResources(streamRouteReult, "streamRoute")
+	warnRedundantResources(upstreamReult, "upstream")
+	warnRedundantResources(sslReult, "ssl")
+	warnRedundantResources(consuemrReult, "consumer")
+}
+
+// log warn
+func warnRedundantResources(resources map[string]string, t string) {
+	for k := range resources {
+		log.Warnf("%s: %s in APISIX but do not in declare yaml", t, k)
+	}
 }
 
 // findRedundant find redundant item which in src and do not in dest
-func findRedundant(src, dest *sync.Map) *sync.Map {
-	result := new(sync.Map)
-	src.Range(func(k, v interface{}) bool {
+func findRedundant(src map[string]string, dest *sync.Map) map[string]string {
+	result := make(map[string]string)
+	for k, v := range src {
 		_, ok := dest.Load(k)
 		if !ok {
-			result.Store(k, v)
+			result[k] = v
 		}
-		return true
-	})
+	}
 	return result
 }
 
@@ -215,57 +227,57 @@ func (c *Controller) removeRouteFromA6(routeReult *sync.Map) {
 	})
 }
 
-func (c *Controller) listRouteCache(routeMapA6 *sync.Map) {
+func (c *Controller) listRouteCache(routeMapA6 map[string]string) {
 	routesInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Route().List(context.TODO())
 	if err != nil {
 		panic(err)
 	} else {
 		for _, ra := range routesInA6 {
-			routeMapA6.Store(ra.ID, ra.ID)
+			routeMapA6[ra.ID] = ra.ID
 		}
 	}
 }
 
-func (c *Controller) listStreamRouteCache(streamRouteMapA6 *sync.Map) {
+func (c *Controller) listStreamRouteCache(streamRouteMapA6 map[string]string) {
 	streamRoutesInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).StreamRoute().List(context.TODO())
 	if err != nil {
 		panic(err)
 	} else {
 		for _, ra := range streamRoutesInA6 {
-			streamRouteMapA6.Store(ra.ID, ra.ID)
+			streamRouteMapA6[ra.ID] = ra.ID
 		}
 	}
 }
 
-func (c *Controller) listUpstreamCache(upstreamMapA6 *sync.Map) {
+func (c *Controller) listUpstreamCache(upstreamMapA6 map[string]string) {
 	upstreamsInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Upstream().List(context.TODO())
 	if err != nil {
 		panic(err)
 	} else {
 		for _, ra := range upstreamsInA6 {
-			upstreamMapA6.Store(ra.ID, ra.ID)
+			upstreamMapA6[ra.ID] = ra.ID
 		}
 	}
 }
 
-func (c *Controller) listSSLCache(sslMapA6 *sync.Map) {
+func (c *Controller) listSSLCache(sslMapA6 map[string]string) {
 	sslInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).SSL().List(context.TODO())
 	if err != nil {
 		panic(err)
 	} else {
 		for _, s := range sslInA6 {
-			sslMapA6.Store(s.ID, s.ID)
+			sslMapA6[s.ID] = s.ID
 		}
 	}
 }
 
-func (c *Controller) listConsumerCache(consumerMapA6 *sync.Map) {
+func (c *Controller) listConsumerCache(consumerMapA6 map[string]string) {
 	consumerInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Consumer().List(context.TODO())
 	if err != nil {
 		panic(err)
 	} else {
 		for _, con := range consumerInA6 {
-			consumerMapA6.Store(con.Username, con.Username)
+			consumerMapA6[con.Username] = con.Username
 		}
 	}
 }
