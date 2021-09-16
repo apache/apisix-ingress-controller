@@ -88,6 +88,9 @@ type Translator interface {
 	// TranslateApisixConsumer translates the configv2alpha1.APisixConsumer object into the APISIX Consumer
 	// resource.
 	TranslateApisixConsumer(*configv2alpha1.ApisixConsumer) (*apisixv1.Consumer, error)
+	// ExtractKeyPair extracts certificate and private key pair from secret
+	// Supports APISIX style ("cert" and "key") and Kube style ("tls.crt" and "tls.key)
+	ExtractKeyPair(s *corev1.Secret, hasPrivateKey bool) ([]byte, []byte, error)
 }
 
 // TranslatorOptions contains options to help Translator

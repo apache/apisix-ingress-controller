@@ -81,6 +81,8 @@ type Controller struct {
 	recorder record.EventRecorder
 	// this map enrolls which ApisixTls objects refer to a Kubernetes
 	// Secret object.
+	// type: Map<SecretKey, Map<ApisixTlsKey, ApisixTls>>
+	// SecretKey is `namespace_name`, ApisixTlsKey is kube style meta key: `namespace/name`
 	secretSSLMap *sync.Map
 
 	// leaderContextCancelFunc will be called when apisix-ingress-controller

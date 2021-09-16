@@ -261,6 +261,60 @@ spec:
 		s.NewAPISIXHttpsClientWithCertificates(host, true, caCertPool, []tls.Certificate{}).
 			GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
 	})
+
+	ginkgo.It("should support ingress v1 with kube style tls secret", func() {
+		// create secrets
+		err := s.NewKubeTlsSecret(serverCertSecret, serverCert, serverKey)
+		assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
+
+		// create ingress
+		host := "mtls.httpbin.local"
+		// create route
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: httpbin-ingress-https
+  annotations:
+    kubernetes.io/ingress.class: apisix
+spec:
+  tls:
+  - hosts:
+    - %s
+    secretName: %s
+  rules:
+  - host: %s
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, host, serverCertSecret, host, backendSvc, backendSvcPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+		time.Sleep(10 * time.Second)
+
+		apisixRoutes, err := s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
+		assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
+
+		apisixSsls, err := s.ListApisixSsl()
+		assert.Nil(ginkgo.GinkgoT(), err, "list SSLs error")
+		assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "SSL number should be 1")
+		assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls"), apisixSsls[0].ID, "SSL name")
+		assert.Equal(ginkgo.GinkgoT(), apisixSsls[0].Snis, []string{host}, "SSL configuration")
+
+		caCertPool := x509.NewCertPool()
+		ok := caCertPool.AppendCertsFromPEM([]byte(rootCA))
+		assert.True(ginkgo.GinkgoT(), ok, "Append cert to CA pool")
+
+		s.NewAPISIXHttpsClientWithCertificates(host, true, caCertPool, []tls.Certificate{}).
+			GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
+	})
 })
 
 var _ = ginkgo.Describe("support ingress.networking/v1", func() {
