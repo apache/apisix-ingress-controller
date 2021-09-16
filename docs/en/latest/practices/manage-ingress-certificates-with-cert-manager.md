@@ -30,7 +30,6 @@ This tutorial will detail how to secure ingress using cert-manager.
 * Install [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller/blob/master/install.md).
 * Install [cert-manager](https://cert-manager.io/docs/installation/#default-static-install).
 
-
 In this guide, we assume that your APISIX is installed with `ssl` enabled, which is not enabled by default in the Helm Chart. To enable it, you need to set `gateway.tls.enabled=true` during installation.
 
 Assume that the SSL port is `9443`.
@@ -54,7 +53,7 @@ kubectl get issuer
 
 It should output:
 
-```
+```text
 NAME        READY   AGE
 ca-issuer   True    50s
 ```
@@ -88,7 +87,7 @@ kubectl get certificate
 
 It should output:
 
-```
+```text
 NAME        READY   SECRET        AGE
 demo-cert   True    example.com   50s
 ```
@@ -101,12 +100,12 @@ kubectl get secret
 
 It should output:
 
-```
+```text
 NAME          TYPE                DATA   AGE
 example.com   kubernetes.io/tls   3      2m20s
 ```
 
-This means that our cert-manager is working properly. 
+This means that our cert-manager is working properly.
 
 ## Create Test Service
 
@@ -166,7 +165,7 @@ kubectl get secret
 
 It should output:
 
-```
+```text
 NAME                       READY   SECRET                     AGE
 ingress-cert-manager-tls   True    ingress-cert-manager-tls   2m
 

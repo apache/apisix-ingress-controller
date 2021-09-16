@@ -30,7 +30,6 @@ This tutorial will detail how to manage secrets of ApisixTls using cert-manager.
 * Install [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller/blob/master/install.md).
 * Install [cert-manager](https://cert-manager.io/docs/installation/#default-static-install).
 
-
 In this guide, we assume that your APISIX is installed with `ssl` enabled, which is not enabled by default in the Helm Chart. To enable it, you need to set `gateway.tls.enabled=true` during installation.
 
 Assume that the SSL port is `9443`.
@@ -54,7 +53,7 @@ kubectl get issuer
 
 It should output:
 
-```
+```text
 NAME        READY   AGE
 ca-issuer   True    50s
 ```
@@ -92,7 +91,7 @@ kubectl get certificate
 
 It should output:
 
-```
+```text
 NAME        READY   SECRET        AGE
 demo-cert   True    example-cert  50s
 ```
@@ -105,7 +104,7 @@ kubectl get secret
 
 It should output:
 
-```
+```text
 NAME          TYPE                DATA   AGE
 example-cert  kubernetes.io/tls   3      2m20s
 ```
@@ -202,7 +201,7 @@ The verbose option will show us the handshake log, which also contains the certi
 
 Example output:
 
-```
+```text
 * Added local.httpbin.org:9443:127.0.0.1 to DNS cache
 * Hostname local.httpbin.org was found in DNS cache
 *   Trying 127.0.0.1:9443...
@@ -220,7 +219,7 @@ We could see the start date and expiration date of the server certificate.
 
 Since the `Certificate` we defined requires the cert-manager to renew the cert every 5 minutes, we should be able to see the changes to the server certificate after 5 minutes.
 
-```
+```text
 * Added local.httpbin.org:9443:127.0.0.1 to DNS cache
 * Hostname local.httpbin.org was found in DNS cache
 *   Trying 127.0.0.1:9443...
