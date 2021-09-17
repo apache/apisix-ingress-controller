@@ -26,7 +26,7 @@ import (
 
 // CompareResources use to compare the object IDs in resources and APISIX
 // Find out the rest of objects in APISIX
-// AND remove them.
+// AND warn them in log.
 func (c *Controller) CompareResources() {
 	var (
 		wg                sync.WaitGroup
