@@ -25,7 +25,7 @@ This tutorial will detail how to secure ingress using cert-manager.
 
 ## Prerequisites
 
-* Prepare an available Kubernetes cluster in your workstation, we recommend you to use [Minikube](https://github.com/kubernetes/minikube).
+* Prepare an available Kubernetes cluster in your workstation, we recommend you to use [KiND](https://kind.sigs.k8s.io/docs/user/quick-start/) to create a local Kubernetes cluster.
 * Install Apache APISIX in Kubernetes by [Helm Chart](https://github.com/apache/apisix-helm-chart).
 * Install [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller/blob/master/install.md).
 * Install [cert-manager](https://cert-manager.io/docs/installation/#default-static-install).

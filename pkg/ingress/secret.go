@@ -142,7 +142,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 		}
 		tls, err := c.controller.apisixTlsLister.ApisixTlses(tlsNamespace).Get(tlsName)
 		if err != nil {
-			log.Debugw("secret related ApisixTls resource not found, skip",
+			log.Warnw("secret related ApisixTls resource not found, skip",
 				zap.String("ApisixTls", tlsMetaKey),
 			)
 			return true
@@ -185,7 +185,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 				CA: string(ca),
 			}
 		} else {
-			log.Infow("stale secret cache, ApisixTls doesn't requires target secret",
+			log.Warnw("stale secret cache, ApisixTls doesn't requires target secret",
 				zap.String("ApisixTls", tlsMetaKey),
 				zap.String("secret", key),
 			)
