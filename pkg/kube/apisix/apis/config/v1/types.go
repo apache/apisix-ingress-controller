@@ -217,10 +217,10 @@ type PassiveHealthCheckHealthy struct {
 // PassiveHealthCheckUnhealthy defines the conditions to judge whether
 // an upstream node is unhealthy with the passive manager.
 type PassiveHealthCheckUnhealthy struct {
-	HTTPCodes    []int         `json:"httpCodes,omitempty" yaml:"httpCodes,omitempty"`
-	HTTPFailures int           `json:"httpFailures,omitempty" yaml:"http_failures,omitempty"`
-	TCPFailures  int           `json:"tcpFailures,omitempty" yaml:"tcpFailures,omitempty"`
-	Timeout      time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	HTTPCodes    []int `json:"httpCodes,omitempty" yaml:"httpCodes,omitempty"`
+	HTTPFailures int   `json:"httpFailures,omitempty" yaml:"http_failures,omitempty"`
+	TCPFailures  int   `json:"tcpFailures,omitempty" yaml:"tcpFailures,omitempty"`
+	Timeouts     int   `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

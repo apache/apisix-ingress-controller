@@ -168,8 +168,9 @@ spec:
                           type: integer
                           minimum: 1
                           maximum: 254
-                        timeout:
-                          type: string
+                        timeouts:
+                          type: integer
+                          minimum: 0
                 passive:
                   type: object
                   properties:
@@ -211,8 +212,9 @@ spec:
                           type: integer
                           minimum: 1
                           maximum: 254
-                        timeout:
-                          type: string
+                        timeouts:
+                          type: integer
+                          minimum: 0
             portLevelSettings:
               type: array
               items:

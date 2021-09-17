@@ -288,10 +288,10 @@ type UpstreamActiveHealthCheckUnhealthy struct {
 // an upstream node is unhealthy with the passive manager.
 // +k8s:deepcopy-gen=true
 type UpstreamPassiveHealthCheckUnhealthy struct {
-	HTTPStatuses []int   `json:"http_statuses,omitempty" yaml:"http_statuses,omitempty"`
-	HTTPFailures int     `json:"http_failures,omitempty" yaml:"http_failures,omitempty"`
-	TCPFailures  int     `json:"tcp_failures,omitempty" yaml:"tcp_failures,omitempty"`
-	Timeouts     float64 `json:"timeouts,omitempty" yaml:"timeouts,omitempty"`
+	HTTPStatuses []int `json:"http_statuses,omitempty" yaml:"http_statuses,omitempty"`
+	HTTPFailures int   `json:"http_failures,omitempty" yaml:"http_failures,omitempty"`
+	TCPFailures  int   `json:"tcp_failures,omitempty" yaml:"tcp_failures,omitempty"`
+	Timeouts     int   `json:"timeouts,omitempty" yaml:"timeouts,omitempty"`
 }
 
 // Ssl apisix ssl object
