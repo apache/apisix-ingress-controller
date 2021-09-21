@@ -120,9 +120,9 @@ var ApisixRouteValidator = kwhvalidating.ValidatorFunc(
 		}
 
 		for _, p := range plugins {
-			if v, m, err := validatePlugin(client, p.Name, p.Config); !v {
+			if v, err := validatePlugin(client, p.Name, p.Config); !v {
 				valid = false
-				msgs = append(msgs, m)
+				msgs = append(msgs, err.Error())
 				log.Warnf("failed to validate plugin %s: %s", p.Name, err)
 			}
 		}
@@ -131,7 +131,7 @@ var ApisixRouteValidator = kwhvalidating.ValidatorFunc(
 	},
 )
 
-func validatePlugin(client apisix.Schema, pluginName string, pluginConfig interface{}) (valid bool, msg string, result error) {
+func validatePlugin(client apisix.Schema, pluginName string, pluginConfig interface{}) (valid bool, result error) {
 	valid = true
 
 	pluginSchema, err := client.GetPluginSchema(context.TODO(), pluginName)
@@ -139,15 +139,15 @@ func validatePlugin(client apisix.Schema, pluginName string, pluginConfig interf
 		result = fmt.Errorf("failed to get the schema of plugin %s: %s", pluginName, err)
 		log.Error(result)
 		valid = false
-		msg = result.Error()
 		return
 	}
 
 	pluginSchemaLoader := gojsonschema.NewStringLoader(pluginSchema.Content)
 	if _, err := validateSchema(&pluginSchemaLoader, pluginConfig); err != nil {
 		valid = false
-		msg = fmt.Sprintf("%s plugin's config is invalid\n", pluginName)
+		result = multierror.Append(result, fmt.Errorf("%s plugin's config is invalid", pluginName))
 		result = multierror.Append(result, err)
+		log.Warn(result)
 	}
 
 	return

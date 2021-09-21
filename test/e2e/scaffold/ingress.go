@@ -334,6 +334,36 @@ webhooks:
         resources: ["apisixconsumers"]
     timeoutSeconds: 30
     failurePolicy: Fail
+  - name: apisixtls-validator-webhook.apisix.apache.org
+    clientConfig:
+      service:
+        name: webhook
+        namespace: %s
+        port: 8443
+        path: "/validation/apisixtlses"
+      caBundle: %s
+    rules:
+      - operations: [ "CREATE", "UPDATE" ]
+        apiGroups: ["apisix.apache.org"]
+        apiVersions: ["*"]
+        resources: ["apisixtlses"]
+    timeoutSeconds: 30
+    failurePolicy: Fail
+  - name: apisixupstream-validator-webhook.apisix.apache.org
+    clientConfig:
+      service:
+        name: webhook
+        namespace: %s
+        port: 8443
+        path: "/validation/apisixupstreams"
+      caBundle: %s
+    rules:
+      - operations: [ "CREATE", "UPDATE" ]
+        apiGroups: ["apisix.apache.org"]
+        apiVersions: ["*"]
+        resources: ["apisixupstreams"]
+    timeoutSeconds: 30
+    failurePolicy: Fail
 `
 	_webhookCertSecret = "webhook-certs"
 	_volumeMounts      = `volumeMounts:
@@ -386,7 +416,8 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		assert.True(s.t, ok, "get cert.pem from the secret")
 		caBundle := base64.StdEncoding.EncodeToString(cert)
 
-		webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, caBundle)
+		webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, caBundle, s.namespace, caBundle, s.namespace, caBundle, s.namespace, caBundle)
+		ginkgo.GinkgoT().Log(webhookReg)
 		err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, webhookReg)
 		assert.Nil(s.t, err, "create webhook registration")
 
