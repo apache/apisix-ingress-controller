@@ -70,3 +70,7 @@ export NODE_IP=$(kubectl get nodes --namespace ingress-apisix -o jsonpath="{.ite
 export ADMIN_PORT=$(kubectl get --namespace ingress-apisix -o jsonpath="{.spec.ports[0].nodePort}" services apisix-admin)
 ./apisix-ingress-controller ingress --http-listen :8080  --log-output stderr --apisix-base-url http://${NODE_IP}:${ADMIN_PORT}/apisix/admin --apisix-admin-key edd1c9f034335f136f87ad84b625c8f1
 ```
+
+## Troubleshooting
+
+Run `go mod tidy` and `go get knative.dev/pkg/leaderelection@v0.0.0-20210919202233-5ae482141474` before running conformance test might be helpful.
