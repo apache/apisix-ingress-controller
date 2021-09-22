@@ -21,13 +21,12 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 // CompareResources use to compare the object IDs in resources and APISIX
 // Find out the rest of objects in APISIX
 // AND warn them in log.
-func (c *Controller) CompareResources() {
+func (c *Controller) CompareResources(ctx context.Context) {
 	var (
 		wg                sync.WaitGroup
 		routeMapK8S       = new(sync.Map)
@@ -46,7 +45,7 @@ func (c *Controller) CompareResources() {
 	if c.watchingNamespace == nil {
 		opts := v1.ListOptions{}
 		// list all namespaces
-		nsList, err := c.kubeClient.Client.CoreV1().Namespaces().List(context.TODO(), opts)
+		nsList, err := c.kubeClient.Client.CoreV1().Namespaces().List(ctx, opts)
 		if err != nil {
 			panic(err)
 		} else {
@@ -64,7 +63,7 @@ func (c *Controller) CompareResources() {
 		go func() {
 			// ApisixRoute
 			opts := v1.ListOptions{}
-			retRoutes, err := c.kubeClient.APISIXClient.ApisixV2beta1().ApisixRoutes(ns).List(context.TODO(), opts)
+			retRoutes, err := c.kubeClient.APISIXClient.ApisixV2beta1().ApisixRoutes(ns).List(ctx, opts)
 			if err != nil {
 				panic(err)
 			} else {
@@ -96,7 +95,7 @@ func (c *Controller) CompareResources() {
 			// ApisixUpstream should be synced with ApisixRoute resource
 
 			// ApisixSSL
-			retSSL, err := c.kubeClient.APISIXClient.ApisixV1().ApisixTlses(ns).List(context.TODO(), opts)
+			retSSL, err := c.kubeClient.APISIXClient.ApisixV1().ApisixTlses(ns).List(ctx, opts)
 			if err != nil {
 				panic(err)
 			} else {
@@ -110,7 +109,7 @@ func (c *Controller) CompareResources() {
 				}
 			}
 			// ApisixConsumer
-			retConsumer, err := c.kubeClient.APISIXClient.ApisixV2alpha1().ApisixConsumers(ns).List(context.TODO(), opts)
+			retConsumer, err := c.kubeClient.APISIXClient.ApisixV2alpha1().ApisixConsumers(ns).List(ctx, opts)
 			if err != nil {
 				panic(err)
 			} else {
@@ -129,11 +128,11 @@ func (c *Controller) CompareResources() {
 	wg.Wait()
 
 	// 2.get all cache routes
-	c.listRouteCache(routeMapA6)
-	c.listStreamRouteCache(streamRouteMapA6)
-	c.listUpstreamCache(upstreamMapA6)
-	c.listSSLCache(sslMapA6)
-	c.listConsumerCache(consumerMapA6)
+	c.listRouteCache(ctx, routeMapA6)
+	c.listStreamRouteCache(ctx, streamRouteMapA6)
+	c.listUpstreamCache(ctx, upstreamMapA6)
+	c.listSSLCache(ctx, sslMapA6)
+	c.listConsumerCache(ctx, consumerMapA6)
 	// 3.compare
 	routeReult := findRedundant(routeMapA6, routeMapK8S)
 	streamRouteReult := findRedundant(streamRouteMapA6, streamRouteMapK8S)
@@ -167,68 +166,8 @@ func findRedundant(src map[string]string, dest *sync.Map) map[string]string {
 	return result
 }
 
-func (c *Controller) removeConsumerFromA6(consumers *sync.Map) {
-	consumers.Range(func(k, v interface{}) bool {
-		r := &apisix.Consumer{}
-		r.Username = k.(string)
-		err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Consumer().Delete(context.TODO(), r)
-		if err != nil {
-			panic(err)
-		}
-		return true
-	})
-}
-
-func (c *Controller) removeSSLFromA6(sslReult *sync.Map) {
-	sslReult.Range(func(k, v interface{}) bool {
-		r := &apisix.Ssl{}
-		r.ID = k.(string)
-		err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).SSL().Delete(context.TODO(), r)
-		if err != nil {
-			panic(err)
-		}
-		return true
-	})
-}
-
-func (c *Controller) removeUpstreamFromA6(upstreamReult *sync.Map) {
-	upstreamReult.Range(func(k, v interface{}) bool {
-		r := &apisix.Upstream{}
-		r.ID = k.(string)
-		err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Upstream().Delete(context.TODO(), r)
-		if err != nil {
-			panic(err)
-		}
-		return true
-	})
-}
-
-func (c *Controller) removeStreamRouteFromA6(streamRouteReult *sync.Map) {
-	streamRouteReult.Range(func(k, v interface{}) bool {
-		r := &apisix.StreamRoute{}
-		r.ID = k.(string)
-		err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).StreamRoute().Delete(context.TODO(), r)
-		if err != nil {
-			panic(err)
-		}
-		return true
-	})
-}
-
-func (c *Controller) removeRouteFromA6(routeReult *sync.Map) {
-	routeReult.Range(func(k, v interface{}) bool {
-		r := &apisix.Route{}
-		r.ID = k.(string)
-		err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Route().Delete(context.TODO(), r)
-		if err != nil {
-			panic(err)
-		}
-		return true
-	})
-}
-
-func (c *Controller) listRouteCache(routeMapA6 map[string]string) {
-	routesInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Route().List(context.TODO())
+func (c *Controller) listRouteCache(ctx context.Context, routeMapA6 map[string]string) {
+	routesInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Route().List(ctx)
 	if err != nil {
 		panic(err)
 	} else {
@@ -238,8 +177,8 @@ func (c *Controller) listRouteCache(routeMapA6 map[string]string) {
 	}
 }
 
-func (c *Controller) listStreamRouteCache(streamRouteMapA6 map[string]string) {
-	streamRoutesInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).StreamRoute().List(context.TODO())
+func (c *Controller) listStreamRouteCache(ctx context.Context, streamRouteMapA6 map[string]string) {
+	streamRoutesInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).StreamRoute().List(ctx)
 	if err != nil {
 		panic(err)
 	} else {
@@ -249,8 +188,8 @@ func (c *Controller) listStreamRouteCache(streamRouteMapA6 map[string]string) {
 	}
 }
 
-func (c *Controller) listUpstreamCache(upstreamMapA6 map[string]string) {
-	upstreamsInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Upstream().List(context.TODO())
+func (c *Controller) listUpstreamCache(ctx context.Context, upstreamMapA6 map[string]string) {
+	upstreamsInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Upstream().List(ctx)
 	if err != nil {
 		panic(err)
 	} else {
@@ -260,8 +199,8 @@ func (c *Controller) listUpstreamCache(upstreamMapA6 map[string]string) {
 	}
 }
 
-func (c *Controller) listSSLCache(sslMapA6 map[string]string) {
-	sslInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).SSL().List(context.TODO())
+func (c *Controller) listSSLCache(ctx context.Context, sslMapA6 map[string]string) {
+	sslInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).SSL().List(ctx)
 	if err != nil {
 		panic(err)
 	} else {
@@ -271,8 +210,8 @@ func (c *Controller) listSSLCache(sslMapA6 map[string]string) {
 	}
 }
 
-func (c *Controller) listConsumerCache(consumerMapA6 map[string]string) {
-	consumerInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Consumer().List(context.TODO())
+func (c *Controller) listConsumerCache(ctx context.Context, consumerMapA6 map[string]string) {
+	consumerInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Consumer().List(ctx)
 	if err != nil {
 		panic(err)
 	} else {

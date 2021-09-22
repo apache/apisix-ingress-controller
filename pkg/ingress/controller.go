@@ -401,7 +401,7 @@ func (c *Controller) run(ctx context.Context) {
 	c.initWhenStartLeading()
 
 	// compare resources of k8s with objects of APISIX
-	c.CompareResources()
+	c.CompareResources(ctx)
 
 	c.goAttach(func() {
 		c.checkClusterHealth(ctx, cancelFunc)
