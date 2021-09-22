@@ -60,7 +60,7 @@ func (c *Controller) CompareResources(ctx context.Context) {
 		wg.Add(len(c.watchingNamespace))
 	}
 	for ns := range c.watchingNamespace {
-		go func() {
+		go func(ns string) {
 			// ApisixRoute
 			opts := v1.ListOptions{}
 			retRoutes, err := c.kubeClient.APISIXClient.ApisixV2beta1().ApisixRoutes(ns).List(ctx, opts)
@@ -123,7 +123,7 @@ func (c *Controller) CompareResources(ctx context.Context) {
 				}
 			}
 			wg.Done()
-		}()
+		}(ns)
 	}
 	wg.Wait()
 
