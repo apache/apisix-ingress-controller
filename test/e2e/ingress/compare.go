@@ -66,11 +66,9 @@ spec:
 		// scale Ingres Controller --replicas=1
 		assert.Nil(ginkgo.GinkgoT(), s.ScaleIngressController(1), "scaling ingress controller instances = 1")
 		time.Sleep(15 * time.Second)
-		routes, err := s.ListApisixRoutes()
-		assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
-		assert.Len(ginkgo.GinkgoT(), routes, 0, "route should be removed")
-		ups, err := s.ListApisixUpstreams()
-		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
-		assert.Len(ginkgo.GinkgoT(), ups, 0, "upstream should be removed")
+		// should find the warn log
+		output := s.GetDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
+		fmt.Println(output)
+		assert.Contains(ginkgo.GinkgoT(), output, "in APISIX but do not in declare yaml")
 	})
 })
