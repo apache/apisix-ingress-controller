@@ -226,7 +226,7 @@ func (t *translator) translateUpstreamActiveHealthCheck(config *configv1.ActiveH
 			}
 		}
 		active.Unhealthy.TCPFailures = config.Unhealthy.TCPFailures
-		active.Unhealthy.Timeouts = config.Unhealthy.Timeout.Seconds()
+		active.Unhealthy.Timeouts = config.Unhealthy.Timeouts
 
 		if config.Unhealthy.HTTPCodes != nil && len(config.Unhealthy.HTTPCodes) < 1 {
 			return nil, &translateError{
@@ -295,7 +295,7 @@ func (t *translator) translateUpstreamPassiveHealthCheck(config *configv1.Passiv
 			}
 		}
 		passive.Unhealthy.TCPFailures = config.Unhealthy.TCPFailures
-		passive.Unhealthy.Timeouts = config.Unhealthy.Timeout.Seconds()
+		passive.Unhealthy.Timeouts = config.Unhealthy.Timeouts
 
 		if config.Unhealthy.HTTPCodes != nil && len(config.Unhealthy.HTTPCodes) < 1 {
 			return nil, &translateError{
