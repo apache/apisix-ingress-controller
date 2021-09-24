@@ -25,12 +25,18 @@ This tutorial will detail how to manage secrets of ApisixTls using cert-manager.
 
 ## Prerequisites
 
-* Prepare an available Kubernetes cluster in your workstation, we recommend you to use [KiND](https://kind.sigs.k8s.io/docs/user/quick-start/) to create a local Kubernetes cluster.
+* Prepare an available Kubernetes cluster in your workstation, we recommend you to use [KIND](https://kind.sigs.k8s.io/docs/user/quick-start/) to create a local Kubernetes cluster.
 * Install Apache APISIX in Kubernetes by [Helm Chart](https://github.com/apache/apisix-helm-chart).
 * Install [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller/blob/master/install.md).
 * Install [cert-manager](https://cert-manager.io/docs/installation/#default-static-install).
 
 In this guide, we assume that your APISIX is installed with `ssl` enabled, which is not enabled by default in the Helm Chart. To enable it, you need to set `gateway.tls.enabled=true` during installation.
+
+For example, you could install APISIX and APISIX ingress controller by running:
+
+```bash
+helm install apisix apisix/apisix --set gateway.type=NodePort --set ingress-controller.enabled=true --set gateway.tls.enabled=true
+```
 
 Assume that the SSL port is `9443`.
 
@@ -118,8 +124,7 @@ We use [kennethreitz/httpbin](https://hub.docker.com/r/kennethreitz/httpbin/) as
 Deploy it by running:
 
 ```bash
-kubectl run httpbin --image kennethreitz/httpbin --port 80
-kubectl expose pod httpbin --port 80
+kubectl run httpbin --image kennethreitz/httpbin --expose --port 80
 ```
 
 ## Route the Service
