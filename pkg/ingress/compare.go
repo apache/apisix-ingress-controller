@@ -23,10 +23,10 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
-// CompareResources use to compare the object IDs in resources and APISIX
+// CompareResources used to compare the object IDs in resources and APISIX
 // Find out the rest of objects in APISIX
 // AND warn them in log.
-func (c *Controller) CompareResources(ctx context.Context) {
+func (c *Controller) CompareResources(ctx context.Context) error {
 	var (
 		wg                sync.WaitGroup
 		routeMapK8S       = new(sync.Map)
@@ -47,7 +47,8 @@ func (c *Controller) CompareResources(ctx context.Context) {
 		// list all namespaces
 		nsList, err := c.kubeClient.Client.CoreV1().Namespaces().List(ctx, opts)
 		if err != nil {
-			panic(err)
+			log.Error(err.Error())
+			ctx.Done()
 		} else {
 			wns := make(map[string]struct{}, len(nsList.Items))
 			for _, v := range nsList.Items {
@@ -61,16 +62,19 @@ func (c *Controller) CompareResources(ctx context.Context) {
 	}
 	for ns := range c.watchingNamespace {
 		go func(ns string) {
+			defer wg.Done()
 			// ApisixRoute
 			opts := v1.ListOptions{}
 			retRoutes, err := c.kubeClient.APISIXClient.ApisixV2beta1().ApisixRoutes(ns).List(ctx, opts)
 			if err != nil {
-				panic(err)
+				log.Error(err.Error())
+				ctx.Done()
 			} else {
 				for _, r := range retRoutes.Items {
 					tc, err := c.translator.TranslateRouteV2beta1NotStrictly(&r)
 					if err != nil {
-						panic(err)
+						log.Error(err.Error())
+						ctx.Done()
 					} else {
 						// routes
 						for _, route := range tc.Routes {
@@ -97,12 +101,14 @@ func (c *Controller) CompareResources(ctx context.Context) {
 			// ApisixSSL
 			retSSL, err := c.kubeClient.APISIXClient.ApisixV1().ApisixTlses(ns).List(ctx, opts)
 			if err != nil {
-				panic(err)
+				log.Error(err.Error())
+				ctx.Done()
 			} else {
 				for _, s := range retSSL.Items {
 					ssl, err := c.translator.TranslateSSL(&s)
 					if err != nil {
-						panic(err)
+						log.Error(err.Error())
+						ctx.Done()
 					} else {
 						sslMapK8S.Store(ssl.ID, ssl.ID)
 					}
@@ -111,28 +117,39 @@ func (c *Controller) CompareResources(ctx context.Context) {
 			// ApisixConsumer
 			retConsumer, err := c.kubeClient.APISIXClient.ApisixV2alpha1().ApisixConsumers(ns).List(ctx, opts)
 			if err != nil {
-				panic(err)
+				log.Error(err.Error())
+				ctx.Done()
 			} else {
 				for _, con := range retConsumer.Items {
 					consumer, err := c.translator.TranslateApisixConsumer(&con)
 					if err != nil {
-						panic(err)
+						log.Error(err.Error())
+						ctx.Done()
 					} else {
 						consumerMapK8S.Store(consumer.Username, consumer.Username)
 					}
 				}
 			}
-			wg.Done()
 		}(ns)
 	}
 	wg.Wait()
 
 	// 2.get all cache routes
-	c.listRouteCache(ctx, routeMapA6)
-	c.listStreamRouteCache(ctx, streamRouteMapA6)
-	c.listUpstreamCache(ctx, upstreamMapA6)
-	c.listSSLCache(ctx, sslMapA6)
-	c.listConsumerCache(ctx, consumerMapA6)
+	if err := c.listRouteCache(ctx, routeMapA6); err != nil {
+		return err
+	}
+	if err := c.listStreamRouteCache(ctx, streamRouteMapA6); err != nil {
+		return err
+	}
+	if err := c.listUpstreamCache(ctx, upstreamMapA6); err != nil {
+		return err
+	}
+	if err := c.listSSLCache(ctx, sslMapA6); err != nil {
+		return err
+	}
+	if err := c.listConsumerCache(ctx, consumerMapA6); err != nil {
+		return err
+	}
 	// 3.compare
 	routeReult := findRedundant(routeMapA6, routeMapK8S)
 	streamRouteReult := findRedundant(streamRouteMapA6, streamRouteMapK8S)
@@ -145,6 +162,8 @@ func (c *Controller) CompareResources(ctx context.Context) {
 	warnRedundantResources(upstreamReult, "upstream")
 	warnRedundantResources(sslReult, "ssl")
 	warnRedundantResources(consuemrReult, "consumer")
+
+	return nil
 }
 
 // log warn
@@ -166,57 +185,62 @@ func findRedundant(src map[string]string, dest *sync.Map) map[string]string {
 	return result
 }
 
-func (c *Controller) listRouteCache(ctx context.Context, routeMapA6 map[string]string) {
+func (c *Controller) listRouteCache(ctx context.Context, routeMapA6 map[string]string) error {
 	routesInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Route().List(ctx)
 	if err != nil {
-		panic(err)
+		return err
 	} else {
 		for _, ra := range routesInA6 {
 			routeMapA6[ra.ID] = ra.ID
 		}
 	}
+	return nil
 }
 
-func (c *Controller) listStreamRouteCache(ctx context.Context, streamRouteMapA6 map[string]string) {
+func (c *Controller) listStreamRouteCache(ctx context.Context, streamRouteMapA6 map[string]string) error {
 	streamRoutesInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).StreamRoute().List(ctx)
 	if err != nil {
-		panic(err)
+		return err
 	} else {
 		for _, ra := range streamRoutesInA6 {
 			streamRouteMapA6[ra.ID] = ra.ID
 		}
 	}
+	return nil
 }
 
-func (c *Controller) listUpstreamCache(ctx context.Context, upstreamMapA6 map[string]string) {
+func (c *Controller) listUpstreamCache(ctx context.Context, upstreamMapA6 map[string]string) error {
 	upstreamsInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Upstream().List(ctx)
 	if err != nil {
-		panic(err)
+		return err
 	} else {
 		for _, ra := range upstreamsInA6 {
 			upstreamMapA6[ra.ID] = ra.ID
 		}
 	}
+	return nil
 }
 
-func (c *Controller) listSSLCache(ctx context.Context, sslMapA6 map[string]string) {
+func (c *Controller) listSSLCache(ctx context.Context, sslMapA6 map[string]string) error {
 	sslInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).SSL().List(ctx)
 	if err != nil {
-		panic(err)
+		return err
 	} else {
 		for _, s := range sslInA6 {
 			sslMapA6[s.ID] = s.ID
 		}
 	}
+	return nil
 }
 
-func (c *Controller) listConsumerCache(ctx context.Context, consumerMapA6 map[string]string) {
+func (c *Controller) listConsumerCache(ctx context.Context, consumerMapA6 map[string]string) error {
 	consumerInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Consumer().List(ctx)
 	if err != nil {
-		panic(err)
+		return err
 	} else {
 		for _, con := range consumerInA6 {
 			consumerMapA6[con.Username] = con.Username
 		}
 	}
+	return nil
 }
