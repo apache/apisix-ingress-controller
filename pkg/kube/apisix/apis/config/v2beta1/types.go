@@ -229,5 +229,14 @@ type ApisixPluginConfigSpec struct {
 	Plugins []ApisixRouteHTTPPluginConfig `json:"plugins" yaml:"plugins"`
 	// CreateTime could use the metav1.ObjectMeta.CreationTimestamp instead of assigning here extra.
 	// UpdateTime was assigned with the timestamp when the ApisixPluginConfig had been updated.
-	UpdateTime int32  `json:"updateTime,omitempty" yaml:"updateTime,omitempty"`
+	UpdateTime int32 `json:"updateTime,omitempty" yaml:"updateTime,omitempty"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ApisixPluginConfigList contains a list of ApisixPluginConfig.
+type ApisixPluginConfigList struct {
+	metav1.TypeMeta `json:",inline" yaml:",inline"`
+	metav1.ListMeta `json:"metadata" yaml:"metadata"`
+	Items           []ApisixPluginConfig `json:"items,omitempty" yaml:"items,omitempty"`
 }

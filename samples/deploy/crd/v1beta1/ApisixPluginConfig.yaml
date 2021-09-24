@@ -48,7 +48,7 @@ spec:
               type: integer
               minimum: 0
             labels:
-              type: array
+              type: object
               items:
                 type: string
             desc:
