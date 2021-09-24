@@ -339,12 +339,12 @@ func (s *Scaffold) afterEach() {
 			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
 		}
 		// Get the logs of apisix
-		output = s.getDeploymentLogs("apisix-deployment-e2e-test")
+		output = s.GetDeploymentLogs("apisix-deployment-e2e-test")
 		if output != "" {
 			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
 		}
 		// Get the logs of ingress
-		output = s.getDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
+		output = s.GetDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
 		if output != "" {
 			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
 		}
@@ -362,7 +362,7 @@ func (s *Scaffold) afterEach() {
 	time.Sleep(3 * time.Second)
 }
 
-func (s *Scaffold) getDeploymentLogs(name string) string {
+func (s *Scaffold) GetDeploymentLogs(name string) string {
 	cli, err := k8s.GetKubernetesClientE(s.t)
 	if err != nil {
 		assert.Nilf(ginkgo.GinkgoT(), err, "get client error: %s", err.Error())
