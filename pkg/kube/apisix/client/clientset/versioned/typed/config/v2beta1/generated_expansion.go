@@ -17,4 +17,6 @@
 
 package v2beta1
 
+type ApisixPluginConfigExpansion interface{}
+
 type ApisixRouteExpansion interface{}

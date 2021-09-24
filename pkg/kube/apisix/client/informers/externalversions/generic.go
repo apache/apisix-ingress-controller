@@ -70,6 +70,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2alpha1().ApisixRoutes().Informer()}, nil
 
 		// Group=apisix.apache.org, Version=v2beta1
+	case v2beta1.SchemeGroupVersion.WithResource("apisixpluginconfigs"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2beta1().ApisixPluginConfigs().Informer()}, nil
 	case v2beta1.SchemeGroupVersion.WithResource("apisixroutes"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2beta1().ApisixRoutes().Informer()}, nil
 

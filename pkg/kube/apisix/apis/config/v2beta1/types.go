@@ -199,7 +199,6 @@ type ApisixRouteList struct {
 }
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 
@@ -214,18 +213,21 @@ type ApisixPluginConfig struct {
 	Status ApisixStatus           `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
+// ApisixPluginConfigLabels was key/value pairs to specify attributes
+// and the maxProperties could only be 16.
+type ApisixPluginConfigLabels map[string]string
+
 // ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
 type ApisixPluginConfigSpec struct {
-	Desc string `json:"desc,omitempty" yaml:"desc,omitempty"`
+	// Id must be required.
+	Id int32 `json:"id" yaml:"id"`
+	// Labels use ApisixPluginConfigLabels
+	Labels ApisixPluginConfigLabels `json:"labels,omitempty" yaml:"labels,omitempty"`
+	Desc   string                   `json:"desc,omitempty" yaml:"desc,omitempty"`
 	// Plugins contains a list of ApisixRouteHTTPPluginConfig
-	Plugins []ApisixRouteHTTPPluginConfig `json:"plugins,omitempty" yaml:"plugins,omitempty"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// ApisixPluginConfigList contains a list of ApisixPluginConfig.
-type ApisixPluginConfigList struct {
-	metav1.TypeMeta `json:",inline" yaml:",inline"`
-	metav1.ListMeta `json:"metadata" yaml:"metadata"`
-	Items           []ApisixPluginConfig `json:"items,omitempty" yaml:"items,omitempty"`
+	// Must be required.
+	Plugins []ApisixRouteHTTPPluginConfig `json:"plugins" yaml:"plugins"`
+	// CreateTime could use the metav1.ObjectMeta.CreationTimestamp instead of assigning here extra.
+	// UpdateTime was assigned with the timestamp when the ApisixPluginConfig had been updated.
+	UpdateTime int32  `json:"updateTime,omitempty" yaml:"updateTime,omitempty"`
 }

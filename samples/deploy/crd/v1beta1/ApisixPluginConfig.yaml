@@ -25,7 +25,7 @@ spec:
     - name: v2alpha1
       served: true
       storage: true
-  scope: Cluster
+  scope: Namespaced
   names:
     plural: apisixpluginconfigs
     singular: apisixpluginconfigs
@@ -42,8 +42,15 @@ spec:
         spec:
           type: object
           oneOf:
-            - required: ["desc","plugins"]
+            - required: ["id","plugins"]
           properties:
+            id:
+              type: integer
+              minimum: 0
+            labels:
+              type: array
+              items:
+                type: string
             desc:
               type: string
               minLength: 1
@@ -62,3 +69,6 @@ spec:
               required:
                 - name
                 - enable
+            updateTime:
+                type: integer
+                minimum: 0

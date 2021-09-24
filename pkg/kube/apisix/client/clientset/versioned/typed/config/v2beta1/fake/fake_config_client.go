@@ -27,6 +27,10 @@ type FakeApisixV2beta1 struct {
 	*testing.Fake
 }
 
+func (c *FakeApisixV2beta1) ApisixPluginConfigs(namespace string) v2beta1.ApisixPluginConfigInterface {
+	return &FakeApisixPluginConfigs{c, namespace}
+}
+
 func (c *FakeApisixV2beta1) ApisixRoutes(namespace string) v2beta1.ApisixRouteInterface {
 	return &FakeApisixRoutes{c, namespace}
 }
