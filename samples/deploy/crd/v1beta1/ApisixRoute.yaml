@@ -21,6 +21,14 @@ metadata:
   name: apisixroutes.apisix.apache.org
 spec:
   group: apisix.apache.org
+  scope: Namespaced
+  names:
+    plural: apisixroutes
+    singular: apisixroute
+    kind: ApisixRoute
+    shortNames:
+      - ar
+  preserveUnknownFields: true # we have to enable it since plugin config
   versions:
     - name: v1
       served: true
@@ -878,11 +886,3 @@ spec:
                         required:
                           - serviceName
                           - servicePort
-  scope: Namespaced
-  names:
-    plural: apisixroutes
-    singular: apisixroute
-    kind: ApisixRoute
-    shortNames:
-      - ar
-  preserveUnknownFields: true # we have to enable it since plugin config
