@@ -28,7 +28,6 @@ spec:
     kind: ApisixRoute
     shortNames:
       - ar
-  preserveUnknownFields: true # we have to enable it since plugin config
   versions:
     - name: v1
       served: true
@@ -221,6 +220,7 @@ spec:
                               type: boolean
                             config:
                               type: object
+                              x-preserve-unknown-fields: true # we have to enable it since plugin config
                         required:
                           - name
                           - enable
@@ -506,6 +506,7 @@ spec:
                               type: boolean
                             config:
                               type: object
+                              x-preserve-unknown-fields: true # we have to enable it since plugin config
                         required:
                           - name
                           - enable
@@ -791,6 +792,7 @@ spec:
                               type: boolean
                             config:
                               type: object
+                              x-preserve-unknown-fields: true # we have to enable it since plugin config
                         required:
                           - name
                           - enable
