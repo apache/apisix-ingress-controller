@@ -602,7 +602,7 @@ subjects:
 Then, we need to create ApisixRoute CRD:
 
 ```bash
-kubectl apply -k samples/deploy/crd/v1
+kubectl apply -k samples/deploy/crd
 ```
 
 Please refer to [samples](http://github.com/apache/apisix-ingress-controller/blob/master/samples/deploy/crd) for details.

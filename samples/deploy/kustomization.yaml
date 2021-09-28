@@ -25,4 +25,4 @@ bases:
   - ./admission
   - ./deployment
   - ./rbac
-  - ./crd/v1
+  - ./crd
