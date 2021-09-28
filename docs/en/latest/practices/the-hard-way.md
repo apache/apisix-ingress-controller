@@ -601,70 +601,11 @@ subjects:
 
 Then, we need to create ApisixRoute CRD:
 
-```yaml
-
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: apisixroutes.apisix.apache.org
-spec:
-  group: apisix.apache.org
-  versions:
-    - name: v1
-      served: true
-      storage: false
-    - name: v2alpha1
-      served: true
-      storage: false
-    - name: v2beta1
-      served: true
-      storage: true
-  scope: Namespaced
-  names:
-    plural: apisixroutes
-    singular: apisixroute
-    kind: ApisixRoute
-    shortNames:
-      - ar
----
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: apisixtlses.apisix.apache.org
-spec:
-  group: apisix.apache.org
-  versions:
-    - name: v1
-      served: true
-      storage: true
-  scope: Namespaced
-  names:
-    plural: apisixtlses
-    singular: apisixtls
-    kind: ApisixTls
-    shortNames:
-      - atls
----
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: apisixupstreams.apisix.apache.org
-spec:
-  group: apisix.apache.org
-  versions:
-    - name: v1
-      served: true
-      storage: true
-  scope: Namespaced
-  names:
-    plural: apisixupstreams
-    singular: apisixupstream
-    kind: ApisixUpstream
-    shortNames:
-      - au
+```bash
+kubectl apply -k samples/deploy/crd/v1
 ```
 
-This yaml doesn't contain all the CRDs for APISIX Ingress Controller. Please refer to [samples](http://github.com/apache/apisix-ingress-controller/blob/master/samples/deploy/crd) for details.
+Please refer to [samples](http://github.com/apache/apisix-ingress-controller/blob/master/samples/deploy/crd) for details.
 
 To make the ingress controller works properly with APISIX, we need to create a config file containing the APISIX admin API URL and API key as below:
 
