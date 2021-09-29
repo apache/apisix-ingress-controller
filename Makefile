@@ -71,7 +71,7 @@ unit-test:
 ### e2e-test:             Run e2e test cases (kind is required)
 .PHONY: e2e-test
 e2e-test: ginkgo-check push-images-to-kind
-	kubectl apply -k $(PWD)/samples/deploy/crd/v1
+	kubectl apply -k $(PWD)/samples/deploy/crd
 	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=$(E2E_CONCURRENCY)
 
 .PHONY: ginkgo-check
