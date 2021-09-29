@@ -23,6 +23,7 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v1"
 	apisixv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2alpha1"
 	apisixv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta1"
+	apisixv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta2"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -33,6 +34,7 @@ type Interface interface {
 	ApisixV1() apisixv1.ApisixV1Interface
 	ApisixV2alpha1() apisixv2alpha1.ApisixV2alpha1Interface
 	ApisixV2beta1() apisixv2beta1.ApisixV2beta1Interface
+	ApisixV2beta2() apisixv2beta2.ApisixV2beta2Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -42,6 +44,7 @@ type Clientset struct {
 	apisixV1       *apisixv1.ApisixV1Client
 	apisixV2alpha1 *apisixv2alpha1.ApisixV2alpha1Client
 	apisixV2beta1  *apisixv2beta1.ApisixV2beta1Client
+	apisixV2beta2  *apisixv2beta2.ApisixV2beta2Client
 }
 
 // ApisixV1 retrieves the ApisixV1Client
@@ -57,6 +60,11 @@ func (c *Clientset) ApisixV2alpha1() apisixv2alpha1.ApisixV2alpha1Interface {
 // ApisixV2beta1 retrieves the ApisixV2beta1Client
 func (c *Clientset) ApisixV2beta1() apisixv2beta1.ApisixV2beta1Interface {
 	return c.apisixV2beta1
+}
+
+// ApisixV2beta2 retrieves the ApisixV2beta2Client
+func (c *Clientset) ApisixV2beta2() apisixv2beta2.ApisixV2beta2Interface {
+	return c.apisixV2beta2
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -92,6 +100,10 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
+	cs.apisixV2beta2, err = apisixv2beta2.NewForConfig(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
 
 	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfig(&configShallowCopy)
 	if err != nil {
@@ -107,6 +119,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 	cs.apisixV1 = apisixv1.NewForConfigOrDie(c)
 	cs.apisixV2alpha1 = apisixv2alpha1.NewForConfigOrDie(c)
 	cs.apisixV2beta1 = apisixv2beta1.NewForConfigOrDie(c)
+	cs.apisixV2beta2 = apisixv2beta2.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -118,6 +131,7 @@ func New(c rest.Interface) *Clientset {
 	cs.apisixV1 = apisixv1.New(c)
 	cs.apisixV2alpha1 = apisixv2alpha1.New(c)
 	cs.apisixV2beta1 = apisixv2beta1.New(c)
+	cs.apisixV2beta2 = apisixv2beta2.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs
