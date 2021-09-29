@@ -319,6 +319,7 @@ spec:
     - name: v2alpha1
       served: true
       storage: false
+      deprecated: true
       subresources:
         status: {}
       additionalPrinterColumns:
@@ -604,7 +605,8 @@ spec:
                           - servicePort
     - name: v2beta1
       served: true
-      storage: true
+      storage: false
+      deprecated: true
       subresources:
         status: {}
       additionalPrinterColumns:
@@ -926,7 +928,6 @@ spec:
               type: object
               anyOf:
                 - required: ["http"]
-                - required: ["tcp"]
                 - required: ["stream"]
               properties:
                 http:

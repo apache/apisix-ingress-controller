@@ -31,13 +31,13 @@ var _ = ginkgo.Describe("Testing compare resources", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("Compare and find out the redundant objects in APISIX, and remove them", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
