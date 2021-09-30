@@ -123,7 +123,7 @@ If you don't see a command prompt, try pressing enter.
 
 ```bash
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
   name: grpc-proxy-route
