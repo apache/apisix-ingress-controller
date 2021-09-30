@@ -23,7 +23,6 @@ title: How to proxy the gRPC service
 
 In this practice, we will introduce how to proxy the gRPC service.
 
-
 ## Prerequisites
 
 * Prepare an available Kubernetes cluster in your workstation, we recommend you to use [KIND](https://kind.sigs.k8s.io/docs/user/quick-start/) to create a local Kubernetes cluster.
@@ -143,7 +142,7 @@ spec:
 EOF
 ```
 
-### Inform APISIX the yages is a gRPC server through ApisixUpstream.
+### Inform APISIX the yages is a gRPC server through ApisixUpstream
 
 ```bash
 kubectl apply -f - <<EOF
@@ -173,7 +172,7 @@ kubectl create secret generic grpc-secret -n ingress-apisix --from-file=cert=tls
 
 Inform APISIX ssl configuration through ApisixTls.
 
-```bash
+```yaml
 kubectl apply -f - <<EOF
 apiVersion: apisix.apache.org/v1
 kind: ApisixTls
@@ -182,10 +181,10 @@ metadata:
   namespace: ingress-apisix
 spec:
   hosts:
-  	- "grpc-proxy"
+    - "grpc-proxy"
   secret:
-  	name: grpc-secret
-  	namespace: ingress-apisix
+    name: grpc-secret
+    namespace: ingress-apisix
 EOF
 ```
 
