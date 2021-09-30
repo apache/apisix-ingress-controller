@@ -34,13 +34,13 @@ var _ = ginkgo.Describe("namespacing filtering", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("resources in other namespaces should be ignored", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		route := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -52,13 +52,14 @@ spec:
       - httpbin.com
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "creating ApisixRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "checking number of routes")
+		time.Sleep(3 * time.Second)
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
 
 		// TODO When ingress controller can feedback the lifecycle of CRDs to the
@@ -72,7 +73,7 @@ spec:
 
 		// Now create another ApisixRoute in default namespace.
 		route = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -84,8 +85,8 @@ spec:
       - httpbin.com
       paths:
       - /headers
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 

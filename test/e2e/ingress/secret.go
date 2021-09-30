@@ -34,13 +34,13 @@ var _ = ginkgo.Describe("secret Testing", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("create a SSL and then update secret ", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -52,8 +52,8 @@ spec:
       - api6.com
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
@@ -273,7 +273,7 @@ UnBVSIGJ/c0AhVSDuOAJiF36pvsDysTZXMTFE/9i5bkGOiwtzRNe4Hym/SEZUCpn
 	ginkgo.It("create a kube style SSL and then update secret ", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -285,8 +285,8 @@ spec:
       - api6.com
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
