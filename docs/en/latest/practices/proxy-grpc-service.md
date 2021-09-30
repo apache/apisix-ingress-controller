@@ -136,9 +136,10 @@ spec:
           - grpc-proxy
         paths:
           - "/*"
-      backend:
-        serviceName: yages
+      backends:
+      - serviceName: yages
         servicePort: 9000
+        weight: 10
 EOF
 ```
 
