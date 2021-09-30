@@ -177,7 +177,7 @@ func TestRouteClient(t *testing.T) {
 		cli:              http.DefaultClient,
 		cache:            &dummyCache{},
 		cacheSynced:      closedCh,
-		metricsCollector: metrics.NewPrometheusCollector(),
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 
 	// Create

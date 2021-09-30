@@ -33,7 +33,7 @@ func TestPodOnAdd(t *testing.T) {
 				"default": {},
 			},
 			podCache:         types.NewPodCache(),
-			metricsCollector: metrics.NewPrometheusCollector(),
+			MetricsCollector: metrics.NewPrometheusCollector(),
 		},
 	}
 
@@ -75,7 +75,7 @@ func TestPodOnDelete(t *testing.T) {
 				"default": {},
 			},
 			podCache:         types.NewPodCache(),
-			metricsCollector: metrics.NewPrometheusCollector(),
+			MetricsCollector: metrics.NewPrometheusCollector(),
 		},
 	}
 
@@ -120,7 +120,7 @@ func TestPodOnUpdate(t *testing.T) {
 				"default": {},
 			},
 			podCache:         types.NewPodCache(),
-			metricsCollector: metrics.NewPrometheusCollector(),
+			MetricsCollector: metrics.NewPrometheusCollector(),
 		},
 	}
 

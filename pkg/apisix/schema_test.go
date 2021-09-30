@@ -109,7 +109,7 @@ func TestSchemaClient(t *testing.T) {
 		cli:              http.DefaultClient,
 		cache:            &dummyCache{},
 		cacheSynced:      closedCh,
-		metricsCollector: metrics.NewPrometheusCollector(),
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 
 	ctx := context.TODO()

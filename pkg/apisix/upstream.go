@@ -109,7 +109,7 @@ func (u *upstreamClient) List(ctx context.Context) ([]*v1.Upstream, error) {
 	)
 
 	upsItems, err := u.cluster.listResource(ctx, u.url, "upstream")
-	u.cluster.metricsCollector.IncrAPISIXRequest("upstream")
+	u.cluster.MetricsCollector.IncrAPISIXRequest("upstream")
 	if err != nil {
 		log.Errorf("failed to list upstreams: %s", err)
 		return nil, err
@@ -151,7 +151,7 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	log.Debugw("creating upstream", zap.ByteString("body", body), zap.String("url", url))
 
 	resp, err := u.cluster.createResource(ctx, url, "upstream", bytes.NewReader(body))
-	u.cluster.metricsCollector.IncrAPISIXRequest("upstream")
+	u.cluster.MetricsCollector.IncrAPISIXRequest("upstream")
 	if err != nil {
 		log.Errorf("failed to create upstream: %s", err)
 		return nil, err
@@ -180,10 +180,10 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 	}
 	url := u.url + "/" + obj.ID
 	if err := u.cluster.deleteResource(ctx, url, "upstream"); err != nil {
-		u.cluster.metricsCollector.IncrAPISIXRequest("upstream")
+		u.cluster.MetricsCollector.IncrAPISIXRequest("upstream")
 		return err
 	}
-	u.cluster.metricsCollector.IncrAPISIXRequest("upstream")
+	u.cluster.MetricsCollector.IncrAPISIXRequest("upstream")
 	if err := u.cluster.cache.DeleteUpstream(obj); err != nil {
 		log.Errorf("failed to reflect upstream delete to cache: %s", err.Error())
 		if err != cache.ErrNotFound {
@@ -213,7 +213,7 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	url := u.url + "/" + obj.ID
 	log.Debugw("updating upstream", zap.ByteString("body", body), zap.String("url", url))
 	resp, err := u.cluster.updateResource(ctx, url, "upstream", bytes.NewReader(body))
-	u.cluster.metricsCollector.IncrAPISIXRequest("upstream")
+	u.cluster.MetricsCollector.IncrAPISIXRequest("upstream")
 	if err != nil {
 		return nil, err
 	}

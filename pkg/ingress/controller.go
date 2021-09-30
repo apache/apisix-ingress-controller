@@ -75,7 +75,7 @@ type Controller struct {
 	podCache          types.PodCache
 	translator        translation.Translator
 	apiServer         *api.Server
-	metricsCollector  metrics.Collector
+	MetricsCollector  metrics.Collector
 	kubeClient        *kube.KubeClient
 	// recorder event
 	recorder record.EventRecorder
@@ -168,7 +168,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		cfg:               cfg,
 		apiServer:         apiSrv,
 		apisix:            client,
-		metricsCollector:  metrics.NewPrometheusCollector(),
+		MetricsCollector:  metrics.NewPrometheusCollector(),
 		kubeClient:        kubeClient,
 		watchingNamespace: watchingNamespace,
 		secretSSLMap:      new(sync.Map),
@@ -295,7 +295,7 @@ func (c *Controller) Run(stop chan struct{}) error {
 		<-stop
 		rootCancel()
 	}()
-	c.metricsCollector.ResetLeader(false)
+	c.MetricsCollector.ResetLeader(false)
 
 	go func() {
 		if err := c.apiServer.Run(rootCtx.Done()); err != nil {
@@ -335,7 +335,7 @@ func (c *Controller) Run(stop chan struct{}) error {
 					zap.String("namespace", c.namespace),
 					zap.String("pod", c.name),
 				)
-				c.metricsCollector.ResetLeader(false)
+				c.MetricsCollector.ResetLeader(false)
 			},
 		},
 		// Set it to false as current leaderelection implementation will report
@@ -377,9 +377,10 @@ func (c *Controller) run(ctx context.Context) {
 	defer c.leaderContextCancelFunc()
 
 	clusterOpts := &apisix.ClusterOptions{
-		Name:     c.cfg.APISIX.DefaultClusterName,
-		AdminKey: c.cfg.APISIX.DefaultClusterAdminKey,
-		BaseURL:  c.cfg.APISIX.DefaultClusterBaseURL,
+		Name:             c.cfg.APISIX.DefaultClusterName,
+		AdminKey:         c.cfg.APISIX.DefaultClusterAdminKey,
+		BaseURL:          c.cfg.APISIX.DefaultClusterBaseURL,
+		MetricsCollector: c.MetricsCollector,
 	}
 	err := c.apisix.AddCluster(ctx, clusterOpts)
 	if err != nil && err != apisix.ErrDuplicatedCluster {
@@ -474,7 +475,7 @@ func (c *Controller) run(ctx context.Context) {
 		c.apisixConsumerController.run(ctx)
 	})
 
-	c.metricsCollector.ResetLeader(true)
+	c.MetricsCollector.ResetLeader(true)
 
 	log.Infow("controller now is running as leader",
 		zap.String("namespace", c.namespace),
@@ -626,6 +627,6 @@ func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.
 			return
 		}
 		log.Debugf("success check health for default cluster")
-		c.metricsCollector.IncrCheckClusterHealth(c.name)
+		c.MetricsCollector.IncrCheckClusterHealth(c.name)
 	}
 }

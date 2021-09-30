@@ -90,14 +90,14 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 func (c *endpointsController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
-		c.controller.metricsCollector.IncrSyncOperation("endpoints", "success")
+		c.controller.MetricsCollector.IncrSyncOperation("endpoints", "success")
 		return
 	}
 	log.Warnw("sync endpoints failed, will retry",
 		zap.Any("object", obj),
 	)
 	c.workqueue.AddRateLimited(obj)
-	c.controller.metricsCollector.IncrSyncOperation("endpoints", "failure")
+	c.controller.MetricsCollector.IncrSyncOperation("endpoints", "failure")
 }
 
 func (c *endpointsController) onAdd(obj interface{}) {
@@ -118,7 +118,7 @@ func (c *endpointsController) onAdd(obj interface{}) {
 		Object: kube.NewEndpoint(obj.(*corev1.Endpoints)),
 	})
 
-	c.controller.metricsCollector.IncrEvents("endpoints", "add")
+	c.controller.MetricsCollector.IncrEvents("endpoints", "add")
 }
 
 func (c *endpointsController) onUpdate(prev, curr interface{}) {
@@ -146,7 +146,7 @@ func (c *endpointsController) onUpdate(prev, curr interface{}) {
 		Object: kube.NewEndpoint(currEp),
 	})
 
-	c.controller.metricsCollector.IncrEvents("endpoints", "update")
+	c.controller.MetricsCollector.IncrEvents("endpoints", "update")
 }
 
 func (c *endpointsController) onDelete(obj interface{}) {
@@ -174,5 +174,5 @@ func (c *endpointsController) onDelete(obj interface{}) {
 		Object: kube.NewEndpoint(ep),
 	})
 
-	c.controller.metricsCollector.IncrEvents("endpoints", "delete")
+	c.controller.MetricsCollector.IncrEvents("endpoints", "delete")
 }

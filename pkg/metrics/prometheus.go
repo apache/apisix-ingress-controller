@@ -148,7 +148,7 @@ func NewPrometheusCollector() Collector {
 				Help:        "Number of events handled by the controller",
 				ConstLabels: constLabels,
 			},
-			[]string{"resource", "operation"},
+			[]string{"operation", "result"},
 		),
 	}
 
@@ -232,8 +232,8 @@ func (c *collector) IncrCacheSyncOperation(result string) {
 // specific operation.
 func (c *collector) IncrEvents(resource, operation string) {
 	c.controllerEvents.With(prometheus.Labels{
-		"resource":  resource,
 		"operation": operation,
+		"resource":  resource,
 	}).Inc()
 }
 

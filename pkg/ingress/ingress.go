@@ -186,7 +186,7 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
-		c.controller.metricsCollector.IncrSyncOperation("ingress", "success")
+		c.controller.MetricsCollector.IncrSyncOperation("ingress", "success")
 		return
 	}
 	log.Warnw("sync ingress failed, will retry",
@@ -194,7 +194,7 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
-	c.controller.metricsCollector.IncrSyncOperation("ingress", "failure")
+	c.controller.MetricsCollector.IncrSyncOperation("ingress", "failure")
 }
 
 func (c *ingressController) onAdd(obj interface{}) {
@@ -228,7 +228,7 @@ func (c *ingressController) onAdd(obj interface{}) {
 		},
 	})
 
-	c.controller.metricsCollector.IncrEvents("ingress", "add")
+	c.controller.MetricsCollector.IncrEvents("ingress", "add")
 }
 
 func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
@@ -266,7 +266,7 @@ func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 		},
 	})
 
-	c.controller.metricsCollector.IncrEvents("ingress", "update")
+	c.controller.MetricsCollector.IncrEvents("ingress", "update")
 }
 
 func (c *ingressController) OnDelete(obj interface{}) {
@@ -307,7 +307,7 @@ func (c *ingressController) OnDelete(obj interface{}) {
 		Tombstone: ing,
 	})
 
-	c.controller.metricsCollector.IncrEvents("ingress", "delete")
+	c.controller.MetricsCollector.IncrEvents("ingress", "delete")
 }
 
 func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {

@@ -81,7 +81,7 @@ func (c *podController) onAdd(obj interface{}) {
 		}
 	}
 
-	c.controller.metricsCollector.IncrEvents("pod", "add")
+	c.controller.MetricsCollector.IncrEvents("pod", "add")
 }
 
 func (c *podController) onUpdate(_, cur interface{}) {
@@ -111,7 +111,7 @@ func (c *podController) onUpdate(_, cur interface{}) {
 		}
 	}
 
-	c.controller.metricsCollector.IncrEvents("pod", "update")
+	c.controller.MetricsCollector.IncrEvents("pod", "update")
 }
 
 func (c *podController) onDelete(obj interface{}) {
@@ -138,5 +138,5 @@ func (c *podController) onDelete(obj interface{}) {
 		)
 	}
 
-	c.controller.metricsCollector.IncrEvents("pod", "delete")
+	c.controller.MetricsCollector.IncrEvents("pod", "delete")
 }

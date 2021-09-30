@@ -204,7 +204,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 func (c *apisixUpstreamController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
-		c.controller.metricsCollector.IncrSyncOperation("upstream", "success")
+		c.controller.MetricsCollector.IncrSyncOperation("upstream", "success")
 		return
 	}
 	log.Warnw("sync ApisixUpstream failed, will retry",
@@ -212,7 +212,7 @@ func (c *apisixUpstreamController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
-	c.controller.metricsCollector.IncrSyncOperation("upstream", "failure")
+	c.controller.MetricsCollector.IncrSyncOperation("upstream", "failure")
 }
 
 func (c *apisixUpstreamController) onAdd(obj interface{}) {
@@ -232,7 +232,7 @@ func (c *apisixUpstreamController) onAdd(obj interface{}) {
 		Object: key,
 	})
 
-	c.controller.metricsCollector.IncrEvents("upstream", "add")
+	c.controller.MetricsCollector.IncrEvents("upstream", "add")
 }
 
 func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
@@ -259,7 +259,7 @@ func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
 		Object: key,
 	})
 
-	c.controller.metricsCollector.IncrEvents("upstream", "update")
+	c.controller.MetricsCollector.IncrEvents("upstream", "update")
 }
 
 func (c *apisixUpstreamController) onDelete(obj interface{}) {
@@ -289,5 +289,5 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 		Tombstone: au,
 	})
 
-	c.controller.metricsCollector.IncrEvents("upstream", "delete")
+	c.controller.MetricsCollector.IncrEvents("upstream", "delete")
 }
