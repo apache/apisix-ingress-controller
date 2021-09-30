@@ -1033,7 +1033,7 @@ spec:
                               type: integer
                               minimum: 1
                               maximum: 65535
-                            resolveGranualrity:
+                            resolveGranularity:
                               type: string
                               enum: ["endpoint", "service"]
                             weight:
@@ -1107,7 +1107,7 @@ spec:
                             type: integer
                             minimum: 1
                             maximum: 65535
-                          resolveGranualrity:
+                          resolveGranularity:
                             type: string
                             enum: [ "endpoint", "service" ]
                           subset:
