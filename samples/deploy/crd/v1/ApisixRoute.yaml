@@ -220,7 +220,7 @@ spec:
                               type: boolean
                             config:
                               type: object
-                              x-preserve-unknown-fields: true # we have to enable it since plugin config
+                              x-kubernetes-preserve-unknown-fields: true # we have to enable it since plugin config
                         required:
                           - name
                           - enable
@@ -506,7 +506,7 @@ spec:
                               type: boolean
                             config:
                               type: object
-                              x-preserve-unknown-fields: true # we have to enable it since plugin config
+                              x-kubernetes-preserve-unknown-fields: true # we have to enable it since plugin config
                         required:
                           - name
                           - enable
@@ -792,7 +792,7 @@ spec:
                               type: boolean
                             config:
                               type: object
-                              x-preserve-unknown-fields: true # we have to enable it since plugin config
+                              x-kubernetes-preserve-unknown-fields: true # we have to enable it since plugin config
                         required:
                           - name
                           - enable
