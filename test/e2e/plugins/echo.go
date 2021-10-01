@@ -30,13 +30,13 @@ var _ = ginkgo.Describe("echo plugin", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("insert preface and epilogue", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -83,7 +83,7 @@ spec:
 	ginkgo.It("replace body", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -122,7 +122,7 @@ spec:
 	ginkgo.It("disable plugin", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -162,7 +162,7 @@ spec:
 	ginkgo.It("enable plugin and then delete it", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -198,7 +198,7 @@ spec:
 		resp.Body().Equal("my custom body")
 
 		ar = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route

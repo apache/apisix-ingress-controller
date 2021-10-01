@@ -49,8 +49,8 @@ spec:
       - httpbin.com
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))

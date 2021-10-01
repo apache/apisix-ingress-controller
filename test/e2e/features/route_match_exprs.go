@@ -63,6 +63,7 @@ spec:
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
@@ -162,6 +163,7 @@ spec:
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
@@ -220,6 +222,7 @@ spec:
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
@@ -392,6 +395,7 @@ spec:
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+		time.Sleep(6 * time.Second)
 
 		err := s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
@@ -451,6 +455,7 @@ spec:
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
@@ -508,6 +513,7 @@ spec:
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)

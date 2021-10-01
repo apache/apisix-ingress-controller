@@ -55,7 +55,7 @@ spec:
 `, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
-		time.Sleep(9 * time.Second)
+		time.Sleep(12 * time.Second)
 
 		err := s.EnsureNumApisixStreamRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")

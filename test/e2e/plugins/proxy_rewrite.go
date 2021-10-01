@@ -30,13 +30,13 @@ var _ = ginkgo.Describe("proxy-rewrite plugin", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("proxy rewrite request uri", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -76,7 +76,7 @@ spec:
 	ginkgo.It("proxy rewrite request uri and host", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -117,7 +117,7 @@ spec:
 	ginkgo.It("proxy rewrite request regex_uri and headers", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -159,7 +159,7 @@ spec:
 	ginkgo.It("the regex_uri of the proxy-rewrite plugin does not match", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -199,7 +199,7 @@ spec:
 	ginkgo.It("disable plugin", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
