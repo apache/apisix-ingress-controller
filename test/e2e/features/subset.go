@@ -159,6 +159,7 @@ spec:
 		err = s.CreateResourceFromString(ar)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ApisixRoute")
 
+		time.Sleep(6 * time.Second)
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "checking number of routes")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
 

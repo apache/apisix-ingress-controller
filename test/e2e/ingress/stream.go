@@ -90,6 +90,10 @@ spec:
 		// update namespace only for this case
 		s.UpdateNamespace("kube-system")
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
+		defer func() {
+			err := s.RemoveResourceByString(apisixRoute)
+			assert.Nil(ginkgo.GinkgoT(), err)
+		}()
 		time.Sleep(9 * time.Second)
 
 		err := s.EnsureNumApisixStreamRoutesCreated(1)

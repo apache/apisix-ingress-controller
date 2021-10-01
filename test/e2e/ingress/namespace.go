@@ -58,13 +58,9 @@ spec:
 `, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "creating ApisixRoute")
+		time.Sleep(6 * time.Second)
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "checking number of routes")
-		time.Sleep(3 * time.Second)
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
-
-		// TODO When ingress controller can feedback the lifecycle of CRDs to the
-		// status field, we can poll it rather than sleeping.
-		time.Sleep(3 * time.Second)
 
 		body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
 		var placeholder ip

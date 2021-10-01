@@ -16,6 +16,7 @@ package plugins
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
@@ -102,6 +103,7 @@ spec:
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 		err = s.EnsureNumApisixRoutesCreated(1)
@@ -144,6 +146,7 @@ spec:
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 		err = s.EnsureNumApisixRoutesCreated(1)
@@ -186,6 +189,7 @@ spec:
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 		err = s.EnsureNumApisixRoutesCreated(1)
