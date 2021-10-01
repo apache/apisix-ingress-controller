@@ -557,7 +557,7 @@ spec:
 		// Delete ar2
 		err = s.RemoveResourceByString(ar2)
 		assert.Nil(ginkgo.GinkgoT(), err)
-		time.Sleep(6 * time.Second)
+		time.Sleep(10 * time.Second)
 
 		routes, err = s.ListApisixRoutes()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing routes")
