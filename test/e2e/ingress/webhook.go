@@ -32,7 +32,7 @@ var _ = ginkgo.Describe("Enable webhooks", func() {
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
 		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
-		EnableWebhooks:        true,
+		// EnableWebhooks:        true,
 	}
 	s := scaffold.NewScaffold(opts)
 
