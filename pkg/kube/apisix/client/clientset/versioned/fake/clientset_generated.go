@@ -25,6 +25,8 @@ import (
 	fakeapisixv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2alpha1/fake"
 	apisixv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta1"
 	fakeapisixv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta1/fake"
+	apisixv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta2"
+	fakeapisixv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta2/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -92,4 +94,9 @@ func (c *Clientset) ApisixV2alpha1() apisixv2alpha1.ApisixV2alpha1Interface {
 // ApisixV2beta1 retrieves the ApisixV2beta1Client
 func (c *Clientset) ApisixV2beta1() apisixv2beta1.ApisixV2beta1Interface {
 	return &fakeapisixv2beta1.FakeApisixV2beta1{Fake: &c.Fake}
+}
+
+// ApisixV2beta2 retrieves the ApisixV2beta2Client
+func (c *Clientset) ApisixV2beta2() apisixv2beta2.ApisixV2beta2Interface {
+	return &fakeapisixv2beta2.FakeApisixV2beta2{Fake: &c.Fake}
 }

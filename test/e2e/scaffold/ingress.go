@@ -40,6 +40,12 @@ metadata:
   name: %s-apisix-view-clusterrole
 rules:
   - apiGroups:
+    - ""
+    resources:
+    - events
+    verbs:
+      - "*"
+  - apiGroups:
       - ""
     resources:
       - configmaps
@@ -59,7 +65,6 @@ rules:
       - ""
     resources:
       - bindings
-      - events
       - limitranges
       - namespaces/status
       - pods/log

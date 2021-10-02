@@ -26,20 +26,20 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("ApisixRoute stream Testing with v2beta1", func() {
+var _ = ginkgo.Describe("ApisixRoute stream Testing with v2beta2", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("stream tcp proxy", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
   name: httpbin-tcp-route
@@ -55,7 +55,7 @@ spec:
 `, backendSvc, backendSvcPort[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
-		time.Sleep(9 * time.Second)
+		time.Sleep(12 * time.Second)
 
 		err := s.EnsureNumApisixStreamRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
@@ -73,7 +73,7 @@ spec:
 	})
 	ginkgo.It("stream udp proxy", func() {
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
   name: httpbin-udp-route
@@ -90,6 +90,10 @@ spec:
 		// update namespace only for this case
 		s.UpdateNamespace("kube-system")
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
+		defer func() {
+			err := s.RemoveResourceByString(apisixRoute)
+			assert.Nil(ginkgo.GinkgoT(), err)
+		}()
 		time.Sleep(9 * time.Second)
 
 		err := s.EnsureNumApisixStreamRoutesCreated(1)
