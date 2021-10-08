@@ -132,6 +132,7 @@ type Schema interface {
 	GetRouteSchema(context.Context) (*v1.Schema, error)
 	GetUpstreamSchema(context.Context) (*v1.Schema, error)
 	GetConsumerSchema(context.Context) (*v1.Schema, error)
+	GetSslSchema(context.Context) (*v1.Schema, error)
 }
 
 type apisix struct {

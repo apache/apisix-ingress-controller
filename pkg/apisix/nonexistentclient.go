@@ -208,6 +208,10 @@ func (f *dummySchema) GetConsumerSchema(_ context.Context) (*v1.Schema, error) {
 	return nil, ErrClusterNotExist
 }
 
+func (f *dummySchema) GetSslSchema(_ context.Context) (*v1.Schema, error) {
+	return nil, ErrClusterNotExist
+}
+
 func (nc *nonExistentCluster) Route() Route {
 	return nc.route
 }
