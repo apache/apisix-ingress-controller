@@ -26,10 +26,10 @@ In this practice, we will introduce how to proxy the gRPC service.
 ## Prerequisites
 
 * Prepare an available Kubernetes cluster in your workstation, we recommend you to use [KIND](https://kind.sigs.k8s.io/docs/user/quick-start/) to create a local Kubernetes cluster.
-* Install Apache APISIX in Kubernetes by [Helm Chart](https://github.com/apache/apisix-helm-chart).
+* Install [Apache APISIX](https://github.com/apache/apisix) in Kubernetes by [Helm Chart](https://github.com/apache/apisix-helm-chart).
 * Install [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller/blob/master/install.md).
 
-Please note that in this practice, all components will be installed in the `ingress-apisix` namespace. If your Kubernetes cluster does not have an ingress-apisix namespace, please create it first.
+Please note that in this practice, all components will be installed in the `ingress-apisix` namespace. If your Kubernetes cluster does not have such namespace, please create it first.
 
 ```bash
 kubectl create ns ingress-apisix
@@ -41,10 +41,10 @@ You could install APISIX and APISIX ingress controller by running:
 helm install apisix apisix/apisix -n ingress-apisix --set gateway.type=NodePort --set ingress-controller.enabled=true --set gateway.tls.enabled=true
 ```
 
-Check that APISIX and apisix-ingress have been installed successfully, including etcd cluster / APISIX / apisix-ingress-controller.
+Check that all related components have been installed successfully, including ETCD cluster / APISIX / apisix-ingress-controller.
 
 ```bash
-k get pod -n ingress-apisix
+kubectl get pod -n ingress-apisix
 NAME                                        READY   STATUS    RESTARTS   AGE
 apisix-569f94b7b6-qt5jj                     1/1     Running   0          101m
 apisix-etcd-0                               1/1     Running   0          101m
@@ -57,51 +57,10 @@ apisix-ingress-controller-b5f5d49db-r9cxb   1/1     Running   0          101m
 
 Using [yages](https://github.com/mhausenblas/yages) as the gRPC server.
 
-Declare the deployment configuration of yapes, exposing port 9000
+Declare the deployment configuration of yapes, exposing port `9000`.
 
-```yaml
-kubectl apply -f - <<EOF
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    app: yages
-  name: yages
-  namespace: ingress-apisix
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: yages
-  template:
-    metadata:
-      labels:
-        app: yages
-    spec:
-      containers:
-      - name: grpcsrv
-        image: smirl/yages:0.1.3
-        ports:
-        - containerPort: 9000
-          protocol: TCP
----
-apiVersion: v1
-kind: Service
-metadata:
-  labels:
-    app: yages
-  name: yages
-  namespace: ingress-apisix
-spec:
-  type: ClusterIP
-  ports:
-    - name: http
-      port: 9000
-      protocol: TCP
-      targetPort: 9000
-  selector:
-    app: yages
-EOF
+```bash
+kubectl run yages -n ingress-apisix --image smirl/yages:0.1.3 --expose --port 9000
 ```
 
 Use the service that includes `grpcurl` to test gRPC connectivity.
@@ -159,7 +118,7 @@ EOF
 
 ### Configure certificates for gRPC
 
-serverName is `grpc-proxy`, which needs to be consistent with the hosts declared in ApisixRoute.
+Common Name should be `grpc-proxy`, which needs to be consistent with the hosts declared in ApisixRoute.
 
 ```bash
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/CN=grpc-proxy/O=grpc-proxy"
@@ -168,12 +127,12 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt
 Store key and crt in secret.
 
 ```bash
-kubectl create secret generic grpc-secret -n ingress-apisix --from-file=cert=tls.crt --from-file=key=tls.key
+kubectl create secret tls grpc-secret -n ingress-apisix --cert=tls.crt --key=tls.key
 ```
 
-Inform APISIX ssl configuration through ApisixTls.
+Inform APISIX SSL configuration through ApisixTls.
 
-```yaml
+```bash
 kubectl apply -f - <<EOF
 apiVersion: apisix.apache.org/v1
 kind: ApisixTls
@@ -191,9 +150,9 @@ EOF
 
 ### Test
 
-OK, the configuration is complete, continue to verify through `grpcurl`, this time we visit the APISIX service.
+OK, the configuration is complete, continue to verify through `grpcurl`, this time we visit the `yages` service through the Apache APISIX proxy.
 
-Check the APISIX DP service, which is apisix-gateway in this example.
+Check the APISIX DP (Data Plane) service, which is apisix-gateway in this example.
 
 ```bash
 kubectl get svc -n ingress-apisix
