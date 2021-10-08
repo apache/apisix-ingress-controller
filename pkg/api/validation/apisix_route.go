@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	"github.com/hashicorp/go-multierror"
 	kwhmodel "github.com/slok/kubewebhook/v2/pkg/model"
 	kwhvalidating "github.com/slok/kubewebhook/v2/pkg/webhook/validating"
@@ -32,6 +31,7 @@ import (
 	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
@@ -71,10 +71,8 @@ var ApisixRouteValidator = kwhvalidating.ValidatorFunc(
 		case *v2beta1.ApisixRoute:
 			spec = ar.Spec
 
-			// validate plugins
 			for _, h := range ar.Spec.HTTP {
 				for _, p := range h.Plugins {
-					// only check plugins that are enabled.
 					if p.Enable {
 						plugins = append(plugins, apisixRoutePlugin{
 							p.Name, p.Config,
