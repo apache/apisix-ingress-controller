@@ -24,7 +24,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("Enable webhooks", func() {
+var _ = ginkgo.FDescribe("Enable webhooks", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
@@ -32,13 +32,11 @@ var _ = ginkgo.Describe("Enable webhooks", func() {
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
 		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
-		// EnableWebhooks:        true,
+		EnableWebhooks:        true,
 	}
 	s := scaffold.NewScaffold(opts)
 
 	ginkgo.It("should fail to create the ApisixRoute with invalid plugin configuration", func() {
-		// #FIXME: just skip this case and we can enable it on other PR
-		ginkgo.Skip("just skip this case")
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta2
