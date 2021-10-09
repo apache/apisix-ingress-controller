@@ -96,5 +96,5 @@ Status:
 If can not see the Status information, please check the following points:
 
 1. The version of Apache APISIX Ingress Controller needs to be >= 1.0.
-2. Use the latest CRD definition file, refer to [here](https://github.com/apache/apisix-ingress-controller/tree/master/samples/deploy/crd/v1beta1).
+2. Use the latest CRD definition file, refer to [here](https://github.com/apache/apisix-ingress-controller/tree/master/samples/deploy/crd/v1).
 3. Use the latest RBAC configuration, refer to [here](https://github.com/apache/apisix-ingress-controller/tree/master/samples/deploy/rbac).

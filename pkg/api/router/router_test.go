@@ -22,6 +22,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 )
 
 func TestHealthz(t *testing.T) {
@@ -47,6 +49,17 @@ func TestMetrics(t *testing.T) {
 	c.Request = req
 	mountMetrics(r)
 	metrics(c)
+
+	assert.Equal(t, w.Code, http.StatusOK)
+}
+
+func TestWebhooks(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, r := gin.CreateTestContext(w)
+	req, err := http.NewRequest("POST", "/validation", nil)
+	assert.Nil(t, err, nil)
+	c.Request = req
+	MountWebhooks(r, &apisix.ClusterOptions{})
 
 	assert.Equal(t, w.Code, http.StatusOK)
 }

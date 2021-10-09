@@ -615,6 +615,11 @@ func (in *PassiveHealthCheckUnhealthy) DeepCopy() *PassiveHealthCheckUnhealthy {
 func (in *Path) DeepCopyInto(out *Path) {
 	*out = *in
 	out.Backend = in.Backend
+	if in.Timeout != nil {
+		in, out := &in.Timeout, &out.Timeout
+		*out = new(UpstreamTimeout)
+		**out = **in
+	}
 	if in.Plugins != nil {
 		in, out := &in.Plugins, &out.Plugins
 		*out = make([]Plugin, len(*in))

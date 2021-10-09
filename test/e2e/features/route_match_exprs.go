@@ -17,6 +17,7 @@ package features
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	"github.com/onsi/ginkgo"
@@ -30,14 +31,14 @@ var _ = ginkgo.Describe("route match exprs", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("operator is equal", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -55,13 +56,14 @@ spec:
          name: X-Foo
        op: Equal
        value: bar
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
@@ -87,7 +89,7 @@ spec:
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -105,8 +107,8 @@ spec:
          name: X-Foo
        op: NotEqual
        value: bar
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
 `, backendSvc, backendPorts[0])
 
@@ -136,7 +138,7 @@ spec:
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -154,13 +156,14 @@ spec:
          name: id
        op: GreaterThan
        value: "13"
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
@@ -194,7 +197,7 @@ spec:
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -212,13 +215,14 @@ spec:
          name: ID
        op: LessThan
        value: "13"
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
@@ -252,7 +256,7 @@ spec:
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -270,8 +274,8 @@ spec:
          name: Content-Type
        op: In
        set: ["text/plain", "text/html", "image/jpeg"]
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
 `, backendSvc, backendPorts[0])
 
@@ -310,7 +314,7 @@ spec:
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -328,8 +332,8 @@ spec:
          name: Content-Type
        op: NotIn
        set: ["text/plain", "text/html", "image/jpeg"]
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
 `, backendSvc, backendPorts[0])
 
@@ -367,7 +371,7 @@ spec:
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -385,12 +389,13 @@ spec:
          name: x-Real-URI
        op: RegexMatch
        value: "^/ip/0\\d{2}/.*$"
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+		time.Sleep(6 * time.Second)
 
 		err := s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
@@ -425,7 +430,7 @@ spec:
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -443,13 +448,14 @@ spec:
          name: X-Real-URI
        op: RegexNotMatch
        value: "^/ip/0\\d{2}/.*$"
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
@@ -482,7 +488,7 @@ spec:
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -500,13 +506,14 @@ spec:
          name: X-Real-URI
        op: RegexMatchCaseInsensitive
        value: "^/ip/0\\d{2}/.*$"
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
@@ -540,7 +547,7 @@ spec:
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -558,8 +565,8 @@ spec:
          name: X-Real-URI
        op: RegexNotMatchCaseInsensitive
        value: "^/ip/0\\d{2}/.*$"
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
 `, backendSvc, backendPorts[0])
 
@@ -601,14 +608,14 @@ var _ = ginkgo.Describe("route match exprs bugfixes", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("exprs scope", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -626,8 +633,8 @@ spec:
          name: X-Real-URI
        op: RegexMatchCaseInsensitive
        value: "^/ip/0\\d{2}/.*$"
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
  - name: rule2
    match:
@@ -635,8 +642,8 @@ spec:
      - httpbin.org
      paths:
      - /headers
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
 `, backendSvc, backendPorts[0], backendSvc, backendPorts[0])
 
@@ -644,6 +651,7 @@ spec:
 
 		err := s.EnsureNumApisixRoutesCreated(2)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+		time.Sleep(6 * time.Second)
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1))
 
 		routes, err := s.ListApisixRoutes()
