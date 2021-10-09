@@ -438,6 +438,11 @@ func (in *Upstream) DeepCopyInto(out *Upstream) {
 		*out = make(UpstreamNodes, len(*in))
 		copy(*out, *in)
 	}
+	if in.Retries != nil {
+		in, out := &in.Retries, &out.Retries
+		*out = new(int)
+		**out = **in
+	}
 	if in.Timeout != nil {
 		in, out := &in.Timeout, &out.Timeout
 		*out = new(UpstreamTimeout)

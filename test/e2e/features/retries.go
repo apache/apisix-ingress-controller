@@ -33,22 +33,8 @@ var _ = ginkgo.Describe("retries", func() {
 		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
 	}
 	s := scaffold.NewScaffold(opts)
-	ginkgo.It("active check", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
-		au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
-kind: ApisixUpstream
-metadata:
-  name: %s
-spec:
-  retries: 3
-`, backendSvc)
-		err := s.CreateResourceFromString(au)
-		assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
-		time.Sleep(2 * time.Second)
-
-		ar := fmt.Sprintf(`
+	routeTpl := `
 apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
@@ -64,19 +50,83 @@ spec:
     backends:
     - serviceName: %s
       servicePort: %d
-`, backendSvc, backendPorts[0])
-		err = s.CreateResourceFromString(ar)
+`
+	ginkgo.It("is missing", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(routeTpl, backendSvc, backendPorts[0])
+		err := s.CreateResourceFromString(ar)
 		assert.Nil(ginkgo.GinkgoT(), err)
 		time.Sleep(5 * time.Second)
+
+		au := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1
+kind: ApisixUpstream
+metadata:
+  name: %s
+spec:
+`, backendSvc)
+		err = s.CreateResourceFromString(au)
+		assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
+		time.Sleep(2 * time.Second)
 
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), ups, 1)
-		assert.Equal(ginkgo.GinkgoT(), ups[0].Retries, 3)
+		assert.Nil(ginkgo.GinkgoT(), ups[0].Retries)
+	})
+
+	ginkgo.It("is zero", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(routeTpl, backendSvc, backendPorts[0])
+		err := s.CreateResourceFromString(ar)
+		assert.Nil(ginkgo.GinkgoT(), err)
+		time.Sleep(5 * time.Second)
+
+		au := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1
+kind: ApisixUpstream
+metadata:
+  name: %s
+spec:
+  retries: 0
+`, backendSvc)
+		err = s.CreateResourceFromString(au)
+		assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
+		time.Sleep(2 * time.Second)
+
+		ups, err := s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), ups, 1)
+		assert.Equal(ginkgo.GinkgoT(), *ups[0].Retries, 0)
+	})
+
+	ginkgo.It("is a positive number", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(routeTpl, backendSvc, backendPorts[0])
+		err := s.CreateResourceFromString(ar)
+		assert.Nil(ginkgo.GinkgoT(), err)
+		time.Sleep(5 * time.Second)
+
+		au := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1
+kind: ApisixUpstream
+metadata:
+  name: %s
+spec:
+  retries: 3
+`, backendSvc)
+		err = s.CreateResourceFromString(au)
+		assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
+		time.Sleep(2 * time.Second)
+
+		ups, err := s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), ups, 1)
+		assert.Equal(ginkgo.GinkgoT(), *ups[0].Retries, 3)
 	})
 })
 
-var _ = ginkgo.Describe("timeout", func() {
+var _ = ginkgo.Describe("retries timeout", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
