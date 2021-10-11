@@ -120,7 +120,7 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Any("ApisixTls", tls),
 		)
 		c.controller.recorderEvent(tls, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse)
+		c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 		return err
 	}
 	log.Debugw("got SSL object from ApisixTls",
@@ -143,11 +143,11 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Any("ssl", ssl),
 		)
 		c.controller.recorderEvent(tls, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse)
+		c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 		return err
 	}
 	c.controller.recorderEvent(tls, corev1.EventTypeNormal, _resourceSynced, nil)
-	c.controller.recordStatus(tls, _resourceSynced, nil, metav1.ConditionTrue)
+	c.controller.recordStatus(tls, _resourceSynced, nil, metav1.ConditionTrue, tls.GetGeneration())
 	return err
 }
 
