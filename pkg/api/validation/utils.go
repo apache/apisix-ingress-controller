@@ -20,7 +20,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/gin-gonic/gin"
 	"github.com/hashicorp/go-multierror"
+	kwhhttp "github.com/slok/kubewebhook/v2/pkg/http"
+	kwhvalidating "github.com/slok/kubewebhook/v2/pkg/webhook/validating"
 	"github.com/xeipuuv/gojsonschema"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
@@ -53,13 +56,30 @@ func GetSchemaClient(co *apisix.ClusterOptions) (apisix.Schema, error) {
 	return schemaClient, onceErr
 }
 
-// TODO: make this helper function more generic so that it can be used by other validating webhooks.
-func validateSchema(schema string, config interface{}) (bool, error) {
-	// TODO: cache the schema loader
-	schemaLoader := gojsonschema.NewStringLoader(schema)
-	configLoader := gojsonschema.NewGoLoader(config)
+// NewHandlerFunc returns a HandlerFunc to handle admission reviews using the given validator.
+func NewHandlerFunc(ID string, validator kwhvalidating.Validator) gin.HandlerFunc {
+	// Create a validating webhook.
+	wh, err := kwhvalidating.NewWebhook(kwhvalidating.WebhookConfig{
+		ID:        ID,
+		Validator: validator,
+	})
+	if err != nil {
+		log.Errorf("failed to create webhook: %s", err)
+	}
 
-	result, err := gojsonschema.Validate(schemaLoader, configLoader)
+	h, err := kwhhttp.HandlerFor(kwhhttp.HandlerConfig{Webhook: wh})
+	if err != nil {
+		log.Errorf("failed to create webhook handle: %s", err)
+	}
+
+	return gin.WrapH(h)
+}
+
+// validateSchema validates the schema of the given Go struct.
+func validateSchema(schemaLoader *gojsonschema.JSONLoader, obj interface{}) (bool, error) {
+	configLoader := gojsonschema.NewGoLoader(obj)
+
+	result, err := gojsonschema.Validate(*schemaLoader, configLoader)
 	if err != nil {
 		log.Errorf("failed to load and validate the schema: %s", err)
 		return false, err
@@ -71,9 +91,10 @@ func validateSchema(schema string, config interface{}) (bool, error) {
 
 	log.Warn("the given document is not valid. see errors:\n")
 	var resultErr error
+	resultErr = multierror.Append(resultErr, fmt.Errorf("the given document is not valid"))
 	for _, desc := range result.Errors() {
-		resultErr = multierror.Append(resultErr, fmt.Errorf("%s\n", desc.Description()))
-		log.Errorf("- %s\n", desc)
+		resultErr = multierror.Append(resultErr, fmt.Errorf("%s", desc.Description()))
+		log.Warnf("- %s", desc)
 	}
 
 	return false, resultErr

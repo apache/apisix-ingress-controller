@@ -121,6 +121,7 @@ func TestDiffStreamRoutes(t *testing.T) {
 }
 
 func TestDiffUpstreams(t *testing.T) {
+	retries := 3
 	news := []*apisixv1.Upstream{
 		{
 			Metadata: apisixv1.Metadata{
@@ -131,7 +132,7 @@ func TestDiffUpstreams(t *testing.T) {
 			Metadata: apisixv1.Metadata{
 				ID: "3",
 			},
-			Retries: 3,
+			Retries: &retries,
 		},
 	}
 	added, updated, deleted := diffUpstreams(nil, news)
@@ -140,8 +141,9 @@ func TestDiffUpstreams(t *testing.T) {
 	assert.Len(t, added, 2)
 	assert.Equal(t, added[0].ID, "1")
 	assert.Equal(t, added[1].ID, "3")
-	assert.Equal(t, added[1].Retries, 3)
+	assert.Equal(t, *added[1].Retries, 3)
 
+	retries1 := 5
 	olds := []*apisixv1.Upstream{
 		{
 			Metadata: apisixv1.Metadata{
@@ -152,7 +154,7 @@ func TestDiffUpstreams(t *testing.T) {
 			Metadata: apisixv1.Metadata{
 				ID: "3",
 			},
-			Retries: 5,
+			Retries: &retries1,
 			Timeout: &apisixv1.UpstreamTimeout{
 				Connect: 10,
 			},
@@ -164,7 +166,7 @@ func TestDiffUpstreams(t *testing.T) {
 	assert.Len(t, deleted, 2)
 	assert.Equal(t, deleted[0].ID, "2")
 	assert.Equal(t, deleted[1].ID, "3")
-	assert.Equal(t, deleted[1].Retries, 5)
+	assert.Equal(t, *deleted[1].Retries, 5)
 	assert.Equal(t, deleted[1].Timeout.Connect, 10)
 
 	added, updated, deleted = diffUpstreams(olds, news)
@@ -173,12 +175,13 @@ func TestDiffUpstreams(t *testing.T) {
 	assert.Len(t, updated, 1)
 	assert.Equal(t, updated[0].ID, "3")
 	assert.Nil(t, updated[0].Timeout)
-	assert.Equal(t, updated[0].Retries, 3)
+	assert.Equal(t, *updated[0].Retries, 3)
 	assert.Len(t, deleted, 1)
 	assert.Equal(t, deleted[0].ID, "2")
 }
 
 func TestManifestDiff(t *testing.T) {
+	retries := 2
 	m := &manifest{
 		routes: []*apisixv1.Route{
 			{
@@ -198,7 +201,7 @@ func TestManifestDiff(t *testing.T) {
 				Metadata: apisixv1.Metadata{
 					ID: "4",
 				},
-				Retries: 2,
+				Retries: &retries,
 			},
 		},
 	}

@@ -30,13 +30,13 @@ var _ = ginkgo.Describe("fault-injection plugin", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("empty config", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -75,7 +75,7 @@ spec:
 	ginkgo.It("finer granularity config", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -138,7 +138,7 @@ spec:
 		ginkgo.Skip("APISIX version priors to 2.5 doesn't contain allow_origins_by_regex in cors plugin")
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -213,7 +213,7 @@ spec:
 	ginkgo.It("disable plugin", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -253,7 +253,7 @@ spec:
 	ginkgo.It("enable plugin and then delete it", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -291,7 +291,7 @@ spec:
 		resp.Body().Contains("origin")
 
 		ar = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
