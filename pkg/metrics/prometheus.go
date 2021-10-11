@@ -148,7 +148,7 @@ func NewPrometheusCollector() Collector {
 				Help:        "Number of events handled by the controller",
 				ConstLabels: constLabels,
 			},
-			[]string{"operation", "result"},
+			[]string{"operation", "resource"},
 		),
 	}
 
