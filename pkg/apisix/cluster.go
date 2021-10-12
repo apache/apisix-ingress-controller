@@ -99,7 +99,7 @@ type cluster struct {
 	consumer         Consumer
 	plugin           Plugin
 	schema           Schema
-	MetricsCollector metrics.Collector
+	metricsCollector metrics.Collector
 }
 
 func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
@@ -130,7 +130,7 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 		},
 		cacheState:       _cacheSyncing, // default state
 		cacheSynced:      make(chan struct{}),
-		MetricsCollector: o.MetricsCollector,
+		metricsCollector: o.MetricsCollector,
 	}
 	c.route = newRouteClient(c)
 	c.upstream = newUpstreamClient(c)
@@ -161,13 +161,13 @@ func (c *cluster) syncCache(ctx context.Context) {
 				zap.String("cost_time", time.Since(now).String()),
 				zap.String("cluster", c.name),
 			)
-			c.MetricsCollector.IncrCacheSyncOperation("success")
+			c.metricsCollector.IncrCacheSyncOperation("success")
 		} else {
 			log.Errorw("failed to sync cache",
 				zap.String("cost_time", time.Since(now).String()),
 				zap.String("cluster", c.name),
 			)
-			c.MetricsCollector.IncrCacheSyncOperation("failure")
+			c.metricsCollector.IncrCacheSyncOperation("failure")
 		}
 	}()
 
@@ -328,7 +328,7 @@ func (c *cluster) syncSchema(ctx context.Context, interval time.Duration) {
 	for {
 		if err := c.syncSchemaOnce(ctx); err != nil {
 			log.Warnf("failed to sync schema: %s", err)
-			c.MetricsCollector.IncrSyncOperation("schema", "failure")
+			c.metricsCollector.IncrSyncOperation("schema", "failure")
 		}
 
 		select {
@@ -386,7 +386,7 @@ func (c *cluster) syncSchemaOnce(ctx context.Context) error {
 			continue
 		}
 	}
-	c.MetricsCollector.IncrSyncOperation("schema", "success")
+	c.metricsCollector.IncrSyncOperation("schema", "success")
 	return nil
 }
 
@@ -499,8 +499,8 @@ func (c *cluster) getResource(ctx context.Context, url, resource string) (*getRe
 	if err != nil {
 		return nil, err
 	}
-	c.MetricsCollector.RecordAPISIXLatency(time.Since(start), "get")
-	c.MetricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "get")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 
 	defer drainBody(resp.Body, url)
 	if resp.StatusCode != http.StatusOK {
@@ -532,8 +532,8 @@ func (c *cluster) listResource(ctx context.Context, url, resource string) (*list
 	if err != nil {
 		return nil, err
 	}
-	c.MetricsCollector.RecordAPISIXLatency(time.Since(start), "list")
-	c.MetricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "list")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 
 	defer drainBody(resp.Body, url)
 	if resp.StatusCode != http.StatusOK {
@@ -561,8 +561,8 @@ func (c *cluster) createResource(ctx context.Context, url, resource string, body
 	if err != nil {
 		return nil, err
 	}
-	c.MetricsCollector.RecordAPISIXLatency(time.Since(start), "create")
-	c.MetricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "create")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 
 	defer drainBody(resp.Body, url)
 
@@ -590,8 +590,8 @@ func (c *cluster) updateResource(ctx context.Context, url, resource string, body
 	if err != nil {
 		return nil, err
 	}
-	c.MetricsCollector.RecordAPISIXLatency(time.Since(start), "update")
-	c.MetricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "update")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 
 	defer drainBody(resp.Body, url)
 
@@ -618,8 +618,8 @@ func (c *cluster) deleteResource(ctx context.Context, url, resource string) erro
 	if err != nil {
 		return err
 	}
-	c.MetricsCollector.RecordAPISIXLatency(time.Since(start), "delete")
-	c.MetricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "delete")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 
 	defer drainBody(resp.Body, url)
 
@@ -680,8 +680,8 @@ func (c *cluster) getSchema(ctx context.Context, url, resource string) (string, 
 	if err != nil {
 		return "", err
 	}
-	c.MetricsCollector.RecordAPISIXLatency(time.Since(start), "getSchema")
-	c.MetricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "getSchema")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 
 	defer drainBody(resp.Body, url)
 	if resp.StatusCode != http.StatusOK {
@@ -708,8 +708,8 @@ func (c *cluster) getList(ctx context.Context, url, resource string) ([]string, 
 	if err != nil {
 		return nil, err
 	}
-	c.MetricsCollector.RecordAPISIXLatency(time.Since(start), "getList")
-	c.MetricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "getList")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 
 	defer drainBody(resp.Body, url)
 	if resp.StatusCode != http.StatusOK {

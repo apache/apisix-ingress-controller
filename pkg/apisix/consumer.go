@@ -66,7 +66,7 @@ func (r *consumerClient) Get(ctx context.Context, name string) (*v1.Consumer, er
 	// TODO Add mutex here to avoid dog-pile effect.
 	url := r.url + "/" + name
 	resp, err := r.cluster.getResource(ctx, url, "consumer")
-	r.cluster.MetricsCollector.IncrAPISIXRequest("consumer")
+	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err != nil {
 		if err == cache.ErrNotFound {
 			log.Warnw("consumer not found",
@@ -111,7 +111,7 @@ func (r *consumerClient) List(ctx context.Context) ([]*v1.Consumer, error) {
 		zap.String("url", r.url),
 	)
 	consumerItems, err := r.cluster.listResource(ctx, r.url, "consumer")
-	r.cluster.MetricsCollector.IncrAPISIXRequest("consumer")
+	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err != nil {
 		log.Errorf("failed to list consumers: %s", err)
 		return nil, err
@@ -156,7 +156,7 @@ func (r *consumerClient) Create(ctx context.Context, obj *v1.Consumer) (*v1.Cons
 	url := r.url + "/" + obj.Username
 	log.Debugw("creating consumer", zap.ByteString("body", data), zap.String("url", url))
 	resp, err := r.cluster.createResource(ctx, url, "consumer", bytes.NewReader(data))
-	r.cluster.MetricsCollector.IncrAPISIXRequest("consumer")
+	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err != nil {
 		log.Errorf("failed to create consumer: %s", err)
 		return nil, err
@@ -184,10 +184,10 @@ func (r *consumerClient) Delete(ctx context.Context, obj *v1.Consumer) error {
 	}
 	url := r.url + "/" + obj.Username
 	if err := r.cluster.deleteResource(ctx, url, "consumer"); err != nil {
-		r.cluster.MetricsCollector.IncrAPISIXRequest("consumer")
+		r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 		return err
 	}
-	r.cluster.MetricsCollector.IncrAPISIXRequest("consumer")
+	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err := r.cluster.cache.DeleteConsumer(obj); err != nil {
 		log.Errorf("failed to reflect consumer delete to cache: %s", err)
 		if err != cache.ErrNotFound {
@@ -214,7 +214,7 @@ func (r *consumerClient) Update(ctx context.Context, obj *v1.Consumer) (*v1.Cons
 	url := r.url + "/" + obj.Username
 	log.Debugw("updating username", zap.ByteString("body", body), zap.String("url", url))
 	resp, err := r.cluster.updateResource(ctx, url, "consumer", bytes.NewReader(body))
-	r.cluster.MetricsCollector.IncrAPISIXRequest("consumer")
+	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err != nil {
 		return nil, err
 	}

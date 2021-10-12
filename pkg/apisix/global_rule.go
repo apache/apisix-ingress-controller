@@ -68,7 +68,7 @@ func (r *globalRuleClient) Get(ctx context.Context, name string) (*v1.GlobalRule
 	// TODO Add mutex here to avoid dog-pile effect.
 	url := r.url + "/" + rid
 	resp, err := r.cluster.getResource(ctx, url, "globalRule")
-	r.cluster.MetricsCollector.IncrAPISIXRequest("globalRule")
+	r.cluster.metricsCollector.IncrAPISIXRequest("globalRule")
 	if err != nil {
 		if err == cache.ErrNotFound {
 			log.Warnw("global_rule not found",
@@ -113,7 +113,7 @@ func (r *globalRuleClient) List(ctx context.Context) ([]*v1.GlobalRule, error) {
 		zap.String("url", r.url),
 	)
 	globalRuleItems, err := r.cluster.listResource(ctx, r.url, "globalRule")
-	r.cluster.MetricsCollector.IncrAPISIXRequest("globalRule")
+	r.cluster.metricsCollector.IncrAPISIXRequest("globalRule")
 	if err != nil {
 		log.Errorf("failed to list global_rules: %s", err)
 		return nil, err
@@ -158,7 +158,7 @@ func (r *globalRuleClient) Create(ctx context.Context, obj *v1.GlobalRule) (*v1.
 	url := r.url + "/" + obj.ID
 	log.Debugw("creating global_rule", zap.ByteString("body", data), zap.String("url", url))
 	resp, err := r.cluster.createResource(ctx, url, "globalRule", bytes.NewReader(data))
-	r.cluster.MetricsCollector.IncrAPISIXRequest("globalRule")
+	r.cluster.metricsCollector.IncrAPISIXRequest("globalRule")
 	if err != nil {
 		log.Errorf("failed to create global_rule: %s", err)
 		return nil, err
@@ -186,10 +186,10 @@ func (r *globalRuleClient) Delete(ctx context.Context, obj *v1.GlobalRule) error
 	}
 	url := r.url + "/" + obj.ID
 	if err := r.cluster.deleteResource(ctx, url, "globalRule"); err != nil {
-		r.cluster.MetricsCollector.IncrAPISIXRequest("globalRule")
+		r.cluster.metricsCollector.IncrAPISIXRequest("globalRule")
 		return err
 	}
-	r.cluster.MetricsCollector.IncrAPISIXRequest("globalRule")
+	r.cluster.metricsCollector.IncrAPISIXRequest("globalRule")
 	if err := r.cluster.cache.DeleteGlobalRule(obj); err != nil {
 		log.Errorf("failed to reflect global_rule delete to cache: %s", err)
 		if err != cache.ErrNotFound {
@@ -216,7 +216,7 @@ func (r *globalRuleClient) Update(ctx context.Context, obj *v1.GlobalRule) (*v1.
 	url := r.url + "/" + obj.ID
 	log.Debugw("updating global_rule", zap.ByteString("body", body), zap.String("url", url))
 	resp, err := r.cluster.updateResource(ctx, url, "globalRule", bytes.NewReader(body))
-	r.cluster.MetricsCollector.IncrAPISIXRequest("globalRule")
+	r.cluster.metricsCollector.IncrAPISIXRequest("globalRule")
 	if err != nil {
 		return nil, err
 	}
