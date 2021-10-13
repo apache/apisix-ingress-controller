@@ -29,7 +29,6 @@ KubeSphere is a distributed operating system managing cloud native applications 
 
 * Install [KubeSphere](https://kubesphere.io/docs/quick-start/), you can choose [All-in-one Installation on Linux](https://kubesphere.io/docs/quick-start/all-in-one-on-linux/) or [Minimal KubeSphere on Kubernetes](https://kubesphere.io/docs/quick-start/minimal-kubesphere-on-k8s/).
 * Install [Helm](https://helm.sh/).
-* Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
 * Make sure your target namespace exists, kubectl operations of this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX and apisix-ingress-controller
@@ -37,11 +36,11 @@ KubeSphere is a distributed operating system managing cloud native applications 
 As the data plane of apisix-ingress-controller, [Apache APISIX](http://apisix.apache.org/) can be deployed at the same time using Helm chart.
 
 ```shell
-cd /path/to/apisix-helm-chart
+helm repo add apisix https://charts.apiseven.com
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update
 kubectl create ns ingress-apisix
-helm install apisix charts/apisix \
+helm install apisix apisix/apisix \
   --set gateway.type=NodePort \
   --set ingress-controller.enabled=true \
   --namespace ingress-apisix
