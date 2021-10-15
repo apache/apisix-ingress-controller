@@ -128,7 +128,7 @@ func (pc *PluginConf) GetPodInfo(appNamespace, podIP string) AppInfo {
 	return appInfo
 }
 
-// CheckPort check the k8s port-forward open is successfull.
+// CheckPort check the k8s port-forward open is successful.
 func CheckPort() bool {
 	_, err := net.Dial("tcp", "127.0.0.1:9180")
 	if err == nil {
