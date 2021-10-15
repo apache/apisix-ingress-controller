@@ -12,6 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package scaffold
 
 import (
@@ -24,6 +25,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strings"
@@ -50,6 +52,7 @@ type Options struct {
 	HTTPBinServicePort    int
 	APISIXRouteVersion    string
 	APISIXAdminAPIKey     string
+	EnableWebhooks        bool
 }
 
 type Scaffold struct {
@@ -75,7 +78,7 @@ type Scaffold struct {
 	EtcdServiceFQDN string
 }
 
-// Getkubeconfig returns the kubeconfig file path.
+// GetKubeconfig returns the kubeconfig file path.
 // Order:
 // env KUBECONFIG;
 // ~/.kube/config;
@@ -125,6 +128,7 @@ func NewDefaultScaffold() *Scaffold {
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
 		APISIXRouteVersion:    kube.ApisixRouteV1,
+		EnableWebhooks:        false,
 	}
 	return NewScaffold(opts)
 }
@@ -138,6 +142,7 @@ func NewDefaultV2Scaffold() *Scaffold {
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
 		APISIXRouteVersion:    kube.ApisixRouteV2alpha1,
+		EnableWebhooks:        false,
 	}
 	return NewScaffold(opts)
 }
@@ -308,6 +313,11 @@ func (s *Scaffold) beforeEach() {
 
 	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.httpbinService.Name, 3, 2*time.Second)
 
+	if s.opts.EnableWebhooks {
+		err := generateWebhookCert(s.namespace)
+		assert.Nil(s.t, err, "generate certs and create webhook secret")
+	}
+
 	err = s.newIngressAPISIXController()
 	assert.Nil(s.t, err, "initializing ingress apisix controller")
 
@@ -329,12 +339,12 @@ func (s *Scaffold) afterEach() {
 			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
 		}
 		// Get the logs of apisix
-		output = s.getDeploymentLogs("apisix-deployment-e2e-test")
+		output = s.GetDeploymentLogs("apisix-deployment-e2e-test")
 		if output != "" {
 			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
 		}
 		// Get the logs of ingress
-		output = s.getDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
+		output = s.GetDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
 		if output != "" {
 			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
 		}
@@ -352,7 +362,7 @@ func (s *Scaffold) afterEach() {
 	time.Sleep(3 * time.Second)
 }
 
-func (s *Scaffold) getDeploymentLogs(name string) string {
+func (s *Scaffold) GetDeploymentLogs(name string) string {
 	cli, err := k8s.GetKubernetesClientE(s.t)
 	if err != nil {
 		assert.Nilf(ginkgo.GinkgoT(), err, "get client error: %s", err.Error())
@@ -406,4 +416,18 @@ func waitExponentialBackoff(condFunc func() (bool, error)) error {
 		Steps:    8,
 	}
 	return wait.ExponentialBackoff(backoff, condFunc)
+}
+
+// generateWebhookCert generates signed certs of webhook and create the corresponding secret by running a script.
+func generateWebhookCert(ns string) error {
+	commandTemplate := `testdata/webhook-create-signed-cert.sh`
+	cmd := exec.Command("/bin/sh", commandTemplate, "--namespace", ns)
+
+	output, err := cmd.Output()
+	if err != nil {
+		ginkgo.GinkgoT().Errorf("%s", output)
+		return fmt.Errorf("failed to execute the script: %v", err)
+	}
+
+	return nil
 }

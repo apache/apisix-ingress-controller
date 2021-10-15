@@ -15,6 +15,7 @@
 package metrics
 
 import (
+	"os"
 	"strconv"
 	"time"
 
@@ -37,20 +38,33 @@ type Collector interface {
 	RecordAPISIXLatency(time.Duration)
 	// IncrAPISIXRequest increases the number of requests to apisix.
 	IncrAPISIXRequest(string)
+	// IncrCheckClusterHealth increases the number of cluster health check operations
+	// with the cluster name label.
+	IncrCheckClusterHealth(string)
+	// IncrSyncOperation increases the number of sync operations with the resource
+	// type label.
+	IncrSyncOperation(string, string)
 }
 
 // collector contains necessary messages to collect Prometheus metrics.
 type collector struct {
-	isLeader       prometheus.Gauge
-	apisixLatency  prometheus.Summary
-	apisixRequests *prometheus.CounterVec
-	apisixCodes    *prometheus.GaugeVec
+	isLeader           prometheus.Gauge
+	apisixLatency      prometheus.Summary
+	apisixRequests     *prometheus.CounterVec
+	apisixCodes        *prometheus.GaugeVec
+	checkClusterHealth *prometheus.CounterVec
+	syncOperation      *prometheus.CounterVec
 }
 
 // NewPrometheusCollectors creates the Prometheus metrics collector.
 // It also registers all internal metric collector to prometheus,
 // so do not call this function duplicately.
-func NewPrometheusCollector(podName, podNamespace string) Collector {
+func NewPrometheusCollector() Collector {
+	podName := os.Getenv("POD_NAME")
+	podNamespace := os.Getenv("POD_NAMESPACE")
+	if podNamespace == "" {
+		podNamespace = "default"
+	}
 	constLabels := prometheus.Labels{
 		"controller_pod":       podName,
 		"controller_namespace": podNamespace,
@@ -91,6 +105,24 @@ func NewPrometheusCollector(podName, podNamespace string) Collector {
 			},
 			[]string{"resource"},
 		),
+		checkClusterHealth: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace:   _namespace,
+				Name:        "check_cluster_health_total",
+				Help:        "Number of cluster health check operations",
+				ConstLabels: constLabels,
+			},
+			[]string{"name"},
+		),
+		syncOperation: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace:   _namespace,
+				Name:        "sync_operation_total",
+				Help:        "Number of sync operations",
+				ConstLabels: constLabels,
+			},
+			[]string{"resource", "result"},
+		),
 	}
 
 	// Since we use the DefaultRegisterer, in test cases, the metrics
@@ -99,12 +131,16 @@ func NewPrometheusCollector(podName, podNamespace string) Collector {
 	prometheus.Unregister(collector.apisixCodes)
 	prometheus.Unregister(collector.apisixLatency)
 	prometheus.Unregister(collector.apisixRequests)
+	prometheus.Unregister(collector.checkClusterHealth)
+	prometheus.Unregister(collector.syncOperation)
 
 	prometheus.MustRegister(
 		collector.isLeader,
 		collector.apisixCodes,
 		collector.apisixLatency,
 		collector.apisixRequests,
+		collector.checkClusterHealth,
+		collector.syncOperation,
 	)
 
 	return collector
@@ -140,6 +176,21 @@ func (c *collector) IncrAPISIXRequest(resource string) {
 	c.apisixRequests.WithLabelValues(resource).Inc()
 }
 
+// IncrCheckClusterHealth increases the number of cluster health check
+// operations.
+func (c *collector) IncrCheckClusterHealth(name string) {
+	c.checkClusterHealth.WithLabelValues(name).Inc()
+}
+
+// IncrSyncOperation increases the number of sync operations for specific
+// resource.
+func (c *collector) IncrSyncOperation(resource, result string) {
+	c.syncOperation.With(prometheus.Labels{
+		"resource": resource,
+		"result":   result,
+	}).Inc()
+}
+
 // Collect collects the prometheus.Collect.
 func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	c.isLeader.Collect(ch)
@@ -147,6 +198,8 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	c.apisixRequests.Collect(ch)
 	c.apisixLatency.Collect(ch)
 	c.apisixCodes.Collect(ch)
+	c.checkClusterHealth.Collect(ch)
+	c.syncOperation.Collect(ch)
 }
 
 // Describe describes the prometheus.Describe.
@@ -156,4 +209,6 @@ func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 	c.apisixRequests.Describe(ch)
 	c.apisixLatency.Describe(ch)
 	c.apisixCodes.Describe(ch)
+	c.checkClusterHealth.Describe(ch)
+	c.syncOperation.Describe(ch)
 }

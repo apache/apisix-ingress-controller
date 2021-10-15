@@ -15,19 +15,58 @@
 package ingress
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/apache/apisix-ingress-controller/pkg/id"
+	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
-	ginkgo "github.com/onsi/ginkgo"
-	corev1 "k8s.io/api/core/v1"
 )
 
-var _ = ginkgo.Describe("support ingress.networking/v1beta1 https", func() {
+var _ = ginkgo.Describe("support ingress https", func() {
 	s := scaffold.NewDefaultV2Scaffold()
+
+	rootCA := `-----BEGIN CERTIFICATE-----
+MIIF9zCCA9+gAwIBAgIUFKuzAJZgm/fsFS6JDrd+lcpVZr8wDQYJKoZIhvcNAQEL
+BQAwgZwxCzAJBgNVBAYTAkNOMREwDwYDVQQIDAhaaGVqaWFuZzERMA8GA1UEBwwI
+SGFuZ3pob3UxGDAWBgNVBAoMD0FQSVNJWC1UZXN0LUNBXzEYMBYGA1UECwwPQVBJ
+U0lYX0NBX1JPT1RfMRUwEwYDVQQDDAxBUElTSVguUk9PVF8xHDAaBgkqhkiG9w0B
+CQEWDXRlc3RAdGVzdC5jb20wHhcNMjEwNTI3MTMzNjI4WhcNMjIwNTI3MTMzNjI4
+WjCBnDELMAkGA1UEBhMCQ04xETAPBgNVBAgMCFpoZWppYW5nMREwDwYDVQQHDAhI
+YW5nemhvdTEYMBYGA1UECgwPQVBJU0lYLVRlc3QtQ0FfMRgwFgYDVQQLDA9BUElT
+SVhfQ0FfUk9PVF8xFTATBgNVBAMMDEFQSVNJWC5ST09UXzEcMBoGCSqGSIb3DQEJ
+ARYNdGVzdEB0ZXN0LmNvbTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIB
+ALJR0lQW/IBqQTE/Oa0Pi4LlmlYUSGnqtFNqiZyOF0PjVzNeqoD9JDPiM1QRyC8p
+NCd5L/QhtUIMMx0RlDI9DkJ3ALIWdrPIZlwpveDJf4KtW7cz+ea46A6QQwB6xcyV
+xWnqEBkiea7qrEE8NakZOMjgkqkN2/9klg6XyA5FWfvszxtuIHtjcy2Kq8bMC0jd
+k7CqEZe4ct6s2wlcI8t8s9prvMDm8gcX66x4Ah+C2/W+C3lTpMDgGqRqSPyCW7na
+Wgn0tWmTSf1iybwYMydhC+zpM1QJLvfDyqjp1wJhziR5ttVe2Xc+tDC24s+u16yZ
+R93IO0M4lLNjvEKJcMltXyRzrcjvLXOhw3KirSHNL1KfrBEl74lb+DV5eU4pIFCj
+cu18gms5FBYs9tpLujwpHDc2MU+zCvRmSPvUA4yCyoXqom3uiSo3g3ymW9IM8dC8
++Bd1GdM6JbpBukvQybc5TQXo1M75I9iEoQa5tQxAfQ/dfwMjOK7skogowBouOuLv
+BEFKy3Vd57IWWZXC4p/74M6N4fGYTgHY5FQE3R4Y2phk/eaEm1jS1UPuC98QuTfL
+rGuFOIBmK5euOm8uT5m9hnrouG2ZcxEdzHYfjsGDGrLzA0FLu+wtMNBKM4NhsNCa
+d+fycLg7jgxWhaLvD5DfkV7WFQlz5LUceYIwYOyhD/chAgMBAAGjLzAtMAwGA1Ud
+EwQFMAMBAf8wHQYDVR0RBBYwFIISbXRscy5odHRwYmluLmxvY2FsMA0GCSqGSIb3
+DQEBCwUAA4ICAQCNtBmoAc5tv3H38sj9qhTmabvp9RIzZYrQSEcN+A2i3a8FVYAM
+YaugZDXDcTycoWn6rcgblUDneow3NiqZ57yYZmN+e4mE3+Q1sGepV7LoRkHDUT8w
+jAJndcZ/xxJmgH6B7dImTAPsvLGR7E7gffMH+aKCdnkG9x5Vm+cuBwSEBndiHGfr
+yw5cXO6cMUq8M6zJrk2V+1BAucXW2rgLTWy6UTTGD56cgUtbStRO6muOKoElDLbW
+mSj2rNv/evakQkV8dgKVRFgh2NQKYKpXmveMaE6xtFFf/dd9OhDFjUh/ksxn94FT
+xj/wkhXCEPl+t7tENhr2tNyLbCOVcFzqoi7IyoWKxxZQfvArfj4SmahK8E/BXB/T
+4PEmn8kZAxaW7RmGcaekm8MTqGlhCJ3tVJAI2vcYRdd9ZHbXE1jr/4xj0I/Lzglo
+O8v5fd4zHyV1SuZ5AH3XbUd7ndl9yDoN2WSqK9Nd9bws3yrf+GwjJAT1InnDvLg1
+stWM8I+9FZiDFL255/+iAN0jYcGu9i4TNvC+o6qQ1p85i1OHPJZu6wtUWMgDJN46
+uwW3ZLh9sZV6OnhbQJBQaUmcgaPJUQqbXNQmpmpc0NUjET/ltFRZ2hlyvvpf7wwF
+2DLY1HRAknQ69DuT6xpYz1aKZqrlkbCWlMMvdosOg6f7+4NxdYJ/rBeS6Q==
+-----END CERTIFICATE-----
+`
 
 	serverCertSecret := `server-secret`
 	serverCert := `-----BEGIN CERTIFICATE-----
@@ -118,13 +157,12 @@ w174RSQoNMc+odHxn95mxtYdYVE5PKkzgrfxqymLa5Y0LMPCpKOq4XB0paZPtrOt
 k1XbogS6EYyEdbkTDdXdUENvDrU7hzJXSVxJYADiqr44DGfWm6hK0bq9ZPc=
 -----END RSA PRIVATE KEY-----
 `
-	ginkgo.It("create an ingress resource with tls", func() {
+	ginkgo.It("should support ingress v1beta1 with tls", func() {
 		// create secrets
 		err := s.NewSecret(serverCertSecret, serverCert, serverKey)
 		assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
 
 		// create ingress
-		//tlsName := "tls-with-client-ca"
 		host := "mtls.httpbin.local"
 		// create route
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -156,8 +194,127 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
 		assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
 
+		apisixSsls, err := s.ListApisixSsl()
+		assert.Nil(ginkgo.GinkgoT(), err, "list SSLs error")
+		assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "SSL number should be 1")
+		assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls"), apisixSsls[0].ID, "SSL name")
+		assert.Equal(ginkgo.GinkgoT(), apisixSsls[0].Snis, []string{host}, "SSL configuration")
+
+		caCertPool := x509.NewCertPool()
+		ok := caCertPool.AppendCertsFromPEM([]byte(rootCA))
+		assert.True(ginkgo.GinkgoT(), ok, "Append cert to CA pool")
+
+		s.NewAPISIXHttpsClientWithCertificates(host, true, caCertPool, []tls.Certificate{}).
+			GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
 	})
 
+	ginkgo.It("should support ingress v1 with tls", func() {
+		// create secrets
+		err := s.NewSecret(serverCertSecret, serverCert, serverKey)
+		assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
+
+		// create ingress
+		host := "mtls.httpbin.local"
+		// create route
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: httpbin-ingress-https
+  annotations:
+    kubernetes.io/ingress.class: apisix
+spec:
+  tls:
+  - hosts:
+    - %s
+    secretName: %s
+  rules:
+  - host: %s
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, host, serverCertSecret, host, backendSvc, backendSvcPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+		time.Sleep(10 * time.Second)
+
+		apisixRoutes, err := s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
+		assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
+
+		apisixSsls, err := s.ListApisixSsl()
+		assert.Nil(ginkgo.GinkgoT(), err, "list SSLs error")
+		assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "SSL number should be 1")
+		assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls"), apisixSsls[0].ID, "SSL name")
+		assert.Equal(ginkgo.GinkgoT(), apisixSsls[0].Snis, []string{host}, "SSL configuration")
+
+		caCertPool := x509.NewCertPool()
+		ok := caCertPool.AppendCertsFromPEM([]byte(rootCA))
+		assert.True(ginkgo.GinkgoT(), ok, "Append cert to CA pool")
+
+		s.NewAPISIXHttpsClientWithCertificates(host, true, caCertPool, []tls.Certificate{}).
+			GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
+	})
+
+	ginkgo.It("should support ingress v1 with kube style tls secret", func() {
+		// create secrets
+		err := s.NewKubeTlsSecret(serverCertSecret, serverCert, serverKey)
+		assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
+
+		// create ingress
+		host := "mtls.httpbin.local"
+		// create route
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: httpbin-ingress-https
+  annotations:
+    kubernetes.io/ingress.class: apisix
+spec:
+  tls:
+  - hosts:
+    - %s
+    secretName: %s
+  rules:
+  - host: %s
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, host, serverCertSecret, host, backendSvc, backendSvcPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+		time.Sleep(10 * time.Second)
+
+		apisixRoutes, err := s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
+		assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
+
+		apisixSsls, err := s.ListApisixSsl()
+		assert.Nil(ginkgo.GinkgoT(), err, "list SSLs error")
+		assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "SSL number should be 1")
+		assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls"), apisixSsls[0].ID, "SSL name")
+		assert.Equal(ginkgo.GinkgoT(), apisixSsls[0].Snis, []string{host}, "SSL configuration")
+
+		caCertPool := x509.NewCertPool()
+		ok := caCertPool.AppendCertsFromPEM([]byte(rootCA))
+		assert.True(ginkgo.GinkgoT(), ok, "Append cert to CA pool")
+
+		s.NewAPISIXHttpsClientWithCertificates(host, true, caCertPool, []tls.Certificate{}).
+			GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
+	})
 })
 
 var _ = ginkgo.Describe("support ingress.networking/v1", func() {

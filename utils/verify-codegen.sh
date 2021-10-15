@@ -49,7 +49,7 @@ ret=0
 
 bash "${SCRIPT_ROOT}"/generate-groups.sh "deepcopy,client,informer,lister" \
   ${PKG_NAME}/pkg/kube/apisix/client ${PKG_NAME}/pkg/kube/apisix/apis \
-  config:v1,v2alpha1,v2beta1 ${PKG_NAME} \
+  config:v1,v2alpha1,v2beta1,v2beta2 ${PKG_NAME} \
   --output-base "$GENERATED_ROOT" \
   --go-header-file "${SCRIPT_ROOT}"/boilerplate.go.txt \
   --verify-only || ret=$?

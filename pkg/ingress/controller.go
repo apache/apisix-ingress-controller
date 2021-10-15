@@ -81,6 +81,8 @@ type Controller struct {
 	recorder record.EventRecorder
 	// this map enrolls which ApisixTls objects refer to a Kubernetes
 	// Secret object.
+	// type: Map<SecretKey, Map<ApisixTlsKey, ApisixTls>>
+	// SecretKey is `namespace_name`, ApisixTlsKey is kube style meta key: `namespace/name`
 	secretSSLMap *sync.Map
 
 	// leaderContextCancelFunc will be called when apisix-ingress-controller
@@ -166,7 +168,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		cfg:               cfg,
 		apiServer:         apiSrv,
 		apisix:            client,
-		metricsCollector:  metrics.NewPrometheusCollector(podName, podNamespace),
+		metricsCollector:  metrics.NewPrometheusCollector(),
 		kubeClient:        kubeClient,
 		watchingNamespace: watchingNamespace,
 		secretSSLMap:      new(sync.Map),
@@ -199,6 +201,7 @@ func (c *Controller) initWhenStartLeading() {
 		apisixFactory.Apisix().V1().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2alpha1().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2beta1().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2beta2().ApisixRoutes().Lister(),
 	)
 	c.apisixUpstreamLister = apisixFactory.Apisix().V1().ApisixUpstreams().Lister()
 	c.apisixTlsLister = apisixFactory.Apisix().V1().ApisixTlses().Lister()
@@ -229,6 +232,8 @@ func (c *Controller) initWhenStartLeading() {
 		apisixRouteInformer = apisixFactory.Apisix().V2alpha1().ApisixRoutes().Informer()
 	case config.ApisixRouteV2beta1:
 		apisixRouteInformer = apisixFactory.Apisix().V2beta1().ApisixRoutes().Informer()
+	case config.ApisixRouteV2beta2:
+		apisixRouteInformer = apisixFactory.Apisix().V2beta2().ApisixRoutes().Informer()
 	}
 
 	c.podInformer = kubeFactory.Core().V1().Pods().Informer()
@@ -400,6 +405,12 @@ func (c *Controller) run(ctx context.Context) {
 
 	c.initWhenStartLeading()
 
+	// compare resources of k8s with objects of APISIX
+	if err = c.CompareResources(ctx); err != nil {
+		ctx.Done()
+		return
+	}
+
 	c.goAttach(func() {
 		c.checkClusterHealth(ctx, cancelFunc)
 	})
@@ -416,6 +427,7 @@ func (c *Controller) run(ctx context.Context) {
 		c.ingressInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
+
 		c.apisixRouteInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
@@ -617,5 +629,6 @@ func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.
 			return
 		}
 		log.Debugf("success check health for default cluster")
+		c.metricsCollector.IncrCheckClusterHealth(c.name)
 	}
 }

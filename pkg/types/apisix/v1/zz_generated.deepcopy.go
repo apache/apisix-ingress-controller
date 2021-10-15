@@ -235,6 +235,11 @@ func (in *Route) DeepCopyInto(out *Route) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.Timeout != nil {
+		in, out := &in.Timeout, &out.Timeout
+		*out = new(UpstreamTimeout)
+		**out = **in
+	}
 	if in.Vars != nil {
 		in, out := &in.Vars, &out.Vars
 		*out = make(Vars, len(*in))
@@ -432,6 +437,11 @@ func (in *Upstream) DeepCopyInto(out *Upstream) {
 		in, out := &in.Nodes, &out.Nodes
 		*out = make(UpstreamNodes, len(*in))
 		copy(*out, *in)
+	}
+	if in.Retries != nil {
+		in, out := &in.Retries, &out.Retries
+		*out = new(int)
+		**out = **in
 	}
 	if in.Timeout != nil {
 		in, out := &in.Timeout, &out.Timeout
