@@ -19,8 +19,8 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func (t *translator) translateUpstreamRetriesAndTimeout(retries int, timeout *configv1.UpstreamTimeout, ups *apisixv1.Upstream) error {
-	if retries < 0 {
+func (t *translator) translateUpstreamRetriesAndTimeout(retries *int, timeout *configv1.UpstreamTimeout, ups *apisixv1.Upstream) error {
+	if retries != nil && *retries < 0 {
 		return &translateError{
 			field:  "retries",
 			reason: "invalid value",
@@ -226,7 +226,7 @@ func (t *translator) translateUpstreamActiveHealthCheck(config *configv1.ActiveH
 			}
 		}
 		active.Unhealthy.TCPFailures = config.Unhealthy.TCPFailures
-		active.Unhealthy.Timeouts = config.Unhealthy.Timeout.Seconds()
+		active.Unhealthy.Timeouts = config.Unhealthy.Timeouts
 
 		if config.Unhealthy.HTTPCodes != nil && len(config.Unhealthy.HTTPCodes) < 1 {
 			return nil, &translateError{
@@ -295,7 +295,7 @@ func (t *translator) translateUpstreamPassiveHealthCheck(config *configv1.Passiv
 			}
 		}
 		passive.Unhealthy.TCPFailures = config.Unhealthy.TCPFailures
-		passive.Unhealthy.Timeouts = config.Unhealthy.Timeout.Seconds()
+		passive.Unhealthy.Timeouts = config.Unhealthy.Timeouts
 
 		if config.Unhealthy.HTTPCodes != nil && len(config.Unhealthy.HTTPCodes) < 1 {
 			return nil, &translateError{

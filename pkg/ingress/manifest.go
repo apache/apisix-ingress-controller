@@ -148,7 +148,6 @@ type manifest struct {
 }
 
 func (m *manifest) diff(om *manifest) (added, updated, deleted *manifest) {
-	// add diff ssl
 	sa, su, sd := diffSSL(om.ssl, m.ssl)
 	ar, ur, dr := diffRoutes(om.routes, m.routes)
 	au, uu, du := diffUpstreams(om.upstreams, m.upstreams)
@@ -186,7 +185,6 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 
 	clusterName := c.cfg.APISIX.DefaultClusterName
 	if deleted != nil {
-		//  delete ssl
 		for _, ssl := range deleted.ssl {
 			if err := c.apisix.Cluster(clusterName).SSL().Delete(ctx, ssl); err != nil {
 				merr = multierror.Append(merr, err)
@@ -218,7 +216,6 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 	}
 	if added != nil {
 		// Should create upstreams firstly due to the dependencies.
-		//   add ssl
 		for _, ssl := range added.ssl {
 			if _, err := c.apisix.Cluster(clusterName).SSL().Create(ctx, ssl); err != nil {
 				merr = multierror.Append(merr, err)
@@ -241,7 +238,6 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 		}
 	}
 	if updated != nil {
-		//  update ssl
 		for _, ssl := range updated.ssl {
 			if _, err := c.apisix.Cluster(clusterName).SSL().Update(ctx, ssl); err != nil {
 				merr = multierror.Append(merr, err)

@@ -109,12 +109,14 @@ func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) err
 func (c *endpointSliceController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
+		c.controller.metricsCollector.IncrSyncOperation("endpointSlices", "success")
 		return
 	}
 	log.Warnw("sync endpointSlice failed, will retry",
 		zap.Any("object", obj),
 	)
 	c.workqueue.AddRateLimited(obj)
+	c.controller.metricsCollector.IncrSyncOperation("endpointSlices", "failure")
 }
 
 func (c *endpointSliceController) onAdd(obj interface{}) {

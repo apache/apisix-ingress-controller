@@ -28,7 +28,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
+	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -95,12 +95,10 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 		return err
 	}
 	sec, err := c.controller.secretLister.Secrets(namespace).Get(name)
-
-	secretMapkey := namespace + "_" + name
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Errorw("failed to get Secret",
-				zap.String("key", secretMapkey),
+				zap.String("key", key),
 				zap.Error(err),
 			)
 			return err
@@ -108,7 +106,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 
 		if ev.Type != types.EventDelete {
 			log.Warnw("Secret was deleted before it can be delivered",
-				zap.String("key", secretMapkey),
+				zap.String("key", key),
 			)
 			return nil
 		}
@@ -119,15 +117,16 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 			// that means object with same namespace and name was created, discarding
 			// this stale DELETE event.
 			log.Warnw("discard the stale secret delete event since the resource still exists",
-				zap.String("key", secretMapkey),
+				zap.String("key", key),
 			)
 			return nil
 		}
 		sec = ev.Tombstone.(*corev1.Secret)
 	}
+
+	secretMapKey := namespace + "_" + name
 	// sync SSL in APISIX which is store in secretSSLMap
-	// FixMe Need to update the status of CRD ApisixTls
-	ssls, ok := c.controller.secretSSLMap.Load(secretMapkey)
+	ssls, ok := c.controller.secretSSLMap.Load(secretMapKey)
 	if !ok {
 		// This secret is not concerned.
 		return nil
@@ -148,21 +147,20 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 			)
 			return true
 		}
+
+		// We don't expect a secret to be used as both SSL and mTLS in ApisixTls
 		if tls.Spec.Secret.Namespace == sec.Namespace && tls.Spec.Secret.Name == sec.Name {
-			cert, ok := sec.Data["cert"]
-			if !ok {
-				log.Warnw("secret required by ApisixTls invalid",
+			cert, pkey, err := c.controller.translator.ExtractKeyPair(sec, true)
+			if err != nil {
+				log.Errorw("secret required by ApisixTls invalid",
 					zap.String("ApisixTls", tlsMetaKey),
-					zap.Error(translation.ErrEmptyCert),
+					zap.Error(err),
 				)
-				return true
-			}
-			pkey, ok := sec.Data["key"]
-			if !ok {
-				log.Warnw("secret required by ApisixTls invalid",
-					zap.String("ApisixTls", tlsMetaKey),
-					zap.Error(translation.ErrEmptyPrivKey),
-				)
+				go func(tls *configv1.ApisixTls) {
+					c.controller.recorderEventS(tls, corev1.EventTypeWarning, _resourceSyncAborted,
+						fmt.Sprintf("sync from secret %s changes failed, error: %s", key, err.Error()))
+					c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse)
+				}(tls)
 				return true
 			}
 			// sync ssl
@@ -170,12 +168,17 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 			ssl.Key = string(pkey)
 		} else if tls.Spec.Client != nil &&
 			tls.Spec.Client.CASecret.Namespace == sec.Namespace && tls.Spec.Client.CASecret.Name == sec.Name {
-			ca, ok := sec.Data["cert"]
-			if !ok {
-				log.Warnw("secret required by ApisixTls invalid",
-					zap.String("resource", tlsMetaKey),
-					zap.Error(translation.ErrEmptyCert),
+			ca, _, err := c.controller.translator.ExtractKeyPair(sec, false)
+			if err != nil {
+				log.Errorw("ca secret required by ApisixTls invalid",
+					zap.String("ApisixTls", tlsMetaKey),
+					zap.Error(err),
 				)
+				go func(tls *configv1.ApisixTls) {
+					c.controller.recorderEventS(tls, corev1.EventTypeWarning, _resourceSyncAborted,
+						fmt.Sprintf("sync from ca secret %s changes failed, error: %s", key, err.Error()))
+					c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse)
+				}(tls)
 				return true
 			}
 			ssl.Client = &apisixv1.MutualTLSClientConfig{
@@ -190,7 +193,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 		}
 		// Use another goroutine to send requests, to avoid
 		// long time lock occupying.
-		go func(ssl *apisixv1.Ssl) {
+		go func(ssl *apisixv1.Ssl, tls *configv1.ApisixTls) {
 			err := c.controller.syncSSL(ctx, ssl, ev.Type)
 			if err != nil {
 				log.Errorw("failed to sync ssl to APISIX",
@@ -206,7 +209,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 					fmt.Sprintf("sync from secret %s changes", key))
 				c.controller.recordStatus(tls, _resourceSynced, nil, metav1.ConditionTrue)
 			}
-		}(ssl)
+		}(ssl, tls)
 		return true
 	})
 	return err
@@ -215,6 +218,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 func (c *secretController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
+		c.controller.metricsCollector.IncrSyncOperation("secret", "success")
 		return
 	}
 	log.Warnw("sync ApisixTls failed, will retry",
@@ -222,6 +226,7 @@ func (c *secretController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
+	c.controller.metricsCollector.IncrSyncOperation("secret", "failure")
 }
 
 func (c *secretController) onAdd(obj interface{}) {

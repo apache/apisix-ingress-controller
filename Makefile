@@ -71,7 +71,7 @@ unit-test:
 ### e2e-test:             Run e2e test cases (kind is required)
 .PHONY: e2e-test
 e2e-test: ginkgo-check push-images-to-kind
-	kubectl apply -k $(PWD)/samples/deploy/crd/v1beta1
+	kubectl apply -k $(PWD)/samples/deploy/crd
 	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=$(E2E_CONCURRENCY)
 
 .PHONY: ginkgo-check
@@ -104,6 +104,10 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker pull jmalloc/echo-server:latest
 	docker tag  jmalloc/echo-server:latest $(LOCAL_REGISTRY)/jmalloc/echo-server:latest
 	docker push $(LOCAL_REGISTRY)/jmalloc/echo-server:latest
+
+	docker pull busybox:1.28
+	docker tag  busybox:1.28 $(LOCAL_REGISTRY)/busybox:1.28
+	docker push $(LOCAL_REGISTRY)/busybox:1.28
 endif
 
 ### kind-up:              Launch a Kubernetes cluster with a image registry by Kind.

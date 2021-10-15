@@ -25,6 +25,7 @@ import (
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	configv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
+	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -80,6 +81,12 @@ type Translator interface {
 	// TranslateRouteV2beta1NotStrictly translates the configv2beta1.ApisixRoute object into several Route
 	// and Upstream resources not strictly, only used for delete event.
 	TranslateRouteV2beta1NotStrictly(*configv2beta1.ApisixRoute) (*TranslateContext, error)
+	// TranslateRouteV2beta2 translates the configv2beta2.ApisixRoute object into several Route
+	// and Upstream resources.
+	TranslateRouteV2beta2(*configv2beta2.ApisixRoute) (*TranslateContext, error)
+	// TranslateRouteV2beta2NotStrictly translates the configv2beta2.ApisixRoute object into several Route
+	// and Upstream resources not strictly, only used for delete event.
+	TranslateRouteV2beta2NotStrictly(*configv2beta2.ApisixRoute) (*TranslateContext, error)
 	// TranslateSSL translates the configv2alpha1.ApisixTls object into the APISIX SSL resource.
 	TranslateSSL(*configv1.ApisixTls) (*apisixv1.Ssl, error)
 	// TranslateClusterConfig translates the configv2alpha1.ApisixClusterConfig object into the APISIX
@@ -88,6 +95,9 @@ type Translator interface {
 	// TranslateApisixConsumer translates the configv2alpha1.APisixConsumer object into the APISIX Consumer
 	// resource.
 	TranslateApisixConsumer(*configv2alpha1.ApisixConsumer) (*apisixv1.Consumer, error)
+	// ExtractKeyPair extracts certificate and private key pair from secret
+	// Supports APISIX style ("cert" and "key") and Kube style ("tls.crt" and "tls.key)
+	ExtractKeyPair(s *corev1.Secret, hasPrivateKey bool) ([]byte, []byte, error)
 }
 
 // TranslatorOptions contains options to help Translator
