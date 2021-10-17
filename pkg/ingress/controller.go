@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -71,6 +72,7 @@ type Controller struct {
 	cfg               *config.Config
 	wg                sync.WaitGroup
 	watchingNamespace map[string]struct{}
+	watchingLabels    types.Labels
 	apisix            apisix.APISIX
 	podCache          types.PodCache
 	translator        translation.Translator
@@ -90,6 +92,8 @@ type Controller struct {
 	leaderContextCancelFunc context.CancelFunc
 
 	// common informers and listers
+	namespaceInformer           cache.SharedIndexInformer
+	namespaceLister             listerscorev1.NamespaceLister
 	podInformer                 cache.SharedIndexInformer
 	podLister                   listerscorev1.PodLister
 	epInformer                  cache.SharedIndexInformer
@@ -112,6 +116,7 @@ type Controller struct {
 	apisixConsumerLister        listersv2alpha1.ApisixConsumerLister
 
 	// resource controllers
+	namespaceController     *namespaceController
 	podController           *podController
 	endpointsController     *endpointsController
 	endpointSliceController *endpointSliceController
@@ -149,11 +154,20 @@ func NewController(cfg *config.Config) (*Controller, error) {
 
 	var (
 		watchingNamespace map[string]struct{}
+		watchingLabels    = make(map[string]string, 0)
 	)
 	if len(cfg.Kubernetes.AppNamespaces) > 1 || cfg.Kubernetes.AppNamespaces[0] != v1.NamespaceAll {
 		watchingNamespace = make(map[string]struct{}, len(cfg.Kubernetes.AppNamespaces))
 		for _, ns := range cfg.Kubernetes.AppNamespaces {
 			watchingNamespace[ns] = struct{}{}
+		}
+	}
+
+	// support namespace label-selector
+	if len(cfg.Kubernetes.NamespaceLabels) > 1 {
+		for _, labels := range cfg.Kubernetes.NamespaceLabels {
+			labelSlice := strings.Split(labels, "=")
+			watchingLabels[labelSlice[0]] = labelSlice[1]
 		}
 	}
 
@@ -171,6 +185,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		metricsCollector:  metrics.NewPrometheusCollector(),
 		kubeClient:        kubeClient,
 		watchingNamespace: watchingNamespace,
+		watchingLabels:    watchingLabels,
 		secretSSLMap:      new(sync.Map),
 		recorder:          eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
 
@@ -188,6 +203,7 @@ func (c *Controller) initWhenStartLeading() {
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
 	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
 
+	c.namespaceLister = kubeFactory.Core().V1().Namespaces().Lister()
 	c.podLister = kubeFactory.Core().V1().Pods().Lister()
 	c.epLister, c.epInformer = kube.NewEndpointListerAndInformer(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
 	c.svcLister = kubeFactory.Core().V1().Services().Lister()
@@ -236,6 +252,7 @@ func (c *Controller) initWhenStartLeading() {
 		apisixRouteInformer = apisixFactory.Apisix().V2beta2().ApisixRoutes().Informer()
 	}
 
+	c.namespaceInformer = kubeFactory.Core().V1().Namespaces().Informer()
 	c.podInformer = kubeFactory.Core().V1().Pods().Informer()
 	c.svcInformer = kubeFactory.Core().V1().Services().Informer()
 	c.ingressInformer = ingressInformer
@@ -251,6 +268,7 @@ func (c *Controller) initWhenStartLeading() {
 	} else {
 		c.endpointsController = c.newEndpointsController()
 	}
+	c.namespaceController = c.newNamespaceController()
 	c.podController = c.newPodController()
 	c.apisixUpstreamController = c.newApisixUpstreamController()
 	c.ingressController = c.newIngressController()
@@ -405,6 +423,11 @@ func (c *Controller) run(ctx context.Context) {
 
 	c.initWhenStartLeading()
 
+	// list namesapce and init watchingNamespace
+	if err := c.initWatchingNamespaceByLabels(ctx); err != nil {
+		ctx.Done()
+		return
+	}
 	// compare resources of k8s with objects of APISIX
 	if err = c.CompareResources(ctx); err != nil {
 		ctx.Done()
@@ -413,6 +436,9 @@ func (c *Controller) run(ctx context.Context) {
 
 	c.goAttach(func() {
 		c.checkClusterHealth(ctx, cancelFunc)
+	})
+	c.goAttach(func() {
+		c.namespaceInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
 		c.podInformer.Run(ctx.Done())
