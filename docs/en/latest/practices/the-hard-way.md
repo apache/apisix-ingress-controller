@@ -623,6 +623,8 @@ data:
       resync_interval: "30s"
       app_namespaces:
       - "*"
+      namespace_selector:
+      - "apisix.ingress=watching"
       ingress_class: "apisix"
       ingress_version: "networking/v1"
       apisix_route_version: "apisix.apache.org/v2beta1"
