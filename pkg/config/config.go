@@ -77,7 +77,7 @@ type KubernetesConfig struct {
 	Kubeconfig          string             `json:"kubeconfig" yaml:"kubeconfig"`
 	ResyncInterval      types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
 	AppNamespaces       []string           `json:"app_namespaces" yaml:"app_namespaces"`
-	NamespaceLabels     []string           `json:"namespace_labels" yaml:"namespace_labels"`
+	NamespaceSelector   []string           `json:"namespace_selector" yaml:"namespace_selector"`
 	ElectionID          string             `json:"election_id" yaml:"election_id"`
 	IngressClass        string             `json:"ingress_class" yaml:"ingress_class"`
 	IngressVersion      string             `json:"ingress_version" yaml:"ingress_version"`

@@ -164,8 +164,8 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	}
 
 	// support namespace label-selector
-	if len(cfg.Kubernetes.NamespaceLabels) > 1 {
-		for _, labels := range cfg.Kubernetes.NamespaceLabels {
+	if len(cfg.Kubernetes.NamespaceSelector) > 1 {
+		for _, labels := range cfg.Kubernetes.NamespaceSelector {
 			labelSlice := strings.Split(labels, "=")
 			watchingLabels[labelSlice[0]] = labelSlice[1]
 		}
