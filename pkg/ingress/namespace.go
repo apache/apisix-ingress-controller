@@ -61,7 +61,7 @@ func (c *Controller) initWatchingNamespaceByLabels(ctx context.Context) error {
 		return err
 	} else {
 		for _, ns := range namespaces.Items {
-			c.watchingNamespace[ns.Name] = struct{}{}
+			c.watchingNamespace.Store(ns.Name, struct{}{})
 		}
 	}
 	return nil
@@ -102,20 +102,13 @@ func (c *namespaceController) sync(ctx context.Context, ev *types.Event) error {
 		} else {
 			// if labels of namespace contains the watchingLabels, the namespace should be set to controller.watchingNamespace
 			if c.controller.watchingLabels.IsSubsetOf(namespace.Labels) {
-				c.controller.watchingNamespace[namespace.Name] = struct{}{}
+				c.controller.watchingNamespace.Store(namespace.Name, struct{}{})
 			}
 		}
 	} else { // type == types.EventDelete
 		namespace := ev.Tombstone.(*corev1.Namespace)
-		if _, ok := c.controller.watchingNamespace[namespace.Name]; ok {
-			if namespace, err := c.controller.kubeClient.Client.CoreV1().Namespaces().Get(ctx, ev.Object.(string), metav1.GetOptions{}); err == nil {
-				// if namespace is still in k8s cluster, the delete event is deprecated
-				if c.controller.watchingLabels.IsSubsetOf(namespace.Labels) {
-					c.controller.watchingNamespace[namespace.Name] = struct{}{}
-				}
-				return nil
-			}
-			delete(c.controller.watchingNamespace, namespace.Name)
+		if _, ok := c.controller.watchingNamespace.Load(namespace.Name); ok {
+			c.controller.watchingNamespace.Delete(namespace.Name)
 			// need to compare
 			err := c.controller.CompareResources(ctx)
 			if err != nil {

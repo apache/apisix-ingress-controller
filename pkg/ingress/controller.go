@@ -71,7 +71,7 @@ type Controller struct {
 	namespace         string
 	cfg               *config.Config
 	wg                sync.WaitGroup
-	watchingNamespace map[string]struct{}
+	watchingNamespace *sync.Map
 	watchingLabels    types.Labels
 	apisix            apisix.APISIX
 	podCache          types.PodCache
@@ -153,13 +153,12 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	}
 
 	var (
-		watchingNamespace map[string]struct{}
+		watchingNamespace = new(sync.Map)
 		watchingLabels    = make(map[string]string)
 	)
 	if len(cfg.Kubernetes.AppNamespaces) > 1 || cfg.Kubernetes.AppNamespaces[0] != v1.NamespaceAll {
-		watchingNamespace = make(map[string]struct{}, len(cfg.Kubernetes.AppNamespaces))
 		for _, ns := range cfg.Kubernetes.AppNamespaces {
-			watchingNamespace[ns] = struct{}{}
+			watchingNamespace.Store(ns, struct{}{})
 		}
 	}
 
@@ -531,7 +530,7 @@ func (c *Controller) namespaceWatching(key string) (ok bool) {
 		log.Warnf("resource %s was ignored since: %s", key, err)
 		return
 	}
-	_, ok = c.watchingNamespace[ns]
+	_, ok = c.watchingNamespace.Load(ns)
 	return
 }
 
