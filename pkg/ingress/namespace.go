@@ -121,9 +121,8 @@ func (c *namespaceController) sync(ctx context.Context, ev *types.Event) error {
 			if err != nil {
 				return err
 			}
-		} else {
-			// do nothing, if the namespace did not in controller.watchingNamespace
 		}
+		// do nothing, if the namespace did not in controller.watchingNamespace
 	}
 	return nil
 }

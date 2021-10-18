@@ -154,7 +154,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 
 	var (
 		watchingNamespace map[string]struct{}
-		watchingLabels    = make(map[string]string, 0)
+		watchingLabels    = make(map[string]string)
 	)
 	if len(cfg.Kubernetes.AppNamespaces) > 1 || cfg.Kubernetes.AppNamespaces[0] != v1.NamespaceAll {
 		watchingNamespace = make(map[string]struct{}, len(cfg.Kubernetes.AppNamespaces))
