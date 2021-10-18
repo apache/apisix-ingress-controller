@@ -472,6 +472,9 @@ func (c *Controller) run(ctx context.Context) {
 		c.apisixConsumerInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
+		c.namespaceController.run(ctx)
+	})
+	c.goAttach(func() {
 		c.podController.run(ctx)
 	})
 	c.goAttach(func() {
