@@ -9,9 +9,6 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
-// +kubebuilder:object:generate=true
-// +kubebuilder:printcolumn:name="Id",type="date",JSONPath=".metadata.namespace"
-// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ApisixPluginConfig is the Schema for the ApisixPluginConfig resource.
 // An ApisixPluginConfig is used to support a group of plugin configs
