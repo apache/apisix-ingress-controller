@@ -32,7 +32,7 @@ var _ = ginkgo.Describe("websocket", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("sanity", func() {
@@ -68,7 +68,7 @@ spec:
 		time.Sleep(5 * time.Second)
 
 		ar := `
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route

@@ -40,6 +40,12 @@ metadata:
   name: %s-apisix-view-clusterrole
 rules:
   - apiGroups:
+    - ""
+    resources:
+    - events
+    verbs:
+      - "*"
+  - apiGroups:
       - ""
     resources:
       - configmaps
@@ -59,7 +65,6 @@ rules:
       - ""
     resources:
       - bindings
-      - events
       - limitranges
       - namespaces/status
       - pods/log
@@ -305,19 +310,64 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: apisix-validation-webhooks-e2e-test
 webhooks:
-  - name: apisixroute-plugin-validator-webhook.apisix.apache.org
+  - name: apisixroute-validator-webhook.apisix.apache.org
     clientConfig:
       service:
         name: webhook
         namespace: %s
         port: 8443
-        path: "/validation/apisixroutes/plugin"
+        path: "/validation/apisixroutes"
       caBundle: %s
     rules:
       - operations: [ "CREATE", "UPDATE" ]
         apiGroups: ["apisix.apache.org"]
         apiVersions: ["*"]
         resources: ["apisixroutes"]
+    timeoutSeconds: 30
+    failurePolicy: Fail
+  - name: apisixconsumer-validator-webhook.apisix.apache.org
+    clientConfig:
+      service:
+        name: webhook
+        namespace: %s
+        port: 8443
+        path: "/validation/apisixconsumers"
+      caBundle: %s
+    rules:
+      - operations: [ "CREATE", "UPDATE" ]
+        apiGroups: ["apisix.apache.org"]
+        apiVersions: ["*"]
+        resources: ["apisixconsumers"]
+    timeoutSeconds: 30
+    failurePolicy: Fail
+  - name: apisixtls-validator-webhook.apisix.apache.org
+    clientConfig:
+      service:
+        name: webhook
+        namespace: %s
+        port: 8443
+        path: "/validation/apisixtlses"
+      caBundle: %s
+    rules:
+      - operations: [ "CREATE", "UPDATE" ]
+        apiGroups: ["apisix.apache.org"]
+        apiVersions: ["*"]
+        resources: ["apisixtlses"]
+    timeoutSeconds: 30
+    failurePolicy: Fail
+  - name: apisixupstream-validator-webhook.apisix.apache.org
+    clientConfig:
+      service:
+        name: webhook
+        namespace: %s
+        port: 8443
+        path: "/validation/apisixupstreams"
+      caBundle: %s
+    rules:
+      - operations: [ "CREATE", "UPDATE" ]
+        apiGroups: ["apisix.apache.org"]
+        apiVersions: ["*"]
+        resources: ["apisixupstreams"]
     timeoutSeconds: 30
     failurePolicy: Fail
 `
@@ -372,7 +422,8 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		assert.True(s.t, ok, "get cert.pem from the secret")
 		caBundle := base64.StdEncoding.EncodeToString(cert)
 
-		webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, caBundle)
+		webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, caBundle, s.namespace, caBundle, s.namespace, caBundle, s.namespace, caBundle)
+		ginkgo.GinkgoT().Log(webhookReg)
 		err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, webhookReg)
 		assert.Nil(s.t, err, "create webhook registration")
 
