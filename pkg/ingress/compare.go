@@ -50,7 +50,6 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 			log.Error(err.Error())
 			ctx.Done()
 		} else {
-			//wns := make(map[string]struct{}, len(nsList.Items))
 			wns := new(sync.Map)
 			for _, v := range nsList.Items {
 				wns.Store(v.Name, struct{}{})
