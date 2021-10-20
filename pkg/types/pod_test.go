@@ -36,7 +36,7 @@ func TestPodCacheBadCases(t *testing.T) {
 		},
 	}
 	assert.Equal(t, pc.Add(pod1), ErrPodNoAssignedIP, "adding pod")
-	assert.Equal(t, pc.Delete(pod1), ErrPodNoAssignedIP, "deleting pod")
+	assert.Equal(t, pc.Delete(pod1), nil, "deleting pod")
 }
 
 func TestPodCache(t *testing.T) {
