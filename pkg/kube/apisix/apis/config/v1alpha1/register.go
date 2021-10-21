@@ -39,10 +39,10 @@ func Resource(resource string) schema.GroupResource {
 }
 
 func addKnownTypes(scheme *runtime.Scheme) error {
-	scheme.AddKnownTypes(SchemeGroupVersion,
+	//scheme.AddKnownTypes(SchemeGroupVersion,
 		//&ApisixPluginConfig{},
 		//&ApisixPluginConfigList{},
-	)
+	//)
 
 	// register the type in the scheme
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
