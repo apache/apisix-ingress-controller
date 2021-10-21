@@ -109,11 +109,6 @@ func (c *namespaceController) sync(ctx context.Context, ev *types.Event) error {
 		namespace := ev.Tombstone.(*corev1.Namespace)
 		if _, ok := c.controller.watchingNamespace.Load(namespace.Name); ok {
 			c.controller.watchingNamespace.Delete(namespace.Name)
-			// need to compare
-			err := c.controller.CompareResources(ctx)
-			if err != nil {
-				return err
-			}
 		}
 		// do nothing, if the namespace did not in controller.watchingNamespace
 	}

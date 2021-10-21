@@ -17,6 +17,7 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"strings"
 	"time"
@@ -175,6 +176,10 @@ func (cfg *Config) Validate() error {
 		return errors.New("unsupported ingress version")
 	}
 	cfg.Kubernetes.AppNamespaces = purifyAppNamespaces(cfg.Kubernetes.AppNamespaces)
+	ok, err := cfg.verifyNamespaceSelector()
+	if !ok {
+		return err
+	}
 	return nil
 }
 
@@ -191,4 +196,19 @@ func purifyAppNamespaces(namespaces []string) []string {
 		}
 	}
 	return ultimate
+}
+
+func (cfg *Config) verifyNamespaceSelector() (bool, error) {
+	labels := cfg.Kubernetes.NamespaceSelector
+	// default is [""]
+	if len(labels) == 1 && labels[0] == "" {
+		cfg.Kubernetes.NamespaceSelector = []string{}
+	}
+
+	for _, s := range cfg.Kubernetes.NamespaceSelector {
+		if len(strings.Split(s, "=")) != 2 {
+			return false, fmt.Errorf("Illegal namespaceSelector: %s, should be key-value pairs divided by = ", s)
+		}
+	}
+	return true, nil
 }
