@@ -63,7 +63,9 @@ spec:
 		// status should be recorded as successful
 		output, err := s.GetOutputFromString("ar httpbin-route -o yaml")
 		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixRoute resource")
-		strings.Contains(output, "type: ResourcesAvailable")
-		strings.Contains(output, "message: Sync Successfully")
+		hasType := strings.Contains(output, "type: ResourcesAvailable")
+		assert.True(ginkgo.GinkgoT(), hasType, "Status is recorded")
+		hasMsg := strings.Contains(output, "message: Sync Successfully")
+		assert.True(ginkgo.GinkgoT(), hasMsg, "Status is recorded")
 	})
 })
