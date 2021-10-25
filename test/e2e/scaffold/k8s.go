@@ -120,6 +120,11 @@ func (s *Scaffold) CreateResourceFromString(yaml string) error {
 	return err
 }
 
+func (s *Scaffold) GetOutputFromString(shell string) (string, error) {
+	output, err := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", shell)
+	return output, err
+}
+
 // RemoveResourceByString remove resource from a loaded yaml string.
 func (s *Scaffold) RemoveResourceByString(yaml string) error {
 	err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
