@@ -120,8 +120,11 @@ func (s *Scaffold) CreateResourceFromString(yaml string) error {
 	return err
 }
 
-func (s *Scaffold) GetOutputFromString(shell string) (string, error) {
-	output, err := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", shell)
+func (s *Scaffold) GetOutputFromString(shell ...string) (string, error) {
+	cmdArgs := []string{}
+	cmdArgs = append(cmdArgs, "get")
+	cmdArgs = append(cmdArgs, shell...)
+	output, err := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, cmdArgs...)
 	return output, err
 }
 

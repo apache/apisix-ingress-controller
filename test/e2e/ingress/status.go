@@ -61,7 +61,7 @@ spec:
 		err = s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 		// status should be recorded as successful
-		output, err := s.GetOutputFromString("ar httpbin-route -o yaml")
+		output, err := s.GetOutputFromString("ar", "httpbin-route", "-o", "yaml")
 		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixRoute resource")
 		hasType := strings.Contains(output, "type: ResourcesAvailable")
 		assert.True(ginkgo.GinkgoT(), hasType, "Status is recorded")
