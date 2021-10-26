@@ -24,6 +24,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
@@ -57,6 +58,8 @@ const (
 	ApisixRouteV2beta2 = "apisix.apache.org/v2beta2"
 
 	_minimalResyncInterval = 30 * time.Second
+
+	LabelNameInvalidMsg = "a qualified name must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]') with an optional DNS subdomain prefix and '/' (e.g. 'example.com/MyName')"
 )
 
 // Config contains all config items which are necessary for
@@ -206,9 +209,45 @@ func (cfg *Config) verifyNamespaceSelector() (bool, error) {
 	}
 
 	for _, s := range cfg.Kubernetes.NamespaceSelector {
-		if len(strings.Split(s, "=")) != 2 {
+		parts := strings.Split(s, "=")
+		if len(parts) != 2 {
 			return false, fmt.Errorf("Illegal namespaceSelector: %s, should be key-value pairs divided by = ", s)
+		} else {
+			if err := cfg.validateLabelKey(parts[0]); err != nil {
+				return false, err
+			}
+			if err := cfg.validateLabelValue(parts[1]); err != nil {
+				return false, err
+			}
 		}
 	}
 	return true, nil
+}
+
+// validateLabelKey validate the key part of label
+// ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
+func (cfg *Config) validateLabelKey(key string) error {
+	errorMsg := validation.IsQualifiedName(key)
+	msg := ""
+	for _, err := range errorMsg {
+		msg = msg + err + " . "
+	}
+	if msg == "" {
+		return nil
+	}
+	return fmt.Errorf("Illegal namespaceSelector: %s, "+msg, key)
+}
+
+// validateLabelValue validate the value part of label
+// ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
+func (cfg *Config) validateLabelValue(value string) error {
+	errorMsg := validation.IsValidLabelValue(value)
+	msg := ""
+	for _, err := range errorMsg {
+		msg = msg + err + " . "
+	}
+	if msg == "" {
+		return nil
+	}
+	return fmt.Errorf("Illegal namespaceSelector: %s, "+msg, value)
 }
