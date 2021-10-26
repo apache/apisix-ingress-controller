@@ -159,7 +159,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 				go func(tls *configv1.ApisixTls) {
 					c.controller.recorderEventS(tls, corev1.EventTypeWarning, _resourceSyncAborted,
 						fmt.Sprintf("sync from secret %s changes failed, error: %s", key, err.Error()))
-					c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse)
+					c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 				}(tls)
 				return true
 			}
@@ -177,7 +177,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 				go func(tls *configv1.ApisixTls) {
 					c.controller.recorderEventS(tls, corev1.EventTypeWarning, _resourceSyncAborted,
 						fmt.Sprintf("sync from ca secret %s changes failed, error: %s", key, err.Error()))
-					c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse)
+					c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 				}(tls)
 				return true
 			}
@@ -203,11 +203,11 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 				)
 				c.controller.recorderEventS(tls, corev1.EventTypeWarning, _resourceSyncAborted,
 					fmt.Sprintf("sync from secret %s changes failed, error: %s", key, err.Error()))
-				c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse)
+				c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 			} else {
 				c.controller.recorderEventS(tls, corev1.EventTypeNormal, _resourceSynced,
 					fmt.Sprintf("sync from secret %s changes", key))
-				c.controller.recordStatus(tls, _resourceSynced, nil, metav1.ConditionTrue)
+				c.controller.recordStatus(tls, _resourceSynced, nil, metav1.ConditionTrue, tls.GetGeneration())
 			}
 		}(ssl, tls)
 		return true
