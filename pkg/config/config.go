@@ -58,8 +58,6 @@ const (
 	ApisixRouteV2beta2 = "apisix.apache.org/v2beta2"
 
 	_minimalResyncInterval = 30 * time.Second
-
-	LabelNameInvalidMsg = "a qualified name must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]') with an optional DNS subdomain prefix and '/' (e.g. 'example.com/MyName')"
 )
 
 // Config contains all config items which are necessary for
@@ -228,10 +226,7 @@ func (cfg *Config) verifyNamespaceSelector() (bool, error) {
 // ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
 func (cfg *Config) validateLabelKey(key string) error {
 	errorMsg := validation.IsQualifiedName(key)
-	msg := ""
-	for _, err := range errorMsg {
-		msg = msg + err + " . "
-	}
+	msg := strings.Join(errorMsg, ".")
 	if msg == "" {
 		return nil
 	}
@@ -242,10 +237,7 @@ func (cfg *Config) validateLabelKey(key string) error {
 // ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
 func (cfg *Config) validateLabelValue(value string) error {
 	errorMsg := validation.IsValidLabelValue(value)
-	msg := ""
-	for _, err := range errorMsg {
-		msg = msg + err + " . "
-	}
+	msg := strings.Join(errorMsg, ".")
 	if msg == "" {
 		return nil
 	}
