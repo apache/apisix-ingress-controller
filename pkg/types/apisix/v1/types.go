@@ -208,6 +208,7 @@ func (n *UpstreamNodes) UnmarshalJSON(p []byte) error {
 		if len(p) != 2 {
 			return errors.New("unexpected non-empty object")
 		}
+		*n = UpstreamNodes{}
 		return nil
 	}
 	var data []UpstreamNode
