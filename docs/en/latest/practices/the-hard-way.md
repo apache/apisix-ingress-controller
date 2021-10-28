@@ -621,8 +621,6 @@ data:
     kubernetes:
       kubeconfig: ""
       resync_interval: "30s"
-      app_namespaces:
-      - "*"
       namespace_selector:
       - "apisix.ingress=watching"
       ingress_class: "apisix"
