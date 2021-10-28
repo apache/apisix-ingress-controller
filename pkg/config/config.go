@@ -17,12 +17,14 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"strings"
 	"time"
 
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
@@ -77,6 +79,7 @@ type KubernetesConfig struct {
 	Kubeconfig          string             `json:"kubeconfig" yaml:"kubeconfig"`
 	ResyncInterval      types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
 	AppNamespaces       []string           `json:"app_namespaces" yaml:"app_namespaces"`
+	NamespaceSelector   []string           `json:"namespace_selector" yaml:"namespace_selector"`
 	ElectionID          string             `json:"election_id" yaml:"election_id"`
 	IngressClass        string             `json:"ingress_class" yaml:"ingress_class"`
 	IngressVersion      string             `json:"ingress_version" yaml:"ingress_version"`
@@ -174,6 +177,10 @@ func (cfg *Config) Validate() error {
 		return errors.New("unsupported ingress version")
 	}
 	cfg.Kubernetes.AppNamespaces = purifyAppNamespaces(cfg.Kubernetes.AppNamespaces)
+	ok, err := cfg.verifyNamespaceSelector()
+	if !ok {
+		return err
+	}
 	return nil
 }
 
@@ -190,4 +197,49 @@ func purifyAppNamespaces(namespaces []string) []string {
 		}
 	}
 	return ultimate
+}
+
+func (cfg *Config) verifyNamespaceSelector() (bool, error) {
+	labels := cfg.Kubernetes.NamespaceSelector
+	// default is [""]
+	if len(labels) == 1 && labels[0] == "" {
+		cfg.Kubernetes.NamespaceSelector = []string{}
+	}
+
+	for _, s := range cfg.Kubernetes.NamespaceSelector {
+		parts := strings.Split(s, "=")
+		if len(parts) != 2 {
+			return false, fmt.Errorf("Illegal namespaceSelector: %s, should be key-value pairs divided by = ", s)
+		} else {
+			if err := cfg.validateLabelKey(parts[0]); err != nil {
+				return false, err
+			}
+			if err := cfg.validateLabelValue(parts[1]); err != nil {
+				return false, err
+			}
+		}
+	}
+	return true, nil
+}
+
+// validateLabelKey validate the key part of label
+// ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
+func (cfg *Config) validateLabelKey(key string) error {
+	errorMsg := validation.IsQualifiedName(key)
+	msg := strings.Join(errorMsg, "\n")
+	if msg == "" {
+		return nil
+	}
+	return fmt.Errorf("Illegal namespaceSelector: %s, "+msg, key)
+}
+
+// validateLabelValue validate the value part of label
+// ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
+func (cfg *Config) validateLabelValue(value string) error {
+	errorMsg := validation.IsValidLabelValue(value)
+	msg := strings.Join(errorMsg, "\n")
+	if msg == "" {
+		return nil
+	}
+	return fmt.Errorf("Illegal namespaceSelector: %s, "+msg, value)
 }
