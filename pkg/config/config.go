@@ -226,7 +226,7 @@ func (cfg *Config) verifyNamespaceSelector() (bool, error) {
 // ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
 func (cfg *Config) validateLabelKey(key string) error {
 	errorMsg := validation.IsQualifiedName(key)
-	msg := strings.Join(errorMsg, ".")
+	msg := strings.Join(errorMsg, "\n")
 	if msg == "" {
 		return nil
 	}
@@ -237,7 +237,7 @@ func (cfg *Config) validateLabelKey(key string) error {
 // ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
 func (cfg *Config) validateLabelValue(value string) error {
 	errorMsg := validation.IsValidLabelValue(value)
-	msg := strings.Join(errorMsg, ".")
+	msg := strings.Join(errorMsg, "\n")
 	if msg == "" {
 		return nil
 	}
