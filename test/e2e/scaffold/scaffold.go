@@ -29,6 +29,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -281,7 +282,9 @@ func (s *Scaffold) APISIXGatewayServiceEndpoint() string {
 }
 
 func (s *Scaffold) beforeEach() {
+	start := time.Now()
 	var err error
+	var wg sync.WaitGroup
 	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.opts.Name, time.Now().Nanosecond())
 	s.kubectlOptions = &k8s.KubectlOptions{
 		ConfigPath: s.opts.Kubeconfig,
@@ -299,22 +302,31 @@ func (s *Scaffold) beforeEach() {
 	s.etcdService, err = s.newEtcd()
 	assert.Nil(s.t, err, "initializing etcd")
 
-	err = s.waitAllEtcdPodsAvailable()
-	assert.Nil(s.t, err, "waiting for etcd ready")
+	go func() {
+		wg.Add(1)
+		defer wg.Done()
+		err = s.waitAllEtcdPodsAvailable()
+		assert.Nil(s.t, err, "waiting for etcd ready")
+	}()
 
 	s.apisixService, err = s.newAPISIX()
 	assert.Nil(s.t, err, "initializing Apache APISIX")
 
-	err = s.waitAllAPISIXPodsAvailable()
-	assert.Nil(s.t, err, "waiting for apisix ready")
-
-	err = s.newAPISIXTunnels()
-	assert.Nil(s.t, err, "creating apisix tunnels")
+	go func() {
+		wg.Add(1)
+		defer wg.Done()
+		err = s.waitAllAPISIXPodsAvailable()
+		assert.Nil(s.t, err, "waiting for apisix ready")
+	}()
 
 	s.httpbinService, err = s.newHTTPBIN()
 	assert.Nil(s.t, err, "initializing httpbin")
 
-	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.httpbinService.Name, 3, 2*time.Second)
+	go func() {
+		wg.Add(1)
+		defer wg.Done()
+		k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.httpbinService.Name, 3, 2*time.Second)
+	}()
 
 	if s.opts.EnableWebhooks {
 		err := generateWebhookCert(s.namespace)
@@ -324,8 +336,19 @@ func (s *Scaffold) beforeEach() {
 	err = s.newIngressAPISIXController()
 	assert.Nil(s.t, err, "initializing ingress apisix controller")
 
-	err = s.waitAllIngressControllerPodsAvailable()
-	assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
+	go func() {
+		wg.Add(1)
+		defer wg.Done()
+		err = s.waitAllIngressControllerPodsAvailable()
+		assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
+	}()
+
+	wg.Wait()
+
+	err = s.newAPISIXTunnels()
+	assert.Nil(s.t, err, "creating apisix tunnels")
+
+	_, _ = fmt.Fprintf(ginkgo.GinkgoWriter, "prepare e2e test environment cost %ss\n", time.Since(start).Seconds())
 }
 
 func (s *Scaffold) afterEach() {
