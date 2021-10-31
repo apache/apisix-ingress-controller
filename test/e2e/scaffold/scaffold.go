@@ -284,7 +284,10 @@ func (s *Scaffold) APISIXGatewayServiceEndpoint() string {
 func (s *Scaffold) beforeEach() {
 	start := time.Now()
 	var err error
-	var wg sync.WaitGroup
+	var (
+		err error
+		wg sync.WaitGroup
+	)
 	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.opts.Name, time.Now().Nanosecond())
 	s.kubectlOptions = &k8s.KubectlOptions{
 		ConfigPath: s.opts.Kubeconfig,
