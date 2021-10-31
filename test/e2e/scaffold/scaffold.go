@@ -283,10 +283,9 @@ func (s *Scaffold) APISIXGatewayServiceEndpoint() string {
 
 func (s *Scaffold) beforeEach() {
 	start := time.Now()
-	var err error
 	var (
 		err error
-		wg sync.WaitGroup
+		wg  sync.WaitGroup
 	)
 	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.opts.Name, time.Now().Nanosecond())
 	s.kubectlOptions = &k8s.KubectlOptions{
@@ -351,7 +350,7 @@ func (s *Scaffold) beforeEach() {
 	err = s.newAPISIXTunnels()
 	assert.Nil(s.t, err, "creating apisix tunnels")
 
-	_, _ = fmt.Fprintf(ginkgo.GinkgoWriter, "prepare e2e test environment cost %ss\n", time.Since(start).Seconds())
+	_, _ = fmt.Fprintf(ginkgo.GinkgoWriter, "prepare e2e test environment cost %vs\n", time.Since(start).Seconds())
 }
 
 func (s *Scaffold) afterEach() {
