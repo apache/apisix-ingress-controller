@@ -350,7 +350,7 @@ func (s *Scaffold) beforeEach() {
 	err = s.newAPISIXTunnels()
 	assert.Nil(s.t, err, "creating apisix tunnels")
 
-	_, _ = fmt.Fprintf(ginkgo.GinkgoWriter, "prepare e2e test environment cost %vs\n", time.Since(start).Seconds())
+	_, _ = fmt.Fprintf(os.Stdout, "prepare e2e test environment cost %vs\n", time.Since(start).Seconds())
 }
 
 func (s *Scaffold) afterEach() {
