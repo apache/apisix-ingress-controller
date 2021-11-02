@@ -19,6 +19,7 @@ package config
 
 import (
 	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v1"
+	v1alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v1alpha1"
 	v2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v2alpha1"
 	v2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v2beta1"
 	v2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v2beta2"
@@ -29,6 +30,8 @@ import (
 type Interface interface {
 	// V1 provides access to shared informers for resources in V1.
 	V1() v1.Interface
+	// V1alpha1 provides access to shared informers for resources in V1alpha1.
+	V1alpha1() v1alpha1.Interface
 	// V2alpha1 provides access to shared informers for resources in V2alpha1.
 	V2alpha1() v2alpha1.Interface
 	// V2beta1 provides access to shared informers for resources in V2beta1.
@@ -51,6 +54,11 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // V1 returns a new v1.Interface.
 func (g *group) V1() v1.Interface {
 	return v1.New(g.factory, g.namespace, g.tweakListOptions)
+}
+
+// V1alpha1 returns a new v1alpha1.Interface.
+func (g *group) V1alpha1() v1alpha1.Interface {
+	return v1alpha1.New(g.factory, g.namespace, g.tweakListOptions)
 }
 
 // V2alpha1 returns a new v2alpha1.Interface.

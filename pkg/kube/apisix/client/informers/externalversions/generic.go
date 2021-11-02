@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	v1alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1alpha1"
 	v2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	v2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	v2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
@@ -61,6 +62,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V1().ApisixTlses().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("apisixupstreams"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V1().ApisixUpstreams().Informer()}, nil
+
+		// Group=apisix.apache.org, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("apisixpluginconfigs"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V1alpha1().ApisixPluginConfigs().Informer()}, nil
 
 		// Group=apisix.apache.org, Version=v2alpha1
 	case v2alpha1.SchemeGroupVersion.WithResource("apisixclusterconfigs"):
