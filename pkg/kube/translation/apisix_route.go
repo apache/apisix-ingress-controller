@@ -446,12 +446,13 @@ func (t *translator) translateHTTPRoute(ctx *TranslateContext, ar *configv2alpha
 			return err
 		}
 
-		timeout := &apisixv1.UpstreamTimeout{
-			Connect: apisixv1.DefaultUpstreamTimeout,
-			Read:    apisixv1.DefaultUpstreamTimeout,
-			Send:    apisixv1.DefaultUpstreamTimeout,
-		}
+		var timeout *apisixv1.UpstreamTimeout
 		if part.Timeout != nil {
+			timeout = &apisixv1.UpstreamTimeout{
+				Connect: apisixv1.DefaultUpstreamTimeout,
+				Read:    apisixv1.DefaultUpstreamTimeout,
+				Send:    apisixv1.DefaultUpstreamTimeout,
+			}
 			if part.Timeout.Connect.Duration > 0 {
 				timeout.Connect = int(part.Timeout.Connect.Seconds())
 			}
