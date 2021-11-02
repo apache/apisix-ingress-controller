@@ -316,6 +316,24 @@ spec:
                         required:
                           - serviceName
                           - servicePort
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      "type":
+                        type: string
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      message:
+                        type: string
+                      observedGeneration:
+                        type: integer
     - name: v2alpha1
       served: true
       storage: false
@@ -603,6 +621,24 @@ spec:
                         required:
                           - serviceName
                           - servicePort
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      "type":
+                        type: string
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      message:
+                        type: string
+                      observedGeneration:
+                        type: integer
     - name: v2beta1
       served: true
       storage: false
@@ -890,6 +926,24 @@ spec:
                         required:
                           - serviceName
                           - servicePort
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      "type":
+                        type: string
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      message:
+                        type: string
+                      observedGeneration:
+                        type: integer
     - name: v2beta2
       served: true
       storage: true
@@ -1115,3 +1169,21 @@ spec:
                         required:
                           - serviceName
                           - servicePort
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      "type":
+                        type: string
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      message:
+                        type: string
+                      observedGeneration:
+                        type: integer

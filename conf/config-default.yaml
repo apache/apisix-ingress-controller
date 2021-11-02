@@ -44,6 +44,10 @@ kubernetes:
                                        # and the minimal resync interval is 30s.
   app_namespaces: ["*"]                # namespace list that controller will watch for resources,
                                        # by default all namespaces (represented by "*") are watched.
+                                       # The `app_namespace` is deprecated, using `namespace_selector` instead since version 1.4.0
+  namespace_selector: [""]             # namespace_selector represent basis for selecting managed namespaces.
+                                       # the field is support since version 1.4.0
+                                       # For example, "apisix.ingress=watching", so ingress will watching the namespaces which labels "apisix.ingress=watching"
   election_id: "ingress-apisix-leader" # the election id for the controller leader campaign,
                                        # only the leader will watch and delivery resource changes,
                                        # other instances (as candidates) stand by.
