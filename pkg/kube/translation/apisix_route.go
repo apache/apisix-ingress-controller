@@ -254,7 +254,7 @@ func (t *translator) translateHTTPRouteV2beta1(ctx *TranslateContext, ar *config
 				weight = *backend.Weight
 			}
 			backendPoints := make([]*configv2alpha1.ApisixRouteHTTPBackend, 0)
-			for i, _ := range backends {
+			for i := range backends {
 				backendPoints = append(backendPoints, &backends[i])
 			}
 			plugin, err := t.translateTrafficSplitPlugin(ctx, ar.Namespace, weight, backendPoints)
@@ -395,8 +395,8 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *TranslateContext, ar *config
 				weight = *backend.Weight
 			}
 			backendPoints := make([]*configv2alpha1.ApisixRouteHTTPBackend, 0)
-			for _, b := range backends {
-				backendPoints = append(backendPoints, &b)
+			for i := range backends {
+				backendPoints = append(backendPoints, &backends[i])
 			}
 			plugin, err := t.translateTrafficSplitPlugin(ctx, ar.Namespace, weight, backendPoints)
 			if err != nil {
