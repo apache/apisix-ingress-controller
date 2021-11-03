@@ -21,7 +21,7 @@ title: Upgrade Guide
 #
 -->
 
-## Validate Compatibility 
+## Validate Compatibility
 
 Apache APISIX Ingress project is a continuously actively developed project.
 In order to make it better, some breaking changes will be added when the new version is released.
