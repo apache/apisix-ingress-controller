@@ -28,13 +28,15 @@ import (
 
 func TestNewConfigFromFile(t *testing.T) {
 	cfg := &Config{
-		LogLevel:        "warn",
-		LogOutput:       "stdout",
-		HTTPListen:      ":9090",
-		HTTPSListen:     ":9443",
-		CertFilePath:    "/etc/webhook/certs/cert.pem",
-		KeyFilePath:     "/etc/webhook/certs/key.pem",
-		EnableProfiling: true,
+		LogLevel:              "warn",
+		LogOutput:             "stdout",
+		HTTPListen:            ":9090",
+		HTTPSListen:           ":9443",
+		IngressPublishService: "",
+		IngressStatusAddress:  []string{},
+		CertFilePath:          "/etc/webhook/certs/cert.pem",
+		KeyFilePath:           "/etc/webhook/certs/key.pem",
+		EnableProfiling:       true,
 		Kubernetes: KubernetesConfig{
 			ResyncInterval:     types.TimeDuration{Duration: time.Hour},
 			Kubeconfig:         "/path/to/foo/baz",
@@ -77,6 +79,8 @@ log_level: warn
 log_output: stdout
 http_listen: :9090
 https_listen: :9443
+ingress_publish_service: ""
+ingress_status_address: []
 enable_profiling: true
 kubernetes:
   kubeconfig: /path/to/foo/baz
