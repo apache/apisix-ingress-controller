@@ -133,7 +133,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		}
 		ar = ev.Tombstone.(kube.ApisixRoute)
 	}
-	//
+
 	switch obj.GroupVersion {
 	case kube.ApisixRouteV1:
 		tctx, err = c.controller.translator.TranslateRouteV1(ar.V1())

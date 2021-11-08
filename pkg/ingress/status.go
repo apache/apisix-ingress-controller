@@ -19,6 +19,9 @@ import (
 	"context"
 
 	"go.uber.org/zap"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
+	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,6 +62,7 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 		ObservedGeneration: generation,
 	}
 	client := c.kubeClient.APISIXClient
+	// kubeclient := c.kubeClient.Client
 
 	switch v := at.(type) {
 	case *configv1.ApisixTls:
@@ -163,6 +167,13 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 				)
 			}
 		}
+	case *networkingv1.Ingress:
+		// set to status
+		// update v.Status.LoadBalancer
+	case *networkingv1beta1.Ingress:
+		// set to status
+	case *extensionsv1beta1.Ingress:
+		// set to status
 	default:
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
