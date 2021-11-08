@@ -20,6 +20,7 @@ import (
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/apache/apisix-ingress-controller/pkg/api/validation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
@@ -42,7 +43,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 		consumerMapA6    = make(map[string]string)
 	)
 	// watchingNamespace == nil means to monitor all namespaces
-	if c.watchingNamespace == nil {
+	if !validation.HasValueInSyncMap(c.watchingNamespace) {
 		opts := v1.ListOptions{}
 		// list all namespaces
 		nsList, err := c.kubeClient.Client.CoreV1().Namespaces().List(ctx, opts)

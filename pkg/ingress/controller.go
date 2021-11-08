@@ -37,6 +37,7 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	"github.com/apache/apisix-ingress-controller/pkg/api"
+	"github.com/apache/apisix-ingress-controller/pkg/api/validation"
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
@@ -517,7 +518,7 @@ func (c *Controller) run(ctx context.Context) {
 // namespaceWatching accepts a resource key, getting the namespace part
 // and checking whether the namespace is being watched.
 func (c *Controller) namespaceWatching(key string) (ok bool) {
-	if c.watchingNamespace == nil {
+	if !validation.HasValueInSyncMap(c.watchingNamespace) {
 		ok = true
 		return
 	}
