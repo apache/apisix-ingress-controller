@@ -143,7 +143,7 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 				zap.Any("opts", clusterOpts),
 			)
 			c.controller.recorderEvent(acc, corev1.EventTypeWarning, _resourceSyncAborted, err)
-			c.controller.recordStatus(acc, _resourceSyncAborted, err, metav1.ConditionFalse)
+			c.controller.recordStatus(acc, _resourceSyncAborted, err, metav1.ConditionFalse, acc.GetGeneration())
 			return err
 		}
 	}
@@ -157,7 +157,7 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 			zap.Any("object", acc),
 		)
 		c.controller.recorderEvent(acc, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(acc, _resourceSyncAborted, err, metav1.ConditionFalse)
+		c.controller.recordStatus(acc, _resourceSyncAborted, err, metav1.ConditionFalse, acc.GetGeneration())
 		return err
 	}
 	log.Debugw("translated global_rule",
@@ -176,11 +176,11 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 			zap.Any("cluster", acc.Name),
 		)
 		c.controller.recorderEvent(acc, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(acc, _resourceSyncAborted, err, metav1.ConditionFalse)
+		c.controller.recordStatus(acc, _resourceSyncAborted, err, metav1.ConditionFalse, acc.GetGeneration())
 		return err
 	}
 	c.controller.recorderEvent(acc, corev1.EventTypeNormal, _resourceSynced, nil)
-	c.controller.recordStatus(acc, _resourceSynced, nil, metav1.ConditionTrue)
+	c.controller.recordStatus(acc, _resourceSynced, nil, metav1.ConditionTrue, acc.GetGeneration())
 	return nil
 }
 

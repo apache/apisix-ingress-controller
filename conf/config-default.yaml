@@ -44,6 +44,10 @@ kubernetes:
                                        # and the minimal resync interval is 30s.
   app_namespaces: ["*"]                # namespace list that controller will watch for resources,
                                        # by default all namespaces (represented by "*") are watched.
+                                       # The `app_namespace` is deprecated, using `namespace_selector` instead since version 1.4.0
+  namespace_selector: [""]             # namespace_selector represent basis for selecting managed namespaces.
+                                       # the field is support since version 1.4.0
+                                       # For example, "apisix.ingress=watching", so ingress will watching the namespaces which labels "apisix.ingress=watching"
   election_id: "ingress-apisix-leader" # the election id for the controller leader campaign,
                                        # only the leader will watch and delivery resource changes,
                                        # other instances (as candidates) stand by.
@@ -56,9 +60,8 @@ kubernetes:
                                        # "extensions/v1beta1", default is "networking/v1".
   watch_endpointslices: false          # whether to watch EndpointSlices rather than Endpoints.
 
-  apisix_route_version: "apisix.apache.org/v2alpha1" # the supported apisixroute api group version, can be
-                                                     # "apisix.apache.org/v1" or "apisix.apache.org/v2alpha1",
-                                                     # default is "apisix.apache.org/v2alpha1".
+  apisix_route_version: "apisix.apache.org/v2beta2"  # the supported apisixroute api group version.
+                                                     # the latest version is "apisix.apache.org/v2beta2".
 # APISIX related configurations.
 apisix:
   base_url: "http://127.0.0.1:9080/apisix/admin" # (Deprecated, use default_cluster_base_url) the APISIX admin api / manager api

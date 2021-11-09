@@ -116,7 +116,7 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 			zap.Any("ApisixConsumer", ac),
 		)
 		c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse)
+		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 		return err
 	}
 	log.Debug("got consumer object from ApisixConsumer",
@@ -130,7 +130,7 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 			zap.Any("consumer", consumer),
 		)
 		c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse)
+		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 		return err
 	}
 

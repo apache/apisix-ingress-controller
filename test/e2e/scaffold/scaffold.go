@@ -287,8 +287,11 @@ func (s *Scaffold) beforeEach() {
 		ConfigPath: s.opts.Kubeconfig,
 		Namespace:  s.namespace,
 	}
+
 	s.finializers = nil
-	k8s.CreateNamespace(s.t, s.kubectlOptions, s.namespace)
+	labels := make(map[string]string)
+	labels["apisix.ingress.watch"] = s.namespace
+	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: s.namespace, Labels: labels})
 
 	s.nodes, err = k8s.GetReadyNodesE(s.t, s.kubectlOptions)
 	assert.Nil(s.t, err, "querying ready nodes")

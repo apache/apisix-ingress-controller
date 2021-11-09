@@ -50,17 +50,16 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 			log.Error(err.Error())
 			ctx.Done()
 		} else {
-			wns := make(map[string]struct{}, len(nsList.Items))
+			wns := new(sync.Map)
 			for _, v := range nsList.Items {
-				wns[v.Name] = struct{}{}
+				wns.Store(v.Name, struct{}{})
 			}
 			c.watchingNamespace = wns
 		}
 	}
-	if len(c.watchingNamespace) > 0 {
-		wg.Add(len(c.watchingNamespace))
-	}
-	for ns := range c.watchingNamespace {
+
+	c.watchingNamespace.Range(func(key, value interface{}) bool {
+		wg.Add(1)
 		go func(ns string) {
 			defer wg.Done()
 			// ApisixRoute
@@ -130,8 +129,9 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 					}
 				}
 			}
-		}(ns)
-	}
+		}(key.(string))
+		return true
+	})
 	wg.Wait()
 
 	// 2.get all cache routes

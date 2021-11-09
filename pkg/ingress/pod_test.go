@@ -15,6 +15,7 @@
 package ingress
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -27,12 +28,12 @@ import (
 )
 
 func TestPodOnAdd(t *testing.T) {
+	watchingNamespace := new(sync.Map)
+	watchingNamespace.Store("default", struct{}{})
 	ctl := &podController{
 		controller: &Controller{
-			watchingNamespace: map[string]struct{}{
-				"default": {},
-			},
-			podCache:         types.NewPodCache(),
+			watchingNamespace: watchingNamespace,
+			podCache:          types.NewPodCache(),
 			MetricsCollector: metrics.NewPrometheusCollector(),
 		},
 	}
@@ -69,12 +70,12 @@ func TestPodOnAdd(t *testing.T) {
 }
 
 func TestPodOnDelete(t *testing.T) {
+	watchingNamespace := new(sync.Map)
+	watchingNamespace.Store("default", struct{}{})
 	ctl := &podController{
 		controller: &Controller{
-			watchingNamespace: map[string]struct{}{
-				"default": {},
-			},
-			podCache:         types.NewPodCache(),
+			watchingNamespace: watchingNamespace,
+			podCache:          types.NewPodCache(),
 			MetricsCollector: metrics.NewPrometheusCollector(),
 		},
 	}
@@ -114,12 +115,12 @@ func TestPodOnDelete(t *testing.T) {
 }
 
 func TestPodOnUpdate(t *testing.T) {
+	watchingNamespace := new(sync.Map)
+	watchingNamespace.Store("default", struct{}{})
 	ctl := &podController{
 		controller: &Controller{
-			watchingNamespace: map[string]struct{}{
-				"default": {},
-			},
-			podCache:         types.NewPodCache(),
+			watchingNamespace: watchingNamespace,
+			podCache:          types.NewPodCache(),
 			MetricsCollector: metrics.NewPrometheusCollector(),
 		},
 	}

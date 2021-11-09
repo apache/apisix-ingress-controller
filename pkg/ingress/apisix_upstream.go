@@ -129,7 +129,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 	if err != nil {
 		log.Errorf("failed to get service %s: %s", key, err)
 		c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
+		c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 		return err
 	}
 
@@ -150,7 +150,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 				}
 				log.Errorf("failed to get upstream %s: %s", upsName, err)
 				c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
-				c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
+				c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 				return err
 			}
 			var newUps *apisixv1.Upstream
@@ -167,7 +167,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 						zap.Error(err),
 					)
 					c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
-					c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
+					c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 					return err
 				}
 			} else {
@@ -189,14 +189,14 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 					zap.String("cluster", clusterName),
 				)
 				c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
-				c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
+				c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 				return err
 			}
 		}
 	}
 	if ev.Type != types.EventDelete {
 		c.controller.recorderEvent(au, corev1.EventTypeNormal, _resourceSynced, nil)
-		c.controller.recordStatus(au, _resourceSynced, nil, metav1.ConditionTrue)
+		c.controller.recordStatus(au, _resourceSynced, nil, metav1.ConditionTrue, au.GetGeneration())
 	}
 	return err
 }
