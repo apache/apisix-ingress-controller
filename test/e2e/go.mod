@@ -11,6 +11,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	k8s.io/api v0.21.1
 	k8s.io/apimachinery v0.21.1
+	k8s.io/client-go v0.21.1
 )
 
 replace github.com/apache/apisix-ingress-controller => ../../
