@@ -492,7 +492,7 @@ func (s *Scaffold) EnsureNumEndpointsReady(t testing.TestingT, endpointsName str
 			if readyNum == desired {
 				return "Service is now available", nil
 			}
-			return "Endpoints not ready yet", nil
+			return fmt.Sprintf("Endpoints not ready yet, expect %v, actual %v", desired, readyNum), nil
 		},
 	)
 	ginkgo.GinkgoT().Log(message)
