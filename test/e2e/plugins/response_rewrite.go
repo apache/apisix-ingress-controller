@@ -182,7 +182,7 @@ spec:
          location: https://a.com/b/c
          x-changed-by: apisix
        vars:
-       - ["status", "==", "200"]
+       - ["status", "==", 200]
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))

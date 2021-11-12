@@ -17,6 +17,7 @@ package scaffold
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -27,6 +28,8 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/gruntwork-io/terratest/modules/k8s"
+	"github.com/gruntwork-io/terratest/modules/retry"
+	"github.com/gruntwork-io/terratest/modules/testing"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -467,6 +470,33 @@ func (s *Scaffold) newAPISIXTunnels() error {
 // Namespace returns the current working namespace.
 func (s *Scaffold) Namespace() string {
 	return s.kubectlOptions.Namespace
+}
+
+func (s *Scaffold) EnsureNumEndpointsReady(t testing.TestingT, endpointsName string, desired int) {
+	e, err := k8s.GetKubernetesClientFromOptionsE(t, s.kubectlOptions)
+	assert.Nil(t, err, "get kubernetes client")
+	statusMsg := fmt.Sprintf("Wait for endpoints %s to be ready.", endpointsName)
+	message := retry.DoWithRetry(
+		t,
+		statusMsg,
+		20,
+		5*time.Second,
+		func() (string, error) {
+			endpoints, err := e.CoreV1().Endpoints(s.Namespace()).Get(context.Background(), endpointsName, metav1.GetOptions{})
+			if err != nil {
+				return "", err
+			}
+			readyNum := 0
+			for _, subset := range endpoints.Subsets {
+				readyNum += len(subset.Addresses)
+			}
+			if readyNum == desired {
+				return "Service is now available", nil
+			}
+			return fmt.Sprintf("Endpoints not ready yet, expect %v, actual %v", desired, readyNum), nil
+		},
+	)
+	ginkgo.GinkgoT().Log(message)
 }
 
 // GetKubernetesClient get kubernetes client use by scaffold
