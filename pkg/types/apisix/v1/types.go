@@ -50,6 +50,10 @@ const (
 	SchemeHTTP = "http"
 	// SchemeGRPC represents the GRPC protocol.
 	SchemeGRPC = "grpc"
+	// SchemeHTTPS represents the HTTPS protocol.
+	SchemeHTTPS = "https"
+	// SchemeGRPCS represents the GRPCS protocol.
+	SchemeGRPCS = "grpcs"
 
 	// HealthCheckHTTP represents the HTTP kind health check.
 	HealthCheckHTTP = "http"
@@ -184,6 +188,12 @@ type Upstream struct {
 	Scheme  string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
 	Retries *int                 `json:"retries,omitempty" yaml:"retries,omitempty"`
 	Timeout *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	TLS     *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
+}
+
+type ClientTLS struct {
+	Cert string `json:"client_cert,omitempty" yaml:"client_cert,omitempty"`
+	Key  string `json:"client_key,omitempty" yaml:"client_key,omitempty"`
 }
 
 // UpstreamTimeout represents the timeout settings on Upstream.
