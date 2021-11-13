@@ -245,7 +245,7 @@ RAmKucXUNJSR8wYGSg5ymvsnChTaYHLL1gmIdQli2y8XxqUaYC1tXrEt4g5z4a/O
 `
 
 	s := scaffold.NewDefaultV2Scaffold()
-	ginkgo.It("create a ApisixUpstreams with mTLS", func() {
+	ginkgo.It("create ApisixUpstreams with mTLS", func() {
 		// Prepare an backend that requires mTLS, copy from ssl.go
 		// create secrets
 		err := s.NewSecret(serverCertSecret, serverCert, serverKey)
