@@ -44,6 +44,7 @@ helm install apisix apisix/apisix \
   --set ingress-controller.enabled=true \
   --set etcd.persistence.size="10Gi" \
   --namespace ingress-apisix
+  --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
 kubectl get service --namespace ingress-apisix
 ```
 

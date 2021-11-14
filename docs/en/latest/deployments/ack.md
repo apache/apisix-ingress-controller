@@ -45,6 +45,7 @@ helm install apisix apisix/apisix \
   --set etcd.persistence.storageClass="alicloud-disk-ssd" \
   --set etcd.persistence.size="20Gi" \
   --namespace ingress-apisix
+  --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
 kubectl get service --namespace ingress-apisix
 ```
 
