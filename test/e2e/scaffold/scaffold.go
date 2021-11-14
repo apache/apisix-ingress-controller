@@ -53,6 +53,7 @@ type Options struct {
 	APISIXRouteVersion    string
 	APISIXAdminAPIKey     string
 	EnableWebhooks        bool
+	APISIXPublishAddress  string
 }
 
 type Scaffold struct {
