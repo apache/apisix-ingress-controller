@@ -186,7 +186,7 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 
 func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 	ev := obj.(*types.Event)
-	event := ev.Object.(kube.ApisixRouteEvent)
+	event := ev.Object.(kube.IngressEvent)
 	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
 	if errLocal != nil {
 		log.Errorf("invalid resource key: %s", event.Key)
