@@ -232,11 +232,11 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 	if errLocal == nil {
 		switch ing.GroupVersion() {
 		case kube.IngressV1:
-			c.controller.recordStatus(ing.V1(), _resourceSynced, err, metav1.ConditionTrue, ing.V1().GetGeneration())
+			c.controller.recordStatus(ing.V1(), _resourceSyncAborted, err, metav1.ConditionTrue, ing.V1().GetGeneration())
 		case kube.IngressV1beta1:
-			c.controller.recordStatus(ing.V1beta1(), _resourceSynced, err, metav1.ConditionTrue, ing.V1beta1().GetGeneration())
+			c.controller.recordStatus(ing.V1beta1(), _resourceSyncAborted, err, metav1.ConditionTrue, ing.V1beta1().GetGeneration())
 		case kube.IngressExtensionsV1beta1:
-			c.controller.recordStatus(ing.ExtensionsV1beta1(), _resourceSynced, err, metav1.ConditionTrue, ing.ExtensionsV1beta1().GetGeneration())
+			c.controller.recordStatus(ing.ExtensionsV1beta1(), _resourceSyncAborted, err, metav1.ConditionTrue, ing.ExtensionsV1beta1().GetGeneration())
 		}
 	} else {
 		log.Errorw("failed split namespace/name",
