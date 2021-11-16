@@ -143,12 +143,12 @@ type ApisixRouteHTTPMatchExpr struct {
 	Op string `json:"op" yaml:"op"`
 	// Set is an array type object of the expression.
 	// It should be used when the Op is "in" or "not_in";
-	Set []string `json:"set" yaml:"set"`
+	Set []string `json:"set,omitempty" yaml:"set,omitempty"`
 	// Value is the normal type object for the expression,
 	// it should be used when the Op is not "in" and "not_in".
 	// Set and Value are exclusive so only of them can be set
 	// in the same time.
-	Value *string `json:"value" yaml:"value"`
+	Value *string `json:"value,omitempty" yaml:"value,omitempty"`
 }
 
 // ApisixRouteHTTPMatchExprSubject describes the route match expression subject.
