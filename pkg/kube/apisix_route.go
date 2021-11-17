@@ -21,6 +21,7 @@ import (
 	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	configv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
 	listersv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2alpha1"
 	listersv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta1"
@@ -36,6 +37,8 @@ const (
 	ApisixRouteV2beta1 = "apisix.apache.org/v2beta1"
 	// ApisixRouteV2beta2 represents the ApisixRoute in apisix.apache.org/v2beta2 group version
 	ApisixRouteV2beta2 = "apisix.apache.org/v2beta2"
+	// ApisixRouteV2beta3 represents the ApisixRoute in apisix.apache.org/v2beta3 group version
+	ApisixRouteV2beta3 = "apisix.apache.org/v2beta3"
 )
 
 // ApisixRouteLister is an encapsulation for the lister of ApisixRoute,
@@ -94,6 +97,7 @@ type apisixRoute struct {
 	v2alpha1     *configv2alpha1.ApisixRoute
 	v2beta1      *configv2beta1.ApisixRoute
 	v2beta2      *configv2beta2.ApisixRoute
+	v2beta3      *configv2beta3.ApisixRoute
 }
 
 func (ar *apisixRoute) V1() *configv1.ApisixRoute {
@@ -119,6 +123,13 @@ func (ar *apisixRoute) V2beta1() *configv2beta1.ApisixRoute {
 func (ar *apisixRoute) V2beta2() *configv2beta2.ApisixRoute {
 	if ar.groupVersion != ApisixRouteV2beta2 {
 		panic("not a apisix.apache.org/v2beta2 ingress")
+	}
+	return ar.v2beta2
+}
+
+func (ar *apisixRoute) V2beta3() *configv2beta2.ApisixRoute {
+	if ar.groupVersion != ApisixRouteV2beta3 {
+		panic("not a apisix.apache.org/v2beta3 ingress")
 	}
 	return ar.v2beta2
 }
