@@ -64,7 +64,7 @@ type collector struct {
 	controllerEvents   *prometheus.CounterVec
 }
 
-// NewPrometheusCollectors creates the Prometheus metrics collector.
+// NewPrometheusCollector creates the Prometheus metrics collector.
 // It also registers all internal metric collector to prometheus,
 // so do not call this function duplicately.
 func NewPrometheusCollector() Collector {
@@ -222,7 +222,7 @@ func (c *collector) IncrSyncOperation(resource, result string) {
 	}).Inc()
 }
 
-// IncrCacheSync increases the number of cache sync operations for
+// IncrCacheSyncOperation increases the number of cache sync operations for
 // cluster.
 func (c *collector) IncrCacheSyncOperation(result string) {
 	c.cacheSyncOperation.WithLabelValues(result).Inc()

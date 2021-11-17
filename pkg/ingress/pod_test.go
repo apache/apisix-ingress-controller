@@ -34,7 +34,7 @@ func TestPodOnAdd(t *testing.T) {
 		controller: &Controller{
 			watchingNamespace: watchingNamespace,
 			podCache:          types.NewPodCache(),
-			MetricsCollector: metrics.NewPrometheusCollector(),
+			MetricsCollector:  metrics.NewPrometheusCollector(),
 		},
 	}
 
@@ -76,7 +76,7 @@ func TestPodOnDelete(t *testing.T) {
 		controller: &Controller{
 			watchingNamespace: watchingNamespace,
 			podCache:          types.NewPodCache(),
-			MetricsCollector: metrics.NewPrometheusCollector(),
+			MetricsCollector:  metrics.NewPrometheusCollector(),
 		},
 	}
 
@@ -121,7 +121,7 @@ func TestPodOnUpdate(t *testing.T) {
 		controller: &Controller{
 			watchingNamespace: watchingNamespace,
 			podCache:          types.NewPodCache(),
-			MetricsCollector: metrics.NewPrometheusCollector(),
+			MetricsCollector:  metrics.NewPrometheusCollector(),
 		},
 	}
 
