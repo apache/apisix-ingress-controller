@@ -45,6 +45,7 @@ helm install apisix apisix/apisix \
   --set gateway.type=NodePort \
   --set ingress-controller.enabled=true \
   --namespace ingress-apisix \
+  --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
   --kubeconfig /etc/rancher/k3s/k3s.yaml
 kubectl get service --namespace ingress-apisix
 ```
