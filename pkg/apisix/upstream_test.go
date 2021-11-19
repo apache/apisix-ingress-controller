@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 
 	"github.com/stretchr/testify/assert"
@@ -150,10 +151,11 @@ func TestUpstreamClient(t *testing.T) {
 	closedCh := make(chan struct{})
 	close(closedCh)
 	cli := newUpstreamClient(&cluster{
-		baseURL:     u.String(),
-		cli:         http.DefaultClient,
-		cache:       &dummyCache{},
-		cacheSynced: closedCh,
+		baseURL:          u.String(),
+		cli:              http.DefaultClient,
+		cache:            &dummyCache{},
+		cacheSynced:      closedCh,
+		metricsCollector: metrics.NewPrometheusCollector(),
 	})
 
 	// Create

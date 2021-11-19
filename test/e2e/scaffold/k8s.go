@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -275,8 +276,9 @@ func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -296,8 +298,9 @@ func (s *Scaffold) ListApisixGlobalRules() ([]*v1.GlobalRule, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -317,8 +320,9 @@ func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -338,8 +342,9 @@ func (s *Scaffold) ListApisixConsumers() ([]*v1.Consumer, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -359,8 +364,9 @@ func (s *Scaffold) ListApisixStreamRoutes() ([]*v1.StreamRoute, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -380,8 +386,9 @@ func (s *Scaffold) ListApisixSsl() ([]*v1.Ssl, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err

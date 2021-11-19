@@ -131,11 +131,9 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 		)
 		c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
 		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
-		c.controller.metricsCollector.IncrSyncOperation("consumer", "failure")
 		return err
 	}
 
-	c.controller.metricsCollector.IncrSyncOperation("consumer", "success")
 	c.controller.recorderEvent(ac, corev1.EventTypeNormal, _resourceSynced, nil)
 	return nil
 }
@@ -143,6 +141,7 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 func (c *apisixConsumerController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
+		c.controller.MetricsCollector.IncrSyncOperation("consumer", "success")
 		return
 	}
 	log.Warnw("sync ApisixConsumer failed, will retry",
@@ -150,6 +149,7 @@ func (c *apisixConsumerController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
+	c.controller.MetricsCollector.IncrSyncOperation("consumer", "failure")
 }
 
 func (c *apisixConsumerController) onAdd(obj interface{}) {
@@ -169,6 +169,8 @@ func (c *apisixConsumerController) onAdd(obj interface{}) {
 		Type:   types.EventAdd,
 		Object: key,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("consumer", "add")
 }
 
 func (c *apisixConsumerController) onUpdate(oldObj, newObj interface{}) {
@@ -194,6 +196,8 @@ func (c *apisixConsumerController) onUpdate(oldObj, newObj interface{}) {
 		Type:   types.EventUpdate,
 		Object: key,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("consumer", "update")
 }
 
 func (c *apisixConsumerController) onDelete(obj interface{}) {
@@ -222,4 +226,6 @@ func (c *apisixConsumerController) onDelete(obj interface{}) {
 		Object:    key,
 		Tombstone: ac,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("consumer", "delete")
 }

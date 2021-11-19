@@ -27,6 +27,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 
 	"github.com/stretchr/testify/assert"
@@ -151,10 +152,11 @@ func TestSSLClient(t *testing.T) {
 	close(closedCh)
 
 	cli := newSSLClient(&cluster{
-		baseURL:     u.String(),
-		cli:         http.DefaultClient,
-		cache:       &dummyCache{},
-		cacheSynced: closedCh,
+		baseURL:          u.String(),
+		cli:              http.DefaultClient,
+		cache:            &dummyCache{},
+		cacheSynced:      closedCh,
+		metricsCollector: metrics.NewPrometheusCollector(),
 	})
 
 	// Create
