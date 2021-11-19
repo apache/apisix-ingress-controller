@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/nettest"
 )
@@ -105,10 +106,11 @@ func TestSchemaClient(t *testing.T) {
 	closedCh := make(chan struct{})
 	close(closedCh)
 	cli := newSchemaClient(&cluster{
-		baseURL:     u.String(),
-		cli:         http.DefaultClient,
-		cache:       &dummyCache{},
-		cacheSynced: closedCh,
+		baseURL:          u.String(),
+		cli:              http.DefaultClient,
+		cache:            &dummyCache{},
+		cacheSynced:      closedCh,
+		metricsCollector: metrics.NewPrometheusCollector(),
 	})
 
 	ctx := context.TODO()

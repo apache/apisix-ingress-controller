@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/stretchr/testify/assert"
 
 	"golang.org/x/net/nettest"
@@ -89,10 +90,11 @@ func TestPluginClient(t *testing.T) {
 	closedCh := make(chan struct{})
 	close(closedCh)
 	cli := newPluginClient(&cluster{
-		baseURL:     u.String(),
-		cli:         http.DefaultClient,
-		cache:       &dummyCache{},
-		cacheSynced: closedCh,
+		baseURL:          u.String(),
+		cli:              http.DefaultClient,
+		cache:            &dummyCache{},
+		cacheSynced:      closedCh,
+		metricsCollector: metrics.NewPrometheusCollector(),
 	})
 
 	// List
