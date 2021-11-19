@@ -62,6 +62,12 @@ kubernetes:
 
   apisix_route_version: "apisix.apache.org/v2beta2"  # the supported apisixroute api group version.
                                                      # the latest version is "apisix.apache.org/v2beta2".
+
+  enable_gateway: false                # whether to enable support for Gateway API.
+                                       # Note: This feature is currently under development and may not work as expected. 
+                                       # It is not recommended to use it in a production environment.
+                                       # Before we announce support for it to reach Beta level or GA.
+
 # APISIX related configurations.
 apisix:
   base_url: "http://127.0.0.1:9080/apisix/admin" # (Deprecated, use default_cluster_base_url) the APISIX admin api / manager api
