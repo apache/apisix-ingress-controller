@@ -225,7 +225,7 @@ func (c *apisixUpstreamController) onAdd(obj interface{}) {
 	log.Debugw("ApisixUpstream add event arrived",
 		zap.Any("object", obj))
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
 	})
@@ -250,7 +250,7 @@ func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
 		zap.Any("old object", prev),
 	)
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventUpdate,
 		Object: key,
 	})
@@ -277,7 +277,7 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 	log.Debugw("ApisixUpstream delete event arrived",
 		zap.Any("final state", au),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:      types.EventDelete,
 		Object:    key,
 		Tombstone: au,

@@ -195,7 +195,7 @@ func (c *apisixTlsController) onAdd(obj interface{}) {
 	log.Debugw("ApisixTls add event arrived",
 		zap.Any("object", obj),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
 	})
@@ -219,7 +219,7 @@ func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
 		zap.Any("new object", curr),
 		zap.Any("old object", prev),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventUpdate,
 		Object: key,
 	})
@@ -248,7 +248,7 @@ func (c *apisixTlsController) onDelete(obj interface{}) {
 	log.Debugw("ApisixTls delete event arrived",
 		zap.Any("final state", obj),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:      types.EventDelete,
 		Object:    key,
 		Tombstone: tls,

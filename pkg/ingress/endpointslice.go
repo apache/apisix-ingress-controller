@@ -142,7 +142,7 @@ func (c *endpointSliceController) onAdd(obj interface{}) {
 		zap.String("object-key", key),
 	)
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: endpointSliceEvent{
 			Key:         key,
@@ -180,7 +180,7 @@ func (c *endpointSliceController) onUpdate(prev, curr interface{}) {
 		zap.Any("new object", currEp),
 		zap.Any("old object", prevEp),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventUpdate,
 		// TODO pass key.
 		Object: endpointSliceEvent{
@@ -217,7 +217,7 @@ func (c *endpointSliceController) onDelete(obj interface{}) {
 	log.Debugw("endpoints delete event arrived",
 		zap.Any("object-key", key),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: endpointSliceEvent{
 			Key:         key,

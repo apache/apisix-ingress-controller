@@ -112,7 +112,7 @@ func (c *endpointsController) onAdd(obj interface{}) {
 	log.Debugw("endpoints add event arrived",
 		zap.String("object-key", key))
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		// TODO pass key.
 		Object: kube.NewEndpoint(obj.(*corev1.Endpoints)),
@@ -138,7 +138,7 @@ func (c *endpointsController) onUpdate(prev, curr interface{}) {
 		zap.Any("new object", currEp),
 		zap.Any("old object", prevEp),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventUpdate,
 		// TODO pass key.
 		Object: kube.NewEndpoint(currEp),
@@ -165,7 +165,7 @@ func (c *endpointsController) onDelete(obj interface{}) {
 	log.Debugw("endpoints delete event arrived",
 		zap.Any("final state", ep),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventDelete,
 		Object: kube.NewEndpoint(ep),
 	})
