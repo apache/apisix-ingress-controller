@@ -17,6 +17,8 @@ package kube
 import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned"
+	gatewayexternalversions "sigs.k8s.io/gateway-api/pkg/client/informers/gateway/externalversions"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
@@ -31,6 +33,8 @@ type KubeClient struct {
 	Client kubernetes.Interface
 	// APISIXClient is the object used to operate resources under apisix.apache.org group.
 	APISIXClient clientset.Interface
+	// GatewayClient is the object used to operate resources under gateway.networking.k8s.io group.
+	GatewayClient gatewayclientset.Interface
 }
 
 // NewKubeClient creates a high-level Kubernetes client.
@@ -49,10 +53,16 @@ func NewKubeClient(cfg *config.Config) (*KubeClient, error) {
 		return nil, err
 	}
 
+	gatewayKubeClient, err := gatewayclientset.NewForConfig(restConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	return &KubeClient{
-		cfg:          cfg,
-		Client:       kubeClient,
-		APISIXClient: apisixKubeClient,
+		cfg:           cfg,
+		Client:        kubeClient,
+		APISIXClient:  apisixKubeClient,
+		GatewayClient: gatewayKubeClient,
 	}, nil
 }
 
@@ -66,4 +76,10 @@ func (k *KubeClient) NewSharedIndexInformerFactory() informers.SharedInformerFac
 // and list Kubernetes resources in apisix.apache.org group.
 func (k *KubeClient) NewAPISIXSharedIndexInformerFactory() externalversions.SharedInformerFactory {
 	return externalversions.NewSharedInformerFactory(k.APISIXClient, k.cfg.Kubernetes.ResyncInterval.Duration)
+}
+
+// NewGatewaySharedIndexInformerFactory returns an index informer factory object used to watch and
+// list Kubernetes resources in gateway.networking.k8s.io group.
+func (k *KubeClient) NewGatewaySharedIndexInformerFactory() gatewayexternalversions.SharedInformerFactory {
+	return gatewayexternalversions.NewSharedInformerFactory(k.GatewayClient, k.cfg.Kubernetes.ResyncInterval.Duration)
 }
