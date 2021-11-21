@@ -59,8 +59,8 @@ spec:
       paths:
       - /*
     backends:
-       -serviceName: httpbin
-        servicePort: 80
+       - serviceName: httpbin
+         servicePort: 80
 ```
 
 The YAML snippet shows a simple `ApisixRoute` configuration, which tells Apache APISIX to route all requests with Host `local.httpbin.org` to the `httpbin` service.
