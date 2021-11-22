@@ -19,7 +19,6 @@ package scheme
 
 import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
-	apisixv1alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1alpha1"
 	apisixv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	apisixv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	apisixv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
@@ -35,7 +34,6 @@ var Codecs = serializer.NewCodecFactory(Scheme)
 var ParameterCodec = runtime.NewParameterCodec(Scheme)
 var localSchemeBuilder = runtime.SchemeBuilder{
 	apisixv1.AddToScheme,
-	apisixv1alpha1.AddToScheme,
 	apisixv2alpha1.AddToScheme,
 	apisixv2beta1.AddToScheme,
 	apisixv2beta2.AddToScheme,

@@ -15,16 +15,13 @@
 # limitations under the License.
 #
 
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: apisixpluginconfigs.apisix.apache.org
 spec:
   group: apisix.apache.org
-  versions:
-    - name: v1alpha1
-      served: true
-      storage: true
+  group: apisix.apache.org
   scope: Namespaced
   names:
     plural: apisixpluginconfigs
@@ -32,33 +29,243 @@ spec:
     kind: ApisixPluginConfig
     shortNames:
       - apc
-  preserveUnknownFields: false
-  subresources:
-    status: {}
-  validation:
-    openAPIV3Schema:
-      type: object
-      properties:
-        spec:
+  versions:
+    - name: v1
+      served: true
+      storage: false
+      deprecated: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - jsonPath: .spec.desc
+          name: Desc
+          type: string
+          priority: 0
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+          priority: 0
+      schema:
+        openAPIV3Schema:
           type: object
-          required:
-            - plugins
           properties:
-            desc:
-              type: string
-              minLength: 1
-            plugins:
-              type: array
-              items:
-                type: object
-                properties:
-                  name:
-                    type: string
-                    minLength: 1
-                  enable:
-                    type: boolean
-                  config:
-                    type: object
+            spec:
+              type: object
               required:
-                - name
-                - enable
+                - plugins
+              properties:
+                desc:
+                  type: string
+                  minLength: 1
+                plugins:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        minLength: 1
+                      enable:
+                        type: boolean
+                      config:
+                        type: object
+                  required:
+                    - name
+                    - enable
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      "type":
+                        type: string
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      message:
+                        type: string
+                      observedGeneration:
+                        type: integer
+    - name: v2alpha1
+      served: true
+      storage: false
+      deprecated: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - jsonPath: .spec.desc
+          name: Desc
+          type: string
+          priority: 0
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+          priority: 0
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - plugins
+              properties:
+                desc:
+                  type: string
+                  minLength: 1
+                plugins:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        minLength: 1
+                      enable:
+                        type: boolean
+                      config:
+                        type: object
+                  required:
+                    - name
+                    - enable
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      "type":
+                        type: string
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      message:
+                        type: string
+                      observedGeneration:
+                        type: integer
+    - name: v2beta1
+      served: true
+      storage: false
+      deprecated: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - jsonPath: .spec.desc
+          name: Desc
+          type: string
+          priority: 0
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+          priority: 0
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - plugins
+              properties:
+                desc:
+                  type: string
+                  minLength: 1
+                plugins:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        minLength: 1
+                      enable:
+                        type: boolean
+                      config:
+                        type: object
+                  required:
+                    - name
+                    - enable
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      "type":
+                        type: string
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      message:
+                        type: string
+                      observedGeneration:
+                        type: integer
+    - name: v2beta2
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - jsonPath: .spec.desc
+          name: Desc
+          type: string
+          priority: 0
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+          priority: 0
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - plugins
+              properties:
+                desc:
+                  type: string
+                  minLength: 1
+                plugins:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        minLength: 1
+                      enable:
+                        type: boolean
+                      config:
+                        type: object
+                  required:
+                    - name
+                    - enable
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      "type":
+                        type: string
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      message:
+                        type: string
+                      observedGeneration:
+                        type: integer

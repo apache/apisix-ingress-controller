@@ -20,7 +20,7 @@ package fake
 import (
 	"context"
 
-	v1alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1alpha1"
+	v2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,29 +31,29 @@ import (
 
 // FakeApisixPluginConfigs implements ApisixPluginConfigInterface
 type FakeApisixPluginConfigs struct {
-	Fake *FakeApisixV1alpha1
+	Fake *FakeApisixV2beta2
 	ns   string
 }
 
-var apisixpluginconfigsResource = schema.GroupVersionResource{Group: "apisix.apache.org", Version: "v1alpha1", Resource: "apisixpluginconfigs"}
+var apisixpluginconfigsResource = schema.GroupVersionResource{Group: "apisix.apache.org", Version: "v2beta2", Resource: "apisixpluginconfigs"}
 
-var apisixpluginconfigsKind = schema.GroupVersionKind{Group: "apisix.apache.org", Version: "v1alpha1", Kind: "ApisixPluginConfig"}
+var apisixpluginconfigsKind = schema.GroupVersionKind{Group: "apisix.apache.org", Version: "v2beta2", Kind: "ApisixPluginConfig"}
 
 // Get takes name of the apisixPluginConfig, and returns the corresponding apisixPluginConfig object, and an error if there is any.
-func (c *FakeApisixPluginConfigs) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ApisixPluginConfig, err error) {
+func (c *FakeApisixPluginConfigs) Get(ctx context.Context, name string, options v1.GetOptions) (result *v2beta2.ApisixPluginConfig, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(apisixpluginconfigsResource, c.ns, name), &v1alpha1.ApisixPluginConfig{})
+		Invokes(testing.NewGetAction(apisixpluginconfigsResource, c.ns, name), &v2beta2.ApisixPluginConfig{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.ApisixPluginConfig), err
+	return obj.(*v2beta2.ApisixPluginConfig), err
 }
 
 // List takes label and field selectors, and returns the list of ApisixPluginConfigs that match those selectors.
-func (c *FakeApisixPluginConfigs) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ApisixPluginConfigList, err error) {
+func (c *FakeApisixPluginConfigs) List(ctx context.Context, opts v1.ListOptions) (result *v2beta2.ApisixPluginConfigList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(apisixpluginconfigsResource, apisixpluginconfigsKind, c.ns, opts), &v1alpha1.ApisixPluginConfigList{})
+		Invokes(testing.NewListAction(apisixpluginconfigsResource, apisixpluginconfigsKind, c.ns, opts), &v2beta2.ApisixPluginConfigList{})
 
 	if obj == nil {
 		return nil, err
@@ -63,8 +63,8 @@ func (c *FakeApisixPluginConfigs) List(ctx context.Context, opts v1.ListOptions)
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v1alpha1.ApisixPluginConfigList{ListMeta: obj.(*v1alpha1.ApisixPluginConfigList).ListMeta}
-	for _, item := range obj.(*v1alpha1.ApisixPluginConfigList).Items {
+	list := &v2beta2.ApisixPluginConfigList{ListMeta: obj.(*v2beta2.ApisixPluginConfigList).ListMeta}
+	for _, item := range obj.(*v2beta2.ApisixPluginConfigList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -80,43 +80,43 @@ func (c *FakeApisixPluginConfigs) Watch(ctx context.Context, opts v1.ListOptions
 }
 
 // Create takes the representation of a apisixPluginConfig and creates it.  Returns the server's representation of the apisixPluginConfig, and an error, if there is any.
-func (c *FakeApisixPluginConfigs) Create(ctx context.Context, apisixPluginConfig *v1alpha1.ApisixPluginConfig, opts v1.CreateOptions) (result *v1alpha1.ApisixPluginConfig, err error) {
+func (c *FakeApisixPluginConfigs) Create(ctx context.Context, apisixPluginConfig *v2beta2.ApisixPluginConfig, opts v1.CreateOptions) (result *v2beta2.ApisixPluginConfig, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(apisixpluginconfigsResource, c.ns, apisixPluginConfig), &v1alpha1.ApisixPluginConfig{})
+		Invokes(testing.NewCreateAction(apisixpluginconfigsResource, c.ns, apisixPluginConfig), &v2beta2.ApisixPluginConfig{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.ApisixPluginConfig), err
+	return obj.(*v2beta2.ApisixPluginConfig), err
 }
 
 // Update takes the representation of a apisixPluginConfig and updates it. Returns the server's representation of the apisixPluginConfig, and an error, if there is any.
-func (c *FakeApisixPluginConfigs) Update(ctx context.Context, apisixPluginConfig *v1alpha1.ApisixPluginConfig, opts v1.UpdateOptions) (result *v1alpha1.ApisixPluginConfig, err error) {
+func (c *FakeApisixPluginConfigs) Update(ctx context.Context, apisixPluginConfig *v2beta2.ApisixPluginConfig, opts v1.UpdateOptions) (result *v2beta2.ApisixPluginConfig, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(apisixpluginconfigsResource, c.ns, apisixPluginConfig), &v1alpha1.ApisixPluginConfig{})
+		Invokes(testing.NewUpdateAction(apisixpluginconfigsResource, c.ns, apisixPluginConfig), &v2beta2.ApisixPluginConfig{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.ApisixPluginConfig), err
+	return obj.(*v2beta2.ApisixPluginConfig), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeApisixPluginConfigs) UpdateStatus(ctx context.Context, apisixPluginConfig *v1alpha1.ApisixPluginConfig, opts v1.UpdateOptions) (*v1alpha1.ApisixPluginConfig, error) {
+func (c *FakeApisixPluginConfigs) UpdateStatus(ctx context.Context, apisixPluginConfig *v2beta2.ApisixPluginConfig, opts v1.UpdateOptions) (*v2beta2.ApisixPluginConfig, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(apisixpluginconfigsResource, "status", c.ns, apisixPluginConfig), &v1alpha1.ApisixPluginConfig{})
+		Invokes(testing.NewUpdateSubresourceAction(apisixpluginconfigsResource, "status", c.ns, apisixPluginConfig), &v2beta2.ApisixPluginConfig{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.ApisixPluginConfig), err
+	return obj.(*v2beta2.ApisixPluginConfig), err
 }
 
 // Delete takes name of the apisixPluginConfig and deletes it. Returns an error if one occurs.
 func (c *FakeApisixPluginConfigs) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(apisixpluginconfigsResource, c.ns, name), &v1alpha1.ApisixPluginConfig{})
+		Invokes(testing.NewDeleteAction(apisixpluginconfigsResource, c.ns, name), &v2beta2.ApisixPluginConfig{})
 
 	return err
 }
@@ -125,17 +125,17 @@ func (c *FakeApisixPluginConfigs) Delete(ctx context.Context, name string, opts 
 func (c *FakeApisixPluginConfigs) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(apisixpluginconfigsResource, c.ns, listOpts)
 
-	_, err := c.Fake.Invokes(action, &v1alpha1.ApisixPluginConfigList{})
+	_, err := c.Fake.Invokes(action, &v2beta2.ApisixPluginConfigList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched apisixPluginConfig.
-func (c *FakeApisixPluginConfigs) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ApisixPluginConfig, err error) {
+func (c *FakeApisixPluginConfigs) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v2beta2.ApisixPluginConfig, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(apisixpluginconfigsResource, c.ns, name, pt, data, subresources...), &v1alpha1.ApisixPluginConfig{})
+		Invokes(testing.NewPatchSubresourceAction(apisixpluginconfigsResource, c.ns, name, pt, data, subresources...), &v2beta2.ApisixPluginConfig{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.ApisixPluginConfig), err
+	return obj.(*v2beta2.ApisixPluginConfig), err
 }

@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v1"
-	apisixv1alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v1alpha1"
 	apisixv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2alpha1"
 	apisixv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta1"
 	apisixv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta2"
@@ -33,7 +32,6 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	ApisixV1() apisixv1.ApisixV1Interface
-	ApisixV1alpha1() apisixv1alpha1.ApisixV1alpha1Interface
 	ApisixV2alpha1() apisixv2alpha1.ApisixV2alpha1Interface
 	ApisixV2beta1() apisixv2beta1.ApisixV2beta1Interface
 	ApisixV2beta2() apisixv2beta2.ApisixV2beta2Interface
@@ -44,7 +42,6 @@ type Interface interface {
 type Clientset struct {
 	*discovery.DiscoveryClient
 	apisixV1       *apisixv1.ApisixV1Client
-	apisixV1alpha1 *apisixv1alpha1.ApisixV1alpha1Client
 	apisixV2alpha1 *apisixv2alpha1.ApisixV2alpha1Client
 	apisixV2beta1  *apisixv2beta1.ApisixV2beta1Client
 	apisixV2beta2  *apisixv2beta2.ApisixV2beta2Client
@@ -53,11 +50,6 @@ type Clientset struct {
 // ApisixV1 retrieves the ApisixV1Client
 func (c *Clientset) ApisixV1() apisixv1.ApisixV1Interface {
 	return c.apisixV1
-}
-
-// ApisixV1alpha1 retrieves the ApisixV1alpha1Client
-func (c *Clientset) ApisixV1alpha1() apisixv1alpha1.ApisixV1alpha1Interface {
-	return c.apisixV1alpha1
 }
 
 // ApisixV2alpha1 retrieves the ApisixV2alpha1Client
@@ -100,10 +92,6 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	cs.apisixV1alpha1, err = apisixv1alpha1.NewForConfig(&configShallowCopy)
-	if err != nil {
-		return nil, err
-	}
 	cs.apisixV2alpha1, err = apisixv2alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -129,7 +117,6 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
 	cs.apisixV1 = apisixv1.NewForConfigOrDie(c)
-	cs.apisixV1alpha1 = apisixv1alpha1.NewForConfigOrDie(c)
 	cs.apisixV2alpha1 = apisixv2alpha1.NewForConfigOrDie(c)
 	cs.apisixV2beta1 = apisixv2beta1.NewForConfigOrDie(c)
 	cs.apisixV2beta2 = apisixv2beta2.NewForConfigOrDie(c)
@@ -142,7 +129,6 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.apisixV1 = apisixv1.New(c)
-	cs.apisixV1alpha1 = apisixv1alpha1.New(c)
 	cs.apisixV2alpha1 = apisixv2alpha1.New(c)
 	cs.apisixV2beta1 = apisixv2beta1.New(c)
 	cs.apisixV2beta2 = apisixv2beta2.New(c)
