@@ -125,7 +125,7 @@ spec:
 
 	ginkgo.It("grpcs", func() {
 		grpcSecret := `grpc-secret`
-		f, err := ioutil.ReadFile("testbackend/tls/server.crt")
+		f, err := ioutil.ReadFile("testbackend/tls/server.pem")
 		assert.NoError(ginkgo.GinkgoT(), err, "read server cert")
 		serverCert := string(f)
 
@@ -182,7 +182,7 @@ spec:
 		assert.Len(ginkgo.GinkgoT(), ups, 1)
 		assert.Equal(ginkgo.GinkgoT(), ups[0].Scheme, "grpcs")
 
-		ca, err := ioutil.ReadFile("testbackend/tls/ca.crt")
+		ca, err := ioutil.ReadFile("testbackend/tls/ca.pem")
 		assert.NoError(ginkgo.GinkgoT(), err, "read ca cert")
 		assert.NoError(ginkgo.GinkgoT(), client.RequestHello(s.GetAPISIXHTTPSEndpoint(), ca), "request apisix using grpc protocol")
 	})

@@ -31,7 +31,7 @@ import (
 var _ = ginkgo.Describe("ApisixUpstreams mTLS test", func() {
 	clientSecret := `client-secret`
 
-	f, err := ioutil.ReadFile("testbackend/tls/client.crt")
+	f, err := ioutil.ReadFile("testbackend/tls/client.pem")
 	assert.NoError(ginkgo.GinkgoT(), err, "read client cert")
 	clientCert := string(f)
 
@@ -78,10 +78,10 @@ spec:
 		s.NewAPISIXClient().GET("/hello").WithHeader("Host", "upstream-is-mtls.httpbin.local").Expect().Status(http.StatusOK).Body().Raw()
 	})
 
-	ginkgo.FIt("create ApisixUpstreams with grpc mTLS", func() {
+	ginkgo.It("create ApisixUpstreams with grpc mTLS", func() {
 		//create grpc secret for apisix grpc route
 		grpcSecret := `grpc-secret`
-		f, err := ioutil.ReadFile("testbackend/tls/server.crt")
+		f, err := ioutil.ReadFile("testbackend/tls/server.pem")
 		assert.NoError(ginkgo.GinkgoT(), err, "read server cert")
 		serverCert := string(f)
 
@@ -136,7 +136,7 @@ spec:
 		assert.NoError(ginkgo.GinkgoT(), err, "list routes error")
 		assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
 
-		ca, err := ioutil.ReadFile("testbackend/tls/ca.crt")
+		ca, err := ioutil.ReadFile("testbackend/tls/ca.pem")
 		assert.NoError(ginkgo.GinkgoT(), err, "read ca cert")
 		assert.NoError(ginkgo.GinkgoT(), client.RequestHello(s.GetAPISIXHTTPSEndpoint(), ca), "request apisix using grpc protocol")
 	})

@@ -58,7 +58,7 @@ func hello(w http.ResponseWriter, req *http.Request) {
 }
 
 func newDefaultCACertPool() *x509.CertPool {
-	caCert, err := ioutil.ReadFile("tls/ca.crt")
+	caCert, err := ioutil.ReadFile("tls/ca.pem")
 	if err != nil {
 		log.Fatalf("failed to load ca cert: %v", err)
 	}
@@ -68,7 +68,7 @@ func newDefaultCACertPool() *x509.CertPool {
 }
 
 func loadTLSCredentials(clientAuth bool) credentials.TransportCredentials {
-	serverCert, err := tls.LoadX509KeyPair("tls/server.crt", "tls/server.key")
+	serverCert, err := tls.LoadX509KeyPair("tls/server.pem", "tls/server.key")
 	if err != nil {
 		log.Fatalf("failed to load server cert: %v", err)
 	}
@@ -100,13 +100,13 @@ func main() {
 	}()
 
 	go func() {
-		// curl https://e2e.apisix.local:443/hello --resolve e2e.apisix.local:443:127.0.0.1 --cacert ca.crt
+		// curl https://e2e.apisix.local:443/hello --resolve e2e.apisix.local:443:127.0.0.1 --cacert ca.pem
 		log.Printf("starting https server in 443")
-		log.Fatalln(http.ListenAndServeTLS(":443", "tls/server.crt", "tls/server.key", nil))
+		log.Fatalln(http.ListenAndServeTLS(":443", "tls/server.pem", "tls/server.key", nil))
 	}()
 
 	go func() {
-		// curl https://e2e.apisix.local:8443/hello --resolve e2e.apisix.local:8443:127.0.0.1 --cacert ca.crt --cert client.crt --key client.key
+		// curl https://e2e.apisix.local:8443/hello --resolve e2e.apisix.local:8443:127.0.0.1 --cacert ca.pem --cert client.pem --key client.key
 		log.Printf("starting mtls http server in 8443")
 		tlsConfig := &tls.Config{
 			ClientCAs:  newDefaultCACertPool(),
@@ -116,7 +116,7 @@ func main() {
 			Addr:      ":8443",
 			TLSConfig: tlsConfig,
 		}
-		log.Fatalln(server.ListenAndServeTLS("tls/server.crt", "tls/server.key"))
+		log.Fatalln(server.ListenAndServeTLS("tls/server.pem", "tls/server.key"))
 	}()
 
 	go func() {
@@ -138,7 +138,7 @@ func main() {
 	}()
 
 	go func() {
-		// grpcurl -cacert ca.crt -servername e2e.apisix.local  -d '{"name": "apisix-ingress"}' 127.0.0.1:50052 helloworld.Greeter/SayHello
+		// grpcurl -cacert ca.pem -servername e2e.apisix.local  -d '{"name": "apisix-ingress"}' 127.0.0.1:50052 helloworld.Greeter/SayHello
 		lis, err := net.Listen("tcp", ":50052")
 		if err != nil {
 			log.Fatalf("failed to listen: %v", err)
@@ -158,7 +158,7 @@ func main() {
 	}()
 
 	go func() {
-		// grpcurl -key client.key -cert client.crt -cacert ca.crt -servername e2e.apisix.local  -d '{"name": "apisix-ingress"}' 127.0.0.1:50053 helloworld.Greeter/SayHello
+		// grpcurl -key client.key -cert client.pem -cacert ca.pem -servername e2e.apisix.local  -d '{"name": "apisix-ingress"}' 127.0.0.1:50053 helloworld.Greeter/SayHello
 		lis, err := net.Listen("tcp", ":50053")
 		if err != nil {
 			log.Fatalf("failed to listen: %v", err)
