@@ -68,7 +68,8 @@ func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
 
 	// TODO Add mutex here to avoid dog-pile effection.
 	url := r.url + "/" + rid
-	resp, err := r.cluster.getResource(ctx, url)
+	resp, err := r.cluster.getResource(ctx, url, "route")
+	r.cluster.metricsCollector.IncrAPISIXRequest("route")
 	if err != nil {
 		if err == cache.ErrNotFound {
 			log.Warnw("route not found",
@@ -112,7 +113,8 @@ func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 		zap.String("cluster", "default"),
 		zap.String("url", r.url),
 	)
-	routeItems, err := r.cluster.listResource(ctx, r.url)
+	routeItems, err := r.cluster.listResource(ctx, r.url, "route")
+	r.cluster.metricsCollector.IncrAPISIXRequest("route")
 	if err != nil {
 		log.Errorf("failed to list routes: %s", err)
 		return nil, err
@@ -156,7 +158,8 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 
 	url := r.url + "/" + obj.ID
 	log.Debugw("creating route", zap.ByteString("body", data), zap.String("url", url))
-	resp, err := r.cluster.createResource(ctx, url, bytes.NewReader(data))
+	resp, err := r.cluster.createResource(ctx, url, "route", bytes.NewReader(data))
+	r.cluster.metricsCollector.IncrAPISIXRequest("route")
 	if err != nil {
 		log.Errorf("failed to create route: %s", err)
 		return nil, err
@@ -184,9 +187,11 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 		return err
 	}
 	url := r.url + "/" + obj.ID
-	if err := r.cluster.deleteResource(ctx, url); err != nil {
+	if err := r.cluster.deleteResource(ctx, url, "route"); err != nil {
+		r.cluster.metricsCollector.IncrAPISIXRequest("route")
 		return err
 	}
+	r.cluster.metricsCollector.IncrAPISIXRequest("route")
 	if err := r.cluster.cache.DeleteRoute(obj); err != nil {
 		log.Errorf("failed to reflect route delete to cache: %s", err)
 		if err != cache.ErrNotFound {
@@ -212,7 +217,8 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	}
 	url := r.url + "/" + obj.ID
 	log.Debugw("updating route", zap.ByteString("body", body), zap.String("url", url))
-	resp, err := r.cluster.updateResource(ctx, url, bytes.NewReader(body))
+	resp, err := r.cluster.updateResource(ctx, url, "route", bytes.NewReader(body))
+	r.cluster.metricsCollector.IncrAPISIXRequest("route")
 	if err != nil {
 		return nil, err
 	}

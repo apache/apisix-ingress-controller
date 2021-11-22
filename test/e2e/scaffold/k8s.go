@@ -17,6 +17,8 @@ package scaffold
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -27,11 +29,14 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/gruntwork-io/terratest/modules/k8s"
+	"github.com/gruntwork-io/terratest/modules/retry"
+	"github.com/gruntwork-io/terratest/modules/testing"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 )
 
 type counter struct {
@@ -272,8 +277,9 @@ func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -293,8 +299,9 @@ func (s *Scaffold) ListApisixGlobalRules() ([]*v1.GlobalRule, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -314,8 +321,9 @@ func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -335,8 +343,9 @@ func (s *Scaffold) ListApisixConsumers() ([]*v1.Consumer, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -356,8 +365,9 @@ func (s *Scaffold) ListApisixStreamRoutes() ([]*v1.StreamRoute, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -377,8 +387,9 @@ func (s *Scaffold) ListApisixSsl() ([]*v1.Ssl, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -466,4 +477,38 @@ func (s *Scaffold) newAPISIXTunnels() error {
 // Namespace returns the current working namespace.
 func (s *Scaffold) Namespace() string {
 	return s.kubectlOptions.Namespace
+}
+
+func (s *Scaffold) EnsureNumEndpointsReady(t testing.TestingT, endpointsName string, desired int) {
+	e, err := k8s.GetKubernetesClientFromOptionsE(t, s.kubectlOptions)
+	assert.Nil(t, err, "get kubernetes client")
+	statusMsg := fmt.Sprintf("Wait for endpoints %s to be ready.", endpointsName)
+	message := retry.DoWithRetry(
+		t,
+		statusMsg,
+		20,
+		5*time.Second,
+		func() (string, error) {
+			endpoints, err := e.CoreV1().Endpoints(s.Namespace()).Get(context.Background(), endpointsName, metav1.GetOptions{})
+			if err != nil {
+				return "", err
+			}
+			readyNum := 0
+			for _, subset := range endpoints.Subsets {
+				readyNum += len(subset.Addresses)
+			}
+			if readyNum == desired {
+				return "Service is now available", nil
+			}
+			return fmt.Sprintf("Endpoints not ready yet, expect %v, actual %v", desired, readyNum), nil
+		},
+	)
+	ginkgo.GinkgoT().Log(message)
+}
+
+// GetKubernetesClient get kubernetes client use by scaffold
+func (s *Scaffold) GetKubernetesClient() *kubernetes.Clientset {
+	client, err := k8s.GetKubernetesClientFromOptionsE(s.t, s.kubectlOptions)
+	assert.Nil(ginkgo.GinkgoT(), err, "get kubernetes client")
+	return client
 }
