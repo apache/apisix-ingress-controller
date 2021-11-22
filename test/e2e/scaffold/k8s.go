@@ -36,6 +36,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 )
 
 type counter struct {
@@ -503,4 +504,11 @@ func (s *Scaffold) EnsureNumEndpointsReady(t testing.TestingT, endpointsName str
 		},
 	)
 	ginkgo.GinkgoT().Log(message)
+}
+
+// GetKubernetesClient get kubernetes client use by scaffold
+func (s *Scaffold) GetKubernetesClient() *kubernetes.Clientset {
+	client, err := k8s.GetKubernetesClientFromOptionsE(s.t, s.kubectlOptions)
+	assert.Nil(ginkgo.GinkgoT(), err, "get kubernetes client")
+	return client
 }
