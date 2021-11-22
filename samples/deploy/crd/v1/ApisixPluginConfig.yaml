@@ -28,7 +28,7 @@ spec:
   scope: Namespaced
   names:
     plural: apisixpluginconfigs
-    singular: apisixpluginconfigs
+    singular: apisixpluginconfig
     kind: ApisixPluginConfig
     shortNames:
       - apc
