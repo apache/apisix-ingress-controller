@@ -191,6 +191,7 @@ type Upstream struct {
 	TLS     *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
 }
 
+// ClientTLS is tls cert and key use in mTLS
 type ClientTLS struct {
 	Cert string `json:"client_cert,omitempty" yaml:"client_cert,omitempty"`
 	Key  string `json:"client_key,omitempty" yaml:"client_key,omitempty"`

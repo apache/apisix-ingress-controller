@@ -21,10 +21,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
-	"github.com/apache/apisix-ingress-controller/test/e2e/testbackend/client"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+	"github.com/apache/apisix-ingress-controller/test/e2e/testbackend/client"
 )
 
 var _ = ginkgo.Describe("ApisixUpstreams mTLS test", func() {
