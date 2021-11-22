@@ -12,15 +12,28 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package e2e
+package config
 
-import (
-	_ "github.com/apache/apisix-ingress-controller/test/e2e/annotations"
-	_ "github.com/apache/apisix-ingress-controller/test/e2e/config"
-	_ "github.com/apache/apisix-ingress-controller/test/e2e/endpoints"
-	_ "github.com/apache/apisix-ingress-controller/test/e2e/features"
-	_ "github.com/apache/apisix-ingress-controller/test/e2e/ingress"
-	_ "github.com/apache/apisix-ingress-controller/test/e2e/plugins"
+const (
+	_ingressAPISIXConfigMapTemplate = `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-apisix-controller-config
+data:
+  config.yaml: |
+    apisix:
+      default_cluster_base_url: "{{.DEFAULT_CLUSTER_BASE_URL}}"
+      default_cluster_admin_key: "{{.DEFAULT_CLUSTER_ADMIN_KEY}}"
+    log_level: "debug"
+    log_output: "stdout"
+    http_listen: ":8080"
+    https_listen: ":8443"
+    enable_profiling: true
+    kubernetes:
+      namespace_selector:
+      - %s
+      apisix_route_version: "apisix.apache.org/v2beta2"
+      watch_endpoint_slices: true
+`
 )
-
-func runE2E() {}
