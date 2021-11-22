@@ -21,7 +21,6 @@ metadata:
   name: apisixpluginconfigs.apisix.apache.org
 spec:
   group: apisix.apache.org
-  group: apisix.apache.org
   scope: Namespaced
   names:
     plural: apisixpluginconfigs
