@@ -53,7 +53,7 @@ func (s *ecServer) UnaryEcho(ctx context.Context, req *ecpb.EchoRequest) (*ecpb.
 }
 
 func hello(w http.ResponseWriter, req *http.Request) {
-	log.Printf("%s %s%s from %v", req.Method, req.Host,  req.RequestURI, req.RemoteAddr)
+	log.Printf("%s %s%s from %v", req.Method, req.Host, req.RequestURI, req.RemoteAddr)
 	_, _ = fmt.Fprintf(w, "Hello World\n")
 }
 
@@ -77,10 +77,10 @@ func loadTLSCredentials(clientAuth bool) credentials.TransportCredentials {
 		// Create the credentials and return it
 		config = &tls.Config{
 			Certificates: []tls.Certificate{serverCert},
-			ClientCAs:  newDefaultCACertPool(),
-			ClientAuth: tls.RequireAndVerifyClientCert,
+			ClientCAs:    newDefaultCACertPool(),
+			ClientAuth:   tls.RequireAndVerifyClientCert,
 		}
-	}else {
+	} else {
 		// Create the credentials and return it
 		config = &tls.Config{
 			Certificates: []tls.Certificate{serverCert},

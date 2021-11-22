@@ -56,14 +56,14 @@ type Options struct {
 }
 
 type Scaffold struct {
-	opts                   *Options
-	kubectlOptions         *k8s.KubectlOptions
-	namespace              string
-	t                      testing.TestingT
-	nodes                  []corev1.Node
-	etcdService            *corev1.Service
-	apisixService          *corev1.Service
-	httpbinDeployment      *appsv1.Deployment
+	opts               *Options
+	kubectlOptions     *k8s.KubectlOptions
+	namespace          string
+	t                  testing.TestingT
+	nodes              []corev1.Node
+	etcdService        *corev1.Service
+	apisixService      *corev1.Service
+	httpbinDeployment  *appsv1.Deployment
 	httpbinService     *corev1.Service
 	testBackendService *corev1.Service
 	finializers        []func()
