@@ -30,7 +30,7 @@ kind: ApisixUpstream
 metadata:
   name: %s
 spec:
-  scheme: https
+  scheme: %s
   tlsSecret:
     name: %s
     namespace: %s
@@ -38,8 +38,8 @@ spec:
 )
 
 // NewApisixUpstreamsWithMTLS new a ApisixUpstreams CRD
-func (s *Scaffold) NewApisixUpstreamsWithMTLS(name, secretName string) error {
-	tls := fmt.Sprintf(_apisixUpstreamsWithMTLSTemplate, name, secretName, s.Namespace())
+func (s *Scaffold) NewApisixUpstreamsWithMTLS(name, scheme, secretName string) error {
+	tls := fmt.Sprintf(_apisixUpstreamsWithMTLSTemplate, name, scheme, secretName, s.Namespace())
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, tls); err != nil {
 		return err
 	}
