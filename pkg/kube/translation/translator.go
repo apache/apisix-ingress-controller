@@ -22,11 +22,10 @@ import (
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
-	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	configv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
-	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -52,7 +51,7 @@ type Translator interface {
 	TranslateUpstreamNodes(kube.Endpoint, int32, types.Labels) (apisixv1.UpstreamNodes, error)
 	// TranslateUpstreamConfig translates ApisixUpstreamConfig (part of ApisixUpstream)
 	// to APISIX Upstream, it doesn't fill the the Upstream metadata and nodes.
-	TranslateUpstreamConfig(*configv1.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
+	TranslateUpstreamConfig(*configv2beta3.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
 	// TranslateUpstream composes an upstream according to the
 	// given namespace, name (searching Service/Endpoints) and port (filtering Endpoints).
 	// The returned Upstream doesn't have metadata info.
@@ -66,15 +65,6 @@ type Translator interface {
 	// TranslateIngress composes a couple of APISIX Routes and upstreams according
 	// to the given Ingress resource.
 	TranslateIngress(kube.Ingress) (*TranslateContext, error)
-	// TranslateRouteV1 translates the configv1.ApisixRoute object into several Route
-	// and Upstream resources.
-	TranslateRouteV1(*configv1.ApisixRoute) (*TranslateContext, error)
-	// TranslateRouteV2alpha1 translates the configv2alpha1.ApisixRoute object into several Route
-	// and Upstream resources.
-	TranslateRouteV2alpha1(*configv2alpha1.ApisixRoute) (*TranslateContext, error)
-	// TranslateRouteV2alpha1NotStrictly translates the configv2alpha1.ApisixRoute object into several Route
-	// and Upstream resources not strictly, only used for delete event.
-	TranslateRouteV2alpha1NotStrictly(*configv2alpha1.ApisixRoute) (*TranslateContext, error)
 	// TranslateRouteV2beta1 translates the configv2beta1.ApisixRoute object into several Route
 	// and Upstream resources.
 	TranslateRouteV2beta1(*configv2beta1.ApisixRoute) (*TranslateContext, error)
@@ -87,14 +77,20 @@ type Translator interface {
 	// TranslateRouteV2beta2NotStrictly translates the configv2beta2.ApisixRoute object into several Route
 	// and Upstream resources not strictly, only used for delete event.
 	TranslateRouteV2beta2NotStrictly(*configv2beta2.ApisixRoute) (*TranslateContext, error)
-	// TranslateSSL translates the configv2alpha1.ApisixTls object into the APISIX SSL resource.
-	TranslateSSL(*configv1.ApisixTls) (*apisixv1.Ssl, error)
-	// TranslateClusterConfig translates the configv2alpha1.ApisixClusterConfig object into the APISIX
+	// TranslateRouteV2beta3 translates the configv2beta3.ApisixRoute object into several Route
+	// and Upstream resources.
+	TranslateRouteV2beta3(*configv2beta3.ApisixRoute) (*TranslateContext, error)
+	// TranslateRouteV2beta3NotStrictly translates the configv2beta3.ApisixRoute object into several Route
+	// and Upstream resources not strictly, only used for delete event.
+	TranslateRouteV2beta3NotStrictly(*configv2beta3.ApisixRoute) (*TranslateContext, error)
+	// TranslateSSL translates the configv2beta3.ApisixTls object into the APISIX SSL resource.
+	TranslateSSL(*configv2beta3.ApisixTls) (*apisixv1.Ssl, error)
+	// TranslateClusterConfig translates the configv2beta3.ApisixClusterConfig object into the APISIX
 	// Global Rule resource.
-	TranslateClusterConfig(*configv2alpha1.ApisixClusterConfig) (*apisixv1.GlobalRule, error)
-	// TranslateApisixConsumer translates the configv2alpha1.APisixConsumer object into the APISIX Consumer
+	TranslateClusterConfig(*configv2beta3.ApisixClusterConfig) (*apisixv1.GlobalRule, error)
+	// TranslateApisixConsumer translates the configv2beta3.APisixConsumer object into the APISIX Consumer
 	// resource.
-	TranslateApisixConsumer(*configv2alpha1.ApisixConsumer) (*apisixv1.Consumer, error)
+	TranslateApisixConsumer(*configv2beta3.ApisixConsumer) (*apisixv1.Consumer, error)
 	// ExtractKeyPair extracts certificate and private key pair from secret
 	// Supports APISIX style ("cert" and "key") and Kube style ("tls.crt" and "tls.key)
 	ExtractKeyPair(s *corev1.Secret, hasPrivateKey bool) ([]byte, []byte, error)
@@ -107,7 +103,7 @@ type TranslatorOptions struct {
 	PodLister            listerscorev1.PodLister
 	EndpointLister       kube.EndpointLister
 	ServiceLister        listerscorev1.ServiceLister
-	ApisixUpstreamLister listersv1.ApisixUpstreamLister
+	ApisixUpstreamLister listersv2beta3.ApisixUpstreamLister
 	SecretLister         listerscorev1.SecretLister
 	UseEndpointSlices    bool
 }
@@ -123,7 +119,7 @@ func NewTranslator(opts *TranslatorOptions) Translator {
 	}
 }
 
-func (t *translator) TranslateUpstreamConfig(au *configv1.ApisixUpstreamConfig) (*apisixv1.Upstream, error) {
+func (t *translator) TranslateUpstreamConfig(au *configv2beta3.ApisixUpstreamConfig) (*apisixv1.Upstream, error) {
 	ups := apisixv1.NewDefaultUpstream()
 	if err := t.translateUpstreamScheme(au.Scheme, ups); err != nil {
 		return nil, err

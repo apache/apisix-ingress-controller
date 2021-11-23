@@ -25,7 +25,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
@@ -106,7 +106,7 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 			log.Warnf("discard the stale ApisixConsumer delete event since the %s exists", key)
 			return nil
 		}
-		ac = ev.Tombstone.(*configv2alpha1.ApisixConsumer)
+		ac = ev.Tombstone.(*configv2beta3.ApisixConsumer)
 	}
 
 	consumer, err := c.controller.translator.TranslateApisixConsumer(ac)
@@ -172,8 +172,8 @@ func (c *apisixConsumerController) onAdd(obj interface{}) {
 }
 
 func (c *apisixConsumerController) onUpdate(oldObj, newObj interface{}) {
-	prev := oldObj.(*configv2alpha1.ApisixConsumer)
-	curr := newObj.(*configv2alpha1.ApisixConsumer)
+	prev := oldObj.(*configv2beta3.ApisixConsumer)
+	curr := newObj.(*configv2beta3.ApisixConsumer)
 	if prev.ResourceVersion >= curr.ResourceVersion {
 		return
 	}
@@ -197,13 +197,13 @@ func (c *apisixConsumerController) onUpdate(oldObj, newObj interface{}) {
 }
 
 func (c *apisixConsumerController) onDelete(obj interface{}) {
-	ac, ok := obj.(*configv2alpha1.ApisixConsumer)
+	ac, ok := obj.(*configv2beta3.ApisixConsumer)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			return
 		}
-		ac = tombstone.Obj.(*configv2alpha1.ApisixConsumer)
+		ac = tombstone.Obj.(*configv2beta3.ApisixConsumer)
 	}
 
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)

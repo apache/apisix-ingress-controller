@@ -20,7 +20,7 @@ package fake
 import (
 	"context"
 
-	v2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	v2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,29 +31,29 @@ import (
 
 // FakeApisixConsumers implements ApisixConsumerInterface
 type FakeApisixConsumers struct {
-	Fake *FakeApisixV2alpha1
+	Fake *FakeApisixV2beta3
 	ns   string
 }
 
-var apisixconsumersResource = schema.GroupVersionResource{Group: "apisix.apache.org", Version: "v2alpha1", Resource: "apisixconsumers"}
+var apisixconsumersResource = schema.GroupVersionResource{Group: "apisix.apache.org", Version: "v2beta3", Resource: "apisixconsumers"}
 
-var apisixconsumersKind = schema.GroupVersionKind{Group: "apisix.apache.org", Version: "v2alpha1", Kind: "ApisixConsumer"}
+var apisixconsumersKind = schema.GroupVersionKind{Group: "apisix.apache.org", Version: "v2beta3", Kind: "ApisixConsumer"}
 
 // Get takes name of the apisixConsumer, and returns the corresponding apisixConsumer object, and an error if there is any.
-func (c *FakeApisixConsumers) Get(ctx context.Context, name string, options v1.GetOptions) (result *v2alpha1.ApisixConsumer, err error) {
+func (c *FakeApisixConsumers) Get(ctx context.Context, name string, options v1.GetOptions) (result *v2beta3.ApisixConsumer, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(apisixconsumersResource, c.ns, name), &v2alpha1.ApisixConsumer{})
+		Invokes(testing.NewGetAction(apisixconsumersResource, c.ns, name), &v2beta3.ApisixConsumer{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v2alpha1.ApisixConsumer), err
+	return obj.(*v2beta3.ApisixConsumer), err
 }
 
 // List takes label and field selectors, and returns the list of ApisixConsumers that match those selectors.
-func (c *FakeApisixConsumers) List(ctx context.Context, opts v1.ListOptions) (result *v2alpha1.ApisixConsumerList, err error) {
+func (c *FakeApisixConsumers) List(ctx context.Context, opts v1.ListOptions) (result *v2beta3.ApisixConsumerList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(apisixconsumersResource, apisixconsumersKind, c.ns, opts), &v2alpha1.ApisixConsumerList{})
+		Invokes(testing.NewListAction(apisixconsumersResource, apisixconsumersKind, c.ns, opts), &v2beta3.ApisixConsumerList{})
 
 	if obj == nil {
 		return nil, err
@@ -63,8 +63,8 @@ func (c *FakeApisixConsumers) List(ctx context.Context, opts v1.ListOptions) (re
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v2alpha1.ApisixConsumerList{ListMeta: obj.(*v2alpha1.ApisixConsumerList).ListMeta}
-	for _, item := range obj.(*v2alpha1.ApisixConsumerList).Items {
+	list := &v2beta3.ApisixConsumerList{ListMeta: obj.(*v2beta3.ApisixConsumerList).ListMeta}
+	for _, item := range obj.(*v2beta3.ApisixConsumerList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -80,43 +80,43 @@ func (c *FakeApisixConsumers) Watch(ctx context.Context, opts v1.ListOptions) (w
 }
 
 // Create takes the representation of a apisixConsumer and creates it.  Returns the server's representation of the apisixConsumer, and an error, if there is any.
-func (c *FakeApisixConsumers) Create(ctx context.Context, apisixConsumer *v2alpha1.ApisixConsumer, opts v1.CreateOptions) (result *v2alpha1.ApisixConsumer, err error) {
+func (c *FakeApisixConsumers) Create(ctx context.Context, apisixConsumer *v2beta3.ApisixConsumer, opts v1.CreateOptions) (result *v2beta3.ApisixConsumer, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(apisixconsumersResource, c.ns, apisixConsumer), &v2alpha1.ApisixConsumer{})
+		Invokes(testing.NewCreateAction(apisixconsumersResource, c.ns, apisixConsumer), &v2beta3.ApisixConsumer{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v2alpha1.ApisixConsumer), err
+	return obj.(*v2beta3.ApisixConsumer), err
 }
 
 // Update takes the representation of a apisixConsumer and updates it. Returns the server's representation of the apisixConsumer, and an error, if there is any.
-func (c *FakeApisixConsumers) Update(ctx context.Context, apisixConsumer *v2alpha1.ApisixConsumer, opts v1.UpdateOptions) (result *v2alpha1.ApisixConsumer, err error) {
+func (c *FakeApisixConsumers) Update(ctx context.Context, apisixConsumer *v2beta3.ApisixConsumer, opts v1.UpdateOptions) (result *v2beta3.ApisixConsumer, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(apisixconsumersResource, c.ns, apisixConsumer), &v2alpha1.ApisixConsumer{})
+		Invokes(testing.NewUpdateAction(apisixconsumersResource, c.ns, apisixConsumer), &v2beta3.ApisixConsumer{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v2alpha1.ApisixConsumer), err
+	return obj.(*v2beta3.ApisixConsumer), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeApisixConsumers) UpdateStatus(ctx context.Context, apisixConsumer *v2alpha1.ApisixConsumer, opts v1.UpdateOptions) (*v2alpha1.ApisixConsumer, error) {
+func (c *FakeApisixConsumers) UpdateStatus(ctx context.Context, apisixConsumer *v2beta3.ApisixConsumer, opts v1.UpdateOptions) (*v2beta3.ApisixConsumer, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(apisixconsumersResource, "status", c.ns, apisixConsumer), &v2alpha1.ApisixConsumer{})
+		Invokes(testing.NewUpdateSubresourceAction(apisixconsumersResource, "status", c.ns, apisixConsumer), &v2beta3.ApisixConsumer{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v2alpha1.ApisixConsumer), err
+	return obj.(*v2beta3.ApisixConsumer), err
 }
 
 // Delete takes name of the apisixConsumer and deletes it. Returns an error if one occurs.
 func (c *FakeApisixConsumers) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(apisixconsumersResource, c.ns, name), &v2alpha1.ApisixConsumer{})
+		Invokes(testing.NewDeleteAction(apisixconsumersResource, c.ns, name), &v2beta3.ApisixConsumer{})
 
 	return err
 }
@@ -125,17 +125,17 @@ func (c *FakeApisixConsumers) Delete(ctx context.Context, name string, opts v1.D
 func (c *FakeApisixConsumers) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(apisixconsumersResource, c.ns, listOpts)
 
-	_, err := c.Fake.Invokes(action, &v2alpha1.ApisixConsumerList{})
+	_, err := c.Fake.Invokes(action, &v2beta3.ApisixConsumerList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched apisixConsumer.
-func (c *FakeApisixConsumers) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v2alpha1.ApisixConsumer, err error) {
+func (c *FakeApisixConsumers) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v2beta3.ApisixConsumer, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(apisixconsumersResource, c.ns, name, pt, data, subresources...), &v2alpha1.ApisixConsumer{})
+		Invokes(testing.NewPatchSubresourceAction(apisixconsumersResource, c.ns, name, pt, data, subresources...), &v2beta3.ApisixConsumer{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v2alpha1.ApisixConsumer), err
+	return obj.(*v2beta3.ApisixConsumer), err
 }

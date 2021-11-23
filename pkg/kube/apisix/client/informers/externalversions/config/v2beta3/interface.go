@@ -23,8 +23,16 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// ApisixClusterConfigs returns a ApisixClusterConfigInformer.
+	ApisixClusterConfigs() ApisixClusterConfigInformer
+	// ApisixConsumers returns a ApisixConsumerInformer.
+	ApisixConsumers() ApisixConsumerInformer
 	// ApisixRoutes returns a ApisixRouteInformer.
 	ApisixRoutes() ApisixRouteInformer
+	// ApisixTlses returns a ApisixTlsInformer.
+	ApisixTlses() ApisixTlsInformer
+	// ApisixUpstreams returns a ApisixUpstreamInformer.
+	ApisixUpstreams() ApisixUpstreamInformer
 }
 
 type version struct {
@@ -38,7 +46,27 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
+// ApisixClusterConfigs returns a ApisixClusterConfigInformer.
+func (v *version) ApisixClusterConfigs() ApisixClusterConfigInformer {
+	return &apisixClusterConfigInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// ApisixConsumers returns a ApisixConsumerInformer.
+func (v *version) ApisixConsumers() ApisixConsumerInformer {
+	return &apisixConsumerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
 // ApisixRoutes returns a ApisixRouteInformer.
 func (v *version) ApisixRoutes() ApisixRouteInformer {
 	return &apisixRouteInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// ApisixTlses returns a ApisixTlsInformer.
+func (v *version) ApisixTlses() ApisixTlsInformer {
+	return &apisixTlsInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// ApisixUpstreams returns a ApisixUpstreamInformer.
+func (v *version) ApisixUpstreams() ApisixUpstreamInformer {
+	return &apisixUpstreamInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

@@ -17,4 +17,12 @@
 
 package v2beta3
 
+type ApisixClusterConfigExpansion interface{}
+
+type ApisixConsumerExpansion interface{}
+
 type ApisixRouteExpansion interface{}
+
+type ApisixTlsExpansion interface{}
+
+type ApisixUpstreamExpansion interface{}

@@ -27,8 +27,24 @@ type FakeApisixV2beta3 struct {
 	*testing.Fake
 }
 
+func (c *FakeApisixV2beta3) ApisixClusterConfigs() v2beta3.ApisixClusterConfigInterface {
+	return &FakeApisixClusterConfigs{c}
+}
+
+func (c *FakeApisixV2beta3) ApisixConsumers(namespace string) v2beta3.ApisixConsumerInterface {
+	return &FakeApisixConsumers{c, namespace}
+}
+
 func (c *FakeApisixV2beta3) ApisixRoutes(namespace string) v2beta3.ApisixRouteInterface {
 	return &FakeApisixRoutes{c, namespace}
+}
+
+func (c *FakeApisixV2beta3) ApisixTlses(namespace string) v2beta3.ApisixTlsInterface {
+	return &FakeApisixTlses{c, namespace}
+}
+
+func (c *FakeApisixV2beta3) ApisixUpstreams(namespace string) v2beta3.ApisixUpstreamInterface {
+	return &FakeApisixUpstreams{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

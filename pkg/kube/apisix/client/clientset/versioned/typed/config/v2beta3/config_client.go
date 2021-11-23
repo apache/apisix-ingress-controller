@@ -25,7 +25,11 @@ import (
 
 type ApisixV2beta3Interface interface {
 	RESTClient() rest.Interface
+	ApisixClusterConfigsGetter
+	ApisixConsumersGetter
 	ApisixRoutesGetter
+	ApisixTlsesGetter
+	ApisixUpstreamsGetter
 }
 
 // ApisixV2beta3Client is used to interact with features provided by the apisix.apache.org group.
@@ -33,8 +37,24 @@ type ApisixV2beta3Client struct {
 	restClient rest.Interface
 }
 
+func (c *ApisixV2beta3Client) ApisixClusterConfigs() ApisixClusterConfigInterface {
+	return newApisixClusterConfigs(c)
+}
+
+func (c *ApisixV2beta3Client) ApisixConsumers(namespace string) ApisixConsumerInterface {
+	return newApisixConsumers(c, namespace)
+}
+
 func (c *ApisixV2beta3Client) ApisixRoutes(namespace string) ApisixRouteInterface {
 	return newApisixRoutes(c, namespace)
+}
+
+func (c *ApisixV2beta3Client) ApisixTlses(namespace string) ApisixTlsInterface {
+	return newApisixTlses(c, namespace)
+}
+
+func (c *ApisixV2beta3Client) ApisixUpstreams(namespace string) ApisixUpstreamInterface {
+	return newApisixUpstreams(c, namespace)
 }
 
 // NewForConfig creates a new ApisixV2beta3Client for the given config.

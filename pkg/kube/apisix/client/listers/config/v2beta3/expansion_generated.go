@@ -17,6 +17,18 @@
 
 package v2beta3
 
+// ApisixClusterConfigListerExpansion allows custom methods to be added to
+// ApisixClusterConfigLister.
+type ApisixClusterConfigListerExpansion interface{}
+
+// ApisixConsumerListerExpansion allows custom methods to be added to
+// ApisixConsumerLister.
+type ApisixConsumerListerExpansion interface{}
+
+// ApisixConsumerNamespaceListerExpansion allows custom methods to be added to
+// ApisixConsumerNamespaceLister.
+type ApisixConsumerNamespaceListerExpansion interface{}
+
 // ApisixRouteListerExpansion allows custom methods to be added to
 // ApisixRouteLister.
 type ApisixRouteListerExpansion interface{}
@@ -24,3 +36,19 @@ type ApisixRouteListerExpansion interface{}
 // ApisixRouteNamespaceListerExpansion allows custom methods to be added to
 // ApisixRouteNamespaceLister.
 type ApisixRouteNamespaceListerExpansion interface{}
+
+// ApisixTlsListerExpansion allows custom methods to be added to
+// ApisixTlsLister.
+type ApisixTlsListerExpansion interface{}
+
+// ApisixTlsNamespaceListerExpansion allows custom methods to be added to
+// ApisixTlsNamespaceLister.
+type ApisixTlsNamespaceListerExpansion interface{}
+
+// ApisixUpstreamListerExpansion allows custom methods to be added to
+// ApisixUpstreamLister.
+type ApisixUpstreamListerExpansion interface{}
+
+// ApisixUpstreamNamespaceListerExpansion allows custom methods to be added to
+// ApisixUpstreamNamespaceLister.
+type ApisixUpstreamNamespaceListerExpansion interface{}
