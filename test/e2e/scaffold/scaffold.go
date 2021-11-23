@@ -338,10 +338,11 @@ func (s *Scaffold) beforeEach() {
 	err = s.newIngressAPISIXController()
 	assert.Nil(s.t, err, "initializing ingress apisix controller")
 
+	assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
 	go func() {
 		wg.Add(1)
 		defer wg.Done()
-		err = s.waitAllIngressControllerPodsAvailable()
+		err = s.WaitAllIngressControllerPodsAvailable()
 		assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
 	}()
 

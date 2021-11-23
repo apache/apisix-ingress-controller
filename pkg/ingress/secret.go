@@ -218,7 +218,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 func (c *secretController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
-		c.controller.metricsCollector.IncrSyncOperation("secret", "success")
+		c.controller.MetricsCollector.IncrSyncOperation("secret", "success")
 		return
 	}
 	log.Warnw("sync ApisixTls failed, will retry",
@@ -226,7 +226,7 @@ func (c *secretController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
-	c.controller.metricsCollector.IncrSyncOperation("secret", "failure")
+	c.controller.MetricsCollector.IncrSyncOperation("secret", "failure")
 }
 
 func (c *secretController) onAdd(obj interface{}) {
@@ -246,6 +246,8 @@ func (c *secretController) onAdd(obj interface{}) {
 		Type:   types.EventAdd,
 		Object: key,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("secret", "add")
 }
 
 func (c *secretController) onUpdate(prev, curr interface{}) {
@@ -271,6 +273,8 @@ func (c *secretController) onUpdate(prev, curr interface{}) {
 		Type:   types.EventUpdate,
 		Object: key,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("secret", "update")
 }
 
 func (c *secretController) onDelete(obj interface{}) {
@@ -303,4 +307,6 @@ func (c *secretController) onDelete(obj interface{}) {
 		Object:    key,
 		Tombstone: sec,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("secret", "delete")
 }

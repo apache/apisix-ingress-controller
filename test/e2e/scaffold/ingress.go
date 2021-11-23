@@ -277,8 +277,6 @@ spec:
             - http://apisix-service-e2e-test:9180/apisix/admin
             - --default-apisix-cluster-admin-key
             - edd1c9f034335f136f87ad84b625c8f1
-            - --app-namespace
-            - kube-system
             - --namespace-selector
             - %s
             - --apisix-route-version
@@ -443,7 +441,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	return nil
 }
 
-func (s *Scaffold) waitAllIngressControllerPodsAvailable() error {
+func (s *Scaffold) WaitAllIngressControllerPodsAvailable() error {
 	opts := metav1.ListOptions{
 		LabelSelector: "app=ingress-apisix-controller-deployment-e2e-test",
 	}
