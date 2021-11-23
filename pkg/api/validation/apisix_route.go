@@ -28,10 +28,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
@@ -80,7 +79,7 @@ var ApisixRouteValidator = kwhvalidating.ValidatorFunc(
 					}
 				}
 			}
-		case *v2alpha1.ApisixRoute:
+		case *v2beta3.ApisixRoute:
 			spec = ar.Spec
 
 			for _, h := range ar.Spec.HTTP {
@@ -89,20 +88,6 @@ var ApisixRouteValidator = kwhvalidating.ValidatorFunc(
 						plugins = append(plugins, apisixRoutePlugin{
 							p.Name, p.Config,
 						})
-					}
-				}
-			}
-		case *v1.ApisixRoute:
-			spec = ar.Spec
-
-			for _, r := range ar.Spec.Rules {
-				for _, path := range r.Http.Paths {
-					for _, p := range path.Plugins {
-						if p.Enable {
-							plugins = append(plugins, apisixRoutePlugin{
-								p.Name, p.Config,
-							})
-						}
 					}
 				}
 			}

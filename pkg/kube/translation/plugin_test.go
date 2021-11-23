@@ -28,7 +28,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixfake "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 )
@@ -41,8 +41,8 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := apisixfake.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
-	auInformer := apisixInformersFactory.Apisix().V1().ApisixUpstreams().Informer()
-	auLister := apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister()
+	auInformer := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+	auLister := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister()
 
 	processCh := make(chan struct{})
 	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -127,7 +127,7 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 
 	weight10 := 10
 	weight20 := 20
-	backends := []*configv2alpha1.ApisixRouteHTTPBackend{
+	backends := []configv2beta3.ApisixRouteHTTPBackend{
 		{
 			ServiceName: "svc-1",
 			ServicePort: intstr.IntOrString{
@@ -147,7 +147,7 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 		},
 	}
 
-	ar1 := &configv2alpha1.ApisixRoute{
+	ar1 := &configv2beta3.ApisixRoute{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ApisixRoute",
 			APIVersion: "apisix.apache.org/v2alpha1",
@@ -156,11 +156,11 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 			Name:      "ar1",
 			Namespace: "test",
 		},
-		Spec: &configv2alpha1.ApisixRouteSpec{
-			HTTP: []*configv2alpha1.ApisixRouteHTTP{
+		Spec: configv2beta3.ApisixRouteSpec{
+			HTTP: []configv2beta3.ApisixRouteHTTP{
 				{
 					Name: "r1",
-					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+					Match: configv2beta3.ApisixRouteHTTPMatch{
 						Paths: []string{"/*"},
 						Hosts: []string{"test.com"},
 					},
@@ -212,8 +212,8 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := apisixfake.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
-	auInformer := apisixInformersFactory.Apisix().V1().ApisixUpstreams().Informer()
-	auLister := apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister()
+	auInformer := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+	auLister := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister()
 
 	processCh := make(chan struct{})
 	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -299,7 +299,7 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 	weigth10 := 10
 	weight20 := 20
 
-	backends := []*configv2alpha1.ApisixRouteHTTPBackend{
+	backends := []configv2beta3.ApisixRouteHTTPBackend{
 		{
 			ServiceName: "svc-1",
 			ServicePort: intstr.IntOrString{
@@ -318,7 +318,7 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 		},
 	}
 
-	ar1 := &configv2alpha1.ApisixRoute{
+	ar1 := &configv2beta3.ApisixRoute{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ApisixRoute",
 			APIVersion: "apisix.apache.org/v2alpha1",
@@ -327,11 +327,11 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 			Name:      "ar1",
 			Namespace: "test",
 		},
-		Spec: &configv2alpha1.ApisixRouteSpec{
-			HTTP: []*configv2alpha1.ApisixRouteHTTP{
+		Spec: configv2beta3.ApisixRouteSpec{
+			HTTP: []configv2beta3.ApisixRouteHTTP{
 				{
 					Name: "r1",
-					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+					Match: configv2beta3.ApisixRouteHTTPMatch{
 						Paths: []string{"/*"},
 						Hosts: []string{"test.com"},
 					},
@@ -376,8 +376,8 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := apisixfake.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
-	auInformer := apisixInformersFactory.Apisix().V1().ApisixUpstreams().Informer()
-	auLister := apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister()
+	auInformer := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+	auLister := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister()
 
 	processCh := make(chan struct{})
 	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -463,7 +463,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	weight10 := 10
 	weight20 := 20
 
-	backends := []*configv2alpha1.ApisixRouteHTTPBackend{
+	backends := []configv2beta3.ApisixRouteHTTPBackend{
 		{
 			ServiceName: "svc-2",
 			ServicePort: intstr.IntOrString{
@@ -482,7 +482,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 		},
 	}
 
-	ar1 := &configv2alpha1.ApisixRoute{
+	ar1 := configv2beta3.ApisixRoute{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ApisixRoute",
 			APIVersion: "apisix.apache.org/v2alpha1",
@@ -491,11 +491,11 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 			Name:      "ar1",
 			Namespace: "test",
 		},
-		Spec: &configv2alpha1.ApisixRouteSpec{
-			HTTP: []*configv2alpha1.ApisixRouteHTTP{
+		Spec: configv2beta3.ApisixRouteSpec{
+			HTTP: []configv2beta3.ApisixRouteHTTP{
 				{
 					Name: "r1",
-					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+					Match: configv2beta3.ApisixRouteHTTPMatch{
 						Paths: []string{"/*"},
 						Hosts: []string{"test.com"},
 					},
@@ -535,8 +535,8 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 }
 
 func TestTranslateConsumerKeyAuthPluginWithInPlaceValue(t *testing.T) {
-	keyAuth := &configv2alpha1.ApisixConsumerKeyAuth{
-		Value: &configv2alpha1.ApisixConsumerKeyAuthValue{Key: "abc"},
+	keyAuth := &configv2beta3.ApisixConsumerKeyAuth{
+		Value: &configv2beta3.ApisixConsumerKeyAuthValue{Key: "abc"},
 	}
 	cfg, err := (&translator{}).translateConsumerKeyAuthPlugin("default", keyAuth)
 	assert.Nil(t, err)
@@ -578,7 +578,7 @@ func TestTranslateConsumerKeyAuthWithSecretRef(t *testing.T) {
 
 	<-processCh
 
-	keyAuth := &configv2alpha1.ApisixConsumerKeyAuth{
+	keyAuth := &configv2beta3.ApisixConsumerKeyAuth{
 		SecretRef: &corev1.LocalObjectReference{Name: "abc-key-auth"},
 	}
 	cfg, err := tr.translateConsumerKeyAuthPlugin("default", keyAuth)
@@ -604,8 +604,8 @@ func TestTranslateConsumerKeyAuthWithSecretRef(t *testing.T) {
 }
 
 func TestTranslateConsumerBasicAuthPluginWithInPlaceValue(t *testing.T) {
-	basicAuth := &configv2alpha1.ApisixConsumerBasicAuth{
-		Value: &configv2alpha1.ApisixConsumerBasicAuthValue{
+	basicAuth := &configv2beta3.ApisixConsumerBasicAuth{
+		Value: &configv2beta3.ApisixConsumerBasicAuthValue{
 			Username: "jack",
 			Password: "jacknice",
 		},
@@ -652,7 +652,7 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 
 	<-processCh
 
-	basicAuth := &configv2alpha1.ApisixConsumerBasicAuth{
+	basicAuth := &configv2beta3.ApisixConsumerBasicAuth{
 		SecretRef: &corev1.LocalObjectReference{Name: "jack-basic-auth"},
 	}
 	cfg, err := tr.translateConsumerBasicAuthPlugin("default", basicAuth)

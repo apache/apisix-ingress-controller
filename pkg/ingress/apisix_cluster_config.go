@@ -26,7 +26,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
@@ -106,7 +106,7 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 			log.Warnf("discard the stale ApisixClusterConfig delete event since the %s exists", key)
 			return nil
 		}
-		acc = ev.Tombstone.(*configv2alpha1.ApisixClusterConfig)
+		acc = ev.Tombstone.(*configv2beta3.ApisixClusterConfig)
 	}
 
 	// Currently we don't handle multiple cluster, so only process
@@ -214,8 +214,8 @@ func (c *apisixClusterConfigController) onAdd(obj interface{}) {
 }
 
 func (c *apisixClusterConfigController) onUpdate(oldObj, newObj interface{}) {
-	prev := oldObj.(*configv2alpha1.ApisixClusterConfig)
-	curr := newObj.(*configv2alpha1.ApisixClusterConfig)
+	prev := oldObj.(*configv2beta3.ApisixClusterConfig)
+	curr := newObj.(*configv2beta3.ApisixClusterConfig)
 	if prev.ResourceVersion >= curr.ResourceVersion {
 		return
 	}
@@ -236,13 +236,13 @@ func (c *apisixClusterConfigController) onUpdate(oldObj, newObj interface{}) {
 }
 
 func (c *apisixClusterConfigController) onDelete(obj interface{}) {
-	acc, ok := obj.(*configv2alpha1.ApisixClusterConfig)
+	acc, ok := obj.(*configv2beta3.ApisixClusterConfig)
 	if !ok {
 		tombstone, ok := obj.(*cache.DeletedFinalStateUnknown)
 		if !ok {
 			return
 		}
-		acc = tombstone.Obj.(*configv2alpha1.ApisixClusterConfig)
+		acc = tombstone.Obj.(*configv2beta3.ApisixClusterConfig)
 	}
 
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)

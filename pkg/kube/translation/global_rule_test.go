@@ -21,23 +21,23 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
-	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 )
 
 func TestTranslateClusterConfig(t *testing.T) {
 	tr := &translator{}
 
-	acc := &configv2alpha1.ApisixClusterConfig{
+	acc := &configv2beta3.ApisixClusterConfig{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "qa-apisix",
 		},
-		Spec: configv2alpha1.ApisixClusterConfigSpec{
-			Monitoring: &configv2alpha1.ApisixClusterMonitoringConfig{
-				Prometheus: configv2alpha1.ApisixClusterPrometheusConfig{
+		Spec: configv2beta3.ApisixClusterConfigSpec{
+			Monitoring: &configv2beta3.ApisixClusterMonitoringConfig{
+				Prometheus: configv2beta3.ApisixClusterPrometheusConfig{
 					Enable: true,
 				},
-				Skywalking: configv2alpha1.ApisixClusterSkywalkingConfig{
+				Skywalking: configv2beta3.ApisixClusterSkywalkingConfig{
 					Enable:      true,
 					SampleRatio: 0.5,
 				},
