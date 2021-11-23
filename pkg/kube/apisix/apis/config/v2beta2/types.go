@@ -208,7 +208,7 @@ type ApisixPluginConfig struct {
 
 	// Spec defines the desired state of ApisixPluginConfigSpec.
 	Spec   ApisixPluginConfigSpec `json:"spec" yaml:"spec"`
-	Status ApisixStatus  `json:"status,omitempty" yaml:"status,omitempty"`
+	Status ApisixStatus           `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
 // ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
