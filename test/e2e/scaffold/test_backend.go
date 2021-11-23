@@ -60,7 +60,7 @@ spec:
             tcpSocket:
               port: 80
             timeoutSeconds: 2
-          image: "localhost:5000/apache/test-backend:dev"
+          image: "localhost:5000/test-backend:dev"
           imagePullPolicy: IfNotPresent
           name: test-backend-deployment-e2e-test
           ports:
