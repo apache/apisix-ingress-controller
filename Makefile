@@ -99,7 +99,7 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 
 	docker build -t test-backend:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true ./test/e2e/testbackend
 	docker tag test-backend:$(IMAGE_TAG) $(LOCAL_REGISTRY)/test-backend:$(IMAGE_TAG)
-	docker push $(LOCAL_REGISTRY)/apache/test-backend:$(IMAGE_TAG)
+	docker push $(LOCAL_REGISTRY)/test-backend:$(IMAGE_TAG)
 
 	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(LOCAL_REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
