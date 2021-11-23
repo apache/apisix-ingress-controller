@@ -277,7 +277,7 @@ func TestTranslateIngressV1(t *testing.T) {
 		TranslatorOptions: &TranslatorOptions{
 			ServiceLister:        svcLister,
 			EndpointLister:       epLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister(),
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		},
 	}
 
@@ -497,7 +497,7 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 		TranslatorOptions: &TranslatorOptions{
 			ServiceLister:        svcLister,
 			EndpointLister:       epLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister(),
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		},
 	}
 
@@ -609,7 +609,7 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 		TranslatorOptions: &TranslatorOptions{
 			ServiceLister:        svcLister,
 			EndpointLister:       epLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister(),
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		},
 	}
 

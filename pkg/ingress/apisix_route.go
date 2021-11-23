@@ -237,10 +237,8 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	}
 	var ar kube.ApisixRoute
 	switch event.GroupVersion {
-	case kube.ApisixRouteV1:
-		ar, errLocal = c.controller.apisixRouteLister.V1(namespace, name)
-	case kube.ApisixRouteV2alpha1:
-		ar, errLocal = c.controller.apisixRouteLister.V2alpha1(namespace, name)
+	case kube.ApisixRouteV2beta3:
+		ar, errLocal = c.controller.apisixRouteLister.V2beta3(namespace, name)
 	case kube.ApisixRouteV2beta1:
 		ar, errLocal = c.controller.apisixRouteLister.V2beta1(namespace, name)
 	case kube.ApisixRouteV2beta2:
