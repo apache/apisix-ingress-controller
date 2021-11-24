@@ -168,6 +168,8 @@ rules:
       - apisixclusterconfigs/status
       - apisixconsumers
       - apisixconsumers/status
+      - apisixpluginconfig
+      - apisixpluginconfig/status
     verbs:
       - '*'
   - apiGroups:
