@@ -213,9 +213,6 @@ type ApisixPluginConfig struct {
 
 // ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
 type ApisixPluginConfigSpec struct {
-	// +kubebuilder:validation:MinLength=1
-	Desc string `json:"desc,omitempty" yaml:"desc,omitempty"`
-
 	// Plugins contains a list of ApisixRouteHTTPPluginConfig
 	// +required
 	// +kubebuilder:validation:Required

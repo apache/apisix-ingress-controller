@@ -35,10 +35,6 @@ spec:
       subresources:
         status: {}
       additionalPrinterColumns:
-        - jsonPath: .spec.desc
-          name: Desc
-          type: string
-          priority: 0
         - jsonPath: .metadata.creationTimestamp
           name: Age
           type: date
@@ -52,9 +48,6 @@ spec:
               required:
                 - plugins
               properties:
-                desc:
-                  type: string
-                  minLength: 1
                 plugins:
                   type: array
                   items:
