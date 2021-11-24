@@ -57,16 +57,17 @@ type Options struct {
 }
 
 type Scaffold struct {
-	opts              *Options
-	kubectlOptions    *k8s.KubectlOptions
-	namespace         string
-	t                 testing.TestingT
-	nodes             []corev1.Node
-	etcdService       *corev1.Service
-	apisixService     *corev1.Service
-	httpbinDeployment *appsv1.Deployment
-	httpbinService    *corev1.Service
-	finializers       []func()
+	opts               *Options
+	kubectlOptions     *k8s.KubectlOptions
+	namespace          string
+	t                  testing.TestingT
+	nodes              []corev1.Node
+	etcdService        *corev1.Service
+	apisixService      *corev1.Service
+	httpbinDeployment  *appsv1.Deployment
+	httpbinService     *corev1.Service
+	testBackendService *corev1.Service
+	finializers        []func()
 
 	apisixAdminTunnel   *k8s.Tunnel
 	apisixHttpTunnel    *k8s.Tunnel
@@ -191,6 +192,11 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
 		),
 	})
+}
+
+// GetAPISIXHTTPSEndpoint get apisix https endpoint from tunnel map
+func (s *Scaffold) GetAPISIXHTTPSEndpoint() string {
+	return s.apisixHttpsTunnel.Endpoint()
 }
 
 // NewAPISIXClientWithTCPProxy creates the HTTP client but with the TCP proxy of APISIX.
@@ -329,6 +335,11 @@ func (s *Scaffold) beforeEach() {
 		defer wg.Done()
 		k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.httpbinService.Name, 3, 2*time.Second)
 	}()
+
+	s.testBackendService, err = s.newTestBackend()
+	assert.Nil(s.t, err, "initializing test backend")
+
+	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.testBackendService.Name, 3, 2*time.Second)
 
 	if s.opts.EnableWebhooks {
 		err := generateWebhookCert(s.namespace)
