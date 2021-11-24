@@ -30,23 +30,23 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	ApisixV2beta1() apisixv2beta1.ApisixV2beta1Interface
-	ApisixV2beta2() apisixv2beta2.ApisixV2beta2Interface
 	ApisixV2beta3() apisixv2beta3.ApisixV2beta3Interface
+	ApisixV2beta2() apisixv2beta2.ApisixV2beta2Interface
+	ApisixV2beta1() apisixv2beta1.ApisixV2beta1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	apisixV2beta1 *apisixv2beta1.ApisixV2beta1Client
-	apisixV2beta2 *apisixv2beta2.ApisixV2beta2Client
 	apisixV2beta3 *apisixv2beta3.ApisixV2beta3Client
+	apisixV2beta2 *apisixv2beta2.ApisixV2beta2Client
+	apisixV2beta1 *apisixv2beta1.ApisixV2beta1Client
 }
 
-// ApisixV2beta1 retrieves the ApisixV2beta1Client
-func (c *Clientset) ApisixV2beta1() apisixv2beta1.ApisixV2beta1Interface {
-	return c.apisixV2beta1
+// ApisixV2beta3 retrieves the ApisixV2beta3Client
+func (c *Clientset) ApisixV2beta3() apisixv2beta3.ApisixV2beta3Interface {
+	return c.apisixV2beta3
 }
 
 // ApisixV2beta2 retrieves the ApisixV2beta2Client
@@ -54,9 +54,9 @@ func (c *Clientset) ApisixV2beta2() apisixv2beta2.ApisixV2beta2Interface {
 	return c.apisixV2beta2
 }
 
-// ApisixV2beta3 retrieves the ApisixV2beta3Client
-func (c *Clientset) ApisixV2beta3() apisixv2beta3.ApisixV2beta3Interface {
-	return c.apisixV2beta3
+// ApisixV2beta1 retrieves the ApisixV2beta1Client
+func (c *Clientset) ApisixV2beta1() apisixv2beta1.ApisixV2beta1Interface {
+	return c.apisixV2beta1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -80,7 +80,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
-	cs.apisixV2beta1, err = apisixv2beta1.NewForConfig(&configShallowCopy)
+	cs.apisixV2beta3, err = apisixv2beta3.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	cs.apisixV2beta3, err = apisixv2beta3.NewForConfig(&configShallowCopy)
+	cs.apisixV2beta1, err = apisixv2beta1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -104,9 +104,9 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
-	cs.apisixV2beta1 = apisixv2beta1.NewForConfigOrDie(c)
-	cs.apisixV2beta2 = apisixv2beta2.NewForConfigOrDie(c)
 	cs.apisixV2beta3 = apisixv2beta3.NewForConfigOrDie(c)
+	cs.apisixV2beta2 = apisixv2beta2.NewForConfigOrDie(c)
+	cs.apisixV2beta1 = apisixv2beta1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -115,9 +115,9 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.apisixV2beta1 = apisixv2beta1.New(c)
-	cs.apisixV2beta2 = apisixv2beta2.New(c)
 	cs.apisixV2beta3 = apisixv2beta3.New(c)
+	cs.apisixV2beta2 = apisixv2beta2.New(c)
+	cs.apisixV2beta1 = apisixv2beta1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

@@ -26,12 +26,12 @@ import (
 
 // Interface provides access to each of this group's versions.
 type Interface interface {
-	// V2beta1 provides access to shared informers for resources in V2beta1.
-	V2beta1() v2beta1.Interface
-	// V2beta2 provides access to shared informers for resources in V2beta2.
-	V2beta2() v2beta2.Interface
 	// V2beta3 provides access to shared informers for resources in V2beta3.
 	V2beta3() v2beta3.Interface
+	// V2beta2 provides access to shared informers for resources in V2beta2.
+	V2beta2() v2beta2.Interface
+	// V2beta1 provides access to shared informers for resources in V2beta1.
+	V2beta1() v2beta1.Interface
 }
 
 type group struct {
@@ -45,9 +45,9 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &group{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// V2beta1 returns a new v2beta1.Interface.
-func (g *group) V2beta1() v2beta1.Interface {
-	return v2beta1.New(g.factory, g.namespace, g.tweakListOptions)
+// V2beta3 returns a new v2beta3.Interface.
+func (g *group) V2beta3() v2beta3.Interface {
+	return v2beta3.New(g.factory, g.namespace, g.tweakListOptions)
 }
 
 // V2beta2 returns a new v2beta2.Interface.
@@ -55,7 +55,7 @@ func (g *group) V2beta2() v2beta2.Interface {
 	return v2beta2.New(g.factory, g.namespace, g.tweakListOptions)
 }
 
-// V2beta3 returns a new v2beta3.Interface.
-func (g *group) V2beta3() v2beta3.Interface {
-	return v2beta3.New(g.factory, g.namespace, g.tweakListOptions)
+// V2beta1 returns a new v2beta1.Interface.
+func (g *group) V2beta1() v2beta1.Interface {
+	return v2beta1.New(g.factory, g.namespace, g.tweakListOptions)
 }

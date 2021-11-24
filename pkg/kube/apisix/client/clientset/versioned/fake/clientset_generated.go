@@ -79,9 +79,9 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 
 var _ clientset.Interface = &Clientset{}
 
-// ApisixV2beta1 retrieves the ApisixV2beta1Client
-func (c *Clientset) ApisixV2beta1() apisixv2beta1.ApisixV2beta1Interface {
-	return &fakeapisixv2beta1.FakeApisixV2beta1{Fake: &c.Fake}
+// ApisixV2beta3 retrieves the ApisixV2beta3Client
+func (c *Clientset) ApisixV2beta3() apisixv2beta3.ApisixV2beta3Interface {
+	return &fakeapisixv2beta3.FakeApisixV2beta3{Fake: &c.Fake}
 }
 
 // ApisixV2beta2 retrieves the ApisixV2beta2Client
@@ -89,7 +89,7 @@ func (c *Clientset) ApisixV2beta2() apisixv2beta2.ApisixV2beta2Interface {
 	return &fakeapisixv2beta2.FakeApisixV2beta2{Fake: &c.Fake}
 }
 
-// ApisixV2beta3 retrieves the ApisixV2beta3Client
-func (c *Clientset) ApisixV2beta3() apisixv2beta3.ApisixV2beta3Interface {
-	return &fakeapisixv2beta3.FakeApisixV2beta3{Fake: &c.Fake}
+// ApisixV2beta1 retrieves the ApisixV2beta1Client
+func (c *Clientset) ApisixV2beta1() apisixv2beta1.ApisixV2beta1Interface {
+	return &fakeapisixv2beta1.FakeApisixV2beta1{Fake: &c.Fake}
 }
