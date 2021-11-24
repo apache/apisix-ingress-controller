@@ -466,6 +466,23 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 			return err
 		}
 
+		var timeout *apisixv1.UpstreamTimeout
+		if part.Timeout != nil {
+			timeout = &apisixv1.UpstreamTimeout{
+				Connect: apisixv1.DefaultUpstreamTimeout,
+				Read:    apisixv1.DefaultUpstreamTimeout,
+				Send:    apisixv1.DefaultUpstreamTimeout,
+			}
+			if part.Timeout.Connect.Duration > 0 {
+				timeout.Connect = int(part.Timeout.Connect.Seconds())
+			}
+			if part.Timeout.Read.Duration > 0 {
+				timeout.Read = int(part.Timeout.Read.Seconds())
+			}
+			if part.Timeout.Send.Duration > 0 {
+				timeout.Send = int(part.Timeout.Send.Seconds())
+			}
+		}
 		pluginMap := make(apisixv1.Plugins)
 		// add route plugins
 		for _, plugin := range part.Plugins {
@@ -524,15 +541,14 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 		route.UpstreamId = id.GenID(upstreamName)
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
+		route.Timeout = timeout
 
 		if len(backends) > 0 {
 			weight := _defaultWeight
 			if backend.Weight != nil {
 				weight = *backend.Weight
 			}
-			backendPoints := make([]configv2beta3.ApisixRouteHTTPBackend, 0)
-			backendPoints = append(backendPoints, backends...)
-			plugin, err := t.translateTrafficSplitPlugin(ctx, ar.Namespace, weight, backendPoints)
+			plugin, err := t.translateTrafficSplitPlugin(ctx, ar.Namespace, weight, backends)
 			if err != nil {
 				log.Errorw("failed to translate traffic-split plugin",
 					zap.Error(err),
