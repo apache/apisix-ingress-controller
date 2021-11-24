@@ -32,8 +32,8 @@ const (
 	ApisixRouteV2alpha1 = "apisix.apache.org/v2alpha1"
 	// ApisixRouteV2beta1 represents the ApisixRoute in apisix.apache.org/v2beta1 group version
 	ApisixRouteV2beta1 = "apisix.apache.org/v2beta1"
-	// ApisixRouteV2beta2 represents the ApisixRoute in apisix.apache.org/v2beta2 group version
-	ApisixRouteV2beta2 = "apisix.apache.org/v2beta2"
+	// ApisixRouteV2beta2 represents the ApisixRoute in apisix.apache.org/v2beta3 group version
+	ApisixRouteV2beta2 = "apisix.apache.org/v2beta3"
 	// ApisixRouteV2beta3 represents the ApisixRoute in apisix.apache.org/v2beta3 group version
 	ApisixRouteV2beta3 = "apisix.apache.org/v2beta3"
 )
@@ -43,9 +43,9 @@ const (
 type ApisixRouteLister interface {
 	// V2beta1 gets the ApisixRoute in apisix.apache.org/v2beta1.
 	V2beta1(string, string) (ApisixRoute, error)
-	// V2beta2 gets the ApisixRoute in apisix.apache.org/v2beta2.
+	// V2beta2 gets the ApisixRoute in apisix.apache.org/v2beta3.
 	V2beta2(string, string) (ApisixRoute, error)
-	// V2beta3 gets the ApisixRoute in apisix.apache.org/v2beta2.
+	// V2beta3 gets the ApisixRoute in apisix.apache.org/v2beta3.
 	V2beta3(string, string) (ApisixRoute, error)
 }
 
@@ -64,7 +64,7 @@ type ApisixRoute interface {
 	// V2beta1 returns the ApisixRoute in apisix.apache.org/v2beta1, the real
 	// ApisixRoute must be in this group version, otherwise will panic.
 	V2beta1() *configv2beta1.ApisixRoute
-	// V2beta2 returns the ApisixRoute in apisix.apache.org/v2beta2, the real
+	// V2beta2 returns the ApisixRoute in apisix.apache.org/v2beta3, the real
 	// ApisixRoute must be in this group version, otherwise will panic.
 	V2beta2() *configv2beta2.ApisixRoute
 	// V2beta3 returns the ApisixRoute in apisix.apache.org/v2beta3, the real
@@ -98,7 +98,7 @@ func (ar *apisixRoute) V2beta1() *configv2beta1.ApisixRoute {
 }
 func (ar *apisixRoute) V2beta2() *configv2beta2.ApisixRoute {
 	if ar.groupVersion != ApisixRouteV2beta2 {
-		panic("not a apisix.apache.org/v2beta2 ingress")
+		panic("not a apisix.apache.org/v2beta3 ingress")
 	}
 	return ar.v2beta2
 }
