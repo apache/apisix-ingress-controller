@@ -339,7 +339,11 @@ func (s *Scaffold) beforeEach() {
 	s.testBackendService, err = s.newTestBackend()
 	assert.Nil(s.t, err, "initializing test backend")
 
-	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.testBackendService.Name, 3, 2*time.Second)
+	go func() {
+		wg.Add(1)
+		defer wg.Done()
+		k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.testBackendService.Name, 3, 2*time.Second)
+	}()
 
 	if s.opts.EnableWebhooks {
 		err := generateWebhookCert(s.namespace)
