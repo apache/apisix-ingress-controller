@@ -15,6 +15,8 @@
 package translation
 
 import (
+	"fmt"
+
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -74,7 +76,7 @@ func (t *translator) translateUpstreamScheme(scheme string, ups *apisixv1.Upstre
 		return nil
 	}
 	switch scheme {
-	case apisixv1.SchemeHTTP, apisixv1.SchemeGRPC:
+	case apisixv1.SchemeHTTP, apisixv1.SchemeGRPC, apisixv1.SchemeHTTPS, apisixv1.SchemeGRPCS:
 		ups.Scheme = scheme
 		return nil
 	default:
@@ -143,6 +145,31 @@ func (t *translator) translateUpstreamHealthCheck(config *configv2beta3.HealthCh
 	}
 
 	ups.Checks = &hc
+	return nil
+}
+
+func (t translator) translateClientTLS(config *configv2beta3.ApisixSecret, ups *apisixv1.Upstream) error {
+	if config == nil {
+		return nil
+	}
+	s, err := t.SecretLister.Secrets(config.Namespace).Get(config.Name)
+	if err != nil {
+		return &translateError{
+			field:  "tlsSecret",
+			reason: fmt.Sprintf("get secret failed, %v", err),
+		}
+	}
+	cert, key, err := t.ExtractKeyPair(s, true)
+	if err != nil {
+		return &translateError{
+			field:  "tlsSecret",
+			reason: fmt.Sprintf("extract cert and key from secret failed, %v", err),
+		}
+	}
+	ups.TLS = &apisixv1.ClientTLS{
+		Cert: string(cert),
+		Key:  string(key),
+	}
 	return nil
 }
 

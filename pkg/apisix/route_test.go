@@ -30,6 +30,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -172,10 +173,11 @@ func TestRouteClient(t *testing.T) {
 	closedCh := make(chan struct{})
 	close(closedCh)
 	cli := newRouteClient(&cluster{
-		baseURL:     u.String(),
-		cli:         http.DefaultClient,
-		cache:       &dummyCache{},
-		cacheSynced: closedCh,
+		baseURL:          u.String(),
+		cli:              http.DefaultClient,
+		cache:            &dummyCache{},
+		cacheSynced:      closedCh,
+		metricsCollector: metrics.NewPrometheusCollector(),
 	})
 
 	// Create

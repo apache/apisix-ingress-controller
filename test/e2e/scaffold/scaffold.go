@@ -56,16 +56,17 @@ type Options struct {
 }
 
 type Scaffold struct {
-	opts              *Options
-	kubectlOptions    *k8s.KubectlOptions
-	namespace         string
-	t                 testing.TestingT
-	nodes             []corev1.Node
-	etcdService       *corev1.Service
-	apisixService     *corev1.Service
-	httpbinDeployment *appsv1.Deployment
-	httpbinService    *corev1.Service
-	finializers       []func()
+	opts               *Options
+	kubectlOptions     *k8s.KubectlOptions
+	namespace          string
+	t                  testing.TestingT
+	nodes              []corev1.Node
+	etcdService        *corev1.Service
+	apisixService      *corev1.Service
+	httpbinDeployment  *appsv1.Deployment
+	httpbinService     *corev1.Service
+	testBackendService *corev1.Service
+	finializers        []func()
 
 	apisixAdminTunnel   *k8s.Tunnel
 	apisixHttpTunnel    *k8s.Tunnel
@@ -192,6 +193,11 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 	})
 }
 
+// GetAPISIXHTTPSEndpoint get apisix https endpoint from tunnel map
+func (s *Scaffold) GetAPISIXHTTPSEndpoint() string {
+	return s.apisixHttpsTunnel.Endpoint()
+}
+
 // NewAPISIXClientWithTCPProxy creates the HTTP client but with the TCP proxy of APISIX.
 func (s *Scaffold) NewAPISIXClientWithTCPProxy() *httpexpect.Expect {
 	u := url.URL{
@@ -316,6 +322,11 @@ func (s *Scaffold) beforeEach() {
 
 	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.httpbinService.Name, 3, 2*time.Second)
 
+	s.testBackendService, err = s.newTestBackend()
+	assert.Nil(s.t, err, "initializing test backend")
+
+	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.testBackendService.Name, 3, 2*time.Second)
+
 	if s.opts.EnableWebhooks {
 		err := generateWebhookCert(s.namespace)
 		assert.Nil(s.t, err, "generate certs and create webhook secret")
@@ -324,7 +335,7 @@ func (s *Scaffold) beforeEach() {
 	err = s.newIngressAPISIXController()
 	assert.Nil(s.t, err, "initializing ingress apisix controller")
 
-	err = s.waitAllIngressControllerPodsAvailable()
+	err = s.WaitAllIngressControllerPodsAvailable()
 	assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
 }
 
