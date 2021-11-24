@@ -978,6 +978,11 @@ func (in *ApisixUpstreamConfig) DeepCopyInto(out *ApisixUpstreamConfig) {
 		*out = new(HealthCheck)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.TLSSecret != nil {
+		in, out := &in.TLSSecret, &out.TLSSecret
+		*out = new(ApisixSecret)
+		**out = **in
+	}
 	if in.Subsets != nil {
 		in, out := &in.Subsets, &out.Subsets
 		*out = make([]ApisixUpstreamSubset, len(*in))

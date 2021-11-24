@@ -409,6 +409,11 @@ type ApisixUpstreamConfig struct {
 	// The health check configurations for the upstream.
 	// +optional
 	HealthCheck *HealthCheck `json:"healthCheck,omitempty" yaml:"healthCheck,omitempty"`
+
+	// Set the client certificate when connecting to TLS upstream.
+	// +optional
+	TLSSecret *ApisixSecret `json:"tlsSecret,omitempty" yaml:"tlsSecret,omitempty"`
+
 	// Subsets groups the service endpoints by their labels. Usually used to differentiate
 	// service versions.
 	// +optional
