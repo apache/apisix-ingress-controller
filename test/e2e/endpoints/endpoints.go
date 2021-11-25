@@ -120,7 +120,7 @@ spec:
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
-		time.Sleep(6 * time.Second)
+		time.Sleep(12 * time.Second)
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing APISIX upstreams")
 		assert.Len(ginkgo.GinkgoT(), ups, 1)
@@ -131,7 +131,7 @@ spec:
 
 		// scale HTTPBIN, so the endpoints controller has the opportunity to update upstream.
 		assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(3))
-		time.Sleep(15 * time.Second)
+		time.Sleep(30 * time.Second)
 		ups, err = s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing APISIX upstreams")
 		assert.Len(ginkgo.GinkgoT(), ups, 1)
