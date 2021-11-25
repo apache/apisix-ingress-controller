@@ -354,7 +354,7 @@ func TestMemDBCacheSchema(t *testing.T) {
 		Name:    "plugins/p1",
 		Content: "plugin schema",
 	}
-	assert.Nil(t, c.InsertSchema(s1), "inserting schema s1")
+	assert.Nil(t, c.InsertSchema(s1), "inserting schema pc1")
 
 	s11, err := c.GetSchema("plugins/p1")
 	assert.Nil(t, err)
@@ -366,14 +366,14 @@ func TestMemDBCacheSchema(t *testing.T) {
 	s3 := &v1.Schema{
 		Name: "plugins/p3",
 	}
-	assert.Nil(t, c.InsertSchema(s2), "inserting schema s2")
-	assert.Nil(t, c.InsertSchema(s3), "inserting schema s3")
+	assert.Nil(t, c.InsertSchema(s2), "inserting schema pc2")
+	assert.Nil(t, c.InsertSchema(s3), "inserting schema pc3")
 
 	s22, err := c.GetSchema("plugins/p2")
 	assert.Nil(t, err)
 	assert.Equal(t, s2, s22)
 
-	assert.Nil(t, c.DeleteSchema(s3), "delete schema s3")
+	assert.Nil(t, c.DeleteSchema(s3), "delete schema pc3")
 
 	schemaList, err := c.ListSchema()
 	assert.Nil(t, err, "listing schema")
@@ -388,4 +388,59 @@ func TestMemDBCacheSchema(t *testing.T) {
 		Name: "plugins/p4",
 	}
 	assert.Error(t, ErrNotFound, c.DeleteSchema(s4))
+}
+
+func TestMemDBCachePluginConfig(t *testing.T) {
+	c, err := NewMemDBCache()
+	assert.Nil(t, err, "NewMemDBCache")
+
+	pc1 := &v1.PluginConfig{
+		Metadata: v1.Metadata{
+			ID:   "1",
+			Name: "name1",
+		},
+	}
+	assert.Nil(t, c.InsertPluginConfig(pc1), "inserting plugin_config s1")
+
+	pc11, err := c.GetPluginConfig("1")
+	assert.Nil(t, err)
+	assert.Equal(t, pc1, pc11)
+
+	pc2 := &v1.PluginConfig{
+		Metadata: v1.Metadata{
+			ID:   "2",
+			Name: "name2",
+		},
+	}
+	s3 := &v1.PluginConfig{
+		Metadata: v1.Metadata{
+			ID:   "3",
+			Name: "name3",
+		},
+	}
+	assert.Nil(t, c.InsertPluginConfig(pc2), "inserting plugin_config s2")
+	assert.Nil(t, c.InsertPluginConfig(s3), "inserting plugin_config s3")
+
+	pc22, err := c.GetPluginConfig("2")
+	assert.Nil(t, err)
+	assert.Equal(t, pc2, pc22)
+
+	assert.Nil(t, c.DeletePluginConfig(s3), "delete plugin_config s3")
+
+	pcList, err := c.ListPluginConfigs()
+	assert.Nil(t, err, "listing plugin_config")
+
+	if pcList[0].Name > pcList[1].Name {
+		pcList[0], pcList[1] = pcList[1], pcList[0]
+	}
+	assert.Equal(t, pcList[0], pc1)
+	assert.Equal(t, pcList[1], pc2)
+
+	s4 := &v1.PluginConfig{
+		Metadata: v1.Metadata{
+			ID:   "4",
+			Name: "name4",
+		},
+	}
+	assert.Error(t, ErrNotFound, c.DeletePluginConfig(s4))
 }

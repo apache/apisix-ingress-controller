@@ -74,6 +74,10 @@ func (c *dbCache) InsertSchema(schema *v1.Schema) error {
 	return c.insert("schema", schema.DeepCopy())
 }
 
+func (c *dbCache) InsertPluginConfig(pc *v1.PluginConfig) error {
+	return c.insert("plugin_config", pc.DeepCopy())
+}
+
 func (c *dbCache) insert(table string, obj interface{}) error {
 	txn := c.db.Txn(true)
 	defer txn.Abort()
@@ -138,6 +142,14 @@ func (c *dbCache) GetSchema(name string) (*v1.Schema, error) {
 		return nil, err
 	}
 	return obj.(*v1.Schema).DeepCopy(), nil
+}
+
+func (c *dbCache) GetPluginConfig(name string) (*v1.PluginConfig, error) {
+	obj, err := c.get("plugin_config", name)
+	if err != nil {
+		return nil, err
+	}
+	return obj.(*v1.PluginConfig).DeepCopy(), nil
 }
 
 func (c *dbCache) get(table, id string) (interface{}, error) {
@@ -240,6 +252,18 @@ func (c *dbCache) ListSchema() ([]*v1.Schema, error) {
 	return schemaList, nil
 }
 
+func (c *dbCache) ListPluginConfigs() ([]*v1.PluginConfig, error) {
+	raws, err := c.list("plugin_config")
+	if err != nil {
+		return nil, err
+	}
+	pluginConfigs := make([]*v1.PluginConfig, 0, len(raws))
+	for _, raw := range raws {
+		pluginConfigs = append(pluginConfigs, raw.(*v1.PluginConfig).DeepCopy())
+	}
+	return pluginConfigs, nil
+}
+
 func (c *dbCache) list(table string) ([]interface{}, error) {
 	txn := c.db.Txn(false)
 	defer txn.Abort()
@@ -283,6 +307,10 @@ func (c *dbCache) DeleteConsumer(consumer *v1.Consumer) error {
 
 func (c *dbCache) DeleteSchema(schema *v1.Schema) error {
 	return c.delete("schema", schema)
+}
+
+func (c *dbCache) DeletePluginConfig(pc *v1.PluginConfig) error {
+	return c.delete("plugin_config", pc)
 }
 
 func (c *dbCache) delete(table string, obj interface{}) error {

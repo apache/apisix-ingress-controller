@@ -116,6 +116,22 @@ var (
 					},
 				},
 			},
+			"plugin_config": {
+				Name: "plugin_config",
+				Indexes: map[string]*memdb.IndexSchema{
+					"id": {
+						Name:    "id",
+						Unique:  true,
+						Indexer: &memdb.StringFieldIndex{Field: "ID"},
+					},
+					"name": {
+						Name:         "name",
+						Unique:       true,
+						Indexer:      &memdb.StringFieldIndex{Field: "Name"},
+						AllowMissing: true,
+					},
+				},
+			},
 		},
 	}
 )

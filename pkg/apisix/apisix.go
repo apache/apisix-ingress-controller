@@ -133,6 +133,17 @@ type Schema interface {
 	GetUpstreamSchema(context.Context) (*v1.Schema, error)
 	GetConsumerSchema(context.Context) (*v1.Schema, error)
 	GetSslSchema(context.Context) (*v1.Schema, error)
+	GetPluginConfigSchema(ctx context.Context) (*v1.Schema, error)
+}
+
+// PluginConfig is the specific client interface to take over the create, update,
+// list and delete for APISIX PluginConfig resource.
+type PluginConfig interface {
+	Get(context.Context, string) (*v1.PluginConfig, error)
+	List(context.Context) ([]*v1.PluginConfig, error)
+	Create(context.Context, *v1.PluginConfig) (*v1.PluginConfig, error)
+	Delete(context.Context, *v1.PluginConfig) error
+	Update(context.Context, *v1.PluginConfig) (*v1.PluginConfig, error)
 }
 
 type apisix struct {

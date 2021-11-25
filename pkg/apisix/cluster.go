@@ -99,6 +99,7 @@ type cluster struct {
 	consumer         Consumer
 	plugin           Plugin
 	schema           Schema
+	pluginConfig     PluginConfig
 	metricsCollector metrics.Collector
 }
 
@@ -140,6 +141,7 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 	c.consumer = newConsumerClient(c)
 	c.plugin = newPluginClient(c)
 	c.schema = newSchemaClient(c)
+	c.pluginConfig = newPluginConfigClient(c)
 
 	c.cache, err = cache.NewMemDBCache()
 	if err != nil {
