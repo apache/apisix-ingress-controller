@@ -26,7 +26,7 @@ func TestLabelsIsSubsetOf(t *testing.T) {
 		"version": "v1",
 		"env":     "prod",
 	}
-	assert.Equal(t, l.IsSubsetOf(f), false)
+	assert.Equal(t, l.IsSubsetOf(f), true)
 	l["env"] = "prod"
 	assert.Equal(t, l.IsSubsetOf(f), true)
 	l["env"] = "qa"
