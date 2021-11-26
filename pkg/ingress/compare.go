@@ -27,6 +27,8 @@ import (
 // CompareResources used to compare the object IDs in resources and APISIX
 // Find out the rest of objects in APISIX
 // AND warn them in log.
+// This func is NOT concurrency safe.
+// cc https://github.com/apache/apisix-ingress-controller/pull/742#discussion_r757197791
 func (c *Controller) CompareResources(ctx context.Context) error {
 	var (
 		wg                sync.WaitGroup
