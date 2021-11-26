@@ -242,7 +242,7 @@ func (c *secretController) onAdd(obj interface{}) {
 	log.Debugw("secret add event arrived",
 		zap.String("object-key", key),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
 	})
@@ -269,7 +269,7 @@ func (c *secretController) onUpdate(prev, curr interface{}) {
 		zap.Any("new object", curr),
 		zap.Any("old object", prev),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventUpdate,
 		Object: key,
 	})
@@ -302,7 +302,7 @@ func (c *secretController) onDelete(obj interface{}) {
 	log.Debugw("secret delete event arrived",
 		zap.Any("final state", sec),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:      types.EventDelete,
 		Object:    key,
 		Tombstone: sec,
