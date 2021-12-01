@@ -20,12 +20,15 @@ import (
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/apache/apisix-ingress-controller/pkg/api/validation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
 // CompareResources used to compare the object IDs in resources and APISIX
 // Find out the rest of objects in APISIX
 // AND warn them in log.
+// This func is NOT concurrency safe.
+// cc https://github.com/apache/apisix-ingress-controller/pull/742#discussion_r757197791
 func (c *Controller) CompareResources(ctx context.Context) error {
 	var (
 		wg                sync.WaitGroup
@@ -42,7 +45,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 		consumerMapA6    = make(map[string]string)
 	)
 	// watchingNamespace == nil means to monitor all namespaces
-	if c.watchingNamespace == nil {
+	if !validation.HasValueInSyncMap(c.watchingNamespace) {
 		opts := v1.ListOptions{}
 		// list all namespaces
 		nsList, err := c.kubeClient.Client.CoreV1().Namespaces().List(ctx, opts)

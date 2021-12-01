@@ -220,7 +220,7 @@ func (c *ingressController) onAdd(obj interface{}) {
 		return
 	}
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.IngressEvent{
 			Key:          key,
@@ -257,7 +257,7 @@ func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 		return
 	}
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventUpdate,
 		Object: kube.IngressEvent{
 			Key:          key,
@@ -298,7 +298,7 @@ func (c *ingressController) OnDelete(obj interface{}) {
 		)
 		return
 	}
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.IngressEvent{
 			Key:          key,
