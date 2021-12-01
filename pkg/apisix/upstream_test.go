@@ -183,7 +183,7 @@ func TestUpstreamClient(t *testing.T) {
 		Nodes: nodes,
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, obj.ID, "1")
+	assert.Equal(t, "1", obj.ID)
 
 	id2 := "2"
 	obj, err = cli.Create(context.TODO(), &v1.Upstream{
@@ -196,14 +196,14 @@ func TestUpstreamClient(t *testing.T) {
 		Nodes: nodes,
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, obj.ID, "2")
+	assert.Equal(t, "2", obj.ID)
 
 	// List
 	objs, err := cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 2)
-	assert.Equal(t, objs[0].ID, "1")
-	assert.Equal(t, objs[1].ID, "2")
+	assert.Equal(t, "1", objs[0].ID)
+	assert.Equal(t, "2", objs[1].ID)
 
 	// Delete then List
 	assert.Nil(t, cli.Delete(context.Background(), objs[0]))

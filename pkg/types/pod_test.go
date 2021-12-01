@@ -35,8 +35,8 @@ func TestPodCacheBadCases(t *testing.T) {
 			Phase: corev1.PodPending,
 		},
 	}
-	assert.Equal(t, pc.Add(pod1), ErrPodNoAssignedIP, "adding pod")
-	assert.Equal(t, pc.Delete(pod1), nil, "deleting pod")
+	assert.Equal(t, ErrPodNoAssignedIP, pc.Add(pod1), "adding pod")
+	assert.Equal(t, nil, pc.Delete(pod1), "deleting pod")
 }
 
 func TestPodCache(t *testing.T) {
@@ -52,18 +52,18 @@ func TestPodCache(t *testing.T) {
 			PodIP: "10.0.5.11",
 		},
 	}
-	assert.Equal(t, pc.Add(pod1), nil, "adding pod")
+	assert.Equal(t, nil, pc.Add(pod1), "adding pod")
 	name, err := pc.GetNameByIP("10.0.5.11")
 	assert.Nil(t, err)
-	assert.Equal(t, name, "pod1")
+	assert.Equal(t, "pod1", name)
 
 	name, err = pc.GetNameByIP("10.0.5.12")
 	assert.Empty(t, name)
-	assert.Equal(t, err, ErrPodNotFound)
+	assert.Equal(t, ErrPodNotFound, err)
 
 	assert.Nil(t, pc.Delete(pod1), nil, "deleting pod")
 
 	name, err = pc.GetNameByIP("10.0.5.11")
 	assert.Empty(t, name)
-	assert.Equal(t, err, ErrPodNotFound)
+	assert.Equal(t, ErrPodNotFound, err)
 }

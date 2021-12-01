@@ -164,20 +164,20 @@ func TestConsumerClient(t *testing.T) {
 		Username: "1",
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, obj.Username, "1")
+	assert.Equal(t, "1", obj.Username)
 
 	obj, err = cli.Create(context.Background(), &v1.Consumer{
 		Username: "2",
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, obj.Username, "2")
+	assert.Equal(t, "2", obj.Username)
 
 	// List
 	objs, err := cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 2)
-	assert.Equal(t, objs[0].Username, "1")
-	assert.Equal(t, objs[1].Username, "2")
+	assert.Equal(t, "1", objs[0].Username)
+	assert.Equal(t, "2", objs[1].Username)
 
 	// Delete then List
 	assert.Nil(t, cli.Delete(context.Background(), objs[0]))
