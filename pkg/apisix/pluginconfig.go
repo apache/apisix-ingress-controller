@@ -217,7 +217,7 @@ func (pc *pluginConfigClient) Update(ctx context.Context, obj *v1.PluginConfig) 
 		return nil, err
 	}
 	url := pc.url + "/" + obj.ID
-	log.Debugw("updating username", zap.ByteString("body", body), zap.String("url", url))
+	log.Debugw("updating pluginConfig", zap.ByteString("body", body), zap.String("url", url))
 	resp, err := pc.cluster.updateResource(ctx, url, "pluginConfig", bytes.NewReader(body))
 	pc.cluster.metricsCollector.IncrAPISIXRequest("pluginConfig")
 	if err != nil {

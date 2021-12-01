@@ -89,5 +89,5 @@ type Cache interface {
 	// DeleteSchema deletes the specified schema in cache.
 	DeleteSchema(*v1.Schema) error
 	// DeletePluginConfig deletes the specified plugin_config in cache.
-	DeletePluginConfig(config *v1.PluginConfig) error
+	DeletePluginConfig(*v1.PluginConfig) error
 }

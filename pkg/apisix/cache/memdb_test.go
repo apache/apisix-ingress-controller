@@ -354,7 +354,7 @@ func TestMemDBCacheSchema(t *testing.T) {
 		Name:    "plugins/p1",
 		Content: "plugin schema",
 	}
-	assert.Nil(t, c.InsertSchema(s1), "inserting schema pc1")
+	assert.Nil(t, c.InsertSchema(s1), "inserting schema s1")
 
 	s11, err := c.GetSchema("plugins/p1")
 	assert.Nil(t, err)
@@ -366,14 +366,14 @@ func TestMemDBCacheSchema(t *testing.T) {
 	s3 := &v1.Schema{
 		Name: "plugins/p3",
 	}
-	assert.Nil(t, c.InsertSchema(s2), "inserting schema pc2")
-	assert.Nil(t, c.InsertSchema(s3), "inserting schema pc3")
+	assert.Nil(t, c.InsertSchema(s2), "inserting schema s2")
+	assert.Nil(t, c.InsertSchema(s3), "inserting schema s3")
 
 	s22, err := c.GetSchema("plugins/p2")
 	assert.Nil(t, err)
 	assert.Equal(t, s2, s22)
 
-	assert.Nil(t, c.DeleteSchema(s3), "delete schema pc3")
+	assert.Nil(t, c.DeleteSchema(s3), "delete schema s3")
 
 	schemaList, err := c.ListSchema()
 	assert.Nil(t, err, "listing schema")
@@ -400,7 +400,7 @@ func TestMemDBCachePluginConfig(t *testing.T) {
 			Name: "name1",
 		},
 	}
-	assert.Nil(t, c.InsertPluginConfig(pc1), "inserting plugin_config s1")
+	assert.Nil(t, c.InsertPluginConfig(pc1), "inserting plugin_config pc1")
 
 	pc11, err := c.GetPluginConfig("1")
 	assert.Nil(t, err)
@@ -412,20 +412,20 @@ func TestMemDBCachePluginConfig(t *testing.T) {
 			Name: "name2",
 		},
 	}
-	s3 := &v1.PluginConfig{
+	pc3 := &v1.PluginConfig{
 		Metadata: v1.Metadata{
 			ID:   "3",
 			Name: "name3",
 		},
 	}
-	assert.Nil(t, c.InsertPluginConfig(pc2), "inserting plugin_config s2")
-	assert.Nil(t, c.InsertPluginConfig(s3), "inserting plugin_config s3")
+	assert.Nil(t, c.InsertPluginConfig(pc2), "inserting plugin_config pc2")
+	assert.Nil(t, c.InsertPluginConfig(pc3), "inserting plugin_config pc3")
 
 	pc22, err := c.GetPluginConfig("2")
 	assert.Nil(t, err)
 	assert.Equal(t, pc2, pc22)
 
-	assert.Nil(t, c.DeletePluginConfig(s3), "delete plugin_config s3")
+	assert.Nil(t, c.DeletePluginConfig(pc3), "delete plugin_config pc3")
 
 	pcList, err := c.ListPluginConfigs()
 	assert.Nil(t, err, "listing plugin_config")
@@ -436,11 +436,11 @@ func TestMemDBCachePluginConfig(t *testing.T) {
 	assert.Equal(t, pcList[0], pc1)
 	assert.Equal(t, pcList[1], pc2)
 
-	s4 := &v1.PluginConfig{
+	pc4 := &v1.PluginConfig{
 		Metadata: v1.Metadata{
 			ID:   "4",
 			Name: "name4",
 		},
 	}
-	assert.Error(t, ErrNotFound, c.DeletePluginConfig(s4))
+	assert.Error(t, ErrNotFound, c.DeletePluginConfig(pc4))
 }
