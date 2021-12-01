@@ -40,6 +40,7 @@ ingress_status_address: []   # when there is no available information on the Ser
                              # used for publishing on the data plane,
                              # the static address provided here will be
                              # used to update the status information of Ingress.
+                             # When ingress-publish-service is specified at the same time, ingress-status-address is preferred.
                              # For example, no available LB exists in the bare metal environment.
 enable_profiling: true # enable profiling via web interfaces
                        # host:port/debug/pprof, default is true.

@@ -146,6 +146,7 @@ The format is "namespace/svc-name" to solve the situation that the data plane an
 	cmd.PersistentFlags().StringSliceVar(&cfg.IngressStatusAddress, "ingress-status-address", []string{},
 		`when there is no available information on the Service used for publishing on the data plane,
 the static address provided here will be used to update the status information of Ingress.
+When ingress-publish-service is specified at the same time, ingress-status-address is preferred.
 For example, no available LB exists in the bare metal environment.`)
 	cmd.PersistentFlags().BoolVar(&cfg.EnableProfiling, "enable-profiling", true, "enable profiling via web interface host:port/debug/pprof")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.Kubeconfig, "kubeconfig", "", "Kubernetes configuration file (by default in-cluster configuration will be used)")
