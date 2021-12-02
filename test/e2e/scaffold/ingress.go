@@ -283,6 +283,8 @@ spec:
             - %s
             - --apisix-route-version
             - %s
+            - --ingress-status-address
+            - "%s"
             - --watch-endpointslices
           %s
       volumes:
@@ -405,9 +407,9 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	var ingressAPISIXDeployment string
 	label := fmt.Sprintf("apisix.ingress.watch=%s", s.namespace)
 	if s.opts.EnableWebhooks {
-		ingressAPISIXDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, label, s.opts.APISIXRouteVersion, _volumeMounts, _webhookCertSecret)
+		ingressAPISIXDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, label, s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
 	} else {
-		ingressAPISIXDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, label, s.opts.APISIXRouteVersion, "", _webhookCertSecret)
+		ingressAPISIXDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, label, s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
 	}
 
 	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment)
@@ -513,9 +515,9 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 	var ingressDeployment string
 	label := fmt.Sprintf("apisix.ingress.watch=%s", s.namespace)
 	if s.opts.EnableWebhooks {
-		ingressDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, desired, s.namespace, label, s.opts.APISIXRouteVersion, _volumeMounts, _webhookCertSecret)
+		ingressDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, desired, s.namespace, label, s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
 	} else {
-		ingressDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, desired, s.namespace, label, s.opts.APISIXRouteVersion, "", _webhookCertSecret)
+		ingressDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, desired, s.namespace, label, s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
 	}
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressDeployment); err != nil {
 		return err
