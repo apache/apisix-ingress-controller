@@ -21,3 +21,4 @@ resources:
   - ./ApisixTls.yaml
   - ./ApisixClusterConfig.yaml
   - ./ApisixConsumer.yaml
+  - ./ApisixPluginConfig.yaml

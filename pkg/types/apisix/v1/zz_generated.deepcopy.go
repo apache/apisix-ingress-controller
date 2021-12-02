@@ -448,6 +448,11 @@ func (in *Upstream) DeepCopyInto(out *Upstream) {
 		*out = new(UpstreamTimeout)
 		**out = **in
 	}
+	if in.TLS != nil {
+		in, out := &in.TLS, &out.TLS
+		*out = new(ClientTLS)
+		**out = **in
+	}
 	return
 }
 

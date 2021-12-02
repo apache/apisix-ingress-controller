@@ -254,8 +254,8 @@ func (t *translator) translateHTTPRouteV2beta1(ctx *TranslateContext, ar *config
 				weight = *backend.Weight
 			}
 			backendPoints := make([]*configv2alpha1.ApisixRouteHTTPBackend, 0)
-			for _, b := range backends {
-				backendPoints = append(backendPoints, &b)
+			for i := range backends {
+				backendPoints = append(backendPoints, &backends[i])
 			}
 			plugin, err := t.translateTrafficSplitPlugin(ctx, ar.Namespace, weight, backendPoints)
 			if err != nil {
@@ -395,8 +395,8 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *TranslateContext, ar *config
 				weight = *backend.Weight
 			}
 			backendPoints := make([]*configv2alpha1.ApisixRouteHTTPBackend, 0)
-			for _, b := range backends {
-				backendPoints = append(backendPoints, &b)
+			for i := range backends {
+				backendPoints = append(backendPoints, &backends[i])
 			}
 			plugin, err := t.translateTrafficSplitPlugin(ctx, ar.Namespace, weight, backendPoints)
 			if err != nil {
@@ -446,12 +446,13 @@ func (t *translator) translateHTTPRoute(ctx *TranslateContext, ar *configv2alpha
 			return err
 		}
 
-		timeout := &apisixv1.UpstreamTimeout{
-			Connect: apisixv1.DefaultUpstreamTimeout,
-			Read:    apisixv1.DefaultUpstreamTimeout,
-			Send:    apisixv1.DefaultUpstreamTimeout,
-		}
+		var timeout *apisixv1.UpstreamTimeout
 		if part.Timeout != nil {
+			timeout = &apisixv1.UpstreamTimeout{
+				Connect: apisixv1.DefaultUpstreamTimeout,
+				Read:    apisixv1.DefaultUpstreamTimeout,
+				Send:    apisixv1.DefaultUpstreamTimeout,
+			}
 			if part.Timeout.Connect.Duration > 0 {
 				timeout.Connect = int(part.Timeout.Connect.Seconds())
 			}

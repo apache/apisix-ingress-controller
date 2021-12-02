@@ -195,3 +195,37 @@ type ApisixRouteList struct {
 	metav1.ListMeta `json:"metadata" yaml:"metadata"`
 	Items           []ApisixRoute `json:"items,omitempty" yaml:"items,omitempty"`
 }
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:subresource:status
+
+// ApisixPluginConfig is the Schema for the ApisixPluginConfig resource.
+// An ApisixPluginConfig is used to support a group of plugin configs
+type ApisixPluginConfig struct {
+	metav1.TypeMeta   `json:",inline" yaml:",inline"`
+	metav1.ObjectMeta `json:"metadata" yaml:"metadata"`
+
+	// Spec defines the desired state of ApisixPluginConfigSpec.
+	Spec   ApisixPluginConfigSpec `json:"spec" yaml:"spec"`
+	Status ApisixStatus           `json:"status,omitempty" yaml:"status,omitempty"`
+}
+
+// ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
+type ApisixPluginConfigSpec struct {
+	// Plugins contains a list of ApisixRouteHTTPPluginConfig
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinItems=1
+	Plugins []ApisixRouteHTTPPluginConfig `json:"plugins" yaml:"plugins"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:generate=true
+
+// ApisixPluginConfigList contains a list of ApisixPluginConfig.
+type ApisixPluginConfigList struct {
+	metav1.TypeMeta `json:",inline" yaml:",inline"`
+	metav1.ListMeta `json:"metadata" yaml:"metadata"`
+	Items           []ApisixPluginConfig `json:"items,omitempty" yaml:"items,omitempty"`
+}

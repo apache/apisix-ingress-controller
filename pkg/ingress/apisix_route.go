@@ -249,6 +249,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
 	if errLocal != nil {
 		log.Errorf("invalid resource key: %s", event.Key)
+		c.controller.MetricsCollector.IncrSyncOperation("route", "failure")
 		return
 	}
 	var ar kube.ApisixRoute
@@ -287,6 +288,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 			}
 		}
 		c.workqueue.Forget(obj)
+		c.controller.MetricsCollector.IncrSyncOperation("route", "success")
 		return
 	}
 	log.Warnw("sync ApisixRoute failed, will retry",
@@ -315,6 +317,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 		)
 	}
 	c.workqueue.AddRateLimited(obj)
+	c.controller.MetricsCollector.IncrSyncOperation("route", "failure")
 }
 
 func (c *apisixRouteController) onAdd(obj interface{}) {
@@ -330,13 +333,15 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 		zap.Any("object", obj))
 
 	ar := kube.MustNewApisixRoute(obj)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.ApisixRouteEvent{
 			Key:          key,
 			GroupVersion: ar.GroupVersion(),
 		},
 	})
+
+	c.controller.MetricsCollector.IncrEvents("route", "add")
 }
 
 func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
@@ -357,7 +362,7 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 		zap.Any("new object", curr),
 		zap.Any("old object", prev),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventUpdate,
 		Object: kube.ApisixRouteEvent{
 			Key:          key,
@@ -365,6 +370,8 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 			OldObject:    prev,
 		},
 	})
+
+	c.controller.MetricsCollector.IncrEvents("route", "update")
 }
 
 func (c *apisixRouteController) onDelete(obj interface{}) {
@@ -387,7 +394,7 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 	log.Debugw("ApisixRoute delete event arrived",
 		zap.Any("final state", ar),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixRouteEvent{
 			Key:          key,
@@ -395,4 +402,6 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 		},
 		Tombstone: ar,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("route", "delete")
 }

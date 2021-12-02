@@ -21,8 +21,8 @@ type Labels map[string]string
 // the passed Labels.
 func (s Labels) IsSubsetOf(f Labels) bool {
 	if len(s) == 0 {
-		// Empty labels matches nothing not everything.
-		return false
+		// Empty labels matches everything.
+		return true
 	}
 	for k, v := range s {
 		if vv, ok := f[k]; !ok || vv != v {

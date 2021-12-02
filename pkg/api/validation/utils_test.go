@@ -16,8 +16,10 @@
 package validation
 
 import (
+	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/xeipuuv/gojsonschema"
 
 	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
@@ -45,4 +47,11 @@ func Test_validateSchema(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHasValueInSyncMap(t *testing.T) {
+	m := new(sync.Map)
+	assert.False(t, HasValueInSyncMap(m), "sync.Map should be empty")
+	m.Store("hello", "test")
+	assert.True(t, HasValueInSyncMap(m), "sync.Map should not be empty")
 }

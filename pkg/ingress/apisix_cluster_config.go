@@ -187,13 +187,16 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 func (c *apisixClusterConfigController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
+		c.controller.MetricsCollector.IncrSyncOperation("clusterConfig", "success")
 		return
 	}
 	log.Warnw("sync ApisixClusterConfig failed, will retry",
 		zap.Any("object", obj),
 		zap.Error(err),
 	)
+
 	c.workqueue.AddRateLimited(obj)
+	c.controller.MetricsCollector.IncrSyncOperation("clusterConfig", "failure")
 }
 
 func (c *apisixClusterConfigController) onAdd(obj interface{}) {
@@ -207,10 +210,12 @@ func (c *apisixClusterConfigController) onAdd(obj interface{}) {
 		zap.Any("object", obj),
 	)
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("clusterConfig", "add")
 }
 
 func (c *apisixClusterConfigController) onUpdate(oldObj, newObj interface{}) {
@@ -229,10 +234,12 @@ func (c *apisixClusterConfigController) onUpdate(oldObj, newObj interface{}) {
 		zap.Any("old object", prev),
 	)
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventUpdate,
 		Object: key,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("clusterConfig", "update")
 }
 
 func (c *apisixClusterConfigController) onDelete(obj interface{}) {
@@ -253,9 +260,11 @@ func (c *apisixClusterConfigController) onDelete(obj interface{}) {
 	log.Debugw("ApisixClusterConfig delete event arrived",
 		zap.Any("final state", acc),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:      types.EventDelete,
 		Object:    key,
 		Tombstone: acc,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("clusterConfig", "delete")
 }

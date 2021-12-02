@@ -109,14 +109,14 @@ func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) err
 func (c *endpointSliceController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
-		c.controller.metricsCollector.IncrSyncOperation("endpointSlices", "success")
+		c.controller.MetricsCollector.IncrSyncOperation("endpointSlice", "success")
 		return
 	}
 	log.Warnw("sync endpointSlice failed, will retry",
 		zap.Any("object", obj),
 	)
 	c.workqueue.AddRateLimited(obj)
-	c.controller.metricsCollector.IncrSyncOperation("endpointSlices", "failure")
+	c.controller.MetricsCollector.IncrSyncOperation("endpointSlice", "failure")
 }
 
 func (c *endpointSliceController) onAdd(obj interface{}) {
@@ -142,13 +142,15 @@ func (c *endpointSliceController) onAdd(obj interface{}) {
 		zap.String("object-key", key),
 	)
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: endpointSliceEvent{
 			Key:         key,
 			ServiceName: svcName,
 		},
 	})
+
+	c.controller.MetricsCollector.IncrEvents("endpointSlice", "add")
 }
 
 func (c *endpointSliceController) onUpdate(prev, curr interface{}) {
@@ -180,7 +182,7 @@ func (c *endpointSliceController) onUpdate(prev, curr interface{}) {
 		zap.Any("new object", currEp),
 		zap.Any("old object", prevEp),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventUpdate,
 		// TODO pass key.
 		Object: endpointSliceEvent{
@@ -188,6 +190,8 @@ func (c *endpointSliceController) onUpdate(prev, curr interface{}) {
 			ServiceName: svcName,
 		},
 	})
+
+	c.controller.MetricsCollector.IncrEvents("endpointSlice", "update")
 }
 
 func (c *endpointSliceController) onDelete(obj interface{}) {
@@ -217,11 +221,13 @@ func (c *endpointSliceController) onDelete(obj interface{}) {
 	log.Debugw("endpoints delete event arrived",
 		zap.Any("object-key", key),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: endpointSliceEvent{
 			Key:         key,
 			ServiceName: svcName,
 		},
 	})
+
+	c.controller.MetricsCollector.IncrEvents("endpointSlice", "delete")
 }

@@ -172,7 +172,7 @@ func (c *apisixTlsController) syncSecretSSL(secretKey string, apisixTlsKey strin
 func (c *apisixTlsController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
-		c.controller.metricsCollector.IncrSyncOperation("ssl", "success")
+		c.controller.MetricsCollector.IncrSyncOperation("TLS", "success")
 		return
 	}
 	log.Warnw("sync ApisixTls failed, will retry",
@@ -180,7 +180,7 @@ func (c *apisixTlsController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
-	c.controller.metricsCollector.IncrSyncOperation("ssl", "failure")
+	c.controller.MetricsCollector.IncrSyncOperation("TLS", "failure")
 }
 
 func (c *apisixTlsController) onAdd(obj interface{}) {
@@ -195,10 +195,12 @@ func (c *apisixTlsController) onAdd(obj interface{}) {
 	log.Debugw("ApisixTls add event arrived",
 		zap.Any("object", obj),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("TLS", "add")
 }
 
 func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
@@ -219,10 +221,12 @@ func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
 		zap.Any("new object", curr),
 		zap.Any("old object", prev),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventUpdate,
 		Object: key,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("TLS", "update")
 }
 
 func (c *apisixTlsController) onDelete(obj interface{}) {
@@ -248,9 +252,11 @@ func (c *apisixTlsController) onDelete(obj interface{}) {
 	log.Debugw("ApisixTls delete event arrived",
 		zap.Any("final state", obj),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:      types.EventDelete,
 		Object:    key,
 		Tombstone: tls,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("TLS", "delete")
 }

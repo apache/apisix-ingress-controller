@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -35,6 +36,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 )
 
 type counter struct {
@@ -275,8 +277,9 @@ func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -296,8 +299,9 @@ func (s *Scaffold) ListApisixGlobalRules() ([]*v1.GlobalRule, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -317,8 +321,9 @@ func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -338,8 +343,9 @@ func (s *Scaffold) ListApisixConsumers() ([]*v1.Consumer, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -359,8 +365,9 @@ func (s *Scaffold) ListApisixStreamRoutes() ([]*v1.StreamRoute, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -380,8 +387,9 @@ func (s *Scaffold) ListApisixSsl() ([]*v1.Ssl, error) {
 		return nil, err
 	}
 	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
-		BaseURL:  u.String(),
-		AdminKey: s.opts.APISIXAdminAPIKey,
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	if err != nil {
 		return nil, err
@@ -496,4 +504,11 @@ func (s *Scaffold) EnsureNumEndpointsReady(t testing.TestingT, endpointsName str
 		},
 	)
 	ginkgo.GinkgoT().Log(message)
+}
+
+// GetKubernetesClient get kubernetes client use by scaffold
+func (s *Scaffold) GetKubernetesClient() *kubernetes.Clientset {
+	client, err := k8s.GetKubernetesClientFromOptionsE(s.t, s.kubectlOptions)
+	assert.Nil(ginkgo.GinkgoT(), err, "get kubernetes client")
+	return client
 }

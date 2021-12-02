@@ -107,6 +107,113 @@ apisix:
 	assert.Equal(t, cfg, newCfg, "bad configuration")
 }
 
+func TestConfigWithEnvVar(t *testing.T) {
+	cfg := &Config{
+		LogLevel:        "warn",
+		LogOutput:       "stdout",
+		HTTPListen:      ":9090",
+		HTTPSListen:     ":9443",
+		CertFilePath:    "/etc/webhook/certs/cert.pem",
+		KeyFilePath:     "/etc/webhook/certs/key.pem",
+		EnableProfiling: true,
+		Kubernetes: KubernetesConfig{
+			ResyncInterval:     types.TimeDuration{Duration: time.Hour},
+			Kubeconfig:         "",
+			AppNamespaces:      []string{""},
+			ElectionID:         "my-election-id",
+			IngressClass:       IngressClass,
+			IngressVersion:     IngressNetworkingV1,
+			ApisixRouteVersion: ApisixRouteV2alpha1,
+		},
+		APISIX: APISIXConfig{
+			DefaultClusterName:     "default",
+			DefaultClusterBaseURL:  "http://127.0.0.1:8080/apisix",
+			DefaultClusterAdminKey: "123456",
+		},
+	}
+
+	defaultClusterBaseURLEnvName := "DEFAULT_CLUSTER_BASE_URL"
+	defaultClusterAdminKeyEnvName := "DEFAULT_CLUSTER_ADMIN_KEY"
+	kubeconfigEnvName := "KUBECONFIG"
+
+	err := os.Setenv(defaultClusterBaseURLEnvName, "http://127.0.0.1:8080/apisix")
+	assert.Nil(t, err, "failed to set env variable: ", err)
+	_ = os.Setenv(defaultClusterAdminKeyEnvName, "123456")
+	_ = os.Setenv(kubeconfigEnvName, "")
+
+	jsonData := `
+{
+    "log_level": "warn",
+    "log_output": "stdout",
+    "http_listen": ":9090",
+    "https_listen": ":9443",
+    "enable_profiling": true,
+    "kubernetes": {
+        "kubeconfig": "{{.KUBECONFIG}}",
+        "resync_interval": "1h0m0s",
+        "election_id": "my-election-id",
+        "ingress_class": "apisix",
+        "ingress_version": "networking/v1"
+    },
+    "apisix": {
+        "default_cluster_base_url": "{{.DEFAULT_CLUSTER_BASE_URL}}",
+        "default_cluster_admin_key": "{{.DEFAULT_CLUSTER_ADMIN_KEY}}"
+    }
+}
+`
+	tmpJSON, err := ioutil.TempFile("/tmp", "config-*.json")
+	assert.Nil(t, err, "failed to create temporary json configuration file: ", err)
+	defer os.Remove(tmpJSON.Name())
+
+	_, err = tmpJSON.Write([]byte(jsonData))
+	assert.Nil(t, err, "failed to write json data: ", err)
+	tmpJSON.Close()
+
+	newCfg, err := NewConfigFromFile(tmpJSON.Name())
+	assert.Nil(t, err, "failed to new config from file: ", err)
+	assert.Nil(t, newCfg.Validate(), "failed to validate config")
+
+	assert.Equal(t, cfg, newCfg, "bad configuration")
+
+	yamlData := `
+log_level: warn
+log_output: stdout
+http_listen: :9090
+https_listen: :9443
+enable_profiling: true
+kubernetes:
+  resync_interval: 1h0m0s
+  kubeconfig: "{{.KUBECONFIG}}"
+  election_id: my-election-id
+  ingress_class: apisix
+  ingress_version: networking/v1
+apisix:
+  default_cluster_base_url: {{.DEFAULT_CLUSTER_BASE_URL}}
+  default_cluster_admin_key: "{{.DEFAULT_CLUSTER_ADMIN_KEY}}"
+`
+	tmpYAML, err := ioutil.TempFile("/tmp", "config-*.yaml")
+	assert.Nil(t, err, "failed to create temporary yaml configuration file: ", err)
+	defer os.Remove(tmpYAML.Name())
+
+	_, err = tmpYAML.Write([]byte(yamlData))
+	assert.Nil(t, err, "failed to write yaml data: ", err)
+	tmpYAML.Close()
+
+	newCfg, err = NewConfigFromFile(tmpYAML.Name())
+	assert.Nil(t, err, "failed to new config from file: ", err)
+	assert.Nil(t, newCfg.Validate(), "failed to validate config")
+
+	assert.Equal(t, cfg, newCfg, "bad configuration")
+
+	_ = os.Unsetenv(defaultClusterBaseURLEnvName)
+
+	_, err = NewConfigFromFile(tmpJSON.Name())
+	assert.NotNil(t, err, "should failed because env variable missing")
+
+	_, err = NewConfigFromFile(tmpYAML.Name())
+	assert.NotNil(t, err, "should failed because env variable missing")
+}
+
 func TestConfigDefaultValue(t *testing.T) {
 	yamlData := `
 apisix:

@@ -168,6 +168,8 @@ rules:
       - apisixclusterconfigs/status
       - apisixconsumers
       - apisixconsumers/status
+      - apisixpluginconfig
+      - apisixpluginconfig/status
     verbs:
       - '*'
   - apiGroups:
@@ -443,7 +445,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	return nil
 }
 
-func (s *Scaffold) waitAllIngressControllerPodsAvailable() error {
+func (s *Scaffold) WaitAllIngressControllerPodsAvailable() error {
 	opts := metav1.ListOptions{
 		LabelSelector: "app=ingress-apisix-controller-deployment-e2e-test",
 	}

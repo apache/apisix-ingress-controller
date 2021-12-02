@@ -133,7 +133,7 @@ func (c *namespaceController) onAdd(obj interface{}) {
 	if err == nil {
 		log.Debugw(key)
 	}
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
 	})
@@ -150,7 +150,7 @@ func (c *namespaceController) onUpdate(pre, cur interface{}) {
 		log.Errorf("found Namespace resource with error: %s", err)
 		return
 	}
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventUpdate,
 		Object: key,
 	})
@@ -158,7 +158,7 @@ func (c *namespaceController) onUpdate(pre, cur interface{}) {
 
 func (c *namespaceController) onDelete(obj interface{}) {
 	namespace := obj.(*corev1.Namespace)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:      types.EventDelete,
 		Object:    namespace.Name,
 		Tombstone: namespace,
