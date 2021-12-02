@@ -53,6 +53,7 @@ type Options struct {
 	APISIXRouteVersion    string
 	APISIXAdminAPIKey     string
 	EnableWebhooks        bool
+	APISIXPublishAddress  string
 }
 
 type Scaffold struct {
@@ -130,6 +131,7 @@ func NewDefaultScaffold() *Scaffold {
 		HTTPBinServicePort:    80,
 		APISIXRouteVersion:    kube.ApisixRouteV1,
 		EnableWebhooks:        false,
+		APISIXPublishAddress:  "",
 	}
 	return NewScaffold(opts)
 }
@@ -144,6 +146,7 @@ func NewDefaultV2Scaffold() *Scaffold {
 		HTTPBinServicePort:    80,
 		APISIXRouteVersion:    kube.ApisixRouteV2alpha1,
 		EnableWebhooks:        false,
+		APISIXPublishAddress:  "",
 	}
 	return NewScaffold(opts)
 }
