@@ -60,7 +60,7 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 	client := c.kubeClient.APISIXClient
 
 	switch v := at.(type) {
-	case configv2beta3.ApisixTls:
+	case *configv2beta3.ApisixTls:
 		// set to status
 		if v.Status.Conditions == nil {
 			conditions := make([]metav1.Condition, 0)
@@ -69,7 +69,7 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 		if c.verifyGeneration(&v.Status.Conditions, condition) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := client.ApisixV2beta3().ApisixTlses(v.Namespace).
-				UpdateStatus(context.TODO(), &v, metav1.UpdateOptions{}); errRecord != nil {
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 				log.Errorw("failed to record status change for ApisixTls",
 					zap.Error(errRecord),
 					zap.String("name", v.Name),
@@ -77,7 +77,7 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 				)
 			}
 		}
-	case configv2beta3.ApisixUpstream:
+	case *configv2beta3.ApisixUpstream:
 		// set to status
 		if v.Status.Conditions == nil {
 			conditions := make([]metav1.Condition, 0)
@@ -86,7 +86,7 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 		if c.verifyGeneration(&v.Status.Conditions, condition) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := client.ApisixV2beta3().ApisixUpstreams(v.Namespace).
-				UpdateStatus(context.TODO(), &v, metav1.UpdateOptions{}); errRecord != nil {
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 				log.Errorw("failed to record status change for ApisixUpstream",
 					zap.Error(errRecord),
 					zap.String("name", v.Name),
@@ -94,7 +94,7 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 				)
 			}
 		}
-	case configv2beta1.ApisixRoute:
+	case *configv2beta1.ApisixRoute:
 		// set to status
 		if v.Status.Conditions == nil {
 			conditions := make([]metav1.Condition, 0)
@@ -103,7 +103,7 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 		if c.verifyGeneration(&v.Status.Conditions, condition) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := client.ApisixV2beta1().ApisixRoutes(v.Namespace).
-				UpdateStatus(context.TODO(), &v, metav1.UpdateOptions{}); errRecord != nil {
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 				log.Errorw("failed to record status change for ApisixRoute",
 					zap.Error(errRecord),
 					zap.String("name", v.Name),
@@ -111,7 +111,7 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 				)
 			}
 		}
-	case configv2beta2.ApisixRoute:
+	case *configv2beta2.ApisixRoute:
 		// set to status
 		if v.Status.Conditions == nil {
 			conditions := make([]metav1.Condition, 0)
@@ -120,7 +120,7 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 		if c.verifyGeneration(&v.Status.Conditions, condition) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := client.ApisixV2beta2().ApisixRoutes(v.Namespace).
-				UpdateStatus(context.TODO(), &v, metav1.UpdateOptions{}); errRecord != nil {
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 				log.Errorw("failed to record status change for ApisixRoute",
 					zap.Error(errRecord),
 					zap.String("name", v.Name),
@@ -128,7 +128,7 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 				)
 			}
 		}
-	case configv2beta3.ApisixRoute:
+	case *configv2beta3.ApisixRoute:
 		// set to status
 		if v.Status.Conditions == nil {
 			conditions := make([]metav1.Condition, 0)
@@ -137,7 +137,7 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 		if c.verifyGeneration(&v.Status.Conditions, condition) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := client.ApisixV2beta3().ApisixRoutes(v.Namespace).
-				UpdateStatus(context.TODO(), &v, metav1.UpdateOptions{}); errRecord != nil {
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 				log.Errorw("failed to record status change for ApisixRoute",
 					zap.Error(errRecord),
 					zap.String("name", v.Name),
