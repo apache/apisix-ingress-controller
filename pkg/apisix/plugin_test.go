@@ -102,6 +102,6 @@ func TestPluginClient(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, objs, len(fakePluginNames))
 	for i := range fakePluginNames {
-		assert.Equal(t, objs[i], fakePluginNames[i])
+		assert.Equal(t, fakePluginNames[i], objs[i])
 	}
 }

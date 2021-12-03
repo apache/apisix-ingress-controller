@@ -23,14 +23,14 @@ import (
 
 func TestEvent(t *testing.T) {
 	ev := Event{}
-	assert.Equal(t, ev.Type.String(), "unknown")
+	assert.Equal(t, "unknown", ev.Type.String())
 
 	ev.Type = EventAdd
-	assert.Equal(t, ev.Type.String(), "add")
+	assert.Equal(t, "add", ev.Type.String())
 
 	ev.Type = EventDelete
-	assert.Equal(t, ev.Type.String(), "delete")
+	assert.Equal(t, "delete", ev.Type.String())
 
 	ev.Type = EventUpdate
-	assert.Equal(t, ev.Type.String(), "update")
+	assert.Equal(t, "update", ev.Type.String())
 }
