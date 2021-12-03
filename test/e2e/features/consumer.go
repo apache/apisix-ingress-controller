@@ -30,7 +30,7 @@ var _ = ginkgo.Describe("ApisixConsumer", func() {
 
 	ginkgo.It("ApisixRoute with basicAuth consumer", func() {
 		ac := `
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: basicvalue
@@ -127,7 +127,7 @@ data:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating basic secret for ApisixConsumer")
 
 		ac := `
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: basicvalue
@@ -212,7 +212,7 @@ spec:
 
 	ginkgo.It("ApisixRoute with keyAuth consumer", func() {
 		ac := `
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: keyvalue
@@ -306,7 +306,7 @@ data:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating keyauth secret for ApisixConsumer")
 
 		ac := `
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: keyvalue

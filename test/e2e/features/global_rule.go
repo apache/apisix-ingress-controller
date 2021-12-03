@@ -36,7 +36,7 @@ var _ = ginkgo.Describe("ApisixClusterConfig", func() {
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("enable prometheus", func() {
 		acc := `
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixClusterConfig
 metadata:
   name: default

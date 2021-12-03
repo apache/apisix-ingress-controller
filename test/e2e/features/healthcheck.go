@@ -38,7 +38,7 @@ var _ = ginkgo.Describe("health check", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -95,7 +95,7 @@ spec:
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: %s

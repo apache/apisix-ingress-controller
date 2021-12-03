@@ -74,7 +74,7 @@ spec:
 	ginkgo.It("subset with bad labels", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -126,7 +126,7 @@ spec:
 
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: %s

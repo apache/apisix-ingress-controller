@@ -48,7 +48,7 @@ var _ = ginkgo.Describe("ApisixUpstreams mTLS test", func() {
 		err = s.NewApisixUpstreamsWithMTLS("test-backend-service-e2e-test", "https", clientSecret)
 		assert.NoError(ginkgo.GinkgoT(), err, "create ApisixUpstreams with client secret")
 		err = s.CreateResourceFromString(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: upstream-is-mtls.httpbin.local
@@ -100,7 +100,7 @@ spec:
 		assert.NoError(ginkgo.GinkgoT(), err, "create ApisixUpstreams with client secret")
 
 		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: grpcs-route
@@ -118,7 +118,7 @@ spec:
 `))
 
 		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixTls
 metadata:
   name: grpc-secret
