@@ -45,8 +45,8 @@ func TestTranslateApisixConsumer(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, consumer.Plugins, 1)
 	cfg := consumer.Plugins["basic-auth"].(*apisixv1.BasicAuthConsumerConfig)
-	assert.Equal(t, cfg.Username, "jack")
-	assert.Equal(t, cfg.Password, "jacknice")
+	assert.Equal(t, "jack", cfg.Username)
+	assert.Equal(t, "jacknice", cfg.Password)
 
 	ac = &configv2alpha1.ApisixConsumer{
 		ObjectMeta: metav1.ObjectMeta{
@@ -67,7 +67,7 @@ func TestTranslateApisixConsumer(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, consumer.Plugins, 1)
 	cfg2 := consumer.Plugins["key-auth"].(*apisixv1.KeyAuthConsumerConfig)
-	assert.Equal(t, cfg2.Key, "qwerty")
+	assert.Equal(t, "qwerty", cfg2.Key)
 
 	// No test test cases for secret references as we already test them
 	// in plugin_test.go.

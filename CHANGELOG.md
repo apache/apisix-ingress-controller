@@ -19,6 +19,8 @@
 
 # Table of Contents
 
+- [1.3.0](#130)
+- [1.2.0](#120)
 - [1.1.0](#110)
 - [1.0.0](#100)
 - [0.6.0](#060)
@@ -27,6 +29,158 @@
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 1.3.0
+
+Welcome to the 1.3.0 release of apisix-ingress-controller!
+
+This is a **GA** release.
+
+## Highlights
+
+### Roadmap
+
+In next release(v1.4), all custom resource versions will be upgraded to version v2beta3, and version v2 will be GA released in version v1.5. Please go to [#707](https://github.com/apache/apisix-ingress-controller/issues/707) for detail.
+
+### Breaking Changes
+
+* In this release(v1.3), the CRD version has been upgraded to `apiextensions.k8s.io/v1`, which means that **the minimum version of Kubernetes supported by APISIX Ingress is v1.16 and later**.
+* The ValidatingWebhookConfiguration version has been upgraded to `admissionregistration.k8s.io/v1`, which means that if you want using the default Dynamic Admission Control, you need ensure that the Kubernetes cluster is at least as new as v1.16.
+
+### New Features
+
+* We have introduced the **v2beta2 version of ApisixRoute** and will drop support for `v2alpha1` ApisixRoute [#698](https://github.com/apache/apisix-ingress-controller/pull/698)
+* Add cert-manager support [#685](https://github.com/apache/apisix-ingress-controller/pull/685)
+* Add full compare when APISIX Ingress startup [#680](https://github.com/apache/apisix-ingress-controller/pull/680)
+* Support TLS for Ingress v1 [#634](https://github.com/apache/apisix-ingress-controller/pull/634)
+* Add admission server and a validation webhook for plugins [#573](https://github.com/apache/apisix-ingress-controller/pull/573)
+* Add `timeout` field for ApisixRoute CR [#609](https://github.com/apache/apisix-ingress-controller/pull/609)
+* Add new metrics `apisix_ingress_controller_check_cluster_health` and `apisix_ingress_controller_sync_success_total` [#627](https://github.com/apache/apisix-ingress-controller/pull/627)
+
+Please try out the release binaries and report any issues at
+https://github.com/apache/apisix-ingress-controller/issues.
+
+### Contributors
+
+* kv
+* Hoshea Jiang
+* Jintao Zhang
+* Sarasa Kisaragi
+* Baoyuan
+* SergeBakharev
+* Sindweller
+* chen zhuo
+* liuxiran
+* oliver
+
+### Changes
+<details><summary>27 commits</summary>
+<p>
+
+* [`a290f12`](https://github.com/apache/apisix-ingress-controller/commit/a290f12cac2d7c8bcc51863cf42bc13b59bfe128) docs: correct helm repo (#657)
+* [`a01888b`](https://github.com/apache/apisix-ingress-controller/commit/a01888bd195f59ae08a5e1399dd26f2ac438880a) feat: Change field retries to value from pointer. (#647)
+* [`6f46ac2`](https://github.com/apache/apisix-ingress-controller/commit/6f46ac29a1bf3e51987169153a10be223fcf414f) Make webhook cover ApisixRoute v2beta2 (#705)
+* [`9dd4f40`](https://github.com/apache/apisix-ingress-controller/commit/9dd4f40b9fc74be6c29ba11cf9086ecbbd51f9e2) feat: add webhooks for consumer/tls/upstream (#667)
+* [`657a1fd`](https://github.com/apache/apisix-ingress-controller/commit/657a1fd1d06b05015e609c5e50107c7358fc44c0) doc: add grpc proxy (#699)
+* [`88be11a`](https://github.com/apache/apisix-ingress-controller/commit/88be11a895d72dfa7d0fef09e2b7d00b3210efe9) fix: CRD v1 preserve unknown fields (#702)
+* [`d46b248`](https://github.com/apache/apisix-ingress-controller/commit/d46b2485834e0ab4198a567cc9a8d3d2bcc60e6b) feat: upgrade ApisixRoute v2beta2 apiversion. (#698)
+* [`736aba3`](https://github.com/apache/apisix-ingress-controller/commit/736aba38f7de1fef03b6b818aa93e343b1666c95) feat: upgrade admission apiversion to v1 (#697)
+* [`0630ac5`](https://github.com/apache/apisix-ingress-controller/commit/0630ac55697eaf01017715fcad87b154cb64d9d4) feat: upgrade CRD version to v1 (#693)
+* [`957c315`](https://github.com/apache/apisix-ingress-controller/commit/957c31522e1b1e5f8ef9cab7eb244473a4e0f675) feat: add full compare when ingress startup (#680)
+* [`1b71fa3`](https://github.com/apache/apisix-ingress-controller/commit/1b71fa32a45d5b5e8e8fc0ed1b761814d169e51f) feat: support cert-manager (#685)
+* [`3e9bdbf`](https://github.com/apache/apisix-ingress-controller/commit/3e9bdbf0cee6d49c8e0db27152d46565df704e8c) fix: the fields in UpstreamPassiveHealthCheckUnhealthy should be timeouts (#687)
+* [`5c9cdbe`](https://github.com/apache/apisix-ingress-controller/commit/5c9cdbe7fc2c28f3023d635dbbd9bc833388a2bf) fix: remove the step of deleting httpbinsvc (#677)
+* [`7216532`](https://github.com/apache/apisix-ingress-controller/commit/721653216b8fe199c15c23aa726157215b12af3a) Remove volumeMounts when webhook is disabled (#679)
+* [`1e1be74`](https://github.com/apache/apisix-ingress-controller/commit/1e1be7401ba3707ba660a7d61df5118fc5725eff) add metric: check_cluster_health and sync_operation_total (#627)
+* [`6a8658d`](https://github.com/apache/apisix-ingress-controller/commit/6a8658db1788c687c70c9f235601cc8224e0b38c) fix: add initContainers to verify if apisix is ready (#660)
+* [`d4a832c`](https://github.com/apache/apisix-ingress-controller/commit/d4a832cf57eb633e8bc1a3bb1a71ba0ae2360337) feat: route crd add timeout fields (#609)
+* [`a9960c2`](https://github.com/apache/apisix-ingress-controller/commit/a9960c2a266686fc438451904c8d66430a7d70ee) Add API for getting schema of route, upstream and consumer (#655)
+* [`75a2aaa`](https://github.com/apache/apisix-ingress-controller/commit/75a2aaa979c61aaeab9b5412b937a618d1f56bca) feat: Implement the admission server and a validation webhook for plugins (#573)
+* [`270a176`](https://github.com/apache/apisix-ingress-controller/commit/270a176a39d34e1d0b213c9d190368919612db9c) fix: e2e failure due to count returned by APISIX (#640)
+* [`c284f38`](https://github.com/apache/apisix-ingress-controller/commit/c284f382576251c7d849a43710f8d09667b05dd1) docs: update practices index for website (#654)
+* [`9ab367f`](https://github.com/apache/apisix-ingress-controller/commit/9ab367f9d35e67616f678471d3407566a2b6b126) docs: Supplement FAQ for the error log 'no matches for kind "ApisixRoute" in version "apisix.apache.org/v2beta1"' (#651)
+* [`62b7590`](https://github.com/apache/apisix-ingress-controller/commit/62b7590443e037ecd6b41521accea567e09ad340) feat: support TLS for ingress v1 (#634)
+* [`68b7d7d`](https://github.com/apache/apisix-ingress-controller/commit/68b7d7d231f548d61455f0e95a4ae157de0f5ff8) chore: release v1.2.0 (#633)
+* [`d537ddc`](https://github.com/apache/apisix-ingress-controller/commit/d537ddc62bfabfe383c0bd402833377003a1d8dc) feat: add link check (#635)
+* [`d7128a1`](https://github.com/apache/apisix-ingress-controller/commit/d7128a1812053e9341f59f0e9c13c1c513c9db42) chore: skip CodeQL if go files have no changes (#636)
+* [`d8854c3`](https://github.com/apache/apisix-ingress-controller/commit/d8854c3bf7fefbc54c0d5b00b5ad669044f791f2) docs: fix config.json (#628)
+</p>
+</details>
+
+### Dependency Changes
+
+* **github.com/fsnotify/fsnotify**         v1.5.0 **_new_**
+* **github.com/prometheus/client_golang**  v1.7.1 -> v1.10.0
+* **github.com/slok/kubewebhook/v2**       v2.1.0 **_new_**
+* **github.com/stretchr/testify**          v1.6.1 -> v1.7.0
+* **github.com/xeipuuv/gojsonschema**      v1.2.0 **_new_**
+* **golang.org/x/sys**                     0f9fa26af87c -> bce67f096156
+
+Previous release can be found at [1.2.0](https://github.com/apache/apisix-ingress-controller/releases/tag/1.2.0)
+
+# 1.2.0
+
+Welcome to the 1.2.0 release of apisix-ingress-controller!
+
+This is a **GA** release.
+
+## Highlights
+
+### New Features
+
+* **Support ingress v1beta1 HTTPS** [#596](https://github.com/apache/apisix-ingress-controller/pull/596)
+* **Implement schema API** [#601](https://github.com/apache/apisix-ingress-controller/pull/601)
+
+Please try out the release binaries and report any issues at
+https://github.com/apache/apisix-ingress-controller/issues.
+
+### Contributors
+
+* kv
+* Jintao Zhang
+* Baoyuan
+* Hoshea Jiang
+* chen zhuo
+* okaybase
+* yuanfeng0905
+* 天使莫忆
+
+### Changes
+<details><summary>20 commits</summary>
+<p>
+
+* [`3ab162b`](https://github.com/apache/apisix-ingress-controller/commit/3ab162bfcaf82ecb50e67029990b97c98d0e18eb) chore: bump version v1.2.0
+* [`3ad1a1c`](https://github.com/apache/apisix-ingress-controller/commit/3ad1a1cca0bf23da803b703eeed36b7c4931d387) docs: fix install docs (#579)
+* [`499962b`](https://github.com/apache/apisix-ingress-controller/commit/499962be2306e341c30a84738c8a530562e00b9f) docs: ApisixRoute v2alpha1 is deprecated (#623)
+* [`c1de18f`](https://github.com/apache/apisix-ingress-controller/commit/c1de18fa2e59bdf02398290e15199422cf75ba81) docs: update mTLS support in ApisixTls reference (#624)
+* [`3cd6892`](https://github.com/apache/apisix-ingress-controller/commit/3cd689294d236495ffc5ca0071edcd856603a878) fix: ApisixRoute printcolumns (#626)
+* [`91d985e`](https://github.com/apache/apisix-ingress-controller/commit/91d985edca67493acc22536c66d4947fe597052f) fix field tag omiteempty (#622)
+* [`f78248a`](https://github.com/apache/apisix-ingress-controller/commit/f78248a6aca0ac4754fd4d5d410c28f1cdd3d9c7) fix: sync apisix failed when use v2beta1 ApisixRoute (#620)
+* [`00ff017`](https://github.com/apache/apisix-ingress-controller/commit/00ff01768429001e05b87c1a704c12c43c76f012) ci: add ingress log when e2e failed (#616)
+* [`e5441a3`](https://github.com/apache/apisix-ingress-controller/commit/e5441a3d0877017f17e96ac44d2a804a509676e7) feat: implement schema API (#601)
+* [`5635652`](https://github.com/apache/apisix-ingress-controller/commit/5635652865ef965db58794b08e2fe37ddc9c08e3) fix: timer leak memory (#591)
+* [`812e4bd`](https://github.com/apache/apisix-ingress-controller/commit/812e4bd3ca197c7ea227ff7de8b5ee1b6ac9424d) docs: add declarations for the version of APISIX (#595)
+* [`915a5d1`](https://github.com/apache/apisix-ingress-controller/commit/915a5d1d99d68f9c08b4d59e9b2e9cb8fa0dde31) test: add assert for test cases (#613)
+* [`d12a900`](https://github.com/apache/apisix-ingress-controller/commit/d12a900976e9118fe1b5fd0df137426a294f7a97) fix: add v2beta1 logic (#615)
+* [`ac25764`](https://github.com/apache/apisix-ingress-controller/commit/ac25764d46448b4df5772bde236be8334f47a7f7) feat: support ingress v1beta1 https (#596)
+* [`866d0bf`](https://github.com/apache/apisix-ingress-controller/commit/866d0bfe38b1e7bfb3340c1f1a317f8d604673f5) docs: modify the format of FAQ.md (#605)
+* [`2d12c3f`](https://github.com/apache/apisix-ingress-controller/commit/2d12c3fdd1369e9e263342d0def6473de5c0664f) docs: add v2beta1 description (#602)
+* [`7291212`](https://github.com/apache/apisix-ingress-controller/commit/7291212964a7f3505fb1bb624fb79df0c9eb0678) fix: do not need to record status when ApisixUpstream removed (#589)
+* [`c78c823`](https://github.com/apache/apisix-ingress-controller/commit/c78c8237b9c114e0e5564bd74a6729bdee04259c) chore: merge from v1.1 (#583)
+* [`e649c50`](https://github.com/apache/apisix-ingress-controller/commit/e649c503ca6ba4103a27fef729f8835b90078a93) chore: add udp usage & upgrade the verion of ApisixRoute (#585)
+* [`57ec6da`](https://github.com/apache/apisix-ingress-controller/commit/57ec6dafa7b96b8c2fe5c386eedfce74cb581441) fix: misspell in FAQ (#577)
+</p>
+</details>
+
+### Dependency Changes
+
+* **github.com/google/uuid**  v1.2.0 **_new_**
+* **github.com/onsi/ginkgo**  v1.16.4 **_new_**
+* **golang.org/x/net**        3d97a244fca7 -> 4163338589ed
+* **golang.org/x/sys**        0f9fa26af87c **_new_**
+* **golang.org/x/tools**      v0.1.5 **_new_**
+
+Previous release can be found at [1.1.0](https://github.com/apache/apisix-ingress-controller/releases/tag/1.1.0)
 
 # 1.1.0
 

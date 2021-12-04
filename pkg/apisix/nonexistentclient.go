@@ -196,6 +196,22 @@ func (f *dummySchema) GetPluginSchema(_ context.Context, _ string) (*v1.Schema, 
 	return nil, ErrClusterNotExist
 }
 
+func (f *dummySchema) GetRouteSchema(_ context.Context) (*v1.Schema, error) {
+	return nil, ErrClusterNotExist
+}
+
+func (f *dummySchema) GetUpstreamSchema(_ context.Context) (*v1.Schema, error) {
+	return nil, ErrClusterNotExist
+}
+
+func (f *dummySchema) GetConsumerSchema(_ context.Context) (*v1.Schema, error) {
+	return nil, ErrClusterNotExist
+}
+
+func (f *dummySchema) GetSslSchema(_ context.Context) (*v1.Schema, error) {
+	return nil, ErrClusterNotExist
+}
+
 func (nc *nonExistentCluster) Route() Route {
 	return nc.route
 }

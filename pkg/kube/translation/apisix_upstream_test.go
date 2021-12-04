@@ -105,10 +105,10 @@ func TestTranslateUpstreamPassiveHealthCheckUnusually(t *testing.T) {
 	}
 
 	err := tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.passive.Type",
 		reason: "invalid value",
-	})
+	}, err)
 
 	// invalid passive health check healthy successes
 	hc = &configv1.HealthCheck{
@@ -120,10 +120,10 @@ func TestTranslateUpstreamPassiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.passive.healthy.successes",
 		reason: "invalid value",
-	})
+	}, err)
 
 	// empty passive health check healthy httpCodes.
 	hc = &configv1.HealthCheck{
@@ -136,10 +136,10 @@ func TestTranslateUpstreamPassiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.passive.healthy.httpCodes",
 		reason: "empty",
-	})
+	}, err)
 
 	// empty passive health check unhealthy httpFailures.
 	hc = &configv1.HealthCheck{
@@ -151,10 +151,10 @@ func TestTranslateUpstreamPassiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.passive.unhealthy.httpFailures",
 		reason: "invalid value",
-	})
+	}, err)
 
 	// empty passive health check unhealthy tcpFailures.
 	hc = &configv1.HealthCheck{
@@ -166,10 +166,10 @@ func TestTranslateUpstreamPassiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.passive.unhealthy.tcpFailures",
 		reason: "invalid value",
-	})
+	}, err)
 
 	// empty passive health check unhealthy httpCodes.
 	hc = &configv1.HealthCheck{
@@ -181,10 +181,10 @@ func TestTranslateUpstreamPassiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.passive.unhealthy.httpCodes",
 		reason: "empty",
-	})
+	}, err)
 }
 
 func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
@@ -197,10 +197,10 @@ func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err := tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.active.Type",
 		reason: "invalid value",
-	})
+	}, err)
 
 	// invalid active health check port value
 	hc = &configv1.HealthCheck{
@@ -210,10 +210,10 @@ func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.active.port",
 		reason: "invalid value",
-	})
+	}, err)
 
 	// invalid active health check concurrency value
 	hc = &configv1.HealthCheck{
@@ -223,10 +223,10 @@ func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.active.concurrency",
 		reason: "invalid value",
-	})
+	}, err)
 
 	// invalid active health check healthy successes value
 	hc = &configv1.HealthCheck{
@@ -240,10 +240,10 @@ func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.active.healthy.successes",
 		reason: "invalid value",
-	})
+	}, err)
 
 	// invalid active health check healthy successes value
 	hc = &configv1.HealthCheck{
@@ -257,10 +257,10 @@ func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.active.healthy.httpCodes",
 		reason: "empty",
-	})
+	}, err)
 
 	// invalid active health check healthy interval
 	hc = &configv1.HealthCheck{
@@ -272,10 +272,10 @@ func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.active.healthy.interval",
 		reason: "invalid value",
-	})
+	}, err)
 
 	// missing active health check healthy interval
 	hc = &configv1.HealthCheck{
@@ -285,10 +285,10 @@ func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.active.healthy.interval",
 		reason: "invalid value",
-	})
+	}, err)
 
 	// invalid active health check unhealthy httpFailures
 	hc = &configv1.HealthCheck{
@@ -302,10 +302,10 @@ func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.active.unhealthy.httpFailures",
 		reason: "invalid value",
-	})
+	}, err)
 
 	// invalid active health check unhealthy tcpFailures
 	hc = &configv1.HealthCheck{
@@ -319,10 +319,10 @@ func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.active.unhealthy.tcpFailures",
 		reason: "invalid value",
-	})
+	}, err)
 
 	// invalid active health check unhealthy httpCodes
 	hc = &configv1.HealthCheck{
@@ -336,10 +336,10 @@ func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.active.unhealthy.httpCodes",
 		reason: "empty",
-	})
+	}, err)
 
 	// invalid active health check unhealthy interval
 	hc = &configv1.HealthCheck{
@@ -351,10 +351,10 @@ func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.active.unhealthy.interval",
 		reason: "invalid value",
-	})
+	}, err)
 
 	// missing active health check unhealthy interval
 	hc = &configv1.HealthCheck{
@@ -364,44 +364,48 @@ func TestTranslateUpstreamActiveHealthCheckUnusually(t *testing.T) {
 		},
 	}
 	err = tr.translateUpstreamHealthCheck(hc, nil)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "healthCheck.active.unhealthy.interval",
 		reason: "invalid value",
-	})
+	}, err)
 }
 
 func TestUpstreamRetriesAndTimeout(t *testing.T) {
 	tr := &translator{}
-	err := tr.translateUpstreamRetriesAndTimeout(-1, nil, nil)
-	assert.Equal(t, err, &translateError{
+	retries := -1
+	err := tr.translateUpstreamRetriesAndTimeout(&retries, nil, nil)
+	assert.Equal(t, &translateError{
 		field:  "retries",
 		reason: "invalid value",
-	})
+	}, err)
 
 	var ups apisixv1.Upstream
-	err = tr.translateUpstreamRetriesAndTimeout(3, nil, &ups)
+	retries = 3
+	err = tr.translateUpstreamRetriesAndTimeout(&retries, nil, &ups)
 	assert.Nil(t, err)
-	assert.Equal(t, ups.Retries, 3)
+	assert.Equal(t, *ups.Retries, 3)
 
 	timeout := &configv1.UpstreamTimeout{
 		Connect: metav1.Duration{Duration: time.Second},
 		Read:    metav1.Duration{Duration: -1},
 	}
-	err = tr.translateUpstreamRetriesAndTimeout(3, timeout, &ups)
-	assert.Equal(t, err, &translateError{
+	retries = 3
+	err = tr.translateUpstreamRetriesAndTimeout(&retries, timeout, &ups)
+	assert.Equal(t, &translateError{
 		field:  "timeout.read",
 		reason: "invalid value",
-	})
+	}, err)
 
 	timeout = &configv1.UpstreamTimeout{
 		Connect: metav1.Duration{Duration: time.Second},
 		Read:    metav1.Duration{Duration: 15 * time.Second},
 	}
-	err = tr.translateUpstreamRetriesAndTimeout(3, timeout, &ups)
+	retries = 3
+	err = tr.translateUpstreamRetriesAndTimeout(&retries, timeout, &ups)
 	assert.Nil(t, err)
-	assert.Equal(t, ups.Timeout, &apisixv1.UpstreamTimeout{
+	assert.Equal(t, &apisixv1.UpstreamTimeout{
 		Connect: 1,
 		Send:    60,
 		Read:    15,
-	})
+	}, ups.Timeout)
 }

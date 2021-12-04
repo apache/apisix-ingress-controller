@@ -100,6 +100,8 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		ar, err = c.controller.apisixRouteLister.V2alpha1(namespace, name)
 	case kube.ApisixRouteV2beta1:
 		ar, err = c.controller.apisixRouteLister.V2beta1(namespace, name)
+	case kube.ApisixRouteV2beta2:
+		ar, err = c.controller.apisixRouteLister.V2beta2(namespace, name)
 	}
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
@@ -131,7 +133,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		}
 		ar = ev.Tombstone.(kube.ApisixRoute)
 	}
-	//
+
 	switch obj.GroupVersion {
 	case kube.ApisixRouteV1:
 		tctx, err = c.controller.translator.TranslateRouteV1(ar.V1())
@@ -171,6 +173,19 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			)
 			return err
 		}
+	case kube.ApisixRouteV2beta2:
+		if ev.Type != types.EventDelete {
+			tctx, err = c.controller.translator.TranslateRouteV2beta2(ar.V2beta2())
+		} else {
+			tctx, err = c.controller.translator.TranslateRouteV2beta2NotStrictly(ar.V2beta2())
+		}
+		if err != nil {
+			log.Errorw("failed to translate ApisixRoute v2beta2",
+				zap.Error(err),
+				zap.Any("object", ar),
+			)
+			return err
+		}
 	}
 
 	log.Debugw("translated ApisixRoute",
@@ -204,6 +219,8 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			oldCtx, err = c.controller.translator.TranslateRouteV2alpha1(obj.OldObject.V2alpha1())
 		case kube.ApisixRouteV2beta1:
 			oldCtx, err = c.controller.translator.TranslateRouteV2beta1(obj.OldObject.V2beta1())
+		case kube.ApisixRouteV2beta2:
+			oldCtx, err = c.controller.translator.TranslateRouteV2beta2(obj.OldObject.V2beta2())
 		}
 		if err != nil {
 			log.Errorw("failed to translate old ApisixRoute",
@@ -232,6 +249,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
 	if errLocal != nil {
 		log.Errorf("invalid resource key: %s", event.Key)
+		c.controller.MetricsCollector.IncrSyncOperation("route", "failure")
 		return
 	}
 	var ar kube.ApisixRoute
@@ -242,6 +260,8 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 		ar, errLocal = c.controller.apisixRouteLister.V2alpha1(namespace, name)
 	case kube.ApisixRouteV2beta1:
 		ar, errLocal = c.controller.apisixRouteLister.V2beta1(namespace, name)
+	case kube.ApisixRouteV2beta2:
+		ar, errLocal = c.controller.apisixRouteLister.V2beta2(namespace, name)
 	}
 	if errOrigin == nil {
 		if ev.Type != types.EventDelete {
@@ -251,10 +271,13 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 					c.controller.recorderEvent(ar.V1(), v1.EventTypeNormal, _resourceSynced, nil)
 				case kube.ApisixRouteV2alpha1:
 					c.controller.recorderEvent(ar.V2alpha1(), v1.EventTypeNormal, _resourceSynced, nil)
-					c.controller.recordStatus(ar.V2alpha1(), _resourceSynced, nil, metav1.ConditionTrue)
+					c.controller.recordStatus(ar.V2alpha1(), _resourceSynced, nil, metav1.ConditionTrue, ar.V2alpha1().GetGeneration())
 				case kube.ApisixRouteV2beta1:
 					c.controller.recorderEvent(ar.V2beta1(), v1.EventTypeNormal, _resourceSynced, nil)
-					c.controller.recordStatus(ar.V2beta1(), _resourceSynced, nil, metav1.ConditionTrue)
+					c.controller.recordStatus(ar.V2beta1(), _resourceSynced, nil, metav1.ConditionTrue, ar.V2beta1().GetGeneration())
+				case kube.ApisixRouteV2beta2:
+					c.controller.recorderEvent(ar.V2beta2(), v1.EventTypeNormal, _resourceSynced, nil)
+					c.controller.recordStatus(ar.V2beta2(), _resourceSynced, nil, metav1.ConditionTrue, ar.V2beta2().GetGeneration())
 				}
 			} else {
 				log.Errorw("failed list ApisixRoute",
@@ -265,6 +288,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 			}
 		}
 		c.workqueue.Forget(obj)
+		c.controller.MetricsCollector.IncrSyncOperation("route", "success")
 		return
 	}
 	log.Warnw("sync ApisixRoute failed, will retry",
@@ -277,10 +301,13 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 			c.controller.recorderEvent(ar.V1(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
 		case kube.ApisixRouteV2alpha1:
 			c.controller.recorderEvent(ar.V2alpha1(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
-			c.controller.recordStatus(ar.V2alpha1(), _resourceSyncAborted, errOrigin, metav1.ConditionFalse)
+			c.controller.recordStatus(ar.V2alpha1(), _resourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2alpha1().GetGeneration())
 		case kube.ApisixRouteV2beta1:
 			c.controller.recorderEvent(ar.V2beta1(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
-			c.controller.recordStatus(ar.V2beta1(), _resourceSyncAborted, errOrigin, metav1.ConditionFalse)
+			c.controller.recordStatus(ar.V2beta1(), _resourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta1().GetGeneration())
+		case kube.ApisixRouteV2beta2:
+			c.controller.recorderEvent(ar.V2beta2(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
+			c.controller.recordStatus(ar.V2beta2(), _resourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta2().GetGeneration())
 		}
 	} else {
 		log.Errorw("failed list ApisixRoute",
@@ -290,6 +317,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 		)
 	}
 	c.workqueue.AddRateLimited(obj)
+	c.controller.MetricsCollector.IncrSyncOperation("route", "failure")
 }
 
 func (c *apisixRouteController) onAdd(obj interface{}) {
@@ -305,13 +333,15 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 		zap.Any("object", obj))
 
 	ar := kube.MustNewApisixRoute(obj)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.ApisixRouteEvent{
 			Key:          key,
 			GroupVersion: ar.GroupVersion(),
 		},
 	})
+
+	c.controller.MetricsCollector.IncrEvents("route", "add")
 }
 
 func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
@@ -332,7 +362,7 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 		zap.Any("new object", curr),
 		zap.Any("old object", prev),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventUpdate,
 		Object: kube.ApisixRouteEvent{
 			Key:          key,
@@ -340,6 +370,8 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 			OldObject:    prev,
 		},
 	})
+
+	c.controller.MetricsCollector.IncrEvents("route", "update")
 }
 
 func (c *apisixRouteController) onDelete(obj interface{}) {
@@ -362,7 +394,7 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 	log.Debugw("ApisixRoute delete event arrived",
 		zap.Any("final state", ar),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixRouteEvent{
 			Key:          key,
@@ -370,4 +402,6 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 		},
 		Tombstone: ar,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("route", "delete")
 }

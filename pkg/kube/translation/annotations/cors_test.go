@@ -33,11 +33,11 @@ func TestCorsHandler(t *testing.T) {
 	out, err := p.Handle(NewExtractor(annotations))
 	assert.Nil(t, err, "checking given error")
 	config := out.(*apisixv1.CorsConfig)
-	assert.Equal(t, config.AllowHeaders, "abc,def")
-	assert.Equal(t, config.AllowOrigins, "https://a.com")
-	assert.Equal(t, config.AllowMethods, "GET,HEAD")
+	assert.Equal(t, "abc,def", config.AllowHeaders)
+	assert.Equal(t, "https://a.com", config.AllowOrigins)
+	assert.Equal(t, "GET,HEAD", config.AllowMethods)
 
-	assert.Equal(t, p.PluginName(), "cors")
+	assert.Equal(t, "cors", p.PluginName())
 
 	annotations[_enableCors] = "false"
 	out, err = p.Handle(NewExtractor(annotations))

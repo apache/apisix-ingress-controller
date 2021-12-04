@@ -116,7 +116,7 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 			zap.Any("ApisixConsumer", ac),
 		)
 		c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse)
+		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 		return err
 	}
 	log.Debug("got consumer object from ApisixConsumer",
@@ -130,7 +130,7 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 			zap.Any("consumer", consumer),
 		)
 		c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse)
+		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 		return err
 	}
 
@@ -141,6 +141,7 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 func (c *apisixConsumerController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
+		c.controller.MetricsCollector.IncrSyncOperation("consumer", "success")
 		return
 	}
 	log.Warnw("sync ApisixConsumer failed, will retry",
@@ -148,6 +149,7 @@ func (c *apisixConsumerController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
+	c.controller.MetricsCollector.IncrSyncOperation("consumer", "failure")
 }
 
 func (c *apisixConsumerController) onAdd(obj interface{}) {
@@ -163,10 +165,12 @@ func (c *apisixConsumerController) onAdd(obj interface{}) {
 		zap.Any("object", obj),
 	)
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("consumer", "add")
 }
 
 func (c *apisixConsumerController) onUpdate(oldObj, newObj interface{}) {
@@ -188,10 +192,12 @@ func (c *apisixConsumerController) onUpdate(oldObj, newObj interface{}) {
 		zap.Any("old object", prev),
 	)
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventUpdate,
 		Object: key,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("consumer", "update")
 }
 
 func (c *apisixConsumerController) onDelete(obj interface{}) {
@@ -215,9 +221,11 @@ func (c *apisixConsumerController) onDelete(obj interface{}) {
 	log.Debugw("ApisixConsumer delete event arrived",
 		zap.Any("final state", ac),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:      types.EventDelete,
 		Object:    key,
 		Tombstone: ac,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("consumer", "delete")
 }

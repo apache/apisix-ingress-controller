@@ -15,12 +15,14 @@
 package translation
 
 import (
+	"fmt"
+
 	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func (t *translator) translateUpstreamRetriesAndTimeout(retries int, timeout *configv1.UpstreamTimeout, ups *apisixv1.Upstream) error {
-	if retries < 0 {
+func (t *translator) translateUpstreamRetriesAndTimeout(retries *int, timeout *configv1.UpstreamTimeout, ups *apisixv1.Upstream) error {
+	if retries != nil && *retries < 0 {
 		return &translateError{
 			field:  "retries",
 			reason: "invalid value",
@@ -74,7 +76,7 @@ func (t *translator) translateUpstreamScheme(scheme string, ups *apisixv1.Upstre
 		return nil
 	}
 	switch scheme {
-	case apisixv1.SchemeHTTP, apisixv1.SchemeGRPC:
+	case apisixv1.SchemeHTTP, apisixv1.SchemeGRPC, apisixv1.SchemeHTTPS, apisixv1.SchemeGRPCS:
 		ups.Scheme = scheme
 		return nil
 	default:
@@ -143,6 +145,31 @@ func (t *translator) translateUpstreamHealthCheck(config *configv1.HealthCheck, 
 	}
 
 	ups.Checks = &hc
+	return nil
+}
+
+func (t translator) translateClientTLS(config *configv1.ApisixSecret, ups *apisixv1.Upstream) error {
+	if config == nil {
+		return nil
+	}
+	s, err := t.SecretLister.Secrets(config.Namespace).Get(config.Name)
+	if err != nil {
+		return &translateError{
+			field:  "tlsSecret",
+			reason: fmt.Sprintf("get secret failed, %v", err),
+		}
+	}
+	cert, key, err := t.ExtractKeyPair(s, true)
+	if err != nil {
+		return &translateError{
+			field:  "tlsSecret",
+			reason: fmt.Sprintf("extract cert and key from secret failed, %v", err),
+		}
+	}
+	ups.TLS = &apisixv1.ClientTLS{
+		Cert: string(cert),
+		Key:  string(key),
+	}
 	return nil
 }
 
@@ -226,7 +253,7 @@ func (t *translator) translateUpstreamActiveHealthCheck(config *configv1.ActiveH
 			}
 		}
 		active.Unhealthy.TCPFailures = config.Unhealthy.TCPFailures
-		active.Unhealthy.Timeouts = config.Unhealthy.Timeout.Seconds()
+		active.Unhealthy.Timeouts = config.Unhealthy.Timeouts
 
 		if config.Unhealthy.HTTPCodes != nil && len(config.Unhealthy.HTTPCodes) < 1 {
 			return nil, &translateError{
@@ -295,7 +322,7 @@ func (t *translator) translateUpstreamPassiveHealthCheck(config *configv1.Passiv
 			}
 		}
 		passive.Unhealthy.TCPFailures = config.Unhealthy.TCPFailures
-		passive.Unhealthy.Timeouts = config.Unhealthy.Timeout.Seconds()
+		passive.Unhealthy.Timeouts = config.Unhealthy.Timeouts
 
 		if config.Unhealthy.HTTPCodes != nil && len(config.Unhealthy.HTTPCodes) < 1 {
 			return nil, &translateError{

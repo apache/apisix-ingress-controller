@@ -10,6 +10,8 @@
       "label": "Practices",
       "items": [
         "practices/index",
+        "practices/check-crd-status",
+        "practices/mtls",
         "practices/the-hard-way",
         "practices/proxy-the-httpbin-service-with-ingress",
         "practices/proxy-the-httpbin-service"
@@ -38,7 +40,7 @@
         "references/apisix_route_v2beta1",
         "references/apisix_upstream",
         "references/apisix_tls",
-        "references/apisix_apisix_cluster_config"
+        "references/apisix_cluster_config"
       ]
     },
     {

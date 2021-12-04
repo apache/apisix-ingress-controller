@@ -50,6 +50,10 @@ const (
 	SchemeHTTP = "http"
 	// SchemeGRPC represents the GRPC protocol.
 	SchemeGRPC = "grpc"
+	// SchemeHTTPS represents the HTTPS protocol.
+	SchemeHTTPS = "https"
+	// SchemeGRPCS represents the GRPCS protocol.
+	SchemeGRPCS = "grpcs"
 
 	// HealthCheckHTTP represents the HTTP kind health check.
 	HealthCheckHTTP = "http"
@@ -84,17 +88,18 @@ type Metadata struct {
 type Route struct {
 	Metadata `json:",inline" yaml:",inline"`
 
-	Host            string   `json:"host,omitempty" yaml:"host,omitempty"`
-	Hosts           []string `json:"hosts,omitempty" yaml:"hosts,omitempty"`
-	Uri             string   `json:"uri,omitempty" yaml:"uri,omitempty"`
-	Priority        int      `json:"priority,omitempty" yaml:"priority,omitempty"`
-	Vars            Vars     `json:"vars,omitempty" yaml:"vars,omitempty"`
-	Uris            []string `json:"uris,omitempty" yaml:"uris,omitempty"`
-	Methods         []string `json:"methods,omitempty" yaml:"methods,omitempty"`
-	EnableWebsocket bool     `json:"enable_websocket,omitempty" yaml:"enable_websocket,omitempty"`
-	RemoteAddrs     []string `json:"remote_addrs,omitempty" yaml:"remote_addrs,omitempty"`
-	UpstreamId      string   `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
-	Plugins         Plugins  `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Host            string           `json:"host,omitempty" yaml:"host,omitempty"`
+	Hosts           []string         `json:"hosts,omitempty" yaml:"hosts,omitempty"`
+	Uri             string           `json:"uri,omitempty" yaml:"uri,omitempty"`
+	Priority        int              `json:"priority,omitempty" yaml:"priority,omitempty"`
+	Timeout         *UpstreamTimeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	Vars            Vars             `json:"vars,omitempty" yaml:"vars,omitempty"`
+	Uris            []string         `json:"uris,omitempty" yaml:"uris,omitempty"`
+	Methods         []string         `json:"methods,omitempty" yaml:"methods,omitempty"`
+	EnableWebsocket bool             `json:"enable_websocket,omitempty" yaml:"enable_websocket,omitempty"`
+	RemoteAddrs     []string         `json:"remote_addrs,omitempty" yaml:"remote_addrs,omitempty"`
+	UpstreamId      string           `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
+	Plugins         Plugins          `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 // Vars represents the route match expressions of APISIX.
@@ -181,8 +186,15 @@ type Upstream struct {
 	Checks  *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
 	Nodes   UpstreamNodes        `json:"nodes" yaml:"nodes"`
 	Scheme  string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
-	Retries int                  `json:"retries,omitempty" yaml:"retries,omitempty"`
+	Retries *int                 `json:"retries,omitempty" yaml:"retries,omitempty"`
 	Timeout *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	TLS     *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
+}
+
+// ClientTLS is tls cert and key use in mTLS
+type ClientTLS struct {
+	Cert string `json:"client_cert,omitempty" yaml:"client_cert,omitempty"`
+	Key  string `json:"client_key,omitempty" yaml:"client_key,omitempty"`
 }
 
 // UpstreamTimeout represents the timeout settings on Upstream.
@@ -207,6 +219,7 @@ func (n *UpstreamNodes) UnmarshalJSON(p []byte) error {
 		if len(p) != 2 {
 			return errors.New("unexpected non-empty object")
 		}
+		*n = UpstreamNodes{}
 		return nil
 	}
 	var data []UpstreamNode
@@ -287,10 +300,10 @@ type UpstreamActiveHealthCheckUnhealthy struct {
 // an upstream node is unhealthy with the passive manager.
 // +k8s:deepcopy-gen=true
 type UpstreamPassiveHealthCheckUnhealthy struct {
-	HTTPStatuses []int   `json:"http_statuses,omitempty" yaml:"http_statuses,omitempty"`
-	HTTPFailures int     `json:"http_failures,omitempty" yaml:"http_failures,omitempty"`
-	TCPFailures  int     `json:"tcp_failures,omitempty" yaml:"tcp_failures,omitempty"`
-	Timeouts     float64 `json:"timeouts,omitempty" yaml:"timeouts,omitempty"`
+	HTTPStatuses []int `json:"http_statuses,omitempty" yaml:"http_statuses,omitempty"`
+	HTTPFailures int   `json:"http_failures,omitempty" yaml:"http_failures,omitempty"`
+	TCPFailures  int   `json:"tcp_failures,omitempty" yaml:"tcp_failures,omitempty"`
+	Timeouts     int   `json:"timeouts,omitempty" yaml:"timeouts,omitempty"`
 }
 
 // Ssl apisix ssl object

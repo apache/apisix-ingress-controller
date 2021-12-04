@@ -129,7 +129,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 	if err != nil {
 		log.Errorf("failed to get service %s: %s", key, err)
 		c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
+		c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 		return err
 	}
 
@@ -150,7 +150,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 				}
 				log.Errorf("failed to get upstream %s: %s", upsName, err)
 				c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
-				c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
+				c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 				return err
 			}
 			var newUps *apisixv1.Upstream
@@ -167,7 +167,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 						zap.Error(err),
 					)
 					c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
-					c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
+					c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 					return err
 				}
 			} else {
@@ -189,14 +189,14 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 					zap.String("cluster", clusterName),
 				)
 				c.controller.recorderEvent(au, corev1.EventTypeWarning, _resourceSyncAborted, err)
-				c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse)
+				c.controller.recordStatus(au, _resourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 				return err
 			}
 		}
 	}
 	if ev.Type != types.EventDelete {
 		c.controller.recorderEvent(au, corev1.EventTypeNormal, _resourceSynced, nil)
-		c.controller.recordStatus(au, _resourceSynced, nil, metav1.ConditionTrue)
+		c.controller.recordStatus(au, _resourceSynced, nil, metav1.ConditionTrue, au.GetGeneration())
 	}
 	return err
 }
@@ -204,6 +204,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 func (c *apisixUpstreamController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
+		c.controller.MetricsCollector.IncrSyncOperation("upstream", "success")
 		return
 	}
 	log.Warnw("sync ApisixUpstream failed, will retry",
@@ -211,6 +212,7 @@ func (c *apisixUpstreamController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
+	c.controller.MetricsCollector.IncrSyncOperation("upstream", "failure")
 }
 
 func (c *apisixUpstreamController) onAdd(obj interface{}) {
@@ -225,10 +227,12 @@ func (c *apisixUpstreamController) onAdd(obj interface{}) {
 	log.Debugw("ApisixUpstream add event arrived",
 		zap.Any("object", obj))
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("upstream", "add")
 }
 
 func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
@@ -250,10 +254,12 @@ func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
 		zap.Any("old object", prev),
 	)
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventUpdate,
 		Object: key,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("upstream", "update")
 }
 
 func (c *apisixUpstreamController) onDelete(obj interface{}) {
@@ -277,9 +283,11 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 	log.Debugw("ApisixUpstream delete event arrived",
 		zap.Any("final state", au),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:      types.EventDelete,
 		Object:    key,
 		Tombstone: au,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("upstream", "delete")
 }

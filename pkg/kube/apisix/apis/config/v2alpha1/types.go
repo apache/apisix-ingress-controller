@@ -90,6 +90,7 @@ type ApisixRouteHTTP struct {
 	// same URI path (for path matching), route with
 	// higher priority will take effect.
 	Priority int                   `json:"priority,omitempty" yaml:"priority,omitempty"`
+	Timeout  *UpstreamTimeout      `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	Match    *ApisixRouteHTTPMatch `json:"match,omitempty" yaml:"match,omitempty"`
 	// Deprecated: Backend will be removed in the future, use Backends instead.
 	Backend *ApisixRouteHTTPBackend `json:"backend,omitempty" yaml:"backend,omitempty"`
@@ -142,12 +143,12 @@ type ApisixRouteHTTPMatchExpr struct {
 	Op string `json:"op" yaml:"op"`
 	// Set is an array type object of the expression.
 	// It should be used when the Op is "in" or "not_in";
-	Set []string `json:"set" yaml:"set"`
+	Set []string `json:"set,omitempty" yaml:"set,omitempty"`
 	// Value is the normal type object for the expression,
 	// it should be used when the Op is not "in" and "not_in".
 	// Set and Value are exclusive so only of them can be set
 	// in the same time.
-	Value *string `json:"value" yaml:"value"`
+	Value *string `json:"value,omitempty" yaml:"value,omitempty"`
 }
 
 // ApisixRouteHTTPMatchExprSubject describes the route match expression subject.
@@ -194,6 +195,13 @@ type ApisixRouteHTTPPlugin struct {
 // ApisixRouteHTTPPluginConfig is the configuration for
 // any plugins.
 type ApisixRouteHTTPPluginConfig map[string]interface{}
+
+// UpstreamTimeout is settings for the read, send and connect to the upstream.
+type UpstreamTimeout struct {
+	Connect metav1.Duration `json:"connect,omitempty" yaml:"connect,omitempty"`
+	Send    metav1.Duration `json:"send,omitempty" yaml:"send,omitempty"`
+	Read    metav1.Duration `json:"read,omitempty" yaml:"read,omitempty"`
+}
 
 // ApisixRouteAuthentication is the authentication-related
 // configuration in ApisixRoute.

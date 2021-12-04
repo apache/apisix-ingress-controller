@@ -57,7 +57,7 @@ spec:
 
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -75,8 +75,8 @@ spec:
          name: X-Foo
        op: Equal
        value: bar
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
    authentication:
      enable: true
@@ -153,7 +153,7 @@ spec:
 
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -171,8 +171,8 @@ spec:
          name: X-Foo
        op: Equal
        value: bar
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
    authentication:
      enable: true
@@ -237,7 +237,7 @@ spec:
 
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -255,8 +255,8 @@ spec:
          name: X-Foo
        op: Equal
        value: bar
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
    authentication:
      enable: true
@@ -331,7 +331,7 @@ spec:
 
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -349,8 +349,8 @@ spec:
          name: X-Foo
        op: Equal
        value: bar
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
    authentication:
      enable: true
@@ -390,7 +390,7 @@ spec:
 	ginkgo.It("ApisixRoute without authentication", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -408,8 +408,8 @@ spec:
          name: X-Foo
        op: Equal
        value: bar
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
    authentication:
      enable: false

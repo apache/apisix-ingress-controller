@@ -27,7 +27,21 @@ log_output: "stderr" # the output file path of error log, default is stderr, whe
                      # are marshalled in JSON format, which can be parsed by
                      # programs easily.
 
+cert_file: "/etc/webhook/certs/cert.pem" # the TLS certificate file path.
+key_file: "/etc/webhook/certs/key.pem"   # the TLS key file path.
+
 http_listen: ":8080"   # the HTTP Server listen address, default is ":8080"
+https_listen: ":8443"   # the HTTPS Server listen address, default is ":8443"
+ingress_publish_service: ""  # the controller will use the Endpoint of this Service to
+                             # update the status information of the Ingress resource.
+                             # The format is "namespace/svc-name" to solve the situation that
+                             # the data plane and the controller are not deployed in the same namespace.
+ingress_status_address: []   # when there is no available information on the Service
+                             # used for publishing on the data plane,
+                             # the static address provided here will be
+                             # used to update the status information of Ingress.
+                             # When ingress-publish-service is specified at the same time, ingress-status-address is preferred.
+                             # For example, no available LB exists in the bare metal environment.
 enable_profiling: true # enable profiling via web interfaces
                        # host:port/debug/pprof, default is true.
 
@@ -40,6 +54,10 @@ kubernetes:
                                        # and the minimal resync interval is 30s.
   app_namespaces: ["*"]                # namespace list that controller will watch for resources,
                                        # by default all namespaces (represented by "*") are watched.
+                                       # The `app_namespace` is deprecated, using `namespace_selector` instead since version 1.4.0
+  namespace_selector: [""]             # namespace_selector represent basis for selecting managed namespaces.
+                                       # the field is support since version 1.4.0
+                                       # For example, "apisix.ingress=watching", so ingress will watching the namespaces which labels "apisix.ingress=watching"
   election_id: "ingress-apisix-leader" # the election id for the controller leader campaign,
                                        # only the leader will watch and delivery resource changes,
                                        # other instances (as candidates) stand by.
@@ -52,9 +70,8 @@ kubernetes:
                                        # "extensions/v1beta1", default is "networking/v1".
   watch_endpointslices: false          # whether to watch EndpointSlices rather than Endpoints.
 
-  apisix_route_version: "apisix.apache.org/v2alpha1" # the supported apisixroute api group version, can be
-                                                     # "apisix.apache.org/v1" or "apisix.apache.org/v2alpha1",
-                                                     # default is "apisix.apache.org/v2alpha1".
+  apisix_route_version: "apisix.apache.org/v2beta2"  # the supported apisixroute api group version.
+                                                     # the latest version is "apisix.apache.org/v2beta2".
 # APISIX related configurations.
 apisix:
   base_url: "http://127.0.0.1:9080/apisix/admin" # (Deprecated, use default_cluster_base_url) the APISIX admin api / manager api

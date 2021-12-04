@@ -68,7 +68,7 @@ func (p *podCache) Add(pod *corev1.Pod) error {
 func (p *podCache) Delete(pod *corev1.Pod) error {
 	ip := pod.Status.PodIP
 	if len(ip) == 0 {
-		return ErrPodNoAssignedIP
+		return nil
 	}
 	p.Lock()
 	defer p.Unlock()

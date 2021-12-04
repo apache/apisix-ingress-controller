@@ -42,8 +42,8 @@ func TestTranslateUpstreamConfig(t *testing.T) {
 
 	ups, err := tr.TranslateUpstreamConfig(au)
 	assert.Nil(t, err, "checking upstream config translating")
-	assert.Equal(t, ups.Type, apisixv1.LbRoundRobin)
-	assert.Equal(t, ups.Scheme, apisixv1.SchemeGRPC)
+	assert.Equal(t, apisixv1.LbRoundRobin, ups.Type)
+	assert.Equal(t, apisixv1.SchemeGRPC, ups.Scheme)
 
 	au = &configv1.ApisixUpstreamConfig{
 		LoadBalancer: &configv1.LoadBalancer{
@@ -55,10 +55,10 @@ func TestTranslateUpstreamConfig(t *testing.T) {
 	}
 	ups, err = tr.TranslateUpstreamConfig(au)
 	assert.Nil(t, err, "checking upstream config translating")
-	assert.Equal(t, ups.Type, apisixv1.LbConsistentHash)
-	assert.Equal(t, ups.Key, "user-agent")
-	assert.Equal(t, ups.HashOn, apisixv1.HashOnHeader)
-	assert.Equal(t, ups.Scheme, apisixv1.SchemeHTTP)
+	assert.Equal(t, apisixv1.LbConsistentHash, ups.Type)
+	assert.Equal(t, "user-agent", ups.Key)
+	assert.Equal(t, apisixv1.HashOnHeader, ups.HashOn)
+	assert.Equal(t, apisixv1.SchemeHTTP, ups.Scheme)
 
 	au = &configv1.ApisixUpstreamConfig{
 		LoadBalancer: &configv1.LoadBalancer{
@@ -179,14 +179,14 @@ func TestTranslateUpstreamNodes(t *testing.T) {
 
 	nodes, err := tr.TranslateUpstreamNodes(kube.NewEndpoint(endpoints), 10080, nil)
 	assert.Nil(t, nodes)
-	assert.Equal(t, err, &translateError{
+	assert.Equal(t, &translateError{
 		field:  "service.spec.ports",
 		reason: "port not defined",
-	})
+	}, err)
 
 	nodes, err = tr.TranslateUpstreamNodes(kube.NewEndpoint(endpoints), 80, nil)
 	assert.Nil(t, err)
-	assert.Equal(t, nodes, apisixv1.UpstreamNodes{
+	assert.Equal(t, apisixv1.UpstreamNodes{
 		{
 			Host:   "192.168.1.1",
 			Port:   9080,
@@ -197,11 +197,11 @@ func TestTranslateUpstreamNodes(t *testing.T) {
 			Port:   9080,
 			Weight: 100,
 		},
-	})
+	}, nodes)
 
 	nodes, err = tr.TranslateUpstreamNodes(kube.NewEndpoint(endpoints), 443, nil)
 	assert.Nil(t, err)
-	assert.Equal(t, nodes, apisixv1.UpstreamNodes{
+	assert.Equal(t, apisixv1.UpstreamNodes{
 		{
 			Host:   "192.168.1.1",
 			Port:   9443,
@@ -212,7 +212,7 @@ func TestTranslateUpstreamNodes(t *testing.T) {
 			Port:   9443,
 			Weight: 100,
 		},
-	})
+	}, nodes)
 }
 
 func TestTranslateUpstreamNodesWithEndpointSlices(t *testing.T) {
@@ -315,7 +315,7 @@ func TestTranslateUpstreamNodesWithEndpointSlices(t *testing.T) {
 
 	nodes, err = tr.TranslateUpstreamNodes(kube.NewEndpointWithSlice(ep), 80, nil)
 	assert.Nil(t, err)
-	assert.Equal(t, nodes, apisixv1.UpstreamNodes{
+	assert.Equal(t, apisixv1.UpstreamNodes{
 		{
 			Host:   "192.168.1.1",
 			Port:   9080,
@@ -326,11 +326,11 @@ func TestTranslateUpstreamNodesWithEndpointSlices(t *testing.T) {
 			Port:   9080,
 			Weight: 100,
 		},
-	})
+	}, nodes)
 
 	nodes, err = tr.TranslateUpstreamNodes(kube.NewEndpointWithSlice(ep), 443, nil)
 	assert.Nil(t, err)
-	assert.Equal(t, nodes, apisixv1.UpstreamNodes{
+	assert.Equal(t, apisixv1.UpstreamNodes{
 		{
 			Host:   "192.168.1.1",
 			Port:   9443,
@@ -341,5 +341,5 @@ func TestTranslateUpstreamNodesWithEndpointSlices(t *testing.T) {
 			Port:   9443,
 			Weight: 100,
 		},
-	})
+	}, nodes)
 }

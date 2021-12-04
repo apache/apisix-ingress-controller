@@ -18,12 +18,12 @@ package apisix
 import (
 	"context"
 
+	"go.uber.org/zap"
+
 	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-
-	"go.uber.org/zap"
 )
 
 type schemaClient struct {
@@ -64,7 +64,7 @@ func (sc schemaClient) getSchema(ctx context.Context, name string) (*v1.Schema, 
 	}
 
 	url := sc.url + "/" + name
-	content, err := sc.cluster.getSchema(ctx, url)
+	content, err := sc.cluster.getSchema(ctx, url, "schema")
 	if err != nil {
 		log.Errorw("failed to get schema from APISIX",
 			zap.String("name", name),
@@ -89,4 +89,24 @@ func (sc schemaClient) getSchema(ctx context.Context, name string) (*v1.Schema, 
 // GetPluginSchema returns plugin's schema.
 func (sc schemaClient) GetPluginSchema(ctx context.Context, pluginName string) (*v1.Schema, error) {
 	return sc.getSchema(ctx, "plugins/"+pluginName)
+}
+
+// GetRouteSchema returns route's schema.
+func (sc schemaClient) GetRouteSchema(ctx context.Context) (*v1.Schema, error) {
+	return sc.getSchema(ctx, "route")
+}
+
+// GetUpstreamSchema returns upstream's schema.
+func (sc schemaClient) GetUpstreamSchema(ctx context.Context) (*v1.Schema, error) {
+	return sc.getSchema(ctx, "upstream")
+}
+
+// GetConsumerSchema returns consumer's schema.
+func (sc schemaClient) GetConsumerSchema(ctx context.Context) (*v1.Schema, error) {
+	return sc.getSchema(ctx, "consumer")
+}
+
+// GetSslSchema returns SSL's schema.
+func (sc schemaClient) GetSslSchema(ctx context.Context) (*v1.Schema, error) {
+	return sc.getSchema(ctx, "ssl")
 }

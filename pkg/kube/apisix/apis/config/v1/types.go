@@ -55,9 +55,10 @@ type Http struct {
 
 // Path defines an URI based route rule.
 type Path struct {
-	Path    string   `json:"path,omitempty" yaml:"path,omitempty"`
-	Backend Backend  `json:"backend,omitempty" yaml:"backend,omitempty"`
-	Plugins []Plugin `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Path    string           `json:"path,omitempty" yaml:"path,omitempty"`
+	Backend Backend          `json:"backend,omitempty" yaml:"backend,omitempty"`
+	Timeout *UpstreamTimeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	Plugins []Plugin         `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 // Backend defines an upstream, it should be an existing Kubernetes Service.
@@ -112,7 +113,7 @@ type ApisixUpstreamConfig struct {
 	// How many times that the proxy (Apache APISIX) should do when
 	// errors occur (error, timeout or bad http status codes like 500, 502).
 	// +optional
-	Retries int `json:"retries,omitempty" yaml:"retries,omitempty"`
+	Retries *int `json:"retries,omitempty" yaml:"retries,omitempty"`
 
 	// Timeout settings for the read, send and connect to the upstream.
 	// +optional
@@ -121,6 +122,11 @@ type ApisixUpstreamConfig struct {
 	// The health check configurations for the upstream.
 	// +optional
 	HealthCheck *HealthCheck `json:"healthCheck,omitempty" yaml:"healthCheck,omitempty"`
+
+	// Set the client certificate when connecting to TLS upstream.
+	// +optional
+	TLSSecret *ApisixSecret `json:"tlsSecret,omitempty" yaml:"tlsSecret,omitempty"`
+
 	// Subsets groups the service endpoints by their labels. Usually used to differentiate
 	// service versions.
 	// +optional
@@ -216,10 +222,10 @@ type PassiveHealthCheckHealthy struct {
 // PassiveHealthCheckUnhealthy defines the conditions to judge whether
 // an upstream node is unhealthy with the passive manager.
 type PassiveHealthCheckUnhealthy struct {
-	HTTPCodes    []int         `json:"httpCodes,omitempty" yaml:"httpCodes,omitempty"`
-	HTTPFailures int           `json:"httpFailures,omitempty" yaml:"http_failures,omitempty"`
-	TCPFailures  int           `json:"tcpFailures,omitempty" yaml:"tcpFailures,omitempty"`
-	Timeout      time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	HTTPCodes    []int `json:"httpCodes,omitempty" yaml:"httpCodes,omitempty"`
+	HTTPFailures int   `json:"httpFailures,omitempty" yaml:"http_failures,omitempty"`
+	TCPFailures  int   `json:"tcpFailures,omitempty" yaml:"tcpFailures,omitempty"`
+	Timeouts     int   `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

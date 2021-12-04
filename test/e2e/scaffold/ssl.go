@@ -32,6 +32,15 @@ data:
   cert: %s
   key: %s
 `
+	_kubeTlsSecretTemplate = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+data:
+  tls.crt: %s
+  tls.key: %s
+`
 	_clientCASecretTemplate = `
 apiVersion: v1
 kind: Secret
@@ -82,7 +91,18 @@ func (s *Scaffold) NewSecret(name, cert, key string) error {
 	return nil
 }
 
-// NewSecret new a k8s secret
+// NewKubeTlsSecret new a kube style tls secret
+func (s *Scaffold) NewKubeTlsSecret(name, cert, key string) error {
+	certBase64 := base64.StdEncoding.EncodeToString([]byte(cert))
+	keyBase64 := base64.StdEncoding.EncodeToString([]byte(key))
+	secret := fmt.Sprintf(_kubeTlsSecretTemplate, name, certBase64, keyBase64)
+	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, secret); err != nil {
+		return err
+	}
+	return nil
+}
+
+// NewClientCASecret new a k8s secret
 func (s *Scaffold) NewClientCASecret(name, cert, key string) error {
 	certBase64 := base64.StdEncoding.EncodeToString([]byte(cert))
 	secret := fmt.Sprintf(_clientCASecretTemplate, name, certBase64)

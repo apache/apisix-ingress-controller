@@ -35,6 +35,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
@@ -76,27 +77,29 @@ type ClusterOptions struct {
 	BaseURL  string
 	Timeout  time.Duration
 	// SyncInterval is the interval to sync schema.
-	SyncInterval types.TimeDuration
+	SyncInterval     types.TimeDuration
+	MetricsCollector metrics.Collector
 }
 
 type cluster struct {
-	name         string
-	baseURL      string
-	baseURLHost  string
-	adminKey     string
-	cli          *http.Client
-	cacheState   int32
-	cache        cache.Cache
-	cacheSynced  chan struct{}
-	cacheSyncErr error
-	route        Route
-	upstream     Upstream
-	ssl          SSL
-	streamRoute  StreamRoute
-	globalRules  GlobalRule
-	consumer     Consumer
-	plugin       Plugin
-	schema       Schema
+	name             string
+	baseURL          string
+	baseURLHost      string
+	adminKey         string
+	cli              *http.Client
+	cacheState       int32
+	cache            cache.Cache
+	cacheSynced      chan struct{}
+	cacheSyncErr     error
+	route            Route
+	upstream         Upstream
+	ssl              SSL
+	streamRoute      StreamRoute
+	globalRules      GlobalRule
+	consumer         Consumer
+	plugin           Plugin
+	schema           Schema
+	metricsCollector metrics.Collector
 }
 
 func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
@@ -125,8 +128,9 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 			Timeout:   o.Timeout,
 			Transport: _defaultTransport,
 		},
-		cacheState:  _cacheSyncing, // default state
-		cacheSynced: make(chan struct{}),
+		cacheState:       _cacheSyncing, // default state
+		cacheSynced:      make(chan struct{}),
+		metricsCollector: o.MetricsCollector,
 	}
 	c.route = newRouteClient(c)
 	c.upstream = newUpstreamClient(c)
@@ -157,11 +161,13 @@ func (c *cluster) syncCache(ctx context.Context) {
 				zap.String("cost_time", time.Since(now).String()),
 				zap.String("cluster", c.name),
 			)
+			c.metricsCollector.IncrCacheSyncOperation("success")
 		} else {
 			log.Errorw("failed to sync cache",
 				zap.String("cost_time", time.Since(now).String()),
 				zap.String("cluster", c.name),
 			)
+			c.metricsCollector.IncrCacheSyncOperation("failure")
 		}
 	}()
 
@@ -322,6 +328,7 @@ func (c *cluster) syncSchema(ctx context.Context, interval time.Duration) {
 	for {
 		if err := c.syncSchemaOnce(ctx); err != nil {
 			log.Warnf("failed to sync schema: %s", err)
+			c.metricsCollector.IncrSyncOperation("schema", "failure")
 		}
 
 		select {
@@ -379,6 +386,7 @@ func (c *cluster) syncSchemaOnce(ctx context.Context) error {
 			continue
 		}
 	}
+	c.metricsCollector.IncrSyncOperation("schema", "success")
 	return nil
 }
 
@@ -481,15 +489,19 @@ func (c *cluster) do(req *http.Request) (*http.Response, error) {
 	return c.cli.Do(req)
 }
 
-func (c *cluster) getResource(ctx context.Context, url string) (*getResponse, error) {
+func (c *cluster) getResource(ctx context.Context, url, resource string) (*getResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
+	start := time.Now()
 	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "get")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+
 	defer drainBody(resp.Body, url)
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
@@ -510,15 +522,19 @@ func (c *cluster) getResource(ctx context.Context, url string) (*getResponse, er
 	return &res, nil
 }
 
-func (c *cluster) listResource(ctx context.Context, url string) (*listResponse, error) {
+func (c *cluster) listResource(ctx context.Context, url, resource string) (*listResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
+	start := time.Now()
 	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "list")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+
 	defer drainBody(resp.Body, url)
 	if resp.StatusCode != http.StatusOK {
 		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
@@ -535,15 +551,18 @@ func (c *cluster) listResource(ctx context.Context, url string) (*listResponse, 
 	return &list, nil
 }
 
-func (c *cluster) createResource(ctx context.Context, url string, body io.Reader) (*createResponse, error) {
+func (c *cluster) createResource(ctx context.Context, url, resource string, body io.Reader) (*createResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
 	if err != nil {
 		return nil, err
 	}
+	start := time.Now()
 	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "create")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
 
 	defer drainBody(resp.Body, url)
 
@@ -561,15 +580,19 @@ func (c *cluster) createResource(ctx context.Context, url string, body io.Reader
 	return &cr, nil
 }
 
-func (c *cluster) updateResource(ctx context.Context, url string, body io.Reader) (*updateResponse, error) {
+func (c *cluster) updateResource(ctx context.Context, url, resource string, body io.Reader) (*updateResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
 	if err != nil {
 		return nil, err
 	}
+	start := time.Now()
 	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "update")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+
 	defer drainBody(resp.Body, url)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
@@ -585,15 +608,19 @@ func (c *cluster) updateResource(ctx context.Context, url string, body io.Reader
 	return &ur, nil
 }
 
-func (c *cluster) deleteResource(ctx context.Context, url string) error {
+func (c *cluster) deleteResource(ctx context.Context, url, resource string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
 	if err != nil {
 		return err
 	}
+	start := time.Now()
 	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "delete")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+
 	defer drainBody(resp.Body, url)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
@@ -643,15 +670,19 @@ func readBody(r io.ReadCloser, url string) string {
 }
 
 // getSchema returns the schema of APISIX object.
-func (c *cluster) getSchema(ctx context.Context, url string) (string, error) {
+func (c *cluster) getSchema(ctx context.Context, url, resource string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
 	}
+	start := time.Now()
 	resp, err := c.do(req)
 	if err != nil {
 		return "", err
 	}
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "getSchema")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+
 	defer drainBody(resp.Body, url)
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
@@ -667,15 +698,19 @@ func (c *cluster) getSchema(ctx context.Context, url string) (string, error) {
 }
 
 // getList returns a list of string.
-func (c *cluster) getList(ctx context.Context, url string) ([]string, error) {
+func (c *cluster) getList(ctx context.Context, url, resource string) ([]string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
+	start := time.Now()
 	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
+	c.metricsCollector.RecordAPISIXLatency(time.Since(start), "getList")
+	c.metricsCollector.RecordAPISIXCode(resp.StatusCode, resource)
+
 	defer drainBody(resp.Body, url)
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {

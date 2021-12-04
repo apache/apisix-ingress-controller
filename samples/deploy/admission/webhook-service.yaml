@@ -15,9 +15,15 @@
 # limitations under the License.
 #
 
-resources:
-  - ./ApisixRoute.yaml
-  - ./ApisixUpstream.yaml
-  - ./ApisixTls.yaml
-  - ./ApisixClusterConfig.yaml
-  - ./ApisixConsumer.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: apisix-admission-server
+  labels:
+    app: apisix-admission-server
+spec:
+  ports:
+    - port: 8443
+      targetPort: 8443
+  selector:
+    app: apisix-ingress-controller
