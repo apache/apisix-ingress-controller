@@ -18,6 +18,11 @@ import (
 	"strings"
 )
 
+const (
+	// AnnotationsPrefix is the apisix annotation prefix
+	AnnotationsPrefix = "k8s.apisix.apache.org/"
+)
+
 // Extractor encapsulates some auxiliary methods to extract annotations.
 type Extractor interface {
 	// GetStringAnnotation returns the string value of the target annotation.
