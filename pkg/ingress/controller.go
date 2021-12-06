@@ -42,10 +42,9 @@ import (
 	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
-	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
-	listersv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2alpha1"
+	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
@@ -106,15 +105,15 @@ type Controller struct {
 	secretInformer              cache.SharedIndexInformer
 	secretLister                listerscorev1.SecretLister
 	apisixUpstreamInformer      cache.SharedIndexInformer
-	apisixUpstreamLister        listersv1.ApisixUpstreamLister
+	apisixUpstreamLister        listersv2beta3.ApisixUpstreamLister
 	apisixRouteLister           kube.ApisixRouteLister
 	apisixRouteInformer         cache.SharedIndexInformer
-	apisixTlsLister             listersv1.ApisixTlsLister
+	apisixTlsLister             listersv2beta3.ApisixTlsLister
 	apisixTlsInformer           cache.SharedIndexInformer
-	apisixClusterConfigLister   listersv2alpha1.ApisixClusterConfigLister
+	apisixClusterConfigLister   listersv2beta3.ApisixClusterConfigLister
 	apisixClusterConfigInformer cache.SharedIndexInformer
 	apisixConsumerInformer      cache.SharedIndexInformer
-	apisixConsumerLister        listersv2alpha1.ApisixConsumerLister
+	apisixConsumerLister        listersv2beta3.ApisixConsumerLister
 
 	// resource controllers
 	namespaceController     *namespaceController
@@ -212,15 +211,14 @@ func (c *Controller) initWhenStartLeading() {
 	)
 	c.secretLister = kubeFactory.Core().V1().Secrets().Lister()
 	c.apisixRouteLister = kube.NewApisixRouteLister(
-		apisixFactory.Apisix().V1().ApisixRoutes().Lister(),
-		apisixFactory.Apisix().V2alpha1().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2beta1().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2beta2().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
 	)
-	c.apisixUpstreamLister = apisixFactory.Apisix().V1().ApisixUpstreams().Lister()
-	c.apisixTlsLister = apisixFactory.Apisix().V1().ApisixTlses().Lister()
-	c.apisixClusterConfigLister = apisixFactory.Apisix().V2alpha1().ApisixClusterConfigs().Lister()
-	c.apisixConsumerLister = apisixFactory.Apisix().V2alpha1().ApisixConsumers().Lister()
+	c.apisixUpstreamLister = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister()
+	c.apisixTlsLister = apisixFactory.Apisix().V2beta3().ApisixTlses().Lister()
+	c.apisixClusterConfigLister = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister()
+	c.apisixConsumerLister = apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister()
 
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 		PodCache:             c.podCache,
@@ -240,14 +238,12 @@ func (c *Controller) initWhenStartLeading() {
 		ingressInformer = kubeFactory.Extensions().V1beta1().Ingresses().Informer()
 	}
 	switch c.cfg.Kubernetes.ApisixRouteVersion {
-	case config.ApisixRouteV1:
-		apisixRouteInformer = apisixFactory.Apisix().V1().ApisixRoutes().Informer()
-	case config.ApisixRouteV2alpha1:
-		apisixRouteInformer = apisixFactory.Apisix().V2alpha1().ApisixRoutes().Informer()
 	case config.ApisixRouteV2beta1:
 		apisixRouteInformer = apisixFactory.Apisix().V2beta1().ApisixRoutes().Informer()
 	case config.ApisixRouteV2beta2:
 		apisixRouteInformer = apisixFactory.Apisix().V2beta2().ApisixRoutes().Informer()
+	case config.ApisixRouteV2beta3:
+		apisixRouteInformer = apisixFactory.Apisix().V2beta3().ApisixRoutes().Informer()
 	}
 
 	c.namespaceInformer = kubeFactory.Core().V1().Namespaces().Informer()
@@ -255,11 +251,11 @@ func (c *Controller) initWhenStartLeading() {
 	c.svcInformer = kubeFactory.Core().V1().Services().Informer()
 	c.ingressInformer = ingressInformer
 	c.apisixRouteInformer = apisixRouteInformer
-	c.apisixUpstreamInformer = apisixFactory.Apisix().V1().ApisixUpstreams().Informer()
-	c.apisixClusterConfigInformer = apisixFactory.Apisix().V2alpha1().ApisixClusterConfigs().Informer()
+	c.apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+	c.apisixClusterConfigInformer = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Informer()
 	c.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
-	c.apisixTlsInformer = apisixFactory.Apisix().V1().ApisixTlses().Informer()
-	c.apisixConsumerInformer = apisixFactory.Apisix().V2alpha1().ApisixConsumers().Informer()
+	c.apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
+	c.apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
 
 	if c.cfg.Kubernetes.WatchEndpointSlices {
 		c.endpointSliceController = c.newEndpointSliceController()
@@ -573,8 +569,8 @@ func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
 		log.Errorf("failed to get service %s/%s: %s", ep.Namespace(), svcName, err)
 		return err
 	}
-	var subsets []configv1.ApisixUpstreamSubset
-	subsets = append(subsets, configv1.ApisixUpstreamSubset{})
+	var subsets []configv2beta3.ApisixUpstreamSubset
+	subsets = append(subsets, configv2beta3.ApisixUpstreamSubset{})
 	au, err := c.apisixUpstreamLister.ApisixUpstreams(namespace).Get(svcName)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {

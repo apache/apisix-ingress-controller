@@ -20,20 +20,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestTranslateApisixConsumer(t *testing.T) {
-	ac := &configv2alpha1.ApisixConsumer{
+	ac := &configv2beta3.ApisixConsumer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "jack",
 			Namespace: "qa",
 		},
-		Spec: configv2alpha1.ApisixConsumerSpec{
-			AuthParameter: configv2alpha1.ApisixConsumerAuthParameter{
-				BasicAuth: &configv2alpha1.ApisixConsumerBasicAuth{
-					Value: &configv2alpha1.ApisixConsumerBasicAuthValue{
+		Spec: configv2beta3.ApisixConsumerSpec{
+			AuthParameter: configv2beta3.ApisixConsumerAuthParameter{
+				BasicAuth: &configv2beta3.ApisixConsumerBasicAuth{
+					Value: &configv2beta3.ApisixConsumerBasicAuthValue{
 						Username: "jack",
 						Password: "jacknice",
 					},
@@ -48,15 +48,15 @@ func TestTranslateApisixConsumer(t *testing.T) {
 	assert.Equal(t, "jack", cfg.Username)
 	assert.Equal(t, "jacknice", cfg.Password)
 
-	ac = &configv2alpha1.ApisixConsumer{
+	ac = &configv2beta3.ApisixConsumer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "jack",
 			Namespace: "qa",
 		},
-		Spec: configv2alpha1.ApisixConsumerSpec{
-			AuthParameter: configv2alpha1.ApisixConsumerAuthParameter{
-				KeyAuth: &configv2alpha1.ApisixConsumerKeyAuth{
-					Value: &configv2alpha1.ApisixConsumerKeyAuthValue{
+		Spec: configv2beta3.ApisixConsumerSpec{
+			AuthParameter: configv2beta3.ApisixConsumerAuthParameter{
+				KeyAuth: &configv2beta3.ApisixConsumerKeyAuth{
+					Value: &configv2beta3.ApisixConsumerKeyAuthValue{
 						Key: "qwerty",
 					},
 				},

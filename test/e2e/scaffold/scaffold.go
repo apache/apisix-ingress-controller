@@ -103,7 +103,7 @@ func GetKubeconfig() string {
 // NewScaffold creates an e2e test scaffold.
 func NewScaffold(o *Options) *Scaffold {
 	if o.APISIXRouteVersion == "" {
-		o.APISIXRouteVersion = kube.ApisixRouteV1
+		o.APISIXRouteVersion = kube.ApisixRouteV2beta3
 	}
 	if o.APISIXAdminAPIKey == "" {
 		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
@@ -129,7 +129,7 @@ func NewDefaultScaffold() *Scaffold {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    kube.ApisixRouteV1,
+		APISIXRouteVersion:    kube.ApisixRouteV2beta3,
 		EnableWebhooks:        false,
 		APISIXPublishAddress:  "",
 	}
@@ -144,7 +144,7 @@ func NewDefaultV2Scaffold() *Scaffold {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    kube.ApisixRouteV2alpha1,
+		APISIXRouteVersion:    kube.ApisixRouteV2beta3,
 		EnableWebhooks:        false,
 		APISIXPublishAddress:  "",
 	}

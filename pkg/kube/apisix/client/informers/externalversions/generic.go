@@ -20,10 +20,9 @@ package externalversions
 import (
 	"fmt"
 
-	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
-	v2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	v2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	v2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
+	v2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -54,23 +53,7 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=apisix.apache.org, Version=v1
-	case v1.SchemeGroupVersion.WithResource("apisixroutes"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V1().ApisixRoutes().Informer()}, nil
-	case v1.SchemeGroupVersion.WithResource("apisixtlses"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V1().ApisixTlses().Informer()}, nil
-	case v1.SchemeGroupVersion.WithResource("apisixupstreams"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V1().ApisixUpstreams().Informer()}, nil
-
-		// Group=apisix.apache.org, Version=v2alpha1
-	case v2alpha1.SchemeGroupVersion.WithResource("apisixclusterconfigs"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2alpha1().ApisixClusterConfigs().Informer()}, nil
-	case v2alpha1.SchemeGroupVersion.WithResource("apisixconsumers"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2alpha1().ApisixConsumers().Informer()}, nil
-	case v2alpha1.SchemeGroupVersion.WithResource("apisixroutes"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2alpha1().ApisixRoutes().Informer()}, nil
-
-		// Group=apisix.apache.org, Version=v2beta1
+	// Group=apisix.apache.org, Version=v2beta1
 	case v2beta1.SchemeGroupVersion.WithResource("apisixroutes"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2beta1().ApisixRoutes().Informer()}, nil
 
@@ -79,6 +62,18 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2beta2().ApisixPluginConfigs().Informer()}, nil
 	case v2beta2.SchemeGroupVersion.WithResource("apisixroutes"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2beta2().ApisixRoutes().Informer()}, nil
+
+		// Group=apisix.apache.org, Version=v2beta3
+	case v2beta3.SchemeGroupVersion.WithResource("apisixclusterconfigs"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2beta3().ApisixClusterConfigs().Informer()}, nil
+	case v2beta3.SchemeGroupVersion.WithResource("apisixconsumers"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2beta3().ApisixConsumers().Informer()}, nil
+	case v2beta3.SchemeGroupVersion.WithResource("apisixroutes"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2beta3().ApisixRoutes().Informer()}, nil
+	case v2beta3.SchemeGroupVersion.WithResource("apisixtlses"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2beta3().ApisixTlses().Informer()}, nil
+	case v2beta3.SchemeGroupVersion.WithResource("apisixupstreams"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2beta3().ApisixUpstreams().Informer()}, nil
 
 	}
 

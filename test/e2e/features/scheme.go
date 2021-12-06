@@ -34,7 +34,7 @@ var _ = ginkgo.Describe("choose scheme", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("grpc", func() {
@@ -65,7 +65,7 @@ spec:
 `)
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: grpc-server-service
@@ -75,7 +75,7 @@ spec:
       scheme: grpc
 `))
 		err = s.CreateResourceFromString(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: grpc-route
@@ -137,7 +137,7 @@ spec:
 		assert.NoError(ginkgo.GinkgoT(), err, "create server cert secret")
 
 		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: test-backend-service-e2e-test
@@ -164,7 +164,7 @@ spec:
 `))
 
 		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixTls
 metadata:
   name: grpc-secret

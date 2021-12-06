@@ -484,7 +484,7 @@ RAmKucXUNJSR8wYGSg5ymvsnChTaYHLL1gmIdQli2y8XxqUaYC1tXrEt4g5z4a/O
 		// create route
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route

@@ -31,14 +31,14 @@ var _ = ginkgo.Describe("health check", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("active check", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -58,7 +58,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -95,7 +95,7 @@ spec:
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -120,7 +120,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route

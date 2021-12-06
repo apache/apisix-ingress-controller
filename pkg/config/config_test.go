@@ -44,7 +44,7 @@ func TestNewConfigFromFile(t *testing.T) {
 			ElectionID:         "my-election-id",
 			IngressClass:       IngressClass,
 			IngressVersion:     IngressNetworkingV1,
-			ApisixRouteVersion: ApisixRouteV2alpha1,
+			ApisixRouteVersion: ApisixRouteV2beta3,
 		},
 		APISIX: APISIXConfig{
 			DefaultClusterName:     "default",
@@ -125,7 +125,7 @@ func TestConfigWithEnvVar(t *testing.T) {
 			ElectionID:         "my-election-id",
 			IngressClass:       IngressClass,
 			IngressVersion:     IngressNetworkingV1,
-			ApisixRouteVersion: ApisixRouteV2alpha1,
+			ApisixRouteVersion: ApisixRouteV2beta3,
 		},
 		APISIX: APISIXConfig{
 			DefaultClusterName:     "default",

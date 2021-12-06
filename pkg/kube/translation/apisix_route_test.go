@@ -29,9 +29,10 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
+	_const "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
 )
 
 func TestRouteMatchExpr(t *testing.T) {
@@ -40,88 +41,88 @@ func TestRouteMatchExpr(t *testing.T) {
 	value2 := "gzip"
 	value3 := "13"
 	value4 := ".*\\.php"
-	exprs := []configv2alpha1.ApisixRouteHTTPMatchExpr{
+	exprs := []configv2beta3.ApisixRouteHTTPMatchExpr{
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeHeader,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeHeader,
 				Name:  "Content-Type",
 			},
-			Op:    configv2alpha1.OpEqual,
+			Op:    _const.OpEqual,
 			Value: &value1,
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeHeader,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeHeader,
 				Name:  "Content-Encoding",
 			},
-			Op:    configv2alpha1.OpNotEqual,
+			Op:    _const.OpNotEqual,
 			Value: &value2,
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeQuery,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
-			Op:    configv2alpha1.OpGreaterThan,
+			Op:    _const.OpGreaterThan,
 			Value: &value3,
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeQuery,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
-			Op:    configv2alpha1.OpLessThan,
+			Op:    _const.OpLessThan,
 			Value: &value3,
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeQuery,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
-			Op:    configv2alpha1.OpRegexMatch,
+			Op:    _const.OpRegexMatch,
 			Value: &value4,
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeQuery,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
-			Op:    configv2alpha1.OpRegexMatchCaseInsensitive,
+			Op:    _const.OpRegexMatchCaseInsensitive,
 			Value: &value4,
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeQuery,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
-			Op:    configv2alpha1.OpRegexNotMatch,
+			Op:    _const.OpRegexNotMatch,
 			Value: &value4,
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeQuery,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
-			Op:    configv2alpha1.OpRegexNotMatchCaseInsensitive,
+			Op:    _const.OpRegexNotMatchCaseInsensitive,
 			Value: &value4,
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeCookie,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeCookie,
 				Name:  "domain",
 			},
-			Op: configv2alpha1.OpIn,
+			Op: _const.OpIn,
 			Set: []string{
 				"a.com",
 				"b.com",
 			},
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeCookie,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeCookie,
 				Name:  "X-Foo",
 			},
-			Op: configv2alpha1.OpIn,
+			Op: _const.OpIn,
 			Set: []string{
 				"foo.com",
 			},
@@ -255,7 +256,7 @@ func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 		&TranslatorOptions{
 			EndpointLister:       epLister,
 			ServiceLister:        svcLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister(),
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		},
 	}
 
@@ -280,38 +281,42 @@ func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 	<-processCh
 	<-processCh
 
-	ar := &configv2alpha1.ApisixRoute{
+	ar := &configv2beta3.ApisixRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ar",
 			Namespace: "test",
 		},
-		Spec: &configv2alpha1.ApisixRouteSpec{
-			HTTP: []*configv2alpha1.ApisixRouteHTTP{
+		Spec: configv2beta3.ApisixRouteSpec{
+			HTTP: []configv2beta3.ApisixRouteHTTP{
 				{
 					Name: "rule1",
-					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+					Match: configv2beta3.ApisixRouteHTTPMatch{
 						Paths: []string{
 							"/*",
 						},
 					},
-					Backend: &configv2alpha1.ApisixRouteHTTPBackend{
-						ServiceName: "svc",
-						ServicePort: intstr.IntOrString{
-							IntVal: 80,
+					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc",
+							ServicePort: intstr.IntOrString{
+								IntVal: 80,
+							},
 						},
 					},
 				},
 				{
 					Name: "rule1",
-					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+					Match: configv2beta3.ApisixRouteHTTPMatch{
 						Paths: []string{
 							"/*",
 						},
 					},
-					Backend: &configv2alpha1.ApisixRouteHTTPBackend{
-						ServiceName: "svc",
-						ServicePort: intstr.IntOrString{
-							IntVal: 80,
+					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc",
+							ServicePort: intstr.IntOrString{
+								IntVal: 80,
+							},
 						},
 					},
 				},
@@ -319,7 +324,7 @@ func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 		},
 	}
 
-	_, err = tr.TranslateRouteV2alpha1(ar)
+	_, err = tr.TranslateRouteV2beta3(ar)
 	assert.NotNil(t, err)
 	assert.Equal(t, "duplicated route rule name", err.Error())
 }
@@ -328,38 +333,42 @@ func TestTranslateApisixRouteV2alpha1NotStrictly(t *testing.T) {
 	tr := &translator{
 		&TranslatorOptions{},
 	}
-	ar := &configv2alpha1.ApisixRoute{
+	ar := &configv2beta3.ApisixRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ar",
 			Namespace: "test",
 		},
-		Spec: &configv2alpha1.ApisixRouteSpec{
-			HTTP: []*configv2alpha1.ApisixRouteHTTP{
+		Spec: configv2beta3.ApisixRouteSpec{
+			HTTP: []configv2beta3.ApisixRouteHTTP{
 				{
 					Name: "rule1",
-					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+					Match: configv2beta3.ApisixRouteHTTPMatch{
 						Paths: []string{
 							"/*",
 						},
 					},
-					Backend: &configv2alpha1.ApisixRouteHTTPBackend{
-						ServiceName: "svc1",
-						ServicePort: intstr.IntOrString{
-							IntVal: 81,
+					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc1",
+							ServicePort: intstr.IntOrString{
+								IntVal: 81,
+							},
 						},
 					},
 				},
 				{
 					Name: "rule2",
-					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+					Match: configv2beta3.ApisixRouteHTTPMatch{
 						Paths: []string{
 							"/*",
 						},
 					},
-					Backend: &configv2alpha1.ApisixRouteHTTPBackend{
-						ServiceName: "svc2",
-						ServicePort: intstr.IntOrString{
-							IntVal: 82,
+					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc2",
+							ServicePort: intstr.IntOrString{
+								IntVal: 82,
+							},
 						},
 					},
 				},
@@ -367,7 +376,7 @@ func TestTranslateApisixRouteV2alpha1NotStrictly(t *testing.T) {
 		},
 	}
 
-	tx, err := tr.TranslateRouteV2alpha1NotStrictly(ar)
+	tx, err := tr.TranslateRouteV2beta3NotStrictly(ar)
 	fmt.Println(tx)
 	assert.NoError(t, err, "translateRoute not strictly should be no error")
 	assert.Equal(t, 2, len(tx.Routes), "There should be 2 routes")

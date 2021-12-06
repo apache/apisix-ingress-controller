@@ -22,10 +22,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/stretchr/testify/assert"
-
 	"golang.org/x/net/nettest"
+
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 )
 
 type fakeAPISIXPluginSrv struct {

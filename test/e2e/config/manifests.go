@@ -33,7 +33,7 @@ data:
     kubernetes:
       namespace_selector:
       - %s
-      apisix_route_version: "apisix.apache.org/v2beta2"
+      apisix_route_version: "apisix.apache.org/v2beta3"
       watch_endpoint_slices: true
 `
 )

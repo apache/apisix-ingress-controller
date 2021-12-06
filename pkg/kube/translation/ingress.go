@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"go.uber.org/zap"
-
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
@@ -28,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
-	apisixv12 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	kubev2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -41,7 +40,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 
 	// add https
 	for _, tls := range ing.Spec.TLS {
-		apisixTls := apisixv12.ApisixTls{
+		apisixTls := kubev2beta3.ApisixTls{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "ApisixTls",
 				APIVersion: "apisix.apache.org/v1",
@@ -50,12 +49,12 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
 				Namespace: ing.Namespace,
 			},
-			Spec: &apisixv12.ApisixTlsSpec{},
+			Spec: &kubev2beta3.ApisixTlsSpec{},
 		}
 		for _, host := range tls.Hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, apisixv12.HostType(host))
+			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2beta3.HostType(host))
 		}
-		apisixTls.Spec.Secret = apisixv12.ApisixSecret{
+		apisixTls.Spec.Secret = kubev2beta3.ApisixSecret{
 			Name:      tls.SecretName,
 			Namespace: ing.Namespace,
 		}
@@ -129,7 +128,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 	plugins := t.translateAnnotations(ing.Annotations)
 	// add https
 	for _, tls := range ing.Spec.TLS {
-		apisixTls := apisixv12.ApisixTls{
+		apisixTls := kubev2beta3.ApisixTls{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "ApisixTls",
 				APIVersion: "apisix.apache.org/v1",
@@ -138,12 +137,12 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
 				Namespace: ing.Namespace,
 			},
-			Spec: &apisixv12.ApisixTlsSpec{},
+			Spec: &kubev2beta3.ApisixTlsSpec{},
 		}
 		for _, host := range tls.Hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, apisixv12.HostType(host))
+			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2beta3.HostType(host))
 		}
-		apisixTls.Spec.Secret = apisixv12.ApisixSecret{
+		apisixTls.Spec.Secret = kubev2beta3.ApisixSecret{
 			Name:      tls.SecretName,
 			Namespace: ing.Namespace,
 		}
