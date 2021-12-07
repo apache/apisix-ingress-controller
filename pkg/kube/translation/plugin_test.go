@@ -28,7 +28,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixfake "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 )
@@ -41,8 +41,8 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := apisixfake.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
-	auInformer := apisixInformersFactory.Apisix().V1().ApisixUpstreams().Informer()
-	auLister := apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister()
+	auInformer := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+	auLister := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister()
 
 	processCh := make(chan struct{})
 	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -127,7 +127,7 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 
 	weight10 := 10
 	weight20 := 20
-	backends := []*configv2alpha1.ApisixRouteHTTPBackend{
+	backends := []configv2beta3.ApisixRouteHTTPBackend{
 		{
 			ServiceName: "svc-1",
 			ServicePort: intstr.IntOrString{
@@ -147,7 +147,7 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 		},
 	}
 
-	ar1 := &configv2alpha1.ApisixRoute{
+	ar1 := &configv2beta3.ApisixRoute{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ApisixRoute",
 			APIVersion: "apisix.apache.org/v2alpha1",
@@ -156,11 +156,11 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 			Name:      "ar1",
 			Namespace: "test",
 		},
-		Spec: &configv2alpha1.ApisixRouteSpec{
-			HTTP: []*configv2alpha1.ApisixRouteHTTP{
+		Spec: configv2beta3.ApisixRouteSpec{
+			HTTP: []configv2beta3.ApisixRouteHTTP{
 				{
 					Name: "r1",
-					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+					Match: configv2beta3.ApisixRouteHTTPMatch{
 						Paths: []string{"/*"},
 						Hosts: []string{"test.com"},
 					},
@@ -182,26 +182,26 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Len(t, ctx.Upstreams, 2)
-	assert.Equal(t, ctx.Upstreams[0].Name, "test_svc-1_80")
+	assert.Equal(t, "test_svc-1_80", ctx.Upstreams[0].Name)
 	assert.Len(t, ctx.Upstreams[0].Nodes, 2)
-	assert.Equal(t, ctx.Upstreams[0].Nodes[0].Host, "192.168.1.1")
-	assert.Equal(t, ctx.Upstreams[0].Nodes[0].Port, 9080)
-	assert.Equal(t, ctx.Upstreams[0].Nodes[1].Host, "192.168.1.2")
-	assert.Equal(t, ctx.Upstreams[0].Nodes[1].Port, 9080)
+	assert.Equal(t, "192.168.1.1", ctx.Upstreams[0].Nodes[0].Host)
+	assert.Equal(t, 9080, ctx.Upstreams[0].Nodes[0].Port)
+	assert.Equal(t, "192.168.1.2", ctx.Upstreams[0].Nodes[1].Host)
+	assert.Equal(t, 9080, ctx.Upstreams[0].Nodes[1].Port)
 
-	assert.Equal(t, ctx.Upstreams[1].Name, "test_svc-1_443")
+	assert.Equal(t, "test_svc-1_443", ctx.Upstreams[1].Name)
 	assert.Len(t, ctx.Upstreams[1].Nodes, 1)
-	assert.Equal(t, ctx.Upstreams[1].Nodes[0].Host, "10.0.5.3")
-	assert.Equal(t, ctx.Upstreams[1].Nodes[0].Port, 443)
+	assert.Equal(t, "10.0.5.3", ctx.Upstreams[1].Nodes[0].Host)
+	assert.Equal(t, 443, ctx.Upstreams[1].Nodes[0].Port)
 
 	assert.Len(t, cfg.Rules, 1)
 	assert.Len(t, cfg.Rules[0].WeightedUpstreams, 3)
-	assert.Equal(t, cfg.Rules[0].WeightedUpstreams[0].UpstreamID, id.GenID("test_svc-1_80"))
-	assert.Equal(t, cfg.Rules[0].WeightedUpstreams[0].Weight, 10)
-	assert.Equal(t, cfg.Rules[0].WeightedUpstreams[1].UpstreamID, id.GenID("test_svc-1_443"))
-	assert.Equal(t, cfg.Rules[0].WeightedUpstreams[1].Weight, 20)
-	assert.Equal(t, cfg.Rules[0].WeightedUpstreams[2].UpstreamID, "")
-	assert.Equal(t, cfg.Rules[0].WeightedUpstreams[2].Weight, 30)
+	assert.Equal(t, id.GenID("test_svc-1_80"), cfg.Rules[0].WeightedUpstreams[0].UpstreamID)
+	assert.Equal(t, 10, cfg.Rules[0].WeightedUpstreams[0].Weight)
+	assert.Equal(t, id.GenID("test_svc-1_443"), cfg.Rules[0].WeightedUpstreams[1].UpstreamID)
+	assert.Equal(t, 20, cfg.Rules[0].WeightedUpstreams[1].Weight)
+	assert.Equal(t, "", cfg.Rules[0].WeightedUpstreams[2].UpstreamID)
+	assert.Equal(t, 30, cfg.Rules[0].WeightedUpstreams[2].Weight)
 }
 
 func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
@@ -212,8 +212,8 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := apisixfake.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
-	auInformer := apisixInformersFactory.Apisix().V1().ApisixUpstreams().Informer()
-	auLister := apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister()
+	auInformer := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+	auLister := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister()
 
 	processCh := make(chan struct{})
 	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -299,7 +299,7 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 	weigth10 := 10
 	weight20 := 20
 
-	backends := []*configv2alpha1.ApisixRouteHTTPBackend{
+	backends := []configv2beta3.ApisixRouteHTTPBackend{
 		{
 			ServiceName: "svc-1",
 			ServicePort: intstr.IntOrString{
@@ -318,7 +318,7 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 		},
 	}
 
-	ar1 := &configv2alpha1.ApisixRoute{
+	ar1 := &configv2beta3.ApisixRoute{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ApisixRoute",
 			APIVersion: "apisix.apache.org/v2alpha1",
@@ -327,11 +327,11 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 			Name:      "ar1",
 			Namespace: "test",
 		},
-		Spec: &configv2alpha1.ApisixRouteSpec{
-			HTTP: []*configv2alpha1.ApisixRouteHTTP{
+		Spec: configv2beta3.ApisixRouteSpec{
+			HTTP: []configv2beta3.ApisixRouteHTTP{
 				{
 					Name: "r1",
-					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+					Match: configv2beta3.ApisixRouteHTTPMatch{
 						Paths: []string{"/*"},
 						Hosts: []string{"test.com"},
 					},
@@ -351,21 +351,21 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Len(t, ctx.Upstreams, 1)
-	assert.Equal(t, ctx.Upstreams[0].Name, "test_svc-1_80")
+	assert.Equal(t, "test_svc-1_80", ctx.Upstreams[0].Name)
 	assert.Len(t, ctx.Upstreams[0].Nodes, 2)
-	assert.Equal(t, ctx.Upstreams[0].Nodes[0].Host, "192.168.1.1")
-	assert.Equal(t, ctx.Upstreams[0].Nodes[0].Port, 9080)
-	assert.Equal(t, ctx.Upstreams[0].Nodes[1].Host, "192.168.1.2")
-	assert.Equal(t, ctx.Upstreams[0].Nodes[1].Port, 9080)
+	assert.Equal(t, "192.168.1.1", ctx.Upstreams[0].Nodes[0].Host)
+	assert.Equal(t, 9080, ctx.Upstreams[0].Nodes[0].Port)
+	assert.Equal(t, "192.168.1.2", ctx.Upstreams[0].Nodes[1].Host)
+	assert.Equal(t, 9080, ctx.Upstreams[0].Nodes[1].Port)
 
 	assert.Len(t, cfg.Rules, 1)
 	assert.Len(t, cfg.Rules[0].WeightedUpstreams, 3)
-	assert.Equal(t, cfg.Rules[0].WeightedUpstreams[0].UpstreamID, id.GenID("test_svc-1_80"))
-	assert.Equal(t, cfg.Rules[0].WeightedUpstreams[0].Weight, 10)
-	assert.Equal(t, cfg.Rules[0].WeightedUpstreams[1].UpstreamID, id.GenID("test_svc-1_80"))
-	assert.Equal(t, cfg.Rules[0].WeightedUpstreams[1].Weight, 20)
-	assert.Equal(t, cfg.Rules[0].WeightedUpstreams[2].UpstreamID, "")
-	assert.Equal(t, cfg.Rules[0].WeightedUpstreams[2].Weight, 30)
+	assert.Equal(t, id.GenID("test_svc-1_80"), cfg.Rules[0].WeightedUpstreams[0].UpstreamID)
+	assert.Equal(t, 10, cfg.Rules[0].WeightedUpstreams[0].Weight)
+	assert.Equal(t, id.GenID("test_svc-1_80"), cfg.Rules[0].WeightedUpstreams[1].UpstreamID)
+	assert.Equal(t, 20, cfg.Rules[0].WeightedUpstreams[1].Weight)
+	assert.Equal(t, "", cfg.Rules[0].WeightedUpstreams[2].UpstreamID)
+	assert.Equal(t, 30, cfg.Rules[0].WeightedUpstreams[2].Weight)
 }
 
 func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
@@ -376,8 +376,8 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := apisixfake.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
-	auInformer := apisixInformersFactory.Apisix().V1().ApisixUpstreams().Informer()
-	auLister := apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister()
+	auInformer := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+	auLister := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister()
 
 	processCh := make(chan struct{})
 	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -463,7 +463,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	weight10 := 10
 	weight20 := 20
 
-	backends := []*configv2alpha1.ApisixRouteHTTPBackend{
+	backends := []configv2beta3.ApisixRouteHTTPBackend{
 		{
 			ServiceName: "svc-2",
 			ServicePort: intstr.IntOrString{
@@ -482,7 +482,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 		},
 	}
 
-	ar1 := &configv2alpha1.ApisixRoute{
+	ar1 := configv2beta3.ApisixRoute{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ApisixRoute",
 			APIVersion: "apisix.apache.org/v2alpha1",
@@ -491,11 +491,11 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 			Name:      "ar1",
 			Namespace: "test",
 		},
-		Spec: &configv2alpha1.ApisixRouteSpec{
-			HTTP: []*configv2alpha1.ApisixRouteHTTP{
+		Spec: configv2beta3.ApisixRouteSpec{
+			HTTP: []configv2beta3.ApisixRouteHTTP{
 				{
 					Name: "r1",
-					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+					Match: configv2beta3.ApisixRouteHTTPMatch{
 						Paths: []string{"/*"},
 						Hosts: []string{"test.com"},
 					},
@@ -515,7 +515,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	assert.Nil(t, cfg)
 	assert.Len(t, ctx.Upstreams, 0)
 	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), "service \"svc-2\" not found")
+	assert.Equal(t, "service \"svc-2\" not found", err.Error())
 
 	backends[0].ServiceName = "svc-1"
 	backends[1].ServicePort.StrVal = "port-not-found"
@@ -523,7 +523,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	cfg, err = tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, cfg)
 	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), "service.spec.ports: port not defined")
+	assert.Equal(t, "service.spec.ports: port not defined", err.Error())
 
 	backends[1].ServicePort.StrVal = "port2"
 	backends[1].ResolveGranularity = "service"
@@ -531,16 +531,16 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	cfg, err = tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, cfg)
 	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), "conflict headless service and backend resolve granularity")
+	assert.Equal(t, "conflict headless service and backend resolve granularity", err.Error())
 }
 
 func TestTranslateConsumerKeyAuthPluginWithInPlaceValue(t *testing.T) {
-	keyAuth := &configv2alpha1.ApisixConsumerKeyAuth{
-		Value: &configv2alpha1.ApisixConsumerKeyAuthValue{Key: "abc"},
+	keyAuth := &configv2beta3.ApisixConsumerKeyAuth{
+		Value: &configv2beta3.ApisixConsumerKeyAuthValue{Key: "abc"},
 	}
 	cfg, err := (&translator{}).translateConsumerKeyAuthPlugin("default", keyAuth)
 	assert.Nil(t, err)
-	assert.Equal(t, cfg.Key, "abc")
+	assert.Equal(t, "abc", cfg.Key)
 }
 
 func TestTranslateConsumerKeyAuthWithSecretRef(t *testing.T) {
@@ -578,12 +578,12 @@ func TestTranslateConsumerKeyAuthWithSecretRef(t *testing.T) {
 
 	<-processCh
 
-	keyAuth := &configv2alpha1.ApisixConsumerKeyAuth{
+	keyAuth := &configv2beta3.ApisixConsumerKeyAuth{
 		SecretRef: &corev1.LocalObjectReference{Name: "abc-key-auth"},
 	}
 	cfg, err := tr.translateConsumerKeyAuthPlugin("default", keyAuth)
 	assert.Nil(t, err)
-	assert.Equal(t, cfg.Key, "abc")
+	assert.Equal(t, "abc", cfg.Key)
 
 	cfg, err = tr.translateConsumerKeyAuthPlugin("default2", keyAuth)
 	assert.Nil(t, cfg)
@@ -597,23 +597,23 @@ func TestTranslateConsumerKeyAuthWithSecretRef(t *testing.T) {
 
 	cfg, err = tr.translateConsumerKeyAuthPlugin("default", keyAuth)
 	assert.Nil(t, cfg)
-	assert.Equal(t, err, _errKeyNotFoundOrInvalid)
+	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
 
 	close(processCh)
 	close(stopCh)
 }
 
 func TestTranslateConsumerBasicAuthPluginWithInPlaceValue(t *testing.T) {
-	basicAuth := &configv2alpha1.ApisixConsumerBasicAuth{
-		Value: &configv2alpha1.ApisixConsumerBasicAuthValue{
+	basicAuth := &configv2beta3.ApisixConsumerBasicAuth{
+		Value: &configv2beta3.ApisixConsumerBasicAuthValue{
 			Username: "jack",
 			Password: "jacknice",
 		},
 	}
 	cfg, err := (&translator{}).translateConsumerBasicAuthPlugin("default", basicAuth)
 	assert.Nil(t, err)
-	assert.Equal(t, cfg.Username, "jack")
-	assert.Equal(t, cfg.Password, "jacknice")
+	assert.Equal(t, "jack", cfg.Username)
+	assert.Equal(t, "jacknice", cfg.Password)
 }
 
 func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
@@ -652,13 +652,13 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 
 	<-processCh
 
-	basicAuth := &configv2alpha1.ApisixConsumerBasicAuth{
+	basicAuth := &configv2beta3.ApisixConsumerBasicAuth{
 		SecretRef: &corev1.LocalObjectReference{Name: "jack-basic-auth"},
 	}
 	cfg, err := tr.translateConsumerBasicAuthPlugin("default", basicAuth)
 	assert.Nil(t, err)
-	assert.Equal(t, cfg.Username, "jack")
-	assert.Equal(t, cfg.Password, "jacknice")
+	assert.Equal(t, "jack", cfg.Username)
+	assert.Equal(t, "jacknice", cfg.Password)
 
 	cfg, err = tr.translateConsumerBasicAuthPlugin("default2", basicAuth)
 	assert.Nil(t, cfg)
@@ -672,7 +672,7 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 
 	cfg, err = tr.translateConsumerBasicAuthPlugin("default", basicAuth)
 	assert.Nil(t, cfg)
-	assert.Equal(t, err, _errPasswordNotFoundOrInvalid)
+	assert.Equal(t, _errPasswordNotFoundOrInvalid, err)
 
 	delete(sec.Data, "username")
 	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
@@ -681,7 +681,7 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 
 	cfg, err = tr.translateConsumerBasicAuthPlugin("default", basicAuth)
 	assert.Nil(t, cfg)
-	assert.Equal(t, err, _errUsernameNotFoundOrInvalid)
+	assert.Equal(t, _errUsernameNotFoundOrInvalid, err)
 
 	close(processCh)
 	close(stopCh)

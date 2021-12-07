@@ -17,7 +17,9 @@ package ingress
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
+	"time"
 
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
@@ -32,13 +34,13 @@ var _ = ginkgo.Describe("Status subresource Testing", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("check the status is recorded", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -67,5 +69,53 @@ spec:
 		assert.True(ginkgo.GinkgoT(), hasType, "Status is recorded")
 		hasMsg := strings.Contains(output, "message: Sync Successfully")
 		assert.True(ginkgo.GinkgoT(), hasMsg, "Status is recorded")
+	})
+})
+
+var _ = ginkgo.Describe("Ingress LB Status Testing", func() {
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
+		APISIXPublishAddress:  "10.6.6.6",
+		EnableWebhooks:        false,
+	}
+	s := scaffold.NewScaffold(opts)
+	ginkgo.It("check the ingress lb status is updated", func() {
+		backendSvc, backendPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+  name: ingress-v1-lb
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, backendSvc, backendPort[0])
+		err := s.CreateResourceFromString(ing)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		time.Sleep(5 * time.Second)
+
+		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+
+		output, err := s.GetOutputFromString("ingress", "ingress-v1-lb", "-o", "jsonpath='{ .status.loadBalancer.ingress[0].ip }'")
+		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ingress status")
+
+		hasIP := strings.Contains(output, "10.6.6.6")
+		assert.True(ginkgo.GinkgoT(), hasIP, "LB Status is recorded")
 	})
 })

@@ -16,7 +16,7 @@ package translation
 
 import (
 	"github.com/apache/apisix-ingress-controller/pkg/id"
-	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -26,7 +26,7 @@ type skywalkingPluginConfig struct {
 	SampleRatio float64 `json:"sample_ratio,omitempty"`
 }
 
-func (t *translator) TranslateClusterConfig(acc *configv2alpha1.ApisixClusterConfig) (*apisixv1.GlobalRule, error) {
+func (t *translator) TranslateClusterConfig(acc *configv2beta3.ApisixClusterConfig) (*apisixv1.GlobalRule, error) {
 	globalRule := &apisixv1.GlobalRule{
 		ID:      id.GenID(acc.Name),
 		Plugins: make(apisixv1.Plugins),

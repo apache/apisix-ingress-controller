@@ -26,7 +26,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
-	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -114,12 +114,12 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 			log.Warnf("discard the stale ApisixUpstream delete event since the %s exists", key)
 			return nil
 		}
-		au = ev.Tombstone.(*configv1.ApisixUpstream)
+		au = ev.Tombstone.(*configv2beta3.ApisixUpstream)
 	}
 
-	var portLevelSettings map[int32]*configv1.ApisixUpstreamConfig
+	var portLevelSettings map[int32]*configv2beta3.ApisixUpstreamConfig
 	if len(au.Spec.PortLevelSettings) > 0 {
-		portLevelSettings = make(map[int32]*configv1.ApisixUpstreamConfig, len(au.Spec.PortLevelSettings))
+		portLevelSettings = make(map[int32]*configv2beta3.ApisixUpstreamConfig, len(au.Spec.PortLevelSettings))
 		for _, port := range au.Spec.PortLevelSettings {
 			portLevelSettings[port.Port] = &port.ApisixUpstreamConfig
 		}
@@ -133,8 +133,8 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 		return err
 	}
 
-	var subsets []configv1.ApisixUpstreamSubset
-	subsets = append(subsets, configv1.ApisixUpstreamSubset{})
+	var subsets []configv2beta3.ApisixUpstreamSubset
+	subsets = append(subsets, configv2beta3.ApisixUpstreamSubset{})
 	if len(au.Spec.Subsets) > 0 {
 		subsets = append(subsets, au.Spec.Subsets...)
 	}
@@ -227,7 +227,7 @@ func (c *apisixUpstreamController) onAdd(obj interface{}) {
 	log.Debugw("ApisixUpstream add event arrived",
 		zap.Any("object", obj))
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
 	})
@@ -236,8 +236,8 @@ func (c *apisixUpstreamController) onAdd(obj interface{}) {
 }
 
 func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
-	prev := oldObj.(*configv1.ApisixUpstream)
-	curr := newObj.(*configv1.ApisixUpstream)
+	prev := oldObj.(*configv2beta3.ApisixUpstream)
+	curr := newObj.(*configv2beta3.ApisixUpstream)
 	if prev.ResourceVersion >= curr.ResourceVersion {
 		return
 	}
@@ -254,7 +254,7 @@ func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
 		zap.Any("old object", prev),
 	)
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventUpdate,
 		Object: key,
 	})
@@ -263,13 +263,13 @@ func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
 }
 
 func (c *apisixUpstreamController) onDelete(obj interface{}) {
-	au, ok := obj.(*configv1.ApisixUpstream)
+	au, ok := obj.(*configv2beta3.ApisixUpstream)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			return
 		}
-		au = tombstone.Obj.(*configv1.ApisixUpstream)
+		au = tombstone.Obj.(*configv2beta3.ApisixUpstream)
 	}
 
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
@@ -283,7 +283,7 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 	log.Debugw("ApisixUpstream delete event arrived",
 		zap.Any("final state", au),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:      types.EventDelete,
 		Object:    key,
 		Tombstone: au,

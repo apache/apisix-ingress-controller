@@ -127,29 +127,29 @@ func TestNewIngressCommandEffectiveLog(t *testing.T) {
 	buf := bufio.NewReader(file)
 	f := parseLog(t, buf)
 	assert.Contains(t, f.Message, "apisix ingress controller started")
-	assert.Equal(t, f.Level, "info")
+	assert.Equal(t, "info", f.Level)
 
 	f = parseLog(t, buf)
 	assert.Contains(t, f.Message, "version:")
-	assert.Equal(t, f.Level, "info")
+	assert.Equal(t, "info", f.Level)
 
 	f = parseLog(t, buf)
 	assert.Contains(t, f.Message, "use configuration")
-	assert.Equal(t, f.Level, "info")
+	assert.Equal(t, "info", f.Level)
 
 	var cfg config.Config
 	data := strings.TrimPrefix(f.Message, "use configuration\n")
 	err = json.Unmarshal([]byte(data), &cfg)
 	assert.Nil(t, err)
 
-	assert.Equal(t, cfg.LogOutput, "./test.log")
-	assert.Equal(t, cfg.LogLevel, "debug")
-	assert.Equal(t, cfg.HTTPListen, listen)
-	assert.Equal(t, cfg.EnableProfiling, true)
-	assert.Equal(t, cfg.Kubernetes.Kubeconfig, "/foo/bar/baz")
-	assert.Equal(t, cfg.Kubernetes.ResyncInterval, types.TimeDuration{Duration: 24 * time.Hour})
-	assert.Equal(t, cfg.APISIX.AdminKey, "0x123")
-	assert.Equal(t, cfg.APISIX.BaseURL, "http://apisixgw.default.cluster.local/apisix")
+	assert.Equal(t, "./test.log", cfg.LogOutput)
+	assert.Equal(t, "debug", cfg.LogLevel)
+	assert.Equal(t, listen, cfg.HTTPListen)
+	assert.Equal(t, true, cfg.EnableProfiling)
+	assert.Equal(t, "/foo/bar/baz", cfg.Kubernetes.Kubeconfig)
+	assert.Equal(t, types.TimeDuration{Duration: 24 * time.Hour}, cfg.Kubernetes.ResyncInterval)
+	assert.Equal(t, "0x123", cfg.APISIX.AdminKey)
+	assert.Equal(t, "http://apisixgw.default.cluster.local/apisix", cfg.APISIX.BaseURL)
 }
 
 func parseLog(t *testing.T, r *bufio.Reader) *fields {

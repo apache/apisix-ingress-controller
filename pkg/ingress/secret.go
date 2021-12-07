@@ -28,7 +28,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -156,7 +156,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 					zap.String("ApisixTls", tlsMetaKey),
 					zap.Error(err),
 				)
-				go func(tls *configv1.ApisixTls) {
+				go func(tls *configv2beta3.ApisixTls) {
 					c.controller.recorderEventS(tls, corev1.EventTypeWarning, _resourceSyncAborted,
 						fmt.Sprintf("sync from secret %s changes failed, error: %s", key, err.Error()))
 					c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
@@ -174,7 +174,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 					zap.String("ApisixTls", tlsMetaKey),
 					zap.Error(err),
 				)
-				go func(tls *configv1.ApisixTls) {
+				go func(tls *configv2beta3.ApisixTls) {
 					c.controller.recorderEventS(tls, corev1.EventTypeWarning, _resourceSyncAborted,
 						fmt.Sprintf("sync from ca secret %s changes failed, error: %s", key, err.Error()))
 					c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
@@ -193,7 +193,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 		}
 		// Use another goroutine to send requests, to avoid
 		// long time lock occupying.
-		go func(ssl *apisixv1.Ssl, tls *configv1.ApisixTls) {
+		go func(ssl *apisixv1.Ssl, tls *configv2beta3.ApisixTls) {
 			err := c.controller.syncSSL(ctx, ssl, ev.Type)
 			if err != nil {
 				log.Errorw("failed to sync ssl to APISIX",
@@ -242,7 +242,7 @@ func (c *secretController) onAdd(obj interface{}) {
 	log.Debugw("secret add event arrived",
 		zap.String("object-key", key),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
 	})
@@ -269,7 +269,7 @@ func (c *secretController) onUpdate(prev, curr interface{}) {
 		zap.Any("new object", curr),
 		zap.Any("old object", prev),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventUpdate,
 		Object: key,
 	})
@@ -302,7 +302,7 @@ func (c *secretController) onDelete(obj interface{}) {
 	log.Debugw("secret delete event arrived",
 		zap.Any("final state", sec),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:      types.EventDelete,
 		Object:    key,
 		Tombstone: sec,

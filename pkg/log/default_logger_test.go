@@ -72,25 +72,25 @@ func TestDefaultLogger(t *testing.T) {
 			assert.Nil(t, logger.Sync(), "failed to sync logger")
 
 			fields := unmarshalLogMessage(t, fws.bytes())
-			assert.Equal(t, fields.Level, level, "bad log level ", fields.Level)
-			assert.Equal(t, fields.Message, "hello", "bad log message ", fields.Message)
+			assert.Equal(t, level, fields.Level, "bad log level ", fields.Level)
+			assert.Equal(t, "hello", fields.Message, "bad log message ", fields.Message)
 
 			handlers[1].Call([]reflect.Value{reflect.ValueOf("hello I am %s"), reflect.ValueOf("alex")})
 			assert.Nil(t, logger.Sync(), "failed to sync logger")
 
 			fields = unmarshalLogMessage(t, fws.bytes())
-			assert.Equal(t, fields.Level, level, "bad log level ", fields.Level)
-			assert.Equal(t, fields.Message, "hello I am alex", "bad log message ", fields.Message)
+			assert.Equal(t, level, fields.Level, "bad log level ", fields.Level)
+			assert.Equal(t, "hello I am alex", fields.Message, "bad log message ", fields.Message)
 
 			handlers[2].Call([]reflect.Value{reflect.ValueOf("hello"), reflect.ValueOf(zap.String("name", "alex")), reflect.ValueOf(zap.Int("age", 3))})
 
 			assert.Nil(t, logger.Sync(), "failed to sync logger")
 
 			fields = unmarshalLogMessage(t, fws.bytes())
-			assert.Equal(t, fields.Level, level, "bad log level ", fields.Level)
-			assert.Equal(t, fields.Message, "hello", "bad log message ", fields.Message)
-			assert.Equal(t, fields.Name, "alex", "bad name field ", fields.Name)
-			assert.Equal(t, fields.Age, 3, "bad age field ", fields.Age)
+			assert.Equal(t, level, fields.Level, "bad log level ", fields.Level)
+			assert.Equal(t, "hello", fields.Message, "bad log message ", fields.Message)
+			assert.Equal(t, "alex", fields.Name, "bad name field ", fields.Name)
+			assert.Equal(t, 3, fields.Age, "bad age field ", fields.Age)
 		})
 	}
 }

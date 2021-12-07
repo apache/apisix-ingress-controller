@@ -15,11 +15,13 @@
 package translation
 
 import (
-	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	"fmt"
+
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func (t *translator) translateUpstreamRetriesAndTimeout(retries *int, timeout *configv1.UpstreamTimeout, ups *apisixv1.Upstream) error {
+func (t *translator) translateUpstreamRetriesAndTimeout(retries *int, timeout *configv2beta3.UpstreamTimeout, ups *apisixv1.Upstream) error {
 	if retries != nil && *retries < 0 {
 		return &translateError{
 			field:  "retries",
@@ -74,7 +76,7 @@ func (t *translator) translateUpstreamScheme(scheme string, ups *apisixv1.Upstre
 		return nil
 	}
 	switch scheme {
-	case apisixv1.SchemeHTTP, apisixv1.SchemeGRPC:
+	case apisixv1.SchemeHTTP, apisixv1.SchemeGRPC, apisixv1.SchemeHTTPS, apisixv1.SchemeGRPCS:
 		ups.Scheme = scheme
 		return nil
 	default:
@@ -82,7 +84,7 @@ func (t *translator) translateUpstreamScheme(scheme string, ups *apisixv1.Upstre
 	}
 }
 
-func (t *translator) translateUpstreamLoadBalancer(lb *configv1.LoadBalancer, ups *apisixv1.Upstream) error {
+func (t *translator) translateUpstreamLoadBalancer(lb *configv2beta3.LoadBalancer, ups *apisixv1.Upstream) error {
 	if lb == nil || lb.Type == "" {
 		ups.Type = apisixv1.LbRoundRobin
 		return nil
@@ -116,7 +118,7 @@ func (t *translator) translateUpstreamLoadBalancer(lb *configv1.LoadBalancer, up
 	return nil
 }
 
-func (t *translator) translateUpstreamHealthCheck(config *configv1.HealthCheck, ups *apisixv1.Upstream) error {
+func (t *translator) translateUpstreamHealthCheck(config *configv2beta3.HealthCheck, ups *apisixv1.Upstream) error {
 	if config == nil || (config.Passive == nil && config.Active == nil) {
 		return nil
 	}
@@ -146,7 +148,32 @@ func (t *translator) translateUpstreamHealthCheck(config *configv1.HealthCheck, 
 	return nil
 }
 
-func (t *translator) translateUpstreamActiveHealthCheck(config *configv1.ActiveHealthCheck) (*apisixv1.UpstreamActiveHealthCheck, error) {
+func (t translator) translateClientTLS(config *configv2beta3.ApisixSecret, ups *apisixv1.Upstream) error {
+	if config == nil {
+		return nil
+	}
+	s, err := t.SecretLister.Secrets(config.Namespace).Get(config.Name)
+	if err != nil {
+		return &translateError{
+			field:  "tlsSecret",
+			reason: fmt.Sprintf("get secret failed, %v", err),
+		}
+	}
+	cert, key, err := t.ExtractKeyPair(s, true)
+	if err != nil {
+		return &translateError{
+			field:  "tlsSecret",
+			reason: fmt.Sprintf("extract cert and key from secret failed, %v", err),
+		}
+	}
+	ups.TLS = &apisixv1.ClientTLS{
+		Cert: string(cert),
+		Key:  string(key),
+	}
+	return nil
+}
+
+func (t *translator) translateUpstreamActiveHealthCheck(config *configv2beta3.ActiveHealthCheck) (*apisixv1.UpstreamActiveHealthCheck, error) {
 	var active apisixv1.UpstreamActiveHealthCheck
 	switch config.Type {
 	case apisixv1.HealthCheckHTTP, apisixv1.HealthCheckHTTPS, apisixv1.HealthCheckTCP:
@@ -248,7 +275,7 @@ func (t *translator) translateUpstreamActiveHealthCheck(config *configv1.ActiveH
 	return &active, nil
 }
 
-func (t *translator) translateUpstreamPassiveHealthCheck(config *configv1.PassiveHealthCheck) (*apisixv1.UpstreamPassiveHealthCheck, error) {
+func (t *translator) translateUpstreamPassiveHealthCheck(config *configv2beta3.PassiveHealthCheck) (*apisixv1.UpstreamPassiveHealthCheck, error) {
 	var passive apisixv1.UpstreamPassiveHealthCheck
 	switch config.Type {
 	case apisixv1.HealthCheckHTTP, apisixv1.HealthCheckHTTPS, apisixv1.HealthCheckTCP:

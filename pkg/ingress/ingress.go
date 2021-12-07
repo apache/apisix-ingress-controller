@@ -21,6 +21,7 @@ import (
 
 	"go.uber.org/zap"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -184,7 +185,42 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 }
 
 func (c *ingressController) handleSyncErr(obj interface{}, err error) {
+	ev := obj.(*types.Event)
+	event := ev.Object.(kube.IngressEvent)
+	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
+	if errLocal != nil {
+		log.Errorf("invalid resource key: %s", event.Key)
+		return
+	}
+
+	var ing kube.Ingress
+	switch event.GroupVersion {
+	case kube.IngressV1:
+		ing, err = c.controller.ingressLister.V1(namespace, name)
+	case kube.IngressV1beta1:
+		ing, err = c.controller.ingressLister.V1beta1(namespace, name)
+	case kube.IngressExtensionsV1beta1:
+		ing, err = c.controller.ingressLister.ExtensionsV1beta1(namespace, name)
+	}
+
 	if err == nil {
+		// add status
+		if ev.Type != types.EventDelete {
+			if errLocal == nil {
+				switch ing.GroupVersion() {
+				case kube.IngressV1:
+					c.controller.recordStatus(ing.V1(), _resourceSynced, nil, metav1.ConditionTrue, ing.V1().GetGeneration())
+				case kube.IngressV1beta1:
+					c.controller.recordStatus(ing.V1beta1(), _resourceSynced, nil, metav1.ConditionTrue, ing.V1beta1().GetGeneration())
+				case kube.IngressExtensionsV1beta1:
+					c.controller.recordStatus(ing.ExtensionsV1beta1(), _resourceSynced, nil, metav1.ConditionTrue, ing.ExtensionsV1beta1().GetGeneration())
+				}
+			} else {
+				log.Errorw("failed split namespace/name",
+					zap.Error(errLocal),
+				)
+			}
+		}
 		c.workqueue.Forget(obj)
 		c.controller.MetricsCollector.IncrSyncOperation("ingress", "success")
 		return
@@ -193,6 +229,21 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 		zap.Any("object", obj),
 		zap.Error(err),
 	)
+
+	if errLocal == nil {
+		switch ing.GroupVersion() {
+		case kube.IngressV1:
+			c.controller.recordStatus(ing.V1(), _resourceSyncAborted, err, metav1.ConditionTrue, ing.V1().GetGeneration())
+		case kube.IngressV1beta1:
+			c.controller.recordStatus(ing.V1beta1(), _resourceSyncAborted, err, metav1.ConditionTrue, ing.V1beta1().GetGeneration())
+		case kube.IngressExtensionsV1beta1:
+			c.controller.recordStatus(ing.ExtensionsV1beta1(), _resourceSyncAborted, err, metav1.ConditionTrue, ing.ExtensionsV1beta1().GetGeneration())
+		}
+	} else {
+		log.Errorw("failed split namespace/name",
+			zap.Error(errLocal),
+		)
+	}
 	c.workqueue.AddRateLimited(obj)
 	c.controller.MetricsCollector.IncrSyncOperation("ingress", "failure")
 }
@@ -220,7 +271,7 @@ func (c *ingressController) onAdd(obj interface{}) {
 		return
 	}
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.IngressEvent{
 			Key:          key,
@@ -257,7 +308,7 @@ func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 		return
 	}
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventUpdate,
 		Object: kube.IngressEvent{
 			Key:          key,
@@ -298,7 +349,7 @@ func (c *ingressController) OnDelete(obj interface{}) {
 		)
 		return
 	}
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.IngressEvent{
 			Key:          key,

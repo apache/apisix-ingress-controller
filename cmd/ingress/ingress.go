@@ -140,6 +140,14 @@ the apisix cluster and others are created`,
 	cmd.PersistentFlags().StringVar(&cfg.LogOutput, "log-output", "stderr", "error log output file")
 	cmd.PersistentFlags().StringVar(&cfg.HTTPListen, "http-listen", ":8080", "the HTTP Server listen address")
 	cmd.PersistentFlags().StringVar(&cfg.HTTPSListen, "https-listen", ":8443", "the HTTPS Server listen address")
+	cmd.PersistentFlags().StringVar(&cfg.IngressPublishService, "ingress-publish-service", "",
+		`the controller will use the Endpoint of this Service to update the status information of the Ingress resource. 
+The format is "namespace/svc-name" to solve the situation that the data plane and the controller are not deployed in the same namespace.`)
+	cmd.PersistentFlags().StringSliceVar(&cfg.IngressStatusAddress, "ingress-status-address", []string{},
+		`when there is no available information on the Service used for publishing on the data plane,
+the static address provided here will be used to update the status information of Ingress.
+When ingress-publish-service is specified at the same time, ingress-status-address is preferred.
+For example, no available LB exists in the bare metal environment.`)
 	cmd.PersistentFlags().BoolVar(&cfg.EnableProfiling, "enable-profiling", true, "enable profiling via web interface host:port/debug/pprof")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.Kubeconfig, "kubeconfig", "", "Kubernetes configuration file (by default in-cluster configuration will be used)")
 	cmd.PersistentFlags().DurationVar(&cfg.Kubernetes.ResyncInterval.Duration, "resync-interval", time.Minute, "the controller resync (with Kubernetes) interval, the minimum resync interval is 30s")
@@ -148,7 +156,7 @@ the apisix cluster and others are created`,
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.IngressClass, "ingress-class", config.IngressClass, "the class of an Ingress object is set using the field IngressClassName in Kubernetes clusters version v1.18.0 or higher or the annotation \"kubernetes.io/ingress.class\" (deprecated)")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ElectionID, "election-id", config.IngressAPISIXLeader, "election id used for campaign the controller leader")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.IngressVersion, "ingress-version", config.IngressNetworkingV1, "the supported ingress api group version, can be \"networking/v1beta1\", \"networking/v1\" (for Kubernetes version v1.19.0 or higher) and \"extensions/v1beta1\"")
-	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ApisixRouteVersion, "apisix-route-version", config.ApisixRouteV2alpha1, "the supported apisixroute api group version, can be \"apisix.apache.org/v1\" or \"apisix.apache.org/v2alpha1\"")
+	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ApisixRouteVersion, "apisix-route-version", config.ApisixRouteV2beta3, "the supported apisixroute api group version, can be \"apisix.apache.org/v2beta1\" or \"apisix.apache.org/v2beta2\" or \"apisix.apache.org/v2beta3\"")
 	cmd.PersistentFlags().BoolVar(&cfg.Kubernetes.WatchEndpointSlices, "watch-endpointslices", false, "whether to watch endpointslices rather than endpoints")
 	cmd.PersistentFlags().BoolVar(&cfg.Kubernetes.EnableGateway, "enable-gateway", false, "whether to enable support for Gateway API")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.BaseURL, "apisix-base-url", "", "the base URL for APISIX admin api / manager api (deprecated, using --default-apisix-cluster-base-url instead)")

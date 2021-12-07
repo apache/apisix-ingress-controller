@@ -51,7 +51,7 @@ func TestPodOnAdd(t *testing.T) {
 	ctl.onAdd(pod)
 	name, err := ctl.controller.podCache.GetNameByIP("10.0.5.12")
 	assert.Nil(t, err)
-	assert.Equal(t, name, "nginx")
+	assert.Equal(t, "nginx", name)
 
 	pod2 := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -66,7 +66,7 @@ func TestPodOnAdd(t *testing.T) {
 	ctl.onAdd(pod2)
 	name, err = ctl.controller.podCache.GetNameByIP("10.0.5.13")
 	assert.Empty(t, name)
-	assert.Equal(t, err, types.ErrPodNotFound)
+	assert.Equal(t, types.ErrPodNotFound, err)
 }
 
 func TestPodOnDelete(t *testing.T) {
@@ -95,7 +95,7 @@ func TestPodOnDelete(t *testing.T) {
 	ctl.onDelete(pod)
 	name, err := ctl.controller.podCache.GetNameByIP("10.0.5.12")
 	assert.Empty(t, name)
-	assert.Equal(t, err, types.ErrPodNotFound)
+	assert.Equal(t, types.ErrPodNotFound, err)
 
 	pod2 := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -110,7 +110,7 @@ func TestPodOnDelete(t *testing.T) {
 	assert.Nil(t, ctl.controller.podCache.Add(pod2), "adding pod")
 	ctl.onDelete(pod2)
 	name, err = ctl.controller.podCache.GetNameByIP("10.0.5.13")
-	assert.Equal(t, name, "abc")
+	assert.Equal(t, "abc", name)
 	assert.Nil(t, err)
 }
 
@@ -142,8 +142,8 @@ func TestPodOnUpdate(t *testing.T) {
 
 	ctl.onUpdate(nil, pod)
 	name, err := ctl.controller.podCache.GetNameByIP("10.0.5.12")
-	assert.Equal(t, name, "nginx")
-	assert.Equal(t, err, nil)
+	assert.Equal(t, "nginx", name)
+	assert.Equal(t, nil, err)
 
 	pod2 := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -158,6 +158,6 @@ func TestPodOnUpdate(t *testing.T) {
 	assert.Nil(t, ctl.controller.podCache.Add(pod2), "adding pod")
 	ctl.onUpdate(nil, pod2)
 	name, err = ctl.controller.podCache.GetNameByIP("10.0.5.13")
-	assert.Equal(t, name, "abc")
+	assert.Equal(t, "abc", name)
 	assert.Nil(t, err)
 }

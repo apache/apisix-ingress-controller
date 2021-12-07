@@ -15,11 +15,14 @@
 package config
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
+	"text/template"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -48,14 +51,12 @@ const (
 	// WARNING: ingress.extensions/v1beta1 is deprecated in v1.14+, and will be unavilable
 	// in v1.22.
 	IngressExtensionsV1beta1 = "extensions/v1beta1"
-	// ApisixRouteV1 represents apisixroute.apisix.apache.org/v1
-	ApisixRouteV1 = "apisix.apache.org/v1"
-	// ApisixRouteV2alpha1 represents apisixroute.apisix.apache.org/v2alpha1
-	ApisixRouteV2alpha1 = "apisix.apache.org/v2alpha1"
 	// ApisixRouteV2beta1 represents apisixroute.apisix.apache.org/v2beta1
 	ApisixRouteV2beta1 = "apisix.apache.org/v2beta1"
 	// ApisixRouteV2beta2 represents apisixroute.apisix.apache.org/v2beta2
 	ApisixRouteV2beta2 = "apisix.apache.org/v2beta2"
+	// ApisixRouteV2beta3 represents apisixroute.apisix.apache.org/v2beta3
+	ApisixRouteV2beta3 = "apisix.apache.org/v2beta3"
 
 	_minimalResyncInterval = 30 * time.Second
 )
@@ -63,15 +64,17 @@ const (
 // Config contains all config items which are necessary for
 // apisix-ingress-controller's running.
 type Config struct {
-	CertFilePath    string           `json:"cert_file" yaml:"cert_file"`
-	KeyFilePath     string           `json:"key_file" yaml:"key_file"`
-	LogLevel        string           `json:"log_level" yaml:"log_level"`
-	LogOutput       string           `json:"log_output" yaml:"log_output"`
-	HTTPListen      string           `json:"http_listen" yaml:"http_listen"`
-	HTTPSListen     string           `json:"https_listen" yaml:"https_listen"`
-	EnableProfiling bool             `json:"enable_profiling" yaml:"enable_profiling"`
-	Kubernetes      KubernetesConfig `json:"kubernetes" yaml:"kubernetes"`
-	APISIX          APISIXConfig     `json:"apisix" yaml:"apisix"`
+	CertFilePath          string           `json:"cert_file" yaml:"cert_file"`
+	KeyFilePath           string           `json:"key_file" yaml:"key_file"`
+	LogLevel              string           `json:"log_level" yaml:"log_level"`
+	LogOutput             string           `json:"log_output" yaml:"log_output"`
+	HTTPListen            string           `json:"http_listen" yaml:"http_listen"`
+	HTTPSListen           string           `json:"https_listen" yaml:"https_listen"`
+	IngressPublishService string           `json:"ingress_publish_service" yaml:"ingress_publish_service"`
+	IngressStatusAddress  []string         `json:"ingress_status_address" yaml:"ingress_status_address"`
+	EnableProfiling       bool             `json:"enable_profiling" yaml:"enable_profiling"`
+	Kubernetes            KubernetesConfig `json:"kubernetes" yaml:"kubernetes"`
+	APISIX                APISIXConfig     `json:"apisix" yaml:"apisix"`
 }
 
 // KubernetesConfig contains all Kubernetes related config items.
@@ -111,13 +114,15 @@ type APISIXConfig struct {
 // default value.
 func NewDefaultConfig() *Config {
 	return &Config{
-		LogLevel:        "warn",
-		LogOutput:       "stderr",
-		HTTPListen:      ":8080",
-		HTTPSListen:     ":8443",
-		CertFilePath:    "/etc/webhook/certs/cert.pem",
-		KeyFilePath:     "/etc/webhook/certs/key.pem",
-		EnableProfiling: true,
+		LogLevel:              "warn",
+		LogOutput:             "stderr",
+		HTTPListen:            ":8080",
+		HTTPSListen:           ":8443",
+		IngressPublishService: "",
+		IngressStatusAddress:  []string{},
+		CertFilePath:          "/etc/webhook/certs/cert.pem",
+		KeyFilePath:           "/etc/webhook/certs/key.pem",
+		EnableProfiling:       true,
 		Kubernetes: KubernetesConfig{
 			Kubeconfig:          "", // Use in-cluster configurations.
 			ResyncInterval:      types.TimeDuration{Duration: 6 * time.Hour},
@@ -125,7 +130,7 @@ func NewDefaultConfig() *Config {
 			ElectionID:          IngressAPISIXLeader,
 			IngressClass:        IngressClass,
 			IngressVersion:      IngressNetworkingV1,
-			ApisixRouteVersion:  ApisixRouteV2alpha1,
+			ApisixRouteVersion:  ApisixRouteV2beta3,
 			WatchEndpointSlices: false,
 			EnableGateway:       false,
 		},
@@ -142,10 +147,27 @@ func NewConfigFromFile(filename string) (*Config, error) {
 		return nil, err
 	}
 
+	envVarMap := map[string]string{}
+	for _, e := range os.Environ() {
+		pair := strings.SplitN(e, "=", 2)
+		envVarMap[pair[0]] = pair[1]
+	}
+
+	tpl := template.New("text").Option("missingkey=error")
+	tpl, err = tpl.Parse(string(data))
+	if err != nil {
+		return nil, fmt.Errorf("error parsing configuration template %v", err)
+	}
+	buf := bytes.NewBufferString("")
+	err = tpl.Execute(buf, envVarMap)
+	if err != nil {
+		return nil, fmt.Errorf("error execute configuration template %v", err)
+	}
+
 	if strings.HasSuffix(filename, ".yaml") || strings.HasSuffix(filename, ".yml") {
-		err = yaml.Unmarshal(data, cfg)
+		err = yaml.Unmarshal(buf.Bytes(), cfg)
 	} else {
-		err = json.Unmarshal(data, cfg)
+		err = json.Unmarshal(buf.Bytes(), cfg)
 	}
 
 	if err != nil {

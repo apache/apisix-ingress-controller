@@ -22,10 +22,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/stretchr/testify/assert"
-
 	"golang.org/x/net/nettest"
+
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 )
 
 type fakeAPISIXPluginSrv struct {
@@ -102,6 +102,6 @@ func TestPluginClient(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, objs, len(fakePluginNames))
 	for i := range fakePluginNames {
-		assert.Equal(t, objs[i], fakePluginNames[i])
+		assert.Equal(t, fakePluginNames[i], objs[i])
 	}
 }

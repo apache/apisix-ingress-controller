@@ -53,19 +53,21 @@ type Options struct {
 	APISIXRouteVersion    string
 	APISIXAdminAPIKey     string
 	EnableWebhooks        bool
+	APISIXPublishAddress  string
 }
 
 type Scaffold struct {
-	opts              *Options
-	kubectlOptions    *k8s.KubectlOptions
-	namespace         string
-	t                 testing.TestingT
-	nodes             []corev1.Node
-	etcdService       *corev1.Service
-	apisixService     *corev1.Service
-	httpbinDeployment *appsv1.Deployment
-	httpbinService    *corev1.Service
-	finializers       []func()
+	opts               *Options
+	kubectlOptions     *k8s.KubectlOptions
+	namespace          string
+	t                  testing.TestingT
+	nodes              []corev1.Node
+	etcdService        *corev1.Service
+	apisixService      *corev1.Service
+	httpbinDeployment  *appsv1.Deployment
+	httpbinService     *corev1.Service
+	testBackendService *corev1.Service
+	finializers        []func()
 
 	apisixAdminTunnel   *k8s.Tunnel
 	apisixHttpTunnel    *k8s.Tunnel
@@ -101,7 +103,7 @@ func GetKubeconfig() string {
 // NewScaffold creates an e2e test scaffold.
 func NewScaffold(o *Options) *Scaffold {
 	if o.APISIXRouteVersion == "" {
-		o.APISIXRouteVersion = kube.ApisixRouteV1
+		o.APISIXRouteVersion = kube.ApisixRouteV2beta3
 	}
 	if o.APISIXAdminAPIKey == "" {
 		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
@@ -127,8 +129,9 @@ func NewDefaultScaffold() *Scaffold {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    kube.ApisixRouteV1,
+		APISIXRouteVersion:    kube.ApisixRouteV2beta3,
 		EnableWebhooks:        false,
+		APISIXPublishAddress:  "",
 	}
 	return NewScaffold(opts)
 }
@@ -141,8 +144,9 @@ func NewDefaultV2Scaffold() *Scaffold {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    kube.ApisixRouteV2alpha1,
+		APISIXRouteVersion:    kube.ApisixRouteV2beta3,
 		EnableWebhooks:        false,
+		APISIXPublishAddress:  "",
 	}
 	return NewScaffold(opts)
 }
@@ -190,6 +194,11 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
 		),
 	})
+}
+
+// GetAPISIXHTTPSEndpoint get apisix https endpoint from tunnel map
+func (s *Scaffold) GetAPISIXHTTPSEndpoint() string {
+	return s.apisixHttpsTunnel.Endpoint()
 }
 
 // NewAPISIXClientWithTCPProxy creates the HTTP client but with the TCP proxy of APISIX.
@@ -316,6 +325,11 @@ func (s *Scaffold) beforeEach() {
 
 	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.httpbinService.Name, 3, 2*time.Second)
 
+	s.testBackendService, err = s.newTestBackend()
+	assert.Nil(s.t, err, "initializing test backend")
+
+	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.testBackendService.Name, 3, 2*time.Second)
+
 	if s.opts.EnableWebhooks {
 		err := generateWebhookCert(s.namespace)
 		assert.Nil(s.t, err, "generate certs and create webhook secret")
@@ -324,7 +338,7 @@ func (s *Scaffold) beforeEach() {
 	err = s.newIngressAPISIXController()
 	assert.Nil(s.t, err, "initializing ingress apisix controller")
 
-	err = s.waitAllIngressControllerPodsAvailable()
+	err = s.WaitAllIngressControllerPodsAvailable()
 	assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
 }
 
