@@ -19,8 +19,11 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
@@ -77,9 +80,43 @@ func (c *gatewayController) runWorker(ctx context.Context) {
 }
 
 func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
-	log.Info("sync",
-		zap.Any("object", ev),
-	)
+	key := ev.Object.(string)
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		log.Errorf("found Gateway resource with invalid meta namespace key %s: %s", key, err)
+		return err
+	}
+
+	gateway, err := c.controller.gatewayLister.Gateways(namespace).Get(name)
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			log.Errorf("failed to get Gateway %s: %s", key, err)
+			return err
+		}
+		if ev.Type != types.EventDelete {
+			log.Warnf("Gateway %s was deleted before it can be delivered", key)
+			// Don't need to retry.
+			return nil
+		}
+	}
+
+	if ev.Type == types.EventDelete {
+		if gateway != nil {
+			// We still find the resource while we are processing the DELETE event,
+			// that means object with same namespace and name was created, discarding
+			// this stale DELETE event.
+			log.Warnf("discard the stale Gateway delete event since the %s exists", key)
+			return nil
+		}
+		gateway = ev.Tombstone.(*gatewayv1alpha2.Gateway)
+	}
+
+	// TODO The current implementation does not fully support the definition of Gateway.
+	// We can update `spec.addresses` with the current data plane information.
+	// At present, we choose to directly update `GatewayStatus.Addresses`
+	// to indicate that we have picked the Gateway resource.
+
+	c.controller.recordStatus(gateway, string(gatewayv1alpha2.ListenerReasonReady), nil, metav1.ConditionTrue, gateway.Generation)
 	return nil
 }
 

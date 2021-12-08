@@ -59,6 +59,10 @@ const (
 	ApisixRouteV2beta3 = "apisix.apache.org/v2beta3"
 
 	_minimalResyncInterval = 30 * time.Second
+
+	// ControllerName is the name of the controller used to identify
+	// the controller of the GatewayClass.
+	ControllerName = "apisix.apache.org/gateway-controller"
 )
 
 // Config contains all config items which are necessary for

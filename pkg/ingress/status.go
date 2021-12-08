@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	configv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
@@ -227,6 +228,33 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 				zap.String("namespace", v.Namespace),
 			)
 		}
+	case *gatewayv1alpha2.Gateway:
+		gatewayCondition := metav1.Condition{
+			Type:               string(gatewayv1alpha2.ListenerConditionReady),
+			Reason:             reason,
+			Status:             status,
+			Message:            "Gateway's status has been successfully updated",
+			ObservedGeneration: generation,
+		}
+
+		gatewayKubeClient := c.kubeClient.GatewayClient
+
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		} else {
+			meta.SetStatusCondition(&v.Status.Conditions, gatewayCondition)
+		}
+
+		lbips, err := c.ingressLBStatusIPs()
+		if err != nil {
+			log.Errorw("failed to get APISIX gateway external IPs",
+				zap.Error(err),
+			)
+		}
+
+		v.Status.Addresses = convLBIPToGatewayAddr(lbips)
+		gatewayKubeClient.GatewayV1alpha2().Gateways(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{})
 	default:
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
@@ -310,4 +338,32 @@ func (c *Controller) ingressLBStatusIPs() ([]apiv1.LoadBalancerIngress, error) {
 	}
 
 	return lbips, nil
+}
+
+// convLBIPToGatewayAddr convert LoadBalancerIngress to GatewayAddress format
+func convLBIPToGatewayAddr(lbips []apiv1.LoadBalancerIngress) []gatewayv1alpha2.GatewayAddress {
+	gas := []gatewayv1alpha2.GatewayAddress{}
+
+	// In the definition, there is also an address type called NamedAddress,
+	// which we currently do not implement
+	HostnameAddressType := gatewayv1alpha2.HostnameAddressType
+	IPAddressType := gatewayv1alpha2.IPAddressType
+
+	for _, lbip := range lbips {
+		if v := lbip.Hostname; v != "" {
+			gas = append(gas, gatewayv1alpha2.GatewayAddress{
+				Type:  &HostnameAddressType,
+				Value: v,
+			})
+		}
+
+		if v := lbip.IP; v != "" {
+			gas = append(gas, gatewayv1alpha2.GatewayAddress{
+				Type:  &IPAddressType,
+				Value: v,
+			})
+		}
+	}
+
+	return gas
 }
