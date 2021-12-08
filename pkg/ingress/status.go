@@ -254,7 +254,13 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 		}
 
 		v.Status.Addresses = convLBIPToGatewayAddr(lbips)
-		gatewayKubeClient.GatewayV1alpha2().Gateways(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{})
+		if _, errRecord := gatewayKubeClient.GatewayV1alpha2().Gateways(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+			log.Errorw("failed to record status change for Gateway resource",
+				zap.Error(errRecord),
+				zap.String("name", v.Name),
+				zap.String("namespace", v.Namespace),
+			)
+		}
 	default:
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
