@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-FROM golang:1.13.8 AS build-env
+FROM golang:1.16.8 AS build-env
 LABEL maintainer="gxthrj@163.com"
 
 ARG ENABLE_PROXY=false
