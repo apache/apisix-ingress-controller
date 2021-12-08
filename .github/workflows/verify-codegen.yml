@@ -66,7 +66,7 @@ jobs:
     - name: setup go
       uses: actions/setup-go@v1
       with:
-        go-version: '1.13'
+        go-version: '1.16'
     - name: make verify-codegen
       working-directory: ./
       run: |
