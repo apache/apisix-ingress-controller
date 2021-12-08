@@ -389,3 +389,58 @@ func TestMemDBCacheSchema(t *testing.T) {
 	}
 	assert.Error(t, ErrNotFound, c.DeleteSchema(s4))
 }
+
+func TestMemDBCachePluginConfig(t *testing.T) {
+	c, err := NewMemDBCache()
+	assert.Nil(t, err, "NewMemDBCache")
+
+	pc1 := &v1.PluginConfig{
+		Metadata: v1.Metadata{
+			ID:   "1",
+			Name: "name1",
+		},
+	}
+	assert.Nil(t, c.InsertPluginConfig(pc1), "inserting plugin_config pc1")
+
+	pc11, err := c.GetPluginConfig("1")
+	assert.Nil(t, err)
+	assert.Equal(t, pc1, pc11)
+
+	pc2 := &v1.PluginConfig{
+		Metadata: v1.Metadata{
+			ID:   "2",
+			Name: "name2",
+		},
+	}
+	pc3 := &v1.PluginConfig{
+		Metadata: v1.Metadata{
+			ID:   "3",
+			Name: "name3",
+		},
+	}
+	assert.Nil(t, c.InsertPluginConfig(pc2), "inserting plugin_config pc2")
+	assert.Nil(t, c.InsertPluginConfig(pc3), "inserting plugin_config pc3")
+
+	pc22, err := c.GetPluginConfig("2")
+	assert.Nil(t, err)
+	assert.Equal(t, pc2, pc22)
+
+	assert.Nil(t, c.DeletePluginConfig(pc3), "delete plugin_config pc3")
+
+	pcList, err := c.ListPluginConfigs()
+	assert.Nil(t, err, "listing plugin_config")
+
+	if pcList[0].Name > pcList[1].Name {
+		pcList[0], pcList[1] = pcList[1], pcList[0]
+	}
+	assert.Equal(t, pcList[0], pc1)
+	assert.Equal(t, pcList[1], pc2)
+
+	pc4 := &v1.PluginConfig{
+		Metadata: v1.Metadata{
+			ID:   "4",
+			Name: "name4",
+		},
+	}
+	assert.Error(t, ErrNotFound, c.DeletePluginConfig(pc4))
+}
