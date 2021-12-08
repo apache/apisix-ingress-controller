@@ -28,7 +28,6 @@ This document explains how to install Ingress APISIX on [Azure AKS](https://docs
 * Create an Kubernetes Service on Azure.
 * Install [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/#:~:text=The%20Azure%20command%2Dline%20interface,with%20an%20emphasis%20on%20automation.) and download the credentials by running `az aks get-credentials`.
 * Install [Helm](https://helm.sh/).
-* Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX and apisix-ingress-controller
 
@@ -42,7 +41,7 @@ kubectl create ns ingress-apisix
 helm install apisix apisix/apisix \
   --set gateway.type=LoadBalancer \
   --set ingress-controller.enabled=true \
-  --namespace ingress-apisix
+  --namespace ingress-apisix \
   --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
 kubectl get service --namespace ingress-apisix
 ```

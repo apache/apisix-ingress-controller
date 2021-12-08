@@ -28,7 +28,6 @@ This document explains how to install Ingress APISIX on [Google Cloud GKE](https
 * Create an Kubernetes Service on GKE.
 * Install [Google Cloud SDK](https://cloud.google.com/sdk) and get the credentials or you can just use the [Cloud Shell](https://cloud.google.com/shell).
 * Install [Helm](https://helm.sh/).
-* Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX and apisix-ingress-controller
 
@@ -42,7 +41,7 @@ kubectl create ns ingress-apisix
 helm install apisix apisix/apisix \
   --set gateway.type=LoadBalancer \
   --set ingress-controller.enabled=true \
-  --namespace ingress-apisix
+  --namespace ingress-apisix \
   --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
 kubectl get service --namespace ingress-apisix
 ```
