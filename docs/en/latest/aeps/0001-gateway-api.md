@@ -21,30 +21,25 @@ title: AEP-0001 Gateway API support
 #
 -->
 
-
 ## Summary
 
 [Gateway API](https://github.com/kubernetes-sigs/gateway-api) is dedicated to achieving expressive and scalable Kubernetes service networking through many custom resources.
 
 Apache APISIX Ingress controller can realize richer functions by adding support for Gateway API, including Gateway management, multi-cluster support and other features.
 
-
 ## Motivation
 
 * Improve ease of use
 * Support lifecycle management of Apache APISIX Gateway
-
 
 ### Goals
 
 * Can bind the Apache APISIX Ingress controller with Gateway resources.
 * The traffic rules defined by the Gateway API are processed by the Apache APISIX Gateway
 
-
 ### Non-Goals
 
 * Supports all Gateway API versions and capabilities.
-
 
 ## Proposal
 
@@ -55,7 +50,6 @@ Add support from the definition of HTTP routing. Mainly cover the following reso
 * HTTPRoute
 * TLSRoute
 * ...
-
 
 ## Design Details
 
@@ -68,7 +62,6 @@ We need to add a separate switch for the Gateway API to control whether to enabl
 These controllers can handle `gateway.networking.k8s.io/v1alpha2` version of `GatewayClass`, `Gateway` and `HTTPRoute` resources.
 
 For real traffic definition rules, it needs to be translated into rules in Apache APISIX.
-
 
 ### GatewayClass controller
 
@@ -93,14 +86,12 @@ apisix-lb   apisix.apache.org/gateway-controller   7m
 
 We need to update its Status.
 
-
 ### Gateway controller
 
 For the `Gateway` resource, we have two stages:
 
 * Binding the existing Apache APISIX data plane;
 * Create a self-managed Apache APISIX Gateway;
-
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1alpha2
@@ -123,11 +114,9 @@ NAME         CLASS       ADDRESS   READY   AGE
 my-gateway   apisix-lb   6.6.6.6   True    12m
 ```
 
-
 ### HTTPRoute controller
 
 For the `HTTPRoute` resource, we need to complete its translation to APISIX.
-
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1alpha2
@@ -167,7 +156,6 @@ spec:
 
 Need to create the corresponding route on Apache APISIX.
 
-
 ### TLSRoute Controller
 
 TBD
@@ -180,12 +168,9 @@ TBD
 
 TBD
 
-
 ### Test Plan
 
 * Use the e2e test case cover examples in the above document.
-
-
 
 ### Graduation Criteria
 

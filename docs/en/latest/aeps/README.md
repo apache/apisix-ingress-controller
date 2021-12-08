@@ -21,7 +21,6 @@ title: APISIX Ingress Enhancement Proposals (AEPs)
 #
 -->
 
-
 This document was inspired by the [Kubernetes Enhancement Proposals (KEPs)](https://github.com/kubernetes/enhancements/tree/master/keps) of the Kubernetes community.
 
 By recording the long-term plan Proposal of the current Apache APISIX Ingress project in this directory, it is convenient for the community to participate in and contribute.
