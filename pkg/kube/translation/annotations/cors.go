@@ -19,10 +19,10 @@ import (
 )
 
 const (
-	_enableCors       = "k8s.apisix.apache.org/enable-cors"
-	_corsAllowOrigin  = "k8s.apisix.apache.org/cors-allow-origin"
-	_corsAllowHeaders = "k8s.apisix.apache.org/cors-allow-headers"
-	_corsAllowMethods = "k8s.apisix.apache.org/cors-allow-methods"
+	_enableCors       = AnnotationsPrefix + "enable-cors"
+	_corsAllowOrigin  = AnnotationsPrefix + "cors-allow-origin"
+	_corsAllowHeaders = AnnotationsPrefix + "cors-allow-headers"
+	_corsAllowMethods = AnnotationsPrefix + "cors-allow-methods"
 )
 
 type cors struct{}
