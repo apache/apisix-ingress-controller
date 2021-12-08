@@ -109,7 +109,7 @@ spec:
 After correct processing, you will get the following results:
 
 ```bash
-➜  ~ kubectl get gateway                
+➜  ~ kubectl get gateway
 NAME         CLASS       ADDRESS   READY   AGE
 my-gateway   apisix-lb   6.6.6.6   True    12m
 ```
