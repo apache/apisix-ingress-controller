@@ -63,16 +63,16 @@ jobs:
       (needs.changes.outputs.go == 'true')
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: setup go
-      uses: actions/setup-go@v1
-      with:
-        go-version: '1.16'
-    - name: run unit test
-      working-directory: ./
-      run: |
-        make unit-test
-    - name: upload coverage profile
-      working-directory: ./
-      run: |
-        bash <(curl -s https://codecov.io/bash)
+      - uses: actions/checkout@v2
+      - name: Setup Go Env
+        uses: actions/setup-go@v2
+        with:
+          go-version: "1.16.8"
+      - name: Run unit test
+        working-directory: ./
+        run: |
+          make unit-test
+      - name: Upload coverage profile
+        working-directory: ./
+        run: |
+          bash <(curl -s https://codecov.io/bash)

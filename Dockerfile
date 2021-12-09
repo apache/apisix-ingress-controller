@@ -28,8 +28,7 @@ COPY go.mod .
 COPY go.sum .
 
 RUN if [ "$ENABLE_PROXY" = "true" ] ; then go env -w GOPROXY=https://goproxy.cn,direct ; fi \
-    && go mod download \
-    && go mod tidy
+    && go mod download 
 
 COPY . .
 RUN make build

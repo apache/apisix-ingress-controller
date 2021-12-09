@@ -490,7 +490,7 @@ func (c *Controller) run(ctx context.Context) {
 		}
 	})
 
-	if c.cfg.Kubernetes.EnableGateway {
+	if c.cfg.Kubernetes.EnableGatewayAPI {
 		c.goAttach(func() {
 			c.gatewayInformer.Run(ctx.Done())
 		})

@@ -147,7 +147,7 @@ func (c *gatewayController) onAdd(obj interface{}) {
 		zap.Any("object", obj),
 	)
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
 	})

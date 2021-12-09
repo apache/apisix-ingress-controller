@@ -77,9 +77,9 @@ jobs:
           chmod +x ./kind
           sudo mv kind /usr/local/bin
       - name: Setup Go Env
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
-          go-version: "1.16"
+          go-version: "1.16.8"
       - name: Install ginkgo
         run: |
           go get -u github.com/onsi/ginkgo/ginkgo
