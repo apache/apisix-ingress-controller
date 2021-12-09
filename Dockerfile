@@ -24,7 +24,7 @@ RUN rm -rf /etc/localtime \
     && dpkg-reconfigure -f noninteractive tzdata
 
 WORKDIR /build
-COPY go.* .
+COPY go.* ./
 
 RUN if [ "$ENABLE_PROXY" = "true" ] ; then go env -w GOPROXY=https://goproxy.cn,direct ; fi \
     && go mod download
