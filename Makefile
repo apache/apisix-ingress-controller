@@ -44,7 +44,7 @@ E2E_SKIP_BUILD ?= 0
 .PHONY: build
 build:
 	go env
-	go mod download golang.org/x/text -json
+	go mod download golang.org/x/text
 	go build \
 		-o apisix-ingress-controller \
 		-ldflags $(GO_LDFLAGS) \
