@@ -83,6 +83,12 @@ type Translator interface {
 	// TranslateRouteV2beta3NotStrictly translates the configv2beta3.ApisixRoute object into several Route
 	// and Upstream resources not strictly, only used for delete event.
 	TranslateRouteV2beta3NotStrictly(*configv2beta3.ApisixRoute) (*TranslateContext, error)
+	// TranslatePluginConfigV2beta2 translates the configv2beta2.ApisixPluginConfig object into APISIX PluginConfig
+	// and Upstream resources.
+	TranslatePluginConfigV2beta2(config *configv2beta2.ApisixPluginConfig) (*TranslateContext, error)
+	// TranslatePluginConfigV2beta2NotStrictly translates the configv2beta2.ApisixRoute object into APISIX PluginConfig
+	// and Upstream resources not strictly, only used for delete event.
+	TranslatePluginConfigV2beta2NotStrictly(*configv2beta2.ApisixPluginConfig) (*TranslateContext, error)
 	// TranslateSSL translates the configv2beta3.ApisixTls object into the APISIX SSL resource.
 	TranslateSSL(*configv2beta3.ApisixTls) (*apisixv1.Ssl, error)
 	// TranslateClusterConfig translates the configv2beta3.ApisixClusterConfig object into the APISIX

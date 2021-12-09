@@ -408,6 +408,19 @@ func NewDefaultConsumer() *Consumer {
 	}
 }
 
+// NewDefaultPluginConfig returns an empty PluginConfig with default values.
+func NewDefaultPluginConfig() *PluginConfig {
+	return &PluginConfig{
+		Metadata: Metadata{
+			Desc: "Created by apisix-ingress-controller, DO NOT modify it manually",
+			Labels: map[string]string{
+				"managed-by": "apisix-ingress-controller",
+			},
+		},
+		Plugins: make(Plugins),
+	}
+}
+
 // ComposeUpstreamName uses namespace, name, subset (optional) and port info to compose
 // the upstream name.
 func ComposeUpstreamName(namespace, name, subset string, port int32) string {
@@ -479,6 +492,21 @@ func ComposeConsumerName(namespace, name string) string {
 	// TODO If APISIX modifies the consumer name schema, we can drop this.
 	buf.WriteString(strings.Replace(namespace, "-", "_", -1))
 	buf.WriteString("_")
+	buf.WriteString(name)
+
+	return buf.String()
+}
+
+// ComposePluginConfigName uses namespace, name to compose
+// the route name.
+func ComposePluginConfigName(namespace, name string) string {
+	// FIXME Use sync.Pool to reuse this buffer if the upstream
+	// name composing code path is hot.
+	p := make([]byte, 0, len(namespace)+len(name)+1)
+	buf := bytes.NewBuffer(p)
+
+	buf.WriteString(namespace)
+	buf.WriteByte('_')
 	buf.WriteString(name)
 
 	return buf.String()

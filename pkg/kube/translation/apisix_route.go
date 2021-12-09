@@ -135,9 +135,7 @@ import (
 //}
 
 func (t *translator) TranslateRouteV2beta1(ar *configv2beta1.ApisixRoute) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2beta1(ctx, ar); err != nil {
 		return nil, err
@@ -149,9 +147,7 @@ func (t *translator) TranslateRouteV2beta1(ar *configv2beta1.ApisixRoute) (*Tran
 }
 
 func (t *translator) TranslateRouteV2beta1NotStrictly(ar *configv2beta1.ApisixRoute) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2beta1NotStrictly(ctx, ar); err != nil {
 		return nil, err
@@ -246,6 +242,7 @@ func (t *translator) translateHTTPRouteV2beta1(ctx *TranslateContext, ar *config
 		route.UpstreamId = id.GenID(upstreamName)
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
+		pluginConfigName := apisixv1.ComposePluginConfigName(ar.Namespace, backend.ServiceName)
 
 		if len(backends) > 0 {
 			weight := _defaultWeight
@@ -272,14 +269,19 @@ func (t *translator) translateHTTPRouteV2beta1(ctx *TranslateContext, ar *config
 			}
 			ctx.addUpstream(ups)
 		}
+		if !ctx.checkPluginConfigExist(pluginConfigName) {
+			pc, err := t.translatePluginConfig(ar.Namespace, backend.ServiceName, pluginMap)
+			if err != nil {
+				return err
+			}
+			ctx.addPluginConfig(pc)
+		}
 	}
 	return nil
 }
 
 func (t *translator) TranslateRouteV2beta2(ar *configv2beta2.ApisixRoute) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2beta2(ctx, ar); err != nil {
 		return nil, err
@@ -291,9 +293,7 @@ func (t *translator) TranslateRouteV2beta2(ar *configv2beta2.ApisixRoute) (*Tran
 }
 
 func (t *translator) TranslateRouteV2beta2NotStrictly(ar *configv2beta2.ApisixRoute) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2beta2NotStrictly(ctx, ar); err != nil {
 		return nil, err
@@ -305,9 +305,7 @@ func (t *translator) TranslateRouteV2beta2NotStrictly(ar *configv2beta2.ApisixRo
 }
 
 func (t *translator) TranslateRouteV2beta3(ar *configv2beta3.ApisixRoute) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2beta3(ctx, ar); err != nil {
 		return nil, err
@@ -319,9 +317,7 @@ func (t *translator) TranslateRouteV2beta3(ar *configv2beta3.ApisixRoute) (*Tran
 }
 
 func (t *translator) TranslateRouteV2beta3NotStrictly(ar *configv2beta3.ApisixRoute) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2beta3NotStrictly(ctx, ar); err != nil {
 		return nil, err
@@ -413,6 +409,7 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *TranslateContext, ar *config
 		route.UpstreamId = id.GenID(upstreamName)
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
+		pluginConfigName := apisixv1.ComposePluginConfigName(ar.Namespace, backend.ServiceName)
 
 		if len(backends) > 0 {
 			weight := _defaultWeight
@@ -438,6 +435,13 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *TranslateContext, ar *config
 				return err
 			}
 			ctx.addUpstream(ups)
+		}
+		if !ctx.checkPluginConfigExist(pluginConfigName) {
+			pc, err := t.translatePluginConfig(ar.Namespace, backend.ServiceName, pluginMap)
+			if err != nil {
+				return err
+			}
+			ctx.addPluginConfig(pc)
 		}
 	}
 	return nil
@@ -542,6 +546,7 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
 		route.Timeout = timeout
+		pluginConfigName := apisixv1.ComposePluginConfigName(ar.Namespace, backend.ServiceName)
 
 		if len(backends) > 0 {
 			weight := _defaultWeight
@@ -565,6 +570,13 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 				return err
 			}
 			ctx.addUpstream(ups)
+		}
+		if !ctx.checkPluginConfigExist(pluginConfigName) {
+			pc, err := t.translatePluginConfig(ar.Namespace, backend.ServiceName, pluginMap)
+			if err != nil {
+				return err
+			}
+			ctx.addPluginConfig(pc)
 		}
 	}
 	return nil

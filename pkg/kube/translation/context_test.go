@@ -23,9 +23,8 @@ import (
 )
 
 func TestTranslateContext(t *testing.T) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
+
 	r1 := &apisix.Route{
 		Metadata: apisix.Metadata{
 			ID: "1",
@@ -54,23 +53,41 @@ func TestTranslateContext(t *testing.T) {
 			Name: "aaa",
 		},
 	}
+	pc1 := &apisix.PluginConfig{
+		Metadata: apisix.Metadata{
+			ID:   "1",
+			Name: "aaa",
+		},
+	}
+	pc2 := &apisix.PluginConfig{
+		Metadata: apisix.Metadata{
+			ID:   "2",
+			Name: "aaa",
+		},
+	}
 	ctx.addRoute(r1)
 	ctx.addRoute(r2)
 	ctx.addStreamRoute(sr1)
 	ctx.addStreamRoute(sr2)
 	ctx.addUpstream(u1)
 	ctx.addUpstream(u2)
+	ctx.addPluginConfig(pc1)
+	ctx.addPluginConfig(pc2)
 
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.StreamRoutes, 2)
 	assert.Len(t, ctx.Upstreams, 1)
+	assert.Len(t, ctx.PluginConfigs, 1)
 
 	assert.Equal(t, r1, ctx.Routes[0])
 	assert.Equal(t, r2, ctx.Routes[1])
 	assert.Equal(t, sr1, ctx.StreamRoutes[0])
 	assert.Equal(t, sr2, ctx.StreamRoutes[1])
 	assert.Equal(t, u1, ctx.Upstreams[0])
+	assert.Equal(t, pc1, ctx.PluginConfigs[0])
 
 	assert.Equal(t, true, ctx.checkUpstreamExist("aaa"))
 	assert.Equal(t, false, ctx.checkUpstreamExist("bbb"))
+	assert.Equal(t, true, ctx.checkPluginConfigExist("aaa"))
+	assert.Equal(t, false, ctx.checkPluginConfigExist("bbb"))
 }
