@@ -10,9 +10,9 @@ require (
 	github.com/gruntwork-io/terratest v0.32.8
 	github.com/onsi/ginkgo v1.16.4
 	github.com/stretchr/testify v1.7.0
-	k8s.io/api v0.22.1
-	k8s.io/apimachinery v0.22.1
-	k8s.io/client-go v0.22.1
+	k8s.io/api v0.22.4
+	k8s.io/apimachinery v0.22.4
+	k8s.io/client-go v0.22.4
 )
 
 replace github.com/apache/apisix-ingress-controller => ../../
