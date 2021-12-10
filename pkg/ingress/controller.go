@@ -650,6 +650,10 @@ func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.
 		if err != nil {
 			// Finally failed health check, then give up leader.
 			log.Warnf("failed to check health for default cluster: %s, give up leader", err)
+			c.apiServer.HealthState.Lock()
+			defer c.apiServer.HealthState.Unlock()
+
+			c.apiServer.HealthState.Err = err
 			return
 		}
 		log.Debugf("success check health for default cluster")
