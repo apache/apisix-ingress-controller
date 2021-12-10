@@ -1,3 +1,14 @@
+<!-- Please answer these questions before submitting a pull request -->
+
+### Type of change:
+
+<!-- Please delete options that are not relevant. -->
+
+- [ ] Bugfix
+- [ ] New feature provided
+- [ ] Improve performance
+- [ ] Backport patches
+
 ### What this PR does / why we need it:
 <!--- Why is this change required? What problem does it solve? -->
 <!--- If it fixes an open issue, please link to the issue here. -->
