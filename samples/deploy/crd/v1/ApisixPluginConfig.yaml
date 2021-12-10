@@ -29,7 +29,7 @@ spec:
     shortNames:
       - apc
   versions:
-    - name: v2beta2
+    - name: v2beta3
       served: true
       storage: true
       subresources:

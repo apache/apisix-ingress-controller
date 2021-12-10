@@ -27,6 +27,7 @@ type ApisixV2beta3Interface interface {
 	RESTClient() rest.Interface
 	ApisixClusterConfigsGetter
 	ApisixConsumersGetter
+	ApisixPluginConfigsGetter
 	ApisixRoutesGetter
 	ApisixTlsesGetter
 	ApisixUpstreamsGetter
@@ -43,6 +44,10 @@ func (c *ApisixV2beta3Client) ApisixClusterConfigs() ApisixClusterConfigInterfac
 
 func (c *ApisixV2beta3Client) ApisixConsumers(namespace string) ApisixConsumerInterface {
 	return newApisixConsumers(c, namespace)
+}
+
+func (c *ApisixV2beta3Client) ApisixPluginConfigs(namespace string) ApisixPluginConfigInterface {
+	return newApisixPluginConfigs(c, namespace)
 }
 
 func (c *ApisixV2beta3Client) ApisixRoutes(namespace string) ApisixRouteInterface {
