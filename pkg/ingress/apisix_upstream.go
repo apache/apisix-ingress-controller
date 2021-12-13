@@ -118,7 +118,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 	}
 
 	var portLevelSettings map[int32]*configv2beta3.ApisixUpstreamConfig
-	if len(au.Spec.PortLevelSettings) > 0 {
+	if au.Spec != nil && len(au.Spec.PortLevelSettings) > 0 {
 		portLevelSettings = make(map[int32]*configv2beta3.ApisixUpstreamConfig, len(au.Spec.PortLevelSettings))
 		for _, port := range au.Spec.PortLevelSettings {
 			portLevelSettings[port.Port] = &port.ApisixUpstreamConfig
@@ -135,7 +135,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 
 	var subsets []configv2beta3.ApisixUpstreamSubset
 	subsets = append(subsets, configv2beta3.ApisixUpstreamSubset{})
-	if len(au.Spec.Subsets) > 0 {
+	if au.Spec != nil && len(au.Spec.Subsets) > 0 {
 		subsets = append(subsets, au.Spec.Subsets...)
 	}
 	clusterName := c.controller.cfg.APISIX.DefaultClusterName
@@ -154,7 +154,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 				return err
 			}
 			var newUps *apisixv1.Upstream
-			if ev.Type != types.EventDelete {
+			if au.Spec != nil && ev.Type != types.EventDelete {
 				cfg, ok := portLevelSettings[port.Port]
 				if !ok {
 					cfg = &au.Spec.ApisixUpstreamConfig
