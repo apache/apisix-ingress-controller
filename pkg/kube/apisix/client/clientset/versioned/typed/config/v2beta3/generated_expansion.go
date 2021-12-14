@@ -21,6 +21,8 @@ type ApisixClusterConfigExpansion interface{}
 
 type ApisixConsumerExpansion interface{}
 
+type ApisixPluginConfigExpansion interface{}
+
 type ApisixRouteExpansion interface{}
 
 type ApisixTlsExpansion interface{}

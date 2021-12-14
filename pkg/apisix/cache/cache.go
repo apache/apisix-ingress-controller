@@ -71,7 +71,7 @@ type Cache interface {
 	ListConsumers() ([]*v1.Consumer, error)
 	// ListSchema lists all schema in cache.
 	ListSchema() ([]*v1.Schema, error)
-	// ListPluginConfig lists all plugin_config in cache.
+	// ListPluginConfigs lists all plugin_config in cache.
 	ListPluginConfigs() ([]*v1.PluginConfig, error)
 
 	// DeleteRoute deletes the specified route in cache.

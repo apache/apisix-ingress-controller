@@ -29,6 +29,14 @@ type ApisixConsumerListerExpansion interface{}
 // ApisixConsumerNamespaceLister.
 type ApisixConsumerNamespaceListerExpansion interface{}
 
+// ApisixPluginConfigListerExpansion allows custom methods to be added to
+// ApisixPluginConfigLister.
+type ApisixPluginConfigListerExpansion interface{}
+
+// ApisixPluginConfigNamespaceListerExpansion allows custom methods to be added to
+// ApisixPluginConfigNamespaceLister.
+type ApisixPluginConfigNamespaceListerExpansion interface{}
+
 // ApisixRouteListerExpansion allows custom methods to be added to
 // ApisixRouteLister.
 type ApisixRouteListerExpansion interface{}
