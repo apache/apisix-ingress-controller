@@ -577,7 +577,7 @@ func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
 			log.Errorf("failed to get ApisixUpstream %s/%s: %s", ep.Namespace(), svcName, err)
 			return err
 		}
-	} else if len(au.Spec.Subsets) > 0 {
+	} else if au.Spec != nil && len(au.Spec.Subsets) > 0 {
 		subsets = append(subsets, au.Spec.Subsets...)
 	}
 
