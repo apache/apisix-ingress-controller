@@ -19,31 +19,24 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-type healthzResponse struct {
-	Status string `json:"status"`
+// MountWebhooks mounts apisix healthz route.
+func MountApisixHealthz(r *gin.Engine, state *HealthState) {
+	r.GET("/apisix/healthz", apisixHealthz(state))
 }
 
-func mountHealthz(r *gin.Engine) {
-	r.GET("/healthz", healthz)
-}
+func apisixHealthz(state *HealthState) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		state.RLock()
+		err := state.Err
+		state.RUnlock()
 
-func healthz(c *gin.Context) {
-	c.AbortWithStatusJSON(http.StatusOK, healthzResponse{Status: "ok"})
-}
-
-func mountMetrics(r *gin.Engine) {
-	r.GET("/metrics", metrics)
-}
-
-func metrics(c *gin.Context) {
-	promhttp.Handler().ServeHTTP(c.Writer, c.Request)
-}
-
-// Mount mounts all api routers.
-func Mount(r *gin.Engine) {
-	mountHealthz(r)
-	mountMetrics(r)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError,
+				healthzResponse{Status: err.Error()})
+			return
+		}
+		c.AbortWithStatusJSON(http.StatusOK, healthzResponse{Status: "ok"})
+	}
 }

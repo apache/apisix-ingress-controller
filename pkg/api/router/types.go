@@ -15,35 +15,11 @@
 
 package router
 
-import (
-	"net/http"
+import "sync"
 
-	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-)
+// HealthState stores healthcheck err of APISIX
+type HealthState struct {
+	sync.RWMutex
 
-type healthzResponse struct {
-	Status string `json:"status"`
-}
-
-func mountHealthz(r *gin.Engine) {
-	r.GET("/healthz", healthz)
-}
-
-func healthz(c *gin.Context) {
-	c.AbortWithStatusJSON(http.StatusOK, healthzResponse{Status: "ok"})
-}
-
-func mountMetrics(r *gin.Engine) {
-	r.GET("/metrics", metrics)
-}
-
-func metrics(c *gin.Context) {
-	promhttp.Handler().ServeHTTP(c.Writer, c.Request)
-}
-
-// Mount mounts all api routers.
-func Mount(r *gin.Engine) {
-	mountHealthz(r)
-	mountMetrics(r)
+	Err error
 }
