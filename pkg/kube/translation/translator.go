@@ -62,33 +62,33 @@ type Translator interface {
 	// When the subset is not found, the node list will be empty. When the subset is empty,
 	// all pods IP will be filled.
 	TranslateUpstream(string, string, string, int32) (*apisixv1.Upstream, error)
+	// TranslatePluginConfig composes a pluginConfig according to the
+	// given apisixv1.Plugins.
+	// The returned PluginConfig doesn't have metadata info.
+	// It doesn't assign any metadata fields, so it's caller's responsibility to decide
+	// the metadata.
+	TranslatePluginConfig(apisixv1.Plugins) (*apisixv1.PluginConfig, error)
 	// TranslateIngress composes a couple of APISIX Routes and upstreams according
 	// to the given Ingress resource.
 	TranslateIngress(kube.Ingress) (*TranslateContext, error)
 	// TranslateRouteV2beta1 translates the configv2beta1.ApisixRoute object into several Route
 	// and Upstream resources.
 	TranslateRouteV2beta1(*configv2beta1.ApisixRoute) (*TranslateContext, error)
-	// TranslateRouteV2beta1NotStrictly translates the configv2beta1.ApisixRoute object into several Route
-	// and Upstream resources not strictly, only used for delete event.
+	// TranslateRouteV2beta1NotStrictly translates the configv2beta1.ApisixRoute object into several Route,
+	// Upstream and PluginConfig resources not strictly, only used for delete event.
 	TranslateRouteV2beta1NotStrictly(*configv2beta1.ApisixRoute) (*TranslateContext, error)
-	// TranslateRouteV2beta2 translates the configv2beta2.ApisixRoute object into several Route
-	// and Upstream resources.
+	// TranslateRouteV2beta2 translates the configv2beta2.ApisixRoute object into several Route,
+	// Upstream and PluginConfig resources.
 	TranslateRouteV2beta2(*configv2beta2.ApisixRoute) (*TranslateContext, error)
-	// TranslateRouteV2beta2NotStrictly translates the configv2beta2.ApisixRoute object into several Route
-	// and Upstream resources not strictly, only used for delete event.
+	// TranslateRouteV2beta2NotStrictly translates the configv2beta2.ApisixRoute object into several Route,
+	// Upstream and PluginConfig  resources not strictly, only used for delete event.
 	TranslateRouteV2beta2NotStrictly(*configv2beta2.ApisixRoute) (*TranslateContext, error)
-	// TranslateRouteV2beta3 translates the configv2beta3.ApisixRoute object into several Route
-	// and Upstream resources.
+	// TranslateRouteV2beta3 translates the configv2beta3.ApisixRoute object into several Route,
+	// Upstream and PluginConfig resources.
 	TranslateRouteV2beta3(*configv2beta3.ApisixRoute) (*TranslateContext, error)
-	// TranslateRouteV2beta3NotStrictly translates the configv2beta3.ApisixRoute object into several Route
-	// and Upstream resources not strictly, only used for delete event.
+	// TranslateRouteV2beta3NotStrictly translates the configv2beta3.ApisixRoute object into several Route,
+	// Upstream and PluginConfig resources not strictly, only used for delete event.
 	TranslateRouteV2beta3NotStrictly(*configv2beta3.ApisixRoute) (*TranslateContext, error)
-	// TranslatePluginConfigV2beta2 translates the configv2beta2.ApisixPluginConfig object into APISIX PluginConfig
-	// and Upstream resources.
-	TranslatePluginConfigV2beta2(config *configv2beta2.ApisixPluginConfig) (*TranslateContext, error)
-	// TranslatePluginConfigV2beta2NotStrictly translates the configv2beta2.ApisixRoute object into APISIX PluginConfig
-	// and Upstream resources not strictly, only used for delete event.
-	TranslatePluginConfigV2beta2NotStrictly(*configv2beta2.ApisixPluginConfig) (*TranslateContext, error)
 	// TranslateSSL translates the configv2beta3.ApisixTls object into the APISIX SSL resource.
 	TranslateSSL(*configv2beta3.ApisixTls) (*apisixv1.Ssl, error)
 	// TranslateClusterConfig translates the configv2beta3.ApisixClusterConfig object into the APISIX
