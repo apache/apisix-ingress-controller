@@ -27,6 +27,8 @@ type Interface interface {
 	ApisixClusterConfigs() ApisixClusterConfigInformer
 	// ApisixConsumers returns a ApisixConsumerInformer.
 	ApisixConsumers() ApisixConsumerInformer
+	// ApisixPluginConfigs returns a ApisixPluginConfigInformer.
+	ApisixPluginConfigs() ApisixPluginConfigInformer
 	// ApisixRoutes returns a ApisixRouteInformer.
 	ApisixRoutes() ApisixRouteInformer
 	// ApisixTlses returns a ApisixTlsInformer.
@@ -54,6 +56,11 @@ func (v *version) ApisixClusterConfigs() ApisixClusterConfigInformer {
 // ApisixConsumers returns a ApisixConsumerInformer.
 func (v *version) ApisixConsumers() ApisixConsumerInformer {
 	return &apisixConsumerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// ApisixPluginConfigs returns a ApisixPluginConfigInformer.
+func (v *version) ApisixPluginConfigs() ApisixPluginConfigInformer {
+	return &apisixPluginConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // ApisixRoutes returns a ApisixRouteInformer.
