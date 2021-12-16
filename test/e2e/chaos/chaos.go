@@ -20,7 +20,7 @@ var _ = ginkgo.Describe("Chaos Testing", func() {
 		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
 	}
 	s := scaffold.NewScaffold(opts)
-	ginkgo.FContext("simulate apisix deployment restart", func() {
+	ginkgo.Context("simulate apisix deployment restart", func() {
 		ginkgo.Specify("ingress controller can synchronize rules normally after apisix recovery", func() {
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(0), "checking number of upstreams")
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
