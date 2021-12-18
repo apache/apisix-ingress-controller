@@ -15,7 +15,6 @@
 package translation
 
 import (
-	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -33,21 +32,5 @@ func (t *translator) TranslateApisixPluginConfig(apc *configv2beta3.ApisixPlugin
 	pc := apisixv1.NewDefaultPluginConfig()
 	pc.Name = apisixv1.ComposePluginConfigName(apc.Namespace, apc.Name)
 	pc.Plugins = pluginMap
-	return pc, nil
-}
-
-func (t *translator) translatePluginConfig(namespace, name string, plugins apisixv1.Plugins) (*apisixv1.PluginConfig, error) {
-	pc, err := t.TranslatePluginConfig(plugins)
-	if err != nil {
-		return nil, err
-	}
-	pc.Name = apisixv1.ComposePluginConfigName(namespace, name)
-	pc.ID = id.GenID(pc.Name)
-	return pc, nil
-}
-
-func (t *translator) TranslatePluginConfig(plugins apisixv1.Plugins) (*apisixv1.PluginConfig, error) {
-	pc := apisixv1.NewDefaultPluginConfig()
-	pc.Plugins = plugins
 	return pc, nil
 }

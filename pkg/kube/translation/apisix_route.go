@@ -242,7 +242,6 @@ func (t *translator) translateHTTPRouteV2beta1(ctx *TranslateContext, ar *config
 		route.UpstreamId = id.GenID(upstreamName)
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
-		pluginConfigName := apisixv1.ComposePluginConfigName(ar.Namespace, backend.ServiceName)
 
 		if len(backends) > 0 {
 			weight := _defaultWeight
@@ -268,13 +267,6 @@ func (t *translator) translateHTTPRouteV2beta1(ctx *TranslateContext, ar *config
 				return err
 			}
 			ctx.addUpstream(ups)
-		}
-		if !ctx.checkPluginConfigExist(pluginConfigName) {
-			pc, err := t.translatePluginConfig(ar.Namespace, backend.ServiceName, pluginMap)
-			if err != nil {
-				return err
-			}
-			ctx.addPluginConfig(pc)
 		}
 	}
 	return nil
@@ -409,7 +401,6 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *TranslateContext, ar *config
 		route.UpstreamId = id.GenID(upstreamName)
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
-		pluginConfigName := apisixv1.ComposePluginConfigName(ar.Namespace, backend.ServiceName)
 
 		if len(backends) > 0 {
 			weight := _defaultWeight
@@ -435,13 +426,6 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *TranslateContext, ar *config
 				return err
 			}
 			ctx.addUpstream(ups)
-		}
-		if !ctx.checkPluginConfigExist(pluginConfigName) {
-			pc, err := t.translatePluginConfig(ar.Namespace, backend.ServiceName, pluginMap)
-			if err != nil {
-				return err
-			}
-			ctx.addPluginConfig(pc)
 		}
 	}
 	return nil
@@ -547,6 +531,10 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 		route.Plugins = pluginMap
 		route.Timeout = timeout
 		pluginConfigName := apisixv1.ComposePluginConfigName(ar.Namespace, backend.ServiceName)
+		route.PluginConfigId = id.GenID(pluginConfigName)
+		pluginConfig := apisixv1.NewDefaultPluginConfig()
+		pluginConfig.ID = route.PluginConfigId
+		pluginConfig.Name = pluginConfigName
 
 		if len(backends) > 0 {
 			weight := _defaultWeight
@@ -571,13 +559,7 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 			}
 			ctx.addUpstream(ups)
 		}
-		if !ctx.checkPluginConfigExist(pluginConfigName) {
-			pc, err := t.translatePluginConfig(ar.Namespace, backend.ServiceName, pluginMap)
-			if err != nil {
-				return err
-			}
-			ctx.addPluginConfig(pc)
-		}
+		ctx.addPluginConfig(pluginConfig)
 	}
 	return nil
 }

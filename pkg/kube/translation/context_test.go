@@ -77,7 +77,7 @@ func TestTranslateContext(t *testing.T) {
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.StreamRoutes, 2)
 	assert.Len(t, ctx.Upstreams, 1)
-	assert.Len(t, ctx.PluginConfigs, 1)
+	assert.Len(t, ctx.PluginConfigs, 2)
 
 	assert.Equal(t, r1, ctx.Routes[0])
 	assert.Equal(t, r2, ctx.Routes[1])
@@ -85,9 +85,8 @@ func TestTranslateContext(t *testing.T) {
 	assert.Equal(t, sr2, ctx.StreamRoutes[1])
 	assert.Equal(t, u1, ctx.Upstreams[0])
 	assert.Equal(t, pc1, ctx.PluginConfigs[0])
+	assert.Equal(t, pc2, ctx.PluginConfigs[1])
 
 	assert.Equal(t, true, ctx.checkUpstreamExist("aaa"))
 	assert.Equal(t, false, ctx.checkUpstreamExist("bbb"))
-	assert.Equal(t, true, ctx.checkPluginConfigExist("aaa"))
-	assert.Equal(t, false, ctx.checkPluginConfigExist("bbb"))
 }
