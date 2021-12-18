@@ -1,29 +1,30 @@
-Please answer these questions before submitting a pull request
+<!-- Please answer these questions before submitting a pull request -->
 
-- Why submit this pull request?
+### Type of change:
+
+<!-- Please delete options that are not relevant. -->
+
 - [ ] Bugfix
 - [ ] New feature provided
 - [ ] Improve performance
 - [ ] Backport patches
 
-- Related issues
+### What this PR does / why we need it:
+<!--- Why is this change required? What problem does it solve? -->
+<!--- If it fixes an open issue, please link to the issue here. -->
 
-___
-### Bugfix
-- Description
+### Pre-submission checklist:
 
-- How to fix?
+<!--
+Please follow the requirements:
+1. Use Draft if the PR is not ready to be reviewed
+2. Test is required for the feat/fix PR, unless you have a good reason
+3. Doc is required for the feat PR
+4. Use a new commit to resolve review instead of `push -f`
+5. Use "request review" to notify the reviewer once you have resolved the review
+-->
 
-___
-### New feature or improvement
-- Describe the details and related test reports.
-
-___
-### Backport patches
-- Why need to backport?
-
-- Source branch
-
-- Related commits and pull requests
-
-- Target branch
+* [ ] Did you explain what problem does this PR solve? Or what new features have been added?
+* [ ] Have you added corresponding test cases?
+* [ ] Have you modified the corresponding document?
+* [ ] Is this PR backward compatible? **If it is not backward compatible, please discuss on the [mailing list](https://github.com/apache/apisix-ingress-controller#community) first**

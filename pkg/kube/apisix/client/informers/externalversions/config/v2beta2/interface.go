@@ -23,8 +23,6 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// ApisixPluginConfigs returns a ApisixPluginConfigInformer.
-	ApisixPluginConfigs() ApisixPluginConfigInformer
 	// ApisixRoutes returns a ApisixRouteInformer.
 	ApisixRoutes() ApisixRouteInformer
 }
@@ -38,11 +36,6 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
-}
-
-// ApisixPluginConfigs returns a ApisixPluginConfigInformer.
-func (v *version) ApisixPluginConfigs() ApisixPluginConfigInformer {
-	return &apisixPluginConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // ApisixRoutes returns a ApisixRouteInformer.
