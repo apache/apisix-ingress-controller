@@ -262,11 +262,11 @@ func (c *ingressController) onAdd(obj interface{}) {
 	valid := c.isIngressEffective(ing)
 	if valid {
 		log.Debugw("ingress add event arrived",
-			zap.Any("object", ing),
+			zap.Any("object", obj),
 		)
 	} else {
 		log.Debugw("ignore noneffective ingress add event",
-			zap.Any("object", ing),
+			zap.Any("object", obj),
 		)
 		return
 	}
