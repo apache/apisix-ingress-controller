@@ -396,13 +396,14 @@ func (s *Scaffold) afterEach() {
 func runWithRecover(f func()) {
 	defer func() {
 		r := recover()
-		if r != nil {
-			err, ok := r.(error)
-			if ok {
-				// just ignore already closed channel
-				if strings.Contains(err.Error(), "close of closed channel") {
-					return
-				}
+		if r == nil {
+			return
+		}
+		err, ok := r.(error)
+		if ok {
+			// just ignore already closed channel
+			if strings.Contains(err.Error(), "close of closed channel") {
+				return
 			}
 		}
 		panic(r)
