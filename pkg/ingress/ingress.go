@@ -297,8 +297,8 @@ func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 	valid := c.isIngressEffective(curr)
 	if valid {
 		log.Debugw("ingress update event arrived",
-			zap.Any("new object", oldObj),
-			zap.Any("old object", newObj),
+			zap.Any("new object", newObj),
+			zap.Any("old object", oldObj),
 		)
 	} else {
 		log.Debugw("ignore noneffective ingress update event",
