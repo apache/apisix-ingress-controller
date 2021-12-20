@@ -17,10 +17,10 @@ package translation
 import (
 	"testing"
 
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
-
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 )
 
 func TestTranslateApisixPluginConfig(t *testing.T) {
@@ -65,8 +65,8 @@ func TestTranslateApisixPluginConfig(t *testing.T) {
 	pluginConfig, err := trans.TranslateApisixPluginConfig(apc)
 	assert.NoError(t, err)
 	assert.Len(t, pluginConfig.Plugins, 4)
-	assert.Equal(t, pluginConfig.Plugins["key-1"], apc.Spec.Plugins[1]["key-1"])
-	assert.Equal(t, pluginConfig.Plugins["key-2"], apc.Spec.Plugins[1]["key-2"])
-	assert.Equal(t, pluginConfig.Plugins["key-3"], apc.Spec.Plugins[0]["key-3"])
-	assert.Equal(t, pluginConfig.Plugins["key-4"], apc.Spec.Plugins[1]["key-4"])
+	assert.Equal(t, apc.Spec.Plugins[1]["key-1"], pluginConfig.Plugins["key-1"])
+	assert.Equal(t, apc.Spec.Plugins[1]["key-2"], pluginConfig.Plugins["key-2"])
+	assert.Equal(t, apc.Spec.Plugins[0]["key-3"], pluginConfig.Plugins["key-3"])
+	assert.Equal(t, apc.Spec.Plugins[1]["key-4"], pluginConfig.Plugins["key-4"])
 }

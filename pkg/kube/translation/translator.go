@@ -69,13 +69,13 @@ type Translator interface {
 	// and Upstream resources.
 	TranslateRouteV2beta1(*configv2beta1.ApisixRoute) (*TranslateContext, error)
 	// TranslateRouteV2beta1NotStrictly translates the configv2beta1.ApisixRoute object into several Route,
-	// Upstream and PluginConfig resources not strictly, only used for delete event.
+	// and Upstream resources not strictly, only used for delete event.
 	TranslateRouteV2beta1NotStrictly(*configv2beta1.ApisixRoute) (*TranslateContext, error)
 	// TranslateRouteV2beta2 translates the configv2beta2.ApisixRoute object into several Route,
-	// Upstream and PluginConfig resources.
+	// and Upstream resources.
 	TranslateRouteV2beta2(*configv2beta2.ApisixRoute) (*TranslateContext, error)
 	// TranslateRouteV2beta2NotStrictly translates the configv2beta2.ApisixRoute object into several Route,
-	// Upstream and PluginConfig  resources not strictly, only used for delete event.
+	// and Upstream  resources not strictly, only used for delete event.
 	TranslateRouteV2beta2NotStrictly(*configv2beta2.ApisixRoute) (*TranslateContext, error)
 	// TranslateRouteV2beta3 translates the configv2beta3.ApisixRoute object into several Route,
 	// Upstream and PluginConfig resources.
