@@ -358,7 +358,7 @@ type Consumer struct {
 // +k8s:deepcopy-gen=true
 type PluginConfig struct {
 	Metadata `json:",inline" yaml:",inline"`
-	Plugins  Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Plugins  Plugins `json:"plugins" yaml:"plugins"`
 }
 
 // NewDefaultUpstream returns an empty Upstream with default values.
