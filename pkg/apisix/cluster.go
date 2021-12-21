@@ -427,6 +427,11 @@ func (c *cluster) Plugin() Plugin {
 	return c.plugin
 }
 
+// PluginConfig implements Cluster.PluginConfig method.
+func (c *cluster) PluginConfig() PluginConfig {
+	return c.pluginConfig
+}
+
 // Schema implements Cluster.Schema method.
 func (c *cluster) Schema() Schema {
 	return c.schema

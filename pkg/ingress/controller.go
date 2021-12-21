@@ -114,6 +114,8 @@ type Controller struct {
 	apisixClusterConfigInformer cache.SharedIndexInformer
 	apisixConsumerInformer      cache.SharedIndexInformer
 	apisixConsumerLister        listersv2beta3.ApisixConsumerLister
+	apisixPluginConfigInformer  cache.SharedIndexInformer
+	apisixPluginConfigLister    listersv2beta3.ApisixPluginConfigLister
 
 	// resource controllers
 	namespaceController     *namespaceController
@@ -128,6 +130,7 @@ type Controller struct {
 	apisixTlsController           *apisixTlsController
 	apisixClusterConfigController *apisixClusterConfigController
 	apisixConsumerController      *apisixConsumerController
+	apisixPluginConfigController  *apisixPluginConfigController
 }
 
 // NewController creates an ingress apisix controller object.
@@ -219,6 +222,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixTlsLister = apisixFactory.Apisix().V2beta3().ApisixTlses().Lister()
 	c.apisixClusterConfigLister = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister()
 	c.apisixConsumerLister = apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister()
+	c.apisixPluginConfigLister = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister()
 
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 		PodCache:             c.podCache,
@@ -256,6 +260,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
 	c.apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
 	c.apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
+	c.apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
 
 	if c.cfg.Kubernetes.WatchEndpointSlices {
 		c.endpointSliceController = c.newEndpointSliceController()
@@ -271,6 +276,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixTlsController = c.newApisixTlsController()
 	c.secretController = c.newSecretController()
 	c.apisixConsumerController = c.newApisixConsumerController()
+	c.apisixPluginConfigController = c.newapisixPluginConfigController()
 }
 
 // recorderEvent recorder events for resources
@@ -448,7 +454,6 @@ func (c *Controller) run(ctx context.Context) {
 		c.ingressInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
-
 		c.apisixRouteInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
@@ -465,6 +470,9 @@ func (c *Controller) run(ctx context.Context) {
 	})
 	c.goAttach(func() {
 		c.apisixConsumerInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
+		c.apisixPluginConfigInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
 		c.namespaceController.run(ctx)
@@ -499,6 +507,9 @@ func (c *Controller) run(ctx context.Context) {
 	})
 	c.goAttach(func() {
 		c.apisixConsumerController.run(ctx)
+	})
+	c.goAttach(func() {
+		c.apisixPluginConfigController.run(ctx)
 	})
 
 	c.MetricsCollector.ResetLeader(true)

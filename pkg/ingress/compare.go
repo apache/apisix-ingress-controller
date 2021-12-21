@@ -31,18 +31,20 @@ import (
 // cc https://github.com/apache/apisix-ingress-controller/pull/742#discussion_r757197791
 func (c *Controller) CompareResources(ctx context.Context) error {
 	var (
-		wg                sync.WaitGroup
-		routeMapK8S       = new(sync.Map)
-		streamRouteMapK8S = new(sync.Map)
-		upstreamMapK8S    = new(sync.Map)
-		sslMapK8S         = new(sync.Map)
-		consumerMapK8S    = new(sync.Map)
+		wg                 sync.WaitGroup
+		routeMapK8S        = new(sync.Map)
+		streamRouteMapK8S  = new(sync.Map)
+		upstreamMapK8S     = new(sync.Map)
+		sslMapK8S          = new(sync.Map)
+		consumerMapK8S     = new(sync.Map)
+		pluginConfigMapK8S = new(sync.Map)
 
-		routeMapA6       = make(map[string]string)
-		streamRouteMapA6 = make(map[string]string)
-		upstreamMapA6    = make(map[string]string)
-		sslMapA6         = make(map[string]string)
-		consumerMapA6    = make(map[string]string)
+		routeMapA6        = make(map[string]string)
+		streamRouteMapA6  = make(map[string]string)
+		upstreamMapA6     = make(map[string]string)
+		sslMapA6          = make(map[string]string)
+		consumerMapA6     = make(map[string]string)
+		pluginConfigMapA6 = make(map[string]string)
 	)
 	// watchingNamespace == nil means to monitor all namespaces
 	if !validation.HasValueInSyncMap(c.watchingNamespace) {
@@ -94,11 +96,15 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 						for _, ssl := range tc.SSL {
 							sslMapK8S.Store(ssl.ID, ssl.ID)
 						}
+						// pluginConfigs
+						for _, pluginConfig := range tc.PluginConfigs {
+							pluginConfigMapK8S.Store(pluginConfig.ID, pluginConfig.ID)
+						}
 					}
 				}
 			}
-			// todo ApisixUpstream
-			// ApisixUpstream should be synced with ApisixRoute resource
+			// todo ApisixUpstream and ApisixPluginConfig
+			// ApisixUpstream and ApisixPluginConfig should be synced with ApisixRoute resource
 
 			// ApisixSSL
 			retSSL, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixTlses(ns).List(ctx, opts)
@@ -153,18 +159,23 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 	if err := c.listConsumerCache(ctx, consumerMapA6); err != nil {
 		return err
 	}
+	if err := c.listPluginConfigCache(ctx, pluginConfigMapA6); err != nil {
+		return err
+	}
 	// 3.compare
-	routeReult := findRedundant(routeMapA6, routeMapK8S)
-	streamRouteReult := findRedundant(streamRouteMapA6, streamRouteMapK8S)
-	upstreamReult := findRedundant(upstreamMapA6, upstreamMapK8S)
-	sslReult := findRedundant(sslMapA6, sslMapK8S)
-	consuemrReult := findRedundant(consumerMapA6, consumerMapK8S)
+	routeResult := findRedundant(routeMapA6, routeMapK8S)
+	streamRouteResult := findRedundant(streamRouteMapA6, streamRouteMapK8S)
+	upstreamResult := findRedundant(upstreamMapA6, upstreamMapK8S)
+	sslResult := findRedundant(sslMapA6, sslMapK8S)
+	consumerResult := findRedundant(consumerMapA6, consumerMapK8S)
+	pluginConfigResult := findRedundant(pluginConfigMapA6, pluginConfigMapK8S)
 	// 4.warn
-	warnRedundantResources(routeReult, "route")
-	warnRedundantResources(streamRouteReult, "streamRoute")
-	warnRedundantResources(upstreamReult, "upstream")
-	warnRedundantResources(sslReult, "ssl")
-	warnRedundantResources(consuemrReult, "consumer")
+	warnRedundantResources(routeResult, "route")
+	warnRedundantResources(streamRouteResult, "streamRoute")
+	warnRedundantResources(upstreamResult, "upstream")
+	warnRedundantResources(sslResult, "ssl")
+	warnRedundantResources(consumerResult, "consumer")
+	warnRedundantResources(pluginConfigResult, "pluginConfig")
 
 	return nil
 }
@@ -243,6 +254,18 @@ func (c *Controller) listConsumerCache(ctx context.Context, consumerMapA6 map[st
 	} else {
 		for _, con := range consumerInA6 {
 			consumerMapA6[con.Username] = con.Username
+		}
+	}
+	return nil
+}
+
+func (c *Controller) listPluginConfigCache(ctx context.Context, pluginConfigMapA6 map[string]string) error {
+	pluginConfigInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).PluginConfig().List(ctx)
+	if err != nil {
+		return err
+	} else {
+		for _, ra := range pluginConfigInA6 {
+			pluginConfigMapA6[ra.ID] = ra.ID
 		}
 	}
 	return nil
