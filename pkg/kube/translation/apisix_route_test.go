@@ -381,14 +381,18 @@ func TestTranslateApisixRouteV2alpha1NotStrictly(t *testing.T) {
 	assert.NoError(t, err, "translateRoute not strictly should be no error")
 	assert.Equal(t, 2, len(tx.Routes), "There should be 2 routes")
 	assert.Equal(t, 2, len(tx.Upstreams), "There should be 2 upstreams")
+	assert.Equal(t, 2, len(tx.PluginConfigs), "There should be 2 pluginConfigs")
 	assert.Equal(t, "test_ar_rule1", tx.Routes[0].Name, "route1 name error")
 	assert.Equal(t, "test_ar_rule2", tx.Routes[1].Name, "route2 name error")
 	assert.Equal(t, "test_svc1_81", tx.Upstreams[0].Name, "upstream1 name error")
 	assert.Equal(t, "test_svc2_82", tx.Upstreams[1].Name, "upstream2 name error")
+	assert.Equal(t, "test_svc1", tx.PluginConfigs[0].Name, "pluginConfig1 name error")
+	assert.Equal(t, "test_svc2", tx.PluginConfigs[1].Name, "pluginConfig2 name error")
 
 	assert.Equal(t, id.GenID("test_ar_rule1"), tx.Routes[0].ID, "route1 id error")
 	assert.Equal(t, id.GenID("test_ar_rule2"), tx.Routes[1].ID, "route2 id error")
 	assert.Equal(t, id.GenID("test_svc1_81"), tx.Upstreams[0].ID, "upstream1 id error")
 	assert.Equal(t, id.GenID("test_svc2_82"), tx.Upstreams[1].ID, "upstream2 id error")
-
+	assert.Equal(t, id.GenID("test_svc1"), tx.PluginConfigs[0].ID, "pluginConfig1 id error")
+	assert.Equal(t, id.GenID("test_svc2"), tx.PluginConfigs[1].ID, "pluginConfig2 id error")
 }

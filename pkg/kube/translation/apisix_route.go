@@ -535,6 +535,7 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 		pluginConfig := apisixv1.NewDefaultPluginConfig()
 		pluginConfig.ID = route.PluginConfigId
 		pluginConfig.Name = pluginConfigName
+		pluginConfig.Plugins = pluginMap
 
 		if len(backends) > 0 {
 			weight := _defaultWeight
@@ -942,6 +943,12 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *TranslateContext,
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
+		pluginConfigName := apisixv1.ComposePluginConfigName(ar.Namespace, backend.ServiceName)
+		route.PluginConfigId = id.GenID(pluginConfigName)
+		pluginConfig := apisixv1.NewDefaultPluginConfig()
+		pluginConfig.ID = route.PluginConfigId
+		pluginConfig.Name = pluginConfigName
+
 		ctx.addRoute(route)
 		if !ctx.checkUpstreamExist(upstreamName) {
 			ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
@@ -950,6 +957,7 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *TranslateContext,
 			}
 			ctx.addUpstream(ups)
 		}
+		ctx.addPluginConfig(pluginConfig)
 	}
 	return nil
 }
