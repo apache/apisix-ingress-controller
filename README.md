@@ -55,7 +55,7 @@ This project is currently general availability.
 
 ## Internal Architecture
 
-<img src="./docs/assets/images/apisix-ingress-controller-arch.png" alt="module" width="600" height="313" />
+<img src="./docs/assets/images/apisix-ingress-controller-arch.png" alt="module" width="74.3%" height="55.9%" />
 
 ## Prerequisites
 
