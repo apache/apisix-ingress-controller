@@ -19,9 +19,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("service subset", func() {
@@ -31,7 +32,7 @@ var _ = ginkgo.Describe("service subset", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("subset not found", func() {
@@ -39,7 +40,7 @@ var _ = ginkgo.Describe("service subset", func() {
 		assert.Nil(ginkgo.GinkgoT(), s.WaitAllHTTPBINPodsAvailable(), "waiting for all httpbin pods ready")
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -73,7 +74,7 @@ spec:
 	ginkgo.It("subset with bad labels", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -88,7 +89,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 		time.Sleep(1 * time.Second)
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -125,7 +126,7 @@ spec:
 
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -139,7 +140,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 		time.Sleep(1 * time.Second)
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route

@@ -29,27 +29,29 @@ type nonExistentCluster struct {
 func newNonExistentCluster() *nonExistentCluster {
 	return &nonExistentCluster{
 		embedDummyResourceImplementer{
-			route:       &dummyRoute{},
-			ssl:         &dummySSL{},
-			upstream:    &dummyUpstream{},
-			streamRoute: &dummyStreamRoute{},
-			globalRule:  &dummyGlobalRule{},
-			consumer:    &dummyConsumer{},
-			plugin:      &dummyPlugin{},
-			schema:      &dummySchema{},
+			route:        &dummyRoute{},
+			ssl:          &dummySSL{},
+			upstream:     &dummyUpstream{},
+			streamRoute:  &dummyStreamRoute{},
+			globalRule:   &dummyGlobalRule{},
+			consumer:     &dummyConsumer{},
+			plugin:       &dummyPlugin{},
+			schema:       &dummySchema{},
+			pluginConfig: &dummyPluginConfig{},
 		},
 	}
 }
 
 type embedDummyResourceImplementer struct {
-	route       Route
-	ssl         SSL
-	upstream    Upstream
-	streamRoute StreamRoute
-	globalRule  GlobalRule
-	consumer    Consumer
-	plugin      Plugin
-	schema      Schema
+	route        Route
+	ssl          SSL
+	upstream     Upstream
+	streamRoute  StreamRoute
+	globalRule   GlobalRule
+	consumer     Consumer
+	plugin       Plugin
+	schema       Schema
+	pluginConfig PluginConfig
 }
 
 type dummyRoute struct{}
@@ -212,6 +214,32 @@ func (f *dummySchema) GetSslSchema(_ context.Context) (*v1.Schema, error) {
 	return nil, ErrClusterNotExist
 }
 
+func (f *dummySchema) GetPluginConfigSchema(_ context.Context) (*v1.Schema, error) {
+	return nil, ErrClusterNotExist
+}
+
+type dummyPluginConfig struct{}
+
+func (f *dummyPluginConfig) Get(_ context.Context, _ string) (*v1.PluginConfig, error) {
+	return nil, ErrClusterNotExist
+}
+
+func (f *dummyPluginConfig) List(_ context.Context) ([]*v1.PluginConfig, error) {
+	return nil, ErrClusterNotExist
+}
+
+func (f *dummyPluginConfig) Create(_ context.Context, _ *v1.PluginConfig) (*v1.PluginConfig, error) {
+	return nil, ErrClusterNotExist
+}
+
+func (f *dummyPluginConfig) Delete(_ context.Context, _ *v1.PluginConfig) error {
+	return ErrClusterNotExist
+}
+
+func (f *dummyPluginConfig) Update(_ context.Context, _ *v1.PluginConfig) (*v1.PluginConfig, error) {
+	return nil, ErrClusterNotExist
+}
+
 func (nc *nonExistentCluster) Route() Route {
 	return nc.route
 }
@@ -267,6 +295,7 @@ func (c *dummyCache) InsertStreamRoute(_ *v1.StreamRoute) error        { return 
 func (c *dummyCache) InsertGlobalRule(_ *v1.GlobalRule) error          { return nil }
 func (c *dummyCache) InsertConsumer(_ *v1.Consumer) error              { return nil }
 func (c *dummyCache) InsertSchema(_ *v1.Schema) error                  { return nil }
+func (c *dummyCache) InsertPluginConfig(_ *v1.PluginConfig) error      { return nil }
 func (c *dummyCache) GetRoute(_ string) (*v1.Route, error)             { return nil, cache.ErrNotFound }
 func (c *dummyCache) GetSSL(_ string) (*v1.Ssl, error)                 { return nil, cache.ErrNotFound }
 func (c *dummyCache) GetUpstream(_ string) (*v1.Upstream, error)       { return nil, cache.ErrNotFound }
@@ -274,17 +303,22 @@ func (c *dummyCache) GetStreamRoute(_ string) (*v1.StreamRoute, error) { return 
 func (c *dummyCache) GetGlobalRule(_ string) (*v1.GlobalRule, error)   { return nil, cache.ErrNotFound }
 func (c *dummyCache) GetConsumer(_ string) (*v1.Consumer, error)       { return nil, cache.ErrNotFound }
 func (c *dummyCache) GetSchema(_ string) (*v1.Schema, error)           { return nil, cache.ErrNotFound }
-func (c *dummyCache) ListRoutes() ([]*v1.Route, error)                 { return nil, nil }
-func (c *dummyCache) ListSSL() ([]*v1.Ssl, error)                      { return nil, nil }
-func (c *dummyCache) ListUpstreams() ([]*v1.Upstream, error)           { return nil, nil }
-func (c *dummyCache) ListStreamRoutes() ([]*v1.StreamRoute, error)     { return nil, nil }
-func (c *dummyCache) ListGlobalRules() ([]*v1.GlobalRule, error)       { return nil, nil }
-func (c *dummyCache) ListConsumers() ([]*v1.Consumer, error)           { return nil, nil }
-func (c *dummyCache) ListSchema() ([]*v1.Schema, error)                { return nil, nil }
-func (c *dummyCache) DeleteRoute(_ *v1.Route) error                    { return nil }
-func (c *dummyCache) DeleteSSL(_ *v1.Ssl) error                        { return nil }
-func (c *dummyCache) DeleteUpstream(_ *v1.Upstream) error              { return nil }
-func (c *dummyCache) DeleteStreamRoute(_ *v1.StreamRoute) error        { return nil }
-func (c *dummyCache) DeleteGlobalRule(_ *v1.GlobalRule) error          { return nil }
-func (c *dummyCache) DeleteConsumer(_ *v1.Consumer) error              { return nil }
-func (c *dummyCache) DeleteSchema(_ *v1.Schema) error                  { return nil }
+func (c *dummyCache) GetPluginConfig(_ string) (*v1.PluginConfig, error) {
+	return nil, cache.ErrNotFound
+}
+func (c *dummyCache) ListRoutes() ([]*v1.Route, error)               { return nil, nil }
+func (c *dummyCache) ListSSL() ([]*v1.Ssl, error)                    { return nil, nil }
+func (c *dummyCache) ListUpstreams() ([]*v1.Upstream, error)         { return nil, nil }
+func (c *dummyCache) ListStreamRoutes() ([]*v1.StreamRoute, error)   { return nil, nil }
+func (c *dummyCache) ListGlobalRules() ([]*v1.GlobalRule, error)     { return nil, nil }
+func (c *dummyCache) ListConsumers() ([]*v1.Consumer, error)         { return nil, nil }
+func (c *dummyCache) ListSchema() ([]*v1.Schema, error)              { return nil, nil }
+func (c *dummyCache) ListPluginConfigs() ([]*v1.PluginConfig, error) { return nil, nil }
+func (c *dummyCache) DeleteRoute(_ *v1.Route) error                  { return nil }
+func (c *dummyCache) DeleteSSL(_ *v1.Ssl) error                      { return nil }
+func (c *dummyCache) DeleteUpstream(_ *v1.Upstream) error            { return nil }
+func (c *dummyCache) DeleteStreamRoute(_ *v1.StreamRoute) error      { return nil }
+func (c *dummyCache) DeleteGlobalRule(_ *v1.GlobalRule) error        { return nil }
+func (c *dummyCache) DeleteConsumer(_ *v1.Consumer) error            { return nil }
+func (c *dummyCache) DeleteSchema(_ *v1.Schema) error                { return nil }
+func (c *dummyCache) DeletePluginConfig(_ *v1.PluginConfig) error    { return nil }

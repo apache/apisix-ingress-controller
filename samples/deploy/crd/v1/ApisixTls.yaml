@@ -30,7 +30,7 @@ spec:
     - atls
   preserveUnknownFields: false
   versions:
-  - name: v1
+  - name: v2beta3
     served: true
     storage: true
     subresources:

@@ -50,7 +50,7 @@ data:
   cert: %s
 `
 	_api6tlsTemplate = `
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixTls
 metadata:
   name: %s
@@ -62,7 +62,7 @@ spec:
     namespace: %s
 `
 	_api6tlsWithClientCATemplate = `
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixTls
 metadata:
   name: %s

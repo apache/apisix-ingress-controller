@@ -28,7 +28,6 @@ This document explains how to install Ingress APISIX on [Google Cloud GKE](https
 * Create an Kubernetes Service on GKE.
 * Install [Google Cloud SDK](https://cloud.google.com/sdk) and get the credentials or you can just use the [Cloud Shell](https://cloud.google.com/shell).
 * Install [Helm](https://helm.sh/).
-* Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX and apisix-ingress-controller
 
@@ -42,7 +41,8 @@ kubectl create ns ingress-apisix
 helm install apisix apisix/apisix \
   --set gateway.type=LoadBalancer \
   --set ingress-controller.enabled=true \
-  --namespace ingress-apisix
+  --namespace ingress-apisix \
+  --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
 kubectl get service --namespace ingress-apisix
 ```
 
@@ -60,3 +60,15 @@ kubectl get service apisix-gateway --namespace ingress-apisix -o jsonpath='{.sta
 ```
 
 Now try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../practices/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
+
+### Specify The Ingress Version
+
+apisix-ingress-controller will watch apiVersion of `networking.k8s.io/v1` by default. If the target kubernetes version is under `v1.19`, add `--set ingress-controller.config.kubernetes.ingressVersion=networking/v1beta1` or `--set ingress-controller.config.kubernetes.ingressVersion=extensions/v1beta1` if your kubernetes cluster is under `v1.16`
+
+### Enable SSL
+
+The ssl config is disabled by default, add `--set gateway.tls.enabled=true` to enable tls support.
+
+### Change default apikey
+
+It's Recommended to change the default key by add `--set ingress-controller.config.apisix.adminKey=ADMIN_KEY_GENERATED_BY_YOURSELF`, `--set admin.credentials.admin=ADMIN_KEY_GENERATED_BY_YOURSELF`, `--set admin.credentials.viewer=VIEWER_KEY_GENERATED_BY_YOURSELF`, notice that `ingress-controller.config.apisix.adminKey` and `admin.credentials.admin` must be the same, and should better not same as `admin.credentials.viewer`.

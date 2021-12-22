@@ -28,7 +28,6 @@ type healthzResponse struct {
 
 func mountHealthz(r *gin.Engine) {
 	r.GET("/healthz", healthz)
-	r.GET("/apisix/healthz", healthz)
 }
 
 func healthz(c *gin.Context) {

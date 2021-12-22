@@ -143,7 +143,7 @@ func TestProfileNotMount(t *testing.T) {
 
 	resp, err := http.Get(u)
 	assert.Nil(t, err, nil)
-	assert.Equal(t, resp.StatusCode, http.StatusNotFound)
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 	close(stopCh)
 }
 
@@ -165,6 +165,6 @@ func TestProfile(t *testing.T) {
 
 	resp, err := http.Get(u)
 	assert.Nil(t, err, nil)
-	assert.Equal(t, resp.StatusCode, http.StatusOK)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	close(stopCh)
 }

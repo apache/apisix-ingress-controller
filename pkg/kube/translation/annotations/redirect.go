@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	_httpToHttps = "k8s.apisix.apache.org/http-to-https"
+	_httpToHttps = AnnotationsPrefix + "http-to-https"
 )
 
 type redirect struct{}

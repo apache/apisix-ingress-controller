@@ -20,12 +20,15 @@ import (
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/apache/apisix-ingress-controller/pkg/api/validation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
 // CompareResources used to compare the object IDs in resources and APISIX
 // Find out the rest of objects in APISIX
 // AND warn them in log.
+// This func is NOT concurrency safe.
+// cc https://github.com/apache/apisix-ingress-controller/pull/742#discussion_r757197791
 func (c *Controller) CompareResources(ctx context.Context) error {
 	var (
 		wg                sync.WaitGroup
@@ -42,7 +45,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 		consumerMapA6    = make(map[string]string)
 	)
 	// watchingNamespace == nil means to monitor all namespaces
-	if c.watchingNamespace == nil {
+	if !validation.HasValueInSyncMap(c.watchingNamespace) {
 		opts := v1.ListOptions{}
 		// list all namespaces
 		nsList, err := c.kubeClient.Client.CoreV1().Namespaces().List(ctx, opts)
@@ -50,17 +53,16 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 			log.Error(err.Error())
 			ctx.Done()
 		} else {
-			wns := make(map[string]struct{}, len(nsList.Items))
+			wns := new(sync.Map)
 			for _, v := range nsList.Items {
-				wns[v.Name] = struct{}{}
+				wns.Store(v.Name, struct{}{})
 			}
 			c.watchingNamespace = wns
 		}
 	}
-	if len(c.watchingNamespace) > 0 {
-		wg.Add(len(c.watchingNamespace))
-	}
-	for ns := range c.watchingNamespace {
+
+	c.watchingNamespace.Range(func(key, value interface{}) bool {
+		wg.Add(1)
 		go func(ns string) {
 			defer wg.Done()
 			// ApisixRoute
@@ -99,7 +101,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 			// ApisixUpstream should be synced with ApisixRoute resource
 
 			// ApisixSSL
-			retSSL, err := c.kubeClient.APISIXClient.ApisixV1().ApisixTlses(ns).List(ctx, opts)
+			retSSL, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixTlses(ns).List(ctx, opts)
 			if err != nil {
 				log.Error(err.Error())
 				ctx.Done()
@@ -115,7 +117,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 				}
 			}
 			// ApisixConsumer
-			retConsumer, err := c.kubeClient.APISIXClient.ApisixV2alpha1().ApisixConsumers(ns).List(ctx, opts)
+			retConsumer, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixConsumers(ns).List(ctx, opts)
 			if err != nil {
 				log.Error(err.Error())
 				ctx.Done()
@@ -130,8 +132,9 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 					}
 				}
 			}
-		}(ns)
-	}
+		}(key.(string))
+		return true
+	})
 	wg.Wait()
 
 	// 2.get all cache routes

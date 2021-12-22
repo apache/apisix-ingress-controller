@@ -26,9 +26,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-	v1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
@@ -46,9 +46,9 @@ var ApisixUpstreamValidator = kwhvalidating.ValidatorFunc(
 		switch au := object.(type) {
 		case *v2beta1.ApisixRoute:
 			spec = au.Spec
-		case *v2alpha1.ApisixRoute:
+		case *v2beta2.ApisixRoute:
 			spec = au.Spec
-		case *v1.ApisixRoute:
+		case *v2beta3.ApisixRoute:
 			spec = au.Spec
 		default:
 			return &kwhvalidating.ValidatorResult{Valid: false, Message: errNotApisixUpstream.Error()}, errNotApisixUpstream

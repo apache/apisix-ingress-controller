@@ -23,6 +23,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/nettest"
+
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 )
 
 type fakeAPISIXSchemaSrv struct {
@@ -105,10 +107,11 @@ func TestSchemaClient(t *testing.T) {
 	closedCh := make(chan struct{})
 	close(closedCh)
 	cli := newSchemaClient(&cluster{
-		baseURL:     u.String(),
-		cli:         http.DefaultClient,
-		cache:       &dummyCache{},
-		cacheSynced: closedCh,
+		baseURL:          u.String(),
+		cli:              http.DefaultClient,
+		cache:            &dummyCache{},
+		cacheSynced:      closedCh,
+		metricsCollector: metrics.NewPrometheusCollector(),
 	})
 
 	ctx := context.TODO()

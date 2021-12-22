@@ -50,6 +50,10 @@ const (
 	SchemeHTTP = "http"
 	// SchemeGRPC represents the GRPC protocol.
 	SchemeGRPC = "grpc"
+	// SchemeHTTPS represents the HTTPS protocol.
+	SchemeHTTPS = "https"
+	// SchemeGRPCS represents the GRPCS protocol.
+	SchemeGRPCS = "grpcs"
 
 	// HealthCheckHTTP represents the HTTP kind health check.
 	HealthCheckHTTP = "http"
@@ -184,6 +188,13 @@ type Upstream struct {
 	Scheme  string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
 	Retries *int                 `json:"retries,omitempty" yaml:"retries,omitempty"`
 	Timeout *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	TLS     *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
+}
+
+// ClientTLS is tls cert and key use in mTLS
+type ClientTLS struct {
+	Cert string `json:"client_cert,omitempty" yaml:"client_cert,omitempty"`
+	Key  string `json:"client_key,omitempty" yaml:"client_key,omitempty"`
 }
 
 // UpstreamTimeout represents the timeout settings on Upstream.
@@ -208,6 +219,7 @@ func (n *UpstreamNodes) UnmarshalJSON(p []byte) error {
 		if len(p) != 2 {
 			return errors.New("unexpected non-empty object")
 		}
+		*n = UpstreamNodes{}
 		return nil
 	}
 	var data []UpstreamNode
@@ -339,6 +351,13 @@ type Consumer struct {
 	Desc     string            `json:"desc,omitempty" yaml:"desc,omitempty"`
 	Labels   map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 	Plugins  Plugins           `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+}
+
+// PluginConfig apisix plugin object
+// +k8s:deepcopy-gen=true
+type PluginConfig struct {
+	Metadata `json:",inline" yaml:",inline"`
+	Plugins  Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 // NewDefaultUpstream returns an empty Upstream with default values.

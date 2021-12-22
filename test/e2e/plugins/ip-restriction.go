@@ -17,9 +17,10 @@ package plugins
 import (
 	"fmt"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("ip-restriction plugin", func() {
@@ -29,13 +30,13 @@ var _ = ginkgo.Describe("ip-restriction plugin", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("ip whitelist", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -74,7 +75,7 @@ spec:
 			Contains("Your IP address is not allowed")
 
 		ar = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -115,7 +116,7 @@ spec:
 	ginkgo.It("ip blacklist", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -154,7 +155,7 @@ spec:
 			Contains("Your IP address is not allowed")
 
 		ar = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -196,7 +197,7 @@ spec:
 	ginkgo.It("disable plugin", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route

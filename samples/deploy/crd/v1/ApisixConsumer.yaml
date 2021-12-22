@@ -30,7 +30,7 @@ spec:
       - ac
   preserveUnknownFields: false
   versions:
-    - name: v2alpha1
+    - name: v2beta3
       served: true
       storage: true
       subresources:

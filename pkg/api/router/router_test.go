@@ -32,6 +32,22 @@ func TestHealthz(t *testing.T) {
 	mountHealthz(r)
 	healthz(c)
 
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp healthzResponse
+	dec := json.NewDecoder(w.Body)
+	assert.Nil(t, dec.Decode(&resp))
+
+	assert.Equal(t, healthzResponse{Status: "ok"}, resp)
+}
+
+func TestApisixHealthz(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, r := gin.CreateTestContext(w)
+	var state HealthState
+	MountApisixHealthz(r, &state)
+	apisixHealthz(&state)(c)
+
 	assert.Equal(t, w.Code, http.StatusOK)
 
 	var resp healthzResponse
@@ -50,7 +66,7 @@ func TestMetrics(t *testing.T) {
 	mountMetrics(r)
 	metrics(c)
 
-	assert.Equal(t, w.Code, http.StatusOK)
+	assert.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestWebhooks(t *testing.T) {
@@ -61,5 +77,5 @@ func TestWebhooks(t *testing.T) {
 	c.Request = req
 	MountWebhooks(r, &apisix.ClusterOptions{})
 
-	assert.Equal(t, w.Code, http.StatusOK)
+	assert.Equal(t, http.StatusOK, w.Code)
 }

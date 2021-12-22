@@ -63,8 +63,8 @@ func (sc schemaClient) getSchema(ctx context.Context, name string) (*v1.Schema, 
 		)
 	}
 
-	url := sc.url + name
-	content, err := sc.cluster.getSchema(ctx, url)
+	url := sc.url + "/" + name
+	content, err := sc.cluster.getSchema(ctx, url, "schema")
 	if err != nil {
 		log.Errorw("failed to get schema from APISIX",
 			zap.String("name", name),
@@ -109,4 +109,9 @@ func (sc schemaClient) GetConsumerSchema(ctx context.Context) (*v1.Schema, error
 // GetSslSchema returns SSL's schema.
 func (sc schemaClient) GetSslSchema(ctx context.Context) (*v1.Schema, error) {
 	return sc.getSchema(ctx, "ssl")
+}
+
+// GetPluginConfigSchema returns PluginConfig's schema.
+func (sc schemaClient) GetPluginConfigSchema(ctx context.Context) (*v1.Schema, error) {
+	return sc.getSchema(ctx, "pluginConfig")
 }

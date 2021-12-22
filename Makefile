@@ -16,7 +16,7 @@
 #
 default: help
 
-VERSION ?= 1.2.0
+VERSION ?= 1.3.0
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 LOCAL_REGISTRY="localhost:5000"
 IMAGE_TAG ?= dev
@@ -96,6 +96,10 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker pull kennethreitz/httpbin
 	docker tag kennethreitz/httpbin $(LOCAL_REGISTRY)/kennethreitz/httpbin
 	docker push $(LOCAL_REGISTRY)/kennethreitz/httpbin
+
+	docker build -t test-backend:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true ./test/e2e/testbackend
+	docker tag test-backend:$(IMAGE_TAG) $(LOCAL_REGISTRY)/test-backend:$(IMAGE_TAG)
+	docker push $(LOCAL_REGISTRY)/test-backend:$(IMAGE_TAG)
 
 	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(LOCAL_REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)

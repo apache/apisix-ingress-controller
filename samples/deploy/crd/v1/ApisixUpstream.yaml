@@ -29,7 +29,7 @@ spec:
     shortNames:
       - au
   versions:
-    - name: v1
+    - name: v2beta3
       served: true
       storage: true
       subresources:
@@ -80,6 +80,8 @@ spec:
                   enum:
                     - http
                     - grpc
+                    - https
+                    - grpcs
                 retries:
                   type: integer
                   minimum: 0
@@ -92,6 +94,19 @@ spec:
                       type: string
                     send:
                       type: string
+                tlsSecret:
+                  description: ApisixSecret describes the Kubernetes Secret name and namespace.
+                  type: object
+                  required:
+                    - name
+                    - namespace
+                  properties:
+                    name:
+                      type: string
+                      minLength: 1
+                    namespace:
+                      type: string
+                      minLength: 1
                 healthCheck:
                   type: object
                   anyOf:

@@ -168,6 +168,8 @@ rules:
       - apisixclusterconfigs/status
       - apisixconsumers
       - apisixconsumers/status
+      - apisixpluginconfig
+      - apisixpluginconfig/status
     verbs:
       - '*'
   - apiGroups:
@@ -277,10 +279,12 @@ spec:
             - http://apisix-service-e2e-test:9180/apisix/admin
             - --default-apisix-cluster-admin-key
             - edd1c9f034335f136f87ad84b625c8f1
-            - --app-namespace
-            - %s,kube-system
+            - --namespace-selector
+            - %s
             - --apisix-route-version
             - %s
+            - --ingress-status-address
+            - "%s"
             - --watch-endpointslices
           %s
       volumes:
@@ -401,10 +405,11 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	})
 
 	var ingressAPISIXDeployment string
+	label := fmt.Sprintf("apisix.ingress.watch=%s", s.namespace)
 	if s.opts.EnableWebhooks {
-		ingressAPISIXDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, s.namespace, s.opts.APISIXRouteVersion, _volumeMounts, _webhookCertSecret)
+		ingressAPISIXDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, label, s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
 	} else {
-		ingressAPISIXDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, s.namespace, s.opts.APISIXRouteVersion, "", _webhookCertSecret)
+		ingressAPISIXDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, s.opts.IngressAPISIXReplicas, s.namespace, label, s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
 	}
 
 	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment)
@@ -440,7 +445,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	return nil
 }
 
-func (s *Scaffold) waitAllIngressControllerPodsAvailable() error {
+func (s *Scaffold) WaitAllIngressControllerPodsAvailable() error {
 	opts := metav1.ListOptions{
 		LabelSelector: "app=ingress-apisix-controller-deployment-e2e-test",
 	}
@@ -508,10 +513,11 @@ func (s *Scaffold) GetIngressPodDetails() ([]v1.Pod, error) {
 // ScaleIngressController scales the number of Ingress Controller pods to desired.
 func (s *Scaffold) ScaleIngressController(desired int) error {
 	var ingressDeployment string
+	label := fmt.Sprintf("apisix.ingress.watch=%s", s.namespace)
 	if s.opts.EnableWebhooks {
-		ingressDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, desired, s.namespace, s.namespace, s.opts.APISIXRouteVersion, _volumeMounts, _webhookCertSecret)
+		ingressDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, desired, s.namespace, label, s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
 	} else {
-		ingressDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, desired, s.namespace, s.namespace, s.opts.APISIXRouteVersion, "", _webhookCertSecret)
+		ingressDeployment = fmt.Sprintf(_ingressAPISIXDeploymentTemplate, desired, s.namespace, label, s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
 	}
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressDeployment); err != nil {
 		return err

@@ -35,6 +35,7 @@ import (
 
 // Server represents the API Server in ingress-apisix-controller.
 type Server struct {
+	HealthState     *apirouter.HealthState
 	httpServer      *gin.Engine
 	admissionServer *http.Server
 	httpListener    net.Listener
@@ -53,9 +54,12 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	apirouter.Mount(httpServer)
 
 	srv := &Server{
+		HealthState:  new(apirouter.HealthState),
 		httpServer:   httpServer,
 		httpListener: httpListener,
 	}
+	apirouter.MountApisixHealthz(httpServer, srv.HealthState)
+
 	if cfg.EnableProfiling {
 		srv.pprofMu = new(http.ServeMux)
 		srv.pprofMu.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)

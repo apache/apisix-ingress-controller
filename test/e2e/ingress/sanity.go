@@ -37,13 +37,13 @@ var _ = ginkgo.Describe("single-route", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("/ip should return your ip", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -83,13 +83,13 @@ var _ = ginkgo.Describe("double-routes", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("double routes work independently", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		ar := `
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route

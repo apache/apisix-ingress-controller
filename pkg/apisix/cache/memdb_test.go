@@ -66,8 +66,8 @@ func TestMemDBCacheRoute(t *testing.T) {
 	if routes[0].Name > routes[1].Name {
 		routes[0], routes[1] = routes[1], routes[0]
 	}
-	assert.Equal(t, routes[0], r1)
-	assert.Equal(t, routes[1], r2)
+	assert.Equal(t, r1, routes[0])
+	assert.Equal(t, r2, routes[1])
 
 	r4 := &v1.Route{
 		Metadata: v1.Metadata{
@@ -112,8 +112,8 @@ func TestMemDBCacheSSL(t *testing.T) {
 	if ssl[0].ID > ssl[1].ID {
 		ssl[0], ssl[1] = ssl[1], ssl[0]
 	}
-	assert.Equal(t, ssl[0], s1)
-	assert.Equal(t, ssl[1], s2)
+	assert.Equal(t, s1, ssl[0])
+	assert.Equal(t, s2, ssl[1])
 
 	s4 := &v1.Ssl{
 		ID: "id4",
@@ -165,8 +165,8 @@ func TestMemDBCacheUpstream(t *testing.T) {
 	if upstreams[0].Name > upstreams[1].Name {
 		upstreams[0], upstreams[1] = upstreams[1], upstreams[0]
 	}
-	assert.Equal(t, upstreams[0], u1)
-	assert.Equal(t, upstreams[1], u2)
+	assert.Equal(t, u1, upstreams[0])
+	assert.Equal(t, u2, upstreams[1])
 
 	u4 := &v1.Upstream{
 		Metadata: v1.Metadata{
@@ -251,8 +251,8 @@ func TestMemDBCacheStreamRoute(t *testing.T) {
 	if routes[0].ID > routes[1].ID {
 		routes[0], routes[1] = routes[1], routes[0]
 	}
-	assert.Equal(t, routes[0], r1)
-	assert.Equal(t, routes[1], r2)
+	assert.Equal(t, r1, routes[0])
+	assert.Equal(t, r2, routes[1])
 
 	r4 := &v1.StreamRoute{
 		ID: "4",
@@ -284,7 +284,7 @@ func TestMemDBCacheGlobalRule(t *testing.T) {
 
 	gr, err = c.GetGlobalRule("3")
 	assert.Nil(t, err)
-	assert.Equal(t, gr, gr3)
+	assert.Equal(t, gr3, gr)
 
 	assert.Nil(t, c.DeleteGlobalRule(gr), "delete global_rule r3")
 
@@ -294,8 +294,8 @@ func TestMemDBCacheGlobalRule(t *testing.T) {
 	if grs[0].ID > grs[1].ID {
 		grs[0], grs[1] = grs[1], grs[0]
 	}
-	assert.Equal(t, grs[0], gr1)
-	assert.Equal(t, grs[1], gr2)
+	assert.Equal(t, gr1, grs[0])
+	assert.Equal(t, gr2, grs[1])
 
 	gr4 := &v1.GlobalRule{
 		ID: "4",
@@ -337,8 +337,8 @@ func TestMemDBCacheConsumer(t *testing.T) {
 	if consumers[0].Username > consumers[1].Username {
 		consumers[0], consumers[1] = consumers[1], consumers[0]
 	}
-	assert.Equal(t, consumers[0], c1)
-	assert.Equal(t, consumers[1], c2)
+	assert.Equal(t, c1, consumers[0])
+	assert.Equal(t, c2, consumers[1])
 
 	c4 := &v1.Consumer{
 		Username: "chandler",
@@ -381,11 +381,66 @@ func TestMemDBCacheSchema(t *testing.T) {
 	if schemaList[0].Name > schemaList[1].Name {
 		schemaList[0], schemaList[1] = schemaList[1], schemaList[0]
 	}
-	assert.Equal(t, schemaList[0], s1)
-	assert.Equal(t, schemaList[1], s2)
+	assert.Equal(t, s1, schemaList[0])
+	assert.Equal(t, s2, schemaList[1])
 
 	s4 := &v1.Schema{
 		Name: "plugins/p4",
 	}
 	assert.Error(t, ErrNotFound, c.DeleteSchema(s4))
+}
+
+func TestMemDBCachePluginConfig(t *testing.T) {
+	c, err := NewMemDBCache()
+	assert.Nil(t, err, "NewMemDBCache")
+
+	pc1 := &v1.PluginConfig{
+		Metadata: v1.Metadata{
+			ID:   "1",
+			Name: "name1",
+		},
+	}
+	assert.Nil(t, c.InsertPluginConfig(pc1), "inserting plugin_config pc1")
+
+	pc11, err := c.GetPluginConfig("1")
+	assert.Nil(t, err)
+	assert.Equal(t, pc1, pc11)
+
+	pc2 := &v1.PluginConfig{
+		Metadata: v1.Metadata{
+			ID:   "2",
+			Name: "name2",
+		},
+	}
+	pc3 := &v1.PluginConfig{
+		Metadata: v1.Metadata{
+			ID:   "3",
+			Name: "name3",
+		},
+	}
+	assert.Nil(t, c.InsertPluginConfig(pc2), "inserting plugin_config pc2")
+	assert.Nil(t, c.InsertPluginConfig(pc3), "inserting plugin_config pc3")
+
+	pc22, err := c.GetPluginConfig("2")
+	assert.Nil(t, err)
+	assert.Equal(t, pc2, pc22)
+
+	assert.Nil(t, c.DeletePluginConfig(pc3), "delete plugin_config pc3")
+
+	pcList, err := c.ListPluginConfigs()
+	assert.Nil(t, err, "listing plugin_config")
+
+	if pcList[0].Name > pcList[1].Name {
+		pcList[0], pcList[1] = pcList[1], pcList[0]
+	}
+	assert.Equal(t, pcList[0], pc1)
+	assert.Equal(t, pcList[1], pc2)
+
+	pc4 := &v1.PluginConfig{
+		Metadata: v1.Metadata{
+			ID:   "4",
+			Name: "name4",
+		},
+	}
+	assert.Error(t, ErrNotFound, c.DeletePluginConfig(pc4))
 }
