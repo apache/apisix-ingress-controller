@@ -140,12 +140,14 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		zap.Any("routes", tctx.Routes),
 		zap.Any("upstreams", tctx.Upstreams),
 		zap.Any("ssl", tctx.SSL),
+		zap.Any("pluginConfigs", tctx.PluginConfigs),
 	)
 
 	m := &manifest{
-		ssl:       tctx.SSL,
-		routes:    tctx.Routes,
-		upstreams: tctx.Upstreams,
+		ssl:           tctx.SSL,
+		routes:        tctx.Routes,
+		upstreams:     tctx.Upstreams,
+		pluginConfigs: tctx.PluginConfigs,
 	}
 
 	var (
@@ -169,9 +171,10 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 			return err
 		}
 		om := &manifest{
-			routes:    oldCtx.Routes,
-			upstreams: oldCtx.Upstreams,
-			ssl:       oldCtx.SSL,
+			routes:        oldCtx.Routes,
+			upstreams:     oldCtx.Upstreams,
+			ssl:           oldCtx.SSL,
+			pluginConfigs: oldCtx.PluginConfigs,
 		}
 		added, updated, deleted = m.diff(om)
 	}

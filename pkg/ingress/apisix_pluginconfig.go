@@ -218,8 +218,8 @@ func (c *apisixPluginConfigController) onAdd(obj interface{}) {
 }
 
 func (c *apisixPluginConfigController) onUpdate(oldObj, newObj interface{}) {
-	prev := oldObj.(*configv2beta3.ApisixClusterConfig)
-	curr := newObj.(*configv2beta3.ApisixClusterConfig)
+	prev := oldObj.(*configv2beta3.ApisixPluginConfig)
+	curr := newObj.(*configv2beta3.ApisixPluginConfig)
 	if prev.ResourceVersion >= curr.ResourceVersion {
 		return
 	}
