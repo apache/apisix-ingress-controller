@@ -102,13 +102,14 @@ type Translator interface {
 // TranslatorOptions contains options to help Translator
 // work well.
 type TranslatorOptions struct {
-	PodCache             types.PodCache
-	PodLister            listerscorev1.PodLister
-	EndpointLister       kube.EndpointLister
-	ServiceLister        listerscorev1.ServiceLister
-	ApisixUpstreamLister listersv2beta3.ApisixUpstreamLister
-	SecretLister         listerscorev1.SecretLister
-	UseEndpointSlices    bool
+	PodCache                 types.PodCache
+	PodLister                listerscorev1.PodLister
+	EndpointLister           kube.EndpointLister
+	ServiceLister            listerscorev1.ServiceLister
+	ApisixUpstreamLister     listersv2beta3.ApisixUpstreamLister
+	ApisixPluginConfigLister listersv2beta3.ApisixPluginConfigLister
+	SecretLister             listerscorev1.SecretLister
+	UseEndpointSlices        bool
 }
 
 type translator struct {

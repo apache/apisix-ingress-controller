@@ -225,13 +225,14 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixPluginConfigLister = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister()
 
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
-		PodCache:             c.podCache,
-		PodLister:            c.podLister,
-		EndpointLister:       c.epLister,
-		ServiceLister:        c.svcLister,
-		ApisixUpstreamLister: c.apisixUpstreamLister,
-		SecretLister:         c.secretLister,
-		UseEndpointSlices:    c.cfg.Kubernetes.WatchEndpointSlices,
+		PodCache:                 c.podCache,
+		PodLister:                c.podLister,
+		EndpointLister:           c.epLister,
+		ServiceLister:            c.svcLister,
+		ApisixUpstreamLister:     c.apisixUpstreamLister,
+		ApisixPluginConfigLister: c.apisixPluginConfigLister,
+		SecretLister:             c.secretLister,
+		UseEndpointSlices:        c.cfg.Kubernetes.WatchEndpointSlices,
 	})
 
 	if c.cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1 {

@@ -16,6 +16,7 @@ package translation
 
 import (
 	"context"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,6 +35,7 @@ import (
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -123,7 +125,9 @@ func TestTranslateIngressV1NoBackend(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 0)
+	assert.Len(t, ctx.PluginConfigs, 0)
 	assert.Equal(t, "", ctx.Routes[0].UpstreamId)
+	assert.Equal(t, "", ctx.Routes[0].PluginConfigId)
 	assert.Equal(t, []string{"/foo", "/foo/*"}, ctx.Routes[0].Uris)
 }
 
@@ -270,9 +274,10 @@ func TestTranslateIngressV1WithRegex(t *testing.T) {
 
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
-			ServiceLister:        svcLister,
-			EndpointLister:       epLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ServiceLister:            svcLister,
+			EndpointLister:           epLister,
+			ApisixUpstreamLister:     apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ApisixPluginConfigLister: apisixInformersFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
 		},
 	}
 
@@ -282,6 +287,7 @@ func TestTranslateIngressV1WithRegex(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 1)
+	assert.Len(t, ctx.PluginConfigs, 1)
 	routeVars, err := tr.translateRouteMatchExprs([]configv2beta3.ApisixRouteHTTPMatchExpr{{
 		Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
 			Scope: apisixconst.ScopePath,
@@ -304,6 +310,11 @@ func TestTranslateIngressV1(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
 			Namespace: "default",
+			Annotations: map[string]string{
+				"k8s.apisix.apache.org/use-regex":                                  "true",
+				path.Join(annotations.AnnotationsPrefix, "enable-cors"):            "true",
+				path.Join(annotations.AnnotationsPrefix, "allowlist-source-range"): "127.0.0.1",
+			},
 		},
 		Spec: networkingv1.IngressSpec{
 			Rules: []networkingv1.IngressRule{
@@ -374,9 +385,10 @@ func TestTranslateIngressV1(t *testing.T) {
 
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
-			ServiceLister:        svcLister,
-			EndpointLister:       epLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ServiceLister:            svcLister,
+			EndpointLister:           epLister,
+			ApisixUpstreamLister:     apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ApisixPluginConfigLister: apisixInformersFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
 		},
 	}
 
@@ -386,12 +398,15 @@ func TestTranslateIngressV1(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
+	assert.Len(t, ctx.PluginConfigs, 2)
 
 	assert.Equal(t, []string{"/foo", "/foo/*"}, ctx.Routes[0].Uris)
 	assert.Equal(t, ctx.Upstreams[0].ID, ctx.Routes[0].UpstreamId)
+	assert.Equal(t, ctx.PluginConfigs[0].ID, ctx.Routes[0].PluginConfigId)
 	assert.Equal(t, "apisix.apache.org", ctx.Routes[0].Host)
 	assert.Equal(t, []string{"/bar"}, ctx.Routes[1].Uris)
 	assert.Equal(t, ctx.Upstreams[1].ID, ctx.Routes[1].UpstreamId)
+	assert.Equal(t, ctx.PluginConfigs[1].ID, ctx.Routes[1].PluginConfigId)
 	assert.Equal(t, "apisix.apache.org", ctx.Routes[1].Host)
 
 	assert.Equal(t, "roundrobin", ctx.Upstreams[0].Type)
@@ -409,6 +424,9 @@ func TestTranslateIngressV1(t *testing.T) {
 	assert.Equal(t, "192.168.1.1", ctx.Upstreams[1].Nodes[0].Host)
 	assert.Equal(t, 9443, ctx.Upstreams[1].Nodes[1].Port)
 	assert.Equal(t, "192.168.1.2", ctx.Upstreams[1].Nodes[1].Host)
+
+	assert.Len(t, ctx.PluginConfigs[0].Plugins, 2)
+	assert.Len(t, ctx.PluginConfigs[1].Plugins, 2)
 }
 
 func TestTranslateIngressV1beta1NoBackend(t *testing.T) {
@@ -442,7 +460,9 @@ func TestTranslateIngressV1beta1NoBackend(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 0)
+	assert.Len(t, ctx.PluginConfigs, 0)
 	assert.Equal(t, "", ctx.Routes[0].UpstreamId)
+	assert.Equal(t, "", ctx.Routes[0].PluginConfigId)
 	assert.Equal(t, []string{"/foo", "/foo/*"}, ctx.Routes[0].Uris)
 }
 
@@ -588,9 +608,10 @@ func TestTranslateIngressV1beta1WithRegex(t *testing.T) {
 
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
-			ServiceLister:        svcLister,
-			EndpointLister:       epLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ServiceLister:            svcLister,
+			EndpointLister:           epLister,
+			ApisixUpstreamLister:     apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ApisixPluginConfigLister: apisixInformersFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
 		},
 	}
 
@@ -600,6 +621,7 @@ func TestTranslateIngressV1beta1WithRegex(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 1)
+	assert.Len(t, ctx.PluginConfigs, 1)
 
 	routeVars, err := tr.translateRouteMatchExprs([]configv2beta3.ApisixRouteHTTPMatchExpr{{
 		Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
@@ -621,6 +643,12 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
 			Namespace: "default",
+			Annotations: map[string]string{
+				"k8s.apisix.apache.org/use-regex":                                  "true",
+				path.Join(annotations.AnnotationsPrefix, "enable-cors"):            "true",
+				path.Join(annotations.AnnotationsPrefix, "allowlist-source-range"): "127.0.0.1",
+				path.Join(annotations.AnnotationsPrefix, "enable-cors222"):         "true",
+			},
 		},
 		Spec: networkingv1beta1.IngressSpec{
 			Rules: []networkingv1beta1.IngressRule{
@@ -689,9 +717,10 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
-			ServiceLister:        svcLister,
-			EndpointLister:       epLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ServiceLister:            svcLister,
+			EndpointLister:           epLister,
+			ApisixUpstreamLister:     apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ApisixPluginConfigLister: apisixInformersFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
 		},
 	}
 
@@ -701,6 +730,7 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
+	assert.Len(t, ctx.PluginConfigs, 2)
 
 	assert.Equal(t, []string{"/foo", "/foo/*"}, ctx.Routes[0].Uris)
 	assert.Equal(t, ctx.Upstreams[0].ID, ctx.Routes[0].UpstreamId)
@@ -724,6 +754,9 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	assert.Equal(t, "192.168.1.1", ctx.Upstreams[1].Nodes[0].Host)
 	assert.Equal(t, 9443, ctx.Upstreams[1].Nodes[1].Port)
 	assert.Equal(t, "192.168.1.2", ctx.Upstreams[1].Nodes[1].Host)
+
+	assert.Len(t, ctx.PluginConfigs[0].Plugins, 2)
+	assert.Len(t, ctx.PluginConfigs[1].Plugins, 2)
 }
 
 func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
@@ -733,6 +766,12 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
 			Namespace: "default",
+			Annotations: map[string]string{
+				"k8s.apisix.apache.org/use-regex":                                  "true",
+				path.Join(annotations.AnnotationsPrefix, "enable-cors"):            "true",
+				path.Join(annotations.AnnotationsPrefix, "allowlist-source-range"): "127.0.0.1",
+				path.Join(annotations.AnnotationsPrefix, "enable-cors222"):         "true",
+			},
 		},
 		Spec: extensionsv1beta1.IngressSpec{
 			Rules: []extensionsv1beta1.IngressRule{
@@ -801,9 +840,10 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
-			ServiceLister:        svcLister,
-			EndpointLister:       epLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ServiceLister:            svcLister,
+			EndpointLister:           epLister,
+			ApisixUpstreamLister:     apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ApisixPluginConfigLister: apisixInformersFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
 		},
 	}
 
@@ -813,6 +853,7 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
+	assert.Len(t, ctx.PluginConfigs, 2)
 
 	assert.Equal(t, []string{"/foo", "/foo/*"}, ctx.Routes[0].Uris)
 	assert.Equal(t, ctx.Upstreams[0].ID, ctx.Routes[0].UpstreamId)
@@ -836,6 +877,9 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 	assert.Equal(t, "192.168.1.1", ctx.Upstreams[1].Nodes[0].Host)
 	assert.Equal(t, 9443, ctx.Upstreams[1].Nodes[1].Port)
 	assert.Equal(t, "192.168.1.2", ctx.Upstreams[1].Nodes[1].Host)
+
+	assert.Len(t, ctx.PluginConfigs[0].Plugins, 2)
+	assert.Len(t, ctx.PluginConfigs[1].Plugins, 2)
 }
 
 func TestTranslateIngressExtensionsV1beta1BackendWithInvalidService(t *testing.T) {
@@ -979,9 +1023,10 @@ func TestTranslateIngressExtensionsV1beta1WithRegex(t *testing.T) {
 
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
-			ServiceLister:        svcLister,
-			EndpointLister:       epLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ServiceLister:            svcLister,
+			EndpointLister:           epLister,
+			ApisixUpstreamLister:     apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ApisixPluginConfigLister: apisixInformersFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
 		},
 	}
 
@@ -991,6 +1036,7 @@ func TestTranslateIngressExtensionsV1beta1WithRegex(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 1)
+	assert.Len(t, ctx.PluginConfigs, 1)
 	routeVars, err := tr.translateRouteMatchExprs([]configv2beta3.ApisixRouteHTTPMatchExpr{{
 		Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
 			Scope: apisixconst.ScopePath,
@@ -1004,5 +1050,4 @@ func TestTranslateIngressExtensionsV1beta1WithRegex(t *testing.T) {
 
 	assert.Equal(t, []string{"/*"}, ctx.Routes[0].Uris)
 	assert.Equal(t, expectedVars, ctx.Routes[0].Vars)
-
 }

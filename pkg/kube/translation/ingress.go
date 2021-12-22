@@ -23,6 +23,7 @@ import (
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -39,9 +40,7 @@ const (
 )
 
 func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
@@ -78,8 +77,9 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
 			var (
-				ups *apisixv1.Upstream
-				err error
+				ups          *apisixv1.Upstream
+				pluginConfig *apisixv1.PluginConfig
+				err          error
 			)
 			if pathRule.Backend.Service != nil {
 				ups, err = t.translateUpstreamFromIngressV1(ing.Namespace, pathRule.Backend.Service)
@@ -91,6 +91,14 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 					return nil, err
 				}
 				ctx.addUpstream(ups)
+				pluginConfig, err = t.translatePluginConfigFromIngressV1(ing.Namespace, pathRule.Backend.Service)
+				if err != nil {
+					log.Errorw("failed to translate ingress backend to pluginConfig",
+						zap.Error(err),
+						zap.Any("ingress", ing),
+					)
+					return nil, err
+				}
 			}
 			uris := []string{pathRule.Path}
 			var nginxVars []kubev2beta3.ApisixRouteHTTPMatchExpr
@@ -138,9 +146,16 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 			}
 			if len(plugins) > 0 {
 				route.Plugins = *(plugins.DeepCopy())
+				if pluginConfig != nil {
+					pluginConfig.Plugins = *(plugins.DeepCopy())
+				}
 			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
+			}
+			if pluginConfig != nil {
+				route.PluginConfigId = pluginConfig.ID
+				ctx.addPluginConfig(pluginConfig)
 			}
 			ctx.addRoute(route)
 		}
@@ -149,9 +164,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 }
 
 func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
@@ -188,8 +201,9 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
 			var (
-				ups *apisixv1.Upstream
-				err error
+				ups          *apisixv1.Upstream
+				pluginConfig *apisixv1.PluginConfig
+				err          error
 			)
 			if pathRule.Backend.ServiceName != "" {
 				ups, err = t.translateUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
@@ -201,6 +215,14 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 					return nil, err
 				}
 				ctx.addUpstream(ups)
+				pluginConfig, err = t.translatePluginConfigFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName)
+				if err != nil {
+					log.Errorw("failed to translate ingress backend to pluginConfig",
+						zap.Error(err),
+						zap.Any("ingress", ing),
+					)
+					return nil, err
+				}
 			}
 			uris := []string{pathRule.Path}
 			var nginxVars []kubev2beta3.ApisixRouteHTTPMatchExpr
@@ -248,9 +270,16 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 			}
 			if len(plugins) > 0 {
 				route.Plugins = *(plugins.DeepCopy())
+				if pluginConfig != nil {
+					pluginConfig.Plugins = *(plugins.DeepCopy())
+				}
 			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
+			}
+			if pluginConfig != nil {
+				route.PluginConfigId = pluginConfig.ID
+				ctx.addPluginConfig(pluginConfig)
 			}
 			ctx.addRoute(route)
 		}
@@ -289,10 +318,32 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 	return ups, nil
 }
 
-func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
+func (t *translator) translatePluginConfigFromIngressV1(namespace string, backend *networkingv1.IngressServiceBackend) (*apisixv1.PluginConfig, error) {
+	pc := apisixv1.NewDefaultPluginConfig()
+	apc, err := t.ApisixPluginConfigLister.ApisixPluginConfigs(namespace).Get(backend.Name)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			// If subset in ApisixRoute is not empty but the ApisixPluginConfig resouce not found,
+			// just return an empty PluginConfig.
+			return pc, nil
+		} else {
+			return nil, &translateError{
+				field:  "ApisixPluginConfig",
+				reason: err.Error(),
+			}
+		}
 	}
+	pc, err = t.TranslateApisixPluginConfig(apc)
+	if err != nil {
+		return nil, err
+	}
+	pc.Name = apisixv1.ComposePluginConfigName(namespace, backend.Name)
+	pc.ID = id.GenID(pc.Name)
+	return pc, nil
+}
+
+func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress) (*TranslateContext, error) {
+	ctx := defaultEmptyTranslateContext()
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
@@ -300,8 +351,9 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
 			var (
-				ups *apisixv1.Upstream
-				err error
+				ups          *apisixv1.Upstream
+				pluginConfig *apisixv1.PluginConfig
+				err          error
 			)
 			if pathRule.Backend.ServiceName != "" {
 				// Structure here is same to ingress.extensions/v1beta1, so just use this method.
@@ -314,6 +366,14 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 					return nil, err
 				}
 				ctx.addUpstream(ups)
+				pluginConfig, err = t.translatePluginConfigFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName)
+				if err != nil {
+					log.Errorw("failed to translate ingress backend to pluginConfig",
+						zap.Error(err),
+						zap.Any("ingress", ing),
+					)
+					return nil, err
+				}
 			}
 			uris := []string{pathRule.Path}
 			var nginxVars []kubev2beta3.ApisixRouteHTTPMatchExpr
@@ -361,9 +421,16 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 			}
 			if len(plugins) > 0 {
 				route.Plugins = *(plugins.DeepCopy())
+				if pluginConfig != nil {
+					pluginConfig.Plugins = *(plugins.DeepCopy())
+				}
 			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
+			}
+			if pluginConfig != nil {
+				route.PluginConfigId = pluginConfig.ID
+				ctx.addPluginConfig(pluginConfig)
 			}
 			ctx.addRoute(route)
 		}
@@ -400,6 +467,30 @@ func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcNa
 	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
+}
+
+func (t *translator) translatePluginConfigFromIngressV1beta1(namespace string, svcName string) (*apisixv1.PluginConfig, error) {
+	pc := apisixv1.NewDefaultPluginConfig()
+	apc, err := t.ApisixPluginConfigLister.ApisixPluginConfigs(namespace).Get(svcName)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			// If subset in ApisixRoute is not empty but the ApisixPluginConfig resouce not found,
+			// just return an empty PluginConfig.
+			return pc, nil
+		} else {
+			return nil, &translateError{
+				field:  "ApisixPluginConfig",
+				reason: err.Error(),
+			}
+		}
+	}
+	pc, err = t.TranslateApisixPluginConfig(apc)
+	if err != nil {
+		return nil, err
+	}
+	pc.Name = apisixv1.ComposePluginConfigName(namespace, svcName)
+	pc.ID = id.GenID(pc.Name)
+	return pc, nil
 }
 
 func composeIngressRouteName(host, path string) string {
