@@ -10,8 +10,6 @@
       "label": "Practices",
       "items": [
         "practices/index",
-        "practices/check-crd-status",
-        "practices/mtls",
         "practices/the-hard-way",
         "practices/proxy-the-httpbin-service-with-ingress",
         "practices/proxy-the-httpbin-service"
