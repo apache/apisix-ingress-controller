@@ -19,9 +19,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("ApisixConsumer", func() {
@@ -29,7 +30,7 @@ var _ = ginkgo.Describe("ApisixConsumer", func() {
 
 	ginkgo.It("ApisixRoute with basicAuth consumer", func() {
 		ac := `
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: basicvalue
@@ -57,7 +58,7 @@ spec:
 
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -75,8 +76,8 @@ spec:
          name: X-Foo
        op: Equal
        value: bar
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
    authentication:
      enable: true
@@ -126,7 +127,7 @@ data:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating basic secret for ApisixConsumer")
 
 		ac := `
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: basicvalue
@@ -153,7 +154,7 @@ spec:
 
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -171,8 +172,8 @@ spec:
          name: X-Foo
        op: Equal
        value: bar
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
    authentication:
      enable: true
@@ -211,7 +212,7 @@ spec:
 
 	ginkgo.It("ApisixRoute with keyAuth consumer", func() {
 		ac := `
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: keyvalue
@@ -237,7 +238,7 @@ spec:
 
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -255,8 +256,8 @@ spec:
          name: X-Foo
        op: Equal
        value: bar
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
    authentication:
      enable: true
@@ -305,7 +306,7 @@ data:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating keyauth secret for ApisixConsumer")
 
 		ac := `
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: keyvalue
@@ -331,7 +332,7 @@ spec:
 
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -349,8 +350,8 @@ spec:
          name: X-Foo
        op: Equal
        value: bar
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
    authentication:
      enable: true
@@ -390,7 +391,7 @@ spec:
 	ginkgo.It("ApisixRoute without authentication", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -408,8 +409,8 @@ spec:
          name: X-Foo
        op: Equal
        value: bar
-   backend:
-     serviceName: %s
+   backends:
+   - serviceName: %s
      servicePort: %d
    authentication:
      enable: false

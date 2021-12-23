@@ -32,7 +32,7 @@ var _ = ginkgo.Describe("endpoints", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("ignore applied only if there is an ApisixRoute referenced", func() {
@@ -40,7 +40,7 @@ var _ = ginkgo.Describe("endpoints", func() {
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(0), "checking number of upstreams")
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		ups := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -52,8 +52,8 @@ spec:
       - httpbin.org
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ups))
@@ -64,7 +64,7 @@ spec:
 		ginkgo.Skip("now we don't handle endpoints delete event")
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -75,8 +75,8 @@ spec:
       hosts:
       - httpbin.com
       paths: /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
@@ -97,13 +97,13 @@ var _ = ginkgo.Describe("port usage", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    8080,
-		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("service port != target port", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -115,12 +115,12 @@ spec:
       - httpbin.com
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
-		time.Sleep(5 * time.Second)
+		time.Sleep(12 * time.Second)
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing APISIX upstreams")
 		assert.Len(ginkgo.GinkgoT(), ups, 1)
@@ -131,7 +131,7 @@ spec:
 
 		// scale HTTPBIN, so the endpoints controller has the opportunity to update upstream.
 		assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(3))
-		time.Sleep(15 * time.Second)
+		time.Sleep(30 * time.Second)
 		ups, err = s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing APISIX upstreams")
 		assert.Len(ginkgo.GinkgoT(), ups, 1)

@@ -65,7 +65,7 @@ func (s *sslClient) Get(ctx context.Context, name string) (*v1.Ssl, error) {
 
 	// TODO Add mutex here to avoid dog-pile effection.
 	url := s.url + "/" + sid
-	resp, err := s.cluster.getResource(ctx, url)
+	resp, err := s.cluster.getResource(ctx, url, "ssl")
 	if err != nil {
 		if err == cache.ErrNotFound {
 			log.Warnw("ssl not found",
@@ -108,7 +108,8 @@ func (s *sslClient) List(ctx context.Context) ([]*v1.Ssl, error) {
 		zap.String("cluster", "default"),
 	)
 
-	sslItems, err := s.cluster.listResource(ctx, s.url)
+	sslItems, err := s.cluster.listResource(ctx, s.url, "ssl")
+	s.cluster.metricsCollector.IncrAPISIXRequest("ssl")
 	if err != nil {
 		log.Errorf("failed to list ssl: %s", err)
 		return nil, err
@@ -147,7 +148,8 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	}
 	url := s.url + "/" + obj.ID
 	log.Debugw("creating ssl", zap.ByteString("body", data), zap.String("url", url))
-	resp, err := s.cluster.createResource(ctx, url, bytes.NewReader(data))
+	resp, err := s.cluster.createResource(ctx, url, "ssl", bytes.NewReader(data))
+	s.cluster.metricsCollector.IncrAPISIXRequest("ssl")
 	if err != nil {
 		log.Errorf("failed to create ssl: %s", err)
 		return nil, err
@@ -174,9 +176,11 @@ func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 		return err
 	}
 	url := s.url + "/" + obj.ID
-	if err := s.cluster.deleteResource(ctx, url); err != nil {
+	if err := s.cluster.deleteResource(ctx, url, "ssl"); err != nil {
+		s.cluster.metricsCollector.IncrAPISIXRequest("ssl")
 		return err
 	}
+	s.cluster.metricsCollector.IncrAPISIXRequest("ssl")
 	if err := s.cluster.cache.DeleteSSL(obj); err != nil {
 		log.Errorf("failed to reflect ssl delete to cache: %s", err)
 		if err != cache.ErrNotFound {
@@ -201,7 +205,8 @@ func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 		return nil, err
 	}
 	log.Debugw("updating ssl", zap.ByteString("body", data), zap.String("url", url))
-	resp, err := s.cluster.updateResource(ctx, url, bytes.NewReader(data))
+	resp, err := s.cluster.updateResource(ctx, url, "ssl", bytes.NewReader(data))
+	s.cluster.metricsCollector.IncrAPISIXRequest("ssl")
 	if err != nil {
 		return nil, err
 	}

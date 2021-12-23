@@ -55,11 +55,11 @@ This project is currently general availability.
 
 ## Internal Architecture
 
-<img src="./docs/assets/images/apisix-ingress-controller-arch.png" alt="module" width="600" height="313" />
+<img src="./docs/assets/images/apisix-ingress-controller-arch.png" alt="module" width="74.3%" height="55.9%" />
 
 ## Prerequisites
 
-Apisix ingress controller requires Kubernetes version 1.15+.
+Apisix ingress controller requires Kubernetes version 1.16+. Because we used `CustomResourceDefinition` v1 stable API.
 From the version 1.0.0, APISIX-ingress-controller need to work with Apache APISIX version 2.7+.
 
 ## Apache APISIX Ingress vs. Kubernetes Ingress Nginx

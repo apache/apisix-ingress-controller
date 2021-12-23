@@ -47,10 +47,15 @@ spec:
         ports:
         - containerPort: 8080
           hostPort: 8080
+        - containerPort: 8443
+          hostPort: 8443
         volumeMounts:
         - mountPath: /ingress-apisix/conf/config.yaml
           name: apisix-ingress-configmap
           subPath: config.yaml
+        - name: webhook-certs
+          mountPath: /etc/webhook/certs
+          readOnly: true
         env:
           - name: POD_NAMESPACE
             valueFrom:
@@ -64,5 +69,8 @@ spec:
         - configMap:
             name: apisix-ingress-cm
           name: apisix-ingress-configmap
+        - name: webhook-certs
+          secret:
+            secretName: webhook-certs
       terminationGracePeriodSeconds: 60
       serviceAccountName: apisix-view-serviceaccount

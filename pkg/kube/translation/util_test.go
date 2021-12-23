@@ -27,7 +27,7 @@ func TestValidateRemoteAddrs(t *testing.T) {
 		"123",
 	}
 	err := validateRemoteAddrs(addrs)
-	assert.Equal(t, err, _errInvalidAddress)
+	assert.Equal(t, _errInvalidAddress, err)
 
 	addrs = []string{
 		"192.168.3.4",

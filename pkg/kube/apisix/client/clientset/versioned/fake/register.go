@@ -18,9 +18,9 @@
 package fake
 
 import (
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
-	apisixv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
 	apisixv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
+	apisixv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
+	apisixv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -32,8 +32,8 @@ var scheme = runtime.NewScheme()
 var codecs = serializer.NewCodecFactory(scheme)
 
 var localSchemeBuilder = runtime.SchemeBuilder{
-	apisixv1.AddToScheme,
-	apisixv2alpha1.AddToScheme,
+	apisixv2beta3.AddToScheme,
+	apisixv2beta2.AddToScheme,
 	apisixv2beta1.AddToScheme,
 }
 

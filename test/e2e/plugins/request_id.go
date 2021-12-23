@@ -16,11 +16,12 @@ package plugins
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
-	"github.com/onsi/ginkgo"
 )
 
 var _ = ginkgo.Describe("request-id plugin", func() {
@@ -30,13 +31,13 @@ var _ = ginkgo.Describe("request-id plugin", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("sanity", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -59,6 +60,7 @@ spec:
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 		err = s.EnsureNumApisixRoutesCreated(1)
@@ -73,7 +75,7 @@ spec:
 	ginkgo.It("disable plugin", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -96,6 +98,7 @@ spec:
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 		err = s.EnsureNumApisixRoutesCreated(1)
@@ -109,7 +112,7 @@ spec:
 	ginkgo.It("enable plugin and then delete it", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -132,6 +135,7 @@ spec:
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 		err = s.EnsureNumApisixRoutesCreated(1)
@@ -143,7 +147,7 @@ spec:
 		resp.Body().Contains("origin")
 
 		ar = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route

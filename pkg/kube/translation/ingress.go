@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"go.uber.org/zap"
-
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
@@ -28,9 +27,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
-	apisixv12 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	kubev2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+)
+
+const (
+	_regexPriority = 100
 )
 
 func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateContext, error) {
@@ -38,7 +43,38 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 		upstreamMap: make(map[string]struct{}),
 	}
 	plugins := t.translateAnnotations(ing.Annotations)
-
+	annoExtractor := annotations.NewExtractor(ing.Annotations)
+	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
+	// add https
+	for _, tls := range ing.Spec.TLS {
+		apisixTls := kubev2beta3.ApisixTls{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ApisixTls",
+				APIVersion: "apisix.apache.org/v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
+				Namespace: ing.Namespace,
+			},
+			Spec: &kubev2beta3.ApisixTlsSpec{},
+		}
+		for _, host := range tls.Hosts {
+			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2beta3.HostType(host))
+		}
+		apisixTls.Spec.Secret = kubev2beta3.ApisixSecret{
+			Name:      tls.SecretName,
+			Namespace: ing.Namespace,
+		}
+		ssl, err := t.TranslateSSL(&apisixTls)
+		if err != nil {
+			log.Errorw("failed to translate ingress tls to apisix tls",
+				zap.Error(err),
+				zap.Any("ingress", ing),
+			)
+			return nil, err
+		}
+		ctx.addSSL(ssl)
+	}
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
 			var (
@@ -57,29 +93,49 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 				ctx.addUpstream(ups)
 			}
 			uris := []string{pathRule.Path}
-			if pathRule.PathType != nil && *pathRule.PathType == networkingv1.PathTypePrefix {
-				// As per the specification of Ingress path matching rule:
-				// if the last element of the path is a substring of the
-				// last element in request path, it is not a match, e.g. /foo/bar
-				// matches /foo/bar/baz, but does not match /foo/barbaz.
-				// While in APISIX, /foo/bar matches both /foo/bar/baz and
-				// /foo/barbaz.
-				// In order to be conformant with Ingress specification, here
-				// we create two paths here, the first is the path itself
-				// (exact match), the other is path + "/*" (prefix match).
-				prefix := pathRule.Path
-				if strings.HasSuffix(prefix, "/") {
-					prefix += "*"
-				} else {
-					prefix += "/*"
+			var nginxVars []kubev2beta3.ApisixRouteHTTPMatchExpr
+			if pathRule.PathType != nil {
+				if *pathRule.PathType == networkingv1.PathTypePrefix {
+					// As per the specification of Ingress path matching rule:
+					// if the last element of the path is a substring of the
+					// last element in request path, it is not a match, e.g. /foo/bar
+					// matches /foo/bar/baz, but does not match /foo/barbaz.
+					// While in APISIX, /foo/bar matches both /foo/bar/baz and
+					// /foo/barbaz.
+					// In order to be conformant with Ingress specification, here
+					// we create two paths here, the first is the path itself
+					// (exact match), the other is path + "/*" (prefix match).
+					prefix := pathRule.Path
+					if strings.HasSuffix(prefix, "/") {
+						prefix += "*"
+					} else {
+						prefix += "/*"
+					}
+					uris = append(uris, prefix)
+				} else if *pathRule.PathType == networkingv1.PathTypeImplementationSpecific && useRegex {
+					nginxVars = append(nginxVars, kubev2beta3.ApisixRouteHTTPMatchExpr{
+						Subject: kubev2beta3.ApisixRouteHTTPMatchExprSubject{
+							Scope: apisixconst.ScopePath,
+						},
+						Op:    apisixconst.OpRegexMatch,
+						Value: &pathRule.Path,
+					})
+					uris = []string{"/*"}
 				}
-				uris = append(uris, prefix)
 			}
 			route := apisixv1.NewDefaultRoute()
 			route.Name = composeIngressRouteName(rule.Host, pathRule.Path)
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
+			if len(nginxVars) > 0 {
+				routeVars, err := t.translateRouteMatchExprs(nginxVars)
+				if err != nil {
+					return nil, err
+				}
+				route.Vars = routeVars
+				route.Priority = _regexPriority
+			}
 			if len(plugins) > 0 {
 				route.Plugins = *(plugins.DeepCopy())
 			}
@@ -97,9 +153,11 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 		upstreamMap: make(map[string]struct{}),
 	}
 	plugins := t.translateAnnotations(ing.Annotations)
+	annoExtractor := annotations.NewExtractor(ing.Annotations)
+	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
 	// add https
 	for _, tls := range ing.Spec.TLS {
-		apisixTls := apisixv12.ApisixTls{
+		apisixTls := kubev2beta3.ApisixTls{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "ApisixTls",
 				APIVersion: "apisix.apache.org/v1",
@@ -108,13 +166,12 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
 				Namespace: ing.Namespace,
 			},
-			Spec: &apisixv12.ApisixTlsSpec{},
-			//Status:     configv2alpha1.ApisixStatus{},
+			Spec: &kubev2beta3.ApisixTlsSpec{},
 		}
 		for _, host := range tls.Hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, apisixv12.HostType(host))
+			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2beta3.HostType(host))
 		}
-		apisixTls.Spec.Secret = apisixv12.ApisixSecret{
+		apisixTls.Spec.Secret = kubev2beta3.ApisixSecret{
 			Name:      tls.SecretName,
 			Namespace: ing.Namespace,
 		}
@@ -146,29 +203,49 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 				ctx.addUpstream(ups)
 			}
 			uris := []string{pathRule.Path}
-			if pathRule.PathType != nil && *pathRule.PathType == networkingv1beta1.PathTypePrefix {
-				// As per the specification of Ingress path matching rule:
-				// if the last element of the path is a substring of the
-				// last element in request path, it is not a match, e.g. /foo/bar
-				// matches /foo/bar/baz, but does not match /foo/barbaz.
-				// While in APISIX, /foo/bar matches both /foo/bar/baz and
-				// /foo/barbaz.
-				// In order to be conformant with Ingress specification, here
-				// we create two paths here, the first is the path itself
-				// (exact match), the other is path + "/*" (prefix match).
-				prefix := pathRule.Path
-				if strings.HasSuffix(prefix, "/") {
-					prefix += "*"
-				} else {
-					prefix += "/*"
+			var nginxVars []kubev2beta3.ApisixRouteHTTPMatchExpr
+			if pathRule.PathType != nil {
+				if *pathRule.PathType == networkingv1beta1.PathTypePrefix {
+					// As per the specification of Ingress path matching rule:
+					// if the last element of the path is a substring of the
+					// last element in request path, it is not a match, e.g. /foo/bar
+					// matches /foo/bar/baz, but does not match /foo/barbaz.
+					// While in APISIX, /foo/bar matches both /foo/bar/baz and
+					// /foo/barbaz.
+					// In order to be conformant with Ingress specification, here
+					// we create two paths here, the first is the path itself
+					// (exact match), the other is path + "/*" (prefix match).
+					prefix := pathRule.Path
+					if strings.HasSuffix(prefix, "/") {
+						prefix += "*"
+					} else {
+						prefix += "/*"
+					}
+					uris = append(uris, prefix)
+				} else if *pathRule.PathType == networkingv1beta1.PathTypeImplementationSpecific && useRegex {
+					nginxVars = append(nginxVars, kubev2beta3.ApisixRouteHTTPMatchExpr{
+						Subject: kubev2beta3.ApisixRouteHTTPMatchExprSubject{
+							Scope: apisixconst.ScopePath,
+						},
+						Op:    apisixconst.OpRegexMatch,
+						Value: &pathRule.Path,
+					})
+					uris = []string{"/*"}
 				}
-				uris = append(uris, prefix)
 			}
 			route := apisixv1.NewDefaultRoute()
 			route.Name = composeIngressRouteName(rule.Host, pathRule.Path)
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
+			if len(nginxVars) > 0 {
+				routeVars, err := t.translateRouteMatchExprs(nginxVars)
+				if err != nil {
+					return nil, err
+				}
+				route.Vars = routeVars
+				route.Priority = _regexPriority
+			}
 			if len(plugins) > 0 {
 				route.Plugins = *(plugins.DeepCopy())
 			}
@@ -217,6 +294,8 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 		upstreamMap: make(map[string]struct{}),
 	}
 	plugins := t.translateAnnotations(ing.Annotations)
+	annoExtractor := annotations.NewExtractor(ing.Annotations)
+	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
 
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
@@ -237,29 +316,49 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 				ctx.addUpstream(ups)
 			}
 			uris := []string{pathRule.Path}
-			if pathRule.PathType != nil && *pathRule.PathType == extensionsv1beta1.PathTypePrefix {
-				// As per the specification of Ingress path matching rule:
-				// if the last element of the path is a substring of the
-				// last element in request path, it is not a match, e.g. /foo/bar
-				// matches /foo/bar/baz, but does not match /foo/barbaz.
-				// While in APISIX, /foo/bar matches both /foo/bar/baz and
-				// /foo/barbaz.
-				// In order to be conformant with Ingress specification, here
-				// we create two paths here, the first is the path itself
-				// (exact match), the other is path + "/*" (prefix match).
-				prefix := pathRule.Path
-				if strings.HasSuffix(prefix, "/") {
-					prefix += "*"
-				} else {
-					prefix += "/*"
+			var nginxVars []kubev2beta3.ApisixRouteHTTPMatchExpr
+			if pathRule.PathType != nil {
+				if *pathRule.PathType == extensionsv1beta1.PathTypePrefix {
+					// As per the specification of Ingress path matching rule:
+					// if the last element of the path is a substring of the
+					// last element in request path, it is not a match, e.g. /foo/bar
+					// matches /foo/bar/baz, but does not match /foo/barbaz.
+					// While in APISIX, /foo/bar matches both /foo/bar/baz and
+					// /foo/barbaz.
+					// In order to be conformant with Ingress specification, here
+					// we create two paths here, the first is the path itself
+					// (exact match), the other is path + "/*" (prefix match).
+					prefix := pathRule.Path
+					if strings.HasSuffix(prefix, "/") {
+						prefix += "*"
+					} else {
+						prefix += "/*"
+					}
+					uris = append(uris, prefix)
+				} else if *pathRule.PathType == extensionsv1beta1.PathTypeImplementationSpecific && useRegex {
+					nginxVars = append(nginxVars, kubev2beta3.ApisixRouteHTTPMatchExpr{
+						Subject: kubev2beta3.ApisixRouteHTTPMatchExprSubject{
+							Scope: apisixconst.ScopePath,
+						},
+						Op:    apisixconst.OpRegexMatch,
+						Value: &pathRule.Path,
+					})
+					uris = []string{"/*"}
 				}
-				uris = append(uris, prefix)
 			}
 			route := apisixv1.NewDefaultRoute()
 			route.Name = composeIngressRouteName(rule.Host, pathRule.Path)
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
+			if len(nginxVars) > 0 {
+				routeVars, err := t.translateRouteMatchExprs(nginxVars)
+				if err != nil {
+					return nil, err
+				}
+				route.Vars = routeVars
+				route.Priority = _regexPriority
+			}
 			if len(plugins) > 0 {
 				route.Plugins = *(plugins.DeepCopy())
 			}

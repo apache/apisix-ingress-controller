@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,14 +37,14 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	"github.com/apache/apisix-ingress-controller/pkg/api"
+	"github.com/apache/apisix-ingress-controller/pkg/api/validation"
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
-	listersv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v1"
-	listersv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2alpha1"
+	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
@@ -70,17 +71,20 @@ type Controller struct {
 	namespace         string
 	cfg               *config.Config
 	wg                sync.WaitGroup
-	watchingNamespace map[string]struct{}
+	watchingNamespace *sync.Map
+	watchingLabels    types.Labels
 	apisix            apisix.APISIX
 	podCache          types.PodCache
 	translator        translation.Translator
 	apiServer         *api.Server
-	metricsCollector  metrics.Collector
+	MetricsCollector  metrics.Collector
 	kubeClient        *kube.KubeClient
 	// recorder event
 	recorder record.EventRecorder
 	// this map enrolls which ApisixTls objects refer to a Kubernetes
 	// Secret object.
+	// type: Map<SecretKey, Map<ApisixTlsKey, ApisixTls>>
+	// SecretKey is `namespace_name`, ApisixTlsKey is kube style meta key: `namespace/name`
 	secretSSLMap *sync.Map
 
 	// leaderContextCancelFunc will be called when apisix-ingress-controller
@@ -88,6 +92,8 @@ type Controller struct {
 	leaderContextCancelFunc context.CancelFunc
 
 	// common informers and listers
+	namespaceInformer           cache.SharedIndexInformer
+	namespaceLister             listerscorev1.NamespaceLister
 	podInformer                 cache.SharedIndexInformer
 	podLister                   listerscorev1.PodLister
 	epInformer                  cache.SharedIndexInformer
@@ -99,17 +105,18 @@ type Controller struct {
 	secretInformer              cache.SharedIndexInformer
 	secretLister                listerscorev1.SecretLister
 	apisixUpstreamInformer      cache.SharedIndexInformer
-	apisixUpstreamLister        listersv1.ApisixUpstreamLister
+	apisixUpstreamLister        listersv2beta3.ApisixUpstreamLister
 	apisixRouteLister           kube.ApisixRouteLister
 	apisixRouteInformer         cache.SharedIndexInformer
-	apisixTlsLister             listersv1.ApisixTlsLister
+	apisixTlsLister             listersv2beta3.ApisixTlsLister
 	apisixTlsInformer           cache.SharedIndexInformer
-	apisixClusterConfigLister   listersv2alpha1.ApisixClusterConfigLister
+	apisixClusterConfigLister   listersv2beta3.ApisixClusterConfigLister
 	apisixClusterConfigInformer cache.SharedIndexInformer
 	apisixConsumerInformer      cache.SharedIndexInformer
-	apisixConsumerLister        listersv2alpha1.ApisixConsumerLister
+	apisixConsumerLister        listersv2beta3.ApisixConsumerLister
 
 	// resource controllers
+	namespaceController     *namespaceController
 	podController           *podController
 	endpointsController     *endpointsController
 	endpointSliceController *endpointSliceController
@@ -146,13 +153,19 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	}
 
 	var (
-		watchingNamespace map[string]struct{}
+		watchingNamespace = new(sync.Map)
+		watchingLabels    = make(map[string]string)
 	)
 	if len(cfg.Kubernetes.AppNamespaces) > 1 || cfg.Kubernetes.AppNamespaces[0] != v1.NamespaceAll {
-		watchingNamespace = make(map[string]struct{}, len(cfg.Kubernetes.AppNamespaces))
 		for _, ns := range cfg.Kubernetes.AppNamespaces {
-			watchingNamespace[ns] = struct{}{}
+			watchingNamespace.Store(ns, struct{}{})
 		}
+	}
+
+	// support namespace label-selector
+	for _, labels := range cfg.Kubernetes.NamespaceSelector {
+		labelSlice := strings.Split(labels, "=")
+		watchingLabels[labelSlice[0]] = labelSlice[1]
 	}
 
 	// recorder
@@ -166,9 +179,10 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		cfg:               cfg,
 		apiServer:         apiSrv,
 		apisix:            client,
-		metricsCollector:  metrics.NewPrometheusCollector(podName, podNamespace),
+		MetricsCollector:  metrics.NewPrometheusCollector(),
 		kubeClient:        kubeClient,
 		watchingNamespace: watchingNamespace,
+		watchingLabels:    watchingLabels,
 		secretSSLMap:      new(sync.Map),
 		recorder:          eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
 
@@ -186,6 +200,7 @@ func (c *Controller) initWhenStartLeading() {
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
 	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
 
+	c.namespaceLister = kubeFactory.Core().V1().Namespaces().Lister()
 	c.podLister = kubeFactory.Core().V1().Pods().Lister()
 	c.epLister, c.epInformer = kube.NewEndpointListerAndInformer(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
 	c.svcLister = kubeFactory.Core().V1().Services().Lister()
@@ -196,14 +211,14 @@ func (c *Controller) initWhenStartLeading() {
 	)
 	c.secretLister = kubeFactory.Core().V1().Secrets().Lister()
 	c.apisixRouteLister = kube.NewApisixRouteLister(
-		apisixFactory.Apisix().V1().ApisixRoutes().Lister(),
-		apisixFactory.Apisix().V2alpha1().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2beta1().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2beta2().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
 	)
-	c.apisixUpstreamLister = apisixFactory.Apisix().V1().ApisixUpstreams().Lister()
-	c.apisixTlsLister = apisixFactory.Apisix().V1().ApisixTlses().Lister()
-	c.apisixClusterConfigLister = apisixFactory.Apisix().V2alpha1().ApisixClusterConfigs().Lister()
-	c.apisixConsumerLister = apisixFactory.Apisix().V2alpha1().ApisixConsumers().Lister()
+	c.apisixUpstreamLister = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister()
+	c.apisixTlsLister = apisixFactory.Apisix().V2beta3().ApisixTlses().Lister()
+	c.apisixClusterConfigLister = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister()
+	c.apisixConsumerLister = apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister()
 
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 		PodCache:             c.podCache,
@@ -223,29 +238,31 @@ func (c *Controller) initWhenStartLeading() {
 		ingressInformer = kubeFactory.Extensions().V1beta1().Ingresses().Informer()
 	}
 	switch c.cfg.Kubernetes.ApisixRouteVersion {
-	case config.ApisixRouteV1:
-		apisixRouteInformer = apisixFactory.Apisix().V1().ApisixRoutes().Informer()
-	case config.ApisixRouteV2alpha1:
-		apisixRouteInformer = apisixFactory.Apisix().V2alpha1().ApisixRoutes().Informer()
 	case config.ApisixRouteV2beta1:
 		apisixRouteInformer = apisixFactory.Apisix().V2beta1().ApisixRoutes().Informer()
+	case config.ApisixRouteV2beta2:
+		apisixRouteInformer = apisixFactory.Apisix().V2beta2().ApisixRoutes().Informer()
+	case config.ApisixRouteV2beta3:
+		apisixRouteInformer = apisixFactory.Apisix().V2beta3().ApisixRoutes().Informer()
 	}
 
+	c.namespaceInformer = kubeFactory.Core().V1().Namespaces().Informer()
 	c.podInformer = kubeFactory.Core().V1().Pods().Informer()
 	c.svcInformer = kubeFactory.Core().V1().Services().Informer()
 	c.ingressInformer = ingressInformer
 	c.apisixRouteInformer = apisixRouteInformer
-	c.apisixUpstreamInformer = apisixFactory.Apisix().V1().ApisixUpstreams().Informer()
-	c.apisixClusterConfigInformer = apisixFactory.Apisix().V2alpha1().ApisixClusterConfigs().Informer()
+	c.apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+	c.apisixClusterConfigInformer = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Informer()
 	c.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
-	c.apisixTlsInformer = apisixFactory.Apisix().V1().ApisixTlses().Informer()
-	c.apisixConsumerInformer = apisixFactory.Apisix().V2alpha1().ApisixConsumers().Informer()
+	c.apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
+	c.apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
 
 	if c.cfg.Kubernetes.WatchEndpointSlices {
 		c.endpointSliceController = c.newEndpointSliceController()
 	} else {
 		c.endpointsController = c.newEndpointsController()
 	}
+	c.namespaceController = c.newNamespaceController()
 	c.podController = c.newPodController()
 	c.apisixUpstreamController = c.newApisixUpstreamController()
 	c.ingressController = c.newIngressController()
@@ -293,7 +310,7 @@ func (c *Controller) Run(stop chan struct{}) error {
 		<-stop
 		rootCancel()
 	}()
-	c.metricsCollector.ResetLeader(false)
+	c.MetricsCollector.ResetLeader(false)
 
 	go func() {
 		if err := c.apiServer.Run(rootCtx.Done()); err != nil {
@@ -333,7 +350,7 @@ func (c *Controller) Run(stop chan struct{}) error {
 					zap.String("namespace", c.namespace),
 					zap.String("pod", c.name),
 				)
-				c.metricsCollector.ResetLeader(false)
+				c.MetricsCollector.ResetLeader(false)
 			},
 		},
 		// Set it to false as current leaderelection implementation will report
@@ -375,9 +392,10 @@ func (c *Controller) run(ctx context.Context) {
 	defer c.leaderContextCancelFunc()
 
 	clusterOpts := &apisix.ClusterOptions{
-		Name:     c.cfg.APISIX.DefaultClusterName,
-		AdminKey: c.cfg.APISIX.DefaultClusterAdminKey,
-		BaseURL:  c.cfg.APISIX.DefaultClusterBaseURL,
+		Name:             c.cfg.APISIX.DefaultClusterName,
+		AdminKey:         c.cfg.APISIX.DefaultClusterAdminKey,
+		BaseURL:          c.cfg.APISIX.DefaultClusterBaseURL,
+		MetricsCollector: c.MetricsCollector,
 	}
 	err := c.apisix.AddCluster(ctx, clusterOpts)
 	if err != nil && err != apisix.ErrDuplicatedCluster {
@@ -400,8 +418,22 @@ func (c *Controller) run(ctx context.Context) {
 
 	c.initWhenStartLeading()
 
+	// list namesapce and init watchingNamespace
+	if err := c.initWatchingNamespaceByLabels(ctx); err != nil {
+		ctx.Done()
+		return
+	}
+	// compare resources of k8s with objects of APISIX
+	if err = c.CompareResources(ctx); err != nil {
+		ctx.Done()
+		return
+	}
+
 	c.goAttach(func() {
 		c.checkClusterHealth(ctx, cancelFunc)
+	})
+	c.goAttach(func() {
+		c.namespaceInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
 		c.podInformer.Run(ctx.Done())
@@ -416,6 +448,7 @@ func (c *Controller) run(ctx context.Context) {
 		c.ingressInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
+
 		c.apisixRouteInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
@@ -432,6 +465,9 @@ func (c *Controller) run(ctx context.Context) {
 	})
 	c.goAttach(func() {
 		c.apisixConsumerInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
+		c.namespaceController.run(ctx)
 	})
 	c.goAttach(func() {
 		c.podController.run(ctx)
@@ -465,7 +501,7 @@ func (c *Controller) run(ctx context.Context) {
 		c.apisixConsumerController.run(ctx)
 	})
 
-	c.metricsCollector.ResetLeader(true)
+	c.MetricsCollector.ResetLeader(true)
 
 	log.Infow("controller now is running as leader",
 		zap.String("namespace", c.namespace),
@@ -479,7 +515,7 @@ func (c *Controller) run(ctx context.Context) {
 // namespaceWatching accepts a resource key, getting the namespace part
 // and checking whether the namespace is being watched.
 func (c *Controller) namespaceWatching(key string) (ok bool) {
-	if c.watchingNamespace == nil {
+	if !validation.HasValueInSyncMap(c.watchingNamespace) {
 		ok = true
 		return
 	}
@@ -490,7 +526,7 @@ func (c *Controller) namespaceWatching(key string) (ok bool) {
 		log.Warnf("resource %s was ignored since: %s", key, err)
 		return
 	}
-	_, ok = c.watchingNamespace[ns]
+	_, ok = c.watchingNamespace.Load(ns)
 	return
 }
 
@@ -533,15 +569,15 @@ func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
 		log.Errorf("failed to get service %s/%s: %s", ep.Namespace(), svcName, err)
 		return err
 	}
-	var subsets []configv1.ApisixUpstreamSubset
-	subsets = append(subsets, configv1.ApisixUpstreamSubset{})
+	var subsets []configv2beta3.ApisixUpstreamSubset
+	subsets = append(subsets, configv2beta3.ApisixUpstreamSubset{})
 	au, err := c.apisixUpstreamLister.ApisixUpstreams(namespace).Get(svcName)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Errorf("failed to get ApisixUpstream %s/%s: %s", ep.Namespace(), svcName, err)
 			return err
 		}
-	} else if len(au.Spec.Subsets) > 0 {
+	} else if au.Spec != nil && len(au.Spec.Subsets) > 0 {
 		subsets = append(subsets, au.Spec.Subsets...)
 	}
 
@@ -614,8 +650,13 @@ func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.
 		if err != nil {
 			// Finally failed health check, then give up leader.
 			log.Warnf("failed to check health for default cluster: %s, give up leader", err)
+			c.apiServer.HealthState.Lock()
+			defer c.apiServer.HealthState.Unlock()
+
+			c.apiServer.HealthState.Err = err
 			return
 		}
 		log.Debugf("success check health for default cluster")
+		c.MetricsCollector.IncrCheckClusterHealth(c.name)
 	}
 }

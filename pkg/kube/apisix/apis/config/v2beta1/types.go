@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 )
 
 // +genclient
@@ -45,6 +45,13 @@ type ApisixRouteSpec struct {
 	Stream []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
 }
 
+// UpstreamTimeout is settings for the read, send and connect to the upstream.
+type UpstreamTimeout struct {
+	Connect metav1.Duration `json:"connect,omitempty" yaml:"connect,omitempty"`
+	Send    metav1.Duration `json:"send,omitempty" yaml:"send,omitempty"`
+	Read    metav1.Duration `json:"read,omitempty" yaml:"read,omitempty"`
+}
+
 // ApisixRouteHTTP represents a single route in for HTTP traffic.
 type ApisixRouteHTTP struct {
 	// The rule name, cannot be empty.
@@ -53,16 +60,17 @@ type ApisixRouteHTTP struct {
 	// same URI path (for path matching), route with
 	// higher priority will take effect.
 	Priority int                  `json:"priority,omitempty" yaml:"priority,omitempty"`
+	Timeout  *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	Match    ApisixRouteHTTPMatch `json:"match,omitempty" yaml:"match,omitempty"`
 	// Deprecated: Backend will be removed in the future, use Backends instead.
-	Backend v2alpha1.ApisixRouteHTTPBackend `json:"backend,omitempty" yaml:"backend,omitempty"`
+	Backend v2beta3.ApisixRouteHTTPBackend `json:"backend,omitempty" yaml:"backend,omitempty"`
 	// Backends represents potential backends to proxy after the route
 	// rule matched. When number of backends are more than one, traffic-split
 	// plugin in APISIX will be used to split traffic based on the backend weight.
-	Backends       []v2alpha1.ApisixRouteHTTPBackend `json:"backends,omitempty" yaml:"backends,omitempty"`
-	Websocket      bool                              `json:"websocket" yaml:"websocket"`
-	Plugins        []ApisixRouteHTTPPlugin           `json:"plugins,omitempty" yaml:"plugins,omitempty"`
-	Authentication ApisixRouteAuthentication         `json:"authentication,omitempty" yaml:"authentication,omitempty"`
+	Backends       []v2beta3.ApisixRouteHTTPBackend `json:"backends,omitempty" yaml:"backends,omitempty"`
+	Websocket      bool                             `json:"websocket" yaml:"websocket"`
+	Plugins        []ApisixRouteHTTPPlugin          `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Authentication ApisixRouteAuthentication        `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
 // ApisixRouteHTTPMatch represents the match condition for hitting this route.
@@ -92,7 +100,7 @@ type ApisixRouteHTTPMatch struct {
 	//     value:
 	//       - "127.0.0.1"
 	//       - "10.0.5.11"
-	NginxVars []v2alpha1.ApisixRouteHTTPMatchExpr `json:"exprs,omitempty" yaml:"exprs,omitempty"`
+	NginxVars []v2beta3.ApisixRouteHTTPMatchExpr `json:"exprs,omitempty" yaml:"exprs,omitempty"`
 }
 
 // ApisixRouteHTTPMatchExprSubject describes the route match expression subject.

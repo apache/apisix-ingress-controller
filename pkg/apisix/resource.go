@@ -173,3 +173,13 @@ func (i *item) consumer() (*v1.Consumer, error) {
 	}
 	return &consumer, nil
 }
+
+// pluginConfig decodes item.Value and converts it to v1.PluginConfig.
+func (i *item) pluginConfig() (*v1.PluginConfig, error) {
+	log.Debugf("got pluginConfig: %s", string(i.Value))
+	var pluginConfig v1.PluginConfig
+	if err := json.Unmarshal(i.Value, &pluginConfig); err != nil {
+		return nil, err
+	}
+	return &pluginConfig, nil
+}

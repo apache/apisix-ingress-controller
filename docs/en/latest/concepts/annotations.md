@@ -131,3 +131,43 @@ spec:
             port:
               number: 80
 ```
+
+Path regular expression
+---------
+
+You can use the follow annotations to enable path regular expression
+
+* `k8s.apisix.apache.org/use-regex`
+  
+If this annotations set to `true` and the `PathType` set to `ImplementationSpecific`, the path will be match as regular expression.
+
+For example, the follwing Ingress. Request path with `/api/*/action1` will use `service1` and `/api/*/action2` will be use `service2`
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/use-regex: "true"
+  name: ingress-v1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /api/.*/action1
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: service1
+            port:
+              number: 80
+      - path: /api/.*/action2
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: service2
+            port:
+              number: 80
+```

@@ -26,7 +26,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	configv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v1"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -110,7 +110,7 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			log.Warnf("discard the stale ApisixTls delete event since the %s exists", key)
 			return nil
 		}
-		tls = ev.Tombstone.(*configv1.ApisixTls)
+		tls = ev.Tombstone.(*configv2beta3.ApisixTls)
 	}
 
 	ssl, err := c.controller.translator.TranslateSSL(tls)
@@ -120,7 +120,7 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Any("ApisixTls", tls),
 		)
 		c.controller.recorderEvent(tls, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse)
+		c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 		return err
 	}
 	log.Debugw("got SSL object from ApisixTls",
@@ -143,12 +143,11 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Any("ssl", ssl),
 		)
 		c.controller.recorderEvent(tls, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse)
+		c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 		return err
 	}
-
 	c.controller.recorderEvent(tls, corev1.EventTypeNormal, _resourceSynced, nil)
-	c.controller.recordStatus(tls, _resourceSynced, nil, metav1.ConditionTrue)
+	c.controller.recordStatus(tls, _resourceSynced, nil, metav1.ConditionTrue, tls.GetGeneration())
 	return err
 }
 
@@ -173,6 +172,7 @@ func (c *apisixTlsController) syncSecretSSL(secretKey string, apisixTlsKey strin
 func (c *apisixTlsController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
+		c.controller.MetricsCollector.IncrSyncOperation("TLS", "success")
 		return
 	}
 	log.Warnw("sync ApisixTls failed, will retry",
@@ -180,6 +180,7 @@ func (c *apisixTlsController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
+	c.controller.MetricsCollector.IncrSyncOperation("TLS", "failure")
 }
 
 func (c *apisixTlsController) onAdd(obj interface{}) {
@@ -194,15 +195,17 @@ func (c *apisixTlsController) onAdd(obj interface{}) {
 	log.Debugw("ApisixTls add event arrived",
 		zap.Any("object", obj),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("TLS", "add")
 }
 
 func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
-	oldTls := prev.(*configv1.ApisixTls)
-	newTls := curr.(*configv1.ApisixTls)
+	oldTls := prev.(*configv2beta3.ApisixTls)
+	newTls := curr.(*configv2beta3.ApisixTls)
 	if oldTls.GetResourceVersion() == newTls.GetResourceVersion() {
 		return
 	}
@@ -218,20 +221,22 @@ func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
 		zap.Any("new object", curr),
 		zap.Any("old object", prev),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventUpdate,
 		Object: key,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("TLS", "update")
 }
 
 func (c *apisixTlsController) onDelete(obj interface{}) {
-	tls, ok := obj.(*configv1.ApisixTls)
+	tls, ok := obj.(*configv2beta3.ApisixTls)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			return
 		}
-		tls, ok = tombstone.Obj.(*configv1.ApisixTls)
+		tls, ok = tombstone.Obj.(*configv2beta3.ApisixTls)
 		if !ok {
 			return
 		}
@@ -247,9 +252,11 @@ func (c *apisixTlsController) onDelete(obj interface{}) {
 	log.Debugw("ApisixTls delete event arrived",
 		zap.Any("final state", obj),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:      types.EventDelete,
 		Object:    key,
 		Tombstone: tls,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("TLS", "delete")
 }

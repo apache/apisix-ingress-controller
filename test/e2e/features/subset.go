@@ -19,9 +19,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("service subset", func() {
@@ -31,7 +32,7 @@ var _ = ginkgo.Describe("service subset", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("subset not found", func() {
@@ -39,7 +40,7 @@ var _ = ginkgo.Describe("service subset", func() {
 		assert.Nil(ginkgo.GinkgoT(), s.WaitAllHTTPBINPodsAvailable(), "waiting for all httpbin pods ready")
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -51,8 +52,8 @@ spec:
       - httpbin.com
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
       subset: not_exist
 `, backendSvc, backendSvcPort[0])
@@ -73,7 +74,7 @@ spec:
 	ginkgo.It("subset with bad labels", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -88,7 +89,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 		time.Sleep(1 * time.Second)
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -100,8 +101,8 @@ spec:
       - httpbin.com
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
       subset: aa
 `, backendSvc, backendSvcPort[0])
@@ -119,13 +120,13 @@ spec:
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusServiceUnavailable).Body().Raw()
 	})
 
-	ginkgo.It("subset with good labels (all)", func() {
+	ginkgo.It("subset with good labels - all", func() {
 		assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(2), "scaling number of httpbin instances")
 		assert.Nil(ginkgo.GinkgoT(), s.WaitAllHTTPBINPodsAvailable(), "waiting for all httpbin pods ready")
 
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -139,7 +140,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 		time.Sleep(1 * time.Second)
 		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -151,14 +152,15 @@ spec:
       - httpbin.com
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
       subset: all
 `, backendSvc, backendSvcPort[0])
 		err = s.CreateResourceFromString(ar)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ApisixRoute")
 
+		time.Sleep(6 * time.Second)
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "checking number of routes")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
 

@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -29,7 +30,8 @@ func TestAddCluster(t *testing.T) {
 	assert.Nil(t, err)
 
 	err = apisix.AddCluster(context.Background(), &ClusterOptions{
-		BaseURL: "http://service1:9080/apisix/admin",
+		BaseURL:          "http://service1:9080/apisix/admin",
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	assert.Nil(t, err)
 
@@ -37,14 +39,16 @@ func TestAddCluster(t *testing.T) {
 	assert.Len(t, clusters, 1)
 
 	err = apisix.AddCluster(context.Background(), &ClusterOptions{
-		Name:    "service2",
-		BaseURL: "http://service2:9080/apisix/admin",
+		Name:             "service2",
+		BaseURL:          "http://service2:9080/apisix/admin",
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	assert.Nil(t, err)
 
 	err = apisix.AddCluster(context.Background(), &ClusterOptions{
-		Name:     "service2",
-		AdminKey: "http://service3:9080/apisix/admin",
+		Name:             "service2",
+		AdminKey:         "http://service3:9080/apisix/admin",
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	assert.Equal(t, ErrDuplicatedCluster, err)
 
@@ -57,7 +61,8 @@ func TestNonExistentCluster(t *testing.T) {
 	assert.Nil(t, err)
 
 	err = apisix.AddCluster(context.Background(), &ClusterOptions{
-		BaseURL: "http://service1:9080/apisix/admin",
+		BaseURL:          "http://service1:9080/apisix/admin",
+		MetricsCollector: metrics.NewPrometheusCollector(),
 	})
 	assert.Nil(t, err)
 
