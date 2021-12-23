@@ -347,6 +347,11 @@ func (in *ApisixUpstreamConfig) DeepCopyInto(out *ApisixUpstreamConfig) {
 		*out = new(LoadBalancer)
 		**out = **in
 	}
+	if in.Retries != nil {
+		in, out := &in.Retries, &out.Retries
+		*out = new(int)
+		**out = **in
+	}
 	if in.Timeout != nil {
 		in, out := &in.Timeout, &out.Timeout
 		*out = new(UpstreamTimeout)
@@ -356,6 +361,11 @@ func (in *ApisixUpstreamConfig) DeepCopyInto(out *ApisixUpstreamConfig) {
 		in, out := &in.HealthCheck, &out.HealthCheck
 		*out = new(HealthCheck)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.TLSSecret != nil {
+		in, out := &in.TLSSecret, &out.TLSSecret
+		*out = new(ApisixSecret)
+		**out = **in
 	}
 	if in.Subsets != nil {
 		in, out := &in.Subsets, &out.Subsets
@@ -610,6 +620,11 @@ func (in *PassiveHealthCheckUnhealthy) DeepCopy() *PassiveHealthCheckUnhealthy {
 func (in *Path) DeepCopyInto(out *Path) {
 	*out = *in
 	out.Backend = in.Backend
+	if in.Timeout != nil {
+		in, out := &in.Timeout, &out.Timeout
+		*out = new(UpstreamTimeout)
+		**out = **in
+	}
 	if in.Plugins != nil {
 		in, out := &in.Plugins, &out.Plugins
 		*out = make([]Plugin, len(*in))

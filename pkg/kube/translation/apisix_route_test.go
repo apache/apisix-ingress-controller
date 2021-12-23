@@ -29,9 +29,10 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
+	_const "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
 )
 
 func TestRouteMatchExpr(t *testing.T) {
@@ -40,88 +41,88 @@ func TestRouteMatchExpr(t *testing.T) {
 	value2 := "gzip"
 	value3 := "13"
 	value4 := ".*\\.php"
-	exprs := []configv2alpha1.ApisixRouteHTTPMatchExpr{
+	exprs := []configv2beta3.ApisixRouteHTTPMatchExpr{
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeHeader,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeHeader,
 				Name:  "Content-Type",
 			},
-			Op:    configv2alpha1.OpEqual,
+			Op:    _const.OpEqual,
 			Value: &value1,
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeHeader,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeHeader,
 				Name:  "Content-Encoding",
 			},
-			Op:    configv2alpha1.OpNotEqual,
+			Op:    _const.OpNotEqual,
 			Value: &value2,
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeQuery,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
-			Op:    configv2alpha1.OpGreaterThan,
+			Op:    _const.OpGreaterThan,
 			Value: &value3,
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeQuery,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
-			Op:    configv2alpha1.OpLessThan,
+			Op:    _const.OpLessThan,
 			Value: &value3,
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeQuery,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
-			Op:    configv2alpha1.OpRegexMatch,
+			Op:    _const.OpRegexMatch,
 			Value: &value4,
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeQuery,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
-			Op:    configv2alpha1.OpRegexMatchCaseInsensitive,
+			Op:    _const.OpRegexMatchCaseInsensitive,
 			Value: &value4,
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeQuery,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
-			Op:    configv2alpha1.OpRegexNotMatch,
+			Op:    _const.OpRegexNotMatch,
 			Value: &value4,
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeQuery,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
-			Op:    configv2alpha1.OpRegexNotMatchCaseInsensitive,
+			Op:    _const.OpRegexNotMatchCaseInsensitive,
 			Value: &value4,
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeCookie,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeCookie,
 				Name:  "domain",
 			},
-			Op: configv2alpha1.OpIn,
+			Op: _const.OpIn,
 			Set: []string{
 				"a.com",
 				"b.com",
 			},
 		},
 		{
-			Subject: configv2alpha1.ApisixRouteHTTPMatchExprSubject{
-				Scope: configv2alpha1.ScopeCookie,
+			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+				Scope: _const.ScopeCookie,
 				Name:  "X-Foo",
 			},
-			Op: configv2alpha1.OpIn,
+			Op: _const.OpIn,
 			Set: []string{
 				"foo.com",
 			},
@@ -132,56 +133,56 @@ func TestRouteMatchExpr(t *testing.T) {
 	assert.Len(t, results, 10)
 
 	assert.Len(t, results[0], 3)
-	assert.Equal(t, results[0][0].StrVal, "http_content_type")
-	assert.Equal(t, results[0][1].StrVal, "==")
-	assert.Equal(t, results[0][2].StrVal, "text/plain")
+	assert.Equal(t, "http_content_type", results[0][0].StrVal)
+	assert.Equal(t, "==", results[0][1].StrVal)
+	assert.Equal(t, "text/plain", results[0][2].StrVal)
 
 	assert.Len(t, results[1], 3)
-	assert.Equal(t, results[1][0].StrVal, "http_content_encoding")
-	assert.Equal(t, results[1][1].StrVal, "~=")
-	assert.Equal(t, results[1][2].StrVal, "gzip")
+	assert.Equal(t, "http_content_encoding", results[1][0].StrVal)
+	assert.Equal(t, "~=", results[1][1].StrVal)
+	assert.Equal(t, "gzip", results[1][2].StrVal)
 
 	assert.Len(t, results[2], 3)
-	assert.Equal(t, results[2][0].StrVal, "arg_id")
-	assert.Equal(t, results[2][1].StrVal, ">")
-	assert.Equal(t, results[2][2].StrVal, "13")
+	assert.Equal(t, "arg_id", results[2][0].StrVal)
+	assert.Equal(t, ">", results[2][1].StrVal)
+	assert.Equal(t, "13", results[2][2].StrVal)
 
 	assert.Len(t, results[3], 3)
-	assert.Equal(t, results[3][0].StrVal, "arg_id")
-	assert.Equal(t, results[3][1].StrVal, "<")
-	assert.Equal(t, results[3][2].StrVal, "13")
+	assert.Equal(t, "arg_id", results[3][0].StrVal)
+	assert.Equal(t, "<", results[3][1].StrVal)
+	assert.Equal(t, "13", results[3][2].StrVal)
 
 	assert.Len(t, results[4], 3)
-	assert.Equal(t, results[4][0].StrVal, "arg_id")
-	assert.Equal(t, results[4][1].StrVal, "~~")
-	assert.Equal(t, results[4][2].StrVal, ".*\\.php")
+	assert.Equal(t, "arg_id", results[4][0].StrVal)
+	assert.Equal(t, "~~", results[4][1].StrVal)
+	assert.Equal(t, ".*\\.php", results[4][2].StrVal)
 
 	assert.Len(t, results[5], 3)
-	assert.Equal(t, results[5][0].StrVal, "arg_id")
-	assert.Equal(t, results[5][1].StrVal, "~*")
-	assert.Equal(t, results[5][2].StrVal, ".*\\.php")
+	assert.Equal(t, "arg_id", results[5][0].StrVal)
+	assert.Equal(t, "~*", results[5][1].StrVal)
+	assert.Equal(t, ".*\\.php", results[5][2].StrVal)
 
 	assert.Len(t, results[6], 4)
-	assert.Equal(t, results[6][0].StrVal, "arg_id")
-	assert.Equal(t, results[6][1].StrVal, "!")
-	assert.Equal(t, results[6][2].StrVal, "~~")
-	assert.Equal(t, results[6][3].StrVal, ".*\\.php")
+	assert.Equal(t, "arg_id", results[6][0].StrVal)
+	assert.Equal(t, "!", results[6][1].StrVal)
+	assert.Equal(t, "~~", results[6][2].StrVal)
+	assert.Equal(t, ".*\\.php", results[6][3].StrVal)
 
 	assert.Len(t, results[7], 4)
-	assert.Equal(t, results[7][0].StrVal, "arg_id")
-	assert.Equal(t, results[7][1].StrVal, "!")
-	assert.Equal(t, results[7][2].StrVal, "~*")
-	assert.Equal(t, results[7][3].StrVal, ".*\\.php")
+	assert.Equal(t, "arg_id", results[7][0].StrVal)
+	assert.Equal(t, "!", results[7][1].StrVal)
+	assert.Equal(t, "~*", results[7][2].StrVal)
+	assert.Equal(t, ".*\\.php", results[7][3].StrVal)
 
 	assert.Len(t, results[8], 3)
-	assert.Equal(t, results[8][0].StrVal, "cookie_domain")
-	assert.Equal(t, results[8][1].StrVal, "in")
-	assert.Equal(t, results[8][2].SliceVal, []string{"a.com", "b.com"})
+	assert.Equal(t, "cookie_domain", results[8][0].StrVal)
+	assert.Equal(t, "in", results[8][1].StrVal)
+	assert.Equal(t, []string{"a.com", "b.com"}, results[8][2].SliceVal)
 
 	assert.Len(t, results[9], 3)
-	assert.Equal(t, results[9][0].StrVal, "cookie_X-Foo")
-	assert.Equal(t, results[9][1].StrVal, "in")
-	assert.Equal(t, results[9][2].SliceVal, []string{"foo.com"})
+	assert.Equal(t, "cookie_X-Foo", results[9][0].StrVal)
+	assert.Equal(t, "in", results[9][1].StrVal)
+	assert.Equal(t, []string{"foo.com"}, results[9][2].SliceVal)
 }
 
 func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
@@ -255,7 +256,7 @@ func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 		&TranslatorOptions{
 			EndpointLister:       epLister,
 			ServiceLister:        svcLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V1().ApisixUpstreams().Lister(),
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		},
 	}
 
@@ -280,38 +281,42 @@ func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 	<-processCh
 	<-processCh
 
-	ar := &configv2alpha1.ApisixRoute{
+	ar := &configv2beta3.ApisixRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ar",
 			Namespace: "test",
 		},
-		Spec: &configv2alpha1.ApisixRouteSpec{
-			HTTP: []*configv2alpha1.ApisixRouteHTTP{
+		Spec: configv2beta3.ApisixRouteSpec{
+			HTTP: []configv2beta3.ApisixRouteHTTP{
 				{
 					Name: "rule1",
-					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+					Match: configv2beta3.ApisixRouteHTTPMatch{
 						Paths: []string{
 							"/*",
 						},
 					},
-					Backend: &configv2alpha1.ApisixRouteHTTPBackend{
-						ServiceName: "svc",
-						ServicePort: intstr.IntOrString{
-							IntVal: 80,
+					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc",
+							ServicePort: intstr.IntOrString{
+								IntVal: 80,
+							},
 						},
 					},
 				},
 				{
 					Name: "rule1",
-					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+					Match: configv2beta3.ApisixRouteHTTPMatch{
 						Paths: []string{
 							"/*",
 						},
 					},
-					Backend: &configv2alpha1.ApisixRouteHTTPBackend{
-						ServiceName: "svc",
-						ServicePort: intstr.IntOrString{
-							IntVal: 80,
+					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc",
+							ServicePort: intstr.IntOrString{
+								IntVal: 80,
+							},
 						},
 					},
 				},
@@ -319,47 +324,51 @@ func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 		},
 	}
 
-	_, err = tr.TranslateRouteV2alpha1(ar)
+	_, err = tr.TranslateRouteV2beta3(ar)
 	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), "duplicated route rule name")
+	assert.Equal(t, "duplicated route rule name", err.Error())
 }
 
 func TestTranslateApisixRouteV2alpha1NotStrictly(t *testing.T) {
 	tr := &translator{
 		&TranslatorOptions{},
 	}
-	ar := &configv2alpha1.ApisixRoute{
+	ar := &configv2beta3.ApisixRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ar",
 			Namespace: "test",
 		},
-		Spec: &configv2alpha1.ApisixRouteSpec{
-			HTTP: []*configv2alpha1.ApisixRouteHTTP{
+		Spec: configv2beta3.ApisixRouteSpec{
+			HTTP: []configv2beta3.ApisixRouteHTTP{
 				{
 					Name: "rule1",
-					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+					Match: configv2beta3.ApisixRouteHTTPMatch{
 						Paths: []string{
 							"/*",
 						},
 					},
-					Backend: &configv2alpha1.ApisixRouteHTTPBackend{
-						ServiceName: "svc1",
-						ServicePort: intstr.IntOrString{
-							IntVal: 81,
+					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc1",
+							ServicePort: intstr.IntOrString{
+								IntVal: 81,
+							},
 						},
 					},
 				},
 				{
 					Name: "rule2",
-					Match: &configv2alpha1.ApisixRouteHTTPMatch{
+					Match: configv2beta3.ApisixRouteHTTPMatch{
 						Paths: []string{
 							"/*",
 						},
 					},
-					Backend: &configv2alpha1.ApisixRouteHTTPBackend{
-						ServiceName: "svc2",
-						ServicePort: intstr.IntOrString{
-							IntVal: 82,
+					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc2",
+							ServicePort: intstr.IntOrString{
+								IntVal: 82,
+							},
 						},
 					},
 				},
@@ -367,19 +376,19 @@ func TestTranslateApisixRouteV2alpha1NotStrictly(t *testing.T) {
 		},
 	}
 
-	tx, err := tr.TranslateRouteV2alpha1NotStrictly(ar)
+	tx, err := tr.TranslateRouteV2beta3NotStrictly(ar)
 	fmt.Println(tx)
 	assert.NoError(t, err, "translateRoute not strictly should be no error")
-	assert.Equal(t, len(tx.Routes), 2, "There should be 2 routes")
-	assert.Equal(t, len(tx.Upstreams), 2, "There should be 2 upstreams")
-	assert.Equal(t, tx.Routes[0].Name, "test_ar_rule1", "route1 name error")
-	assert.Equal(t, tx.Routes[1].Name, "test_ar_rule2", "route2 name error")
-	assert.Equal(t, tx.Upstreams[0].Name, "test_svc1_81", "upstream1 name error")
-	assert.Equal(t, tx.Upstreams[1].Name, "test_svc2_82", "upstream2 name error")
+	assert.Equal(t, 2, len(tx.Routes), "There should be 2 routes")
+	assert.Equal(t, 2, len(tx.Upstreams), "There should be 2 upstreams")
+	assert.Equal(t, "test_ar_rule1", tx.Routes[0].Name, "route1 name error")
+	assert.Equal(t, "test_ar_rule2", tx.Routes[1].Name, "route2 name error")
+	assert.Equal(t, "test_svc1_81", tx.Upstreams[0].Name, "upstream1 name error")
+	assert.Equal(t, "test_svc2_82", tx.Upstreams[1].Name, "upstream2 name error")
 
-	assert.Equal(t, tx.Routes[0].ID, id.GenID("test_ar_rule1"), "route1 id error")
-	assert.Equal(t, tx.Routes[1].ID, id.GenID("test_ar_rule2"), "route2 id error")
-	assert.Equal(t, tx.Upstreams[0].ID, id.GenID("test_svc1_81"), "upstream1 id error")
-	assert.Equal(t, tx.Upstreams[1].ID, id.GenID("test_svc2_82"), "upstream2 id error")
+	assert.Equal(t, id.GenID("test_ar_rule1"), tx.Routes[0].ID, "route1 id error")
+	assert.Equal(t, id.GenID("test_ar_rule2"), tx.Routes[1].ID, "route2 id error")
+	assert.Equal(t, id.GenID("test_svc1_81"), tx.Upstreams[0].ID, "upstream1 id error")
+	assert.Equal(t, id.GenID("test_svc2_82"), tx.Upstreams[1].ID, "upstream2 id error")
 
 }

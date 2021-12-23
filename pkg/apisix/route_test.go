@@ -30,6 +30,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -172,10 +173,11 @@ func TestRouteClient(t *testing.T) {
 	closedCh := make(chan struct{})
 	close(closedCh)
 	cli := newRouteClient(&cluster{
-		baseURL:     u.String(),
-		cli:         http.DefaultClient,
-		cache:       &dummyCache{},
-		cacheSynced: closedCh,
+		baseURL:          u.String(),
+		cli:              http.DefaultClient,
+		cache:            &dummyCache{},
+		cacheSynced:      closedCh,
+		metricsCollector: metrics.NewPrometheusCollector(),
 	})
 
 	// Create
@@ -189,7 +191,7 @@ func TestRouteClient(t *testing.T) {
 		UpstreamId: "1",
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, obj.ID, "1")
+	assert.Equal(t, "1", obj.ID)
 
 	obj, err = cli.Create(context.Background(), &v1.Route{
 		Metadata: v1.Metadata{
@@ -201,14 +203,14 @@ func TestRouteClient(t *testing.T) {
 		UpstreamId: "1",
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, obj.ID, "2")
+	assert.Equal(t, "2", obj.ID)
 
 	// List
 	objs, err := cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, 2)
-	assert.Equal(t, objs[0].ID, "1")
-	assert.Equal(t, objs[1].ID, "2")
+	assert.Equal(t, "1", objs[0].ID)
+	assert.Equal(t, "2", objs[1].ID)
 
 	// Delete then List
 	assert.Nil(t, cli.Delete(context.Background(), objs[0]))

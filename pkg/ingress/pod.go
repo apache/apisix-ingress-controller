@@ -80,6 +80,8 @@ func (c *podController) onAdd(obj interface{}) {
 			)
 		}
 	}
+
+	c.controller.MetricsCollector.IncrEvents("pod", "add")
 }
 
 func (c *podController) onUpdate(_, cur interface{}) {
@@ -89,7 +91,8 @@ func (c *podController) onUpdate(_, cur interface{}) {
 		return
 	}
 	log.Debugw("pod update event arrived",
-		zap.Any("final state", pod),
+		zap.Any("pod namespace", pod.Namespace),
+		zap.Any("pod name", pod.Name),
 	)
 	if pod.DeletionTimestamp != nil {
 		if err := c.controller.podCache.Delete(pod); err != nil {
@@ -107,6 +110,8 @@ func (c *podController) onUpdate(_, cur interface{}) {
 			)
 		}
 	}
+
+	c.controller.MetricsCollector.IncrEvents("pod", "update")
 }
 
 func (c *podController) onDelete(obj interface{}) {
@@ -132,4 +137,6 @@ func (c *podController) onDelete(obj interface{}) {
 			zap.Any("pod", pod),
 		)
 	}
+
+	c.controller.MetricsCollector.IncrEvents("pod", "delete")
 }

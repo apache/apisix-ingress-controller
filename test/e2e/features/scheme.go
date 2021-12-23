@@ -16,12 +16,15 @@
 package features
 
 import (
+	"fmt"
+	"io/ioutil"
 	"time"
 
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+	"github.com/apache/apisix-ingress-controller/test/e2e/testbackend/client"
 )
 
 var _ = ginkgo.Describe("choose scheme", func() {
@@ -31,7 +34,7 @@ var _ = ginkgo.Describe("choose scheme", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("grpc", func() {
@@ -62,7 +65,7 @@ spec:
 `)
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(`
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: grpc-server-service
@@ -72,7 +75,7 @@ spec:
       scheme: grpc
 `))
 		err = s.CreateResourceFromString(`
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: grpc-route
@@ -84,8 +87,8 @@ spec:
       - grpc.local
       paths:
       - /helloworld.Greeter/SayHello
-    backend:
-       serviceName: grpc-server-service
+    backends:
+    -  serviceName: grpc-server-service
        servicePort: 50051
 `)
 		assert.Nil(ginkgo.GinkgoT(), err)
@@ -118,5 +121,69 @@ spec:
 		//resp, err := cli.SayHello(context.TODO(), hr)
 		//assert.Nil(ginkgo.GinkgoT(), err)
 		//assert.Equal(ginkgo.GinkgoT(), resp.Message, "Alex")
+	})
+
+	ginkgo.It("grpcs", func() {
+		grpcSecret := `grpc-secret`
+		f, err := ioutil.ReadFile("testbackend/tls/server.pem")
+		assert.NoError(ginkgo.GinkgoT(), err, "read server cert")
+		serverCert := string(f)
+
+		f, err = ioutil.ReadFile("testbackend/tls/server.key")
+		assert.NoError(ginkgo.GinkgoT(), err, "read server key")
+		serverKey := string(f)
+
+		err = s.NewSecret(grpcSecret, serverCert, serverKey)
+		assert.NoError(ginkgo.GinkgoT(), err, "create server cert secret")
+
+		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixUpstream
+metadata:
+  name: test-backend-service-e2e-test
+spec:
+  scheme: grpcs
+`))
+
+		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(`
+apiVersion: apisix.apache.org/v2beta2
+kind: ApisixRoute
+metadata:
+ name: grpcs-route
+spec:
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - e2e.apisix.local
+      paths:
+      - /helloworld.Greeter/SayHello
+    backends:
+    -  serviceName: test-backend-service-e2e-test
+       servicePort: 50052
+`))
+
+		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixTls
+metadata:
+  name: grpc-secret
+spec:
+  hosts:
+    - "e2e.apisix.local"
+  secret:
+    name: grpc-secret
+    namespace: %s
+`, s.Namespace())))
+
+		time.Sleep(2 * time.Second)
+		ups, err := s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), ups, 1)
+		assert.Equal(ginkgo.GinkgoT(), ups[0].Scheme, "grpcs")
+
+		ca, err := ioutil.ReadFile("testbackend/tls/ca.pem")
+		assert.NoError(ginkgo.GinkgoT(), err, "read ca cert")
+		assert.NoError(ginkgo.GinkgoT(), client.RequestHello(s.GetAPISIXHTTPSEndpoint(), ca), "request apisix using grpc protocol")
 	})
 })

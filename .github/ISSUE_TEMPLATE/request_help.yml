@@ -1,0 +1,31 @@
+name: "Request help"
+description: Please use this template for requesting help.
+title: "request help: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The more information you fill in, the better we can help you.
+
+        - Please use English on public channel.
+        - Encourage using words rather than pictures to describe errors.
+        - Encourage pre-searching with keywords in the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Issue description
+      description: Provide a clear and concise description of the help you need.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Request help without environment information will be ignored or closed.
+      value: |
+        - your apisix-ingress-controller version (output of apisix-ingress-controller version --long):
+        - your Kubernetes cluster version (output of kubectl version):
+        - if you run apisix-ingress-controller in Bare-metal environment, also show your OS version (uname -a):
+    validations:
+      required: true

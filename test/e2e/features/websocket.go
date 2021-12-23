@@ -19,10 +19,11 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	"github.com/gorilla/websocket"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("websocket", func() {
@@ -32,7 +33,7 @@ var _ = ginkgo.Describe("websocket", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2alpha1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("sanity", func() {
@@ -68,7 +69,7 @@ spec:
 		time.Sleep(5 * time.Second)
 
 		ar := `
-apiVersion: apisix.apache.org/v2alpha1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route

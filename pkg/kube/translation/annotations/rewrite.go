@@ -21,9 +21,9 @@ import (
 )
 
 const (
-	_rewriteTarget              = "k8s.apisix.apache.org/rewrite-target"
-	_rewriteTargetRegex         = "k8s.apisix.apache.org/rewrite-target-regex"
-	_rewriteTargetRegexTemplate = "k8s.apisix.apache.org/rewrite-target-regex-template"
+	_rewriteTarget              = AnnotationsPrefix + "rewrite-target"
+	_rewriteTargetRegex         = AnnotationsPrefix + "rewrite-target-regex"
+	_rewriteTargetRegexTemplate = AnnotationsPrefix + "rewrite-target-regex-template"
 )
 
 type rewrite struct{}

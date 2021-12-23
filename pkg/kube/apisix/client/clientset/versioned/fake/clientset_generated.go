@@ -19,12 +19,12 @@ package fake
 
 import (
 	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v1"
-	fakeapisixv1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v1/fake"
-	apisixv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2alpha1"
-	fakeapisixv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2alpha1/fake"
 	apisixv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta1"
 	fakeapisixv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta1/fake"
+	apisixv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta2"
+	fakeapisixv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta2/fake"
+	apisixv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta3"
+	fakeapisixv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta3/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -79,14 +79,14 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 
 var _ clientset.Interface = &Clientset{}
 
-// ApisixV1 retrieves the ApisixV1Client
-func (c *Clientset) ApisixV1() apisixv1.ApisixV1Interface {
-	return &fakeapisixv1.FakeApisixV1{Fake: &c.Fake}
+// ApisixV2beta3 retrieves the ApisixV2beta3Client
+func (c *Clientset) ApisixV2beta3() apisixv2beta3.ApisixV2beta3Interface {
+	return &fakeapisixv2beta3.FakeApisixV2beta3{Fake: &c.Fake}
 }
 
-// ApisixV2alpha1 retrieves the ApisixV2alpha1Client
-func (c *Clientset) ApisixV2alpha1() apisixv2alpha1.ApisixV2alpha1Interface {
-	return &fakeapisixv2alpha1.FakeApisixV2alpha1{Fake: &c.Fake}
+// ApisixV2beta2 retrieves the ApisixV2beta2Client
+func (c *Clientset) ApisixV2beta2() apisixv2beta2.ApisixV2beta2Interface {
+	return &fakeapisixv2beta2.FakeApisixV2beta2{Fake: &c.Fake}
 }
 
 // ApisixV2beta1 retrieves the ApisixV2beta1Client

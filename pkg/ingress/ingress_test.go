@@ -53,7 +53,7 @@ func TestIsIngressEffective(t *testing.T) {
 	ing, err := kube.NewIngress(ingV1)
 	assert.Nil(t, err)
 	// Annotations takes precedence.
-	assert.Equal(t, c.isIngressEffective(ing), true)
+	assert.Equal(t, true, c.isIngressEffective(ing))
 
 	ingV1 = &networkingv1.Ingress{
 		TypeMeta: metav1.TypeMeta{
@@ -71,7 +71,7 @@ func TestIsIngressEffective(t *testing.T) {
 	ing, err = kube.NewIngress(ingV1)
 	assert.Nil(t, err)
 	// Spec.IngressClassName takes the precedence.
-	assert.Equal(t, c.isIngressEffective(ing), false)
+	assert.Equal(t, false, c.isIngressEffective(ing))
 
 	ingV1beta1 := &networkingv1beta1.Ingress{
 		TypeMeta: metav1.TypeMeta{
@@ -92,7 +92,7 @@ func TestIsIngressEffective(t *testing.T) {
 	ing, err = kube.NewIngress(ingV1beta1)
 	assert.Nil(t, err)
 	// Annotations takes precedence.
-	assert.Equal(t, c.isIngressEffective(ing), true)
+	assert.Equal(t, true, c.isIngressEffective(ing))
 
 	ingV1beta1 = &networkingv1beta1.Ingress{
 		TypeMeta: metav1.TypeMeta{
@@ -110,7 +110,7 @@ func TestIsIngressEffective(t *testing.T) {
 	ing, err = kube.NewIngress(ingV1beta1)
 	assert.Nil(t, err)
 	// Spec.IngressClassName takes the precedence.
-	assert.Equal(t, c.isIngressEffective(ing), false)
+	assert.Equal(t, false, c.isIngressEffective(ing))
 
 	ingV1 = &networkingv1.Ingress{
 		TypeMeta: metav1.TypeMeta{
@@ -128,7 +128,7 @@ func TestIsIngressEffective(t *testing.T) {
 	ing, err = kube.NewIngress(ingV1)
 	assert.Nil(t, err)
 	// Spec.IngressClassName takes the precedence.
-	assert.Equal(t, c.isIngressEffective(ing), false)
+	assert.Equal(t, false, c.isIngressEffective(ing))
 
 	ingExtV1beta1 := &extensionsv1beta1.Ingress{
 		TypeMeta: metav1.TypeMeta{
@@ -149,7 +149,7 @@ func TestIsIngressEffective(t *testing.T) {
 	ing, err = kube.NewIngress(ingExtV1beta1)
 	assert.Nil(t, err)
 	// Annotations takes precedence.
-	assert.Equal(t, c.isIngressEffective(ing), true)
+	assert.Equal(t, true, c.isIngressEffective(ing))
 
 	ingExtV1beta1 = &extensionsv1beta1.Ingress{
 		TypeMeta: metav1.TypeMeta{
@@ -167,5 +167,5 @@ func TestIsIngressEffective(t *testing.T) {
 	ing, err = kube.NewIngress(ingExtV1beta1)
 	assert.Nil(t, err)
 	// Spec.IngressClassName takes the precedence.
-	assert.Equal(t, c.isIngressEffective(ing), false)
+	assert.Equal(t, false, c.isIngressEffective(ing))
 }

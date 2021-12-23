@@ -25,7 +25,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	configv2alpha1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2alpha1"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
@@ -106,7 +106,7 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 			log.Warnf("discard the stale ApisixConsumer delete event since the %s exists", key)
 			return nil
 		}
-		ac = ev.Tombstone.(*configv2alpha1.ApisixConsumer)
+		ac = ev.Tombstone.(*configv2beta3.ApisixConsumer)
 	}
 
 	consumer, err := c.controller.translator.TranslateApisixConsumer(ac)
@@ -116,7 +116,7 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 			zap.Any("ApisixConsumer", ac),
 		)
 		c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse)
+		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 		return err
 	}
 	log.Debug("got consumer object from ApisixConsumer",
@@ -130,7 +130,7 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 			zap.Any("consumer", consumer),
 		)
 		c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse)
+		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 		return err
 	}
 
@@ -141,6 +141,7 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 func (c *apisixConsumerController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
+		c.controller.MetricsCollector.IncrSyncOperation("consumer", "success")
 		return
 	}
 	log.Warnw("sync ApisixConsumer failed, will retry",
@@ -148,6 +149,7 @@ func (c *apisixConsumerController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
+	c.controller.MetricsCollector.IncrSyncOperation("consumer", "failure")
 }
 
 func (c *apisixConsumerController) onAdd(obj interface{}) {
@@ -163,15 +165,17 @@ func (c *apisixConsumerController) onAdd(obj interface{}) {
 		zap.Any("object", obj),
 	)
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("consumer", "add")
 }
 
 func (c *apisixConsumerController) onUpdate(oldObj, newObj interface{}) {
-	prev := oldObj.(*configv2alpha1.ApisixConsumer)
-	curr := newObj.(*configv2alpha1.ApisixConsumer)
+	prev := oldObj.(*configv2beta3.ApisixConsumer)
+	curr := newObj.(*configv2beta3.ApisixConsumer)
 	if prev.ResourceVersion >= curr.ResourceVersion {
 		return
 	}
@@ -188,20 +192,22 @@ func (c *apisixConsumerController) onUpdate(oldObj, newObj interface{}) {
 		zap.Any("old object", prev),
 	)
 
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:   types.EventUpdate,
 		Object: key,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("consumer", "update")
 }
 
 func (c *apisixConsumerController) onDelete(obj interface{}) {
-	ac, ok := obj.(*configv2alpha1.ApisixConsumer)
+	ac, ok := obj.(*configv2beta3.ApisixConsumer)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			return
 		}
-		ac = tombstone.Obj.(*configv2alpha1.ApisixConsumer)
+		ac = tombstone.Obj.(*configv2beta3.ApisixConsumer)
 	}
 
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
@@ -215,9 +221,11 @@ func (c *apisixConsumerController) onDelete(obj interface{}) {
 	log.Debugw("ApisixConsumer delete event arrived",
 		zap.Any("final state", ac),
 	)
-	c.workqueue.AddRateLimited(&types.Event{
+	c.workqueue.Add(&types.Event{
 		Type:      types.EventDelete,
 		Object:    key,
 		Tombstone: ac,
 	})
+
+	c.controller.MetricsCollector.IncrEvents("consumer", "delete")
 }

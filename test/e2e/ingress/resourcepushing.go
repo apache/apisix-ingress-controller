@@ -32,13 +32,13 @@ var _ = ginkgo.Describe("ApisixRoute Testing", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta1",
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("create and then scale upstream pods to 2 ", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -50,8 +50,8 @@ spec:
       - httpbin.com
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
@@ -74,7 +74,7 @@ spec:
 	ginkgo.It("create, update, then remove", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -86,8 +86,8 @@ spec:
       - httpbin.com
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
@@ -101,7 +101,7 @@ spec:
 
 		// update
 		apisixRoute = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -119,8 +119,8 @@ spec:
           name: X-Foo
         op: Equal
         value: "barbaz"
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
@@ -153,7 +153,7 @@ spec:
 	ginkgo.It("create, update, remove k8s service, remove ApisixRoute", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -165,8 +165,8 @@ spec:
       - httpbin.com
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
@@ -180,7 +180,7 @@ spec:
 
 		// update
 		apisixRoute = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -198,8 +198,8 @@ spec:
           name: X-Foo
         op: Equal
         value: "barbaz"
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
@@ -216,7 +216,7 @@ spec:
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").WithHeader("X-Foo", "barbaz").Expect().Status(http.StatusOK)
 		// remove k8s service first
-		assert.Nil(ginkgo.GinkgoT(), s.DeleteHTTPBINService())
+		// assert.Nil(ginkgo.GinkgoT(), s.DeleteHTTPBINService())
 		// remove
 		assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
 		// TODO When ingress controller can feedback the lifecycle of CRDs to the
@@ -233,7 +233,7 @@ spec:
 	ginkgo.It("change route rule name", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -245,8 +245,8 @@ spec:
       - httpbin.com
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
@@ -265,7 +265,7 @@ spec:
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK)
 
 		apisixRoute = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -277,8 +277,8 @@ spec:
       - httpbin.com
       paths:
       - /headers
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
@@ -308,7 +308,7 @@ spec:
 	ginkgo.It("same route rule name between two ApisixRoute objects", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -320,11 +320,11 @@ spec:
       - httpbin.com
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 ---
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route-2
@@ -336,8 +336,8 @@ spec:
       - httpbin.com
       paths:
       - /headers
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0], backendSvc, backendSvcPort[0])
 
@@ -359,7 +359,7 @@ spec:
 	ginkgo.It("route priority", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -372,8 +372,8 @@ spec:
       - httpbin.com
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
   - name: rule2
     priority: 2
@@ -388,8 +388,8 @@ spec:
           name: X-Foo
         op: Equal
         value: barbazbar
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
     plugins:
     - name: request-id
@@ -416,7 +416,7 @@ spec:
 	ginkgo.It("verify route/upstream items", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -429,8 +429,8 @@ spec:
       - httpbin.com
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
@@ -472,7 +472,7 @@ spec:
 	ginkgo.It("service is referenced by two ApisixRoutes", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		ar1 := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route-1
@@ -485,12 +485,12 @@ spec:
       - httpbin.com
       paths:
       - /ip
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 		ar2 := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route-2
@@ -503,8 +503,8 @@ spec:
       - httpbin.com
       paths:
       - /status/200
-    backend:
-      serviceName: %s
+    backends:
+    - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
@@ -513,7 +513,7 @@ spec:
 		err = s.CreateResourceFromString(ar2)
 		assert.Nil(ginkgo.GinkgoT(), err)
 
-		time.Sleep(3 * time.Second)
+		time.Sleep(6 * time.Second)
 
 		routes, err := s.ListApisixRoutes()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing routes")
@@ -535,7 +535,7 @@ spec:
 		// Delete ar1
 		err = s.RemoveResourceByString(ar1)
 		assert.Nil(ginkgo.GinkgoT(), err)
-		time.Sleep(3 * time.Second)
+		time.Sleep(6 * time.Second)
 
 		routes, err = s.ListApisixRoutes()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing routes")
@@ -557,7 +557,7 @@ spec:
 		// Delete ar2
 		err = s.RemoveResourceByString(ar2)
 		assert.Nil(ginkgo.GinkgoT(), err)
-		time.Sleep(3 * time.Second)
+		time.Sleep(10 * time.Second)
 
 		routes, err = s.ListApisixRoutes()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing routes")

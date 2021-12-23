@@ -48,8 +48,8 @@ func TestTimeDurationUnmarshalJSON(t *testing.T) {
 	var value structure1
 	err := json.Unmarshal([]byte(data), &value)
 	assert.Nil(t, err, "failed to unmarshal data to structure1: %v", err)
-	assert.Equal(t, value.Name, "alex", "bad name: %s", value.Name)
-	assert.Equal(t, value.Interval, TimeDuration{3 * time.Minute}, "bad interval: %v", value.Interval)
+	assert.Equal(t, "alex", value.Name, "bad name: %s", value.Name)
+	assert.Equal(t, TimeDuration{3 * time.Minute}, value.Interval, "bad interval: %v", value.Interval)
 }
 
 func TestTimeDurationMarshalYAML(t *testing.T) {
@@ -70,6 +70,6 @@ name: alex
 	var value structure1
 	err := yaml.Unmarshal([]byte(data), &value)
 	assert.Nil(t, err, "failed to unmarshal data to structure1: %v", err)
-	assert.Equal(t, value.Name, "alex", "bad name: %s", value.Name)
-	assert.Equal(t, value.Interval, TimeDuration{3 * time.Minute}, "bad interval: %v", value.Interval)
+	assert.Equal(t, "alex", value.Name, "bad name: %s", value.Name)
+	assert.Equal(t, TimeDuration{3 * time.Minute}, value.Interval, "bad interval: %v", value.Interval)
 }
