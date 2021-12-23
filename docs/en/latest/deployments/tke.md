@@ -28,22 +28,23 @@ This document explains how to install Ingress APISIX on [Tencent TKE](https://cl
 * Create a TKE Service on Tencent Cloud and make sure the API Server is accessible from your workspace.
 * Install [Helm](https://helm.sh/).
 * Download the kube config for your TKE Console.
+* Clone [Apache APISIX Charts](https://github.com/apache/apisix-helm-chart).
+* Make sure your target namespace exists, kubectl operations thorough this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX and apisix-ingress-controller
 
 As the data plane of apisix-ingress-controller, [Apache APISIX](http://apisix.apache.org/) can be deployed at the same time using Helm chart.
 
 ```shell
-helm repo add apisix https://charts.apiseven.com
+cd /path/to/apisix-helm-chart
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update
 kubectl create ns ingress-apisix
-helm install apisix apisix/apisix \
+helm install apisix charts/apisix \
   --set gateway.type=LoadBalancer \
   --set ingress-controller.enabled=true \
   --set etcd.persistence.size="10Gi" \
-  --namespace ingress-apisix \
-  --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
+  --namespace ingress-apisix
 kubectl get service --namespace ingress-apisix
 ```
 
@@ -67,15 +68,3 @@ kubectl get service apisix-gateway --namespace ingress-apisix -o jsonpath='{.sta
 Now open your [TKE console](https://console.cloud.tencent.com/tke2/overview), choosing your cluster and clicking the Workloads tag, you'll see all pods of Apache APISIX, etcd and apisix-ingress-controller are ready.
 
 Try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../practices/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
-
-### Specify The Ingress Version
-
-apisix-ingress-controller will watch apiVersion of `networking.k8s.io/v1` by default. If the target kubernetes version is under `v1.19`, add `--set ingress-controller.config.kubernetes.ingressVersion=networking/v1beta1` or `--set ingress-controller.config.kubernetes.ingressVersion=extensions/v1beta1` if your kubernetes cluster is under `v1.16`
-
-### Enable SSL
-
-The ssl config is disabled by default, add `--set gateway.tls.enabled=true` to enable tls support.
-
-### Change default apikey
-
-It's Recommended to change the default key by add `--set ingress-controller.config.apisix.adminKey=ADMIN_KEY_GENERATED_BY_YOURSELF`, `--set admin.credentials.admin=ADMIN_KEY_GENERATED_BY_YOURSELF`, `--set admin.credentials.viewer=VIEWER_KEY_GENERATED_BY_YOURSELF`, notice that `ingress-controller.config.apisix.adminKey` and `admin.credentials.admin` must be the same, and should better not same as `admin.credentials.viewer`.

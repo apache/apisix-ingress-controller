@@ -76,8 +76,7 @@ The following table describes the compatibility between apisix-ingress-controlle
 
 | apisix-ingress-controller | Apache APISIX |
 | ----:| ---:|
-| `master` | `>= 2.7`, `2.10` is recommended. |
-| `1.3.0` | `>= 2.7`, `2.10` is recommended. |
+| `master` | `>= 2.7`, `2.8` is recommended. |
 | `1.2.0` | `>= 2.7`, `2.8` is recommended. |
 | `1.1.0` | `>= 2.7`, `2.7` is recommended. |
 | `1.1.0` | `>= 2.7`, `2.7` is recommended. |

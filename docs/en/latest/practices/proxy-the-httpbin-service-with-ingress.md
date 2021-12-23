@@ -1,5 +1,5 @@
 ---
-title: Proxy the httpbin service
+title: Proxy the httpbin service with Ingress
 ---
 
 <!--
@@ -21,7 +21,7 @@ title: Proxy the httpbin service
 #
 -->
 
-This document explains how apisix-ingress-controller guides Apache APISIX routes traffic to httpbin service correctly.
+This document explains how apisix-ingress-controller guides Apache APISIX routes traffic to httpbin service correctly by the [Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/).
 
 ## Prerequisites
 
@@ -42,32 +42,62 @@ kubectl expose pod httpbin --port 80
 
 ## Resource Delivery
 
-In order to let Apache APISIX proxies requests to httpbin, we need to create an `ApisixRoute` resource, if you're not familiar with it, see the [reference](https://github.com/apache/apisix-ingress-controller/blob/master/samples/deploy/crd/v1beta1/ApisixRoute.yaml) for the details.
+Here we create an Ingress resource.
 
 ```yaml
-# httpbin-route.yaml
-apiVersion: apisix.apache.org/v2beta1
-kind: ApisixRoute
+# httpbin-ingress.yaml
+# Note use apiVersion is networking.k8s.io/v1, so please make sure your
+# Kubernetes cluster version is v1.19.0 or higher.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
 metadata:
-  name: httpserver-route
+  name: httpserver-ingress
 spec:
-  http:
-  - name: rule1
-    match:
-      hosts:
-      - local.httpbin.org
+  # apisix-ingress-controller is only interested in Ingress
+  # resources with the matched ingressClass name, in our case,
+  # it's apisix.
+  ingressClassName: apisix
+  rules:
+  - host: local.httpbin.org
+    http:
       paths:
-      - /*
-    backend:
-        serviceName: httpbin
-        servicePort: 80
+      - backend:
+          service:
+            name: httpbin
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+
+# Use ingress.networking.k8s.io/v1beta1 if your Kubernetes cluster
+# version is older than v1.19.0.
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: httpserver-ingress
+  # Note for ingress.networking.k8s.io/v1beta1,
+  # you have to carry annotation kubernetes.io/ingress.class,
+  # and its value must be matched with the one configured in
+  # apisix-ingress-controller, in our case, it's apisix.
+  annotations:
+    kubernetes.io/ingress.class: apisix
+spec:
+  rules:
+    - host: local.httpbin.org
+      http:
+        paths:
+          - backend:
+              serviceName: httpbin
+              servicePort: 80
+            path: /
+            pathType: Prefix
 ```
 
-The YAML snippet shows a simple `ApisixRoute` configuration, which tells Apache APISIX to route all requests with Host `local.httpbin.org` to the `httpbin` service.
+The YAML snippet shows a simple Ingress configuration, which tells Apache APISIX to route all requests with Host `local.httpbin.org` to the `httpbin` service.
 Now try to create it.
 
 ```shell
-kubectl apply -f httpbin-route.yaml
+kubectl apply -f httpbin-ingress.yaml
 ```
 
 ## Test
