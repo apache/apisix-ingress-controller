@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	_allowlistSourceRange = "k8s.apisix.apache.org/allowlist-source-range"
-	_blocklistSourceRange = "k8s.apisix.apache.org/blocklist-source-range"
+	_allowlistSourceRange = AnnotationsPrefix + "allowlist-source-range"
+	_blocklistSourceRange = AnnotationsPrefix + "blocklist-source-range"
 )
 
 type ipRestriction struct{}

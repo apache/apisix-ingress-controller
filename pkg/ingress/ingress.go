@@ -262,11 +262,11 @@ func (c *ingressController) onAdd(obj interface{}) {
 	valid := c.isIngressEffective(ing)
 	if valid {
 		log.Debugw("ingress add event arrived",
-			zap.Any("object", ing),
+			zap.Any("object", obj),
 		)
 	} else {
 		log.Debugw("ignore noneffective ingress add event",
-			zap.Any("object", ing),
+			zap.Any("object", obj),
 		)
 		return
 	}
@@ -297,8 +297,8 @@ func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 	valid := c.isIngressEffective(curr)
 	if valid {
 		log.Debugw("ingress update event arrived",
-			zap.Any("new object", oldObj),
-			zap.Any("old object", newObj),
+			zap.Any("new object", newObj),
+			zap.Any("old object", oldObj),
 		)
 	} else {
 		log.Debugw("ignore noneffective ingress update event",

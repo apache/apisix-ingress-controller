@@ -37,6 +37,8 @@ type Cache interface {
 	InsertConsumer(*v1.Consumer) error
 	// InsertSchema adds or updates schema to cache.
 	InsertSchema(*v1.Schema) error
+	// InsertPluginConfig adds or updates plugin_config to cache.
+	InsertPluginConfig(*v1.PluginConfig) error
 
 	// GetRoute finds the route from cache according to the primary index (id).
 	GetRoute(string) (*v1.Route, error)
@@ -52,6 +54,8 @@ type Cache interface {
 	GetConsumer(string) (*v1.Consumer, error)
 	// GetSchema finds the scheme from cache according to the primary index (id).
 	GetSchema(string) (*v1.Schema, error)
+	// GetPluginConfig finds the plugin_config from cache according to the primary index (id).
+	GetPluginConfig(string) (*v1.PluginConfig, error)
 
 	// ListRoutes lists all routes in cache.
 	ListRoutes() ([]*v1.Route, error)
@@ -67,6 +71,8 @@ type Cache interface {
 	ListConsumers() ([]*v1.Consumer, error)
 	// ListSchema lists all schema in cache.
 	ListSchema() ([]*v1.Schema, error)
+	// ListPluginConfigs lists all plugin_config in cache.
+	ListPluginConfigs() ([]*v1.PluginConfig, error)
 
 	// DeleteRoute deletes the specified route in cache.
 	DeleteRoute(*v1.Route) error
@@ -82,4 +88,6 @@ type Cache interface {
 	DeleteConsumer(*v1.Consumer) error
 	// DeleteSchema deletes the specified schema in cache.
 	DeleteSchema(*v1.Schema) error
+	// DeletePluginConfig deletes the specified plugin_config in cache.
+	DeletePluginConfig(*v1.PluginConfig) error
 }

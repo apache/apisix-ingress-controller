@@ -183,6 +183,7 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 
 		}
 
+		v.ObjectMeta.Generation = generation
 		v.Status.LoadBalancer.Ingress = lbips
 		if _, errRecord := kubeClient.NetworkingV1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 			log.Errorw("failed to record status change for IngressV1",
@@ -202,6 +203,7 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 
 		}
 
+		v.ObjectMeta.Generation = generation
 		v.Status.LoadBalancer.Ingress = lbips
 		if _, errRecord := kubeClient.NetworkingV1beta1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 			log.Errorw("failed to record status change for IngressV1",
@@ -220,6 +222,7 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 
 		}
 
+		v.ObjectMeta.Generation = generation
 		v.Status.LoadBalancer.Ingress = lbips
 		if _, errRecord := kubeClient.ExtensionsV1beta1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 			log.Errorw("failed to record status change for IngressV1",

@@ -186,7 +186,7 @@ func (t *translator) TranslateUpstream(namespace, name, subset string, port int3
 	if err != nil {
 		return nil, err
 	}
-	if au == nil {
+	if au == nil || au.Spec == nil {
 		ups.Nodes = nodes
 		return ups, nil
 	}

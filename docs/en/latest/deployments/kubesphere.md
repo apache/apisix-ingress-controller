@@ -29,7 +29,6 @@ KubeSphere is a distributed operating system managing cloud native applications 
 
 * Install [KubeSphere](https://kubesphere.io/docs/quick-start/), you can choose [All-in-one Installation on Linux](https://kubesphere.io/docs/quick-start/all-in-one-on-linux/) or [Minimal KubeSphere on Kubernetes](https://kubesphere.io/docs/quick-start/minimal-kubesphere-on-k8s/).
 * Install [Helm](https://helm.sh/).
-* Make sure your target namespace exists, kubectl operations of this document will be executed in namespace `ingress-apisix`.
 
 ## Install APISIX and apisix-ingress-controller
 
@@ -43,7 +42,7 @@ kubectl create ns ingress-apisix
 helm install apisix apisix/apisix \
   --set gateway.type=NodePort \
   --set ingress-controller.enabled=true \
-  --namespace ingress-apisix
+  --namespace ingress-apisix \
   --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
 kubectl get service --namespace ingress-apisix
 ```

@@ -30,8 +30,11 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
+	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 var (
@@ -196,6 +199,102 @@ func TestTranslateIngressV1BackendWithInvalidService(t *testing.T) {
 		field:  "service",
 		reason: "port not found",
 	}, err)
+}
+
+func TestTranslateIngressV1WithRegex(t *testing.T) {
+	prefix := networkingv1.PathTypeImplementationSpecific
+	regexPath := "/foo/*/bar"
+	ing := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"k8s.apisix.apache.org/use-regex": "true",
+			},
+		},
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{
+				{
+					Host: "apisix.apache.org",
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{
+								{
+									Path:     regexPath,
+									PathType: &prefix,
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "test-service",
+											Port: networkingv1.ServiceBackendPort{
+												Name: "port1",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	svcInformer := informersFactory.Core().V1().Services().Informer()
+	svcLister := informersFactory.Core().V1().Services().Lister()
+	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
+	apisixClient := fakeapisix.NewSimpleClientset()
+	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
+	processCh := make(chan struct{})
+	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+	epInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	go svcInformer.Run(stopCh)
+	go epInformer.Run(stopCh)
+	cache.WaitForCacheSync(stopCh, svcInformer.HasSynced)
+
+	_, err := client.CoreV1().Services("default").Create(context.Background(), _testSvc, metav1.CreateOptions{})
+	assert.Nil(t, err)
+	_, err = client.CoreV1().Endpoints("default").Create(context.Background(), _testEp, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	tr := &translator{
+		TranslatorOptions: &TranslatorOptions{
+			ServiceLister:        svcLister,
+			EndpointLister:       epLister,
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+		},
+	}
+
+	<-processCh
+	<-processCh
+	ctx, err := tr.translateIngressV1(ing)
+	assert.Nil(t, err)
+	assert.Len(t, ctx.Routes, 1)
+	assert.Len(t, ctx.Upstreams, 1)
+	routeVars, err := tr.translateRouteMatchExprs([]configv2beta3.ApisixRouteHTTPMatchExpr{{
+		Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+			Scope: apisixconst.ScopePath,
+		},
+		Op:    apisixconst.OpRegexMatch,
+		Value: &regexPath,
+	}})
+	assert.Nil(t, err)
+
+	var expectedVars v1.Vars = routeVars
+
+	assert.Equal(t, []string{"/*"}, ctx.Routes[0].Uris)
+	assert.Equal(t, expectedVars, ctx.Routes[0].Vars)
 }
 
 func TestTranslateIngressV1(t *testing.T) {
@@ -418,6 +517,101 @@ func TestTranslateIngressV1beta1BackendWithInvalidService(t *testing.T) {
 		field:  "service",
 		reason: "port not found",
 	}, err)
+}
+
+func TestTranslateIngressV1beta1WithRegex(t *testing.T) {
+	prefix := networkingv1beta1.PathTypeImplementationSpecific
+	// no backend.
+	regexPath := "/foo/*/bar"
+	ing := &networkingv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"k8s.apisix.apache.org/use-regex": "true",
+			},
+		},
+		Spec: networkingv1beta1.IngressSpec{
+			Rules: []networkingv1beta1.IngressRule{
+				{
+					Host: "apisix.apache.org",
+					IngressRuleValue: networkingv1beta1.IngressRuleValue{
+						HTTP: &networkingv1beta1.HTTPIngressRuleValue{
+							Paths: []networkingv1beta1.HTTPIngressPath{
+								{
+									Path:     regexPath,
+									PathType: &prefix,
+									Backend: networkingv1beta1.IngressBackend{
+										ServiceName: "test-service",
+										ServicePort: intstr.IntOrString{
+											Type:   intstr.String,
+											StrVal: "port1",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	svcInformer := informersFactory.Core().V1().Services().Informer()
+	svcLister := informersFactory.Core().V1().Services().Lister()
+	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
+	apisixClient := fakeapisix.NewSimpleClientset()
+	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
+	processCh := make(chan struct{})
+	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+	epInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	go svcInformer.Run(stopCh)
+	go epInformer.Run(stopCh)
+	cache.WaitForCacheSync(stopCh, svcInformer.HasSynced)
+
+	_, err := client.CoreV1().Services("default").Create(context.Background(), _testSvc, metav1.CreateOptions{})
+	assert.Nil(t, err)
+	_, err = client.CoreV1().Endpoints("default").Create(context.Background(), _testEp, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	tr := &translator{
+		TranslatorOptions: &TranslatorOptions{
+			ServiceLister:        svcLister,
+			EndpointLister:       epLister,
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+		},
+	}
+
+	<-processCh
+	<-processCh
+	ctx, err := tr.translateIngressV1beta1(ing)
+	assert.Nil(t, err)
+	assert.Len(t, ctx.Routes, 1)
+	assert.Len(t, ctx.Upstreams, 1)
+
+	routeVars, err := tr.translateRouteMatchExprs([]configv2beta3.ApisixRouteHTTPMatchExpr{{
+		Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+			Scope: apisixconst.ScopePath,
+		},
+		Op:    apisixconst.OpRegexMatch,
+		Value: &regexPath,
+	}})
+	assert.Nil(t, err)
+	var expectedVars v1.Vars = routeVars
+	assert.Equal(t, []string{"/*"}, ctx.Routes[0].Uris)
+	assert.Equal(t, expectedVars, ctx.Routes[0].Vars)
 }
 
 func TestTranslateIngressV1beta1(t *testing.T) {
@@ -715,4 +909,100 @@ func TestTranslateIngressExtensionsV1beta1BackendWithInvalidService(t *testing.T
 		field:  "service",
 		reason: "port not found",
 	}, err)
+}
+
+func TestTranslateIngressExtensionsV1beta1WithRegex(t *testing.T) {
+	prefix := extensionsv1beta1.PathTypeImplementationSpecific
+	regexPath := "/foo/*/bar"
+	ing := &extensionsv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"k8s.apisix.apache.org/use-regex": "true",
+			},
+		},
+		Spec: extensionsv1beta1.IngressSpec{
+			Rules: []extensionsv1beta1.IngressRule{
+				{
+					Host: "apisix.apache.org",
+					IngressRuleValue: extensionsv1beta1.IngressRuleValue{
+						HTTP: &extensionsv1beta1.HTTPIngressRuleValue{
+							Paths: []extensionsv1beta1.HTTPIngressPath{
+								{
+									Path:     regexPath,
+									PathType: &prefix,
+									Backend: extensionsv1beta1.IngressBackend{
+										ServiceName: "test-service",
+										ServicePort: intstr.IntOrString{
+											Type:   intstr.String,
+											StrVal: "port1",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	svcInformer := informersFactory.Core().V1().Services().Informer()
+	svcLister := informersFactory.Core().V1().Services().Lister()
+	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
+	apisixClient := fakeapisix.NewSimpleClientset()
+	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
+	processCh := make(chan struct{})
+	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+	epInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	go svcInformer.Run(stopCh)
+	go epInformer.Run(stopCh)
+	cache.WaitForCacheSync(stopCh, svcInformer.HasSynced)
+
+	_, err := client.CoreV1().Services("default").Create(context.Background(), _testSvc, metav1.CreateOptions{})
+	assert.Nil(t, err)
+	_, err = client.CoreV1().Endpoints("default").Create(context.Background(), _testEp, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	tr := &translator{
+		TranslatorOptions: &TranslatorOptions{
+			ServiceLister:        svcLister,
+			EndpointLister:       epLister,
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+		},
+	}
+
+	<-processCh
+	<-processCh
+	ctx, err := tr.translateIngressExtensionsV1beta1(ing)
+	assert.Nil(t, err)
+	assert.Len(t, ctx.Routes, 1)
+	assert.Len(t, ctx.Upstreams, 1)
+	routeVars, err := tr.translateRouteMatchExprs([]configv2beta3.ApisixRouteHTTPMatchExpr{{
+		Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+			Scope: apisixconst.ScopePath,
+		},
+		Op:    apisixconst.OpRegexMatch,
+		Value: &regexPath,
+	}})
+	assert.Nil(t, err)
+
+	var expectedVars v1.Vars = routeVars
+
+	assert.Equal(t, []string{"/*"}, ctx.Routes[0].Uris)
+	assert.Equal(t, expectedVars, ctx.Routes[0].Vars)
+
 }

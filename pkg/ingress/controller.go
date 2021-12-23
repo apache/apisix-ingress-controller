@@ -598,7 +598,7 @@ func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
 			log.Errorf("failed to get ApisixUpstream %s/%s: %s", ep.Namespace(), svcName, err)
 			return err
 		}
-	} else if len(au.Spec.Subsets) > 0 {
+	} else if au.Spec != nil && len(au.Spec.Subsets) > 0 {
 		subsets = append(subsets, au.Spec.Subsets...)
 	}
 
@@ -671,6 +671,10 @@ func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.
 		if err != nil {
 			// Finally failed health check, then give up leader.
 			log.Warnf("failed to check health for default cluster: %s, give up leader", err)
+			c.apiServer.HealthState.Lock()
+			defer c.apiServer.HealthState.Unlock()
+
+			c.apiServer.HealthState.Err = err
 			return
 		}
 		log.Debugf("success check health for default cluster")

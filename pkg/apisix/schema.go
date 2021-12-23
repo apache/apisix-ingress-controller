@@ -110,3 +110,8 @@ func (sc schemaClient) GetConsumerSchema(ctx context.Context) (*v1.Schema, error
 func (sc schemaClient) GetSslSchema(ctx context.Context) (*v1.Schema, error) {
 	return sc.getSchema(ctx, "ssl")
 }
+
+// GetPluginConfigSchema returns PluginConfig's schema.
+func (sc schemaClient) GetPluginConfigSchema(ctx context.Context) (*v1.Schema, error) {
+	return sc.getSchema(ctx, "pluginConfig")
+}

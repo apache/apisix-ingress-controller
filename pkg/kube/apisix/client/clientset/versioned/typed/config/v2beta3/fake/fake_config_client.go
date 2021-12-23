@@ -35,6 +35,10 @@ func (c *FakeApisixV2beta3) ApisixConsumers(namespace string) v2beta3.ApisixCons
 	return &FakeApisixConsumers{c, namespace}
 }
 
+func (c *FakeApisixV2beta3) ApisixPluginConfigs(namespace string) v2beta3.ApisixPluginConfigInterface {
+	return &FakeApisixPluginConfigs{c, namespace}
+}
+
 func (c *FakeApisixV2beta3) ApisixRoutes(namespace string) v2beta3.ApisixRouteInterface {
 	return &FakeApisixRoutes{c, namespace}
 }

@@ -353,6 +353,13 @@ type Consumer struct {
 	Plugins  Plugins           `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
+// PluginConfig apisix plugin object
+// +k8s:deepcopy-gen=true
+type PluginConfig struct {
+	Metadata `json:",inline" yaml:",inline"`
+	Plugins  Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+}
+
 // NewDefaultUpstream returns an empty Upstream with default values.
 func NewDefaultUpstream() *Upstream {
 	return &Upstream{
