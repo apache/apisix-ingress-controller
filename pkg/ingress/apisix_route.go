@@ -178,6 +178,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		zap.Any("routes", tctx.Routes),
 		zap.Any("upstreams", tctx.Upstreams),
 		zap.Any("apisix_route", ar),
+		zap.Any("pluginConfigs", tctx.PluginConfigs),
 	)
 
 	m := &manifest{

@@ -269,6 +269,11 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 				merr = multierror.Append(merr, err)
 			}
 		}
+		for _, u := range added.pluginConfigs {
+			if _, err := c.apisix.Cluster(clusterName).PluginConfig().Create(ctx, u); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
 		for _, r := range added.routes {
 			if _, err := c.apisix.Cluster(clusterName).Route().Create(ctx, r); err != nil {
 				merr = multierror.Append(merr, err)
@@ -276,11 +281,6 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 		}
 		for _, sr := range added.streamRoutes {
 			if _, err := c.apisix.Cluster(clusterName).StreamRoute().Create(ctx, sr); err != nil {
-				merr = multierror.Append(merr, err)
-			}
-		}
-		for _, u := range added.pluginConfigs {
-			if _, err := c.apisix.Cluster(clusterName).PluginConfig().Create(ctx, u); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
@@ -296,6 +296,11 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 				merr = multierror.Append(merr, err)
 			}
 		}
+		for _, sr := range updated.pluginConfigs {
+			if _, err := c.apisix.Cluster(clusterName).PluginConfig().Create(ctx, sr); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
 		for _, r := range updated.routes {
 			if _, err := c.apisix.Cluster(clusterName).Route().Update(ctx, r); err != nil {
 				merr = multierror.Append(merr, err)
@@ -303,11 +308,6 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 		}
 		for _, sr := range updated.streamRoutes {
 			if _, err := c.apisix.Cluster(clusterName).StreamRoute().Create(ctx, sr); err != nil {
-				merr = multierror.Append(merr, err)
-			}
-		}
-		for _, sr := range updated.pluginConfigs {
-			if _, err := c.apisix.Cluster(clusterName).PluginConfig().Create(ctx, sr); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
