@@ -28,4 +28,4 @@ jobs:
     - name: run build
       working-directory: ./
       run: |
-        make build-image
+        make push-images-to-kind
