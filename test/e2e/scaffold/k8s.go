@@ -474,6 +474,15 @@ func (s *Scaffold) newAPISIXTunnels() error {
 	return nil
 }
 
+func (s *Scaffold) shutdownApisixTunnel() {
+	s.apisixAdminTunnel.Close()
+	s.apisixHttpTunnel.Close()
+	s.apisixHttpsTunnel.Close()
+	s.apisixTCPTunnel.Close()
+	s.apisixUDPTunnel.Close()
+	s.apisixControlTunnel.Close()
+}
+
 // Namespace returns the current working namespace.
 func (s *Scaffold) Namespace() string {
 	return s.kubectlOptions.Namespace

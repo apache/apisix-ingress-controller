@@ -179,10 +179,16 @@ func (c *cluster) syncCache(ctx context.Context) {
 		Steps:    5,
 	}
 	var lastSyncErr error
-	err := wait.ExponentialBackoff(backoff, func() (done bool, _ error) {
+	err := wait.ExponentialBackoff(backoff, func() (done bool, err error) {
 		// impossibly return: false, nil
 		// so can safe used
 		done, lastSyncErr = c.syncCacheOnce(ctx)
+		select {
+		case <-ctx.Done():
+			err = context.Canceled
+		default:
+			break
+		}
 		return
 	})
 	if err != nil {
@@ -199,7 +205,7 @@ func (c *cluster) syncCache(ctx context.Context) {
 func (c *cluster) syncCacheOnce(ctx context.Context) (bool, error) {
 	routes, err := c.route.List(ctx)
 	if err != nil {
-		log.Errorf("failed to list route in APISIX: %s", err)
+		log.Errorf("failed to list routes in APISIX: %s", err)
 		return false, err
 	}
 	upstreams, err := c.upstream.List(ctx)
@@ -329,7 +335,7 @@ func (c *cluster) syncSchema(ctx context.Context, interval time.Duration) {
 
 	for {
 		if err := c.syncSchemaOnce(ctx); err != nil {
-			log.Warnf("failed to sync schema: %s", err)
+			log.Errorf("failed to sync schema: %s", err)
 			c.metricsCollector.IncrSyncOperation("schema", "failure")
 		}
 

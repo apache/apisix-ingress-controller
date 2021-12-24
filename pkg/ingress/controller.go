@@ -353,6 +353,11 @@ func (c *Controller) Run(stop chan struct{}) error {
 						zap.String("namespace", c.namespace),
 						zap.String("pod", c.name),
 					)
+					c.MetricsCollector.ResetLeader(false)
+					// delete the old APISIX cluster, so that the cached state
+					// like synchronization won't be used next time the candidate
+					// becomes the leader again.
+					c.apisix.DeleteCluster(c.cfg.APISIX.DefaultClusterName)
 				}
 			},
 			OnStoppedLeading: func() {
@@ -361,6 +366,10 @@ func (c *Controller) Run(stop chan struct{}) error {
 					zap.String("pod", c.name),
 				)
 				c.MetricsCollector.ResetLeader(false)
+				// delete the old APISIX cluster, so that the cached state
+				// like synchronization won't be used next time the candidate
+				// becomes the leader again.
+				c.apisix.DeleteCluster(c.cfg.APISIX.DefaultClusterName)
 			},
 		},
 		// Set it to false as current leaderelection implementation will report
