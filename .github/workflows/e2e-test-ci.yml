@@ -77,12 +77,12 @@ jobs:
           chmod +x ./kind
           sudo mv kind /usr/local/bin
       - name: Setup Go Env
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
-          go-version: "1.13"
+          go-version: "1.16"
       - name: Install ginkgo
         run: |
-          go get -u github.com/onsi/ginkgo/ginkgo
+          go install github.com/onsi/ginkgo/ginkgo@v1.16.4
           sudo cp ~/go/bin/ginkgo /usr/local/bin
       - name: Create K8s cluster
         run: |
