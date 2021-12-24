@@ -52,10 +52,9 @@ func (c *Controller) newGatewayController() *gatewayController {
 
 func (c *gatewayController) run(ctx context.Context) {
 	log.Info("gateway controller started")
-	defer log.Infof("gateway controller exited")
+	defer log.Info("gateway controller exited")
 	defer c.workqueue.ShutDown()
 
-	log.Info("gateway controller started")
 	if !cache.WaitForCacheSync(ctx.Done(), c.controller.gatewayInformer.HasSynced) {
 		log.Error("cache sync failed")
 		return

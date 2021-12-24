@@ -74,7 +74,7 @@ e2e-test: ginkgo-check push-images-to-kind
 	kubectl apply -k $(PWD)/samples/deploy/crd
 	cd test/e2e \
 		&& go mod download \
-		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=$(E2E_CONCURRENCY)
+		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace --nodes=$(E2E_CONCURRENCY)
 
 .PHONY: ginkgo-check
 ginkgo-check:
@@ -103,7 +103,7 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker tag test-backend:$(IMAGE_TAG) $(LOCAL_REGISTRY)/test-backend:$(IMAGE_TAG)
 	docker push $(LOCAL_REGISTRY)/test-backend:$(IMAGE_TAG)
 
-	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=false .
+	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(LOCAL_REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 	docker push $(LOCAL_REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 
