@@ -135,7 +135,7 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		return err
 	}
 
-	log.Debugw("translated ingress resource to a couple of routes and upstreams",
+	log.Debugw("translated ingress resource to a couple of routes, upstreams and pluginConfigs",
 		zap.Any("ingress", ing),
 		zap.Any("routes", tctx.Routes),
 		zap.Any("upstreams", tctx.Upstreams),

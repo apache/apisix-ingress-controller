@@ -92,4 +92,13 @@ func TestNonExistentCluster(t *testing.T) {
 	assert.Equal(t, ErrClusterNotExist, err)
 	err = apisix.Cluster("non-existent-cluster").SSL().Delete(context.Background(), &v1.Ssl{})
 	assert.Equal(t, ErrClusterNotExist, err)
+
+	_, err = apisix.Cluster("non-existent-cluster").PluginConfig().List(context.Background())
+	assert.Equal(t, ErrClusterNotExist, err)
+	_, err = apisix.Cluster("non-existent-cluster").PluginConfig().Create(context.Background(), &v1.PluginConfig{})
+	assert.Equal(t, ErrClusterNotExist, err)
+	_, err = apisix.Cluster("non-existent-cluster").PluginConfig().Update(context.Background(), &v1.PluginConfig{})
+	assert.Equal(t, ErrClusterNotExist, err)
+	err = apisix.Cluster("non-existent-cluster").PluginConfig().Delete(context.Background(), &v1.PluginConfig{})
+	assert.Equal(t, ErrClusterNotExist, err)
 }

@@ -96,6 +96,8 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixPluginConfigCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK)
 
@@ -133,6 +135,8 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixPluginConfigCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").WithHeader("X-Foo", "barbaz").Expect().Status(http.StatusOK)
@@ -145,6 +149,9 @@ spec:
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
 		assert.Len(ginkgo.GinkgoT(), ups, 0, "upstreams nodes not expect")
+		pluginConfigs, err := s.ListApisixPluginConfig()
+		assert.Nil(ginkgo.GinkgoT(), err, "list pluginConfigs error")
+		assert.Len(ginkgo.GinkgoT(), pluginConfigs, 0, "pluginConfigs nodes not expect")
 
 		body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound).Body().Raw()
 		assert.Contains(ginkgo.GinkgoT(), body, "404 Route Not Found")
@@ -175,6 +182,8 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixPluginConfigCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK)
 
@@ -212,6 +221,8 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		err = s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixPluginConfigCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").WithHeader("X-Foo", "barbaz").Expect().Status(http.StatusOK)
@@ -225,6 +236,9 @@ spec:
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
 		assert.Len(ginkgo.GinkgoT(), ups, 0, "upstreams nodes not expect")
+		pluginConfigs, err := s.ListApisixPluginConfig()
+		assert.Nil(ginkgo.GinkgoT(), err, "list pluginConfigs error")
+		assert.Len(ginkgo.GinkgoT(), pluginConfigs, 0, "pluginConfigs nodes not expect")
 
 		body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound).Body().Raw()
 		assert.Contains(ginkgo.GinkgoT(), body, "404 Route Not Found")
@@ -253,6 +267,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(1))
 
 		routes, err := s.ListApisixRoutes()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing routes in APISIX")
@@ -261,6 +276,10 @@ spec:
 		upstreams, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing upstreams in APISIX")
 		assert.Len(ginkgo.GinkgoT(), upstreams, 1)
+
+		pluginConfigs, err := s.ListApisixPluginConfig()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing pluginConfigs in APISIX")
+		assert.Len(ginkgo.GinkgoT(), pluginConfigs, 1)
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK)
 
@@ -285,6 +304,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(1))
 
 		newRoutes, err := s.ListApisixRoutes()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing routes in APISIX")
@@ -292,10 +312,16 @@ spec:
 		newUpstreams, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing upstreams in APISIX")
 		assert.Len(ginkgo.GinkgoT(), newUpstreams, 1)
+		newPluginConfigs, err := s.ListApisixPluginConfig()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing pluginConfigs in APISIX")
+		assert.Len(ginkgo.GinkgoT(), newPluginConfigs, 1)
 
 		// Upstream doesn't change.
 		assert.Equal(ginkgo.GinkgoT(), newUpstreams[0].ID, upstreams[0].ID)
 		assert.Equal(ginkgo.GinkgoT(), newUpstreams[0].Name, upstreams[0].Name)
+		// PluginConfig doesn't change.
+		assert.Equal(ginkgo.GinkgoT(), newPluginConfigs[0].ID, pluginConfigs[0].ID)
+		assert.Equal(ginkgo.GinkgoT(), newPluginConfigs[0].Name, pluginConfigs[0].Name)
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().
 			Status(http.StatusNotFound).
@@ -344,6 +370,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2))
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(1))
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().
 			Status(http.StatusOK).
@@ -399,6 +426,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2))
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(1))
 
 		// Hit rule1
 		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect()
@@ -413,7 +441,7 @@ spec:
 		resp.Header("X-Request-Id").NotEmpty()
 	})
 
-	ginkgo.It("verify route/upstream items", func() {
+	ginkgo.It("verify route/upstream/pluginConfig items", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -437,6 +465,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(1))
 
 		routes, err := s.ListApisixRoutes()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing routes")
@@ -457,6 +486,15 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), ups[0].Desc,
 			"Created by apisix-ingress-controller, DO NOT modify it manually")
 		assert.Equal(ginkgo.GinkgoT(), ups[0].Labels, map[string]string{
+			"managed-by": "apisix-ingress-controller",
+		})
+
+		pluginConfigs, err := s.ListApisixPluginConfig()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing pluginConfigs")
+		assert.Len(ginkgo.GinkgoT(), pluginConfigs, 1)
+		assert.Equal(ginkgo.GinkgoT(), pluginConfigs[0].Desc,
+			"Created by apisix-ingress-controller, DO NOT modify it manually")
+		assert.Equal(ginkgo.GinkgoT(), pluginConfigs[0].Labels, map[string]string{
 			"managed-by": "apisix-ingress-controller",
 		})
 
@@ -525,6 +563,12 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), ups[0].ID, routes[0].UpstreamId)
 		assert.Equal(ginkgo.GinkgoT(), ups[0].ID, routes[1].UpstreamId)
 
+		pluginConfigs, err := s.ListApisixPluginConfig()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing pluginConfigs")
+		assert.Len(ginkgo.GinkgoT(), pluginConfigs, 1)
+		assert.Equal(ginkgo.GinkgoT(), pluginConfigs[0].ID, routes[0].PluginConfigId)
+		assert.Equal(ginkgo.GinkgoT(), pluginConfigs[0].ID, routes[1].PluginConfigId)
+
 		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect()
 		resp.Status(http.StatusOK)
 		resp.Body().Contains("origin")
@@ -549,6 +593,12 @@ spec:
 		assert.Len(ginkgo.GinkgoT(), ups, 1)
 		assert.Equal(ginkgo.GinkgoT(), ups[0].ID, routes[0].UpstreamId)
 
+		// As httpbin service is referenced by ar2, the corresponding PluginConfig still exists.
+		pluginConfigs, err = s.ListApisixPluginConfig()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing pluginConfigs")
+		assert.Len(ginkgo.GinkgoT(), pluginConfigs, 1)
+		assert.Equal(ginkgo.GinkgoT(), pluginConfigs[0].ID, routes[0].PluginConfigId)
+
 		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect()
 		resp.Status(http.StatusNotFound)
 		resp = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.com").Expect()
@@ -566,6 +616,10 @@ spec:
 		ups, err = s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing upstreams")
 		assert.Len(ginkgo.GinkgoT(), ups, 0)
+
+		pluginConfigs, err = s.ListApisixPluginConfig()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing pluginConfigs")
+		assert.Len(ginkgo.GinkgoT(), pluginConfigs, 0)
 
 		resp = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.com").Expect()
 		resp.Status(http.StatusNotFound)

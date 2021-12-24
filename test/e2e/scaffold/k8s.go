@@ -240,6 +240,17 @@ func (s *Scaffold) EnsureNumApisixUpstreamsCreated(desired int) error {
 	return s.ensureNumApisixCRDsCreated(u.String(), desired)
 }
 
+// EnsureNumApisixPluginConfigCreated waits until desired number of PluginConfig are created in
+// APISIX cluster.
+func (s *Scaffold) EnsureNumApisixPluginConfigCreated(desired int) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/plugin_configs",
+	}
+	return s.ensureNumApisixCRDsCreated(u.String(), desired)
+}
+
 // GetServerInfo collect server info from "/v1/server_info" (Control API) exposed by server-info plugin
 func (s *Scaffold) GetServerInfo() (map[string]interface{}, error) {
 	u := url.URL{
@@ -395,6 +406,28 @@ func (s *Scaffold) ListApisixSsl() ([]*v1.Ssl, error) {
 		return nil, err
 	}
 	return cli.Cluster("").SSL().List(context.TODO())
+}
+
+// ListApisixRoutes list all pluginConfigs from APISIX.
+func (s *Scaffold) ListApisixPluginConfig() ([]*v1.PluginConfig, error) {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin",
+	}
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cli.Cluster("").PluginConfig().List(context.TODO())
 }
 
 func (s *Scaffold) newAPISIXTunnels() error {
