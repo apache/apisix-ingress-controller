@@ -155,7 +155,10 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 			}
 			if pluginConfig != nil {
 				route.PluginConfigId = pluginConfig.ID
-				ctx.addPluginConfig(pluginConfig)
+				// If the number of the plugins was zero, there is no need to addPluginConfig
+				if len(plugins) > 0 {
+					ctx.addPluginConfig(pluginConfig)
+				}
 			}
 			ctx.addRoute(route)
 		}
@@ -279,7 +282,10 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 			}
 			if pluginConfig != nil {
 				route.PluginConfigId = pluginConfig.ID
-				ctx.addPluginConfig(pluginConfig)
+				// If the number of the plugins was zero, there is no need to addPluginConfig
+				if len(plugins) > 0 {
+					ctx.addPluginConfig(pluginConfig)
+				}
 			}
 			ctx.addRoute(route)
 		}
@@ -430,7 +436,10 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 			}
 			if pluginConfig != nil {
 				route.PluginConfigId = pluginConfig.ID
-				ctx.addPluginConfig(pluginConfig)
+				// If the number of the plugins was zero, there is no need to addPluginConfig
+				if len(plugins) > 0 {
+					ctx.addPluginConfig(pluginConfig)
+				}
 			}
 			ctx.addRoute(route)
 		}
