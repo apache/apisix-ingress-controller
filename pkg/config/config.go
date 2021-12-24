@@ -59,6 +59,10 @@ const (
 	ApisixRouteV2beta3 = "apisix.apache.org/v2beta3"
 
 	_minimalResyncInterval = 30 * time.Second
+
+	// ControllerName is the name of the controller used to identify
+	// the controller of the GatewayClass.
+	ControllerName = "apisix.apache.org/gateway-controller"
 )
 
 // Config contains all config items which are necessary for
@@ -88,6 +92,7 @@ type KubernetesConfig struct {
 	IngressVersion      string             `json:"ingress_version" yaml:"ingress_version"`
 	WatchEndpointSlices bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
 	ApisixRouteVersion  string             `json:"apisix_route_version" yaml:"apisix_route_version"`
+	EnableGatewayAPI    bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
 }
 
 // APISIXConfig contains all APISIX related config items.
@@ -131,6 +136,7 @@ func NewDefaultConfig() *Config {
 			IngressVersion:      IngressNetworkingV1,
 			ApisixRouteVersion:  ApisixRouteV2beta3,
 			WatchEndpointSlices: false,
+			EnableGatewayAPI:    false,
 		},
 	}
 }
