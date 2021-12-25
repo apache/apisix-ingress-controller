@@ -423,7 +423,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute), "creating ApisixRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2))
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1))
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(0))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(1))
 
 		// Hit rule1
 		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect()
