@@ -77,7 +77,10 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 	return c.tracker
 }
 
-var _ clientset.Interface = &Clientset{}
+var (
+	_ clientset.Interface = &Clientset{}
+	_ testing.FakeClient  = &Clientset{}
+)
 
 // ApisixV2beta3 retrieves the ApisixV2beta3Client
 func (c *Clientset) ApisixV2beta3() apisixv2beta3.ApisixV2beta3Interface {

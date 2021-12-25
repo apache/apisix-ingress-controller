@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-FROM golang:1.13.8 AS build-env
+FROM golang:1.16 AS build-env
 LABEL maintainer="gxthrj@163.com"
 
 ARG ENABLE_PROXY=false
@@ -24,8 +24,7 @@ RUN rm -rf /etc/localtime \
     && dpkg-reconfigure -f noninteractive tzdata
 
 WORKDIR /build
-COPY go.mod .
-COPY go.sum .
+COPY go.* ./
 
 RUN if [ "$ENABLE_PROXY" = "true" ] ; then go env -w GOPROXY=https://goproxy.cn,direct ; fi \
     && go mod download
