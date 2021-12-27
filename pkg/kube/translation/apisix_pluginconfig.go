@@ -15,7 +15,10 @@
 package translation
 
 import (
+	"go.uber.org/zap"
+
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -25,6 +28,13 @@ func (t *translator) TranslateApisixPluginConfig(apc *configv2beta3.ApisixPlugin
 		for _, plugin := range apc.Spec.Plugins {
 			for k, v := range plugin {
 				// Here, it will override same key.
+				if t, ok := pluginMap[k]; ok {
+					log.Infow("TranslateApisixPluginConfig override same plugin key",
+						zap.String("key", k),
+						zap.Any("old", t),
+						zap.Any("new", v),
+					)
+				}
 				pluginMap[k] = v
 			}
 		}
