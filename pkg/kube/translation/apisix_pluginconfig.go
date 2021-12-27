@@ -17,6 +17,7 @@ package translation
 import (
 	"go.uber.org/zap"
 
+	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -43,4 +44,40 @@ func (t *translator) TranslateApisixPluginConfig(apc *configv2beta3.ApisixPlugin
 	pc.Name = apisixv1.ComposePluginConfigName(apc.Namespace, apc.Name)
 	pc.Plugins = pluginMap
 	return pc, nil
+}
+
+func (t *translator) TranslatePluginConfigV2beta3(config *configv2beta3.ApisixPluginConfig) (*TranslateContext, error) {
+	ctx := defaultEmptyTranslateContext()
+
+	pluginMap := make(apisixv1.Plugins)
+	if len(config.Spec.Plugins) > 0 {
+		for _, plugin := range config.Spec.Plugins {
+			for k, v := range plugin {
+				// Here, it will override same key.
+				if t, ok := pluginMap[k]; ok {
+					log.Infow("TranslatePluginConfigV2beta3 override same plugin key",
+						zap.String("key", k),
+						zap.Any("old", t),
+						zap.Any("new", v),
+					)
+				}
+				pluginMap[k] = v
+			}
+		}
+	}
+	pc := apisixv1.NewDefaultPluginConfig()
+	pc.Name = apisixv1.ComposePluginConfigName(config.Namespace, config.Name)
+	pc.ID = id.GenID(pc.Name)
+	pc.Plugins = pluginMap
+	ctx.addPluginConfig(pc)
+	return ctx, nil
+}
+
+func (t *translator) TranslatePluginConfigV2beta3NotStrictly(config *configv2beta3.ApisixPluginConfig) (*TranslateContext, error) {
+	ctx := defaultEmptyTranslateContext()
+	pc := apisixv1.NewDefaultPluginConfig()
+	pc.Name = apisixv1.ComposePluginConfigName(config.Namespace, config.Name)
+	pc.ID = id.GenID(pc.Name)
+	ctx.addPluginConfig(pc)
+	return ctx, nil
 }

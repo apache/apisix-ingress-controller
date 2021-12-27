@@ -91,9 +91,12 @@ type Translator interface {
 	// TranslateApisixConsumer translates the configv2beta3.APisixConsumer object into the APISIX Consumer
 	// resource.
 	TranslateApisixConsumer(*configv2beta3.ApisixConsumer) (*apisixv1.Consumer, error)
-	// TranslateApisixPluginConfig translates configv2beta3.ApisixPluginConfig object into the APISIX PluginConfig
-	// resource.
-	TranslateApisixPluginConfig(config *configv2beta3.ApisixPluginConfig) (*apisixv1.PluginConfig, error)
+	// TranslatePluginConfigV2beta3 translates the configv2beta3.ApisixPluginConfig object into several PluginConfig
+	// resources.
+	TranslatePluginConfigV2beta3(*configv2beta3.ApisixPluginConfig) (*TranslateContext, error)
+	// TranslatePluginConfigV2beta3NotStrictly translates the configv2beta3.ApisixPluginConfig object into several PluginConfig
+	// resources not strictly, only used for delete event.
+	TranslatePluginConfigV2beta3NotStrictly(*configv2beta3.ApisixPluginConfig) (*TranslateContext, error)
 	// ExtractKeyPair extracts certificate and private key pair from secret
 	// Supports APISIX style ("cert" and "key") and Kube style ("tls.crt" and "tls.key)
 	ExtractKeyPair(s *corev1.Secret, hasPrivateKey bool) ([]byte, []byte, error)
@@ -102,14 +105,13 @@ type Translator interface {
 // TranslatorOptions contains options to help Translator
 // work well.
 type TranslatorOptions struct {
-	PodCache                 types.PodCache
-	PodLister                listerscorev1.PodLister
-	EndpointLister           kube.EndpointLister
-	ServiceLister            listerscorev1.ServiceLister
-	ApisixUpstreamLister     listersv2beta3.ApisixUpstreamLister
-	ApisixPluginConfigLister listersv2beta3.ApisixPluginConfigLister
-	SecretLister             listerscorev1.SecretLister
-	UseEndpointSlices        bool
+	PodCache             types.PodCache
+	PodLister            listerscorev1.PodLister
+	EndpointLister       kube.EndpointLister
+	ServiceLister        listerscorev1.ServiceLister
+	ApisixUpstreamLister listersv2beta3.ApisixUpstreamLister
+	SecretLister         listerscorev1.SecretLister
+	UseEndpointSlices    bool
 }
 
 type translator struct {

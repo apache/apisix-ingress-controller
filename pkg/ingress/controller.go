@@ -116,7 +116,7 @@ type Controller struct {
 	apisixConsumerInformer      cache.SharedIndexInformer
 	apisixConsumerLister        listersv2beta3.ApisixConsumerLister
 	apisixPluginConfigInformer  cache.SharedIndexInformer
-	apisixPluginConfigLister    listersv2beta3.ApisixPluginConfigLister
+	apisixPluginConfigLister    kube.ApisixPluginConfigLister
 	gatewayInformer             cache.SharedIndexInformer
 	gatewayLister               gatewaylistersv1alpha2.GatewayLister
 
@@ -227,17 +227,18 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixTlsLister = apisixFactory.Apisix().V2beta3().ApisixTlses().Lister()
 	c.apisixClusterConfigLister = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister()
 	c.apisixConsumerLister = apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister()
-	c.apisixPluginConfigLister = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister()
+	c.apisixPluginConfigLister = kube.NewApisixPluginConfigLister(
+		apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+	)
 
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
-		PodCache:                 c.podCache,
-		PodLister:                c.podLister,
-		EndpointLister:           c.epLister,
-		ServiceLister:            c.svcLister,
-		ApisixUpstreamLister:     c.apisixUpstreamLister,
-		ApisixPluginConfigLister: c.apisixPluginConfigLister,
-		SecretLister:             c.secretLister,
-		UseEndpointSlices:        c.cfg.Kubernetes.WatchEndpointSlices,
+		PodCache:             c.podCache,
+		PodLister:            c.podLister,
+		EndpointLister:       c.epLister,
+		ServiceLister:        c.svcLister,
+		ApisixUpstreamLister: c.apisixUpstreamLister,
+		SecretLister:         c.secretLister,
+		UseEndpointSlices:    c.cfg.Kubernetes.WatchEndpointSlices,
 	})
 
 	if c.cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1 {
@@ -286,7 +287,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixTlsController = c.newApisixTlsController()
 	c.secretController = c.newSecretController()
 	c.apisixConsumerController = c.newApisixConsumerController()
-	c.apisixPluginConfigController = c.newapisixPluginConfigController()
+	c.apisixPluginConfigController = c.newApisixPluginConfigController()
 	c.gatewayController = c.newGatewayController()
 }
 

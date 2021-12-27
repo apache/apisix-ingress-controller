@@ -36,22 +36,22 @@ var _ = ginkgo.Describe("ApisixPluginConfig", func() {
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("add ApisixPluginConfig from definition", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
-//		apc := fmt.Sprintf(`
-//apiVersion: apisix.apache.org/v2beta3
-//kind: ApisixPluginConfig
-//metadata:
-//  name: %s
-//spec:
-//  plugins:
-//  - before_body: "This is the preface222"
-//    after_body: "This is the epilogue3333"
-//    headers:
-//      X-Foo: v1
-//      X-Foo2: v2
-//`, backendSvc)
-//		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apc))
-//
-//		time.Sleep(time.Second * 5)
+		apc := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixPluginConfig
+metadata:
+ name: %s
+spec:
+ plugins:
+ - before_body: "This is the preface222"
+   after_body: "This is the epilogue3333"
+   headers:
+     X-Foo: v1
+     X-Foo2: v2
+`, backendSvc)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apc))
+
+		time.Sleep(time.Second * 3)
 
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3

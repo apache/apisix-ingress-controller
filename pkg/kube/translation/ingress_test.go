@@ -274,10 +274,9 @@ func TestTranslateIngressV1WithRegex(t *testing.T) {
 
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
-			ServiceLister:            svcLister,
-			EndpointLister:           epLister,
-			ApisixUpstreamLister:     apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
-			ApisixPluginConfigLister: apisixInformersFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+			ServiceLister:        svcLister,
+			EndpointLister:       epLister,
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		},
 	}
 
@@ -386,10 +385,9 @@ func TestTranslateIngressV1(t *testing.T) {
 
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
-			ServiceLister:            svcLister,
-			EndpointLister:           epLister,
-			ApisixUpstreamLister:     apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
-			ApisixPluginConfigLister: apisixInformersFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+			ServiceLister:        svcLister,
+			EndpointLister:       epLister,
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		},
 	}
 
@@ -609,10 +607,9 @@ func TestTranslateIngressV1beta1WithRegex(t *testing.T) {
 
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
-			ServiceLister:            svcLister,
-			EndpointLister:           epLister,
-			ApisixUpstreamLister:     apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
-			ApisixPluginConfigLister: apisixInformersFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+			ServiceLister:        svcLister,
+			EndpointLister:       epLister,
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		},
 	}
 
@@ -719,10 +716,9 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
-			ServiceLister:            svcLister,
-			EndpointLister:           epLister,
-			ApisixUpstreamLister:     apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
-			ApisixPluginConfigLister: apisixInformersFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+			ServiceLister:        svcLister,
+			EndpointLister:       epLister,
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		},
 	}
 
@@ -842,10 +838,9 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
-			ServiceLister:            svcLister,
-			EndpointLister:           epLister,
-			ApisixUpstreamLister:     apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
-			ApisixPluginConfigLister: apisixInformersFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+			ServiceLister:        svcLister,
+			EndpointLister:       epLister,
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		},
 	}
 
@@ -1025,10 +1020,9 @@ func TestTranslateIngressExtensionsV1beta1WithRegex(t *testing.T) {
 
 	tr := &translator{
 		TranslatorOptions: &TranslatorOptions{
-			ServiceLister:            svcLister,
-			EndpointLister:           epLister,
-			ApisixUpstreamLister:     apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
-			ApisixPluginConfigLister: apisixInformersFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+			ServiceLister:        svcLister,
+			EndpointLister:       epLister,
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		},
 	}
 

@@ -19,17 +19,16 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type apisixPluginConfigController struct {
@@ -38,13 +37,13 @@ type apisixPluginConfigController struct {
 	workers    int
 }
 
-func (c *Controller) newapisixPluginConfigController() *apisixPluginConfigController {
+func (c *Controller) newApisixPluginConfigController() *apisixPluginConfigController {
 	ctl := &apisixPluginConfigController{
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixPluginConfig"),
 		workers:    1,
 	}
-	ctl.controller.apisixPluginConfigInformer.AddEventHandler(
+	c.apisixPluginConfigInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    ctl.onAdd,
 			UpdateFunc: ctl.onUpdate,
@@ -59,14 +58,15 @@ func (c *apisixPluginConfigController) run(ctx context.Context) {
 	defer log.Info("ApisixPluginConfig controller exited")
 	defer c.workqueue.ShutDown()
 
-	if ok := cache.WaitForCacheSync(ctx.Done(), c.controller.apisixPluginConfigInformer.HasSynced, c.controller.svcInformer.HasSynced); !ok {
+	ok := cache.WaitForCacheSync(ctx.Done(), c.controller.apisixPluginConfigInformer.HasSynced)
+	if !ok {
 		log.Error("cache sync failed")
 		return
 	}
+
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
 	}
-
 	<-ctx.Done()
 }
 
@@ -82,119 +82,164 @@ func (c *apisixPluginConfigController) runWorker(ctx context.Context) {
 	}
 }
 
-// sync Used to synchronize ApisixPluginConfig resources, because pluginConfig alone exists in APISIX and will not be affected,
-// the synchronization logic only includes pluginConfig's unique configuration management
-// So when ApisixPluginConfig was deleted, only the scheme / load balancer / healthcheck / retry / timeout
-// on ApisixPluginConfig was cleaned up
 func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event) error {
-	key := ev.Object.(string)
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	obj := ev.Object.(kube.ApisixPluginConfigEvent)
+	namespace, name, err := cache.SplitMetaNamespaceKey(obj.Key)
 	if err != nil {
-		log.Errorf("found ApisixPluginConfig resource with invalid meta namespace key %s: %s", key, err)
+		log.Errorf("invalid resource key: %s", obj.Key)
 		return err
 	}
-
-	apc, err := c.controller.apisixPluginConfigLister.ApisixPluginConfigs(namespace).Get(name)
+	var (
+		ar   kube.ApisixPluginConfig
+		tctx *translation.TranslateContext
+	)
+	switch obj.GroupVersion {
+	case kube.ApisixPluginConfigV2beta3:
+		ar, err = c.controller.apisixPluginConfigLister.V2beta3(namespace, name)
+	}
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
-			log.Errorf("failed to get ApisixPluginConfig %s: %s", key, err)
+			log.Errorw("failed to get ApisixPluginConfig",
+				zap.String("version", obj.GroupVersion),
+				zap.String("key", obj.Key),
+				zap.Error(err),
+			)
 			return err
 		}
+
 		if ev.Type != types.EventDelete {
-			log.Warnf("ApisixPluginConfig %s was deleted before it can be delivered", key)
-			// Don't need to retry.
+			log.Warnw("ApisixPluginConfig was deleted before it can be delivered",
+				zap.String("key", obj.Key),
+				zap.String("version", obj.GroupVersion),
+			)
 			return nil
 		}
 	}
 	if ev.Type == types.EventDelete {
-		if apc != nil {
+		if ar != nil {
 			// We still find the resource while we are processing the DELETE event,
 			// that means object with same namespace and name was created, discarding
 			// this stale DELETE event.
-			log.Warnf("discard the stale ApisixPluginConfig delete event since the %s exists", key)
+			log.Warnw("discard the stale ApisixPluginConfig delete event since the resource still exists",
+				zap.String("key", obj.Key),
+			)
 			return nil
 		}
-		apc = ev.Tombstone.(*configv2beta3.ApisixPluginConfig)
+		ar = ev.Tombstone.(kube.ApisixPluginConfig)
 	}
 
-	svc, err := c.controller.svcLister.Services(namespace).Get(name)
-	if err != nil {
-		log.Errorf("failed to get service %s: %s", key, err)
-		c.controller.recorderEvent(apc, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(apc, _resourceSyncAborted, err, metav1.ConditionFalse, apc.GetGeneration())
-		return err
-	}
-
-	clusterName := c.controller.cfg.APISIX.DefaultClusterName
-	for _, port := range svc.Spec.Ports {
-		_ = port
-		upsName := apisixv1.ComposePluginConfigName(namespace, name)
-		// TODO: multiple cluster
-		ups, err := c.controller.apisix.Cluster(clusterName).PluginConfig().Get(ctx, upsName)
-		if err != nil {
-			if err == apisixcache.ErrNotFound {
-				continue
-			}
-			log.Errorf("failed to get plugin_config %s: %s", upsName, err)
-			c.controller.recorderEvent(apc, corev1.EventTypeWarning, _resourceSyncAborted, err)
-			c.controller.recordStatus(apc, _resourceSyncAborted, err, metav1.ConditionFalse, apc.GetGeneration())
-			return err
-		}
-		var newUps *apisixv1.PluginConfig
+	switch obj.GroupVersion {
+	case kube.ApisixPluginConfigV2beta3:
 		if ev.Type != types.EventDelete {
-			// FIXME Same ApisixPluginConfig might be translated multiple times.
-			newUps, err = c.controller.translator.TranslateApisixPluginConfig(apc)
-			if err != nil {
-				log.Errorw("found malformed ApisixPluginConfig",
-					zap.Any("object", apc),
-					zap.Error(err),
-				)
-				c.controller.recorderEvent(apc, corev1.EventTypeWarning, _resourceSyncAborted, err)
-				c.controller.recordStatus(apc, _resourceSyncAborted, err, metav1.ConditionFalse, apc.GetGeneration())
-				return err
-			}
+			tctx, err = c.controller.translator.TranslatePluginConfigV2beta3(ar.V2beta3())
 		} else {
-			newUps = apisixv1.NewDefaultPluginConfig()
+			tctx, err = c.controller.translator.TranslatePluginConfigV2beta3NotStrictly(ar.V2beta3())
 		}
-
-		newUps.Metadata = ups.Metadata
-		newUps.Plugins = ups.Plugins
-		log.Debugw("updating plugin_config since ApisixPluginConfig changed",
-			zap.String("event", ev.Type.String()),
-			zap.Any("plugin_config", newUps),
-			zap.Any("ApisixPluginConfig", apc),
-		)
-		if _, err := c.controller.apisix.Cluster(clusterName).PluginConfig().Update(ctx, newUps); err != nil {
-			log.Errorw("failed to update plugin_config",
+		if err != nil {
+			log.Errorw("failed to translate ApisixPluginConfig v2beta3",
 				zap.Error(err),
-				zap.Any("plugin_config", newUps),
-				zap.Any("ApisixPluginConfig", apc),
-				zap.String("cluster", clusterName),
+				zap.Any("object", ar),
 			)
-			c.controller.recorderEvent(apc, corev1.EventTypeWarning, _resourceSyncAborted, err)
-			c.controller.recordStatus(apc, _resourceSyncAborted, err, metav1.ConditionFalse, apc.GetGeneration())
 			return err
 		}
 	}
-	if ev.Type != types.EventDelete {
-		c.controller.recorderEvent(apc, corev1.EventTypeNormal, _resourceSynced, nil)
-		c.controller.recordStatus(apc, _resourceSynced, nil, metav1.ConditionTrue, apc.GetGeneration())
+
+	log.Debugw("translated ApisixPluginConfig",
+		zap.Any("pluginConfigs", tctx.PluginConfigs),
+	)
+
+	m := &manifest{
+		pluginConfigs: tctx.PluginConfigs,
 	}
-	return err
+
+	var (
+		added   *manifest
+		updated *manifest
+		deleted *manifest
+	)
+
+	if ev.Type == types.EventDelete {
+		deleted = m
+	} else if ev.Type == types.EventAdd {
+		added = m
+	} else {
+		var oldCtx *translation.TranslateContext
+		switch obj.GroupVersion {
+		case kube.ApisixPluginConfigV2beta3:
+			oldCtx, err = c.controller.translator.TranslatePluginConfigV2beta3(obj.OldObject.V2beta3())
+		}
+		if err != nil {
+			log.Errorw("failed to translate old ApisixPluginConfig",
+				zap.String("version", obj.GroupVersion),
+				zap.String("event", "update"),
+				zap.Error(err),
+				zap.Any("ApisixPluginConfig", ar),
+			)
+			return err
+		}
+
+		om := &manifest{
+			pluginConfigs: oldCtx.PluginConfigs,
+		}
+		added, updated, deleted = m.diff(om)
+	}
+
+	return c.controller.syncManifests(ctx, added, updated, deleted)
 }
 
-func (c *apisixPluginConfigController) handleSyncErr(obj interface{}, err error) {
-	if err == nil {
+func (c *apisixPluginConfigController) handleSyncErr(obj interface{}, errOrigin error) {
+	ev := obj.(*types.Event)
+	event := ev.Object.(kube.ApisixPluginConfigEvent)
+	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
+	if errLocal != nil {
+		log.Errorf("invalid resource key: %s", event.Key)
+		c.controller.MetricsCollector.IncrSyncOperation("PluginConfig", "failure")
+		return
+	}
+	var ar kube.ApisixPluginConfig
+	switch event.GroupVersion {
+	case kube.ApisixPluginConfigV2beta3:
+		ar, errLocal = c.controller.apisixPluginConfigLister.V2beta3(namespace, name)
+	}
+	if errOrigin == nil {
+		if ev.Type != types.EventDelete {
+			if errLocal == nil {
+				switch ar.GroupVersion() {
+				case kube.ApisixPluginConfigV2beta3:
+					c.controller.recorderEvent(ar.V2beta3(), v1.EventTypeNormal, _resourceSynced, nil)
+					c.controller.recordStatus(ar.V2beta3(), _resourceSynced, nil, metav1.ConditionTrue, ar.V2beta3().GetGeneration())
+				}
+			} else {
+				log.Errorw("failed list ApisixPluginConfig",
+					zap.Error(errLocal),
+					zap.String("name", name),
+					zap.String("namespace", namespace),
+				)
+			}
+		}
 		c.workqueue.Forget(obj)
-		c.controller.MetricsCollector.IncrSyncOperation("plugin_config", "success")
+		c.controller.MetricsCollector.IncrSyncOperation("PluginConfig", "success")
 		return
 	}
 	log.Warnw("sync ApisixPluginConfig failed, will retry",
 		zap.Any("object", obj),
-		zap.Error(err),
+		zap.Error(errOrigin),
 	)
+	if errLocal == nil {
+		switch ar.GroupVersion() {
+		case kube.ApisixPluginConfigV2beta3:
+			c.controller.recorderEvent(ar.V2beta3(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
+			c.controller.recordStatus(ar.V2beta3(), _resourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta3().GetGeneration())
+		}
+	} else {
+		log.Errorw("failed list ApisixPluginConfig",
+			zap.Error(errLocal),
+			zap.String("name", name),
+			zap.String("namespace", namespace),
+		)
+	}
 	c.workqueue.AddRateLimited(obj)
-	c.controller.MetricsCollector.IncrSyncOperation("plugin_config", "failure")
+	c.controller.MetricsCollector.IncrSyncOperation("PluginConfig", "failure")
 }
 
 func (c *apisixPluginConfigController) onAdd(obj interface{}) {
@@ -209,18 +254,22 @@ func (c *apisixPluginConfigController) onAdd(obj interface{}) {
 	log.Debugw("ApisixPluginConfig add event arrived",
 		zap.Any("object", obj))
 
+	ar := kube.MustNewApisixPluginConfig(obj)
 	c.workqueue.Add(&types.Event{
-		Type:   types.EventAdd,
-		Object: key,
+		Type: types.EventAdd,
+		Object: kube.ApisixPluginConfigEvent{
+			Key:          key,
+			GroupVersion: ar.GroupVersion(),
+		},
 	})
 
-	c.controller.MetricsCollector.IncrEvents("plugin_config", "add")
+	c.controller.MetricsCollector.IncrEvents("PluginConfig", "add")
 }
 
 func (c *apisixPluginConfigController) onUpdate(oldObj, newObj interface{}) {
-	prev := oldObj.(*configv2beta3.ApisixPluginConfig)
-	curr := newObj.(*configv2beta3.ApisixPluginConfig)
-	if prev.ResourceVersion >= curr.ResourceVersion {
+	prev := kube.MustNewApisixPluginConfig(oldObj)
+	curr := kube.MustNewApisixPluginConfig(newObj)
+	if prev.ResourceVersion() >= curr.ResourceVersion() {
 		return
 	}
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
@@ -235,41 +284,46 @@ func (c *apisixPluginConfigController) onUpdate(oldObj, newObj interface{}) {
 		zap.Any("new object", curr),
 		zap.Any("old object", prev),
 	)
-
 	c.workqueue.Add(&types.Event{
-		Type:   types.EventUpdate,
-		Object: key,
+		Type: types.EventUpdate,
+		Object: kube.ApisixPluginConfigEvent{
+			Key:          key,
+			GroupVersion: curr.GroupVersion(),
+			OldObject:    prev,
+		},
 	})
 
-	c.controller.MetricsCollector.IncrEvents("plugin_config", "update")
+	c.controller.MetricsCollector.IncrEvents("PluginConfig", "update")
 }
 
 func (c *apisixPluginConfigController) onDelete(obj interface{}) {
-	au, ok := obj.(*configv2beta3.ApisixPluginConfig)
-	if !ok {
+	ar, err := kube.NewApisixPluginConfig(obj)
+	if err != nil {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			return
 		}
-		au = tombstone.Obj.(*configv2beta3.ApisixPluginConfig)
+		ar = kube.MustNewApisixPluginConfig(tombstone)
 	}
-
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		log.Errorf("found ApisixPluginConfig resource with bad meta namespace key: %s", err)
+		log.Errorf("found ApisixPluginConfig resource with bad meta namesapce key: %s", err)
 		return
 	}
 	if !c.controller.namespaceWatching(key) {
 		return
 	}
 	log.Debugw("ApisixPluginConfig delete event arrived",
-		zap.Any("final state", au),
+		zap.Any("final state", ar),
 	)
 	c.workqueue.Add(&types.Event{
-		Type:      types.EventDelete,
-		Object:    key,
-		Tombstone: au,
+		Type: types.EventDelete,
+		Object: kube.ApisixPluginConfigEvent{
+			Key:          key,
+			GroupVersion: ar.GroupVersion(),
+		},
+		Tombstone: ar,
 	})
 
-	c.controller.MetricsCollector.IncrEvents("plugin_config", "delete")
+	c.controller.MetricsCollector.IncrEvents("PluginConfig", "delete")
 }
