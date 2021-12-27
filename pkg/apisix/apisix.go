@@ -32,6 +32,8 @@ type APISIX interface {
 	UpdateCluster(context.Context, *ClusterOptions) error
 	// ListClusters lists all APISIX clusters.
 	ListClusters() []Cluster
+	// DeleteCluster deletes the target APISIX cluster by its name.
+	DeleteCluster(string)
 }
 
 // Cluster defines specific operations that can be applied in an APISIX
@@ -215,4 +217,13 @@ func (c *apisix) UpdateCluster(ctx context.Context, co *ClusterOptions) error {
 
 	c.clusters[co.Name] = cluster
 	return nil
+}
+
+func (c *apisix) DeleteCluster(name string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Don't have to close or free some resources in that cluster, so
+	// just delete its index.
+	delete(c.clusters, name)
 }
