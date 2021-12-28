@@ -453,7 +453,7 @@ spec:
 		resp.Body().Contains("origin")
 	})
 
-	ginkgo.It("xxxx enable plugin and then delete it", func() {
+	ginkgo.It("enable plugin and then delete it", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		apc := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
