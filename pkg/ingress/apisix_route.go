@@ -30,6 +30,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type apisixRouteController struct {
@@ -163,7 +164,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		}
 	case kube.ApisixRouteV2beta3:
 		if ev.Type != types.EventDelete {
-			if replaced, err = c.replacePluginNameWithIdIfNotEmptyV2beta3(ctx, ar.V2beta3()); err != nil {
+			if replaced, err = c.replacePluginNameWithIdIfNotEmptyV2beta3(ctx, ar.V2beta3()); err == nil {
 				tctx, err = c.controller.translator.TranslateRouteV2beta3(replaced)
 			}
 		} else {
@@ -210,7 +211,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		case kube.ApisixRouteV2beta2:
 			oldCtx, err = c.controller.translator.TranslateRouteV2beta2(obj.OldObject.V2beta2())
 		case kube.ApisixRouteV2beta3:
-			if replaced, err = c.replacePluginNameWithIdIfNotEmptyV2beta3(ctx, ar.V2beta3()); err != nil {
+			if replaced, err = c.replacePluginNameWithIdIfNotEmptyV2beta3(ctx, ar.V2beta3()); err == nil {
 				oldCtx, err = c.controller.translator.TranslateRouteV2beta3(replaced)
 			}
 		}
@@ -242,8 +243,12 @@ func (c *apisixRouteController) replacePluginNameWithIdIfNotEmptyV2beta3(ctx con
 	for _, v := range in.Spec.HTTP {
 		pluginConfigId := ""
 		if v.PluginConfigName != "" {
-			pc, err := c.controller.apisix.Cluster(clusterName).PluginConfig().Get(ctx, v.PluginConfigName)
+			pc, err := c.controller.apisix.Cluster(clusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName))
 			if err != nil {
+				log.Errorw("replacePluginNameWithIdIfNotEmptyV2beta3 get pluginConfig error",
+					zap.String("key", apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName)),
+					zap.Any("obj", in),
+					zap.Error(err))
 				return nil, err
 			}
 			pluginConfigId = pc.ID

@@ -23,50 +23,92 @@ import (
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 )
 
-func TestTranslateApisixPluginConfig(t *testing.T) {
+func TestTranslatePluginConfigV2beta3(t *testing.T) {
 	apc := &configv2beta3.ApisixPluginConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "apc",
 			Namespace: "test-ns",
 		},
 		Spec: configv2beta3.ApisixPluginConfigSpec{
-			Plugins: []configv2beta3.ApisixRouteHTTPPluginConfig{
+			Plugins: []configv2beta3.ApisixRouteHTTPPlugin{
 				{
-					"key-1": 123,
-					"key-2": map[string][]string{
-						"whitelist": {
-							"127.0.0.0/24",
-							"113.74.26.106",
-						},
-					},
-					"key-3": map[string]int{
-						"count":         2,
-						"time_window":   60,
-						"rejected_code": 503,
+					Name:   "case1",
+					Enable: true,
+					Config: map[string]interface{}{
+						"key-1": 1,
+						"key-2": 2,
 					},
 				},
 				{
-					"key-1": 123456,
-					"key-2": map[string][]string{
-						"whitelist": {
-							"1.1.1.1",
-						},
+					Name:   "case2",
+					Enable: false,
+					Config: map[string]interface{}{
+						"key-3": 3,
+						"key-4": 4,
+						"key-5": 5,
 					},
-					"key-4": map[string]int{
-						"count":         5,
-						"time_window":   60,
-						"rejected_code": 503,
+				},
+				{
+					Name:   "case3",
+					Enable: true,
+					Config: map[string]interface{}{
+						"key-6": 6,
+						"key-7": 7,
+						"key-8": 8,
+						"key-9": 9,
 					},
 				},
 			},
 		},
 	}
 	trans := &translator{}
-	pluginConfig, err := trans.TranslateApisixPluginConfig(apc)
+	ctx, err := trans.TranslatePluginConfigV2beta3(apc)
 	assert.NoError(t, err)
-	assert.Len(t, pluginConfig.Plugins, 4)
-	assert.Equal(t, apc.Spec.Plugins[1]["key-1"], pluginConfig.Plugins["key-1"])
-	assert.Equal(t, apc.Spec.Plugins[1]["key-2"], pluginConfig.Plugins["key-2"])
-	assert.Equal(t, apc.Spec.Plugins[0]["key-3"], pluginConfig.Plugins["key-3"])
-	assert.Equal(t, apc.Spec.Plugins[1]["key-4"], pluginConfig.Plugins["key-4"])
+	assert.Len(t, ctx.PluginConfigs, 1)
+	assert.Len(t, ctx.PluginConfigs[0].Plugins, 2)
+}
+
+func TestTranslatePluginConfigV2beta3NotStrictly(t *testing.T) {
+	apc := &configv2beta3.ApisixPluginConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "apc",
+			Namespace: "test-ns",
+		},
+		Spec: configv2beta3.ApisixPluginConfigSpec{
+			Plugins: []configv2beta3.ApisixRouteHTTPPlugin{
+				{
+					Name:   "case1",
+					Enable: true,
+					Config: map[string]interface{}{
+						"key-1": 1,
+						"key-2": 2,
+					},
+				},
+				{
+					Name:   "case2",
+					Enable: false,
+					Config: map[string]interface{}{
+						"key-3": 3,
+						"key-4": 4,
+						"key-5": 5,
+					},
+				},
+				{
+					Name:   "case3",
+					Enable: true,
+					Config: map[string]interface{}{
+						"key-6": 6,
+						"key-7": 7,
+						"key-8": 8,
+						"key-9": 9,
+					},
+				},
+			},
+		},
+	}
+	trans := &translator{}
+	ctx, err := trans.TranslatePluginConfigV2beta3NotStrictly(apc)
+	assert.NoError(t, err)
+	assert.Len(t, ctx.PluginConfigs, 1)
+	assert.Len(t, ctx.PluginConfigs[0].Plugins, 0)
 }

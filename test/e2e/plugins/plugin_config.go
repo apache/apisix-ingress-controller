@@ -43,14 +43,19 @@ metadata:
  name: test-apc-1
 spec:
  plugins:
- - echo:
-     before_body: "This is the preface"
-     after_body: "This is the epilogue"
-     headers:
-       X-Foo: v1
-       X-Foo2: v2
+ - name: echo
+   enable: true
+   config:
+    before_body: "This is the preface"
+    after_body: "This is the epilogue"
+    headers:
+     X-Foo: v1
+     X-Foo2: v2
 `)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apc))
+
+		err := s.EnsureNumApisixPluginConfigCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
 
 		time.Sleep(time.Second * 3)
 
@@ -58,41 +63,39 @@ spec:
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
-name: httpbin-route
+ name: httpbin-route
 spec:
-http:
-- name: rule1
-  match:
-    hosts:
-    - httpbin.org
-    paths:
+ http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
       - /ip
-  backends:
-  - serviceName: %s
-    servicePort: %d
-    weight: 10
-  plugin_config_name: test-apc-1
+    backends:
+    - serviceName: %s
+      servicePort: %d
+      weight: 10
+    plugin_config_name: test-apc-1
 `, backendSvc, backendPorts[0])
-		//		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-		_ = ar
-		//err := s.EnsureNumApisixRoutesCreated(1)
-		//assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-		err := s.EnsureNumApisixPluginConfigCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
-		//time.Sleep(3 * time.Second)
-		//pcs, err := s.ListApisixPluginConfig()
-		//assert.Nil(ginkgo.GinkgoT(), err, nil, "listing pluginConfigs")
-		//assert.Len(ginkgo.GinkgoT(), pcs, 1)
-		//assert.Len(ginkgo.GinkgoT(), pcs[0].Plugins, 1)
-		//
-		//resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		//resp.Status(http.StatusOK)
-		//resp.Header("X-Foo").Equal("v1")
-		//resp.Header("X-Foo2").Equal("v2")
-		//resp.Body().Contains("This is the preface")
-		//resp.Body().Contains("origin")
-		//resp.Body().Contains("This is the epilogue")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		time.Sleep(3 * time.Second)
+		pcs, err := s.ListApisixPluginConfig()
+		assert.Nil(ginkgo.GinkgoT(), err, nil, "listing pluginConfigs")
+		assert.Len(ginkgo.GinkgoT(), pcs, 1)
+		assert.Len(ginkgo.GinkgoT(), pcs[0].Plugins, 1)
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+		resp.Header("X-Foo").Equal("v1")
+		resp.Header("X-Foo2").Equal("v2")
+		resp.Body().Contains("This is the preface")
+		resp.Body().Contains("origin")
+		resp.Body().Contains("This is the epilogue")
 	})
 
 	ginkgo.It("disable plugin", func() {

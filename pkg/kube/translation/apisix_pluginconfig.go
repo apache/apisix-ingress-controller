@@ -23,45 +23,26 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func (t *translator) TranslateApisixPluginConfig(apc *configv2beta3.ApisixPluginConfig) (*apisixv1.PluginConfig, error) {
-	pluginMap := make(apisixv1.Plugins)
-	if len(apc.Spec.Plugins) > 0 {
-		for _, plugin := range apc.Spec.Plugins {
-			for k, v := range plugin {
-				// Here, it will override same key.
-				if t, ok := pluginMap[k]; ok {
-					log.Infow("TranslateApisixPluginConfig override same plugin key",
-						zap.String("key", k),
-						zap.Any("old", t),
-						zap.Any("new", v),
-					)
-				}
-				pluginMap[k] = v
-			}
-		}
-	}
-	pc := apisixv1.NewDefaultPluginConfig()
-	pc.Name = apisixv1.ComposePluginConfigName(apc.Namespace, apc.Name)
-	pc.Plugins = pluginMap
-	return pc, nil
-}
-
 func (t *translator) TranslatePluginConfigV2beta3(config *configv2beta3.ApisixPluginConfig) (*TranslateContext, error) {
 	ctx := defaultEmptyTranslateContext()
-
 	pluginMap := make(apisixv1.Plugins)
 	if len(config.Spec.Plugins) > 0 {
 		for _, plugin := range config.Spec.Plugins {
-			for k, v := range plugin {
+			if !plugin.Enable {
+				continue
+			}
+			if plugin.Config != nil {
 				// Here, it will override same key.
-				if t, ok := pluginMap[k]; ok {
+				if t, ok := pluginMap[plugin.Name]; ok {
 					log.Infow("TranslatePluginConfigV2beta3 override same plugin key",
-						zap.String("key", k),
+						zap.String("key", plugin.Name),
 						zap.Any("old", t),
-						zap.Any("new", v),
+						zap.Any("new", plugin.Config),
 					)
 				}
-				pluginMap[k] = v
+				pluginMap[plugin.Name] = plugin.Config
+			} else {
+				pluginMap[plugin.Name] = make(map[string]interface{})
 			}
 		}
 	}
