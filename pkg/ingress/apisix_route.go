@@ -211,7 +211,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		case kube.ApisixRouteV2beta2:
 			oldCtx, err = c.controller.translator.TranslateRouteV2beta2(obj.OldObject.V2beta2())
 		case kube.ApisixRouteV2beta3:
-			if replaced, err = c.replacePluginNameWithIdIfNotEmptyV2beta3(ctx, ar.V2beta3()); err == nil {
+			if replaced, err = c.replacePluginNameWithIdIfNotEmptyV2beta3(ctx, obj.OldObject.V2beta3()); err == nil {
 				oldCtx, err = c.controller.translator.TranslateRouteV2beta3(replaced)
 			}
 		}
