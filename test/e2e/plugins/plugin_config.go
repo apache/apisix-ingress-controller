@@ -98,8 +98,22 @@ spec:
 		resp.Body().Contains("This is the epilogue")
 	})
 
-	ginkgo.It("disable plugin", func() {
+	ginkgo.It("ApisixPluginConfig replace body", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		apc := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixPluginConfig
+metadata:
+ name: test-apc-1
+spec:
+ plugins:
+ - name: echo
+   enable: true
+   config:
+    body: "my custom body"
+`)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apc))
+
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
@@ -112,45 +126,153 @@ spec:
      hosts:
      - httpbin.org
      paths:
-       - /status/*
+       - /ip
    backends:
    - serviceName: %s
      servicePort: %d
-     resolveGranularity: service
-   plugins:
-   - name: api-breaker
-     enable: false
-     config:
-       break_response_code: 502
-       unhealthy:
-         http_statuses:
-         - 505
-         failures: 2
-       max_breaker_sec: 3
-       healthy:
-         http_statuses:
-         - 200
-         successes: 2
+     weight: 10
+   plugin_config_name: test-apc-1
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+
 		err := s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixPluginConfigCreated(0)
+		err = s.EnsureNumApisixPluginConfigCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp := s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").Expect()
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
 		resp.Status(http.StatusOK)
+		resp.Body().Equal("my custom body")
+	})
 
-		for i := 0; i < 2; i++ {
-			resp = s.NewAPISIXClient().GET("/status/505").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(505)
-		}
+	ginkgo.It("disable plugin", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		apc := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixPluginConfig
+metadata:
+ name: test-apc-1
+spec:
+ plugins:
+ - name: echo
+   enable: false
+   config:
+    body: "my custom body"
+`)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apc))
 
-		// Trigger the api-breaker threshold
-		resp = s.NewAPISIXClient().GET("/status/505").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(505)
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugin_config_name: test-apc-1
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+
+		time.Sleep(6 * time.Second)
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixPluginConfigCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().Contains("origin")
+		resp.Body().NotContains("my custom body")
+	})
+
+	ginkgo.It("enable plugin and then delete it", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		apc := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixPluginConfig
+metadata:
+ name: test-apc-1
+spec:
+ plugins:
+ - name: echo
+   enable: true
+   config:
+    body: "my custom body"
+`)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apc))
+
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugin_config_name: test-apc-1 
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixPluginConfigCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().Equal("my custom body")
+
+		apc = fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixPluginConfig
+metadata:
+ name: test-apc-1
+spec:
+ plugins:
+ - name: echo
+   enable: false
+   config:
+    body: "my custom body"
+`)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apc))
+
+		err = s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixPluginConfigCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().NotContains("my custom body")
+		resp.Body().Contains("origin")
 	})
 })
