@@ -630,11 +630,9 @@ type ApisixPluginConfig struct {
 
 // ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
 type ApisixPluginConfigSpec struct {
-	// Plugins contains a list of ApisixRouteHTTPPluginConfig
+	// Plugins contains a list of ApisixRouteHTTPPlugin
 	// +required
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinItems=1
-	Plugins []ApisixRouteHTTPPluginConfig `json:"plugins" yaml:"plugins"`
+	Plugins []ApisixRouteHTTPPlugin `json:"plugins" yaml:"plugins"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

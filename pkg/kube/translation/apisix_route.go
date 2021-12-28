@@ -537,6 +537,10 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 			pluginConfig.ID = route.PluginConfigId
 			pluginConfig.Name = pluginConfigName
 			pluginConfig.Plugins = pluginMap
+		} else {
+			if part.PluginConfigName != "" {
+				route.PluginConfigId = part.PluginConfigName
+			}
 		}
 
 		if len(backends) > 0 {

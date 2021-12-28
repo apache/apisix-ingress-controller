@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
@@ -90,8 +91,9 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		return err
 	}
 	var (
-		ar   kube.ApisixRoute
-		tctx *translation.TranslateContext
+		ar       kube.ApisixRoute
+		replaced *v2beta3.ApisixRoute
+		tctx     *translation.TranslateContext
 	)
 	switch obj.GroupVersion {
 	case kube.ApisixRouteV2beta1:
@@ -161,7 +163,9 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		}
 	case kube.ApisixRouteV2beta3:
 		if ev.Type != types.EventDelete {
-			tctx, err = c.controller.translator.TranslateRouteV2beta3(ar.V2beta3())
+			if replaced, err = c.replacePluginNameWithIdIfNotEmptyV2beta3(ctx, ar.V2beta3()); err != nil {
+				tctx, err = c.controller.translator.TranslateRouteV2beta3(replaced)
+			}
 		} else {
 			tctx, err = c.controller.translator.TranslateRouteV2beta3NotStrictly(ar.V2beta3())
 		}
@@ -206,7 +210,9 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		case kube.ApisixRouteV2beta2:
 			oldCtx, err = c.controller.translator.TranslateRouteV2beta2(obj.OldObject.V2beta2())
 		case kube.ApisixRouteV2beta3:
-			oldCtx, err = c.controller.translator.TranslateRouteV2beta3(obj.OldObject.V2beta3())
+			if replaced, err = c.replacePluginNameWithIdIfNotEmptyV2beta3(ctx, ar.V2beta3()); err != nil {
+				oldCtx, err = c.controller.translator.TranslateRouteV2beta3(replaced)
+			}
 		}
 		if err != nil {
 			log.Errorw("failed to translate old ApisixRoute",
@@ -228,6 +234,25 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	}
 
 	return c.controller.syncManifests(ctx, added, updated, deleted)
+}
+
+func (c *apisixRouteController) replacePluginNameWithIdIfNotEmptyV2beta3(ctx context.Context, in *v2beta3.ApisixRoute) (*v2beta3.ApisixRoute, error) {
+	clusterName := c.controller.cfg.APISIX.DefaultClusterName
+	news := make([]v2beta3.ApisixRouteHTTP, 0)
+	for _, v := range in.Spec.HTTP {
+		pluginConfigId := ""
+		if v.PluginConfigName != "" {
+			pc, err := c.controller.apisix.Cluster(clusterName).PluginConfig().Get(ctx, v.PluginConfigName)
+			if err != nil {
+				return nil, err
+			}
+			pluginConfigId = pc.ID
+		}
+		v.PluginConfigName = pluginConfigId
+		news = append(news, v)
+	}
+	in.Spec.HTTP = news
+	return in, nil
 }
 
 func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) {
