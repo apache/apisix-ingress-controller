@@ -245,13 +245,13 @@ func (c *apisixRouteController) replacePluginNameWithIdIfNotEmptyV2beta3(ctx con
 		if v.PluginConfigName != "" {
 			pc, err := c.controller.apisix.Cluster(clusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName))
 			if err != nil {
-				log.Errorw("replacePluginNameWithIdIfNotEmptyV2beta3 get pluginConfig error",
-					zap.String("key", apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName)),
+				log.Errorw("replacePluginNameWithIdIfNotEmptyV2beta3 error:  plugin_config not found",
+					zap.String("name", apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName)),
 					zap.Any("obj", in),
 					zap.Error(err))
-				return nil, err
+			} else {
+				pluginConfigId = pc.ID
 			}
-			pluginConfigId = pc.ID
 		}
 		v.PluginConfigName = pluginConfigId
 		news = append(news, v)
