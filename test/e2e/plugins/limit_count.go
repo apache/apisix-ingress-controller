@@ -67,8 +67,6 @@ spec:
 
 		err := s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixPluginConfigCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
@@ -126,8 +124,6 @@ spec:
 
 		err := s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixPluginConfigCreated(0)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
@@ -181,8 +177,6 @@ spec:
 
 		err := s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixPluginConfigCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
@@ -223,8 +217,6 @@ spec:
 
 		err = s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixPluginConfigCreated(0)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
