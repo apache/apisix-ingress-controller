@@ -66,19 +66,19 @@ type apisixPluginConfig struct {
 	v2beta3      *configv2beta3.ApisixPluginConfig
 }
 
-func (ar *apisixPluginConfig) V2beta3() *configv2beta3.ApisixPluginConfig {
-	if ar.groupVersion != ApisixPluginConfigV2beta3 {
+func (apc *apisixPluginConfig) V2beta3() *configv2beta3.ApisixPluginConfig {
+	if apc.groupVersion != ApisixPluginConfigV2beta3 {
 		panic("not a apisix.apache.org/v2beta3 pluginConfig")
 	}
-	return ar.v2beta3
+	return apc.v2beta3
 }
 
-func (ar *apisixPluginConfig) GroupVersion() string {
-	return ar.groupVersion
+func (apc *apisixPluginConfig) GroupVersion() string {
+	return apc.groupVersion
 }
 
-func (ar *apisixPluginConfig) ResourceVersion() string {
-	return ar.V2beta3().ResourceVersion
+func (apc *apisixPluginConfig) ResourceVersion() string {
+	return apc.V2beta3().ResourceVersion
 }
 
 type apisixPluginConfigLister struct {
@@ -86,24 +86,24 @@ type apisixPluginConfigLister struct {
 }
 
 func (l *apisixPluginConfigLister) V2beta3(namespace, name string) (ApisixPluginConfig, error) {
-	ar, err := l.v2beta3Lister.ApisixPluginConfigs(namespace).Get(name)
+	apc, err := l.v2beta3Lister.ApisixPluginConfigs(namespace).Get(name)
 	if err != nil {
 		return nil, err
 	}
 	return &apisixPluginConfig{
 		groupVersion: ApisixPluginConfigV2beta3,
-		v2beta3:      ar,
+		v2beta3:      apc,
 	}, nil
 }
 
 // MustNewApisixPluginConfig creates a kube.ApisixPluginConfig object according to the
 // type of obj.
 func MustNewApisixPluginConfig(obj interface{}) ApisixPluginConfig {
-	switch ar := obj.(type) {
+	switch apc := obj.(type) {
 	case *configv2beta3.ApisixPluginConfig:
 		return &apisixPluginConfig{
 			groupVersion: ApisixPluginConfigV2beta3,
-			v2beta3:      ar,
+			v2beta3:      apc,
 		}
 	default:
 		panic("invalid ApisixPluginConfig type")
@@ -114,11 +114,11 @@ func MustNewApisixPluginConfig(obj interface{}) ApisixPluginConfig {
 // type of obj. It returns nil and the error reason when the
 // type assertion fails.
 func NewApisixPluginConfig(obj interface{}) (ApisixPluginConfig, error) {
-	switch ar := obj.(type) {
+	switch apc := obj.(type) {
 	case *configv2beta3.ApisixPluginConfig:
 		return &apisixPluginConfig{
 			groupVersion: ApisixPluginConfigV2beta3,
-			v2beta3:      ar,
+			v2beta3:      apc,
 		}, nil
 	default:
 		return nil, errors.New("invalid ApisixPluginConfig type")

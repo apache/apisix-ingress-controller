@@ -243,15 +243,15 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 				}
 			}
 		}
-		for _, u := range deleted.pluginConfigs {
-			if err := c.apisix.Cluster(clusterName).PluginConfig().Delete(ctx, u); err != nil {
+		for _, pc := range deleted.pluginConfigs {
+			if err := c.apisix.Cluster(clusterName).PluginConfig().Delete(ctx, pc); err != nil {
 				// pluginConfig might be referenced by other routes.
 				if err != cache.ErrStillInUse {
 					merr = multierror.Append(merr, err)
 				} else {
 					log.Infow("plugin_config was referenced by other routes",
-						zap.String("plugin_config_id", u.ID),
-						zap.String("plugin_config_name", u.Name),
+						zap.String("plugin_config_id", pc.ID),
+						zap.String("plugin_config_name", pc.Name),
 					)
 				}
 			}
@@ -269,8 +269,8 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 				merr = multierror.Append(merr, err)
 			}
 		}
-		for _, u := range added.pluginConfigs {
-			if _, err := c.apisix.Cluster(clusterName).PluginConfig().Create(ctx, u); err != nil {
+		for _, pc := range added.pluginConfigs {
+			if _, err := c.apisix.Cluster(clusterName).PluginConfig().Create(ctx, pc); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
@@ -296,8 +296,8 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 				merr = multierror.Append(merr, err)
 			}
 		}
-		for _, sr := range updated.pluginConfigs {
-			if _, err := c.apisix.Cluster(clusterName).PluginConfig().Create(ctx, sr); err != nil {
+		for _, pc := range updated.pluginConfigs {
+			if _, err := c.apisix.Cluster(clusterName).PluginConfig().Update(ctx, pc); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}

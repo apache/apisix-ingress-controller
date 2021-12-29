@@ -16,10 +16,11 @@ package plugins
 
 import (
 	"fmt"
-	"github.com/onsi/ginkgo"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"time"
+
+	"github.com/onsi/ginkgo"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
@@ -40,7 +41,7 @@ var _ = ginkgo.Describe("ApisixPluginConfig", func() {
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixPluginConfig
 metadata:
- name: test-apc-1
+ name: echo-and-cors-apc
 spec:
  plugins:
  - name: echo
@@ -51,6 +52,8 @@ spec:
     headers:
      X-Foo: v1
      X-Foo2: v2
+ - name: cors
+   enable: true
 `)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apc))
 
@@ -76,7 +79,7 @@ spec:
     - serviceName: %s
       servicePort: %d
       weight: 10
-    plugin_config_name: test-apc-1
+    plugin_config_name: echo-and-cors-apc
 `, backendSvc, backendPorts[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
@@ -87,12 +90,17 @@ spec:
 		pcs, err := s.ListApisixPluginConfig()
 		assert.Nil(ginkgo.GinkgoT(), err, nil, "listing pluginConfigs")
 		assert.Len(ginkgo.GinkgoT(), pcs, 1)
-		assert.Len(ginkgo.GinkgoT(), pcs[0].Plugins, 1)
+		assert.Len(ginkgo.GinkgoT(), pcs[0].Plugins, 2)
 
 		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
 		resp.Status(http.StatusOK)
 		resp.Header("X-Foo").Equal("v1")
 		resp.Header("X-Foo2").Equal("v2")
+		resp.Header("Access-Control-Allow-Origin").Equal("*")
+		resp.Header("Access-Control-Allow-Methods").Equal("*")
+		resp.Header("Access-Control-Allow-Headers").Equal("*")
+		resp.Header("Access-Control-Expose-Headers").Equal("*")
+		resp.Header("Access-Control-Max-Age").Equal("5")
 		resp.Body().Contains("This is the preface")
 		resp.Body().Contains("origin")
 		resp.Body().Contains("This is the epilogue")
