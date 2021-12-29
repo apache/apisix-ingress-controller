@@ -88,20 +88,20 @@ type apisixRoute struct {
 
 func (ar *apisixRoute) V2beta1() *configv2beta1.ApisixRoute {
 	if ar.groupVersion != ApisixRouteV2beta1 {
-		panic("not a apisix.apache.org/v2beta1 ingress")
+		panic("not a apisix.apache.org/v2beta1 route")
 	}
 	return ar.v2beta1
 }
 func (ar *apisixRoute) V2beta2() *configv2beta2.ApisixRoute {
 	if ar.groupVersion != ApisixRouteV2beta2 {
-		panic("not a apisix.apache.org/v2beta3 ingress")
+		panic("not a apisix.apache.org/v2beta3 route")
 	}
 	return ar.v2beta2
 }
 
 func (ar *apisixRoute) V2beta3() *configv2beta3.ApisixRoute {
 	if ar.groupVersion != ApisixRouteV2beta3 {
-		panic("not a apisix.apache.org/v2beta3 ingress")
+		panic("not a apisix.apache.org/v2beta3 route")
 	}
 	return ar.v2beta3
 }

@@ -59,6 +59,8 @@ type Cluster interface {
 	HealthCheck(context.Context) error
 	// Plugin returns a Plugin interface that can operate Plugin resources.
 	Plugin() Plugin
+	// PluginConfig returns a PluginConfig interface that can operate PluginConfig resources.
+	PluginConfig() PluginConfig
 	// Schema returns a Schema interface that can fetch schema of APISIX objects.
 	Schema() Schema
 }

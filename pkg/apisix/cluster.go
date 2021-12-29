@@ -233,6 +233,11 @@ func (c *cluster) syncCacheOnce(ctx context.Context) (bool, error) {
 		log.Errorf("failed to list consumers in APISIX: %s", err)
 		return false, err
 	}
+	pluginConfigs, err := c.pluginConfig.List(ctx)
+	if err != nil {
+		log.Errorf("failed to list plugin_configs in APISIX: %s", err)
+		return false, err
+	}
 
 	for _, r := range routes {
 		if err := c.cache.InsertRoute(r); err != nil {
@@ -291,6 +296,16 @@ func (c *cluster) syncCacheOnce(ctx context.Context) (bool, error) {
 				zap.String("cluster", c.name),
 				zap.String("error", err.Error()),
 			)
+		}
+	}
+	for _, u := range pluginConfigs {
+		if err := c.cache.InsertPluginConfig(u); err != nil {
+			log.Errorw("failed to insert pluginConfig to cache",
+				zap.String("pluginConfig", u.ID),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
+			return false, err
 		}
 	}
 	return true, nil
@@ -431,6 +446,11 @@ func (c *cluster) Consumer() Consumer {
 // Plugin implements Cluster.Plugin method.
 func (c *cluster) Plugin() Plugin {
 	return c.plugin
+}
+
+// PluginConfig implements Cluster.PluginConfig method.
+func (c *cluster) PluginConfig() PluginConfig {
+	return c.pluginConfig
 }
 
 // Schema implements Cluster.Schema method.

@@ -39,9 +39,7 @@ const (
 )
 
 func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
@@ -78,8 +76,9 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
 			var (
-				ups *apisixv1.Upstream
-				err error
+				ups          *apisixv1.Upstream
+				pluginConfig *apisixv1.PluginConfig
+				err          error
 			)
 			if pathRule.Backend.Service != nil {
 				ups, err = t.translateUpstreamFromIngressV1(ing.Namespace, pathRule.Backend.Service)
@@ -138,6 +137,14 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 			}
 			if len(plugins) > 0 {
 				route.Plugins = *(plugins.DeepCopy())
+
+				pluginConfig = apisixv1.NewDefaultPluginConfig()
+				pluginConfig.Name = composeIngressPluginName(ing.Namespace, pathRule.Backend.Service.Name)
+				pluginConfig.ID = id.GenID(route.Name)
+				pluginConfig.Plugins = *(plugins.DeepCopy())
+				ctx.addPluginConfig(pluginConfig)
+
+				route.PluginConfigId = pluginConfig.ID
 			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
@@ -149,9 +156,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 }
 
 func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
@@ -188,8 +193,9 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
 			var (
-				ups *apisixv1.Upstream
-				err error
+				ups          *apisixv1.Upstream
+				pluginConfig *apisixv1.PluginConfig
+				err          error
 			)
 			if pathRule.Backend.ServiceName != "" {
 				ups, err = t.translateUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
@@ -248,6 +254,14 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 			}
 			if len(plugins) > 0 {
 				route.Plugins = *(plugins.DeepCopy())
+
+				pluginConfig = apisixv1.NewDefaultPluginConfig()
+				pluginConfig.Name = composeIngressPluginName(ing.Namespace, pathRule.Backend.ServiceName)
+				pluginConfig.ID = id.GenID(route.Name)
+				pluginConfig.Plugins = *(plugins.DeepCopy())
+				ctx.addPluginConfig(pluginConfig)
+
+				route.PluginConfigId = pluginConfig.ID
 			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
@@ -290,9 +304,7 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 }
 
 func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
@@ -300,8 +312,9 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
 			var (
-				ups *apisixv1.Upstream
-				err error
+				ups          *apisixv1.Upstream
+				pluginConfig *apisixv1.PluginConfig
+				err          error
 			)
 			if pathRule.Backend.ServiceName != "" {
 				// Structure here is same to ingress.extensions/v1beta1, so just use this method.
@@ -361,6 +374,14 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 			}
 			if len(plugins) > 0 {
 				route.Plugins = *(plugins.DeepCopy())
+
+				pluginConfig = apisixv1.NewDefaultPluginConfig()
+				pluginConfig.Name = composeIngressPluginName(ing.Namespace, pathRule.Backend.ServiceName)
+				pluginConfig.ID = id.GenID(route.Name)
+				pluginConfig.Plugins = *(plugins.DeepCopy())
+				ctx.addPluginConfig(pluginConfig)
+
+				route.PluginConfigId = pluginConfig.ID
 			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
@@ -411,6 +432,20 @@ func composeIngressRouteName(host, path string) string {
 	buf.WriteString(host)
 	buf.WriteByte('_')
 	buf.WriteString(path)
+
+	return buf.String()
+
+}
+
+func composeIngressPluginName(svc, name string) string {
+	p := make([]byte, 0, len(svc)+len(name)+len("ingress")+2)
+	buf := bytes.NewBuffer(p)
+
+	buf.WriteString("ingress")
+	buf.WriteByte('_')
+	buf.WriteString(svc)
+	buf.WriteByte('_')
+	buf.WriteString(name)
 
 	return buf.String()
 

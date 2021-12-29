@@ -67,10 +67,11 @@ type ApisixRouteHTTP struct {
 	// Backends represents potential backends to proxy after the route
 	// rule matched. When number of backends are more than one, traffic-split
 	// plugin in APISIX will be used to split traffic based on the backend weight.
-	Backends       []ApisixRouteHTTPBackend  `json:"backends,omitempty" yaml:"backends,omitempty"`
-	Websocket      bool                      `json:"websocket" yaml:"websocket"`
-	Plugins        []ApisixRouteHTTPPlugin   `json:"plugins,omitempty" yaml:"plugins,omitempty"`
-	Authentication ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
+	Backends         []ApisixRouteHTTPBackend  `json:"backends,omitempty" yaml:"backends,omitempty"`
+	Websocket        bool                      `json:"websocket" yaml:"websocket"`
+	PluginConfigName string                    `json:"plugin_config_name,omitempty" yaml:"plugin_config_name,omitempty"`
+	Plugins          []ApisixRouteHTTPPlugin   `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Authentication   ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
 // ApisixRouteHTTPBackend represents a HTTP backend (a Kuberentes Service).
@@ -629,11 +630,9 @@ type ApisixPluginConfig struct {
 
 // ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
 type ApisixPluginConfigSpec struct {
-	// Plugins contains a list of ApisixRouteHTTPPluginConfig
+	// Plugins contains a list of ApisixRouteHTTPPlugin
 	// +required
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinItems=1
-	Plugins []ApisixRouteHTTPPluginConfig `json:"plugins" yaml:"plugins"`
+	Plugins []ApisixRouteHTTPPlugin `json:"plugins" yaml:"plugins"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

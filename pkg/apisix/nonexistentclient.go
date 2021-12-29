@@ -268,6 +268,10 @@ func (nc *nonExistentCluster) Plugin() Plugin {
 	return nc.plugin
 }
 
+func (nc *nonExistentCluster) PluginConfig() PluginConfig {
+	return nc.pluginConfig
+}
+
 func (nc *nonExistentCluster) Schema() Schema {
 	return nc.schema
 }

@@ -522,7 +522,7 @@ func (in *ApisixPluginConfigSpec) DeepCopyInto(out *ApisixPluginConfigSpec) {
 	*out = *in
 	if in.Plugins != nil {
 		in, out := &in.Plugins, &out.Plugins
-		*out = make([]ApisixRouteHTTPPluginConfig, len(*in))
+		*out = make([]ApisixRouteHTTPPlugin, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

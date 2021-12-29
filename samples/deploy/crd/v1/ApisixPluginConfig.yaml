@@ -60,6 +60,7 @@ spec:
                         type: boolean
                       config:
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true # we have to enable it since plugin config
                   required:
                     - name
                     - enable
