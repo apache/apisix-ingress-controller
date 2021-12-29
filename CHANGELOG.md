@@ -19,6 +19,7 @@
 
 # Table of Contents
 
+- [1.4.0](#140)
 - [1.3.0](#130)
 - [1.2.0](#120)
 - [1.1.0](#110)
@@ -29,6 +30,120 @@
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 1.4.0
+
+Welcome to the 1.4.0 release of apisix-ingress-controller!
+
+This is a **GA** release.
+
+## Highlights
+
+### Roadmap
+
+In next release(v1.5), custom resource's API version v2 will be GA released. Please go to [#707](https://github.com/apache/apisix-ingress-controller/issues/707) for detail.
+
+### Breaking Changes
+
+* In this release(v1.4), all custom resource's API version has been upgraded to `apisix.apache.org/v2beta3`, and we deleted `apisix.apache.org/v2beta3` and `apisix.apache.org/v2alpha1`. Please see [#746](https://github.com/apache/apisix-ingress-controller/pull/746)
+
+### New Features
+
+* We have introduced the **`apisix.apache.org/v2beta3` API version for all custom resources** and deleted `v2alpha1` and `v1` API version  [#746](https://github.com/apache/apisix-ingress-controller/pull/746)
+* Initial support for Gateway API [#789](https://github.com/apache/apisix-ingress-controller/pull/789)
+* Add a new ApisixPluginConfig CRD for reuse common plugin configurations. [#638](https://github.com/apache/apisix-ingress-controller/issues/638)
+* Support regex in Ingress path [#779](https://github.com/apache/apisix-ingress-controller/pull/779)
+* We can update the load balancing IP of the Ingress, and it can work in various public cloud environments [#740](https://github.com/apache/apisix-ingress-controller/pull/740)
+
+Please try out the release binaries and report any issues at
+https://github.com/apache/apisix-ingress-controller/issues.
+
+### Contributors
+
+* Jintao Zhang
+* kv
+* nevercase
+* LXM
+* Nic
+* chen zhuo
+* Mayo Cream
+* Nic
+* Alex Zhang
+* Baoyuan
+* Brhetty
+* Canh Dinh
+* Jintao Zhang
+* Sindweller
+* Yu.Bozhong
+* huzais520
+* oliver
+* rupipal
+* zhang lun hai
+
+### Changes
+<details><summary>40 commits</summary>
+<p>
+
+* [`a1ef639`](https://github.com/apache/apisix-ingress-controller/commit/a1ef63963c5ee9f4b225e5e663ec060afd4da2f8) feat: add ApisixPluginConfig controller loop and e2e test case (#815)
+* [`819b003`](https://github.com/apache/apisix-ingress-controller/commit/819b00318e8cd9b6639913301fb89d2acb168926) fix: delete the cluster object when give up the leadership (#774)
+* [`970df2b`](https://github.com/apache/apisix-ingress-controller/commit/970df2bd73b80eabb33b39be86c342b87c511fc4) feat: Initial support for Gateway API (#789)
+* [`7b62375`](https://github.com/apache/apisix-ingress-controller/commit/7b6237521b322c3662bece3ab701661f58bed347) fix: some wrong or invalid logs (#804)
+* [`52b2e2c`](https://github.com/apache/apisix-ingress-controller/commit/52b2e2c7459b93ff05280849f37662afbeb35b5d) docs(READEME.md): change img size (#805)
+* [`eeb7a49`](https://github.com/apache/apisix-ingress-controller/commit/eeb7a49afb7219faaa41e55bef187f3a7ad03f0f) chore: specify the K8S cluster version used for the test (#797)
+* [`d9fa775`](https://github.com/apache/apisix-ingress-controller/commit/d9fa77511402976f72a83b719644d9c4b4283128) chore: remove ApisixPluginConfig v2beta2 version (#795)
+* [`6110bf5`](https://github.com/apache/apisix-ingress-controller/commit/6110bf54e3185e137fc68cb24771c3170c5c6ce5) feat: implement apisix healthz check (#770)
+* [`4a6509c`](https://github.com/apache/apisix-ingress-controller/commit/4a6509c798a28c766c93a11468c205b64d742e98) chore: Issue & PR template (#771)
+* [`d4c5b09`](https://github.com/apache/apisix-ingress-controller/commit/d4c5b093e95fca630f9a879111c3394fd1b12ec6) fix: When the spec field of the ApisixUpstream resource is empty, it will panic (#794)
+* [`472fbcd`](https://github.com/apache/apisix-ingress-controller/commit/472fbcd62721560ba681883b269cfc72b3c35977) feat: add ApisixPluginConfigs crd to v2beta3 (#792)
+* [`413e7ca`](https://github.com/apache/apisix-ingress-controller/commit/413e7ca3f6287551505b6ae6a9ea9a9cb3547c47) feat: implement pluginconfig clients (#638) (#772)
+* [`fe4a824`](https://github.com/apache/apisix-ingress-controller/commit/fe4a824f4debe3fd4e4a89584df61d2b6cba8ace) fix: ingress LB status records (#788)
+* [`1b2bc34`](https://github.com/apache/apisix-ingress-controller/commit/1b2bc3418bd2c7a2a085e55d7bf937b5c27f1ddb) docs: Optimize installation documentation (#785)
+* [`4e84eb8`](https://github.com/apache/apisix-ingress-controller/commit/4e84eb8c88ff922c130dba225ff80a5f52c6b571) feat: support regex in path (#779)
+* [`1bbadf0`](https://github.com/apache/apisix-ingress-controller/commit/1bbadf0d8e6aefeb11e55ab0d7230547d3c06135) feat: add v2beta3 (#746)
+* [`26d5c5c`](https://github.com/apache/apisix-ingress-controller/commit/26d5c5cf96d7e5ece89aed62dcc557bad8fe61bf) Docs: add more config example (#777)
+* [`1141e15`](https://github.com/apache/apisix-ingress-controller/commit/1141e15c2678fc9aa8f9e36ffdf804c6f4c2e441) fix: test case param error (#780)
+* [`0c6de2d`](https://github.com/apache/apisix-ingress-controller/commit/0c6de2deb92c72b8d609490283c930a068df7d23) feat: update Ingress LB status (#740)
+* [`f470867`](https://github.com/apache/apisix-ingress-controller/commit/f4708675c6304ad019881ad7e0ac7a0affd3e6bd) fix: ingress do not watching any namespace when namespaceSelector is empty (#742)
+* [`62d7897`](https://github.com/apache/apisix-ingress-controller/commit/62d78978320e9f757843407cc9424568dd4815f9) fix: If resource synchronization retry occurs, other events of the same resource will be blocked (#760)
+* [`b127ff4`](https://github.com/apache/apisix-ingress-controller/commit/b127ff4eb47c95fa4db3b58020d7005f739d9dbd) feat: init ApisixPluginConfig crd #4 (#638) (#694)
+* [`703c6b2`](https://github.com/apache/apisix-ingress-controller/commit/703c6b2fdbac5c748d2b3c1e54ac62f94d7de41f) fix: ApisixRoute backendPoint duplicate (#732) (#734)
+* [`9fe7298`](https://github.com/apache/apisix-ingress-controller/commit/9fe729889471b0291355a69938a5139ec828cfdf) remove route timeout default value (#733)
+* [`81f5ea1`](https://github.com/apache/apisix-ingress-controller/commit/81f5ea1d927989cf65c9502d0091059698552a6b) feat: support https and grpcs as upstream scheme as well as mTLS mode (#755)
+* [`9f2cd7f`](https://github.com/apache/apisix-ingress-controller/commit/9f2cd7f856f1879ae2586f2a84f4f39d2654996d) feat: support environment variable in config file (#745)
+* [`bdf6721`](https://github.com/apache/apisix-ingress-controller/commit/bdf6721e5b0296aeabe7d89cb888b7c7ce759925) Fix bug typo in yaml (#763)
+* [`719c42f`](https://github.com/apache/apisix-ingress-controller/commit/719c42f5390794c2d5ac13fb17b5afa96b71055f) docs: update proxy-the-httpbin-service.md (#757)
+* [`580e7d4`](https://github.com/apache/apisix-ingress-controller/commit/580e7d4117f9e3c2a8ed6c313b857beed0e2dd6a) feat: expose more prometheus metrics (#670)
+* [`774077a`](https://github.com/apache/apisix-ingress-controller/commit/774077a527e43775bcd6346bebdb2ae0b3f80c22) docs: Customize the namespace used for installation (#747)
+* [`4a862e2`](https://github.com/apache/apisix-ingress-controller/commit/4a862e206602ae9c7ac534fdfd9a557748b9ad26) fix: use independent dns service for UDP e2e test (#753)
+* [`62b7162`](https://github.com/apache/apisix-ingress-controller/commit/62b71628fb621a6625400e3ebc6847c21000d563) fix: wrong var type in response_rewrite e2e (#754)
+* [`da30386`](https://github.com/apache/apisix-ingress-controller/commit/da30386c9a4335a82723b46fe7b1342bf0f42867) fix field tag omitempty (#723)
+* [`7063189`](https://github.com/apache/apisix-ingress-controller/commit/706318955efa9cb9cee87ff60a4f036f6e32f6f2) docs: add upgrade guide (#735)
+* [`65f7c88`](https://github.com/apache/apisix-ingress-controller/commit/65f7c88193eb6e83b2bb4ca87a981321a99503e5) feat: add label-selector for watching namespace (#715)
+* [`dc196ef`](https://github.com/apache/apisix-ingress-controller/commit/dc196ef16f95217213321335c6fc3929578e304a) fix unmarshal apisix/upstream field nodes be null (#724)
+* [`2a73216`](https://github.com/apache/apisix-ingress-controller/commit/2a732167c9e1b47a80f4b1fc89b4623bf669332e) fix: verify generation in record status (#706)
+* [`97fdc90`](https://github.com/apache/apisix-ingress-controller/commit/97fdc90e313a71436f016f5c2e6a849495399ff9) fix: ignore delete pod cache error msg (#714)
+* [`fa27b03`](https://github.com/apache/apisix-ingress-controller/commit/fa27b0318468c0ffab40b8c384a8a6abc056748c) chore: fix spelling error in modules.png (#717)
+* [`68125e3`](https://github.com/apache/apisix-ingress-controller/commit/68125e3557428dd0e9424a273c977c85fcffc374) chore: v1.3 release (#716)
+</p>
+</details>
+
+### Dependency Changes
+
+* **github.com/gin-gonic/gin**             v1.6.3 -> v1.7.7
+* **github.com/hashicorp/go-memdb**        v1.0.4 -> v1.3.2
+* **github.com/hashicorp/go-multierror**   v1.1.0 -> v1.1.1
+* **github.com/prometheus/client_golang**  v1.10.0 -> v1.11.0
+* **github.com/spf13/cobra**               v1.1.1 -> v1.2.1
+* **go.uber.org/multierr**                 v1.3.0 -> v1.7.0
+* **go.uber.org/zap**                      v1.13.0 -> v1.19.1
+* **golang.org/x/net**                     4163338589ed -> fe4d6282115f
+* **k8s.io/api**                           v0.21.1 -> v0.22.4
+* **k8s.io/apimachinery**                  v0.21.1 -> v0.22.4
+* **k8s.io/client-go**                     v0.21.1 -> v0.22.4
+* **k8s.io/code-generator**                v0.21.1 -> v0.22.1
+* **sigs.k8s.io/gateway-api**              v0.4.0 **_new_**
+
+Previous release can be found at [1.3.0](https://github.com/apache/apisix-ingress-controller/releases/tag/1.3.0)
 
 # 1.3.0
 
