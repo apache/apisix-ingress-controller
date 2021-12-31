@@ -25,26 +25,18 @@ This guide shows how to monitor Apache APISIX Ingress Controller using Prometheu
 
 ## Enable Prometheus
 
-You can find example CRD files in `apisix-ingress-controller/samples/deploy/crd/v1`.  
-The CRD file `ApisixClusterConfig` is required to use to enable prometheus in global configurations.  
-In `ApisixClusterConfig`, `monitoring.prometheus` field is used to describe Prometheus settings.
+Use CRD file to enable Prometheus in global configurations. The definition file for custom resources is `ApisixClusterConfig`, so the configuration should be:
 ```yaml
-...
-monitoring:
-  type: object
-  properties:
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixClusterConfig
+metadata:
+  name: default
+spec:
+  monitoring:
     prometheus:
-      type: object
-      properties:
-        enable:
-          type: boolean
-...
+      enable: true
 ```
-Now apply `ApisixClusterConfig` by:
-```
-cd apisix-ingress-controller/samples/deploy/crd/v1
-kubectl apply -f ApisixClusterConfig.yaml 
-```
+
 ## Configure Prometheus Server
 
 The Prometheus server address should be `127.0.0.1:9090` by default. You can set the target url for `apisix-ingress-controller` manually in `prometheus.yml`. 
