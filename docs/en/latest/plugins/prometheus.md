@@ -26,6 +26,7 @@ This guide shows how to monitor Apache APISIX Ingress Controller using Prometheu
 ## Enable Prometheus
 
 Use CRD file to enable Prometheus in global configurations. The definition file for custom resources is `ApisixClusterConfig`, so the configuration should be:
+
 ```yaml
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixClusterConfig
@@ -39,8 +40,9 @@ spec:
 
 ## Configure Prometheus Server
 
-The Prometheus server address should be `127.0.0.1:9090` by default. You can set the target url for `apisix-ingress-controller` manually in `prometheus.yml`. 
+The Prometheus server address should be `127.0.0.1:9090` by default. You can set the target url for `apisix-ingress-controller` manually in `prometheus.yml`.
 For example:
+
 ```yaml
 ...
 scrape_configs:
@@ -48,24 +50,28 @@ scrape_configs:
     static_configs:
     - targets: ["localhost:9092"]
 ```
+
 According to the above example, the metrics are exposed in `http://localhost:9092/metrics` now.  
 Visit `http://localhost:9090` in your browser, and select `apisix-ingress-controller` in `targets`
 or visit `http://localhost:9092/metrics` to see the data.
 ![metrics_data.png](../../../assets/images/metrics_data.png)
+
 ## Grafana Dashboard
 
 Grafana dashboard shows the metrics exposed in Prometheus graphically.  
 [Installing Grafana](https://grafana.com/docs/grafana/latest/#installing-grafana)  
-Visit `http://localhost:3000/` in your browser to access Grafana. The default username and password are `admin`.  
+Visit `http://localhost:3000/` in your browser to access Grafana. The default username and password are `admin`.
 Then create a new dashboard for `apisix-ingress-controller`.  
 ![grafana.png](../../../assets/images/grafana.png)  
-Follow the steps to apply the configuration of Grafana Dashboard for `apisix-ingress-controller`.  
+Follow the steps to apply the configuration of Grafana Dashboard for `apisix-ingress-controller`.
+
 - Add an empty panel, and import via panel json in `apisix-ingress-controller/docs/assets/other/json/apisix-ingress-controller-grafana.json`.
 ![img.png](../../../assets/images/img.png)
 ![import_via_panel_json.png](../../../assets/images/import_via_panel_json.png)
 - Select `Prometheus database` as the datasource. Set the URL according to your Prometheus server configuration.  
 ![datasource_1.png](../../../assets/images/datasource_1.png)
 ![datasource_2.png](../../../assets/images/datasource_2.png)
+  
 ### Preview
 
 ![dashboard_view_1.png](../../../assets/images/dashboard_view_1.png)
@@ -73,42 +79,43 @@ Follow the steps to apply the configuration of Grafana Dashboard for `apisix-ing
 ![dashboard_view_3.png](../../../assets/images/dashboard_view_3.png)
 
 ## Available metrics
-- `Is leader`: A gauge type metric with value 0 or 1, indicates whether the role of controller instance is leader, for leader is 1 and candidate is 0.  
+
+- `Is leader` A gauge type metric with value 0 or 1, indicates whether the role of controller instance is leader, for leader is 1 and candidate is 0.  
 Labels:
   - controller_pod
   - controller_namespace
-- `Status codes`: status codes of requests to APISIX.  
+- `Status codes` status codes of requests to APISIX.  
 Labels:
   - controller_pod
   - controller_namespace
   - status_code: the HTTP status code returned by APISIX.  
   - resource
-- `Latency`: Request latencies with APISIX.  
+- `Latency` Request latencies with APISIX.  
 Labels:
   - controller_pod
   - controller_namespace
-- `Requests`: Number of requests to APISIX.  
+- `Requests` Number of requests to APISIX.  
 Labels:
   - controller_pod
   - controller_namespace
   - resource
-- `Check cluster health`: Number of cluster health check operations.  
+- `Check cluster health` Number of cluster health check operations.  
 Labels:
   - controller_pod
   - controller_namespace
   - name: cluster name.
-- `Sync operation`: Number of sync operations.  
+- `Sync operation` Number of sync operations.  
 Labels:
   - controller_pod
   - controller_namespace
   - resource
   - result: sync success or failure.
-- `Cache sync`: Number of cache sync operations.  
+- `Cache sync` Number of cache sync operations.  
 Labels:
   - controller_pod
   - controller_namespace
   - result: sync success or failure.
-- `Controller events`: Number of events handled by the controller.  
+- `Controller events` Number of events handled by the controller.  
 Labels:
   - controller_pod
   - controller_namespace
