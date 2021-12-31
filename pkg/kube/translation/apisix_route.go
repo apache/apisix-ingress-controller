@@ -135,9 +135,7 @@ import (
 //}
 
 func (t *translator) TranslateRouteV2beta1(ar *configv2beta1.ApisixRoute) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2beta1(ctx, ar); err != nil {
 		return nil, err
@@ -149,9 +147,7 @@ func (t *translator) TranslateRouteV2beta1(ar *configv2beta1.ApisixRoute) (*Tran
 }
 
 func (t *translator) TranslateRouteV2beta1NotStrictly(ar *configv2beta1.ApisixRoute) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2beta1NotStrictly(ctx, ar); err != nil {
 		return nil, err
@@ -277,9 +273,7 @@ func (t *translator) translateHTTPRouteV2beta1(ctx *TranslateContext, ar *config
 }
 
 func (t *translator) TranslateRouteV2beta2(ar *configv2beta2.ApisixRoute) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2beta2(ctx, ar); err != nil {
 		return nil, err
@@ -291,9 +285,7 @@ func (t *translator) TranslateRouteV2beta2(ar *configv2beta2.ApisixRoute) (*Tran
 }
 
 func (t *translator) TranslateRouteV2beta2NotStrictly(ar *configv2beta2.ApisixRoute) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2beta2NotStrictly(ctx, ar); err != nil {
 		return nil, err
@@ -305,9 +297,7 @@ func (t *translator) TranslateRouteV2beta2NotStrictly(ar *configv2beta2.ApisixRo
 }
 
 func (t *translator) TranslateRouteV2beta3(ar *configv2beta3.ApisixRoute) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2beta3(ctx, ar); err != nil {
 		return nil, err
@@ -319,9 +309,7 @@ func (t *translator) TranslateRouteV2beta3(ar *configv2beta3.ApisixRoute) (*Tran
 }
 
 func (t *translator) TranslateRouteV2beta3NotStrictly(ar *configv2beta3.ApisixRoute) (*TranslateContext, error) {
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
-	}
+	ctx := defaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2beta3NotStrictly(ctx, ar); err != nil {
 		return nil, err
@@ -542,6 +530,18 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
 		route.Timeout = timeout
+		pluginConfig := apisixv1.NewDefaultPluginConfig()
+		if len(pluginMap) > 0 {
+			pluginConfigName := apisixv1.ComposePluginConfigName(ar.Namespace, backend.ServiceName)
+			route.PluginConfigId = id.GenID(pluginConfigName)
+			pluginConfig.ID = route.PluginConfigId
+			pluginConfig.Name = pluginConfigName
+			pluginConfig.Plugins = pluginMap
+		} else {
+			if part.PluginConfigName != "" {
+				route.PluginConfigId = part.PluginConfigName
+			}
+		}
 
 		if len(backends) > 0 {
 			weight := _defaultWeight
@@ -565,6 +565,9 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 				return err
 			}
 			ctx.addUpstream(ups)
+		}
+		if len(pluginMap) > 0 {
+			ctx.addPluginConfig(pluginConfig)
 		}
 	}
 	return nil
@@ -944,10 +947,44 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *TranslateContext,
 		// Use the first backend as the default backend in Route,
 		// others will be configured in traffic-split plugin.
 		backend := backends[0]
+
+		pluginMap := make(apisixv1.Plugins)
+		// add route plugins
+		for _, plugin := range part.Plugins {
+			if !plugin.Enable {
+				continue
+			}
+			if plugin.Config != nil {
+				pluginMap[plugin.Name] = plugin.Config
+			} else {
+				pluginMap[plugin.Name] = make(map[string]interface{})
+			}
+		}
+
+		// add KeyAuth and basicAuth plugin
+		if part.Authentication.Enable {
+			switch part.Authentication.Type {
+			case "keyAuth":
+				pluginMap["key-auth"] = part.Authentication.KeyAuth
+			case "basicAuth":
+				pluginMap["basic-auth"] = make(map[string]interface{})
+			default:
+				pluginMap["basic-auth"] = make(map[string]interface{})
+			}
+		}
+
 		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
+		pluginConfig := apisixv1.NewDefaultPluginConfig()
+		if len(pluginMap) > 0 {
+			pluginConfigName := apisixv1.ComposePluginConfigName(ar.Namespace, backend.ServiceName)
+			route.PluginConfigId = id.GenID(pluginConfigName)
+			pluginConfig.ID = route.PluginConfigId
+			pluginConfig.Name = pluginConfigName
+		}
+
 		ctx.addRoute(route)
 		if !ctx.checkUpstreamExist(upstreamName) {
 			ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
@@ -955,6 +992,9 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *TranslateContext,
 				return err
 			}
 			ctx.addUpstream(ups)
+		}
+		if len(pluginMap) > 0 {
+			ctx.addPluginConfig(pluginConfig)
 		}
 	}
 	return nil

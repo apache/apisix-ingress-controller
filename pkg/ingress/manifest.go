@@ -140,11 +140,37 @@ func diffStreamRoutes(olds, news []*apisixv1.StreamRoute) (added, updated, delet
 	return
 }
 
+func diffPluginConfigs(olds, news []*apisixv1.PluginConfig) (added, updated, deleted []*apisixv1.PluginConfig) {
+	oldMap := make(map[string]*apisixv1.PluginConfig, len(olds))
+	newMap := make(map[string]*apisixv1.PluginConfig, len(news))
+	for _, sr := range olds {
+		oldMap[sr.ID] = sr
+	}
+	for _, sr := range news {
+		newMap[sr.ID] = sr
+	}
+
+	for _, sr := range news {
+		if ou, ok := oldMap[sr.ID]; !ok {
+			added = append(added, sr)
+		} else if !reflect.DeepEqual(ou, sr) {
+			updated = append(updated, sr)
+		}
+	}
+	for _, sr := range olds {
+		if _, ok := newMap[sr.ID]; !ok {
+			deleted = append(deleted, sr)
+		}
+	}
+	return
+}
+
 type manifest struct {
-	routes       []*apisixv1.Route
-	upstreams    []*apisixv1.Upstream
-	streamRoutes []*apisixv1.StreamRoute
-	ssl          []*apisixv1.Ssl
+	routes        []*apisixv1.Route
+	upstreams     []*apisixv1.Upstream
+	streamRoutes  []*apisixv1.StreamRoute
+	ssl           []*apisixv1.Ssl
+	pluginConfigs []*apisixv1.PluginConfig
 }
 
 func (m *manifest) diff(om *manifest) (added, updated, deleted *manifest) {
@@ -152,29 +178,33 @@ func (m *manifest) diff(om *manifest) (added, updated, deleted *manifest) {
 	ar, ur, dr := diffRoutes(om.routes, m.routes)
 	au, uu, du := diffUpstreams(om.upstreams, m.upstreams)
 	asr, usr, dsr := diffStreamRoutes(om.streamRoutes, m.streamRoutes)
+	apc, upc, dpc := diffPluginConfigs(om.pluginConfigs, m.pluginConfigs)
 
-	if ar != nil || au != nil || asr != nil || sa != nil {
+	if ar != nil || au != nil || asr != nil || sa != nil || apc != nil {
 		added = &manifest{
-			routes:       ar,
-			upstreams:    au,
-			streamRoutes: asr,
-			ssl:          sa,
+			routes:        ar,
+			upstreams:     au,
+			streamRoutes:  asr,
+			ssl:           sa,
+			pluginConfigs: apc,
 		}
 	}
-	if ur != nil || uu != nil || usr != nil || su != nil {
+	if ur != nil || uu != nil || usr != nil || su != nil || upc != nil {
 		updated = &manifest{
-			routes:       ur,
-			upstreams:    uu,
-			streamRoutes: usr,
-			ssl:          su,
+			routes:        ur,
+			upstreams:     uu,
+			streamRoutes:  usr,
+			ssl:           su,
+			pluginConfigs: upc,
 		}
 	}
-	if dr != nil || du != nil || dsr != nil || sd != nil {
+	if dr != nil || du != nil || dsr != nil || sd != nil || dpc != nil {
 		deleted = &manifest{
-			routes:       dr,
-			upstreams:    du,
-			streamRoutes: dsr,
-			ssl:          sd,
+			routes:        dr,
+			upstreams:     du,
+			streamRoutes:  dsr,
+			ssl:           sd,
+			pluginConfigs: dpc,
 		}
 	}
 	return
@@ -213,6 +243,19 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 				}
 			}
 		}
+		for _, pc := range deleted.pluginConfigs {
+			if err := c.apisix.Cluster(clusterName).PluginConfig().Delete(ctx, pc); err != nil {
+				// pluginConfig might be referenced by other routes.
+				if err != cache.ErrStillInUse {
+					merr = multierror.Append(merr, err)
+				} else {
+					log.Infow("plugin_config was referenced by other routes",
+						zap.String("plugin_config_id", pc.ID),
+						zap.String("plugin_config_name", pc.Name),
+					)
+				}
+			}
+		}
 	}
 	if added != nil {
 		// Should create upstreams firstly due to the dependencies.
@@ -223,6 +266,11 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 		}
 		for _, u := range added.upstreams {
 			if _, err := c.apisix.Cluster(clusterName).Upstream().Create(ctx, u); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
+		for _, pc := range added.pluginConfigs {
+			if _, err := c.apisix.Cluster(clusterName).PluginConfig().Create(ctx, pc); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
@@ -245,6 +293,11 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 		}
 		for _, r := range updated.upstreams {
 			if _, err := c.apisix.Cluster(clusterName).Upstream().Update(ctx, r); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
+		for _, pc := range updated.pluginConfigs {
+			if _, err := c.apisix.Cluster(clusterName).PluginConfig().Update(ctx, pc); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}

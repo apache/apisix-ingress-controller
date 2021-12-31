@@ -310,6 +310,9 @@ func (c *dbCache) DeleteSchema(schema *v1.Schema) error {
 }
 
 func (c *dbCache) DeletePluginConfig(pc *v1.PluginConfig) error {
+	if err := c.checkPluginConfigReference(pc); err != nil {
+		return err
+	}
 	return c.delete("plugin_config", pc)
 }
 
@@ -339,6 +342,20 @@ func (c *dbCache) checkUpstreamReference(u *v1.Upstream) error {
 	}
 
 	obj, err = txn.First("stream_route", "upstream_id", u.ID)
+	if err != nil && err != memdb.ErrNotFound {
+		return err
+	}
+	if obj != nil {
+		return ErrStillInUse
+	}
+	return nil
+}
+
+func (c *dbCache) checkPluginConfigReference(u *v1.PluginConfig) error {
+	// PluginConfig is referenced by Route.
+	txn := c.db.Txn(false)
+	defer txn.Abort()
+	obj, err := txn.First("route", "plugin_config_id", u.ID)
 	if err != nil && err != memdb.ErrNotFound {
 		return err
 	}

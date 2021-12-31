@@ -18,6 +18,7 @@ package cache
 import (
 	"testing"
 
+	"github.com/hashicorp/go-memdb"
 	"github.com/stretchr/testify/assert"
 
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -183,7 +184,8 @@ func TestMemDBCacheReference(t *testing.T) {
 			Name: "route",
 			ID:   "1",
 		},
-		UpstreamId: "1",
+		UpstreamId:     "1",
+		PluginConfigId: "1",
 	}
 	u := &v1.Upstream{
 		Metadata: v1.Metadata{
@@ -201,6 +203,18 @@ func TestMemDBCacheReference(t *testing.T) {
 		ID:         "1",
 		UpstreamId: "2",
 	}
+	pc := &v1.PluginConfig{
+		Metadata: v1.Metadata{
+			ID:   "1",
+			Name: "pluginConfig",
+		},
+	}
+	pc2 := &v1.PluginConfig{
+		Metadata: v1.Metadata{
+			ID:   "2",
+			Name: "pluginConfig",
+		},
+	}
 
 	db, err := NewMemDBCache()
 	assert.Nil(t, err, "NewMemDBCache")
@@ -208,13 +222,17 @@ func TestMemDBCacheReference(t *testing.T) {
 	assert.Nil(t, db.InsertUpstream(u))
 	assert.Nil(t, db.InsertStreamRoute(sr))
 	assert.Nil(t, db.InsertUpstream(u2))
+	assert.Nil(t, db.InsertPluginConfig(pc))
 
 	assert.Error(t, ErrStillInUse, db.DeleteUpstream(u))
 	assert.Error(t, ErrStillInUse, db.DeleteUpstream(u2))
+	assert.Error(t, ErrStillInUse, db.DeletePluginConfig(pc))
+	assert.Equal(t, memdb.ErrNotFound, db.DeletePluginConfig(pc2))
 	assert.Nil(t, db.DeleteRoute(r))
 	assert.Nil(t, db.DeleteUpstream(u))
 	assert.Nil(t, db.DeleteStreamRoute(sr))
 	assert.Nil(t, db.DeleteUpstream(u2))
+	assert.Nil(t, db.DeletePluginConfig(pc))
 }
 
 func TestMemDBCacheStreamRoute(t *testing.T) {

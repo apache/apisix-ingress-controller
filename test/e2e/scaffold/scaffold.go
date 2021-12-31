@@ -289,6 +289,23 @@ func (s *Scaffold) APISIXGatewayServiceEndpoint() string {
 	return s.apisixHttpTunnel.Endpoint()
 }
 
+// RestartAPISIXDeploy delete apisix pod and wait new pod be ready
+func (s *Scaffold) RestartAPISIXDeploy() {
+	s.shutdownApisixTunnel()
+	pods, err := k8s.ListPodsE(s.t, s.kubectlOptions, metav1.ListOptions{
+		LabelSelector: "app=apisix-deployment-e2e-test",
+	})
+	assert.NoError(s.t, err, "list apisix pod")
+	for _, pod := range pods {
+		err = s.KillPod(pod.Name)
+		assert.NoError(s.t, err, "killing apisix pod")
+	}
+	err = s.waitAllAPISIXPodsAvailable()
+	assert.NoError(s.t, err, "waiting for new apisix instance ready")
+	err = s.newAPISIXTunnels()
+	assert.NoError(s.t, err, "renew apisix tunnels")
+}
+
 func (s *Scaffold) beforeEach() {
 	var err error
 	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.opts.Name, time.Now().Nanosecond())
@@ -371,12 +388,30 @@ func (s *Scaffold) afterEach() {
 	assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
 
 	for _, f := range s.finializers {
-		f()
+		runWithRecover(f)
 	}
 
 	// Wait for a while to prevent the worker node being overwhelming
 	// (new cases will be run).
 	time.Sleep(3 * time.Second)
+}
+
+func runWithRecover(f func()) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		err, ok := r.(error)
+		if ok {
+			// just ignore already closed channel
+			if strings.Contains(err.Error(), "close of closed channel") {
+				return
+			}
+		}
+		panic(r)
+	}()
+	f()
 }
 
 func (s *Scaffold) GetDeploymentLogs(name string) string {

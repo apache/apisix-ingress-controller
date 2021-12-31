@@ -16,7 +16,7 @@
 #
 default: help
 
-VERSION ?= 1.3.0
+VERSION ?= 1.4.0
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 LOCAL_REGISTRY="localhost:5000"
 IMAGE_TAG ?= dev
@@ -72,7 +72,9 @@ unit-test:
 .PHONY: e2e-test
 e2e-test: ginkgo-check push-images-to-kind
 	kubectl apply -k $(PWD)/samples/deploy/crd
-	cd test/e2e && ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=$(E2E_CONCURRENCY)
+	cd test/e2e \
+		&& go mod download \
+		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace --nodes=$(E2E_CONCURRENCY)
 
 .PHONY: ginkgo-check
 ginkgo-check:

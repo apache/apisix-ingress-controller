@@ -180,6 +180,69 @@ func TestDiffUpstreams(t *testing.T) {
 	assert.Equal(t, "2", deleted[0].ID)
 }
 
+func TestDiffPluginConfigs(t *testing.T) {
+	news := []*apisixv1.PluginConfig{
+		{
+			Metadata: apisixv1.Metadata{
+				ID: "1",
+			},
+		},
+		{
+			Metadata: apisixv1.Metadata{
+				ID: "3",
+			},
+			Plugins: map[string]interface{}{
+				"key-1": 123456,
+			},
+		},
+	}
+	added, updated, deleted := diffPluginConfigs(nil, news)
+	assert.Nil(t, updated)
+	assert.Nil(t, deleted)
+	assert.Len(t, added, 2)
+	assert.Equal(t, "1", added[0].ID)
+	assert.Equal(t, "3", added[1].ID)
+	assert.Equal(t, news[1].Plugins, added[1].Plugins)
+
+	olds := []*apisixv1.PluginConfig{
+		{
+			Metadata: apisixv1.Metadata{
+				ID: "2",
+			},
+		},
+		{
+			Metadata: apisixv1.Metadata{
+				ID: "3",
+			},
+			Plugins: map[string]interface{}{
+				"key-1": 123456789,
+				"key-2": map[string][]string{
+					"whitelist": {
+						"127.0.0.0/24",
+						"113.74.26.106",
+					},
+				},
+			},
+		},
+	}
+	added, updated, deleted = diffPluginConfigs(olds, nil)
+	assert.Nil(t, updated)
+	assert.Nil(t, added)
+	assert.Len(t, deleted, 2)
+	assert.Equal(t, "2", deleted[0].ID)
+	assert.Equal(t, "3", deleted[1].ID)
+	assert.Equal(t, olds[1].Plugins, deleted[1].Plugins)
+
+	added, updated, deleted = diffPluginConfigs(olds, news)
+	assert.Len(t, added, 1)
+	assert.Equal(t, "1", added[0].ID)
+	assert.Len(t, updated, 1)
+	assert.Equal(t, "3", updated[0].ID)
+	assert.Len(t, updated[0].Plugins, 1)
+	assert.Len(t, deleted, 1)
+	assert.Equal(t, "2", deleted[0].ID)
+}
+
 func TestManifestDiff(t *testing.T) {
 	retries := 2
 	m := &manifest{
@@ -204,6 +267,22 @@ func TestManifestDiff(t *testing.T) {
 				Retries: &retries,
 			},
 		},
+		pluginConfigs: []*apisixv1.PluginConfig{
+			{
+				Metadata: apisixv1.Metadata{
+					ID: "5",
+				},
+				Plugins: map[string]interface{}{
+					"key-1": 123456789,
+					"key-2": map[string][]string{
+						"whitelist": {
+							"127.0.0.0/24",
+							"113.74.26.106",
+						},
+					},
+				},
+			},
+		},
 	}
 	om := &manifest{
 		routes: []*apisixv1.Route{
@@ -226,13 +305,17 @@ func TestManifestDiff(t *testing.T) {
 	assert.Equal(t, "1", added.routes[0].ID)
 	assert.Len(t, added.upstreams, 1)
 	assert.Equal(t, "4", added.upstreams[0].ID)
+	assert.Len(t, added.pluginConfigs, 1)
+	assert.Equal(t, "5", added.pluginConfigs[0].ID)
 
 	assert.Len(t, updated.routes, 1)
 	assert.Equal(t, "3", updated.routes[0].ID)
 	assert.Equal(t, []string{"GET"}, updated.routes[0].Methods)
 	assert.Nil(t, updated.upstreams)
+	assert.Nil(t, updated.pluginConfigs)
 
 	assert.Len(t, deleted.routes, 1)
 	assert.Equal(t, "2", deleted.routes[0].ID)
 	assert.Nil(t, updated.upstreams)
+	assert.Nil(t, updated.pluginConfigs)
 }

@@ -35,6 +35,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
+	gatewaylistersv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/gateway/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/pkg/api"
 	"github.com/apache/apisix-ingress-controller/pkg/api/validation"
@@ -114,6 +115,10 @@ type Controller struct {
 	apisixClusterConfigInformer cache.SharedIndexInformer
 	apisixConsumerInformer      cache.SharedIndexInformer
 	apisixConsumerLister        listersv2beta3.ApisixConsumerLister
+	apisixPluginConfigInformer  cache.SharedIndexInformer
+	apisixPluginConfigLister    kube.ApisixPluginConfigLister
+	gatewayInformer             cache.SharedIndexInformer
+	gatewayLister               gatewaylistersv1alpha2.GatewayLister
 
 	// resource controllers
 	namespaceController     *namespaceController
@@ -122,12 +127,14 @@ type Controller struct {
 	endpointSliceController *endpointSliceController
 	ingressController       *ingressController
 	secretController        *secretController
+	gatewayController       *gatewayController
 
 	apisixUpstreamController      *apisixUpstreamController
 	apisixRouteController         *apisixRouteController
 	apisixTlsController           *apisixTlsController
 	apisixClusterConfigController *apisixClusterConfigController
 	apisixConsumerController      *apisixConsumerController
+	apisixPluginConfigController  *apisixPluginConfigController
 }
 
 // NewController creates an ingress apisix controller object.
@@ -199,6 +206,7 @@ func (c *Controller) initWhenStartLeading() {
 
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
 	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
+	gatewayFactory := c.kubeClient.NewGatewaySharedIndexInformerFactory()
 
 	c.namespaceLister = kubeFactory.Core().V1().Namespaces().Lister()
 	c.podLister = kubeFactory.Core().V1().Pods().Lister()
@@ -219,6 +227,9 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixTlsLister = apisixFactory.Apisix().V2beta3().ApisixTlses().Lister()
 	c.apisixClusterConfigLister = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister()
 	c.apisixConsumerLister = apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister()
+	c.apisixPluginConfigLister = kube.NewApisixPluginConfigLister(
+		apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+	)
 
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 		PodCache:             c.podCache,
@@ -237,6 +248,10 @@ func (c *Controller) initWhenStartLeading() {
 	} else {
 		ingressInformer = kubeFactory.Extensions().V1beta1().Ingresses().Informer()
 	}
+
+	c.gatewayLister = gatewayFactory.Gateway().V1alpha2().Gateways().Lister()
+	c.gatewayInformer = gatewayFactory.Gateway().V1alpha2().Gateways().Informer()
+
 	switch c.cfg.Kubernetes.ApisixRouteVersion {
 	case config.ApisixRouteV2beta1:
 		apisixRouteInformer = apisixFactory.Apisix().V2beta1().ApisixRoutes().Informer()
@@ -256,6 +271,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
 	c.apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
 	c.apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
+	c.apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
 
 	if c.cfg.Kubernetes.WatchEndpointSlices {
 		c.endpointSliceController = c.newEndpointSliceController()
@@ -271,6 +287,8 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixTlsController = c.newApisixTlsController()
 	c.secretController = c.newSecretController()
 	c.apisixConsumerController = c.newApisixConsumerController()
+	c.apisixPluginConfigController = c.newApisixPluginConfigController()
+	c.gatewayController = c.newGatewayController()
 }
 
 // recorderEvent recorder events for resources
@@ -343,6 +361,11 @@ func (c *Controller) Run(stop chan struct{}) error {
 						zap.String("namespace", c.namespace),
 						zap.String("pod", c.name),
 					)
+					c.MetricsCollector.ResetLeader(false)
+					// delete the old APISIX cluster, so that the cached state
+					// like synchronization won't be used next time the candidate
+					// becomes the leader again.
+					c.apisix.DeleteCluster(c.cfg.APISIX.DefaultClusterName)
 				}
 			},
 			OnStoppedLeading: func() {
@@ -351,6 +374,10 @@ func (c *Controller) Run(stop chan struct{}) error {
 					zap.String("pod", c.name),
 				)
 				c.MetricsCollector.ResetLeader(false)
+				// delete the old APISIX cluster, so that the cached state
+				// like synchronization won't be used next time the candidate
+				// becomes the leader again.
+				c.apisix.DeleteCluster(c.cfg.APISIX.DefaultClusterName)
 			},
 		},
 		// Set it to false as current leaderelection implementation will report
@@ -448,7 +475,6 @@ func (c *Controller) run(ctx context.Context) {
 		c.ingressInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
-
 		c.apisixRouteInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
@@ -467,6 +493,9 @@ func (c *Controller) run(ctx context.Context) {
 		c.apisixConsumerInformer.Run(ctx.Done())
 	})
 	c.goAttach(func() {
+		c.apisixPluginConfigInformer.Run(ctx.Done())
+	})
+	c.goAttach(func() {
 		c.namespaceController.run(ctx)
 	})
 	c.goAttach(func() {
@@ -479,6 +508,17 @@ func (c *Controller) run(ctx context.Context) {
 			c.endpointsController.run(ctx)
 		}
 	})
+
+	if c.cfg.Kubernetes.EnableGatewayAPI {
+		c.goAttach(func() {
+			c.gatewayInformer.Run(ctx.Done())
+		})
+
+		c.goAttach(func() {
+			c.gatewayController.run(ctx)
+		})
+	}
+
 	c.goAttach(func() {
 		c.apisixUpstreamController.run(ctx)
 	})
@@ -499,6 +539,9 @@ func (c *Controller) run(ctx context.Context) {
 	})
 	c.goAttach(func() {
 		c.apisixConsumerController.run(ctx)
+	})
+	c.goAttach(func() {
+		c.apisixPluginConfigController.run(ctx)
 	})
 
 	c.MetricsCollector.ResetLeader(true)

@@ -100,6 +100,7 @@ type Route struct {
 	RemoteAddrs     []string         `json:"remote_addrs,omitempty" yaml:"remote_addrs,omitempty"`
 	UpstreamId      string           `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
 	Plugins         Plugins          `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	PluginConfigId  string           `json:"plugin_config_id,omitempty" yaml:"plugin_config_id,omitempty"`
 }
 
 // Vars represents the route match expressions of APISIX.
@@ -357,7 +358,7 @@ type Consumer struct {
 // +k8s:deepcopy-gen=true
 type PluginConfig struct {
 	Metadata `json:",inline" yaml:",inline"`
-	Plugins  Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Plugins  Plugins `json:"plugins" yaml:"plugins"`
 }
 
 // NewDefaultUpstream returns an empty Upstream with default values.
@@ -405,6 +406,19 @@ func NewDefaultConsumer() *Consumer {
 		Labels: map[string]string{
 			"managed-by": "apisix-ingress-controller",
 		},
+	}
+}
+
+// NewDefaultPluginConfig returns an empty PluginConfig with default values.
+func NewDefaultPluginConfig() *PluginConfig {
+	return &PluginConfig{
+		Metadata: Metadata{
+			Desc: "Created by apisix-ingress-controller, DO NOT modify it manually",
+			Labels: map[string]string{
+				"managed-by": "apisix-ingress-controller",
+			},
+		},
+		Plugins: make(Plugins),
 	}
 }
 
@@ -479,6 +493,21 @@ func ComposeConsumerName(namespace, name string) string {
 	// TODO If APISIX modifies the consumer name schema, we can drop this.
 	buf.WriteString(strings.Replace(namespace, "-", "_", -1))
 	buf.WriteString("_")
+	buf.WriteString(name)
+
+	return buf.String()
+}
+
+// ComposePluginConfigName uses namespace, name to compose
+// the route name.
+func ComposePluginConfigName(namespace, name string) string {
+	// FIXME Use sync.Pool to reuse this buffer if the upstream
+	// name composing code path is hot.
+	p := make([]byte, 0, len(namespace)+len(name)+1)
+	buf := bytes.NewBuffer(p)
+
+	buf.WriteString(namespace)
+	buf.WriteByte('_')
 	buf.WriteString(name)
 
 	return buf.String()

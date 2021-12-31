@@ -179,10 +179,16 @@ func (c *cluster) syncCache(ctx context.Context) {
 		Steps:    5,
 	}
 	var lastSyncErr error
-	err := wait.ExponentialBackoff(backoff, func() (done bool, _ error) {
+	err := wait.ExponentialBackoff(backoff, func() (done bool, err error) {
 		// impossibly return: false, nil
 		// so can safe used
 		done, lastSyncErr = c.syncCacheOnce(ctx)
+		select {
+		case <-ctx.Done():
+			err = context.Canceled
+		default:
+			break
+		}
 		return
 	})
 	if err != nil {
@@ -199,7 +205,7 @@ func (c *cluster) syncCache(ctx context.Context) {
 func (c *cluster) syncCacheOnce(ctx context.Context) (bool, error) {
 	routes, err := c.route.List(ctx)
 	if err != nil {
-		log.Errorf("failed to list route in APISIX: %s", err)
+		log.Errorf("failed to list routes in APISIX: %s", err)
 		return false, err
 	}
 	upstreams, err := c.upstream.List(ctx)
@@ -225,6 +231,11 @@ func (c *cluster) syncCacheOnce(ctx context.Context) (bool, error) {
 	consumers, err := c.consumer.List(ctx)
 	if err != nil {
 		log.Errorf("failed to list consumers in APISIX: %s", err)
+		return false, err
+	}
+	pluginConfigs, err := c.pluginConfig.List(ctx)
+	if err != nil {
+		log.Errorf("failed to list plugin_configs in APISIX: %s", err)
 		return false, err
 	}
 
@@ -287,6 +298,16 @@ func (c *cluster) syncCacheOnce(ctx context.Context) (bool, error) {
 			)
 		}
 	}
+	for _, u := range pluginConfigs {
+		if err := c.cache.InsertPluginConfig(u); err != nil {
+			log.Errorw("failed to insert pluginConfig to cache",
+				zap.String("pluginConfig", u.ID),
+				zap.String("cluster", c.name),
+				zap.String("error", err.Error()),
+			)
+			return false, err
+		}
+	}
 	return true, nil
 }
 
@@ -329,7 +350,7 @@ func (c *cluster) syncSchema(ctx context.Context, interval time.Duration) {
 
 	for {
 		if err := c.syncSchemaOnce(ctx); err != nil {
-			log.Warnf("failed to sync schema: %s", err)
+			log.Errorf("failed to sync schema: %s", err)
 			c.metricsCollector.IncrSyncOperation("schema", "failure")
 		}
 
@@ -425,6 +446,11 @@ func (c *cluster) Consumer() Consumer {
 // Plugin implements Cluster.Plugin method.
 func (c *cluster) Plugin() Plugin {
 	return c.plugin
+}
+
+// PluginConfig implements Cluster.PluginConfig method.
+func (c *cluster) PluginConfig() PluginConfig {
+	return c.pluginConfig
 }
 
 // Schema implements Cluster.Schema method.

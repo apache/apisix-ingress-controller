@@ -135,17 +135,19 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		return err
 	}
 
-	log.Debugw("translated ingress resource to a couple of routes and upstreams",
+	log.Debugw("translated ingress resource to a couple of routes, upstreams and pluginConfigs",
 		zap.Any("ingress", ing),
 		zap.Any("routes", tctx.Routes),
 		zap.Any("upstreams", tctx.Upstreams),
 		zap.Any("ssl", tctx.SSL),
+		zap.Any("pluginConfigs", tctx.PluginConfigs),
 	)
 
 	m := &manifest{
-		ssl:       tctx.SSL,
-		routes:    tctx.Routes,
-		upstreams: tctx.Upstreams,
+		ssl:           tctx.SSL,
+		routes:        tctx.Routes,
+		upstreams:     tctx.Upstreams,
+		pluginConfigs: tctx.PluginConfigs,
 	}
 
 	var (
@@ -169,9 +171,10 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 			return err
 		}
 		om := &manifest{
-			routes:    oldCtx.Routes,
-			upstreams: oldCtx.Upstreams,
-			ssl:       oldCtx.SSL,
+			routes:        oldCtx.Routes,
+			upstreams:     oldCtx.Upstreams,
+			ssl:           oldCtx.SSL,
+			pluginConfigs: oldCtx.PluginConfigs,
 		}
 		added, updated, deleted = m.diff(om)
 	}
@@ -262,11 +265,11 @@ func (c *ingressController) onAdd(obj interface{}) {
 	valid := c.isIngressEffective(ing)
 	if valid {
 		log.Debugw("ingress add event arrived",
-			zap.Any("object", ing),
+			zap.Any("object", obj),
 		)
 	} else {
 		log.Debugw("ignore noneffective ingress add event",
-			zap.Any("object", ing),
+			zap.Any("object", obj),
 		)
 		return
 	}
@@ -297,8 +300,8 @@ func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 	valid := c.isIngressEffective(curr)
 	if valid {
 		log.Debugw("ingress update event arrived",
-			zap.Any("new object", oldObj),
-			zap.Any("old object", newObj),
+			zap.Any("new object", newObj),
+			zap.Any("old object", oldObj),
 		)
 	} else {
 		log.Debugw("ignore noneffective ingress update event",

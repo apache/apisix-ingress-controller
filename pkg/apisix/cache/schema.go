@@ -42,6 +42,12 @@ var (
 						Indexer:      &memdb.StringFieldIndex{Field: "UpstreamId"},
 						AllowMissing: true,
 					},
+					"plugin_config_id": {
+						Name:         "plugin_config_id",
+						Unique:       false,
+						Indexer:      &memdb.StringFieldIndex{Field: "PluginConfigId"},
+						AllowMissing: true,
+					},
 				},
 			},
 			"upstream": {
