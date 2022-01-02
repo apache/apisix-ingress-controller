@@ -264,7 +264,7 @@ func TestConfigInvalidation(t *testing.T) {
 kubernetes:
   resync_interval: 15s
 apisix:
-  base_url: http://127.0.0.1:1234/apisix
+  default_cluster_base_url: http://127.0.0.1:1234/apisix
 `
 	tmpYAML, err = ioutil.TempFile("/tmp", "config-*.yaml")
 	assert.Nil(t, err, "failed to create temporary yaml configuration file: ", err)

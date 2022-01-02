@@ -80,14 +80,8 @@ kubernetes:
 
 # APISIX related configurations.
 apisix:
-  base_url: "http://127.0.0.1:9080/apisix/admin" # (Deprecated, use default_cluster_base_url) the APISIX admin api / manager api
-                                                 # base url, it's required.
-
   default_cluster_base_url: "http://127.0.0.1:9080/apisix/admin" # The base url of admin api / manager api
                                                                  # of the default APISIX cluster
-
-  admin_key: "" # (Deprecated, use default_cluster_admin_key) the admin key used for the authentication of
-                # admin api / manager api in the default APISIX cluster, by default this field is unset.
 
   default_cluster_admin_key: "" # the admin key used for the authentication of admin api / manager api in the
                                 # default APISIX cluster, by default this field is unset.
