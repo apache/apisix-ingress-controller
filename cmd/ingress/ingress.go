@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -124,13 +125,17 @@ the apisix cluster and others are created`,
 			if err != nil {
 				dief("failed to create ingress controller: %s", err)
 			}
+			wg := sync.WaitGroup{}
+			wg.Add(1)
 			go func() {
+				defer wg.Done()
 				if err := ingress.Run(stop); err != nil {
 					dief("failed to run ingress controller: %s", err)
 				}
 			}()
 
 			waitForSignal(stop)
+			wg.Wait()
 			log.Info("apisix ingress controller exited")
 		},
 	}
