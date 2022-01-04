@@ -493,7 +493,7 @@ func ComposeConsumerName(namespace, name string) string {
 	// TODO If APISIX modifies the consumer name schema, we can drop this.
 	buf.WriteString(strings.Replace(namespace, "-", "_", -1))
 	buf.WriteString("_")
-	buf.WriteString(name)
+	buf.WriteString(strings.Replace(name, "-", "_", -1))
 
 	return buf.String()
 }
