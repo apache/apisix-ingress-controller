@@ -65,6 +65,15 @@ bash "${SCRIPT_ROOT}"/generate-groups.sh "deepcopy" \
 fi
 
 if [[ $ret -eq 0 ]]; then
+bash "${SCRIPT_ROOT}"/generate-groups.sh "register" \
+  ${PKG_NAME}/pkg/kube/apisix/apis ${PKG_NAME}/pkg/kube/apisix/apis \
+  config:v2beta3,v2beta2,v2beta1,v1 ${PKG_NAME} \
+  --output-package "$PKG_NAME/pkg/kube/apisix/apis/" \
+  --go-header-file "${SCRIPT_ROOT}"/boilerplate.go.txt \
+  --verify-only|| ret=$?
+fi
+
+if [[ $ret -eq 0 ]]; then
   echo "Generated codes up to date."
 else
   echo "Generated codes out of date. Please run \`make codegen\`"
