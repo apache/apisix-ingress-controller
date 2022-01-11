@@ -97,11 +97,3 @@ if [ "${GENS}" = "all" ] || grep -qw "register" <<<"${GENS}"; then
   echo "Generating register for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}"
   "${gobin}/register-gen" --input-dirs "$(codegen::join , "${FQ_APIS[@]}")" --output-package "${OUTPUT_PKG}" "$@"
 fi
-
-if [ "${GENS}" = "all" ] || grep -qw "register" <<<"${GENS}"; then
-  echo "Generating register for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}"
-  "${gobin}/register-gen" \
-           --input-dirs "$(codegen::join , "${FQ_APIS[@]}")" \
-           --output-package "${OUTPUT_PKG}" \
-           "$@"
-fi

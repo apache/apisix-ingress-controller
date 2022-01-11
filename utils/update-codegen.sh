@@ -46,7 +46,7 @@ bash "${SCRIPT_ROOT}"/generate-groups.sh "deepcopy" \
 bash "${SCRIPT_ROOT}"/generate-groups.sh "register" \
   ${PKG_NAME}/pkg/kube/apisix/apis ${PKG_NAME}/pkg/kube/apisix/apis \
   config:v2beta3,v2beta2,v2beta1,v1 ${PKG_NAME} \
-  --output-package "$PKG_NAME/pkg/kube/apisix/apis/" \
+  --output-base "$GENERATED_ROOT" \
   --go-header-file "${SCRIPT_ROOT}"/boilerplate.go.txt \
   "$@"
 

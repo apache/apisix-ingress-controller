@@ -33,6 +33,7 @@ trap 'rm -rf "$GENERATED_ROOT"' EXIT
 # Prepare existed codes
 mkdir -p "${GENERATED_ROOT}/${PKG_NAME}/pkg/kube/apisix"
 cp -r "${PROJECT_ROOT}/pkg/kube/apisix/client" "${GENERATED_ROOT}/${PKG_NAME}/pkg/kube/apisix"
+cp -r "${PROJECT_ROOT}/pkg/kube/apisix/apis" "${GENERATED_ROOT}/${PKG_NAME}/pkg/kube/apisix"
 
 cp_deepcopy() {
   local SRC_PATH="$1"
@@ -68,7 +69,7 @@ if [[ $ret -eq 0 ]]; then
 bash "${SCRIPT_ROOT}"/generate-groups.sh "register" \
   ${PKG_NAME}/pkg/kube/apisix/apis ${PKG_NAME}/pkg/kube/apisix/apis \
   config:v2beta3,v2beta2,v2beta1,v1 ${PKG_NAME} \
-  --output-package "$PKG_NAME/pkg/kube/apisix/apis/" \
+  --output-base "$GENERATED_ROOT" \
   --go-header-file "${SCRIPT_ROOT}"/boilerplate.go.txt \
   --verify-only|| ret=$?
 fi
