@@ -69,13 +69,13 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 			defer wg.Done()
 			// ApisixRoute
 			opts := v1.ListOptions{}
-			retRoutes, err := c.kubeClient.APISIXClient.ApisixV2beta1().ApisixRoutes(ns).List(ctx, opts)
+			retRoutes, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixRoutes(ns).List(ctx, opts)
 			if err != nil {
 				log.Error(err.Error())
 				ctx.Done()
 			} else {
 				for _, r := range retRoutes.Items {
-					tc, err := c.translator.TranslateRouteV2beta1NotStrictly(&r)
+					tc, err := c.translator.TranslateRouteV2beta3NotStrictly(&r)
 					if err != nil {
 						log.Error(err.Error())
 						ctx.Done()
