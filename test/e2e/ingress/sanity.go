@@ -167,8 +167,8 @@ var _ = ginkgo.Describe("leader election", func() {
 		ginkgo.GinkgoT().Logf("lease is %s", *lease.Spec.HolderIdentity)
 		assert.Nil(ginkgo.GinkgoT(), s.KillPod(pods[leaderIdx].Name))
 
-		// Wait the old lease expire and new leader was elected.
-		time.Sleep(25 * time.Second)
+		// Wait the old leader given up lease and new leader was elected.
+		time.Sleep(3 * time.Second)
 
 		newLease, err := s.WaitGetLeaderLease()
 		assert.Nil(ginkgo.GinkgoT(), err)
