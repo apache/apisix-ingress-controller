@@ -103,6 +103,8 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		ar, err = c.controller.apisixRouteLister.V2beta2(namespace, name)
 	case kube.ApisixRouteV2beta3:
 		ar, err = c.controller.apisixRouteLister.V2beta3(namespace, name)
+	case kube.ApisixRouteV2:
+		ar, err = c.controller.apisixRouteLister.V2(namespace, name)
 	}
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
