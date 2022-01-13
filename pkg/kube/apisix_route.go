@@ -72,6 +72,9 @@ type ApisixRoute interface {
 	// V2beta3 returns the ApisixRoute in apisix.apache.org/v2beta3, the real
 	// ApisixRoute must be in this group version, otherwise will panic.
 	V2beta3() *configv2beta3.ApisixRoute
+	// V2 returns the ApisixRoute in apisix.apache.org/v2, the real
+	// ApisixRoute must be in this group version, otherwise will panic.
+	V2() *configv2.ApisixRoute
 	// ResourceVersion returns the the resource version field inside
 	// the real ApisixRoute.
 	ResourceVersion() string
@@ -113,6 +116,13 @@ func (ar *apisixRoute) V2beta3() *configv2beta3.ApisixRoute {
 	return ar.v2beta3
 }
 
+func (ar *apisixRoute) V2() *configv2.ApisixRoute {
+	if ar.groupVersion != ApisixRouteV2 {
+		panic("not a apisix.apache.org/v2 route")
+	}
+	return ar.v2
+}
+
 func (ar *apisixRoute) GroupVersion() string {
 	return ar.groupVersion
 }
@@ -122,8 +132,10 @@ func (ar *apisixRoute) ResourceVersion() string {
 		return ar.V2beta1().ResourceVersion
 	} else if ar.groupVersion == ApisixRouteV2beta2 {
 		return ar.V2beta2().ResourceVersion
+	} else if ar.groupVersion == ApisixRouteV2beta3 {
+		return ar.V2beta3().ResourceVersion
 	}
-	return ar.V2beta3().ResourceVersion
+	return ar.V2().ResourceVersion
 }
 
 type apisixRouteLister struct {
@@ -196,6 +208,11 @@ func MustNewApisixRoute(obj interface{}) ApisixRoute {
 			groupVersion: ApisixRouteV2beta3,
 			v2beta3:      ar,
 		}
+	case *configv2.ApisixRoute:
+		return &apisixRoute{
+			groupVersion: ApisixRouteV2,
+			v2:           ar,
+		}
 	default:
 		panic("invalid ApisixRoute type")
 	}
@@ -220,6 +237,11 @@ func NewApisixRoute(obj interface{}) (ApisixRoute, error) {
 		return &apisixRoute{
 			groupVersion: ApisixRouteV2beta3,
 			v2beta3:      ar,
+		}, nil
+	case *configv2.ApisixRoute:
+		return &apisixRoute{
+			groupVersion: ApisixRouteV2,
+			v2:           ar,
 		}, nil
 	default:
 		return nil, errors.New("invalid ApisixRoute type")
