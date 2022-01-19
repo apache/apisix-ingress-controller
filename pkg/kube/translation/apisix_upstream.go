@@ -17,11 +17,11 @@ package translation
 import (
 	"fmt"
 
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func (t *translator) translateUpstreamRetriesAndTimeout(retries *int, timeout *configv2beta3.UpstreamTimeout, ups *apisixv1.Upstream) error {
+func (t *translator) translateUpstreamRetriesAndTimeout(retries *int, timeout *configv2.UpstreamTimeout, ups *apisixv1.Upstream) error {
 	if retries != nil && *retries < 0 {
 		return &translateError{
 			field:  "retries",
@@ -84,7 +84,7 @@ func (t *translator) translateUpstreamScheme(scheme string, ups *apisixv1.Upstre
 	}
 }
 
-func (t *translator) translateUpstreamLoadBalancer(lb *configv2beta3.LoadBalancer, ups *apisixv1.Upstream) error {
+func (t *translator) translateUpstreamLoadBalancer(lb *configv2.LoadBalancer, ups *apisixv1.Upstream) error {
 	if lb == nil || lb.Type == "" {
 		ups.Type = apisixv1.LbRoundRobin
 		return nil
@@ -118,7 +118,7 @@ func (t *translator) translateUpstreamLoadBalancer(lb *configv2beta3.LoadBalance
 	return nil
 }
 
-func (t *translator) translateUpstreamHealthCheck(config *configv2beta3.HealthCheck, ups *apisixv1.Upstream) error {
+func (t *translator) translateUpstreamHealthCheck(config *configv2.HealthCheck, ups *apisixv1.Upstream) error {
 	if config == nil || (config.Passive == nil && config.Active == nil) {
 		return nil
 	}
@@ -148,7 +148,7 @@ func (t *translator) translateUpstreamHealthCheck(config *configv2beta3.HealthCh
 	return nil
 }
 
-func (t translator) translateClientTLS(config *configv2beta3.ApisixSecret, ups *apisixv1.Upstream) error {
+func (t translator) translateClientTLS(config *configv2.ApisixSecret, ups *apisixv1.Upstream) error {
 	if config == nil {
 		return nil
 	}
@@ -173,7 +173,7 @@ func (t translator) translateClientTLS(config *configv2beta3.ApisixSecret, ups *
 	return nil
 }
 
-func (t *translator) translateUpstreamActiveHealthCheck(config *configv2beta3.ActiveHealthCheck) (*apisixv1.UpstreamActiveHealthCheck, error) {
+func (t *translator) translateUpstreamActiveHealthCheck(config *configv2.ActiveHealthCheck) (*apisixv1.UpstreamActiveHealthCheck, error) {
 	var active apisixv1.UpstreamActiveHealthCheck
 	switch config.Type {
 	case apisixv1.HealthCheckHTTP, apisixv1.HealthCheckHTTPS, apisixv1.HealthCheckTCP:
@@ -275,7 +275,7 @@ func (t *translator) translateUpstreamActiveHealthCheck(config *configv2beta3.Ac
 	return &active, nil
 }
 
-func (t *translator) translateUpstreamPassiveHealthCheck(config *configv2beta3.PassiveHealthCheck) (*apisixv1.UpstreamPassiveHealthCheck, error) {
+func (t *translator) translateUpstreamPassiveHealthCheck(config *configv2.PassiveHealthCheck) (*apisixv1.UpstreamPassiveHealthCheck, error) {
 	var passive apisixv1.UpstreamPassiveHealthCheck
 	switch config.Type {
 	case apisixv1.HealthCheckHTTP, apisixv1.HealthCheckHTTPS, apisixv1.HealthCheckTCP:

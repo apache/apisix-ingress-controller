@@ -31,7 +31,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
@@ -276,7 +276,7 @@ func TestTranslateIngressV1WithRegex(t *testing.T) {
 		TranslatorOptions: &TranslatorOptions{
 			ServiceLister:        svcLister,
 			EndpointLister:       epLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 		},
 	}
 
@@ -288,8 +288,8 @@ func TestTranslateIngressV1WithRegex(t *testing.T) {
 	assert.Len(t, ctx.Upstreams, 1)
 	// the number of the PluginConfigs should be zero, cause there no available Annotations matched te rule
 	assert.Len(t, ctx.PluginConfigs, 0)
-	routeVars, err := tr.translateRouteMatchExprs([]configv2beta3.ApisixRouteHTTPMatchExpr{{
-		Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+	routeVars, err := tr.translateRouteMatchExprsV2([]configv2.ApisixRouteHTTPMatchExpr{{
+		Subject: configv2.ApisixRouteHTTPMatchExprSubject{
 			Scope: apisixconst.ScopePath,
 		},
 		Op:    apisixconst.OpRegexMatch,
@@ -387,7 +387,7 @@ func TestTranslateIngressV1(t *testing.T) {
 		TranslatorOptions: &TranslatorOptions{
 			ServiceLister:        svcLister,
 			EndpointLister:       epLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 		},
 	}
 
@@ -609,7 +609,7 @@ func TestTranslateIngressV1beta1WithRegex(t *testing.T) {
 		TranslatorOptions: &TranslatorOptions{
 			ServiceLister:        svcLister,
 			EndpointLister:       epLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 		},
 	}
 
@@ -622,8 +622,8 @@ func TestTranslateIngressV1beta1WithRegex(t *testing.T) {
 	// the number of the PluginConfigs should be zero, cause there no available Annotations matched te rule
 	assert.Len(t, ctx.PluginConfigs, 0)
 
-	routeVars, err := tr.translateRouteMatchExprs([]configv2beta3.ApisixRouteHTTPMatchExpr{{
-		Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+	routeVars, err := tr.translateRouteMatchExprsV2([]configv2.ApisixRouteHTTPMatchExpr{{
+		Subject: configv2.ApisixRouteHTTPMatchExprSubject{
 			Scope: apisixconst.ScopePath,
 		},
 		Op:    apisixconst.OpRegexMatch,
@@ -718,7 +718,7 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 		TranslatorOptions: &TranslatorOptions{
 			ServiceLister:        svcLister,
 			EndpointLister:       epLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 		},
 	}
 
@@ -840,7 +840,7 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 		TranslatorOptions: &TranslatorOptions{
 			ServiceLister:        svcLister,
 			EndpointLister:       epLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 		},
 	}
 
@@ -1022,7 +1022,7 @@ func TestTranslateIngressExtensionsV1beta1WithRegex(t *testing.T) {
 		TranslatorOptions: &TranslatorOptions{
 			ServiceLister:        svcLister,
 			EndpointLister:       epLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 		},
 	}
 
@@ -1034,8 +1034,8 @@ func TestTranslateIngressExtensionsV1beta1WithRegex(t *testing.T) {
 	assert.Len(t, ctx.Upstreams, 1)
 	// the number of the PluginConfigs should be zero, cause there no available Annotations matched te rule
 	assert.Len(t, ctx.PluginConfigs, 0)
-	routeVars, err := tr.translateRouteMatchExprs([]configv2beta3.ApisixRouteHTTPMatchExpr{{
-		Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+	routeVars, err := tr.translateRouteMatchExprsV2([]configv2.ApisixRouteHTTPMatchExpr{{
+		Subject: configv2.ApisixRouteHTTPMatchExprSubject{
 			Scope: apisixconst.ScopePath,
 		},
 		Op:    apisixconst.OpRegexMatch,

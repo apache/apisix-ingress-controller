@@ -22,10 +22,11 @@ import (
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
-	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
+	listersv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -51,7 +52,7 @@ type Translator interface {
 	TranslateUpstreamNodes(kube.Endpoint, int32, types.Labels) (apisixv1.UpstreamNodes, error)
 	// TranslateUpstreamConfig translates ApisixUpstreamConfig (part of ApisixUpstream)
 	// to APISIX Upstream, it doesn't fill the the Upstream metadata and nodes.
-	TranslateUpstreamConfig(*configv2beta3.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
+	TranslateUpstreamConfig(*configv2.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
 	// TranslateUpstream composes an upstream according to the
 	// given namespace, name (searching Service/Endpoints) and port (filtering Endpoints).
 	// The returned Upstream doesn't have metadata info.
@@ -83,14 +84,20 @@ type Translator interface {
 	// TranslateRouteV2beta3NotStrictly translates the configv2beta3.ApisixRoute object into several Route,
 	// Upstream and PluginConfig resources not strictly, only used for delete event.
 	TranslateRouteV2beta3NotStrictly(*configv2beta3.ApisixRoute) (*TranslateContext, error)
+	// TranslateRouteV2 translates the configv2.ApisixRoute object into several Route,
+	// Upstream and PluginConfig resources.
+	TranslateRouteV2(*configv2.ApisixRoute) (*TranslateContext, error)
+	// TranslateRouteV2NotStrictly translates the configv2.ApisixRoute object into several Route,
+	// Upstream and PluginConfig resources not strictly, only used for delete event.
+	TranslateRouteV2NotStrictly(*configv2.ApisixRoute) (*TranslateContext, error)
 	// TranslateSSL translates the configv2beta3.ApisixTls object into the APISIX SSL resource.
-	TranslateSSL(*configv2beta3.ApisixTls) (*apisixv1.Ssl, error)
+	TranslateSSL(*configv2.ApisixTls) (*apisixv1.Ssl, error)
 	// TranslateClusterConfig translates the configv2beta3.ApisixClusterConfig object into the APISIX
 	// Global Rule resource.
-	TranslateClusterConfig(*configv2beta3.ApisixClusterConfig) (*apisixv1.GlobalRule, error)
+	TranslateClusterConfig(*configv2.ApisixClusterConfig) (*apisixv1.GlobalRule, error)
 	// TranslateApisixConsumer translates the configv2beta3.APisixConsumer object into the APISIX Consumer
 	// resource.
-	TranslateApisixConsumer(*configv2beta3.ApisixConsumer) (*apisixv1.Consumer, error)
+	TranslateApisixConsumer(*configv2.ApisixConsumer) (*apisixv1.Consumer, error)
 	// TranslatePluginConfigV2beta3 translates the configv2beta3.ApisixPluginConfig object into several PluginConfig
 	// resources.
 	TranslatePluginConfigV2beta3(*configv2beta3.ApisixPluginConfig) (*TranslateContext, error)
@@ -109,7 +116,7 @@ type TranslatorOptions struct {
 	PodLister            listerscorev1.PodLister
 	EndpointLister       kube.EndpointLister
 	ServiceLister        listerscorev1.ServiceLister
-	ApisixUpstreamLister listersv2beta3.ApisixUpstreamLister
+	ApisixUpstreamLister listersv2.ApisixUpstreamLister
 	SecretLister         listerscorev1.SecretLister
 	UseEndpointSlices    bool
 }
@@ -125,7 +132,7 @@ func NewTranslator(opts *TranslatorOptions) Translator {
 	}
 }
 
-func (t *translator) TranslateUpstreamConfig(au *configv2beta3.ApisixUpstreamConfig) (*apisixv1.Upstream, error) {
+func (t *translator) TranslateUpstreamConfig(au *configv2.ApisixUpstreamConfig) (*apisixv1.Upstream, error) {
 	ups := apisixv1.NewDefaultUpstream()
 	if err := t.translateUpstreamScheme(au.Scheme, ups); err != nil {
 		return nil, err

@@ -28,14 +28,14 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestTranslateUpstreamConfig(t *testing.T) {
 	tr := &translator{}
 
-	au := &configv2beta3.ApisixUpstreamConfig{
+	au := &configv2.ApisixUpstreamConfig{
 		LoadBalancer: nil,
 		Scheme:       apisixv1.SchemeGRPC,
 	}
@@ -45,8 +45,8 @@ func TestTranslateUpstreamConfig(t *testing.T) {
 	assert.Equal(t, apisixv1.LbRoundRobin, ups.Type)
 	assert.Equal(t, apisixv1.SchemeGRPC, ups.Scheme)
 
-	au = &configv2beta3.ApisixUpstreamConfig{
-		LoadBalancer: &configv2beta3.LoadBalancer{
+	au = &configv2.ApisixUpstreamConfig{
+		LoadBalancer: &configv2.LoadBalancer{
 			Type:   apisixv1.LbConsistentHash,
 			HashOn: apisixv1.HashOnHeader,
 			Key:    "user-agent",
@@ -60,8 +60,8 @@ func TestTranslateUpstreamConfig(t *testing.T) {
 	assert.Equal(t, apisixv1.HashOnHeader, ups.HashOn)
 	assert.Equal(t, apisixv1.SchemeHTTP, ups.Scheme)
 
-	au = &configv2beta3.ApisixUpstreamConfig{
-		LoadBalancer: &configv2beta3.LoadBalancer{
+	au = &configv2.ApisixUpstreamConfig{
+		LoadBalancer: &configv2.LoadBalancer{
 			Type:   apisixv1.LbConsistentHash,
 			HashOn: apisixv1.HashOnHeader,
 			Key:    "user-agent",
@@ -74,8 +74,8 @@ func TestTranslateUpstreamConfig(t *testing.T) {
 		reason: "invalid value",
 	})
 
-	au = &configv2beta3.ApisixUpstreamConfig{
-		LoadBalancer: &configv2beta3.LoadBalancer{
+	au = &configv2.ApisixUpstreamConfig{
+		LoadBalancer: &configv2.LoadBalancer{
 			Type: "hash",
 		},
 	}
@@ -85,8 +85,8 @@ func TestTranslateUpstreamConfig(t *testing.T) {
 		reason: "invalid value",
 	})
 
-	au = &configv2beta3.ApisixUpstreamConfig{
-		LoadBalancer: &configv2beta3.LoadBalancer{
+	au = &configv2.ApisixUpstreamConfig{
+		LoadBalancer: &configv2.LoadBalancer{
 			Type:   apisixv1.LbConsistentHash,
 			HashOn: "arg",
 		},

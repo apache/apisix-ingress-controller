@@ -17,11 +17,11 @@ package translation
 import (
 	"fmt"
 
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func (t *translator) TranslateApisixConsumer(ac *configv2beta3.ApisixConsumer) (*apisixv1.Consumer, error) {
+func (t *translator) TranslateApisixConsumer(ac *configv2.ApisixConsumer) (*apisixv1.Consumer, error) {
 	// As the CRD schema ensures that only one authN can be configured,
 	// so here the order is no matter.
 

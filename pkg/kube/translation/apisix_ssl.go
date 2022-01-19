@@ -20,7 +20,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -33,7 +33,7 @@ var (
 	ErrEmptyPrivKey = errors.New("missing key field")
 )
 
-func (t *translator) TranslateSSL(tls *configv2beta3.ApisixTls) (*apisixv1.Ssl, error) {
+func (t *translator) TranslateSSL(tls *configv2.ApisixTls) (*apisixv1.Ssl, error) {
 	s, err := t.SecretLister.Secrets(tls.Spec.Secret.Namespace).Get(tls.Spec.Secret.Name)
 	if err != nil {
 		return nil, err

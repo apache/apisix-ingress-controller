@@ -26,7 +26,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -110,7 +110,7 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			log.Warnf("discard the stale ApisixTls delete event since the %s exists", key)
 			return nil
 		}
-		tls = ev.Tombstone.(*configv2beta3.ApisixTls)
+		tls = ev.Tombstone.(*configv2.ApisixTls)
 	}
 
 	ssl, err := c.controller.translator.TranslateSSL(tls)
@@ -204,8 +204,8 @@ func (c *apisixTlsController) onAdd(obj interface{}) {
 }
 
 func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
-	oldTls := prev.(*configv2beta3.ApisixTls)
-	newTls := curr.(*configv2beta3.ApisixTls)
+	oldTls := prev.(*configv2.ApisixTls)
+	newTls := curr.(*configv2.ApisixTls)
 	if oldTls.GetResourceVersion() == newTls.GetResourceVersion() {
 		return
 	}
@@ -230,13 +230,13 @@ func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
 }
 
 func (c *apisixTlsController) onDelete(obj interface{}) {
-	tls, ok := obj.(*configv2beta3.ApisixTls)
+	tls, ok := obj.(*configv2.ApisixTls)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			return
 		}
-		tls, ok = tombstone.Obj.(*configv2beta3.ApisixTls)
+		tls, ok = tombstone.Obj.(*configv2.ApisixTls)
 		if !ok {
 			return
 		}

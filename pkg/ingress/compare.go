@@ -107,7 +107,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 			// ApisixUpstream and ApisixPluginConfig should be synced with ApisixRoute resource
 
 			// ApisixSSL
-			retSSL, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixTlses(ns).List(ctx, opts)
+			retSSL, err := c.kubeClient.APISIXClient.ApisixV2().ApisixTlses(ns).List(ctx, opts)
 			if err != nil {
 				log.Error(err.Error())
 				ctx.Done()
@@ -123,7 +123,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 				}
 			}
 			// ApisixConsumer
-			retConsumer, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixConsumers(ns).List(ctx, opts)
+			retConsumer, err := c.kubeClient.APISIXClient.ApisixV2().ApisixConsumers(ns).List(ctx, opts)
 			if err != nil {
 				log.Error(err.Error())
 				ctx.Done()

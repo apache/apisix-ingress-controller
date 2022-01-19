@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
-	kubev2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -45,21 +45,21 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
 	// add https
 	for _, tls := range ing.Spec.TLS {
-		apisixTls := kubev2beta3.ApisixTls{
+		apisixTls := v2.ApisixTls{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "ApisixTls",
-				APIVersion: "apisix.apache.org/v1",
+				APIVersion: "apisix.apache.org/v2",
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
 				Namespace: ing.Namespace,
 			},
-			Spec: &kubev2beta3.ApisixTlsSpec{},
+			Spec: &v2.ApisixTlsSpec{},
 		}
 		for _, host := range tls.Hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2beta3.HostType(host))
+			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, v2.HostType(host))
 		}
-		apisixTls.Spec.Secret = kubev2beta3.ApisixSecret{
+		apisixTls.Spec.Secret = v2.ApisixSecret{
 			Name:      tls.SecretName,
 			Namespace: ing.Namespace,
 		}
@@ -92,7 +92,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 				ctx.addUpstream(ups)
 			}
 			uris := []string{pathRule.Path}
-			var nginxVars []kubev2beta3.ApisixRouteHTTPMatchExpr
+			var nginxVars []v2.ApisixRouteHTTPMatchExpr
 			if pathRule.PathType != nil {
 				if *pathRule.PathType == networkingv1.PathTypePrefix {
 					// As per the specification of Ingress path matching rule:
@@ -112,8 +112,8 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 					}
 					uris = append(uris, prefix)
 				} else if *pathRule.PathType == networkingv1.PathTypeImplementationSpecific && useRegex {
-					nginxVars = append(nginxVars, kubev2beta3.ApisixRouteHTTPMatchExpr{
-						Subject: kubev2beta3.ApisixRouteHTTPMatchExprSubject{
+					nginxVars = append(nginxVars, v2.ApisixRouteHTTPMatchExpr{
+						Subject: v2.ApisixRouteHTTPMatchExprSubject{
 							Scope: apisixconst.ScopePath,
 						},
 						Op:    apisixconst.OpRegexMatch,
@@ -128,7 +128,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 			route.Host = rule.Host
 			route.Uris = uris
 			if len(nginxVars) > 0 {
-				routeVars, err := t.translateRouteMatchExprs(nginxVars)
+				routeVars, err := t.translateRouteMatchExprsV2(nginxVars)
 				if err != nil {
 					return nil, err
 				}
@@ -162,21 +162,21 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
 	// add https
 	for _, tls := range ing.Spec.TLS {
-		apisixTls := kubev2beta3.ApisixTls{
+		apisixTls := v2.ApisixTls{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "ApisixTls",
-				APIVersion: "apisix.apache.org/v1",
+				APIVersion: "apisix.apache.org/v2",
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
 				Namespace: ing.Namespace,
 			},
-			Spec: &kubev2beta3.ApisixTlsSpec{},
+			Spec: &v2.ApisixTlsSpec{},
 		}
 		for _, host := range tls.Hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2beta3.HostType(host))
+			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, v2.HostType(host))
 		}
-		apisixTls.Spec.Secret = kubev2beta3.ApisixSecret{
+		apisixTls.Spec.Secret = v2.ApisixSecret{
 			Name:      tls.SecretName,
 			Namespace: ing.Namespace,
 		}
@@ -209,7 +209,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 				ctx.addUpstream(ups)
 			}
 			uris := []string{pathRule.Path}
-			var nginxVars []kubev2beta3.ApisixRouteHTTPMatchExpr
+			var nginxVars []v2.ApisixRouteHTTPMatchExpr
 			if pathRule.PathType != nil {
 				if *pathRule.PathType == networkingv1beta1.PathTypePrefix {
 					// As per the specification of Ingress path matching rule:
@@ -229,8 +229,8 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 					}
 					uris = append(uris, prefix)
 				} else if *pathRule.PathType == networkingv1beta1.PathTypeImplementationSpecific && useRegex {
-					nginxVars = append(nginxVars, kubev2beta3.ApisixRouteHTTPMatchExpr{
-						Subject: kubev2beta3.ApisixRouteHTTPMatchExprSubject{
+					nginxVars = append(nginxVars, v2.ApisixRouteHTTPMatchExpr{
+						Subject: v2.ApisixRouteHTTPMatchExprSubject{
 							Scope: apisixconst.ScopePath,
 						},
 						Op:    apisixconst.OpRegexMatch,
@@ -245,7 +245,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 			route.Host = rule.Host
 			route.Uris = uris
 			if len(nginxVars) > 0 {
-				routeVars, err := t.translateRouteMatchExprs(nginxVars)
+				routeVars, err := t.translateRouteMatchExprsV2(nginxVars)
 				if err != nil {
 					return nil, err
 				}
@@ -329,7 +329,7 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 				ctx.addUpstream(ups)
 			}
 			uris := []string{pathRule.Path}
-			var nginxVars []kubev2beta3.ApisixRouteHTTPMatchExpr
+			var nginxVars []v2.ApisixRouteHTTPMatchExpr
 			if pathRule.PathType != nil {
 				if *pathRule.PathType == extensionsv1beta1.PathTypePrefix {
 					// As per the specification of Ingress path matching rule:
@@ -349,8 +349,8 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 					}
 					uris = append(uris, prefix)
 				} else if *pathRule.PathType == extensionsv1beta1.PathTypeImplementationSpecific && useRegex {
-					nginxVars = append(nginxVars, kubev2beta3.ApisixRouteHTTPMatchExpr{
-						Subject: kubev2beta3.ApisixRouteHTTPMatchExprSubject{
+					nginxVars = append(nginxVars, v2.ApisixRouteHTTPMatchExpr{
+						Subject: v2.ApisixRouteHTTPMatchExprSubject{
 							Scope: apisixconst.ScopePath,
 						},
 						Op:    apisixconst.OpRegexMatch,
@@ -365,7 +365,7 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 			route.Host = rule.Host
 			route.Uris = uris
 			if len(nginxVars) > 0 {
-				routeVars, err := t.translateRouteMatchExprs(nginxVars)
+				routeVars, err := t.translateRouteMatchExprsV2(nginxVars)
 				if err != nil {
 					return nil, err
 				}

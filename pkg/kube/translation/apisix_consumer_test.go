@@ -20,20 +20,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestTranslateApisixConsumer(t *testing.T) {
-	ac := &configv2beta3.ApisixConsumer{
+	ac := &configv2.ApisixConsumer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "jack",
 			Namespace: "qa",
 		},
-		Spec: configv2beta3.ApisixConsumerSpec{
-			AuthParameter: configv2beta3.ApisixConsumerAuthParameter{
-				BasicAuth: &configv2beta3.ApisixConsumerBasicAuth{
-					Value: &configv2beta3.ApisixConsumerBasicAuthValue{
+		Spec: configv2.ApisixConsumerSpec{
+			AuthParameter: configv2.ApisixConsumerAuthParameter{
+				BasicAuth: &configv2.ApisixConsumerBasicAuth{
+					Value: &configv2.ApisixConsumerBasicAuthValue{
 						Username: "jack",
 						Password: "jacknice",
 					},
@@ -48,15 +48,15 @@ func TestTranslateApisixConsumer(t *testing.T) {
 	assert.Equal(t, "jack", cfg.Username)
 	assert.Equal(t, "jacknice", cfg.Password)
 
-	ac = &configv2beta3.ApisixConsumer{
+	ac = &configv2.ApisixConsumer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "jack",
 			Namespace: "qa",
 		},
-		Spec: configv2beta3.ApisixConsumerSpec{
-			AuthParameter: configv2beta3.ApisixConsumerAuthParameter{
-				KeyAuth: &configv2beta3.ApisixConsumerKeyAuth{
-					Value: &configv2beta3.ApisixConsumerKeyAuthValue{
+		Spec: configv2.ApisixConsumerSpec{
+			AuthParameter: configv2.ApisixConsumerAuthParameter{
+				KeyAuth: &configv2.ApisixConsumerKeyAuth{
+					Value: &configv2.ApisixConsumerKeyAuthValue{
 						Key: "qwerty",
 					},
 				},

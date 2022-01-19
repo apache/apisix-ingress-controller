@@ -17,6 +17,7 @@ package translation
 import (
 	"errors"
 
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -69,7 +70,49 @@ func (t *translator) translateTrafficSplitPlugin(ctx *TranslateContext, ns strin
 	return tsCfg, nil
 }
 
-func (t *translator) translateConsumerKeyAuthPlugin(consumerNamespace string, cfg *configv2beta3.ApisixConsumerKeyAuth) (*apisixv1.KeyAuthConsumerConfig, error) {
+func (t *translator) translateTrafficSplitPluginV2(ctx *TranslateContext, ns string, defaultBackendWeight int,
+	backends []configv2.ApisixRouteHTTPBackend) (*apisixv1.TrafficSplitConfig, error) {
+	var (
+		wups []apisixv1.TrafficSplitConfigRuleWeightedUpstream
+	)
+
+	for _, backend := range backends {
+		svcClusterIP, svcPort, err := t.getServiceClusterIPAndPortV2(&backend, ns)
+		if err != nil {
+			return nil, err
+		}
+		ups, err := t.translateUpstream(ns, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
+		if err != nil {
+			return nil, err
+		}
+		ctx.addUpstream(ups)
+
+		weight := _defaultWeight
+		if backend.Weight != nil {
+			weight = *backend.Weight
+		}
+		wups = append(wups, apisixv1.TrafficSplitConfigRuleWeightedUpstream{
+			UpstreamID: ups.ID,
+			Weight:     weight,
+		})
+	}
+
+	// Finally append the default upstream in the route.
+	wups = append(wups, apisixv1.TrafficSplitConfigRuleWeightedUpstream{
+		Weight: defaultBackendWeight,
+	})
+
+	tsCfg := &apisixv1.TrafficSplitConfig{
+		Rules: []apisixv1.TrafficSplitConfigRule{
+			{
+				WeightedUpstreams: wups,
+			},
+		},
+	}
+	return tsCfg, nil
+}
+
+func (t *translator) translateConsumerKeyAuthPlugin(consumerNamespace string, cfg *configv2.ApisixConsumerKeyAuth) (*apisixv1.KeyAuthConsumerConfig, error) {
 	if cfg.Value != nil {
 		return &apisixv1.KeyAuthConsumerConfig{Key: cfg.Value.Key}, nil
 	}
@@ -85,7 +128,7 @@ func (t *translator) translateConsumerKeyAuthPlugin(consumerNamespace string, cf
 	return &apisixv1.KeyAuthConsumerConfig{Key: string(raw)}, nil
 }
 
-func (t *translator) translateConsumerBasicAuthPlugin(consumerNamespace string, cfg *configv2beta3.ApisixConsumerBasicAuth) (*apisixv1.BasicAuthConsumerConfig, error) {
+func (t *translator) translateConsumerBasicAuthPlugin(consumerNamespace string, cfg *configv2.ApisixConsumerBasicAuth) (*apisixv1.BasicAuthConsumerConfig, error) {
 	if cfg.Value != nil {
 		return &apisixv1.BasicAuthConsumerConfig{
 			Username: cfg.Value.Username,
