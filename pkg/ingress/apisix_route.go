@@ -93,9 +93,10 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		return err
 	}
 	var (
-		ar       kube.ApisixRoute
-		replaced *v2beta3.ApisixRoute
-		tctx     *translation.TranslateContext
+		ar         kube.ApisixRoute
+		replaced   *v2beta3.ApisixRoute
+		replacedV2 *v2.ApisixRoute
+		tctx       *translation.TranslateContext
 	)
 	switch obj.GroupVersion {
 	case kube.ApisixRouteV2beta1:
@@ -182,7 +183,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		}
 	case kube.ApisixRouteV2:
 		if ev.Type != types.EventDelete {
-			if replacedV2, err := c.replacePluginNameWithIdIfNotEmptyV2(ctx, ar.V2()); err == nil {
+			if replacedV2, err = c.replacePluginNameWithIdIfNotEmptyV2(ctx, ar.V2()); err == nil {
 				tctx, err = c.controller.translator.TranslateRouteV2(replacedV2)
 			}
 		} else {
@@ -233,8 +234,8 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 				oldCtx, err = c.controller.translator.TranslateRouteV2beta3(replaced)
 			}
 		case kube.ApisixRouteV2:
-			if replacedv2, err := c.replacePluginNameWithIdIfNotEmptyV2(ctx, obj.OldObject.V2()); err == nil {
-				oldCtx, err = c.controller.translator.TranslateRouteV2(replacedv2)
+			if replacedV2, err = c.replacePluginNameWithIdIfNotEmptyV2(ctx, obj.OldObject.V2()); err == nil {
+				oldCtx, err = c.controller.translator.TranslateRouteV2(replacedV2)
 			}
 		}
 		if err != nil {
