@@ -69,19 +69,19 @@ Both json and yaml are supported as the configuration file format.
 
 Run from command line options:
 
-    apisix-ingress-controller ingress --apisix-base-url http://apisix-service:9180/apisix/admin --kubeconfig /path/to/kubeconfig
+    apisix-ingress-controller ingress --default-apisix-cluster-base-url http://apisix-service:9180/apisix/admin --kubeconfig /path/to/kubeconfig
 
 For Kubernetes cluster version older than v1.19.0, you should always set the --ingress-version option to networking/v1beta1:
 
     apisix-ingress-controller ingress \
-      --apisix-base-url http://apisix-service:9180/apisix/admin \
+      --default-apisix-cluster-base-url http://apisix-service:9180/apisix/admin \
       --kubeconfig /path/to/kubeconfig \
       --ingress-version networking/v1beta1
 
 If your Kubernetes cluster version is prior to v1.14+, only ingress.extensions/v1beta1 can be used.
 
     apisix-ingress-controller ingress \
-      --apisix-base-url http://apisix-service:9180/apisix/admin \
+      --default-apisix-cluster-base-url http://apisix-service:9180/apisix/admin \
       --kubeconfig /path/to/kubeconfig \
       --ingress-version extensions/v1beta1
 
