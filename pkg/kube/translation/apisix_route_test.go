@@ -185,7 +185,7 @@ func TestRouteMatchExpr(t *testing.T) {
 	assert.Equal(t, []string{"foo.com"}, results[9][2].SliceVal)
 }
 
-func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
+func mockTranslator(t *testing.T) (*translator, <-chan struct{}) {
 	svc := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
@@ -278,6 +278,11 @@ func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 	go epInformer.Run(stopCh)
 	cache.WaitForCacheSync(stopCh, svcInformer.HasSynced)
 
+	return tr, processCh
+}
+
+func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
+	tr, processCh := mockTranslator(t)
 	<-processCh
 	<-processCh
 
@@ -324,9 +329,82 @@ func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 		},
 	}
 
-	_, err = tr.TranslateRouteV2beta3(ar)
+	_, err := tr.TranslateRouteV2beta3(ar)
 	assert.NotNil(t, err)
 	assert.Equal(t, "duplicated route rule name", err.Error())
+}
+
+func TestTranslateApisixRouteV2alpha1WithEmptyPluginConfigName(t *testing.T) {
+	tr, processCh := mockTranslator(t)
+	<-processCh
+	<-processCh
+
+	ar := &configv2beta3.ApisixRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ar",
+			Namespace: "test",
+		},
+		Spec: configv2beta3.ApisixRouteSpec{
+			HTTP: []configv2beta3.ApisixRouteHTTP{
+				{
+					Name: "rule1",
+					Match: configv2beta3.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc",
+							ServicePort: intstr.IntOrString{
+								IntVal: 80,
+							},
+						},
+					},
+				},
+				{
+					Name: "rule2",
+					Match: configv2beta3.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc",
+							ServicePort: intstr.IntOrString{
+								IntVal: 80,
+							},
+						},
+					},
+					PluginConfigName: "test-PluginConfigName-1",
+				},
+				{
+					Name: "rule3",
+					Match: configv2beta3.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc",
+							ServicePort: intstr.IntOrString{
+								IntVal: 80,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	res, err := tr.TranslateRouteV2beta3(ar)
+	assert.NoError(t, err)
+	assert.Len(t, res.PluginConfigs, 0)
+	assert.Len(t, res.Routes, 3)
+	assert.Equal(t, "", res.Routes[0].PluginConfigId)
+	assert.Equal(t, ar.Spec.HTTP[1].PluginConfigName, res.Routes[1].PluginConfigId)
+	assert.Equal(t, "", res.Routes[2].PluginConfigId)
 }
 
 func TestTranslateApisixRouteV2alpha1NotStrictly(t *testing.T) {
