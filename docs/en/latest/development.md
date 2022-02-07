@@ -95,11 +95,11 @@ cd /path/to/apisix-ingress-controller
     --kubeconfig /path/to/kubeconfig \
     --http-listen :8080 \
     --log-output stderr \
-    --apisix-base-url http://192.168.65.2:31156/apisix/admin
-    --apisix-admin-key edd1c9f034335f136f87ad84b625c8f1
+    --default-apisix-cluster-base-url http://192.168.65.2:31156/apisix/admin
+    --default-apisix-cluster-admin-key edd1c9f034335f136f87ad84b625c8f1
 ```
 
 Something you need to pay attention to:
 
 * configuring of `--kubeconfig`, if you are using Minikube, the file path should be `~/.kube/config`.
-* configuring of `--apisix-admin-key`, if you have changed the admin key in Apache APISIX, also changing it here, if you disable the authentication if Apache APISIX, just removing this option.
+* configuring of `--default-apisix-cluster-admin-key`, if you have changed the admin key in Apache APISIX, also changing it here. If you have disabled the authentication in Apache APISIX, just removing this option.
