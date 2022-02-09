@@ -380,10 +380,7 @@ func (c *Controller) Run(stop chan struct{}) error {
 				c.apisix.DeleteCluster(c.cfg.APISIX.DefaultClusterName)
 			},
 		},
-		// Set it to false as current leaderelection implementation will report
-		// "Failed to release lock: resource name may not be empty" error when
-		// ReleaseOnCancel is true and the Run context is cancelled.
-		ReleaseOnCancel: false,
+		ReleaseOnCancel: true,
 		Name:            "ingress-apisix",
 	}
 

@@ -104,14 +104,6 @@ type APISIXConfig struct {
 	// DefaultClusterAdminKey is the admin key for the default cluster.
 	// TODO: Obsolete the plain way to specify admin_key, which is insecure.
 	DefaultClusterAdminKey string `json:"default_cluster_admin_key" yaml:"default_cluster_admin_key"`
-	// BaseURL is same to DefaultClusterBaseURL.
-	// Deprecated: use DefaultClusterBaseURL instead. BaseURL will be removed
-	// once v1.0.0 is released.
-	BaseURL string `json:"base_url" yaml:"base_url"`
-	// AdminKey is same to DefaultClusterAdminKey.
-	// Deprecated: use DefaultClusterAdminKey instead. AdminKey will be removed
-	// once v1.0.0 is released.
-	AdminKey string `json:"admin_key" yaml:"admin_key"`
 }
 
 // NewDefaultConfig creates a Config object which fills all config items with
@@ -185,16 +177,9 @@ func (cfg *Config) Validate() error {
 	if cfg.Kubernetes.ResyncInterval.Duration < _minimalResyncInterval {
 		return errors.New("controller resync interval too small")
 	}
-	if cfg.APISIX.DefaultClusterAdminKey == "" {
-		cfg.APISIX.DefaultClusterAdminKey = cfg.APISIX.AdminKey
-	}
-	if cfg.APISIX.DefaultClusterBaseURL == "" {
-		cfg.APISIX.DefaultClusterBaseURL = cfg.APISIX.BaseURL
-	}
 	if cfg.APISIX.DefaultClusterName == "" {
 		cfg.APISIX.DefaultClusterName = "default"
 	}
-
 	if cfg.APISIX.DefaultClusterBaseURL == "" {
 		return errors.New("apisix base url is required")
 	}

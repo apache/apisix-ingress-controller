@@ -70,8 +70,8 @@ func TestSignalHandler(t *testing.T) {
 		"--enable-profiling",
 		"--kubeconfig", "/foo/bar/baz",
 		"--resync-interval", "24h",
-		"--apisix-base-url", "http://apisixgw.default.cluster.local/apisix",
-		"--apisix-admin-key", "0x123",
+		"--default-apisix-cluster-base-url", "http://apisixgw.default.cluster.local/apisix",
+		"--default-apisix-cluster-admin-key", "0x123",
 	})
 	waitCh := make(chan struct{})
 	go func() {
@@ -106,8 +106,8 @@ func TestNewIngressCommandEffectiveLog(t *testing.T) {
 		"--enable-profiling",
 		"--kubeconfig", "/foo/bar/baz",
 		"--resync-interval", "24h",
-		"--apisix-base-url", "http://apisixgw.default.cluster.local/apisix",
-		"--apisix-admin-key", "0x123",
+		"--default-apisix-cluster-base-url", "http://apisixgw.default.cluster.local/apisix",
+		"--default-apisix-cluster-admin-key", "0x123",
 	})
 	defer os.Remove("./test.log")
 
@@ -148,8 +148,8 @@ func TestNewIngressCommandEffectiveLog(t *testing.T) {
 	assert.Equal(t, true, cfg.EnableProfiling)
 	assert.Equal(t, "/foo/bar/baz", cfg.Kubernetes.Kubeconfig)
 	assert.Equal(t, types.TimeDuration{Duration: 24 * time.Hour}, cfg.Kubernetes.ResyncInterval)
-	assert.Equal(t, "0x123", cfg.APISIX.AdminKey)
-	assert.Equal(t, "http://apisixgw.default.cluster.local/apisix", cfg.APISIX.BaseURL)
+	assert.Equal(t, "0x123", cfg.APISIX.DefaultClusterAdminKey)
+	assert.Equal(t, "http://apisixgw.default.cluster.local/apisix", cfg.APISIX.DefaultClusterBaseURL)
 }
 
 func parseLog(t *testing.T, r *bufio.Reader) *fields {

@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -68,19 +69,19 @@ Both json and yaml are supported as the configuration file format.
 
 Run from command line options:
 
-    apisix-ingress-controller ingress --apisix-base-url http://apisix-service:9180/apisix/admin --kubeconfig /path/to/kubeconfig
+    apisix-ingress-controller ingress --default-apisix-cluster-base-url http://apisix-service:9180/apisix/admin --kubeconfig /path/to/kubeconfig
 
 For Kubernetes cluster version older than v1.19.0, you should always set the --ingress-version option to networking/v1beta1:
 
     apisix-ingress-controller ingress \
-      --apisix-base-url http://apisix-service:9180/apisix/admin \
+      --default-apisix-cluster-base-url http://apisix-service:9180/apisix/admin \
       --kubeconfig /path/to/kubeconfig \
       --ingress-version networking/v1beta1
 
 If your Kubernetes cluster version is prior to v1.14+, only ingress.extensions/v1beta1 can be used.
 
     apisix-ingress-controller ingress \
-      --apisix-base-url http://apisix-service:9180/apisix/admin \
+      --default-apisix-cluster-base-url http://apisix-service:9180/apisix/admin \
       --kubeconfig /path/to/kubeconfig \
       --ingress-version extensions/v1beta1
 
@@ -124,13 +125,17 @@ the apisix cluster and others are created`,
 			if err != nil {
 				dief("failed to create ingress controller: %s", err)
 			}
+			wg := sync.WaitGroup{}
+			wg.Add(1)
 			go func() {
+				defer wg.Done()
 				if err := ingress.Run(stop); err != nil {
 					dief("failed to run ingress controller: %s", err)
 				}
 			}()
 
 			waitForSignal(stop)
+			wg.Wait()
 			log.Info("apisix ingress controller exited")
 		},
 	}
@@ -159,8 +164,6 @@ For example, no available LB exists in the bare metal environment.`)
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ApisixRouteVersion, "apisix-route-version", config.ApisixRouteV2beta3, "the supported apisixroute api group version, can be \"apisix.apache.org/v2beta1\" or \"apisix.apache.org/v2beta2\" or \"apisix.apache.org/v2beta3\"")
 	cmd.PersistentFlags().BoolVar(&cfg.Kubernetes.WatchEndpointSlices, "watch-endpointslices", false, "whether to watch endpointslices rather than endpoints")
 	cmd.PersistentFlags().BoolVar(&cfg.Kubernetes.EnableGatewayAPI, "enable-gateway-api", false, "whether to enable support for Gateway API")
-	cmd.PersistentFlags().StringVar(&cfg.APISIX.BaseURL, "apisix-base-url", "", "the base URL for APISIX admin api / manager api (deprecated, using --default-apisix-cluster-base-url instead)")
-	cmd.PersistentFlags().StringVar(&cfg.APISIX.AdminKey, "apisix-admin-key", "", "admin key used for the authorization of APISIX admin api / manager api (deprecated, using --default-apisix-cluster-admin-key instead)")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.DefaultClusterBaseURL, "default-apisix-cluster-base-url", "", "the base URL of admin api / manager api for the default APISIX cluster")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.DefaultClusterAdminKey, "default-apisix-cluster-admin-key", "", "admin key used for the authorization of admin api / manager api for the default APISIX cluster")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.DefaultClusterName, "default-apisix-cluster-name", "default", "name of the default apisix cluster")
