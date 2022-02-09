@@ -281,7 +281,7 @@ func mockTranslator(t *testing.T) (*translator, <-chan struct{}) {
 	return tr, processCh
 }
 
-func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
+func TestTranslateApisixRouteV2beta3WithDuplicatedName(t *testing.T) {
 	tr, processCh := mockTranslator(t)
 	<-processCh
 	<-processCh
@@ -334,7 +334,7 @@ func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 	assert.Equal(t, "duplicated route rule name", err.Error())
 }
 
-func TestTranslateApisixRouteV2alpha1WithEmptyPluginConfigName(t *testing.T) {
+func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
 	tr, processCh := mockTranslator(t)
 	<-processCh
 	<-processCh
@@ -407,7 +407,7 @@ func TestTranslateApisixRouteV2alpha1WithEmptyPluginConfigName(t *testing.T) {
 	assert.Equal(t, "", res.Routes[2].PluginConfigId)
 }
 
-func TestTranslateApisixRouteV2alpha1NotStrictly(t *testing.T) {
+func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {
 	tr := &translator{
 		&TranslatorOptions{},
 	}
