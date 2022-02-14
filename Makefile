@@ -87,8 +87,8 @@ endif
 .PHONY: push-images-to-kind
 push-images-to-kind: kind-up
 ifeq ($(E2E_SKIP_BUILD), 0)
-	docker pull apache/apisix:dev
-	docker tag apache/apisix:dev $(LOCAL_REGISTRY)/apache/apisix:dev
+	docker pull apache/apisix:2.12.0-alpine
+	docker tag apache/apisix:2.12.0-alpine $(LOCAL_REGISTRY)/apache/apisix:dev
 	docker push $(LOCAL_REGISTRY)/apache/apisix:dev
 
 	docker pull bitnami/etcd:3.4.14-debian-10-r0
