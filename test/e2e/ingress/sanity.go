@@ -187,7 +187,7 @@ var _ = ginkgo.Describe("leader election", func() {
 	})
 })
 
-var _ = ginkgo.FDescribe("stream_routes disabled", func() {
+var _ = ginkgo.Describe("stream_routes disabled", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
