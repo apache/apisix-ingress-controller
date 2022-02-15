@@ -53,6 +53,8 @@ var (
 	// ErrDuplicatedCluster means the cluster adding request was
 	// rejected since the cluster was already created.
 	ErrDuplicatedCluster = errors.New("duplicated cluster")
+	// ErrFunctionDisabled means the APISIX function is disabled
+	ErrFunctionDisabled = errors.New("function disabled")
 
 	_errReadOnClosedResBody = errors.New("http: read on closed response body")
 
@@ -517,6 +519,10 @@ func (c *cluster) do(req *http.Request) (*http.Response, error) {
 	return c.cli.Do(req)
 }
 
+func (c *cluster) isFunctionDisabled(body string) bool {
+	return strings.Contains(body, "is disabled")
+}
+
 func (c *cluster) getResource(ctx context.Context, url, resource string) (*getResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -532,11 +538,15 @@ func (c *cluster) getResource(ctx context.Context, url, resource string) (*getRe
 
 	defer drainBody(resp.Body, url)
 	if resp.StatusCode != http.StatusOK {
+		body := readBody(resp.Body, url)
+		if c.isFunctionDisabled(body) {
+			return nil, ErrFunctionDisabled
+		}
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, cache.ErrNotFound
 		} else {
 			err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
-			err = multierr.Append(err, fmt.Errorf("error message: %s", readBody(resp.Body, url)))
+			err = multierr.Append(err, fmt.Errorf("error message: %s", body))
 		}
 		return nil, err
 	}
@@ -565,8 +575,12 @@ func (c *cluster) listResource(ctx context.Context, url, resource string) (*list
 
 	defer drainBody(resp.Body, url)
 	if resp.StatusCode != http.StatusOK {
+		body := readBody(resp.Body, url)
+		if c.isFunctionDisabled(body) {
+			return nil, ErrFunctionDisabled
+		}
 		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
-		err = multierr.Append(err, fmt.Errorf("error message: %s", readBody(resp.Body, url)))
+		err = multierr.Append(err, fmt.Errorf("error message: %s", body))
 		return nil, err
 	}
 
@@ -595,8 +609,12 @@ func (c *cluster) createResource(ctx context.Context, url, resource string, body
 	defer drainBody(resp.Body, url)
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		body := readBody(resp.Body, url)
+		if c.isFunctionDisabled(body) {
+			return nil, ErrFunctionDisabled
+		}
 		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
-		err = multierr.Append(err, fmt.Errorf("error message: %s", readBody(resp.Body, url)))
+		err = multierr.Append(err, fmt.Errorf("error message: %s", body))
 		return nil, err
 	}
 
@@ -624,8 +642,12 @@ func (c *cluster) updateResource(ctx context.Context, url, resource string, body
 	defer drainBody(resp.Body, url)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		body := readBody(resp.Body, url)
+		if c.isFunctionDisabled(body) {
+			return nil, ErrFunctionDisabled
+		}
 		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
-		err = multierr.Append(err, fmt.Errorf("error message: %s", readBody(resp.Body, url)))
+		err = multierr.Append(err, fmt.Errorf("error message: %s", body))
 		return nil, err
 	}
 	var ur updateResponse
@@ -652,8 +674,11 @@ func (c *cluster) deleteResource(ctx context.Context, url, resource string) erro
 	defer drainBody(resp.Body, url)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
-		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
 		message := readBody(resp.Body, url)
+		if c.isFunctionDisabled(message) {
+			return ErrFunctionDisabled
+		}
+		err = multierr.Append(err, fmt.Errorf("unexpected status code %d", resp.StatusCode))
 		err = multierr.Append(err, fmt.Errorf("error message: %s", message))
 		if strings.Contains(message, "still using") {
 			return cache.ErrStillInUse
