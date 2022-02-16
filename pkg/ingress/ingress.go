@@ -199,11 +199,11 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 	var ing kube.Ingress
 	switch event.GroupVersion {
 	case kube.IngressV1:
-		ing, err = c.controller.ingressLister.V1(namespace, name)
+		ing, errLocal = c.controller.ingressLister.V1(namespace, name)
 	case kube.IngressV1beta1:
-		ing, err = c.controller.ingressLister.V1beta1(namespace, name)
+		ing, errLocal = c.controller.ingressLister.V1beta1(namespace, name)
 	case kube.IngressExtensionsV1beta1:
-		ing, err = c.controller.ingressLister.ExtensionsV1beta1(namespace, name)
+		ing, errLocal = c.controller.ingressLister.ExtensionsV1beta1(namespace, name)
 	}
 
 	if err == nil {
