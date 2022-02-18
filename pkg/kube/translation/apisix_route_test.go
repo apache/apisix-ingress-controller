@@ -33,6 +33,7 @@ import (
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	_const "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestRouteMatchExpr(t *testing.T) {
@@ -403,7 +404,8 @@ func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
 	assert.Len(t, res.PluginConfigs, 0)
 	assert.Len(t, res.Routes, 3)
 	assert.Equal(t, "", res.Routes[0].PluginConfigId)
-	assert.Equal(t, ar.Spec.HTTP[1].PluginConfigName, res.Routes[1].PluginConfigId)
+	expectedPluginId := id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, ar.Spec.HTTP[1].PluginConfigName))
+	assert.Equal(t, expectedPluginId, res.Routes[1].PluginConfigId)
 	assert.Equal(t, "", res.Routes[2].PluginConfigId)
 }
 

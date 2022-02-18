@@ -531,7 +531,7 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 		route.Plugins = pluginMap
 		route.Timeout = timeout
 		if part.PluginConfigName != "" {
-			route.PluginConfigId = part.PluginConfigName
+			route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, part.PluginConfigName))
 		}
 
 		if len(backends) > 0 {
