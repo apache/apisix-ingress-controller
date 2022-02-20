@@ -192,7 +192,7 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 	event := ev.Object.(kube.IngressEvent)
 	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
 	if errLocal != nil {
-		log.Errorf("invalid resource key: %s", event.Key)
+		log.Errorf("invalid resource key{%s}:%+v", event.Key, errLocal)
 		return
 	}
 
