@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
@@ -69,6 +70,10 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 	}
 	client := c.kubeClient.APISIXClient
 	kubeClient := c.kubeClient.Client
+
+	if kubeObj, ok := at.(runtime.Object); ok {
+		at = kubeObj.DeepCopyObject()
+	}
 
 	switch v := at.(type) {
 	case *configv2beta3.ApisixTls:
@@ -187,6 +192,22 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 					zap.Error(errRecord),
 					zap.String("name", v.Name),
 					zap.String("namespace", v.Namespace),
+				)
+			}
+		}
+	case *configv2beta3.ApisixClusterConfig:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		if c.verifyGeneration(&v.Status.Conditions, condition) {
+			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			if _, errRecord := client.ApisixV2beta3().ApisixClusterConfigs().
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for ApisixClusterConfig",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
 				)
 			}
 		}
