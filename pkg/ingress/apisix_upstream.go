@@ -221,7 +221,7 @@ func (c *apisixUpstreamController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixUpstream resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixUpstream add event arrived",
@@ -246,7 +246,7 @@ func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorf("found ApisixUpstream resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixUpstream update event arrived",
@@ -277,7 +277,7 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixUpstream resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixUpstream delete event arrived",

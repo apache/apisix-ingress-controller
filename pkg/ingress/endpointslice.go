@@ -124,7 +124,7 @@ func (c *endpointSliceController) onAdd(obj interface{}) {
 	if err != nil {
 		log.Errorf("found endpointSlice object with bad namespace")
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	ep := obj.(*discoveryv1.EndpointSlice)
@@ -165,7 +165,7 @@ func (c *endpointSliceController) onUpdate(prev, curr interface{}) {
 		log.Errorf("found endpointSlice object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	if currEp.Labels[discoveryv1.LabelManagedBy] != _endpointSlicesManagedBy {
@@ -209,7 +209,7 @@ func (c *endpointSliceController) onDelete(obj interface{}) {
 		log.Errorf("found endpointSlice object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	if ep.Labels[discoveryv1.LabelManagedBy] != _endpointSlicesManagedBy {

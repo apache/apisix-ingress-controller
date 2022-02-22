@@ -16,6 +16,7 @@ package ingress
 
 import (
 	"context"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"time"
 
 	"go.uber.org/zap"
@@ -51,7 +52,7 @@ func (c *Controller) newNamespaceController() *namespaceController {
 	return ctl
 }
 
-func (c *Controller) initWatchingNamespaceByLabels(ctx context.Context) error {
+func (c *Controller) initWatchingNamespacesByLabels(ctx context.Context) error {
 	labelSelector := metav1.LabelSelector{MatchLabels: c.watchingLabels}
 	opts := metav1.ListOptions{
 		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
@@ -59,22 +60,25 @@ func (c *Controller) initWatchingNamespaceByLabels(ctx context.Context) error {
 	namespaces, err := c.kubeClient.Client.CoreV1().Namespaces().List(ctx, opts)
 	if err != nil {
 		return err
-	} else {
-		for _, ns := range namespaces.Items {
-			c.watchingNamespace.Store(ns.Name, struct{}{})
-		}
 	}
+	var nss []string
+
+	for _, ns := range namespaces.Items {
+		nss = append(nss, ns.Name)
+		c.watchingNamespaces.Store(ns.Name, struct{}{})
+	}
+	log.Infow("label selector watching namespaces", zap.Strings("namespaces", nss))
+
 	return nil
 }
 
 func (c *namespaceController) run(ctx context.Context) {
-	log.Info("namespace controller started")
-	defer log.Info("namespace controller exited")
-
 	if ok := cache.WaitForCacheSync(ctx.Done(), c.controller.namespaceInformer.HasSynced); !ok {
-		log.Error("informers sync failed")
+		log.Error("namespace informers sync failed")
 		return
 	}
+	log.Info("namespace controller started")
+	defer log.Info("namespace controller exited")
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
 	}
@@ -100,17 +104,17 @@ func (c *namespaceController) sync(ctx context.Context, ev *types.Event) error {
 		if err != nil {
 			return err
 		} else {
-			// if labels of namespace contains the watchingLabels, the namespace should be set to controller.watchingNamespace
+			// if labels of namespace contains the watchingLabels, the namespace should be set to controller.watchingNamespaces
 			if c.controller.watchingLabels.IsSubsetOf(namespace.Labels) {
-				c.controller.watchingNamespace.Store(namespace.Name, struct{}{})
+				c.controller.watchingNamespaces.Store(namespace.Name, struct{}{})
 			}
 		}
 	} else { // type == types.EventDelete
 		namespace := ev.Tombstone.(*corev1.Namespace)
-		if _, ok := c.controller.watchingNamespace.Load(namespace.Name); ok {
-			c.controller.watchingNamespace.Delete(namespace.Name)
+		if _, ok := c.controller.watchingNamespaces.Load(namespace.Name); ok {
+			c.controller.watchingNamespaces.Delete(namespace.Name)
 		}
-		// do nothing, if the namespace did not in controller.watchingNamespace
+		// do nothing, if the namespace did not in controller.watchingNamespaces
 	}
 	return nil
 }
@@ -118,6 +122,14 @@ func (c *namespaceController) sync(ctx context.Context, ev *types.Event) error {
 func (c *namespaceController) handleSyncErr(event *types.Event, err error) {
 	name := event.Object.(string)
 	if err != nil {
+		if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
+			log.Infow("sync namespace but not found, ignore",
+				zap.String("event_type", event.Type.String()),
+				zap.String("namespace", event.Object.(string)),
+			)
+			c.workqueue.Forget(event)
+			return
+		}
 		log.Warnw("sync namespace info failed, will retry",
 			zap.String("namespace", name),
 			zap.Error(err),

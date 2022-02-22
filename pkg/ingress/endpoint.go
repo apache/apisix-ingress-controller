@@ -106,7 +106,7 @@ func (c *endpointsController) onAdd(obj interface{}) {
 		log.Errorf("found endpoints object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("endpoints add event arrived",
@@ -133,7 +133,7 @@ func (c *endpointsController) onUpdate(prev, curr interface{}) {
 		log.Errorf("found endpoints object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("endpoints update event arrived",
@@ -160,10 +160,10 @@ func (c *endpointsController) onDelete(obj interface{}) {
 		ep = tombstone.Obj.(*corev1.Endpoints)
 	}
 
-	// FIXME Refactor Controller.namespaceWatching to just use
+	// FIXME Refactor Controller.isWatchingNamespace to just use
 	// namespace after all controllers use the same way to fetch
 	// the object.
-	if !c.controller.namespaceWatching(ep.Namespace + "/" + ep.Name) {
+	if !c.controller.isWatchingNamespace(ep.Namespace + "/" + ep.Name) {
 		return
 	}
 	log.Debugw("endpoints delete event arrived",

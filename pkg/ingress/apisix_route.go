@@ -337,7 +337,7 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixRoute resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixRoute add event arrived",
@@ -366,7 +366,7 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorf("found ApisixRoute resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixRoute update event arrived",
@@ -399,7 +399,7 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixRoute resource with bad meta namesapce key: %s", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixRoute delete event arrived",
