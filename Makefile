@@ -161,11 +161,6 @@ gen-tools:
 	go mod download
 	@bash -c 'go install k8s.io/code-generator/cmd/{client-gen,lister-gen,informer-gen,deepcopy-gen}'
 
-### codegen:              Generate codes for clientset, informer, deepcopy, etc.
-.PHONY: codegen
-codegen: gen-tools
-	./utils/update-codegen.sh
-
 ### verify-codegen:       Verify whether the generated codes (clientset, informer, deepcopy, etc) are up to date.
 .PHONY: verify-codegen
 verify-codegen: gen-tools
