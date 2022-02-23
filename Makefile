@@ -61,7 +61,7 @@ lint:
 ### gofmt:                Format all go codes
 .PHONY: gofmt
 gofmt:
-	find . -type f -name "*.go" | xargs gofmt -w -s
+	./utils/goimports-reviser.sh
 
 ### unit-test:            Run unit test cases
 .PHONY: unit-test
@@ -193,7 +193,7 @@ update-license:
 ### update-mdlint:        Update markdown files lint rules.
 .PHONY: update-mdlint
 update-mdlint:
-	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' -f --ignore node_modules
+	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' -f --ignore node_modules --ignore vendor
 
 ### update-all:           Update all update- rules.
 .PHONY: update-all

@@ -18,11 +18,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/onsi/ginkgo"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/gruntwork-io/terratest/modules/k8s"
+	"github.com/onsi/ginkgo"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (

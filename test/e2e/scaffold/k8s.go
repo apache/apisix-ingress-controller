@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -27,6 +26,7 @@ import (
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/retry"
