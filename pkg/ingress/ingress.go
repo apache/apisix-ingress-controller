@@ -192,18 +192,20 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 	event := ev.Object.(kube.IngressEvent)
 	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
 	if errLocal != nil {
-		log.Errorf("invalid resource key: %s", event.Key)
+		log.Errorw("invalid resource key",
+			zap.Error(errLocal),
+		)
 		return
 	}
 
 	var ing kube.Ingress
 	switch event.GroupVersion {
 	case kube.IngressV1:
-		ing, err = c.controller.ingressLister.V1(namespace, name)
+		ing, errLocal = c.controller.ingressLister.V1(namespace, name)
 	case kube.IngressV1beta1:
-		ing, err = c.controller.ingressLister.V1beta1(namespace, name)
+		ing, errLocal = c.controller.ingressLister.V1beta1(namespace, name)
 	case kube.IngressExtensionsV1beta1:
-		ing, err = c.controller.ingressLister.ExtensionsV1beta1(namespace, name)
+		ing, errLocal = c.controller.ingressLister.ExtensionsV1beta1(namespace, name)
 	}
 
 	if err == nil {
@@ -219,7 +221,7 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 					c.controller.recordStatus(ing.ExtensionsV1beta1(), _resourceSynced, nil, metav1.ConditionTrue, ing.ExtensionsV1beta1().GetGeneration())
 				}
 			} else {
-				log.Errorw("failed split namespace/name",
+				log.Errorw("failed to list ingress resource",
 					zap.Error(errLocal),
 				)
 			}
@@ -243,7 +245,7 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 			c.controller.recordStatus(ing.ExtensionsV1beta1(), _resourceSyncAborted, err, metav1.ConditionTrue, ing.ExtensionsV1beta1().GetGeneration())
 		}
 	} else {
-		log.Errorw("failed split namespace/name",
+		log.Errorw("failed to list ingress resource",
 			zap.Error(errLocal),
 		)
 	}
