@@ -77,6 +77,6 @@ fi
 if [[ $ret -eq 0 ]]; then
   echo "Generated codes up to date."
 else
-  echo "Generated codes out of date. Please run \`make codegen\`"
+  echo "Generated codes out of date. Please run \`make update-codegen\`"
   exit 1
 fi
