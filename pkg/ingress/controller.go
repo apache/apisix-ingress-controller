@@ -68,18 +68,18 @@ const (
 
 // Controller is the ingress apisix controller object.
 type Controller struct {
-	name              string
-	namespace         string
-	cfg               *config.Config
-	wg                sync.WaitGroup
-	watchingNamespace *sync.Map
-	watchingLabels    types.Labels
-	apisix            apisix.APISIX
-	podCache          types.PodCache
-	translator        translation.Translator
-	apiServer         *api.Server
-	MetricsCollector  metrics.Collector
-	kubeClient        *kube.KubeClient
+	name               string
+	namespace          string
+	cfg                *config.Config
+	wg                 sync.WaitGroup
+	watchingNamespaces *sync.Map
+	watchingLabels     types.Labels
+	apisix             apisix.APISIX
+	podCache           types.PodCache
+	translator         translation.Translator
+	apiServer          *api.Server
+	MetricsCollector   metrics.Collector
+	kubeClient         *kube.KubeClient
 	// recorder event
 	recorder record.EventRecorder
 	// this map enrolls which ApisixTls objects refer to a Kubernetes
@@ -181,17 +181,17 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.Client.CoreV1().Events("")})
 
 	c := &Controller{
-		name:              podName,
-		namespace:         podNamespace,
-		cfg:               cfg,
-		apiServer:         apiSrv,
-		apisix:            client,
-		MetricsCollector:  metrics.NewPrometheusCollector(),
-		kubeClient:        kubeClient,
-		watchingNamespace: watchingNamespace,
-		watchingLabels:    watchingLabels,
-		secretSSLMap:      new(sync.Map),
-		recorder:          eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
+		name:               podName,
+		namespace:          podNamespace,
+		cfg:                cfg,
+		apiServer:          apiSrv,
+		apisix:             client,
+		MetricsCollector:   metrics.NewPrometheusCollector(),
+		kubeClient:         kubeClient,
+		watchingNamespaces: watchingNamespace,
+		watchingLabels:     watchingLabels,
+		secretSSLMap:       new(sync.Map),
+		recorder:           eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
 
 		podCache: types.NewPodCache(),
 	}
@@ -442,8 +442,8 @@ func (c *Controller) run(ctx context.Context) {
 
 	c.initWhenStartLeading()
 
-	// list namesapce and init watchingNamespace
-	if err := c.initWatchingNamespaceByLabels(ctx); err != nil {
+	// list namespaces and init watchingNamespaces
+	if err := c.initWatchingNamespacesByLabels(ctx); err != nil {
 		ctx.Done()
 		return
 	}
@@ -552,10 +552,10 @@ func (c *Controller) run(ctx context.Context) {
 	c.wg.Wait()
 }
 
-// namespaceWatching accepts a resource key, getting the namespace part
+// isWatchingNamespace accepts a resource key, getting the namespace part
 // and checking whether the namespace is being watched.
-func (c *Controller) namespaceWatching(key string) (ok bool) {
-	if !validation.HasValueInSyncMap(c.watchingNamespace) {
+func (c *Controller) isWatchingNamespace(key string) (ok bool) {
+	if !validation.HasValueInSyncMap(c.watchingNamespaces) {
 		ok = true
 		return
 	}
@@ -566,7 +566,7 @@ func (c *Controller) namespaceWatching(key string) (ok bool) {
 		log.Warnf("resource %s was ignored since: %s", key, err)
 		return
 	}
-	_, ok = c.watchingNamespace.Load(ns)
+	_, ok = c.watchingNamespaces.Load(ns)
 	return
 }
 
