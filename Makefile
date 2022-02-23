@@ -58,11 +58,6 @@ build-image:
 lint:
 	golangci-lint run
 
-### gofmt:                Format all go codes
-.PHONY: gofmt
-gofmt:
-	./utils/goimports-reviser.sh
-
 ### unit-test:            Run unit test cases
 .PHONY: unit-test
 unit-test:
@@ -195,6 +190,11 @@ update-license:
 update-mdlint:
 	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' -f --ignore node_modules --ignore vendor
 
+### gofmt:                Format all go codes
+.PHONY: update-gofmt
+update-gofmt:
+	./utils/goimports-reviser.sh
+
 ### update-all:           Update all update- rules.
 .PHONY: update-all
-update-all: update-codegen update-license update-mdlint
+update-all: update-codegen update-license update-mdlint update-gofmt
