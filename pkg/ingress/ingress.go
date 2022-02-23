@@ -221,7 +221,7 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 					c.controller.recordStatus(ing.ExtensionsV1beta1(), _resourceSynced, nil, metav1.ConditionTrue, ing.ExtensionsV1beta1().GetGeneration())
 				}
 			} else {
-				log.Errorw("failed split namespace/name",
+				log.Errorw("failed to list ingress resource",
 					zap.Error(errLocal),
 				)
 			}
@@ -245,7 +245,7 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 			c.controller.recordStatus(ing.ExtensionsV1beta1(), _resourceSyncAborted, err, metav1.ConditionTrue, ing.ExtensionsV1beta1().GetGeneration())
 		}
 	} else {
-		log.Errorw("failed split namespace/name",
+		log.Errorw("failed to list ingress resource",
 			zap.Error(errLocal),
 		)
 	}
