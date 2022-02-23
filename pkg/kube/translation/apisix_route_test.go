@@ -445,6 +445,7 @@ func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {
 							},
 						},
 					},
+					PluginConfigName: "echo-and-cors-apc",
 				},
 				{
 					Name: "rule2",
@@ -478,6 +479,9 @@ func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {
 
 	assert.Equal(t, id.GenID("test_ar_rule1"), tx.Routes[0].ID, "route1 id error")
 	assert.Equal(t, id.GenID("test_ar_rule2"), tx.Routes[1].ID, "route2 id error")
+	assert.Equal(t, id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, ar.Spec.HTTP[0].PluginConfigName)), tx.Routes[0].PluginConfigId, "route1 PluginConfigId error")
+	assert.Equal(t, "", tx.Routes[1].PluginConfigId, "route2 PluginConfigId error ")
+
 	assert.Equal(t, id.GenID("test_svc1_81"), tx.Upstreams[0].ID, "upstream1 id error")
 	assert.Equal(t, id.GenID("test_svc2_82"), tx.Upstreams[1].ID, "upstream2 id error")
 }

@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
+	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
@@ -239,10 +240,17 @@ func (c *apisixRouteController) checkPluginNameIfNotEmptyV2beta3(ctx context.Con
 		if v.PluginConfigName != "" {
 			_, err := c.controller.apisix.Cluster(c.controller.cfg.APISIX.DefaultClusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName))
 			if err != nil {
-				log.Errorw("checkPluginNameIfNotEmptyV2beta3 error: plugin_config not found",
-					zap.String("name", apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName)),
-					zap.Any("obj", in),
-					zap.Error(err))
+				if err == apisixcache.ErrNotFound {
+					log.Errorw("checkPluginNameIfNotEmptyV2beta3 error: plugin_config not found",
+						zap.String("name", apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName)),
+						zap.Any("obj", in),
+						zap.Error(err))
+				} else {
+					log.Errorw("checkPluginNameIfNotEmptyV2beta3 PluginConfig get failed",
+						zap.String("name", apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName)),
+						zap.Any("obj", in),
+						zap.Error(err))
+				}
 				return err
 			}
 		}

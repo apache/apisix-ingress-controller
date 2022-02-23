@@ -964,6 +964,9 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *TranslateContext,
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
+		if part.PluginConfigName != "" {
+			route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, part.PluginConfigName))
+		}
 
 		ctx.addRoute(route)
 		if !ctx.checkUpstreamExist(upstreamName) {
