@@ -32,9 +32,9 @@ func TestPodOnAdd(t *testing.T) {
 	watchingNamespace.Store("default", struct{}{})
 	ctl := &podController{
 		controller: &Controller{
-			watchingNamespace: watchingNamespace,
-			podCache:          types.NewPodCache(),
-			MetricsCollector:  metrics.NewPrometheusCollector(),
+			watchingNamespaces: watchingNamespace,
+			podCache:           types.NewPodCache(),
+			MetricsCollector:   metrics.NewPrometheusCollector(),
 		},
 	}
 
@@ -74,9 +74,9 @@ func TestPodOnDelete(t *testing.T) {
 	watchingNamespace.Store("default", struct{}{})
 	ctl := &podController{
 		controller: &Controller{
-			watchingNamespace: watchingNamespace,
-			podCache:          types.NewPodCache(),
-			MetricsCollector:  metrics.NewPrometheusCollector(),
+			watchingNamespaces: watchingNamespace,
+			podCache:           types.NewPodCache(),
+			MetricsCollector:   metrics.NewPrometheusCollector(),
 		},
 	}
 
@@ -119,9 +119,9 @@ func TestPodOnUpdate(t *testing.T) {
 	watchingNamespace.Store("default", struct{}{})
 	ctl := &podController{
 		controller: &Controller{
-			watchingNamespace: watchingNamespace,
-			podCache:          types.NewPodCache(),
-			MetricsCollector:  metrics.NewPrometheusCollector(),
+			watchingNamespaces: watchingNamespace,
+			podCache:           types.NewPodCache(),
+			MetricsCollector:   metrics.NewPrometheusCollector(),
 		},
 	}
 

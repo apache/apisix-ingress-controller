@@ -248,7 +248,7 @@ func (c *apisixPluginConfigController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixPluginConfig resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixPluginConfig add event arrived",
@@ -277,7 +277,7 @@ func (c *apisixPluginConfigController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorf("found ApisixPluginConfig resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixPluginConfig update event arrived",
@@ -310,7 +310,7 @@ func (c *apisixPluginConfigController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixPluginConfig resource with bad meta namesapce key: %s", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixPluginConfig delete event arrived",

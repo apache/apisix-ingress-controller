@@ -139,7 +139,7 @@ func (c *gatewayController) onAdd(obj interface{}) {
 		log.Errorf("found gateway resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("gateway add event arrived",

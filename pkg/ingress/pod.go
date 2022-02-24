@@ -61,7 +61,7 @@ func (c *podController) onAdd(obj interface{}) {
 		log.Errorf("found pod with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("pod add event arrived",
@@ -87,7 +87,7 @@ func (c *podController) onAdd(obj interface{}) {
 func (c *podController) onUpdate(_, cur interface{}) {
 	pod := cur.(*corev1.Pod)
 
-	if !c.controller.namespaceWatching(pod.Namespace + "/" + pod.Name) {
+	if !c.controller.isWatchingNamespace(pod.Namespace + "/" + pod.Name) {
 		return
 	}
 	log.Debugw("pod update event arrived",
@@ -125,7 +125,7 @@ func (c *podController) onDelete(obj interface{}) {
 		pod = tombstone.Obj.(*corev1.Pod)
 	}
 
-	if !c.controller.namespaceWatching(pod.Namespace + "/" + pod.Name) {
+	if !c.controller.isWatchingNamespace(pod.Namespace + "/" + pod.Name) {
 		return
 	}
 	log.Debugw("pod delete event arrived",

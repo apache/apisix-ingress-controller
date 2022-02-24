@@ -127,6 +127,10 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /etcd
+      # If you don't have a storage provisioner or don't want to use persistence volume, you could use an `emptyDir` as follow.
+      # volumes:
+      #   - name: data
+      #     emptyDir: {}
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -443,11 +447,13 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: apisix-ingress-controller
+  namespace: apisix
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: apisix-clusterrole
+  namespace: apisix
 rules:
   - apiGroups:
       - ""
@@ -589,6 +595,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: apisix-clusterrolebinding
+  namespace: apisix
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -694,7 +701,7 @@ spec:
       initContainers:
         - name: wait-apisix-admin
           image: busybox:1.28
-          command: ['sh', '-c', "until nc -z apisix-service.apisix.svc.cluster.local 9180 ; do echo waiting for apisix-admin; sleep 2; done;"]
+          command: ['sh', '-c', "until nc -z apisix-admin.apisix.svc.cluster.local 9180 ; do echo waiting for apisix-admin; sleep 2; done;"]
       containers:
         - name: ingress-controller
           command:
@@ -730,20 +737,21 @@ After the ingress controller status is converted to `Running`, we could create a
 Here is an example ApisixRoute:
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpserver-route
+  namespace: demo
 spec:
   http:
-    - name: httpbin
-      match:
-        hosts:
-          - local.httpbin.org
-        paths:
-          - "/*"
-      backend:
-        serviceName: httpbin
+  - name: httpbin
+    match:
+      hosts:
+      - local.httpbin.org
+      paths:
+      - /*
+    backends:
+      - serviceName: httpbin
         servicePort: 80
 ```
 

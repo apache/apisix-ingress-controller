@@ -158,7 +158,7 @@ func (c *apisixConsumerController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixConsumer resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixConsumer add event arrived",
@@ -184,7 +184,7 @@ func (c *apisixConsumerController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorf("found ApisixConsumer resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixConsumer update event arrived",
@@ -215,7 +215,7 @@ func (c *apisixConsumerController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixConsumer resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixConsumer delete event arrived",

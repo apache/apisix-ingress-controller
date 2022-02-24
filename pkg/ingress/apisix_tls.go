@@ -189,7 +189,7 @@ func (c *apisixTlsController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixTls object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixTls add event arrived",
@@ -214,7 +214,7 @@ func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
 		log.Errorf("found ApisixTls object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixTls update event arrived",
@@ -246,7 +246,7 @@ func (c *apisixTlsController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixTls resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.controller.namespaceWatching(key) {
+	if !c.controller.isWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixTls delete event arrived",
