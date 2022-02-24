@@ -26,12 +26,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/nettest"
+
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-
-	"github.com/stretchr/testify/assert"
-
-	"golang.org/x/net/nettest"
 )
 
 type fakeAPISIXUpstreamSrv struct {

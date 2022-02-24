@@ -21,6 +21,7 @@ header:
 
   paths-ignore:
     - 'dist'
+    - 'vendor'
     - 'licenses'
     - '**/*.md'
     - '**/testdata/**'

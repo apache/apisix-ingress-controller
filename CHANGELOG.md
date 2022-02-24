@@ -56,7 +56,7 @@ In next release(v1.5), custom resource's API version v2 will be GA released. Ple
 * We can update the load balancing IP of the Ingress, and it can work in various public cloud environments [#740](https://github.com/apache/apisix-ingress-controller/pull/740)
 
 Please try out the release binaries and report any issues at
-https://github.com/apache/apisix-ingress-controller/issues.
+<https://github.com/apache/apisix-ingress-controller/issues.>
 
 ### Contributors
 
@@ -81,6 +81,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * zhang lun hai
 
 ### Changes
+
 <details><summary>40 commits</summary>
 <p>
 
@@ -124,6 +125,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * [`97fdc90`](https://github.com/apache/apisix-ingress-controller/commit/97fdc90e313a71436f016f5c2e6a849495399ff9) fix: ignore delete pod cache error msg (#714)
 * [`fa27b03`](https://github.com/apache/apisix-ingress-controller/commit/fa27b0318468c0ffab40b8c384a8a6abc056748c) chore: fix spelling error in modules.png (#717)
 * [`68125e3`](https://github.com/apache/apisix-ingress-controller/commit/68125e3557428dd0e9424a273c977c85fcffc374) chore: v1.3 release (#716)
+
 </p>
 </details>
 
@@ -173,7 +175,7 @@ In next release(v1.4), all custom resource versions will be upgraded to version 
 * Add new metrics `apisix_ingress_controller_check_cluster_health` and `apisix_ingress_controller_sync_success_total` [#627](https://github.com/apache/apisix-ingress-controller/pull/627)
 
 Please try out the release binaries and report any issues at
-https://github.com/apache/apisix-ingress-controller/issues.
+<https://github.com/apache/apisix-ingress-controller/issues.>
 
 ### Contributors
 
@@ -189,6 +191,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * oliver
 
 ### Changes
+
 <details><summary>27 commits</summary>
 <p>
 
@@ -219,6 +222,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * [`d537ddc`](https://github.com/apache/apisix-ingress-controller/commit/d537ddc62bfabfe383c0bd402833377003a1d8dc) feat: add link check (#635)
 * [`d7128a1`](https://github.com/apache/apisix-ingress-controller/commit/d7128a1812053e9341f59f0e9c13c1c513c9db42) chore: skip CodeQL if go files have no changes (#636)
 * [`d8854c3`](https://github.com/apache/apisix-ingress-controller/commit/d8854c3bf7fefbc54c0d5b00b5ad669044f791f2) docs: fix config.json (#628)
+
 </p>
 </details>
 
@@ -247,7 +251,7 @@ This is a **GA** release.
 * **Implement schema API** [#601](https://github.com/apache/apisix-ingress-controller/pull/601)
 
 Please try out the release binaries and report any issues at
-https://github.com/apache/apisix-ingress-controller/issues.
+<https://github.com/apache/apisix-ingress-controller/issues.>
 
 ### Contributors
 
@@ -261,6 +265,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * 天使莫忆
 
 ### Changes
+
 <details><summary>20 commits</summary>
 <p>
 
@@ -284,6 +289,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * [`c78c823`](https://github.com/apache/apisix-ingress-controller/commit/c78c8237b9c114e0e5564bd74a6729bdee04259c) chore: merge from v1.1 (#583)
 * [`e649c50`](https://github.com/apache/apisix-ingress-controller/commit/e649c503ca6ba4103a27fef729f8835b90078a93) chore: add udp usage & upgrade the verion of ApisixRoute (#585)
 * [`57ec6da`](https://github.com/apache/apisix-ingress-controller/commit/57ec6dafa7b96b8c2fe5c386eedfce74cb581441) fix: misspell in FAQ (#577)
+
 </p>
 </details>
 
@@ -302,6 +308,7 @@ Previous release can be found at [1.1.0](https://github.com/apache/apisix-ingres
 Welcome to the 1.1.0 release of apisix-ingress-controller!
 
 This is a **GA** release.
+
 - an available Kubernetes cluster (version >= 1.15)
 - an available Apache APISIX (version >= 2.7)
 
@@ -313,7 +320,7 @@ This is a **GA** release.
 * **Support UDP definition** [#572](https://github.com/apache/apisix-ingress-controller/pull/572) [#576](https://github.com/apache/apisix-ingress-controller/pull/576)
 
 Please try out the release binaries and report any issues at
-https://github.com/apache/apisix-ingress-controller/issues.
+<https://github.com/apache/apisix-ingress-controller/issues.>
 
 ### Contributors
 
@@ -325,6 +332,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * benson211
 
 ### Changes
+
 <details><summary>11 commits</summary>
 <p>
 
@@ -339,6 +347,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * [`2122d76`](https://github.com/apache/apisix-ingress-controller/commit/2122d76fd28cc7bce54e8f52e2d4c9d04a1e852a) docs: clarify installation by Kustomize (#558)
 * [`b4a6889`](https://github.com/apache/apisix-ingress-controller/commit/b4a6889e1564be61de6736af32a2075579c9b51f) Update default version in Makefile (#556)
 * [`f5cc76e`](https://github.com/apache/apisix-ingress-controller/commit/f5cc76ec6ac671772063d38a09f508db71ac2e48) chore: remove cancel-workflow.yml since no use (#550)
+
 </p>
 </details>
 
@@ -358,6 +367,7 @@ Previous release can be found at [1.0.0](https://github.com/apache/apisix-ingres
 Welcome to the 1.0.0 release of apisix-ingress-controller!
 
 This is the first **GA** release.
+
 - an available Kubernetes cluster (version >= 1.14)
 - an available Apache APISIX (version >= 2.7)
 
@@ -374,7 +384,7 @@ This is the first **GA** release.
 * **Support authentication for ApisixRoute** [#528](https://github.com/apache/apisix-ingress-controller/pull/528)
 
 Please try out the release binaries and report any issues at
-https://github.com/apache/apisix-ingress-controller/issues.
+<https://github.com/apache/apisix-ingress-controller/issues.>
 
 ### Contributors
 
@@ -393,6 +403,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * 罗泽轩
 
 ### Changes
+
 <details><summary>58 commits</summary>
 <p>
 
@@ -454,6 +465,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * [`f199cdb`](https://github.com/apache/apisix-ingress-controller/commit/f199cdb5f5bfe3cb5acb19dc1903b1f5f426a353) test: add e2e test cases for server-info plugin (#406)
 * [`b0a6f3e`](https://github.com/apache/apisix-ingress-controller/commit/b0a6f3edba8a80e10e831ceaf408e43f89632adb) fix: typo in apisix_route_v2alpha1.md (#438)
 * [`d269a01`](https://github.com/apache/apisix-ingress-controller/commit/d269a01fe69c287cf13a3574d8ce6566c18a306c) ci: introduce skywalking-eyes (#430)
+
 </p>
 </details>
 
