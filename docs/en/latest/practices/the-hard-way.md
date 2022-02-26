@@ -158,104 +158,111 @@ Create a config file for our APISIX. We are going to deploy APISIX version 2.5.
 Note that the APISIX ingress controller needs to communicate with the APISIX admin API, so we set `apisix.allow_admin` to `0.0.0.0/0` for test.
 
 ```yaml
-apisix:
-  node_listen: 9080             # APISIX listening port
-  enable_heartbeat: true
-  enable_admin: true
-  enable_admin_cors: true
-  enable_debug: false
-  enable_dev_mode: false          # Sets nginx worker_processes to 1 if set to true
-  enable_reuseport: true          # Enable nginx SO_REUSEPORT switch if set to true.
-  enable_ipv6: true
-  config_center: etcd             # etcd: use etcd to store the config value
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apisix-conf
+  namespace: apisix
+data:
+  config.yaml: |-
+    apisix:
+      node_listen: 9080             # APISIX listening port
+      enable_heartbeat: true
+      enable_admin: true
+      enable_admin_cors: true
+      enable_debug: false
+      enable_dev_mode: false          # Sets nginx worker_processes to 1 if set to true
+      enable_reuseport: true          # Enable nginx SO_REUSEPORT switch if set to true.
+      enable_ipv6: true
+      config_center: etcd             # etcd: use etcd to store the config value
 
-  allow_admin:                  # http://nginx.org/en/docs/http/ngx_http_access_module.html#allow
-    - 0.0.0.0/0
-  port_admin: 9180
+      allow_admin:                  # http://nginx.org/en/docs/http/ngx_http_access_module.html#allow
+        - 0.0.0.0/0
+      port_admin: 9180
 
-  # Default token when use API to call for Admin API.
-  # *NOTE*: Highly recommended to modify this value to protect APISIX's Admin API.
-  # Disabling this configuration item means that the Admin API does not
-  # require any authentication.
-  admin_key:
-    # admin: can everything for configuration data
-    - name: "admin"
-      key: edd1c9f034335f136f87ad84b625c8f1
-      role: admin
-    # viewer: only can view configuration data
-    - name: "viewer"
-      key: 4054f7cf07e344346cd3f287985e76a2
-      role: viewer
-  # dns_resolver:
-  #   - 127.0.0.1
-  dns_resolver_valid: 30
-  resolver_timeout: 5
+      # Default token when use API to call for Admin API.
+      # *NOTE*: Highly recommended to modify this value to protect APISIX's Admin API.
+      # Disabling this configuration item means that the Admin API does not
+      # require any authentication.
+      admin_key:
+        # admin: can everything for configuration data
+        - name: "admin"
+          key: edd1c9f034335f136f87ad84b625c8f1
+          role: admin
+        # viewer: only can view configuration data
+        - name: "viewer"
+          key: 4054f7cf07e344346cd3f287985e76a2
+          role: viewer
+      # dns_resolver:
+      #   - 127.0.0.1
+      dns_resolver_valid: 30
+      resolver_timeout: 5
 
-nginx_config:                     # config for render the template to genarate nginx.conf
-  error_log: "/dev/stderr"
-  error_log_level: "warn"         # warn,error
-  worker_rlimit_nofile: 20480     # the number of files a worker process can open, should be larger than worker_connections
-  event:
-    worker_connections: 10620
-  http:
-    access_log: "/dev/stdout"
-    keepalive_timeout: 60s         # timeout during which a keep-alive client connection will stay open on the server side.
-    client_header_timeout: 60s     # timeout for reading client request header, then 408 (Request Time-out) error is returned to the client
-    client_body_timeout: 60s       # timeout for reading client request body, then 408 (Request Time-out) error is returned to the client
-    send_timeout: 10s              # timeout for transmitting a response to the client.then the connection is closed
-    underscores_in_headers: "on"   # default enables the use of underscores in client request header fields
-    real_ip_header: "X-Real-IP"    # http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
-    real_ip_from:                  # http://nginx.org/en/docs/http/ngx_http_realip_module.html#set_real_ip_from
-      - 127.0.0.1
-      - 'unix:'
+    nginx_config:                     # config for render the template to genarate nginx.conf
+      error_log: "/dev/stderr"
+      error_log_level: "warn"         # warn,error
+      worker_rlimit_nofile: 20480     # the number of files a worker process can open, should be larger than worker_connections
+      event:
+        worker_connections: 10620
+      http:
+        access_log: "/dev/stdout"
+        keepalive_timeout: 60s         # timeout during which a keep-alive client connection will stay open on the server side.
+        client_header_timeout: 60s     # timeout for reading client request header, then 408 (Request Time-out) error is returned to the client
+        client_body_timeout: 60s       # timeout for reading client request body, then 408 (Request Time-out) error is returned to the client
+        send_timeout: 10s              # timeout for transmitting a response to the client.then the connection is closed
+        underscores_in_headers: "on"   # default enables the use of underscores in client request header fields
+        real_ip_header: "X-Real-IP"    # http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
+        real_ip_from:                  # http://nginx.org/en/docs/http/ngx_http_realip_module.html#set_real_ip_from
+          - 127.0.0.1
+          - 'unix:'
 
-etcd:
-  host:
-    - "http://etcd-headless.apisix.svc.cluster.local:2379"
-  prefix: "/apisix"     # apisix configurations prefix
-  timeout: 30   # seconds
-plugins:                          # plugin list
-  - api-breaker
-  - authz-keycloak
-  - basic-auth
-  - batch-requests
-  - consumer-restriction
-  - cors
-  - echo
-  - fault-injection
-  - grpc-transcode
-  - hmac-auth
-  - http-logger
-  - ip-restriction
-  - jwt-auth
-  - kafka-logger
-  - key-auth
-  - limit-conn
-  - limit-count
-  - limit-req
-  - node-status
-  - openid-connect
-  - prometheus
-  - proxy-cache
-  - proxy-mirror
-  - proxy-rewrite
-  - redirect
-  - referer-restriction
-  - request-id
-  - request-validation
-  - response-rewrite
-  - serverless-post-function
-  - serverless-pre-function
-  - sls-logger
-  - syslog
-  - tcp-logger
-  - udp-logger
-  - uri-blocker
-  - wolf-rbac
-  - zipkin
-  - traffic-split
-stream_plugins:
-  - mqtt-proxy
+    etcd:
+      host:
+        - "http://etcd-headless.apisix.svc.cluster.local:2379"
+      prefix: "/apisix"     # apisix configurations prefix
+      timeout: 30   # seconds
+    plugins:                          # plugin list
+      - api-breaker
+      - authz-keycloak
+      - basic-auth
+      - batch-requests
+      - consumer-restriction
+      - cors
+      - echo
+      - fault-injection
+      - grpc-transcode
+      - hmac-auth
+      - http-logger
+      - ip-restriction
+      - jwt-auth
+      - kafka-logger
+      - key-auth
+      - limit-conn
+      - limit-count
+      - limit-req
+      - node-status
+      - openid-connect
+      - prometheus
+      - proxy-cache
+      - proxy-mirror
+      - proxy-rewrite
+      - redirect
+      - referer-restriction
+      - request-id
+      - request-validation
+      - response-rewrite
+      - serverless-post-function
+      - serverless-pre-function
+      - sls-logger
+      - syslog
+      - tcp-logger
+      - udp-logger
+      - uri-blocker
+      - wolf-rbac
+      - zipkin
+      - traffic-split
+    stream_plugins:
+      - mqtt-proxy
 ```
 
 Please make sure `etcd.host` matches the headless service we created at first. In our case, it's `http://etcd-headless.apisix.svc.cluster.local:2379`.
