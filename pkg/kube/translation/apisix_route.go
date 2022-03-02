@@ -530,17 +530,8 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
 		route.Timeout = timeout
-		pluginConfig := apisixv1.NewDefaultPluginConfig()
-		if len(pluginMap) > 0 {
-			pluginConfigName := apisixv1.ComposePluginConfigName(ar.Namespace, backend.ServiceName)
-			route.PluginConfigId = id.GenID(pluginConfigName)
-			pluginConfig.ID = route.PluginConfigId
-			pluginConfig.Name = pluginConfigName
-			pluginConfig.Plugins = pluginMap
-		} else {
-			if part.PluginConfigName != "" {
-				route.PluginConfigId = part.PluginConfigName
-			}
+		if part.PluginConfigName != "" {
+			route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, part.PluginConfigName))
 		}
 
 		if len(backends) > 0 {
@@ -565,9 +556,6 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 				return err
 			}
 			ctx.addUpstream(ups)
-		}
-		if len(pluginMap) > 0 {
-			ctx.addPluginConfig(pluginConfig)
 		}
 	}
 	return nil
@@ -851,7 +839,6 @@ func (t *translator) translateStreamRoute(ctx *TranslateContext, ar *configv2bet
 		if !ctx.checkUpstreamExist(ups.Name) {
 			ctx.addUpstream(ups)
 		}
-
 	}
 	return nil
 }
@@ -977,12 +964,8 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *TranslateContext,
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
-		pluginConfig := apisixv1.NewDefaultPluginConfig()
-		if len(pluginMap) > 0 {
-			pluginConfigName := apisixv1.ComposePluginConfigName(ar.Namespace, backend.ServiceName)
-			route.PluginConfigId = id.GenID(pluginConfigName)
-			pluginConfig.ID = route.PluginConfigId
-			pluginConfig.Name = pluginConfigName
+		if part.PluginConfigName != "" {
+			route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, part.PluginConfigName))
 		}
 
 		ctx.addRoute(route)
@@ -992,9 +975,6 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *TranslateContext,
 				return err
 			}
 			ctx.addUpstream(ups)
-		}
-		if len(pluginMap) > 0 {
-			ctx.addPluginConfig(pluginConfig)
 		}
 	}
 	return nil
