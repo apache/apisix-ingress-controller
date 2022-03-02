@@ -462,12 +462,12 @@ func (s *Scaffold) renderConfig(path string) (string, error) {
 }
 
 // FormatRegistry replace default registry to custom registry if exist
-func (s *Scaffold) FormatRegistry(workload string) string {
+func (s *Scaffold) FormatRegistry(workloadTemplate string) string {
 	customRegistry, isExist := os.LookupEnv("CUSTOM_REGISTRY")
 	if isExist {
-		return strings.Replace(workload, "localhost:5000", customRegistry, -1)
+		return strings.Replace(workloadTemplate, "localhost:5000", customRegistry, -1)
 	} else {
-		return workload
+		return workloadTemplate
 	}
 }
 
