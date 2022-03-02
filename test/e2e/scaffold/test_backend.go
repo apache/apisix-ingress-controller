@@ -121,7 +121,7 @@ spec:
 )
 
 func (s *Scaffold) newTestBackend() (*corev1.Service, error) {
-	backendDeployment := fmt.Sprintf(_testBackendDeploymentTemplate, 1)
+	backendDeployment := fmt.Sprintf(s.FormatRegistry(_testBackendDeploymentTemplate), 1)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, backendDeployment); err != nil {
 		return nil, err
 	}

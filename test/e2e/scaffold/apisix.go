@@ -141,7 +141,7 @@ func (s *Scaffold) newAPISIX() (*corev1.Service, error) {
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, configData); err != nil {
 		return nil, err
 	}
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, _apisixDeployment); err != nil {
+	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, s.FormatRegistry(_apisixDeployment)); err != nil {
 		return nil, err
 	}
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, _apisixService); err != nil {

@@ -92,7 +92,7 @@ spec:
 )
 
 func (s *Scaffold) newEtcd() (*corev1.Service, error) {
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, etcdDeployment); err != nil {
+	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, s.FormatRegistry(etcdDeployment)); err != nil {
 		return nil, err
 	}
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, etcdService); err != nil {

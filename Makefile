@@ -19,6 +19,7 @@ default: help
 VERSION ?= 1.4.0
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 LOCAL_REGISTRY="localhost:5000"
+CUSTOM_REGISTRY="" # user define
 IMAGE_TAG ?= dev
 
 GITSHA ?= "no-git-module"
@@ -65,10 +66,11 @@ unit-test:
 
 ### e2e-test:             Run e2e test cases (kind is required)
 .PHONY: e2e-test
-e2e-test: ginkgo-check push-images-to-kind
+e2e-test: ginkgo-check push-images-to-kind push-images-to-custom-registry
 	kubectl apply -k $(PWD)/samples/deploy/crd
 	cd test/e2e \
 		&& go mod download \
+		&& export CUSTOM_REGISTRY=$(CUSTOM_REGISTRY)
 		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace --nodes=$(E2E_CONCURRENCY)
 
 .PHONY: ginkgo-check
@@ -78,9 +80,10 @@ ifeq ("$(wildcard $(GINKGO))", "")
 	exit 1
 endif
 
-### push-images-to-kind:  Push images used in e2e test suites to kind.
-.PHONY: push-images-to-kind
-push-images-to-kind: kind-up
+### push-images-to-custom-registry:  Push images used in e2e test suites to custom registry.
+.PHONY: push-images-to-custom-registry
+push-images-to-custom-registry:
+ifdef CUSTOM_REGISTRY
 ifeq ($(E2E_SKIP_BUILD), 0)
 	docker pull apache/apisix:2.12.0-alpine
 	docker tag apache/apisix:2.12.0-alpine $(LOCAL_REGISTRY)/apache/apisix:dev
@@ -109,6 +112,42 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker pull busybox:1.28
 	docker tag  busybox:1.28 $(LOCAL_REGISTRY)/busybox:1.28
 	docker push $(LOCAL_REGISTRY)/busybox:1.28
+endif
+endif
+
+### push-images-to-kind:  Push images used in e2e test suites to kind.
+.PHONY: push-images-to-kind
+push-images-to-kind: kind-up
+ifndef CUSTOM_REGISTRY
+ifeq ($(E2E_SKIP_BUILD), 0)
+	docker pull apache/apisix:2.12.0-alpine
+	docker tag apache/apisix:2.12.0-alpine $(LOCAL_REGISTRY)/apache/apisix:dev
+	docker push $(LOCAL_REGISTRY)/apache/apisix:dev
+
+	docker pull bitnami/etcd:3.4.14-debian-10-r0
+	docker tag bitnami/etcd:3.4.14-debian-10-r0 $(LOCAL_REGISTRY)/bitnami/etcd:3.4.14-debian-10-r0
+	docker push $(LOCAL_REGISTRY)/bitnami/etcd:3.4.14-debian-10-r0
+
+	docker pull kennethreitz/httpbin
+	docker tag kennethreitz/httpbin $(LOCAL_REGISTRY)/kennethreitz/httpbin
+	docker push $(LOCAL_REGISTRY)/kennethreitz/httpbin
+
+	docker build -t test-backend:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true ./test/e2e/testbackend
+	docker tag test-backend:$(IMAGE_TAG) $(LOCAL_REGISTRY)/test-backend:$(IMAGE_TAG)
+	docker push $(LOCAL_REGISTRY)/test-backend:$(IMAGE_TAG)
+
+	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true .
+	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(LOCAL_REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+	docker push $(LOCAL_REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+
+	docker pull jmalloc/echo-server:latest
+	docker tag  jmalloc/echo-server:latest $(LOCAL_REGISTRY)/jmalloc/echo-server:latest
+	docker push $(LOCAL_REGISTRY)/jmalloc/echo-server:latest
+
+	docker pull busybox:1.28
+	docker tag  busybox:1.28 $(LOCAL_REGISTRY)/busybox:1.28
+	docker push $(LOCAL_REGISTRY)/busybox:1.28
+endif
 endif
 
 ### kind-up:              Launch a Kubernetes cluster with a image registry by Kind.
