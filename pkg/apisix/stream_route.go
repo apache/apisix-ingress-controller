@@ -33,8 +33,14 @@ type streamRouteClient struct {
 }
 
 func newStreamRouteClient(c *cluster) StreamRoute {
+	url := c.baseURL + "/stream_routes"
+	_, err := c.listResource(context.Background(), url, "streamRoute")
+	if err == ErrFunctionDisabled {
+		log.Infow("resource stream_routes is disabled")
+		return &noopClient{}
+	}
 	return &streamRouteClient{
-		url:     c.baseURL + "/stream_routes",
+		url:     url,
 		cluster: c,
 	}
 }
