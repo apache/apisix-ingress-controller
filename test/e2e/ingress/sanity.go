@@ -186,3 +186,49 @@ var _ = ginkgo.Describe("leader election", func() {
 		}
 	})
 })
+
+var _ = ginkgo.Describe("stream_routes disabled", func() {
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-stream-disabled.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
+	}
+	s := scaffold.NewScaffold(opts)
+	ginkgo.It("/ip should return your ip", func() {
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  http:
+  - name: rule1
+    match:
+      paths:
+      - /ip
+    backends:
+    - serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+		err := s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "checking number of routes")
+		err = s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "checking number of upstreams")
+
+		// TODO When ingress controller can feedback the lifecycle of CRDs to the
+		// status field, we can poll it rather than sleeping.
+		time.Sleep(3 * time.Second)
+
+		body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
+		var placeholder ip
+		err = json.Unmarshal([]byte(body), &placeholder)
+		assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling IP")
+		// It's not our focus point to check the IP address returned by httpbin,
+		// so here skip the IP address validation.
+	})
+})
