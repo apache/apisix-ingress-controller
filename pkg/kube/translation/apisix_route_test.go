@@ -33,6 +33,7 @@ import (
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	_const "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestRouteMatchExpr(t *testing.T) {
@@ -185,7 +186,7 @@ func TestRouteMatchExpr(t *testing.T) {
 	assert.Equal(t, []string{"foo.com"}, results[9][2].SliceVal)
 }
 
-func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
+func mockTranslator(t *testing.T) (*translator, <-chan struct{}) {
 	svc := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
@@ -278,6 +279,11 @@ func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 	go epInformer.Run(stopCh)
 	cache.WaitForCacheSync(stopCh, svcInformer.HasSynced)
 
+	return tr, processCh
+}
+
+func TestTranslateApisixRouteV2beta3WithDuplicatedName(t *testing.T) {
+	tr, processCh := mockTranslator(t)
 	<-processCh
 	<-processCh
 
@@ -324,12 +330,86 @@ func TestTranslateApisixRouteV2alpha1WithDuplicatedName(t *testing.T) {
 		},
 	}
 
-	_, err = tr.TranslateRouteV2beta3(ar)
+	_, err := tr.TranslateRouteV2beta3(ar)
 	assert.NotNil(t, err)
 	assert.Equal(t, "duplicated route rule name", err.Error())
 }
 
-func TestTranslateApisixRouteV2alpha1NotStrictly(t *testing.T) {
+func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
+	tr, processCh := mockTranslator(t)
+	<-processCh
+	<-processCh
+
+	ar := &configv2beta3.ApisixRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ar",
+			Namespace: "test",
+		},
+		Spec: configv2beta3.ApisixRouteSpec{
+			HTTP: []configv2beta3.ApisixRouteHTTP{
+				{
+					Name: "rule1",
+					Match: configv2beta3.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc",
+							ServicePort: intstr.IntOrString{
+								IntVal: 80,
+							},
+						},
+					},
+				},
+				{
+					Name: "rule2",
+					Match: configv2beta3.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc",
+							ServicePort: intstr.IntOrString{
+								IntVal: 80,
+							},
+						},
+					},
+					PluginConfigName: "test-PluginConfigName-1",
+				},
+				{
+					Name: "rule3",
+					Match: configv2beta3.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc",
+							ServicePort: intstr.IntOrString{
+								IntVal: 80,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	res, err := tr.TranslateRouteV2beta3(ar)
+	assert.NoError(t, err)
+	assert.Len(t, res.PluginConfigs, 0)
+	assert.Len(t, res.Routes, 3)
+	assert.Equal(t, "", res.Routes[0].PluginConfigId)
+	expectedPluginId := id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, ar.Spec.HTTP[1].PluginConfigName))
+	assert.Equal(t, expectedPluginId, res.Routes[1].PluginConfigId)
+	assert.Equal(t, "", res.Routes[2].PluginConfigId)
+}
+
+func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {
 	tr := &translator{
 		&TranslatorOptions{},
 	}
@@ -365,6 +445,7 @@ func TestTranslateApisixRouteV2alpha1NotStrictly(t *testing.T) {
 							},
 						},
 					},
+					PluginConfigName: "echo-and-cors-apc",
 				},
 				{
 					Name: "rule2",
@@ -391,16 +472,16 @@ func TestTranslateApisixRouteV2alpha1NotStrictly(t *testing.T) {
 	assert.NoError(t, err, "translateRoute not strictly should be no error")
 	assert.Equal(t, 2, len(tx.Routes), "There should be 2 routes")
 	assert.Equal(t, 2, len(tx.Upstreams), "There should be 2 upstreams")
-	assert.Equal(t, 1, len(tx.PluginConfigs), "There should be 1 pluginConfigs")
 	assert.Equal(t, "test_ar_rule1", tx.Routes[0].Name, "route1 name error")
 	assert.Equal(t, "test_ar_rule2", tx.Routes[1].Name, "route2 name error")
 	assert.Equal(t, "test_svc1_81", tx.Upstreams[0].Name, "upstream1 name error")
 	assert.Equal(t, "test_svc2_82", tx.Upstreams[1].Name, "upstream2 name error")
-	assert.Equal(t, "test_svc1", tx.PluginConfigs[0].Name, "pluginConfig1 name error")
 
 	assert.Equal(t, id.GenID("test_ar_rule1"), tx.Routes[0].ID, "route1 id error")
 	assert.Equal(t, id.GenID("test_ar_rule2"), tx.Routes[1].ID, "route2 id error")
+	assert.Equal(t, id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, ar.Spec.HTTP[0].PluginConfigName)), tx.Routes[0].PluginConfigId, "route1 PluginConfigId error")
+	assert.Equal(t, "", tx.Routes[1].PluginConfigId, "route2 PluginConfigId error ")
+
 	assert.Equal(t, id.GenID("test_svc1_81"), tx.Upstreams[0].ID, "upstream1 id error")
 	assert.Equal(t, id.GenID("test_svc2_82"), tx.Upstreams[1].ID, "upstream2 id error")
-	assert.Equal(t, id.GenID("test_svc1"), tx.PluginConfigs[0].ID, "pluginConfig1 id error")
 }
