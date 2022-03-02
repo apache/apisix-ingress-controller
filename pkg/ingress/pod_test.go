@@ -125,7 +125,7 @@ func TestPodOnUpdate(t *testing.T) {
 		},
 	}
 
-	pod := &corev1.Pod{
+	pod0 := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "default",
 			Name:      "nginx",
@@ -138,17 +138,24 @@ func TestPodOnUpdate(t *testing.T) {
 			PodIP: "10.0.5.12",
 		},
 	}
-	assert.Nil(t, ctl.controller.podCache.Add(pod), "adding pod")
+	pod1 := pod0.DeepCopy()
+	pod1.SetResourceVersion("1")
 
-	ctl.onUpdate(nil, pod)
+	ctl.onUpdate(pod1, pod0)
 	name, err := ctl.controller.podCache.GetNameByIP("10.0.5.12")
+	assert.Equal(t, "", name)
+	assert.Equal(t, types.ErrPodNotFound, err)
+
+	ctl.onUpdate(pod0, pod1)
+	name, err = ctl.controller.podCache.GetNameByIP("10.0.5.12")
 	assert.Equal(t, "nginx", name)
 	assert.Equal(t, nil, err)
 
 	pod2 := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "public",
-			Name:      "abc",
+			Namespace:       "public",
+			Name:            "abc",
+			ResourceVersion: "2",
 		},
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
@@ -156,7 +163,7 @@ func TestPodOnUpdate(t *testing.T) {
 		},
 	}
 	assert.Nil(t, ctl.controller.podCache.Add(pod2), "adding pod")
-	ctl.onUpdate(nil, pod2)
+	ctl.onUpdate(pod1, pod2)
 	name, err = ctl.controller.podCache.GetNameByIP("10.0.5.13")
 	assert.Equal(t, "abc", name)
 	assert.Nil(t, err)
