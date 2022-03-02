@@ -750,10 +750,15 @@ func (c *cluster) getList(ctx context.Context, url, resource string) ([]string, 
 		return nil, err
 	}
 
-	var listResponse []string
+	var listResponse map[string]interface{}
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&listResponse); err != nil {
 		return nil, err
 	}
-	return listResponse, nil
+	res := make([]string, 0, len(listResponse))
+
+	for name := range listResponse {
+		res = append(res, name)
+	}
+	return res, nil
 }
