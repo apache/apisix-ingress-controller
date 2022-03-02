@@ -19,7 +19,7 @@ default: help
 VERSION ?= 1.4.0
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 LOCAL_REGISTRY="localhost:5000"
-CUSTOM_REGISTRY="" # user define
+CUSTOM_REGISTRY ?= ""
 IMAGE_TAG ?= dev
 
 GITSHA ?= "no-git-module"
