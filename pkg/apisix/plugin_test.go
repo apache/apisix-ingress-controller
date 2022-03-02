@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"testing"
 
@@ -46,8 +47,13 @@ func (srv *fakeAPISIXPluginSrv) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	fakePluginsResp := make(map[string]interface{}, len(srv.plugins))
+	for _, fp := range srv.plugins {
+		fakePluginsResp[fp] = struct{}{}
+	}
+
 	if r.Method == http.MethodGet {
-		data, _ := json.Marshal(srv.plugins)
+		data, _ := json.Marshal(fakePluginsResp)
 		_, _ = w.Write(data)
 		w.WriteHeader(http.StatusOK)
 		return
@@ -101,6 +107,8 @@ func TestPluginClient(t *testing.T) {
 	objs, err := cli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, objs, len(fakePluginNames))
+	sort.Strings(fakePluginNames)
+	sort.Strings(objs)
 	for i := range fakePluginNames {
 		assert.Equal(t, fakePluginNames[i], objs[i])
 	}
