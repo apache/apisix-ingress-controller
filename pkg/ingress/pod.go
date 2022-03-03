@@ -84,29 +84,33 @@ func (c *podController) onAdd(obj interface{}) {
 	c.controller.MetricsCollector.IncrEvents("pod", "add")
 }
 
-func (c *podController) onUpdate(_, cur interface{}) {
-	pod := cur.(*corev1.Pod)
+func (c *podController) onUpdate(oldObj, newObj interface{}) {
+	prev := oldObj.(*corev1.Pod)
+	curr := newObj.(*corev1.Pod)
+	if prev.GetResourceVersion() >= curr.GetResourceVersion() {
+		return
+	}
 
-	if !c.controller.isWatchingNamespace(pod.Namespace + "/" + pod.Name) {
+	if !c.controller.isWatchingNamespace(curr.Namespace + "/" + curr.Name) {
 		return
 	}
 	log.Debugw("pod update event arrived",
-		zap.Any("pod namespace", pod.Namespace),
-		zap.Any("pod name", pod.Name),
+		zap.Any("pod namespace", curr.Namespace),
+		zap.Any("pod name", curr.Name),
 	)
-	if pod.DeletionTimestamp != nil {
-		if err := c.controller.podCache.Delete(pod); err != nil {
+	if curr.DeletionTimestamp != nil {
+		if err := c.controller.podCache.Delete(curr); err != nil {
 			log.Errorw("failed to delete pod from cache",
 				zap.Error(err),
-				zap.Any("pod", pod),
+				zap.Any("pod", curr),
 			)
 		}
 	}
-	if pod.Status.PodIP != "" {
-		if err := c.controller.podCache.Add(pod); err != nil {
+	if curr.Status.PodIP != "" {
+		if err := c.controller.podCache.Add(curr); err != nil {
 			log.Errorw("failed to add pod to cache",
 				zap.Error(err),
-				zap.Any("pod", pod),
+				zap.Any("pod", curr),
 			)
 		}
 	}
