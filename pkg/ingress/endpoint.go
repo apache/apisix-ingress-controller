@@ -20,6 +20,7 @@ import (
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -84,7 +85,14 @@ func (c *endpointsController) run(ctx context.Context) {
 
 func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 	ep := ev.Object.(kube.Endpoint)
-	return c.controller.syncEndpoint(ctx, ep)
+	newestEp, err := c.controller.epLister.GetEndpoint(ep.Namespace(), ep.ServiceName())
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		newestEp = ep
+	}
+	return c.controller.syncEndpoint(ctx, newestEp)
 }
 
 func (c *endpointsController) handleSyncErr(obj interface{}, err error) {
