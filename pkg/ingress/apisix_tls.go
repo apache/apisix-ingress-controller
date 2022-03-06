@@ -206,7 +206,7 @@ func (c *apisixTlsController) onAdd(obj interface{}) {
 func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
 	oldTls := prev.(*configv2beta3.ApisixTls)
 	newTls := curr.(*configv2beta3.ApisixTls)
-	if oldTls.GetResourceVersion() == newTls.GetResourceVersion() {
+	if oldTls.GetResourceVersion() >= newTls.GetResourceVersion() {
 		return
 	}
 	key, err := cache.MetaNamespaceKeyFunc(curr)

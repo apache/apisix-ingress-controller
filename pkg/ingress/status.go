@@ -28,7 +28,6 @@ import (
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
@@ -55,7 +54,7 @@ func (c *Controller) verifyGeneration(conditions *[]metav1.Condition, newConditi
 }
 
 // recordStatus record resources status
-func (c *Controller) recordStatus(at interface{}, reason string, err error, status v1.ConditionStatus, generation int64) {
+func (c *Controller) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
 	// build condition
 	message := _commonSuccessMessage
 	if err != nil {
@@ -335,7 +334,7 @@ func (c *Controller) ingressPublishAddresses() ([]string, error) {
 	switch svc.Spec.Type {
 	case apiv1.ServiceTypeLoadBalancer:
 		if len(svc.Status.LoadBalancer.Ingress) < 1 {
-			return addrs, fmt.Errorf(_gatewayLBNotReadyMessage)
+			return addrs, fmt.Errorf("%s", _gatewayLBNotReadyMessage)
 		}
 
 		for _, ip := range svc.Status.LoadBalancer.Ingress {
