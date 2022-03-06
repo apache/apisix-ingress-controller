@@ -123,7 +123,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 				}
 			}
 			route := apisixv1.NewDefaultRoute()
-			route.Name = composeIngressRouteName(rule.Host, pathRule.Path)
+			route.Name = composeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
@@ -240,7 +240,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 				}
 			}
 			route := apisixv1.NewDefaultRoute()
-			route.Name = composeIngressRouteName(rule.Host, pathRule.Path)
+			route.Name = composeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
@@ -360,7 +360,7 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 				}
 			}
 			route := apisixv1.NewDefaultRoute()
-			route.Name = composeIngressRouteName(rule.Host, pathRule.Path)
+			route.Name = composeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
@@ -423,18 +423,27 @@ func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcNa
 	return ups, nil
 }
 
-func composeIngressRouteName(host, path string) string {
-	p := make([]byte, 0, len(host)+len(path)+len("ingress")+2)
+// In the past, we used host + path directly to form its route name for readability,
+// but this method can cause problems in some scenarios.
+// For example, the generated name is too long.
+// The current APISIX limit its maximum length to 100.
+// ref: https://github.com/apache/apisix-ingress-controller/issues/781
+// We will construct the following structure for easy reading and debugging.
+// ing_namespace_ingressName_id
+func composeIngressRouteName(namespace, name, host, path string) string {
+	pID := id.GenID(host + path)
+	p := make([]byte, 0, len(namespace)+len(name)+len("ing")+len(pID)+3)
 	buf := bytes.NewBuffer(p)
 
-	buf.WriteString("ingress")
+	buf.WriteString("ing")
 	buf.WriteByte('_')
-	buf.WriteString(host)
+	buf.WriteString(namespace)
 	buf.WriteByte('_')
-	buf.WriteString(path)
+	buf.WriteString(name)
+	buf.WriteByte('_')
+	buf.WriteString(pID)
 
 	return buf.String()
-
 }
 
 func composeIngressPluginName(svc, name string) string {
