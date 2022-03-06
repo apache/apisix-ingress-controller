@@ -69,7 +69,7 @@ e2e-test: ginkgo-check push-images
 	kubectl apply -k $(PWD)/samples/deploy/crd
 	cd test/e2e \
 		&& go mod download \
-		&& export CUSTOM_REGISTRY=$(CUSTOM_REGISTRY)
+		&& export REGISTRY=$(REGISTRY)
 		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace --nodes=$(E2E_CONCURRENCY)
 
 .PHONY: ginkgo-check
