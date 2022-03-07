@@ -63,7 +63,7 @@ lint:
 unit-test:
 	go test -cover -coverprofile=coverage.txt ./...
 
-### e2e-test:             Run e2e test cases (kind is required)
+### e2e-test:             Run e2e test cases (in existing clusters directly)
 .PHONY: e2e-test
 e2e-test: ginkgo-check push-images
 	kubectl apply -k $(PWD)/samples/deploy/crd
@@ -71,6 +71,10 @@ e2e-test: ginkgo-check push-images
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY)
 		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace --nodes=$(E2E_CONCURRENCY)
+
+### e2e-test-local:        Run e2e test cases (kind is required)
+.PHONY: e2e-test-local
+e2e-test-local: kind-up e2e-test
 
 .PHONY: ginkgo-check
 ginkgo-check:
@@ -81,7 +85,7 @@ endif
 
 ### push-images:  Push images used in e2e test suites to kind or custom registry.
 .PHONY: push-images
-push-images: kind-up
+push-images:
 ifeq ($(E2E_SKIP_BUILD), 0)
 	docker pull apache/apisix:2.12.0-alpine
 	docker tag apache/apisix:2.12.0-alpine $(REGISTRY)/apache/apisix:dev

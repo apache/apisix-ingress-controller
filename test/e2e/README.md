@@ -46,13 +46,13 @@ Test caes inside `features` directory test some features about APISIX, such as t
 Quick Start
 -----------
 
-Run `make e2e-test` to run the e2e test suites in your development environment, a several stuffs that this command will do:
+Run `make e2e-test-local` to run the e2e test suites in your development environment, a several stuffs that this command will do:
 
 1. Create a Kubernetes cluster by [kind](https://kind.sigs.k8s.io/), please installing in advance.
 2. Build and push all related images to this cluster.
 3. Run e2e test suites.
 
-If you want to run e2e tests in an existing cluster, you can specify it by passing REGISTRY (eg docker.io).
+Run `make e2e-test` to run the e2e test suites in an existing cluster, you can specify custom registry by passing REGISTRY(eg docker.io).
 
 Step `1` and `2` can be skipped by passing `E2E_SKIP_BUILD=1` to this directive, also, you can customize the
 running concurrency of e2e test suites by passing `E2E_CONCURRENCY=X` where `X` is the desired number of cases running in parallel.
