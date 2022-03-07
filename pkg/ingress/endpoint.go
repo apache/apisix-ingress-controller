@@ -133,7 +133,7 @@ func (c *endpointsController) onUpdate(prev, curr interface{}) {
 	prevEp := prev.(*corev1.Endpoints)
 	currEp := curr.(*corev1.Endpoints)
 
-	if prevEp.GetResourceVersion() == currEp.GetResourceVersion() {
+	if prevEp.GetResourceVersion() >= currEp.GetResourceVersion() {
 		return
 	}
 	key, err := cache.MetaNamespaceKeyFunc(currEp)

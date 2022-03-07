@@ -157,7 +157,7 @@ func (c *endpointSliceController) onUpdate(prev, curr interface{}) {
 	prevEp := prev.(*discoveryv1.EndpointSlice)
 	currEp := curr.(*discoveryv1.EndpointSlice)
 
-	if prevEp.GetResourceVersion() == currEp.GetResourceVersion() {
+	if prevEp.GetResourceVersion() >= currEp.GetResourceVersion() {
 		return
 	}
 	key, err := cache.MetaNamespaceKeyFunc(currEp)
