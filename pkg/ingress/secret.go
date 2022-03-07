@@ -254,7 +254,7 @@ func (c *secretController) onUpdate(prev, curr interface{}) {
 	prevSec := prev.(*corev1.Secret)
 	currSec := curr.(*corev1.Secret)
 
-	if prevSec.GetResourceVersion() == currSec.GetResourceVersion() {
+	if prevSec.GetResourceVersion() >= currSec.GetResourceVersion() {
 		return
 	}
 	key, err := cache.MetaNamespaceKeyFunc(currSec)
