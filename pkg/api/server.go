@@ -50,7 +50,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	}
 	gin.SetMode(gin.ReleaseMode)
 	httpServer := gin.New()
-	httpServer.Use(gin.Recovery(), gin.Logger())
+	httpServer.Use(log.GinRecovery(log.DefaultLogger, true), log.GinLogger(log.DefaultLogger))
 	apirouter.Mount(httpServer)
 
 	srv := &Server{
