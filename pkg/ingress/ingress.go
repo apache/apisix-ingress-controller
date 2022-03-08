@@ -190,6 +190,14 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 	ev := obj.(*types.Event)
 	event := ev.Object.(kube.IngressEvent)
+	if k8serrors.IsNotFound(err) && ev.Type != types.EventDelete {
+		log.Infow("sync ingress but not found, ignore",
+			zap.String("event_type", ev.Type.String()),
+			zap.String("ingress", event.Key),
+		)
+		c.workqueue.Forget(event)
+		return
+	}
 	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
 	if errLocal != nil {
 		log.Errorw("invalid resource key",
