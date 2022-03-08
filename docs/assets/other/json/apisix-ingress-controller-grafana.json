@@ -414,7 +414,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(apisix_ingress_controller_apisix_bad_status_codes{status_code =~ \"[4-5].*\"}) / sum(apisix_ingress_controller_apisix_requests)",
+          "expr": "sum(increase(apisix_ingress_controller_apisix_bad_status_codes{status_code =~ \"[4-5].*\"}[$__range])) / sum(increase(apisix_ingress_controller_apisix_bad_status_codes[$__range]))",
           "hide": false,
           "interval": "",
           "legendFormat": "",
