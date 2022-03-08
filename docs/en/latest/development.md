@@ -109,12 +109,16 @@ Something you need to pay attention to:
 When everything is ready, before submitting the code, please make sure that the license, code style, and document format are consistent with the project specification.
 
 We provide commands to implement it, just run the following commands:
+
 ```shell
+make update-codegen
 make update-license
-make update-mdlint
 make update-gofmt
+make update-mdlint
 ```
+
 or just run one command:
+
 ```shell
 make update-all
 ```
