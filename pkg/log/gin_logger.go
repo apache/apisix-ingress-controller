@@ -26,6 +26,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GinLogger receive gin The default log of the framework
 func GinLogger(logger *Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
