@@ -261,6 +261,14 @@ func (c *apisixRouteController) checkPluginNameIfNotEmptyV2beta3(ctx context.Con
 func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) {
 	ev := obj.(*types.Event)
 	event := ev.Object.(kube.ApisixRouteEvent)
+	if k8serrors.IsNotFound(errOrigin) && ev.Type != types.EventDelete {
+		log.Infow("sync ApisixRoute but not found, ignore",
+			zap.String("event_type", ev.Type.String()),
+			zap.String("ApisixRoute", ev.Object.(string)),
+		)
+		c.workqueue.Forget(event)
+		return
+	}
 	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
 	if errLocal != nil {
 		log.Errorf("invalid resource key: %s", event.Key)

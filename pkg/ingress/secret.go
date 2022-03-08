@@ -221,7 +221,16 @@ func (c *secretController) handleSyncErr(obj interface{}, err error) {
 		c.controller.MetricsCollector.IncrSyncOperation("secret", "success")
 		return
 	}
-	log.Warnw("sync ApisixTls failed, will retry",
+	event := obj.(*types.Event)
+	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
+		log.Infow("sync secret but not found, ignore",
+			zap.String("event_type", event.Type.String()),
+			zap.String("secret", event.Object.(string)),
+		)
+		c.workqueue.Forget(event)
+		return
+	}
+	log.Warnw("sync secret failed, will retry",
 		zap.Any("object", obj),
 		zap.Error(err),
 	)

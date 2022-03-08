@@ -144,6 +144,15 @@ func (c *apisixConsumerController) handleSyncErr(obj interface{}, err error) {
 		c.controller.MetricsCollector.IncrSyncOperation("consumer", "success")
 		return
 	}
+	event := obj.(*types.Event)
+	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
+		log.Infow("sync ApisixConsumer but not found, ignore",
+			zap.String("event_type", event.Type.String()),
+			zap.String("ApisixConsumer", event.Object.(string)),
+		)
+		c.workqueue.Forget(event)
+		return
+	}
 	log.Warnw("sync ApisixConsumer failed, will retry",
 		zap.Any("object", obj),
 		zap.Error(err),

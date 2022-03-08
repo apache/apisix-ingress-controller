@@ -190,6 +190,14 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 func (c *apisixPluginConfigController) handleSyncErr(obj interface{}, errOrigin error) {
 	ev := obj.(*types.Event)
 	event := ev.Object.(kube.ApisixPluginConfigEvent)
+	if k8serrors.IsNotFound(errOrigin) && ev.Type != types.EventDelete {
+		log.Infow("sync ApisixPluginConfig but not found, ignore",
+			zap.String("event_type", ev.Type.String()),
+			zap.String("ApisixPluginConfig", ev.Object.(kube.ApisixPluginConfigEvent).Key),
+		)
+		c.workqueue.Forget(event)
+		return
+	}
 	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
 	if errLocal != nil {
 		log.Errorf("invalid resource key: %s", event.Key)

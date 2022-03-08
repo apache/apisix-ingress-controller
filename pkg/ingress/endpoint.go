@@ -101,6 +101,15 @@ func (c *endpointsController) handleSyncErr(obj interface{}, err error) {
 		c.controller.MetricsCollector.IncrSyncOperation("endpoints", "success")
 		return
 	}
+	event := obj.(*types.Event)
+	if errors.IsNotFound(err) && event.Type != types.EventDelete {
+		log.Infow("sync endpoints but not found, ignore",
+			zap.String("event_type", event.Type.String()),
+			zap.Any("endpoints", event.Object.(kube.Endpoint)),
+		)
+		c.workqueue.Forget(event)
+		return
+	}
 	log.Warnw("sync endpoints failed, will retry",
 		zap.Any("object", obj),
 	)

@@ -20,6 +20,7 @@ import (
 
 	"go.uber.org/zap"
 	discoveryv1 "k8s.io/api/discovery/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -110,6 +111,15 @@ func (c *endpointSliceController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
 		c.controller.MetricsCollector.IncrSyncOperation("endpointSlice", "success")
+		return
+	}
+	event := obj.(*types.Event)
+	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
+		log.Infow("sync endpointSlice but not found, ignore",
+			zap.String("event_type", event.Type.String()),
+			zap.String("endpointSlice", event.Object.(string)),
+		)
+		c.workqueue.Forget(event)
 		return
 	}
 	log.Warnw("sync endpointSlice failed, will retry",
