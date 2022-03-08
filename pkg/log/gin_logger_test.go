@@ -16,17 +16,17 @@ package log
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
 const TestMode = "test"
 
-func init()  {
+func init() {
 	gin.SetMode(TestMode)
 }
 
@@ -72,7 +72,7 @@ func TestGinRecovery(t *testing.T) {
 
 		router := gin.New()
 		router.Use(GinRecovery(logger, true))
-		router.GET("/healthz", func(c *gin.Context) {panic("test log with gin recovery")})
+		router.GET("/healthz", func(c *gin.Context) { panic("test log with gin recovery") })
 		performRequest(router, "GET", "/healthz")
 		res := string(fws.bytes())
 		fmt.Println(res)
@@ -89,7 +89,7 @@ func TestGinRecovery(t *testing.T) {
 
 		router := gin.New()
 		router.Use(GinRecovery(logger, false))
-		router.GET("/healthz", func(c *gin.Context) {panic("test log with gin recovery")})
+		router.GET("/healthz", func(c *gin.Context) { panic("test log with gin recovery") })
 		performRequest(router, "GET", "/healthz")
 		res := string(fws.bytes())
 		fmt.Println(res)
