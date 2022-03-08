@@ -461,6 +461,16 @@ func (s *Scaffold) renderConfig(path string) (string, error) {
 	return buf.String(), nil
 }
 
+// FormatRegistry replace default registry to custom registry if exist
+func (s *Scaffold) FormatRegistry(workloadTemplate string) string {
+	customRegistry, isExist := os.LookupEnv("REGISTRY")
+	if isExist {
+		return strings.Replace(workloadTemplate, "localhost:5000", customRegistry, -1)
+	} else {
+		return workloadTemplate
+	}
+}
+
 func waitExponentialBackoff(condFunc func() (bool, error)) error {
 	backoff := wait.Backoff{
 		Duration: 500 * time.Millisecond,

@@ -89,7 +89,7 @@ spec:
 )
 
 func (s *Scaffold) newHTTPBIN() (*corev1.Service, error) {
-	httpbinDeployment := fmt.Sprintf(_httpbinDeploymentTemplate, 1)
+	httpbinDeployment := fmt.Sprintf(s.FormatRegistry(_httpbinDeploymentTemplate), 1)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, httpbinDeployment); err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func (s *Scaffold) newHTTPBIN() (*corev1.Service, error) {
 
 // ScaleHTTPBIN scales the number of HTTPBIN pods to desired.
 func (s *Scaffold) ScaleHTTPBIN(desired int) error {
-	httpbinDeployment := fmt.Sprintf(_httpbinDeploymentTemplate, desired)
+	httpbinDeployment := fmt.Sprintf(s.FormatRegistry(_httpbinDeploymentTemplate), desired)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, httpbinDeployment); err != nil {
 		return err
 	}
