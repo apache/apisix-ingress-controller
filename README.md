@@ -126,3 +126,17 @@ We welcome all kinds of contributions from the open-source community, individual
 ## License
 
 [Apache License 2.0](https://github.com/apache/apisix-ingress-controller/blob/master/LICENSE)
+
+## How to contribute
+
+Most of the contributions that we receive are code contributions, but you can
+also contribute to the documentation or simply report solid bugs
+for us to fix.
+
+ For new contributors, please take a look at issues with a tag called [Good first issue](https://github.com/apache/apisix-ingress-controller/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [Help wanted](https://github.com/apache/apisix-ingress-controller/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
+
+ ## How to report a bug
+
+* **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/apache/apisix-ingress-controller/issues).
+
+* If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/apache/apisix-ingress-controller/issues/new). Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample** or an **executable test case** demonstrating the expected behavior that is not occurring.

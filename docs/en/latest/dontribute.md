@@ -122,3 +122,14 @@ or just run one command:
 ```shell
 make update-all
 ```
+
+## How to add a new feature or change an existing one
+
+Before making any significant changes, please [open an issue](https://github.com/apache/apisix-ingress-controller/issues). Discussing your proposed changes ahead of time will make the contribution process smooth for everyone.
+
+Once we've discussed your changes and you've got your code ready, make sure that tests are passing and open your pull request. Your PR is most likely to be accepted if it:
+
+* Update the README.md with details of changes to the interface.
+* Includes tests for new functionality.
+* References the original issue in the description, e.g. "Resolves #123".
+* Has a [good commit message](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
