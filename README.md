@@ -123,10 +123,6 @@ We welcome all kinds of contributions from the open-source community, individual
 * Ingress APISIX: the whole service that contains the proxy ([Apache APISIX](https://apisix.apache.org)) and ingress controller (apisix ingress controller).
 * apisix-ingress-controller: the ingress controller component.
 
-## License
-
-[Apache License 2.0](https://github.com/apache/apisix-ingress-controller/blob/master/LICENSE)
-
 ## How to contribute
 
 Most of the contributions that we receive are code contributions, but you can
@@ -140,3 +136,7 @@ for us to fix.
 * **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/apache/apisix-ingress-controller/issues).
 
 * If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/apache/apisix-ingress-controller/issues/new). Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample** or an **executable test case** demonstrating the expected behavior that is not occurring.
+
+## License
+
+[Apache License 2.0](https://github.com/apache/apisix-ingress-controller/blob/master/LICENSE)
