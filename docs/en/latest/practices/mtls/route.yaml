@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpserver-route
@@ -26,6 +26,6 @@ spec:
           - mtls.httpbin.local
         paths:
           - "/*"
-      backend:
-        serviceName: httpbin
-        servicePort: 80
+      backends:
+        - serviceName: httpbin
+          servicePort: 80
