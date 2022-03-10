@@ -63,6 +63,7 @@ Meaning of each field in the spec of ApisixRoute are followed, the top level fie
 | stream[].backend.servicePort | integer or string | The backend service port, can be the port number or the name defined in the service object.
 | stream[].backend.resolveGranularity | string | See [Service Resolve Granularity](#service-resolve-granularity) for the details.
 | stream[].backend.subset | string | Subset specifies a subset for the target Service. The subset should be pre-definedin ApisixUpstream about this service.
+
 ## Expression Operators
 
 | Operator | Meaning |
