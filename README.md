@@ -89,7 +89,6 @@ From the version 1.0.0, APISIX-ingress-controller need to work with Apache APISI
 ## Documents
 
 * [Get Started](./docs/en/latest/getting-started.md)
-* [SDK doc](./docs/en/latest/development.md)
 * [Design introduction](./docs/en/latest/design.md)
 
 ## FAQ

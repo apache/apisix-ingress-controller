@@ -67,7 +67,7 @@ If you want to deploy apisix-ingress-controller on Prem, we recommend you to use
 ## Get Involved to Contribute
 
 First, your supports and cooperations to make this project better are appreciated.
-But before you start, please read [How to Contribute](./contribute.md) and [How to Develop](./development.md).
+But before you start, please read [How to Contribute](./contribute.md)
 
 ## Compatibility with Apache APISIX
 
