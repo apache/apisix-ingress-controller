@@ -38,22 +38,22 @@ import (
 	"github.com/gruntwork-io/terratest/modules/testing"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type Options struct {
-	Name                  string
-	Kubeconfig            string
-	APISIXConfigPath      string
-	IngressAPISIXReplicas int
-	HTTPBinServicePort    int
-	APISIXRouteVersion    string
-	APISIXAdminAPIKey     string
-	EnableWebhooks        bool
-	APISIXPublishAddress  string
+	Name                     string
+	Kubeconfig               string
+	APISIXConfigPath         string
+	IngressAPISIXReplicas    int
+	HTTPBinServicePort       int
+	APISIXRouteVersion       string
+	APISIXAdminAPIKey        string
+	EnableWebhooks           bool
+	APISIXPublishAddress     string
+	disableNamespaceSelector bool
 }
 
 type Scaffold struct {
@@ -64,7 +64,6 @@ type Scaffold struct {
 	nodes              []corev1.Node
 	etcdService        *corev1.Service
 	apisixService      *corev1.Service
-	httpbinDeployment  *appsv1.Deployment
 	httpbinService     *corev1.Service
 	testBackendService *corev1.Service
 	finializers        []func()
@@ -469,6 +468,18 @@ func (s *Scaffold) FormatRegistry(workloadTemplate string) string {
 	} else {
 		return workloadTemplate
 	}
+}
+
+// FormatNamespaceLabel set label to be empty if s.opts.disableNamespaceSelector is true.
+func (s *Scaffold) FormatNamespaceLabel(label string) string {
+	if s.opts.disableNamespaceSelector {
+		return "\"\""
+	}
+	return label
+}
+
+func (s *Scaffold) DisableNamespaceSelector() {
+	s.opts.disableNamespaceSelector = true
 }
 
 func waitExponentialBackoff(condFunc func() (bool, error)) error {

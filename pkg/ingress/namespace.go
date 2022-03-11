@@ -68,7 +68,6 @@ func (c *Controller) initWatchingNamespacesByLabels(ctx context.Context) error {
 		c.watchingNamespaces.Store(ns.Name, struct{}{})
 	}
 	log.Infow("label selector watching namespaces", zap.Strings("namespaces", nss))
-
 	return nil
 }
 
@@ -142,8 +141,9 @@ func (c *namespaceController) handleSyncErr(event *types.Event, err error) {
 
 func (c *namespaceController) onAdd(obj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
-	if err == nil {
-		log.Debugw(key)
+	if err != nil {
+		log.Errorf("found Namespace resource with error: %v", err)
+		return
 	}
 	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
@@ -159,7 +159,7 @@ func (c *namespaceController) onUpdate(pre, cur interface{}) {
 	}
 	key, err := cache.MetaNamespaceKeyFunc(cur)
 	if err != nil {
-		log.Errorf("found Namespace resource with error: %s", err)
+		log.Errorf("found Namespace resource with error: %v", err)
 		return
 	}
 	c.workqueue.Add(&types.Event{

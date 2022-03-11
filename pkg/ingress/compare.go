@@ -46,8 +46,8 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 		consumerMapA6     = make(map[string]string)
 		pluginConfigMapA6 = make(map[string]string)
 	)
-	// watchingNamespaces == nil means to monitor all namespaces
-	if !validation.HasValueInSyncMap(c.watchingNamespaces) {
+	// watchingNamespaces and watchingLabels are empty means to monitor all namespaces.
+	if !validation.HasValueInSyncMap(c.watchingNamespaces) && len(c.watchingLabels) == 0 {
 		opts := v1.ListOptions{}
 		// list all namespaces
 		nsList, err := c.kubeClient.Client.CoreV1().Namespaces().List(ctx, opts)
@@ -64,6 +64,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 	}
 
 	c.watchingNamespaces.Range(func(key, value interface{}) bool {
+		log.Debugf("start to watch namespace: %s", key)
 		wg.Add(1)
 		go func(ns string) {
 			defer wg.Done()
