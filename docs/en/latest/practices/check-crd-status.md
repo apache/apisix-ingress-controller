@@ -46,7 +46,7 @@ e.g.
 
 ```yaml
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -58,9 +58,9 @@ spec:
           - httpbin.com
         paths:
           - /ip
-      backend:
-        serviceName: httpbin-service-e2e-test
-        servicePort: 80
+      backends:
+        - serviceName: httpbin-service-e2e-test
+          servicePort: 80
   EOF
 ```
 

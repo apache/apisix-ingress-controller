@@ -35,7 +35,7 @@ should be routed to service `bar`, in the manner of `ApisixRoute`, the configura
 should be:
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: foo-bar-route
@@ -47,16 +47,16 @@ spec:
       - foo.com
       paths:
       - "/foo*"
-    backend:
-     serviceName: foo
-     servicePort: 80
+    backends:
+     - serviceName: foo
+       servicePort: 80
   - name: bar
     match:
       paths:
         - "/bar"
-    backend:
-      serviceName: bar
-      servicePort: 80
+    backends:
+      - serviceName: bar
+        servicePort: 80
 ```
 
 There are two path types can be used, `prefix` and `exact`, default is `exact`,
@@ -73,7 +73,7 @@ The `methods` splits traffic according to the HTTP method, the following configu
 with `GET` method to `foo` service (a Kubernetes Service).
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: method-route
@@ -94,7 +94,7 @@ The `exprs` allows user to configure match conditions with arbitrary predicates 
 It's composed by several expressions, which in turn composed by subject, operator and value/set.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: method-route
@@ -109,7 +109,7 @@ spec:
               scope: Query
               name: id
             op: Equal
-            value: 2143
+            value: "2143"
       backends:
         - serviceName: foo
           servicePort: 80
@@ -128,7 +128,7 @@ the `ClusterIP` of this service, if that's what you want, just set
 the `resolveGranularity` to `service` (default is `endpoint`).
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: method-route
@@ -155,7 +155,7 @@ will be applied (which actually uses the [traffic-split](http://apisix.apache.or
 You can specify weight for each backend, the default weight is `100`.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: method-route
@@ -193,7 +193,7 @@ Apache APISIX provides more than 40 [plugins](https://github.com/apache/apisix/t
 in `ApisixRoute`. All configuration items are named same to the one in APISIX.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -223,7 +223,7 @@ Websocket Proxy
 by creating a route with specifying the `websocket` field.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: ws-route
@@ -247,7 +247,7 @@ TCP Route
 apisix-ingress-controller supports the port-based tcp route.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: tcp-route
@@ -272,7 +272,7 @@ UDP Route
 apisix-ingress-controller supports the port-based udp route.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: udp-route
