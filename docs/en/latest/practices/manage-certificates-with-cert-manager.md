@@ -132,7 +132,7 @@ kubectl run httpbin --image kennethreitz/httpbin --expose --port 80
 Create an ApisixRoute to route the service:
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpserver-route
@@ -144,9 +144,9 @@ spec:
           - local.httpbin.org
         paths:
           - "/*"
-      backend:
-        serviceName: httpbin
-        servicePort: 80
+      backends:
+        - serviceName: httpbin
+          servicePort: 80
 ```
 
 Run curl command in a APISIX pod to see if the routing configuration works.
@@ -168,7 +168,7 @@ It should output:
 Create an ApisixTls to secure the route, referring to the secret created by cert-manager:
 
 ```yaml
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixTls
 metadata:
   name: example-tls

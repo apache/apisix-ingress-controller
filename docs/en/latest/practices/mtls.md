@@ -51,7 +51,7 @@ Since SSL is not configured in ApisixRoute, we can use the config similar to the
 
 ```yaml
 # route.yaml
-apiVersion: apisix.apache.org/v2beta1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpserver-route
@@ -63,9 +63,9 @@ spec:
           - mtls.httpbin.local
         paths:
           - "/*"
-      backend:
-        serviceName: httpbin
-        servicePort: 80
+      backends:
+        - serviceName: httpbin
+          servicePort: 80
 ```
 
 Please remember the host field is `mtls.httpbin.local`. It will be the domain we are going to use.
@@ -117,7 +117,7 @@ The secret name is `server-secret`, we created it in the `default` namespace. We
 
 ```yaml
 # tls.yaml
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixTls
 metadata:
   name: sample-tls
@@ -164,7 +164,7 @@ Then, change our ApisixTls and apply it:
 
 ```yaml
 # mtls.yaml
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixTls
 metadata:
   name: sample-tls
