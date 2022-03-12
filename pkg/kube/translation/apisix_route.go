@@ -774,6 +774,19 @@ func (t *translator) translateStreamRouteV2beta3(ctx *TranslateContext, ar *conf
 			return err
 		}
 		sr.UpstreamId = ups.ID
+		pluginMap := make(apisixv1.Plugins)
+		// add route plugins
+		for _, plugin := range part.Plugins {
+			if !plugin.Enable {
+				continue
+			}
+			if plugin.Config != nil {
+				pluginMap[plugin.Name] = plugin.Config
+			} else {
+				pluginMap[plugin.Name] = make(map[string]interface{})
+			}
+		}
+		sr.Plugins = pluginMap
 		ctx.addStreamRoute(sr)
 		if !ctx.checkUpstreamExist(ups.Name) {
 			ctx.addUpstream(ups)
@@ -817,6 +830,19 @@ func (t *translator) translateStreamRouteNotStrictlyV2beta3(ctx *TranslateContex
 			return err
 		}
 		sr.UpstreamId = ups.ID
+		pluginMap := make(apisixv1.Plugins)
+		// add route plugins
+		for _, plugin := range part.Plugins {
+			if !plugin.Enable {
+				continue
+			}
+			if plugin.Config != nil {
+				pluginMap[plugin.Name] = plugin.Config
+			} else {
+				pluginMap[plugin.Name] = make(map[string]interface{})
+			}
+		}
+		sr.Plugins = pluginMap
 		ctx.addStreamRoute(sr)
 		if !ctx.checkUpstreamExist(ups.Name) {
 			ctx.addUpstream(ups)

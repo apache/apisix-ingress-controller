@@ -70,7 +70,7 @@ type ApisixRouteHTTP struct {
 	Backends         []ApisixRouteHTTPBackend  `json:"backends,omitempty" yaml:"backends,omitempty"`
 	Websocket        bool                      `json:"websocket" yaml:"websocket"`
 	PluginConfigName string                    `json:"plugin_config_name,omitempty" yaml:"plugin_config_name,omitempty"`
-	Plugins          []ApisixRouteHTTPPlugin   `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Plugins          []ApisixRoutePlugin       `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 	Authentication   ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
@@ -152,8 +152,8 @@ type ApisixRouteHTTPMatchExprSubject struct {
 	Name string `json:"name" yaml:"name"`
 }
 
-// ApisixRouteHTTPPlugin represents an APISIX plugin.
-type ApisixRouteHTTPPlugin struct {
+// ApisixRoutePlugin represents an APISIX plugin.
+type ApisixRoutePlugin struct {
 	// The plugin name.
 	Name string `json:"name" yaml:"name"`
 	// Whether this plugin is in use, default is true.
@@ -201,6 +201,7 @@ type ApisixRouteStream struct {
 	Protocol string                   `json:"protocol" yaml:"protocol"`
 	Match    ApisixRouteStreamMatch   `json:"match" yaml:"match"`
 	Backend  ApisixRouteStreamBackend `json:"backend" yaml:"backend"`
+	Plugins  []ApisixRoutePlugin      `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 // ApisixRouteStreamMatch represents the match conditions of stream route.
@@ -630,9 +631,9 @@ type ApisixPluginConfig struct {
 
 // ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
 type ApisixPluginConfigSpec struct {
-	// Plugins contains a list of ApisixRouteHTTPPlugin
+	// Plugins contains a list of ApisixRoutePlugin
 	// +required
-	Plugins []ApisixRouteHTTPPlugin `json:"plugins" yaml:"plugins"`
+	Plugins []ApisixRoutePlugin `json:"plugins" yaml:"plugins"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

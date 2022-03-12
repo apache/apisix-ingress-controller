@@ -30,6 +30,10 @@ Meaning of each field in the spec of ApisixRoute are followed, the top level fie
 | http         | array    | ApisixRoute's HTTP route rules.              |
 | http[].name          | string (required)  | The route rule name.                                |
 | http[].priority          | integer   | The route priority, it's used to determine which route will be hitted when multile routes contains the same URI. Large number means higher priority.     |
+| http[].Timeout       | object    | UpstreamTimeout is settings for the read, send and connect to the upstream.
+| http[].Timeout.Connect | time duration in the form "72h3m0.5s" | The connect timeout.
+| http[].Timeout.Send    | time duration in the form "72h3m0.5s" | The send timeout.
+| http[].Timeout.Read    | time duration in the form "72h3m0.5s" | The read timeout.
 | http[].match         | object    | Route match conditions.                     |
 | http[].match.paths       | array   | A series of URI that should be matched (oneof) to use this route rule.         |
 | http[].match.hosts   | array   | A series of hosts that should be matched (oneof) to use this route rule.
@@ -53,6 +57,12 @@ Meaning of each field in the spec of ApisixRoute are followed, the top level fie
 | http[].plugins[].enable | boolean | Whether the plugin is in use |
 | http[].plugins[].config | object | The plugin configuration, fields should be same as in APISIX. |
 | http[].websocket | boolean | Whether enable websocket proxy. |
+| http[].plugin_config_name | string | use exist plugin config CR | 
+| http[].authentication | object | ApisixRouteAuthentication is the authentication-related configuration in ApisixRoute. |
+| http[].enable | boolean | enable Authentication |
+| http[].type   | string  | type of authentication(keyAuth, basic-auth) |
+| http[].ApisixRouteAuthenticationKeyAuth | object  | ApisixRouteAuthenticationKeyAuth is the keyAuth-related configuration in ApisixRouteAuthentication. |
+| http[].ApisixRouteAuthenticationKeyAuth.header | string  | keyAuth header configuration. |
 | stream | array | ApisixRoutes' stream route rules, which contains TCP or UDP rules.|
 | stream[].protocol | string (required) | The protocol of rule. Support `TCP` or `UDP`|
 | stream[].name | string (required) | The Route rule name. |

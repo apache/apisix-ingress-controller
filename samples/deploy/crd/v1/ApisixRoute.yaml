@@ -805,6 +805,19 @@ spec:
                         required:
                           - serviceName
                           - servicePort
+                      plugins:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                              minLength: 1
+                            enable:
+                              type: boolean
+                            config:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true # we have to enable it since plugin config
             status:
               type: object
               properties:

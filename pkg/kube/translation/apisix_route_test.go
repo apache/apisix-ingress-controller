@@ -16,7 +16,6 @@ package translation
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -435,7 +434,7 @@ func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {
 							},
 						},
 					},
-					Plugins: []configv2beta3.ApisixRouteHTTPPlugin{
+					Plugins: []configv2beta3.ApisixRoutePlugin{
 						{
 							Name:   "plugin-1",
 							Enable: true,
@@ -468,7 +467,6 @@ func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {
 	}
 
 	tx, err := tr.TranslateRouteV2beta3NotStrictly(ar)
-	fmt.Println(tx)
 	assert.NoError(t, err, "translateRoute not strictly should be no error")
 	assert.Equal(t, 2, len(tx.Routes), "There should be 2 routes")
 	assert.Equal(t, 2, len(tx.Upstreams), "There should be 2 upstreams")
@@ -484,4 +482,85 @@ func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {
 
 	assert.Equal(t, id.GenID("test_svc1_81"), tx.Upstreams[0].ID, "upstream1 id error")
 	assert.Equal(t, id.GenID("test_svc2_82"), tx.Upstreams[1].ID, "upstream2 id error")
+}
+
+func TestTranslateStreamRouteV2beta3(t *testing.T) {
+	tr := &translator{
+		&TranslatorOptions{},
+	}
+	sr := &configv2beta3.ApisixRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "sr",
+			Namespace: "test",
+		},
+		Spec: configv2beta3.ApisixRouteSpec{
+			Stream: []configv2beta3.ApisixRouteStream{
+				{
+					Name: "rule1",
+					Match: configv2beta3.ApisixRouteStreamMatch{
+						IngressPort: 8080,
+					},
+					Backend: configv2beta3.ApisixRouteStreamBackend{
+						ServiceName: "svc1",
+						ServicePort: intstr.IntOrString{
+							IntVal: 81,
+						},
+					},
+					Plugins: []configv2beta3.ApisixRoutePlugin{
+						{
+							Name:   "plugin-1",
+							Enable: true,
+							Config: map[string]interface{}{
+								"key-1": 123456,
+								"key-2": "2121331",
+							},
+						},
+					},
+				},
+				{
+					Name: "rule2",
+					Match: configv2beta3.ApisixRouteStreamMatch{
+						IngressPort: 8081,
+					},
+					Backend: configv2beta3.ApisixRouteStreamBackend{
+						ServiceName: "svc2",
+						ServicePort: intstr.IntOrString{
+							IntVal: 82,
+						},
+					},
+					Plugins: []configv2beta3.ApisixRoutePlugin{
+						{
+							Name:   "plugin-2",
+							Enable: true,
+							Config: map[string]interface{}{
+								"key-1": 123456,
+								"key-2": "2121331",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	tx := &TranslateContext{}
+
+	tx, err := tr.TranslateRouteV2beta3NotStrictly(sr)
+	plugin1 := tx.StreamRoutes[0].Plugins["plugin-1"].(configv2beta3.ApisixRouteHTTPPluginConfig)
+	plugin2 := tx.StreamRoutes[1].Plugins["plugin-2"].(configv2beta3.ApisixRouteHTTPPluginConfig)
+	assert.NoError(t, err, "translateRoute not strictly should be no error")
+	assert.Equal(t, 2, len(tx.StreamRoutes), "There should be 2 routes")
+	assert.Equal(t, 2, len(tx.Upstreams), "There should be 2 upstreams")
+	assert.Equal(t, "test_svc1_81", tx.Upstreams[0].Name, "upstream1 name error")
+	assert.Equal(t, "test_svc2_82", tx.Upstreams[1].Name, "upstream2 name error")
+
+	assert.Equal(t, id.GenID("test_sr_rule1_tcp"), tx.StreamRoutes[0].ID, "route1 id error")
+	assert.Equal(t, id.GenID("test_sr_rule2_tcp"), tx.StreamRoutes[1].ID, "route2 id error")
+
+	assert.Equal(t, id.GenID("test_svc1_81"), tx.Upstreams[0].ID, "upstream1 id error")
+	assert.Equal(t, id.GenID("test_svc2_82"), tx.Upstreams[1].ID, "upstream2 id error")
+
+
+	assert.Equal(t, 123456, plugin1["key-1"], "route1 plugins config error")
+	assert.Equal(t, "2121331", plugin2["key-2"], "route2 plugins config error")
+
 }

@@ -336,6 +336,7 @@ type StreamRoute struct {
 	ServerPort int32             `json:"server_port,omitempty" yaml:"server_port,omitempty"`
 	UpstreamId string            `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
 	Upstream   *Upstream         `json:"upstream,omitempty" yaml:"upstream,omitempty"`
+	Plugins    Plugins           `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 // GlobalRule represents the global_rule object in APISIX.

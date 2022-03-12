@@ -30,7 +30,7 @@ func TestTranslatePluginConfigV2beta3(t *testing.T) {
 			Namespace: "test-ns",
 		},
 		Spec: configv2beta3.ApisixPluginConfigSpec{
-			Plugins: []configv2beta3.ApisixRouteHTTPPlugin{
+			Plugins: []configv2beta3.ApisixRoutePlugin{
 				{
 					Name:   "case1",
 					Enable: true,
@@ -75,7 +75,7 @@ func TestTranslatePluginConfigV2beta3NotStrictly(t *testing.T) {
 			Namespace: "test-ns",
 		},
 		Spec: configv2beta3.ApisixPluginConfigSpec{
-			Plugins: []configv2beta3.ApisixRouteHTTPPlugin{
+			Plugins: []configv2beta3.ApisixRoutePlugin{
 				{
 					Name:   "case1",
 					Enable: true,
