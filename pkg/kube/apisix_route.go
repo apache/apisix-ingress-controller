@@ -81,9 +81,9 @@ type ApisixRouteEvent struct {
 
 type apisixRoute struct {
 	GroupVersion string
-	V2beta1 *configv2beta1.ApisixRoute
-	V2beta2 *configv2beta2.ApisixRoute
-	V2beta3 *configv2beta3.ApisixRoute
+	V2beta1      *configv2beta1.ApisixRoute
+	V2beta2      *configv2beta2.ApisixRoute
+	V2beta3      *configv2beta3.ApisixRoute
 }
 
 func (ar *apisixRoute) GetV2beta1() *configv2beta1.ApisixRoute {

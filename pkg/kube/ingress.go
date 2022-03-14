@@ -80,7 +80,7 @@ type IngressEvent struct {
 }
 
 type ingress struct {
-	GroupVersion string
+	GroupVersion      string
 	V1                *networkingv1.Ingress
 	V1beta1           *networkingv1beta1.Ingress
 	ExtensionsV1beta1 *extensionsv1beta1.Ingress
