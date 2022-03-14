@@ -43,6 +43,25 @@ make build
 ./apisix-ingress-controller version
 ```
 
+## Pre-commit todo
+
+When everything is ready, before submitting the code, please make sure that the license, code style, and document format are consistent with the project specification.
+
+We provide commands to implement it, just run the following commands:
+
+```shell
+make update-codegen
+make update-license
+make update-gofmt
+make update-mdlint
+```
+
+or just run one command:
+
+```shell
+make update-all
+```
+
 ## Test
 
 ### Run unit test cases
@@ -103,25 +122,6 @@ Something you need to pay attention to:
 
 * configuring of `--kubeconfig`, if you are using Minikube, the file path should be `~/.kube/config`.
 * configuring of `--default-apisix-cluster-admin-key`, if you have changed the admin key in Apache APISIX, also changing it here. If you have disabled the authentication in Apache APISIX, just removing this option.
-
-## Pre-commit todo
-
-When everything is ready, before submitting the code, please make sure that the license, code style, and document format are consistent with the project specification.
-
-We provide commands to implement it, just run the following commands:
-
-```shell
-make update-codegen
-make update-license
-make update-gofmt
-make update-mdlint
-```
-
-or just run one command:
-
-```shell
-make update-all
-```
 
 ## How to add a new feature or change an existing one
 
