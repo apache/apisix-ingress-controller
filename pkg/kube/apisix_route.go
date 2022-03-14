@@ -26,22 +26,22 @@ import (
 )
 
 const (
-	// ApisixRouteV2beta1 represents the ApisixRoute in apisix.apache.org/v2beta1 group version
-	ApisixRouteV2beta1 = "apisix.apache.org/v2beta1"
-	// ApisixRouteV2beta2 represents the ApisixRoute in apisix.apache.org/v2beta3 group version
-	ApisixRouteV2beta2 = "apisix.apache.org/v2beta2"
-	// ApisixRouteV2beta3 represents the ApisixRoute in apisix.apache.org/v2beta3 group version
-	ApisixRouteV2beta3 = "apisix.apache.org/v2beta3"
+	// ApisixRouteV2beta1 represents the ApisixRoute in apisix.apache.org/V2beta1 group version
+	ApisixRouteV2beta1 = "apisix.apache.org/V2beta1"
+	// ApisixRouteV2beta2 represents the ApisixRoute in apisix.apache.org/V2beta3 group version
+	ApisixRouteV2beta2 = "apisix.apache.org/V2beta2"
+	// ApisixRouteV2beta3 represents the ApisixRoute in apisix.apache.org/V2beta3 group version
+	ApisixRouteV2beta3 = "apisix.apache.org/V2beta3"
 )
 
 // ApisixRouteLister is an encapsulation for the lister of ApisixRoute,
 // it aims at to be compatible with different ApisixRoute versions.
 type ApisixRouteLister interface {
-	// V2beta1 gets the ApisixRoute in apisix.apache.org/v2beta1.
+	// V2beta1 gets the ApisixRoute in apisix.apache.org/V2beta1.
 	V2beta1(string, string) (ApisixRoute, error)
-	// V2beta2 gets the ApisixRoute in apisix.apache.org/v2beta3.
+	// V2beta2 gets the ApisixRoute in apisix.apache.org/V2beta3.
 	V2beta2(string, string) (ApisixRoute, error)
-	// V2beta3 gets the ApisixRoute in apisix.apache.org/v2beta3.
+	// V2beta3 gets the ApisixRoute in apisix.apache.org/V2beta3.
 	V2beta3(string, string) (ApisixRoute, error)
 }
 
@@ -56,16 +56,16 @@ type ApisixRouteInformer interface {
 type ApisixRoute interface {
 	// GroupVersion returns the api group version of the
 	// real ApisixRoute.
-	GroupVersion() string
-	// V2beta1 returns the ApisixRoute in apisix.apache.org/v2beta1, the real
+	GetGroupVersion() string
+	// V2beta1 returns the ApisixRoute in apisix.apache.org/V2beta1, the real
 	// ApisixRoute must be in this group version, otherwise will panic.
-	V2beta1() *configv2beta1.ApisixRoute
-	// V2beta2 returns the ApisixRoute in apisix.apache.org/v2beta3, the real
+	GetV2beta1() *configv2beta1.ApisixRoute
+	// V2beta2 returns the ApisixRoute in apisix.apache.org/V2beta3, the real
 	// ApisixRoute must be in this group version, otherwise will panic.
-	V2beta2() *configv2beta2.ApisixRoute
-	// V2beta3 returns the ApisixRoute in apisix.apache.org/v2beta3, the real
+	GetV2beta2() *configv2beta2.ApisixRoute
+	// V2beta3 returns the ApisixRoute in apisix.apache.org/V2beta3, the real
 	// ApisixRoute must be in this group version, otherwise will panic.
-	V2beta3() *configv2beta3.ApisixRoute
+	GetV2beta3() *configv2beta3.ApisixRoute
 	// ResourceVersion returns the the resource version field inside
 	// the real ApisixRoute.
 	ResourceVersion() string
@@ -80,43 +80,43 @@ type ApisixRouteEvent struct {
 }
 
 type apisixRoute struct {
-	groupVersion string
-	v2beta1      *configv2beta1.ApisixRoute
-	v2beta2      *configv2beta2.ApisixRoute
-	v2beta3      *configv2beta3.ApisixRoute
+	GroupVersion string
+	V2beta1 *configv2beta1.ApisixRoute
+	V2beta2 *configv2beta2.ApisixRoute
+	V2beta3 *configv2beta3.ApisixRoute
 }
 
-func (ar *apisixRoute) V2beta1() *configv2beta1.ApisixRoute {
-	if ar.groupVersion != ApisixRouteV2beta1 {
-		panic("not a apisix.apache.org/v2beta1 route")
+func (ar *apisixRoute) GetV2beta1() *configv2beta1.ApisixRoute {
+	if ar.GroupVersion != ApisixRouteV2beta1 {
+		panic("not a apisix.apache.org/V2beta1 route")
 	}
-	return ar.v2beta1
+	return ar.V2beta1
 }
-func (ar *apisixRoute) V2beta2() *configv2beta2.ApisixRoute {
-	if ar.groupVersion != ApisixRouteV2beta2 {
-		panic("not a apisix.apache.org/v2beta3 route")
+func (ar *apisixRoute) GetV2beta2() *configv2beta2.ApisixRoute {
+	if ar.GroupVersion != ApisixRouteV2beta2 {
+		panic("not a apisix.apache.org/V2beta3 route")
 	}
-	return ar.v2beta2
-}
-
-func (ar *apisixRoute) V2beta3() *configv2beta3.ApisixRoute {
-	if ar.groupVersion != ApisixRouteV2beta3 {
-		panic("not a apisix.apache.org/v2beta3 route")
-	}
-	return ar.v2beta3
+	return ar.V2beta2
 }
 
-func (ar *apisixRoute) GroupVersion() string {
-	return ar.groupVersion
+func (ar *apisixRoute) GetV2beta3() *configv2beta3.ApisixRoute {
+	if ar.GroupVersion != ApisixRouteV2beta3 {
+		panic("not a apisix.apache.org/V2beta3 route")
+	}
+	return ar.V2beta3
+}
+
+func (ar *apisixRoute) GetGroupVersion() string {
+	return ar.GroupVersion
 }
 
 func (ar *apisixRoute) ResourceVersion() string {
-	if ar.groupVersion == ApisixRouteV2beta1 {
-		return ar.V2beta1().ResourceVersion
-	} else if ar.groupVersion == ApisixRouteV2beta2 {
-		return ar.V2beta2().ResourceVersion
+	if ar.GroupVersion == ApisixRouteV2beta1 {
+		return ar.GetV2beta1().ResourceVersion
+	} else if ar.GroupVersion == ApisixRouteV2beta2 {
+		return ar.GetV2beta2().ResourceVersion
 	}
-	return ar.V2beta3().ResourceVersion
+	return ar.GetV2beta3().ResourceVersion
 }
 
 type apisixRouteLister struct {
@@ -131,8 +131,8 @@ func (l *apisixRouteLister) V2beta1(namespace, name string) (ApisixRoute, error)
 		return nil, err
 	}
 	return &apisixRoute{
-		groupVersion: ApisixRouteV2beta1,
-		v2beta1:      ar,
+		GroupVersion: ApisixRouteV2beta1,
+		V2beta1:      ar,
 	}, nil
 }
 
@@ -142,8 +142,8 @@ func (l *apisixRouteLister) V2beta2(namespace, name string) (ApisixRoute, error)
 		return nil, err
 	}
 	return &apisixRoute{
-		groupVersion: ApisixRouteV2beta2,
-		v2beta2:      ar,
+		GroupVersion: ApisixRouteV2beta2,
+		V2beta2:      ar,
 	}, nil
 }
 
@@ -153,8 +153,8 @@ func (l *apisixRouteLister) V2beta3(namespace, name string) (ApisixRoute, error)
 		return nil, err
 	}
 	return &apisixRoute{
-		groupVersion: ApisixRouteV2beta3,
-		v2beta3:      ar,
+		GroupVersion: ApisixRouteV2beta3,
+		V2beta3:      ar,
 	}, nil
 }
 
@@ -164,18 +164,18 @@ func MustNewApisixRoute(obj interface{}) ApisixRoute {
 	switch ar := obj.(type) {
 	case *configv2beta1.ApisixRoute:
 		return &apisixRoute{
-			groupVersion: ApisixRouteV2beta1,
-			v2beta1:      ar,
+			GroupVersion: ApisixRouteV2beta1,
+			V2beta1:      ar,
 		}
 	case *configv2beta2.ApisixRoute:
 		return &apisixRoute{
-			groupVersion: ApisixRouteV2beta2,
-			v2beta2:      ar,
+			GroupVersion: ApisixRouteV2beta2,
+			V2beta2:      ar,
 		}
 	case *configv2beta3.ApisixRoute:
 		return &apisixRoute{
-			groupVersion: ApisixRouteV2beta3,
-			v2beta3:      ar,
+			GroupVersion: ApisixRouteV2beta3,
+			V2beta3:      ar,
 		}
 	default:
 		panic("invalid ApisixRoute type")
@@ -189,18 +189,18 @@ func NewApisixRoute(obj interface{}) (ApisixRoute, error) {
 	switch ar := obj.(type) {
 	case *configv2beta1.ApisixRoute:
 		return &apisixRoute{
-			groupVersion: ApisixRouteV2beta1,
-			v2beta1:      ar,
+			GroupVersion: ApisixRouteV2beta1,
+			V2beta1:      ar,
 		}, nil
 	case *configv2beta2.ApisixRoute:
 		return &apisixRoute{
-			groupVersion: ApisixRouteV2beta2,
-			v2beta2:      ar,
+			GroupVersion: ApisixRouteV2beta2,
+			V2beta2:      ar,
 		}, nil
 	case *configv2beta3.ApisixRoute:
 		return &apisixRoute{
-			groupVersion: ApisixRouteV2beta3,
-			v2beta3:      ar,
+			GroupVersion: ApisixRouteV2beta3,
+			V2beta3:      ar,
 		}, nil
 	default:
 		return nil, errors.New("invalid ApisixRoute type")
