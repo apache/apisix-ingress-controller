@@ -220,13 +220,13 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 		// add status
 		if ev.Type != types.EventDelete {
 			if errLocal == nil {
-				switch ing.GroupVersion() {
+				switch ing.GetGroupVersion() {
 				case kube.IngressV1:
-					c.controller.recordStatus(ing.V1(), _resourceSynced, nil, metav1.ConditionTrue, ing.V1().GetGeneration())
+					c.controller.recordStatus(ing.GetV1(), _resourceSynced, nil, metav1.ConditionTrue, ing.GetV1().GetGeneration())
 				case kube.IngressV1beta1:
-					c.controller.recordStatus(ing.V1beta1(), _resourceSynced, nil, metav1.ConditionTrue, ing.V1beta1().GetGeneration())
+					c.controller.recordStatus(ing.GetV1beta1(), _resourceSynced, nil, metav1.ConditionTrue, ing.GetV1beta1().GetGeneration())
 				case kube.IngressExtensionsV1beta1:
-					c.controller.recordStatus(ing.ExtensionsV1beta1(), _resourceSynced, nil, metav1.ConditionTrue, ing.ExtensionsV1beta1().GetGeneration())
+					c.controller.recordStatus(ing.GetExtensionsV1beta1(), _resourceSynced, nil, metav1.ConditionTrue, ing.GetExtensionsV1beta1().GetGeneration())
 				}
 			} else {
 				log.Errorw("failed to list ingress resource",
@@ -244,13 +244,13 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 	)
 
 	if errLocal == nil {
-		switch ing.GroupVersion() {
+		switch ing.GetGroupVersion() {
 		case kube.IngressV1:
-			c.controller.recordStatus(ing.V1(), _resourceSyncAborted, err, metav1.ConditionTrue, ing.V1().GetGeneration())
+			c.controller.recordStatus(ing.GetV1(), _resourceSyncAborted, err, metav1.ConditionTrue, ing.GetV1().GetGeneration())
 		case kube.IngressV1beta1:
-			c.controller.recordStatus(ing.V1beta1(), _resourceSyncAborted, err, metav1.ConditionTrue, ing.V1beta1().GetGeneration())
+			c.controller.recordStatus(ing.GetV1beta1(), _resourceSyncAborted, err, metav1.ConditionTrue, ing.GetV1beta1().GetGeneration())
 		case kube.IngressExtensionsV1beta1:
-			c.controller.recordStatus(ing.ExtensionsV1beta1(), _resourceSyncAborted, err, metav1.ConditionTrue, ing.ExtensionsV1beta1().GetGeneration())
+			c.controller.recordStatus(ing.GetExtensionsV1beta1(), _resourceSyncAborted, err, metav1.ConditionTrue, ing.GetExtensionsV1beta1().GetGeneration())
 		}
 	} else {
 		log.Errorw("failed to list ingress resource",
@@ -288,7 +288,7 @@ func (c *ingressController) onAdd(obj interface{}) {
 		Type: types.EventAdd,
 		Object: kube.IngressEvent{
 			Key:          key,
-			GroupVersion: ing.GroupVersion(),
+			GroupVersion: ing.GetGroupVersion(),
 		},
 	})
 
@@ -298,7 +298,7 @@ func (c *ingressController) onAdd(obj interface{}) {
 func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 	prev := kube.MustNewIngress(oldObj)
 	curr := kube.MustNewIngress(newObj)
-	if prev.ResourceVersion() >= curr.ResourceVersion() {
+	if prev.GetResourceVersion() >= curr.GetResourceVersion() {
 		return
 	}
 
@@ -325,7 +325,7 @@ func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 		Type: types.EventUpdate,
 		Object: kube.IngressEvent{
 			Key:          key,
-			GroupVersion: curr.GroupVersion(),
+			GroupVersion: curr.GetGroupVersion(),
 			OldObject:    prev,
 		},
 	})
@@ -366,7 +366,7 @@ func (c *ingressController) OnDelete(obj interface{}) {
 		Type: types.EventDelete,
 		Object: kube.IngressEvent{
 			Key:          key,
-			GroupVersion: ing.GroupVersion(),
+			GroupVersion: ing.GetGroupVersion(),
 		},
 		Tombstone: ing,
 	})
@@ -379,15 +379,15 @@ func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 		ic  *string
 		ica string
 	)
-	if ing.GroupVersion() == kube.IngressV1 {
-		ic = ing.V1().Spec.IngressClassName
-		ica = ing.V1().GetAnnotations()[_ingressKey]
-	} else if ing.GroupVersion() == kube.IngressV1beta1 {
-		ic = ing.V1beta1().Spec.IngressClassName
-		ica = ing.V1beta1().GetAnnotations()[_ingressKey]
+	if ing.GetGroupVersion() == kube.IngressV1 {
+		ic = ing.GetV1().Spec.IngressClassName
+		ica = ing.GetV1().GetAnnotations()[_ingressKey]
+	} else if ing.GetGroupVersion() == kube.IngressV1beta1 {
+		ic = ing.GetV1beta1().Spec.IngressClassName
+		ica = ing.GetV1beta1().GetAnnotations()[_ingressKey]
 	} else {
-		ic = ing.ExtensionsV1beta1().Spec.IngressClassName
-		ica = ing.ExtensionsV1beta1().GetAnnotations()[_ingressKey]
+		ic = ing.GetExtensionsV1beta1().Spec.IngressClassName
+		ica = ing.GetExtensionsV1beta1().GetAnnotations()[_ingressKey]
 	}
 
 	// kubernetes.io/ingress.class takes the precedence.

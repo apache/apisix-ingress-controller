@@ -364,7 +364,7 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 	prev := kube.MustNewApisixRoute(oldObj)
 	curr := kube.MustNewApisixRoute(newObj)
-	if prev.ResourceVersion() >= curr.ResourceVersion() {
+	if prev.GetResourceVersion() >= curr.GetResourceVersion() {
 		return
 	}
 	key, err := cache.MetaNamespaceKeyFunc(newObj)

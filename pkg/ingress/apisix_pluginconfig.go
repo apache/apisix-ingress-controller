@@ -131,9 +131,9 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 	switch obj.GroupVersion {
 	case kube.ApisixPluginConfigV2beta3:
 		if ev.Type != types.EventDelete {
-			tctx, err = c.controller.translator.TranslatePluginConfigV2beta3(apc.V2beta3())
+			tctx, err = c.controller.translator.TranslatePluginConfigV2beta3(apc.GetV2beta3())
 		} else {
-			tctx, err = c.controller.translator.TranslatePluginConfigV2beta3NotStrictly(apc.V2beta3())
+			tctx, err = c.controller.translator.TranslatePluginConfigV2beta3NotStrictly(apc.GetV2beta3())
 		}
 		if err != nil {
 			log.Errorw("failed to translate ApisixPluginConfig v2beta3",
@@ -166,7 +166,7 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 		var oldCtx *translation.TranslateContext
 		switch obj.GroupVersion {
 		case kube.ApisixPluginConfigV2beta3:
-			oldCtx, err = c.controller.translator.TranslatePluginConfigV2beta3(obj.OldObject.V2beta3())
+			oldCtx, err = c.controller.translator.TranslatePluginConfigV2beta3(obj.OldObject.GetV2beta3())
 		}
 		if err != nil {
 			log.Errorw("failed to translate old ApisixPluginConfig",
@@ -212,10 +212,10 @@ func (c *apisixPluginConfigController) handleSyncErr(obj interface{}, errOrigin 
 	if errOrigin == nil {
 		if ev.Type != types.EventDelete {
 			if errLocal == nil {
-				switch apc.GroupVersion() {
+				switch apc.GetGroupVersion() {
 				case kube.ApisixPluginConfigV2beta3:
-					c.controller.recorderEvent(apc.V2beta3(), v1.EventTypeNormal, _resourceSynced, nil)
-					c.controller.recordStatus(apc.V2beta3(), _resourceSynced, nil, metav1.ConditionTrue, apc.V2beta3().GetGeneration())
+					c.controller.recorderEvent(apc.GetV2beta3(), v1.EventTypeNormal, _resourceSynced, nil)
+					c.controller.recordStatus(apc.GetV2beta3(), _resourceSynced, nil, metav1.ConditionTrue, apc.GetV2beta3().GetGeneration())
 				}
 			} else {
 				log.Errorw("failed list ApisixPluginConfig",
@@ -234,10 +234,10 @@ func (c *apisixPluginConfigController) handleSyncErr(obj interface{}, errOrigin 
 		zap.Error(errOrigin),
 	)
 	if errLocal == nil {
-		switch apc.GroupVersion() {
+		switch apc.GetGroupVersion() {
 		case kube.ApisixPluginConfigV2beta3:
-			c.controller.recorderEvent(apc.V2beta3(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
-			c.controller.recordStatus(apc.V2beta3(), _resourceSyncAborted, errOrigin, metav1.ConditionFalse, apc.V2beta3().GetGeneration())
+			c.controller.recorderEvent(apc.GetV2beta3(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
+			c.controller.recordStatus(apc.GetV2beta3(), _resourceSyncAborted, errOrigin, metav1.ConditionFalse, apc.GetV2beta3().GetGeneration())
 		}
 	} else {
 		log.Errorw("failed list ApisixPluginConfig",
@@ -267,7 +267,7 @@ func (c *apisixPluginConfigController) onAdd(obj interface{}) {
 		Type: types.EventAdd,
 		Object: kube.ApisixPluginConfigEvent{
 			Key:          key,
-			GroupVersion: apc.GroupVersion(),
+			GroupVersion: apc.GetGroupVersion(),
 		},
 	})
 
@@ -277,7 +277,7 @@ func (c *apisixPluginConfigController) onAdd(obj interface{}) {
 func (c *apisixPluginConfigController) onUpdate(oldObj, newObj interface{}) {
 	prev := kube.MustNewApisixPluginConfig(oldObj)
 	curr := kube.MustNewApisixPluginConfig(newObj)
-	if prev.ResourceVersion() >= curr.ResourceVersion() {
+	if prev.GetResourceVersion() >= curr.GetResourceVersion() {
 		return
 	}
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
@@ -296,7 +296,7 @@ func (c *apisixPluginConfigController) onUpdate(oldObj, newObj interface{}) {
 		Type: types.EventUpdate,
 		Object: kube.ApisixPluginConfigEvent{
 			Key:          key,
-			GroupVersion: curr.GroupVersion(),
+			GroupVersion: curr.GetGroupVersion(),
 			OldObject:    prev,
 		},
 	})
@@ -328,7 +328,7 @@ func (c *apisixPluginConfigController) onDelete(obj interface{}) {
 		Type: types.EventDelete,
 		Object: kube.ApisixPluginConfigEvent{
 			Key:          key,
-			GroupVersion: apc.GroupVersion(),
+			GroupVersion: apc.GetGroupVersion(),
 		},
 		Tombstone: apc,
 	})

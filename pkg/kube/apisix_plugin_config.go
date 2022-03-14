@@ -22,14 +22,14 @@ import (
 )
 
 const (
-	// ApisixPluginConfigV2beta3 represents the ApisixPluginConfig in apisix.apache.org/V2beta3 group version
-	ApisixPluginConfigV2beta3 = "apisix.apache.org/V2beta3"
+	// ApisixPluginConfigV2beta3 represents the ApisixPluginConfig in apisix.apache.org/GetV2beta3 group version
+	ApisixPluginConfigV2beta3 = "apisix.apache.org/GetV2beta3"
 )
 
 // ApisixPluginConfigLister is an encapsulation for the lister of ApisixPluginConfig,
 // it aims at to be compatible with different ApisixPluginConfig versions.
 type ApisixPluginConfigLister interface {
-	// V2beta3 gets the ApisixPluginConfig in apisix.apache.org/V2beta3.
+	// V2beta3 gets the ApisixPluginConfig in apisix.apache.org/GetV2beta3.
 	V2beta3(string, string) (ApisixPluginConfig, error)
 }
 
@@ -40,17 +40,17 @@ type ApisixPluginConfigInformer interface {
 }
 
 // ApisixPluginConfig is an encapsulation for ApisixPluginConfig resource with different
-// versions, for now, they are apisix.apache.org/v1 and apisix.apache.org/v2alpha1
+// versions, for now, they are apisix.apache.org/V1 and apisix.apache.org/v2alpha1
 type ApisixPluginConfig interface {
-	// GroupVersion returns the api group version of the
+	// GetGroupVersion returns the api group version of the
 	// real ApisixPluginConfig.
-	GroupVersion() string
-	// V2beta3 returns the ApisixPluginConfig in apisix.apache.org/V2beta3, the real
+	GetGroupVersion() string
+	// V2beta3 returns the ApisixPluginConfig in apisix.apache.org/GetV2beta3, the real
 	// ApisixPluginConfig must be in this group version, otherwise will panic.
-	V2beta3() *configv2beta3.ApisixPluginConfig
-	// ResourceVersion returns the the resource version field inside
+	GetV2beta3() *configv2beta3.ApisixPluginConfig
+	// GetResourceVersion returns the the resource version field inside
 	// the real ApisixPluginConfig.
-	ResourceVersion() string
+	GetResourceVersion() string
 }
 
 // ApisixPluginConfigEvent contains the ApisixPluginConfig key (namespace/name)
@@ -62,23 +62,23 @@ type ApisixPluginConfigEvent struct {
 }
 
 type apisixPluginConfig struct {
-	groupVersion string
-	v2beta3      *configv2beta3.ApisixPluginConfig
+	GroupVersion string
+	V2beta3      *configv2beta3.ApisixPluginConfig
 }
 
-func (apc *apisixPluginConfig) V2beta3() *configv2beta3.ApisixPluginConfig {
-	if apc.groupVersion != ApisixPluginConfigV2beta3 {
-		panic("not a apisix.apache.org/V2beta3 pluginConfig")
+func (apc *apisixPluginConfig) GetV2beta3() *configv2beta3.ApisixPluginConfig {
+	if apc.GroupVersion != ApisixPluginConfigV2beta3 {
+		panic("not a apisix.apache.org/GetV2beta3 pluginConfig")
 	}
-	return apc.v2beta3
+	return apc.V2beta3
 }
 
-func (apc *apisixPluginConfig) GroupVersion() string {
-	return apc.groupVersion
+func (apc *apisixPluginConfig) GetGroupVersion() string {
+	return apc.GroupVersion
 }
 
-func (apc *apisixPluginConfig) ResourceVersion() string {
-	return apc.V2beta3().ResourceVersion
+func (apc *apisixPluginConfig) GetResourceVersion() string {
+	return apc.GetV2beta3().ResourceVersion
 }
 
 type apisixPluginConfigLister struct {
@@ -91,8 +91,8 @@ func (l *apisixPluginConfigLister) V2beta3(namespace, name string) (ApisixPlugin
 		return nil, err
 	}
 	return &apisixPluginConfig{
-		groupVersion: ApisixPluginConfigV2beta3,
-		v2beta3:      apc,
+		GroupVersion: ApisixPluginConfigV2beta3,
+		V2beta3:      apc,
 	}, nil
 }
 
@@ -102,8 +102,8 @@ func MustNewApisixPluginConfig(obj interface{}) ApisixPluginConfig {
 	switch apc := obj.(type) {
 	case *configv2beta3.ApisixPluginConfig:
 		return &apisixPluginConfig{
-			groupVersion: ApisixPluginConfigV2beta3,
-			v2beta3:      apc,
+			GroupVersion: ApisixPluginConfigV2beta3,
+			V2beta3:      apc,
 		}
 	default:
 		panic("invalid ApisixPluginConfig type")
@@ -117,8 +117,8 @@ func NewApisixPluginConfig(obj interface{}) (ApisixPluginConfig, error) {
 	switch apc := obj.(type) {
 	case *configv2beta3.ApisixPluginConfig:
 		return &apisixPluginConfig{
-			groupVersion: ApisixPluginConfigV2beta3,
-			v2beta3:      apc,
+			GroupVersion: ApisixPluginConfigV2beta3,
+			V2beta3:      apc,
 		}, nil
 	default:
 		return nil, errors.New("invalid ApisixPluginConfig type")

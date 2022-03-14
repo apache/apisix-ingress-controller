@@ -26,22 +26,22 @@ import (
 )
 
 const (
-	// IngressV1 represents the Ingress in networking/v1 group version.
-	IngressV1 = "networking/v1"
-	// IngressV1beta1 represents the Ingress in networking/v1beta1 group version.
-	IngressV1beta1 = "networking/v1beta1"
-	// IngressExtensionsV1beta1 represents the Ingress in extensions/v1beta1 group version.
-	IngressExtensionsV1beta1 = "extensions/v1beta1"
+	// IngressV1 represents the Ingress in networking/V1 group version.
+	IngressV1 = "networking/V1"
+	// IngressV1beta1 represents the Ingress in networking/V1beta1 group version.
+	IngressV1beta1 = "networking/V1beta1"
+	// IngressExtensionsV1beta1 represents the Ingress in extensions/V1beta1 group version.
+	IngressExtensionsV1beta1 = "extensions/V1beta1"
 )
 
 // IngressLister is an encapsulation for the lister of Kubernetes
 // Ingress, it aims at to be compatible with different Ingress versions.
 type IngressLister interface {
-	// V1 gets the ingress in networking/v1.
+	// V1 gets the ingress in networking/V1.
 	V1(string, string) (Ingress, error)
-	// V1beta1 gets the ingress in networking/v1beta1.
+	// V1beta1 gets the ingress in networking/V1beta1.
 	V1beta1(string, string) (Ingress, error)
-	// ExtensionsV1beta1 gets the ingress in extensions/v1beta1.
+	// ExtensionsV1beta1 gets the ingress in extensions/V1beta1.
 	ExtensionsV1beta1(string, string) (Ingress, error)
 }
 
@@ -52,23 +52,23 @@ type IngressInformer interface {
 }
 
 // Ingress is an encapsulation for Kubernetes Ingress with different
-// versions, for now, they are networking/v1 and networking/v1beta1.
+// versions, for now, they are networking/V1 and networking/V1beta1.
 type Ingress interface {
 	// GroupVersion returns the api group version of the
 	// real ingress.
-	GroupVersion() string
-	// V1 returns the ingress in networking/v1, the real
-	// ingress must be in networking/v1, or V1() will panic.
-	V1() *networkingv1.Ingress
-	// V1beta1 returns the ingress in networking/v1beta1, the real
-	// ingress must be in networking/v1beta1, or V1beta1() will panic.
-	V1beta1() *networkingv1beta1.Ingress
-	// ExtensionsV1beta1 returns the ingress in extensions/v1beta1, the real
-	// ingress must be in extensions/v1beta1, or ExtensionsV1beta1() will panic.
-	ExtensionsV1beta1() *extensionsv1beta1.Ingress
+	GetGroupVersion() string
+	// V1 returns the ingress in networking/V1, the real
+	// ingress must be in networking/V1, or V1() will panic.
+	GetV1() *networkingv1.Ingress
+	// V1beta1 returns the ingress in networking/V1beta1, the real
+	// ingress must be in networking/V1beta1, or V1beta1() will panic.
+	GetV1beta1() *networkingv1beta1.Ingress
+	// ExtensionsV1beta1 returns the ingress in extensions/V1beta1, the real
+	// ingress must be in extensions/V1beta1, or ExtensionsV1beta1() will panic.
+	GetExtensionsV1beta1() *extensionsv1beta1.Ingress
 	// ResourceVersion returns the the resource version field inside
 	// the real Ingress.
-	ResourceVersion() string
+	GetResourceVersion() string
 }
 
 // IngressEvents contains the ingress key (namespace/name)
@@ -80,45 +80,45 @@ type IngressEvent struct {
 }
 
 type ingress struct {
-	groupVersion      string
-	v1                *networkingv1.Ingress
-	v1beta1           *networkingv1beta1.Ingress
-	extensionsV1beta1 *extensionsv1beta1.Ingress
+	GroupVersion string
+	V1                *networkingv1.Ingress
+	V1beta1           *networkingv1beta1.Ingress
+	ExtensionsV1beta1 *extensionsv1beta1.Ingress
 }
 
-func (ing *ingress) V1() *networkingv1.Ingress {
-	if ing.groupVersion != IngressV1 {
-		panic("not a networking/v1 ingress")
+func (ing *ingress) GetV1() *networkingv1.Ingress {
+	if ing.GroupVersion != IngressV1 {
+		panic("not a networking/V1 ingress")
 	}
-	return ing.v1
+	return ing.V1
 }
 
-func (ing *ingress) V1beta1() *networkingv1beta1.Ingress {
-	if ing.groupVersion != IngressV1beta1 {
-		panic("not a networking/v1beta1 ingress")
+func (ing *ingress) GetV1beta1() *networkingv1beta1.Ingress {
+	if ing.GroupVersion != IngressV1beta1 {
+		panic("not a networking/V1beta1 ingress")
 	}
-	return ing.v1beta1
+	return ing.V1beta1
 }
 
-func (ing *ingress) ExtensionsV1beta1() *extensionsv1beta1.Ingress {
-	if ing.groupVersion != IngressExtensionsV1beta1 {
-		panic("not a extensions/v1beta1 ingress")
+func (ing *ingress) GetExtensionsV1beta1() *extensionsv1beta1.Ingress {
+	if ing.GroupVersion != IngressExtensionsV1beta1 {
+		panic("not a extensions/V1beta1 ingress")
 	}
-	return ing.extensionsV1beta1
+	return ing.ExtensionsV1beta1
 }
 
-func (ing *ingress) GroupVersion() string {
-	return ing.groupVersion
+func (ing *ingress) GetGroupVersion() string {
+	return ing.GroupVersion
 }
 
-func (ing *ingress) ResourceVersion() string {
-	if ing.GroupVersion() == IngressV1 {
-		return ing.V1().ResourceVersion
+func (ing *ingress) GetResourceVersion() string {
+	if ing.GetGroupVersion() == IngressV1 {
+		return ing.GetV1().ResourceVersion
 	}
-	if ing.GroupVersion() == IngressV1beta1 {
-		return ing.V1beta1().ResourceVersion
+	if ing.GetGroupVersion() == IngressV1beta1 {
+		return ing.GetV1beta1().ResourceVersion
 	}
-	return ing.ExtensionsV1beta1().ResourceVersion
+	return ing.GetExtensionsV1beta1().ResourceVersion
 }
 
 type ingressLister struct {
@@ -133,8 +133,8 @@ func (l *ingressLister) V1(namespace, name string) (Ingress, error) {
 		return nil, err
 	}
 	return &ingress{
-		groupVersion: IngressV1,
-		v1:           ing,
+		GroupVersion: IngressV1,
+		V1:           ing,
 	}, nil
 }
 
@@ -144,8 +144,8 @@ func (l *ingressLister) V1beta1(namespace, name string) (Ingress, error) {
 		return nil, err
 	}
 	return &ingress{
-		groupVersion: IngressV1beta1,
-		v1beta1:      ing,
+		GroupVersion: IngressV1beta1,
+		V1beta1:      ing,
 	}, nil
 }
 
@@ -155,8 +155,8 @@ func (l *ingressLister) ExtensionsV1beta1(namespace, name string) (Ingress, erro
 		return nil, err
 	}
 	return &ingress{
-		groupVersion:      IngressExtensionsV1beta1,
-		extensionsV1beta1: ing,
+		GroupVersion:      IngressExtensionsV1beta1,
+		ExtensionsV1beta1: ing,
 	}, nil
 }
 
@@ -166,18 +166,18 @@ func MustNewIngress(obj interface{}) Ingress {
 	switch ing := obj.(type) {
 	case *networkingv1.Ingress:
 		return &ingress{
-			groupVersion: IngressV1,
-			v1:           ing,
+			GroupVersion: IngressV1,
+			V1:           ing,
 		}
 	case *networkingv1beta1.Ingress:
 		return &ingress{
-			groupVersion: IngressV1beta1,
-			v1beta1:      ing,
+			GroupVersion: IngressV1beta1,
+			V1beta1:      ing,
 		}
 	case *extensionsv1beta1.Ingress:
 		return &ingress{
-			groupVersion:      IngressExtensionsV1beta1,
-			extensionsV1beta1: ing,
+			GroupVersion:      IngressExtensionsV1beta1,
+			ExtensionsV1beta1: ing,
 		}
 	default:
 		panic("invalid ingress type")
@@ -191,18 +191,18 @@ func NewIngress(obj interface{}) (Ingress, error) {
 	switch ing := obj.(type) {
 	case *networkingv1.Ingress:
 		return &ingress{
-			groupVersion: IngressV1,
-			v1:           ing,
+			GroupVersion: IngressV1,
+			V1:           ing,
 		}, nil
 	case *networkingv1beta1.Ingress:
 		return &ingress{
-			groupVersion: IngressV1beta1,
-			v1beta1:      ing,
+			GroupVersion: IngressV1beta1,
+			V1beta1:      ing,
 		}, nil
 	case *extensionsv1beta1.Ingress:
 		return &ingress{
-			groupVersion:      IngressExtensionsV1beta1,
-			extensionsV1beta1: ing,
+			GroupVersion:      IngressExtensionsV1beta1,
+			ExtensionsV1beta1: ing,
 		}, nil
 	default:
 		return nil, errors.New("invalid ingress type")
