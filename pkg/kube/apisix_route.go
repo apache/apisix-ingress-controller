@@ -57,10 +57,10 @@ type ApisixRoute interface {
 	// GetGroupVersion returns the api group version of the
 	// real ApisixRoute.
 	GetGroupVersion() string
-	// V2beta1 returns the ApisixRoute in apisix.apache.org/v2beta1, the real
+	// GetV2beta1 returns the ApisixRoute in apisix.apache.org/v2beta1, the real
 	// ApisixRoute must be in this group version, otherwise will panic.
 	GetV2beta1() *configv2beta1.ApisixRoute
-	// V2beta2 returns the ApisixRoute in apisix.apache.org/v2beta3, the real
+	// GetV2beta2 returns the ApisixRoute in apisix.apache.org/v2beta3, the real
 	// ApisixRoute must be in this group version, otherwise will panic.
 	GetV2beta2() *configv2beta2.ApisixRoute
 	// GetV2beta3 returns the ApisixRoute in apisix.apache.org/v2beta3, the real

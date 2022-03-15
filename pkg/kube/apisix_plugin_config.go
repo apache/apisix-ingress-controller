@@ -45,7 +45,7 @@ type ApisixPluginConfig interface {
 	// GetGroupVersion returns the api group version of the
 	// real ApisixPluginConfig.
 	GetGroupVersion() string
-	// V2beta3 returns the ApisixPluginConfig in apisix.apache.org/v2beta3, the real
+	// GetV2beta3 returns the ApisixPluginConfig in apisix.apache.org/v2beta3, the real
 	// ApisixPluginConfig must be in this group version, otherwise will panic.
 	GetV2beta3() *configv2beta3.ApisixPluginConfig
 	// GetResourceVersion returns the the resource version field inside
