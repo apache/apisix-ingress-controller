@@ -22,14 +22,14 @@ import (
 )
 
 const (
-	// ApisixPluginConfigV2beta3 represents the ApisixPluginConfig in apisix.apache.org/GetV2beta3 group version
-	ApisixPluginConfigV2beta3 = "apisix.apache.org/V2beta3"
+	// ApisixPluginConfigV2beta3 represents the ApisixPluginConfig in apisix.apache.org/v2beta3 group version
+	ApisixPluginConfigV2beta3 = "apisix.apache.org/v2beta3"
 )
 
 // ApisixPluginConfigLister is an encapsulation for the lister of ApisixPluginConfig,
 // it aims at to be compatible with different ApisixPluginConfig versions.
 type ApisixPluginConfigLister interface {
-	// V2beta3 gets the ApisixPluginConfig in apisix.apache.org/GetV2beta3.
+	// V2beta3 gets the ApisixPluginConfig in apisix.apache.org/v2beta3.
 	V2beta3(string, string) (ApisixPluginConfig, error)
 }
 
@@ -45,7 +45,7 @@ type ApisixPluginConfig interface {
 	// GetGroupVersion returns the api group version of the
 	// real ApisixPluginConfig.
 	GetGroupVersion() string
-	// V2beta3 returns the ApisixPluginConfig in apisix.apache.org/GetV2beta3, the real
+	// V2beta3 returns the ApisixPluginConfig in apisix.apache.org/v2beta3, the real
 	// ApisixPluginConfig must be in this group version, otherwise will panic.
 	GetV2beta3() *configv2beta3.ApisixPluginConfig
 	// GetResourceVersion returns the the resource version field inside
@@ -68,7 +68,7 @@ type apisixPluginConfig struct {
 
 func (apc *apisixPluginConfig) GetV2beta3() *configv2beta3.ApisixPluginConfig {
 	if apc.GroupVersion != ApisixPluginConfigV2beta3 {
-		panic("not a apisix.apache.org/GetV2beta3 pluginConfig")
+		panic("not a apisix.apache.org/v2beta3 pluginConfig")
 	}
 	return apc.V2beta3
 }

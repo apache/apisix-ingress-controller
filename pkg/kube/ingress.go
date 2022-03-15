@@ -26,11 +26,11 @@ import (
 )
 
 const (
-	// IngressV1 represents the Ingress in networking/V1 group version.
+	// IngressV1 represents the Ingress in networking/v1 group version.
 	IngressV1 = "networking/v1"
-	// IngressV1beta1 represents the Ingress in networking/V1beta1 group version.
+	// IngressV1beta1 represents the Ingress in networking/v1beta1 group version.
 	IngressV1beta1 = "networking/v1beta1"
-	// IngressExtensionsV1beta1 represents the Ingress in extensions/V1beta1 group version.
+	// IngressExtensionsV1beta1 represents the Ingress in extensions/v1beta1 group version.
 	IngressExtensionsV1beta1 = "extensions/v1beta1"
 )
 
@@ -88,21 +88,21 @@ type ingress struct {
 
 func (ing *ingress) GetV1() *networkingv1.Ingress {
 	if ing.GroupVersion != IngressV1 {
-		panic("not a networking/V1 ingress")
+		panic("not a networking/v1 ingress")
 	}
 	return ing.V1
 }
 
 func (ing *ingress) GetV1beta1() *networkingv1beta1.Ingress {
 	if ing.GroupVersion != IngressV1beta1 {
-		panic("not a networking/V1beta1 ingress")
+		panic("not a networking/v1beta1 ingress")
 	}
 	return ing.V1beta1
 }
 
 func (ing *ingress) GetExtensionsV1beta1() *extensionsv1beta1.Ingress {
 	if ing.GroupVersion != IngressExtensionsV1beta1 {
-		panic("not a extensions/V1beta1 ingress")
+		panic("not a extensions/v1beta1 ingress")
 	}
 	return ing.ExtensionsV1beta1
 }
