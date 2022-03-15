@@ -61,12 +61,12 @@ type Ingress interface {
 	// ingress must be in networking/v1, or GetV1() will panic.
 	GetV1() *networkingv1.Ingress
 	// GetV1beta1 returns the ingress in networking/v1beta1, the real
-	// ingress must be in networking/v1beta1, or V1beta1() will panic.
+	// ingress must be in networking/v1beta1, or GetV1beta1() will panic.
 	GetV1beta1() *networkingv1beta1.Ingress
 	// GetExtensionsV1beta1 returns the ingress in extensions/v1beta1, the real
 	// ingress must be in extensions/v1beta1, or GetExtensionsV1beta1() will panic.
 	GetExtensionsV1beta1() *extensionsv1beta1.Ingress
-	// GetResourceVersion returns the the resource version field inside
+	// GetResourceVersion returns the resource version field inside
 	// the real Ingress.
 	GetResourceVersion() string
 }

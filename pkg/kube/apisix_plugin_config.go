@@ -40,7 +40,7 @@ type ApisixPluginConfigInformer interface {
 }
 
 // ApisixPluginConfig is an encapsulation for ApisixPluginConfig resource with different
-// versions, for now, they are apisix.apache.org/V1 and apisix.apache.org/v2alpha1
+// versions, for now, they are apisix.apache.org/v1 and apisix.apache.org/v2alpha1
 type ApisixPluginConfig interface {
 	// GetGroupVersion returns the api group version of the
 	// real ApisixPluginConfig.
