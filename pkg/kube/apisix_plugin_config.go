@@ -23,7 +23,7 @@ import (
 
 const (
 	// ApisixPluginConfigV2beta3 represents the ApisixPluginConfig in apisix.apache.org/GetV2beta3 group version
-	ApisixPluginConfigV2beta3 = "apisix.apache.org/GetV2beta3"
+	ApisixPluginConfigV2beta3 = "apisix.apache.org/V2beta3"
 )
 
 // ApisixPluginConfigLister is an encapsulation for the lister of ApisixPluginConfig,

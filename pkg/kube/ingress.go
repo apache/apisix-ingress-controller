@@ -27,11 +27,11 @@ import (
 
 const (
 	// IngressV1 represents the Ingress in networking/V1 group version.
-	IngressV1 = "networking/V1"
+	IngressV1 = "networking/v1"
 	// IngressV1beta1 represents the Ingress in networking/V1beta1 group version.
-	IngressV1beta1 = "networking/V1beta1"
+	IngressV1beta1 = "networking/v1beta1"
 	// IngressExtensionsV1beta1 represents the Ingress in extensions/V1beta1 group version.
-	IngressExtensionsV1beta1 = "extensions/V1beta1"
+	IngressExtensionsV1beta1 = "extensions/v1beta1"
 )
 
 // IngressLister is an encapsulation for the lister of Kubernetes

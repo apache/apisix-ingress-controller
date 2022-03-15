@@ -27,11 +27,11 @@ import (
 
 const (
 	// ApisixRouteV2beta1 represents the ApisixRoute in apisix.apache.org/V2beta1 group version
-	ApisixRouteV2beta1 = "apisix.apache.org/V2beta1"
+	ApisixRouteV2beta1 = "apisix.apache.org/v2beta1"
 	// ApisixRouteV2beta2 represents the ApisixRoute in apisix.apache.org/GetV2beta3 group version
-	ApisixRouteV2beta2 = "apisix.apache.org/V2beta2"
+	ApisixRouteV2beta2 = "apisix.apache.org/v2beta2"
 	// ApisixRouteV2beta3 represents the ApisixRoute in apisix.apache.org/GetV2beta3 group version
-	ApisixRouteV2beta3 = "apisix.apache.org/GetV2beta3"
+	ApisixRouteV2beta3 = "apisix.apache.org/v2beta3"
 )
 
 // ApisixRouteLister is an encapsulation for the lister of ApisixRoute,
