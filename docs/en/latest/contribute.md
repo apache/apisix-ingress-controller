@@ -43,24 +43,16 @@ make build
 ./apisix-ingress-controller version
 ```
 
-## Pre-commit todo
+## How to add a new feature or change an existing one
 
-When everything is ready, before submitting the code, please make sure that the license, code style, and document format are consistent with the project specification.
+Before making any significant changes, please [open an issue](https://github.com/apache/apisix-ingress-controller/issues). Discussing your proposed changes ahead of time will make the contribution process smooth for everyone.
 
-We provide commands to implement it, just run the following commands:
+Once we've discussed your changes and you've got your code ready, make sure that tests are passing and open your pull request. Your PR is most likely to be accepted if it:
 
-```shell
-make update-codegen
-make update-license
-make update-gofmt
-make update-mdlint
-```
-
-or just run one command:
-
-```shell
-make update-all
-```
+* Update the README.md with details of changes to the interface.
+* Includes tests for new functionality.
+* References the original issue in the description, e.g. "Resolves #123".
+* Has a [good commit message](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
 
 ## Test
 
@@ -123,13 +115,21 @@ Something you need to pay attention to:
 * configuring of `--kubeconfig`, if you are using Minikube, the file path should be `~/.kube/config`.
 * configuring of `--default-apisix-cluster-admin-key`, if you have changed the admin key in Apache APISIX, also changing it here. If you have disabled the authentication in Apache APISIX, just removing this option.
 
-## How to add a new feature or change an existing one
+## Pre-commit todo
 
-Before making any significant changes, please [open an issue](https://github.com/apache/apisix-ingress-controller/issues). Discussing your proposed changes ahead of time will make the contribution process smooth for everyone.
+When everything is ready, before submitting the code, please make sure that the license, code style, and document format are consistent with the project specification.
 
-Once we've discussed your changes and you've got your code ready, make sure that tests are passing and open your pull request. Your PR is most likely to be accepted if it:
+We provide commands to implement it, just run the following commands:
 
-* Update the README.md with details of changes to the interface.
-* Includes tests for new functionality.
-* References the original issue in the description, e.g. "Resolves #123".
-* Has a [good commit message](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
+```shell
+make update-codegen
+make update-license
+make update-gofmt
+make update-mdlint
+```
+
+or just run one command:
+
+```shell
+make update-all
+```
