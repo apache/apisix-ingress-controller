@@ -1,5 +1,5 @@
 ---
-title: Contributing to apisix-ingress-controller
+title: Developing for Apache APISIX Ingress Controller
 ---
 
 <!--
@@ -21,23 +21,27 @@ title: Contributing to apisix-ingress-controller
 #
 -->
 
-Firstly, thanks for your interest in contributing! I hope that this will be a
-pleasant first experience for you, and that you will return to continue
-contributing.
+This document explains how to get started with developing for Apache APISIX Ingress controller.
 
-## How to contribute
+## Prerequisites
 
-Most of the contributions that we receive are code contributions, but you can
-also contribute to the documentation or simply report solid bugs
-for us to fix.
+* Install [Go 1.13](https://golang.org/dl/) or later, and we use go module to manage the go package dependencies.
+* Prepare an available Kubernetes cluster in your workstation, we recommend you to use [KIND](https://kind.sigs.k8s.io/).
+* Install Apache APISIX in Kubernetes by [Helm Chart](https://github.com/apache/apisix-helm-chart).
 
- For new contributors, please take a look at issues with a tag called [Good first issue](https://github.com/apache/apisix-ingress-controller/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [Help wanted](https://github.com/apache/apisix-ingress-controller/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
+## Fork and Clone
 
-## How to report a bug
+* Fork the repository from [apache/apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller) to your own GitHub account.
+* Clone the fork repository to your workstation.
+* Run `go mod download` to download modules to local cache. By the way, if you are a developer in China, we suggest you setting `GOPROXY` to `https://goproxy.cn` to speed up the downloading.
 
-* **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/apache/apisix-ingress-controller/issues).
+## Build
 
-* If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/apache/apisix-ingress-controller/issues/new). Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample** or an **executable test case** demonstrating the expected behavior that is not occurring.
+```shell
+cd /path/to/apisix-ingress-controller
+make build
+./apisix-ingress-controller version
+```
 
 ## How to add a new feature or change an existing one
 
@@ -49,3 +53,83 @@ Once we've discussed your changes and you've got your code ready, make sure that
 * Includes tests for new functionality.
 * References the original issue in the description, e.g. "Resolves #123".
 * Has a [good commit message](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
+
+## Test
+
+### Run unit test cases
+
+```shell
+cd /path/to/apisix-ingress-controller
+make unit-test
+```
+
+### Run e2e test cases
+
+We using [KIND](https://kind.sigs.k8s.io/) for running e2e test cases. Please ensure `kind` CLI has been installed.
+Currently we using KIND latest version v0.11.1 and using Kubernetes v1.21.1 for testing.
+
+```shell
+cd /path/to/apisix-ingress-controller
+make e2e-test
+```
+
+Note the running of e2e cases is somewhat slow, so please be patient.
+
+> See [here](https://onsi.github.io/ginkgo/#focused-specs) to learn
+how to just run partial e2e cases.
+
+### Build docker image
+
+```shell
+cd /path/to/apisix-ingress-controller
+make build-image IMAGE_TAG=a.b.c
+```
+
+> Note: The Dockerfile in this repository is only for development, not for release.
+
+If you're coding for apisix-ingress-controller and adding some e2e test cases to verify your changes,
+you should push the images to the image registry that your Kubernetes cluster can access, if you're using Kind, just run the following command:
+
+```shell
+make push-images-to-kind
+```
+
+## Run apisix-ingress-controller locally
+
+We assume all prerequisites above mentioned are met, what's more, since we want to run apisix-ingress-controller in bare-metal environment, please make sure both the proxy service and admin api service of Apache APISIX are exposed outside of the Kubernetes cluster, e.g. configuring them as [NodePort](https://kubernetes.io/docs/concepts/services-networking/service/#nodeport) services.
+
+Let's assume the Admin API service address of Apache APISIX is `http://192.168.65.2:31156`. Next launch the ingress-apisix-controller by the following command.
+
+```shell
+cd /path/to/apisix-ingress-controller
+./apisix-ingress-controller ingress \
+    --kubeconfig /path/to/kubeconfig \
+    --http-listen :8080 \
+    --log-output stderr \
+    --default-apisix-cluster-base-url http://192.168.65.2:31156/apisix/admin
+    --default-apisix-cluster-admin-key edd1c9f034335f136f87ad84b625c8f1
+```
+
+Something you need to pay attention to:
+
+* configuring of `--kubeconfig`, if you are using Minikube, the file path should be `~/.kube/config`.
+* configuring of `--default-apisix-cluster-admin-key`, if you have changed the admin key in Apache APISIX, also changing it here. If you have disabled the authentication in Apache APISIX, just removing this option.
+
+## Pre-commit todo
+
+When everything is ready, before submitting the code, please make sure that the license, code style, and document format are consistent with the project specification.
+
+We provide commands to implement it, just run the following commands:
+
+```shell
+make update-codegen
+make update-license
+make update-gofmt
+make update-mdlint
+```
+
+or just run one command:
+
+```shell
+make update-all
+```
