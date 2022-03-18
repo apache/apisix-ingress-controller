@@ -264,7 +264,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	if k8serrors.IsNotFound(errOrigin) && ev.Type != types.EventDelete {
 		log.Infow("sync ApisixRoute but not found, ignore",
 			zap.String("event_type", ev.Type.String()),
-			zap.String("ApisixRoute", ev.Object.(string)),
+			zap.String("ApisixRoute", event.Key),
 		)
 		c.workqueue.Forget(event)
 		return
