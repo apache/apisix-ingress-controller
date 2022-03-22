@@ -20,7 +20,6 @@ package externalversions
 import (
 	"fmt"
 
-	v2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	v2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	v2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -53,11 +52,7 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=apisix.apache.org, Version=v2beta1
-	case v2beta1.SchemeGroupVersion.WithResource("apisixroutes"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2beta1().ApisixRoutes().Informer()}, nil
-
-		// Group=apisix.apache.org, Version=v2beta2
+	// Group=apisix.apache.org, Version=v2beta2
 	case v2beta2.SchemeGroupVersion.WithResource("apisixroutes"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2beta2().ApisixRoutes().Informer()}, nil
 

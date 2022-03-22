@@ -219,7 +219,6 @@ func (c *Controller) initWhenStartLeading() {
 	)
 	c.secretLister = kubeFactory.Core().V1().Secrets().Lister()
 	c.apisixRouteLister = kube.NewApisixRouteLister(
-		apisixFactory.Apisix().V2beta1().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2beta2().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
 	)
@@ -253,8 +252,6 @@ func (c *Controller) initWhenStartLeading() {
 	c.gatewayInformer = gatewayFactory.Gateway().V1alpha2().Gateways().Informer()
 
 	switch c.cfg.Kubernetes.ApisixRouteVersion {
-	case config.ApisixRouteV2beta1:
-		apisixRouteInformer = apisixFactory.Apisix().V2beta1().ApisixRoutes().Informer()
 	case config.ApisixRouteV2beta2:
 		apisixRouteInformer = apisixFactory.Apisix().V2beta2().ApisixRoutes().Informer()
 	case config.ApisixRouteV2beta3:

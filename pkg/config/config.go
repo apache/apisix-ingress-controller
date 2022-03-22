@@ -51,8 +51,6 @@ const (
 	// WARNING: ingress.extensions/v1beta1 is deprecated in v1.14+, and will be unavilable
 	// in v1.22.
 	IngressExtensionsV1beta1 = "extensions/v1beta1"
-	// ApisixRouteV2beta1 represents apisixroute.apisix.apache.org/v2beta1
-	ApisixRouteV2beta1 = "apisix.apache.org/v2beta1"
 	// ApisixRouteV2beta2 represents apisixroute.apisix.apache.org/v2beta2
 	ApisixRouteV2beta2 = "apisix.apache.org/v2beta2"
 	// ApisixRouteV2beta3 represents apisixroute.apisix.apache.org/v2beta3

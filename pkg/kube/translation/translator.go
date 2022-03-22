@@ -22,7 +22,6 @@ import (
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	configv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
@@ -65,12 +64,6 @@ type Translator interface {
 	// TranslateIngress composes a couple of APISIX Routes and upstreams according
 	// to the given Ingress resource.
 	TranslateIngress(kube.Ingress) (*TranslateContext, error)
-	// TranslateRouteV2beta1 translates the configv2beta1.ApisixRoute object into several Route
-	// and Upstream resources.
-	TranslateRouteV2beta1(*configv2beta1.ApisixRoute) (*TranslateContext, error)
-	// TranslateRouteV2beta1NotStrictly translates the configv2beta1.ApisixRoute object into several Route,
-	// and Upstream resources not strictly, only used for delete event.
-	TranslateRouteV2beta1NotStrictly(*configv2beta1.ApisixRoute) (*TranslateContext, error)
 	// TranslateRouteV2beta2 translates the configv2beta2.ApisixRoute object into several Route,
 	// and Upstream resources.
 	TranslateRouteV2beta2(*configv2beta2.ApisixRoute) (*TranslateContext, error)
