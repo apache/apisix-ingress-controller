@@ -65,14 +65,14 @@ In such a case, you may need to apply these CRDs by yourself.
 kubectl apply -k samples/deploy/crd/
 ```
 
-### 8. Why apisix-ingress-controller reports similar errors when running: no matches for kind "ApisixRoute" in version "apisix.apache.org/v2beta1"
+### 8. Why apisix-ingress-controller reports similar errors when running: no matches for kind "ApisixRoute" in version "apisix.apache.org/v2beta3"
 
-The version `v2beta1` is the newest version of resource `ApisixRoute`. You need to check if the CRD definition file is up to date.
+The version `v2beta3` is the newest version of resource `ApisixRoute`. You need to check if the CRD definition file is up to date.
 
 ```shell
 kubectl get crd apisixroutes.apisix.apache.org -o jsonpath='{ .spec.versions[*].name }' -A
 ```
 
-If you can not find `v2beta1` in `ApisixRoute` definition file. Please apply the latest version of `ApisixRoute`.
+If you can not find `v2beta3` in `ApisixRoute` definition file. Please apply the latest version of `ApisixRoute`.
 
 Ref to FAQ #7.
