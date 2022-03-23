@@ -27,7 +27,7 @@ import (
 )
 
 type ip struct {
-	IP string `json:"ip"`
+	IP string `json:"origin"`
 }
 
 var _ = ginkgo.Describe("single-route", func() {
@@ -71,6 +71,7 @@ spec:
 		var placeholder ip
 		err = json.Unmarshal([]byte(body), &placeholder)
 		assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling IP")
+		assert.NotEqual(ginkgo.GinkgoT(), ip{}, placeholder)
 		// It's not our focus point to check the IP address returned by httpbin,
 		// so here skip the IP address validation.
 	})
@@ -124,6 +125,7 @@ spec:
 		var placeholder ip
 		err = json.Unmarshal([]byte(body), &placeholder)
 		assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling IP")
+		assert.NotEqual(ginkgo.GinkgoT(), ip{}, placeholder)
 
 		body = s.NewAPISIXClient().GET("/json").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
 		var dummy map[string]interface{}
@@ -228,6 +230,7 @@ spec:
 		var placeholder ip
 		err = json.Unmarshal([]byte(body), &placeholder)
 		assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling IP")
+		assert.NotEqual(ginkgo.GinkgoT(), ip{}, placeholder)
 		// It's not our focus point to check the IP address returned by httpbin,
 		// so here skip the IP address validation.
 	})

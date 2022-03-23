@@ -26,7 +26,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -407,9 +406,11 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	var ingressAPISIXDeployment string
 	label := fmt.Sprintf("apisix.ingress.watch=%s", s.namespace)
 	if s.opts.EnableWebhooks {
-		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, label, s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
+		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace,
+			s.FormatNamespaceLabel(label), s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
 	} else {
-		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, label, s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
+		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace,
+			s.FormatNamespaceLabel(label), s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
 	}
 
 	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment)
@@ -504,7 +505,7 @@ func (s *Scaffold) WaitGetLeaderLease() (*coordinationv1.Lease, error) {
 
 // GetIngressPodDetails returns a batch of pod description
 // about apisix-ingress-controller.
-func (s *Scaffold) GetIngressPodDetails() ([]v1.Pod, error) {
+func (s *Scaffold) GetIngressPodDetails() ([]corev1.Pod, error) {
 	return k8s.ListPodsE(s.t, s.kubectlOptions, metav1.ListOptions{
 		LabelSelector: "app=ingress-apisix-controller-deployment-e2e-test",
 	})

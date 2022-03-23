@@ -103,6 +103,15 @@ func (s *Scaffold) newHTTPBIN() (*corev1.Service, error) {
 	return svc, nil
 }
 
+func (s *Scaffold) NewHTTPBINWithNamespace(namespace string) (*corev1.Service, error) {
+	originalNamespace := s.kubectlOptions.Namespace
+	s.kubectlOptions.Namespace = namespace
+	defer func() {
+		s.kubectlOptions.Namespace = originalNamespace
+	}()
+	return s.newHTTPBIN()
+}
+
 // ScaleHTTPBIN scales the number of HTTPBIN pods to desired.
 func (s *Scaffold) ScaleHTTPBIN(desired int) error {
 	httpbinDeployment := fmt.Sprintf(s.FormatRegistry(_httpbinDeploymentTemplate), desired)
