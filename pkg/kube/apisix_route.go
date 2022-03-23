@@ -17,17 +17,13 @@ package kube
 import (
 	"errors"
 
-	configv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta1"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
-	listersv2beta1 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta1"
 	listersv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta2"
 	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
 )
 
 const (
-	// ApisixRouteV2beta1 represents the ApisixRoute in apisix.apache.org/v2beta1 group version
-	ApisixRouteV2beta1 = "apisix.apache.org/v2beta1"
 	// ApisixRouteV2beta2 represents the ApisixRoute in apisix.apache.org/v2beta3 group version
 	ApisixRouteV2beta2 = "apisix.apache.org/v2beta2"
 	// ApisixRouteV2beta3 represents the ApisixRoute in apisix.apache.org/v2beta3 group version
@@ -37,8 +33,6 @@ const (
 // ApisixRouteLister is an encapsulation for the lister of ApisixRoute,
 // it aims at to be compatible with different ApisixRoute versions.
 type ApisixRouteLister interface {
-	// V2beta1 gets the ApisixRoute in apisix.apache.org/v2beta1.
-	V2beta1(string, string) (ApisixRoute, error)
 	// V2beta2 gets the ApisixRoute in apisix.apache.org/v2beta3.
 	V2beta2(string, string) (ApisixRoute, error)
 	// V2beta3 gets the ApisixRoute in apisix.apache.org/v2beta3.
@@ -57,9 +51,6 @@ type ApisixRoute interface {
 	// GroupVersion returns the api group version of the
 	// real ApisixRoute.
 	GroupVersion() string
-	// V2beta1 returns the ApisixRoute in apisix.apache.org/v2beta1, the real
-	// ApisixRoute must be in this group version, otherwise will panic.
-	V2beta1() *configv2beta1.ApisixRoute
 	// V2beta2 returns the ApisixRoute in apisix.apache.org/v2beta3, the real
 	// ApisixRoute must be in this group version, otherwise will panic.
 	V2beta2() *configv2beta2.ApisixRoute
@@ -81,17 +72,10 @@ type ApisixRouteEvent struct {
 
 type apisixRoute struct {
 	groupVersion string
-	v2beta1      *configv2beta1.ApisixRoute
 	v2beta2      *configv2beta2.ApisixRoute
 	v2beta3      *configv2beta3.ApisixRoute
 }
 
-func (ar *apisixRoute) V2beta1() *configv2beta1.ApisixRoute {
-	if ar.groupVersion != ApisixRouteV2beta1 {
-		panic("not a apisix.apache.org/v2beta1 route")
-	}
-	return ar.v2beta1
-}
 func (ar *apisixRoute) V2beta2() *configv2beta2.ApisixRoute {
 	if ar.groupVersion != ApisixRouteV2beta2 {
 		panic("not a apisix.apache.org/v2beta3 route")
@@ -111,29 +95,15 @@ func (ar *apisixRoute) GroupVersion() string {
 }
 
 func (ar *apisixRoute) ResourceVersion() string {
-	if ar.groupVersion == ApisixRouteV2beta1 {
-		return ar.V2beta1().ResourceVersion
-	} else if ar.groupVersion == ApisixRouteV2beta2 {
+	if ar.groupVersion == ApisixRouteV2beta2 {
 		return ar.V2beta2().ResourceVersion
 	}
 	return ar.V2beta3().ResourceVersion
 }
 
 type apisixRouteLister struct {
-	v2beta1Lister listersv2beta1.ApisixRouteLister
 	v2beta2Lister listersv2beta2.ApisixRouteLister
 	v2beta3Lister listersv2beta3.ApisixRouteLister
-}
-
-func (l *apisixRouteLister) V2beta1(namespace, name string) (ApisixRoute, error) {
-	ar, err := l.v2beta1Lister.ApisixRoutes(namespace).Get(name)
-	if err != nil {
-		return nil, err
-	}
-	return &apisixRoute{
-		groupVersion: ApisixRouteV2beta1,
-		v2beta1:      ar,
-	}, nil
 }
 
 func (l *apisixRouteLister) V2beta2(namespace, name string) (ApisixRoute, error) {
@@ -162,11 +132,6 @@ func (l *apisixRouteLister) V2beta3(namespace, name string) (ApisixRoute, error)
 // type of obj.
 func MustNewApisixRoute(obj interface{}) ApisixRoute {
 	switch ar := obj.(type) {
-	case *configv2beta1.ApisixRoute:
-		return &apisixRoute{
-			groupVersion: ApisixRouteV2beta1,
-			v2beta1:      ar,
-		}
 	case *configv2beta2.ApisixRoute:
 		return &apisixRoute{
 			groupVersion: ApisixRouteV2beta2,
@@ -187,11 +152,6 @@ func MustNewApisixRoute(obj interface{}) ApisixRoute {
 // type assertion fails.
 func NewApisixRoute(obj interface{}) (ApisixRoute, error) {
 	switch ar := obj.(type) {
-	case *configv2beta1.ApisixRoute:
-		return &apisixRoute{
-			groupVersion: ApisixRouteV2beta1,
-			v2beta1:      ar,
-		}, nil
 	case *configv2beta2.ApisixRoute:
 		return &apisixRoute{
 			groupVersion: ApisixRouteV2beta2,
@@ -207,9 +167,8 @@ func NewApisixRoute(obj interface{}) (ApisixRoute, error) {
 	}
 }
 
-func NewApisixRouteLister(v2beta1 listersv2beta1.ApisixRouteLister, v2beta2 listersv2beta2.ApisixRouteLister, v2beta3 listersv2beta3.ApisixRouteLister) ApisixRouteLister {
+func NewApisixRouteLister(v2beta2 listersv2beta2.ApisixRouteLister, v2beta3 listersv2beta3.ApisixRouteLister) ApisixRouteLister {
 	return &apisixRouteLister{
-		v2beta1Lister: v2beta1,
 		v2beta2Lister: v2beta2,
 		v2beta3Lister: v2beta3,
 	}

@@ -34,7 +34,7 @@ deny[msg] {
 # and apisix.apache.org/v2beta1 - use apisix.apache.org/v2beta3 instead
 _deny = msg {
 	input.kind == "ApisixRoute"
-	apis := ["apisix.apache.org/v1", "apisix.apache.org/v2alpha1", "apisix.apache.org/v2beta1"]
+	apis := ["apisix.apache.org/v1", "apisix.apache.org/v2alpha1", "apisix.apache.org/v2beta1", "apisix.apache.org/v2beta2"]
 	input.apiVersion == apis[_]
 	msg := sprintf("%s/%s: API %s has been deprecated, use apisix.apache.org/v2beta3 instead.", [input.kind, input.metadata.name, input.apiVersion])
 }
