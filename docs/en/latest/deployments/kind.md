@@ -30,7 +30,7 @@ This document explains how to install Ingress APISIX on [kind](https://kind.sigs
 
 ## Create Cluster
 
-Create a kind cluster with `extraPortMappings` and `node-labels`. You can click this [link](https://kind.sigs.k8s.io/docs/user/ingress/#create-cluster) for more infomation.
+Create a kind cluster with `extraPortMappings` and `node-labels`. You can click this [link](https://kind.sigs.k8s.io/docs/user/ingress/#create-cluster) for more information.
 
 Command as follows for referrence:
 
