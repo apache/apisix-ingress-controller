@@ -1,5 +1,5 @@
 ---
-title: Install Ingress APISIX on Minikube
+title: Install Ingress APISIX on Kind
 ---
 
 <!--
