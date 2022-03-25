@@ -25,14 +25,14 @@ This document explains how to install Ingress APISIX on [kind](https://kind.sigs
 
 ## Prerequisites
 
-* Install [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation).
+* Install [kind](https://kind.sigs.k8s.io/docs/user/quick-start/).
 * Install [Helm](https://helm.sh/).
 
 ## Create Cluster
 
 The quickest way to get a taste is to run command as follows and then go to the next section
 
-``` shell
+```shell
 kind create cluster
 ```
 
