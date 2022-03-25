@@ -30,7 +30,7 @@ This document explains how to install Ingress APISIX on [kind](https://kind.sigs
 
 ## Create Cluster
 
-The quickest way to get a taste is to run command as follows and then go to the next section
+The quickest way to get a taste is to run command as follows and then go to the next section.
 
 ```shell
 kind create cluster
