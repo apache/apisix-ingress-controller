@@ -30,31 +30,13 @@ This document explains how to install Ingress APISIX on [kind](https://kind.sigs
 
 ## Create Cluster
 
-Create a kind cluster with `extraPortMappings` and `node-labels`. You can click this [link](https://kind.sigs.k8s.io/docs/user/ingress/#create-cluster) for more information.
+The quickest way to get a taste is to run command as follows and then go to the next section
 
-Command as follows for reference:
-
-```shell
-cat <<EOF | kind create cluster --config=-
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-- role: control-plane
-  kubeadmConfigPatches:
-  - |
-    kind: InitConfiguration
-    nodeRegistration:
-      kubeletExtraArgs:
-        node-labels: "ingress-ready=true"
-  extraPortMappings:
-  - containerPort: 80
-    hostPort: 80
-    protocol: TCP
-  - containerPort: 443
-    hostPort: 443
-    protocol: TCP
-EOF
+``` shell
+kind create cluster
 ```
+
+You can click this [link](https://kind.sigs.k8s.io/docs/user/ingress/#create-cluster) for more information.
 
 ## Install APISIX and apisix-ingress-controller
 
