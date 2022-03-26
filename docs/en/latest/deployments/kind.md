@@ -25,15 +25,13 @@ This document explains how to install Ingress APISIX on [kind](https://kind.sigs
 
 ## Prerequisites
 
-* Install [Docker](https://docs.docker.com/engine/install/).
-* Install [Go](https://go.dev/doc/install).
 * Install [kind](https://kind.sigs.k8s.io/docs/user/quick-start/).
 * Install [Helm](https://helm.sh/).
 * Install [kubectl](https://kubernetes.io/docs/tasks/tools/).
 
 If you encounter some strange problems, please consider whether it is a version compatibility issue.
 
-The versions of Go(==1.18), Docker(==20.10.14), kind(==v0.12.0), kubectl(==v1.23.5) and helm(==v3.8.1) used in this document are confirmed feasible.
+The versions of kind(==v0.12.0), kubectl(==v1.23.5) and helm(==v3.8.1) used in this document are confirmed feasible.
 
 ## Create Cluster
 
