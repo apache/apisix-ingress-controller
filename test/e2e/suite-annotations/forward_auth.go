@@ -19,13 +19,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	"github.com/onsi/ginkgo"
-
 	"github.com/stretchr/testify/assert"
+
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.FDescribe("froward-auth annotations", func() {
+var _ = ginkgo.Describe("froward-auth annotations", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.JustBeforeEach(func() {
 		// create an external auth service
@@ -55,10 +55,10 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/uri: %s
-    k8s.apisix.apache.org/request-headers: Authorization
-    k8s.apisix.apache.org/upstream-headers: X-User-ID
-    k8s.apisix.apache.org/client-headers: Location
+    k8s.apisix.apache.org/auth-uri: %s
+    k8s.apisix.apache.org/auth-request-headers: Authorization
+    k8s.apisix.apache.org/auth-upstream-headers: X-User-ID
+    k8s.apisix.apache.org/auth-client-headers: Location
   name: ingress-v1
 spec:
   rules:
@@ -81,9 +81,45 @@ spec:
 		resp.Status(http.StatusOK)
 		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").WithHeader("Authorization", "321").Expect()
 		resp.Status(http.StatusOK)
-		// resp.Headers().ContainsMap(map[string]interface{}{
-		// 	"X-User-ID": "i-am-user",
-		// })
+		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusForbidden)
+		resp.Headers().ContainsMap(map[string]interface{}{
+			"Location": []string{"http://example.com/auth"},
+		})
+	})
+
+	ginkgo.It("enable in ingress networking/v1", func() {
+		backendSvc, backendPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/auth-uri: %s
+    k8s.apisix.apache.org/auth-request-headers: Authorization
+    k8s.apisix.apache.org/auth-upstream-headers: X-User-ID
+    k8s.apisix.apache.org/auth-client-headers: Location
+  name: ingress-v1beta1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          serviceName: %s
+          servicePort: %d
+`, "http://127.0.0.1:9080/auth", backendSvc, backendPort[0])
+		err := s.CreateResourceFromString(ing)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		time.Sleep(5 * time.Second)
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").WithHeader("Authorization", "123").Expect()
+		resp.Status(http.StatusOK)
+		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").WithHeader("Authorization", "321").Expect()
+		resp.Status(http.StatusOK)
 		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
 		resp.Status(http.StatusForbidden)
 		resp.Headers().ContainsMap(map[string]interface{}{
@@ -99,10 +135,10 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/uri: %s
-    k8s.apisix.apache.org/request-headers: Authorization
-    k8s.apisix.apache.org/upstream-headers: X-User-ID
-    k8s.apisix.apache.org/client-headers: Location
+    k8s.apisix.apache.org/auth-uri: %s
+    k8s.apisix.apache.org/auth-request-headers: Authorization
+    k8s.apisix.apache.org/auth-upstream-headers: X-User-ID
+    k8s.apisix.apache.org/auth-client-headers: Location
   name: ingress-extensions-v1beta1
 spec:
   rules:
@@ -112,10 +148,12 @@ spec:
       - path: /ip
         pathType: Exact
         backend:
-		  serviceName: %s
+          serviceName: %s
           servicePort: %d
 `, "http://127.0.0.1:9080/auth", backendSvc, backendPort[0])
 		err := s.CreateResourceFromString(ing)
+		ginkgo.GinkgoT().Logf("ingress: %s", ing)
+		ginkgo.GinkgoT().Logf("create ingress: %v", err)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
@@ -123,9 +161,6 @@ spec:
 		resp.Status(http.StatusOK)
 		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").WithHeader("Authorization", "321").Expect()
 		resp.Status(http.StatusOK)
-		// resp.Headers().ContainsMap(map[string]interface{}{
-		// 	"X-User-ID": "i-am-user",
-		// })
 		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
 		resp.Status(http.StatusForbidden)
 		resp.Headers().ContainsMap(map[string]interface{}{

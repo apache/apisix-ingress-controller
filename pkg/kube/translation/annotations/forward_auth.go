@@ -19,11 +19,11 @@ import (
 )
 
 const (
-	_forwardAuthURI             = AnnotationsPrefix + "uri"
-	_forwardAuthSSLVerify       = AnnotationsPrefix + "ssl-verify"
-	_forwardAuthRequestHeaders  = AnnotationsPrefix + "request-headers"
-	_forwardAuthUpstreamHeaders = AnnotationsPrefix + "upstream-headers"
-	_forwardAuthClientHeaders   = AnnotationsPrefix + "client-headers"
+	_forwardAuthURI             = AnnotationsPrefix + "auth-uri"
+	_forwardAuthSSLVerify       = AnnotationsPrefix + "auth-ssl-verify"
+	_forwardAuthRequestHeaders  = AnnotationsPrefix + "auth-request-headers"
+	_forwardAuthUpstreamHeaders = AnnotationsPrefix + "auth-upstream-headers"
+	_forwardAuthClientHeaders   = AnnotationsPrefix + "auth-client-headers"
 )
 
 type forwardAuth struct{}
