@@ -20,6 +20,7 @@ package versioned
 import (
 	"fmt"
 
+	apisixv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2"
 	apisixv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta2"
 	apisixv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta3"
 	discovery "k8s.io/client-go/discovery"
@@ -29,6 +30,7 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
+	ApisixV2() apisixv2.ApisixV2Interface
 	ApisixV2beta3() apisixv2beta3.ApisixV2beta3Interface
 	ApisixV2beta2() apisixv2beta2.ApisixV2beta2Interface
 }
@@ -37,8 +39,14 @@ type Interface interface {
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
+	apisixV2      *apisixv2.ApisixV2Client
 	apisixV2beta3 *apisixv2beta3.ApisixV2beta3Client
 	apisixV2beta2 *apisixv2beta2.ApisixV2beta2Client
+}
+
+// ApisixV2 retrieves the ApisixV2Client
+func (c *Clientset) ApisixV2() apisixv2.ApisixV2Interface {
+	return c.apisixV2
 }
 
 // ApisixV2beta3 retrieves the ApisixV2beta3Client
@@ -72,6 +80,10 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
+	cs.apisixV2, err = apisixv2.NewForConfig(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
 	cs.apisixV2beta3, err = apisixv2beta3.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -92,6 +104,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
+	cs.apisixV2 = apisixv2.NewForConfigOrDie(c)
 	cs.apisixV2beta3 = apisixv2beta3.NewForConfigOrDie(c)
 	cs.apisixV2beta2 = apisixv2beta2.NewForConfigOrDie(c)
 
@@ -102,6 +115,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
+	cs.apisixV2 = apisixv2.New(c)
 	cs.apisixV2beta3 = apisixv2beta3.New(c)
 	cs.apisixV2beta2 = apisixv2beta2.New(c)
 
