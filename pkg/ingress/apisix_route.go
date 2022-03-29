@@ -315,12 +315,10 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 func (c *apisixRouteController) isApisixRouteEffective(ar kube.ApisixRoute) bool {
 	var class string
 
-	if ar.GroupVersion() == kube.ApisixRouteV1 {
-		class = ar.V1().Spec.IngressClassName
-	} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
-		class = ar.V2alpha1().Spec.IngressClassName
-	} else if ar.GroupVersion() == kube.ApisixRouteV2beta1 {
-		class = ar.V2beta1().Spec.IngressClassName
+	if ar.GroupVersion() == kube.ApisixRouteV2beta2 {
+		class = ar.V2beta2().Spec.IngressClassName
+	} else if ar.GroupVersion() == kube.ApisixRouteV2beta3 {
+		class = ar.V2beta3().Spec.IngressClassName
 	} else {
 		log.Errorf("not support group version: %s", ar.GroupVersion())
 		return false
