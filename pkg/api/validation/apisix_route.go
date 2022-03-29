@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -67,6 +68,18 @@ var ApisixRouteValidator = kwhvalidating.ValidatorFunc(
 				}
 			}
 		case *v2beta3.ApisixRoute:
+			spec = ar.Spec
+
+			for _, h := range ar.Spec.HTTP {
+				for _, p := range h.Plugins {
+					if p.Enable {
+						plugins = append(plugins, apisixRoutePlugin{
+							p.Name, p.Config,
+						})
+					}
+				}
+			}
+		case *v2.ApisixRoute:
 			spec = ar.Spec
 
 			for _, h := range ar.Spec.HTTP {

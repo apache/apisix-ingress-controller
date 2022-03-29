@@ -221,6 +221,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixRouteLister = kube.NewApisixRouteLister(
 		apisixFactory.Apisix().V2beta2().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2().ApisixRoutes().Lister(),
 	)
 	c.apisixUpstreamLister = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister()
 	c.apisixTlsLister = apisixFactory.Apisix().V2beta3().ApisixTlses().Lister()
@@ -256,6 +257,8 @@ func (c *Controller) initWhenStartLeading() {
 		apisixRouteInformer = apisixFactory.Apisix().V2beta2().ApisixRoutes().Informer()
 	case config.ApisixRouteV2beta3:
 		apisixRouteInformer = apisixFactory.Apisix().V2beta3().ApisixRoutes().Informer()
+	case config.ApisixRouteV2:
+		apisixRouteInformer = apisixFactory.Apisix().V2().ApisixRoutes().Informer()
 	}
 
 	c.namespaceInformer = kubeFactory.Core().V1().Namespaces().Informer()

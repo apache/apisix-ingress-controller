@@ -20,7 +20,7 @@
 package v2beta2
 
 import (
-	v2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -97,7 +97,7 @@ func (in *ApisixRouteHTTP) DeepCopyInto(out *ApisixRouteHTTP) {
 	in.Match.DeepCopyInto(&out.Match)
 	if in.Backends != nil {
 		in, out := &in.Backends, &out.Backends
-		*out = make([]v2beta3.ApisixRouteHTTPBackend, len(*in))
+		*out = make([]v2.ApisixRouteHTTPBackend, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -148,7 +148,7 @@ func (in *ApisixRouteHTTPMatch) DeepCopyInto(out *ApisixRouteHTTPMatch) {
 	}
 	if in.NginxVars != nil {
 		in, out := &in.NginxVars, &out.NginxVars
-		*out = make([]v2beta3.ApisixRouteHTTPMatchExpr, len(*in))
+		*out = make([]v2.ApisixRouteHTTPMatchExpr, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

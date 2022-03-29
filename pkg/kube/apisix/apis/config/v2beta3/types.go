@@ -22,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
@@ -67,11 +68,11 @@ type ApisixRouteHTTP struct {
 	// Backends represents potential backends to proxy after the route
 	// rule matched. When number of backends are more than one, traffic-split
 	// plugin in APISIX will be used to split traffic based on the backend weight.
-	Backends         []ApisixRouteHTTPBackend  `json:"backends,omitempty" yaml:"backends,omitempty"`
-	Websocket        bool                      `json:"websocket" yaml:"websocket"`
-	PluginConfigName string                    `json:"plugin_config_name,omitempty" yaml:"plugin_config_name,omitempty"`
-	Plugins          []ApisixRouteHTTPPlugin   `json:"plugins,omitempty" yaml:"plugins,omitempty"`
-	Authentication   ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
+	Backends         []v2.ApisixRouteHTTPBackend `json:"backends,omitempty" yaml:"backends,omitempty"`
+	Websocket        bool                        `json:"websocket" yaml:"websocket"`
+	PluginConfigName string                      `json:"plugin_config_name,omitempty" yaml:"plugin_config_name,omitempty"`
+	Plugins          []ApisixRouteHTTPPlugin     `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Authentication   ApisixRouteAuthentication   `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
 // ApisixRouteHTTPBackend represents a HTTP backend (a Kuberentes Service).
@@ -120,7 +121,7 @@ type ApisixRouteHTTPMatch struct {
 	//     value:
 	//       - "127.0.0.1"
 	//       - "10.0.5.11"
-	NginxVars []ApisixRouteHTTPMatchExpr `json:"exprs,omitempty" yaml:"exprs,omitempty"`
+	NginxVars []v2.ApisixRouteHTTPMatchExpr `json:"exprs,omitempty" yaml:"exprs,omitempty"`
 }
 
 // ApisixRouteHTTPMatchExpr represents a binary route match expression .

@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -33,7 +34,7 @@ var (
 	_errInvalidAddress = errors.New("address is neither IP or CIDR")
 )
 
-func (t *translator) getServiceClusterIPAndPort(backend *configv2beta3.ApisixRouteHTTPBackend, ns string) (string, int32, error) {
+func (t *translator) getServiceClusterIPAndPort(backend *configv2.ApisixRouteHTTPBackend, ns string) (string, int32, error) {
 	svc, err := t.ServiceLister.Services(ns).Get(backend.ServiceName)
 	if err != nil {
 		return "", 0, err
