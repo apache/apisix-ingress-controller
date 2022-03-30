@@ -18,10 +18,11 @@
 package v2
 
 import (
-	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
+
+	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 )
 
 // ApisixUpstreamLister helps list ApisixUpstreams.

@@ -57,6 +57,10 @@ const (
 	ApisixRouteV2beta3 = "apisix.apache.org/v2beta3"
 	// ApisixRouteV2 represents apisixroute.apisix.apache.org/v2
 	ApisixRouteV2 = "apisix.apache.org/v2"
+	// ApisixUpstreamV2beta3 represents apisixupstream.apisix.apache.org/v2beta3
+	ApisixUpstreamV2beta3 = "apisix.apache.org/v2beta3"
+	// ApisixUpstreamV2 represents apisixroute.apisix.apache.org/v2
+	ApisixUpstreamV2 = "apisix.apache.org/v2"
 
 	_minimalResyncInterval = 30 * time.Second
 
@@ -83,16 +87,17 @@ type Config struct {
 
 // KubernetesConfig contains all Kubernetes related config items.
 type KubernetesConfig struct {
-	Kubeconfig          string             `json:"kubeconfig" yaml:"kubeconfig"`
-	ResyncInterval      types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
-	AppNamespaces       []string           `json:"app_namespaces" yaml:"app_namespaces"`
-	NamespaceSelector   []string           `json:"namespace_selector" yaml:"namespace_selector"`
-	ElectionID          string             `json:"election_id" yaml:"election_id"`
-	IngressClass        string             `json:"ingress_class" yaml:"ingress_class"`
-	IngressVersion      string             `json:"ingress_version" yaml:"ingress_version"`
-	WatchEndpointSlices bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
-	ApisixRouteVersion  string             `json:"apisix_route_version" yaml:"apisix_route_version"`
-	EnableGatewayAPI    bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
+	Kubeconfig            string             `json:"kubeconfig" yaml:"kubeconfig"`
+	ResyncInterval        types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
+	AppNamespaces         []string           `json:"app_namespaces" yaml:"app_namespaces"`
+	NamespaceSelector     []string           `json:"namespace_selector" yaml:"namespace_selector"`
+	ElectionID            string             `json:"election_id" yaml:"election_id"`
+	IngressClass          string             `json:"ingress_class" yaml:"ingress_class"`
+	IngressVersion        string             `json:"ingress_version" yaml:"ingress_version"`
+	WatchEndpointSlices   bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
+	ApisixRouteVersion    string             `json:"apisix_route_version" yaml:"apisix_route_version"`
+	ApisixUpstreamVersion string             `json:"apisix_upstream_version" yaml:"apisix_upstream_version"`
+	EnableGatewayAPI      bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
 }
 
 // APISIXConfig contains all APISIX related config items.
