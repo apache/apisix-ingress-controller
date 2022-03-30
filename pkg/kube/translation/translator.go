@@ -22,6 +22,7 @@ import (
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
@@ -76,6 +77,12 @@ type Translator interface {
 	// TranslateRouteV2beta3NotStrictly translates the configv2beta3.ApisixRoute object into several Route,
 	// Upstream and PluginConfig resources not strictly, only used for delete event.
 	TranslateRouteV2beta3NotStrictly(*configv2beta3.ApisixRoute) (*TranslateContext, error)
+	// TranslateRouteV2 translates the configv2.ApisixRoute object into several Route,
+	// Upstream and PluginConfig resources.
+	TranslateRouteV2(*configv2.ApisixRoute) (*TranslateContext, error)
+	// TranslateRouteV2NotStrictly translates the configv2.ApisixRoute object into several Route,
+	// Upstream and PluginConfig resources not strictly, only used for delete event.
+	TranslateRouteV2NotStrictly(*configv2.ApisixRoute) (*TranslateContext, error)
 	// TranslateSSL translates the configv2beta3.ApisixTls object into the APISIX SSL resource.
 	TranslateSSL(*configv2beta3.ApisixTls) (*apisixv1.Ssl, error)
 	// TranslateClusterConfig translates the configv2beta3.ApisixClusterConfig object into the APISIX

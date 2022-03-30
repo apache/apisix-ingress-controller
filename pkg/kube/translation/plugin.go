@@ -17,6 +17,7 @@ package translation
 import (
 	"errors"
 
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -28,7 +29,7 @@ var (
 )
 
 func (t *translator) translateTrafficSplitPlugin(ctx *TranslateContext, ns string, defaultBackendWeight int,
-	backends []configv2beta3.ApisixRouteHTTPBackend) (*apisixv1.TrafficSplitConfig, error) {
+	backends []configv2.ApisixRouteHTTPBackend) (*apisixv1.TrafficSplitConfig, error) {
 	var (
 		wups []apisixv1.TrafficSplitConfigRuleWeightedUpstream
 	)

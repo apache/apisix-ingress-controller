@@ -151,7 +151,7 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *TranslateContext, ar *config
 
 		var exprs [][]apisixv1.StringOrSlice
 		if part.Match.NginxVars != nil {
-			exprs, err = t.translateRouteMatchExprsV2beta2(part.Match.NginxVars)
+			exprs, err = t.translateRouteMatchExprs(part.Match.NginxVars)
 			if err != nil {
 				log.Errorw("ApisixRoute with bad nginxVars",
 					zap.Error(err),
@@ -188,7 +188,7 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *TranslateContext, ar *config
 			if backend.Weight != nil {
 				weight = *backend.Weight
 			}
-			backendPoints := make([]configv2beta3.ApisixRouteHTTPBackend, 0)
+			backendPoints := make([]configv2.ApisixRouteHTTPBackend, 0)
 			backendPoints = append(backendPoints, backends...)
 			plugin, err := t.translateTrafficSplitPlugin(ctx, ar.Namespace, weight, backendPoints)
 			if err != nil {
@@ -225,7 +225,7 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 		backend := backends[0]
 		backends = backends[1:]
 
-		svcClusterIP, svcPort, err := t.getServiceClusterIPAndPortV2beta3(&backend, ar.Namespace)
+		svcClusterIP, svcPort, err := t.getServiceClusterIPAndPort(&backend, ar.Namespace)
 		if err != nil {
 			log.Errorw("failed to get service port in backend",
 				zap.Any("backend", backend),
@@ -279,7 +279,7 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 
 		var exprs [][]apisixv1.StringOrSlice
 		if part.Match.NginxVars != nil {
-			exprs, err = t.translateRouteMatchExprsV2beta3(part.Match.NginxVars)
+			exprs, err = t.translateRouteMatchExprs(part.Match.NginxVars)
 			if err != nil {
 				log.Errorw("ApisixRoute with bad nginxVars",
 					zap.Error(err),
@@ -355,7 +355,7 @@ func (t *translator) translateHTTPRouteV2(ctx *TranslateContext, ar *configv2.Ap
 		backend := backends[0]
 		backends = backends[1:]
 
-		svcClusterIP, svcPort, err := t.getServiceClusterIPAndPortV2(&backend, ar.Namespace)
+		svcClusterIP, svcPort, err := t.getServiceClusterIPAndPort(&backend, ar.Namespace)
 		if err != nil {
 			log.Errorw("failed to get service port in backend",
 				zap.Any("backend", backend),
@@ -409,7 +409,7 @@ func (t *translator) translateHTTPRouteV2(ctx *TranslateContext, ar *configv2.Ap
 
 		var exprs [][]apisixv1.StringOrSlice
 		if part.Match.NginxVars != nil {
-			exprs, err = t.translateRouteMatchExprsV2(part.Match.NginxVars)
+			exprs, err = t.translateRouteMatchExprs(part.Match.NginxVars)
 			if err != nil {
 				log.Errorw("ApisixRoute with bad nginxVars",
 					zap.Error(err),
@@ -472,207 +472,7 @@ func (t *translator) translateHTTPRouteV2(ctx *TranslateContext, ar *configv2.Ap
 	return nil
 }
 
-func (t *translator) translateRouteMatchExprsV2beta2(nginxVars []configv2beta2.ApisixRouteHTTPMatchExpr) ([][]apisixv1.StringOrSlice, error) {
-	var (
-		vars [][]apisixv1.StringOrSlice
-		op   string
-	)
-	for _, expr := range nginxVars {
-		var (
-			invert bool
-			subj   string
-			this   []apisixv1.StringOrSlice
-		)
-		if expr.Subject.Name == "" && expr.Subject.Scope != _const.ScopePath {
-			return nil, errors.New("empty subject name")
-		}
-		switch expr.Subject.Scope {
-		case _const.ScopeQuery:
-			subj = "arg_" + strings.ToLower(expr.Subject.Name)
-		case _const.ScopeHeader:
-			name := strings.ToLower(expr.Subject.Name)
-			name = strings.ReplaceAll(name, "-", "_")
-			subj = "http_" + name
-		case _const.ScopeCookie:
-			subj = "cookie_" + expr.Subject.Name
-		case _const.ScopePath:
-			subj = "uri"
-		default:
-			return nil, errors.New("bad subject name")
-		}
-		if expr.Subject.Scope == "" {
-			return nil, errors.New("empty nginxVar subject")
-		}
-		this = append(this, apisixv1.StringOrSlice{
-			StrVal: subj,
-		})
-
-		switch expr.Op {
-		case _const.OpEqual:
-			op = "=="
-		case _const.OpGreaterThan:
-			op = ">"
-		// TODO Implement "<=", ">=" operators after the
-		// lua-resty-expr supports it. See
-		// https://github.com/api7/lua-resty-expr/issues/28
-		// for details.
-		//case configv2alpha1.OpGreaterThanEqual:
-		//	invert = true
-		//	op = "<"
-		case _const.OpIn:
-			op = "in"
-		case _const.OpLessThan:
-			op = "<"
-		//case configv2alpha1.OpLessThanEqual:
-		//	invert = true
-		//	op = ">"
-		case _const.OpNotEqual:
-			op = "~="
-		case _const.OpNotIn:
-			invert = true
-			op = "in"
-		case _const.OpRegexMatch:
-			op = "~~"
-		case _const.OpRegexMatchCaseInsensitive:
-			op = "~*"
-		case _const.OpRegexNotMatch:
-			invert = true
-			op = "~~"
-		case _const.OpRegexNotMatchCaseInsensitive:
-			invert = true
-			op = "~*"
-		default:
-			return nil, errors.New("unknown operator")
-		}
-		if invert {
-			this = append(this, apisixv1.StringOrSlice{
-				StrVal: "!",
-			})
-		}
-		this = append(this, apisixv1.StringOrSlice{
-			StrVal: op,
-		})
-		if expr.Op == _const.OpIn || expr.Op == _const.OpNotIn {
-			if expr.Set == nil {
-				return nil, errors.New("empty set value")
-			}
-			this = append(this, apisixv1.StringOrSlice{
-				SliceVal: expr.Set,
-			})
-		} else if expr.Value != nil {
-			this = append(this, apisixv1.StringOrSlice{
-				StrVal: *expr.Value,
-			})
-		} else {
-			return nil, errors.New("neither set nor value is provided")
-		}
-		vars = append(vars, this)
-	}
-
-	return vars, nil
-}
-
-func (t *translator) translateRouteMatchExprsV2beta3(nginxVars []configv2beta3.ApisixRouteHTTPMatchExpr) ([][]apisixv1.StringOrSlice, error) {
-	var (
-		vars [][]apisixv1.StringOrSlice
-		op   string
-	)
-	for _, expr := range nginxVars {
-		var (
-			invert bool
-			subj   string
-			this   []apisixv1.StringOrSlice
-		)
-		if expr.Subject.Name == "" && expr.Subject.Scope != _const.ScopePath {
-			return nil, errors.New("empty subject name")
-		}
-		switch expr.Subject.Scope {
-		case _const.ScopeQuery:
-			subj = "arg_" + strings.ToLower(expr.Subject.Name)
-		case _const.ScopeHeader:
-			name := strings.ToLower(expr.Subject.Name)
-			name = strings.ReplaceAll(name, "-", "_")
-			subj = "http_" + name
-		case _const.ScopeCookie:
-			subj = "cookie_" + expr.Subject.Name
-		case _const.ScopePath:
-			subj = "uri"
-		default:
-			return nil, errors.New("bad subject name")
-		}
-		if expr.Subject.Scope == "" {
-			return nil, errors.New("empty nginxVar subject")
-		}
-		this = append(this, apisixv1.StringOrSlice{
-			StrVal: subj,
-		})
-
-		switch expr.Op {
-		case _const.OpEqual:
-			op = "=="
-		case _const.OpGreaterThan:
-			op = ">"
-		// TODO Implement "<=", ">=" operators after the
-		// lua-resty-expr supports it. See
-		// https://github.com/api7/lua-resty-expr/issues/28
-		// for details.
-		//case configv2alpha1.OpGreaterThanEqual:
-		//	invert = true
-		//	op = "<"
-		case _const.OpIn:
-			op = "in"
-		case _const.OpLessThan:
-			op = "<"
-		//case configv2alpha1.OpLessThanEqual:
-		//	invert = true
-		//	op = ">"
-		case _const.OpNotEqual:
-			op = "~="
-		case _const.OpNotIn:
-			invert = true
-			op = "in"
-		case _const.OpRegexMatch:
-			op = "~~"
-		case _const.OpRegexMatchCaseInsensitive:
-			op = "~*"
-		case _const.OpRegexNotMatch:
-			invert = true
-			op = "~~"
-		case _const.OpRegexNotMatchCaseInsensitive:
-			invert = true
-			op = "~*"
-		default:
-			return nil, errors.New("unknown operator")
-		}
-		if invert {
-			this = append(this, apisixv1.StringOrSlice{
-				StrVal: "!",
-			})
-		}
-		this = append(this, apisixv1.StringOrSlice{
-			StrVal: op,
-		})
-		if expr.Op == _const.OpIn || expr.Op == _const.OpNotIn {
-			if expr.Set == nil {
-				return nil, errors.New("empty set value")
-			}
-			this = append(this, apisixv1.StringOrSlice{
-				SliceVal: expr.Set,
-			})
-		} else if expr.Value != nil {
-			this = append(this, apisixv1.StringOrSlice{
-				StrVal: *expr.Value,
-			})
-		} else {
-			return nil, errors.New("neither set nor value is provided")
-		}
-		vars = append(vars, this)
-	}
-
-	return vars, nil
-}
-
-func (t *translator) translateRouteMatchExprsV2(nginxVars []configv2.ApisixRouteHTTPMatchExpr) ([][]apisixv1.StringOrSlice, error) {
+func (t *translator) translateRouteMatchExprs(nginxVars []configv2.ApisixRouteHTTPMatchExpr) ([][]apisixv1.StringOrSlice, error) {
 	var (
 		vars [][]apisixv1.StringOrSlice
 		op   string
