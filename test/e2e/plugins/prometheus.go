@@ -16,7 +16,7 @@ package plugins
 
 import (
 	"fmt"
-	// "time"
+	"time"
 
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +25,7 @@ import (
 )
 
 var _ = ginkgo.FDescribe("prometheus plugin", func() {
-    opts := &scaffold.Options{
+	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
@@ -34,7 +34,7 @@ var _ = ginkgo.FDescribe("prometheus plugin", func() {
 		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
-	ginkgo.It("test if disabled", func() {
+	ginkgo.It("test if enabled", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -54,61 +54,20 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: proxy-rewrite
+   - name: prometheus
      enable: true
-     config:
-       uri: /ip
 `, backendSvc, backendPorts[0])
-
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
+		time.Sleep(6 * time.Second)
 		err := s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(200).
-			Body().
-			Contains("origin")
-	})
-
-	ginkgo.It("test if disabled", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
-kind: ApisixRoute
-metadata:
- name: httpbin-route
-spec:
- http:
- - name: rule1
-   match:
-     hosts:
-     - httpbin.org
-     paths:
-       - /hello
-   backends:
-   - serviceName: %s
-     servicePort: %d
-     weight: 10
-   plugins:
-   - name: proxy-rewrite
-     enable: false
-     config:
-       uri: /ip
-`, backendSvc, backendPorts[0])
-
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
-		s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(404)
+		resp := s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(200)
+		resp.Header("X-Request-Id").NotEmpty()
+		resp.Body().Contains("origin")
 	})
 })
