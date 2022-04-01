@@ -15,6 +15,7 @@
 package features
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
@@ -30,11 +31,12 @@ var _ = ginkgo.Describe("ApisixClusterConfig", func() {
 		Kubeconfig:            scaffold.GetKubeconfig(),
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
+		HTTPBinServicePort:    9091,
 		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("enable prometheus", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		acc := `
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixClusterConfig
@@ -54,6 +56,40 @@ spec:
 		}()
 
 		// Wait until the ApisixClusterConfig create event was delivered.
+		time.Sleep(3 * time.Second)
+
+		au := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixUpstream
+metadata:
+ name: public-api
+spec:
+ http:
+
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /apisix/prometheus/metrics
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: public-api
+     enable: true
+`, backendSvc, backendPorts[0])
+
+		err = s.CreateResourceFromString(au)
+		assert.Nil(ginkgo.GinkgoT(), err)
+
 		time.Sleep(3 * time.Second)
 
 		grs, err := s.ListApisixGlobalRules()

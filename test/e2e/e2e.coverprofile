@@ -1,2 +1,0 @@
-mode: atomic
-github.com/apache/apisix-ingress-controller/test/e2e/e2e.go:27.16,27.17 0 2
