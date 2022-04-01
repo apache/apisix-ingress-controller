@@ -60,13 +60,6 @@ spec:
 
 		au := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
-kind: ApisixUpstream
-metadata:
- name: public-api
-spec:
- http:
-
-apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
