@@ -64,22 +64,22 @@ metadata:
   name: httpbin-route
 spec:
   http:
-  - name: rule1
+  - name: public-api
     match:
       hosts:
       - httpbin.org
       paths:
       - /apisix/prometheus/metrics
-		backends:
-		- serviceName: httpbin
-			servicePort: 9091
-		plugins:
-		- name: public-api
-			enable: true
+    backends:
+    - serviceName: public-api
+      servicePort: 9091
+    plugins:
+    - name: public-api
+      enable: true
 `
 
 		err = s.CreateResourceFromString(arr)
-		assert.Error(ginkgo.GinkgoT(), err, "creating ApisixRouteConfig")
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ApisixRouteConfig")
 
 		defer func() {
 			err := s.RemoveResourceByString(arr)
