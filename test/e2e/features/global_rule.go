@@ -59,17 +59,15 @@ spec:
 		// Wait until the ApisixClusterConfig create event was delivered.
 		time.Sleep(3 * time.Second)
 
-		arr := fmt.Sprintf(`
+		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
-  name: httpbin-route
+  name: default
 spec:
   http:
   - name: public-api
     match:
-      hosts:
-      - httpbin.org
       paths:
       - /apisix/prometheus/metrics
     backends:
@@ -80,13 +78,8 @@ spec:
       enable: true
 `, adminSvc, adminPort)
 
-		err = s.CreateResourceFromString(arr)
+		err = s.CreateResourceFromString(ar)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ApisixRouteConfig")
-
-		defer func() {
-			err := s.RemoveResourceByString(arr)
-			assert.Nil(ginkgo.GinkgoT(), err)
-		}()
 
 		time.Sleep(3 * time.Second)
 
@@ -98,7 +91,7 @@ spec:
 		_, ok := grs[0].Plugins["prometheus"]
 		assert.Equal(ginkgo.GinkgoT(), ok, true)
 
-		resp := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").WithHeader("Host", "httpbin.org").Expect()
+		resp := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").Expect()
 		resp.Status(http.StatusOK)
 		resp.Body().Contains("# HELP apisix_etcd_modify_indexes Etcd modify index for APISIX keys")
 		resp.Body().Contains("# HELP apisix_etcd_reachable Config server etcd reachable from APISIX, 0 is unreachable")
