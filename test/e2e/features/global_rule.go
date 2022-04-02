@@ -15,6 +15,7 @@
 package features
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -36,6 +37,7 @@ var _ = ginkgo.Describe("ApisixClusterConfig", func() {
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("enable prometheus", func() {
+		adminSvc, adminPort := s.ApisixAdminServiceAndPort()
 		acc := `
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixClusterConfig
@@ -57,7 +59,7 @@ spec:
 		// Wait until the ApisixClusterConfig create event was delivered.
 		time.Sleep(3 * time.Second)
 
-		arr := `
+		arr := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -71,12 +73,12 @@ spec:
       paths:
       - /apisix/prometheus/metrics
     backends:
-    - serviceName: public-api
-      servicePort: 9091
+    - serviceName: %s
+      servicePort: %d
     plugins:
     - name: public-api
       enable: true
-`
+`, adminSvc, adminPort)
 
 		err = s.CreateResourceFromString(arr)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ApisixRouteConfig")
