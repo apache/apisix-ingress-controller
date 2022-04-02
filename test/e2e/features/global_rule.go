@@ -15,6 +15,7 @@
 package features
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
@@ -30,7 +31,7 @@ var _ = ginkgo.Describe("ApisixClusterConfig", func() {
 		Kubeconfig:            scaffold.GetKubeconfig(),
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
+		HTTPBinServicePort:    9091,
 		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
@@ -68,13 +69,18 @@ spec:
       hosts:
       - httpbin.org
       paths:
-      - /apisix/prometheus/metrics
-  plugins:
-  - name: public-api
-    enable: true
+      - /pmetrics
+		backends:
+		- serviceName: hello
+			servicePort: 9091
+		plugins:
+		- name: public-api
+			enable: true
+				uri: /apisix/prometheus/metrics 
 `
+
 		err = s.CreateResourceFromString(arr)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ApisixRouteConfig")
+		assert.Error(ginkgo.GinkgoT(), err, "creating ApisixRouteConfig")
 
 		defer func() {
 			err := s.RemoveResourceByString(arr)
@@ -91,8 +97,8 @@ spec:
 		_, ok := grs[0].Plugins["prometheus"]
 		assert.Equal(ginkgo.GinkgoT(), ok, true)
 
-		resp := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").WithHeader("Host", "httpbin.com").Expect()
-		resp.Status(200)
+		resp := s.NewAPISIXClient().GET("/pmetrics").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
 		resp.Body().Contains("# HELP apisix_etcd_modify_indexes Etcd modify index for APISIX keys")
 		resp.Body().Contains("# HELP apisix_etcd_reachable Config server etcd reachable from APISIX, 0 is unreachable")
 		resp.Body().Contains("# HELP apisix_node_info Info of APISIX node")
