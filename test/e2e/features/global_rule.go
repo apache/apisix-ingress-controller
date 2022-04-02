@@ -31,7 +31,7 @@ var _ = ginkgo.Describe("ApisixClusterConfig", func() {
 		Kubeconfig:            scaffold.GetKubeconfig(),
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    9091,
+		HTTPBinServicePort:    80,
 		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
@@ -69,14 +69,13 @@ spec:
       hosts:
       - httpbin.org
       paths:
-      - /pmetrics
+      - /apisix/prometheus/metrics
 		backends:
-		- serviceName: hello
+		- serviceName: httpbin
 			servicePort: 9091
 		plugins:
 		- name: public-api
 			enable: true
-				uri: /apisix/prometheus/metrics 
 `
 
 		err = s.CreateResourceFromString(arr)
@@ -97,7 +96,7 @@ spec:
 		_, ok := grs[0].Plugins["prometheus"]
 		assert.Equal(ginkgo.GinkgoT(), ok, true)
 
-		resp := s.NewAPISIXClient().GET("/pmetrics").WithHeader("Host", "httpbin.org").Expect()
+		resp := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").WithHeader("Host", "httpbin.org").Expect()
 		resp.Status(http.StatusOK)
 		resp.Body().Contains("# HELP apisix_etcd_modify_indexes Etcd modify index for APISIX keys")
 		resp.Body().Contains("# HELP apisix_etcd_reachable Config server etcd reachable from APISIX, 0 is unreachable")
