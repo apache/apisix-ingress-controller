@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -46,6 +47,8 @@ var ApisixConsumerValidator = kwhvalidating.ValidatorFunc(
 		case *v2beta2.ApisixRoute:
 			spec = ac.Spec
 		case *v2beta3.ApisixRoute:
+			spec = ac.Spec
+		case *v2.ApisixRoute:
 			spec = ac.Spec
 		default:
 			return &kwhvalidating.ValidatorResult{Valid: false, Message: errNotApisixConsumer.Error()}, errNotApisixConsumer

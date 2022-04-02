@@ -28,6 +28,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixfake "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
@@ -127,7 +128,7 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 
 	weight10 := 10
 	weight20 := 20
-	backends := []configv2beta3.ApisixRouteHTTPBackend{
+	backends := []configv2.ApisixRouteHTTPBackend{
 		{
 			ServiceName: "svc-1",
 			ServicePort: intstr.IntOrString{
@@ -299,7 +300,7 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 	weigth10 := 10
 	weight20 := 20
 
-	backends := []configv2beta3.ApisixRouteHTTPBackend{
+	backends := []configv2.ApisixRouteHTTPBackend{
 		{
 			ServiceName: "svc-1",
 			ServicePort: intstr.IntOrString{
@@ -463,7 +464,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	weight10 := 10
 	weight20 := 20
 
-	backends := []configv2beta3.ApisixRouteHTTPBackend{
+	backends := []configv2.ApisixRouteHTTPBackend{
 		{
 			ServiceName: "svc-2",
 			ServicePort: intstr.IntOrString{
