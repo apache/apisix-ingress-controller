@@ -76,8 +76,7 @@ jobs:
         run: |
           SUITES=($(find test/e2e -type d -iname 'suite-*' | grep -E -o '(\w|\-)*' | grep -v 'test' | grep -v 'e2e'))
           echo $SUITES
-          for f in "${SUITES[@]}"; do printf '%s' "$f" | jq -R -s .; done | jq -s .
-          echo "::set-output name=matrix::$(for f in "${SUITES[@]}"; do printf '%s' "$f" | jq -R -s .; done | jq -s .)"
+          echo "::set-output name=matrix::$(jq --compact-output --null-input '$ARGS.positional' --args "${SUITES[@]}")"
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
