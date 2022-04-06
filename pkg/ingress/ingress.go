@@ -299,6 +299,9 @@ func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorf("found ingress resource with bad meta namespace key: %s", err)
 		return
 	}
+	if !c.controller.isWatchingNamespace(key) {
+		return
+	}
 	valid := c.isIngressEffective(curr)
 	if valid {
 		log.Debugw("ingress update event arrived",
