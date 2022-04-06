@@ -27,7 +27,7 @@ import (
 )
 
 // TODO: FIXME
-var _ = ginkgo.Describe("suite-features: secret Testing", func() {
+var _ = ginkgo.Describe("suite-ingress: secret Testing", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),

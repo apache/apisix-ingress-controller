@@ -30,7 +30,7 @@ type ip struct {
 	IP string `json:"origin"`
 }
 
-var _ = ginkgo.Describe("suite-features: single-route", func() {
+var _ = ginkgo.Describe("suite-ingress: single-route", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),

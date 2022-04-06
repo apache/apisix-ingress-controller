@@ -30,7 +30,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-features: support ingress https", func() {
+var _ = ginkgo.Describe("suite-ingress: support ingress https", func() {
 	s := scaffold.NewDefaultV2Scaffold()
 
 	rootCA := `-----BEGIN CERTIFICATE-----

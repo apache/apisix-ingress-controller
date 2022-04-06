@@ -36,7 +36,7 @@ type headers struct {
 	} `json:"headers"`
 }
 
-var _ = ginkgo.Describe("suite-features: namespacing filtering", func() {
+var _ = ginkgo.Describe("suite-ingress: namespacing filtering", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),

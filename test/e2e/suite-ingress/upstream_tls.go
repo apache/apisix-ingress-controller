@@ -28,7 +28,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/testbackend/client"
 )
 
-var _ = ginkgo.Describe("suite-features: ApisixUpstreams mTLS test", func() {
+var _ = ginkgo.Describe("suite-ingress: ApisixUpstreams mTLS test", func() {
 	clientSecret := `client-secret`
 
 	f, err := ioutil.ReadFile("testbackend/tls/client.pem")

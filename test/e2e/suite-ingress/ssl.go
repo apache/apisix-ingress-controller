@@ -28,7 +28,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-features: SSL Testing", func() {
+var _ = ginkgo.Describe("suite-ingress: SSL Testing", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("create a SSL from ApisixTls ", func() {
 		secretName := "test-apisix-tls"
