@@ -88,8 +88,8 @@ endif
 .PHONY: push-images
 push-images:
 ifeq ($(E2E_SKIP_BUILD), 0)
-	docker pull apache/apisix:2.12.0-alpine
-	docker tag apache/apisix:2.12.0-alpine $(REGISTRY)/apache/apisix:dev
+	docker pull apache/apisix:2.13.0-alpine
+	docker tag apache/apisix:2.13.0-alpine $(REGISTRY)/apache/apisix:dev
 	docker push $(REGISTRY)/apache/apisix:dev
 
 	docker pull bitnami/etcd:3.4.14-debian-10-r0
