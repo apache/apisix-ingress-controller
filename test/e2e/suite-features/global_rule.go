@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
-
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
