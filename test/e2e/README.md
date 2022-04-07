@@ -41,7 +41,7 @@ Test cases inside `plugins` directory test the availability about APISIX plugins
 Features
 --------
 
-Test caes inside `features` directory test some features about APISIX, such as traffic-split, health check and so on.
+Test case inside `features` directory test some features about APISIX, such as traffic-split, health check and so on.
 
 Quick Start
 -----------
@@ -57,4 +57,15 @@ Run `make e2e-test` to run the e2e test suites in an existing cluster, you can s
 Step `1` and `2` can be skipped by passing `E2E_SKIP_BUILD=1` to this directive, also, you can customize the
 running concurrency of e2e test suites by passing `E2E_CONCURRENCY=X` where `X` is the desired number of cases running in parallel.
 
+You can run specific test cases by passing the environment variable `E2E_FOCUS=suite-<suite name>`, where `<suite name>` can be found under `test/e2e` directory.
+For example, `E2E_FOCUS=suite-plugins* make e2e-test` will only run test cases in `test/e2e/suite-plugins` directory.
+
 Run `make kind-reset` to delete the cluster that created by `make e2e-test`.
+
+How to name test cases
+-----------
+
+Because we use `ginkgo --focus` option and the prefix `suite-<suite name>` to split test cases and make them run in parallel in CI, test cases should be named in the following way:
+
+- All test cases are grouped by directories, and **their names should have `suite-` prefix**
+- All top level specs (i.e. `ginkgo.Describe`) under the suite directory should have corresponding `suite-<suite-name>: ` prefix.

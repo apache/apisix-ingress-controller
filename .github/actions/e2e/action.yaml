@@ -1,0 +1,68 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: Run E2E tests
+description: "Run an E2E test suite"
+
+inputs:
+  testsuite_name:
+    description: "Name of the test suite to run"
+    required: true
+  concurrency:
+    description: "Number of concurrent test runs"
+    required: false
+    default: '2'
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Install kind
+      shell: bash
+      run: |
+        curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
+        chmod +x ./kind
+        sudo mv kind /usr/local/bin
+
+    - name: Setup Go Env
+      uses: actions/setup-go@v2
+      with:
+        go-version: "1.16"
+
+    - name: Install ginkgo
+      shell: bash
+      run: |
+        go install github.com/onsi/ginkgo/ginkgo@v1.16.4
+        sudo cp ~/go/bin/ginkgo /usr/local/bin
+
+    - name: Create K8s cluster
+      shell: bash
+      run: |
+        make kind-up
+        kubectl wait --for=condition=Ready nodes --all
+
+    - name: Run E2E test suite
+      shell: bash
+      env:
+        E2E_FOCUS: "${{ inputs.testsuite_name }}*"
+        E2E_CONCURRENCY: "${{ inputs.concurrency }}"
+      run: |
+        make e2e-test
