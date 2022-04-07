@@ -15,6 +15,8 @@
 package features
 
 import (
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
@@ -35,6 +37,7 @@ var _ = ginkgo.Describe("ApisixClusterConfig", func() {
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("enable prometheus", func() {
+		adminSvc, adminPort := s.ApisixAdminServiceAndPort()
 		acc := `
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixClusterConfig
@@ -56,6 +59,30 @@ spec:
 		// Wait until the ApisixClusterConfig create event was delivered.
 		time.Sleep(3 * time.Second)
 
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+  name: default
+spec:
+  http:
+  - name: public-api
+    match:
+      paths:
+      - /apisix/prometheus/metrics
+    backends:
+    - serviceName: %s
+      servicePort: %d
+    plugins:
+    - name: public-api
+      enable: true
+`, adminSvc, adminPort)
+
+		err = s.CreateResourceFromString(ar)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ApisixRouteConfig")
+
+		time.Sleep(3 * time.Second)
+
 		grs, err := s.ListApisixGlobalRules()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing global_rules")
 		assert.Len(ginkgo.GinkgoT(), grs, 1)
@@ -65,7 +92,7 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), ok, true)
 
 		resp := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").Expect()
-		resp.Status(200)
+		resp.Status(http.StatusOK)
 		resp.Body().Contains("# HELP apisix_etcd_modify_indexes Etcd modify index for APISIX keys")
 		resp.Body().Contains("# HELP apisix_etcd_reachable Config server etcd reachable from APISIX, 0 is unreachable")
 		resp.Body().Contains("# HELP apisix_node_info Info of APISIX node")
