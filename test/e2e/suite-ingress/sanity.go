@@ -77,7 +77,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("double-routes", func() {
+var _ = ginkgo.Describe("suite-ingress: double-routes", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
@@ -135,7 +135,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("leader election", func() {
+var _ = ginkgo.Describe("suite-ingress: leader election", func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
 		Name:                  "leaderelection",
 		Kubeconfig:            scaffold.GetKubeconfig(),
@@ -189,7 +189,7 @@ var _ = ginkgo.Describe("leader election", func() {
 	})
 })
 
-var _ = ginkgo.Describe("stream_routes disabled", func() {
+var _ = ginkgo.Describe("suite-ingress: stream_routes disabled", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),

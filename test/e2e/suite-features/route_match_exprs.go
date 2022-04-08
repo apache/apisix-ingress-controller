@@ -602,7 +602,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("route match exprs bugfixes", func() {
+var _ = ginkgo.Describe("suite-features: route match exprs bugfixes", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
