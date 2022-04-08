@@ -73,8 +73,8 @@ jobs:
 
       - name: Check e2e test cases' naming
         run: |
-          chmod +x utils/check_e2e_names.sh
-          ./utils/check_e2e_names.sh
+          chmod +x utils/check-e2e-names.sh
+          ./utils/check-e2e-names.sh
 
       - name: List test suites and set the matrix
         id: set-matrix
