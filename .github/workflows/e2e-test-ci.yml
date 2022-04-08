@@ -62,7 +62,7 @@ jobs:
               - 'conf/**'
               - 'utils/**'
 
-  prepare-matrix:
+  prepare:
     needs: changes
     if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
@@ -70,6 +70,11 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
+
+      - name: Check e2e test cases' naming
+        run: |
+          chmod +x utils/check_e2e_names.sh
+          ./utils/check_e2e_names.sh
 
       - name: List test suites and set the matrix
         id: set-matrix
@@ -85,7 +90,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        suite: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+        suite: ${{ fromJson(needs.prepare.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v2
 
