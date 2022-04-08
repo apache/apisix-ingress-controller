@@ -64,5 +64,6 @@ runs:
       env:
         E2E_FOCUS: "${{ inputs.testsuite_name }}*"
         E2E_CONCURRENCY: "${{ inputs.concurrency }}"
+        ENABLE_PROXY: "false"
       run: |
         make e2e-test
