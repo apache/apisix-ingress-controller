@@ -17,6 +17,10 @@
 # limitations under the License.
 #
 
+# NOTE:
+# This script uses `GNU expr index`, but MacOS uses `BSD expr` which does not have the `index` command.
+# You could install `GNU expr` by `brew install coreutils` and replace all `expr` with `gexpr` in the script if you are using MacOS.
+
 # Search for the pattern in all files recursively in `test/e2e`, showing line numbers of matches, ignoring binary files.
 # The results are separated by '\n' and stored in the array lines.
 # Each line in lines looks like: `test/e2e/suite-endpoints/endpoints.go:28:var _ = ginkgo.Describe("suite-endpoints: endpoints", func() {`

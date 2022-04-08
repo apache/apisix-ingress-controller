@@ -86,7 +86,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
   e2e-test:
-    needs: prepare-matrix
+    needs: prepare
     runs-on: ubuntu-latest
     strategy:
       matrix:
