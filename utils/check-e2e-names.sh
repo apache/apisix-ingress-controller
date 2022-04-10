@@ -17,10 +17,6 @@
 # limitations under the License.
 #
 
-# NOTE:
-# This script uses `GNU expr index`, but MacOS uses `BSD expr` which does not have the `index` command.
-# You could install `GNU expr` by `brew install coreutils` and replace all `expr` with `gexpr` in the script if you are using MacOS.
-
 # Search for the pattern in all files recursively in `test/e2e`, showing line numbers of matches, ignoring binary files.
 # The results are separated by '\n' and stored in the array lines.
 # Each line in lines looks like: `test/e2e/suite-endpoints/endpoints.go:28:var _ = ginkgo.Describe("suite-endpoints: endpoints", func() {`
@@ -31,9 +27,9 @@ err=0
 
 for (( i=0;i<${#lines[@]};i++)); do
   # Find the second colon in the line to split the line into two parts: left_str and right_str.
-  pos1=$(expr index "${lines[i]}" ":")
+  pos1=$(echo "${lines[i]}" | sed -n "s/[:].*//p" | wc -c | xargs)
   temp_str=${lines[i]:$pos1}
-  pos2=$(expr index "$temp_str" ":")
+  pos2=$(echo "$temp_str" | sed -n "s/[:].*//p" | wc -c | xargs)
 
   # left_str looks like: `test/e2e/suite-endpoints/endpoints.go:28`
   left_str=$(echo "${lines[i]}" | cut -c1-$(expr $pos1 + $pos2 - 1))

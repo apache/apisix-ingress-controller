@@ -69,3 +69,5 @@ Because we use `ginkgo --focus` option and the prefix `suite-<suite name>` to sp
 
 - All test cases are grouped by directories, and **their names should have `suite-` prefix**
 - All top level specs (i.e. `ginkgo.Describe`) under the suite directory should have corresponding `suite-<suite-name>: ` prefix.
+
+Run `make names-check` to check the above naming convention.
