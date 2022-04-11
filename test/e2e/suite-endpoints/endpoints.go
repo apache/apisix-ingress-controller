@@ -90,7 +90,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("port usage", func() {
+var _ = ginkgo.Describe("suite-endpoints: port usage", func() {
 	opts := &scaffold.Options{
 		Name:                  "endpoints-port",
 		Kubeconfig:            scaffold.GetKubeconfig(),

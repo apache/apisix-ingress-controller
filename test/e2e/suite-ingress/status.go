@@ -72,7 +72,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("Ingress LB Status Testing", func() {
+var _ = ginkgo.Describe("suite-ingress: Ingress LB Status Testing", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),

@@ -118,7 +118,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("blocklist-source-range annotations", func() {
+var _ = ginkgo.Describe("suite-annotations: blocklist-source-range annotations", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("enable in ingress networking/v1", func() {

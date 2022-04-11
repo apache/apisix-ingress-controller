@@ -317,7 +317,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("support ingress.networking/v1", func() {
+var _ = ginkgo.Describe("suite-ingress: support ingress.networking/v1", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("path exact match", func() {
@@ -421,7 +421,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("support ingress.networking/v1beta1", func() {
+var _ = ginkgo.Describe("suite-ingress: support ingress.networking/v1beta1", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("path exact match", func() {
@@ -519,7 +519,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("support ingress.extensions/v1beta1", func() {
+var _ = ginkgo.Describe("suite-ingress: support ingress.extensions/v1beta1", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("path exact match", func() {
@@ -617,7 +617,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("support ingress.networking/v1 with headless service backend", func() {
+var _ = ginkgo.Describe("suite-ingress: support ingress.networking/v1 with headless service backend", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	const _httpHeadlessService = `

@@ -118,7 +118,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("rewrite regex annotations", func() {
+var _ = ginkgo.Describe("suite-annotations: rewrite regex annotations", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("enable in ingress networking/v1", func() {

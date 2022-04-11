@@ -241,7 +241,7 @@ RU+QPRECgYB6XW24EI5+w3STbpnc6VoTS+sy9I9abTJPYo9LpCJwfMYc9Tg9Cx2K
 	})
 })
 
-var _ = ginkgo.Describe("ApisixTls mTLS Test", func() {
+var _ = ginkgo.Describe("suite-ingress: ApisixTls mTLS Test", func() {
 	// RootCA -> Server
 	// RootCA -> UserCert
 	// These certs come from mTLS practice
