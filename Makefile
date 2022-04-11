@@ -205,7 +205,7 @@ update-gofmt:
 .PHONY: update-all
 update-all: update-codegen update-license update-mdlint update-gofmt
 
-### names-check:          Check if e2e test cases' names have the prefix "suite-<suite-name>".
-.PHONY: names-check
-names-check:
+### e2e-names-check:          Check if e2e test cases' names have the prefix "suite-<suite-name>".
+.PHONY: e2e-names-check
+e2e-names-check:
 	chmod +x ./utils/check-e2e-names.sh && ./utils/check-e2e-names.sh

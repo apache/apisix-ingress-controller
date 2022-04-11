@@ -72,7 +72,7 @@ jobs:
           submodules: recursive
 
       - name: Check e2e test cases' naming
-        run: make names-check
+        run: make e2e-names-check
 
       - name: List test suites and set the matrix
         id: set-matrix
