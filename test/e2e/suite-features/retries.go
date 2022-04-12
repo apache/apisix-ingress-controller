@@ -127,7 +127,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("retries timeout", func() {
+var _ = ginkgo.Describe("suite-features: retries timeout", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),

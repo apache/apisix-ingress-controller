@@ -20,6 +20,7 @@ VERSION ?= 1.4.0
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 REGISTRY ?="localhost:5000"
 IMAGE_TAG ?= dev
+ENABLE_PROXY ?= true
 
 GITSHA ?= "no-git-module"
 ifneq ("$(wildcard .git)", "")
@@ -99,11 +100,11 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker tag kennethreitz/httpbin $(REGISTRY)/kennethreitz/httpbin
 	docker push $(REGISTRY)/kennethreitz/httpbin
 
-	docker build -t test-backend:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true ./test/e2e/testbackend
+	docker build -t test-backend:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) ./test/e2e/testbackend
 	docker tag test-backend:$(IMAGE_TAG) $(REGISTRY)/test-backend:$(IMAGE_TAG)
 	docker push $(REGISTRY)/test-backend:$(IMAGE_TAG)
 
-	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true .
+	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 
@@ -203,3 +204,8 @@ update-gofmt:
 ### update-all:           Update all update- rules.
 .PHONY: update-all
 update-all: update-codegen update-license update-mdlint update-gofmt
+
+### e2e-names-check:          Check if e2e test cases' names have the prefix "suite-<suite-name>".
+.PHONY: e2e-names-check
+e2e-names-check:
+	chmod +x ./utils/check-e2e-names.sh && ./utils/check-e2e-names.sh
