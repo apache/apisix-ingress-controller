@@ -342,7 +342,7 @@ type ApisixConsumerBasicAuth struct {
 // ApisixConsumerBasicAuthValue defines the in-place username and password configuration for basic auth.
 type ApisixConsumerBasicAuthValue struct {
 	Username string `json:"username" yaml:"username"`
-	Password string `json:"password" yaml:"username"`
+	Password string `json:"password" yaml:"password"`
 }
 
 // ApisixConsumerKeyAuth defines the configuration for the key auth.
