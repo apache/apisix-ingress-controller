@@ -70,7 +70,7 @@ e2e-test: ginkgo-check push-images
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
-		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace --nodes=$(E2E_CONCURRENCY)
+		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace --nodes=$(E2E_CONCURRENCY) --focus=$(E2E_FOCUS)
 
 ### e2e-test-local:        Run e2e test cases (kind is required)
 .PHONY: e2e-test-local
@@ -87,8 +87,8 @@ endif
 .PHONY: push-images
 push-images:
 ifeq ($(E2E_SKIP_BUILD), 0)
-	docker pull apache/apisix:2.12.0-alpine
-	docker tag apache/apisix:2.12.0-alpine $(REGISTRY)/apache/apisix:dev
+	docker pull apache/apisix:2.13.0-alpine
+	docker tag apache/apisix:2.13.0-alpine $(REGISTRY)/apache/apisix:dev
 	docker push $(REGISTRY)/apache/apisix:dev
 
 	docker pull bitnami/etcd:3.4.14-debian-10-r0

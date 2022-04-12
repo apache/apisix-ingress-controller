@@ -25,7 +25,7 @@ In this tutorial, we will install APISIX and APISIX Ingress Controller in Kubern
 
 ## Prerequisites
 
-If you don't have a Kubernetes cluster to use, we recommend you to use [KiND](https://kind.sigs.k8s.io/docs/user/quick-start/) to create a local Kubernetes cluster.
+If you don't have a Kubernetes cluster to use, we recommend you to use [kind](https://kind.sigs.k8s.io/docs/user/quick-start/) to create a local Kubernetes cluster.
 
 ```bash
 kubectl create ns apisix
@@ -45,6 +45,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: etcd-headless
+  namespace: apisix
   labels:
     app.kubernetes.io/name: etcd
   annotations:
@@ -67,6 +68,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: etcd
+  namespace: apisix
   labels:
     app.kubernetes.io/name: etcd
 spec:
@@ -276,6 +278,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: apisix
+  namespace: apisix
   labels:
     app.kubernetes.io/name: apisix
 spec:
@@ -357,7 +360,7 @@ kubectl -n demo expose pod httpbin --port 80
 After the httpbin service started, we should be able to access it inside the APISIX pod via service.
 
 ```bash
-kubectl -n apisix exec -it apisix-7644966c4d-cl4k6 -- curl http://httpbin.demo/get
+kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name) -- curl http://httpbin.demo/get
 ```
 
 This should output the request's query parameters, for example:
@@ -386,7 +389,7 @@ Assuming we want to route all traffic which URI has `/httpbin` prefix and the re
 Please notice that the admin port is `9180`.
 
 ```bash
-kubectl -n apisix exec -it apisix-7644966c4d-cl4k6 -- curl "http://127.0.0.1:9180/apisix/admin/routes/1" -H "X-API-KEY: edd1c9f034335f136f87ad84b625c8f1" -X PUT -d '
+kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name) -- curl "http://127.0.0.1:9180/apisix/admin/routes/1" -H "X-API-KEY: edd1c9f034335f136f87ad84b625c8f1" -X PUT -d '
 {
   "uri": "/*",
   "host": "httpbin.org",
@@ -408,7 +411,7 @@ The output would be like this:
 We could check route rules by `GET /apisix/admin/routes`:
 
 ```bash
-kubectl -n apisix exec -it apisix-7644966c4d-cl4k6 -- curl "http://127.0.0.1:9180/apisix/admin/routes/1" -H "X-API-KEY: edd1c9f034335f136f87ad84b625c8f1"
+kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name) -- curl "http://127.0.0.1:9180/apisix/admin/routes/1" -H "X-API-KEY: edd1c9f034335f136f87ad84b625c8f1"
 ```
 
 It should output like this:
@@ -420,7 +423,7 @@ It should output like this:
 Now, we can test the routing rule:
 
 ```bash
-kubectl -n apisix exec -it apisix-7644966c4d-cl4k6 -- curl "http://127.0.0.1:9080/get" -H 'Host: httpbin.org'
+kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name) -- curl "http://127.0.0.1:9080/get" -H 'Host: httpbin.org'
 ```
 
 It will output like:
@@ -460,6 +463,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: apisix-clusterrole
+  namespace: apisix
 rules:
   - apiGroups:
       - ""
@@ -615,6 +619,8 @@ subjects:
 Then, we need to create ApisixRoute CRD:
 
 ```bash
+git clone https://github.com/apache/apisix-ingress-controller.git --depth 1
+cd apisix-ingress-controller/
 kubectl apply -k samples/deploy/crd
 ```
 
@@ -645,6 +651,7 @@ data:
 kind: ConfigMap
 metadata:
   name: apisix-configmap
+  namespace: apisix
   labels:
     app.kubernetes.io/name: ingress-controller
 ```
@@ -658,6 +665,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: apisix-admin
+  namespace: apisix
   labels:
     app.kubernetes.io/name: apisix
 spec:
@@ -684,6 +692,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: apisix-ingress-controller
+  namespace: apisix
   labels:
     app.kubernetes.io/name: ingress-controller
 spec:
@@ -715,7 +724,7 @@ spec:
             - ingress
             - --config-path
             - /ingress-apisix/conf/config.yaml
-          image: "apache/apisix-ingress-controller:0.5.0"
+          image: "apache/apisix-ingress-controller:1.4.0"
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -766,7 +775,7 @@ Note that the apiVersion field should match the configmap above. And the service
 Before create it, let's ensure requests with header `Host: local.http.demo` will returns 404:
 
 ```bash
-kubectl -n apisix exec -it apisix-7644966c4d-cl4k6 -- curl "http://127.0.0.1:9080/get" -H 'Host: local.httpbin.org'
+kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name) -- curl "http://127.0.0.1:9080/get" -H 'Host: local.httpbin.org'
 ```
 
 It will return:

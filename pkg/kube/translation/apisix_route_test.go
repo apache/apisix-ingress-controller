@@ -29,6 +29,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
@@ -42,9 +43,9 @@ func TestRouteMatchExpr(t *testing.T) {
 	value2 := "gzip"
 	value3 := "13"
 	value4 := ".*\\.php"
-	exprs := []configv2beta3.ApisixRouteHTTPMatchExpr{
+	exprs := []configv2.ApisixRouteHTTPMatchExpr{
 		{
-			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+			Subject: configv2.ApisixRouteHTTPMatchExprSubject{
 				Scope: _const.ScopeHeader,
 				Name:  "Content-Type",
 			},
@@ -52,7 +53,7 @@ func TestRouteMatchExpr(t *testing.T) {
 			Value: &value1,
 		},
 		{
-			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+			Subject: configv2.ApisixRouteHTTPMatchExprSubject{
 				Scope: _const.ScopeHeader,
 				Name:  "Content-Encoding",
 			},
@@ -60,7 +61,7 @@ func TestRouteMatchExpr(t *testing.T) {
 			Value: &value2,
 		},
 		{
-			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+			Subject: configv2.ApisixRouteHTTPMatchExprSubject{
 				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
@@ -68,7 +69,7 @@ func TestRouteMatchExpr(t *testing.T) {
 			Value: &value3,
 		},
 		{
-			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+			Subject: configv2.ApisixRouteHTTPMatchExprSubject{
 				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
@@ -76,7 +77,7 @@ func TestRouteMatchExpr(t *testing.T) {
 			Value: &value3,
 		},
 		{
-			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+			Subject: configv2.ApisixRouteHTTPMatchExprSubject{
 				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
@@ -84,7 +85,7 @@ func TestRouteMatchExpr(t *testing.T) {
 			Value: &value4,
 		},
 		{
-			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+			Subject: configv2.ApisixRouteHTTPMatchExprSubject{
 				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
@@ -92,7 +93,7 @@ func TestRouteMatchExpr(t *testing.T) {
 			Value: &value4,
 		},
 		{
-			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+			Subject: configv2.ApisixRouteHTTPMatchExprSubject{
 				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
@@ -100,7 +101,7 @@ func TestRouteMatchExpr(t *testing.T) {
 			Value: &value4,
 		},
 		{
-			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+			Subject: configv2.ApisixRouteHTTPMatchExprSubject{
 				Scope: _const.ScopeQuery,
 				Name:  "ID",
 			},
@@ -108,7 +109,7 @@ func TestRouteMatchExpr(t *testing.T) {
 			Value: &value4,
 		},
 		{
-			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+			Subject: configv2.ApisixRouteHTTPMatchExprSubject{
 				Scope: _const.ScopeCookie,
 				Name:  "domain",
 			},
@@ -119,7 +120,7 @@ func TestRouteMatchExpr(t *testing.T) {
 			},
 		},
 		{
-			Subject: configv2beta3.ApisixRouteHTTPMatchExprSubject{
+			Subject: configv2.ApisixRouteHTTPMatchExprSubject{
 				Scope: _const.ScopeCookie,
 				Name:  "X-Foo",
 			},
@@ -301,7 +302,7 @@ func TestTranslateApisixRouteV2beta3WithDuplicatedName(t *testing.T) {
 							"/*",
 						},
 					},
-					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+					Backends: []configv2.ApisixRouteHTTPBackend{
 						{
 							ServiceName: "svc",
 							ServicePort: intstr.IntOrString{
@@ -317,7 +318,7 @@ func TestTranslateApisixRouteV2beta3WithDuplicatedName(t *testing.T) {
 							"/*",
 						},
 					},
-					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+					Backends: []configv2.ApisixRouteHTTPBackend{
 						{
 							ServiceName: "svc",
 							ServicePort: intstr.IntOrString{
@@ -354,7 +355,7 @@ func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
 							"/*",
 						},
 					},
-					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+					Backends: []configv2.ApisixRouteHTTPBackend{
 						{
 							ServiceName: "svc",
 							ServicePort: intstr.IntOrString{
@@ -370,7 +371,7 @@ func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
 							"/*",
 						},
 					},
-					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+					Backends: []configv2.ApisixRouteHTTPBackend{
 						{
 							ServiceName: "svc",
 							ServicePort: intstr.IntOrString{
@@ -387,7 +388,7 @@ func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
 							"/*",
 						},
 					},
-					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+					Backends: []configv2.ApisixRouteHTTPBackend{
 						{
 							ServiceName: "svc",
 							ServicePort: intstr.IntOrString{
@@ -427,7 +428,7 @@ func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {
 							"/*",
 						},
 					},
-					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+					Backends: []configv2.ApisixRouteHTTPBackend{
 						{
 							ServiceName: "svc1",
 							ServicePort: intstr.IntOrString{
@@ -454,7 +455,7 @@ func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {
 							"/*",
 						},
 					},
-					Backends: []configv2beta3.ApisixRouteHTTPBackend{
+					Backends: []configv2.ApisixRouteHTTPBackend{
 						{
 							ServiceName: "svc2",
 							ServicePort: intstr.IntOrString{
