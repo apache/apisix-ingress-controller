@@ -68,6 +68,6 @@ How to name test cases
 Because we use `ginkgo --focus` option and the prefix `suite-<suite name>` to split test cases and make them run in parallel in CI, test cases should be named in the following way:
 
 - All test cases are grouped by directories, and **their names should have `suite-` prefix**
-- All top level specs (i.e. `ginkgo.Describe`) under the suite directory should have corresponding `suite-<suite-name>: ` prefix.
+- All top level specs (i.e. `ginkgo.Describe`) under the suite directory should have corresponding `suite-<suite-name>:` prefix.
 
 Run `make names-check` to check the above naming convention.
