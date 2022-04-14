@@ -556,7 +556,6 @@ func (s *Scaffold) GetKubernetesClient() *kubernetes.Clientset {
 	return client
 }
 
-
 func (s *Scaffold) CreateApisixRouteByChever(routeID string, body []byte) error {
 	u := url.URL{
 		Scheme: "http",
