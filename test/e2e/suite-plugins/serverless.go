@@ -16,6 +16,8 @@ package plugins
 
 import (
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
@@ -36,42 +38,53 @@ var _ = ginkgo.Describe("suite-plugins: serverless plugin", func() {
 
 	ginkgo.JustBeforeEach(func() {
 		json := `{
-			"uri": "/serverless",
-			"plugins": {
-				"serverless-pre-function": {
-					"phase": "rewrite",
-					"function": [
-						"return function (conf, ctx)\n    local core = require(\"apisix.core\");\n    core.response.exit(200);\n    end\n    end"
+			"uri":"/auth",
+			"plugins":{
+				"serverless-pre-function":{
+					"phase":"rewrite",
+					"functions":[
+						"return function (conf, ctx)\n    local core = require(\"apisix.core\");\n    local authorization = core.request.header(ctx, \"Authorization\");\n    if authorization == \"123\" then\n        core.response.exit(200);\n    elseif authorization == \"321\" then\n        core.response.set_header(\"X-User-ID\", \"i-am-user\");\n        core.response.exit(200);\n    else core.response.set_header(\"Location\", \"http://example.com/auth\");\n        core.response.exit(403);\n    end\nend"
 					]
 				}
 			}
 		}`
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(string(json)))
+		assert.Nil(ginkgo.GinkgoT(), s.CreateApisixRouteByChever("serverless", []byte(json)), "create serverless route")
 	})
 
-	ginkgo.It("enable serverless plugin", func() {
-		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
-		apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
-kind: ApisixRoute
-metadata:
-  name: httpbin-route
-spec:
-  http:
-  - name: rule1
-    match:
-      hosts:
-      - httpbin.com
-      paths:
-      - /index.html
-    backends:
-    - serviceName: %s
-      servicePort: %d
-`, backendSvc, backendSvcPort[0])
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
+	ginkgo.JustAfterEach(func() {
+		assert.Nil(ginkgo.GinkgoT(), s.DeleteApisixRouteByChever("serverless"), "clean up serverless route")
+	})
 
-		err := s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+	ginkgo.It("enable in ingress networking/v1", func() {
+		backendSvc, backendPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/auth-uri: %s
+    k8s.apisix.apache.org/auth-request-headers: Authorization
+    k8s.apisix.apache.org/auth-upstream-headers: X-User-ID
+    k8s.apisix.apache.org/auth-client-headers: Location
+  name: ingress-v1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          serviceName: %s
+          servicePort: %d
+`, "http://127.0.0.1:9080/serverless", backendSvc, backendPort[0])
+		err := s.CreateResourceFromString(ing)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		time.Sleep(5 * time.Second)
+
+		resp := s.NewAPISIXClient().GET("/serverless").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
 
 	})
 })
