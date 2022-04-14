@@ -23,7 +23,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suit-plugins: serverless plugin", func() {
+var _ = ginkgo.Describe("suite-plugins: serverless plugin", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
@@ -33,6 +33,22 @@ var _ = ginkgo.Describe("suit-plugins: serverless plugin", func() {
 		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
+
+	ginkgo.JustBeforeEach(func() {
+		json := `{
+			"uri": "/serverless",
+			"plugins": {
+				"serverless-pre-function": {
+					"phase": "rewrite",
+					"function": [
+						"return function (conf, ctx)\n    local core = require(\"apisix.core\");\n    core.response.exit(200);\n    end\n    end"
+					]
+				}
+			}
+		}`
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(string(json)))
+	})
+
 	ginkgo.It("enable serverless plugin", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
@@ -51,14 +67,11 @@ spec:
     backends:
     - serviceName: %s
       servicePort: %d
-    plugins:
-    - name: serverless-pre-function
-      enable: true
 `, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
 		
 		err := s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 		
-	})	
+	})
 })
