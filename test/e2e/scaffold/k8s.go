@@ -15,7 +15,6 @@
 package scaffold
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -554,71 +553,4 @@ func (s *Scaffold) GetKubernetesClient() *kubernetes.Clientset {
 	client, err := k8s.GetKubernetesClientFromOptionsE(s.t, s.kubectlOptions)
 	assert.Nil(ginkgo.GinkgoT(), err, "get kubernetes client")
 	return client
-}
-
-func (s *Scaffold) CreateApisixRouteByChever(routeID string, body []byte) error {
-	u := url.URL{
-		Scheme: "http",
-		Host:   s.apisixAdminTunnel.Endpoint(),
-		Path:   "/apisix/admin/routes/" + routeID,
-	}
-	return s.ensureHTTPPutSuccess(u.String(), body)
-}
-
-func (s *Scaffold) ensureHTTPPutSuccess(url string, body []byte) error {
-	condFunc := func() (bool, error) {
-		req, err := http.NewRequest("PUT", url, bytes.NewBuffer(body))
-		if err != nil {
-			return false, err
-		}
-		if s.opts.APISIXAdminAPIKey != "" {
-			req.Header.Set("X-API-Key", s.opts.APISIXAdminAPIKey)
-		}
-		req.Header.Set("Content-Type", "application/json")
-
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			ginkgo.GinkgoT().Logf("failed to create resources from APISIX: %s", err.Error())
-			return false, nil
-		}
-		if resp.StatusCode != http.StatusOK {
-			ginkgo.GinkgoT().Logf("got status code %d from APISIX", resp.StatusCode)
-			return false, nil
-		}
-		return true, nil
-	}
-	return wait.Poll(3*time.Second, 35*time.Second, condFunc)
-}
-
-func (s *Scaffold) DeleteApisixRouteByChever(routeID string) error {
-	u := url.URL{
-		Scheme: "http",
-		Host:   s.apisixAdminTunnel.Endpoint(),
-		Path:   "/apisix/admin/routes/" + routeID,
-	}
-	return s.ensureHTTPDeleteSuccess(u.String())
-}
-
-func (s *Scaffold) ensureHTTPDeleteSuccess(url string) error {
-	condFunc := func() (bool, error) {
-		req, err := http.NewRequest("DELETE", url, nil)
-		if err != nil {
-			return false, err
-		}
-		if s.opts.APISIXAdminAPIKey != "" {
-			req.Header.Set("X-API-Key", s.opts.APISIXAdminAPIKey)
-		}
-
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			ginkgo.GinkgoT().Logf("failed to delete resources from APISIX: %s", err.Error())
-			return false, nil
-		}
-		if resp.StatusCode != http.StatusOK {
-			ginkgo.GinkgoT().Logf("got status code %d from APISIX", resp.StatusCode)
-			return false, nil
-		}
-		return true, nil
-	}
-	return wait.Poll(3*time.Second, 35*time.Second, condFunc)
 }
