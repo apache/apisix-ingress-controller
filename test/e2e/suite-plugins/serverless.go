@@ -53,10 +53,17 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: 
+   - name: serverless-pre-function
+     enable: true
+     config:
+       phase: rewrite
+       functions: ["return function() ngx.log(ngx.ERR, \"serverless pre function\"); end"]         
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+
+		err := s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
 	})
 })
