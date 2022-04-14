@@ -557,7 +557,7 @@ func (s *Scaffold) GetKubernetesClient() *kubernetes.Clientset {
 }
 
 
-func (s *Scaffold) CreateApisixRouteByApisixAdmin(routeID string, body []byte) error {
+func (s *Scaffold) CreateApisixRouteByChever(routeID string, body []byte) error {
 	u := url.URL{
 		Scheme: "http",
 		Host:   s.apisixAdminTunnel.Endpoint(),
