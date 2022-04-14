@@ -43,7 +43,7 @@ var _ = ginkgo.Describe("suite-plugins: serverless plugin", func() {
 				"serverless-pre-function":{
 					"phase":"rewrite",
 					"functions":[
-						"return function (conf, ctx)\n    local core = require(\"apisix.core\");\n    local authorization = core.request.header(ctx, \"Authorization\");\n    if authorization == \"123\" then\n        core.response.exit(200);\n    elseif authorization == \"321\" then\n        core.response.set_header(\"X-User-ID\", \"i-am-user\");\n        core.response.exit(200);\n    else core.response.set_header(\"Location\", \"http://example.com/auth\");\n        core.response.exit(403);\n    end\nend"
+						"return function (conf, ctx)\n    local core = require(\"apisix.core\");\n    core.response.exit(200);\n    end\nend"
 					]
 				}
 			}
