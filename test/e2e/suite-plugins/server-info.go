@@ -33,8 +33,7 @@ var _ = ginkgo.Describe("suite-plugins: server-info plugin", func() {
 	s := scaffold.NewScaffold(opts)
 
 	ginkgo.It("enable server-info plugin", func() {
-		ginkgo.Skip("This plugin is disabled by default in APISIX v2.13.")
-		serverInfoKey := [...]string{"etcd_version", "up_time", "last_report_time", "id", "hostname", "version", "boot_time"}
+		serverInfoKey := [...]string{"etcd_version", "id", "hostname", "version", "boot_time"}
 		serverInfo, err := s.GetServerInfo()
 		assert.Nil(ginkgo.GinkgoT(), err)
 		for _, key := range serverInfoKey {

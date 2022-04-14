@@ -54,7 +54,7 @@ func Authentication(basicAuthInfo interface{}) string {
 }
 
 //consumer-restriction plugin testing
-var _ = ginkgo.Describe("consumer-restriction plugin", func() {
+var _ = ginkgo.Describe("suite-plugins: consumer-restriction plugin", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
