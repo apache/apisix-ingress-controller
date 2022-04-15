@@ -57,6 +57,10 @@ const (
 	ApisixRouteV2beta3 = "apisix.apache.org/v2beta3"
 	// ApisixRouteV2 represents apisixroute.apisix.apache.org/v2
 	ApisixRouteV2 = "apisix.apache.org/v2"
+	// ApisixTlsV2beta3 represents apisixroute.apisix.apache.org/v2beta3
+	ApisixTlsV2beta3 = "apisix.apache.org/v2beta3"
+	// ApisixTlsV2 represents apisixroute.apisix.apache.org/v2
+	ApisixTlsV2 = "apisix.apache.org/v2"
 
 	_minimalResyncInterval = 30 * time.Second
 
@@ -92,6 +96,7 @@ type KubernetesConfig struct {
 	IngressVersion      string             `json:"ingress_version" yaml:"ingress_version"`
 	WatchEndpointSlices bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
 	ApisixRouteVersion  string             `json:"apisix_route_version" yaml:"apisix_route_version"`
+	ApisixTlsVersion  string             `json:"apisix_tls_version" yaml:"apisix_tls_version"`
 	EnableGatewayAPI    bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
 }
 

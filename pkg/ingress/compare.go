@@ -114,7 +114,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 				ctx.Done()
 			} else {
 				for _, s := range retSSL.Items {
-					ssl, err := c.translator.TranslateSSL(&s)
+					ssl, err := c.translator.TranslateSSLV2Beta3(&s)
 					if err != nil {
 						log.Error(err.Error())
 						ctx.Done()

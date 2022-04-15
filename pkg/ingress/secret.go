@@ -140,7 +140,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 			log.Errorf("invalid cached ApisixTls key: %s", tlsMetaKey)
 			return true
 		}
-		tls, err := c.controller.apisixTlsLister.ApisixTlses(tlsNamespace).Get(tlsName)
+		tls, err := c.controller.apisixTlsLister.V2beta3(tlsNamespace, tlsName)
 		if err != nil {
 			log.Warnw("secret related ApisixTls resource not found, skip",
 				zap.String("ApisixTls", tlsMetaKey),

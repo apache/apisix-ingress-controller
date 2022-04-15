@@ -16,6 +16,7 @@ package ingress
 
 import (
 	"context"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"sync"
 	"time"
 
@@ -83,14 +84,15 @@ func (c *apisixTlsController) runWorker(ctx context.Context) {
 }
 
 func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
-	key := ev.Object.(string)
+	event := ev.Object.(kube.ApisixTlsEvent)
+	key := event.Key
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		log.Errorf("found ApisixTls resource with invalid meta namespace key %s: %s", key, err)
 		return err
 	}
 
-	tls, err := c.controller.apisixTlsLister.ApisixTlses(namespace).Get(name)
+	tls, err := c.controller.apisixTlsLister.V2beta3(namespace, name)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Errorf("failed to get ApisixTls %s: %s", key, err)
@@ -113,7 +115,7 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 		tls = ev.Tombstone.(*configv2beta3.ApisixTls)
 	}
 
-	ssl, err := c.controller.translator.TranslateSSL(tls)
+	ssl, err := c.controller.translator.TranslateSSLV2Beta3(tls)
 	if err != nil {
 		log.Errorw("failed to translate ApisixTls",
 			zap.Error(err),
@@ -177,10 +179,12 @@ func (c *apisixTlsController) handleSyncErr(obj interface{}, err error) {
 	}
 
 	event := obj.(*types.Event)
+	ev := event.Object.(kube.ApisixTlsEvent)
 	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
 		log.Infow("sync ApisixTls but not found, ignore",
 			zap.String("event_type", event.Type.String()),
-			zap.String("ApisixTls", event.Object.(string)),
+			zap.String("ApisixTls", ev.Key),
+			zap.String("version", ev.GroupVersion),
 		)
 		c.workqueue.Forget(event)
 		return
@@ -194,6 +198,11 @@ func (c *apisixTlsController) handleSyncErr(obj interface{}, err error) {
 }
 
 func (c *apisixTlsController) onAdd(obj interface{}) {
+	tls, err := kube.NewApisixTls(obj)
+	if err != nil {
+		log.Errorf("found ApisixTls resource with bad type", zap.Error(err))
+		return
+	}
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
 		log.Errorf("found ApisixTls object with bad namespace/name: %s, ignore it", err)
@@ -206,17 +215,28 @@ func (c *apisixTlsController) onAdd(obj interface{}) {
 		zap.Any("object", obj),
 	)
 	c.workqueue.Add(&types.Event{
-		Type:   types.EventAdd,
-		Object: key,
+		Type: types.EventAdd,
+		Object: kube.ApisixTlsEvent{
+			Key:          key,
+			GroupVersion: tls.GroupVersion(),
+		},
 	})
 
 	c.controller.MetricsCollector.IncrEvents("TLS", "add")
 }
 
 func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
-	oldTls := prev.(*configv2beta3.ApisixTls)
-	newTls := curr.(*configv2beta3.ApisixTls)
-	if oldTls.GetResourceVersion() >= newTls.GetResourceVersion() {
+	oldTls, err := kube.NewApisixTls(prev)
+	if err != nil {
+		log.Errorf("found ApisixTls resource with bad type", zap.Error(err))
+		return
+	}
+	newTls, err := kube.NewApisixTls(curr)
+	if err != nil {
+		log.Errorf("found ApisixTls resource with bad type", zap.Error(err))
+		return
+	}
+	if oldTls.ResourceVersion() >= newTls.ResourceVersion() {
 		return
 	}
 	key, err := cache.MetaNamespaceKeyFunc(curr)
@@ -232,22 +252,27 @@ func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
 		zap.Any("old object", prev),
 	)
 	c.workqueue.Add(&types.Event{
-		Type:   types.EventUpdate,
-		Object: key,
+		Type: types.EventUpdate,
+		Object: kube.ApisixTlsEvent{
+			Key:          key,
+			OldObject:    oldTls,
+			GroupVersion: newTls.GroupVersion(),
+		},
 	})
 
 	c.controller.MetricsCollector.IncrEvents("TLS", "update")
 }
 
 func (c *apisixTlsController) onDelete(obj interface{}) {
-	tls, ok := obj.(*configv2beta3.ApisixTls)
-	if !ok {
+	tls, err := kube.NewApisixTls(obj)
+	if err != nil {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			return
 		}
-		tls, ok = tombstone.Obj.(*configv2beta3.ApisixTls)
-		if !ok {
+		tls, err = kube.NewApisixTls(tombstone)
+		if err != nil {
+			log.Errorf("found ApisixTls resource with bad type", zap.Error(err))
 			return
 		}
 	}
@@ -263,8 +288,11 @@ func (c *apisixTlsController) onDelete(obj interface{}) {
 		zap.Any("final state", obj),
 	)
 	c.workqueue.Add(&types.Event{
-		Type:      types.EventDelete,
-		Object:    key,
+		Type: types.EventDelete,
+		Object: kube.ApisixTlsEvent{
+			Key:          key,
+			GroupVersion: tls.GroupVersion(),
+		},
 		Tombstone: tls,
 	})
 
