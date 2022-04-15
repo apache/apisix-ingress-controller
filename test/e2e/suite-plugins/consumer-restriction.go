@@ -15,7 +15,6 @@
 package plugins
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net/http"
 	"time"
@@ -26,34 +25,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-func CreateBasicAuthConsumer(name, username, password string) string {
-	ac := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
-kind: ApisixConsumer
-metadata:
-  name: %s
-spec:
-  authParameter:
-    basicAuth:
-      value:
-        username: %s
-        password: %s
-`, name, username, password)
-	return ac
-}
-
-func Authentication(basicAuthInfo interface{}) string {
-	basicAuth, ok := basicAuthInfo.(map[string]interface{})
-	if !ok {
-		return ""
-	}
-	username, _ := basicAuth["username"].(string)
-	password, _ := basicAuth["password"].(string)
-	str := username + ":" + password
-	return "Basic " + base64.StdEncoding.EncodeToString([]byte(str))
-}
-
-//consumer-restriction plugin testing
 var _ = ginkgo.Describe("suite-plugins: consumer-restriction plugin", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
@@ -66,11 +37,11 @@ var _ = ginkgo.Describe("suite-plugins: consumer-restriction plugin", func() {
 	s := scaffold.NewScaffold(opts)
 
 	ginkgo.It("restrict consumer_name", func() {
-		ac1 := CreateBasicAuthConsumer("jack1", "jack1-username", "jack1-password")
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac1), "creating basicAuth ApisixConsumer")
+		err := s.ApisixConsumerBasicAuthCreated("jack1", "jack1-username", "jack1-password")
+		assert.Nil(ginkgo.GinkgoT(), err, "creating basicAuth ApisixConsumer")
 
-		ac2 := CreateBasicAuthConsumer("jack2", "jack2-username", "jack2-password")
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac2), "creating basicAuth ApisixConsumer")
+		err = s.ApisixConsumerBasicAuthCreated("jack2", "jack2-username", "jack2-password")
+		assert.Nil(ginkgo.GinkgoT(), err, "creating basicAuth ApisixConsumer")
 
 		// Wait until the ApisixConsumer create event was delivered.
 		time.Sleep(6 * time.Second)
@@ -129,7 +100,7 @@ spec:
 
 		_ = s.NewAPISIXClient().GET("/anything").
 			WithHeader("Host", "httpbin.org").
-			WithHeader("Authorization", Authentication(basicAuth)).
+			WithHeader("Authorization", "Basic amFjazEtdXNlcm5hbWU6amFjazEtcGFzc3dvcmQ=").
 			Expect().
 			Status(http.StatusOK)
 
@@ -143,7 +114,7 @@ spec:
 
 		msg403 := s.NewAPISIXClient().GET("/anything").
 			WithHeader("Host", "httpbin.org").
-			WithHeader("Authorization", Authentication(basicAuth2)).
+			WithHeader("Authorization", "Basic amFjazItdXNlcm5hbWU6amFjazItcGFzc3dvcmQ=").
 			Expect().
 			Status(http.StatusForbidden).
 			Body().
@@ -153,11 +124,11 @@ spec:
 	})
 
 	ginkgo.It("restrict allowed_by_methods", func() {
-		ac1 := CreateBasicAuthConsumer("jack1", "jack1-username", "jack1-password")
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac1), "creating basicAuth ApisixConsumer")
+		err := s.ApisixConsumerBasicAuthCreated("jack1", "jack1-username", "jack1-password")
+		assert.Nil(ginkgo.GinkgoT(), err, "creating basicAuth ApisixConsumer")
 
-		ac2 := CreateBasicAuthConsumer("jack2", "jack2-username", "jack2-password")
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac2), "creating basicAuth ApisixConsumer")
+		err = s.ApisixConsumerBasicAuthCreated("jack2", "jack2-username", "jack2-password")
+		assert.Nil(ginkgo.GinkgoT(), err, "creating basicAuth ApisixConsumer")
 
 		// Wait until the ApisixConsumer create event was delivered.
 		time.Sleep(6 * time.Second)
@@ -223,26 +194,25 @@ spec:
 
 		_ = s.NewAPISIXClient().GET("/anything").
 			WithHeader("Host", "httpbin.org").
-			WithHeader("Authorization", Authentication(basicAuth)).
-			WithHeader("Content-type", "application/x-www-form-urlencoded").
+			WithHeader("Authorization", "Basic amFjazEtdXNlcm5hbWU6amFjazEtcGFzc3dvcmQ=").
 			Expect().
 			Status(http.StatusOK)
 
 		_ = s.NewAPISIXClient().POST("/anything").
 			WithHeader("Host", "httpbin.org").
-			WithHeader("Authorization", Authentication(basicAuth)).
+			WithHeader("Authorization", "Basic amFjazEtdXNlcm5hbWU6amFjazEtcGFzc3dvcmQ=").
 			Expect().
 			Status(http.StatusOK)
 
 		_ = s.NewAPISIXClient().GET("/anything").
 			WithHeader("Host", "httpbin.org").
-			WithHeader("Authorization", Authentication(basicAuth2)).
+			WithHeader("Authorization", "Basic amFjazItdXNlcm5hbWU6amFjazItcGFzc3dvcmQ=").
 			Expect().
 			Status(http.StatusOK)
 
 		msg403 := s.NewAPISIXClient().POST("/anything").
 			WithHeader("Host", "httpbin.org").
-			WithHeader("Authorization", Authentication(basicAuth2)).
+			WithHeader("Authorization", "Basic amFjazItdXNlcm5hbWU6amFjazItcGFzc3dvcmQ=").
 			Expect().
 			Status(http.StatusForbidden).
 			Body().
