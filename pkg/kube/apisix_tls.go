@@ -16,18 +16,12 @@ package kube
 
 import (
 	"fmt"
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	listersv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2"
 	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
-)
-
-const (
-	// ApisixTlsV2beta3 represents the ApisixTls in apisix.apache.org/v2beta3 group version
-	ApisixTlsV2beta3 = "apisix.apache.org/v2beta3"
-	// ApisixTlsV2 represents the ApisixTls in apisix.apache.org/v2 group version
-	ApisixTlsV2 = "apisix.apache.org/v2"
 )
 
 // ApisixTlsLister is an encapsulation for the lister of ApisixTls,
@@ -77,13 +71,13 @@ type apisixTls struct {
 }
 
 func (ar *apisixTls) V2beta3() *configv2beta3.ApisixTls {
-	if ar.groupVersion != ApisixTlsV2beta3 {
+	if ar.groupVersion != config.ApisixTlsV2beta3 {
 		panic("not a apisix.apache.org/v2beta3 route")
 	}
 	return ar.v2beta3
 }
 func (ar *apisixTls) V2() *configv2.ApisixTls {
-	if ar.groupVersion != ApisixTlsV2 {
+	if ar.groupVersion != config.ApisixTlsV2 {
 		panic("not a apisix.apache.org/v2 route")
 	}
 	return ar.v2
@@ -94,7 +88,7 @@ func (ar *apisixTls) GroupVersion() string {
 }
 
 func (ar *apisixTls) ResourceVersion() string {
-	if ar.groupVersion == ApisixTlsV2beta3 {
+	if ar.groupVersion == config.ApisixTlsV2beta3 {
 		return ar.V2beta3().ResourceVersion
 	}
 	return ar.V2().ResourceVersion
@@ -111,7 +105,7 @@ func (l *apisixTlsLister) V2beta3(namespace, name string) (ApisixTls, error) {
 		return nil, err
 	}
 	return &apisixTls{
-		groupVersion: ApisixTlsV2beta3,
+		groupVersion: config.ApisixTlsV2beta3,
 		v2beta3:      ar,
 	}, nil
 }
@@ -121,7 +115,7 @@ func (l *apisixTlsLister) V2(namespace, name string) (ApisixTls, error) {
 		return nil, err
 	}
 	return &apisixTls{
-		groupVersion: ApisixTlsV2,
+		groupVersion: config.ApisixTlsV2,
 		v2:           ar,
 	}, nil
 }
@@ -132,12 +126,12 @@ func MustNewApisixTls(obj interface{}) ApisixTls {
 	switch ar := obj.(type) {
 	case *configv2beta3.ApisixTls:
 		return &apisixTls{
-			groupVersion: ApisixTlsV2beta3,
+			groupVersion: config.ApisixTlsV2beta3,
 			v2beta3:      ar,
 		}
 	case *configv2.ApisixTls:
 		return &apisixTls{
-			groupVersion: ApisixTlsV2,
+			groupVersion: config.ApisixTlsV2,
 			v2:           ar,
 		}
 	default:
@@ -152,12 +146,12 @@ func NewApisixTls(obj interface{}) (ApisixTls, error) {
 	switch ar := obj.(type) {
 	case *configv2beta3.ApisixTls:
 		return &apisixTls{
-			groupVersion: ApisixTlsV2beta3,
+			groupVersion: config.ApisixTlsV2beta3,
 			v2beta3:      ar,
 		}, nil
 	case *configv2.ApisixTls:
 		return &apisixTls{
-			groupVersion: ApisixTlsV2,
+			groupVersion: config.ApisixTlsV2,
 			v2:           ar,
 		}, nil
 	default:

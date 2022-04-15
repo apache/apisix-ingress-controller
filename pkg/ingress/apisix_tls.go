@@ -17,6 +17,7 @@ package ingress
 import (
 	"context"
 	"fmt"
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"sync"
 	"time"
 
@@ -92,12 +93,12 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 		return err
 	}
 
-	var multiVersionTls kube.ApisixTls
+	var multiVersionedTls kube.ApisixTls
 	switch event.GroupVersion {
-	case kube.ApisixTlsV2beta3:
-		multiVersionTls, err = c.controller.apisixTlsLister.V2beta3(namespace, name)
-	case kube.ApisixTlsV2:
-		multiVersionTls, err = c.controller.apisixTlsLister.V2(namespace, name)
+	case config.ApisixTlsV2beta3:
+		multiVersionedTls, err = c.controller.apisixTlsLister.V2beta3(namespace, name)
+	case config.ApisixTlsV2:
+		multiVersionedTls, err = c.controller.apisixTlsLister.V2(namespace, name)
 	default:
 		return fmt.Errorf("unsupported ApisixTls group version %s", event.GroupVersion)
 	}
@@ -121,19 +122,19 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 		}
 	}
 	if ev.Type == types.EventDelete {
-		if multiVersionTls != nil {
+		if multiVersionedTls != nil {
 			// We still find the resource while we are processing the DELETE event,
 			// that means object with same namespace and name was created, discarding
 			// this stale DELETE event.
 			log.Warnf("discard the stale ApisixTls delete event since the %s exists", key)
 			return nil
 		}
-		multiVersionTls = ev.Tombstone.(kube.ApisixTls)
+		multiVersionedTls = ev.Tombstone.(kube.ApisixTls)
 	}
 
 	switch event.GroupVersion {
-	case kube.ApisixTlsV2beta3:
-		tls := multiVersionTls.V2beta3()
+	case config.ApisixTlsV2beta3:
+		tls := multiVersionedTls.V2beta3()
 		ssl, err := c.controller.translator.TranslateSSLV2Beta3(tls)
 		if err != nil {
 			log.Errorw("failed to translate ApisixTls",
@@ -170,8 +171,8 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 		c.controller.recorderEvent(tls, corev1.EventTypeNormal, _resourceSynced, nil)
 		c.controller.recordStatus(tls, _resourceSynced, nil, metav1.ConditionTrue, tls.GetGeneration())
 		return err
-	case kube.ApisixTlsV2:
-		tls := multiVersionTls.V2()
+	case config.ApisixTlsV2:
+		tls := multiVersionedTls.V2()
 		ssl, err := c.controller.translator.TranslateSSLV2(tls)
 		if err != nil {
 			log.Errorw("failed to translate ApisixTls",
