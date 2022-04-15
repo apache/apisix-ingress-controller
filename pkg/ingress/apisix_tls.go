@@ -261,7 +261,7 @@ func (c *apisixTlsController) handleSyncErr(obj interface{}, err error) {
 func (c *apisixTlsController) onAdd(obj interface{}) {
 	tls, err := kube.NewApisixTls(obj)
 	if err != nil {
-		log.Errorf("found ApisixTls resource with bad type", zap.Error(err))
+		log.Errorw("found ApisixTls resource with bad type", zap.Error(err))
 		return
 	}
 	key, err := cache.MetaNamespaceKeyFunc(obj)
@@ -289,12 +289,12 @@ func (c *apisixTlsController) onAdd(obj interface{}) {
 func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
 	oldTls, err := kube.NewApisixTls(prev)
 	if err != nil {
-		log.Errorf("found ApisixTls resource with bad type", zap.Error(err))
+		log.Errorw("found ApisixTls resource with bad type", zap.Error(err))
 		return
 	}
 	newTls, err := kube.NewApisixTls(curr)
 	if err != nil {
-		log.Errorf("found ApisixTls resource with bad type", zap.Error(err))
+		log.Errorw("found ApisixTls resource with bad type", zap.Error(err))
 		return
 	}
 	if oldTls.ResourceVersion() >= newTls.ResourceVersion() {
@@ -333,7 +333,7 @@ func (c *apisixTlsController) onDelete(obj interface{}) {
 		}
 		tls, err = kube.NewApisixTls(tombstone)
 		if err != nil {
-			log.Errorf("found ApisixTls resource with bad type", zap.Error(err))
+			log.Errorw("found ApisixTls resource with bad type", zap.Error(err))
 			return
 		}
 	}
