@@ -15,6 +15,7 @@
 package scaffold
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -249,6 +250,75 @@ func (s *Scaffold) EnsureNumApisixPluginConfigCreated(desired int) error {
 		Path:   "/apisix/admin/plugin_configs",
 	}
 	return s.ensureNumApisixCRDsCreated(u.String(), desired)
+}
+
+// CreateApisixRouteByApisixAdmin create a route
+func (s *Scaffold) CreateApisixRouteByApisixAdmin(routeID string, body []byte) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/routes/" + routeID,
+	}
+	return s.ensureHTTPPutSuccess(u.String(), body)
+}
+
+func (s *Scaffold) ensureHTTPPutSuccess(url string, body []byte) error {
+	condFunc := func() (bool, error) {
+		req, err := http.NewRequest("PUT", url, bytes.NewBuffer(body))
+		if err != nil {
+			return false, err
+		}
+		if s.opts.APISIXAdminAPIKey != "" {
+			req.Header.Set("X-API-Key", s.opts.APISIXAdminAPIKey)
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			ginkgo.GinkgoT().Logf("failed to create resources from APISIX: %s", err.Error())
+			return false, nil
+		}
+		if resp.StatusCode != http.StatusOK {
+			ginkgo.GinkgoT().Logf("got status code %d from APISIX", resp.StatusCode)
+			return false, nil
+		}
+		return true, nil
+	}
+	return wait.Poll(3*time.Second, 35*time.Second, condFunc)
+}
+
+// DeleteApisixRouteByApisixAdmin deletes a route by its route name in APISIX cluster.
+func (s *Scaffold) DeleteApisixRouteByApisixAdmin(routeID string) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/routes/" + routeID,
+	}
+	return s.ensureHTTPDeleteSuccess(u.String())
+}
+
+func (s *Scaffold) ensureHTTPDeleteSuccess(url string) error {
+	condFunc := func() (bool, error) {
+		req, err := http.NewRequest("DELETE", url, nil)
+		if err != nil {
+			return false, err
+		}
+		if s.opts.APISIXAdminAPIKey != "" {
+			req.Header.Set("X-API-Key", s.opts.APISIXAdminAPIKey)
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			ginkgo.GinkgoT().Logf("failed to delete resources from APISIX: %s", err.Error())
+			return false, nil
+		}
+		if resp.StatusCode != http.StatusOK {
+			ginkgo.GinkgoT().Logf("got status code %d from APISIX", resp.StatusCode)
+			return false, nil
+		}
+		return true, nil
+	}
+	return wait.Poll(3*time.Second, 35*time.Second, condFunc)
 }
 
 // GetServerInfo collect server info from "/v1/server_info" (Control API) exposed by server-info plugin
