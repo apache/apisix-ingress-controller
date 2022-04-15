@@ -52,7 +52,6 @@ spec:
    backends:
    - serviceName: %s
      servicePort: %d
-     weight: 10
    plugins:
    - name: serverless-pre-function
      enable: true
@@ -88,7 +87,6 @@ spec:
    backends:
    - serviceName: %s
      servicePort: %d
-     weight: 10
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
