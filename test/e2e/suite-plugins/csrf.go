@@ -52,7 +52,6 @@ spec:
    backends:
    - serviceName: %s
      servicePort: %d
-     weight: 10
    plugins:
    - name: csrf
      enable: true
@@ -113,7 +112,6 @@ spec:
    backends:
    - serviceName: %s
      servicePort: %d
-     weight: 10
    plugins:
    - name: csrf
      enable: false

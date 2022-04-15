@@ -52,7 +52,6 @@ spec:
    backends:
    - serviceName: %s
      servicePort: %d
-     weight: 10
    plugins:
    - name: client-control
      enable: true
@@ -102,7 +101,6 @@ spec:
    backends:
    - serviceName: %s
      servicePort: %d
-     weight: 10
    plugins:
    - name: client-control
      enable: false
