@@ -16,7 +16,7 @@ package ingress
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	"fmt"
 	"sync"
 	"time"
 
@@ -27,7 +27,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -92,65 +92,125 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 		return err
 	}
 
-	tls, err := c.controller.apisixTlsLister.V2beta3(namespace, name)
+	var multiVersionTls kube.ApisixTls
+	switch event.GroupVersion {
+	case kube.ApisixTlsV2beta3:
+		multiVersionTls, err = c.controller.apisixTlsLister.V2beta3(namespace, name)
+	case kube.ApisixTlsV2:
+		multiVersionTls, err = c.controller.apisixTlsLister.V2(namespace, name)
+	default:
+		return fmt.Errorf("unsupported ApisixTls group version %s", event.GroupVersion)
+	}
+
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
-			log.Errorf("failed to get ApisixTls %s: %s", key, err)
+			log.Errorf("failed to get ApisixTls",
+				zap.Error(err),
+				zap.String("key", key),
+				zap.String("version", event.GroupVersion),
+			)
 			return err
 		}
 		if ev.Type != types.EventDelete {
-			log.Warnf("ApisixTls %s was deleted before it can be delivered", key)
+			log.Warnf("ApisixTls %s was deleted before it can be delivered",
+				zap.String("key", key),
+				zap.String("version", event.GroupVersion),
+			)
 			// Don't need to retry.
 			return nil
 		}
 	}
 	if ev.Type == types.EventDelete {
-		if tls != nil {
+		if multiVersionTls != nil {
 			// We still find the resource while we are processing the DELETE event,
 			// that means object with same namespace and name was created, discarding
 			// this stale DELETE event.
 			log.Warnf("discard the stale ApisixTls delete event since the %s exists", key)
 			return nil
 		}
-		tls = ev.Tombstone.(*configv2beta3.ApisixTls)
+		multiVersionTls = ev.Tombstone.(kube.ApisixTls)
 	}
 
-	ssl, err := c.controller.translator.TranslateSSLV2Beta3(tls)
-	if err != nil {
-		log.Errorw("failed to translate ApisixTls",
-			zap.Error(err),
+	switch event.GroupVersion {
+	case kube.ApisixTlsV2beta3:
+		tls := multiVersionTls.V2beta3()
+		ssl, err := c.controller.translator.TranslateSSLV2Beta3(tls)
+		if err != nil {
+			log.Errorw("failed to translate ApisixTls",
+				zap.Error(err),
+				zap.Any("ApisixTls", tls),
+			)
+			c.controller.recorderEvent(tls, corev1.EventTypeWarning, _resourceSyncAborted, err)
+			c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
+			return err
+		}
+		log.Debugw("got SSL object from ApisixTls",
+			zap.Any("ssl", ssl),
 			zap.Any("ApisixTls", tls),
 		)
-		c.controller.recorderEvent(tls, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
-		return err
-	}
-	log.Debugw("got SSL object from ApisixTls",
-		zap.Any("ssl", ssl),
-		zap.Any("ApisixTls", tls),
-	)
 
-	secretKey := tls.Spec.Secret.Namespace + "_" + tls.Spec.Secret.Name
-	c.syncSecretSSL(secretKey, key, ssl, ev.Type)
-	if tls.Spec.Client != nil {
-		caSecretKey := tls.Spec.Client.CASecret.Namespace + "_" + tls.Spec.Client.CASecret.Name
-		if caSecretKey != secretKey {
-			c.syncSecretSSL(caSecretKey, key, ssl, ev.Type)
+		secretKey := tls.Spec.Secret.Namespace + "_" + tls.Spec.Secret.Name
+		c.syncSecretSSL(secretKey, key, ssl, ev.Type)
+		if tls.Spec.Client != nil {
+			caSecretKey := tls.Spec.Client.CASecret.Namespace + "_" + tls.Spec.Client.CASecret.Name
+			if caSecretKey != secretKey {
+				c.syncSecretSSL(caSecretKey, key, ssl, ev.Type)
+			}
 		}
-	}
 
-	if err := c.controller.syncSSL(ctx, ssl, ev.Type); err != nil {
-		log.Errorw("failed to sync SSL to APISIX",
-			zap.Error(err),
-			zap.Any("ssl", ssl),
-		)
-		c.controller.recorderEvent(tls, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
+		if err := c.controller.syncSSL(ctx, ssl, ev.Type); err != nil {
+			log.Errorw("failed to sync SSL to APISIX",
+				zap.Error(err),
+				zap.Any("ssl", ssl),
+			)
+			c.controller.recorderEvent(tls, corev1.EventTypeWarning, _resourceSyncAborted, err)
+			c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
+			return err
+		}
+		c.controller.recorderEvent(tls, corev1.EventTypeNormal, _resourceSynced, nil)
+		c.controller.recordStatus(tls, _resourceSynced, nil, metav1.ConditionTrue, tls.GetGeneration())
 		return err
+	case kube.ApisixTlsV2:
+		tls := multiVersionTls.V2()
+		ssl, err := c.controller.translator.TranslateSSLV2(tls)
+		if err != nil {
+			log.Errorw("failed to translate ApisixTls",
+				zap.Error(err),
+				zap.Any("ApisixTls", tls),
+			)
+			c.controller.recorderEvent(tls, corev1.EventTypeWarning, _resourceSyncAborted, err)
+			c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
+			return err
+		}
+		log.Debugw("got SSL object from ApisixTls",
+			zap.Any("ssl", ssl),
+			zap.Any("ApisixTls", tls),
+		)
+
+		secretKey := tls.Spec.Secret.Namespace + "_" + tls.Spec.Secret.Name
+		c.syncSecretSSL(secretKey, key, ssl, ev.Type)
+		if tls.Spec.Client != nil {
+			caSecretKey := tls.Spec.Client.CASecret.Namespace + "_" + tls.Spec.Client.CASecret.Name
+			if caSecretKey != secretKey {
+				c.syncSecretSSL(caSecretKey, key, ssl, ev.Type)
+			}
+		}
+
+		if err := c.controller.syncSSL(ctx, ssl, ev.Type); err != nil {
+			log.Errorw("failed to sync SSL to APISIX",
+				zap.Error(err),
+				zap.Any("ssl", ssl),
+			)
+			c.controller.recorderEvent(tls, corev1.EventTypeWarning, _resourceSyncAborted, err)
+			c.controller.recordStatus(tls, _resourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
+			return err
+		}
+		c.controller.recorderEvent(tls, corev1.EventTypeNormal, _resourceSynced, nil)
+		c.controller.recordStatus(tls, _resourceSynced, nil, metav1.ConditionTrue, tls.GetGeneration())
+		return err
+	default:
+		return fmt.Errorf("unsupported ApisixTls group version %s", event.GroupVersion)
 	}
-	c.controller.recorderEvent(tls, corev1.EventTypeNormal, _resourceSynced, nil)
-	c.controller.recordStatus(tls, _resourceSynced, nil, metav1.ConditionTrue, tls.GetGeneration())
-	return err
 }
 
 func (c *apisixTlsController) syncSecretSSL(secretKey string, apisixTlsKey string, ssl *v1.Ssl, event types.EventType) {

@@ -21,11 +21,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 

@@ -96,7 +96,7 @@ type KubernetesConfig struct {
 	IngressVersion      string             `json:"ingress_version" yaml:"ingress_version"`
 	WatchEndpointSlices bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
 	ApisixRouteVersion  string             `json:"apisix_route_version" yaml:"apisix_route_version"`
-	ApisixTlsVersion  string             `json:"apisix_tls_version" yaml:"apisix_tls_version"`
+	ApisixTlsVersion    string             `json:"apisix_tls_version" yaml:"apisix_tls_version"`
 	EnableGatewayAPI    bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
 }
 

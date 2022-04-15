@@ -202,7 +202,7 @@ func (c *Controller) initWhenStartLeading() {
 	var (
 		ingressInformer     cache.SharedIndexInformer
 		apisixRouteInformer cache.SharedIndexInformer
-		apisixTlsInformer cache.SharedIndexInformer
+		apisixTlsInformer   cache.SharedIndexInformer
 	)
 
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
