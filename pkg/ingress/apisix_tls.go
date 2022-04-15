@@ -105,7 +105,7 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
-			log.Errorf("failed to get ApisixTls",
+			log.Errorw("failed to get ApisixTls",
 				zap.Error(err),
 				zap.String("key", key),
 				zap.String("version", event.GroupVersion),
@@ -113,7 +113,7 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			return err
 		}
 		if ev.Type != types.EventDelete {
-			log.Warnf("ApisixTls %s was deleted before it can be delivered",
+			log.Warnw("ApisixTls %s was deleted before it can be delivered",
 				zap.String("key", key),
 				zap.String("version", event.GroupVersion),
 			)
