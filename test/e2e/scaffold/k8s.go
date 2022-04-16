@@ -259,32 +259,7 @@ func (s *Scaffold) CreateApisixRouteByApisixAdmin(routeID string, body []byte) e
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin/routes/" + routeID,
 	}
-	return s.ensureHTTPPutSuccess(u.String(), body)
-}
-
-func (s *Scaffold) ensureHTTPPutSuccess(url string, body []byte) error {
-	condFunc := func() (bool, error) {
-		req, err := http.NewRequest("PUT", url, bytes.NewBuffer(body))
-		if err != nil {
-			return false, err
-		}
-		if s.opts.APISIXAdminAPIKey != "" {
-			req.Header.Set("X-API-Key", s.opts.APISIXAdminAPIKey)
-		}
-		req.Header.Set("Content-Type", "application/json")
-
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			ginkgo.GinkgoT().Logf("failed to create resources from APISIX: %s", err.Error())
-			return false, nil
-		}
-		if resp.StatusCode != http.StatusOK {
-			ginkgo.GinkgoT().Logf("got status code %d from APISIX", resp.StatusCode)
-			return false, nil
-		}
-		return true, nil
-	}
-	return wait.Poll(3*time.Second, 35*time.Second, condFunc)
+	return s.ensureAdminOperationIsSuccessful(u.String(), "PUT", body)
 }
 
 // DeleteApisixRouteByApisixAdmin deletes a route by its route name in APISIX cluster.
@@ -294,12 +269,12 @@ func (s *Scaffold) DeleteApisixRouteByApisixAdmin(routeID string) error {
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin/routes/" + routeID,
 	}
-	return s.ensureHTTPDeleteSuccess(u.String())
+	return s.ensureAdminOperationIsSuccessful(u.String(), "DELETE", nil)
 }
 
-func (s *Scaffold) ensureHTTPDeleteSuccess(url string) error {
+func (s *Scaffold) ensureAdminOperationIsSuccessful(url, method string, body []byte) error {
 	condFunc := func() (bool, error) {
-		req, err := http.NewRequest("DELETE", url, nil)
+		req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
 		if err != nil {
 			return false, err
 		}
