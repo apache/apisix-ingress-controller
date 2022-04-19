@@ -211,8 +211,8 @@ EOF
 
 How to get `default_jack1`:
 
-> view ApisixConsumer resource object from this namespace `default` 
-> 
+> view ApisixConsumer resource object from this namespace `default`
+>
 > ```shell
 > $ kubectl get apisixconsumers.apisix.apache.org -n default
 > NAME    AGE
