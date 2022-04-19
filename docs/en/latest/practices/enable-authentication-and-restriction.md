@@ -312,4 +312,4 @@ spec:
 EOF
 ```
 
-The `consumer-restriction` plugin has been disabled now. It works for other plugins.
+The `consumer-restriction` plugin has been disabled now. It works for other plugins. 
