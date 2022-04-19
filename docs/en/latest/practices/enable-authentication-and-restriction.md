@@ -27,12 +27,24 @@ Consumers are useful when you have different consumers requesting the same API a
 
 ## Attributes
 
-* Authentication
-  * `basicAuth`
-  * `keyAuth`
-* Restriction
-  * `consumer_name`
-  * `allowed_by_methods`
+### Authentication
+
+| Name      | Type   | Requirement | Value                                                   |  Description                                                                                |
+|-----------|--------|-------------|---------------------------------------------------------|---------------------------------------------------------------------------------------------|
+| keyAuth   | object |  required   | `value:{ key: ${key} }`                                 | Consumers add their key either in a header `apikey` to authenticate their requests.         |
+| basicAuth | object |  required   | `value:{ username: ${username}, password: ${password}}` | Consumers add their key either in a header `Authentication` to authenticate their requests. |
+
+### Restriction
+
+|Name                |   Type        | Requirement |  Value  | Description                                                                                                    |
+|--------------------|---------------|-------------|-------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+| whitelist          | array[string] | required    | `"${namespace}_${name}"`                                    |Grant full access to all users specified in the provided list , **has the priority over `allowed_by_methods`** |
+| blacklist          | array[string] | required    | `"${namespace}_${name}"`                                    | Reject connection to all users specified in the provided list , **has the priority over `whitelist`**          |
+| allowed_by_methods | array[object] | optional    | `{user: "${namespace}_${name}", methods:["GET", "POST"...]}`| HTTP methods can be `methods:["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE", "PURGE"]`              |
+
+For the `type` field is an enumerated type, it can be `consumer_name` or `service_id`. They stand for the following meanings:
+
+* **consumer_name**: Add the `username` of `consumer` to a whitelist or blacklist (supporting single or multiple consumers) to restrict access to services or routes.
 
 ## Example
 
@@ -127,10 +139,10 @@ The configure:
 >  allowed_by_methods:
 >  - user: "${namespace}_${name:1}"
 >    methods:
->    - "$(method)[GET,POST]"
+>    - "$(method)["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE"]"
 >  - user: "${namespace}_${name:...}"
 >    methods:
->    - "$(method)[GET,POST]"
+>    - "$(method)["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE"]"
 > ```
 >
 
