@@ -36,9 +36,10 @@ Consumers are useful when you have different consumers requesting the same API a
 
 ## Example
 
-### Prepare env 
+### Prepare env
 
-Kubernetes cluster: 
+Kubernetes cluster:
+
 1. [apisix-ingress-controller](https://apisix.apache.org/docs/ingress-controller/deployments/minikube).
 2. httpbin.
 ```shell
@@ -105,9 +106,9 @@ HTTP/1.1 200 OK
 
 ### How to enable `Restriction`
 
-We can also use the `consumer-restriction` Plugin to restrict our user from accessing the API. 
+We can also use the `consumer-restriction` Plugin to restrict our user from accessing the API.
 
-The configure: 
+The configure:
 
 > Use `whitelist` or `blacklist` restrict `consumer_name` 
 > ```yaml
@@ -322,4 +323,4 @@ spec:
 EOF
 ```
 
-The `consumer-restriction` plugin has been disabled now. It works for other plugins. 
+The `consumer-restriction` plugin has been disabled now. It works for other plugins.  
