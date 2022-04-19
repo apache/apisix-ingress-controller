@@ -42,8 +42,6 @@ Consumers are useful when you have different consumers requesting the same API a
 | blacklist          | array[string] | required    | `"${namespace}_${name}"`                                    | Reject connection to all users specified in the provided list , **has the priority over `whitelist`**          |
 | allowed_by_methods | array[object] | optional    | `{user: "${namespace}_${name}", methods:["GET", "POST"...]}`| HTTP methods can be `methods:["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE", "PURGE"]`              |
 
-For the `type` field is an enumerated type, it can be `consumer_name` or `service_id`. They stand for the following meanings:
-
 * **consumer_name**: Add the `username` of `consumer` to a whitelist or blacklist (supporting single or multiple consumers) to restrict access to services or routes.
 
 ## Example
@@ -105,8 +103,6 @@ spec:
       type: keyAuth
 EOF
 ```
-
-**Test keyAuth**
 
 Requests from foo:
 
@@ -212,6 +208,22 @@ spec:
        - "default_jack1"
 EOF
 ```
+
+How to get `default_jack1`:
+
+> view ApisixConsumer resource object from this namespace `default` 
+> 
+> ```shell
+> $ kubectl get apisixconsumers.apisix.apache.org -n default
+> NAME    AGE
+> foo     14h
+> jack1   14h
+> jack2   14h
+> ```
+>
+> `${namespace}_${name}` --> `default_foo`
+> `${namespace}_${name}` --> `default_jack1`
+> `${namespace}_${name}` --> `default_jack2`
 
 **Test Plugin**
 
@@ -336,6 +348,14 @@ spec:
    - name: consumer-restriction
      enable: false
      config:
+       allowed_by_methods:
+       - user: "default_jack1"
+         methods:
+         - "POST"
+         - "GET"
+       - user: "default_jack2"
+         methods:
+         - "GET"
 EOF
 ```
 
