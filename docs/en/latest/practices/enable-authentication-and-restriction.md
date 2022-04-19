@@ -42,6 +42,7 @@ Kubernetes cluster:
 
 1. [apisix-ingress-controller](https://apisix.apache.org/docs/ingress-controller/deployments/minikube).
 2. httpbin.
+
 ```shell
 #Now, try to deploy it to your Kubernetes cluster:
 kubectl run httpbin --image kennethreitz/httpbin --port 80
@@ -110,14 +111,17 @@ We can also use the `consumer-restriction` Plugin to restrict our user from acce
 
 The configure:
 
-> Use `whitelist` or `blacklist` restrict `consumer_name` 
+> Use `whitelist` or `blacklist` restrict `consumer_name`
+> 
 > ```yaml
 > config:
 >   whitelist:
 >   - "${namespace}_${name:1}"
 >     "${namespace}_${name:...}"
 > ```
+> 
 > Restrict `allowed_by_methods`
+> 
 > ```yaml
 >config:
 >  allowed_by_methods:
@@ -134,7 +138,7 @@ The configure:
 
 The following is an example. The `consumer-restriction` plugin is enabled on the specified route to restrict consumer access.
 
-Create ApisixConsumer jack1: 
+Create ApisixConsumer jack1:
 
 ```shell
 kubectl apply -f - <<EOF
@@ -150,7 +154,7 @@ spec:
 EOF
 ```
 
-Create ApisixConsumer jack2: 
+Create ApisixConsumer jack2:
 
 ```shell
 kubectl apply -f - <<EOF
@@ -164,9 +168,9 @@ spec:
       value:
         key: jack2-key
 EOF
-``` 
+```
 
-ApisixRoute: 
+ApisixRoute:
 
 ```shell
 kubectl apply -f - <<EOF
@@ -219,7 +223,7 @@ HTTP/1.1 403 Forbidden
 
 #### How to restrict `allowed_by_methods`
 
-This example restrict the user `jack2` to only `GET` on the resource 
+This example restrict the user `jack2` to only `GET` on the resource.
 
 ```shell
 kubectl apply -f - <<EOF
@@ -274,10 +278,10 @@ HTTP/1.1 200 OK
 ...
 ```
 
-Requests from jack2: 
+Requests from jack2:
 
 ```shell
-kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key' -v 
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key' -v
 
 HTTP/1.1 200 OK
 ...
