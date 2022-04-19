@@ -112,16 +112,16 @@ We can also use the `consumer-restriction` Plugin to restrict our user from acce
 The configure:
 
 > Use `whitelist` or `blacklist` restrict `consumer_name`
-> 
+>
 > ```yaml
 > config:
 >   whitelist:
 >   - "${namespace}_${name:1}"
 >     "${namespace}_${name:...}"
 > ```
-> 
+>
 > Restrict `allowed_by_methods`
-> 
+>
 > ```yaml
 >config:
 >  allowed_by_methods:
@@ -132,7 +132,7 @@ The configure:
 >    methods:
 >    - "$(method)[GET,POST]"
 > ```
->  
+>
 
 #### How to restrict `consumer_name`
 
