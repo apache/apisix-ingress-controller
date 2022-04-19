@@ -28,6 +28,7 @@ var (
 		annotations.NewIPRestrictionHandler(),
 		annotations.NewRewriteHandler(),
 		annotations.NewRedirectHandler(),
+		annotations.NewForwardAuthHandler(),
 	}
 )
 
