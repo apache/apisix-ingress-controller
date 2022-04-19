@@ -24,19 +24,23 @@ title: enable authentication and restriction
 ## Description
 
 Consumers are useful when you have different consumers requesting the same API and you need to execute different Plugin and Upstream configurations based on the consumer. These need to be used in conjunction with the user authentication system.  
+
 ## Attributes
+
 * Authentication
   * `basicAuth`
   * `keyAuth`
 * Restriction
   * `consumer_name`
   * `allowed_by_methods`
+
 ## Example
 
-### Prepare env
+### Prepare env 
+
 Kubernetes cluster: 
-1. [apisix-ingress-controller](https://apisix.apache.org/docs/ingress-controller/deployments/minikube/)
-2. httpbin
+1. [apisix-ingress-controller](https://apisix.apache.org/docs/ingress-controller/deployments/minikube).
+2. httpbin.
 ```shell
 #Now, try to deploy it to your Kubernetes cluster:
 kubectl run httpbin --image kennethreitz/httpbin --port 80
@@ -100,9 +104,11 @@ HTTP/1.1 200 OK
 ```
 
 ### How to enable `Restriction`
+
 We can also use the `consumer-restriction` Plugin to restrict our user from accessing the API. 
 
-The configure:
+The configure: 
+
 > Use `whitelist` or `blacklist` restrict `consumer_name` 
 > ```yaml
 > config:
@@ -121,13 +127,14 @@ The configure:
 >    methods:
 >    - "$(method)[GET,POST]"
 > ```
-> &nbsp; 
+>  
 
 #### How to restrict `consumer_name`
 
 The following is an example. The `consumer-restriction` plugin is enabled on the specified route to restrict consumer access.
 
-Create ApisixConsumer jack1:
+Create ApisixConsumer jack1: 
+
 ```shell
 kubectl apply -f - <<EOF
 apiVersion: apisix.apache.org/v2beta3
@@ -142,7 +149,8 @@ spec:
 EOF
 ```
 
-Create ApisixConsumer jack2:
+Create ApisixConsumer jack2: 
+
 ```shell
 kubectl apply -f - <<EOF
 apiVersion: apisix.apache.org/v2beta3
@@ -157,7 +165,8 @@ spec:
 EOF
 ``` 
 
-ApisixRoute:
+ApisixRoute: 
+
 ```shell
 kubectl apply -f - <<EOF
 apiVersion: apisix.apache.org/v2beta3
@@ -264,7 +273,8 @@ HTTP/1.1 200 OK
 ...
 ```
 
-Requests from jack2:
+Requests from jack2: 
+
 ```shell
 kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key' -v 
 
