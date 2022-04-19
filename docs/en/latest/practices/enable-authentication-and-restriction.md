@@ -23,15 +23,15 @@ title: enable authentication and restriction
 
 ## Description
 
-The `enable authentication and restriction` makes corresponding access restrictions based on different objects selected.
-
+Consumers are useful when you have different consumers requesting the same API and you need to execute different Plugin and Upstream configurations based on the consumer. These need to be used in conjunction with the user authentication system.  
+We can also use the consumer-restriction Plugin to restrict our user  from accessing the API.
 ## Attributes
 * Authentication
   * `basicAuth`
   * `keyAuth`
 * Restriction
   * `consumer_name`
-  * `consumer-restriction`
+  * `allowed_by_methods`
 ## Example
 
 ### Prepare env
@@ -46,7 +46,7 @@ kubectl expose pod httpbin --port 80
 
 ### How to enable `Authentication`
 
-The following is an example. The `keyAuth` is enabled on the specified route to restrict route access.  
+The following is an example. The `keyAuth` is enabled on the specified route to restrict user access.  
 
 Create ApisixConsumer foo:
 
@@ -94,7 +94,7 @@ EOF
 Requests from foo:
 
 ```shell
-kubectl  exec -it -n ingress-apisix apisix-7d6b8577b6-xbffc  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:foo-key' -v
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:foo-key' -v
 
 HTTP/1.1 200 OK
 ...
@@ -192,7 +192,7 @@ EOF
 Requests from jack1:
 
 ```shell
-kubectl  exec -it -n ingress-apisix apisix-7d6b8577b6-xbffc  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack1-key' -v
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack1-key' -v
 
 HTTP/1.1 200 OK
 ...
@@ -201,7 +201,7 @@ HTTP/1.1 200 OK
 Requests from jack2:
 
 ```shell
-kubectl  exec -it -n ingress-apisix apisix-7d6b8577b6-xbffc  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key'
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX} -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key'
 HTTP/1.1 403 Forbidden
 ...
 {"message":"The consumer_name is forbidden."}
@@ -251,14 +251,14 @@ EOF
 Requests from jack1:
 
 ```shell
-kubectl  exec -it -n ingress-apisix apisix-7d6b8577b6-xbffc  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack1-key' -v
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack1-key' -v
 
 HTTP/1.1 200 OK
 ...
 ```
 
 ```shell
-kubectl  exec -it -n ingress-apisix apisix-7d6b8577b6-xbffc  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack1-key' -d '' -v
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack1-key' -d '' -v
 
 HTTP/1.1 200 OK
 ...
@@ -266,14 +266,14 @@ HTTP/1.1 200 OK
 
 Requests from jack2:
 ```shell
-kubectl  exec -it -n ingress-apisix apisix-7d6b8577b6-xbffc  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key' -v 
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key' -v 
 
 HTTP/1.1 200 OK
 ...
 ```
 
 ```shell
-kubectl  exec -it -n ingress-apisix apisix-7d6b8577b6-xbffc  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key' -d '' -v
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key' -d '' -v
 
 HTTP/1.1 403 Forbidden
 ...
