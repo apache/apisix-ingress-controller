@@ -40,7 +40,7 @@ Consumers are useful when you have different consumers requesting the same API a
 
 Kubernetes cluster:
 
-1. [apisix-ingress-controller](https://apisix.apache.org/docs/ingress-controller/deployments/minikube).
+1. [apisix-ingress-controller](../deployments/minikube.md).
 2. httpbin.
 
 ```shell
