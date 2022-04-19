@@ -24,7 +24,6 @@ title: enable authentication and restriction
 ## Description
 
 Consumers are useful when you have different consumers requesting the same API and you need to execute different Plugin and Upstream configurations based on the consumer. These need to be used in conjunction with the user authentication system.  
-We can also use the consumer-restriction Plugin to restrict our user  from accessing the API.
 ## Attributes
 * Authentication
   * `basicAuth`
@@ -101,8 +100,9 @@ HTTP/1.1 200 OK
 ```
 
 ### How to enable `Restriction`
-The 
-configure:
+We can also use the `consumer-restriction` Plugin to restrict our user from accessing the API. 
+
+The configure:
 > Use `whitelist` or `blacklist` restrict `consumer_name` 
 > ```yaml
 > config:
