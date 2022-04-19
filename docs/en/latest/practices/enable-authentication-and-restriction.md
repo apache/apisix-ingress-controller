@@ -127,7 +127,7 @@ configure:
 
 The following is an example. The `consumer-restriction` plugin is enabled on the specified route to restrict consumer access.
 
-Create consumer jack1:
+Create ApisixConsumer jack1:
 ```shell
 kubectl apply -f - <<EOF
 apiVersion: apisix.apache.org/v2beta3
@@ -142,7 +142,7 @@ spec:
 EOF
 ```
 
-Create consumer jack2:
+Create ApisixConsumer jack2:
 ```shell
 kubectl apply -f - <<EOF
 apiVersion: apisix.apache.org/v2beta3
