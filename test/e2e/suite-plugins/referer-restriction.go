@@ -101,6 +101,73 @@ spec:
 		resp.Body().Contains("Your referer host is not allowed")
 	})
 
+	ginkgo.It("referer-restriction plugin configuration blacklist list", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: referer-restriction
+     enable: true
+     config:
+       blacklist:
+         - test.com
+         - "*.foo.com"
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		// "Referer" match passed
+		resp := s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("Referer", "http://test.com").
+			Expect()
+		resp.Status(http.StatusForbidden)
+		resp.Body().Contains("Your referer host is not allowed")
+
+		// "Referer" match failed
+		resp = s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("Referer", "http://www.test.com").
+			Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().Contains("origin")
+
+		// "Referer" match passed
+		resp = s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("Referer", "http://www.foo.com").
+			Expect()
+		resp.Status(http.StatusForbidden)
+		resp.Body().Contains("Your referer host is not allowed")
+
+		// "Referer" is missing
+		resp = s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			Expect()
+		resp.Status(http.StatusForbidden)
+		resp.Body().Contains("Your referer host is not allowed")
+	})
+
 	ginkgo.It("the bypass_missing field is true", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
