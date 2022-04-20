@@ -132,6 +132,7 @@ func NewDefaultConfig() *Config {
 			IngressClass:        IngressClass,
 			IngressVersion:      IngressNetworkingV1,
 			ApisixRouteVersion:  ApisixRouteV2beta3,
+			ApisixTlsVersion:    ApisixTlsV2beta3,
 			WatchEndpointSlices: false,
 			EnableGatewayAPI:    false,
 		},

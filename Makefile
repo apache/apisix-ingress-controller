@@ -84,6 +84,14 @@ ifeq ("$(wildcard $(GINKGO))", "")
 	exit 1
 endif
 
+
+### push-ingress-images:  Build and push Ingress image used in e2e test suites to kind or custom registry.
+.PHONY: push-ingress-images
+push-ingress-images:
+	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
+	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+
 ### push-images:  Push images used in e2e test suites to kind or custom registry.
 .PHONY: push-images
 push-images:

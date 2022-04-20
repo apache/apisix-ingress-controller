@@ -263,6 +263,8 @@ func (c *Controller) initWhenStartLeading() {
 		apisixRouteInformer = apisixFactory.Apisix().V2beta3().ApisixRoutes().Informer()
 	case config.ApisixRouteV2:
 		apisixRouteInformer = apisixFactory.Apisix().V2().ApisixRoutes().Informer()
+	default:
+		panic(fmt.Errorf("unsupported ApisixRoute version %s", c.cfg.Kubernetes.ApisixTlsVersion))
 	}
 
 	switch c.cfg.Kubernetes.ApisixTlsVersion {
@@ -270,6 +272,8 @@ func (c *Controller) initWhenStartLeading() {
 		apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
 	case config.ApisixRouteV2:
 		apisixTlsInformer = apisixFactory.Apisix().V2().ApisixTlses().Informer()
+	default:
+		panic(fmt.Errorf("unsupported ApisixTls version %s", c.cfg.Kubernetes.ApisixTlsVersion))
 	}
 
 	c.namespaceInformer = kubeFactory.Core().V1().Namespaces().Informer()
