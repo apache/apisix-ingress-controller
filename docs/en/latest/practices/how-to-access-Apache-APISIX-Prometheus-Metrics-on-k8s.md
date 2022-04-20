@@ -29,7 +29,7 @@ Prometheus is a leading open-source project focused on metrics and alerting that
 
 When users develop custom plugins in Apache APISIX, they can define some APIs (referred to as public API) for the plugins. The provided interface is for internal calls in practical application scenarios rather than being open on the public network for anyone to call.
 
-Therefore, Apache APISIX has designed a `public-api` plugin. With this plugin, you can solve the public API's pain points. You can set a custom URI for the public API and configure any plugin. For more information, see the `public-api` plugin's official [document](https://apisix.apache.org/docs/apisix/plugins/public-api/).
+Therefore, Apache APISIX has designed a `public-api` plugin. With this plugin, you can solve the public API's pain points. You can set a custom URI for the public API and configure any plugin. For more information, see the `public-api` Plugin's official [document](https://apisix.apache.org/docs/apisix/plugins/public-api/).
 
 The primary role of the `public-api` plugin in this document is to protect the URI exposed by Prometheus.
 
@@ -39,7 +39,7 @@ The primary role of the `public-api` plugin in this document is to protect the U
 
 ### Step 1: Install APISIX Ingress Controller
 
-First, we deploy Apache APISIX, ETCD, and APISIX Ingress Controller to a local Kubernetes cluster via Helm.
+First, we deploy Apache APISIX, etcd, and APISIX Ingress Controller to a local Kubernetes cluster via Helm.
 
 ```sh
 helm repo add apisix https://charts.apiseven.com
@@ -55,7 +55,7 @@ After installation, please wait until all services are up and running. And you c
 kubectl get all -n ingress-apisix
 ```
 
-If you have problems with the installation, click on this [link](https://apisix.apache.org/docs/ingress-controller/practices/the-hard-way) to get detailed instructions.
+For more information, see [APISIX Ingress Controller the Hard Way](https://apisix.apache.org/docs/ingress-controller/practices/the-hard-way).
 
 ### Step 2: Enable Prometheus Plugin
 
