@@ -21,7 +21,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// MountApisixHealthz mounts apisix healthz route.
+// MountWebhooks mounts apisix healthz route.
 func MountApisixHealthz(r *gin.Engine, state *HealthState) {
 	r.GET("/apisix/healthz", apisixHealthz(state))
 }
