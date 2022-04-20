@@ -21,19 +21,19 @@ title: How to access Apache APISIX Prometheus metrics on k8s
 #
 -->
 
-Observability (monitoring functionality) has always played an important role in system maintenance. A good monitoring system can help engineers quickly understand the status of services running in production environments and can locate problems or give early warning of anomalies when they occur.
+Observability (monitoring functionality) has always played an essential role in system maintenance. A sound monitoring system can help engineers quickly understand the status of services running in production environments and locate problems or give early warning of anomalies when they occur.
 
-Prometheus is a leading open-source project focused on metrics and alerting that has changed the way the world does monitoring and observability. And Apache APISIX has enhanced its support for Prometheus Metrics in recent releases, adding a new feature for use in conjunction with the `public-api` plugin. This article will introduce how to configure `public-api` to protect Prometheus to collect Apache APISIX 's Metrics data. You can learn more about Prometheus by clicking on this [link](https://prometheus.io/).
+Prometheus is a leading open-source project focused on metrics and alerting that has changed the way the world does monitoring and observability. And Apache APISIX has enhanced its support for Prometheus Metrics in recent releases, adding a new feature for use in conjunction with the `public-api` plugin. This article will introduce how to configure `public-api` to protect Prometheus to collect Apache APISIX 's Metrics data. For more information, see Prometheus's official [website](https://prometheus.io/).
 
 ## Initial Knowledge about `public-api`
 
-When users develop custom plugins in Apache APISIX, they can define some APIs (hereinafter referred to as public API) for the plugins. In practical application scenarios, the provided interface is for internal calls, rather than being open on the public network for anyone to call.
+When users develop custom plugins in Apache APISIX, they can define some APIs (referred to as public API) for the plugins. The provided interface is for internal calls in practical application scenarios rather than being open on the public network for anyone to call.
 
-Therefore, Apache APISIX has designed a `public-api` plugin. With this plugin, you can solve the pain points of using the public API. You can set a custom URI for the public API and configure any type of plugin. For more information about `public-api`, see the [public-api](https://apisix.apache.org/docs/apisix/plugins/public-api/) plugin's document.
+Therefore, Apache APISIX has designed a `public-api` plugin. With this plugin, you can solve the public API's pain points. You can set a custom URI for the public API and configure any plugin. For more information, see the `public-api` plugin's official [document](https://apisix.apache.org/docs/apisix/plugins/public-api/).
 
-The main role of the `public-api` plugin in this document is to protect the URI exposed by Prometheus.
+The primary role of the `public-api` plugin in this document is to protect the URI exposed by Prometheus.
 
-**Note**: One thing we should note is that this feature is only available in APISIX version 2.13 and later.
+**Note**: We should note that this feature is only available in APISIX version 2.13 and later.
 
 ## Begin to access Apache APISIX Prometheus Metrics
 
@@ -49,17 +49,17 @@ helm install apisix apisix/apisix --namespace ingress-apisix \
  --set ingress-controller.enabled=true
 ```
 
-After installation, please wait until all services are up and running. Specific status confirmation can be checked with the following command.
+After installation, please wait until all services are up and running. And you can check specific status confirmation with the following command.
 
 ```sh
 kubectl get all -n ingress-apisix
 ```
 
-If you have problems with the installation, you can click on this [link](https://apisix.apache.org/docs/ingress-controller/practices/the-hard-way) to get detailed instructions.
+If you have problems with the installation, click on this [link](https://apisix.apache.org/docs/ingress-controller/practices/the-hard-way) to get detailed instructions.
 
 ### Step 2: Enable Prometheus Plugin
 
-If you need to monitor Apache APISIX at the same time, you can create the following ApisixClusterConfig resource.
+If you need to monitor Apache APISIX simultaneously, you can create the following ApisixClusterConfig resource.
 
 ```yaml
 apiVersion: apisix.apache.org/v2beta3
@@ -74,7 +74,7 @@ spec:
 
 ### Step 3: Enable `public-api` Plugin
 
-This is a basic routing setup, please note that further configuration should be done based on your local backend service information. The main solution concept is to use the `public-api` plugin to protect the routes exposed by Prometheus. For a more detailed configuration, you can refer to the [example](https://apisix.apache.org/zh/docs/apisix/plugins/public-api/#example) section of the `public-api` plugin.
+Let's make a basic routing setup, and please note that further configuration should be done based on your local backend service information. The primary solution concept is to use the `public-api` plugin to protect the routes exposed by Prometheus. For a more detailed configuration, you can refer to the [example](https://apisix.apache.org/zh/docs/apisix/plugins/public-api/#example) section of the `public-api` plugin.
 
 ```yaml
 apiVersion: apisix.apache.org/v2beta3
@@ -110,6 +110,6 @@ kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -
 
 ## Conclusion
 
-This article describes the steps on how to use the `public-api` plugin to protect Prometheus and monitor the Apache APISIX. Currently, only some basic configurations are included, if you want to see some of the metrics displayed with Grafana, please refer to this [link](https://apisix.apache.org/zh/blog/2021/12/13/monitor-apisix-ingress-controller-with-prometheus/#). We will continue to polish and upgrade, add more metrics and integrate data surface APISIX metrics to bring you a better monitoring experience.
+This article describes how to use the `public-api` plugin to protect Prometheus and monitor the Apache APISIX. Currently, only some basic configurations include. If you want to see some of the metrics displayed with Grafana, please refer to this [link](https://apisix.apache.org/zh/blog/2021/12/13/monitor-apisix-ingress-controller-with-prometheus/#). We will continue to polish and upgrade, add more metrics and integrate data surface APISIX metrics to improve your monitoring experience.
 
 Of course, we welcome all interested parties to contribute to the [Apache APISIX Ingress Controller project](https://github.com/apache/apisix-ingress-controller) and look forward to working together to make the APISIX Ingress Controller more comprehensive.
