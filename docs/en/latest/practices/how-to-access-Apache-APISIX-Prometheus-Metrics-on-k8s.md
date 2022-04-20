@@ -23,7 +23,7 @@ title: How to access Apache APISIX Prometheus metrics on k8s
 
 Observability (monitoring functionality) has always played an important role in system maintenance. A good monitoring system can help engineers quickly understand the status of services running in production environments and can locate problems or give early warning of anomalies when they occur.
 
-Prometheus is a leading open-source project focused on metrics and alerting that has changed the way the world does monitoring and observability. And Apache APISIX has enhanced its support for Prometheus Metrics in recent releases, adding a new feature for use in conjunction with the `public-api` plugin. This article will introduce how to configure `public-api` to protect Prometheus to collect Apache APISIX 's Metrics data.
+Prometheus is a leading open-source project focused on metrics and alerting that has changed the way the world does monitoring and observability. And Apache APISIX has enhanced its support for Prometheus Metrics in recent releases, adding a new feature for use in conjunction with the `public-api` plugin. This article will introduce how to configure `public-api` to protect Prometheus to collect Apache APISIX 's Metrics data. You can learn more about Prometheus by clicking on this [link](https://prometheus.io/).
 
 ## Initial Knowledge about `public-api`
 
@@ -37,7 +37,7 @@ The main role of the `public-api` plugin in this document is to protect the URI 
 
 ## Begin to access Apache APISIX Prometheus Metrics
 
-### Step1: Install APISIX Ingress Controller
+### Step 1: Install APISIX Ingress Controller
 
 First, we deploy Apache APISIX, ETCD, and APISIX Ingress Controller to a local Kubernetes cluster via Helm.
 
@@ -54,6 +54,8 @@ After installation, please wait until all services are up and running. Specific 
 ```sh
 kubectl get all -n ingress-apisix
 ```
+
+If you have problems with the installation, you can click on this [link](https://apisix.apache.org/docs/ingress-controller/practices/the-hard-way) to get detailed instructions.
 
 ### Step 2: Enable Prometheus Plugin
 
