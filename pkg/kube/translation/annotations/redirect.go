@@ -22,8 +22,8 @@ import (
 
 const (
 	_httpToHttps = AnnotationsPrefix + "http-to-https"
-	_uri         = AnnotationsPrefix + "uri"
-	_retCode     = AnnotationsPrefix + "ret_code"
+	_uri         = AnnotationsPrefix + "permanent-redirect"
+	_retCode     = AnnotationsPrefix + "permanent-redirect-code"
 )
 
 type redirect struct{}
