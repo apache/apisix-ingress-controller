@@ -29,20 +29,59 @@ Consumers are useful when you have different consumers requesting the same API a
 
 ### Authentication
 
-| Name      | Type   | Requirement | Value                                                   |  Description                                                                                |
-|-----------|--------|-------------|---------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| keyAuth   | object |  required   | `value:{ key: ${key} }`                                 | Consumers add their key either in a header `apikey` to authenticate their requests.         |
-| basicAuth | object |  required   | `value:{ username: ${username}, password: ${password}}` | Consumers add their key either in a header `Authentication` to authenticate their requests. |
+#### `keyAuth`
+
+Consumers add their key either in a header `apikey` to authenticate their requests.
+
+```yaml
+keyAuth:
+  value:
+    key: ${key}
+```
+
+#### `basicAuth`
+
+Consumers add their key either in a header `Authentication` to authenticate their requests. 
+
+```yaml
+basicAuth:
+  value:
+    username: ${username}
+    password: ${password}
+```
 
 ### Restriction
 
-|Name                |   Type        | Requirement |  Value  | Description                                                                                                    |
-|--------------------|---------------|-------------|-------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-| whitelist          | array[string] | required    | `"${namespace}_${name}"`                                    |Grant full access to all users specified in the provided list , **has the priority over `allowed_by_methods`** |
-| blacklist          | array[string] | required    | `"${namespace}_${name}"`                                    | Reject connection to all users specified in the provided list , **has the priority over `whitelist`**          |
-| allowed_by_methods | array[object] | optional    | `{user: "${namespace}_${name}", methods:["GET", "POST"...]}`| HTTP methods can be `methods:["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE", "PURGE"]`              |
+#### `whitelist` or `blacklist`
 
-* **consumer_name**: Add the `username` of `consumer` to a whitelist or blacklist (supporting single or multiple consumers) to restrict access to services or routes.
+`whitelist`: Grant full access to all users specified in the provided list, **has the priority over `allowed_by_methods`**
+`blacklist`: Reject connection to all users specified in the provided list, **has the priority over `whitelist`**
+
+```yaml
+name: consumer-restriction
+enable: true
+config:
+  blacklist:
+  - "${consumer_name}"
+  - "${consumer_name}"
+```
+#### `allowed_by_methods`
+
+HTTP methods can be `methods:["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE", "PURGE"]`
+
+```yaml
+name: consumer-restriction
+enable: true
+config:
+  allowed_by_methods:
+  - user: "${consumer_name}"
+    methods:
+    - "POST"
+    - "GET"
+  - user: "${consumer_name}"
+    methods:
+    - "GET"
+```
 
 ## Example
 
@@ -117,34 +156,11 @@ HTTP/1.1 200 OK
 
 We can also use the `consumer-restriction` Plugin to restrict our user from accessing the API.
 
-The configure:
-
-> Use `whitelist` or `blacklist` restrict `consumer_name`
->
-> ```yaml
-> config:
->   whitelist:
->   - "${namespace}_${name:1}"
->     "${namespace}_${name:...}"
-> ```
->
-> Restrict `allowed_by_methods`
->
-> ```yaml
->config:
->  allowed_by_methods:
->  - user: "${namespace}_${name:1}"
->    methods:
->    - "$(method)["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE"]"
->  - user: "${namespace}_${name:...}"
->    methods:
->    - "$(method)["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE"]"
-> ```
->
-
 #### How to restrict `consumer_name`
 
-The following is an example. The `consumer-restriction` plugin is enabled on the specified route to restrict consumer access.
+The following is an example. The `consumer-restriction` plugin is enabled on the specified route to restrict `consumer_name` access.
+
+* **consumer_name**: Add the `username` of `consumer` to a whitelist or blacklist (supporting single or multiple consumers) to restrict access to services or routes.
 
 Create ApisixConsumer jack1:
 
@@ -221,11 +237,11 @@ How to get `default_jack1`:
 > jack2   14h
 > ```
 >
-> `${namespace}_${name}` --> `default_foo`
-> `${namespace}_${name}` --> `default_jack1`
-> `${namespace}_${name}` --> `default_jack2`
+> `${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_foo`
+> `${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_jack1`
+> `${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_jack2`
 
-**Test Plugin**
+**Example usage**
 
 Requests from jack1:
 
@@ -284,7 +300,7 @@ spec:
 EOF
 ```
 
-**Test Plugin**
+**Example usage**
 
 Requests from jack1:
 
@@ -318,11 +334,10 @@ HTTP/1.1 403 Forbidden
 ...
 ```
 
-### Disable Plugin
+### Disable authentication and restriction
 
-When you want to disable the `consumer-restriction` plugin, it is very simple,
-you can delete the corresponding json configuration in the plugin configuration,
-no need to restart the service, it will take effect immediately:
+To disable the `consumer-restriction` Plugin, you can set the `enable: false` from the `plugins` configuration.  
+Also, disable the `keyAuth`, you can set the `enable: false` from the `authentication` configuration.
 
 ```shell
 kubectl apply -f - <<EOF
@@ -342,7 +357,7 @@ spec:
    - serviceName: httpbin
      servicePort: 80
    authentication:
-     enable: true
+     enable: false
      type: keyAuth
    plugins:
    - name: consumer-restriction
@@ -358,5 +373,3 @@ spec:
          - "GET"
 EOF
 ```
-
-The `consumer-restriction` plugin has been disabled now. It works for other plugins.  
