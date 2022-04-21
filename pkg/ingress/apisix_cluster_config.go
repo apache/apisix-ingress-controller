@@ -16,6 +16,7 @@ package ingress
 
 import (
 	"context"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"time"
 
 	"go.uber.org/zap"
@@ -148,7 +149,7 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 		}
 	}
 
-	globalRule, err := c.controller.translator.TranslateClusterConfig(acc)
+	globalRule, err := c.controller.translator.TranslateClusterConfigV2beta3(acc)
 	if err != nil {
 		// TODO add status
 		log.Errorw("failed to translate ApisixClusterConfig",
@@ -209,6 +210,11 @@ func (c *apisixClusterConfigController) handleSyncErr(obj interface{}, err error
 }
 
 func (c *apisixClusterConfigController) onAdd(obj interface{}) {
+	acc, err := kube.NewApisixClusterConfig(obj)
+	if err != nil {
+		log.Errorw("found ApisixClusterConfig resource with bad type", zap.Error(err))
+		return
+	}
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
 		log.Errorf("found ApisixClusterConfig resource with bad meta key: %s", err.Error())
@@ -220,17 +226,28 @@ func (c *apisixClusterConfigController) onAdd(obj interface{}) {
 	)
 
 	c.workqueue.Add(&types.Event{
-		Type:   types.EventAdd,
-		Object: key,
+		Type: types.EventAdd,
+		Object: kube.ApisixClusterConfigEvent{
+			Key:          key,
+			GroupVersion: acc.GroupVersion(),
+		},
 	})
 
 	c.controller.MetricsCollector.IncrEvents("clusterConfig", "add")
 }
 
 func (c *apisixClusterConfigController) onUpdate(oldObj, newObj interface{}) {
-	prev := oldObj.(*configv2beta3.ApisixClusterConfig)
-	curr := newObj.(*configv2beta3.ApisixClusterConfig)
-	if prev.ResourceVersion >= curr.ResourceVersion {
+	prev, err := kube.NewApisixClusterConfig(oldObj)
+	if err != nil {
+		log.Errorw("found ApisixClusterConfig resource with bad type", zap.Error(err))
+		return
+	}
+	curr, err := kube.NewApisixClusterConfig(newObj)
+	if err != nil {
+		log.Errorw("found ApisixClusterConfig resource with bad type", zap.Error(err))
+		return
+	}
+	if prev.ResourceVersion() >= curr.ResourceVersion() {
 		return
 	}
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
@@ -244,21 +261,29 @@ func (c *apisixClusterConfigController) onUpdate(oldObj, newObj interface{}) {
 	)
 
 	c.workqueue.Add(&types.Event{
-		Type:   types.EventUpdate,
-		Object: key,
+		Type: types.EventUpdate,
+		Object: kube.ApisixClusterConfigEvent{
+			Key:          key,
+			OldObject:    prev,
+			GroupVersion: curr.GroupVersion(),
+		},
 	})
 
 	c.controller.MetricsCollector.IncrEvents("clusterConfig", "update")
 }
 
 func (c *apisixClusterConfigController) onDelete(obj interface{}) {
-	acc, ok := obj.(*configv2beta3.ApisixClusterConfig)
-	if !ok {
+	acc, err := kube.NewApisixClusterConfig(obj)
+	if err != nil {
 		tombstone, ok := obj.(*cache.DeletedFinalStateUnknown)
 		if !ok {
 			return
 		}
-		acc = tombstone.Obj.(*configv2beta3.ApisixClusterConfig)
+		acc, err = kube.NewApisixClusterConfig(tombstone)
+		if err != nil {
+			log.Errorw("found ApisixClusterConfig resource with bad type", zap.Error(err))
+			return
+		}
 	}
 
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
@@ -270,8 +295,11 @@ func (c *apisixClusterConfigController) onDelete(obj interface{}) {
 		zap.Any("final state", acc),
 	)
 	c.workqueue.Add(&types.Event{
-		Type:      types.EventDelete,
-		Object:    key,
+		Type: types.EventDelete,
+		Object: kube.ApisixClusterConfigEvent{
+			Key:          key,
+			GroupVersion: acc.GroupVersion(),
+		},
 		Tombstone: acc,
 	})
 
