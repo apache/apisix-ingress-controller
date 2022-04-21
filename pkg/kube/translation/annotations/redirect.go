@@ -42,12 +42,10 @@ func (r *redirect) Handle(e Extractor) (interface{}, error) {
 	var plugin apisixv1.RedirectConfig
 	plugin.HttpToHttps = e.GetBoolAnnotation(_httpToHttps)
 	plugin.URI = e.GetStringAnnotation(_uri)
-
 	retCode, err := strconv.Atoi(e.GetStringAnnotation(_retCode))
 	// To avoid empty redirect plugin config, adding the check about the redirect.
 	if err == nil {
 		plugin.RetCode = retCode
-		return &plugin, nil
 	}
 	if plugin.HttpToHttps || plugin.URI != "" {
 		return &plugin, nil
