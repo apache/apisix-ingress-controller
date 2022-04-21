@@ -41,7 +41,7 @@ keyAuth:
 
 #### `basicAuth`
 
-Consumers add their key either in a header `Authentication` to authenticate their requests. 
+Consumers add their key either in a header `Authentication` to authenticate their requests.
 
 ```yaml
 basicAuth:
@@ -65,6 +65,7 @@ config:
   - "${consumer_name}"
   - "${consumer_name}"
 ```
+
 #### `allowed_by_methods`
 
 HTTP methods can be `methods:["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE", "PURGE"]`
