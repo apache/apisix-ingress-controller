@@ -374,3 +374,12 @@ spec:
          - "GET"
 EOF
 ```
+
+Requests:
+
+```shell
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -v
+
+HTTP/1.1 200 OK
+...
+```
