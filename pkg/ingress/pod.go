@@ -91,7 +91,7 @@ func (c *podController) onUpdate(oldObj, newObj interface{}) {
 		return
 	}
 
-	if !c.controller.isWatchingNamespace(curr.Namespace + "/" + curr.Name) {
+	if !c.controller.namespaceWatching(curr.Namespace + "/" + curr.Name) {
 		return
 	}
 	log.Debugw("pod update event arrived",
