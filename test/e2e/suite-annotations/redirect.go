@@ -90,39 +90,6 @@ spec:
 		resp.Header("Location").Equal("https://httpbin.org/sample")
 	})
 
-	ginkgo.It("redirect uri in ingress networking/v1", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/uri: "$uri/ipip"
-    k8s.apisix.apache.org/ret_code: "308"
-  name: ingress-v1
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /ip
-        pathType: Exact
-        backend:
-          service:
-            name: %s
-            port:
-              number: %d
-`, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
-
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusPermanentRedirect)
-		resp.Header("Location").Equal("/ip/ipip")
-	})
-
 	ginkgo.It("redirect http-to-https in ingress extensions/v1beta1", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
