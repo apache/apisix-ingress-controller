@@ -148,7 +148,9 @@ Requests from foo:
 
 ```shell
 kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:foo-key' -v
+```
 
+```shell
 HTTP/1.1 200 OK
 ...
 ```
@@ -238,8 +240,8 @@ How to get `default_jack1`:
 > jack2   14h
 > ```
 >
-> `${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_foo`
-> `${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_jack1`
+> `${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_foo`  
+> `${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_jack1`  
 > `${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_jack2`
 
 **Example usage**
@@ -248,7 +250,9 @@ Requests from jack1:
 
 ```shell
 kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack1-key' -v
+```
 
+```shell
 HTTP/1.1 200 OK
 ...
 ```
@@ -257,6 +261,9 @@ Requests from jack2:
 
 ```shell
 kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX} -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key'
+```
+
+```shell
 HTTP/1.1 403 Forbidden
 ...
 {"message":"The consumer_name is forbidden."}
@@ -307,14 +314,18 @@ Requests from jack1:
 
 ```shell
 kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack1-key' -v
+```
 
+```shell
 HTTP/1.1 200 OK
 ...
 ```
 
 ```shell
 kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack1-key' -d '' -v
+```
 
+```shell
 HTTP/1.1 200 OK
 ...
 ```
@@ -323,14 +334,18 @@ Requests from jack2:
 
 ```shell
 kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key' -v
+```
 
+```shell
 HTTP/1.1 200 OK
 ...
 ```
 
 ```shell
 kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key' -d '' -v
+```
 
+```shell
 HTTP/1.1 403 Forbidden
 ...
 ```
@@ -379,7 +394,9 @@ Requests:
 
 ```shell
 kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -v
+```
 
+```shell
 HTTP/1.1 200 OK
 ...
 ```
