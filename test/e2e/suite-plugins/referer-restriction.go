@@ -34,7 +34,7 @@ var _ = ginkgo.Describe("suite-plugins: referer-restriction plugin", func() {
 		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
 	}
 	s := scaffold.NewScaffold(opts)
-	ginkgo.It("referer-restriction plugin configuration whitelist list", func() {
+	ginkgo.It("configure a access list", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -101,7 +101,7 @@ spec:
 		resp.Body().Contains("Your referer host is not allowed")
 	})
 
-	ginkgo.It("referer-restriction plugin configuration blacklist list", func() {
+	ginkgo.It("configure a deny access list", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -168,7 +168,7 @@ spec:
 		resp.Body().Contains("Your referer host is not allowed")
 	})
 
-	ginkgo.It("Customize message", func() {
+	ginkgo.It("customize return message", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -220,7 +220,7 @@ spec:
 		resp.Body().Contains("You can customize the message any way you like")
 	})
 
-	ginkgo.It("the bypass_missing field is true", func() {
+	ginkgo.It("configure bypass_missing field to true", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
