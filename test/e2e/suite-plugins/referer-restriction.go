@@ -132,11 +132,11 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
 		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking the number of upstreams")
 		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking the number of routes")
 
-		// "Referer" match passed
+		// "Referer" match failed
 		resp := s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			WithHeader("Referer", "http://test.com").
@@ -144,7 +144,7 @@ spec:
 		resp.Status(http.StatusForbidden)
 		resp.Body().Contains("Your referer host is not allowed")
 
-		// "Referer" match failed
+		// "Referer" match passed
 		resp = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			WithHeader("Referer", "http://www.test.com").
@@ -152,7 +152,7 @@ spec:
 		resp.Status(http.StatusOK)
 		resp.Body().Contains("origin")
 
-		// "Referer" match passed
+		// "Referer" match failed
 		resp = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			WithHeader("Referer", "http://www.foo.com").
@@ -200,9 +200,9 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
 		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking the number of upstreams")
 		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking the number of routes")
 
 		// "Referer" match failed
 		resp := s.NewAPISIXClient().GET("/ip").
@@ -251,9 +251,9 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
 		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking the number of upstreams")
 		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking the number of routes")
 
 		// "Referer" is missing
 		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
