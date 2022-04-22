@@ -1,5 +1,5 @@
 ---
-title: enable authentication and restriction
+title: Enable authentication and restriction
 ---
 
 <!--
