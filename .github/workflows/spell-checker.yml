@@ -21,7 +21,9 @@ on:
   push:
     branches: [ master ]
   pull_request:
-    branches: [ master ]
+    branches:
+      - master
+      - v1.4.0
     type: [review_requested, ready_for_review]
 jobs:
   misspell:

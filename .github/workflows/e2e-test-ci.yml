@@ -25,6 +25,7 @@ on:
   pull_request:
     branches:
       - master
+      - v1.4.0
     type: [review_requested, ready_for_review]
 
 concurrency:
