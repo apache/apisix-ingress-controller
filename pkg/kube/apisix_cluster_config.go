@@ -29,6 +29,8 @@ import (
 type ApisixClusterConfigLister interface {
 	// V2beta3 gets the ApisixClusterConfig in apisix.apache.org/v2beta3.
 	V2beta3(string) (ApisixClusterConfig, error)
+	// V2 gets the ApisixClusterConfig in apisix.apache.org/v2.
+	V2(string) (ApisixClusterConfig, error)
 }
 
 // ApisixClusterConfigInformer is an encapsulation for the informer of ApisixClusterConfig,
