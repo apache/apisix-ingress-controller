@@ -99,3 +99,13 @@ type ForwardAuthConfig struct {
 	UpstreamHeaders []string `json:"upstream_headers,omitempty"`
 	ClientHeaders   []string `json:"client_headers,omitempty"`
 }
+
+// BasicAuthConfig is the rule config for basic-auth plugin.
+// +k8s:deepcopy-gen=true
+type BasicAuthConfig struct {
+}
+
+// KeyAuthConfig is the rule config for key-auth plugin.
+// +k8s:deepcopy-gen=true
+type KeyAuthConfig struct {
+}
