@@ -95,9 +95,9 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 
 	var multiVersionedTls kube.ApisixTls
 	switch event.GroupVersion {
-	case config.ApisixTlsV2beta3:
+	case config.ApisixV2beta3:
 		multiVersionedTls, err = c.controller.apisixTlsLister.V2beta3(namespace, name)
-	case config.ApisixTlsV2:
+	case config.ApisixV2:
 		multiVersionedTls, err = c.controller.apisixTlsLister.V2(namespace, name)
 	default:
 		return fmt.Errorf("unsupported ApisixTls group version %s", event.GroupVersion)
@@ -133,7 +133,7 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 	}
 
 	switch event.GroupVersion {
-	case config.ApisixTlsV2beta3:
+	case config.ApisixV2beta3:
 		tls := multiVersionedTls.V2beta3()
 		ssl, err := c.controller.translator.TranslateSSLV2Beta3(tls)
 		if err != nil {
@@ -171,7 +171,7 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 		c.controller.recorderEvent(tls, corev1.EventTypeNormal, _resourceSynced, nil)
 		c.controller.recordStatus(tls, _resourceSynced, nil, metav1.ConditionTrue, tls.GetGeneration())
 		return err
-	case config.ApisixTlsV2:
+	case config.ApisixV2:
 		tls := multiVersionedTls.V2()
 		ssl, err := c.controller.translator.TranslateSSLV2(tls)
 		if err != nil {

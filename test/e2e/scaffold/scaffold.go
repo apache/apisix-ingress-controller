@@ -107,7 +107,7 @@ func NewScaffold(o *Options) *Scaffold {
 		o.APISIXRouteVersion = kube.ApisixRouteV2beta3
 	}
 	if o.APISIXTlsVersion == "" {
-		o.APISIXTlsVersion = config.ApisixTlsV2beta3
+		o.APISIXTlsVersion = config.ApisixV2beta3
 	}
 	if o.APISIXAdminAPIKey == "" {
 		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
@@ -134,7 +134,7 @@ func NewDefaultScaffold() *Scaffold {
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
 		APISIXRouteVersion:    kube.ApisixRouteV2beta3,
-		APISIXTlsVersion:      config.ApisixTlsV2beta3,
+		APISIXTlsVersion:      config.ApisixV2beta3,
 		EnableWebhooks:        false,
 		APISIXPublishAddress:  "",
 	}

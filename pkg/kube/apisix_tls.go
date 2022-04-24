@@ -70,28 +70,28 @@ type apisixTls struct {
 	v2           *configv2.ApisixTls
 }
 
-func (ar *apisixTls) V2beta3() *configv2beta3.ApisixTls {
-	if ar.groupVersion != config.ApisixTlsV2beta3 {
-		panic("not a apisix.apache.org/v2beta3 route")
+func (atls *apisixTls) V2beta3() *configv2beta3.ApisixTls {
+	if atls.groupVersion != config.ApisixV2beta3 {
+		panic("not a apisix.apache.org/v2beta3 ApisixTls")
 	}
-	return ar.v2beta3
+	return atls.v2beta3
 }
-func (ar *apisixTls) V2() *configv2.ApisixTls {
-	if ar.groupVersion != config.ApisixTlsV2 {
-		panic("not a apisix.apache.org/v2 route")
+func (atls *apisixTls) V2() *configv2.ApisixTls {
+	if atls.groupVersion != config.ApisixV2 {
+		panic("not a apisix.apache.org/v2 ApisixTls")
 	}
-	return ar.v2
-}
-
-func (ar *apisixTls) GroupVersion() string {
-	return ar.groupVersion
+	return atls.v2
 }
 
-func (ar *apisixTls) ResourceVersion() string {
-	if ar.groupVersion == config.ApisixTlsV2beta3 {
-		return ar.V2beta3().ResourceVersion
+func (atls *apisixTls) GroupVersion() string {
+	return atls.groupVersion
+}
+
+func (atls *apisixTls) ResourceVersion() string {
+	if atls.groupVersion == config.ApisixV2beta3 {
+		return atls.V2beta3().ResourceVersion
 	}
-	return ar.V2().ResourceVersion
+	return atls.V2().ResourceVersion
 }
 
 type apisixTlsLister struct {
@@ -105,7 +105,7 @@ func (l *apisixTlsLister) V2beta3(namespace, name string) (ApisixTls, error) {
 		return nil, err
 	}
 	return &apisixTls{
-		groupVersion: config.ApisixTlsV2beta3,
+		groupVersion: config.ApisixV2beta3,
 		v2beta3:      ar,
 	}, nil
 }
@@ -115,7 +115,7 @@ func (l *apisixTlsLister) V2(namespace, name string) (ApisixTls, error) {
 		return nil, err
 	}
 	return &apisixTls{
-		groupVersion: config.ApisixTlsV2,
+		groupVersion: config.ApisixV2,
 		v2:           ar,
 	}, nil
 }
@@ -126,12 +126,12 @@ func MustNewApisixTls(obj interface{}) ApisixTls {
 	switch ar := obj.(type) {
 	case *configv2beta3.ApisixTls:
 		return &apisixTls{
-			groupVersion: config.ApisixTlsV2beta3,
+			groupVersion: config.ApisixV2beta3,
 			v2beta3:      ar,
 		}
 	case *configv2.ApisixTls:
 		return &apisixTls{
-			groupVersion: config.ApisixTlsV2,
+			groupVersion: config.ApisixV2,
 			v2:           ar,
 		}
 	default:
@@ -146,12 +146,12 @@ func NewApisixTls(obj interface{}) (ApisixTls, error) {
 	switch ar := obj.(type) {
 	case *configv2beta3.ApisixTls:
 		return &apisixTls{
-			groupVersion: config.ApisixTlsV2beta3,
+			groupVersion: config.ApisixV2beta3,
 			v2beta3:      ar,
 		}, nil
 	case *configv2.ApisixTls:
 		return &apisixTls{
-			groupVersion: config.ApisixTlsV2,
+			groupVersion: config.ApisixV2,
 			v2:           ar,
 		}, nil
 	default:

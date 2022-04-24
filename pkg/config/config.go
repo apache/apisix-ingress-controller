@@ -57,10 +57,10 @@ const (
 	ApisixRouteV2beta3 = "apisix.apache.org/v2beta3"
 	// ApisixRouteV2 represents apisixroute.apisix.apache.org/v2
 	ApisixRouteV2 = "apisix.apache.org/v2"
-	// ApisixTlsV2beta3 represents apisixroute.apisix.apache.org/v2beta3
-	ApisixTlsV2beta3 = "apisix.apache.org/v2beta3"
-	// ApisixTlsV2 represents apisixroute.apisix.apache.org/v2
-	ApisixTlsV2 = "apisix.apache.org/v2"
+	// ApisixV2beta3 represents apisix.apache.org/v2beta3
+	ApisixV2beta3 = "apisix.apache.org/v2beta3"
+	// ApisixV2 represents apisix.apache.org/v2
+	ApisixV2 = "apisix.apache.org/v2"
 
 	_minimalResyncInterval = 30 * time.Second
 
@@ -132,7 +132,7 @@ func NewDefaultConfig() *Config {
 			IngressClass:        IngressClass,
 			IngressVersion:      IngressNetworkingV1,
 			ApisixRouteVersion:  ApisixRouteV2beta3,
-			ApisixTlsVersion:    ApisixTlsV2beta3,
+			ApisixTlsVersion:    ApisixV2beta3,
 			WatchEndpointSlices: false,
 			EnableGatewayAPI:    false,
 		},

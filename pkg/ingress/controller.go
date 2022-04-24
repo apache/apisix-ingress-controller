@@ -268,9 +268,9 @@ func (c *Controller) initWhenStartLeading() {
 	}
 
 	switch c.cfg.Kubernetes.ApisixTlsVersion {
-	case config.ApisixRouteV2beta3:
+	case config.ApisixV2beta3:
 		apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
-	case config.ApisixRouteV2:
+	case config.ApisixV2:
 		apisixTlsInformer = apisixFactory.Apisix().V2().ApisixTlses().Informer()
 	default:
 		panic(fmt.Errorf("unsupported ApisixTls version %s", c.cfg.Kubernetes.ApisixTlsVersion))
