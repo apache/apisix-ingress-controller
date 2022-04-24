@@ -23,7 +23,7 @@ title: ApisixUpstream Reference
 
 |     Field     |  Type    | Description    |
 |---------------|----------|----------------|
-| scheme        | string   | The protocol used to talk to the Service, can be `http`, `grpc`, default is `http`.   |
+| scheme        | string   | The protocol used to talk to the Service, can be `http`,`https`, `grpc`,`grpcs` default is `http`.   |
 | loadbalancer  | object   | The load balancing algorithm of this upstream service |
 | loadbalancer.type | string | The load balancing type, can be `roundrobin`, `ewma`, `least_conn`, `chash`, default is `roundrobin`. |
 | loadbalancer.hashOn | string | The hash value source scope, only take effects if the `chash` algorithm is in use. Values can `vars`, `header`, `vars_combinations`, `cookie` and `consumers`, default is `vars`. |
