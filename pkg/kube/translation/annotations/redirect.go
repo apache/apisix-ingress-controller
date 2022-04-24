@@ -21,9 +21,9 @@ import (
 )
 
 const (
-	_httpToHttps = AnnotationsPrefix + "http-to-https"
-	_uri         = AnnotationsPrefix + "permanent-redirect"
-	_retCode     = AnnotationsPrefix + "permanent-redirect-code"
+	_httpToHttps           = AnnotationsPrefix + "http-to-https"
+	_permanentRedirect     = AnnotationsPrefix + "permanent-redirect"
+	_permanentRedirectCode = AnnotationsPrefix + "permanent-redirect-code"
 )
 
 type redirect struct{}
@@ -41,9 +41,9 @@ func (r *redirect) PluginName() string {
 func (r *redirect) Handle(e Extractor) (interface{}, error) {
 	var plugin apisixv1.RedirectConfig
 	plugin.HttpToHttps = e.GetBoolAnnotation(_httpToHttps)
-	plugin.URI = e.GetStringAnnotation(_uri)
-	//transformation fail defaults to 0, the plugin will make default handling
-	plugin.RetCode, _ = strconv.Atoi(e.GetStringAnnotation(_retCode))
+	plugin.URI = e.GetStringAnnotation(_permanentRedirect)
+	// Transformation fail defaults to 0, the plugin will make default handling.
+	plugin.RetCode, _ = strconv.Atoi(e.GetStringAnnotation(_permanentRedirectCode))
 	// To avoid empty redirect plugin config, adding the check about the redirect.
 	if plugin.HttpToHttps || plugin.URI != "" {
 		return &plugin, nil
