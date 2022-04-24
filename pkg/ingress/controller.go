@@ -200,8 +200,9 @@ func NewController(cfg *config.Config) (*Controller, error) {
 
 func (c *Controller) initWhenStartLeading() {
 	var (
-		ingressInformer     cache.SharedIndexInformer
-		apisixRouteInformer cache.SharedIndexInformer
+		ingressInformer            cache.SharedIndexInformer
+		apisixRouteInformer        cache.SharedIndexInformer
+		apisixPluginConfigInformer cache.SharedIndexInformer
 	)
 
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
@@ -229,6 +230,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixConsumerLister = apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister()
 	c.apisixPluginConfigLister = kube.NewApisixPluginConfigLister(
 		apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+		apisixFactory.Apisix().V2().ApisixPluginConfigs().Lister(),
 	)
 
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
@@ -261,6 +263,13 @@ func (c *Controller) initWhenStartLeading() {
 		apisixRouteInformer = apisixFactory.Apisix().V2().ApisixRoutes().Informer()
 	}
 
+	switch c.cfg.Kubernetes.ApisixPluginConfigVersion {
+	case config.ApisixV2beta3:
+		apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
+	case config.ApisixV2:
+		apisixPluginConfigInformer = apisixFactory.Apisix().V2().ApisixPluginConfigs().Informer()
+	}
+
 	c.namespaceInformer = kubeFactory.Core().V1().Namespaces().Informer()
 	c.podInformer = kubeFactory.Core().V1().Pods().Informer()
 	c.svcInformer = kubeFactory.Core().V1().Services().Informer()
@@ -271,7 +280,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
 	c.apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
 	c.apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
-	c.apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
+	c.apisixPluginConfigInformer = apisixPluginConfigInformer
 
 	if c.cfg.Kubernetes.WatchEndpointSlices {
 		c.endpointSliceController = c.newEndpointSliceController()

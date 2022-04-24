@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -185,6 +186,22 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 		if c.verifyGeneration(&v.Status.Conditions, condition) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := client.ApisixV2beta3().ApisixClusterConfigs().
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for ApisixClusterConfig",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+				)
+			}
+		}
+	case *configv2.ApisixClusterConfig:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		if c.verifyGeneration(&v.Status.Conditions, condition) {
+			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			if _, errRecord := client.ApisixV2().ApisixClusterConfigs().
 				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 				log.Errorw("failed to record status change for ApisixClusterConfig",
 					zap.Error(errRecord),

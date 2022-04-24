@@ -17,13 +17,11 @@ package kube
 import (
 	"errors"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	listersv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2"
 	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
-)
-
-const (
-	// ApisixPluginConfigV2beta3 represents the ApisixPluginConfig in apisix.apache.org/v2beta3 group version
-	ApisixPluginConfigV2beta3 = "apisix.apache.org/v2beta3"
 )
 
 // ApisixPluginConfigLister is an encapsulation for the lister of ApisixPluginConfig,
@@ -31,6 +29,8 @@ const (
 type ApisixPluginConfigLister interface {
 	// V2beta3 gets the ApisixPluginConfig in apisix.apache.org/v2beta3.
 	V2beta3(string, string) (ApisixPluginConfig, error)
+	// V2 gets the ApisixPluginConfig in apisix.apache.org/v2.
+	V2(string, string) (ApisixPluginConfig, error)
 }
 
 // ApisixPluginConfigInformer is an encapsulation for the informer of ApisixPluginConfig,
@@ -48,6 +48,9 @@ type ApisixPluginConfig interface {
 	// V2beta3 returns the ApisixPluginConfig in apisix.apache.org/v2beta3, the real
 	// ApisixPluginConfig must be in this group version, otherwise will panic.
 	V2beta3() *configv2beta3.ApisixPluginConfig
+	// V2 returns the ApisixPluginConfig in apisix.apache.org/v2, the real
+	// ApisixPluginConfig must be in this group version, otherwise will panic.
+	V2() *configv2.ApisixPluginConfig
 	// ResourceVersion returns the the resource version field inside
 	// the real ApisixPluginConfig.
 	ResourceVersion() string
@@ -64,13 +67,21 @@ type ApisixPluginConfigEvent struct {
 type apisixPluginConfig struct {
 	groupVersion string
 	v2beta3      *configv2beta3.ApisixPluginConfig
+	v2           *configv2.ApisixPluginConfig
 }
 
 func (apc *apisixPluginConfig) V2beta3() *configv2beta3.ApisixPluginConfig {
-	if apc.groupVersion != ApisixPluginConfigV2beta3 {
+	if apc.groupVersion != config.ApisixV2beta3 {
 		panic("not a apisix.apache.org/v2beta3 pluginConfig")
 	}
 	return apc.v2beta3
+}
+
+func (apc *apisixPluginConfig) V2() *configv2.ApisixPluginConfig {
+	if apc.groupVersion != config.ApisixV2 {
+		panic("not a apisix.apache.org/v2 pluginConfig")
+	}
+	return apc.v2
 }
 
 func (apc *apisixPluginConfig) GroupVersion() string {
@@ -83,6 +94,7 @@ func (apc *apisixPluginConfig) ResourceVersion() string {
 
 type apisixPluginConfigLister struct {
 	v2beta3Lister listersv2beta3.ApisixPluginConfigLister
+	v2Lister      listersv2.ApisixPluginConfigLister
 }
 
 func (l *apisixPluginConfigLister) V2beta3(namespace, name string) (ApisixPluginConfig, error) {
@@ -91,8 +103,19 @@ func (l *apisixPluginConfigLister) V2beta3(namespace, name string) (ApisixPlugin
 		return nil, err
 	}
 	return &apisixPluginConfig{
-		groupVersion: ApisixPluginConfigV2beta3,
+		groupVersion: config.ApisixV2beta3,
 		v2beta3:      apc,
+	}, nil
+}
+
+func (l *apisixPluginConfigLister) V2(namespace, name string) (ApisixPluginConfig, error) {
+	apc, err := l.v2Lister.ApisixPluginConfigs(namespace).Get(name)
+	if err != nil {
+		return nil, err
+	}
+	return &apisixPluginConfig{
+		groupVersion: config.ApisixV2beta3,
+		v2:           apc,
 	}, nil
 }
 
@@ -102,7 +125,7 @@ func MustNewApisixPluginConfig(obj interface{}) ApisixPluginConfig {
 	switch apc := obj.(type) {
 	case *configv2beta3.ApisixPluginConfig:
 		return &apisixPluginConfig{
-			groupVersion: ApisixPluginConfigV2beta3,
+			groupVersion: config.ApisixV2beta3,
 			v2beta3:      apc,
 		}
 	default:
@@ -117,7 +140,7 @@ func NewApisixPluginConfig(obj interface{}) (ApisixPluginConfig, error) {
 	switch apc := obj.(type) {
 	case *configv2beta3.ApisixPluginConfig:
 		return &apisixPluginConfig{
-			groupVersion: ApisixPluginConfigV2beta3,
+			groupVersion: config.ApisixV2beta3,
 			v2beta3:      apc,
 		}, nil
 	default:
@@ -125,8 +148,9 @@ func NewApisixPluginConfig(obj interface{}) (ApisixPluginConfig, error) {
 	}
 }
 
-func NewApisixPluginConfigLister(v2beta3 listersv2beta3.ApisixPluginConfigLister) ApisixPluginConfigLister {
+func NewApisixPluginConfigLister(v2beta3 listersv2beta3.ApisixPluginConfigLister, v2 listersv2.ApisixPluginConfigLister) ApisixPluginConfigLister {
 	return &apisixPluginConfigLister{
 		v2beta3Lister: v2beta3,
+		v2Lister:      v2,
 	}
 }
