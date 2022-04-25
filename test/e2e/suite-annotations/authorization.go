@@ -72,4 +72,49 @@ spec:
 			Expect().
 			Status(http.StatusOK)
 	})
+
+	ginkgo.It("enable in ingress networking/v1", func() {
+		err := s.ApisixConsumerKeyAuthCreated("foo", "bar")
+		assert.Nil(ginkgo.GinkgoT(), err, "creating keyAuth ApisixConsumer")
+
+		// Wait until the ApisixConsumer create event was delivered.
+		time.Sleep(6 * time.Second)
+
+		backendSvc, backendPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/auth-type: "keyAuth"
+  name: ingress-v1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, backendSvc, backendPort[0])
+		err = s.CreateResourceFromString(ing)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		time.Sleep(5 * time.Second)
+
+		_ = s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(http.StatusForbidden)
+
+		_ = s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("apikey", "bar").
+			Expect().
+			Status(http.StatusOK)
+	})
 })
