@@ -39,7 +39,7 @@ func (b *basicAuth) Handle(e Extractor) (interface{}, error) {
 	if e.GetStringAnnotation(_authType) != "basicAuth" {
 		return nil, nil
 	}
-	var plugin apisixv1.BasicAuthConfig
+	plugin := apisixv1.BasicAuthConfig{}
 	return &plugin, nil
 }
 
@@ -59,6 +59,6 @@ func (k *keyAuth) Handle(e Extractor) (interface{}, error) {
 	if e.GetStringAnnotation(_authType) != "keyAuth" {
 		return nil, nil
 	}
-	var plugin apisixv1.KeyAuthConfig
+	plugin := apisixv1.KeyAuthConfig{}
 	return &plugin, nil
 }
