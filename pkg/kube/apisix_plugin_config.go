@@ -117,7 +117,7 @@ func (l *apisixPluginConfigLister) V2(namespace, name string) (ApisixPluginConfi
 		return nil, err
 	}
 	return &apisixPluginConfig{
-		groupVersion: config.ApisixV2beta3,
+		groupVersion: config.ApisixV2,
 		v2:           apc,
 	}, nil
 }
@@ -130,6 +130,11 @@ func MustNewApisixPluginConfig(obj interface{}) ApisixPluginConfig {
 		return &apisixPluginConfig{
 			groupVersion: config.ApisixV2beta3,
 			v2beta3:      apc,
+		}
+	case *configv2.ApisixPluginConfig:
+		return &apisixPluginConfig{
+			groupVersion: config.ApisixV2,
+			v2:           apc,
 		}
 	default:
 		panic("invalid ApisixPluginConfig type")
@@ -145,6 +150,11 @@ func NewApisixPluginConfig(obj interface{}) (ApisixPluginConfig, error) {
 		return &apisixPluginConfig{
 			groupVersion: config.ApisixV2beta3,
 			v2beta3:      apc,
+		}, nil
+	case *configv2.ApisixPluginConfig:
+		return &apisixPluginConfig{
+			groupVersion: config.ApisixV2,
+			v2:           apc,
 		}, nil
 	default:
 		return nil, errors.New("invalid ApisixPluginConfig type")
