@@ -15,8 +15,6 @@
 package annotations
 
 import (
-	"strconv"
-
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
