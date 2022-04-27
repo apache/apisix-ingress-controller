@@ -23,7 +23,7 @@ title: Enable authentication and restriction
 
 ## Description
 
-Consumers are useful when you have different consumers requesting the same API and you need to execute different Plugin and Upstream configurations based on the consumer. These need to be used in conjunction with the user authentication system.  
+Consumers are used for the authentication method controlled by Apache APISIX, if users want to use their own auth system or 3rd party systems, use OIDC.  
 
 ## Attributes
 
