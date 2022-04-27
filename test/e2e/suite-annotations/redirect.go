@@ -19,7 +19,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gavv/httpexpect/v2"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 
