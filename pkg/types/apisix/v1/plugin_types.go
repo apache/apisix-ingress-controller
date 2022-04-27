@@ -86,8 +86,6 @@ type RewriteConfig struct {
 // +k8s:deepcopy-gen=true
 type RedirectConfig struct {
 	HttpToHttps bool   `json:"http_to_https,omitempty"`
-	URI         string `json:"uri,omitempty"`
-	RetCode     int    `json:"ret_code,omitempty"`
 }
 
 // ForwardAuthConfig is the rule config for forward-auth plugin.
