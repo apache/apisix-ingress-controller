@@ -89,7 +89,10 @@ func (apc *apisixPluginConfig) GroupVersion() string {
 }
 
 func (apc *apisixPluginConfig) ResourceVersion() string {
-	return apc.V2beta3().ResourceVersion
+	if apc.groupVersion == config.ApisixV2beta3 {
+		return apc.V2beta3().ResourceVersion
+	}
+	return apc.V2().ResourceVersion
 }
 
 type apisixPluginConfigLister struct {
