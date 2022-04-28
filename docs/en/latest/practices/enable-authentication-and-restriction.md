@@ -54,7 +54,7 @@ basicAuth:
 
 #### `whitelist` or `blacklist`
 
-`whitelist`: Grant full access to all users specified in the provided list, **has the priority over `allowed_by_methods`**
+`whitelist`: Grant full access to all users specified in the provided list, **has the priority over `allowed_by_methods`**  
 `blacklist`: Reject connection to all users specified in the provided list, **has the priority over `whitelist`**
 
 ```yaml
