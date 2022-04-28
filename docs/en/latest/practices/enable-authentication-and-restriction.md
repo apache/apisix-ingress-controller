@@ -147,7 +147,7 @@ EOF
 Requests from foo:
 
 ```shell
-kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:foo-key' -v
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:foo-key' -i
 ```
 
 ```shell
@@ -249,7 +249,7 @@ How to get `default_jack1`:
 Requests from jack1:
 
 ```shell
-kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack1-key' -v
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX} -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack1-key' -i
 ```
 
 ```shell
@@ -260,7 +260,7 @@ HTTP/1.1 200 OK
 Requests from jack2:
 
 ```shell
-kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX} -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key'
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX} -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key' -i
 ```
 
 ```shell
@@ -313,7 +313,7 @@ EOF
 Requests from jack1:
 
 ```shell
-kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack1-key' -v
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX} -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack1-key' -i
 ```
 
 ```shell
@@ -322,7 +322,7 @@ HTTP/1.1 200 OK
 ```
 
 ```shell
-kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack1-key' -d '' -v
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX} -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack1-key' -d '' -i
 ```
 
 ```shell
@@ -333,7 +333,7 @@ HTTP/1.1 200 OK
 Requests from jack2:
 
 ```shell
-kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key' -v
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX} -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key' -i
 ```
 
 ```shell
@@ -342,7 +342,7 @@ HTTP/1.1 200 OK
 ```
 
 ```shell
-kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key' -d '' -v
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX} -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -H 'apikey:jack2-key' -d '' -i
 ```
 
 ```shell
@@ -393,7 +393,7 @@ EOF
 Requests:
 
 ```shell
-kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -v
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: local.httpbin.org' -i
 ```
 
 ```shell
