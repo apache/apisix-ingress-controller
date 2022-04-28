@@ -70,7 +70,7 @@ func (t *translator) translateTrafficSplitPlugin(ctx *TranslateContext, ns strin
 	return tsCfg, nil
 }
 
-func (t *translator) translateConsumerKeyAuthPlugin(consumerNamespace string, cfg *configv2beta3.ApisixConsumerKeyAuth) (*apisixv1.KeyAuthConsumerConfig, error) {
+func (t *translator) translateConsumerKeyAuthPluginV2beta3(consumerNamespace string, cfg *configv2beta3.ApisixConsumerKeyAuth) (*apisixv1.KeyAuthConsumerConfig, error) {
 	if cfg.Value != nil {
 		return &apisixv1.KeyAuthConsumerConfig{Key: cfg.Value.Key}, nil
 	}
@@ -86,7 +86,49 @@ func (t *translator) translateConsumerKeyAuthPlugin(consumerNamespace string, cf
 	return &apisixv1.KeyAuthConsumerConfig{Key: string(raw)}, nil
 }
 
-func (t *translator) translateConsumerBasicAuthPlugin(consumerNamespace string, cfg *configv2beta3.ApisixConsumerBasicAuth) (*apisixv1.BasicAuthConsumerConfig, error) {
+func (t *translator) translateConsumerBasicAuthPluginV2beta3(consumerNamespace string, cfg *configv2beta3.ApisixConsumerBasicAuth) (*apisixv1.BasicAuthConsumerConfig, error) {
+	if cfg.Value != nil {
+		return &apisixv1.BasicAuthConsumerConfig{
+			Username: cfg.Value.Username,
+			Password: cfg.Value.Password,
+		}, nil
+	}
+
+	sec, err := t.SecretLister.Secrets(consumerNamespace).Get(cfg.SecretRef.Name)
+	if err != nil {
+		return nil, err
+	}
+	raw1, ok := sec.Data["username"]
+	if !ok || len(raw1) == 0 {
+		return nil, _errUsernameNotFoundOrInvalid
+	}
+	raw2, ok := sec.Data["password"]
+	if !ok || len(raw2) == 0 {
+		return nil, _errPasswordNotFoundOrInvalid
+	}
+	return &apisixv1.BasicAuthConsumerConfig{
+		Username: string(raw1),
+		Password: string(raw2),
+	}, nil
+}
+
+func (t *translator) translateConsumerKeyAuthPluginV2(consumerNamespace string, cfg *configv2.ApisixConsumerKeyAuth) (*apisixv1.KeyAuthConsumerConfig, error) {
+	if cfg.Value != nil {
+		return &apisixv1.KeyAuthConsumerConfig{Key: cfg.Value.Key}, nil
+	}
+
+	sec, err := t.SecretLister.Secrets(consumerNamespace).Get(cfg.SecretRef.Name)
+	if err != nil {
+		return nil, err
+	}
+	raw, ok := sec.Data["key"]
+	if !ok || len(raw) == 0 {
+		return nil, _errKeyNotFoundOrInvalid
+	}
+	return &apisixv1.KeyAuthConsumerConfig{Key: string(raw)}, nil
+}
+
+func (t *translator) translateConsumerBasicAuthPluginV2(consumerNamespace string, cfg *configv2.ApisixConsumerBasicAuth) (*apisixv1.BasicAuthConsumerConfig, error) {
 	if cfg.Value != nil {
 		return &apisixv1.BasicAuthConsumerConfig{
 			Username: cfg.Value.Username,

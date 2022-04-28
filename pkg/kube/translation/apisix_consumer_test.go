@@ -41,7 +41,7 @@ func TestTranslateApisixConsumer(t *testing.T) {
 			},
 		},
 	}
-	consumer, err := (&translator{}).TranslateApisixConsumer(ac)
+	consumer, err := (&translator{}).TranslateApisixConsumerV2beta3(ac)
 	assert.Nil(t, err)
 	assert.Len(t, consumer.Plugins, 1)
 	cfg := consumer.Plugins["basic-auth"].(*apisixv1.BasicAuthConsumerConfig)
@@ -63,7 +63,7 @@ func TestTranslateApisixConsumer(t *testing.T) {
 			},
 		},
 	}
-	consumer, err = (&translator{}).TranslateApisixConsumer(ac)
+	consumer, err = (&translator{}).TranslateApisixConsumerV2beta3(ac)
 	assert.Nil(t, err)
 	assert.Len(t, consumer.Plugins, 1)
 	cfg2 := consumer.Plugins["key-auth"].(*apisixv1.KeyAuthConsumerConfig)

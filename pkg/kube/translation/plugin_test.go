@@ -539,7 +539,7 @@ func TestTranslateConsumerKeyAuthPluginWithInPlaceValue(t *testing.T) {
 	keyAuth := &configv2beta3.ApisixConsumerKeyAuth{
 		Value: &configv2beta3.ApisixConsumerKeyAuthValue{Key: "abc"},
 	}
-	cfg, err := (&translator{}).translateConsumerKeyAuthPlugin("default", keyAuth)
+	cfg, err := (&translator{}).translateConsumerKeyAuthPluginV2beta3("default", keyAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "abc", cfg.Key)
 }
@@ -582,11 +582,11 @@ func TestTranslateConsumerKeyAuthWithSecretRef(t *testing.T) {
 	keyAuth := &configv2beta3.ApisixConsumerKeyAuth{
 		SecretRef: &corev1.LocalObjectReference{Name: "abc-key-auth"},
 	}
-	cfg, err := tr.translateConsumerKeyAuthPlugin("default", keyAuth)
+	cfg, err := tr.translateConsumerKeyAuthPluginV2beta3("default", keyAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "abc", cfg.Key)
 
-	cfg, err = tr.translateConsumerKeyAuthPlugin("default2", keyAuth)
+	cfg, err = tr.translateConsumerKeyAuthPluginV2beta3("default2", keyAuth)
 	assert.Nil(t, cfg)
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "not found")
@@ -596,7 +596,7 @@ func TestTranslateConsumerKeyAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerKeyAuthPlugin("default", keyAuth)
+	cfg, err = tr.translateConsumerKeyAuthPluginV2beta3("default", keyAuth)
 	assert.Nil(t, cfg)
 	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
 
@@ -611,7 +611,7 @@ func TestTranslateConsumerBasicAuthPluginWithInPlaceValue(t *testing.T) {
 			Password: "jacknice",
 		},
 	}
-	cfg, err := (&translator{}).translateConsumerBasicAuthPlugin("default", basicAuth)
+	cfg, err := (&translator{}).translateConsumerBasicAuthPluginV2beta3("default", basicAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "jack", cfg.Username)
 	assert.Equal(t, "jacknice", cfg.Password)
@@ -656,12 +656,12 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 	basicAuth := &configv2beta3.ApisixConsumerBasicAuth{
 		SecretRef: &corev1.LocalObjectReference{Name: "jack-basic-auth"},
 	}
-	cfg, err := tr.translateConsumerBasicAuthPlugin("default", basicAuth)
+	cfg, err := tr.translateConsumerBasicAuthPluginV2beta3("default", basicAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "jack", cfg.Username)
 	assert.Equal(t, "jacknice", cfg.Password)
 
-	cfg, err = tr.translateConsumerBasicAuthPlugin("default2", basicAuth)
+	cfg, err = tr.translateConsumerBasicAuthPluginV2beta3("default2", basicAuth)
 	assert.Nil(t, cfg)
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "not found")
@@ -671,7 +671,7 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerBasicAuthPlugin("default", basicAuth)
+	cfg, err = tr.translateConsumerBasicAuthPluginV2beta3("default", basicAuth)
 	assert.Nil(t, cfg)
 	assert.Equal(t, _errPasswordNotFoundOrInvalid, err)
 
@@ -680,7 +680,7 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerBasicAuthPlugin("default", basicAuth)
+	cfg, err = tr.translateConsumerBasicAuthPluginV2beta3("default", basicAuth)
 	assert.Nil(t, cfg)
 	assert.Equal(t, _errUsernameNotFoundOrInvalid, err)
 
