@@ -58,12 +58,13 @@ basicAuth:
 `blacklist`: Reject connection to all users specified in the provided list, **has the priority over `whitelist`**
 
 ```yaml
-name: consumer-restriction
-enable: true
-config:
-  blacklist:
-  - "${consumer_name}"
-  - "${consumer_name}"
+plugins:
+- name: consumer-restriction
+  enable: true
+  config:
+    blacklist:
+    - "${consumer_name}"
+    - "${consumer_name}"
 ```
 
 #### `allowed_by_methods`
@@ -71,17 +72,18 @@ config:
 HTTP methods can be `methods:["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE", "PURGE"]`
 
 ```yaml
-name: consumer-restriction
-enable: true
-config:
-  allowed_by_methods:
-  - user: "${consumer_name}"
-    methods:
-    - "POST"
-    - "GET"
-  - user: "${consumer_name}"
-    methods:
-    - "GET"
+plugins:
+- name: consumer-restriction
+  enable: true
+  config:
+    allowed_by_methods:
+    - user: "${consumer_name}"
+      methods:
+      - "POST"
+      - "GET"
+    - user: "${consumer_name}"
+      methods:
+      - "GET"
 ```
 
 ## Example
