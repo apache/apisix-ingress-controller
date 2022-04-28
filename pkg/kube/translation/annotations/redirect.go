@@ -15,15 +15,16 @@
 package annotations
 
 import (
+	"net/http"
 	"strconv"
 
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
-	_httpToHttps           = AnnotationsPrefix + "http-to-https"
-	_permanentRedirect     = AnnotationsPrefix + "permanent-redirect"
-	_permanentRedirectCode = AnnotationsPrefix + "permanent-redirect-code"
+	_httpToHttps      = AnnotationsPrefix + "http-to-https"
+	_httpRedirect     = AnnotationsPrefix + "http-redirect"
+	_httpRedirectCode = AnnotationsPrefix + "http-redirect-code"
 )
 
 type redirect struct{}
@@ -41,11 +42,18 @@ func (r *redirect) PluginName() string {
 func (r *redirect) Handle(e Extractor) (interface{}, error) {
 	var plugin apisixv1.RedirectConfig
 	plugin.HttpToHttps = e.GetBoolAnnotation(_httpToHttps)
-	plugin.URI = e.GetStringAnnotation(_permanentRedirect)
-	// Transformation fail defaults to 0, the plugin will make default handling.
-	plugin.RetCode, _ = strconv.Atoi(e.GetStringAnnotation(_permanentRedirectCode))
+	plugin.URI = e.GetStringAnnotation(_httpRedirect)
+	// Transformation fail defaults to 0.
+	plugin.RetCode, _ = strconv.Atoi(e.GetStringAnnotation(_httpRedirectCode))
 	// To avoid empty redirect plugin config, adding the check about the redirect.
-	if plugin.HttpToHttps || plugin.URI != "" {
+	if plugin.HttpToHttps {
+		return &plugin, nil
+	}
+	if plugin.URI != "" {
+		// Default is http.StatusMovedPermanently, the allowed value is between http.StatusMultipleChoices and http.StatusPermanentRedirect.
+		if plugin.RetCode < http.StatusMovedPermanently || plugin.RetCode > http.StatusPermanentRedirect {
+			plugin.RetCode = http.StatusMovedPermanently
+		}
 		return &plugin, nil
 	}
 	return nil, nil

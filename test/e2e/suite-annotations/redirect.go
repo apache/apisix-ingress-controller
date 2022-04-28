@@ -121,7 +121,7 @@ spec:
 		resp.Header("Location").Equal("https://httpbin.org/sample")
 	})
 
-	ginkgo.It("redirect permanent-redirect in ingress networking/v1", func() {
+	ginkgo.It("redirect http-redirect in ingress networking/v1", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
@@ -129,8 +129,8 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/permanent-redirect: "/anything$uri"
-    k8s.apisix.apache.org/permanent-redirect-code: "308"
+    k8s.apisix.apache.org/http-redirect: "/anything$uri"
+    k8s.apisix.apache.org/http-redirect-code: "308"
   name: ingress-v1
 spec:
   rules:
@@ -154,7 +154,7 @@ spec:
 		resp.Header("Location").Equal("/anything/ip")
 	})
 
-	ginkgo.It("redirect permanent-redirect in ingress networking/v1beta1", func() {
+	ginkgo.It("redirect http-redirect in ingress networking/v1beta1", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
@@ -162,8 +162,8 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/permanent-redirect: "/anything$uri"
-    k8s.apisix.apache.org/permanent-redirect-code: "308"
+    k8s.apisix.apache.org/http-redirect: "/anything$uri"
+    k8s.apisix.apache.org/http-redirect-code: "308"
   name: ingress-v1beta1
 spec:
   rules:
@@ -185,7 +185,7 @@ spec:
 		resp.Header("Location").Equal("/anything/ip")
 	})
 
-	ginkgo.It("redirect permanent-redirect in ingress extensions/v1beta1", func() {
+	ginkgo.It("redirect http-redirect in ingress extensions/v1beta1", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: extensions/v1beta1
@@ -193,8 +193,8 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/permanent-redirect: "/anything$uri"
-    k8s.apisix.apache.org/permanent-redirect-code: "308"
+    k8s.apisix.apache.org/http-redirect: "/anything$uri"
+    k8s.apisix.apache.org/http-redirect-code: "308"
   name: ingress-extensions-v1beta1
 spec:
   rules:
@@ -216,7 +216,7 @@ spec:
 		resp.Header("Location").Equal("/anything/ip")
 	})
 
-	ginkgo.It("redirect permanent-redirect external link in ingress networking/v1", func() {
+	ginkgo.It("redirect http-redirect external link in ingress networking/v1", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
@@ -224,8 +224,8 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/permanent-redirect: "https://httpbin.org/get"
-    k8s.apisix.apache.org/permanent-redirect-code: "308"
+    k8s.apisix.apache.org/http-redirect: "https://httpbin.org/get"
+    k8s.apisix.apache.org/http-redirect-code: "308"
   name: ingress-v1
 spec:
   rules:
@@ -252,7 +252,7 @@ spec:
 		assert.Contains(ginkgo.GinkgoT(), body, "https://httpbin.org/get")
 	})
 
-	ginkgo.It("redirect permanent-redirect external link in ingress networking/v1beta1", func() {
+	ginkgo.It("redirect http-redirect external link in ingress networking/v1beta1", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
@@ -260,8 +260,8 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/permanent-redirect: "https://httpbin.org/get"
-    k8s.apisix.apache.org/permanent-redirect-code: "308"
+    k8s.apisix.apache.org/http-redirect: "https://httpbin.org/get"
+    k8s.apisix.apache.org/http-redirect-code: "308"
   name: ingress-v1beta1
 spec:
   rules:
@@ -286,7 +286,7 @@ spec:
 		assert.Contains(ginkgo.GinkgoT(), body, "https://httpbin.org/get")
 	})
 
-	ginkgo.It("redirect permanent-redirect external link in ingress extensions/v1beta1", func() {
+	ginkgo.It("redirect http-redirect external link in ingress extensions/v1beta1", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: extensions/v1beta1
@@ -294,8 +294,8 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/permanent-redirect: "https://httpbin.org/get"
-    k8s.apisix.apache.org/permanent-redirect-code: "308"
+    k8s.apisix.apache.org/http-redirect: "https://httpbin.org/get"
+    k8s.apisix.apache.org/http-redirect-code: "308"
   name: ingress-extensions-v1beta1
 spec:
   rules:
