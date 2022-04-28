@@ -16,11 +16,11 @@ package kube
 
 import (
 	"errors"
+
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	listersv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2"
-
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	listersv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2"
 	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
 )
 
@@ -134,7 +134,7 @@ func MustNewApisixConsumer(obj interface{}) ApisixConsumer {
 	case *configv2.ApisixConsumer:
 		return &apisixConsumer{
 			groupVersion: config.ApisixV2,
-			v2:      ac,
+			v2:           ac,
 		}
 	default:
 		panic("invalid ApisixConsumer type")
@@ -154,7 +154,7 @@ func NewApisixConsumer(obj interface{}) (ApisixConsumer, error) {
 	case *configv2.ApisixConsumer:
 		return &apisixConsumer{
 			groupVersion: config.ApisixV2,
-			v2:      ac,
+			v2:           ac,
 		}, nil
 	default:
 		return nil, errors.New("invalid ApisixConsumer type")
