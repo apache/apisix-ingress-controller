@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	//auth-type: keyAuth | basicAuth
+	// auth-type: keyAuth | basicAuth
 	_authType = AnnotationsPrefix + "auth-type"
 )
 
