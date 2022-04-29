@@ -80,6 +80,8 @@ kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -
 kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9080/headers -H 'Host: test.prometheus.org'
 ```
 
+Then you will get the metrics you want.
+
 ## Conclusion
 
 This article describes how to use the `public-api` plugin to protect *Prometheus* and monitor the Apache APISIX. Currently, only some basic configurations include. We will continue to polish and upgrade, add more metrics and integrate data surface APISIX metrics to improve your monitoring experience.
