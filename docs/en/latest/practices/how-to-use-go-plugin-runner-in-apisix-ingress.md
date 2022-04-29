@@ -215,7 +215,7 @@ Command Explanation: Build an image with the name `apisix/forrunner` and mark it
 #### Load the image to the cluster environment
 
 ```bash
-kind  load docker-image apisix/forrunner:0.1
+kind load docker-image apisix/forrunner:0.1
 ```
 
 Load the image into the kind cluster environment to pull the custom local image for installation during the helm installation.
