@@ -177,7 +177,7 @@ CMD ["sh", "-c", "/usr/bin/apisix init && /usr/bin/apisix init_etcd && /usr/loca
 STOPSIGNAL SIGQUIT
 ```
 
-这份 Dockerfile 配置文档，来源于这个[链接](https://github.com/apache/apisix-docker/blob/master/alpine/Dockerfile)。我做的唯一修改如下：
+This Dockerfile configuration document, from this [link](https://github.com/apache/apisix-docker/blob/master/alpine/Dockerfile). The only changes I made were as follows:
 
 ```bash
 ARG ENABLE_PROXY=false
