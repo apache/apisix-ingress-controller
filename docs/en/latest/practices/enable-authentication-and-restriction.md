@@ -124,7 +124,7 @@ EOF
 ApisixRoute:
 
 ```shell
-kubectl apply -f -<<EOF
+kubectl apply -f - <<EOF
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
