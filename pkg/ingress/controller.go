@@ -264,7 +264,7 @@ func (c *Controller) initWhenStartLeading() {
 	case config.ApisixRouteV2:
 		apisixRouteInformer = apisixFactory.Apisix().V2().ApisixRoutes().Informer()
 	default:
-		panic(fmt.Errorf("unsupported ApisixRoute version %s", c.cfg.Kubernetes.ApisixTlsVersion))
+		panic(fmt.Errorf("unsupported ApisixRoute version %s", c.cfg.Kubernetes.ApisixRouteVersion))
 	}
 
 	switch c.cfg.Kubernetes.ApisixTlsVersion {
