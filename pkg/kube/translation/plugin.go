@@ -111,3 +111,26 @@ func (t *translator) translateConsumerBasicAuthPlugin(consumerNamespace string, 
 		Password: string(raw2),
 	}, nil
 }
+
+func (t *translator) translateConsumerWolfRbacPlugin(consumerNamespace string, cfg *configv2beta3.ApisixConsumerWolfRbac) (*apisixv1.WolfRbacConsumerConfig, error) {
+	if cfg.Value != nil {
+		return &apisixv1.WolfRbacConsumerConfig{
+			Server:       cfg.Value.Server,
+			Appid:        cfg.Value.Appid,
+			HeaderPrefix: cfg.Value.HeaderPrefix,
+		}, nil
+	}
+
+	sec, err := t.SecretLister.Secrets(consumerNamespace).Get(cfg.SecretRef.Name)
+	if err != nil {
+		return nil, err
+	}
+	raw1 := sec.Data["server"]
+	raw2 := sec.Data["appid"]
+	raw3 := sec.Data["header_prefix"]
+	return &apisixv1.WolfRbacConsumerConfig{
+		Server:       string(raw1),
+		Appid:        string(raw2),
+		HeaderPrefix: string(raw3),
+	}, nil
+}

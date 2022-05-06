@@ -75,6 +75,15 @@ type BasicAuthConsumerConfig struct {
 // +k8s:deepcopy-gen=true
 type BasicAuthRouteConfig struct{}
 
+// WolfRbacConsumerConfig is the rule config for wolf-rbac plugin
+// used in Consumer object.
+// +k8s:deepcopy-gen=true
+type WolfRbacConsumerConfig struct {
+	Server       string `json:"server,omitempty"`
+	Appid        string `json:"appid,omitempty"`
+	HeaderPrefix string `json:"header_prefix,omitempty"`
+}
+
 // RewriteConfig is the rule config for proxy-rewrite plugin.
 // +k8s:deepcopy-gen=true
 type RewriteConfig struct {

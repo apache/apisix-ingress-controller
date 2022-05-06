@@ -49,6 +49,7 @@ spec:
                   oneOf:
                     - required: ["basicAuth"]
                     - required: ["keyAuth"]
+                    - required: ["wolfRbac"]
                   properties:
                     basicAuth:
                       type: object
@@ -90,6 +91,29 @@ spec:
                               minLength: 1
                           required:
                             - key
+                        secretRef:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                              minLength: 1
+                          required:
+                            - name
+                    wolfRbac:
+                      type: object
+                      oneOf:
+                        - required: ["value"]
+                        - required: ["secretRef"]
+                      properties:
+                        value:
+                          type: object
+                          properties:
+                            server:
+                              type: string
+                            appid:
+                              type: string
+                            header_prefix:
+                              type: string
                         secretRef:
                           type: object
                           properties:
