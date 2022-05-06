@@ -404,6 +404,7 @@ spec:
       value:
         server: "%s"
         appid: "test-app"
+        header_prefix: "X-"
 `, wolfSvr)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac), "creating wolfRbac ApisixConsumer")
 
