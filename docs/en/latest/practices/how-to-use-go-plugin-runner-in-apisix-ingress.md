@@ -283,27 +283,6 @@ extPlugin:
 
 The second change sets the position of go-runner in the container after running the container.
 
-##### Compress the modified helm chart
-
-Once configured, compress the `apisix` file. The compression command is as follows:
-
-```bash
-tar zcvf apisix.tgz apisix/
-```
-
-The compressed file is obtained, at which point the file tree is as follows:
-
-```bash
-chever@cloud-native-01:~/api7/cloud_native/tasks/plugin-runner$ tree -L 1
-.
-├── apisix
-├── apisix-0.9.1.tgz
-├── apisix-go-plugin-runner
-└── apisix.tgz
-
-2 directories, 2 files
-```
-
 #### Execute the helm install command
 
 ##### Create namespace
@@ -314,10 +293,10 @@ Before installation, create namespaces with the following command:
 kubectl create ns ingress-apisix
 ```
 
-Then install APISIX using helm with the following command:
+Then install APISIX using helm with the following command in the directory of Apache APISIX Helm Chart:
 
 ```bash
-helm install apisix ./apisix.tgz --set gateway.type=NodePort --set ingress-controller.enabled=true --namespace ingress-apisix --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
+helm install --name-template apisix -f values.yaml . --set gateway.type=NodePort --set ingress-controller.enabled=true --namespace ingress-apisix --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
 ```
 
 ### Create httpbin service and ApisixRoute resources
