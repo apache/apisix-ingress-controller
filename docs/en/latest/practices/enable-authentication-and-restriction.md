@@ -29,7 +29,7 @@ Consumers are used for the authentication method controlled by Apache APISIX, if
 
 ### Authentication
 
-#### `keyAuth`
+#### [`keyAuth`](https://apisix.apache.org/docs/apisix/plugins/key-auth/)
 
 Consumers add their key either in a header `apikey` to authenticate their requests.
 
@@ -39,7 +39,7 @@ keyAuth:
     key: ${key}
 ```
 
-#### `basicAuth`
+#### [`basicAuth`](https://apisix.apache.org/docs/apisix/plugins/basic-auth/)
 
 Consumers add their key either in a header `Authentication` to authenticate their requests.
 
@@ -50,7 +50,7 @@ basicAuth:
     password: ${password}
 ```
 
-### Restriction
+### [Restriction](https://apisix.apache.org/docs/apisix/plugins/consumer-restriction/)
 
 #### `whitelist` or `blacklist`
 
