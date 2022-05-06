@@ -357,7 +357,7 @@ type ApisixConsumerKeyAuthValue struct {
 	Key string `json:"key" yaml:"key"`
 }
 
-// ApisixConsumerWolfRbac defines the configuration for the key auth.
+// ApisixConsumerWolfRbac defines the configuration for the rbac auth.
 type ApisixConsumerWolfRbac struct {
 	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
 	Value     *ApisixConsumerWolfRbacValue `json:"value,omitempty" yaml:"value,omitempty"`

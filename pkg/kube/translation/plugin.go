@@ -125,18 +125,9 @@ func (t *translator) translateConsumerWolfRbacPlugin(consumerNamespace string, c
 	if err != nil {
 		return nil, err
 	}
-	raw1, ok := sec.Data["server"]
-	if !ok || len(raw1) == 0 {
-		return nil, _errUsernameNotFoundOrInvalid
-	}
-	raw2, ok := sec.Data["appid"]
-	if !ok || len(raw2) == 0 {
-		return nil, _errPasswordNotFoundOrInvalid
-	}
-	raw3, ok := sec.Data["header_prefix"]
-	if !ok || len(raw2) == 0 {
-		return nil, _errPasswordNotFoundOrInvalid
-	}
+	raw1 := sec.Data["server"]
+	raw2 := sec.Data["appid"]
+	raw3 := sec.Data["header_prefix"]
 	return &apisixv1.WolfRbacConsumerConfig{
 		Server:       string(raw1),
 		Appid:        string(raw2),

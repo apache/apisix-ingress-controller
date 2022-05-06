@@ -22,14 +22,15 @@ import (
 	"os/exec"
 )
 
-func (s *Scaffold) WolfRbacStartedHttpSvr() {
+func (s *Scaffold) WolfRbacSvrStarting() {
 	cmd := exec.Command("sh", "testdata/wolf-rbac/start.sh")
 	_ = cmd.Run()
 }
 
-func (s *Scaffold) WolfRbacIPAddress() (string, error) {
+func (s *Scaffold) WolfRbacSvrStartedURL() (string, error) {
+	s.WolfRbacSvrStarting()
+
 	cmd := exec.Command("sh", "testdata/wolf-rbac/ip.sh")
-	s.WolfRbacStartedHttpSvr()
 	ip, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -41,7 +42,7 @@ func (s *Scaffold) WolfRbacIPAddress() (string, error) {
 	return httpsvc, nil
 }
 
-func (s *Scaffold) StopWolfRbac() error {
+func (s *Scaffold) StopWolfRbacSvr() error {
 	cmd := exec.Command("sh", "testdata/wolf-rbac/stop.sh")
 	err := cmd.Run()
 	return err
