@@ -77,7 +77,7 @@ Now you can then get the indicator parameters by requesting command access.
 ```sh
 kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9180/apisix/admin/routes -H 'X-API-Key: edd1c9f034335f136f87ad84b625c8f1'
 
-kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9080/headers -H 'Host: test.prometheus.org'
+kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9091/headers -H 'Host: test.prometheus.org'
 ```
 
 Then you will get the metrics you want.
@@ -164,6 +164,8 @@ apisix_nginx_metric_errors_total 0
 # TYPE apisix_node_info gauge
 apisix_node_info{hostname="apisix-7d6b8577b6-rqhq9"} 1
 ```
+
+
 
 ## Conclusion
 
