@@ -331,6 +331,7 @@ type ApisixConsumerSpec struct {
 type ApisixConsumerAuthParameter struct {
 	BasicAuth *ApisixConsumerBasicAuth `json:"basicAuth,omitempty" yaml:"basicAuth"`
 	KeyAuth   *ApisixConsumerKeyAuth   `json:"keyAuth,omitempty" yaml:"keyAuth"`
+	WolfRbac  *ApisixConsumerWolfRbac  `json:"wolfRbac,omitempty" yaml:"wolfRbac"`
 }
 
 // ApisixConsumerBasicAuth defines the configuration for basic auth.
@@ -354,6 +355,19 @@ type ApisixConsumerKeyAuth struct {
 // ApisixConsumerKeyAuthValue defines the in-place configuration for basic auth.
 type ApisixConsumerKeyAuthValue struct {
 	Key string `json:"key" yaml:"key"`
+}
+
+// ApisixConsumerWolfRbac defines the configuration for the key auth.
+type ApisixConsumerWolfRbac struct {
+	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
+	Value     *ApisixConsumerWolfRbacValue `json:"value,omitempty" yaml:"value,omitempty"`
+}
+
+// ApisixConsumerWolfRbac defines the in-place server and appid and header_prefix  configuration for rbac auth.
+type ApisixConsumerWolfRbacValue struct {
+	Server       string `json:"server,omitempty" yaml:"server"`
+	Appid        string `json:"appid,omitempty" yaml:"appid"`
+	HeaderPrefix string `json:"header_prefix,omitempty" yaml:"header_prefix"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

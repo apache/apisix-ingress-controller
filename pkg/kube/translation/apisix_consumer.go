@@ -38,6 +38,12 @@ func (t *translator) TranslateApisixConsumer(ac *configv2beta3.ApisixConsumer) (
 			return nil, fmt.Errorf("invalid basic auth config: %s", err)
 		}
 		plugins["basic-auth"] = cfg
+	} else if ac.Spec.AuthParameter.WolfRbac != nil {
+		cfg, err := t.translateConsumerWolfRbacPlugin(ac.Namespace, ac.Spec.AuthParameter.WolfRbac)
+		if err != nil {
+			return nil, fmt.Errorf("iinvalid wolf brac config: %s", err)
+		}
+		plugins["wolf-rbac"] = cfg
 	}
 
 	consumer := apisixv1.NewDefaultConsumer()

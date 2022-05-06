@@ -687,3 +687,16 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 	close(processCh)
 	close(stopCh)
 }
+
+func TestTranslateConsumerWolfRbacPluginWithInPlaceValue(t *testing.T) {
+	wolfRbac := &configv2beta3.ApisixConsumerWolfRbac{
+		Value: &configv2beta3.ApisixConsumerWolfRbacValue{
+			Server: "https://httpbin.org",
+			Appid:  "test01",
+		},
+	}
+	cfg, err := (&translator{}).translateConsumerWolfRbacPlugin("default", wolfRbac)
+	assert.Nil(t, err)
+	assert.Equal(t, "https://httpbin.org", cfg.Server)
+	assert.Equal(t, "test01", cfg.Appid)
+}
