@@ -165,8 +165,6 @@ apisix_nginx_metric_errors_total 0
 apisix_node_info{hostname="apisix-7d6b8577b6-rqhq9"} 1
 ```
 
-
-
 ## Conclusion
 
 This article describes how to use the `public-api` plugin to protect *Prometheus* and monitor the Apache APISIX. Currently, only some basic configurations include. We will continue to polish and upgrade, add more metrics and integrate data surface APISIX metrics to improve your monitoring experience.
