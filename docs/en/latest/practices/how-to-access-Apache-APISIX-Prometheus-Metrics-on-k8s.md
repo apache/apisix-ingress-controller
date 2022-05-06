@@ -75,8 +75,6 @@ spec:
 Now you can then get the indicator parameters by requesting command access.
 
 ```sh
-kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9180/apisix/admin/routes -H 'X-API-Key: edd1c9f034335f136f87ad84b625c8f1'
-
 kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9091/headers -H 'Host: test.prometheus.org'
 ```
 
