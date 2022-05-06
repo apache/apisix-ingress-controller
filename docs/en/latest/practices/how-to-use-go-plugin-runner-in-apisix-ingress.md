@@ -75,7 +75,7 @@ If you have finished writing the plugin, you can start compiling the executable 
 
 This article recommends two packaging build options.
 
-1. put the packaging process into the Dockerfile and finish the compilation process when you build the docker image later.
+1. Put the packaging process into the Dockerfile and finish the compilation process when you build the docker image later.
 2. You can also follow the scheme used in this document, building the executable first and then copying the packaged executable to the image.
 
 How you choose the option should depend on your local hardware considerations. The reason for selecting the second option here is that I want to rely on my powerful local hardware to increase the building speed and speed up the process.
