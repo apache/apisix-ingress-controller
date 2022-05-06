@@ -25,12 +25,14 @@ title: How to use go-plugin-runner in APISIX Ingress
 
 Based on version 0.3 of the go-plugin-runner plugin and version 1.4.0 of APISIX Ingress, this article goes through steps as follows:
 
-1. Build the cluster;
-2. Build the image;
-3. Customize the helm chart package;
-4. Deploy the resources.
+1. Prepare the environment (example as follows);
+2. Create the cluster;
+3. Build a container image that includes the x-plugin-runner;
+4. Customize the helm chart package;
+5. Install and Deploy;
+6. Verify the function.
 
-It is guaranteed that the final result can be derived in full based on this documentation.
+It is guaranteed that the final result can be derived in full based on this environment example as follows:
 
 ```bash
 go-plugin-runner: 0.3
