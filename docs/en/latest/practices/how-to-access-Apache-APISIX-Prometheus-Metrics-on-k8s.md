@@ -27,7 +27,7 @@ Observability (monitoring functionality) has always played an essential role in 
 
 ## Begin to access Apache APISIX Prometheus Metrics
 
-Before starting, please make sure that Apache APISIX (version >= 2.13)and APISIX Ingress controller are installed and working correctly. APISIX uses the `prometheus` plugin to expose metrics and integrate with prometheus but uses `public-api` plugin to enhance its security after version 2.13. For more information, see `public-api` plugin's official [document](https://apisix.apache.org/docs/apisix/plugins/public-api/).
+Before starting, please make sure that Apache APISIX (version >= 2.13)and APISIX Ingress controller are installed and working correctly. APISIX uses the `prometheus` plugin to expose metrics and integrate with prometheus but uses the `public-api` plugin to enhance its security after version 2.13. For more information, see the `public-api` plugin's official [document](https://apisix.apache.org/docs/apisix/plugins/public-api/).
 
 ### Step 1: Enable Prometheus Plugin
 
