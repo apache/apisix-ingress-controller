@@ -271,6 +271,10 @@ Then install APISIX using helm with the following command in the directory of Ap
 helm install --name-template apisix -f values.yaml . --set gateway.type=NodePort --set ingress-controller.enabled=true --namespace ingress-apisix --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
 ```
 
+```bash
+helm install apisix apisix/apisix --set gateway.type=NodePort --set apisix.image.repository=custom/apisix --set apisix.image.tag=v0.1 --set extPlugin.enabled=true --set extPlugin.cmd=["/usr/local/apisix-go-plugin-runner/go-runner", "run"] --set ingress-controller.enabled=true --set ingress-controller.config.apisix.serviceNamespace=apisix --namespace apisix --create-namespace --set ingress-controller.config.apisix.serviceName=apisix-admin
+```
+
 ### Create httpbin service and ApisixRoute resources
 
 Create an httpbin backend resource to run with the deployed ApisixRoute resource to test that the functionality is working correctly.
