@@ -364,9 +364,9 @@ type ApisixConsumerWolfRbac struct {
 
 // ApisixConsumerWolfRbac defines the in-place server and appid and header_prefix configuration for rbac auth.
 type ApisixConsumerWolfRbacValue struct {
-	Server       string `json:"server,omitempty" yaml:"server"`
-	Appid        string `json:"appid,omitempty" yaml:"appid"`
-	HeaderPrefix string `json:"header_prefix,omitempty" yaml:"header_prefix"`
+	Server       string `json:"server,omitempty" yaml:"server,omitempty"`
+	Appid        string `json:"appid,omitempty" yaml:"appid,omitempty"`
+	HeaderPrefix string `json:"header_prefix,omitempty" yaml:"header_prefix,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
