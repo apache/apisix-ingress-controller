@@ -20,6 +20,8 @@ import (
 
 const (
 	_httpToHttps = AnnotationsPrefix + "http-to-https"
+	// _sslRedirectKey is kinda the standard found out there for ingresses
+	_sslRedirectKey = "ingress.kubernetes.io/force-ssl-redirect"
 )
 
 type redirect struct{}
@@ -36,7 +38,7 @@ func (r *redirect) PluginName() string {
 
 func (r *redirect) Handle(e Extractor) (interface{}, error) {
 	var plugin apisixv1.RedirectConfig
-	plugin.HttpToHttps = e.GetBoolAnnotation(_httpToHttps)
+	plugin.HttpToHttps = e.GetBoolAnnotation(_httpToHttps) || e.GetBoolAnnotation(_sslRedirectKey)
 	// To avoid empty redirect plugin config, adding the check about the redirect.
 	if plugin.HttpToHttps {
 		return &plugin, nil

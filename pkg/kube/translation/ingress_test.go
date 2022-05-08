@@ -1048,3 +1048,139 @@ func TestTranslateIngressExtensionsV1beta1WithRegex(t *testing.T) {
 	assert.Equal(t, []string{"/*"}, ctx.Routes[0].Uris)
 	assert.Equal(t, expectedVars, ctx.Routes[0].Vars)
 }
+
+func TestTranslateIngressV1NoBackendWithPluginAnnotation(t *testing.T) {
+	prefix := networkingv1.PathTypePrefix
+	ing := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
+			Annotations: map[string]string{
+				annotations.AnnotationsPrefix + "http-to-https": "true",
+			},
+		},
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{
+				{
+					Host: "apisix.apache.org",
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{
+								{
+									Path:     "/foo",
+									PathType: &prefix,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	tr := &translator{}
+	ctx, err := tr.translateIngressV1(ing)
+	assert.Error(t, err)
+	assert.Len(t, ctx.Routes, 1)
+	assert.Len(t, ctx.Upstreams, 0)
+	assert.Len(t, ctx.PluginConfigs, 1)
+	assert.Equal(t, "", ctx.Routes[0].UpstreamId)
+	assert.Equal(t, "", ctx.Routes[0].PluginConfigId)
+	assert.Equal(t, []string{"/foo", "/foo/*"}, ctx.Routes[0].Uris)
+}
+
+func TestTranslateIngressExtensionsFallbackAnnotations(t *testing.T) {
+	prefix := extensionsv1beta1.PathTypePrefix
+	// no backend.
+	ing := &extensionsv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"ingress.kubernetes.io/force-ssl-redirect": "true",
+			},
+		},
+		Spec: extensionsv1beta1.IngressSpec{
+			Rules: []extensionsv1beta1.IngressRule{
+				{
+					Host: "apisix.apache.org",
+					IngressRuleValue: extensionsv1beta1.IngressRuleValue{
+						HTTP: &extensionsv1beta1.HTTPIngressRuleValue{
+							Paths: []extensionsv1beta1.HTTPIngressPath{
+								{
+									Path:     "/foo",
+									PathType: &prefix,
+									Backend: extensionsv1beta1.IngressBackend{
+										ServiceName: "test-service",
+										ServicePort: intstr.IntOrString{
+											Type:   intstr.String,
+											StrVal: "port1",
+										},
+									},
+								},
+								{
+									Path: "/bar",
+									Backend: extensionsv1beta1.IngressBackend{
+										ServiceName: "test-service",
+										ServicePort: intstr.IntOrString{
+											Type:   intstr.Int,
+											IntVal: 443,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	svcInformer := informersFactory.Core().V1().Services().Informer()
+	svcLister := informersFactory.Core().V1().Services().Lister()
+	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
+	apisixClient := fakeapisix.NewSimpleClientset()
+	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
+	processCh := make(chan struct{})
+	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+	epInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	go svcInformer.Run(stopCh)
+	go epInformer.Run(stopCh)
+	cache.WaitForCacheSync(stopCh, svcInformer.HasSynced)
+
+	_, err := client.CoreV1().Services("default").Create(context.Background(), _testSvc, metav1.CreateOptions{})
+	assert.Nil(t, err)
+	_, err = client.CoreV1().Endpoints("default").Create(context.Background(), _testEp, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	tr := &translator{
+		TranslatorOptions: &TranslatorOptions{
+			ServiceLister:        svcLister,
+			EndpointLister:       epLister,
+			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+		},
+	}
+
+	<-processCh
+	<-processCh
+	ctx, err := tr.translateIngressExtensionsV1beta1(ing)
+	assert.Nil(t, err)
+	assert.Len(t, ctx.Routes, 2)
+	assert.Len(t, ctx.Upstreams, 2)
+	assert.Len(t, ctx.PluginConfigs, 2)
+
+	plugins := ctx.PluginConfigs[0].Plugins
+	assert.Len(t, plugins, 1)
+	assert.Contains(t, plugins, "redirect")
+}

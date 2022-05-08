@@ -104,6 +104,7 @@ Redirect
 You can use the following annotations to control the redirect behavior.
 
 * `k8s.apisix.apache.org/http-to-https`
+* `ingress.kubernetes.io/force-ssl-redirect`
 
 If this annotation set to `true` and the request is HTTP, it will be automatically redirected to HTTPS with 301 response code,
 and the URI will keep the same as client request.

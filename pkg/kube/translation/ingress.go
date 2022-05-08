@@ -16,6 +16,7 @@ package translation
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -38,6 +39,9 @@ import (
 const (
 	_regexPriority = 100
 )
+
+// errPluginAnnotationsWithoutService makes sure that plugins are not used without service
+var errPluginAnnotationsWithoutService = errors.New("plugin annotations cannot be used without a valid service")
 
 func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateContext, error) {
 	ctx := defaultEmptyTranslateContext()
@@ -137,6 +141,9 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 				route.Priority = _regexPriority
 			}
 			if len(plugins) > 0 {
+				if pathRule.Backend.Service == nil {
+					return nil, errPluginAnnotationsWithoutService
+				}
 				route.Plugins = *(plugins.DeepCopy())
 
 				pluginConfig = apisixv1.NewDefaultPluginConfig()
