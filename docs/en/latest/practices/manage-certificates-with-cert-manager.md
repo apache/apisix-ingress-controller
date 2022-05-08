@@ -42,7 +42,7 @@ Assume that the SSL port is `9443`.
 
 ## Create Issuer
 
-For testing purposes, we will use a simple CA issuer. All required files can be found [here](./cert-manager).
+For testing purposes, we will use a simple CA issuer. All required files can be found [here](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/practices/cert-manager).
 
 To create a CA issuer, use the following commands:
 
