@@ -90,13 +90,13 @@ plugins:
 
 ### Prepare env
 
-Kubernetes cluster:
+To use this tutorial, you must deploy `Ingress APISIX` and `httpbin` in Kubernetes cluster.
 
-1. [apisix-ingress-controller](../deployments/minikube.md).
-2. httpbin.
+* Installing [`Ingress APISIX`](../deployments/minikube.md).
+* Deploy `httpbin` service.
 
 ```shell
-#Now, try to deploy it to your Kubernetes cluster:
+#Now, try to deploy httpbin to your Kubernetes cluster:
 kubectl run httpbin --image kennethreitz/httpbin --port 80
 kubectl expose pod httpbin --port 80
 ```
@@ -230,21 +230,23 @@ spec:
 EOF
 ```
 
-How to get `default_jack1`:
+:::note The `default_jack1` generation rules:
 
-> view ApisixConsumer resource object from this namespace `default`
->
-> ```shell
-> $ kubectl get apisixconsumers.apisix.apache.org -n default
-> NAME    AGE
-> foo     14h
-> jack1   14h
-> jack2   14h
-> ```
->
-> `${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_foo`  
-> `${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_jack1`  
-> `${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_jack2`
+view ApisixConsumer resource object from this namespace `default`
+
+```shell
+$ kubectl get apisixconsumers.apisix.apache.org -n default
+NAME    AGE
+foo     14h
+jack1   14h
+jack2   14h
+```
+
+`${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_foo`  
+`${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_jack1`  
+`${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_jack2`
+
+:::
 
 **Example usage**
 
