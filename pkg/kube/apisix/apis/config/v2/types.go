@@ -172,12 +172,21 @@ type ApisixRouteAuthentication struct {
 	Enable  bool                             `json:"enable" yaml:"enable"`
 	Type    string                           `json:"type" yaml:"type"`
 	KeyAuth ApisixRouteAuthenticationKeyAuth `json:"keyauth,omitempty" yaml:"keyauth,omitempty"`
+	JwtAuth ApisixRouteAuthenticationJwtAuth `json:"jwtAuth,omitempty" yaml:"jwtAuth,omitempty"`
 }
 
 // ApisixRouteAuthenticationKeyAuth is the keyAuth-related
 // configuration in ApisixRouteAuthentication.
 type ApisixRouteAuthenticationKeyAuth struct {
 	Header string `json:"header,omitempty" yaml:"header,omitempty"`
+}
+
+// ApisixRouteAuthenticationJwtAuth is the jwtAuth-related
+// configuration in ApisixRouteAuthentication.
+type ApisixRouteAuthenticationJwtAuth struct {
+	Header string `json:"header,omitempty" yaml:"header,omitempty"`
+	Query  string `json:"query,omitempty" yaml:"query,omitempty"`
+	Cookie string `json:"cookie,omitempty" yaml:"cookie,omitempty"`
 }
 
 func (p ApisixRouteHTTPPluginConfig) DeepCopyInto(out *ApisixRouteHTTPPluginConfig) {
@@ -330,6 +339,7 @@ type ApisixConsumerSpec struct {
 type ApisixConsumerAuthParameter struct {
 	BasicAuth *ApisixConsumerBasicAuth `json:"basicAuth,omitempty" yaml:"basicAuth"`
 	KeyAuth   *ApisixConsumerKeyAuth   `json:"keyAuth,omitempty" yaml:"keyAuth"`
+	JwtAuht   *ApisixConsumerJwtAuth   `json:"jwtAuth,omitempty" yaml:"jwtAuth"`
 }
 
 // ApisixConsumerBasicAuth defines the configuration for basic auth.
@@ -353,6 +363,23 @@ type ApisixConsumerKeyAuth struct {
 // ApisixConsumerKeyAuthValue defines the in-place configuration for basic auth.
 type ApisixConsumerKeyAuthValue struct {
 	Key string `json:"key" yaml:"key"`
+}
+
+// ApisixConsumerJwtAuth defines the configuration for the jwt auth.
+type ApisixConsumerJwtAuth struct {
+	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
+	Value     *ApisixConsumerJwtAuthValue  `json:"value,omitempty" yaml:"value,omitempty"`
+}
+
+// ApisixConsumerJwtAuthValue defines the in-place configuration for jwt auth.
+type ApisixConsumerJwtAuthValue struct {
+	Key          string `json:"key" yaml:"key"`
+	Secret       string `json:"secret,omitempty" yaml:"secret,omitempty"`
+	PublicKey    string `json:"public_key,omitempty" yaml:"public_key,omitempty"`
+	PrivateKey   string `json:"private_key" yaml:"private_key,omitempty"`
+	Algorithm    string `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`
+	Exp          int64  `json:"exp,omitempty" yaml:"exp,omitempty"`
+	Base64Secret bool   `json:"base64_secret,omitempty" yaml:"base64_secret,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

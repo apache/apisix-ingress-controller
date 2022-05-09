@@ -69,6 +69,38 @@ func TestTranslateApisixConsumer(t *testing.T) {
 	cfg2 := consumer.Plugins["key-auth"].(*apisixv1.KeyAuthConsumerConfig)
 	assert.Equal(t, "qwerty", cfg2.Key)
 
+	ac = &configv2beta3.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "jack",
+			Namespace: "qa",
+		},
+		Spec: configv2beta3.ApisixConsumerSpec{
+			AuthParameter: configv2beta3.ApisixConsumerAuthParameter{
+				JwtAuth: &configv2beta3.ApisixConsumerJwtAuth{
+					Value: &configv2beta3.ApisixConsumerJwtAuthValue{
+						Key:          "foo",
+						Secret:       "123",
+						PublicKey:    "public",
+						PrivateKey:   "private",
+						Algorithm:    "HS256",
+						Exp:          int64(1000),
+						Base64Secret: true,
+					},
+				},
+			},
+		},
+	}
+	consumer, err = (&translator{}).TranslateApisixConsumer(ac)
+	assert.Nil(t, err)
+	assert.Len(t, consumer.Plugins, 1)
+	cfg3 := consumer.Plugins["jwt-auth"].(*apisixv1.JwtAuthConsumerConfig)
+	assert.Equal(t, "foo", cfg3.Key)
+	assert.Equal(t, "123", cfg3.Secret)
+	assert.Equal(t, "public", cfg3.PublicKey)
+	assert.Equal(t, "private", cfg3.PrivateKey)
+	assert.Equal(t, "HS256", cfg3.Algorithm)
+	assert.Equal(t, int64(1000), cfg3.Exp)
+	assert.Equal(t, true, cfg3.Base64Secret)
 	// No test test cases for secret references as we already test them
 	// in plugin_test.go.
 }

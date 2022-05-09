@@ -687,3 +687,112 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 	close(processCh)
 	close(stopCh)
 }
+
+func TestTranslateConsumerJwtAuthPluginWithInPlaceValue(t *testing.T) {
+	jwtAuth := &configv2beta3.ApisixConsumerJwtAuth{
+		Value: &configv2beta3.ApisixConsumerJwtAuthValue{
+			Key: "abcd",
+		},
+	}
+	cfg, err := (&translator{}).translateConsumerJwtAuthPlugin("default", jwtAuth)
+	assert.Nil(t, err)
+	assert.Equal(t, "abcd", cfg.Key)
+}
+
+func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "jack-jwt-auth",
+		},
+		Data: map[string][]byte{
+			"key":           []byte("foo"),
+			"secret":        []byte("foo-secret"),
+			"public_key":    []byte("public"),
+			"private_key":   []byte("private"),
+			"algorithm":     []byte("HS256"),
+			"exp":           []byte("1000"),
+			"base64_secret": []byte("true"),
+		},
+	}
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	secretInformer := informersFactory.Core().V1().Secrets().Informer()
+	secretLister := informersFactory.Core().V1().Secrets().Lister()
+	processCh := make(chan struct{})
+	stopCh := make(chan struct{})
+	secretInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(_ interface{}) {
+			processCh <- struct{}{}
+		},
+		UpdateFunc: func(_, _ interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+	go secretInformer.Run(stopCh)
+
+	tr := &translator{
+		&TranslatorOptions{
+			SecretLister: secretLister,
+		},
+	}
+	_, err := client.CoreV1().Secrets("default").Create(context.Background(), sec, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	<-processCh
+
+	jwtAuth := &configv2beta3.ApisixConsumerJwtAuth{
+		SecretRef: &corev1.LocalObjectReference{Name: "jack-jwt-auth"},
+	}
+	cfg, err := tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", cfg.Key)
+	assert.Equal(t, "foo-secret", cfg.Secret)
+	assert.Equal(t, "public", cfg.PublicKey)
+	assert.Equal(t, "private", cfg.PrivateKey)
+	assert.Equal(t, "HS256", cfg.Algorithm)
+	assert.Equal(t, int64(1000), cfg.Exp)
+	assert.Equal(t, true, cfg.Base64Secret)
+
+	cfg, err = tr.translateConsumerJwtAuthPlugin("default2", jwtAuth)
+	assert.Nil(t, cfg)
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "not found")
+
+	delete(sec.Data, "key")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	delete(sec.Data, "secret")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	delete(sec.Data, "public_key")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	delete(sec.Data, "private_key")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	delete(sec.Data, "algorithm")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	delete(sec.Data, "exp")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	delete(sec.Data, "Base64_secret")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	close(processCh)
+	close(stopCh)
+}

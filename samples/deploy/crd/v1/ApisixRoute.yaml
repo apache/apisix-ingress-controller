@@ -206,11 +206,20 @@ spec:
                             type: boolean
                           type:
                             type: string
-                            enum: ["basicAuth", "keyAuth"]
+                            enum: [ "basicAuth", "keyAuth", "jwtAuth" ]
                           keyAuth:
                             type: object
                             properties:
                               header:
+                                type: string
+                          jwtAuth:
+                            type: object
+                            properties:
+                              header:
+                                type: string
+                              query:
+                                type: string
+                              cookie:
                                 type: string
                         required:
                           - enable
@@ -452,11 +461,20 @@ spec:
                             type: boolean
                           type:
                             type: string
-                            enum: [ "basicAuth", "keyAuth" ]
+                            enum: [ "basicAuth", "keyAuth", "jwtAuth" ]
                           keyAuth:
                             type: object
                             properties:
                               header:
+                                type: string
+                          jwtAuth:
+                            type: object
+                            properties:
+                              header:
+                                type: string
+                              query:
+                                type: string
+                              cookie:
                                 type: string
                         required:
                           - enable
