@@ -27,7 +27,8 @@ var (
 	_errKeyNotFoundOrInvalid      = errors.New("key \"key\" not found or invalid in secret")
 	_errUsernameNotFoundOrInvalid = errors.New("key \"username\" not found or invalid in secret")
 	_errPasswordNotFoundOrInvalid = errors.New("key \"password\" not found or invalid in secret")
-	_errExpNotPositiveInteger     = errors.New("key \"exp\" not a positive integer")
+
+	_jwtAuthExpDefaultValue = int64(868400)
 )
 
 func (t *translator) translateTrafficSplitPlugin(ctx *TranslateContext, ns string, defaultBackendWeight int,
@@ -116,8 +117,9 @@ func (t *translator) translateConsumerBasicAuthPlugin(consumerNamespace string, 
 
 func (t *translator) translateConsumerJwtAuthPlugin(consumerNamespace string, cfg *configv2beta3.ApisixConsumerJwtAuth) (*apisixv1.JwtAuthConsumerConfig, error) {
 	if cfg.Value != nil {
+		// The field exp must be a positive integer, default value 86400.
 		if cfg.Value.Exp < 1 {
-			return nil, _errExpNotPositiveInteger
+			cfg.Value.Exp = _jwtAuthExpDefaultValue
 		}
 		return &apisixv1.JwtAuthConsumerConfig{
 			Key:          cfg.Value.Key,
@@ -145,8 +147,9 @@ func (t *translator) translateConsumerJwtAuthPlugin(consumerNamespace string, cf
 	}
 	expRaw := sec.Data["exp"]
 	exp, _ := strconv.ParseInt(string(expRaw), 10, 64)
+	// The field exp must be a positive integer, default value 86400.
 	if exp < 1 {
-		return nil, _errExpNotPositiveInteger
+		exp = _jwtAuthExpDefaultValue
 	}
 	secretRaw := sec.Data["secret"]
 	publicKeyRaw := sec.Data["public_key"]
