@@ -116,7 +116,7 @@ func (t *translator) translateConsumerBasicAuthPlugin(consumerNamespace string, 
 
 func (t *translator) translateConsumerJwtAuthPlugin(consumerNamespace string, cfg *configv2beta3.ApisixConsumerJwtAuth) (*apisixv1.JwtAuthConsumerConfig, error) {
 	if cfg.Value != nil {
-		if cfg.Value.Exp < 0 {
+		if cfg.Value.Exp < 1 {
 			return nil, _errExpNotPositiveInteger
 		}
 		return &apisixv1.JwtAuthConsumerConfig{
@@ -145,7 +145,7 @@ func (t *translator) translateConsumerJwtAuthPlugin(consumerNamespace string, cf
 	}
 	expRaw := sec.Data["exp"]
 	exp, _ := strconv.ParseInt(string(expRaw), 10, 64)
-	if exp < 0 {
+	if exp < 1 {
 		return nil, _errExpNotPositiveInteger
 	}
 	secretRaw := sec.Data["secret"]
