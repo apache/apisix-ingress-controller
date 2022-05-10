@@ -173,7 +173,6 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 
 		globalRule, err := c.controller.translator.TranslateClusterConfigV2beta3(acc)
 		if err != nil {
-			// TODO add status
 			log.Errorw("failed to translate ApisixClusterConfig",
 				zap.Error(err),
 				zap.String("key", key),
@@ -248,7 +247,6 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 
 		globalRule, err := c.controller.translator.TranslateClusterConfigV2(acc)
 		if err != nil {
-			// TODO add status
 			log.Errorw("failed to translate ApisixClusterConfig",
 				zap.Error(err),
 				zap.String("key", key),
