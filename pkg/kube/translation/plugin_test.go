@@ -691,12 +691,28 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 func TestTranslateConsumerJwtAuthPluginWithInPlaceValue(t *testing.T) {
 	jwtAuth := &configv2beta3.ApisixConsumerJwtAuth{
 		Value: &configv2beta3.ApisixConsumerJwtAuthValue{
-			Key: "abcd",
+			Key:          "foo",
+			Secret:       "foo-secret",
+			PublicKey:    "public",
+			PrivateKey:   "private",
+			Algorithm:    "HS256",
+			Exp:          int64(1000),
+			Base64Secret: true,
 		},
 	}
 	cfg, err := (&translator{}).translateConsumerJwtAuthPlugin("default", jwtAuth)
 	assert.Nil(t, err)
-	assert.Equal(t, "abcd", cfg.Key)
+	assert.Equal(t, "foo", cfg.Key)
+	assert.Equal(t, "foo-secret", cfg.Secret)
+	assert.Equal(t, "public", cfg.PublicKey)
+	assert.Equal(t, "private", cfg.PrivateKey)
+	assert.Equal(t, "HS256", cfg.Algorithm)
+	assert.Equal(t, int64(1000), cfg.Exp)
+	assert.Equal(t, true, cfg.Base64Secret)
+
+	jwtAuth.Value.Exp = int64(-1)
+	cfg, err = (&translator{}).translateConsumerJwtAuthPlugin("default", jwtAuth)
+	assert.Equal(t, err, _errExpNotPositiveInteger)
 }
 
 func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
@@ -758,40 +774,23 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "not found")
 
+	sec.Data["exp"] = []byte("-1")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	assert.Nil(t, cfg)
+	assert.Equal(t, _errExpNotPositiveInteger, err)
+
 	delete(sec.Data, "key")
 	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
 	assert.Nil(t, err)
 	<-processCh
 
-	delete(sec.Data, "secret")
-	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
-	assert.Nil(t, err)
-	<-processCh
-
-	delete(sec.Data, "public_key")
-	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
-	assert.Nil(t, err)
-	<-processCh
-
-	delete(sec.Data, "private_key")
-	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
-	assert.Nil(t, err)
-	<-processCh
-
-	delete(sec.Data, "algorithm")
-	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
-	assert.Nil(t, err)
-	<-processCh
-
-	delete(sec.Data, "exp")
-	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
-	assert.Nil(t, err)
-	<-processCh
-
-	delete(sec.Data, "Base64_secret")
-	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
-	assert.Nil(t, err)
-	<-processCh
+	cfg, err = tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	assert.Nil(t, cfg)
+	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
 
 	close(processCh)
 	close(stopCh)

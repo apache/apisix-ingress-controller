@@ -27,6 +27,7 @@ var (
 	_errKeyNotFoundOrInvalid      = errors.New("key \"key\" not found or invalid in secret")
 	_errUsernameNotFoundOrInvalid = errors.New("key \"username\" not found or invalid in secret")
 	_errPasswordNotFoundOrInvalid = errors.New("key \"password\" not found or invalid in secret")
+	_errExpNotPositiveInteger     = errors.New("key \"exp\" not a positive integer")
 )
 
 func (t *translator) translateTrafficSplitPlugin(ctx *TranslateContext, ns string, defaultBackendWeight int,
@@ -115,6 +116,9 @@ func (t *translator) translateConsumerBasicAuthPlugin(consumerNamespace string, 
 
 func (t *translator) translateConsumerJwtAuthPlugin(consumerNamespace string, cfg *configv2beta3.ApisixConsumerJwtAuth) (*apisixv1.JwtAuthConsumerConfig, error) {
 	if cfg.Value != nil {
+		if cfg.Value.Exp < 0 {
+			return nil, _errExpNotPositiveInteger
+		}
 		return &apisixv1.JwtAuthConsumerConfig{
 			Key:          cfg.Value.Key,
 			Secret:       cfg.Value.Secret,
@@ -141,6 +145,9 @@ func (t *translator) translateConsumerJwtAuthPlugin(consumerNamespace string, cf
 	}
 	expRaw := sec.Data["exp"]
 	exp, _ := strconv.ParseInt(string(expRaw), 10, 64)
+	if exp < 0 {
+		return nil, _errExpNotPositiveInteger
+	}
 	secretRaw := sec.Data["secret"]
 	publicKeyRaw := sec.Data["public_key"]
 	privateKeyRaw := sec.Data["private_key"]
