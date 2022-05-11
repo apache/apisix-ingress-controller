@@ -89,7 +89,7 @@ func NewPrometheusCollector() Collector {
 		),
 		apisixCodes: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Name:        "apisix_bad_status_codes",
+				Name:        "apisix_status_codes",
 				Namespace:   _namespace,
 				Help:        "Status codes of requests to APISIX",
 				ConstLabels: constLabels,
