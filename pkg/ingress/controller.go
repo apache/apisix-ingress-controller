@@ -109,7 +109,7 @@ type Controller struct {
 	apisixUpstreamLister        listersv2beta3.ApisixUpstreamLister
 	apisixRouteLister           kube.ApisixRouteLister
 	apisixRouteInformer         cache.SharedIndexInformer
-	apisixTlsLister             listersv2beta3.ApisixTlsLister
+	apisixTlsLister             kube.ApisixTlsLister
 	apisixTlsInformer           cache.SharedIndexInformer
 	apisixClusterConfigLister   kube.ApisixClusterConfigLister
 	apisixClusterConfigInformer cache.SharedIndexInformer
@@ -202,6 +202,7 @@ func (c *Controller) initWhenStartLeading() {
 	var (
 		ingressInformer             cache.SharedIndexInformer
 		apisixRouteInformer         cache.SharedIndexInformer
+		apisixTlsInformer           cache.SharedIndexInformer
 		apisixClusterConfigInformer cache.SharedIndexInformer
 	)
 
@@ -225,7 +226,10 @@ func (c *Controller) initWhenStartLeading() {
 		apisixFactory.Apisix().V2().ApisixRoutes().Lister(),
 	)
 	c.apisixUpstreamLister = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister()
-	c.apisixTlsLister = apisixFactory.Apisix().V2beta3().ApisixTlses().Lister()
+	c.apisixTlsLister = kube.NewApisixTlsLister(
+		apisixFactory.Apisix().V2beta3().ApisixTlses().Lister(),
+		apisixFactory.Apisix().V2().ApisixTlses().Lister(),
+	)
 	c.apisixClusterConfigLister = kube.NewApisixClusterConfigLister(
 		apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister(),
 		apisixFactory.Apisix().V2().ApisixClusterConfigs().Lister(),
@@ -263,6 +267,17 @@ func (c *Controller) initWhenStartLeading() {
 		apisixRouteInformer = apisixFactory.Apisix().V2beta3().ApisixRoutes().Informer()
 	case config.ApisixRouteV2:
 		apisixRouteInformer = apisixFactory.Apisix().V2().ApisixRoutes().Informer()
+	default:
+		panic(fmt.Errorf("unsupported ApisixRoute version %s", c.cfg.Kubernetes.ApisixRouteVersion))
+	}
+
+	switch c.cfg.Kubernetes.ApisixTlsVersion {
+	case config.ApisixV2beta3:
+		apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
+	case config.ApisixV2:
+		apisixTlsInformer = apisixFactory.Apisix().V2().ApisixTlses().Informer()
+	default:
+		panic(fmt.Errorf("unsupported ApisixTls version %s", c.cfg.Kubernetes.ApisixTlsVersion))
 	}
 
 	switch c.cfg.Kubernetes.ApisixClusterConfigVersion {
@@ -282,7 +297,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
 	c.apisixClusterConfigInformer = apisixClusterConfigInformer
 	c.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
-	c.apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
+	c.apisixTlsInformer = apisixTlsInformer
 	c.apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
 	c.apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
 

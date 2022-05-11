@@ -45,6 +45,7 @@ func TestNewConfigFromFile(t *testing.T) {
 			IngressClass:               IngressClass,
 			IngressVersion:             IngressNetworkingV1,
 			ApisixRouteVersion:         ApisixRouteV2beta3,
+			ApisixTlsVersion:           ApisixV2beta3,
 			ApisixClusterConfigVersion: ApisixV2beta3,
 		},
 		APISIX: APISIXConfig{
@@ -127,6 +128,7 @@ func TestConfigWithEnvVar(t *testing.T) {
 			IngressClass:               IngressClass,
 			IngressVersion:             IngressNetworkingV1,
 			ApisixRouteVersion:         ApisixRouteV2beta3,
+			ApisixTlsVersion:           ApisixV2beta3,
 			ApisixClusterConfigVersion: ApisixV2beta3,
 		},
 		APISIX: APISIXConfig{
