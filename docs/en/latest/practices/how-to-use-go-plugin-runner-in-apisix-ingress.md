@@ -67,50 +67,9 @@ EOF
 
 ### Build the go-plugin-runner executable
 
-If you have finished writing the plugin, you can start compiling the executable to run with APISIX.
+Choose a folder address `/home/chever/api7/cloud_native/tasks/plugin-runner` and place our `apisix-go-plugin-runner` project in this folder. Then you need to go to the `apisix-go-plugin-runner/cmd/go-runner/plugins` directory and write the plugins you need in that directory.
 
-This article recommends two packaging build options.
-
-1. Put the packaging process into the Dockerfile and finish the compilation process when you build the docker image later.
-2. You can also follow the scheme used in this document, building the executable first and then copying the packaged executable to the image.
-
-How you choose the option should depend on your local hardware considerations. The reason for selecting the second option here is that I want to rely on my powerful local hardware to increase the building speed and speed up the process.
-
-### Go to the go-plugin-runner directory
-
-Choose a folder address `/home/chever/api7/cloud_native/tasks/plugin-runner` and place our `apisix-go-plugin-runner` project in this folder.
-
-After successful placement, the file tree is shown below:
-
-```bash
-chever@cloud-native-01:~/api7/cloud_native/tasks/plugin-runner$ tree -L 1
-.
-└── apisix-go-plugin-runner
-
-1 directory, 0 files
-```
-
-Then you need to go to the `apisix-go-plugin-runner/cmd/go-runner/plugins` directory and write the plugins you need in that directory. This article will use the default plugin `say` for demonstration purposes.
-
-```bash
-chever@cloud-native-01:~/api7/cloud_native/tasks/plugin-runner/apisix-go-plugin-runner$ tree cmd
-cmd
-└── go-runner
-    ├── main.go
-    ├── main_test.go
-    ├── plugins
-    │   ├── fault_injection.go
-    │   ├── fault_injection_test.go
-    │   ├── limit_req.go
-    │   ├── limit_req_test.go
-    │   ├── say.go
-    │   └── say_test.go
-    └── version.go
-
-2 directories, 10 files
-```
-
-After writing the plugins, start compiling the executable formally, and note here that you should build static executables, not dynamic ones.
+After writing the plugins, start compiling the executable formally, and note here that you should build **static executables**, not dynamic ones.
 
 The package compile command is as follows.
 
@@ -118,21 +77,7 @@ The package compile command is as follows.
 CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' .
 ```
 
-This successfully packages a statically compiled `go-runner` executable.
-
-In the `apisix-go-plugin-runner/cmd/go-runner/` directory, you can see that the current file tree looks like this:
-
-```bash
-chever@cloud-native-01:~/api7/cloud_native/tasks/plugin-runner/apisix-go-plugin-runner/cmd/go-runner$ tree -L 1
-.
-├── go-runner
-├── main.go
-├── main_test.go
-├── plugins
-└── version.go
-
-1 directory, 4 files
-```
+This successfully packages a statically compiled `go-runner` executable in the `apisix-go-plugin-runner/cmd/go-runner/` directory.
 
 Please remember the path `apisix-go-plugin-runner/cmd/go-runner/go-runner`, we will use it later.
 
@@ -144,25 +89,14 @@ The image is built here in preparation for installing APISIX later using `helm`.
 
 Return to the path `/home/chever/api7/cloud_native/tasks/plugin-runner` and create a Dockerfile in that directory, a demonstration of which is given here.
 
-We can write the Dockerfile by referring to examples in this [repository](https://github.com/apache/apisix-docker). Here I recommend adding the following line of code to this [Dockerfile file](https://github.com/apache/apisix-docker/blob/master/alpine/Dockerfile).
+```dockerfile
+# DockerfileForRunner
+FROM apache/apisix:2.13.1-alpine
 
-```bash
-ARG ENABLE_PROXY=false
-
-# Build Apache APISIX
-FROM api7/apisix-base:1.19.9.1.5
-
-# That is the line being added
-ADD ./apisix-go-plugin-runner /usr/local/apisix-go-plugin-runner
-
-ARG APISIX_VERSION=2.13.1
-LABEL apisix_version="${APISIX_VERSION}"
-
-ARG ENABLE_PROXY
-
+COPY ./apisix-go-plugin-runner /usr/local/apisix-go-plugin-runner
 ```
 
-Package all the `/apisix-go-plugin-runner` files in the `/home/chever/api7/cloud_native/tasks/plugin-runner` directory into a Docker image. Note down the location of the executable `apisix-go-plugin-runner/cmd/go-runner/go-runner` and the location of the `/usr/local/apisix-go-plugin-runner` directory in the Dockerfile above to get the final location of the executable in the Docker image is located as follows.
+Here I will again emphasize the path address as follows where the executable file is located.
 
 ```bash
 /usr/local/apisix-go-plugin-runner/cmd/go-runner/go-runner
@@ -190,74 +124,7 @@ Load the image into the kind cluster environment to pull the custom local image 
 
 ### Install APISIX Ingress
 
-#### Customize the helm chart
-
-This section focuses on modifying the `values.yaml` file in the official helm package so that it can install locally packaged images and run the `go-plugin-runner` executable properly.
-
-##### Fetch Official helm chart
-
-First, fetch the latest apisix helm chart package with the following command:
-
-```bash
-helm fetch apisix/apisix
-```
-
-The file tree is as follows:
-
-```bash
-chever@cloud-native-01:~/api7/cloud_native/tasks/plugin-runner$ tree -L 1
-.
-├── apisix-0.9.1.tgz
-└── apisix-go-plugin-runner
-
-1 directory, 1 file
-```
-
-##### Unzip
-
-Unzip the `apisix-0.9.1.tgz` file and prepare to rewrite the configuration. The unzip command is as follows.
-
-```bash
-tar zxvf apisix-0.9.1.tgz
-```
-
-The file tree is as follows:
-
-```bash
-chever@cloud-native-01:~/api7/cloud_native/tasks/plugin-runner$ tree -L 1
-.
-├── apisix
-├── apisix-0.9.1.tgz
-└── apisix-go-plugin-runner
-
-2 directories, 1 file
-```
-
-##### Change `values.yaml`
-
-Go to the `apisix` folder and modify the `values.yaml` file. The two changes are as follows:
-
-```yaml
-image:
-  repository: apisix/forrunner
-  pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: 0.1
-```
-
-The first change sets the image for the helm installation to be a locally packaged image of your own.
-
-```yaml
-extPlugin:
-  enabled: true
-  cmd: ["/usr/local/apisix-go-plugin-runner/cmd/go-runner/go-runner", "run"]
-```
-
-The second change sets the position of go-runner in the container after running the container.
-
-#### Execute the helm install command
-
-##### Create namespace
+#### Create namespace
 
 Before installation, create namespaces with the following command:
 
@@ -265,11 +132,9 @@ Before installation, create namespaces with the following command:
 kubectl create ns ingress-apisix
 ```
 
-Then install APISIX using helm with the following command in the directory of Apache APISIX Helm Chart:
+#### Installation commands
 
-```bash
-helm install --name-template apisix -f values.yaml . --set gateway.type=NodePort --set ingress-controller.enabled=true --namespace ingress-apisix --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
-```
+Then install APISIX using helm with the following command in the directory of Apache APISIX Helm Chart:
 
 ```bash
 helm install apisix apisix/apisix --set gateway.type=NodePort --set apisix.image.repository=custom/apisix --set apisix.image.tag=v0.1 --set extPlugin.enabled=true --set extPlugin.cmd=["/usr/local/apisix-go-plugin-runner/go-runner", "run"] --set ingress-controller.enabled=true --set ingress-controller.config.apisix.serviceNamespace=apisix --namespace apisix --create-namespace --set ingress-controller.config.apisix.serviceName=apisix-admin
