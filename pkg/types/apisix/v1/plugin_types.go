@@ -70,14 +70,6 @@ type BasicAuthConsumerConfig struct {
 	Password string `json:"password"`
 }
 
-// JwtAuthRouteConfig is the rule config for jwt-auth plugin
-// used in Route object.
-type JwtAuthRouteConfig struct {
-	Header string `json:"header,omitempty"`
-	Query  string `json:"query,omitempty"`
-	Cookie string `json:"cookie,omitempty"`
-}
-
 // JwtAuthConsumerConfig is the rule config for basic-auth plugin
 // used in Consumer object.
 // +k8s:deepcopy-gen=true
