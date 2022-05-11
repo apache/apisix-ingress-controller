@@ -149,7 +149,8 @@ func NewDefaultV2Scaffold() *Scaffold {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    kube.ApisixRouteV2beta3,
+		APISIXRouteVersion:    kube.ApisixRouteV2,
+		APISIXTlsVersion:      config.ApisixV2,
 		EnableWebhooks:        false,
 		APISIXPublishAddress:  "",
 	}
