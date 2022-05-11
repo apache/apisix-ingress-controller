@@ -46,7 +46,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
 	// add https
 	for _, tls := range ing.Spec.TLS {
-		apisixTls := kubev2beta3.ApisixTls{
+		apisixTls := kubev2.ApisixTls{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "ApisixTls",
 				APIVersion: "apisix.apache.org/v1",
@@ -55,16 +55,16 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
 				Namespace: ing.Namespace,
 			},
-			Spec: &kubev2beta3.ApisixTlsSpec{},
+			Spec: &kubev2.ApisixTlsSpec{},
 		}
 		for _, host := range tls.Hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2beta3.HostType(host))
+			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2.HostType(host))
 		}
-		apisixTls.Spec.Secret = kubev2beta3.ApisixSecret{
+		apisixTls.Spec.Secret = kubev2.ApisixSecret{
 			Name:      tls.SecretName,
 			Namespace: ing.Namespace,
 		}
-		ssl, err := t.TranslateSSL(&apisixTls)
+		ssl, err := t.TranslateSSLV2(&apisixTls)
 		if err != nil {
 			log.Errorw("failed to translate ingress tls to apisix tls",
 				zap.Error(err),
@@ -181,7 +181,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 			Name:      tls.SecretName,
 			Namespace: ing.Namespace,
 		}
-		ssl, err := t.TranslateSSL(&apisixTls)
+		ssl, err := t.TranslateSSLV2Beta3(&apisixTls)
 		if err != nil {
 			log.Errorw("failed to translate ingress tls to apisix tls",
 				zap.Error(err),
