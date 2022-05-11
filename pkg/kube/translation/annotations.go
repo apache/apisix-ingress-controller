@@ -29,6 +29,8 @@ var (
 		annotations.NewRewriteHandler(),
 		annotations.NewRedirectHandler(),
 		annotations.NewForwardAuthHandler(),
+		annotations.NewBasicAuthHandler(),
+		annotations.NewKeyAuthHandler(),
 	}
 )
 
