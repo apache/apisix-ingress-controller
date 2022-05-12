@@ -70,7 +70,7 @@ type BasicAuthConsumerConfig struct {
 	Password string `json:"password"`
 }
 
-// JwtAuthConsumerConfig is the rule config for basic-auth plugin
+// JwtAuthConsumerConfig is the rule config for jwt-auth plugin
 // used in Consumer object.
 // +k8s:deepcopy-gen=true
 type JwtAuthConsumerConfig struct {
