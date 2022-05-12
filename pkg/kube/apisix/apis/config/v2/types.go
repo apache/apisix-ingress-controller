@@ -181,7 +181,7 @@ type ApisixRouteAuthenticationKeyAuth struct {
 	Header string `json:"header,omitempty" yaml:"header,omitempty"`
 }
 
-// ApisixRouteAuthenticationJwtAuth is the jwtAuth-related
+// ApisixRouteAuthenticationJwtAuth is the jwt auth related
 // configuration in ApisixRouteAuthentication.
 type ApisixRouteAuthenticationJwtAuth struct {
 	Header string `json:"header,omitempty" yaml:"header,omitempty"`
