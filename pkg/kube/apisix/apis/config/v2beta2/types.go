@@ -132,21 +132,12 @@ type ApisixRouteAuthentication struct {
 	Enable  bool                             `json:"enable" yaml:"enable"`
 	Type    string                           `json:"type" yaml:"type"`
 	KeyAuth ApisixRouteAuthenticationKeyAuth `json:"keyauth,omitempty" yaml:"keyauth,omitempty"`
-	JwtAuth ApisixRouteAuthenticationJwtAuth `json:"jwtAuth,omitempty" yaml:"jwtAuth,omitempty"`
 }
 
 // ApisixRouteAuthenticationKeyAuth is the keyAuth-related
 // configuration in ApisixRouteAuthentication.
 type ApisixRouteAuthenticationKeyAuth struct {
 	Header string `json:"header,omitempty" yaml:"header,omitempty"`
-}
-
-// ApisixRouteAuthenticationJwtAuth is the jwtAuth-related
-// configuration in ApisixRouteAuthentication.
-type ApisixRouteAuthenticationJwtAuth struct {
-	Header string `json:"header,omitempty" yaml:"header,omitempty"`
-	Query  string `json:"query,omitempty" yaml:"query,omitempty"`
-	Cookie string `json:"cookie,omitempty" yaml:"cookie,omitempty"`
 }
 
 func (p ApisixRouteHTTPPluginConfig) DeepCopyInto(out *ApisixRouteHTTPPluginConfig) {

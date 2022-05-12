@@ -292,8 +292,8 @@ func (in *ApisixConsumerAuthParameter) DeepCopyInto(out *ApisixConsumerAuthParam
 		*out = new(ApisixConsumerKeyAuth)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.JwtAuht != nil {
-		in, out := &in.JwtAuht, &out.JwtAuht
+	if in.JwtAuth != nil {
+		in, out := &in.JwtAuth, &out.JwtAuth
 		*out = new(ApisixConsumerJwtAuth)
 		(*in).DeepCopyInto(*out)
 	}
