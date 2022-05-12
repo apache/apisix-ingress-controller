@@ -339,7 +339,7 @@ type ApisixConsumerSpec struct {
 type ApisixConsumerAuthParameter struct {
 	BasicAuth *ApisixConsumerBasicAuth `json:"basicAuth,omitempty" yaml:"basicAuth"`
 	KeyAuth   *ApisixConsumerKeyAuth   `json:"keyAuth,omitempty" yaml:"keyAuth"`
-	JwtAuht   *ApisixConsumerJwtAuth   `json:"jwtAuth,omitempty" yaml:"jwtAuth"`
+	JwtAuth   *ApisixConsumerJwtAuth   `json:"jwtAuth,omitempty" yaml:"jwtAuth"`
 }
 
 // ApisixConsumerBasicAuth defines the configuration for basic auth.
