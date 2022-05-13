@@ -59,4 +59,3 @@ curl http://127.0.0.1:12180/wolf/user \
     "password": "test-123456",
     "appIDs": ["test-app"]
 }'
-
