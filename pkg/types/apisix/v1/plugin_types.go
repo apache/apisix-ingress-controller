@@ -94,7 +94,9 @@ type RewriteConfig struct {
 // RedirectConfig is the rule config for redirect plugin.
 // +k8s:deepcopy-gen=true
 type RedirectConfig struct {
-	HttpToHttps bool `json:"http_to_https,omitempty"`
+	HttpToHttps bool   `json:"http_to_https,omitempty"`
+	URI         string `json:"uri,omitempty"`
+	RetCode     int    `json:"ret_code,omitempty"`
 }
 
 // ForwardAuthConfig is the rule config for forward-auth plugin.
@@ -105,4 +107,14 @@ type ForwardAuthConfig struct {
 	RequestHeaders  []string `json:"request_headers,omitempty"`
 	UpstreamHeaders []string `json:"upstream_headers,omitempty"`
 	ClientHeaders   []string `json:"client_headers,omitempty"`
+}
+
+// BasicAuthConfig is the rule config for basic-auth plugin.
+// +k8s:deepcopy-gen=true
+type BasicAuthConfig struct {
+}
+
+// KeyAuthConfig is the rule config for key-auth plugin.
+// +k8s:deepcopy-gen=true
+type KeyAuthConfig struct {
 }

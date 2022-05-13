@@ -21,16 +21,16 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("suite-ingress: support ingress https", func() {
-	s := scaffold.NewDefaultV2Scaffold()
+	s := scaffold.NewDefaultScaffold()
 
 	rootCA := `-----BEGIN CERTIFICATE-----
 MIIF9zCCA9+gAwIBAgIUFKuzAJZgm/fsFS6JDrd+lcpVZr8wDQYJKoZIhvcNAQEL
