@@ -301,3 +301,21 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 
 	c.controller.MetricsCollector.IncrEvents("upstream", "delete")
 }
+
+func (c *apisixUpstreamController) ResourceSync() {
+	clusterConfigs := c.controller.apisixUpstreamInformer.GetIndexer().List()
+	for _, clusterConfig := range clusterConfigs {
+		key, err := cache.MetaNamespaceKeyFunc(clusterConfig)
+		if err != nil {
+			log.Errorf("ApisixUpstream sync failed, found ApisixUpstream resource with bad meta namespace key: %s", err)
+			continue
+		}
+		if !c.controller.isWatchingNamespace(key) {
+			continue
+		}
+		c.workqueue.Add(&types.Event{
+			Type:   types.EventAdd,
+			Object: key,
+		})
+	}
+}

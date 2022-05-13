@@ -268,6 +268,8 @@ spec:
             - debug
             - --log-output
             - stdout
+            - --apisix-cache-sync-interval
+            - 60s
             - --http-listen
             - :8080
             - --https-listen

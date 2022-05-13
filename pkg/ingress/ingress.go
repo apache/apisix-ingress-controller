@@ -402,3 +402,25 @@ func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 	}
 	return false
 }
+
+func (c *ingressController) ResourceSync() {
+	objs := c.controller.ingressInformer.GetIndexer().List()
+	for _, obj := range objs {
+		key, err := cache.MetaNamespaceKeyFunc(obj)
+		if err != nil {
+			log.Errorf("found ApisixConsumer resource with bad meta namespace key: %s", err)
+			continue
+		}
+		if !c.controller.isWatchingNamespace(key) {
+			continue
+		}
+		ing := kube.MustNewIngress(obj)
+		c.workqueue.Add(&types.Event{
+			Type: types.EventAdd,
+			Object: kube.IngressEvent{
+				Key:          key,
+				GroupVersion: ing.GroupVersion(),
+			},
+		})
+	}
+}

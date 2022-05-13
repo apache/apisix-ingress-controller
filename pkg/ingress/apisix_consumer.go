@@ -238,3 +238,21 @@ func (c *apisixConsumerController) onDelete(obj interface{}) {
 
 	c.controller.MetricsCollector.IncrEvents("consumer", "delete")
 }
+
+func (c *apisixConsumerController) ResourceSync() {
+	objs := c.controller.apisixConsumerInformer.GetIndexer().List()
+	for _, obj := range objs {
+		key, err := cache.MetaNamespaceKeyFunc(obj)
+		if err != nil {
+			log.Errorf("ApisixConsumer sync failed, found ApisixConsumer resource with bad meta namespace key: %s", err)
+			continue
+		}
+		if !c.controller.isWatchingNamespace(key) {
+			continue
+		}
+		c.workqueue.Add(&types.Event{
+			Type:   types.EventAdd,
+			Object: key,
+		})
+	}
+}
