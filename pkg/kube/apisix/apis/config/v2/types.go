@@ -356,13 +356,13 @@ type ApisixConsumerKeyAuthValue struct {
 	Key string `json:"key" yaml:"key"`
 }
 
-// ApisixConsumerWolfRbac defines the configuration for the rbac auth.
+// ApisixConsumerWolfRbac defines the configuration for the wolf-rbac auth.
 type ApisixConsumerWolfRbac struct {
 	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
 	Value     *ApisixConsumerWolfRbacValue `json:"value,omitempty" yaml:"value,omitempty"`
 }
 
-// ApisixConsumerWolfRbac defines the in-place server and appid and header_prefix configuration for rbac auth.
+// ApisixConsumerWolfRbac defines the in-place server and appid and header_prefix configuration for wolf-rbac auth.
 type ApisixConsumerWolfRbacValue struct {
 	Server       string `json:"server,omitempty" yaml:"server,omitempty"`
 	Appid        string `json:"appid,omitempty" yaml:"appid,omitempty"`

@@ -206,7 +206,7 @@ spec:
                             type: boolean
                           type:
                             type: string
-                            enum: [ "basicAuth", "keyAuth", "wolfRbac" ]
+                            enum: [ "basicAuth", "keyAuth" ]
                           keyAuth:
                             type: object
                             properties:

@@ -144,8 +144,6 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *TranslateContext, ar *config
 				pluginMap["key-auth"] = part.Authentication.KeyAuth
 			case "basicAuth":
 				pluginMap["basic-auth"] = make(map[string]interface{})
-			case "wolfRbac":
-				pluginMap["wolf-rbac"] = make(map[string]interface{})
 			default:
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			}
