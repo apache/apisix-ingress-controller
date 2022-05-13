@@ -19,6 +19,8 @@
 
 cd testdata/wolf-rbac/
 
+wget https://raw.githubusercontent.com/iGeeky/wolf/master/server/script/db-psql.sql
+
 # start database
 docker-compose up -d database
 
@@ -29,7 +31,6 @@ sleep 6
 
 WOLF_TOKEN=`curl http://127.0.0.1:12180/wolf/user/login  -H "Content-Type: application/json"  -d '{ "username": "root", "password": "wolf-123456"}' -s | grep token| tr -d ':",' | awk '{print $2}'`
 
-
 curl http://127.0.0.1:12180/wolf/application \
 -H "Content-Type: application/json" \
 -H "x-rbac-token: $WOLF_TOKEN" \
@@ -37,7 +38,6 @@ curl http://127.0.0.1:12180/wolf/application \
     "id": "test-app", 
     "name": "application for test"
 }'
-
 
 curl http://127.0.0.1:12180/wolf/resource \
 -H "Content-Type: application/json" \

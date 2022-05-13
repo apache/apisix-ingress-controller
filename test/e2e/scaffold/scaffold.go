@@ -32,6 +32,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
@@ -50,6 +51,7 @@ type Options struct {
 	IngressAPISIXReplicas    int
 	HTTPBinServicePort       int
 	APISIXRouteVersion       string
+	APISIXTlsVersion         string
 	APISIXAdminAPIKey        string
 	EnableWebhooks           bool
 	APISIXPublishAddress     string
@@ -104,6 +106,9 @@ func NewScaffold(o *Options) *Scaffold {
 	if o.APISIXRouteVersion == "" {
 		o.APISIXRouteVersion = kube.ApisixRouteV2beta3
 	}
+	if o.APISIXTlsVersion == "" {
+		o.APISIXTlsVersion = config.ApisixV2beta3
+	}
 	if o.APISIXAdminAPIKey == "" {
 		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
 	}
@@ -129,6 +134,7 @@ func NewDefaultScaffold() *Scaffold {
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
 		APISIXRouteVersion:    kube.ApisixRouteV2beta3,
+		APISIXTlsVersion:      config.ApisixV2beta3,
 		EnableWebhooks:        false,
 		APISIXPublishAddress:  "",
 	}
@@ -143,7 +149,8 @@ func NewDefaultV2Scaffold() *Scaffold {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    kube.ApisixRouteV2beta3,
+		APISIXRouteVersion:    kube.ApisixRouteV2,
+		APISIXTlsVersion:      config.ApisixV2,
 		EnableWebhooks:        false,
 		APISIXPublishAddress:  "",
 	}
