@@ -96,6 +96,19 @@ func TestTranslateUpstreamConfig(t *testing.T) {
 		field:  "loadbalancer.hashOn",
 		reason: "invalid value",
 	})
+
+	au = &configv1.ApisixUpstreamConfig{
+		LoadBalancer: nil,
+		HttpHostRewritePolicy: &configv1.HttpHostRewritePolicy{
+			Kind: "invalidKind",
+		},
+	}
+	_, err = tr.TranslateUpstreamConfig(au)
+	assert.Error(t, err, &translateError{
+		field:  "httpHostRewritePolicy.kind",
+		reason: "invalid value",
+	})
+
 }
 
 func TestTranslateUpstreamNodes(t *testing.T) {

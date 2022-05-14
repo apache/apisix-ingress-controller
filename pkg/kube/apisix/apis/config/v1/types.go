@@ -23,6 +23,15 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 )
 
+const (
+	// UseOriginalClientHost means host option set to "pass" for the upstream
+	UseOriginalClientHost = "UseOriginalClientHost"
+	// UseEndpointHostnameOrAddress means host option set to "node" for the upstream
+	UseEndpointHostnameOrAddress = "UseEndpointHostnameOrAddress"
+	// UseRewriteTo means host option set to "rewrite" for the upstream
+	UseRewriteTo = "UseRewriteTo"
+)
+
 // +genclient
 // +genclient:noStatus
 
@@ -131,6 +140,18 @@ type ApisixUpstreamConfig struct {
 	// service versions.
 	// +optional
 	Subsets []ApisixUpstreamSubset `json:"subsets,omitempty" yaml:"subsets,omitempty"`
+
+	// The http host rewrite policy for the upstream
+	// +optional
+	HttpHostRewritePolicy *HttpHostRewritePolicy `json:"httpHostRewritePolicy,omitempty" yaml:"httpHostRewritePolicy,omitempty"`
+}
+
+type HttpHostRewritePolicy struct {
+	// Type of the policy
+	Kind string `json:"kind" yaml:"kind"`
+	// The host of the upstream
+	// only valid when kind is "useRewriteTo"
+	Target string `json:"target,omitempty" yaml:"target,omitempty"`
 }
 
 // ApisixUpstreamSubset defines a single endpoints group of one Service.

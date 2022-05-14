@@ -419,6 +419,18 @@ type ApisixUpstreamConfig struct {
 	// service versions.
 	// +optional
 	Subsets []ApisixUpstreamSubset `json:"subsets,omitempty" yaml:"subsets,omitempty"`
+
+	// The http host rewrite policy for the upstream
+	// +optional
+	HttpHostRewritePolicy *HttpHostRewritePolicy `json:"httpHostRewritePolicy,omitempty" yaml:"httpHostRewritePolicy,omitempty"`
+}
+
+type HttpHostRewritePolicy struct {
+	// Type of the policy
+	Kind string `json:"kind" yaml:"kind"`
+	// The host of the upstream
+	// only valid when kind is "useRewriteTo"
+	Target string `json:"target,omitempty" yaml:"target,omitempty"`
 }
 
 // ApisixUpstreamSubset defines a single endpoints group of one Service.

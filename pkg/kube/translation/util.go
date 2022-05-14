@@ -19,6 +19,7 @@ import (
 	"net"
 
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
@@ -40,12 +41,14 @@ func (t *translator) getServiceClusterIPAndPort(backend *configv2.ApisixRouteHTT
 		return "", 0, err
 	}
 	svcPort := int32(-1)
-	if backend.ResolveGranularity == "service" && svc.Spec.ClusterIP == "" {
-		log.Errorw("ApisixRoute refers to a headless service but want to use the service level resolve granularity",
-			zap.Any("namespace", ns),
-			zap.Any("service", svc),
-		)
-		return "", 0, errors.New("conflict headless service and backend resolve granularity")
+	if svc.Spec.Type != corev1.ServiceTypeExternalName {
+		if backend.ResolveGranularity == "service" && svc.Spec.ClusterIP == "" {
+			log.Errorw("ApisixRoute refers to a headless service but want to use the service level resolve granularity",
+				zap.Any("namespace", ns),
+				zap.Any("service", svc),
+			)
+			return "", 0, errors.New("conflict headless service and backend resolve granularity")
+		}
 	}
 loop:
 	for _, port := range svc.Spec.Ports {
@@ -69,8 +72,11 @@ loop:
 		)
 		return "", 0, err
 	}
-
-	return svc.Spec.ClusterIP, svcPort, nil
+	if svc.Spec.Type == corev1.ServiceTypeExternalName {
+		return svc.Spec.ExternalName, svcPort, nil
+	} else {
+		return svc.Spec.ClusterIP, svcPort, nil
+	}
 }
 
 // getStreamServiceClusterIPAndPortV2beta2 is for v2beta2 streamRoute
@@ -206,7 +212,14 @@ func (t *translator) translateUpstream(namespace, svcName, subset, svcResolveGra
 	if err != nil {
 		return nil, err
 	}
-	if svcResolveGranularity == "service" {
+	svc, err := t.ServiceLister.Services(namespace).Get(svcName)
+	if err != nil {
+		return nil, &translateError{
+			field:  "service",
+			reason: err.Error(),
+		}
+	}
+	if svcResolveGranularity == "service" || svc.Spec.Type == corev1.ServiceTypeExternalName {
 		ups.Nodes = apisixv1.UpstreamNodes{
 			{
 				Host:   svcClusterIP,

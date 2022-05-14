@@ -82,6 +82,19 @@ spec:
                     - grpc
                     - https
                     - grpcs
+                httpHostRewritePolicy:
+                  type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - UseOriginalClientHost
+                        - UseRewriteTo
+                        - UseEndpointHostnameOrAddress
+                    target:
+                      type: string
+                  required:
+                    - kind
                 retries:
                   type: integer
                   minimum: 0

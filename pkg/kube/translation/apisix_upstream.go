@@ -84,6 +84,28 @@ func (t *translator) translateUpstreamScheme(scheme string, ups *apisixv1.Upstre
 	}
 }
 
+func (t *translator) translateUpstreamPassHost(policy *configv2beta3.HttpHostRewritePolicy, ups *apisixv1.Upstream) error {
+	if policy == nil || policy.Kind == "" {
+		ups.PassHost = apisixv1.PassHostPass
+		return nil
+	}
+	switch policy.Kind {
+	case configv2beta3.UseOriginalClientHost:
+		ups.PassHost = apisixv1.PassHostPass
+	case configv2beta3.UseEndpointHostnameOrAddress:
+		ups.PassHost = apisixv1.PassHostNode
+	case configv2beta3.UseRewriteTo:
+		ups.PassHost = apisixv1.PassHostRewrite
+		if policy.Target == "" {
+			return &translateError{field: "httpHostRewritePolicy.target", reason: "invalid value"}
+		}
+		ups.UpstreamHost = policy.Target
+	default:
+		return &translateError{field: "httpHostRewritePolicy.kind", reason: "invalid value"}
+	}
+	return nil
+}
+
 func (t *translator) translateUpstreamLoadBalancer(lb *configv2beta3.LoadBalancer, ups *apisixv1.Upstream) error {
 	if lb == nil || lb.Type == "" {
 		ups.Type = apisixv1.LbRoundRobin

@@ -409,3 +409,99 @@ func TestUpstreamRetriesAndTimeout(t *testing.T) {
 		Read:    15,
 	}, ups.Timeout)
 }
+
+func TestTranslateUpstreamPassHost(t *testing.T) {
+	tr := &translator{}
+	var ups apisixv1.Upstream
+
+	err := tr.translateUpstreamPassHost(nil, &ups)
+	assert.Nil(t, err)
+	assert.Equal(t, ups.PassHost, apisixv1.PassHostPass)
+
+	policy := &configv2beta3.HttpHostRewritePolicy{}
+	err = tr.translateUpstreamPassHost(policy, &ups)
+	assert.Nil(t, err)
+	assert.Equal(t, ups.PassHost, apisixv1.PassHostPass)
+
+	policy = &configv2beta3.HttpHostRewritePolicy{
+		Kind: "invalidKind",
+	}
+	err = tr.translateUpstreamPassHost(policy, &ups)
+	assert.Equal(t, err, &translateError{
+		field:  "httpHostRewritePolicy.kind",
+		reason: "invalid value",
+	})
+
+	policy = &configv2beta3.HttpHostRewritePolicy{
+		Kind: "UseEndpointHostnameOrAddress",
+	}
+	err = tr.translateUpstreamPassHost(policy, &ups)
+	assert.Nil(t, err)
+	assert.Equal(t, ups.PassHost, apisixv1.PassHostNode)
+
+	policy = &configv2beta3.HttpHostRewritePolicy{
+		Kind: "UseRewriteTo",
+	}
+	err = tr.translateUpstreamPassHost(policy, &ups)
+	assert.Equal(t, err, &translateError{
+		field:  "httpHostRewritePolicy.target",
+		reason: "invalid value",
+	})
+
+	policy = &configv2beta3.HttpHostRewritePolicy{
+		Kind:   "UseRewriteTo",
+		Target: "foo.com",
+	}
+	err = tr.translateUpstreamPassHost(policy, &ups)
+	assert.Nil(t, err)
+	assert.Equal(t, ups.PassHost, apisixv1.PassHostRewrite)
+	assert.Equal(t, ups.UpstreamHost, policy.Target)
+}
+
+func TestTranslateUpstreamPassHost(t *testing.T) {
+	tr := &translator{}
+	var ups apisixv1.Upstream
+
+	err := tr.translateUpstreamPassHost(nil, &ups)
+	assert.Nil(t, err)
+	assert.Equal(t, ups.PassHost, apisixv1.PassHostPass)
+
+	policy := &configv1.HttpHostRewritePolicy{}
+	err = tr.translateUpstreamPassHost(policy, &ups)
+	assert.Nil(t, err)
+	assert.Equal(t, ups.PassHost, apisixv1.PassHostPass)
+
+	policy = &configv1.HttpHostRewritePolicy{
+		Kind: "invalidKind",
+	}
+	err = tr.translateUpstreamPassHost(policy, &ups)
+	assert.Equal(t, err, &translateError{
+		field:  "httpHostRewritePolicy.kind",
+		reason: "invalid value",
+	})
+
+	policy = &configv1.HttpHostRewritePolicy{
+		Kind: "UseEndpointHostnameOrAddress",
+	}
+	err = tr.translateUpstreamPassHost(policy, &ups)
+	assert.Nil(t, err)
+	assert.Equal(t, ups.PassHost, apisixv1.PassHostNode)
+
+	policy = &configv1.HttpHostRewritePolicy{
+		Kind: "UseRewriteTo",
+	}
+	err = tr.translateUpstreamPassHost(policy, &ups)
+	assert.Equal(t, err, &translateError{
+		field:  "httpHostRewritePolicy.target",
+		reason: "invalid value",
+	})
+
+	policy = &configv1.HttpHostRewritePolicy{
+		Kind:   "UseRewriteTo",
+		Target: "foo.com",
+	}
+	err = tr.translateUpstreamPassHost(policy, &ups)
+	assert.Nil(t, err)
+	assert.Equal(t, ups.PassHost, apisixv1.PassHostRewrite)
+	assert.Equal(t, ups.UpstreamHost, policy.Target)
+}

@@ -69,3 +69,6 @@ title: ApisixUpstream Reference
 | subsets | array | service subset list, use pod labels to organize service endpoints to different groups. |
 | subsets[].name | string | the subset name. |
 | subsets[].labels | object | the subset label map. |
+| httpHostRewritePolicy | object | The http host rewrite policy. |
+| httpHostRewritePolicy.kind | string | The type of http host rewrite policy, can be `UseEndpointHostnameOrAddress`, `UseRewriteTo` and `UseOriginalClientHost`, default is `UseOriginalClientHost`. |
+| httpHostRewritePolicy.target | string |  The host of the upstream request, only valid when  httpHostRewritePolicy.kind is `useRewriteTo`.|

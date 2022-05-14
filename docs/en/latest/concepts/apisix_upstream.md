@@ -193,3 +193,38 @@ In the meanwhile, the ApisixUpstream `foo` sets `http` scheme for port `7000` an
 (all ports are the service port). But both ports shares the load balancer configuration.
 
 `PortLevelSettings` is not mandatory if the service only exposes one port but is useful when multiple ports are defined.
+
+### Http Host Rewrite Policy
+
+This is mainly used for external service outside the Kubernetes cluster, you can configure different host rewrite policies when the request is sent to the upstream.
+Here's an example of kubernetes service used in the test case.
+
+```yaml
+kind: Service
+apiVersion: v1
+metadata:
+  name: foo-service
+spec:
+  type: ExternalName
+  externalName: foo.com
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 80
+```
+
+The following configuration configures `useRewriteTo` rewrite policy to change the host option to `foo.org`.
+
+```yaml
+apiVersion: apisix.apache.org/v1
+kind: ApisixUpstream
+metadata:
+  name: foo-service
+spec:
+  httpHostRewritePolicy:
+    kind: useRewriteTo
+    target: foo.org
+```
+
+Note ApisixUpstream will use host option from ApisixRoute by default, if the requirement is to use host option from external service in any case, please change `httpHostRewritePolicy.kind` to `useEndpointHostnameOrAddress`.

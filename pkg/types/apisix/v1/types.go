@@ -55,6 +55,13 @@ const (
 	// SchemeGRPCS represents the GRPCS protocol.
 	SchemeGRPCS = "grpcs"
 
+	// PassHostPass represents pass option sent to the upstream
+	PassHostPass = "pass"
+	// PassHostNode represents node option sent to the upstream
+	PassHostNode = "node"
+	// PassHostRewrite represents rewrite option sent to the upstream
+	PassHostRewrite = "rewrite"
+
 	// HealthCheckHTTP represents the HTTP kind health check.
 	HealthCheckHTTP = "http"
 	// HealthCheckHTTPS represents the HTTPS kind health check.
@@ -181,15 +188,17 @@ func (p *Plugins) DeepCopy() *Plugins {
 type Upstream struct {
 	Metadata `json:",inline" yaml:",inline"`
 
-	Type    string               `json:"type,omitempty" yaml:"type,omitempty"`
-	HashOn  string               `json:"hash_on,omitempty" yaml:"hash_on,omitempty"`
-	Key     string               `json:"key,omitempty" yaml:"key,omitempty"`
-	Checks  *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
-	Nodes   UpstreamNodes        `json:"nodes" yaml:"nodes"`
-	Scheme  string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
-	Retries *int                 `json:"retries,omitempty" yaml:"retries,omitempty"`
-	Timeout *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-	TLS     *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
+	Type         string               `json:"type,omitempty" yaml:"type,omitempty"`
+	HashOn       string               `json:"hash_on,omitempty" yaml:"hash_on,omitempty"`
+	Key          string               `json:"key,omitempty" yaml:"key,omitempty"`
+	Checks       *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
+	Nodes        UpstreamNodes        `json:"nodes" yaml:"nodes"`
+	Scheme       string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+	Retries      *int                 `json:"retries,omitempty" yaml:"retries,omitempty"`
+	Timeout      *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	TLS          *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
+	PassHost     string               `json:"pass_host,omitempty" yaml:"pass_host,omitempty"`
+	UpstreamHost string               `json:"upstream_host,omitempty" yaml:"upstream_host,omitempty"`
 }
 
 // ClientTLS is tls cert and key use in mTLS

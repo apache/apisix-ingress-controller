@@ -144,6 +144,9 @@ func (t *translator) TranslateUpstreamConfig(au *configv2beta3.ApisixUpstreamCon
 	if err := t.translateClientTLS(au.TLSSecret, ups); err != nil {
 		return nil, err
 	}
+	if err := t.translateUpstreamPassHost(au.HttpHostRewritePolicy, ups); err != nil {
+		return nil, err
+	}
 	return ups, nil
 }
 
@@ -152,15 +155,24 @@ func (t *translator) TranslateUpstream(namespace, name, subset string, port int3
 		endpoint kube.Endpoint
 		err      error
 	)
-	if t.UseEndpointSlices {
-		endpoint, err = t.EndpointLister.GetEndpointSlices(namespace, name)
-	} else {
-		endpoint, err = t.EndpointLister.GetEndpoint(namespace, name)
-	}
+	svc, err := t.ServiceLister.Services(namespace).Get(name)
 	if err != nil {
 		return nil, &translateError{
-			field:  "endpoints",
+			field:  "service",
 			reason: err.Error(),
+		}
+	}
+	if svc.Spec.Type != corev1.ServiceTypeExternalName {
+		if t.UseEndpointSlices {
+			endpoint, err = t.EndpointLister.GetEndpointSlices(namespace, name)
+		} else {
+			endpoint, err = t.EndpointLister.GetEndpoint(namespace, name)
+		}
+		if err != nil {
+			return nil, &translateError{
+				field:  "endpoints",
+				reason: err.Error(),
+			}
 		}
 	}
 	au, err := t.ApisixUpstreamLister.ApisixUpstreams(namespace).Get(name)
@@ -190,9 +202,12 @@ func (t *translator) TranslateUpstream(namespace, name, subset string, port int3
 		}
 	}
 	// Filter nodes by subset.
-	nodes, err := t.TranslateUpstreamNodes(endpoint, port, labels)
-	if err != nil {
-		return nil, err
+	nodes := make(apisixv1.UpstreamNodes, 0)
+	if svc.Spec.Type != corev1.ServiceTypeExternalName {
+		nodes, err = t.TranslateUpstreamNodes(endpoint, port, labels)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if au == nil || au.Spec == nil {
 		ups.Nodes = nodes
