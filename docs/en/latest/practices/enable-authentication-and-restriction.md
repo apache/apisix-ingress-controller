@@ -341,7 +341,7 @@ kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX} -- cu
 ```
 
 ```shell
-HTTP/1.1 401 
+HTTP/1.1 401
 ...
 {"message":"Missing JWT token in request"}
 ```
