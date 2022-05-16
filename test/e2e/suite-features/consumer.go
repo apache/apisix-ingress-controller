@@ -390,10 +390,10 @@ spec:
 		assert.Contains(ginkgo.GinkgoT(), msg, "404 Route Not Found")
 	})
 
-	ginkgo.It("ApisixRoute with wolfRbac consumer", func() {
-		wolfSvr, err := s.WolfRbacSvrStartedURL()
+	ginkgo.It("ApisixRoute with wolfRBAC consumer", func() {
+		wolfSvr, err := s.WolfRBACSvrStartedURL()
 		assert.Nil(ginkgo.GinkgoT(), err, "checking wolf-server")
-		defer s.StopWolfRbacSvr()
+		defer s.StopWolfRBACSvr()
 
 		ac := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -402,13 +402,13 @@ metadata:
   name: wolf-user
 spec:
   authParameter:
-    wolfRbac:
+    wolfRBAC:
       value:
         server: "%s"
         appid: "test-app"
         header_prefix: "X-"
 `, wolfSvr)
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac), "creating wolfRbac ApisixConsumer")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac), "creating wolfRBAC ApisixConsumer")
 
 		// Wait until the ApisixConsumer create event was delivered.
 		time.Sleep(6 * time.Second)
@@ -417,8 +417,8 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
 		assert.Len(ginkgo.GinkgoT(), grs, 1)
 		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
-		wolfRbac, _ := grs[0].Plugins["wolf-rbac"].(map[string]interface{})
-		assert.Equal(ginkgo.GinkgoT(), wolfRbac, map[string]interface{}{
+		wolfRBAC, _ := grs[0].Plugins["wolf-rbac"].(map[string]interface{})
+		assert.Equal(ginkgo.GinkgoT(), wolfRBAC, map[string]interface{}{
 			"server":        wolfSvr,
 			"appid":         "test-app",
 			"header_prefix": "X-",
@@ -465,7 +465,7 @@ spec:
      servicePort: %d
    authentication:
      enable: true
-     type: wolfRbac
+     type: wolfRBAC
 `, backendSvc, backendPorts[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar2), "creating ApisixRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2), "Checking number of routes")
@@ -507,10 +507,10 @@ spec:
 		assert.Contains(ginkgo.GinkgoT(), msg401, "Missing rbac token in request")
 	})
 
-	ginkgo.It("ApisixRoute with wolfRbac consumer using secret", func() {
-		wolfSvr, err := s.WolfRbacSvrStartedURL()
+	ginkgo.It("ApisixRoute with wolfRBAC consumer using secret", func() {
+		wolfSvr, err := s.WolfRBACSvrStartedURL()
 		assert.Nil(ginkgo.GinkgoT(), err, "checking wolf-server")
-		defer s.StopWolfRbacSvr()
+		defer s.StopWolfRBACSvr()
 
 		secret := fmt.Sprintf(`
 apiVersion: v1
@@ -522,7 +522,7 @@ data:
   appid: dGVzdC1hcHA=
   header_prefix: WC0=
 `, base64.StdEncoding.EncodeToString([]byte(wolfSvr)))
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating wolfRbac secret for ApisixConsumer")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating wolfRBAC secret for ApisixConsumer")
 
 		ac := `
 apiVersion: apisix.apache.org/v2beta3
@@ -531,11 +531,11 @@ metadata:
   name: wolf-user
 spec:
   authParameter:
-    wolfRbac:
+    wolfRBAC:
       secretRef:
         name: rbac
 `
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac), "creating wolfRbac ApisixConsumer")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac), "creating wolfRBAC ApisixConsumer")
 
 		// Wait until the ApisixConsumer create event was delivered.
 		time.Sleep(6 * time.Second)
@@ -544,8 +544,8 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
 		assert.Len(ginkgo.GinkgoT(), grs, 1)
 		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
-		wolfRbac, _ := grs[0].Plugins["wolf-rbac"].(map[string]interface{})
-		assert.Equal(ginkgo.GinkgoT(), wolfRbac, map[string]interface{}{
+		wolfRBAC, _ := grs[0].Plugins["wolf-rbac"].(map[string]interface{})
+		assert.Equal(ginkgo.GinkgoT(), wolfRBAC, map[string]interface{}{
 			"server":        wolfSvr,
 			"appid":         "test-app",
 			"header_prefix": "X-",
@@ -592,7 +592,7 @@ spec:
      servicePort: %d
    authentication:
      enable: true
-     type: wolfRbac
+     type: wolfRBAC
 `, backendSvc, backendPorts[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar2), "creating ApisixRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2), "Checking number of routes")

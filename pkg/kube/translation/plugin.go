@@ -112,9 +112,9 @@ func (t *translator) translateConsumerBasicAuthPlugin(consumerNamespace string, 
 	}, nil
 }
 
-func (t *translator) translateConsumerWolfRbacPlugin(consumerNamespace string, cfg *configv2beta3.ApisixConsumerWolfRbac) (*apisixv1.WolfRbacConsumerConfig, error) {
+func (t *translator) translateConsumerWolfRBACPlugin(consumerNamespace string, cfg *configv2beta3.ApisixConsumerWolfRBAC) (*apisixv1.WolfRBACConsumerConfig, error) {
 	if cfg.Value != nil {
-		return &apisixv1.WolfRbacConsumerConfig{
+		return &apisixv1.WolfRBACConsumerConfig{
 			Server:       cfg.Value.Server,
 			Appid:        cfg.Value.Appid,
 			HeaderPrefix: cfg.Value.HeaderPrefix,
@@ -128,7 +128,7 @@ func (t *translator) translateConsumerWolfRbacPlugin(consumerNamespace string, c
 	raw1 := sec.Data["server"]
 	raw2 := sec.Data["appid"]
 	raw3 := sec.Data["header_prefix"]
-	return &apisixv1.WolfRbacConsumerConfig{
+	return &apisixv1.WolfRBACConsumerConfig{
 		Server:       string(raw1),
 		Appid:        string(raw2),
 		HeaderPrefix: string(raw3),

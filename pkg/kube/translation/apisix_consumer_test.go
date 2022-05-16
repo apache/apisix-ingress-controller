@@ -76,8 +76,8 @@ func TestTranslateApisixConsumer(t *testing.T) {
 		},
 		Spec: configv2beta3.ApisixConsumerSpec{
 			AuthParameter: configv2beta3.ApisixConsumerAuthParameter{
-				WolfRbac: &configv2beta3.ApisixConsumerWolfRbac{
-					Value: &configv2beta3.ApisixConsumerWolfRbacValue{
+				WolfRBAC: &configv2beta3.ApisixConsumerWolfRBAC{
+					Value: &configv2beta3.ApisixConsumerWolfRBACValue{
 						Server: "https://httpbin.org",
 						Appid:  "test01",
 					},
@@ -88,7 +88,7 @@ func TestTranslateApisixConsumer(t *testing.T) {
 	consumer, err = (&translator{}).TranslateApisixConsumer(ac)
 	assert.Nil(t, err)
 	assert.Len(t, consumer.Plugins, 1)
-	cfg3 := consumer.Plugins["wolf-rbac"].(*apisixv1.WolfRbacConsumerConfig)
+	cfg3 := consumer.Plugins["wolf-rbac"].(*apisixv1.WolfRBACConsumerConfig)
 	assert.Equal(t, "https://httpbin.org", cfg3.Server)
 	assert.Equal(t, "test01", cfg3.Appid)
 

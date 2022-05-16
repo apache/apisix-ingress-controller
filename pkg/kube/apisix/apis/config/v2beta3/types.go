@@ -331,7 +331,7 @@ type ApisixConsumerSpec struct {
 type ApisixConsumerAuthParameter struct {
 	BasicAuth *ApisixConsumerBasicAuth `json:"basicAuth,omitempty" yaml:"basicAuth"`
 	KeyAuth   *ApisixConsumerKeyAuth   `json:"keyAuth,omitempty" yaml:"keyAuth"`
-	WolfRbac  *ApisixConsumerWolfRbac  `json:"wolfRbac,omitempty" yaml:"wolfRbac"`
+	WolfRBAC  *ApisixConsumerWolfRBAC  `json:"wolfRBAC,omitempty" yaml:"wolfRBAC"`
 }
 
 // ApisixConsumerBasicAuth defines the configuration for basic auth.
@@ -357,14 +357,14 @@ type ApisixConsumerKeyAuthValue struct {
 	Key string `json:"key" yaml:"key"`
 }
 
-// ApisixConsumerWolfRbac defines the configuration for the wolf-rbac auth.
-type ApisixConsumerWolfRbac struct {
+// ApisixConsumerWolfRBAC defines the configuration for the wolf-rbac auth.
+type ApisixConsumerWolfRBAC struct {
 	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
-	Value     *ApisixConsumerWolfRbacValue `json:"value,omitempty" yaml:"value,omitempty"`
+	Value     *ApisixConsumerWolfRBACValue `json:"value,omitempty" yaml:"value,omitempty"`
 }
 
-// ApisixConsumerWolfRbac defines the in-place server and appid and header_prefix  configuration for wolf-rbac auth.
-type ApisixConsumerWolfRbacValue struct {
+// ApisixConsumerWolfRBAC defines the in-place server and appid and header_prefix  configuration for wolf-rbac auth.
+type ApisixConsumerWolfRBACValue struct {
 	Server       string `json:"server,omitempty" yaml:"server,omitempty"`
 	Appid        string `json:"appid,omitempty" yaml:"appid,omitempty"`
 	HeaderPrefix string `json:"header_prefix,omitempty" yaml:"header_prefix,omitempty"`

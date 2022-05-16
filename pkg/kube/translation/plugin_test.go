@@ -688,20 +688,20 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 	close(stopCh)
 }
 
-func TestTranslateConsumerWolfRbacPluginWithInPlaceValue(t *testing.T) {
-	wolfRbac := &configv2beta3.ApisixConsumerWolfRbac{
-		Value: &configv2beta3.ApisixConsumerWolfRbacValue{
+func TestTranslateConsumerWolfRBACPluginWithInPlaceValue(t *testing.T) {
+	wolfRBAC := &configv2beta3.ApisixConsumerWolfRBAC{
+		Value: &configv2beta3.ApisixConsumerWolfRBACValue{
 			Server: "https://httpbin.org",
 			Appid:  "test-app",
 		},
 	}
-	cfg, err := (&translator{}).translateConsumerWolfRbacPlugin("default", wolfRbac)
+	cfg, err := (&translator{}).translateConsumerWolfRBACPlugin("default", wolfRBAC)
 	assert.Nil(t, err)
 	assert.Equal(t, "https://httpbin.org", cfg.Server)
 	assert.Equal(t, "test-app", cfg.Appid)
 }
 
-func TestTranslateConsumerWolfRbacWithSecretRef(t *testing.T) {
+func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
 	sec := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "jack-wolf-rbac",
@@ -738,16 +738,16 @@ func TestTranslateConsumerWolfRbacWithSecretRef(t *testing.T) {
 
 	<-processCh
 
-	wolfRbac := &configv2beta3.ApisixConsumerWolfRbac{
+	wolfRBAC := &configv2beta3.ApisixConsumerWolfRBAC{
 		SecretRef: &corev1.LocalObjectReference{Name: "jack-wolf-rbac"},
 	}
-	cfg, err := tr.translateConsumerWolfRbacPlugin("default", wolfRbac)
+	cfg, err := tr.translateConsumerWolfRBACPlugin("default", wolfRBAC)
 	assert.Nil(t, err)
 	assert.Equal(t, "http://127.0.0.1:12180", cfg.Server)
 	assert.Equal(t, "test-app", cfg.Appid)
 	assert.Equal(t, "X-", cfg.HeaderPrefix)
 
-	cfg, err = tr.translateConsumerWolfRbacPlugin("default2", wolfRbac)
+	cfg, err = tr.translateConsumerWolfRBACPlugin("default2", wolfRBAC)
 	assert.Nil(t, cfg)
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "not found")
@@ -757,7 +757,7 @@ func TestTranslateConsumerWolfRbacWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerWolfRbacPlugin("default", wolfRbac)
+	cfg, err = tr.translateConsumerWolfRBACPlugin("default", wolfRBAC)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "appid")
@@ -765,7 +765,7 @@ func TestTranslateConsumerWolfRbacWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerWolfRbacPlugin("default", wolfRbac)
+	cfg, err = tr.translateConsumerWolfRBACPlugin("default", wolfRBAC)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "header_prefix")
@@ -773,7 +773,7 @@ func TestTranslateConsumerWolfRbacWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerWolfRbacPlugin("default", wolfRbac)
+	cfg, err = tr.translateConsumerWolfRBACPlugin("default", wolfRBAC)
 	assert.Nil(t, err)
 
 	close(processCh)

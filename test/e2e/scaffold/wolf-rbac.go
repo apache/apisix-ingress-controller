@@ -22,13 +22,13 @@ import (
 	"os/exec"
 )
 
-func (s *Scaffold) WolfRbacSvrStarting() {
+func (s *Scaffold) WolfRBACSvrStarting() error {
 	cmd := exec.Command("sh", "testdata/wolf-rbac/start.sh")
-	_ = cmd.Run()
+	return cmd.Run()
 }
 
-func (s *Scaffold) WolfRbacSvrStartedURL() (string, error) {
-	s.WolfRbacSvrStarting()
+func (s *Scaffold) WolfRBACSvrStartedURL() (string, error) {
+	_ = s.WolfRBACSvrStarting()
 
 	cmd := exec.Command("sh", "testdata/wolf-rbac/ip.sh")
 	ip, err := cmd.Output()
@@ -36,13 +36,13 @@ func (s *Scaffold) WolfRbacSvrStartedURL() (string, error) {
 		return "", err
 	}
 	if len(ip) == 0 {
-		return "", fmt.Errorf("wolf-server start fild")
+		return "", fmt.Errorf("wolf-server start failed")
 	}
 	httpsvc := fmt.Sprintf("http://%s:12180", string(ip))
 	return httpsvc, nil
 }
 
-func (s *Scaffold) StopWolfRbacSvr() error {
+func (s *Scaffold) StopWolfRBACSvr() error {
 	cmd := exec.Command("sh", "testdata/wolf-rbac/stop.sh")
 	err := cmd.Run()
 	return err
