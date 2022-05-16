@@ -38,7 +38,7 @@ It is guaranteed that the final result can be derived in full based on this envi
 go-plugin-runner: 0.3
 APISIX Ingress: 1.4.0
 kind: v0.12.0
-kubectl version(Client/Server): v1.23.5/v1.23.4 
+kubectl version(Client/Server): v1.23.5/v1.23.4
 golang: 1.18
 ```
 
