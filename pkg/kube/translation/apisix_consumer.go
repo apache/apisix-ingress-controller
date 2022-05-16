@@ -38,6 +38,12 @@ func (t *translator) TranslateApisixConsumer(ac *configv2beta3.ApisixConsumer) (
 			return nil, fmt.Errorf("invalid basic auth config: %s", err)
 		}
 		plugins["basic-auth"] = cfg
+	} else if ac.Spec.AuthParameter.JwtAuth != nil {
+		cfg, err := t.translateConsumerJwtAuthPlugin(ac.Namespace, ac.Spec.AuthParameter.JwtAuth)
+		if err != nil {
+			return nil, fmt.Errorf("invalid jwt auth config: %s", err)
+		}
+		plugins["jwt-auth"] = cfg
 	}
 
 	consumer := apisixv1.NewDefaultConsumer()
