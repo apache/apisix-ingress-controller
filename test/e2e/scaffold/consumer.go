@@ -16,8 +16,8 @@ package scaffold
 
 import "fmt"
 
-func (s *Scaffold) ApisixConsumerBasicAuthCreated(name, username, password string) error {
-	ac := fmt.Sprintf(`
+var (
+	_apisixConsumerBasicAuth = `
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
@@ -28,6 +28,26 @@ spec:
       value:
         username: %s
         password: %s
-`, name, username, password)
+`
+	_apisixConsumerKeyAuth = `
+  apiVersion: apisix.apache.org/v2beta3
+  kind: ApisixConsumer
+  metadata:
+    name: %s
+  spec:
+    authParameter:
+      keyAuth:
+        value:
+          key: %s
+  `
+)
+
+func (s *Scaffold) ApisixConsumerBasicAuthCreated(name, username, password string) error {
+	ac := fmt.Sprintf(_apisixConsumerBasicAuth, name, username, password)
+	return s.CreateResourceFromString(ac)
+}
+
+func (s *Scaffold) ApisixConsumerKeyAuthCreated(name, key string) error {
+	ac := fmt.Sprintf(_apisixConsumerKeyAuth, name, key)
 	return s.CreateResourceFromString(ac)
 }

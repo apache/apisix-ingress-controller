@@ -107,14 +107,14 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 			// todo ApisixUpstream and ApisixPluginConfig
 			// ApisixUpstream and ApisixPluginConfig should be synced with ApisixRoute resource
 
-			// ApisixSSL
+			// ApisixSSL TODO: Support v2?
 			retSSL, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixTlses(ns).List(ctx, opts)
 			if err != nil {
 				log.Error(err.Error())
 				ctx.Done()
 			} else {
 				for _, s := range retSSL.Items {
-					ssl, err := c.translator.TranslateSSL(&s)
+					ssl, err := c.translator.TranslateSSLV2Beta3(&s)
 					if err != nil {
 						log.Error(err.Error())
 						ctx.Done()

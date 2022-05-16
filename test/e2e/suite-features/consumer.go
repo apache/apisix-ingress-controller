@@ -26,7 +26,7 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-features: ApisixConsumer", func() {
-	s := scaffold.NewDefaultV2Scaffold()
+	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("ApisixRoute with basicAuth consumer", func() {
 		ac := `

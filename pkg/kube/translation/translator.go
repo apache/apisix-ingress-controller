@@ -83,12 +83,17 @@ type Translator interface {
 	// TranslateRouteV2NotStrictly translates the configv2.ApisixRoute object into several Route,
 	// Upstream and PluginConfig resources not strictly, only used for delete event.
 	TranslateRouteV2NotStrictly(*configv2.ApisixRoute) (*TranslateContext, error)
-	// TranslateSSL translates the configv2beta3.ApisixTls object into the APISIX SSL resource.
-	TranslateSSL(*configv2beta3.ApisixTls) (*apisixv1.Ssl, error)
+	// TranslateSSLV2Beta3 translates the configv2beta3.ApisixTls object into the APISIX SSL resource.
+	TranslateSSLV2Beta3(*configv2beta3.ApisixTls) (*apisixv1.Ssl, error)
+	// TranslateSSLV2 translates the configv2.ApisixTls object into the APISIX SSL resource.
+	TranslateSSLV2(*configv2.ApisixTls) (*apisixv1.Ssl, error)
 	// TranslateClusterConfig translates the configv2beta3.ApisixClusterConfig object into the APISIX
 	// Global Rule resource.
-	TranslateClusterConfig(*configv2beta3.ApisixClusterConfig) (*apisixv1.GlobalRule, error)
-	// TranslateApisixConsumerV2beta3 translates the configv2beta3.APisixConsumer object into the APISIX Consumer
+	TranslateClusterConfigV2beta3(*configv2beta3.ApisixClusterConfig) (*apisixv1.GlobalRule, error)
+	// TranslateClusterConfigV2 translates the configv2.ApisixClusterConfig object into the APISIX
+	// Global Rule resource.
+	TranslateClusterConfigV2(*configv2.ApisixClusterConfig) (*apisixv1.GlobalRule, error)
+	// TranslateApisixConsumer translates the configv2beta3.APisixConsumer object into the APISIX Consumer
 	// resource.
 	TranslateApisixConsumerV2beta3(*configv2beta3.ApisixConsumer) (*apisixv1.Consumer, error)
 	// TranslateApisixConsumerV2 translates the configv2beta3.APisixConsumer object into the APISIX Consumer
