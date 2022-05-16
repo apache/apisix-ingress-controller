@@ -40,7 +40,7 @@ type ApisixConsumerInformer interface {
 }
 
 // ApisixConsumer is an encapsulation for ApisixConsumer resource with different
-// versions, for now, they are apisix.apache.org/v1 and apisix.apache.org/v2alpha1
+// versions, for now, they are apisix.apache.org/v2beta3 and apisix.apache.org/v2
 type ApisixConsumer interface {
 	// GroupVersion returns the api group version of the
 	// real ApisixConsumer.
