@@ -39,8 +39,8 @@ spec:
 
 // NewApisixClusterConfig creates an ApisixClusterConfig CRD
 func (s *Scaffold) NewApisixClusterConfig(name string, enable bool) error {
-	tls := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.APISIXClusterConfigVersion, name, enable)
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, tls); err != nil {
+	cc := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.APISIXClusterConfigVersion, name, enable)
+	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, cc); err != nil {
 		return err
 	}
 	time.Sleep(5 * time.Second)
@@ -49,8 +49,8 @@ func (s *Scaffold) NewApisixClusterConfig(name string, enable bool) error {
 
 // DeleteApisixClusterConfig removes an ApisixClusterConfig CRD
 func (s *Scaffold) DeleteApisixClusterConfig(name string, enable bool) error {
-	tls := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.APISIXClusterConfigVersion, name, enable)
-	if err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, tls); err != nil {
+	cc := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.APISIXClusterConfigVersion, name, enable)
+	if err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, cc); err != nil {
 		return err
 	}
 	time.Sleep(5 * time.Second)
