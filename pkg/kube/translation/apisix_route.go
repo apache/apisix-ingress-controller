@@ -274,6 +274,8 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			case "wolfRBAC":
 				pluginMap["wolf-rbac"] = make(map[string]interface{})
+			case "jwtAuth":
+				pluginMap["jwt-auth"] = part.Authentication.JwtAuth
 			default:
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			}
@@ -406,6 +408,8 @@ func (t *translator) translateHTTPRouteV2(ctx *TranslateContext, ar *configv2.Ap
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			case "wolfRBAC":
 				pluginMap["wolf-rbac"] = make(map[string]interface{})
+			case "jwtAuth":
+				pluginMap["jwt-auth"] = part.Authentication.JwtAuth
 			default:
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			}
@@ -629,6 +633,8 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *TranslateContext,
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			case "wolfRBAC":
 				pluginMap["wolf-rbac"] = make(map[string]interface{})
+			case "jwtAuth":
+				pluginMap["jwt-auth"] = part.Authentication.JwtAuth
 			default:
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			}
@@ -684,6 +690,8 @@ func (t *translator) translateHTTPRouteV2NotStrictly(ctx *TranslateContext, ar *
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			case "wolfRBAC":
 				pluginMap["wolf-rbac"] = make(map[string]interface{})
+			case "jwtAuth":
+				pluginMap["jwt-auth"] = part.Authentication.JwtAuth
 			default:
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			}

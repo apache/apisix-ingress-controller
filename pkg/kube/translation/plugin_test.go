@@ -688,6 +688,163 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 	close(stopCh)
 }
 
+func TestTranslateConsumerJwtAuthPluginWithInPlaceValue(t *testing.T) {
+	jwtAuth := &configv2beta3.ApisixConsumerJwtAuth{
+		Value: &configv2beta3.ApisixConsumerJwtAuthValue{
+			Key:          "foo",
+			Secret:       "foo-secret",
+			PublicKey:    "public",
+			PrivateKey:   "private",
+			Algorithm:    "HS256",
+			Exp:          int64(1000),
+			Base64Secret: true,
+		},
+	}
+	cfg, err := (&translator{}).translateConsumerJwtAuthPlugin("default", jwtAuth)
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", cfg.Key)
+	assert.Equal(t, "foo-secret", cfg.Secret)
+	assert.Equal(t, "public", cfg.PublicKey)
+	assert.Equal(t, "private", cfg.PrivateKey)
+	assert.Equal(t, "HS256", cfg.Algorithm)
+	assert.Equal(t, int64(1000), cfg.Exp)
+	assert.Equal(t, true, cfg.Base64Secret)
+
+	jwtAuth.Value.Exp = int64(-1)
+	cfg, err = (&translator{}).translateConsumerJwtAuthPlugin("default", jwtAuth)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(_jwtAuthExpDefaultValue), cfg.Exp)
+
+	jwtAuth2 := &configv2beta3.ApisixConsumerJwtAuth{
+		Value: &configv2beta3.ApisixConsumerJwtAuthValue{
+			Key: "foo2",
+		},
+	}
+	cfg, err = (&translator{}).translateConsumerJwtAuthPlugin("default", jwtAuth2)
+	assert.Nil(t, err)
+	assert.Equal(t, "foo2", cfg.Key)
+}
+
+func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "jack-jwt-auth",
+		},
+		Data: map[string][]byte{
+			"key":           []byte("foo"),
+			"secret":        []byte("foo-secret"),
+			"public_key":    []byte("public"),
+			"private_key":   []byte("private"),
+			"algorithm":     []byte("HS256"),
+			"exp":           []byte("1000"),
+			"base64_secret": []byte("true"),
+		},
+	}
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	secretInformer := informersFactory.Core().V1().Secrets().Informer()
+	secretLister := informersFactory.Core().V1().Secrets().Lister()
+	processCh := make(chan struct{})
+	stopCh := make(chan struct{})
+	secretInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(_ interface{}) {
+			processCh <- struct{}{}
+		},
+		UpdateFunc: func(_, _ interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+	go secretInformer.Run(stopCh)
+
+	tr := &translator{
+		&TranslatorOptions{
+			SecretLister: secretLister,
+		},
+	}
+	_, err := client.CoreV1().Secrets("default").Create(context.Background(), sec, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	<-processCh
+
+	jwtAuth := &configv2beta3.ApisixConsumerJwtAuth{
+		SecretRef: &corev1.LocalObjectReference{Name: "jack-jwt-auth"},
+	}
+	cfg, err := tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", cfg.Key)
+	assert.Equal(t, "foo-secret", cfg.Secret)
+	assert.Equal(t, "public", cfg.PublicKey)
+	assert.Equal(t, "private", cfg.PrivateKey)
+	assert.Equal(t, "HS256", cfg.Algorithm)
+	assert.Equal(t, int64(1000), cfg.Exp)
+	assert.Equal(t, true, cfg.Base64Secret)
+
+	cfg, err = tr.translateConsumerJwtAuthPlugin("default2", jwtAuth)
+	assert.Nil(t, cfg)
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "not found")
+
+	delete(sec.Data, "secret")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	assert.Nil(t, err)
+
+	delete(sec.Data, "public")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	assert.Nil(t, err)
+
+	delete(sec.Data, "private")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	assert.Nil(t, err)
+
+	delete(sec.Data, "algorithm")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	assert.Nil(t, err)
+
+	delete(sec.Data, "exp")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	assert.Nil(t, err)
+
+	delete(sec.Data, "base64_secret")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	assert.Nil(t, err)
+
+	delete(sec.Data, "key")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	assert.Nil(t, cfg)
+	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
+
+	close(processCh)
+	close(stopCh)
+}
+
 func TestTranslateConsumerWolfRBACPluginWithInPlaceValue(t *testing.T) {
 	wolfRBAC := &configv2beta3.ApisixConsumerWolfRBAC{
 		Value: &configv2beta3.ApisixConsumerWolfRBACValue{

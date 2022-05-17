@@ -16,6 +16,7 @@ package translation
 
 import (
 	"errors"
+	"strconv"
 
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
@@ -26,6 +27,8 @@ var (
 	_errKeyNotFoundOrInvalid      = errors.New("key \"key\" not found or invalid in secret")
 	_errUsernameNotFoundOrInvalid = errors.New("key \"username\" not found or invalid in secret")
 	_errPasswordNotFoundOrInvalid = errors.New("key \"password\" not found or invalid in secret")
+
+	_jwtAuthExpDefaultValue = int64(868400)
 )
 
 func (t *translator) translateTrafficSplitPlugin(ctx *TranslateContext, ns string, defaultBackendWeight int,
@@ -120,7 +123,6 @@ func (t *translator) translateConsumerWolfRBACPlugin(consumerNamespace string, c
 			HeaderPrefix: cfg.Value.HeaderPrefix,
 		}, nil
 	}
-
 	sec, err := t.SecretLister.Secrets(consumerNamespace).Get(cfg.SecretRef.Name)
 	if err != nil {
 		return nil, err
@@ -132,5 +134,56 @@ func (t *translator) translateConsumerWolfRBACPlugin(consumerNamespace string, c
 		Server:       string(raw1),
 		Appid:        string(raw2),
 		HeaderPrefix: string(raw3),
+	}, nil
+}
+
+func (t *translator) translateConsumerJwtAuthPlugin(consumerNamespace string, cfg *configv2beta3.ApisixConsumerJwtAuth) (*apisixv1.JwtAuthConsumerConfig, error) {
+	if cfg.Value != nil {
+		// The field exp must be a positive integer, default value 86400.
+		if cfg.Value.Exp < 1 {
+			cfg.Value.Exp = _jwtAuthExpDefaultValue
+		}
+		return &apisixv1.JwtAuthConsumerConfig{
+			Key:          cfg.Value.Key,
+			Secret:       cfg.Value.Secret,
+			PublicKey:    cfg.Value.PublicKey,
+			PrivateKey:   cfg.Value.PrivateKey,
+			Algorithm:    cfg.Value.Algorithm,
+			Exp:          cfg.Value.Exp,
+			Base64Secret: cfg.Value.Base64Secret,
+		}, nil
+	}
+
+	sec, err := t.SecretLister.Secrets(consumerNamespace).Get(cfg.SecretRef.Name)
+	if err != nil {
+		return nil, err
+	}
+	keyRaw, ok := sec.Data["key"]
+	if !ok || len(keyRaw) == 0 {
+		return nil, _errKeyNotFoundOrInvalid
+	}
+	base64SecretRaw := sec.Data["base64_secret"]
+	var base64Secret bool
+	if string(base64SecretRaw) == "true" {
+		base64Secret = true
+	}
+	expRaw := sec.Data["exp"]
+	exp, _ := strconv.ParseInt(string(expRaw), 10, 64)
+	// The field exp must be a positive integer, default value 86400.
+	if exp < 1 {
+		exp = _jwtAuthExpDefaultValue
+	}
+	secretRaw := sec.Data["secret"]
+	publicKeyRaw := sec.Data["public_key"]
+	privateKeyRaw := sec.Data["private_key"]
+	algorithmRaw := sec.Data["algorithm"]
+	return &apisixv1.JwtAuthConsumerConfig{
+		Key:          string(keyRaw),
+		Secret:       string(secretRaw),
+		PublicKey:    string(publicKeyRaw),
+		PrivateKey:   string(privateKeyRaw),
+		Algorithm:    string(algorithmRaw),
+		Exp:          exp,
+		Base64Secret: base64Secret,
 	}, nil
 }
