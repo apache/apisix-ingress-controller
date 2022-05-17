@@ -391,9 +391,10 @@ spec:
 	})
 
 	ginkgo.It("ApisixRoute with wolfRBAC consumer", func() {
-		wolfSvr, err := s.WolfRBACSvrStartedURL()
+		_ = s.StartWolfRBACServer()
+		wolfSvr, err := s.GetWolfRBACServerURL()
 		assert.Nil(ginkgo.GinkgoT(), err, "checking wolf-server")
-		defer s.StopWolfRBACSvr()
+		defer s.StopWolfRBACServer()
 
 		ac := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -508,9 +509,10 @@ spec:
 	})
 
 	ginkgo.It("ApisixRoute with wolfRBAC consumer using secret", func() {
-		wolfSvr, err := s.WolfRBACSvrStartedURL()
+		_ = s.StartWolfRBACServer()
+		wolfSvr, err := s.GetWolfRBACServerURL()
 		assert.Nil(ginkgo.GinkgoT(), err, "checking wolf-server")
-		defer s.StopWolfRBACSvr()
+		defer s.StopWolfRBACServer()
 
 		secret := fmt.Sprintf(`
 apiVersion: v1
@@ -635,7 +637,6 @@ spec:
 	})
 
 	ginkgo.It("ApisixRoute with jwtAuth consumer", func() {
-		//time.Sleep(time.Minute * 30)
 		ac := `
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer

@@ -109,12 +109,6 @@ spec:
                         value:
                           type: object
                           properties:
-                            server:
-                              type: string
-                            appid:
-                              type: string
-                            header_prefix:
-                              type: string
                             key:
                               type: string
                               minLength: 1
