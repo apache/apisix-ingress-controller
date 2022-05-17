@@ -27,14 +27,14 @@ Consumers are used for the authentication method controlled by Apache APISIX, if
 
 ## Attributes
 
-### Authentication methods
+### Authentication
 
-#### `keyAuth`
+#### Key Auth
 
-Consumers add their key either in a header `apikey` to authenticate their requests. For more information about `keyAuth`, please refer to [APISIX jwt-auth](https://apisix.apache.org/docs/apisix/plugins/key-auth/).
+Consumers add their key either in a header or query string parameter to authenticate their requests. For more information about `Key Auth`, please refer to [APISIX key-auth](https://apisix.apache.org/docs/apisix/plugins/key-auth/).
 
 <details>
-  <summary>keyAuth yaml configure</summary>
+  <summary>Key Auth yaml configure</summary>
 
 ```yaml
 apiVersion: apisix.apache.org/v2beta3
@@ -50,12 +50,12 @@ spec:
 
 </details>
 
-#### `basicAuth`
+#### Basic Auth
 
-Consumers add their key either in a header `Authentication` to authenticate their requests.For more information about `basicAuth`, please refer to [APISIX basic-auth](https://apisix.apache.org/docs/apisix/plugins/basic-auth/).
+Consumers add their key in a header to authenticate their requests. For more information about `Basic Auth`, please refer to [APISIX basic-auth](https://apisix.apache.org/docs/apisix/plugins/basic-auth/).
 
 <details>
-  <summary>basicAuth yaml configure</summary>
+  <summary>Basic Auth yaml configure</summary>
 
 ```yaml
 apiVersion: apisix.apache.org/v2beta3
@@ -72,16 +72,16 @@ spec:
 
 </details>
 
-#### `jwtAuth`
+#### JWT Auth
 
-The consumer then adds its key to the query string parameter, request header, or cookie to verify its request. For more information about `jwtAuth`, please refer to [APISIX jwt-auth](https://apisix.apache.org/docs/apisix/plugins/jwt-auth/).
+The consumer then adds its key to the query string parameter, request header, or cookie to verify its request. For more information about `JWT Auth`, please refer to [APISIX jwt-auth](https://apisix.apache.org/docs/apisix/plugins/jwt-auth/).
 
 :::note Need to expose API  
 This plugin will add `/apisix/plugin/jwt/sign` to sign. You may need to use `public-api` plugin to expose it.  
 :::
 
 <details>
-  <summary>jwtAuth yaml configure</summary>
+  <summary>JWT Auth yaml configure</summary>
 
 ```yaml
 apiVersion: apisix.apache.org/v2beta3
@@ -103,9 +103,9 @@ spec:
 
 </details>
 
-#### `wolfRbac`
+#### `Wolf RBAC`
 
-To use wolfRbac authentication, you need to start and install [wolf-server](https://github.com/iGeeky/wolf/blob/master/quick-start-with-docker/README.md). For more information about `wolfRbac`, please refer to [APISIX wolf-rbac](https://apisix.apache.org/zh/docs/apisix/plugins/wolf-rbac/).
+To use wolfRbac authentication, you need to start and install [wolf-server](https://github.com/iGeeky/wolf/blob/master/quick-start-with-docker/README.md). For more information about `Wolf RBAC`, please refer to [APISIX wolf-rbac](https://apisix.apache.org/zh/docs/apisix/plugins/wolf-rbac/).
 
 :::note This plugin will add several API
 
@@ -117,7 +117,7 @@ You may need to use `public-api` plugin to expose it.
 :::
 
 <details>
-  <summary>wolfRbac yaml configure</summary>
+  <summary>Wolf RBAC yaml configure</summary>
 
 ```yaml
 apiVersion: apisix.apache.org/v2beta3
@@ -126,7 +126,7 @@ metadata:
   name: ${name}
 spec:
   authParameter:
-    wolfRbac:
+    wolfRBAC:
       value:
       server: "${server of wolf-rbac}"                            #optional
       appid: "${appid of wolf-rbac}"                              #optional
@@ -256,7 +256,7 @@ HTTP/1.1 200 OK
 ...
 ```
 
-#### Enable `jwtAuth`
+#### Enable `JWT Auth`
 
 * Creates a ApisixConsumer, and set the attributes of plugin `jwt-auth`:
 
