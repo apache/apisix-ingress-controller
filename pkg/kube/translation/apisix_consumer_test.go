@@ -101,6 +101,30 @@ func TestTranslateApisixConsumer(t *testing.T) {
 	assert.Equal(t, "HS256", cfg3.Algorithm)
 	assert.Equal(t, int64(1000), cfg3.Exp)
 	assert.Equal(t, true, cfg3.Base64Secret)
+
+	ac = &configv2beta3.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "jack",
+			Namespace: "qa",
+		},
+		Spec: configv2beta3.ApisixConsumerSpec{
+			AuthParameter: configv2beta3.ApisixConsumerAuthParameter{
+				WolfRBAC: &configv2beta3.ApisixConsumerWolfRBAC{
+					Value: &configv2beta3.ApisixConsumerWolfRBACValue{
+						Server: "https://httpbin.org",
+						Appid:  "test01",
+					},
+				},
+			},
+		},
+	}
+	consumer, err = (&translator{}).TranslateApisixConsumer(ac)
+	assert.Nil(t, err)
+	assert.Len(t, consumer.Plugins, 1)
+	cfg4 := consumer.Plugins["wolf-rbac"].(*apisixv1.WolfRBACConsumerConfig)
+	assert.Equal(t, "https://httpbin.org", cfg4.Server)
+	assert.Equal(t, "test01", cfg4.Appid)
+
 	// No test test cases for secret references as we already test them
 	// in plugin_test.go.
 }

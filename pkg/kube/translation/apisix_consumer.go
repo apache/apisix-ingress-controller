@@ -44,6 +44,12 @@ func (t *translator) TranslateApisixConsumer(ac *configv2beta3.ApisixConsumer) (
 			return nil, fmt.Errorf("invalid jwt auth config: %s", err)
 		}
 		plugins["jwt-auth"] = cfg
+	} else if ac.Spec.AuthParameter.WolfRBAC != nil {
+		cfg, err := t.translateConsumerWolfRBACPlugin(ac.Namespace, ac.Spec.AuthParameter.WolfRBAC)
+		if err != nil {
+			return nil, fmt.Errorf("invalid wolf rbac config: %s", err)
+		}
+		plugins["wolf-rbac"] = cfg
 	}
 
 	consumer := apisixv1.NewDefaultConsumer()

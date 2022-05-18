@@ -115,6 +115,28 @@ func (t *translator) translateConsumerBasicAuthPlugin(consumerNamespace string, 
 	}, nil
 }
 
+func (t *translator) translateConsumerWolfRBACPlugin(consumerNamespace string, cfg *configv2beta3.ApisixConsumerWolfRBAC) (*apisixv1.WolfRBACConsumerConfig, error) {
+	if cfg.Value != nil {
+		return &apisixv1.WolfRBACConsumerConfig{
+			Server:       cfg.Value.Server,
+			Appid:        cfg.Value.Appid,
+			HeaderPrefix: cfg.Value.HeaderPrefix,
+		}, nil
+	}
+	sec, err := t.SecretLister.Secrets(consumerNamespace).Get(cfg.SecretRef.Name)
+	if err != nil {
+		return nil, err
+	}
+	raw1 := sec.Data["server"]
+	raw2 := sec.Data["appid"]
+	raw3 := sec.Data["header_prefix"]
+	return &apisixv1.WolfRBACConsumerConfig{
+		Server:       string(raw1),
+		Appid:        string(raw2),
+		HeaderPrefix: string(raw3),
+	}, nil
+}
+
 func (t *translator) translateConsumerJwtAuthPlugin(consumerNamespace string, cfg *configv2beta3.ApisixConsumerJwtAuth) (*apisixv1.JwtAuthConsumerConfig, error) {
 	if cfg.Value != nil {
 		// The field exp must be a positive integer, default value 86400.

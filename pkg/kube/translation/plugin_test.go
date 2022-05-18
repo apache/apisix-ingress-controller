@@ -844,3 +844,95 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	close(processCh)
 	close(stopCh)
 }
+
+func TestTranslateConsumerWolfRBACPluginWithInPlaceValue(t *testing.T) {
+	wolfRBAC := &configv2beta3.ApisixConsumerWolfRBAC{
+		Value: &configv2beta3.ApisixConsumerWolfRBACValue{
+			Server: "https://httpbin.org",
+			Appid:  "test-app",
+		},
+	}
+	cfg, err := (&translator{}).translateConsumerWolfRBACPlugin("default", wolfRBAC)
+	assert.Nil(t, err)
+	assert.Equal(t, "https://httpbin.org", cfg.Server)
+	assert.Equal(t, "test-app", cfg.Appid)
+}
+
+func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "jack-wolf-rbac",
+		},
+		Data: map[string][]byte{
+			"server":        []byte("http://127.0.0.1:12180"),
+			"appid":         []byte("test-app"),
+			"header_prefix": []byte("X-"),
+		},
+	}
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	secretInformer := informersFactory.Core().V1().Secrets().Informer()
+	secretLister := informersFactory.Core().V1().Secrets().Lister()
+	processCh := make(chan struct{})
+	stopCh := make(chan struct{})
+	secretInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(_ interface{}) {
+			processCh <- struct{}{}
+		},
+		UpdateFunc: func(_, _ interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+	go secretInformer.Run(stopCh)
+
+	tr := &translator{
+		&TranslatorOptions{
+			SecretLister: secretLister,
+		},
+	}
+	_, err := client.CoreV1().Secrets("default").Create(context.Background(), sec, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	<-processCh
+
+	wolfRBAC := &configv2beta3.ApisixConsumerWolfRBAC{
+		SecretRef: &corev1.LocalObjectReference{Name: "jack-wolf-rbac"},
+	}
+	cfg, err := tr.translateConsumerWolfRBACPlugin("default", wolfRBAC)
+	assert.Nil(t, err)
+	assert.Equal(t, "http://127.0.0.1:12180", cfg.Server)
+	assert.Equal(t, "test-app", cfg.Appid)
+	assert.Equal(t, "X-", cfg.HeaderPrefix)
+
+	cfg, err = tr.translateConsumerWolfRBACPlugin("default2", wolfRBAC)
+	assert.Nil(t, cfg)
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "not found")
+
+	delete(sec.Data, "server")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerWolfRBACPlugin("default", wolfRBAC)
+	assert.Nil(t, err)
+
+	delete(sec.Data, "appid")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerWolfRBACPlugin("default", wolfRBAC)
+	assert.Nil(t, err)
+
+	delete(sec.Data, "header_prefix")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerWolfRBACPlugin("default", wolfRBAC)
+	assert.Nil(t, err)
+
+	close(processCh)
+	close(stopCh)
+}
