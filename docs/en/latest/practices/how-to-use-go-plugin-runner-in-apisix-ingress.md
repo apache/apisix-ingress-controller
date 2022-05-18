@@ -21,7 +21,7 @@ title: How to use go-plugin-runner with APISIX Ingress
 #
 -->
 
-## Proposal Description
+## Brief Description
 
 Based on version 0.3 of the go-plugin-runner plugin and version 1.4.0 of APISIX Ingress, this article goes through steps as follows:
 
@@ -124,14 +124,6 @@ Load the image into the kind cluster environment to pull the custom local image 
 ### Install APISIX Ingress
 
 #### Create namespace
-
-Before installation, create namespaces with the following command:
-
-```bash
-kubectl create ns ingress-apisix
-```
-
-#### Installation commands
 
 Then install APISIX using helm with the following command in the directory of Apache APISIX Helm Chart:
 
