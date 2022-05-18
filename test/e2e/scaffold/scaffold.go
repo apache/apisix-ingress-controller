@@ -52,6 +52,7 @@ type Options struct {
 	HTTPBinServicePort       int
 	APISIXRouteVersion       string
 	APISIXTlsVersion         string
+	APISIXConsumerVersion    string
 	APISIXAdminAPIKey        string
 	EnableWebhooks           bool
 	APISIXPublishAddress     string
@@ -109,6 +110,9 @@ func NewScaffold(o *Options) *Scaffold {
 	if o.APISIXTlsVersion == "" {
 		o.APISIXTlsVersion = config.ApisixV2beta3
 	}
+	if o.APISIXConsumerVersion == "" {
+		o.APISIXConsumerVersion = config.ApisixV2beta3
+	}
 	if o.APISIXAdminAPIKey == "" {
 		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
 	}
@@ -135,6 +139,7 @@ func NewDefaultScaffold() *Scaffold {
 		HTTPBinServicePort:    80,
 		APISIXRouteVersion:    kube.ApisixRouteV2beta3,
 		APISIXTlsVersion:      config.ApisixV2beta3,
+		APISIXConsumerVersion: config.ApisixV2beta3,
 		EnableWebhooks:        false,
 		APISIXPublishAddress:  "",
 	}
@@ -151,6 +156,7 @@ func NewDefaultV2Scaffold() *Scaffold {
 		HTTPBinServicePort:    80,
 		APISIXRouteVersion:    kube.ApisixRouteV2,
 		APISIXTlsVersion:      config.ApisixV2,
+		APISIXConsumerVersion: config.ApisixV2,
 		EnableWebhooks:        false,
 		APISIXPublishAddress:  "",
 	}

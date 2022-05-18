@@ -32,6 +32,74 @@ spec:
   versions:
     - name: v2beta3
       served: true
+      storage: false
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - authParameter
+              properties:
+                authParameter:
+                  type: object
+                  oneOf:
+                    - required: ["basicAuth"]
+                    - required: ["keyAuth"]
+                  properties:
+                    basicAuth:
+                      type: object
+                      oneOf:
+                        - required: ["value"]
+                        - required: ["secretRef"]
+                      properties:
+                        value:
+                          type: object
+                          properties:
+                            username:
+                              type: string
+                              minLength: 1
+                            password:
+                              type: string
+                              minLength: 1
+                          required:
+                            - username
+                            - password
+                        secretRef:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                              minLength: 1
+                          required:
+                            - name
+                    keyAuth:
+                      type: object
+                      oneOf:
+                        - required: ["value"]
+                        - required: ["secretRef"]
+                      properties:
+                        value:
+                          type: object
+                          properties:
+                            key:
+                              type: string
+                              minLength: 1
+                          required:
+                            - key
+                        secretRef:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                              minLength: 1
+                          required:
+                            - name
+    - name: v2
+      served: true
       storage: true
       subresources:
         status: {}

@@ -18,7 +18,7 @@ import "fmt"
 
 var (
 	_apisixConsumerBasicAuth = `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: %s
 kind: ApisixConsumer
 metadata:
   name: %s
@@ -29,8 +29,19 @@ spec:
         username: %s
         password: %s
 `
+	_apisixConsumerBasicAuthSecret = `
+apiVersion: %s
+kind: ApisixConsumer
+metadata:
+  name: %s
+spec:
+  authParameter:
+    basicAuth:
+      secretRef:
+        name: %s
+`
 	_apisixConsumerKeyAuth = `
-  apiVersion: apisix.apache.org/v2beta3
+  apiVersion: %s
   kind: ApisixConsumer
   metadata:
     name: %s
@@ -40,14 +51,35 @@ spec:
         value:
           key: %s
   `
+	_apisixConsumerKeyAuthSecret = `
+  apiVersion: %s
+  kind: ApisixConsumer
+  metadata:
+    name: %s
+  spec:
+    authParameter:
+      keyAuth:
+        secretRef:
+          name: %s
+  `
 )
 
 func (s *Scaffold) ApisixConsumerBasicAuthCreated(name, username, password string) error {
-	ac := fmt.Sprintf(_apisixConsumerBasicAuth, name, username, password)
+	ac := fmt.Sprintf(_apisixConsumerBasicAuth, s.opts.APISIXConsumerVersion, name, username, password)
+	return s.CreateResourceFromString(ac)
+}
+
+func (s *Scaffold) ApisixConsumerBasicAuthSecretCreated(name, secret string) error {
+	ac := fmt.Sprintf(_apisixConsumerBasicAuthSecret, s.opts.APISIXConsumerVersion, name, secret)
 	return s.CreateResourceFromString(ac)
 }
 
 func (s *Scaffold) ApisixConsumerKeyAuthCreated(name, key string) error {
-	ac := fmt.Sprintf(_apisixConsumerKeyAuth, name, key)
+	ac := fmt.Sprintf(_apisixConsumerKeyAuth, s.opts.APISIXConsumerVersion, name, key)
+	return s.CreateResourceFromString(ac)
+}
+
+func (s *Scaffold) ApisixConsumerKeyAuthSecretCreated(name, secret string) error {
+	ac := fmt.Sprintf(_apisixConsumerKeyAuthSecret, s.opts.APISIXConsumerVersion, name, secret)
 	return s.CreateResourceFromString(ac)
 }
