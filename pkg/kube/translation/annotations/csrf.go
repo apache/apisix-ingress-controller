@@ -25,8 +25,8 @@ const (
 
 type csrf struct{}
 
-// NewCorsHandler creates a handler to convert annotations about
-// CORS to APISIX cors plugin.
+// NewCsrfHandler creates a handler to convert annotations about
+// CSRF to APISIX csrf plugin.
 func NewCsrfHandler() Handler {
 	return &csrf{}
 }
