@@ -49,6 +49,12 @@ type CorsConfig struct {
 	AllowHeaders string `json:"allow_headers,omitempty"`
 }
 
+// CsrfConfig is the rule config for csrf plugin.
+// +k8s:deepcopy-gen=true
+type CsrfConfig struct {
+	Key string `json:"key"`
+}
+
 // KeyAuthConsumerConfig is the rule config for key-auth plugin
 // used in Consumer object.
 // +k8s:deepcopy-gen=true
