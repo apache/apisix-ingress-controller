@@ -31,7 +31,8 @@ Consumers are used for the authentication method controlled by Apache APISIX, if
 
 #### Key Auth
 
-Consumers add their key either in a header or query string parameter to authenticate their requests. For more information about `Key Auth`, please refer to [APISIX key-auth](https://apisix.apache.org/docs/apisix/plugins/key-auth/).
+Consumers add their key either in a header or query string parameter to authenticate their requests. For more information about `Key Auth`, please refer to [APISIX key-auth](https://apisix.apache.org/docs/apisix/plugins/key-auth/).  
+Also, we can using the `secretRef` field to reference a K8s Secret object so that we can avoid the hardcoded sensitive data in the ApisixConsumer object. For reference Secret use example, please refer to the [key-auth-reference-secret-object](#key-auth-reference-secret-object).
 
 <details>
   <summary>Key Auth yaml configure</summary>
@@ -52,7 +53,8 @@ spec:
 
 #### Basic Auth
 
-Consumers add their key in a header to authenticate their requests. For more information about `Basic Auth`, please refer to [APISIX basic-auth](https://apisix.apache.org/docs/apisix/plugins/basic-auth/).
+Consumers add their key in a header to authenticate their requests. For more information about `Basic Auth`, please refer to [APISIX basic-auth](https://apisix.apache.org/docs/apisix/plugins/basic-auth/).  
+Also, we can using the `secretRef` field to reference a K8s Secret object so that we can avoid the hardcoded sensitive data in the ApisixConsumer object. For reference Secret use example, please refer to the [key-auth-reference-secret-object](#key-auth-reference-secret-object).
 
 <details>
   <summary>Basic Auth yaml configure</summary>
@@ -74,7 +76,8 @@ spec:
 
 #### JWT Auth
 
-The consumer then adds its key to the query string parameter, request header, or cookie to verify its request. For more information about `JWT Auth`, please refer to [APISIX jwt-auth](https://apisix.apache.org/docs/apisix/plugins/jwt-auth/).
+The consumer then adds its key to the query string parameter, request header, or cookie to verify its request. For more information about `JWT Auth`, please refer to [APISIX jwt-auth](https://apisix.apache.org/docs/apisix/plugins/jwt-auth/).  
+Also, we can using the `secretRef` field to reference a K8s Secret object so that we can avoid the hardcoded sensitive data in the ApisixConsumer object. For reference Secret use example, please refer to the [key-auth-reference-secret-object](#key-auth-reference-secret-object).
 
 :::note Need to expose API  
 This plugin will add `/apisix/plugin/jwt/sign` to sign. You may need to use `public-api` plugin to expose it.  
@@ -105,7 +108,8 @@ spec:
 
 #### `Wolf RBAC`
 
-To use wolfRbac authentication, you need to start and install [wolf-server](https://github.com/iGeeky/wolf/blob/master/quick-start-with-docker/README.md). For more information about `Wolf RBAC`, please refer to [APISIX wolf-rbac](https://apisix.apache.org/zh/docs/apisix/plugins/wolf-rbac/).
+To use wolfRbac authentication, you need to start and install [wolf-server](https://github.com/iGeeky/wolf/blob/master/quick-start-with-docker/README.md). For more information about `Wolf RBAC`, please refer to [APISIX wolf-rbac](https://apisix.apache.org/zh/docs/apisix/plugins/wolf-rbac/).  
+Also, we can using the `secretRef` field to reference a K8s Secret object so that we can avoid the hardcoded sensitive data in the ApisixConsumer object. For reference Secret use example, please refer to the [key-auth-reference-secret-object](#key-auth-reference-secret-object).
 
 :::note This plugin will add several API
 
@@ -255,6 +259,78 @@ kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- c
 HTTP/1.1 200 OK
 ...
 ```
+
+##### Key Auth reference Secret object
+
+<details>
+  <summary>ApisixRoute with keyAuth consumer using secret example</summary>
+
+* Creates a `Secret` object:
+
+```shell
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: foovalue
+data:
+  key: Zm9vLWtleQ==
+EOF
+```
+
+* Creates a ApisixConsumer and reference `Secret` object:
+
+```shell
+kubectl apply -f - <<EOF
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixConsumer
+metadata:
+  name: foo
+spec:
+  authParameter:
+    keyAuth:
+      secretRef:
+        name: foovalue
+EOF
+```
+
+* Creates a ApisixRoute, and enable plugin `key-auth`:
+
+```shell
+kubectl apply -f - <<EOF
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+  name: httpserver-route
+spec:
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /*
+    backends:
+    - serviceName: httpbin
+      servicePort: 80
+    authentication:
+      enable: true
+      type: keyAuth
+EOF
+```
+
+* Requests from foo:
+
+```shell
+kubectl  exec -it -n ${namespace of Apache APISIX} ${pod of Apache APISIX}  -- curl http://127.0.0.1:9080/anything -H 'Host: httpbin.org' -H 'apikey:foo-key' -i
+```
+
+```shell
+HTTP/1.1 200 OK
+...
+```
+
+</details>
 
 #### Enable `JWT Auth`
 
