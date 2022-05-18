@@ -28,6 +28,6 @@ Spec describes the desired state of an ApisixPluginConfig object.
 |     Field     |  Type    |                    Description                     |
 |---------------|----------|----------------------------------------------------|
 | plugins         | array    | A series of custom plugins that will be executed once this route rule is matched |
-| plugins[].name | string | The plugin name, see [docs](http://apisix.apache.org/docs/apisix/getting-started) for learning the available plugins.
+| plugins[].name | string | The plugin name, see [docs](http://apisix.apache.org/docs/apisix/getting-started) for learning the available plugins. |
 | plugins[].enable | boolean | Whether the plugin is in use |
 | plugins[].config | object | The plugin configuration, fields should be same as in APISIX. |
