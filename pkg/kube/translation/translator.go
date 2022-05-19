@@ -16,6 +16,7 @@ package translation
 
 import (
 	"fmt"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -105,6 +106,8 @@ type Translator interface {
 	// ExtractKeyPair extracts certificate and private key pair from secret
 	// Supports APISIX style ("cert" and "key") and Kube style ("tls.crt" and "tls.key)
 	ExtractKeyPair(s *corev1.Secret, hasPrivateKey bool) ([]byte, []byte, error)
+	// TranslateGatewayHTTPRouteV1Alpha2 translates Gateway API HTTPRoute to APISIX resources
+	TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha2.HTTPRoute) (*TranslateContext, error)
 }
 
 // TranslatorOptions contains options to help Translator

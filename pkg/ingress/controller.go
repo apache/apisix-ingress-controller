@@ -119,6 +119,8 @@ type Controller struct {
 	apisixPluginConfigLister    kube.ApisixPluginConfigLister
 	gatewayInformer             cache.SharedIndexInformer
 	gatewayLister               gatewaylistersv1alpha2.GatewayLister
+	httpRouteInformer           cache.SharedIndexInformer
+	httpRouteLister             gatewaylistersv1alpha2.HTTPRouteLister
 
 	// resource controllers
 	namespaceController     *namespaceController
@@ -259,6 +261,9 @@ func (c *Controller) initWhenStartLeading() {
 
 	c.gatewayLister = gatewayFactory.Gateway().V1alpha2().Gateways().Lister()
 	c.gatewayInformer = gatewayFactory.Gateway().V1alpha2().Gateways().Informer()
+
+	c.httpRouteLister = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Lister()
+	c.httpRouteInformer = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Informer()
 
 	switch c.cfg.Kubernetes.ApisixRouteVersion {
 	case config.ApisixRouteV2beta2:
@@ -537,6 +542,10 @@ func (c *Controller) run(ctx context.Context) {
 	if c.cfg.Kubernetes.EnableGatewayAPI {
 		c.goAttach(func() {
 			c.gatewayInformer.Run(ctx.Done())
+		})
+
+		c.goAttach(func() {
+			c.httpRouteInformer.Run(ctx.Done())
 		})
 
 		c.goAttach(func() {
