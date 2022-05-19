@@ -31,7 +31,7 @@ var (
 		annotations.NewForwardAuthHandler(),
 		annotations.NewBasicAuthHandler(),
 		annotations.NewKeyAuthHandler(),
-		annotations.NewCsrfHandler(),
+		annotations.NewCSRFHandler(),
 	}
 )
 

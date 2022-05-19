@@ -25,9 +25,9 @@ const (
 
 type csrf struct{}
 
-// NewCsrfHandler creates a handler to convert annotations about
+// NewCSRFHandler creates a handler to convert annotations about
 // CSRF to APISIX csrf plugin.
-func NewCsrfHandler() Handler {
+func NewCSRFHandler() Handler {
 	return &csrf{}
 }
 
@@ -39,7 +39,7 @@ func (c *csrf) Handle(e Extractor) (interface{}, error) {
 	if !e.GetBoolAnnotation(_enableCsrf) {
 		return nil, nil
 	}
-	var plugin apisixv1.CsrfConfig
+	var plugin apisixv1.CSRFConfig
 	plugin.Key = e.GetStringAnnotation(_csrfKey)
 	if plugin.Key != "" {
 		return &plugin, nil

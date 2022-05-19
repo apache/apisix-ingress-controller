@@ -49,9 +49,9 @@ type CorsConfig struct {
 	AllowHeaders string `json:"allow_headers,omitempty"`
 }
 
-// CsrfConfig is the rule config for csrf plugin.
+// CSRfConfig is the rule config for csrf plugin.
 // +k8s:deepcopy-gen=true
-type CsrfConfig struct {
+type CSRFConfig struct {
 	Key string `json:"key"`
 }
 

@@ -29,12 +29,6 @@ var _ = ginkgo.Describe("suite-annotations: csrf annotations", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("enable csrf in ingress networking/v1", func() {
-		err := s.ApisixConsumerKeyAuthCreated("foo", "bar")
-		assert.Nil(ginkgo.GinkgoT(), err, "creating keyAuth ApisixConsumer")
-
-		// Wait until the ApisixConsumer create event was delivered.
-		time.Sleep(6 * time.Second)
-
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
@@ -58,7 +52,7 @@ spec:
             port:
               number: %d
 `, backendSvc, backendPort[0])
-		err = s.CreateResourceFromString(ing)
+		err := s.CreateResourceFromString(ing)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 		msg401 := s.NewAPISIXClient().
@@ -91,12 +85,6 @@ spec:
 	})
 
 	ginkgo.It("enable csrf in ingress networking/v1beta1", func() {
-		err := s.ApisixConsumerKeyAuthCreated("foo", "bar")
-		assert.Nil(ginkgo.GinkgoT(), err, "creating keyAuth ApisixConsumer")
-
-		// Wait until the ApisixConsumer create event was delivered.
-		time.Sleep(6 * time.Second)
-
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
@@ -118,7 +106,7 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPort[0])
-		err = s.CreateResourceFromString(ing)
+		err := s.CreateResourceFromString(ing)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
@@ -151,12 +139,6 @@ spec:
 	})
 
 	ginkgo.It("enable csrf in ingress extensions/v1beta1", func() {
-		err := s.ApisixConsumerKeyAuthCreated("foo", "bar")
-		assert.Nil(ginkgo.GinkgoT(), err, "creating keyAuth ApisixConsumer")
-
-		// Wait until the ApisixConsumer create event was delivered.
-		time.Sleep(6 * time.Second)
-
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: extensions/v1beta1
@@ -178,7 +160,7 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPort[0])
-		err = s.CreateResourceFromString(ing)
+		err := s.CreateResourceFromString(ing)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
