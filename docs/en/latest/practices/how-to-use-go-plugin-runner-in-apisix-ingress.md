@@ -21,7 +21,7 @@ title: How to use go-plugin-runner with APISIX Ingress
 #
 -->
 
-## Brief Description
+## Description
 
 Based on version 0.3 of the go-plugin-runner plugin and version 1.4.0 of APISIX Ingress, this article goes through steps as follows:
 
