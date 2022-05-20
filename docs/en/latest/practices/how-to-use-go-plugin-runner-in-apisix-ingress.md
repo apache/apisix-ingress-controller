@@ -25,11 +25,11 @@ title: How to use go-plugin-runner with APISIX Ingress
 
 Based on version 0.3 of the go-plugin-runner plugin and version 1.4.0 of APISIX Ingress, this document walks through how you can use the go plugin runner in the APISIX ingress controller. This article goes through steps as follows:
 
-1. Prepare the environment (example as follows);
-2. Create the cluster;
-3. Build a container image that includes the go-plugin-runner;
-4. Customize the helm chart package;
-5. Install and Deploy;
+1. Prepare the environment.
+2. Create the cluster.
+3. Build a container image that includes the go-plugin-runner.
+4. Customize the Helm chart package.
+5. Install and deploy.
 6. Verify the function.
 
 It is guaranteed that the final result can be derived in full based on this environment example as follows:
