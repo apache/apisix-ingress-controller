@@ -118,6 +118,8 @@ spec:
                               type: integer
                             signed_headers:
                               type: array
+                              items:
+                                type: string
                             keep_headers:
                               type: boolean
                             encode_uri_params:
