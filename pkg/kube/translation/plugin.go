@@ -16,6 +16,7 @@ package translation
 
 import (
 	"errors"
+	"strconv"
 
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -25,6 +26,13 @@ var (
 	_errKeyNotFoundOrInvalid      = errors.New("key \"key\" not found or invalid in secret")
 	_errUsernameNotFoundOrInvalid = errors.New("key \"username\" not found or invalid in secret")
 	_errPasswordNotFoundOrInvalid = errors.New("key \"password\" not found or invalid in secret")
+
+	_hmacAuthAlgorithmDefaultValue           = "hmac-sha256"
+	_hmacAuthClockSkewDefaultValue           = int64(0)
+	_hmacAuthKeepHeadersDefaultValue         = false
+	_hmacAuthEncodeURIParamsDefaultValue     = true
+	_hmacAuthValidateRequestBodyDefaultValue = false
+	_hmacAuthMaxReqBodyDefaultValue          = int64(524288)
 )
 
 func (t *translator) translateTrafficSplitPlugin(ctx *TranslateContext, ns string, defaultBackendWeight int,
@@ -108,5 +116,110 @@ func (t *translator) translateConsumerBasicAuthPlugin(consumerNamespace string, 
 	return &apisixv1.BasicAuthConsumerConfig{
 		Username: string(raw1),
 		Password: string(raw2),
+	}, nil
+}
+
+func (t *translator) translateConsumerHMacAuthPlugin(consumerNamespace string, cfg *configv2beta3.ApisixConsumerHMacAuth) (*apisixv1.HMacAuthConsumerConfig, error) {
+	if cfg.Value != nil {
+		return &apisixv1.HMacAuthConsumerConfig{
+			AccessKey:           cfg.Value.AccessKey,
+			SecretKey:           cfg.Value.SecretKey,
+			Algorithm:           cfg.Value.Algorithm,
+			ClockSkew:           cfg.Value.ClockSkew,
+			SignedHeaders:       cfg.Value.SignedHeaders,
+			KeepHeaders:         cfg.Value.KeepHeaders,
+			EncodeURIParams:     cfg.Value.EncodeURIParams,
+			ValidateRequestBody: cfg.Value.ValidateRequestBody,
+			MaxReqBody:          cfg.Value.MaxReqBody,
+		}, nil
+	}
+
+	sec, err := t.SecretLister.Secrets(consumerNamespace).Get(cfg.SecretRef.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	accessKeyRaw, ok := sec.Data["access_key"]
+	if !ok || len(accessKeyRaw) == 0 {
+		return nil, _errKeyNotFoundOrInvalid
+	}
+
+	secretKeyRaw, ok := sec.Data["secret_key"]
+	if !ok || len(secretKeyRaw) == 0 {
+		return nil, _errKeyNotFoundOrInvalid
+	}
+
+	algorithmRaw, ok := sec.Data["algorithm"]
+	var algorithm string
+	if !ok {
+		algorithm = _hmacAuthAlgorithmDefaultValue
+	} else {
+		algorithm = string(algorithmRaw)
+	}
+
+	clockSkewRaw := sec.Data["clock_skew"]
+	clockSkew, _ := strconv.ParseInt(string(clockSkewRaw), 10, 64)
+	if clockSkew < 0 {
+		clockSkew = _hmacAuthClockSkewDefaultValue
+	}
+
+	var signedHeaders []string
+	signedHeadersRaw := sec.Data["signed_headers"]
+	for _, b := range signedHeadersRaw {
+		signedHeaders = append(signedHeaders, string(b))
+	}
+
+	var keepHeader bool
+	keepHeaderRaw, ok := sec.Data["keep_headers"]
+	if !ok {
+		keepHeader = _hmacAuthKeepHeadersDefaultValue
+	} else {
+		if string(keepHeaderRaw) == "true" {
+			keepHeader = true
+		} else {
+			keepHeader = false
+		}
+	}
+
+	var encodeURIParams bool
+	encodeURIParamsRaw, ok := sec.Data["encode_uri_params"]
+	if !ok {
+		encodeURIParams = _hmacAuthEncodeURIParamsDefaultValue
+	} else {
+		if string(encodeURIParamsRaw) == "true" {
+			encodeURIParams = true
+		} else {
+			encodeURIParams = false
+		}
+	}
+
+	var validateRequestBody bool
+	validateRequestBodyRaw, ok := sec.Data["validate_request_body"]
+	if !ok {
+		validateRequestBody = _hmacAuthValidateRequestBodyDefaultValue
+	} else {
+		if string(validateRequestBodyRaw) == "true" {
+			validateRequestBody = true
+		} else {
+			validateRequestBody = false
+		}
+	}
+
+	maxReqBodyRaw := sec.Data["max_req_body"]
+	maxReqBody, _ := strconv.ParseInt(string(maxReqBodyRaw), 10, 64)
+	if maxReqBody < 0 {
+		maxReqBody = _hmacAuthMaxReqBodyDefaultValue
+	}
+
+	return &apisixv1.HMacAuthConsumerConfig{
+		AccessKey:           string(accessKeyRaw),
+		SecretKey:           string(secretKeyRaw),
+		Algorithm:           algorithm,
+		ClockSkew:           clockSkew,
+		SignedHeaders:       signedHeaders,
+		KeepHeaders:         keepHeader,
+		EncodeURIParams:     encodeURIParams,
+		ValidateRequestBody: validateRequestBody,
+		MaxReqBody:          maxReqBody,
 	}, nil
 }

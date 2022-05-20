@@ -330,6 +330,7 @@ type ApisixConsumerSpec struct {
 type ApisixConsumerAuthParameter struct {
 	BasicAuth *ApisixConsumerBasicAuth `json:"basicAuth,omitempty" yaml:"basicAuth"`
 	KeyAuth   *ApisixConsumerKeyAuth   `json:"keyAuth,omitempty" yaml:"keyAuth"`
+	HMacAuth  *ApisixConsumerHMacAuth  `json:"hmacAuth,omitempty" yaml:"hmacAuth"`
 }
 
 // ApisixConsumerBasicAuth defines the configuration for basic auth.
@@ -353,6 +354,25 @@ type ApisixConsumerKeyAuth struct {
 // ApisixConsumerKeyAuthValue defines the in-place configuration for basic auth.
 type ApisixConsumerKeyAuthValue struct {
 	Key string `json:"key" yaml:"key"`
+}
+
+// ApisixConsumerHMacAuth defines the configuration for the hmac auth.
+type ApisixConsumerHMacAuth struct {
+	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
+	Value     *ApisixConsumerHMacAuthValue `json:"value,omitempty" yaml:"value,omitempty"`
+}
+
+// ApisixConsumerHMacAuthValue defines the in-place configuration for hmac auth.
+type ApisixConsumerHMacAuthValue struct {
+	AccessKey           string   `json:"access_key" yaml:"access_key"`
+	SecretKey           string   `json:"secret_key" yaml:"secret_key"`
+	Algorithm           string   `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`
+	ClockSkew           int64    `json:"clock_skew,omitempty" yaml:"clock_skew,omitempty"`
+	SignedHeaders       []string `json:"signed_headers,omitempty" yaml:"signed_headers,omitempty"`
+	KeepHeaders         bool     `json:"keep_headers,omitempty" yaml:"keep_headers,omitempty"`
+	EncodeURIParams     bool     `json:"encode_uri_params,omitempty" yaml:"encode_uri_params,omitempty"`
+	ValidateRequestBody bool     `json:"validate_request_body,omitempty" yaml:"validate_request_body,omitempty"`
+	MaxReqBody          int64    `json:"max_req_body,omitempty" yaml:"max_req_body,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

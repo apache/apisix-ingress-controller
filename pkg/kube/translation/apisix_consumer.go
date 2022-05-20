@@ -38,6 +38,12 @@ func (t *translator) TranslateApisixConsumer(ac *configv2beta3.ApisixConsumer) (
 			return nil, fmt.Errorf("invalid basic auth config: %s", err)
 		}
 		plugins["basic-auth"] = cfg
+	} else if ac.Spec.AuthParameter.HMacAuth != nil {
+		cfg, err := t.translateConsumerHMacAuthPlugin(ac.Namespace, ac.Spec.AuthParameter.HMacAuth)
+		if err != nil {
+			return nil, fmt.Errorf("invaild hmac auth config: %s", err)
+		}
+		plugins["hmac-auth"] = cfg
 	}
 
 	consumer := apisixv1.NewDefaultConsumer()

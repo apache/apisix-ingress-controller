@@ -97,7 +97,7 @@ spec:
                       match:
                         type: object
                         required:
-                        - paths
+                          - paths
                         properties:
                           paths:
                             type: array
@@ -116,7 +116,18 @@ spec:
                             minItems: 1
                             items:
                               type: string
-                              enum: ["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"]
+                              enum:
+                                [
+                                  "CONNECT",
+                                  "DELETE",
+                                  "GET",
+                                  "HEAD",
+                                  "OPTIONS",
+                                  "PATCH",
+                                  "POST",
+                                  "PUT",
+                                  "TRACE",
+                                ]
                           remoteAddrs:
                             type: array
                             minItems: 1
@@ -133,12 +144,13 @@ spec:
                                   properties:
                                     scope:
                                       type: string
-                                      enum: ["Cookie", "Header", "Path", "Query"]
+                                      enum:
+                                        ["Cookie", "Header", "Path", "Query"]
                                     name:
                                       type: string
                                       minLength: 1
                                   required:
-                                  - scope
+                                    - scope
                                 op:
                                   type: string
                                   enum:
@@ -231,7 +243,7 @@ spec:
                             type: boolean
                           type:
                             type: string
-                            enum: ["basicAuth", "keyAuth"]
+                            enum: ["basicAuth", "keyAuth", "hmacAuth"]
                           keyAuth:
                             type: object
                             properties:
@@ -281,11 +293,11 @@ spec:
                   minItems: 1
                   items:
                     type: object
-                    required: [ "name", "match", "backend", "protocol" ]
+                    required: ["name", "match", "backend", "protocol"]
                     properties:
                       "protocol":
                         type: string
-                        enum: [ "TCP", "UDP" ]
+                        enum: ["TCP", "UDP"]
                       name:
                         type: string
                         minLength: 1
@@ -310,7 +322,7 @@ spec:
                             maximum: 65535
                           resolveGranularity:
                             type: string
-                            enum: [ "endpoint", "service" ]
+                            enum: ["endpoint", "service"]
                           subset:
                             type: string
                         required:
@@ -398,7 +410,7 @@ spec:
                       match:
                         type: object
                         required:
-                        - paths
+                          - paths
                         properties:
                           paths:
                             type: array
@@ -417,7 +429,18 @@ spec:
                             minItems: 1
                             items:
                               type: string
-                              enum: ["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"]
+                              enum:
+                                [
+                                  "CONNECT",
+                                  "DELETE",
+                                  "GET",
+                                  "HEAD",
+                                  "OPTIONS",
+                                  "PATCH",
+                                  "POST",
+                                  "PUT",
+                                  "TRACE",
+                                ]
                           remoteAddrs:
                             type: array
                             minItems: 1
@@ -434,12 +457,13 @@ spec:
                                   properties:
                                     scope:
                                       type: string
-                                      enum: ["Cookie", "Header", "Path", "Query"]
+                                      enum:
+                                        ["Cookie", "Header", "Path", "Query"]
                                     name:
                                       type: string
                                       minLength: 1
                                   required:
-                                  - scope
+                                    - scope
                                 op:
                                   type: string
                                   enum:
@@ -524,11 +548,11 @@ spec:
                   minItems: 1
                   items:
                     type: object
-                    required: [ "name", "match", "backend", "protocol" ]
+                    required: ["name", "match", "backend", "protocol"]
                     properties:
                       "protocol":
                         type: string
-                        enum: [ "TCP", "UDP" ]
+                        enum: ["TCP", "UDP"]
                       name:
                         type: string
                         minLength: 1
@@ -553,7 +577,7 @@ spec:
                             maximum: 65535
                           resolveGranularity:
                             type: string
-                            enum: [ "endpoint", "service" ]
+                            enum: ["endpoint", "service"]
                           subset:
                             type: string
                         required:
@@ -581,7 +605,7 @@ spec:
       served: true
       storage: true
       subresources:
-        status: { }
+        status: {}
       additionalPrinterColumns:
         - jsonPath: .spec.http[].match.hosts
           name: Hosts
@@ -614,15 +638,15 @@ spec:
             spec:
               type: object
               anyOf:
-                - required: [ "http" ]
-                - required: [ "stream" ]
+                - required: ["http"]
+                - required: ["stream"]
               properties:
                 http:
                   type: array
                   minItems: 1
                   items:
                     type: object
-                    required: [ "name", "match", "backends" ]
+                    required: ["name", "match", "backends"]
                     properties:
                       name:
                         type: string
@@ -660,7 +684,18 @@ spec:
                             minItems: 1
                             items:
                               type: string
-                              enum: [ "CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE" ]
+                              enum:
+                                [
+                                  "CONNECT",
+                                  "DELETE",
+                                  "GET",
+                                  "HEAD",
+                                  "OPTIONS",
+                                  "PATCH",
+                                  "POST",
+                                  "PUT",
+                                  "TRACE",
+                                ]
                           remoteAddrs:
                             type: array
                             minItems: 1
@@ -677,7 +712,8 @@ spec:
                                   properties:
                                     scope:
                                       type: string
-                                      enum: [ "Cookie", "Header", "Path", "Query" ]
+                                      enum:
+                                        ["Cookie", "Header", "Path", "Query"]
                                     name:
                                       type: string
                                       minLength: 1
@@ -703,8 +739,8 @@ spec:
                                   items:
                                     type: string
                               oneOf:
-                                - required: [ "subject", "op", "value" ]
-                                - required: [ "subject", "op", "set" ]
+                                - required: ["subject", "op", "value"]
+                                - required: ["subject", "op", "set"]
                       websocket:
                         type: boolean
                       plugin_config_name:
@@ -725,7 +761,7 @@ spec:
                               maximum: 65535
                             resolveGranularity:
                               type: string
-                              enum: [ "endpoint", "service" ]
+                              enum: ["endpoint", "service"]
                             weight:
                               type: integer
                               minimum: 0
@@ -757,7 +793,7 @@ spec:
                             type: boolean
                           type:
                             type: string
-                            enum: [ "basicAuth", "keyAuth" ]
+                            enum: ["basicAuth", "keyAuth", "hmacAuth"]
                           keyAuth:
                             type: object
                             properties:
@@ -770,11 +806,11 @@ spec:
                   minItems: 1
                   items:
                     type: object
-                    required: [ "name", "match", "backend", "protocol" ]
+                    required: ["name", "match", "backend", "protocol"]
                     properties:
                       "protocol":
                         type: string
-                        enum: [ "TCP", "UDP" ]
+                        enum: ["TCP", "UDP"]
                       name:
                         type: string
                         minLength: 1
@@ -799,7 +835,7 @@ spec:
                             maximum: 65535
                           resolveGranularity:
                             type: string
-                            enum: [ "endpoint", "service" ]
+                            enum: ["endpoint", "service"]
                           subset:
                             type: string
                         required:

@@ -386,6 +386,8 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 				pluginMap["key-auth"] = part.Authentication.KeyAuth
 			case "basicAuth":
 				pluginMap["basic-auth"] = make(map[string]interface{})
+			case "hmacAuth":
+				pluginMap["hmac-auth"] = make(map[string]interface{})
 			default:
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			}
@@ -667,6 +669,8 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *TranslateContext,
 				pluginMap["key-auth"] = part.Authentication.KeyAuth
 			case "basicAuth":
 				pluginMap["basic-auth"] = make(map[string]interface{})
+			case "hmacAuth":
+				pluginMap["hmac-auth"] = make(map[string]interface{})
 			default:
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			}
