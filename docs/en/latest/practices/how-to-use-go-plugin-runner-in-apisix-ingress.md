@@ -23,7 +23,7 @@ title: How to use go-plugin-runner with APISIX Ingress
 
 ## Description
 
-Based on version 0.3 of the go-plugin-runner plugin and version 1.4.0 of APISIX Ingress, this article goes through steps as follows:
+Based on version 0.3 of the go-plugin-runner plugin and version 1.4.0 of APISIX Ingress, this document walks through how you can use the go plugin runner in the APISIX ingress controller. This article goes through steps as follows:
 
 1. Prepare the environment (example as follows);
 2. Create the cluster;
