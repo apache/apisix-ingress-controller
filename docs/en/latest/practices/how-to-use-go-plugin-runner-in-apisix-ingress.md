@@ -123,8 +123,6 @@ Load the image into the kind cluster environment to pull the custom local image 
 
 ### Install APISIX Ingress
 
-#### Create namespace
-
 Then install APISIX using helm with the following command in the directory of Apache APISIX Helm Chart:
 
 ```bash
@@ -201,7 +199,7 @@ kubectl exec -it -n ingress-apisix apisix-55d476c64-s5lzw -- curl http://127.0.0
 The expected response obtained is:
 
 ```bash
-chever@cloud-native-01:~/api7/cloud_native/tasks/plugin-runner$ kubectl exec -it -n ingress-apisix apisix-55d476c64-s5lzw -- curl http://127.0.0.1:9080/get -H 'Host: local.httpbin.org'
+kubectl exec -it -n ingress-apisix apisix-55d476c64-s5lzw -- curl http://127.0.0.1:9080/get -H 'Host: local.httpbin.org'
 Defaulted container "apisix" out of: apisix, wait-etcd (init)
 hello
 ```
