@@ -700,7 +700,7 @@ func TestTranslateConsumerJwtAuthPluginWithInPlaceValue(t *testing.T) {
 			Base64Secret: true,
 		},
 	}
-	cfg, err := (&translator{}).translateConsumerJwtAuthPlugin("default", jwtAuth)
+	cfg, err := (&translator{}).translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "foo", cfg.Key)
 	assert.Equal(t, "foo-secret", cfg.Secret)
@@ -711,7 +711,7 @@ func TestTranslateConsumerJwtAuthPluginWithInPlaceValue(t *testing.T) {
 	assert.Equal(t, true, cfg.Base64Secret)
 
 	jwtAuth.Value.Exp = int64(-1)
-	cfg, err = (&translator{}).translateConsumerJwtAuthPlugin("default", jwtAuth)
+	cfg, err = (&translator{}).translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(_jwtAuthExpDefaultValue), cfg.Exp)
 
@@ -720,7 +720,7 @@ func TestTranslateConsumerJwtAuthPluginWithInPlaceValue(t *testing.T) {
 			Key: "foo2",
 		},
 	}
-	cfg, err = (&translator{}).translateConsumerJwtAuthPlugin("default", jwtAuth2)
+	cfg, err = (&translator{}).translateConsumerJwtAuthPluginV2beta3("default", jwtAuth2)
 	assert.Nil(t, err)
 	assert.Equal(t, "foo2", cfg.Key)
 }
@@ -769,7 +769,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	jwtAuth := &configv2beta3.ApisixConsumerJwtAuth{
 		SecretRef: &corev1.LocalObjectReference{Name: "jack-jwt-auth"},
 	}
-	cfg, err := tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	cfg, err := tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "foo", cfg.Key)
 	assert.Equal(t, "foo-secret", cfg.Secret)
@@ -779,7 +779,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Equal(t, int64(1000), cfg.Exp)
 	assert.Equal(t, true, cfg.Base64Secret)
 
-	cfg, err = tr.translateConsumerJwtAuthPlugin("default2", jwtAuth)
+	cfg, err = tr.translateConsumerJwtAuthPluginV2beta3("default2", jwtAuth)
 	assert.Nil(t, cfg)
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "not found")
@@ -789,7 +789,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	cfg, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "public")
@@ -797,7 +797,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	cfg, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "private")
@@ -805,7 +805,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	cfg, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "algorithm")
@@ -813,7 +813,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	cfg, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "exp")
@@ -821,7 +821,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	cfg, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "base64_secret")
@@ -829,7 +829,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	cfg, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "key")
@@ -837,7 +837,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerJwtAuthPlugin("default", jwtAuth)
+	cfg, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
 	assert.Nil(t, cfg)
 	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
 
@@ -852,7 +852,7 @@ func TestTranslateConsumerWolfRBACPluginWithInPlaceValue(t *testing.T) {
 			Appid:  "test-app",
 		},
 	}
-	cfg, err := (&translator{}).translateConsumerWolfRBACPlugin("default", wolfRBAC)
+	cfg, err := (&translator{}).translateConsumerWolfRBACPluginV2beta3("default", wolfRBAC)
 	assert.Nil(t, err)
 	assert.Equal(t, "https://httpbin.org", cfg.Server)
 	assert.Equal(t, "test-app", cfg.Appid)
@@ -898,13 +898,13 @@ func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
 	wolfRBAC := &configv2beta3.ApisixConsumerWolfRBAC{
 		SecretRef: &corev1.LocalObjectReference{Name: "jack-wolf-rbac"},
 	}
-	cfg, err := tr.translateConsumerWolfRBACPlugin("default", wolfRBAC)
+	cfg, err := tr.translateConsumerWolfRBACPluginV2beta3("default", wolfRBAC)
 	assert.Nil(t, err)
 	assert.Equal(t, "http://127.0.0.1:12180", cfg.Server)
 	assert.Equal(t, "test-app", cfg.Appid)
 	assert.Equal(t, "X-", cfg.HeaderPrefix)
 
-	cfg, err = tr.translateConsumerWolfRBACPlugin("default2", wolfRBAC)
+	cfg, err = tr.translateConsumerWolfRBACPluginV2beta3("default2", wolfRBAC)
 	assert.Nil(t, cfg)
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "not found")
@@ -914,7 +914,7 @@ func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerWolfRBACPlugin("default", wolfRBAC)
+	cfg, err = tr.translateConsumerWolfRBACPluginV2beta3("default", wolfRBAC)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "appid")
@@ -922,7 +922,7 @@ func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerWolfRBACPlugin("default", wolfRBAC)
+	cfg, err = tr.translateConsumerWolfRBACPluginV2beta3("default", wolfRBAC)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "header_prefix")
@@ -930,7 +930,7 @@ func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerWolfRBACPlugin("default", wolfRBAC)
+	cfg, err = tr.translateConsumerWolfRBACPluginV2beta3("default", wolfRBAC)
 	assert.Nil(t, err)
 
 	close(processCh)
