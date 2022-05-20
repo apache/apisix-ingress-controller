@@ -78,8 +78,6 @@ CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' .
 
 This successfully packages a statically compiled `go-runner` executable in the `apisix-go-plugin-runner/cmd/go-runner/` directory.
 
-Please remember the path `apisix-go-plugin-runner/cmd/go-runner/go-runner`, we will use it later.
-
 ### Build Docker Image
 
 The image is built here in preparation for installing APISIX later using `helm`.
