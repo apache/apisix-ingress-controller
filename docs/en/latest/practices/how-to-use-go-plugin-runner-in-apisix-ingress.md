@@ -42,9 +42,7 @@ kubectl version(Client/Server): v1.23.5/v1.23.4
 golang: 1.18
 ```
 
-## Begin
-
-### Build a cluster environment
+## Build a cluster environment
 
 Select `kind` to build a local cluster environment. The command is as follows:
 
@@ -64,7 +62,7 @@ nodes:
 EOF
 ```
 
-### Build the go-plugin-runner executable
+## Build the go-plugin-runner executable
 
 Choose a folder address `/home/chever/api7/cloud_native/tasks/plugin-runner` and place our `apisix-go-plugin-runner` project in this folder. Then you need to go to the `apisix-go-plugin-runner/cmd/go-runner/plugins` directory and write the plugins you need in that directory.
 
@@ -78,11 +76,11 @@ CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' .
 
 This successfully packages a statically compiled `go-runner` executable in the `apisix-go-plugin-runner/cmd/go-runner/` directory.
 
-### Build Docker Image
+## Build Docker Image
 
 The image is built here in preparation for installing APISIX later using `helm`.
 
-#### Write Dockerfile
+### Write Dockerfile
 
 Return to the path `/home/chever/api7/cloud_native/tasks/plugin-runner` and create a Dockerfile in that directory, a demonstration of which is given here.
 
@@ -101,7 +99,7 @@ Here I will again emphasize the path address as follows where the executable fil
 
 Please make a note of this address. We will use it in the rest of the configuration.
 
-#### Begin to build Docker Image
+### Begin to build Docker Image
 
 Start building a Docker image based on the Dockerfile. The command is executed in the `/home/chever/api7/cloud_native/tasks/plugin-runner` directory. The command is as follows:
 
@@ -111,7 +109,7 @@ docker build -t apisix/forrunner:0.1 .
 
 Command Explanation: Build an image with the name `apisix/forrunner` and mark it as version 0.1.
 
-#### Load the image to the cluster environment
+### Load the image to the cluster environment
 
 ```bash
 kind load docker-image apisix/forrunner:0.1
@@ -119,7 +117,7 @@ kind load docker-image apisix/forrunner:0.1
 
 Load the image into the kind cluster environment to pull the custom local image for installation during the helm installation.
 
-### Install APISIX Ingress
+## Install APISIX Ingress
 
 Then install APISIX using helm with the following command in the directory of Apache APISIX Helm Chart:
 
@@ -127,11 +125,11 @@ Then install APISIX using helm with the following command in the directory of Ap
 helm install apisix apisix/apisix --set gateway.type=NodePort --set apisix.image.repository=custom/apisix --set apisix.image.tag=v0.1 --set extPlugin.enabled=true --set extPlugin.cmd='{"/usr/local/apisix-go-plugin-runner/go-runner", "run"}' --set ingress-controller.enabled=true --set ingress-controller.config.apisix.serviceNamespace=apisix --namespace apisix --create-namespace --set ingress-controller.config.apisix.serviceName=apisix-admin
 ```
 
-### Create httpbin service and ApisixRoute resources
+## Create httpbin service and ApisixRoute resources
 
 Create an httpbin backend resource to run with the deployed ApisixRoute resource to test that the functionality is working correctly.
 
-#### Create httpbin service
+### Create httpbin service
 
 Create an httpbin service with the following command:
 
@@ -145,7 +143,7 @@ Expose the port with the following command:
 kubectl expose pod httpbin --port 80
 ```
 
-#### Create ApisixRoute Resource
+### Create ApisixRoute Resource
 
 Create the `go-plugin-runner-route.yaml` file to enable the ApisixRoute resource, with the following configuration file:
 
@@ -180,7 +178,7 @@ The create resource command is as follows:
 kubectl apply -f go-plugin-runner-route.yaml
 ```
 
-### Test
+## Test
 
 The command is as follows to test if the plugin written in Golang is working correctly:
 
