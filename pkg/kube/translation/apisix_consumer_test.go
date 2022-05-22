@@ -125,6 +125,29 @@ func TestTranslateApisixConsumer(t *testing.T) {
 	assert.Equal(t, "https://httpbin.org", cfg4.Server)
 	assert.Equal(t, "test01", cfg4.Appid)
 
+	ac = &configv2beta3.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "jack",
+			Namespace: "qa",
+		},
+		Spec: configv2beta3.ApisixConsumerSpec{
+			AuthParameter: configv2beta3.ApisixConsumerAuthParameter{
+				HMacAuth: &configv2beta3.ApisixConsumerHMacAuth{
+					Value: &configv2beta3.ApisixConsumerHMacAuthValue{
+						AccessKey: "foo",
+						SecretKey: "bar",
+					},
+				},
+			},
+		},
+	}
+	consumer, err = (&translator{}).TranslateApisixConsumer(ac)
+	assert.Nil(t, err)
+	assert.Len(t, consumer.Plugins, 1)
+	cfg5 := consumer.Plugins["hmac-auth"].(*apisixv1.HMacAuthConsumerConfig)
+	assert.Equal(t, "foo", cfg5.AccessKey)
+	assert.Equal(t, "bar", cfg5.SecretKey)
+
 	// No test test cases for secret references as we already test them
 	// in plugin_test.go.
 }

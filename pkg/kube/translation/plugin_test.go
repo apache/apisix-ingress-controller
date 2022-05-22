@@ -936,3 +936,89 @@ func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
 	close(processCh)
 	close(stopCh)
 }
+
+func TestTranslateConsumerHMacAuthPluginWithInPlaceValue(t *testing.T) {
+	hmacAuth := &configv2beta3.ApisixConsumerHMacAuth{
+		Value: &configv2beta3.ApisixConsumerHMacAuthValue{
+			AccessKey:     "foo",
+			SecretKey:     "foo-secret",
+			ClockSkew:     0,
+			SignedHeaders: []string{"User-Agent"},
+		},
+	}
+	cfg, err := (&translator{}).translateConsumerHMacAuthPlugin("default", hmacAuth)
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", cfg.AccessKey)
+	assert.Equal(t, "foo-secret", cfg.SecretKey)
+	assert.Equal(t, int64(0), cfg.ClockSkew)
+	assert.Equal(t, []string{"User-Agent"}, cfg.SignedHeaders)
+}
+
+func TestTranslateConsumerHMacAuthPluginWithSecretRed(t *testing.T) {
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "fatpa-hmac-auth",
+		},
+		Data: map[string][]byte{
+			"access_key": []byte("foo"),
+			"secret_key": []byte("foo-secret"),
+			"clock_skew": []byte("0"),
+		},
+	}
+
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	secretInformer := informersFactory.Core().V1().Secrets().Informer()
+	secretLister := informersFactory.Core().V1().Secrets().Lister()
+	processCh := make(chan struct{})
+	stopCh := make(chan struct{})
+	secretInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(_ interface{}) {
+			processCh <- struct{}{}
+		},
+		UpdateFunc: func(_, _ interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+	go secretInformer.Run(stopCh)
+
+	tr := &translator{
+		&TranslatorOptions{
+			SecretLister: secretLister,
+		},
+	}
+	_, err := client.CoreV1().Secrets("default").Create(context.Background(), sec, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	<-processCh
+
+	hmacAuth := &configv2beta3.ApisixConsumerHMacAuth{
+		SecretRef: &corev1.LocalObjectReference{Name: "fatpa-hmac-auth"},
+	}
+	cfg, err := tr.translateConsumerHMacAuthPlugin("default", hmacAuth)
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", cfg.AccessKey)
+	assert.Equal(t, "foo-secret", cfg.SecretKey)
+	assert.Equal(t, int64(0), cfg.ClockSkew)
+
+	delete(sec.Data, "access_key")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerHMacAuthPlugin("default", hmacAuth)
+	assert.Nil(t, cfg)
+	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
+
+	delete(sec.Data, "secret_key")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerHMacAuthPlugin("default", hmacAuth)
+	assert.Nil(t, cfg)
+	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
+
+	close(processCh)
+	close(stopCh)
+}

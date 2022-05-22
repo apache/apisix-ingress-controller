@@ -51,6 +51,7 @@ spec:
                     - required: ["keyAuth"]
                     - required: ["wolfRBAC"]
                     - required: ["jwtAuth"]
+                    - required: ["hmacAuth"]
                   properties:
                     basicAuth:
                       type: object
@@ -122,7 +123,7 @@ spec:
                               type: string
                             exp:
                               type: integer
-                            base64_secret: 
+                            base64_secret:
                               type: boolean
                           required:
                             - key
@@ -149,6 +150,46 @@ spec:
                               type: string
                             header_prefix:
                               type: string
+                        secretRef:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                              minLength: 1
+                          required:
+                            - name
+                    hmacAuth:
+                      type: object
+                      oneOf:
+                        - required: ["value"]
+                        - required: ["secretRef"]
+                      properties:
+                        value:
+                          type: object
+                          properties:
+                            access_key:
+                              type: string
+                            secret_key:
+                              type: string
+                            algorithm:
+                              type: string
+                            clock_skew:
+                              type: integer
+                            signed_headers:
+                              type: array
+                              items:
+                                type: string
+                            keep_headers:
+                              type: boolean
+                            encode_uri_params:
+                              type: boolean
+                            validate_request_body:
+                              type: boolean
+                            max_req_body:
+                              type: integer
+                          required:
+                            - access_key
+                            - secret_key
                         secretRef:
                           type: object
                           properties:
