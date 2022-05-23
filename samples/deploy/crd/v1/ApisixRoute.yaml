@@ -113,17 +113,15 @@ spec:
                             items:
                               type: string
                               enum:
-                                [
-                                  "CONNECT",
-                                  "DELETE",
-                                  "GET",
-                                  "HEAD",
-                                  "OPTIONS",
-                                  "PATCH",
-                                  "POST",
-                                  "PUT",
-                                  "TRACE",
-                                ]
+                                - "CONNECT"
+                                - "DELETE"
+                                - "GET"
+                                - "HEAD"
+                                - "OPTIONS"
+                                - "PATCH"
+                                - "POST"
+                                - "PUT"
+                                - "TRACE"
                           remoteAddrs:
                             type: array
                             minItems: 1
@@ -141,7 +139,10 @@ spec:
                                     scope:
                                       type: string
                                       enum:
-                                        ["Cookie", "Header", "Path", "Query"]
+                                        - "Cookie"
+                                        - "Header"
+                                        - "Path"
+                                        - "Query"
                                     name:
                                       type: string
                                       minLength: 1
@@ -218,7 +219,9 @@ spec:
                             type: boolean
                           type:
                             type: string
-                            enum: ["basicAuth", "keyAuth"]
+                            enum:
+                              - "basicAuth"
+                              - "keyAuth"
                           keyAuth:
                             type: object
                             properties:
@@ -368,17 +371,15 @@ spec:
                             items:
                               type: string
                               enum:
-                                [
-                                  "CONNECT",
-                                  "DELETE",
-                                  "GET",
-                                  "HEAD",
-                                  "OPTIONS",
-                                  "PATCH",
-                                  "POST",
-                                  "PUT",
-                                  "TRACE",
-                                ]
+                                - "CONNECT"
+                                - "DELETE"
+                                - "GET"
+                                - "HEAD"
+                                - "OPTIONS"
+                                - "PATCH"
+                                - "POST"
+                                - "PUT"
+                                - "TRACE"
                           remoteAddrs:
                             type: array
                             minItems: 1
@@ -396,7 +397,10 @@ spec:
                                     scope:
                                       type: string
                                       enum:
-                                        ["Cookie", "Header", "Path", "Query"]
+                                        - "Cookie"
+                                        - "Header"
+                                        - "Path"
+                                        - "Query"
                                     name:
                                       type: string
                                       minLength: 1
@@ -477,13 +481,11 @@ spec:
                           type:
                             type: string
                             enum:
-                              [
-                                "basicAuth",
-                                "keyAuth",
-                                "jwtAuth",
-                                "wolfRBAC",
-                                "hmacAuth",
-                              ]
+                              - "basicAuth"
+                              - "keyAuth"
+                              - "jwtAuth"
+                              - "wolfRBAC"
+                              - "hmacAuth"
                           keyAuth:
                             type: object
                             properties:
@@ -642,17 +644,15 @@ spec:
                             items:
                               type: string
                               enum:
-                                [
-                                  "CONNECT",
-                                  "DELETE",
-                                  "GET",
-                                  "HEAD",
-                                  "OPTIONS",
-                                  "PATCH",
-                                  "POST",
-                                  "PUT",
-                                  "TRACE",
-                                ]
+                                - "CONNECT"
+                                - "DELETE"
+                                - "GET"
+                                - "HEAD"
+                                - "OPTIONS"
+                                - "PATCH"
+                                - "POST"
+                                - "PUT"
+                                - "TRACE"
                           remoteAddrs:
                             type: array
                             minItems: 1
@@ -670,7 +670,10 @@ spec:
                                     scope:
                                       type: string
                                       enum:
-                                        ["Cookie", "Header", "Path", "Query"]
+                                        - "Cookie"
+                                        - "Header"
+                                        - "Path"
+                                        - "Query"
                                     name:
                                       type: string
                                       minLength: 1
@@ -750,7 +753,9 @@ spec:
                             type: boolean
                           type:
                             type: string
-                            enum: ["basicAuth", "keyAuth"]
+                            enum:
+                              - "basicAuth"
+                              - "keyAuth"
                           keyAuth:
                             type: object
                             properties:
