@@ -342,7 +342,7 @@ type ApisixConsumerAuthParameter struct {
 	KeyAuth   *ApisixConsumerKeyAuth   `json:"keyAuth,omitempty" yaml:"keyAuth"`
 	WolfRBAC  *ApisixConsumerWolfRBAC  `json:"wolfRBAC,omitempty" yaml:"wolfRBAC"`
 	JwtAuth   *ApisixConsumerJwtAuth   `json:"jwtAuth,omitempty" yaml:"jwtAuth"`
-	HMacAuth  *ApisixConsumerHMacAuth  `json:"hmacAuth,omitempty" yaml:"hmacAuth"`
+	HMACAuth  *ApisixConsumerHMACAuth  `json:"hmacAuth,omitempty" yaml:"hmacAuth"`
 }
 
 // ApisixConsumerBasicAuth defines the configuration for basic auth.
@@ -398,14 +398,14 @@ type ApisixConsumerJwtAuthValue struct {
 	Base64Secret bool   `json:"base64_secret,omitempty" yaml:"base64_secret,omitempty"`
 }
 
-// ApisixConsumerHMacAuth defines the configuration for the hmac auth.
-type ApisixConsumerHMacAuth struct {
+// ApisixConsumerHMACAuth defines the configuration for the hmac auth.
+type ApisixConsumerHMACAuth struct {
 	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
-	Value     *ApisixConsumerHMacAuthValue `json:"value,omitempty" yaml:"value,omitempty"`
+	Value     *ApisixConsumerHMACAuthValue `json:"value,omitempty" yaml:"value,omitempty"`
 }
 
-// ApisixConsumerHMacAuthValue defines the in-place configuration for hmac auth.
-type ApisixConsumerHMacAuthValue struct {
+// ApisixConsumerHMACAuthValue defines the in-place configuration for hmac auth.
+type ApisixConsumerHMACAuthValue struct {
 	AccessKey           string   `json:"access_key" yaml:"access_key"`
 	SecretKey           string   `json:"secret_key" yaml:"secret_key"`
 	Algorithm           string   `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`

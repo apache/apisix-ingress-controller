@@ -937,16 +937,16 @@ func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
 	close(stopCh)
 }
 
-func TestTranslateConsumerHMacAuthPluginWithInPlaceValue(t *testing.T) {
-	hmacAuth := &configv2beta3.ApisixConsumerHMacAuth{
-		Value: &configv2beta3.ApisixConsumerHMacAuthValue{
+func TestTranslateConsumerHMACAuthPluginWithInPlaceValue(t *testing.T) {
+	hmacAuth := &configv2beta3.ApisixConsumerHMACAuth{
+		Value: &configv2beta3.ApisixConsumerHMACAuthValue{
 			AccessKey:     "foo",
 			SecretKey:     "foo-secret",
 			ClockSkew:     0,
 			SignedHeaders: []string{"User-Agent"},
 		},
 	}
-	cfg, err := (&translator{}).translateConsumerHMacAuthPlugin("default", hmacAuth)
+	cfg, err := (&translator{}).translateConsumerHMACAuthPlugin("default", hmacAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "foo", cfg.AccessKey)
 	assert.Equal(t, "foo-secret", cfg.SecretKey)
@@ -954,7 +954,7 @@ func TestTranslateConsumerHMacAuthPluginWithInPlaceValue(t *testing.T) {
 	assert.Equal(t, []string{"User-Agent"}, cfg.SignedHeaders)
 }
 
-func TestTranslateConsumerHMacAuthPluginWithSecretRed(t *testing.T) {
+func TestTranslateConsumerHMACAuthPluginWithSecretRed(t *testing.T) {
 	sec := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "fatpa-hmac-auth",
@@ -992,10 +992,10 @@ func TestTranslateConsumerHMacAuthPluginWithSecretRed(t *testing.T) {
 
 	<-processCh
 
-	hmacAuth := &configv2beta3.ApisixConsumerHMacAuth{
+	hmacAuth := &configv2beta3.ApisixConsumerHMACAuth{
 		SecretRef: &corev1.LocalObjectReference{Name: "fatpa-hmac-auth"},
 	}
-	cfg, err := tr.translateConsumerHMacAuthPlugin("default", hmacAuth)
+	cfg, err := tr.translateConsumerHMACAuthPlugin("default", hmacAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "foo", cfg.AccessKey)
 	assert.Equal(t, "foo-secret", cfg.SecretKey)
@@ -1006,7 +1006,7 @@ func TestTranslateConsumerHMacAuthPluginWithSecretRed(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerHMacAuthPlugin("default", hmacAuth)
+	cfg, err = tr.translateConsumerHMACAuthPlugin("default", hmacAuth)
 	assert.Nil(t, cfg)
 	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
 
@@ -1015,7 +1015,7 @@ func TestTranslateConsumerHMacAuthPluginWithSecretRed(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerHMacAuthPlugin("default", hmacAuth)
+	cfg, err = tr.translateConsumerHMACAuthPlugin("default", hmacAuth)
 	assert.Nil(t, cfg)
 	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
 

@@ -195,9 +195,9 @@ func (t *translator) translateConsumerJwtAuthPlugin(consumerNamespace string, cf
 	}, nil
 }
 
-func (t *translator) translateConsumerHMacAuthPlugin(consumerNamespace string, cfg *configv2beta3.ApisixConsumerHMacAuth) (*apisixv1.HMacAuthConsumerConfig, error) {
+func (t *translator) translateConsumerHMACAuthPlugin(consumerNamespace string, cfg *configv2beta3.ApisixConsumerHMACAuth) (*apisixv1.HMACAuthConsumerConfig, error) {
 	if cfg.Value != nil {
-		return &apisixv1.HMacAuthConsumerConfig{
+		return &apisixv1.HMACAuthConsumerConfig{
 			AccessKey:           cfg.Value.AccessKey,
 			SecretKey:           cfg.Value.SecretKey,
 			Algorithm:           cfg.Value.Algorithm,
@@ -287,7 +287,7 @@ func (t *translator) translateConsumerHMacAuthPlugin(consumerNamespace string, c
 		maxReqBody = _hmacAuthMaxReqBodyDefaultValue
 	}
 
-	return &apisixv1.HMacAuthConsumerConfig{
+	return &apisixv1.HMACAuthConsumerConfig{
 		AccessKey:           string(accessKeyRaw),
 		SecretKey:           string(secretKeyRaw),
 		Algorithm:           algorithm,

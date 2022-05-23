@@ -83,10 +83,10 @@ type JwtAuthConsumerConfig struct {
 	Base64Secret bool   `json:"base64_secret,omitempty" yaml:"base64_secret,omitempty"`
 }
 
-// HMacAuthConsumerConfig is the rule config for hmac-auth plugin
+// HMACAuthConsumerConfig is the rule config for hmac-auth plugin
 // used in Consumer object.
 // +k8s:deepcopy-gen=true
-type HMacAuthConsumerConfig struct {
+type HMACAuthConsumerConfig struct {
 	AccessKey           string   `json:"access_key" yaml:"access_key"`
 	SecretKey           string   `json:"secret_key" yaml:"secret_key"`
 	Algorithm           string   `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`

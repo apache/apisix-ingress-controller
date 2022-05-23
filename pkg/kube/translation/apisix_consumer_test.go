@@ -132,8 +132,8 @@ func TestTranslateApisixConsumer(t *testing.T) {
 		},
 		Spec: configv2beta3.ApisixConsumerSpec{
 			AuthParameter: configv2beta3.ApisixConsumerAuthParameter{
-				HMacAuth: &configv2beta3.ApisixConsumerHMacAuth{
-					Value: &configv2beta3.ApisixConsumerHMacAuthValue{
+				HMACAuth: &configv2beta3.ApisixConsumerHMACAuth{
+					Value: &configv2beta3.ApisixConsumerHMACAuthValue{
 						AccessKey: "foo",
 						SecretKey: "bar",
 					},
@@ -144,7 +144,7 @@ func TestTranslateApisixConsumer(t *testing.T) {
 	consumer, err = (&translator{}).TranslateApisixConsumer(ac)
 	assert.Nil(t, err)
 	assert.Len(t, consumer.Plugins, 1)
-	cfg5 := consumer.Plugins["hmac-auth"].(*apisixv1.HMacAuthConsumerConfig)
+	cfg5 := consumer.Plugins["hmac-auth"].(*apisixv1.HMACAuthConsumerConfig)
 	assert.Equal(t, "foo", cfg5.AccessKey)
 	assert.Equal(t, "bar", cfg5.SecretKey)
 
