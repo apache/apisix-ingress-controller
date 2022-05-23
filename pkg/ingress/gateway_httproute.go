@@ -16,7 +16,6 @@ package ingress
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"time"
 
 	"go.uber.org/zap"
@@ -25,6 +24,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
@@ -42,7 +42,7 @@ func (c *Controller) newGatewayHTTPRouteController() *gatewayHTTPRouteController
 		workers:    1,
 	}
 
-	ctrl.controller.httpRouteInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	ctrl.controller.gatewayHttpRouteInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ctrl.onAdd,
 		UpdateFunc: ctrl.onUpdate,
 		DeleteFunc: ctrl.OnDelete,
@@ -55,7 +55,7 @@ func (c *gatewayHTTPRouteController) run(ctx context.Context) {
 	defer log.Info("gateway HTTPRoute controller exited")
 	defer c.workqueue.ShutDown()
 
-	if !cache.WaitForCacheSync(ctx.Done(), c.controller.httpRouteInformer.HasSynced) {
+	if !cache.WaitForCacheSync(ctx.Done(), c.controller.gatewayHttpRouteInformer.HasSynced) {
 		log.Error("sync Gateway HTTPRoute cache failed")
 		return
 	}
@@ -89,7 +89,7 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 		return err
 	}
 
-	httpRoute, err := c.controller.httpRouteLister.HTTPRoutes(namespace).Get(name)
+	httpRoute, err := c.controller.gatewayHttpRouteLister.HTTPRoutes(namespace).Get(name)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Errorw("failed to get Gateway HTTPRoute",
