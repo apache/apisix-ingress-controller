@@ -130,7 +130,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 				ctx.Done()
 			} else {
 				for _, con := range retConsumer.Items {
-					consumer, err := c.translator.TranslateApisixConsumer(&con)
+					consumer, err := c.translator.TranslateApisixConsumerV2beta3(&con)
 					if err != nil {
 						log.Error(err.Error())
 						ctx.Done()
