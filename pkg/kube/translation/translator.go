@@ -95,8 +95,11 @@ type Translator interface {
 	TranslateClusterConfigV2(*configv2.ApisixClusterConfig) (*apisixv1.GlobalRule, error)
 	// TranslateApisixConsumer translates the configv2beta3.APisixConsumer object into the APISIX Consumer
 	// resource.
-	TranslateApisixConsumer(*configv2beta3.ApisixConsumer) (*apisixv1.Consumer, error)
-	// TranslatePluginConfigV2beta3 translates the configv2beta3.ApisixPluginConfig object into several PluginConfig
+	TranslateApisixConsumerV2beta3(*configv2beta3.ApisixConsumer) (*apisixv1.Consumer, error)
+	// TranslateApisixConsumerV2 translates the configv2beta3.APisixConsumer object into the APISIX Consumer
+	// resource.
+	TranslateApisixConsumerV2(ac *configv2.ApisixConsumer) (*apisixv1.Consumer, error)
+	// TranslatePluginConfigV2beta3 translates the configv2.ApisixPluginConfig object into several PluginConfig
 	// resources.
 	TranslatePluginConfigV2beta3(*configv2beta3.ApisixPluginConfig) (*TranslateContext, error)
 	// TranslatePluginConfigV2beta3NotStrictly translates the configv2beta3.ApisixPluginConfig object into several PluginConfig
