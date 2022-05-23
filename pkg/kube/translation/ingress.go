@@ -39,7 +39,7 @@ const (
 	_regexPriority = 100
 )
 
-func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateContext, error) {
+func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bool) (*TranslateContext, error) {
 	ctx := defaultEmptyTranslateContext()
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
@@ -82,13 +82,17 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 				err          error
 			)
 			if pathRule.Backend.Service != nil {
-				ups, err = t.translateUpstreamFromIngressV1(ing.Namespace, pathRule.Backend.Service)
-				if err != nil {
-					log.Errorw("failed to translate ingress backend to upstream",
-						zap.Error(err),
-						zap.Any("ingress", ing),
-					)
-					return nil, err
+				if skipVerify {
+					ups = t.translateDefaultUpstreamFromIngressV1(ing.Namespace, pathRule.Backend.Service)
+				} else {
+					ups, err = t.translateUpstreamFromIngressV1(ing.Namespace, pathRule.Backend.Service)
+					if err != nil {
+						log.Errorw("failed to translate ingress backend to upstream",
+							zap.Error(err),
+							zap.Any("ingress", ing),
+						)
+						return nil, err
+					}
 				}
 				ctx.addUpstream(ups)
 			}
@@ -156,7 +160,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 	return ctx, nil
 }
 
-func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*TranslateContext, error) {
+func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, skipVerify bool) (*TranslateContext, error) {
 	ctx := defaultEmptyTranslateContext()
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
@@ -199,13 +203,17 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 				err          error
 			)
 			if pathRule.Backend.ServiceName != "" {
-				ups, err = t.translateUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
-				if err != nil {
-					log.Errorw("failed to translate ingress backend to upstream",
-						zap.Error(err),
-						zap.Any("ingress", ing),
-					)
-					return nil, err
+				if skipVerify {
+					ups = t.translateDefaultUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
+				} else {
+					ups, err = t.translateUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
+					if err != nil {
+						log.Errorw("failed to translate ingress backend to upstream",
+							zap.Error(err),
+							zap.Any("ingress", ing),
+						)
+						return nil, err
+					}
 				}
 				ctx.addUpstream(ups)
 			}
@@ -273,6 +281,29 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 	return ctx, nil
 }
 
+func (t *translator) translateDefaultUpstreamFromIngressV1(namespace string, backend *networkingv1.IngressServiceBackend) *apisixv1.Upstream {
+	var portNumber int32
+	if backend.Port.Name != "" {
+		svc, err := t.ServiceLister.Services(namespace).Get(backend.Name)
+		if err != nil {
+			for _, port := range svc.Spec.Ports {
+				if port.Name == backend.Port.Name {
+					portNumber = port.Port
+					break
+				}
+			}
+		} else {
+			portNumber = 0
+		}
+
+	} else {
+		portNumber = backend.Port.Number
+	}
+	ups := apisixv1.NewDefaultUpstream()
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, "", portNumber)
+	ups.ID = id.GenID(ups.Name)
+	return ups
+}
 func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *networkingv1.IngressServiceBackend) (*apisixv1.Upstream, error) {
 	var svcPort int32
 	if backend.Port.Name != "" {
@@ -304,7 +335,7 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 	return ups, nil
 }
 
-func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress) (*TranslateContext, error) {
+func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress, skipVerify bool) (*TranslateContext, error) {
 	ctx := defaultEmptyTranslateContext()
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
@@ -319,13 +350,17 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 			)
 			if pathRule.Backend.ServiceName != "" {
 				// Structure here is same to ingress.extensions/v1beta1, so just use this method.
-				ups, err = t.translateUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
-				if err != nil {
-					log.Errorw("failed to translate ingress backend to upstream",
-						zap.Error(err),
-						zap.Any("ingress", ing),
-					)
-					return nil, err
+				if skipVerify {
+					ups = t.translateDefaultUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
+				} else {
+					ups, err = t.translateUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
+					if err != nil {
+						log.Errorw("failed to translate ingress backend to upstream",
+							zap.Error(err),
+							zap.Any("ingress", ing),
+						)
+						return nil, err
+					}
 				}
 				ctx.addUpstream(ups)
 			}
@@ -391,6 +426,29 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 		}
 	}
 	return ctx, nil
+}
+
+func (t *translator) translateDefaultUpstreamFromIngressV1beta1(namespace string, svcName string, svcPort intstr.IntOrString) *apisixv1.Upstream {
+	var portNumber int32
+	if svcPort.Type == intstr.String {
+		svc, err := t.ServiceLister.Services(namespace).Get(svcName)
+		if err != nil {
+			for _, port := range svc.Spec.Ports {
+				if port.Name == svcPort.StrVal {
+					portNumber = port.Port
+					break
+				}
+			}
+		} else {
+			portNumber = 0
+		}
+	} else {
+		portNumber = svcPort.IntVal
+	}
+	ups := apisixv1.NewDefaultUpstream()
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber)
+	ups.ID = id.GenID(ups.Name)
+	return ups
 }
 
 func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcName string, svcPort intstr.IntOrString) (*apisixv1.Upstream, error) {
