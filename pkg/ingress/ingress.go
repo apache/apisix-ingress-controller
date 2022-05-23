@@ -161,7 +161,10 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 	} else if ev.Type == types.EventAdd {
 		added = m
 	} else {
-		oldCtx, err := c.controller.translator.TranslateIngress(ingEv.OldObject)
+		// In the update event, there is no need to verify the upstream in the old ingress,
+		// and the update is based on the latest ingress
+		// TODO There may be residual upstream data. When the service is deleted, it has no impact
+		oldCtx, err := c.controller.translator.TranslateIngress(ingEv.OldObject, true)
 		if err != nil {
 			log.Errorw("failed to translate ingress",
 				zap.String("event", "update"),
