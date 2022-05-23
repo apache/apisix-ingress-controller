@@ -31,7 +31,7 @@ Consumers are used for the authentication method controlled by Apache APISIX, if
 
 #### Key Auth
 
-Consumers add their key either in a header or query string parameter to authenticate their requests. For more information about `Key Auth`, please refer to [APISIX key-auth](https://apisix.apache.org/docs/apisix/plugins/key-auth/).  
+Consumers add their key either in a header or query string parameter to authenticate their requests. For more information about `Key Auth`, please refer to [APISIX key-auth plugin](https://apisix.apache.org/docs/apisix/plugins/key-auth/).  
 Also, we can using the `secretRef` field to reference a K8s Secret object so that we can avoid the hardcoded sensitive data in the ApisixConsumer object. For reference Secret use example, please refer to the [key-auth-reference-secret-object](#key-auth-reference-secret-object).
 
 <details>
@@ -53,7 +53,7 @@ spec:
 
 #### Basic Auth
 
-Consumers add their key in a header to authenticate their requests. For more information about `Basic Auth`, please refer to [APISIX basic-auth](https://apisix.apache.org/docs/apisix/plugins/basic-auth/).  
+Consumers add their key in a header to authenticate their requests. For more information about `Basic Auth`, please refer to [APISIX basic-auth plugin](https://apisix.apache.org/docs/apisix/plugins/basic-auth/).  
 Also, we can using the `secretRef` field to reference a K8s Secret object so that we can avoid the hardcoded sensitive data in the ApisixConsumer object. For reference Secret use example, please refer to the [key-auth-reference-secret-object](#key-auth-reference-secret-object).
 
 <details>
@@ -76,7 +76,7 @@ spec:
 
 #### JWT Auth
 
-The consumer then adds its key to the query string parameter, request header, or cookie to verify its request. For more information about `JWT Auth`, please refer to [APISIX jwt-auth](https://apisix.apache.org/docs/apisix/plugins/jwt-auth/).  
+The consumer then adds its key to the query string parameter, request header, or cookie to verify its request. For more information about `JWT Auth`, please refer to [APISIX jwt-auth plugin](https://apisix.apache.org/docs/apisix/plugins/jwt-auth/).  
 Also, we can using the `secretRef` field to reference a K8s Secret object so that we can avoid the hardcoded sensitive data in the ApisixConsumer object. For reference Secret use example, please refer to the [key-auth-reference-secret-object](#key-auth-reference-secret-object).
 
 :::note Need to expose API  
@@ -108,7 +108,7 @@ spec:
 
 #### `Wolf RBAC`
 
-To use wolfRbac authentication, you need to start and install [wolf-server](https://github.com/iGeeky/wolf/blob/master/quick-start-with-docker/README.md). For more information about `Wolf RBAC`, please refer to [APISIX wolf-rbac](https://apisix.apache.org/zh/docs/apisix/plugins/wolf-rbac/).  
+To use wolfRbac authentication, you need to start and install [wolf-server](https://github.com/iGeeky/wolf/blob/master/quick-start-with-docker/README.md). For more information about `Wolf RBAC`, please refer to [APISIX wolf-rbac plugin](https://apisix.apache.org/zh/docs/apisix/plugins/wolf-rbac/).  
 Also, we can using the `secretRef` field to reference a K8s Secret object so that we can avoid the hardcoded sensitive data in the ApisixConsumer object. For reference Secret use example, please refer to the [key-auth-reference-secret-object](#key-auth-reference-secret-object).
 
 :::note This plugin will add several API
