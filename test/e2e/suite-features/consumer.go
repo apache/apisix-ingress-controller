@@ -689,7 +689,7 @@ spec:
        op: Equal
        value: bar
    plugins:
-	- name: consumer-restriction
+    - name: consumer-restriction
       enable: true
       config:
         whitelist:
@@ -803,7 +803,7 @@ spec:
        op: Equal
        value: bar
    plugins:
-	- name: consumer-restriction
+    - name: consumer-restriction
       enable: true
       config:
         whitelist:
