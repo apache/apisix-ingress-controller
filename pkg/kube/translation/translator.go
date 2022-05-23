@@ -173,7 +173,7 @@ func (t *translator) TranslateUpstream(namespace, name, subset string, port int3
 	ups := apisixv1.NewDefaultUpstream()
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			// If subset in ApisixRoute is not empty but the ApisixUpstream resouce not found,
+			// If subset in ApisixRoute is not empty but the ApisixUpstream resource not found,
 			// just set an empty node list.
 			if subset != "" {
 				ups.Nodes = apisixv1.UpstreamNodes{}

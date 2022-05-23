@@ -149,7 +149,7 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 		added = m
 	} else {
 		var oldCtx *translation.TranslateContext
-		oldObj := ev.Tombstone.(*gatewayv1alpha2.HTTPRoute)
+		oldObj := ev.OldObject.(*gatewayv1alpha2.HTTPRoute)
 		oldCtx, err = c.controller.translator.TranslateGatewayHTTPRouteV1Alpha2(oldObj)
 		if err != nil {
 			log.Errorw("failed to translate old HTTPRoute",
