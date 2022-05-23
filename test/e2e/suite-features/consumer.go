@@ -688,6 +688,12 @@ spec:
          name: X-Foo
        op: Equal
        value: bar
+   plugins:
+	- name: consumer-restriction
+      enable: true
+      config:
+        whitelist:
+        - "default_hmacvalue"
    backends:
    - serviceName: %s
      servicePort: %d
@@ -741,10 +747,10 @@ kind: Secret
 metadata:
   name: hmac
 data:
-  access_key: papa
-  secret_key: fatpa
-  algorithm: "hmac-sha256"
-  clock_skew: 0
+  access_key: cGFwYQ==
+  secret_key: ZmF0cGE=
+  algorithm: aG1hYy1zaGEyNTY=
+  clock_skew: MA==
 `
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating hmac secret for ApisixConsumer")
 
@@ -796,6 +802,12 @@ spec:
          name: X-Foo
        op: Equal
        value: bar
+   plugins:
+	- name: consumer-restriction
+      enable: true
+      config:
+        whitelist:
+        - "default_hmacvalue"
    backends:
    - serviceName: %s
      servicePort: %d
