@@ -51,6 +51,12 @@ func (t *translator) TranslateApisixConsumerV2beta3(ac *configv2beta3.ApisixCons
 			return nil, fmt.Errorf("invalid wolf rbac config: %s", err)
 		}
 		plugins["wolf-rbac"] = cfg
+	} else if ac.Spec.AuthParameter.HMACAuth != nil {
+		cfg, err := t.translateConsumerHMACAuthPluginV2beta3(ac.Namespace, ac.Spec.AuthParameter.HMACAuth)
+		if err != nil {
+			return nil, fmt.Errorf("invaild hmac auth config: %s", err)
+		}
+		plugins["hmac-auth"] = cfg
 	}
 
 	consumer := apisixv1.NewDefaultConsumer()
@@ -89,7 +95,7 @@ func (t *translator) TranslateApisixConsumerV2(ac *configv2.ApisixConsumer) (*ap
 		}
 		plugins["wolf-rbac"] = cfg
 	} else if ac.Spec.AuthParameter.HMACAuth != nil {
-		cfg, err := t.translateConsumerHMACAuthPlugin(ac.Namespace, ac.Spec.AuthParameter.HMACAuth)
+		cfg, err := t.translateConsumerHMACAuthPluginV2(ac.Namespace, ac.Spec.AuthParameter.HMACAuth)
 		if err != nil {
 			return nil, fmt.Errorf("invaild hmac auth config: %s", err)
 		}
