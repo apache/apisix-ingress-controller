@@ -660,13 +660,11 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
 		assert.Len(ginkgo.GinkgoT(), grs, 1)
 		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
-		hmacAuth, _ := grs[0].Plugins["hmac-auth"]
-		assert.Equal(ginkgo.GinkgoT(), hmacAuth, map[string]interface{}{
-			"access_key": "papa",
-			"secret_key": "fatpa",
-			"algorithm":  "hmac-sha256",
-			"clock_skew": 0,
-		})
+		hmacAuth, _ := grs[0].Plugins["hmac-auth"].(map[string]interface{})
+		assert.Equal(ginkgo.GinkgoT(), hmacAuth["access_key"], "papa")
+		assert.Equal(ginkgo.GinkgoT(), hmacAuth["secret_key"], "fatpa")
+		assert.Equal(ginkgo.GinkgoT(), hmacAuth["algorithm"], "hmac-sha256")
+		assert.Equal(ginkgo.GinkgoT(), hmacAuth["clock_skew"], float64(0))
 
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
@@ -688,12 +686,6 @@ spec:
          name: X-Foo
        op: Equal
        value: bar
-   plugins:
-    - name: consumer-restriction
-      enable: true
-      config:
-        whitelist:
-        - "default_hmacvalue"
    backends:
    - serviceName: %s
      servicePort: %d
@@ -708,10 +700,10 @@ spec:
 		_ = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			WithHeader("X-Foo", "bar").
-			WithHeader("X-HMAC-SIGNATURE", "0K5jRBTxMVHHJAVoxMtWbKu9toFtTsUdHvQ3Xq/8zfY=").
+			WithHeader("X-HMAC-SIGNATURE", "l3Uka7E1kxPA/owQ2+OqJUmflRppjD5q8xPcWbyKKrg=").
 			WithHeader("X-HMAC-ACCESS-KEY", "papa").
 			WithHeader("X-HMAC-ALGORITHM", "hmac-sha256").
-			WithHeader("X-HMAC-SIGNED-HEADERS", "User-Agent").
+			WithHeader("X-HMAC-SIGNED-HEADERS", "User-Agent;X-Foo").
 			WithHeader("User-Agent", "curl/7.29.0").
 			Expect().
 			Status(http.StatusOK)
@@ -723,15 +715,15 @@ spec:
 			Status(http.StatusUnauthorized).
 			Body().
 			Raw()
-		assert.Contains(ginkgo.GinkgoT(), msg, "Missing authorization in request")
+		assert.Contains(ginkgo.GinkgoT(), msg, "access key or signature missing")
 
 		msg = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			WithHeader("X-Foo", "baz").
-			WithHeader("X-HMAC-SIGNATURE", "0K5jRBTxMVHHJAVoxMtWbKu9toFtTsUdHvQ3Xq/8zfY=").
+			WithHeader("X-HMAC-SIGNATURE", "MhGJMkEYFD+98qtvoDPlvCGIUSmmUaw0In/D0vt2Z4E=").
 			WithHeader("X-HMAC-ACCESS-KEY", "papa").
 			WithHeader("X-HMAC-ALGORITHM", "hmac-sha256").
-			WithHeader("X-HMAC-SIGNED-HEADERS", "User-Agent").
+			WithHeader("X-HMAC-SIGNED-HEADERS", "User-Agent;X-Foo").
 			WithHeader("User-Agent", "curl/7.29.0").
 			Expect().
 			Status(http.StatusNotFound).
@@ -774,13 +766,11 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
 		assert.Len(ginkgo.GinkgoT(), grs, 1)
 		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
-		hmacAuth, _ := grs[0].Plugins["hmac-auth"]
-		assert.Equal(ginkgo.GinkgoT(), hmacAuth, map[string]interface{}{
-			"access_key": "papa",
-			"secret_key": "fatpa",
-			"algorithm":  "hmac-sha256",
-			"clock_skew": 0,
-		})
+		hmacAuth, _ := grs[0].Plugins["hmac-auth"].(map[string]interface{})
+		assert.Equal(ginkgo.GinkgoT(), hmacAuth["access_key"], "papa")
+		assert.Equal(ginkgo.GinkgoT(), hmacAuth["secret_key"], "fatpa")
+		assert.Equal(ginkgo.GinkgoT(), hmacAuth["algorithm"], "hmac-sha256")
+		assert.Equal(ginkgo.GinkgoT(), hmacAuth["clock_skew"], float64(0))
 
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
@@ -802,12 +792,6 @@ spec:
          name: X-Foo
        op: Equal
        value: bar
-   plugins:
-    - name: consumer-restriction
-      enable: true
-      config:
-        whitelist:
-        - "default_hmacvalue"
    backends:
    - serviceName: %s
      servicePort: %d
@@ -822,10 +806,10 @@ spec:
 		_ = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			WithHeader("X-Foo", "bar").
-			WithHeader("X-HMAC-SIGNATURE", "0K5jRBTxMVHHJAVoxMtWbKu9toFtTsUdHvQ3Xq/8zfY=").
+			WithHeader("X-HMAC-SIGNATURE", "l3Uka7E1kxPA/owQ2+OqJUmflRppjD5q8xPcWbyKKrg=").
 			WithHeader("X-HMAC-ACCESS-KEY", "papa").
 			WithHeader("X-HMAC-ALGORITHM", "hmac-sha256").
-			WithHeader("X-HMAC-SIGNED-HEADERS", "User-Agent").
+			WithHeader("X-HMAC-SIGNED-HEADERS", "User-Agent;X-Foo").
 			WithHeader("User-Agent", "curl/7.29.0").
 			Expect().
 			Status(http.StatusOK)
@@ -837,15 +821,15 @@ spec:
 			Status(http.StatusUnauthorized).
 			Body().
 			Raw()
-		assert.Contains(ginkgo.GinkgoT(), msg, "Missing authorization in request")
+		assert.Contains(ginkgo.GinkgoT(), msg, "access key or signature missing")
 
 		msg = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			WithHeader("X-Foo", "baz").
-			WithHeader("X-HMAC-SIGNATURE", "0K5jRBTxMVHHJAVoxMtWbKu9toFtTsUdHvQ3Xq/8zfY=").
+			WithHeader("X-HMAC-SIGNATURE", "MhGJMkEYFD+98qtvoDPlvCGIUSmmUaw0In/D0vt2Z4E=").
 			WithHeader("X-HMAC-ACCESS-KEY", "papa").
 			WithHeader("X-HMAC-ALGORITHM", "hmac-sha256").
-			WithHeader("X-HMAC-SIGNED-HEADERS", "User-Agent").
+			WithHeader("X-HMAC-SIGNED-HEADERS", "User-Agent;X-Foo").
 			WithHeader("User-Agent", "curl/7.29.0").
 			Expect().
 			Status(http.StatusNotFound).
