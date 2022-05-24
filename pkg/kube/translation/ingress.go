@@ -286,14 +286,14 @@ func (t *translator) translateDefaultUpstreamFromIngressV1(namespace string, bac
 	if backend.Port.Name != "" {
 		svc, err := t.ServiceLister.Services(namespace).Get(backend.Name)
 		if err != nil {
+			portNumber = 0
+		} else {
 			for _, port := range svc.Spec.Ports {
 				if port.Name == backend.Port.Name {
 					portNumber = port.Port
 					break
 				}
 			}
-		} else {
-			portNumber = 0
 		}
 
 	} else {
@@ -433,14 +433,14 @@ func (t *translator) translateDefaultUpstreamFromIngressV1beta1(namespace string
 	if svcPort.Type == intstr.String {
 		svc, err := t.ServiceLister.Services(namespace).Get(svcName)
 		if err != nil {
+			portNumber = 0
+		} else {
 			for _, port := range svc.Spec.Ports {
 				if port.Name == svcPort.StrVal {
 					portNumber = port.Port
 					break
 				}
 			}
-		} else {
-			portNumber = 0
 		}
 	} else {
 		portNumber = svcPort.IntVal
