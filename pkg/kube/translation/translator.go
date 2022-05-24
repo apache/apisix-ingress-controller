@@ -241,7 +241,7 @@ func (t *translator) TranslateUpstreamNodes(endpoint kube.Endpoint, port int32, 
 	if svcPort == nil {
 		return nil, &translateError{
 			field:  "service.spec.ports",
-			reason: "port not defined",
+			reason: fmt.Sprintf("port %v not defined", port),
 		}
 	}
 	// As nodes is not optional, here we create an empty slice,

@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
+	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -42,6 +43,54 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 	for i, rule := range rules {
 		backends := rule.BackendRefs
 		if len(backends) == 0 {
+			continue
+		}
+
+		var ruleUpstreams []*apisixv1.Upstream
+		var weightedUpstreams []apisixv1.TrafficSplitConfigRuleWeightedUpstream
+
+		for j, backend := range backends {
+			//TODO: Support filters
+			//filters := backend.Filters
+			kind := strings.ToLower(string(*backend.Kind))
+			if kind != "service" {
+				log.Warnw(fmt.Sprintf("ignore non-service kind at Rules[%v].BackendRefs[%v]", i, j),
+					zap.String("kind", kind),
+				)
+				continue
+			}
+
+			ns := string(*backend.Namespace)
+			if ns != httpRoute.Namespace {
+				// TODO: check gatewayv1alpha2.ReferencePolicy
+			}
+
+			ups, err := t.TranslateUpstream(ns, string(backend.Name), "", int32(*backend.Port))
+			if err != nil {
+				return nil, errors.Wrap(err, fmt.Sprintf("failed to translate Rules[%v].BackendRefs[%v]", i, j))
+			}
+			name := apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port))
+			ups.Labels["id-name"] = name
+			ups.ID = id.GenID(name)
+			ctx.addUpstream(ups)
+			ruleUpstreams = append(ruleUpstreams, ups)
+
+			if backend.Weight == nil {
+				weightedUpstreams = append(weightedUpstreams, apisixv1.TrafficSplitConfigRuleWeightedUpstream{
+					UpstreamID: ups.ID,
+					Weight:     1, // 1 is default value of BackendRef
+				})
+			} else {
+				weightedUpstreams = append(weightedUpstreams, apisixv1.TrafficSplitConfigRuleWeightedUpstream{
+					UpstreamID: ups.ID,
+					Weight:     int(*backend.Weight),
+				})
+			}
+		}
+		if len(ruleUpstreams) == 0 {
+			log.Warnw(fmt.Sprintf("ignore all-failed backend refs at Rules[%v]", i),
+				zap.Any("BackendRefs", rule.BackendRefs),
+			)
 			continue
 		}
 
@@ -67,34 +116,24 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 
 			route.Hosts = hosts
 
+			// Bind Upstream
+			if len(ruleUpstreams) == 1 {
+				route.UpstreamId = ruleUpstreams[0].ID
+			} else if len(ruleUpstreams) > 0 {
+				route.Plugins["traffic-split"] = &apisixv1.TrafficSplitConfig{
+					Rules: []apisixv1.TrafficSplitConfigRule{
+						{
+							WeightedUpstreams: weightedUpstreams,
+						},
+					},
+				}
+			}
+
 			ctx.addRoute(route)
 		}
 
 		//TODO: Support filters
 		//filters := rule.Filters
-
-		for j, backend := range backends {
-			//TODO: Support filters
-			//filters := backend.Filters
-			kind := strings.ToLower(string(*backend.Kind))
-			if kind != "service" {
-				log.Warnw(fmt.Sprintf("ignore non-service kind at Rules[%v].BackendRefs[%v]", i, j),
-					zap.String("kind", kind),
-				)
-				continue
-			}
-
-			ns := string(*backend.Namespace)
-			if ns != httpRoute.Namespace {
-				// TODO: check gatewayv1alpha2.ReferencePolicy
-			}
-
-			ups, err := t.TranslateUpstream(ns, string(backend.Name), "", int32(*backend.Port))
-			if err != nil {
-				return nil, errors.Wrap(err, fmt.Sprintf("failed to translate Rules[%v].BackendRefs[%v]", i, j))
-			}
-			ctx.addUpstream(ups)
-		}
 	}
 
 	return ctx, nil
@@ -151,7 +190,7 @@ func (t *translator) translateGatewayHTTPRouteMatch(match *gatewayv1alpha2.HTTPR
 			}
 
 			this = append(this, apisixv1.StringOrSlice{
-				StrVal: *match.Path.Value,
+				StrVal: header.Value,
 			})
 
 			route.Vars = append(route.Vars, this)
@@ -179,7 +218,7 @@ func (t *translator) translateGatewayHTTPRouteMatch(match *gatewayv1alpha2.HTTPR
 			}
 
 			this = append(this, apisixv1.StringOrSlice{
-				StrVal: *match.Path.Value,
+				StrVal: query.Value,
 			})
 
 			route.Vars = append(route.Vars, this)
