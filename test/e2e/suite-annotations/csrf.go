@@ -52,9 +52,10 @@ spec:
             port:
               number: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
+
 		time.Sleep(5 * time.Second)
+
 		msg401 := s.NewAPISIXClient().
 			POST("/anything").
 			WithHeader("Host", "httpbin.org").
@@ -106,8 +107,8 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
+
 		time.Sleep(5 * time.Second)
 
 		msg401 := s.NewAPISIXClient().
@@ -160,8 +161,8 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
+
 		time.Sleep(5 * time.Second)
 
 		msg401 := s.NewAPISIXClient().
