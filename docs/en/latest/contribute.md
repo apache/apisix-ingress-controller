@@ -80,7 +80,7 @@ how to just run partial e2e cases.
 
 ### Build docker image
 
-* Suppose our image tag is `a.b.c`
+Suppose our image tag is `a.b.c`:
 
 ```shell
 cd /path/to/apisix-ingress-controller
@@ -100,13 +100,13 @@ make push-images IMAGE_TAG=a.b.c
 
 We assume all prerequisites above mentioned are met, what's more, since we want to run apisix-ingress-controller in bare-metal environment, please make sure both the proxy service and admin api service of Apache APISIX are exposed outside of the Kubernetes cluster, e.g. configuring them as [NodePort](https://kubernetes.io/docs/concepts/services-networking/service/#nodeport) services.
 
-* Also, we can also use `port-forward` to expose the Admin API port of Apache APISIX Pod. The default port of Apache APISIX Admin API is 9180, next I'll expose the local port `127.0.0.1:9180`.
+Also, we can also use `port-forward` to expose the Admin API port of Apache APISIX Pod. The default port of Apache APISIX Admin API is 9180, next I'll expose the local port `127.0.0.1:9180`.
 
 ```shell
 kubectl port-forward -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} 9180:9180
 ```
 
-* Run apisix-ingress-controller
+Run apisix-ingress-controller
 
 ```shell
 cd /path/to/apisix-ingress-controller
