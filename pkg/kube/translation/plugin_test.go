@@ -954,7 +954,7 @@ func TestTranslateConsumerHMACAuthPluginWithInPlaceValue(t *testing.T) {
 	assert.Equal(t, []string{"User-Agent"}, cfg.SignedHeaders)
 }
 
-func TestTranslateConsumerHMACAuthPluginWithSecretRed(t *testing.T) {
+func TestTranslateConsumerHMACAuthPluginWithSecretRef(t *testing.T) {
 	sec := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "fatpa-hmac-auth",
