@@ -15,60 +15,60 @@
 package plugins
 
 import (
-    "fmt"
-    "net/http"
-    "time"
+	"fmt"
+	"net/http"
+	"time"
 
-    ginkgo "github.com/onsi/ginkgo/v2"
-    "github.com/stretchr/testify/assert"
+	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/stretchr/testify/assert"
 
-    "github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("suite-plugins: consumer-restriction plugin", func() {
-    opts := &scaffold.Options{
-        Name:                  "default",
-        Kubeconfig:            scaffold.GetKubeconfig(),
-        APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-        IngressAPISIXReplicas: 1,
-        HTTPBinServicePort:    80,
-        APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-    }
-    s := scaffold.NewScaffold(opts)
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
+	}
+	s := scaffold.NewScaffold(opts)
 
-    ginkgo.It("restrict consumer_name", func() {
-        err := s.ApisixConsumerBasicAuthCreated("jack1", "jack1-username", "jack1-password")
-        assert.Nil(ginkgo.GinkgoT(), err, "creating basicAuth ApisixConsumer")
+	ginkgo.It("restrict consumer_name", func() {
+		err := s.ApisixConsumerBasicAuthCreated("jack1", "jack1-username", "jack1-password")
+		assert.Nil(ginkgo.GinkgoT(), err, "creating basicAuth ApisixConsumer")
 
-        err = s.ApisixConsumerBasicAuthCreated("jack2", "jack2-username", "jack2-password")
-        assert.Nil(ginkgo.GinkgoT(), err, "creating basicAuth ApisixConsumer")
+		err = s.ApisixConsumerBasicAuthCreated("jack2", "jack2-username", "jack2-password")
+		assert.Nil(ginkgo.GinkgoT(), err, "creating basicAuth ApisixConsumer")
 
-        // Wait until the ApisixConsumer create event was delivered.
-        time.Sleep(6 * time.Second)
+		// Wait until the ApisixConsumer create event was delivered.
+		time.Sleep(6 * time.Second)
 
-        grs, err := s.ListApisixConsumers()
-        assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
-        assert.Len(ginkgo.GinkgoT(), grs, 2)
+		grs, err := s.ListApisixConsumers()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
+		assert.Len(ginkgo.GinkgoT(), grs, 2)
 
-        assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
-        assert.Len(ginkgo.GinkgoT(), grs[1].Plugins, 1)
+		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
+		assert.Len(ginkgo.GinkgoT(), grs[1].Plugins, 1)
 
-        username := grs[0].Username
-        basicAuth := grs[0].Plugins["basic-auth"]
-        assert.Equal(ginkgo.GinkgoT(), basicAuth, map[string]interface{}{
-            "username": "jack1-username",
-            "password": "jack1-password",
-        })
+		username := grs[0].Username
+		basicAuth := grs[0].Plugins["basic-auth"]
+		assert.Equal(ginkgo.GinkgoT(), basicAuth, map[string]interface{}{
+			"username": "jack1-username",
+			"password": "jack1-password",
+		})
 
-        basicAuth2 := grs[1].Plugins["basic-auth"]
-        assert.Equal(ginkgo.GinkgoT(), basicAuth2, map[string]interface{}{
-            "username": "jack2-username",
-            "password": "jack2-password",
-        })
+		basicAuth2 := grs[1].Plugins["basic-auth"]
+		assert.Equal(ginkgo.GinkgoT(), basicAuth2, map[string]interface{}{
+			"username": "jack2-username",
+			"password": "jack2-password",
+		})
 
-        backendSvc, backendPorts := s.DefaultHTTPBackend()
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
-        ar := fmt.Sprintf(`
+		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -94,69 +94,69 @@ spec:
        whitelist:
        - "%s"
 `, backendSvc, backendPorts[0], username)
-        assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute with basicAuth")
-        assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
-        assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute with basicAuth")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
-        _ = s.NewAPISIXClient().GET("/anything").
-            WithHeader("Host", "httpbin.org").
-            WithHeader("Authorization", "Basic amFjazEtdXNlcm5hbWU6amFjazEtcGFzc3dvcmQ=").
-            Expect().
-            Status(http.StatusOK)
+		_ = s.NewAPISIXClient().GET("/anything").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("Authorization", "Basic amFjazEtdXNlcm5hbWU6amFjazEtcGFzc3dvcmQ=").
+			Expect().
+			Status(http.StatusOK)
 
-        msg401 := s.NewAPISIXClient().GET("/anything").
-            WithHeader("Host", "httpbin.org").
-            Expect().
-            Status(http.StatusUnauthorized).
-            Body().
-            Raw()
-        assert.Contains(ginkgo.GinkgoT(), msg401, "Missing authorization in request")
+		msg401 := s.NewAPISIXClient().GET("/anything").
+			WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(http.StatusUnauthorized).
+			Body().
+			Raw()
+		assert.Contains(ginkgo.GinkgoT(), msg401, "Missing authorization in request")
 
-        msg403 := s.NewAPISIXClient().GET("/anything").
-            WithHeader("Host", "httpbin.org").
-            WithHeader("Authorization", "Basic amFjazItdXNlcm5hbWU6amFjazItcGFzc3dvcmQ=").
-            Expect().
-            Status(http.StatusForbidden).
-            Body().
-            Raw()
+		msg403 := s.NewAPISIXClient().GET("/anything").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("Authorization", "Basic amFjazItdXNlcm5hbWU6amFjazItcGFzc3dvcmQ=").
+			Expect().
+			Status(http.StatusForbidden).
+			Body().
+			Raw()
 
-        assert.Contains(ginkgo.GinkgoT(), msg403, "The consumer_name is forbidden")
-    })
+		assert.Contains(ginkgo.GinkgoT(), msg403, "The consumer_name is forbidden")
+	})
 
-    ginkgo.It("restrict allowed_by_methods", func() {
-        err := s.ApisixConsumerBasicAuthCreated("jack1", "jack1-username", "jack1-password")
-        assert.Nil(ginkgo.GinkgoT(), err, "creating basicAuth ApisixConsumer")
+	ginkgo.It("restrict allowed_by_methods", func() {
+		err := s.ApisixConsumerBasicAuthCreated("jack1", "jack1-username", "jack1-password")
+		assert.Nil(ginkgo.GinkgoT(), err, "creating basicAuth ApisixConsumer")
 
-        err = s.ApisixConsumerBasicAuthCreated("jack2", "jack2-username", "jack2-password")
-        assert.Nil(ginkgo.GinkgoT(), err, "creating basicAuth ApisixConsumer")
+		err = s.ApisixConsumerBasicAuthCreated("jack2", "jack2-username", "jack2-password")
+		assert.Nil(ginkgo.GinkgoT(), err, "creating basicAuth ApisixConsumer")
 
-        // Wait until the ApisixConsumer create event was delivered.
-        time.Sleep(6 * time.Second)
+		// Wait until the ApisixConsumer create event was delivered.
+		time.Sleep(6 * time.Second)
 
-        grs, err := s.ListApisixConsumers()
-        assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
-        assert.Len(ginkgo.GinkgoT(), grs, 2)
+		grs, err := s.ListApisixConsumers()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
+		assert.Len(ginkgo.GinkgoT(), grs, 2)
 
-        assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
-        assert.Len(ginkgo.GinkgoT(), grs[1].Plugins, 1)
+		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
+		assert.Len(ginkgo.GinkgoT(), grs[1].Plugins, 1)
 
-        username := grs[0].Username
-        basicAuth := grs[0].Plugins["basic-auth"]
-        assert.Equal(ginkgo.GinkgoT(), basicAuth, map[string]interface{}{
-            "username": "jack1-username",
-            "password": "jack1-password",
-        })
+		username := grs[0].Username
+		basicAuth := grs[0].Plugins["basic-auth"]
+		assert.Equal(ginkgo.GinkgoT(), basicAuth, map[string]interface{}{
+			"username": "jack1-username",
+			"password": "jack1-password",
+		})
 
-        username2 := grs[1].Username
-        basicAuth2 := grs[1].Plugins["basic-auth"]
-        assert.Equal(ginkgo.GinkgoT(), basicAuth2, map[string]interface{}{
-            "username": "jack2-username",
-            "password": "jack2-password",
-        })
+		username2 := grs[1].Username
+		basicAuth2 := grs[1].Plugins["basic-auth"]
+		assert.Equal(ginkgo.GinkgoT(), basicAuth2, map[string]interface{}{
+			"username": "jack2-username",
+			"password": "jack2-password",
+		})
 
-        backendSvc, backendPorts := s.DefaultHTTPBackend()
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
-        ar := fmt.Sprintf(`
+		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -188,43 +188,43 @@ spec:
          methods:
          - "GET"
 `, backendSvc, backendPorts[0], username, username2)
-        assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute with basicAuth")
-        assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
-        assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute with basicAuth")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
-        _ = s.NewAPISIXClient().GET("/anything").
-            WithHeader("Host", "httpbin.org").
-            WithHeader("Authorization", "Basic amFjazEtdXNlcm5hbWU6amFjazEtcGFzc3dvcmQ=").
-            Expect().
-            Status(http.StatusOK)
+		_ = s.NewAPISIXClient().GET("/anything").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("Authorization", "Basic amFjazEtdXNlcm5hbWU6amFjazEtcGFzc3dvcmQ=").
+			Expect().
+			Status(http.StatusOK)
 
-        _ = s.NewAPISIXClient().POST("/anything").
-            WithHeader("Host", "httpbin.org").
-            WithHeader("Authorization", "Basic amFjazEtdXNlcm5hbWU6amFjazEtcGFzc3dvcmQ=").
-            Expect().
-            Status(http.StatusOK)
+		_ = s.NewAPISIXClient().POST("/anything").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("Authorization", "Basic amFjazEtdXNlcm5hbWU6amFjazEtcGFzc3dvcmQ=").
+			Expect().
+			Status(http.StatusOK)
 
-        _ = s.NewAPISIXClient().GET("/anything").
-            WithHeader("Host", "httpbin.org").
-            WithHeader("Authorization", "Basic amFjazItdXNlcm5hbWU6amFjazItcGFzc3dvcmQ=").
-            Expect().
-            Status(http.StatusOK)
+		_ = s.NewAPISIXClient().GET("/anything").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("Authorization", "Basic amFjazItdXNlcm5hbWU6amFjazItcGFzc3dvcmQ=").
+			Expect().
+			Status(http.StatusOK)
 
-        msg403 := s.NewAPISIXClient().POST("/anything").
-            WithHeader("Host", "httpbin.org").
-            WithHeader("Authorization", "Basic amFjazItdXNlcm5hbWU6amFjazItcGFzc3dvcmQ=").
-            Expect().
-            Status(http.StatusForbidden).
-            Body().
-            Raw()
-        assert.Contains(ginkgo.GinkgoT(), msg403, "The consumer_name is forbidden")
+		msg403 := s.NewAPISIXClient().POST("/anything").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("Authorization", "Basic amFjazItdXNlcm5hbWU6amFjazItcGFzc3dvcmQ=").
+			Expect().
+			Status(http.StatusForbidden).
+			Body().
+			Raw()
+		assert.Contains(ginkgo.GinkgoT(), msg403, "The consumer_name is forbidden")
 
-        msg401 := s.NewAPISIXClient().GET("/anything").
-            WithHeader("Host", "httpbin.org").
-            Expect().
-            Status(http.StatusUnauthorized).
-            Body().
-            Raw()
-        assert.Contains(ginkgo.GinkgoT(), msg401, "Missing authorization in request")
+		msg401 := s.NewAPISIXClient().GET("/anything").
+			WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(http.StatusUnauthorized).
+			Body().
+			Raw()
+		assert.Contains(ginkgo.GinkgoT(), msg401, "Missing authorization in request")
 	})
 })

@@ -15,30 +15,30 @@
 package plugins
 
 import (
-    ginkgo "github.com/onsi/ginkgo/v2"
-    "github.com/stretchr/testify/assert"
+	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/stretchr/testify/assert"
 
-    "github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("suite-plugins: server-info plugin", func() {
-    opts := &scaffold.Options{
-        Name:                  "default",
-        Kubeconfig:            scaffold.GetKubeconfig(),
-        APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-        IngressAPISIXReplicas: 1,
-        HTTPBinServicePort:    80,
-        APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-    }
-    s := scaffold.NewScaffold(opts)
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
+	}
+	s := scaffold.NewScaffold(opts)
 
-    ginkgo.It("enable server-info plugin", func() {
-        serverInfoKey := [...]string{"etcd_version", "id", "hostname", "version", "boot_time"}
-        serverInfo, err := s.GetServerInfo()
-        assert.Nil(ginkgo.GinkgoT(), err)
-        for _, key := range serverInfoKey {
-            _, ok := serverInfo[key]
-            assert.True(ginkgo.GinkgoT(), ok)
-        }
+	ginkgo.It("enable server-info plugin", func() {
+		serverInfoKey := [...]string{"etcd_version", "id", "hostname", "version", "boot_time"}
+		serverInfo, err := s.GetServerInfo()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		for _, key := range serverInfoKey {
+			_, ok := serverInfo[key]
+			assert.True(ginkgo.GinkgoT(), ok)
+		}
 	})
 })

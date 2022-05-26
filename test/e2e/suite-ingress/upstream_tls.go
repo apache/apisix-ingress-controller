@@ -16,37 +16,37 @@
 package ingress
 
 import (
-    "io/ioutil"
-    "net/http"
-    "time"
+	"io/ioutil"
+	"net/http"
+	"time"
 
-    ginkgo "github.com/onsi/ginkgo/v2"
-    "github.com/stretchr/testify/assert"
+	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/stretchr/testify/assert"
 
-    "github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
-    "github.com/apache/apisix-ingress-controller/test/e2e/testbackend/client"
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+	"github.com/apache/apisix-ingress-controller/test/e2e/testbackend/client"
 )
 
 var _ = ginkgo.Describe("suite-ingress: ApisixUpstreams mTLS test", func() {
-    clientSecret := `client-secret`
+	clientSecret := `client-secret`
 
-    f, err := ioutil.ReadFile("testbackend/tls/client.pem")
-    assert.NoError(ginkgo.GinkgoT(), err, "read client cert")
-    clientCert := string(f)
+	f, err := ioutil.ReadFile("testbackend/tls/client.pem")
+	assert.NoError(ginkgo.GinkgoT(), err, "read client cert")
+	clientCert := string(f)
 
-    f, err = ioutil.ReadFile("testbackend/tls/client.key")
-    assert.NoError(ginkgo.GinkgoT(), err, "read client key")
-    clientKey := string(f)
+	f, err = ioutil.ReadFile("testbackend/tls/client.key")
+	assert.NoError(ginkgo.GinkgoT(), err, "read client key")
+	clientKey := string(f)
 
-    s := scaffold.NewDefaultScaffold()
-    ginkgo.It("create ApisixUpstreams with http mTLS", func() {
-        // create client secret
-        err := s.NewSecret(clientSecret, clientCert, clientKey)
-        assert.NoError(ginkgo.GinkgoT(), err, "create client cert secret")
+	s := scaffold.NewDefaultScaffold()
+	ginkgo.It("create ApisixUpstreams with http mTLS", func() {
+		// create client secret
+		err := s.NewSecret(clientSecret, clientCert, clientKey)
+		assert.NoError(ginkgo.GinkgoT(), err, "create client cert secret")
 
-        err = s.NewApisixUpstreamsWithMTLS("test-backend-service-e2e-test", "https", clientSecret)
-        assert.NoError(ginkgo.GinkgoT(), err, "create ApisixUpstreams with client secret")
-        err = s.CreateResourceFromString(`
+		err = s.NewApisixUpstreamsWithMTLS("test-backend-service-e2e-test", "https", clientSecret)
+		assert.NoError(ginkgo.GinkgoT(), err, "create ApisixUpstreams with client secret")
+		err = s.CreateResourceFromString(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -68,37 +68,37 @@ spec:
         host: 'e2e.apisix.local'
     name: upstream-is-mtls
 `)
-        assert.NoError(ginkgo.GinkgoT(), err, "create ApisixRoute for backend that require mTLS")
-        time.Sleep(10 * time.Second)
-        apisixRoutes, err := s.ListApisixRoutes()
-        assert.NoError(ginkgo.GinkgoT(), err, "list routes error")
-        assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
+		assert.NoError(ginkgo.GinkgoT(), err, "create ApisixRoute for backend that require mTLS")
+		time.Sleep(10 * time.Second)
+		apisixRoutes, err := s.ListApisixRoutes()
+		assert.NoError(ginkgo.GinkgoT(), err, "list routes error")
+		assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
 
-        s.NewAPISIXClient().GET("/hello").WithHeader("Host", "upstream-is-mtls.httpbin.local").Expect().Status(http.StatusOK).Body().Raw()
-    })
+		s.NewAPISIXClient().GET("/hello").WithHeader("Host", "upstream-is-mtls.httpbin.local").Expect().Status(http.StatusOK).Body().Raw()
+	})
 
-    ginkgo.It("create ApisixUpstreams with grpc mTLS", func() {
-        // create grpc secret for apisix grpc route
-        grpcSecret := `grpc-secret`
-        f, err := ioutil.ReadFile("testbackend/tls/server.pem")
-        assert.NoError(ginkgo.GinkgoT(), err, "read server cert")
-        serverCert := string(f)
+	ginkgo.It("create ApisixUpstreams with grpc mTLS", func() {
+		// create grpc secret for apisix grpc route
+		grpcSecret := `grpc-secret`
+		f, err := ioutil.ReadFile("testbackend/tls/server.pem")
+		assert.NoError(ginkgo.GinkgoT(), err, "read server cert")
+		serverCert := string(f)
 
-        f, err = ioutil.ReadFile("testbackend/tls/server.key")
-        assert.NoError(ginkgo.GinkgoT(), err, "read server key")
-        serverKey := string(f)
+		f, err = ioutil.ReadFile("testbackend/tls/server.key")
+		assert.NoError(ginkgo.GinkgoT(), err, "read server key")
+		serverKey := string(f)
 
-        err = s.NewSecret(grpcSecret, serverCert, serverKey)
-        assert.NoError(ginkgo.GinkgoT(), err, "create server cert secret")
+		err = s.NewSecret(grpcSecret, serverCert, serverKey)
+		assert.NoError(ginkgo.GinkgoT(), err, "create server cert secret")
 
-        // create client secret
-        err = s.NewSecret(clientSecret, clientCert, clientKey)
-        assert.NoError(ginkgo.GinkgoT(), err, "create client cert secret")
+		// create client secret
+		err = s.NewSecret(clientSecret, clientCert, clientKey)
+		assert.NoError(ginkgo.GinkgoT(), err, "create client cert secret")
 
-        err = s.NewApisixUpstreamsWithMTLS("test-backend-service-e2e-test", "grpcs", clientSecret)
-        assert.NoError(ginkgo.GinkgoT(), err, "create ApisixUpstreams with client secret")
+		err = s.NewApisixUpstreamsWithMTLS("test-backend-service-e2e-test", "grpcs", clientSecret)
+		assert.NoError(ginkgo.GinkgoT(), err, "create ApisixUpstreams with client secret")
 
-        assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(`
+		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -116,16 +116,16 @@ spec:
        servicePort: 50053
 `))
 
-        assert.NoError(ginkgo.GinkgoT(), s.NewApisixTls("grpc-secret", "e2e.apisix.local", "grpc-secret"))
+		assert.NoError(ginkgo.GinkgoT(), s.NewApisixTls("grpc-secret", "e2e.apisix.local", "grpc-secret"))
 
-        assert.NoError(ginkgo.GinkgoT(), err, "create ApisixRoute for backend that require mTLS")
-        time.Sleep(10 * time.Second)
-        apisixRoutes, err := s.ListApisixRoutes()
-        assert.NoError(ginkgo.GinkgoT(), err, "list routes error")
-        assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
+		assert.NoError(ginkgo.GinkgoT(), err, "create ApisixRoute for backend that require mTLS")
+		time.Sleep(10 * time.Second)
+		apisixRoutes, err := s.ListApisixRoutes()
+		assert.NoError(ginkgo.GinkgoT(), err, "list routes error")
+		assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
 
-        ca, err := ioutil.ReadFile("testbackend/tls/ca.pem")
-        assert.NoError(ginkgo.GinkgoT(), err, "read ca cert")
-        assert.NoError(ginkgo.GinkgoT(), client.RequestHello(s.GetAPISIXHTTPSEndpoint(), ca), "request apisix using grpc protocol")
+		ca, err := ioutil.ReadFile("testbackend/tls/ca.pem")
+		assert.NoError(ginkgo.GinkgoT(), err, "read ca cert")
+		assert.NoError(ginkgo.GinkgoT(), client.RequestHello(s.GetAPISIXHTTPSEndpoint(), ca), "request apisix using grpc protocol")
 	})
 })

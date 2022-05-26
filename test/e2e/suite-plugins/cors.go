@@ -15,28 +15,28 @@
 package plugins
 
 import (
-    "fmt"
-    "net/http"
+	"fmt"
+	"net/http"
 
-    ginkgo "github.com/onsi/ginkgo/v2"
-    "github.com/stretchr/testify/assert"
+	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/stretchr/testify/assert"
 
-    "github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("suite-plugins: fault-injection plugin", func() {
-    opts := &scaffold.Options{
-        Name:                  "default",
-        Kubeconfig:            scaffold.GetKubeconfig(),
-        APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-        IngressAPISIXReplicas: 1,
-        HTTPBinServicePort:    80,
-        APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-    }
-    s := scaffold.NewScaffold(opts)
-    ginkgo.It("empty config", func() {
-        backendSvc, backendPorts := s.DefaultHTTPBackend()
-        ar := fmt.Sprintf(`
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
+	}
+	s := scaffold.NewScaffold(opts)
+	ginkgo.It("empty config", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -58,24 +58,24 @@ spec:
      enable: true
 `, backendSvc, backendPorts[0])
 
-        assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-        err := s.EnsureNumApisixUpstreamsCreated(1)
-        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-        err = s.EnsureNumApisixRoutesCreated(1)
-        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-        resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-        resp.Status(http.StatusOK)
-        resp.Header("Access-Control-Allow-Origin").Equal("*")
-        resp.Header("Access-Control-Allow-Methods").Equal("*")
-        resp.Header("Access-Control-Allow-Headers").Equal("*")
-        resp.Header("Access-Control-Expose-Headers").Equal("*")
-        resp.Header("Access-Control-Max-Age").Equal("5")
-        resp.Body().Contains("origin")
-    })
-    ginkgo.It("finer granularity config", func() {
-        backendSvc, backendPorts := s.DefaultHTTPBackend()
-        ar := fmt.Sprintf(`
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+		resp.Header("Access-Control-Allow-Origin").Equal("*")
+		resp.Header("Access-Control-Allow-Methods").Equal("*")
+		resp.Header("Access-Control-Allow-Headers").Equal("*")
+		resp.Header("Access-Control-Expose-Headers").Equal("*")
+		resp.Header("Access-Control-Max-Age").Equal("5")
+		resp.Body().Contains("origin")
+	})
+	ginkgo.It("finer granularity config", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -104,41 +104,41 @@ spec:
        allow_credential: true
 `, backendSvc, backendPorts[0])
 
-        assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-        err := s.EnsureNumApisixUpstreamsCreated(1)
-        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-        err = s.EnsureNumApisixRoutesCreated(1)
-        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-        resp := s.NewAPISIXClient().GET("/ip").
-            WithHeader("Host", "httpbin.org").
-            WithHeader("Origin", "http://foo.bar.org").
-            Expect()
-        resp.Status(http.StatusOK)
-        resp.Header("Access-Control-Allow-Origin").Equal("http://foo.bar.org")
-        resp.Header("Access-Control-Allow-Methods").Equal("GET,POST")
-        resp.Header("Access-Control-Allow-Headers").Equal("x-from-ingress")
-        resp.Header("Access-Control-Expose-Headers").Equal("x-foo,x-baz")
-        resp.Header("Access-Control-Max-Age").Equal("3600")
-        resp.Header("Access-Control-Allow-Credentials").Equal("true")
-        resp.Body().Contains("origin")
+		resp := s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("Origin", "http://foo.bar.org").
+			Expect()
+		resp.Status(http.StatusOK)
+		resp.Header("Access-Control-Allow-Origin").Equal("http://foo.bar.org")
+		resp.Header("Access-Control-Allow-Methods").Equal("GET,POST")
+		resp.Header("Access-Control-Allow-Headers").Equal("x-from-ingress")
+		resp.Header("Access-Control-Expose-Headers").Equal("x-foo,x-baz")
+		resp.Header("Access-Control-Max-Age").Equal("3600")
+		resp.Header("Access-Control-Allow-Credentials").Equal("true")
+		resp.Body().Contains("origin")
 
-        resp = s.NewAPISIXClient().GET("/ip").
-            WithHeader("Host", "httpbin.org").
-            WithHeader("Origin", "http://foo.bar2.org").
-            Expect()
-        resp.Header("Access-Control-Allow-Methods").Empty()
-        resp.Header("Access-Control-Allow-Headers").Empty()
-        resp.Header("Access-Control-Expose-Headers").Empty()
-        resp.Header("Access-Control-Max-Age").Empty()
-        // httpbin set it by itself.
-        // resp.Header("Access-Control-Allow-Credentials").Empty()
-        resp.Body().Contains("origin")
-    })
-    ginkgo.It("allow_origins_by_regex", func() {
-        ginkgo.Skip("APISIX version priors to 2.5 doesn't contain allow_origins_by_regex in cors plugin")
-        backendSvc, backendPorts := s.DefaultHTTPBackend()
-        ar := fmt.Sprintf(`
+		resp = s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("Origin", "http://foo.bar2.org").
+			Expect()
+		resp.Header("Access-Control-Allow-Methods").Empty()
+		resp.Header("Access-Control-Allow-Headers").Empty()
+		resp.Header("Access-Control-Expose-Headers").Empty()
+		resp.Header("Access-Control-Max-Age").Empty()
+		// httpbin set it by itself.
+		// resp.Header("Access-Control-Allow-Credentials").Empty()
+		resp.Body().Contains("origin")
+	})
+	ginkgo.It("allow_origins_by_regex", func() {
+		ginkgo.Skip("APISIX version priors to 2.5 doesn't contain allow_origins_by_regex in cors plugin")
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -167,53 +167,53 @@ spec:
        allow_headers: x-from-ingress
 `, backendSvc, backendPorts[0])
 
-        assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-        err := s.EnsureNumApisixUpstreamsCreated(1)
-        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-        err = s.EnsureNumApisixRoutesCreated(1)
-        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-        resp := s.NewAPISIXClient().GET("/ip").
-            WithHeader("Host", "httpbin.org").
-            WithHeader("Origin", "http://foo.bar.org").
-            Expect()
-        resp.Status(http.StatusOK)
-        resp.Header("Access-Control-Allow-Origin").Equal("http://foo.bar.org")
-        resp.Header("Access-Control-Allow-Methods").Equal("GET,POST")
-        resp.Header("Access-Control-Allow-Headers").Equal("x-from-ingress")
-        resp.Header("Access-Control-Expose-Headers").Equal("x-foo,x-baz")
-        resp.Header("Access-Control-Max-Age").Equal("3600")
-        resp.Header("Access-Control-Allow-Credentials").Equal("true")
-        resp.Body().Contains("origin")
+		resp := s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("Origin", "http://foo.bar.org").
+			Expect()
+		resp.Status(http.StatusOK)
+		resp.Header("Access-Control-Allow-Origin").Equal("http://foo.bar.org")
+		resp.Header("Access-Control-Allow-Methods").Equal("GET,POST")
+		resp.Header("Access-Control-Allow-Headers").Equal("x-from-ingress")
+		resp.Header("Access-Control-Expose-Headers").Equal("x-foo,x-baz")
+		resp.Header("Access-Control-Max-Age").Equal("3600")
+		resp.Header("Access-Control-Allow-Credentials").Equal("true")
+		resp.Body().Contains("origin")
 
-        resp = s.NewAPISIXClient().GET("/ip").
-            WithHeader("Host", "httpbin.org").
-            WithHeader("Origin", "http://foo.baz.org").
-            Expect()
-        resp.Status(http.StatusOK)
-        resp.Header("Access-Control-Allow-Origin").Equal("http://foo.baz.org")
-        resp.Header("Access-Control-Allow-Methods").Equal("GET,POST")
-        resp.Header("Access-Control-Allow-Headers").Equal("x-from-ingress")
-        resp.Header("Access-Control-Expose-Headers").Equal("x-foo,x-baz")
-        resp.Header("Access-Control-Max-Age").Equal("3600")
-        resp.Header("Access-Control-Allow-Credentials").Equal("true")
-        resp.Body().Contains("origin")
+		resp = s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("Origin", "http://foo.baz.org").
+			Expect()
+		resp.Status(http.StatusOK)
+		resp.Header("Access-Control-Allow-Origin").Equal("http://foo.baz.org")
+		resp.Header("Access-Control-Allow-Methods").Equal("GET,POST")
+		resp.Header("Access-Control-Allow-Headers").Equal("x-from-ingress")
+		resp.Header("Access-Control-Expose-Headers").Equal("x-foo,x-baz")
+		resp.Header("Access-Control-Max-Age").Equal("3600")
+		resp.Header("Access-Control-Allow-Credentials").Equal("true")
+		resp.Body().Contains("origin")
 
-        resp = s.NewAPISIXClient().GET("/ip").
-            WithHeader("Host", "httpbin.org").
-            WithHeader("Origin", "http://foo.bar2.org").
-            Expect()
-        resp.Header("Access-Control-Allow-Methods").Empty()
-        resp.Header("Access-Control-Allow-Headers").Empty()
-        resp.Header("Access-Control-Expose-Headers").Empty()
-        resp.Header("Access-Control-Max-Age").Empty()
-        // httpbin set it by itself.
-        // resp.Header("Access-Control-Allow-Credentials").Empty()
-        resp.Body().Contains("origin")
-    })
-    ginkgo.It("disable plugin", func() {
-        backendSvc, backendPorts := s.DefaultHTTPBackend()
-        ar := fmt.Sprintf(`
+		resp = s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			WithHeader("Origin", "http://foo.bar2.org").
+			Expect()
+		resp.Header("Access-Control-Allow-Methods").Empty()
+		resp.Header("Access-Control-Allow-Headers").Empty()
+		resp.Header("Access-Control-Expose-Headers").Empty()
+		resp.Header("Access-Control-Max-Age").Empty()
+		// httpbin set it by itself.
+		// resp.Header("Access-Control-Allow-Credentials").Empty()
+		resp.Body().Contains("origin")
+	})
+	ginkgo.It("disable plugin", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -235,25 +235,25 @@ spec:
      enable: false
 `, backendSvc, backendPorts[0])
 
-        assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-        err := s.EnsureNumApisixUpstreamsCreated(1)
-        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-        err = s.EnsureNumApisixRoutesCreated(1)
-        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-        resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-        resp.Status(http.StatusOK)
-        // httpbin sets this header by itself.
-        // resp.Header("Access-Control-Allow-Origin").Empty()
-        resp.Header("Access-Control-Allow-Methods").Empty()
-        resp.Header("Access-Control-Allow-Headers").Empty()
-        resp.Header("Access-Control-Expose-Headers").Empty()
-        resp.Header("Access-Control-Max-Age").Empty()
-        resp.Body().Contains("origin")
-    })
-    ginkgo.It("enable plugin and then delete it", func() {
-        backendSvc, backendPorts := s.DefaultHTTPBackend()
-        ar := fmt.Sprintf(`
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+		// httpbin sets this header by itself.
+		// resp.Header("Access-Control-Allow-Origin").Empty()
+		resp.Header("Access-Control-Allow-Methods").Empty()
+		resp.Header("Access-Control-Allow-Headers").Empty()
+		resp.Header("Access-Control-Expose-Headers").Empty()
+		resp.Header("Access-Control-Max-Age").Empty()
+		resp.Body().Contains("origin")
+	})
+	ginkgo.It("enable plugin and then delete it", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -275,23 +275,23 @@ spec:
      enable: true
 `, backendSvc, backendPorts[0])
 
-        assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-        err := s.EnsureNumApisixUpstreamsCreated(1)
-        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-        err = s.EnsureNumApisixRoutesCreated(1)
-        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-        resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-        resp.Status(http.StatusOK)
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
 
-        resp.Header("Access-Control-Allow-Origin").Equal("*")
-        resp.Header("Access-Control-Allow-Methods").Equal("*")
-        resp.Header("Access-Control-Allow-Headers").Equal("*")
-        resp.Header("Access-Control-Expose-Headers").Equal("*")
-        resp.Header("Access-Control-Max-Age").Equal("5")
-        resp.Body().Contains("origin")
+		resp.Header("Access-Control-Allow-Origin").Equal("*")
+		resp.Header("Access-Control-Allow-Methods").Equal("*")
+		resp.Header("Access-Control-Allow-Headers").Equal("*")
+		resp.Header("Access-Control-Expose-Headers").Equal("*")
+		resp.Header("Access-Control-Max-Age").Equal("5")
+		resp.Body().Contains("origin")
 
-        ar = fmt.Sprintf(`
+		ar = fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -310,21 +310,21 @@ spec:
      weight: 10
 `, backendSvc, backendPorts[0])
 
-        assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-        err = s.EnsureNumApisixUpstreamsCreated(1)
-        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-        err = s.EnsureNumApisixRoutesCreated(1)
-        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+		err = s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-        resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-        resp.Status(http.StatusOK)
+		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
 
-        // httpbin sets this header by itself.
-        // resp.Header("Access-Control-Allow-Origin").Empty()
-        resp.Header("Access-Control-Allow-Methods").Empty()
-        resp.Header("Access-Control-Allow-Headers").Empty()
-        resp.Header("Access-Control-Expose-Headers").Empty()
-        resp.Header("Access-Control-Max-Age").Empty()
-        resp.Body().Contains("origin")
+		// httpbin sets this header by itself.
+		// resp.Header("Access-Control-Allow-Origin").Empty()
+		resp.Header("Access-Control-Allow-Methods").Empty()
+		resp.Header("Access-Control-Allow-Headers").Empty()
+		resp.Header("Access-Control-Expose-Headers").Empty()
+		resp.Header("Access-Control-Max-Age").Empty()
+		resp.Body().Contains("origin")
 	})
 })

@@ -16,24 +16,24 @@
 package ingress
 
 import (
-    "crypto/tls"
-    "crypto/x509"
-    "fmt"
-    "net/http"
-    "time"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"net/http"
+	"time"
 
-    ginkgo "github.com/onsi/ginkgo/v2"
-    "github.com/stretchr/testify/assert"
+	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/stretchr/testify/assert"
 
-    "github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("suite-ingress: SSL Testing", func() {
-    suites := func(scaffoldFunc func() *scaffold.Scaffold) {
-        s := scaffoldFunc()
-        ginkgo.It("create a SSL from ApisixTls ", func() {
-            secretName := "test-apisix-tls"
-            cert := `-----BEGIN CERTIFICATE-----
+	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
+		s := scaffoldFunc()
+		ginkgo.It("create a SSL from ApisixTls ", func() {
+			secretName := "test-apisix-tls"
+			cert := `-----BEGIN CERTIFICATE-----
 MIIDSjCCAjICCQC/34ZwGz7ZXjANBgkqhkiG9w0BAQsFADBmMQswCQYDVQQGEwJD
 TjEQMA4GA1UECAwHSmlhbmdzdTEPMA0GA1UEBwwGU3V6aG91MQ8wDQYDVQQKDAZ6
 aGlsaXUxEDAOBgNVBAsMB3NlY3Rpb24xETAPBgNVBAMMCHRlc3QuY29tMCAXDTIx
@@ -53,7 +53,7 @@ iYpt+TDAuySnLhAcd3GfE5ml6am2dOsOKpxHU/8clUSaz+21fckRopWo+xL6rSVC
 PpET/mPDrcb4bGsZkW/cu0LrPSUVp12br5TAYaXqYS0Ex+jAVTXML9SeEQuvU3dH
 5Uw2wVHxQXHglsdCYUXXFd3HZffb4rSQH+Mk0CBI
 -----END CERTIFICATE-----`
-            key := `-----BEGIN RSA PRIVATE KEY-----
+			key := `-----BEGIN RSA PRIVATE KEY-----
 MIIEpQIBAAKCAQEA3DEQ5K9PVYicINTHt3arqrsrftrhotyBuGqMxxqGMVO/E2SA
 a/81fC1UCcjYV4Wila0kl8i5fa8HjtVm5UWlrqxeFLOS3E0Wv2QYw46BGZJY4InE
 9zKwYyC2DkBxE6p14JRjmtW/MQPNaOFjJ4bmCuRHsEzmQIGRM0b7oKHjfFwv6l7B
@@ -80,23 +80,23 @@ YOpduE8CgYEAu9k9WOQuRX4f6i5LBIxyaYn6Hw6oJn8e/w+p2+HNBXdyVQNqUHBG
 V5rgnBwhc5LeIFbehKvQOvYSWbwbA1VunMpdYgV6+EBLayumJNqV6jGei4okx2of
 wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 -----END RSA PRIVATE KEY-----`
-            // create secret
-            err := s.NewSecret(secretName, cert, key)
-            assert.Nil(ginkgo.GinkgoT(), err, "create secret error")
-            // create ApisixTls resource
-            tlsName := "tls-name"
-            host := "api6.com"
-            err = s.NewApisixTls(tlsName, host, secretName)
-            assert.Nil(ginkgo.GinkgoT(), err, "create tls error")
-            // check ssl in APISIX
-            time.Sleep(10 * time.Second)
-            tls, err := s.ListApisixSsl()
-            assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
-            assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
-        })
-        ginkgo.It("update a SSL from ApisixTls ", func() {
-            secretName := "test-apisix-tls"
-            cert := `-----BEGIN CERTIFICATE-----
+			// create secret
+			err := s.NewSecret(secretName, cert, key)
+			assert.Nil(ginkgo.GinkgoT(), err, "create secret error")
+			// create ApisixTls resource
+			tlsName := "tls-name"
+			host := "api6.com"
+			err = s.NewApisixTls(tlsName, host, secretName)
+			assert.Nil(ginkgo.GinkgoT(), err, "create tls error")
+			// check ssl in APISIX
+			time.Sleep(10 * time.Second)
+			tls, err := s.ListApisixSsl()
+			assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
+			assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
+		})
+		ginkgo.It("update a SSL from ApisixTls ", func() {
+			secretName := "test-apisix-tls"
+			cert := `-----BEGIN CERTIFICATE-----
 MIIDSDCCAjACCQDf02nwtW2VrzANBgkqhkiG9w0BAQsFADBmMQswCQYDVQQGEwJj
 bjEQMA4GA1UECAwHamlhbmdzdTEPMA0GA1UEBwwGc3V6aG91MQ8wDQYDVQQKDAZ6
 aGlsaXUxEDAOBgNVBAsMB3NlY3Rpb24xETAPBgNVBAMMCGFwaTYuY29tMB4XDTIx
@@ -116,7 +116,7 @@ x4cosJI+W55Kzejiqgm/wzBbr4OpjW4DDz1YBJFXCc1TN9pf2ALkWZ8j3HfMrn2y
 HvOefA8g628WpNtPZodWe/zC8hanCzRMp37JPbh85+RwlGhi7gIkhvjf78EiAZBy
 eHg1iDgdVUzlXn+LNPCAbjxCaTqn6zmIb+GkhA==
 -----END CERTIFICATE-----`
-            key := `-----BEGIN RSA PRIVATE KEY-----
+			key := `-----BEGIN RSA PRIVATE KEY-----
 MIIEpAIBAAKCAQEAxAXOahtVW6LE5rRwQi1kvO3eAqJ9RLVv6w3l3TLtIYp4CmOG
 BKXRuXXEVcQbIW20I2UVTT5p1sodckuw0Vs7+XzGL7bXyKFhnWYzvTzxPwgkzh3i
 OnHQ4oVlJT23Cj5XE0tPAWxq3YaIHf0oyI2ks5KGEh0r0EpPz6/pSqoxuRigIJE5
@@ -143,32 +143,32 @@ RU+QPRECgYB6XW24EI5+w3STbpnc6VoTS+sy9I9abTJPYo9LpCJwfMYc9Tg9Cx2K
 29PnmSrLFpU2fvE0ijpyHRr7gGmINTxbrmTmfMBI01m+GpPuvDcBQ2tsFJ+A3DzN
 9xJulR2NZUZdDIIIqx983ANE6S4Zb8rAbsoHQdqpjUrcVxI2OJBp3Q==
 -----END RSA PRIVATE KEY-----`
-            // create secret
-            err := s.NewSecret(secretName, cert, key)
-            assert.Nil(ginkgo.GinkgoT(), err, "create secret error")
-            // create ApisixTls resource
-            tlsName := "tls-name"
-            host := "api6.com"
-            err = s.NewApisixTls(tlsName, host, secretName)
-            assert.Nil(ginkgo.GinkgoT(), err, "create tls error")
-            // update ApisixTls resource
-            host = "api7.com"
-            err = s.NewApisixTls(tlsName, host, secretName)
-            assert.Nil(ginkgo.GinkgoT(), err, "update tls error")
+			// create secret
+			err := s.NewSecret(secretName, cert, key)
+			assert.Nil(ginkgo.GinkgoT(), err, "create secret error")
+			// create ApisixTls resource
+			tlsName := "tls-name"
+			host := "api6.com"
+			err = s.NewApisixTls(tlsName, host, secretName)
+			assert.Nil(ginkgo.GinkgoT(), err, "create tls error")
+			// update ApisixTls resource
+			host = "api7.com"
+			err = s.NewApisixTls(tlsName, host, secretName)
+			assert.Nil(ginkgo.GinkgoT(), err, "update tls error")
 
-            // check ssl in APISIX
-            time.Sleep(10 * time.Second)
-            tls, err := s.ListApisixSsl()
-            assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
-            assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
-            assert.Equal(ginkgo.GinkgoT(), tls[0].Snis[0], host, "tls host is error")
-            assert.Equal(ginkgo.GinkgoT(), tls[0].Labels, map[string]string{
-                "managed-by": "apisix-ingress-controller",
-            })
-        })
-        ginkgo.It("delete a SSL from ApisixTls ", func() {
-            secretName := "test-apisix-tls"
-            cert := `-----BEGIN CERTIFICATE-----
+			// check ssl in APISIX
+			time.Sleep(10 * time.Second)
+			tls, err := s.ListApisixSsl()
+			assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
+			assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
+			assert.Equal(ginkgo.GinkgoT(), tls[0].Snis[0], host, "tls host is error")
+			assert.Equal(ginkgo.GinkgoT(), tls[0].Labels, map[string]string{
+				"managed-by": "apisix-ingress-controller",
+			})
+		})
+		ginkgo.It("delete a SSL from ApisixTls ", func() {
+			secretName := "test-apisix-tls"
+			cert := `-----BEGIN CERTIFICATE-----
 MIIDSDCCAjACCQDf02nwtW2VrzANBgkqhkiG9w0BAQsFADBmMQswCQYDVQQGEwJj
 bjEQMA4GA1UECAwHamlhbmdzdTEPMA0GA1UEBwwGc3V6aG91MQ8wDQYDVQQKDAZ6
 aGlsaXUxEDAOBgNVBAsMB3NlY3Rpb24xETAPBgNVBAMMCGFwaTYuY29tMB4XDTIx
@@ -188,7 +188,7 @@ x4cosJI+W55Kzejiqgm/wzBbr4OpjW4DDz1YBJFXCc1TN9pf2ALkWZ8j3HfMrn2y
 HvOefA8g628WpNtPZodWe/zC8hanCzRMp37JPbh85+RwlGhi7gIkhvjf78EiAZBy
 eHg1iDgdVUzlXn+LNPCAbjxCaTqn6zmIb+GkhA==
 -----END CERTIFICATE-----`
-            key := `-----BEGIN RSA PRIVATE KEY-----
+			key := `-----BEGIN RSA PRIVATE KEY-----
 MIIEpAIBAAKCAQEAxAXOahtVW6LE5rRwQi1kvO3eAqJ9RLVv6w3l3TLtIYp4CmOG
 BKXRuXXEVcQbIW20I2UVTT5p1sodckuw0Vs7+XzGL7bXyKFhnWYzvTzxPwgkzh3i
 OnHQ4oVlJT23Cj5XE0tPAWxq3YaIHf0oyI2ks5KGEh0r0EpPz6/pSqoxuRigIJE5
@@ -215,47 +215,47 @@ RU+QPRECgYB6XW24EI5+w3STbpnc6VoTS+sy9I9abTJPYo9LpCJwfMYc9Tg9Cx2K
 29PnmSrLFpU2fvE0ijpyHRr7gGmINTxbrmTmfMBI01m+GpPuvDcBQ2tsFJ+A3DzN
 9xJulR2NZUZdDIIIqx983ANE6S4Zb8rAbsoHQdqpjUrcVxI2OJBp3Q==
 -----END RSA PRIVATE KEY-----`
-            // create secret
-            err := s.NewSecret(secretName, cert, key)
-            assert.Nil(ginkgo.GinkgoT(), err, "create secret error")
-            // create ApisixTls resource
-            tlsName := "tls-name"
-            host := "api6.com"
-            err = s.NewApisixTls(tlsName, host, secretName)
-            assert.Nil(ginkgo.GinkgoT(), err, "create tls error")
+			// create secret
+			err := s.NewSecret(secretName, cert, key)
+			assert.Nil(ginkgo.GinkgoT(), err, "create secret error")
+			// create ApisixTls resource
+			tlsName := "tls-name"
+			host := "api6.com"
+			err = s.NewApisixTls(tlsName, host, secretName)
+			assert.Nil(ginkgo.GinkgoT(), err, "create tls error")
 
-            // check ssl in APISIX
-            time.Sleep(10 * time.Second)
-            tls, err := s.ListApisixSsl()
-            assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
-            assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
-            assert.Equal(ginkgo.GinkgoT(), tls[0].Snis[0], host, "tls host is error")
+			// check ssl in APISIX
+			time.Sleep(10 * time.Second)
+			tls, err := s.ListApisixSsl()
+			assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
+			assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
+			assert.Equal(ginkgo.GinkgoT(), tls[0].Snis[0], host, "tls host is error")
 
-            // delete ApisixTls
-            err = s.DeleteApisixTls(tlsName, host, secretName)
-            assert.Nil(ginkgo.GinkgoT(), err, "delete tls error")
-            // check ssl in APISIX
-            time.Sleep(10 * time.Second)
-            tls, err = s.ListApisixSsl()
-            assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
-            assert.Len(ginkgo.GinkgoT(), tls, 0, "tls number not expect")
-        })
-    }
+			// delete ApisixTls
+			err = s.DeleteApisixTls(tlsName, host, secretName)
+			assert.Nil(ginkgo.GinkgoT(), err, "delete tls error")
+			// check ssl in APISIX
+			time.Sleep(10 * time.Second)
+			tls, err = s.ListApisixSsl()
+			assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
+			assert.Len(ginkgo.GinkgoT(), tls, 0, "tls number not expect")
+		})
+	}
 
-    ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
-        suites(scaffold.NewDefaultScaffold)
-    })
-    ginkgo.Describe("suite-ingress: scaffold v2", func() {
-        suites(scaffold.NewDefaultV2Scaffold)
-    })
+	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+		suites(scaffold.NewDefaultScaffold)
+	})
+	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+		suites(scaffold.NewDefaultV2Scaffold)
+	})
 })
 
 var _ = ginkgo.Describe("suite-ingress: ApisixTls mTLS Test", func() {
-    // RootCA -> Server
-    // RootCA -> UserCert
-    // These certs come from mTLS practice
+	// RootCA -> Server
+	// RootCA -> UserCert
+	// These certs come from mTLS practice
 
-    rootCA := `-----BEGIN CERTIFICATE-----
+	rootCA := `-----BEGIN CERTIFICATE-----
 MIIF9zCCA9+gAwIBAgIUFKuzAJZgm/fsFS6JDrd+lcpVZr8wDQYJKoZIhvcNAQEL
 BQAwgZwxCzAJBgNVBAYTAkNOMREwDwYDVQQIDAhaaGVqaWFuZzERMA8GA1UEBwwI
 SGFuZ3pob3UxGDAWBgNVBAoMD0FQSVNJWC1UZXN0LUNBXzEYMBYGA1UECwwPQVBJ
@@ -291,8 +291,8 @@ uwW3ZLh9sZV6OnhbQJBQaUmcgaPJUQqbXNQmpmpc0NUjET/ltFRZ2hlyvvpf7wwF
 -----END CERTIFICATE-----
 `
 
-    serverCertSecret := `server-secret`
-    serverCert := `-----BEGIN CERTIFICATE-----
+	serverCertSecret := `server-secret`
+	serverCert := `-----BEGIN CERTIFICATE-----
 MIIF/TCCA+WgAwIBAgIUBbUP7Gk0WAb/JhYYcBBgZEgmhbEwDQYJKoZIhvcNAQEL
 BQAwgZwxCzAJBgNVBAYTAkNOMREwDwYDVQQIDAhaaGVqaWFuZzERMA8GA1UEBwwI
 SGFuZ3pob3UxGDAWBgNVBAoMD0FQSVNJWC1UZXN0LUNBXzEYMBYGA1UECwwPQVBJ
@@ -328,7 +328,7 @@ Bfzv/vMftLnbySPovCzQ1PF55D01EWRk0o6PRwUDLfzTQoV+bDKx82LxKtZBtQEX
 uw==
 -----END CERTIFICATE-----
 `
-    serverKey := `-----BEGIN RSA PRIVATE KEY-----
+	serverKey := `-----BEGIN RSA PRIVATE KEY-----
 MIIJKAIBAAKCAgEAxlE8byBSs4YzhrCdXoPwOzRdvqNVuIaTH7Viy8/HmggTgCzA
 nSXLrOqEEWelCjMUbrcp+wIDpTfr8O3LeshsnOxs7tho4wki2iJCCp2oXaeuY+ma
 kJC4sYppW+uJEIPnk0SYVA+yGVF9xTn8QSt40ptG97fMQodGkIMFnYzK+um3cIJX
@@ -380,8 +380,8 @@ w174RSQoNMc+odHxn95mxtYdYVE5PKkzgrfxqymLa5Y0LMPCpKOq4XB0paZPtrOt
 k1XbogS6EYyEdbkTDdXdUENvDrU7hzJXSVxJYADiqr44DGfWm6hK0bq9ZPc=
 -----END RSA PRIVATE KEY-----
 `
-    clientCASecret := `client-ca-secret`
-    clientCert := `-----BEGIN CERTIFICATE-----
+	clientCASecret := `client-ca-secret`
+	clientCert := `-----BEGIN CERTIFICATE-----
 MIIGDDCCA/SgAwIBAgIUBbUP7Gk0WAb/JhYYcBBgZEgmhbIwDQYJKoZIhvcNAQEL
 BQAwgZwxCzAJBgNVBAYTAkNOMREwDwYDVQQIDAhaaGVqaWFuZzERMA8GA1UEBwwI
 SGFuZ3pob3UxGDAWBgNVBAoMD0FQSVNJWC1UZXN0LUNBXzEYMBYGA1UECwwPQVBJ
@@ -418,7 +418,7 @@ bncvZ6xo9A/waUU7tEyzv34usxefrWxtSlOA1G0Jj4nb5gKPHjn0XIr9WI2RpovT
 -----END CERTIFICATE-----
 `
 
-    clientKey := `-----BEGIN RSA PRIVATE KEY-----
+	clientKey := `-----BEGIN RSA PRIVATE KEY-----
 MIIJKQIBAAKCAgEAvjWL5bx+Cq0oG62eQ5rSoYCk8nsdJQiDEG3pNvuZHx6Rry+e
 jyEgTjaHAxdigiI7UWAz0z1883y/NOdavaJMBdvD+pd2fXhFPTUmsbOPU5Tcz1TR
 EyYNZWzxU5jedx1x0+ipy0w2vYr7rCU3oSkbUNANQS8HRjKpmkVam5k/RqTOMWp4
@@ -471,29 +471,29 @@ RAmKucXUNJSR8wYGSg5ymvsnChTaYHLL1gmIdQli2y8XxqUaYC1tXrEt4g5z4a/O
 -----END RSA PRIVATE KEY-----
 `
 
-    suites := func(scaffoldFunc func() *scaffold.Scaffold) {
-        s := scaffoldFunc()
-        ginkgo.It("create a SSL with client CA", func() {
-            // create secrets
-            err := s.NewSecret(serverCertSecret, serverCert, serverKey)
-            assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
-            err = s.NewClientCASecret(clientCASecret, rootCA, "")
-            assert.Nil(ginkgo.GinkgoT(), err, "create client CA cert secret error")
+	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
+		s := scaffoldFunc()
+		ginkgo.It("create a SSL with client CA", func() {
+			// create secrets
+			err := s.NewSecret(serverCertSecret, serverCert, serverKey)
+			assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
+			err = s.NewClientCASecret(clientCASecret, rootCA, "")
+			assert.Nil(ginkgo.GinkgoT(), err, "create client CA cert secret error")
 
-            // create ApisixTls resource
-            tlsName := "tls-with-client-ca"
-            host := "mtls.httpbin.local"
-            err = s.NewApisixTlsWithClientCA(tlsName, host, serverCertSecret, clientCASecret)
-            assert.Nil(ginkgo.GinkgoT(), err, "create ApisixTls with client CA error")
-            // check ssl in APISIX
-            time.Sleep(10 * time.Second)
-            apisixSsls, err := s.ListApisixSsl()
-            assert.Nil(ginkgo.GinkgoT(), err, "list ssl error")
-            assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "ssl number not expect")
+			// create ApisixTls resource
+			tlsName := "tls-with-client-ca"
+			host := "mtls.httpbin.local"
+			err = s.NewApisixTlsWithClientCA(tlsName, host, serverCertSecret, clientCASecret)
+			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixTls with client CA error")
+			// check ssl in APISIX
+			time.Sleep(10 * time.Second)
+			apisixSsls, err := s.ListApisixSsl()
+			assert.Nil(ginkgo.GinkgoT(), err, "list ssl error")
+			assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "ssl number not expect")
 
-            // create route
-            backendSvc, backendSvcPort := s.DefaultHTTPBackend()
-            apisixRoute := fmt.Sprintf(`
+			// create route
+			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+			apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -510,33 +510,33 @@ spec:
     - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
-            assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
-            time.Sleep(10 * time.Second)
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
+			time.Sleep(10 * time.Second)
 
-            apisixRoutes, err := s.ListApisixRoutes()
-            assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
-            assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
+			apisixRoutes, err := s.ListApisixRoutes()
+			assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
+			assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
 
-            // Without Client Cert
-            s.NewAPISIXHttpsClient(host).GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusBadRequest).Body().Raw()
+			// Without Client Cert
+			s.NewAPISIXHttpsClient(host).GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusBadRequest).Body().Raw()
 
-            // With client cert
-            caCertPool := x509.NewCertPool()
-            ok := caCertPool.AppendCertsFromPEM([]byte(rootCA))
-            assert.True(ginkgo.GinkgoT(), ok, "Append cert to CA pool")
+			// With client cert
+			caCertPool := x509.NewCertPool()
+			ok := caCertPool.AppendCertsFromPEM([]byte(rootCA))
+			assert.True(ginkgo.GinkgoT(), ok, "Append cert to CA pool")
 
-            cert, err := tls.X509KeyPair([]byte(clientCert), []byte(clientKey))
-            assert.Nil(ginkgo.GinkgoT(), err, "generate cert")
+			cert, err := tls.X509KeyPair([]byte(clientCert), []byte(clientKey))
+			assert.Nil(ginkgo.GinkgoT(), err, "generate cert")
 
-            s.NewAPISIXHttpsClientWithCertificates(host, true, caCertPool, []tls.Certificate{cert}).
-                GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
-        })
-    }
+			s.NewAPISIXHttpsClientWithCertificates(host, true, caCertPool, []tls.Certificate{cert}).
+				GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
+		})
+	}
 
-    ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
-        suites(scaffold.NewDefaultScaffold)
-    })
-    ginkgo.Describe("suite-ingress: scaffold v2", func() {
-        suites(scaffold.NewDefaultV2Scaffold)
+	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+		suites(scaffold.NewDefaultScaffold)
+	})
+	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })

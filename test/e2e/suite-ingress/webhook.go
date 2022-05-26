@@ -16,31 +16,31 @@
 package ingress
 
 import (
-    "fmt"
+	"fmt"
 
-    ginkgo "github.com/onsi/ginkgo/v2"
-    "github.com/stretchr/testify/assert"
+	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/stretchr/testify/assert"
 
-    "github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("suite-ingress: Enable webhooks", func() {
-    opts := &scaffold.Options{
-        Name:                  "default",
-        Kubeconfig:            scaffold.GetKubeconfig(),
-        APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-        IngressAPISIXReplicas: 1,
-        HTTPBinServicePort:    80,
-        APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-        // EnableWebhooks:        true,
-    }
-    s := scaffold.NewScaffold(opts)
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
+		// EnableWebhooks:        true,
+	}
+	s := scaffold.NewScaffold(opts)
 
-    ginkgo.It("should fail to create the ApisixRoute with invalid plugin configuration", func() {
-        // #FIXME: just skip this case and we can enable it on other PR
-        ginkgo.Skip("just skip this case")
-        backendSvc, backendPorts := s.DefaultHTTPBackend()
-        ar := fmt.Sprintf(`
+	ginkgo.It("should fail to create the ApisixRoute with invalid plugin configuration", func() {
+		// #FIXME: just skip this case and we can enable it on other PR
+		ginkgo.Skip("just skip this case")
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -64,11 +64,11 @@ spec:
        break_response_code: 100 # should in [200, 599]
 `, backendSvc, backendPorts[0])
 
-        err := s.CreateResourceFromString(ar)
-        assert.Error(ginkgo.GinkgoT(), err, "Failed to create ApisixRoute")
-        assert.Contains(ginkgo.GinkgoT(), err.Error(), "admission webhook")
-        assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
-        assert.Contains(ginkgo.GinkgoT(), err.Error(), "api-breaker plugin's config is invalid")
-        assert.Contains(ginkgo.GinkgoT(), err.Error(), "Must be greater than or equal to 200")
+		err := s.CreateResourceFromString(ar)
+		assert.Error(ginkgo.GinkgoT(), err, "Failed to create ApisixRoute")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "admission webhook")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "api-breaker plugin's config is invalid")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "Must be greater than or equal to 200")
 	})
 })
