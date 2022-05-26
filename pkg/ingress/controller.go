@@ -652,15 +652,18 @@ func (c *Controller) syncConsumer(ctx context.Context, consumer *apisixv1.Consum
 }
 
 func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
-	namespace := ep.Namespace()
+	namespace, err := ep.Namespace()
+	if err != nil {
+		return err
+	}
 	svcName := ep.ServiceName()
-	svc, err := c.svcLister.Services(ep.Namespace()).Get(svcName)
+	svc, err := c.svcLister.Services(namespace).Get(svcName)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			log.Infof("service %s/%s not found", ep.Namespace(), svcName)
+			log.Infof("service %s/%s not found", namespace, svcName)
 			return nil
 		}
-		log.Errorf("failed to get service %s/%s: %s", ep.Namespace(), svcName, err)
+		log.Errorf("failed to get service %s/%s: %s", namespace, svcName, err)
 		return err
 	}
 	var subsets []configv2beta3.ApisixUpstreamSubset
@@ -668,7 +671,7 @@ func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
 	au, err := c.apisixUpstreamLister.ApisixUpstreams(namespace).Get(svcName)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
-			log.Errorf("failed to get ApisixUpstream %s/%s: %s", ep.Namespace(), svcName, err)
+			log.Errorf("failed to get ApisixUpstream %s/%s: %s", namespace, svcName, err)
 			return err
 		}
 	} else if au.Spec != nil && len(au.Spec.Subsets) > 0 {

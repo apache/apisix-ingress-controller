@@ -57,6 +57,7 @@ type Options struct {
 	EnableWebhooks             bool
 	APISIXPublishAddress       string
 	disableNamespaceSelector   bool
+	EnableGatewayAPI           bool
 }
 
 type Scaffold struct {
@@ -142,6 +143,7 @@ func NewDefaultScaffold() *Scaffold {
 		APISIXClusterConfigVersion: config.ApisixV2beta3,
 		EnableWebhooks:             false,
 		APISIXPublishAddress:       "",
+		EnableGatewayAPI:           true,
 	}
 	return NewScaffold(opts)
 }
@@ -159,6 +161,7 @@ func NewDefaultV2Scaffold() *Scaffold {
 		APISIXClusterConfigVersion: config.ApisixV2,
 		EnableWebhooks:             false,
 		APISIXPublishAddress:       "",
+		EnableGatewayAPI:           true,
 	}
 	return NewScaffold(opts)
 }

@@ -52,7 +52,12 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 		for j, backend := range backends {
 			//TODO: Support filters
 			//filters := backend.Filters
-			kind := strings.ToLower(string(*backend.Kind))
+			var kind string
+			if backend.Kind == nil {
+				kind = "service"
+			} else {
+				kind = strings.ToLower(string(*backend.Kind))
+			}
 			if kind != "service" {
 				log.Warnw(fmt.Sprintf("ignore non-service kind at Rules[%v].BackendRefs[%v]", i, j),
 					zap.String("kind", kind),
@@ -60,10 +65,22 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 				continue
 			}
 
-			ns := string(*backend.Namespace)
+			var ns string
+			if backend.Namespace == nil {
+				ns = httpRoute.Namespace
+			} else {
+				ns = string(*backend.Namespace)
+			}
 			//if ns != httpRoute.Namespace {
 			// TODO: check gatewayv1alpha2.ReferencePolicy
 			//}
+
+			if backend.Port == nil {
+				log.Warnw(fmt.Sprintf("ignore nil port at Rules[%v].BackendRefs[%v]", i, j),
+					zap.String("kind", kind),
+				)
+				continue
+			}
 
 			ups, err := t.TranslateUpstream(ns, string(backend.Name), "", int32(*backend.Port))
 			if err != nil {
