@@ -361,6 +361,13 @@ type PluginConfig struct {
 	Plugins  Plugins `json:"plugins" yaml:"plugins"`
 }
 
+// UpstreamServiceRelation Upstream association object
+// +k8s:deepcopy-gen=true
+type UpstreamServiceRelation struct {
+	Metadata   `json:",inline" yaml:",inline"`
+	UpstreamId string `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
+}
+
 // NewDefaultUpstream returns an empty Upstream with default values.
 func NewDefaultUpstream() *Upstream {
 	return &Upstream{

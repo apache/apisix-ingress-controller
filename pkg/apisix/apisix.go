@@ -63,6 +63,8 @@ type Cluster interface {
 	PluginConfig() PluginConfig
 	// Schema returns a Schema interface that can fetch schema of APISIX objects.
 	Schema() Schema
+
+	UpstreamServiceRelation() UpstreamServiceRelation
 }
 
 // Route is the specific client interface to take over the create, update,
@@ -148,6 +150,13 @@ type PluginConfig interface {
 	Create(context.Context, *v1.PluginConfig) (*v1.PluginConfig, error)
 	Delete(context.Context, *v1.PluginConfig) error
 	Update(context.Context, *v1.PluginConfig) (*v1.PluginConfig, error)
+}
+
+type UpstreamServiceRelation interface {
+	Get(context.Context, string) (*v1.UpstreamServiceRelation, error)
+	List(context.Context) ([]*v1.UpstreamServiceRelation, error)
+	Delete(context.Context, string) error
+	Create(context.Context, string) error
 }
 
 type apisix struct {
