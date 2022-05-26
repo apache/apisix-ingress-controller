@@ -8,7 +8,7 @@ require (
 	github.com/gavv/httpexpect/v2 v2.2.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/gruntwork-io/terratest v0.32.8
-	github.com/onsi/ginkgo v1.16.4
+	github.com/onsi/ginkgo/v2 v2.1.4
 	github.com/stretchr/testify v1.7.0
 	k8s.io/api v0.22.4
 	k8s.io/apimachinery v0.22.4

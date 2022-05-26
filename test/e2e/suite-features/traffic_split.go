@@ -15,30 +15,30 @@
 package features
 
 import (
-	"fmt"
-	"math"
-	"net/http"
+    "fmt"
+    "math"
+    "net/http"
 
-	"github.com/onsi/ginkgo"
-	"github.com/stretchr/testify/assert"
+    ginkgo "github.com/onsi/ginkgo/v2"
+    "github.com/stretchr/testify/assert"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+    "github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("suite-features: traffic split", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
-	ginkgo.It("sanity", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		adminSvc, adminPort := s.ApisixAdminServiceAndPort()
-		ar := fmt.Sprintf(`
+    opts := &scaffold.Options{
+        Name:                  "default",
+        Kubeconfig:            scaffold.GetKubeconfig(),
+        APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+        IngressAPISIXReplicas: 1,
+        HTTPBinServicePort:    80,
+        APISIXRouteVersion:    "apisix.apache.org/v2beta3",
+    }
+    s := scaffold.NewScaffold(opts)
+    ginkgo.It("sanity", func() {
+        backendSvc, backendPorts := s.DefaultHTTPBackend()
+        adminSvc, adminPort := s.ApisixAdminServiceAndPort()
+        ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -60,41 +60,41 @@ spec:
      weight: 5
 `, backendSvc, backendPorts[0], adminSvc, adminPort)
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+        assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
-		err := s.EnsureNumApisixUpstreamsCreated(2)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+        err := s.EnsureNumApisixUpstreamsCreated(2)
+        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+        err = s.EnsureNumApisixRoutesCreated(1)
+        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		// Send requests to APISIX.
-		var (
-			num404 int
-			num200 int
-		)
-		for i := 0; i < 90; i++ {
-			// For requests sent to http-admin, 404 will be given.
-			// For requests sent to httpbin, 200 will be given.
-			resp := s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect()
-			status := resp.Raw().StatusCode
-			if status != http.StatusOK && status != http.StatusNotFound {
-				assert.FailNow(ginkgo.GinkgoT(), "invalid status code")
-			}
-			if status == 200 {
-				num200++
-				resp.Body().Contains("origin")
-			} else {
-				num404++
-			}
-		}
-		dev := math.Abs(float64(num200)/float64(num404) - float64(2))
-		assert.Less(ginkgo.GinkgoT(), dev, 0.2)
-	})
+        // Send requests to APISIX.
+        var (
+            num404 int
+            num200 int
+        )
+        for i := 0; i < 90; i++ {
+            // For requests sent to http-admin, 404 will be given.
+            // For requests sent to httpbin, 200 will be given.
+            resp := s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect()
+            status := resp.Raw().StatusCode
+            if status != http.StatusOK && status != http.StatusNotFound {
+                assert.FailNow(ginkgo.GinkgoT(), "invalid status code")
+            }
+            if status == 200 {
+                num200++
+                resp.Body().Contains("origin")
+            } else {
+                num404++
+            }
+        }
+        dev := math.Abs(float64(num200)/float64(num404) - float64(2))
+        assert.Less(ginkgo.GinkgoT(), dev, 0.2)
+    })
 
-	ginkgo.It("zero-weight", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		adminSvc, adminPort := s.ApisixAdminServiceAndPort()
-		ar := fmt.Sprintf(`
+    ginkgo.It("zero-weight", func() {
+        backendSvc, backendPorts := s.DefaultHTTPBackend()
+        adminSvc, adminPort := s.ApisixAdminServiceAndPort()
+        ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -116,34 +116,34 @@ spec:
      weight: 0
 `, backendSvc, backendPorts[0], adminSvc, adminPort)
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+        assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
-		err := s.EnsureNumApisixUpstreamsCreated(2)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+        err := s.EnsureNumApisixUpstreamsCreated(2)
+        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+        err = s.EnsureNumApisixRoutesCreated(1)
+        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		// Send requests to APISIX.
-		var (
-			num404 int
-			num200 int
-		)
-		for i := 0; i < 90; i++ {
-			// For requests sent to http-admin, 404 will be given.
-			// For requests sent to httpbin, 200 will be given.
-			resp := s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect()
-			status := resp.Raw().StatusCode
-			if status != http.StatusOK && status != http.StatusNotFound {
-				assert.FailNow(ginkgo.GinkgoT(), "invalid status code")
-			}
-			if status == 200 {
-				num200++
-				resp.Body().Contains("origin")
-			} else {
-				num404++
-			}
-		}
-		assert.Equal(ginkgo.GinkgoT(), num404, 0)
-		assert.Equal(ginkgo.GinkgoT(), num200, 90)
+        // Send requests to APISIX.
+        var (
+            num404 int
+            num200 int
+        )
+        for i := 0; i < 90; i++ {
+            // For requests sent to http-admin, 404 will be given.
+            // For requests sent to httpbin, 200 will be given.
+            resp := s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect()
+            status := resp.Raw().StatusCode
+            if status != http.StatusOK && status != http.StatusNotFound {
+                assert.FailNow(ginkgo.GinkgoT(), "invalid status code")
+            }
+            if status == 200 {
+                num200++
+                resp.Body().Contains("origin")
+            } else {
+                num404++
+            }
+        }
+        assert.Equal(ginkgo.GinkgoT(), num404, 0)
+        assert.Equal(ginkgo.GinkgoT(), num200, 90)
 	})
 })

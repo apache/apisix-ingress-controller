@@ -15,28 +15,28 @@
 package plugins
 
 import (
-	"fmt"
-	"net/http"
+    "fmt"
+    "net/http"
 
-	"github.com/onsi/ginkgo"
-	"github.com/stretchr/testify/assert"
+    ginkgo "github.com/onsi/ginkgo/v2"
+    "github.com/stretchr/testify/assert"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+    "github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("suite-plugins: serverless plugin", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
-	ginkgo.It("enable serverless plugin", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+    opts := &scaffold.Options{
+        Name:                  "default",
+        Kubeconfig:            scaffold.GetKubeconfig(),
+        APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+        IngressAPISIXReplicas: 1,
+        HTTPBinServicePort:    80,
+        APISIXRouteVersion:    "apisix.apache.org/v2beta3",
+    }
+    s := scaffold.NewScaffold(opts)
+    ginkgo.It("enable serverless plugin", func() {
+        backendSvc, backendPorts := s.DefaultHTTPBackend()
+        ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -60,18 +60,18 @@ spec:
        functions: ["return function() local core = require(\"apisix.core\"); core.response.exit(403); end"]         
 `, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+        assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
-		err := s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+        err := s.EnsureNumApisixRoutesCreated(1)
+        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusForbidden)
+        resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+        resp.Status(http.StatusForbidden)
 
-	})
-	ginkgo.It("disable serverless plugin", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+    })
+    ginkgo.It("disable serverless plugin", func() {
+        backendSvc, backendPorts := s.DefaultHTTPBackend()
+        ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -89,13 +89,13 @@ spec:
      servicePort: %d
 `, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+        assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 
-		err := s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+        err := s.EnsureNumApisixRoutesCreated(1)
+        assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusOK)
+        resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+        resp.Status(http.StatusOK)
 
 	})
 })

@@ -15,71 +15,71 @@
 package config
 
 import (
-	"context"
-	"fmt"
-	"time"
+    "context"
+    "fmt"
+    "time"
 
-	"github.com/onsi/ginkgo"
-	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+    ginkgo "github.com/onsi/ginkgo/v2"
+    "github.com/stretchr/testify/assert"
+    v1 "k8s.io/api/core/v1"
+    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+    "github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("suite-config: deploy ingress controller with config", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
-	ginkgo.It("use configmap with env", func() {
-		label := fmt.Sprintf("apisix.ingress.watch=%s", s.Namespace())
-		configMap := fmt.Sprintf(_ingressAPISIXConfigMapTemplate, label)
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(configMap), "create configmap")
+    opts := &scaffold.Options{
+        Name:                  "default",
+        Kubeconfig:            scaffold.GetKubeconfig(),
+        APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+        IngressAPISIXReplicas: 1,
+        HTTPBinServicePort:    80,
+        APISIXRouteVersion:    "apisix.apache.org/v2beta3",
+    }
+    s := scaffold.NewScaffold(opts)
+    ginkgo.It("use configmap with env", func() {
+        label := fmt.Sprintf("apisix.ingress.watch=%s", s.Namespace())
+        configMap := fmt.Sprintf(_ingressAPISIXConfigMapTemplate, label)
+        assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(configMap), "create configmap")
 
-		client := s.GetKubernetesClient()
-		deployment, err := client.AppsV1().Deployments(s.Namespace()).Get(context.Background(), "ingress-apisix-controller-deployment-e2e-test", metav1.GetOptions{})
-		assert.Nil(ginkgo.GinkgoT(), err, "get apisix ingress controller deployment")
+        client := s.GetKubernetesClient()
+        deployment, err := client.AppsV1().Deployments(s.Namespace()).Get(context.Background(), "ingress-apisix-controller-deployment-e2e-test", metav1.GetOptions{})
+        assert.Nil(ginkgo.GinkgoT(), err, "get apisix ingress controller deployment")
 
-		spec := &deployment.Spec.Template.Spec
-		spec.Containers[0].Command = []string{
-			"/ingress-apisix/apisix-ingress-controller",
-			"ingress",
-			"--config-path",
-			"/ingress-apisix/conf/config.yaml",
-		}
-		spec.Volumes = append(spec.Volumes, v1.Volume{
-			Name: "apisix-ingress-controller-config",
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{
-						Name: "ingress-apisix-controller-config",
-					},
-				},
-			},
-		})
-		spec.Containers[0].VolumeMounts = append(spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      "apisix-ingress-controller-config",
-			MountPath: "/ingress-apisix/conf/config.yaml",
-			SubPath:   "config.yaml",
-		})
-		spec.Containers[0].Env = append(spec.Containers[0].Env, v1.EnvVar{
-			Name:  "DEFAULT_CLUSTER_BASE_URL",
-			Value: "http://apisix-service-e2e-test:9180/apisix/admin",
-		}, v1.EnvVar{
-			Name:  "DEFAULT_CLUSTER_ADMIN_KEY",
-			Value: "edd1c9f034335f136f87ad84b625c8f1",
-		})
+        spec := &deployment.Spec.Template.Spec
+        spec.Containers[0].Command = []string{
+            "/ingress-apisix/apisix-ingress-controller",
+            "ingress",
+            "--config-path",
+            "/ingress-apisix/conf/config.yaml",
+        }
+        spec.Volumes = append(spec.Volumes, v1.Volume{
+            Name: "apisix-ingress-controller-config",
+            VolumeSource: v1.VolumeSource{
+                ConfigMap: &v1.ConfigMapVolumeSource{
+                    LocalObjectReference: v1.LocalObjectReference{
+                        Name: "ingress-apisix-controller-config",
+                    },
+                },
+            },
+        })
+        spec.Containers[0].VolumeMounts = append(spec.Containers[0].VolumeMounts, v1.VolumeMount{
+            Name:      "apisix-ingress-controller-config",
+            MountPath: "/ingress-apisix/conf/config.yaml",
+            SubPath:   "config.yaml",
+        })
+        spec.Containers[0].Env = append(spec.Containers[0].Env, v1.EnvVar{
+            Name:  "DEFAULT_CLUSTER_BASE_URL",
+            Value: "http://apisix-service-e2e-test:9180/apisix/admin",
+        }, v1.EnvVar{
+            Name:  "DEFAULT_CLUSTER_ADMIN_KEY",
+            Value: "edd1c9f034335f136f87ad84b625c8f1",
+        })
 
-		_, err = client.AppsV1().Deployments(s.Namespace()).Update(context.Background(), deployment, metav1.UpdateOptions{})
-		assert.Nil(ginkgo.GinkgoT(), err, "update apisix ingress controller deployment")
+        _, err = client.AppsV1().Deployments(s.Namespace()).Update(context.Background(), deployment, metav1.UpdateOptions{})
+        assert.Nil(ginkgo.GinkgoT(), err, "update apisix ingress controller deployment")
 
-		time.Sleep(10 * time.Second)
-		assert.Nil(ginkgo.GinkgoT(), s.WaitAllIngressControllerPodsAvailable(), "wait all ingress controller pod available")
+        time.Sleep(10 * time.Second)
+        assert.Nil(ginkgo.GinkgoT(), s.WaitAllIngressControllerPodsAvailable(), "wait all ingress controller pod available")
 	})
 })

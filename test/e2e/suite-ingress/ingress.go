@@ -15,24 +15,24 @@
 package ingress
 
 import (
-	"crypto/tls"
-	"crypto/x509"
-	"fmt"
-	"net/http"
-	"time"
+    "crypto/tls"
+    "crypto/x509"
+    "fmt"
+    "net/http"
+    "time"
 
-	"github.com/apache/apisix-ingress-controller/pkg/id"
-	"github.com/onsi/ginkgo"
-	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
+    "github.com/apache/apisix-ingress-controller/pkg/id"
+    ginkgo "github.com/onsi/ginkgo/v2"
+    "github.com/stretchr/testify/assert"
+    corev1 "k8s.io/api/core/v1"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+    "github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("suite-ingress: support ingress https", func() {
-	s := scaffold.NewDefaultScaffold()
+    s := scaffold.NewDefaultScaffold()
 
-	rootCA := `-----BEGIN CERTIFICATE-----
+    rootCA := `-----BEGIN CERTIFICATE-----
 MIIF9zCCA9+gAwIBAgIUFKuzAJZgm/fsFS6JDrd+lcpVZr8wDQYJKoZIhvcNAQEL
 BQAwgZwxCzAJBgNVBAYTAkNOMREwDwYDVQQIDAhaaGVqaWFuZzERMA8GA1UEBwwI
 SGFuZ3pob3UxGDAWBgNVBAoMD0FQSVNJWC1UZXN0LUNBXzEYMBYGA1UECwwPQVBJ
@@ -68,8 +68,8 @@ uwW3ZLh9sZV6OnhbQJBQaUmcgaPJUQqbXNQmpmpc0NUjET/ltFRZ2hlyvvpf7wwF
 -----END CERTIFICATE-----
 `
 
-	serverCertSecret := `server-secret`
-	serverCert := `-----BEGIN CERTIFICATE-----
+    serverCertSecret := `server-secret`
+    serverCert := `-----BEGIN CERTIFICATE-----
 MIIF/TCCA+WgAwIBAgIUBbUP7Gk0WAb/JhYYcBBgZEgmhbEwDQYJKoZIhvcNAQEL
 BQAwgZwxCzAJBgNVBAYTAkNOMREwDwYDVQQIDAhaaGVqaWFuZzERMA8GA1UEBwwI
 SGFuZ3pob3UxGDAWBgNVBAoMD0FQSVNJWC1UZXN0LUNBXzEYMBYGA1UECwwPQVBJ
@@ -105,7 +105,7 @@ Bfzv/vMftLnbySPovCzQ1PF55D01EWRk0o6PRwUDLfzTQoV+bDKx82LxKtZBtQEX
 uw==
 -----END CERTIFICATE-----
 `
-	serverKey := `-----BEGIN RSA PRIVATE KEY-----
+    serverKey := `-----BEGIN RSA PRIVATE KEY-----
 MIIJKAIBAAKCAgEAxlE8byBSs4YzhrCdXoPwOzRdvqNVuIaTH7Viy8/HmggTgCzA
 nSXLrOqEEWelCjMUbrcp+wIDpTfr8O3LeshsnOxs7tho4wki2iJCCp2oXaeuY+ma
 kJC4sYppW+uJEIPnk0SYVA+yGVF9xTn8QSt40ptG97fMQodGkIMFnYzK+um3cIJX
@@ -157,16 +157,16 @@ w174RSQoNMc+odHxn95mxtYdYVE5PKkzgrfxqymLa5Y0LMPCpKOq4XB0paZPtrOt
 k1XbogS6EYyEdbkTDdXdUENvDrU7hzJXSVxJYADiqr44DGfWm6hK0bq9ZPc=
 -----END RSA PRIVATE KEY-----
 `
-	ginkgo.It("should support ingress v1beta1 with tls", func() {
-		// create secrets
-		err := s.NewSecret(serverCertSecret, serverCert, serverKey)
-		assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
+    ginkgo.It("should support ingress v1beta1 with tls", func() {
+        // create secrets
+        err := s.NewSecret(serverCertSecret, serverCert, serverKey)
+        assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
 
-		// create ingress
-		host := "mtls.httpbin.local"
-		// create route
-		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+        // create ingress
+        host := "mtls.httpbin.local"
+        // create route
+        backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
@@ -187,37 +187,37 @@ spec:
           serviceName: %s
           servicePort: %d
 `, host, serverCertSecret, host, backendSvc, backendSvcPort[0])
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-		time.Sleep(10 * time.Second)
+        assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+        time.Sleep(10 * time.Second)
 
-		apisixRoutes, err := s.ListApisixRoutes()
-		assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
-		assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
+        apisixRoutes, err := s.ListApisixRoutes()
+        assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
+        assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
 
-		apisixSsls, err := s.ListApisixSsl()
-		assert.Nil(ginkgo.GinkgoT(), err, "list SSLs error")
-		assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "SSL number should be 1")
-		assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls"), apisixSsls[0].ID, "SSL name")
-		assert.Equal(ginkgo.GinkgoT(), apisixSsls[0].Snis, []string{host}, "SSL configuration")
+        apisixSsls, err := s.ListApisixSsl()
+        assert.Nil(ginkgo.GinkgoT(), err, "list SSLs error")
+        assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "SSL number should be 1")
+        assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls"), apisixSsls[0].ID, "SSL name")
+        assert.Equal(ginkgo.GinkgoT(), apisixSsls[0].Snis, []string{host}, "SSL configuration")
 
-		caCertPool := x509.NewCertPool()
-		ok := caCertPool.AppendCertsFromPEM([]byte(rootCA))
-		assert.True(ginkgo.GinkgoT(), ok, "Append cert to CA pool")
+        caCertPool := x509.NewCertPool()
+        ok := caCertPool.AppendCertsFromPEM([]byte(rootCA))
+        assert.True(ginkgo.GinkgoT(), ok, "Append cert to CA pool")
 
-		s.NewAPISIXHttpsClientWithCertificates(host, true, caCertPool, []tls.Certificate{}).
-			GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
-	})
+        s.NewAPISIXHttpsClientWithCertificates(host, true, caCertPool, []tls.Certificate{}).
+            GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
+    })
 
-	ginkgo.It("should support ingress v1 with tls", func() {
-		// create secrets
-		err := s.NewSecret(serverCertSecret, serverCert, serverKey)
-		assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
+    ginkgo.It("should support ingress v1 with tls", func() {
+        // create secrets
+        err := s.NewSecret(serverCertSecret, serverCert, serverKey)
+        assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
 
-		// create ingress
-		host := "mtls.httpbin.local"
-		// create route
-		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+        // create ingress
+        host := "mtls.httpbin.local"
+        // create route
+        backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -241,37 +241,37 @@ spec:
             port:
               number: %d
 `, host, serverCertSecret, host, backendSvc, backendSvcPort[0])
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-		time.Sleep(10 * time.Second)
+        assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+        time.Sleep(10 * time.Second)
 
-		apisixRoutes, err := s.ListApisixRoutes()
-		assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
-		assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
+        apisixRoutes, err := s.ListApisixRoutes()
+        assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
+        assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
 
-		apisixSsls, err := s.ListApisixSsl()
-		assert.Nil(ginkgo.GinkgoT(), err, "list SSLs error")
-		assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "SSL number should be 1")
-		assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls"), apisixSsls[0].ID, "SSL name")
-		assert.Equal(ginkgo.GinkgoT(), apisixSsls[0].Snis, []string{host}, "SSL configuration")
+        apisixSsls, err := s.ListApisixSsl()
+        assert.Nil(ginkgo.GinkgoT(), err, "list SSLs error")
+        assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "SSL number should be 1")
+        assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls"), apisixSsls[0].ID, "SSL name")
+        assert.Equal(ginkgo.GinkgoT(), apisixSsls[0].Snis, []string{host}, "SSL configuration")
 
-		caCertPool := x509.NewCertPool()
-		ok := caCertPool.AppendCertsFromPEM([]byte(rootCA))
-		assert.True(ginkgo.GinkgoT(), ok, "Append cert to CA pool")
+        caCertPool := x509.NewCertPool()
+        ok := caCertPool.AppendCertsFromPEM([]byte(rootCA))
+        assert.True(ginkgo.GinkgoT(), ok, "Append cert to CA pool")
 
-		s.NewAPISIXHttpsClientWithCertificates(host, true, caCertPool, []tls.Certificate{}).
-			GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
-	})
+        s.NewAPISIXHttpsClientWithCertificates(host, true, caCertPool, []tls.Certificate{}).
+            GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
+    })
 
-	ginkgo.It("should support ingress v1 with kube style tls secret", func() {
-		// create secrets
-		err := s.NewKubeTlsSecret(serverCertSecret, serverCert, serverKey)
-		assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
+    ginkgo.It("should support ingress v1 with kube style tls secret", func() {
+        // create secrets
+        err := s.NewKubeTlsSecret(serverCertSecret, serverCert, serverKey)
+        assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
 
-		// create ingress
-		host := "mtls.httpbin.local"
-		// create route
-		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+        // create ingress
+        host := "mtls.httpbin.local"
+        // create route
+        backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -295,34 +295,34 @@ spec:
             port:
               number: %d
 `, host, serverCertSecret, host, backendSvc, backendSvcPort[0])
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-		time.Sleep(10 * time.Second)
+        assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+        time.Sleep(10 * time.Second)
 
-		apisixRoutes, err := s.ListApisixRoutes()
-		assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
-		assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
+        apisixRoutes, err := s.ListApisixRoutes()
+        assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
+        assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
 
-		apisixSsls, err := s.ListApisixSsl()
-		assert.Nil(ginkgo.GinkgoT(), err, "list SSLs error")
-		assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "SSL number should be 1")
-		assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls"), apisixSsls[0].ID, "SSL name")
-		assert.Equal(ginkgo.GinkgoT(), apisixSsls[0].Snis, []string{host}, "SSL configuration")
+        apisixSsls, err := s.ListApisixSsl()
+        assert.Nil(ginkgo.GinkgoT(), err, "list SSLs error")
+        assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "SSL number should be 1")
+        assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls"), apisixSsls[0].ID, "SSL name")
+        assert.Equal(ginkgo.GinkgoT(), apisixSsls[0].Snis, []string{host}, "SSL configuration")
 
-		caCertPool := x509.NewCertPool()
-		ok := caCertPool.AppendCertsFromPEM([]byte(rootCA))
-		assert.True(ginkgo.GinkgoT(), ok, "Append cert to CA pool")
+        caCertPool := x509.NewCertPool()
+        ok := caCertPool.AppendCertsFromPEM([]byte(rootCA))
+        assert.True(ginkgo.GinkgoT(), ok, "Append cert to CA pool")
 
-		s.NewAPISIXHttpsClientWithCertificates(host, true, caCertPool, []tls.Certificate{}).
-			GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
-	})
+        s.NewAPISIXHttpsClientWithCertificates(host, true, caCertPool, []tls.Certificate{}).
+            GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
+    })
 })
 
 var _ = ginkgo.Describe("suite-ingress: support ingress.networking/v1", func() {
-	s := scaffold.NewDefaultScaffold()
+    s := scaffold.NewDefaultScaffold()
 
-	ginkgo.It("path exact match", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("path exact match", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -342,20 +342,20 @@ spec:
             port:
               number: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
-		// Exact path, doesn't match /ip/aha
-		_ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
-		// Mismatched host
-		_ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
-	})
+        _ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+        // Exact path, doesn't match /ip/aha
+        _ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
+        // Mismatched host
+        _ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
+    })
 
-	ginkgo.It("path prefix match", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("path prefix match", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -375,20 +375,20 @@ spec:
             port:
               number: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		_ = s.NewAPISIXClient().GET("/status/500").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusInternalServerError)
-		_ = s.NewAPISIXClient().GET("/status/504").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusGatewayTimeout)
-		_ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
-		// Mismatched host
-		_ = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
-	})
+        _ = s.NewAPISIXClient().GET("/status/500").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusInternalServerError)
+        _ = s.NewAPISIXClient().GET("/status/504").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusGatewayTimeout)
+        _ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
+        // Mismatched host
+        _ = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
+    })
 
-	ginkgo.It("path regex match", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("path regex match", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -409,24 +409,24 @@ spec:
             port:
               number: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		_ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
-		_ = s.NewAPISIXClient().GET("/anything/aaa/notok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
-		_ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
-		// Mismatched host
-		_ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
-	})
+        _ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+        _ = s.NewAPISIXClient().GET("/anything/aaa/notok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
+        _ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
+        // Mismatched host
+        _ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
+    })
 })
 
 var _ = ginkgo.Describe("suite-ingress: support ingress.networking/v1beta1", func() {
-	s := scaffold.NewDefaultScaffold()
+    s := scaffold.NewDefaultScaffold()
 
-	ginkgo.It("path exact match", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("path exact match", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
@@ -444,20 +444,20 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
-		// Exact path, doesn't match /ip/aha
-		_ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
-		// Mismatched host
-		_ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
-	})
+        _ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+        // Exact path, doesn't match /ip/aha
+        _ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
+        // Mismatched host
+        _ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
+    })
 
-	ginkgo.It("path prefix match", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("path prefix match", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
@@ -475,20 +475,20 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		_ = s.NewAPISIXClient().GET("/status/500").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusInternalServerError)
-		_ = s.NewAPISIXClient().GET("/status/504").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusGatewayTimeout)
-		_ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
-		// Mismatched host
-		_ = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
-	})
+        _ = s.NewAPISIXClient().GET("/status/500").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusInternalServerError)
+        _ = s.NewAPISIXClient().GET("/status/504").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusGatewayTimeout)
+        _ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
+        // Mismatched host
+        _ = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
+    })
 
-	ginkgo.It("path regex match", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("path regex match", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
@@ -507,24 +507,24 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		_ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
-		_ = s.NewAPISIXClient().GET("/anything/aaa/notok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
-		_ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
-		// Mismatched host
-		_ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
-	})
+        _ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+        _ = s.NewAPISIXClient().GET("/anything/aaa/notok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
+        _ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
+        // Mismatched host
+        _ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
+    })
 })
 
 var _ = ginkgo.Describe("suite-ingress: support ingress.extensions/v1beta1", func() {
-	s := scaffold.NewDefaultScaffold()
+    s := scaffold.NewDefaultScaffold()
 
-	ginkgo.It("path exact match", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("path exact match", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -542,20 +542,20 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
-		// Exact path, doesn't match /ip/aha
-		_ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
-		// Mismatched host
-		_ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
-	})
+        _ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+        // Exact path, doesn't match /ip/aha
+        _ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
+        // Mismatched host
+        _ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
+    })
 
-	ginkgo.It("path prefix match", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("path prefix match", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -573,20 +573,20 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		_ = s.NewAPISIXClient().GET("/status/500").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusInternalServerError)
-		_ = s.NewAPISIXClient().GET("/status/504").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusGatewayTimeout)
-		_ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
-		// Mismatched host
-		_ = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
-	})
+        _ = s.NewAPISIXClient().GET("/status/500").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusInternalServerError)
+        _ = s.NewAPISIXClient().GET("/status/504").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusGatewayTimeout)
+        _ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
+        // Mismatched host
+        _ = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
+    })
 
-	ginkgo.It("path regex match", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("path regex match", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -605,22 +605,22 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		_ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
-		_ = s.NewAPISIXClient().GET("/anything/aaa/notok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
-		_ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
-		// Mismatched host
-		_ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
-	})
+        _ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+        _ = s.NewAPISIXClient().GET("/anything/aaa/notok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
+        _ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
+        // Mismatched host
+        _ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
+    })
 })
 
 var _ = ginkgo.Describe("suite-ingress: support ingress.networking/v1 with headless service backend", func() {
-	s := scaffold.NewDefaultScaffold()
+    s := scaffold.NewDefaultScaffold()
 
-	const _httpHeadlessService = `
+    const _httpHeadlessService = `
 apiVersion: v1
 kind: Service
 metadata:
@@ -637,28 +637,28 @@ spec:
   clusterIP: None
 `
 
-	var (
-		backendSvc  string
-		backendPort []int32
-	)
-	ginkgo.BeforeEach(func() {
-		err := s.CreateResourceFromString(_httpHeadlessService)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating headless service")
-		svc, err := s.GetServiceByName("httpbin-headless-service-e2e-test")
-		assert.Nil(ginkgo.GinkgoT(), err, "get headless service")
-		getSvcNameAndPorts := func(svc *corev1.Service) (string, []int32) {
-			var ports []int32
-			for _, p := range svc.Spec.Ports {
-				ports = append(ports, p.Port)
-			}
-			return svc.Name, ports
-		}
+    var (
+        backendSvc  string
+        backendPort []int32
+    )
+    ginkgo.BeforeEach(func() {
+        err := s.CreateResourceFromString(_httpHeadlessService)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating headless service")
+        svc, err := s.GetServiceByName("httpbin-headless-service-e2e-test")
+        assert.Nil(ginkgo.GinkgoT(), err, "get headless service")
+        getSvcNameAndPorts := func(svc *corev1.Service) (string, []int32) {
+            var ports []int32
+            for _, p := range svc.Spec.Ports {
+                ports = append(ports, p.Port)
+            }
+            return svc.Name, ports
+        }
 
-		backendSvc, backendPort = getSvcNameAndPorts(svc)
-	})
+        backendSvc, backendPort = getSvcNameAndPorts(svc)
+    })
 
-	ginkgo.It("path exact match", func() {
-		ing := fmt.Sprintf(`
+    ginkgo.It("path exact match", func() {
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -678,19 +678,19 @@ spec:
             port:
               number: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
-		// Exact path, doesn't match /ip/aha
-		_ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
-		// Mismatched host
-		_ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
-	})
+        _ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+        // Exact path, doesn't match /ip/aha
+        _ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
+        // Mismatched host
+        _ = s.NewAPISIXClient().GET("/ip/aha").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
+    })
 
-	ginkgo.It("path prefix match", func() {
-		ing := fmt.Sprintf(`
+    ginkgo.It("path prefix match", func() {
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -710,19 +710,19 @@ spec:
             port:
               number: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		_ = s.NewAPISIXClient().GET("/status/500").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusInternalServerError)
-		_ = s.NewAPISIXClient().GET("/status/504").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusGatewayTimeout)
-		_ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
-		// Mismatched host
-		_ = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
-	})
+        _ = s.NewAPISIXClient().GET("/status/500").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusInternalServerError)
+        _ = s.NewAPISIXClient().GET("/status/504").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusGatewayTimeout)
+        _ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
+        // Mismatched host
+        _ = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
+    })
 
-	ginkgo.It("path regex match", func() {
-		ing := fmt.Sprintf(`
+    ginkgo.It("path regex match", func() {
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -743,14 +743,14 @@ spec:
             port:
               number: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		_ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
-		_ = s.NewAPISIXClient().GET("/anything/aaa/notok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
-		_ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
-		// Mismatched host
-		_ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
+        _ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+        _ = s.NewAPISIXClient().GET("/anything/aaa/notok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
+        _ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
+        // Mismatched host
+        _ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
 	})
 })

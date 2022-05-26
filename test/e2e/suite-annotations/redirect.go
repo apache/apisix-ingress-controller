@@ -15,23 +15,23 @@
 package annotations
 
 import (
-	"fmt"
-	"net/http"
-	"time"
+    "fmt"
+    "net/http"
+    "time"
 
-	"github.com/gavv/httpexpect/v2"
-	"github.com/onsi/ginkgo"
-	"github.com/stretchr/testify/assert"
+    "github.com/gavv/httpexpect/v2"
+    ginkgo "github.com/onsi/ginkgo/v2"
+    "github.com/stretchr/testify/assert"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+    "github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("suite-annotations: redirect annotations", func() {
-	s := scaffold.NewDefaultScaffold()
+    s := scaffold.NewDefaultScaffold()
 
-	ginkgo.It("redirect http-to-https in ingress networking/v1", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("redirect http-to-https in ingress networking/v1", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -52,18 +52,18 @@ spec:
             port:
               number: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusMovedPermanently)
-		resp.Header("Location").Equal("https://httpbin.org/sample")
-	})
+        resp := s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect()
+        resp.Status(http.StatusMovedPermanently)
+        resp.Header("Location").Equal("https://httpbin.org/sample")
+    })
 
-	ginkgo.It("redirect http-to-https in ingress networking/v1beta1", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("redirect http-to-https in ingress networking/v1beta1", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
@@ -82,18 +82,18 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusMovedPermanently)
-		resp.Header("Location").Equal("https://httpbin.org/sample")
-	})
+        resp := s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect()
+        resp.Status(http.StatusMovedPermanently)
+        resp.Header("Location").Equal("https://httpbin.org/sample")
+    })
 
-	ginkgo.It("redirect http-to-https in ingress extensions/v1beta1", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("redirect http-to-https in ingress extensions/v1beta1", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -112,18 +112,18 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusMovedPermanently)
-		resp.Header("Location").Equal("https://httpbin.org/sample")
-	})
+        resp := s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect()
+        resp.Status(http.StatusMovedPermanently)
+        resp.Header("Location").Equal("https://httpbin.org/sample")
+    })
 
-	ginkgo.It("redirect http-redirect in ingress networking/v1", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("redirect http-redirect in ingress networking/v1", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -145,18 +145,18 @@ spec:
             port:
               number: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusPermanentRedirect)
-		resp.Header("Location").Equal("/anything/ip")
-	})
+        resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+        resp.Status(http.StatusPermanentRedirect)
+        resp.Header("Location").Equal("/anything/ip")
+    })
 
-	ginkgo.It("redirect http-redirect in ingress networking/v1beta1", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("redirect http-redirect in ingress networking/v1beta1", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
@@ -176,18 +176,18 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusPermanentRedirect)
-		resp.Header("Location").Equal("/anything/ip")
-	})
+        resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+        resp.Status(http.StatusPermanentRedirect)
+        resp.Header("Location").Equal("/anything/ip")
+    })
 
-	ginkgo.It("redirect http-redirect in ingress extensions/v1beta1", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("redirect http-redirect in ingress extensions/v1beta1", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -207,18 +207,18 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusPermanentRedirect)
-		resp.Header("Location").Equal("/anything/ip")
-	})
+        resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+        resp.Status(http.StatusPermanentRedirect)
+        resp.Header("Location").Equal("/anything/ip")
+    })
 
-	ginkgo.It("redirect http-redirect external link in ingress networking/v1", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("redirect http-redirect external link in ingress networking/v1", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -240,21 +240,21 @@ spec:
             port:
               number: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusPermanentRedirect)
-		url := resp.Header("Location").Equal("https://httpbin.org/get").Raw()
+        resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+        resp.Status(http.StatusPermanentRedirect)
+        url := resp.Header("Location").Equal("https://httpbin.org/get").Raw()
 
-		body := httpexpect.New(ginkgo.GinkgoT(), url).GET("").Expect().Status(http.StatusOK).Body().Raw()
-		assert.Contains(ginkgo.GinkgoT(), body, "https://httpbin.org/get")
-	})
+        body := httpexpect.New(ginkgo.GinkgoT(), url).GET("").Expect().Status(http.StatusOK).Body().Raw()
+        assert.Contains(ginkgo.GinkgoT(), body, "https://httpbin.org/get")
+    })
 
-	ginkgo.It("redirect http-redirect external link in ingress networking/v1beta1", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("redirect http-redirect external link in ingress networking/v1beta1", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
@@ -274,21 +274,21 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusPermanentRedirect)
-		url := resp.Header("Location").Equal("https://httpbin.org/get").Raw()
+        resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+        resp.Status(http.StatusPermanentRedirect)
+        url := resp.Header("Location").Equal("https://httpbin.org/get").Raw()
 
-		body := httpexpect.New(ginkgo.GinkgoT(), url).GET("").Expect().Status(http.StatusOK).Body().Raw()
-		assert.Contains(ginkgo.GinkgoT(), body, "https://httpbin.org/get")
-	})
+        body := httpexpect.New(ginkgo.GinkgoT(), url).GET("").Expect().Status(http.StatusOK).Body().Raw()
+        assert.Contains(ginkgo.GinkgoT(), body, "https://httpbin.org/get")
+    })
 
-	ginkgo.It("redirect http-redirect external link in ingress extensions/v1beta1", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
+    ginkgo.It("redirect http-redirect external link in ingress extensions/v1beta1", func() {
+        backendSvc, backendPort := s.DefaultHTTPBackend()
+        ing := fmt.Sprintf(`
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -308,15 +308,15 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
+        err := s.CreateResourceFromString(ing)
+        assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+        time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusPermanentRedirect)
-		url := resp.Header("Location").Equal("https://httpbin.org/get").Raw()
+        resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+        resp.Status(http.StatusPermanentRedirect)
+        url := resp.Header("Location").Equal("https://httpbin.org/get").Raw()
 
-		body := httpexpect.New(ginkgo.GinkgoT(), url).GET("").Expect().Status(http.StatusOK).Body().Raw()
-		assert.Contains(ginkgo.GinkgoT(), body, "https://httpbin.org/get")
+        body := httpexpect.New(ginkgo.GinkgoT(), url).GET("").Expect().Status(http.StatusOK).Body().Raw()
+        assert.Contains(ginkgo.GinkgoT(), body, "https://httpbin.org/get")
 	})
 })
