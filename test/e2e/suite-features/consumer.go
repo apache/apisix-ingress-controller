@@ -767,10 +767,10 @@ spec:
 		assert.Len(ginkgo.GinkgoT(), grs, 1)
 		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
 		hmacAuth, _ := grs[0].Plugins["hmac-auth"].(map[string]interface{})
-		assert.Equal(ginkgo.GinkgoT(), hmacAuth["access_key"], "papa")
-		assert.Equal(ginkgo.GinkgoT(), hmacAuth["secret_key"], "fatpa")
-		assert.Equal(ginkgo.GinkgoT(), hmacAuth["algorithm"], "hmac-sha256")
-		assert.Equal(ginkgo.GinkgoT(), hmacAuth["clock_skew"], float64(0))
+		assert.Equal(ginkgo.GinkgoT(), "papa", hmacAuth["access_key"])
+		assert.Equal(ginkgo.GinkgoT(), "fatpa", hmacAuth["secret_key"])
+		assert.Equal(ginkgo.GinkgoT(), "hmac-sha256", hmacAuth["algorithm"])
+		assert.Equal(ginkgo.GinkgoT(), float64(0), hmacAuth["clock_skew"])
 
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		ar := fmt.Sprintf(`
