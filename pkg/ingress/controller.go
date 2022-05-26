@@ -123,13 +123,14 @@ type Controller struct {
 	gatewayHttpRouteLister      gatewaylistersv1alpha2.HTTPRouteLister
 
 	// resource controllers
-	namespaceController     *namespaceController
-	podController           *podController
-	endpointsController     *endpointsController
-	endpointSliceController *endpointSliceController
-	ingressController       *ingressController
-	secretController        *secretController
-	gatewayController       *gatewayController
+	namespaceController        *namespaceController
+	podController              *podController
+	endpointsController        *endpointsController
+	endpointSliceController    *endpointSliceController
+	ingressController          *ingressController
+	secretController           *secretController
+	gatewayController          *gatewayController
+	gatewayHTTPRouteController *gatewayHTTPRouteController
 
 	apisixUpstreamController      *apisixUpstreamController
 	apisixRouteController         *apisixRouteController
@@ -322,6 +323,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixConsumerController = c.newApisixConsumerController()
 	c.apisixPluginConfigController = c.newApisixPluginConfigController()
 	c.gatewayController = c.newGatewayController()
+	c.gatewayHTTPRouteController = c.newGatewayHTTPRouteController()
 }
 
 // recorderEvent recorder events for resources
@@ -550,6 +552,10 @@ func (c *Controller) run(ctx context.Context) {
 
 		c.goAttach(func() {
 			c.gatewayController.run(ctx)
+		})
+
+		c.goAttach(func() {
+			c.gatewayHTTPRouteController.run(ctx)
 		})
 	}
 
