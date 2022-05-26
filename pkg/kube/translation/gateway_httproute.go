@@ -61,9 +61,9 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 			}
 
 			ns := string(*backend.Namespace)
-			if ns != httpRoute.Namespace {
-				// TODO: check gatewayv1alpha2.ReferencePolicy
-			}
+			//if ns != httpRoute.Namespace {
+			// TODO: check gatewayv1alpha2.ReferencePolicy
+			//}
 
 			ups, err := t.TranslateUpstream(ns, string(backend.Name), "", int32(*backend.Port))
 			if err != nil {
