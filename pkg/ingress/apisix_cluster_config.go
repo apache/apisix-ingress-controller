@@ -415,9 +415,17 @@ func (c *apisixClusterConfigController) ResourceSync() {
 		if !c.controller.isWatchingNamespace(key) {
 			continue
 		}
+		acc, err := kube.NewApisixClusterConfig(obj)
+		if err != nil {
+			log.Errorw("found ApisixClusterConfig resource with bad type", zap.Error(err))
+			return
+		}
 		c.workqueue.Add(&types.Event{
-			Type:   types.EventAdd,
-			Object: key,
+			Type: types.EventAdd,
+			Object: kube.ApisixClusterConfigEvent{
+				Key:          key,
+				GroupVersion: acc.GroupVersion(),
+			},
 		})
 	}
 }

@@ -57,7 +57,7 @@ type Options struct {
 	EnableWebhooks             bool
 	APISIXPublishAddress       string
 	disableNamespaceSelector   bool
-  ApisixCacheSyncInterval    string
+	ApisixCacheSyncInterval    string
 }
 
 type Scaffold struct {

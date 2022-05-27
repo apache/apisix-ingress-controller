@@ -778,7 +778,7 @@ func (c *Controller) syncResourceAll() {
 }
 
 func (c *Controller) resourceSyncLoop(ctx context.Context, interval time.Duration) {
-	// The interval shall not be less than 60 second.
+	// The interval shall not be less than 60 seconds.
 	if interval < _mininumApisixCacheSyncInterval {
 		interval = _mininumApisixCacheSyncInterval
 	}

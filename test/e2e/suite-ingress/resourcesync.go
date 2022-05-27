@@ -40,6 +40,7 @@ var _ = ginkgo.Describe("suite-ingress: apisix resource sync", func() {
 	s := scaffold.NewScaffold(opts)
 	ginkgo.JustBeforeEach(func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		// Create ApisixRoute resource
 		ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
@@ -66,6 +67,7 @@ spec:
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
+		// Create Ingress resource
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -88,6 +90,7 @@ spec:
 `, backendSvc, backendPorts[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 
+		// Create ApisixConsumer resource
 		err = s.ApisixConsumerKeyAuthCreated("foo", "foo-key")
 		assert.Nil(ginkgo.GinkgoT(), err)
 	})

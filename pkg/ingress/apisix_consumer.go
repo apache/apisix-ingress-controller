@@ -330,9 +330,17 @@ func (c *apisixConsumerController) ResourceSync() {
 		if !c.controller.isWatchingNamespace(key) {
 			continue
 		}
+		ac, err := kube.NewApisixConsumer(obj)
+		if err != nil {
+			log.Errorw("found ApisixConsumer resource with bad type", zap.Error(err))
+			return
+		}
 		c.workqueue.Add(&types.Event{
-			Type:   types.EventAdd,
-			Object: key,
+			Type: types.EventAdd,
+			Object: kube.ApisixConsumerEvent{
+				Key:          key,
+				GroupVersion: ac.GroupVersion(),
+			},
 		})
 	}
 }
