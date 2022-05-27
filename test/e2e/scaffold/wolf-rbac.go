@@ -18,12 +18,52 @@
 package scaffold
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os/exec"
+	"strings"
 )
 
-func (s *Scaffold) StartWolfRBACServer() error {
+type WolfServer struct {
+	Url string
+}
+
+type WolfResp struct {
+	OK   bool `json:"ok"`
+	Data struct {
+		Token string `json:"token,omitempty"`
+	} `json:"data"`
+	ErrMsg string `json:"errmsg,omitempty"`
+	Reason string `json:"reason,omitempty"`
+}
+
+func (s *Scaffold) StartWolfServer() (*WolfServer, error) {
+	var wolfSvr WolfServer
+	err := initServer()
+	if err != nil {
+		return nil, err
+	}
+	wolfSvr.Url, err = initURL()
+	if err != nil {
+		return nil, err
+	}
+	err = initTestData(wolfSvr.Url)
+	if err != nil {
+		return nil, err
+	}
+	return &wolfSvr, nil
+}
+
+func (w *WolfServer) Stop() error {
+	cmd := exec.Command("sh", "testdata/wolf-rbac/stop.sh")
+	err := cmd.Run()
+	return err
+}
+
+func initServer() error {
 	cmd := exec.Command("sh", "testdata/wolf-rbac/start.sh")
 	raw, err := cmd.Output()
 	if len(raw) > 0 {
@@ -35,7 +75,7 @@ func (s *Scaffold) StartWolfRBACServer() error {
 	return nil
 }
 
-func (s *Scaffold) GetWolfRBACServerURL() (string, error) {
+func initURL() (string, error) {
 	cmd := exec.Command("sh", "testdata/wolf-rbac/ip.sh")
 	ip, err := cmd.Output()
 	if err != nil {
@@ -48,8 +88,45 @@ func (s *Scaffold) GetWolfRBACServerURL() (string, error) {
 	return httpsvc, nil
 }
 
-func (s *Scaffold) StopWolfRBACServer() error {
-	cmd := exec.Command("sh", "testdata/wolf-rbac/stop.sh")
-	err := cmd.Run()
-	return err
+func wolfRequest(header http.Header, url string, payload string) (*WolfResp, error) {
+	req, _ := http.NewRequest("POST", url, strings.NewReader(payload))
+	req.Header = header
+	resp, err := (&http.Client{}).Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request wolf-server path:%s failed, err is %s", url, err.Error())
+	}
+	var msg WolfResp
+	body, _ := ioutil.ReadAll(resp.Body)
+	_ = json.Unmarshal(body, &msg)
+	if !msg.OK {
+		return nil, fmt.Errorf("request wolf-server path:%s failed, reson is %s.", url, msg.Reason)
+	}
+	return &msg, nil
+}
+
+func initTestData(url string) error {
+	root := `{ "username": "root", "password": "wolf-123456"}`
+	tokenMsg, err := wolfRequest(http.Header{"Content-Type": {"application/json"}}, url+"/wolf/user/login", root)
+	if err != nil {
+		return err
+	}
+
+	app := `{ "id": "test-app", "name": "application for test" }`
+	_, err = wolfRequest(http.Header{"Content-Type": {"application/json"}, "x-rbac-token": {tokenMsg.Data.Token}}, url+"/wolf/application", app)
+	if err != nil {
+		return err
+	}
+
+	resource := `{ "appID": "test-app", "matchType": "prefix", "name": "/","action": "GET", "permID": "ALLOW_ALL" }`
+	_, err = wolfRequest(http.Header{"Content-Type": {"application/json"}, "x-rbac-token": {tokenMsg.Data.Token}}, url+"/wolf/resource", resource)
+	if err != nil {
+		return err
+	}
+
+	user := `{"username": "test", "nickname": "test", "password": "test-123456", "appIDs": ["test-app"]}`
+	_, err = wolfRequest(http.Header{"Content-Type": {"application/json"}, "x-rbac-token": {tokenMsg.Data.Token}}, url+"/wolf/user", user)
+	if err != nil {
+		return err
+	}
+	return nil
 }

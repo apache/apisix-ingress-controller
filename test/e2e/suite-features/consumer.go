@@ -30,6 +30,12 @@ import (
 var _ = ginkgo.Describe("suite-features: ApisixConsumer", func() {
 	s := scaffold.NewDefaultScaffold()
 
+	wolfSvr, err := s.StartWolfServer()
+	assert.Nil(ginkgo.GinkgoT(), err, "checking wolf-server")
+	fmt.Println(wolfSvr.Url)
+	ginkgo.AfterSuite(func() {
+		wolfSvr.Stop()
+	})
 	ginkgo.It("ApisixRoute with basicAuth consumer", func() {
 		ac := `
 apiVersion: apisix.apache.org/v2beta3
@@ -391,12 +397,6 @@ spec:
 	})
 
 	ginkgo.It("ApisixRoute with wolfRBAC consumer", func() {
-		err := s.StartWolfRBACServer()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		wolfSvr, err := s.GetWolfRBACServerURL()
-		assert.Nil(ginkgo.GinkgoT(), err, "checking wolf-server")
-		defer s.StopWolfRBACServer()
-
 		ac := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
@@ -409,7 +409,7 @@ spec:
         server: "%s"
         appid: "test-app"
         header_prefix: "X-"
-`, wolfSvr)
+`, wolfSvr.Url)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac), "creating wolfRBAC ApisixConsumer")
 
 		// Wait until the ApisixConsumer create event was delivered.
@@ -421,7 +421,7 @@ spec:
 		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
 		wolfRBAC, _ := grs[0].Plugins["wolf-rbac"].(map[string]interface{})
 		assert.Equal(ginkgo.GinkgoT(), wolfRBAC, map[string]interface{}{
-			"server":        wolfSvr,
+			"server":        wolfSvr.Url,
 			"appid":         "test-app",
 			"header_prefix": "X-",
 		})
@@ -510,10 +510,6 @@ spec:
 	})
 
 	ginkgo.It("ApisixRoute with wolfRBAC consumer using secret", func() {
-		_ = s.StartWolfRBACServer()
-		wolfSvr, err := s.GetWolfRBACServerURL()
-		assert.Nil(ginkgo.GinkgoT(), err, "checking wolf-server")
-		defer s.StopWolfRBACServer()
 
 		secret := fmt.Sprintf(`
 apiVersion: v1
@@ -524,7 +520,7 @@ data:
   server: %s
   appid: dGVzdC1hcHA=
   header_prefix: WC0=
-`, base64.StdEncoding.EncodeToString([]byte(wolfSvr)))
+`, base64.StdEncoding.EncodeToString([]byte(wolfSvr.Url)))
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating wolfRBAC secret for ApisixConsumer")
 
 		ac := `
@@ -549,7 +545,7 @@ spec:
 		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
 		wolfRBAC, _ := grs[0].Plugins["wolf-rbac"].(map[string]interface{})
 		assert.Equal(ginkgo.GinkgoT(), wolfRBAC, map[string]interface{}{
-			"server":        wolfSvr,
+			"server":        wolfSvr.Url,
 			"appid":         "test-app",
 			"header_prefix": "X-",
 		})
