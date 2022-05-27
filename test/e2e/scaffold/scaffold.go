@@ -56,6 +56,7 @@ type Options struct {
 	EnableWebhooks           bool
 	APISIXPublishAddress     string
 	disableNamespaceSelector bool
+	ApisixCacheSyncInterval  string
 }
 
 type Scaffold struct {
@@ -111,6 +112,9 @@ func NewScaffold(o *Options) *Scaffold {
 	}
 	if o.APISIXAdminAPIKey == "" {
 		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
+	}
+	if o.ApisixCacheSyncInterval == "" {
+		o.ApisixCacheSyncInterval = "300s"
 	}
 	defer ginkgo.GinkgoRecover()
 

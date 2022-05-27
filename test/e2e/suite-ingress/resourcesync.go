@@ -29,12 +29,13 @@ import (
 
 var _ = ginkgo.Describe("suite-ingress: apisix resource sync", func() {
 	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
+		Name:                    "default",
+		Kubeconfig:              scaffold.GetKubeconfig(),
+		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas:   1,
+		HTTPBinServicePort:      80,
+		APISIXRouteVersion:      "apisix.apache.org/v2beta3",
+		ApisixCacheSyncInterval: "60s",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.JustBeforeEach(func() {
@@ -55,6 +56,9 @@ spec:
    backends:
    - serviceName: %s
      servicePort: %d
+   authentication:
+     enable: true
+     type: keyAuth
 `, backendSvc, backendPorts[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 		err := s.EnsureNumApisixUpstreamsCreated(1)
@@ -63,12 +67,12 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
 		ing := fmt.Sprintf(`
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-  name: ingress-extensions-v1beta1
+  name: ingress-v1
 spec:
   rules:
   - host: local.httpbin.org
@@ -77,8 +81,10 @@ spec:
       - path: /headers
         pathType: Exact
         backend:
-          serviceName: %s
-          servicePort: %d
+          service:
+            name: %s
+            port:
+              number: %d
 `, backendSvc, backendPorts[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 
@@ -143,6 +149,7 @@ spec:
 		_ = s.NewAPISIXClient().
 			GET("/ip").
 			WithHeader("Host", "httpbin.org").
+			WithHeader("apikey", "foo-key").
 			Expect().
 			Status(http.StatusOK)
 
@@ -199,6 +206,7 @@ spec:
 		_ = s.NewAPISIXClient().
 			GET("/ip").
 			WithHeader("Host", "httpbin.org").
+			WithHeader("apikey", "foo-key").
 			Expect().
 			Status(http.StatusOK)
 
