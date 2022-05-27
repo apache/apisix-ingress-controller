@@ -200,9 +200,9 @@ func NewController(cfg *config.Config) (*Controller, error) {
 
 func (c *Controller) initWhenStartLeading() {
 	var (
-		ingressInformer            cache.SharedIndexInformer
-		apisixRouteInformer        cache.SharedIndexInformer
-		apisixPluginConfigInformer cache.SharedIndexInformer
+		ingressInformer             cache.SharedIndexInformer
+		apisixRouteInformer         cache.SharedIndexInformer
+		apisixPluginConfigInformer  cache.SharedIndexInformer
 		apisixTlsInformer           cache.SharedIndexInformer
 		apisixClusterConfigInformer cache.SharedIndexInformer
 		apisixConsumerInformer      cache.SharedIndexInformer
