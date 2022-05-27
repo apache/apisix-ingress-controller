@@ -789,7 +789,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
+	_, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "public")
@@ -797,7 +797,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
+	_, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "private")
@@ -805,7 +805,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
+	_, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "algorithm")
@@ -813,7 +813,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
+	_, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "exp")
@@ -821,7 +821,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
+	_, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "base64_secret")
@@ -829,7 +829,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
+	_, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "key")
@@ -914,7 +914,7 @@ func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerWolfRBACPluginV2beta3("default", wolfRBAC)
+	_, err = tr.translateConsumerWolfRBACPluginV2beta3("default", wolfRBAC)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "appid")
@@ -922,7 +922,7 @@ func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerWolfRBACPluginV2beta3("default", wolfRBAC)
+	_, err = tr.translateConsumerWolfRBACPluginV2beta3("default", wolfRBAC)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "header_prefix")
@@ -930,8 +930,94 @@ func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerWolfRBACPluginV2beta3("default", wolfRBAC)
+	_, err = tr.translateConsumerWolfRBACPluginV2beta3("default", wolfRBAC)
 	assert.Nil(t, err)
+
+	close(processCh)
+	close(stopCh)
+}
+
+func TestTranslateConsumerHMACAuthPluginWithInPlaceValue(t *testing.T) {
+	hmacAuth := &configv2beta3.ApisixConsumerHMACAuth{
+		Value: &configv2beta3.ApisixConsumerHMACAuthValue{
+			AccessKey:     "foo",
+			SecretKey:     "foo-secret",
+			ClockSkew:     0,
+			SignedHeaders: []string{"User-Agent"},
+		},
+	}
+	cfg, err := (&translator{}).translateConsumerHMACAuthPluginV2beta3("default", hmacAuth)
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", cfg.AccessKey)
+	assert.Equal(t, "foo-secret", cfg.SecretKey)
+	assert.Equal(t, int64(0), cfg.ClockSkew)
+	assert.Equal(t, []string{"User-Agent"}, cfg.SignedHeaders)
+}
+
+func TestTranslateConsumerHMACAuthPluginWithSecretRef(t *testing.T) {
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "fatpa-hmac-auth",
+		},
+		Data: map[string][]byte{
+			"access_key": []byte("foo"),
+			"secret_key": []byte("foo-secret"),
+			"clock_skew": []byte("0"),
+		},
+	}
+
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	secretInformer := informersFactory.Core().V1().Secrets().Informer()
+	secretLister := informersFactory.Core().V1().Secrets().Lister()
+	processCh := make(chan struct{})
+	stopCh := make(chan struct{})
+	secretInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(_ interface{}) {
+			processCh <- struct{}{}
+		},
+		UpdateFunc: func(_, _ interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+	go secretInformer.Run(stopCh)
+
+	tr := &translator{
+		&TranslatorOptions{
+			SecretLister: secretLister,
+		},
+	}
+	_, err := client.CoreV1().Secrets("default").Create(context.Background(), sec, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	<-processCh
+
+	hmacAuth := &configv2beta3.ApisixConsumerHMACAuth{
+		SecretRef: &corev1.LocalObjectReference{Name: "fatpa-hmac-auth"},
+	}
+	cfg, err := tr.translateConsumerHMACAuthPluginV2beta3("default", hmacAuth)
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", cfg.AccessKey)
+	assert.Equal(t, "foo-secret", cfg.SecretKey)
+	assert.Equal(t, int64(0), cfg.ClockSkew)
+
+	delete(sec.Data, "access_key")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerHMACAuthPluginV2beta3("default", hmacAuth)
+	assert.Nil(t, cfg)
+	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
+
+	delete(sec.Data, "secret_key")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerHMACAuthPluginV2beta3("default", hmacAuth)
+	assert.Nil(t, cfg)
+	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
 
 	close(processCh)
 	close(stopCh)
