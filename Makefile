@@ -66,12 +66,13 @@ unit-test:
 
 ### e2e-test:             Run e2e test cases (in existing clusters directly)
 .PHONY: e2e-test
-e2e-test: ginkgo-check push-images
+e2e-test: ginkgo-check push-images wolf-server
 	kubectl apply -k $(PWD)/samples/deploy/crd
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
-		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace --nodes=$(E2E_CONCURRENCY) --focus=$(E2E_FOCUS)
+		&& echo $(E2E_FOCUS) | grep "suite-features" || exit 1 \
+		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace --nodes=$(E2E_CONCURRENCY) --focus='ApisixRoute with wolfRBAC consumer'
 
 ### e2e-test-local:        Run e2e test cases (kind is required)
 .PHONY: e2e-test-local
@@ -217,3 +218,9 @@ update-all: update-codegen update-license update-mdlint update-gofmt
 .PHONY: e2e-names-check
 e2e-names-check:
 	chmod +x ./utils/check-e2e-names.sh && ./utils/check-e2e-names.sh
+
+.PHONY: wolf-server
+wolf-server:
+ifeq ($(E2E_FOCUS), suite-features*)
+	./test/e2e/testdata/wolf-rbac/start.sh
+endif

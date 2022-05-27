@@ -17,49 +17,29 @@
 # limitations under the License.
 #
 
-cd testdata/wolf-rbac/
+cd test/e2e/testdata/wolf-rbac/
+
+docker-compose -f 'docker-compose.yaml'  -p 'wolf-rbac' down >> info.log 2>&1
+
+docker stop wolf-agent-demo restful-demo wolf-agent-or wolf-server wolf-database >> info.log 2>&1
+docker rm wolf-agent-demo restful-demo wolf-agent-or wolf-server wolf-database >> info.log 2>&1
 
 rm -rf db-psql.sql
 
-wget https://raw.githubusercontent.com/iGeeky/wolf/f6ddeb75a37bff90406f0f0a2b7ae5d16f6f3bd4/server/script/db-psql.sql
+wget https://raw.githubusercontent.com/iGeeky/wolf/f6ddeb75a37bff90406f0f0a2b7ae5d16f6f3bd4/server/script/db-psql.sql >> info.log 2>&1
 
 # start database
 docker-compose up -d database >> info.log 2>&1
 
+sleep 2
+
 # start wolf-server
 docker-compose up -d server restful-demo agent-or agent-demo  >> info.log 2>&1
 
+sleep 10
+
+docker inspect -f '{{range .NetworkSettings.Networks}}Gateway:{{.Gateway}} IPAdress:{{.IPAddress}}{{end}}' wolf-server >> info.log 2>&1
+
+netstat -atnp | grep ":12180" >> info.log 2>&1
+
 cat info.log && rm info.log
-
-sleep 6
-
-WOLF_TOKEN=`curl http://127.0.0.1:12180/wolf/user/login  -H "Content-Type: application/json"  -d '{ "username": "root", "password": "wolf-123456"}' -s | grep token| tr -d ':",' | awk '{print $2}'`
-
-curl http://127.0.0.1:12180/wolf/application \
--H "Content-Type: application/json" \
--H "x-rbac-token: $WOLF_TOKEN" \
--d '{
-    "id": "test-app", 
-    "name": "application for test"
-}'
-
-curl http://127.0.0.1:12180/wolf/resource \
--H "Content-Type: application/json" \
--H "x-rbac-token: $WOLF_TOKEN" \
--d '{
-    "appID": "test-app",
-    "matchType": "prefix",
-    "name": "/",
-    "action": "GET",
-    "permID": "ALLOW_ALL"
-}'
-
-curl http://127.0.0.1:12180/wolf/user \
--H "Content-Type: application/json" \
--H "x-rbac-token: $WOLF_TOKEN" \
--d '{
-    "username": "test",
-    "nickname": "test",
-    "password": "test-123456",
-    "appIDs": ["test-app"]
-}'

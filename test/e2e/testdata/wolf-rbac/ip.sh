@@ -17,4 +17,9 @@
 # limitations under the License.
 #
 
-echo -n `docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' wolf-server`
+if  [ $1 = "ip" ]; then
+    echo -n `docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' wolf-server`
+elif [ $1 = "info" ]; then
+    docker inspect wolf-server > docker-server-info.log 2>&1
+    cat docker-server-info.log
+fi
