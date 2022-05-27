@@ -19,6 +19,8 @@
 
 cd testdata/wolf-rbac/
 
+rm -rf db-psql.sql
+
 wget https://raw.githubusercontent.com/iGeeky/wolf/f6ddeb75a37bff90406f0f0a2b7ae5d16f6f3bd4/server/script/db-psql.sql
 
 # start database
