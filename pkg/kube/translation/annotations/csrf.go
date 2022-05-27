@@ -1,6 +1,3 @@
-//go:build tools
-// +build tools
-
 // Licensed to the Apache Software Foundation (ASF) under one or more
 // contributor license agreements.  See the NOTICE file distributed with
 // this work for additional information regarding copyright ownership.
@@ -15,15 +12,37 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-// This package contains code generation utilities
-// This package imports things required by build scripts, to force `go mod` to see them as dependencies
-package tools
+package annotations
 
 import (
-	_ "k8s.io/code-generator/cmd/client-gen"
-	_ "k8s.io/code-generator/cmd/deepcopy-gen"
-	_ "k8s.io/code-generator/cmd/informer-gen"
-	_ "k8s.io/code-generator/cmd/lister-gen"
-	_ "k8s.io/code-generator/cmd/register-gen"
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
+
+const (
+	_enableCsrf = AnnotationsPrefix + "enable-csrf"
+	_csrfKey    = AnnotationsPrefix + "csrf-key"
+)
+
+type csrf struct{}
+
+// NewCSRFHandler creates a handler to convert annotations about
+// CSRF to APISIX csrf plugin.
+func NewCSRFHandler() Handler {
+	return &csrf{}
+}
+
+func (c *csrf) PluginName() string {
+	return "csrf"
+}
+
+func (c *csrf) Handle(e Extractor) (interface{}, error) {
+	if !e.GetBoolAnnotation(_enableCsrf) {
+		return nil, nil
+	}
+	var plugin apisixv1.CSRFConfig
+	plugin.Key = e.GetStringAnnotation(_csrfKey)
+	if plugin.Key != "" {
+		return &plugin, nil
+	}
+	return nil, nil
+}

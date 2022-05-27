@@ -16,6 +16,7 @@ package ingress
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go.uber.org/zap"
@@ -25,7 +26,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	"github.com/apache/apisix-ingress-controller/pkg/config"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
@@ -79,62 +81,113 @@ func (c *apisixConsumerController) runWorker(ctx context.Context) {
 }
 
 func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) error {
-	key := ev.Object.(string)
+	event := ev.Object.(kube.ApisixConsumerEvent)
+	key := event.Key
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		log.Errorf("found ApisixConsumer resource with invalid meta namespace key %s: %s", key, err)
 		return err
 	}
 
-	ac, err := c.controller.apisixConsumerLister.ApisixConsumers(namespace).Get(name)
+	var multiVersioned kube.ApisixConsumer
+	switch event.GroupVersion {
+	case config.ApisixV2beta3:
+		multiVersioned, err = c.controller.apisixConsumerLister.V2beta3(namespace, name)
+	case config.ApisixV2:
+		multiVersioned, err = c.controller.apisixConsumerLister.V2(namespace, name)
+	default:
+		return fmt.Errorf("unsupported ApisixConsumer group version %s", event.GroupVersion)
+	}
+
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
-			log.Errorf("failed to get ApisixConsumer %s: %s", key, err)
+			log.Errorw("failed to get ApisixConsumer",
+				zap.Error(err),
+				zap.String("key", key),
+				zap.String("version", event.GroupVersion),
+			)
 			return err
 		}
 		if ev.Type != types.EventDelete {
-			log.Warnf("ApisixConsumer %s was deleted before it can be delivered", key)
+			log.Warnw("ApisixConsumer was deleted before it can be delivered",
+				zap.String("key", key),
+				zap.String("version", event.GroupVersion),
+			)
 			// Don't need to retry.
 			return nil
 		}
 	}
 	if ev.Type == types.EventDelete {
-		if ac != nil {
+		if multiVersioned != nil {
 			// We still find the resource while we are processing the DELETE event,
 			// that means object with same namespace and name was created, discarding
 			// this stale DELETE event.
 			log.Warnf("discard the stale ApisixConsumer delete event since the %s exists", key)
 			return nil
 		}
-		ac = ev.Tombstone.(*configv2beta3.ApisixConsumer)
+		multiVersioned = ev.Tombstone.(kube.ApisixConsumer)
 	}
 
-	consumer, err := c.controller.translator.TranslateApisixConsumer(ac)
-	if err != nil {
-		log.Errorw("failed to translate ApisixConsumer",
-			zap.Error(err),
+	switch event.GroupVersion {
+	case config.ApisixV2beta3:
+		ac := multiVersioned.V2beta3()
+
+		consumer, err := c.controller.translator.TranslateApisixConsumerV2beta3(ac)
+		if err != nil {
+			log.Errorw("failed to translate ApisixConsumer",
+				zap.Error(err),
+				zap.Any("ApisixConsumer", ac),
+			)
+			c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
+			c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
+			return err
+		}
+		log.Debugw("got consumer object from ApisixConsumer",
+			zap.Any("consumer", consumer),
 			zap.Any("ApisixConsumer", ac),
 		)
-		c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
-		return err
-	}
-	log.Debug("got consumer object from ApisixConsumer",
-		zap.Any("consumer", consumer),
-		zap.Any("ApisixConsumer", ac),
-	)
 
-	if err := c.controller.syncConsumer(ctx, consumer, ev.Type); err != nil {
-		log.Errorw("failed to sync Consumer to APISIX",
-			zap.Error(err),
+		if err := c.controller.syncConsumer(ctx, consumer, ev.Type); err != nil {
+			log.Errorw("failed to sync Consumer to APISIX",
+				zap.Error(err),
+				zap.Any("consumer", consumer),
+			)
+			c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
+			c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
+			return err
+		}
+
+		c.controller.recorderEvent(ac, corev1.EventTypeNormal, _resourceSynced, nil)
+	case config.ApisixV2:
+		ac := multiVersioned.V2()
+
+		consumer, err := c.controller.translator.TranslateApisixConsumerV2(ac)
+		if err != nil {
+			log.Errorw("failed to translate ApisixConsumer",
+				zap.Error(err),
+				zap.Any("ApisixConsumer", ac),
+			)
+			c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
+			c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
+			return err
+		}
+		log.Debugw("got consumer object from ApisixConsumer",
 			zap.Any("consumer", consumer),
+			zap.Any("ApisixConsumer", ac),
 		)
-		c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
-		c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
-		return err
-	}
 
-	c.controller.recorderEvent(ac, corev1.EventTypeNormal, _resourceSynced, nil)
+		if err := c.controller.syncConsumer(ctx, consumer, ev.Type); err != nil {
+			log.Errorw("failed to sync Consumer to APISIX",
+				zap.Error(err),
+				zap.Any("consumer", consumer),
+			)
+			c.controller.recorderEvent(ac, corev1.EventTypeWarning, _resourceSyncAborted, err)
+			c.controller.recordStatus(ac, _resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
+			return err
+		}
+
+		c.controller.recorderEvent(ac, corev1.EventTypeNormal, _resourceSynced, nil)
+	}
 	return nil
 }
 
@@ -162,6 +215,11 @@ func (c *apisixConsumerController) handleSyncErr(obj interface{}, err error) {
 }
 
 func (c *apisixConsumerController) onAdd(obj interface{}) {
+	ac, err := kube.NewApisixConsumer(obj)
+	if err != nil {
+		log.Errorw("found ApisixConsumer resource with bad type", zap.Error(err))
+		return
+	}
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
 		log.Errorf("found ApisixConsumer resource with bad meta namespace key: %s", err)
@@ -175,17 +233,28 @@ func (c *apisixConsumerController) onAdd(obj interface{}) {
 	)
 
 	c.workqueue.Add(&types.Event{
-		Type:   types.EventAdd,
-		Object: key,
+		Type: types.EventAdd,
+		Object: kube.ApisixConsumerEvent{
+			Key:          key,
+			GroupVersion: ac.GroupVersion(),
+		},
 	})
 
 	c.controller.MetricsCollector.IncrEvents("consumer", "add")
 }
 
 func (c *apisixConsumerController) onUpdate(oldObj, newObj interface{}) {
-	prev := oldObj.(*configv2beta3.ApisixConsumer)
-	curr := newObj.(*configv2beta3.ApisixConsumer)
-	if prev.ResourceVersion >= curr.ResourceVersion {
+	prev, err := kube.NewApisixConsumer(oldObj)
+	if err != nil {
+		log.Errorw("found ApisixConsumer resource with bad type", zap.Error(err))
+		return
+	}
+	curr, err := kube.NewApisixConsumer(newObj)
+	if err != nil {
+		log.Errorw("found ApisixConsumer resource with bad type", zap.Error(err))
+		return
+	}
+	if prev.ResourceVersion() >= curr.ResourceVersion() {
 		return
 	}
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
@@ -202,21 +271,29 @@ func (c *apisixConsumerController) onUpdate(oldObj, newObj interface{}) {
 	)
 
 	c.workqueue.Add(&types.Event{
-		Type:   types.EventUpdate,
-		Object: key,
+		Type: types.EventUpdate,
+		Object: kube.ApisixConsumerEvent{
+			Key:          key,
+			OldObject:    prev,
+			GroupVersion: curr.GroupVersion(),
+		},
 	})
 
 	c.controller.MetricsCollector.IncrEvents("consumer", "update")
 }
 
 func (c *apisixConsumerController) onDelete(obj interface{}) {
-	ac, ok := obj.(*configv2beta3.ApisixConsumer)
-	if !ok {
+	ac, err := kube.NewApisixConsumer(obj)
+	if err != nil {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			return
 		}
-		ac = tombstone.Obj.(*configv2beta3.ApisixConsumer)
+		ac, err = kube.NewApisixConsumer(tombstone.Obj)
+		if err != nil {
+			log.Errorw("found ApisixConsumer resource with bad type", zap.Error(err))
+			return
+		}
 	}
 
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
@@ -231,8 +308,11 @@ func (c *apisixConsumerController) onDelete(obj interface{}) {
 		zap.Any("final state", ac),
 	)
 	c.workqueue.Add(&types.Event{
-		Type:      types.EventDelete,
-		Object:    key,
+		Type: types.EventDelete,
+		Object: kube.ApisixConsumerEvent{
+			Key:          key,
+			GroupVersion: ac.GroupVersion(),
+		},
 		Tombstone: ac,
 	})
 

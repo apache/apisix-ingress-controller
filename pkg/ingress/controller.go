@@ -113,10 +113,10 @@ type Controller struct {
 	apisixRouteInformer         cache.SharedIndexInformer
 	apisixTlsLister             kube.ApisixTlsLister
 	apisixTlsInformer           cache.SharedIndexInformer
-	apisixClusterConfigLister   listersv2beta3.ApisixClusterConfigLister
+	apisixClusterConfigLister   kube.ApisixClusterConfigLister
 	apisixClusterConfigInformer cache.SharedIndexInformer
 	apisixConsumerInformer      cache.SharedIndexInformer
-	apisixConsumerLister        listersv2beta3.ApisixConsumerLister
+	apisixConsumerLister        kube.ApisixConsumerLister
 	apisixPluginConfigInformer  cache.SharedIndexInformer
 	apisixPluginConfigLister    kube.ApisixPluginConfigLister
 	gatewayInformer             cache.SharedIndexInformer
@@ -202,9 +202,11 @@ func NewController(cfg *config.Config) (*Controller, error) {
 
 func (c *Controller) initWhenStartLeading() {
 	var (
-		ingressInformer     cache.SharedIndexInformer
-		apisixRouteInformer cache.SharedIndexInformer
-		apisixTlsInformer   cache.SharedIndexInformer
+		ingressInformer             cache.SharedIndexInformer
+		apisixRouteInformer         cache.SharedIndexInformer
+		apisixTlsInformer           cache.SharedIndexInformer
+		apisixClusterConfigInformer cache.SharedIndexInformer
+		apisixConsumerInformer      cache.SharedIndexInformer
 	)
 
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
@@ -231,8 +233,14 @@ func (c *Controller) initWhenStartLeading() {
 		apisixFactory.Apisix().V2beta3().ApisixTlses().Lister(),
 		apisixFactory.Apisix().V2().ApisixTlses().Lister(),
 	)
-	c.apisixClusterConfigLister = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister()
-	c.apisixConsumerLister = apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister()
+	c.apisixClusterConfigLister = kube.NewApisixClusterConfigLister(
+		apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister(),
+		apisixFactory.Apisix().V2().ApisixClusterConfigs().Lister(),
+	)
+	c.apisixConsumerLister = kube.NewApisixConsumerLister(
+		apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister(),
+		apisixFactory.Apisix().V2().ApisixConsumers().Lister(),
+	)
 	c.apisixPluginConfigLister = kube.NewApisixPluginConfigLister(
 		apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
 	)
@@ -278,16 +286,32 @@ func (c *Controller) initWhenStartLeading() {
 		panic(fmt.Errorf("unsupported ApisixTls version %s", c.cfg.Kubernetes.ApisixTlsVersion))
 	}
 
+	switch c.cfg.Kubernetes.ApisixClusterConfigVersion {
+	case config.ApisixV2beta3:
+		apisixClusterConfigInformer = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Informer()
+	case config.ApisixV2:
+		apisixClusterConfigInformer = apisixFactory.Apisix().V2().ApisixClusterConfigs().Informer()
+	default:
+		panic(fmt.Errorf("unsupported ApisixClusterConfig version %v", c.cfg.Kubernetes.ApisixClusterConfigVersion))
+	}
+
+	switch c.cfg.Kubernetes.ApisixConsumerVersion {
+	case config.ApisixRouteV2beta3:
+		apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
+	case config.ApisixRouteV2:
+		apisixConsumerInformer = apisixFactory.Apisix().V2().ApisixConsumers().Informer()
+	}
+
 	c.namespaceInformer = kubeFactory.Core().V1().Namespaces().Informer()
 	c.podInformer = kubeFactory.Core().V1().Pods().Informer()
 	c.svcInformer = kubeFactory.Core().V1().Services().Informer()
 	c.ingressInformer = ingressInformer
 	c.apisixRouteInformer = apisixRouteInformer
 	c.apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
-	c.apisixClusterConfigInformer = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Informer()
+	c.apisixClusterConfigInformer = apisixClusterConfigInformer
 	c.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
 	c.apisixTlsInformer = apisixTlsInformer
-	c.apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
+	c.apisixConsumerInformer = apisixConsumerInformer
 	c.apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
 
 	if c.cfg.Kubernetes.WatchEndpointSlices {
