@@ -16,7 +16,7 @@
 #
 default: help
 
-VERSION ?= 1.4.0
+VERSION ?= 1.4.1
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 REGISTRY ?="localhost:5000"
 IMAGE_TAG ?= dev
@@ -84,12 +84,20 @@ ifeq ("$(wildcard $(GINKGO))", "")
 	exit 1
 endif
 
+
+### push-ingress-images:  Build and push Ingress image used in e2e test suites to kind or custom registry.
+.PHONY: push-ingress-images
+push-ingress-images:
+	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
+	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+
 ### push-images:  Push images used in e2e test suites to kind or custom registry.
 .PHONY: push-images
 push-images:
 ifeq ($(E2E_SKIP_BUILD), 0)
-	docker pull apache/apisix:2.13.0-alpine
-	docker tag apache/apisix:2.13.0-alpine $(REGISTRY)/apache/apisix:dev
+	docker pull apache/apisix:2.13.1-alpine
+	docker tag apache/apisix:2.13.1-alpine $(REGISTRY)/apache/apisix:dev
 	docker push $(REGISTRY)/apache/apisix:dev
 
 	docker pull bitnami/etcd:3.4.14-debian-10-r0

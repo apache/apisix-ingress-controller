@@ -173,12 +173,21 @@ type ApisixRouteAuthentication struct {
 	Enable  bool                             `json:"enable" yaml:"enable"`
 	Type    string                           `json:"type" yaml:"type"`
 	KeyAuth ApisixRouteAuthenticationKeyAuth `json:"keyauth,omitempty" yaml:"keyauth,omitempty"`
+	JwtAuth ApisixRouteAuthenticationJwtAuth `json:"jwtAuth,omitempty" yaml:"jwtAuth,omitempty"`
 }
 
 // ApisixRouteAuthenticationKeyAuth is the keyAuth-related
 // configuration in ApisixRouteAuthentication.
 type ApisixRouteAuthenticationKeyAuth struct {
 	Header string `json:"header,omitempty" yaml:"header,omitempty"`
+}
+
+// ApisixRouteAuthenticationJwtAuth is the jwtAuth-related
+// configuration in ApisixRouteAuthentication.
+type ApisixRouteAuthenticationJwtAuth struct {
+	Header string `json:"header,omitempty" yaml:"header,omitempty"`
+	Query  string `json:"query,omitempty" yaml:"query,omitempty"`
+	Cookie string `json:"cookie,omitempty" yaml:"cookie,omitempty"`
 }
 
 func (p ApisixRouteHTTPPluginConfig) DeepCopyInto(out *ApisixRouteHTTPPluginConfig) {
@@ -331,6 +340,9 @@ type ApisixConsumerSpec struct {
 type ApisixConsumerAuthParameter struct {
 	BasicAuth *ApisixConsumerBasicAuth `json:"basicAuth,omitempty" yaml:"basicAuth"`
 	KeyAuth   *ApisixConsumerKeyAuth   `json:"keyAuth,omitempty" yaml:"keyAuth"`
+	WolfRBAC  *ApisixConsumerWolfRBAC  `json:"wolfRBAC,omitempty" yaml:"wolfRBAC"`
+	JwtAuth   *ApisixConsumerJwtAuth   `json:"jwtAuth,omitempty" yaml:"jwtAuth"`
+	HMACAuth  *ApisixConsumerHMACAuth  `json:"hmacAuth,omitempty" yaml:"hmacAuth"`
 }
 
 // ApisixConsumerBasicAuth defines the configuration for basic auth.
@@ -354,6 +366,55 @@ type ApisixConsumerKeyAuth struct {
 // ApisixConsumerKeyAuthValue defines the in-place configuration for basic auth.
 type ApisixConsumerKeyAuthValue struct {
 	Key string `json:"key" yaml:"key"`
+}
+
+// ApisixConsumerWolfRBAC defines the configuration for the wolf-rbac auth.
+type ApisixConsumerWolfRBAC struct {
+	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
+	Value     *ApisixConsumerWolfRBACValue `json:"value,omitempty" yaml:"value,omitempty"`
+}
+
+// ApisixConsumerWolfRBAC defines the in-place server and appid and header_prefix  configuration for wolf-rbac auth.
+type ApisixConsumerWolfRBACValue struct {
+	Server       string `json:"server,omitempty" yaml:"server,omitempty"`
+	Appid        string `json:"appid,omitempty" yaml:"appid,omitempty"`
+	HeaderPrefix string `json:"header_prefix,omitempty" yaml:"header_prefix,omitempty"`
+}
+
+// ApisixConsumerJwtAuth defines the configuration for the jwt auth.
+type ApisixConsumerJwtAuth struct {
+	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
+	Value     *ApisixConsumerJwtAuthValue  `json:"value,omitempty" yaml:"value,omitempty"`
+}
+
+// ApisixConsumerJwtAuthValue defines the in-place configuration for jwt auth.
+type ApisixConsumerJwtAuthValue struct {
+	Key          string `json:"key" yaml:"key"`
+	Secret       string `json:"secret,omitempty" yaml:"secret,omitempty"`
+	PublicKey    string `json:"public_key,omitempty" yaml:"public_key,omitempty"`
+	PrivateKey   string `json:"private_key" yaml:"private_key,omitempty"`
+	Algorithm    string `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`
+	Exp          int64  `json:"exp,omitempty" yaml:"exp,omitempty"`
+	Base64Secret bool   `json:"base64_secret,omitempty" yaml:"base64_secret,omitempty"`
+}
+
+// ApisixConsumerHMACAuth defines the configuration for the hmac auth.
+type ApisixConsumerHMACAuth struct {
+	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
+	Value     *ApisixConsumerHMACAuthValue `json:"value,omitempty" yaml:"value,omitempty"`
+}
+
+// ApisixConsumerHMACAuthValue defines the in-place configuration for hmac auth.
+type ApisixConsumerHMACAuthValue struct {
+	AccessKey           string   `json:"access_key" yaml:"access_key"`
+	SecretKey           string   `json:"secret_key" yaml:"secret_key"`
+	Algorithm           string   `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`
+	ClockSkew           int64    `json:"clock_skew,omitempty" yaml:"clock_skew,omitempty"`
+	SignedHeaders       []string `json:"signed_headers,omitempty" yaml:"signed_headers,omitempty"`
+	KeepHeaders         bool     `json:"keep_headers,omitempty" yaml:"keep_headers,omitempty"`
+	EncodeURIParams     bool     `json:"encode_uri_params,omitempty" yaml:"encode_uri_params,omitempty"`
+	ValidateRequestBody bool     `json:"validate_request_body,omitempty" yaml:"validate_request_body,omitempty"`
+	MaxReqBody          int64    `json:"max_req_body,omitempty" yaml:"max_req_body,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

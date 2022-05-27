@@ -44,7 +44,7 @@ func TestTranslateClusterConfig(t *testing.T) {
 			},
 		},
 	}
-	gr, err := tr.TranslateClusterConfig(acc)
+	gr, err := tr.TranslateClusterConfigV2beta3(acc)
 	assert.Nil(t, err, "translating ApisixClusterConfig")
 	assert.Equal(t, gr.ID, id.GenID("qa-apisix"), "checking global_rule id")
 	assert.Len(t, gr.Plugins, 2)

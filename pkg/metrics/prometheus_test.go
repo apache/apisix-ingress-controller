@@ -23,9 +23,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func apisixBadStatusCodesTestHandler(t *testing.T, metrics []*io_prometheus_client.MetricFamily) func(*testing.T) {
+func apisixStatusCodesTestHandler(t *testing.T, metrics []*io_prometheus_client.MetricFamily) func(*testing.T) {
 	return func(t *testing.T) {
-		metric := findMetric("apisix_ingress_controller_apisix_bad_status_codes", metrics)
+		metric := findMetric("apisix_ingress_controller_apisix_status_codes", metrics)
 		assert.NotNil(t, metric)
 		assert.Equal(t, "GAUGE", metric.Type.String())
 		m := metric.GetMetric()
@@ -218,7 +218,7 @@ func TestPrometheusCollector(t *testing.T) {
 	metrics, err := prometheus.DefaultGatherer.Gather()
 	assert.Nil(t, err)
 
-	t.Run("apisix_bad_status_codes", apisixBadStatusCodesTestHandler(t, metrics))
+	t.Run("apisix_status_codes", apisixStatusCodesTestHandler(t, metrics))
 	t.Run("is_leader", isLeaderTestHandler(t, metrics))
 	t.Run("apisix_request_latencies", apisixLatencyTestHandler(t, metrics))
 	t.Run("apisix_requests", apisixRequestTestHandler(t, metrics))

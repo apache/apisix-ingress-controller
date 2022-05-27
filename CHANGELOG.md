@@ -19,6 +19,7 @@
 
 # Table of Contents
 
+- [1.4.1](#141)
 - [1.4.0](#140)
 - [1.3.0](#130)
 - [1.2.0](#120)
@@ -30,6 +31,86 @@
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 1.4.1
+
+Welcome to the 1.4.1 release of apisix-ingress-controller!
+
+This is a Patch version release.
+
+## Highlights
+
+### Roadmap
+
+In next release(v1.5), custom resource's API version v2 will be GA released. Please go to [#707](https://github.com/apache/apisix-ingress-controller/issues/707) for detail.
+
+### Bug fixes
+
+* fix: consumer name contain "-" [#828](https://github.com/apache/apisix-ingress-controller/pull/828)
+* fix: fix typo in ApidixRoute CRD [#830](https://github.com/apache/apisix-ingress-controller/pull/830)
+* fix: add v2beta3 register resources [#833](https://github.com/apache/apisix-ingress-controller/pull/833)
+* fix: ApisixClusterConfig e2e test case [#859](https://github.com/apache/apisix-ingress-controller/pull/859)
+* fix: objects get from lister must be treated as read-only [#829](https://github.com/apache/apisix-ingress-controller/pull/829)
+* fix ingress delete panic [#872](https://github.com/apache/apisix-ingress-controller/pull/872)
+* fix json unmarshal error when list plguins [#888](https://github.com/apache/apisix-ingress-controller/pull/888)
+* fix: check if stream_routes is disabled [#868](https://github.com/apache/apisix-ingress-controller/pull/868)
+* fix: avoid create pluginconfig in the tranlsation of route [#845](https://github.com/apache/apisix-ingress-controller/pull/845)
+* fix: filter useless pod update event [#894](https://github.com/apache/apisix-ingress-controller/pull/894)
+* fix: fix ep resourceVersion comparison and clean up [#901](https://github.com/apache/apisix-ingress-controller/pull/901)
+* fix: ingress update event handler not filter by watching namespaces [#947](https://github.com/apache/apisix-ingress-controller/pull/)
+
+Please try out the release binaries and report any issues at
+https://github.com/apache/apisix-ingress-controller/issues.
+
+### Contributors
+
+* Jintao Zhang
+* Nic
+* cmssczy
+* nevercase
+* JasonZhu
+* Sarasa Kisaragi
+* Xin Rong
+* Yu.Bozhong
+* champly
+* chen zhuo
+
+### Changes
+<details><summary>24 commits</summary>
+<p>
+
+* [`8a257c4`](https://github.com/apache/apisix-ingress-controller/commit/8a257c49ba2b7032c8c440b062f400ce93064219) chore: fix dead links
+* [`c90b602`](https://github.com/apache/apisix-ingress-controller/commit/c90b6021cac71efd6ae32583ed0f960592e16c18) ci: trigger v1.4.0 branch jobs
+* [`d0bc591`](https://github.com/apache/apisix-ingress-controller/commit/d0bc591867121a5cc3b56d6d1637d8d4fb510bc8) chore: revert isWatchingNamespace to namespaceWatching
+* [`e259826`](https://github.com/apache/apisix-ingress-controller/commit/e259826633a3d50930417cfb88da94989256945c) fix ApisixConsumerBasicAuthValue password-yaml field error (#960)
+* [`4d087b3`](https://github.com/apache/apisix-ingress-controller/commit/4d087b3d5ccbb6ffca2473be47f0cb7eb1676d09) fix: ingress update event handler not filter by watching namespaces (#947)
+* [`46da0e2`](https://github.com/apache/apisix-ingress-controller/commit/46da0e229fef3834dbcc1e52530104ee28b65c85) docs: upgrade apiVersion from v2beta1 to v2beta3 (#916)
+* [`9a8c7ce`](https://github.com/apache/apisix-ingress-controller/commit/9a8c7ce0ad511383d324c63b30acf23f2b5120f4) chore: clean up useless code (#902)
+* [`eb90123`](https://github.com/apache/apisix-ingress-controller/commit/eb90123412bf002f90f1d178c869f891b7e2e2f1) fix: fix ep resourceVersion comparison and clean up (#901)
+* [`db250da`](https://github.com/apache/apisix-ingress-controller/commit/db250daf211fbf9886811f488e4c18729844ec91) chore: shorten the route name for Ingress transformations (#898)
+* [`3f14edd`](https://github.com/apache/apisix-ingress-controller/commit/3f14edd814c4976197ccd477b296a3c9ddf13802) fetching newest Endpoint before sync (#821)
+* [`8329b7c`](https://github.com/apache/apisix-ingress-controller/commit/8329b7ce1d48ad9ef2bcef8424d842d8bc9dbc09) fix: filter useless pod update event (#894)
+* [`cbcae44`](https://github.com/apache/apisix-ingress-controller/commit/cbcae445c5d9ba7dacd990a2df65d07168206775) fix: avoid create pluginconfig in the tranlsation of route (#845)
+* [`e0518a4`](https://github.com/apache/apisix-ingress-controller/commit/e0518a4b354c80aaa7b15ab4f6de4f0cf3a13e52) fix: check if stream_routes is disabled (#868)
+* [`90dd10e`](https://github.com/apache/apisix-ingress-controller/commit/90dd10e89a9277aebbdab53a683d8231c26b1ac8) fix json unmarshal error when list plguins (#888)
+* [`88cc0b3`](https://github.com/apache/apisix-ingress-controller/commit/88cc0b356f763b0bef97e64d4f423e73bde23681) fix ingress delete panic (#872)
+* [`64eb176`](https://github.com/apache/apisix-ingress-controller/commit/64eb176ba564d6310b95d481b260ea942cd05bd4) chore: clean up v1 version related code (#867)
+* [`bf1d10e`](https://github.com/apache/apisix-ingress-controller/commit/bf1d10e4a213d4bb344b2bbdfd97ed61ecf29fbd) fix: objects get from lister must be treated as read-only (#829)
+* [`d1bb4ac`](https://github.com/apache/apisix-ingress-controller/commit/d1bb4ac7709e30767ec6a07830221ffabe9887d0) fix: ApisixClusterConfig e2e test case (#859)
+* [`fd76c2a`](https://github.com/apache/apisix-ingress-controller/commit/fd76c2aa0f27046816dc8ddb642a3e6c644ab358) feat: ensure that the lease can be actively released before program shutdown to reduce the time required for failover (#827)
+* [`4c94c76`](https://github.com/apache/apisix-ingress-controller/commit/4c94c7660170b35a110707fdd5229912a542314a) chore: update ingress/comapre.go watchingNamespac from v2beta1 to v2beta3 (#832)
+* [`f9c60c2`](https://github.com/apache/apisix-ingress-controller/commit/f9c60c2738a13cbf9b221030a5cba7e5caf6495d) fix: add v2beta3 register resources (#833)
+* [`4a2ebaf`](https://github.com/apache/apisix-ingress-controller/commit/4a2ebaf43ee4cf42212659b412e7ed8a8ab8ee21) chore: fix typo in ApidixRoute CRD (#830)
+* [`46fcf3f`](https://github.com/apache/apisix-ingress-controller/commit/46fcf3f153a00cef868454b06452065172500dd1) fix: consumer name contain "-" (#828)
+* [`b7dd90a`](https://github.com/apache/apisix-ingress-controller/commit/b7dd90ad9d6a5102fe67c91c29ab76fc4bad4b1a) chore: v1.4 release
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
+Previous release can be found at [1.4.0](https://github.com/apache/apisix-ingress-controller/releases/tag/1.4.0)
 
 # 1.4.0
 
