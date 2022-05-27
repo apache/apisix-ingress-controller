@@ -16,6 +16,8 @@ package kube
 
 import (
 	"errors"
+
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -23,6 +25,8 @@ import (
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	listersdiscoveryv1 "k8s.io/client-go/listers/discovery/v1"
 	"k8s.io/client-go/tools/cache"
+
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
 type HostPort struct {
@@ -54,6 +58,12 @@ func (lister *endpointLister) GetEndpoint(namespace, name string) (Endpoint, err
 	if err != nil {
 		return nil, err
 	}
+	if ep == nil {
+		log.Warnw("get endpoints but found nil",
+			zap.String("namespace", namespace),
+			zap.String("name", name),
+		)
+	}
 	return &endpoint{
 		endpointType: endpointTypeEndpoints,
 		endpoint:     ep,
@@ -70,6 +80,13 @@ func (lister *endpointLister) GetEndpointSlices(namespace, svcName string) (Endp
 	eps, err := lister.epsLister.EndpointSlices(namespace).List(selector)
 	if err != nil {
 		return nil, err
+	}
+	if len(eps) == 0 {
+		log.Warnw("get endpoint slices but found empty slice",
+			zap.String("namespace", namespace),
+			zap.String("service", svcName),
+			zap.Any("selector", selector),
+		)
 	}
 	return &endpoint{
 		endpointType:   endpointTypeEndpointSlices,

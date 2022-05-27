@@ -87,7 +87,11 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 				return nil, errors.Wrap(err, fmt.Sprintf("failed to translate Rules[%v].BackendRefs[%v]", i, j))
 			}
 			name := apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port))
-			ups.Labels["id-name"] = name
+
+			ups.Labels["meta_namespace"] = truncate(ns, 64)
+			ups.Labels["meta_backend"] = truncate(string(backend.Name), 64)
+			ups.Labels["meta_port"] = fmt.Sprintf("%v", int32(*backend.Port))
+
 			ups.ID = id.GenID(name)
 			ctx.addUpstream(ups)
 			ruleUpstreams = append(ruleUpstreams, ups)
@@ -131,6 +135,8 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 				return nil, errors.Wrap(err, fmt.Sprintf("failed to translate Rules[%v].Matches[%v]", i, j))
 			}
 
+			name := apisixv1.ComposeRouteName(httpRoute.Namespace, httpRoute.Name, fmt.Sprintf("%d-%d", i, j))
+			route.ID = id.GenID(name)
 			route.Hosts = hosts
 
 			// Bind Upstream

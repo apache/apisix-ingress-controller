@@ -123,7 +123,7 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 	tctx, err := c.controller.translator.TranslateGatewayHTTPRouteV1Alpha2(httpRoute)
 
 	if err != nil {
-		log.Errorw("failed to translate gateway HTTPRoute",
+		log.Warnw("failed to translate gateway HTTPRoute",
 			zap.Error(err),
 			zap.Any("object", httpRoute),
 		)

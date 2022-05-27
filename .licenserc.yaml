@@ -41,4 +41,5 @@ header:
     - 'utils/generate-groups.sh'
     - '**/*.pem'
     - '**/*.key'
+    - 'samples/deploy/gateway-api/**'
   comment: on-failure
