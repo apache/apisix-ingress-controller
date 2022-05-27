@@ -334,6 +334,7 @@ type StreamRoute struct {
 	Desc       string            `json:"desc,omitempty" yaml:"desc,omitempty"`
 	Labels     map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 	ServerPort int32             `json:"server_port,omitempty" yaml:"server_port,omitempty"`
+	SNI        string            `json:"sni,omitempty" yaml:"sni,omitempty"`
 	UpstreamId string            `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
 	Upstream   *Upstream         `json:"upstream,omitempty" yaml:"upstream,omitempty"`
 }

@@ -93,7 +93,7 @@ spec:
                       match:
                         type: object
                         required:
-                        - paths
+                          - paths
                         properties:
                           paths:
                             type: array
@@ -134,7 +134,7 @@ spec:
                                       type: string
                                       minLength: 1
                                   required:
-                                  - scope
+                                    - scope
                                 op:
                                   type: string
                                   enum:
@@ -290,6 +290,10 @@ spec:
           name: Target Service(HTTP)
           type: string
           priority: 1
+        - jsonPath: .spec.tcp[].match.host
+          name: Ingress Server Host
+          type: string
+          priority: 0
         - jsonPath: .spec.tcp[].match.ingressPort
           name: Ingress Server Port(TCP)
           type: integer
@@ -476,6 +480,8 @@ spec:
                       match:
                         type: object
                         properties:
+                          host:
+                            type: string
                           ingressPort:
                             type: integer
                             minimum: 1

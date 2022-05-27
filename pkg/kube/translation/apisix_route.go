@@ -757,6 +757,7 @@ func (t *translator) translateStreamRouteV2beta3(ctx *TranslateContext, ar *conf
 		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
 		sr.ID = id.GenID(name)
 		sr.ServerPort = part.Match.IngressPort
+		sr.SNI = part.Match.Host
 		ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
 		if err != nil {
 			return err

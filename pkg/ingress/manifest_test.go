@@ -83,6 +83,7 @@ func TestDiffStreamRoutes(t *testing.T) {
 		{
 			ID:         "3",
 			ServerPort: 8080,
+			SNI:        "a.test.com",
 		},
 	}
 	added, updated, deleted := diffStreamRoutes(nil, news)
@@ -92,6 +93,7 @@ func TestDiffStreamRoutes(t *testing.T) {
 	assert.Equal(t, "1", added[0].ID)
 	assert.Equal(t, "3", added[1].ID)
 	assert.Equal(t, int32(8080), added[1].ServerPort)
+	assert.Equal(t, "a.test.com", added[1].SNI)
 
 	olds := []*apisixv1.StreamRoute{
 		{
@@ -100,6 +102,7 @@ func TestDiffStreamRoutes(t *testing.T) {
 		{
 			ID:         "3",
 			ServerPort: 8081,
+			SNI:        "a.test.com",
 		},
 	}
 	added, updated, deleted = diffStreamRoutes(olds, nil)
@@ -109,6 +112,7 @@ func TestDiffStreamRoutes(t *testing.T) {
 	assert.Equal(t, "2", deleted[0].ID)
 	assert.Equal(t, "3", deleted[1].ID)
 	assert.Equal(t, int32(8081), deleted[1].ServerPort)
+	assert.Equal(t, "a.test.com", deleted[1].SNI)
 
 	added, updated, deleted = diffStreamRoutes(olds, news)
 	assert.Len(t, added, 1)
@@ -116,6 +120,7 @@ func TestDiffStreamRoutes(t *testing.T) {
 	assert.Len(t, updated, 1)
 	assert.Equal(t, "3", updated[0].ID)
 	assert.Equal(t, int32(8080), updated[0].ServerPort)
+	assert.Equal(t, "a.test.com", updated[0].SNI)
 	assert.Len(t, deleted, 1)
 	assert.Equal(t, "2", deleted[0].ID)
 }

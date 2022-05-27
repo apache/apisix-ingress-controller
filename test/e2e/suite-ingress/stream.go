@@ -49,6 +49,7 @@ spec:
     protocol: TCP
     match:
       ingressPort: 9100
+      host: a.test.com
     backend:
       serviceName: %s
       servicePort: %d
@@ -64,6 +65,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), sr, 1)
 		assert.Equal(ginkgo.GinkgoT(), sr[0].ServerPort, int32(9100))
+		assert.Equal(ginkgo.GinkgoT(), sr[0].SNI, "a.test.com")
 
 		resp := s.NewAPISIXClientWithTCPProxy().GET("/ip").Expect()
 		resp.Body().Contains("origin")
@@ -133,6 +135,7 @@ spec:
     protocol: UDP
     match:
       ingressPort: 9200
+      host: a.test.com
     backend:
       serviceName: coredns
       servicePort: 53
@@ -151,6 +154,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), sr, 1)
 		assert.Equal(ginkgo.GinkgoT(), sr[0].ServerPort, int32(9200))
+		assert.Equal(ginkgo.GinkgoT(), sr[0].SNI, "a.test.com")
 		// test dns query
 		r := s.DNSResolver()
 		host := "httpbin.org"
