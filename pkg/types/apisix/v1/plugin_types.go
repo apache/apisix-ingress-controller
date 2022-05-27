@@ -49,6 +49,12 @@ type CorsConfig struct {
 	AllowHeaders string `json:"allow_headers,omitempty"`
 }
 
+// CSRfConfig is the rule config for csrf plugin.
+// +k8s:deepcopy-gen=true
+type CSRFConfig struct {
+	Key string `json:"key"`
+}
+
 // KeyAuthConsumerConfig is the rule config for key-auth plugin
 // used in Consumer object.
 // +k8s:deepcopy-gen=true
@@ -70,10 +76,47 @@ type BasicAuthConsumerConfig struct {
 	Password string `json:"password"`
 }
 
+// JwtAuthConsumerConfig is the rule config for jwt-auth plugin
+// used in Consumer object.
+// +k8s:deepcopy-gen=true
+type JwtAuthConsumerConfig struct {
+	Key          string `json:"key" yaml:"key"`
+	Secret       string `json:"secret,omitempty" yaml:"secret,omitempty"`
+	PublicKey    string `json:"public_key,omitempty" yaml:"public_key,omitempty"`
+	PrivateKey   string `json:"private_key" yaml:"private_key,omitempty"`
+	Algorithm    string `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`
+	Exp          int64  `json:"exp,omitempty" yaml:"exp,omitempty"`
+	Base64Secret bool   `json:"base64_secret,omitempty" yaml:"base64_secret,omitempty"`
+}
+
+// HMACAuthConsumerConfig is the rule config for hmac-auth plugin
+// used in Consumer object.
+// +k8s:deepcopy-gen=true
+type HMACAuthConsumerConfig struct {
+	AccessKey           string   `json:"access_key" yaml:"access_key"`
+	SecretKey           string   `json:"secret_key" yaml:"secret_key"`
+	Algorithm           string   `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`
+	ClockSkew           int64    `json:"clock_skew,omitempty" yaml:"clock_skew,omitempty"`
+	SignedHeaders       []string `json:"signed_headers,omitempty" yaml:"signed_headers,omitempty"`
+	KeepHeaders         bool     `json:"keep_headers,omitempty" yaml:"keep_headers,omitempty"`
+	EncodeURIParams     bool     `json:"encode_uri_params,omitempty" yaml:"encode_uri_params,omitempty"`
+	ValidateRequestBody bool     `json:"validate_request_body,omitempty" yaml:"validate_request_body,omitempty"`
+	MaxReqBody          int64    `json:"max_req_body,omitempty" yaml:"max_req_body,omitempty"`
+}
+
 // BasicAuthRouteConfig is the rule config for basic-auth plugin
 // used in Route object.
 // +k8s:deepcopy-gen=true
 type BasicAuthRouteConfig struct{}
+
+// WolfRBACConsumerConfig is the rule config for wolf-rbac plugin
+// used in Consumer object.
+// +k8s:deepcopy-gen=true
+type WolfRBACConsumerConfig struct {
+	Server       string `json:"server,omitempty"`
+	Appid        string `json:"appid,omitempty"`
+	HeaderPrefix string `json:"header_prefix,omitempty"`
+}
 
 // RewriteConfig is the rule config for proxy-rewrite plugin.
 // +k8s:deepcopy-gen=true

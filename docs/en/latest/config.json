@@ -38,7 +38,8 @@
         "references/apisix_route_v2beta3",
         "references/apisix_upstream",
         "references/apisix_tls",
-        "references/apisix_cluster_config"
+        "references/apisix_cluster_config",
+        "references/apisix_pluginconfig"
       ]
     },
     {
