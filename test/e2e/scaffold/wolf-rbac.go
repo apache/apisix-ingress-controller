@@ -19,12 +19,20 @@ package scaffold
 
 import (
 	"fmt"
+	"log"
 	"os/exec"
 )
 
 func (s *Scaffold) StartWolfRBACServer() error {
 	cmd := exec.Command("sh", "testdata/wolf-rbac/start.sh")
-	return cmd.Run()
+	raw, err := cmd.Output()
+	if len(raw) > 0 {
+		log.Println(string(raw))
+	}
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Scaffold) GetWolfRBACServerURL() (string, error) {

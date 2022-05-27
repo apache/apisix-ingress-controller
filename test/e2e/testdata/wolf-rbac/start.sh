@@ -24,10 +24,12 @@ rm -rf db-psql.sql
 wget https://raw.githubusercontent.com/iGeeky/wolf/f6ddeb75a37bff90406f0f0a2b7ae5d16f6f3bd4/server/script/db-psql.sql
 
 # start database
-docker-compose up -d database
+docker-compose up -d database >> info.log 2>&1
 
 # start wolf-server
-docker-compose up -d server restful-demo agent-or agent-demo
+docker-compose up -d server restful-demo agent-or agent-demo  >> info.log 2>&1
+
+cat info.log && rm info.log
 
 sleep 6
 

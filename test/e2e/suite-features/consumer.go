@@ -391,7 +391,8 @@ spec:
 	})
 
 	ginkgo.It("ApisixRoute with wolfRBAC consumer", func() {
-		_ = s.StartWolfRBACServer()
+		err := s.StartWolfRBACServer()
+		assert.Nil(ginkgo.GinkgoT(), err)
 		wolfSvr, err := s.GetWolfRBACServerURL()
 		assert.Nil(ginkgo.GinkgoT(), err, "checking wolf-server")
 		defer s.StopWolfRBACServer()
