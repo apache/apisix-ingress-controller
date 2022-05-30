@@ -390,7 +390,7 @@ spec:
 		assert.Contains(ginkgo.GinkgoT(), msg, "404 Route Not Found")
 	})
 
-	ginkgo.It("ApisixRoute with wolfRBAC consumer", func() {
+	ginkgo.FIt("ApisixRoute with wolfRBAC consumer", func() {
 		_ = s.StartWolfRBACServer()
 		wolfSvr, err := s.GetWolfRBACServerURL()
 		assert.Nil(ginkgo.GinkgoT(), err, "checking wolf-server")
@@ -508,7 +508,7 @@ spec:
 		assert.Contains(ginkgo.GinkgoT(), msg401, "Missing rbac token in request")
 	})
 
-	ginkgo.It("ApisixRoute with wolfRBAC consumer using secret", func() {
+	ginkgo.FIt("ApisixRoute with wolfRBAC consumer using secret", func() {
 		_ = s.StartWolfRBACServer()
 		wolfSvr, err := s.GetWolfRBACServerURL()
 		assert.Nil(ginkgo.GinkgoT(), err, "checking wolf-server")
