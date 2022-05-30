@@ -6,7 +6,7 @@ keywords:
   - Ingress Controller
   - Go Plugin Runner
   - multi language
-description: This document walks through how you can use the go plugin runner in the APISIX ingress controller.
+description: This document walks through how you can use the go plugin runner in the APISIX ingress controller
 ---
 
 <!--
