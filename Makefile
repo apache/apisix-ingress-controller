@@ -71,7 +71,7 @@ e2e-test: ginkgo-check push-images
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
-		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace --nodes=$(E2E_CONCURRENCY) --focus="ApisixRoute with wolfRBAC consumer"
+		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace --nodes=$(E2E_CONCURRENCY) --focus=$(E2E_FOCUS)
 
 ### e2e-test-local:        Run e2e test cases (kind is required)
 .PHONY: e2e-test-local
