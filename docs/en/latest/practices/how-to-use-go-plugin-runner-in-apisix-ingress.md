@@ -1,5 +1,12 @@
 ---
 title: How to use go-plugin-runner with APISIX Ingress
+keywords:
+  - Apache APISIX Ingress
+  - Plugin
+  - Ingress Controller
+  - Go Plugin Runner
+  - multi language
+description: This document walks through how you can use the go plugin runner in the APISIX ingress controller.
 ---
 
 <!--
