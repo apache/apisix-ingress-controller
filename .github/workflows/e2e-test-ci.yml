@@ -86,13 +86,15 @@ jobs:
   e2e-test:
     needs: prepare
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false # If false, GitHub will not cancels all in-progress jobs in the matrix if any matrix job fails.
-      matrix:
-        suite: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    # strategy:
+    #   fail-fast: true # If false, GitHub will not cancels all in-progress jobs in the matrix if any matrix job fails.
+    #   matrix:
+    #     suite: ${{ fromJson(needs.prepare.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v2
+      - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
 
-      - uses: ./.github/actions/e2e
-        with:
-          testsuite_name: ${{ matrix.suite }}
+      # - uses: ./.github/actions/e2e
+      #   with:
+      #     testsuite_name: ${{ matrix.suite }}
