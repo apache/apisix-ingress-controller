@@ -206,10 +206,11 @@ func (p *ApisixRouteHTTPPluginConfig) DeepCopy() *ApisixRouteHTTPPluginConfig {
 // ApisixRouteStream is the configuration for level 4 route
 type ApisixRouteStream struct {
 	// The rule name, cannot be empty.
-	Name     string                   `json:"name" yaml:"name"`
-	Protocol string                   `json:"protocol" yaml:"protocol"`
-	Match    ApisixRouteStreamMatch   `json:"match" yaml:"match"`
-	Backend  ApisixRouteStreamBackend `json:"backend" yaml:"backend"`
+	Name     string                    `json:"name" yaml:"name"`
+	Protocol string                    `json:"protocol" yaml:"protocol"`
+	Match    ApisixRouteStreamMatch    `json:"match" yaml:"match"`
+	Backend  ApisixRouteStreamBackend  `json:"backend" yaml:"backend"`
+	Plugins  []ApisixRouteStreamPlugin `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 // ApisixRouteStreamMatch represents the match conditions of stream route.
@@ -234,6 +235,34 @@ type ApisixRouteStreamBackend struct {
 	// Subset specifies a subset for the target Service. The subset should be pre-defined
 	// in ApisixUpstream about this service.
 	Subset string `json:"subset,omitempty" yaml:"subset,omitempty"`
+}
+
+// ApisixRouteStreamPlugin represents an APISIX strem plugin.
+type ApisixRouteStreamPlugin struct {
+	// The plugin name.
+	Name string `json:"name" yaml:"name"`
+	// Whether this plugin is in use, default is true.
+	Enable bool `json:"enable" yaml:"enable"`
+	// Plugin configuration.
+	Config ApisixRouteStreamPluginConfig `json:"config" yaml:"config"`
+}
+
+// ApisixRouteStreamPluginConfig is the configuration for
+// any stream plugins.
+type ApisixRouteStreamPluginConfig map[string]interface{}
+
+func (p ApisixRouteStreamPluginConfig) DeepCopyInto(out *ApisixRouteStreamPluginConfig) {
+	b, _ := json.Marshal(&p)
+	_ = json.Unmarshal(b, out)
+}
+
+func (p *ApisixRouteStreamPluginConfig) DeepCopy() *ApisixRouteStreamPluginConfig {
+	if p == nil {
+		return nil
+	}
+	out := new(ApisixRouteStreamPluginConfig)
+	p.DeepCopyInto(out)
+	return out
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
