@@ -81,8 +81,8 @@ Ref to FAQ #7.
 
 Usually, you need to modify the Admin API key to protect Apache APISIX and APISIX Ingress. Please refer to this [link](https://apisix.apache.org/zh/docs/apisix/how-to-build/) to simply change Apache APISIX.
 
-However, in apisix-ingress-controller, if we need to change the Admin API key, we also need to change the Admin API key in apisix-ingress-controller. There are two ways to implement the requirements here.
+However, in apisix-ingress-controller, if we need to change the Admin API key, we also need to change the Admin API key in apisix-ingress-controller. There are two different ways to implement the requirements here.
 
-In one method, we need to change the values of the two values.yaml files in the helm chart We need to change the Admin API key values in both helm chart packages.
+For the first method, we need to modify the Admin API credentials values in both the `apisix/values.yaml` and `apisix/apisix-ingress-controller/values.yaml` files. You can refer to these two links(apisix's [values.yaml](https://github.com/apache/apisix-helm-chart/blob/master/charts/apisix/values.yaml#:~:text=admin%3A%20edd1c9f034335f136f87ad84b625c8f1) && apisix-ingress-controller's [values.yaml](https://github.com/apache/apisix-helm-chart/blob/master/charts/apisix-ingress-controller/values.yaml#:~:text=adminKey%3A%20%22edd1c9f034335f136f87ad84b625c8f1%22)).
 
 Another method, you can just pass `--set ingress-controller.config.apisix.adminKey=<Your new admin key>`  to `helm install` command.
