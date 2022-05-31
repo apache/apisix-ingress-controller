@@ -119,15 +119,18 @@ type Controller struct {
 	apisixPluginConfigLister    kube.ApisixPluginConfigLister
 	gatewayInformer             cache.SharedIndexInformer
 	gatewayLister               gatewaylistersv1alpha2.GatewayLister
+	gatewayHttpRouteInformer    cache.SharedIndexInformer
+	gatewayHttpRouteLister      gatewaylistersv1alpha2.HTTPRouteLister
 
 	// resource controllers
-	namespaceController     *namespaceController
-	podController           *podController
-	endpointsController     *endpointsController
-	endpointSliceController *endpointSliceController
-	ingressController       *ingressController
-	secretController        *secretController
-	gatewayController       *gatewayController
+	namespaceController        *namespaceController
+	podController              *podController
+	endpointsController        *endpointsController
+	endpointSliceController    *endpointSliceController
+	ingressController          *ingressController
+	secretController           *secretController
+	gatewayController          *gatewayController
+	gatewayHTTPRouteController *gatewayHTTPRouteController
 
 	apisixUpstreamController      *apisixUpstreamController
 	apisixRouteController         *apisixRouteController
@@ -264,6 +267,9 @@ func (c *Controller) initWhenStartLeading() {
 	c.gatewayLister = gatewayFactory.Gateway().V1alpha2().Gateways().Lister()
 	c.gatewayInformer = gatewayFactory.Gateway().V1alpha2().Gateways().Informer()
 
+	c.gatewayHttpRouteLister = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Lister()
+	c.gatewayHttpRouteInformer = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Informer()
+
 	switch c.cfg.Kubernetes.ApisixRouteVersion {
 	case config.ApisixRouteV2beta2:
 		apisixRouteInformer = apisixFactory.Apisix().V2beta2().ApisixRoutes().Informer()
@@ -328,6 +334,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixConsumerController = c.newApisixConsumerController()
 	c.apisixPluginConfigController = c.newApisixPluginConfigController()
 	c.gatewayController = c.newGatewayController()
+	c.gatewayHTTPRouteController = c.newGatewayHTTPRouteController()
 }
 
 // recorderEvent recorder events for resources
@@ -551,7 +558,15 @@ func (c *Controller) run(ctx context.Context) {
 		})
 
 		c.goAttach(func() {
+			c.gatewayHttpRouteInformer.Run(ctx.Done())
+		})
+
+		c.goAttach(func() {
 			c.gatewayController.run(ctx)
+		})
+
+		c.goAttach(func() {
+			c.gatewayHTTPRouteController.run(ctx)
 		})
 	}
 
