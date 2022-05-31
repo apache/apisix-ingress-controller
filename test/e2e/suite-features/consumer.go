@@ -590,8 +590,8 @@ spec:
 			assert.Contains(ginkgo.GinkgoT(), msg401, "Missing rbac token in request")
 		})
 
-	ginkgo.It("ApisixRoute with hmacAuth consumer", func() {
-		ac := `
+		ginkgo.It("ApisixRoute with hmacAuth consumer", func() {
+			ac := `
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
@@ -605,23 +605,23 @@ spec:
         algorithm: "hmac-sha256"
         clock_skew: 0
 `
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac), "creating hmacAuth ApisixConsumer")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac), "creating hmacAuth ApisixConsumer")
 
-		// Wait until the ApisixConsumer create event was delivered.
-		time.Sleep(6 * time.Second)
+			// Wait until the ApisixConsumer create event was delivered.
+			time.Sleep(6 * time.Second)
 
-		grs, err := s.ListApisixConsumers()
-		assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
-		assert.Len(ginkgo.GinkgoT(), grs, 1)
-		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
-		hmacAuth, _ := grs[0].Plugins["hmac-auth"].(map[string]interface{})
-		assert.Equal(ginkgo.GinkgoT(), "papa", hmacAuth["access_key"])
-		assert.Equal(ginkgo.GinkgoT(), "fatpa", hmacAuth["secret_key"])
-		assert.Equal(ginkgo.GinkgoT(), "hmac-sha256", hmacAuth["algorithm"])
-		assert.Equal(ginkgo.GinkgoT(), float64(0), hmacAuth["clock_skew"])
+			grs, err := s.ListApisixConsumers()
+			assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
+			assert.Len(ginkgo.GinkgoT(), grs, 1)
+			assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
+			hmacAuth, _ := grs[0].Plugins["hmac-auth"].(map[string]interface{})
+			assert.Equal(ginkgo.GinkgoT(), "papa", hmacAuth["access_key"])
+			assert.Equal(ginkgo.GinkgoT(), "fatpa", hmacAuth["secret_key"])
+			assert.Equal(ginkgo.GinkgoT(), "hmac-sha256", hmacAuth["algorithm"])
+			assert.Equal(ginkgo.GinkgoT(), float64(0), hmacAuth["clock_skew"])
 
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -647,47 +647,47 @@ spec:
      enable: true
      type: hmacAuth
 `, backendSvc, backendPorts[0])
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute with hmacAuth")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute with hmacAuth")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
-		_ = s.NewAPISIXClient().GET("/ip").
-			WithHeader("Host", "httpbin.org").
-			WithHeader("X-Foo", "bar").
-			WithHeader("X-HMAC-SIGNATURE", "l3Uka7E1kxPA/owQ2+OqJUmflRppjD5q8xPcWbyKKrg=").
-			WithHeader("X-HMAC-ACCESS-KEY", "papa").
-			WithHeader("X-HMAC-ALGORITHM", "hmac-sha256").
-			WithHeader("X-HMAC-SIGNED-HEADERS", "User-Agent;X-Foo").
-			WithHeader("User-Agent", "curl/7.29.0").
-			Expect().
-			Status(http.StatusOK)
+			_ = s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("X-Foo", "bar").
+				WithHeader("X-HMAC-SIGNATURE", "l3Uka7E1kxPA/owQ2+OqJUmflRppjD5q8xPcWbyKKrg=").
+				WithHeader("X-HMAC-ACCESS-KEY", "papa").
+				WithHeader("X-HMAC-ALGORITHM", "hmac-sha256").
+				WithHeader("X-HMAC-SIGNED-HEADERS", "User-Agent;X-Foo").
+				WithHeader("User-Agent", "curl/7.29.0").
+				Expect().
+				Status(http.StatusOK)
 
-		msg := s.NewAPISIXClient().GET("/ip").
-			WithHeader("Host", "httpbin.org").
-			WithHeader("X-Foo", "bar").
-			Expect().
-			Status(http.StatusUnauthorized).
-			Body().
-			Raw()
-		assert.Contains(ginkgo.GinkgoT(), msg, "access key or signature missing")
+			msg := s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("X-Foo", "bar").
+				Expect().
+				Status(http.StatusUnauthorized).
+				Body().
+				Raw()
+			assert.Contains(ginkgo.GinkgoT(), msg, "access key or signature missing")
 
-		msg = s.NewAPISIXClient().GET("/ip").
-			WithHeader("Host", "httpbin.org").
-			WithHeader("X-Foo", "baz").
-			WithHeader("X-HMAC-SIGNATURE", "MhGJMkEYFD+98qtvoDPlvCGIUSmmUaw0In/D0vt2Z4E=").
-			WithHeader("X-HMAC-ACCESS-KEY", "papa").
-			WithHeader("X-HMAC-ALGORITHM", "hmac-sha256").
-			WithHeader("X-HMAC-SIGNED-HEADERS", "User-Agent;X-Foo").
-			WithHeader("User-Agent", "curl/7.29.0").
-			Expect().
-			Status(http.StatusNotFound).
-			Body().
-			Raw()
-		assert.Contains(ginkgo.GinkgoT(), msg, "404 Route Not Found")
-	})
+			msg = s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("X-Foo", "baz").
+				WithHeader("X-HMAC-SIGNATURE", "MhGJMkEYFD+98qtvoDPlvCGIUSmmUaw0In/D0vt2Z4E=").
+				WithHeader("X-HMAC-ACCESS-KEY", "papa").
+				WithHeader("X-HMAC-ALGORITHM", "hmac-sha256").
+				WithHeader("X-HMAC-SIGNED-HEADERS", "User-Agent;X-Foo").
+				WithHeader("User-Agent", "curl/7.29.0").
+				Expect().
+				Status(http.StatusNotFound).
+				Body().
+				Raw()
+			assert.Contains(ginkgo.GinkgoT(), msg, "404 Route Not Found")
+		})
 
-	ginkgo.It("ApisixRoute with hmacAuth consumer using secret", func() {
-		secret := `
+		ginkgo.It("ApisixRoute with hmacAuth consumer using secret", func() {
+			secret := `
 apiVersion: v1
 kind: Secret
 metadata:
@@ -698,9 +698,9 @@ data:
   algorithm: aG1hYy1zaGEyNTY=
   clock_skew: MA==
 `
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating hmac secret for ApisixConsumer")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating hmac secret for ApisixConsumer")
 
-		ac := `
+			ac := `
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
@@ -711,23 +711,23 @@ spec:
       secretRef:
         name: hmac
 `
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac), "creating hmacAuth ApisixConsumer")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac), "creating hmacAuth ApisixConsumer")
 
-		// Wait until the ApisixConsumer create event was delivered.
-		time.Sleep(6 * time.Second)
+			// Wait until the ApisixConsumer create event was delivered.
+			time.Sleep(6 * time.Second)
 
-		grs, err := s.ListApisixConsumers()
-		assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
-		assert.Len(ginkgo.GinkgoT(), grs, 1)
-		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
-		hmacAuth, _ := grs[0].Plugins["hmac-auth"].(map[string]interface{})
-		assert.Equal(ginkgo.GinkgoT(), "papa", hmacAuth["access_key"])
-		assert.Equal(ginkgo.GinkgoT(), "fatpa", hmacAuth["secret_key"])
-		assert.Equal(ginkgo.GinkgoT(), "hmac-sha256", hmacAuth["algorithm"])
-		assert.Equal(ginkgo.GinkgoT(), float64(0), hmacAuth["clock_skew"])
+			grs, err := s.ListApisixConsumers()
+			assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
+			assert.Len(ginkgo.GinkgoT(), grs, 1)
+			assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
+			hmacAuth, _ := grs[0].Plugins["hmac-auth"].(map[string]interface{})
+			assert.Equal(ginkgo.GinkgoT(), "papa", hmacAuth["access_key"])
+			assert.Equal(ginkgo.GinkgoT(), "fatpa", hmacAuth["secret_key"])
+			assert.Equal(ginkgo.GinkgoT(), "hmac-sha256", hmacAuth["algorithm"])
+			assert.Equal(ginkgo.GinkgoT(), float64(0), hmacAuth["clock_skew"])
 
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -753,47 +753,47 @@ spec:
      enable: true
      type: hmacAuth
 `, backendSvc, backendPorts[0])
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute with hmacAuth")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute with hmacAuth")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
-		_ = s.NewAPISIXClient().GET("/ip").
-			WithHeader("Host", "httpbin.org").
-			WithHeader("X-Foo", "bar").
-			WithHeader("X-HMAC-SIGNATURE", "l3Uka7E1kxPA/owQ2+OqJUmflRppjD5q8xPcWbyKKrg=").
-			WithHeader("X-HMAC-ACCESS-KEY", "papa").
-			WithHeader("X-HMAC-ALGORITHM", "hmac-sha256").
-			WithHeader("X-HMAC-SIGNED-HEADERS", "User-Agent;X-Foo").
-			WithHeader("User-Agent", "curl/7.29.0").
-			Expect().
-			Status(http.StatusOK)
+			_ = s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("X-Foo", "bar").
+				WithHeader("X-HMAC-SIGNATURE", "l3Uka7E1kxPA/owQ2+OqJUmflRppjD5q8xPcWbyKKrg=").
+				WithHeader("X-HMAC-ACCESS-KEY", "papa").
+				WithHeader("X-HMAC-ALGORITHM", "hmac-sha256").
+				WithHeader("X-HMAC-SIGNED-HEADERS", "User-Agent;X-Foo").
+				WithHeader("User-Agent", "curl/7.29.0").
+				Expect().
+				Status(http.StatusOK)
 
-		msg := s.NewAPISIXClient().GET("/ip").
-			WithHeader("Host", "httpbin.org").
-			WithHeader("X-Foo", "bar").
-			Expect().
-			Status(http.StatusUnauthorized).
-			Body().
-			Raw()
-		assert.Contains(ginkgo.GinkgoT(), msg, "access key or signature missing")
+			msg := s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("X-Foo", "bar").
+				Expect().
+				Status(http.StatusUnauthorized).
+				Body().
+				Raw()
+			assert.Contains(ginkgo.GinkgoT(), msg, "access key or signature missing")
 
-		msg = s.NewAPISIXClient().GET("/ip").
-			WithHeader("Host", "httpbin.org").
-			WithHeader("X-Foo", "baz").
-			WithHeader("X-HMAC-SIGNATURE", "MhGJMkEYFD+98qtvoDPlvCGIUSmmUaw0In/D0vt2Z4E=").
-			WithHeader("X-HMAC-ACCESS-KEY", "papa").
-			WithHeader("X-HMAC-ALGORITHM", "hmac-sha256").
-			WithHeader("X-HMAC-SIGNED-HEADERS", "User-Agent;X-Foo").
-			WithHeader("User-Agent", "curl/7.29.0").
-			Expect().
-			Status(http.StatusNotFound).
-			Body().
-			Raw()
-		assert.Contains(ginkgo.GinkgoT(), msg, "404 Route Not Found")
-	})
+			msg = s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("X-Foo", "baz").
+				WithHeader("X-HMAC-SIGNATURE", "MhGJMkEYFD+98qtvoDPlvCGIUSmmUaw0In/D0vt2Z4E=").
+				WithHeader("X-HMAC-ACCESS-KEY", "papa").
+				WithHeader("X-HMAC-ALGORITHM", "hmac-sha256").
+				WithHeader("X-HMAC-SIGNED-HEADERS", "User-Agent;X-Foo").
+				WithHeader("User-Agent", "curl/7.29.0").
+				Expect().
+				Status(http.StatusNotFound).
+				Body().
+				Raw()
+			assert.Contains(ginkgo.GinkgoT(), msg, "404 Route Not Found")
+		})
 
-	ginkgo.It("ApisixRoute with jwtAuth consumer", func() {
-		ac := `
+		ginkgo.It("ApisixRoute with jwtAuth consumer", func() {
+			ac := `
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
