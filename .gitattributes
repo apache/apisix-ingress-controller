@@ -1,0 +1,3 @@
+# Gateway API CRDs:
+# https://github.com/kubernetes-sigs/gateway-api/tree/66a7c8ffc942a90294612f63c6dedcc73a3de5ca/config/crd/stable
+samples/deploy/gateway-api/* linguist-generated=true
