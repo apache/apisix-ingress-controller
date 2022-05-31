@@ -193,18 +193,6 @@ The command is as follows to test if the plugin written in Golang is working cor
 kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9080/get -H 'Host: local.httpbin.org'
 ```
 
-Here I derived from the `kubectl get pods --all-namespaces` command that the `${namespace of Apache APISIX}` and `${Pod name of Apache APISIX}` parameters here are `ingress-apisix` and `apisix- 55d476c64-s5lzw`, execute the command as follows:
-
-```bash
-kubectl exec -it -n ingress-apisix apisix-55d476c64-s5lzw -- curl http://127.0.0.1:9080/get -H 'Host: local.httpbin.org'
-```
-
-The expected response obtained is:
-
-```bash
-kubectl exec -it -n ingress-apisix apisix-55d476c64-s5lzw -- curl http://127.0.0.1:9080/get -H 'Host: local.httpbin.org'
-```
-
 And you will see the result as follows:
 
 ```bash
