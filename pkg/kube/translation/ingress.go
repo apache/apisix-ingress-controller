@@ -40,7 +40,7 @@ const (
 )
 
 func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateContext, error) {
-	ctx := defaultEmptyTranslateContext()
+	ctx := DefaultEmptyTranslateContext()
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
@@ -72,7 +72,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 			)
 			return nil, err
 		}
-		ctx.addSSL(ssl)
+		ctx.AddSSL(ssl)
 	}
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
@@ -90,7 +90,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 					)
 					return nil, err
 				}
-				ctx.addUpstream(ups)
+				ctx.AddUpstream(ups)
 			}
 			uris := []string{pathRule.Path}
 			var nginxVars []kubev2.ApisixRouteHTTPMatchExpr
@@ -143,21 +143,21 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateCo
 				pluginConfig.Name = composeIngressPluginName(ing.Namespace, pathRule.Backend.Service.Name)
 				pluginConfig.ID = id.GenID(route.Name)
 				pluginConfig.Plugins = *(plugins.DeepCopy())
-				ctx.addPluginConfig(pluginConfig)
+				ctx.AddPluginConfig(pluginConfig)
 
 				route.PluginConfigId = pluginConfig.ID
 			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
 			}
-			ctx.addRoute(route)
+			ctx.AddRoute(route)
 		}
 	}
 	return ctx, nil
 }
 
 func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*TranslateContext, error) {
-	ctx := defaultEmptyTranslateContext()
+	ctx := DefaultEmptyTranslateContext()
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
@@ -189,7 +189,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 			)
 			return nil, err
 		}
-		ctx.addSSL(ssl)
+		ctx.AddSSL(ssl)
 	}
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
@@ -207,7 +207,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 					)
 					return nil, err
 				}
-				ctx.addUpstream(ups)
+				ctx.AddUpstream(ups)
 			}
 			uris := []string{pathRule.Path}
 			var nginxVars []kubev2.ApisixRouteHTTPMatchExpr
@@ -260,14 +260,14 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*T
 				pluginConfig.Name = composeIngressPluginName(ing.Namespace, pathRule.Backend.ServiceName)
 				pluginConfig.ID = id.GenID(route.Name)
 				pluginConfig.Plugins = *(plugins.DeepCopy())
-				ctx.addPluginConfig(pluginConfig)
+				ctx.AddPluginConfig(pluginConfig)
 
 				route.PluginConfigId = pluginConfig.ID
 			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
 			}
-			ctx.addRoute(route)
+			ctx.AddRoute(route)
 		}
 	}
 	return ctx, nil
@@ -305,7 +305,7 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 }
 
 func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress) (*TranslateContext, error) {
-	ctx := defaultEmptyTranslateContext()
+	ctx := DefaultEmptyTranslateContext()
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
@@ -327,7 +327,7 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 					)
 					return nil, err
 				}
-				ctx.addUpstream(ups)
+				ctx.AddUpstream(ups)
 			}
 			uris := []string{pathRule.Path}
 			var nginxVars []kubev2.ApisixRouteHTTPMatchExpr
@@ -380,14 +380,14 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 				pluginConfig.Name = composeIngressPluginName(ing.Namespace, pathRule.Backend.ServiceName)
 				pluginConfig.ID = id.GenID(route.Name)
 				pluginConfig.Plugins = *(plugins.DeepCopy())
-				ctx.addPluginConfig(pluginConfig)
+				ctx.AddPluginConfig(pluginConfig)
 
 				route.PluginConfigId = pluginConfig.ID
 			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
 			}
-			ctx.addRoute(route)
+			ctx.AddRoute(route)
 		}
 	}
 	return ctx, nil

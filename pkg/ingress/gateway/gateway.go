@@ -12,30 +12,33 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package ingress
+package gateway
 
 import (
 	"context"
 	"time"
 
 	"go.uber.org/zap"
+	apiv1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 type gatewayController struct {
-	controller *Controller
+	controller *GatewayProvider
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
 }
 
-func (c *Controller) newGatewayController() *gatewayController {
+func newGatewayController(c *GatewayProvider) *gatewayController {
 	ctl := &gatewayController{
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "Gateway"),
@@ -115,7 +118,7 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 	// At present, we choose to directly update `GatewayStatus.Addresses`
 	// to indicate that we have picked the Gateway resource.
 
-	c.controller.recordStatus(gateway, string(gatewayv1alpha2.ListenerReasonReady), nil, metav1.ConditionTrue, gateway.Generation)
+	c.recordStatus(gateway, string(gatewayv1alpha2.ListenerReasonReady), nil, metav1.ConditionTrue, gateway.Generation)
 	return nil
 }
 
@@ -148,7 +151,7 @@ func (c *gatewayController) onAdd(obj interface{}) {
 		log.Errorf("found gateway resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.controller.isWatchingNamespace(key) {
+	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("gateway add event arrived",
@@ -162,3 +165,67 @@ func (c *gatewayController) onAdd(obj interface{}) {
 }
 func (c *gatewayController) onUpdate(oldObj, newObj interface{}) {}
 func (c *gatewayController) OnDelete(obj interface{})            {}
+
+// recordStatus record resources status
+func (c *gatewayController) recordStatus(v *gatewayv1alpha2.Gateway, reason string, err error, status metav1.ConditionStatus, generation int64) {
+	v = v.DeepCopy()
+
+	gatewayCondition := metav1.Condition{
+		Type:               string(gatewayv1alpha2.ListenerConditionReady),
+		Reason:             reason,
+		Status:             status,
+		Message:            "Gateway's status has been successfully updated",
+		ObservedGeneration: generation,
+	}
+
+	if v.Status.Conditions == nil {
+		conditions := make([]metav1.Condition, 0)
+		v.Status.Conditions = conditions
+	} else {
+		meta.SetStatusCondition(&v.Status.Conditions, gatewayCondition)
+	}
+
+	lbips, err := utils.IngressLBStatusIPs(c.controller.Cfg.IngressPublishService, c.controller.Cfg.IngressStatusAddress, c.controller.KubeClient)
+	if err != nil {
+		log.Errorw("failed to get APISIX gateway external IPs",
+			zap.Error(err),
+		)
+	}
+
+	v.Status.Addresses = convLBIPToGatewayAddr(lbips)
+	if _, errRecord := c.controller.gatewayClient.GatewayV1alpha2().Gateways(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+		log.Errorw("failed to record status change for Gateway resource",
+			zap.Error(errRecord),
+			zap.String("name", v.Name),
+			zap.String("namespace", v.Namespace),
+		)
+	}
+}
+
+// convLBIPToGatewayAddr convert LoadBalancerIngress to GatewayAddress format
+func convLBIPToGatewayAddr(lbips []apiv1.LoadBalancerIngress) []gatewayv1alpha2.GatewayAddress {
+	var gas []gatewayv1alpha2.GatewayAddress
+
+	// In the definition, there is also an address type called NamedAddress,
+	// which we currently do not implement
+	HostnameAddressType := gatewayv1alpha2.HostnameAddressType
+	IPAddressType := gatewayv1alpha2.IPAddressType
+
+	for _, lbip := range lbips {
+		if v := lbip.Hostname; v != "" {
+			gas = append(gas, gatewayv1alpha2.GatewayAddress{
+				Type:  &HostnameAddressType,
+				Value: v,
+			})
+		}
+
+		if v := lbip.IP; v != "" {
+			gas = append(gas, gatewayv1alpha2.GatewayAddress{
+				Type:  &IPAddressType,
+				Value: v,
+			})
+		}
+	}
+
+	return gas
+}

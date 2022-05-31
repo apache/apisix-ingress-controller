@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package ingress
+package gateway
 
 import (
 	"context"
@@ -24,18 +24,19 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 type gatewayHTTPRouteController struct {
-	controller *Controller
+	controller *GatewayProvider
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
 }
 
-func (c *Controller) newGatewayHTTPRouteController() *gatewayHTTPRouteController {
+func newGatewayHTTPRouteController(c *GatewayProvider) *gatewayHTTPRouteController {
 	ctrl := &gatewayHTTPRouteController{
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "GatewayHTTPRoute"),
@@ -134,15 +135,15 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 		zap.Any("routes", tctx.Routes),
 		zap.Any("upstreams", tctx.Upstreams),
 	)
-	m := &manifest{
-		routes:    tctx.Routes,
-		upstreams: tctx.Upstreams,
+	m := &utils.Manifest{
+		Routes:    tctx.Routes,
+		Upstreams: tctx.Upstreams,
 	}
 
 	var (
-		added   *manifest
-		updated *manifest
-		deleted *manifest
+		added   *utils.Manifest
+		updated *utils.Manifest
+		deleted *utils.Manifest
 	)
 
 	if ev.Type == types.EventDelete {
@@ -163,14 +164,14 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 			return err
 		}
 
-		om := &manifest{
-			routes:    oldCtx.Routes,
-			upstreams: oldCtx.Upstreams,
+		om := &utils.Manifest{
+			Routes:    oldCtx.Routes,
+			Upstreams: oldCtx.Upstreams,
 		}
-		added, updated, deleted = m.diff(om)
+		added, updated, deleted = m.Diff(om)
 	}
 
-	return c.controller.syncManifests(ctx, added, updated, deleted)
+	return utils.SyncManifests(ctx, c.controller.APISIX, c.controller.APISIXClusterName, added, updated, deleted)
 }
 
 func (c *gatewayHTTPRouteController) handleSyncErr(obj interface{}, err error) {
@@ -202,7 +203,7 @@ func (c *gatewayHTTPRouteController) onAdd(obj interface{}) {
 		log.Errorf("found gateway HTTPRoute resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.controller.isWatchingNamespace(key) {
+	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("gateway HTTPRoute add event arrived",

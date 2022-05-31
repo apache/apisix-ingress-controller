@@ -23,7 +23,7 @@ import (
 )
 
 func TestTranslateContext(t *testing.T) {
-	ctx := defaultEmptyTranslateContext()
+	ctx := DefaultEmptyTranslateContext()
 
 	r1 := &apisix.Route{
 		Metadata: apisix.Metadata{
@@ -65,14 +65,14 @@ func TestTranslateContext(t *testing.T) {
 			Name: "aaa",
 		},
 	}
-	ctx.addRoute(r1)
-	ctx.addRoute(r2)
-	ctx.addStreamRoute(sr1)
-	ctx.addStreamRoute(sr2)
-	ctx.addUpstream(u1)
-	ctx.addUpstream(u2)
-	ctx.addPluginConfig(pc1)
-	ctx.addPluginConfig(pc2)
+	ctx.AddRoute(r1)
+	ctx.AddRoute(r2)
+	ctx.AddStreamRoute(sr1)
+	ctx.AddStreamRoute(sr2)
+	ctx.AddUpstream(u1)
+	ctx.AddUpstream(u2)
+	ctx.AddPluginConfig(pc1)
+	ctx.AddPluginConfig(pc2)
 
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.StreamRoutes, 2)
@@ -87,6 +87,6 @@ func TestTranslateContext(t *testing.T) {
 	assert.Equal(t, pc1, ctx.PluginConfigs[0])
 	assert.Equal(t, pc2, ctx.PluginConfigs[1])
 
-	assert.Equal(t, true, ctx.checkUpstreamExist("aaa"))
-	assert.Equal(t, false, ctx.checkUpstreamExist("bbb"))
+	assert.Equal(t, true, ctx.CheckUpstreamExist("aaa"))
+	assert.Equal(t, false, ctx.CheckUpstreamExist("bbb"))
 }

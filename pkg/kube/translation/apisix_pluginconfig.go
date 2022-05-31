@@ -25,7 +25,7 @@ import (
 )
 
 func (t *translator) TranslatePluginConfigV2beta3(config *configv2beta3.ApisixPluginConfig) (*TranslateContext, error) {
-	ctx := defaultEmptyTranslateContext()
+	ctx := DefaultEmptyTranslateContext()
 	pluginMap := make(apisixv1.Plugins)
 	if len(config.Spec.Plugins) > 0 {
 		for _, plugin := range config.Spec.Plugins {
@@ -51,16 +51,16 @@ func (t *translator) TranslatePluginConfigV2beta3(config *configv2beta3.ApisixPl
 	pc.Name = apisixv1.ComposePluginConfigName(config.Namespace, config.Name)
 	pc.ID = id.GenID(pc.Name)
 	pc.Plugins = pluginMap
-	ctx.addPluginConfig(pc)
+	ctx.AddPluginConfig(pc)
 	return ctx, nil
 }
 
 func (t *translator) TranslatePluginConfigV2beta3NotStrictly(config *configv2beta3.ApisixPluginConfig) (*TranslateContext, error) {
-	ctx := defaultEmptyTranslateContext()
+	ctx := DefaultEmptyTranslateContext()
 	pc := apisixv1.NewDefaultPluginConfig()
 	pc.Name = apisixv1.ComposePluginConfigName(config.Namespace, config.Name)
 	pc.ID = id.GenID(pc.Name)
-	ctx.addPluginConfig(pc)
+	ctx.AddPluginConfig(pc)
 	return ctx, nil
 }
 

@@ -15,7 +15,6 @@
 package ingress
 
 import (
-	"sync"
 	"testing"
 	"time"
 
@@ -23,18 +22,17 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 func TestPodOnAdd(t *testing.T) {
-	watchingNamespace := new(sync.Map)
-	watchingNamespace.Store("default", struct{}{})
 	ctl := &podController{
 		controller: &Controller{
-			watchingNamespaces: watchingNamespace,
-			podCache:           types.NewPodCache(),
-			MetricsCollector:   metrics.NewPrometheusCollector(),
+			namespaceProvider: namespace.NewMockWatchingProvider([]string{"default"}),
+			podCache:          types.NewPodCache(),
+			MetricsCollector:  metrics.NewPrometheusCollector(),
 		},
 	}
 
@@ -70,13 +68,11 @@ func TestPodOnAdd(t *testing.T) {
 }
 
 func TestPodOnDelete(t *testing.T) {
-	watchingNamespace := new(sync.Map)
-	watchingNamespace.Store("default", struct{}{})
 	ctl := &podController{
 		controller: &Controller{
-			watchingNamespaces: watchingNamespace,
-			podCache:           types.NewPodCache(),
-			MetricsCollector:   metrics.NewPrometheusCollector(),
+			namespaceProvider: namespace.NewMockWatchingProvider([]string{"default"}),
+			podCache:          types.NewPodCache(),
+			MetricsCollector:  metrics.NewPrometheusCollector(),
 		},
 	}
 
@@ -115,13 +111,11 @@ func TestPodOnDelete(t *testing.T) {
 }
 
 func TestPodOnUpdate(t *testing.T) {
-	watchingNamespace := new(sync.Map)
-	watchingNamespace.Store("default", struct{}{})
 	ctl := &podController{
 		controller: &Controller{
-			watchingNamespaces: watchingNamespace,
-			podCache:           types.NewPodCache(),
-			MetricsCollector:   metrics.NewPrometheusCollector(),
+			namespaceProvider: namespace.NewMockWatchingProvider([]string{"default"}),
+			podCache:          types.NewPodCache(),
+			MetricsCollector:  metrics.NewPrometheusCollector(),
 		},
 	}
 

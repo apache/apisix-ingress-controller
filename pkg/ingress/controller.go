@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -35,13 +34,14 @@ import (
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
-	gatewaylistersv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/gateway/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/pkg/api"
-	"github.com/apache/apisix-ingress-controller/pkg/api/validation"
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/gateway"
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/namespace"
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
@@ -68,18 +68,15 @@ const (
 
 // Controller is the ingress apisix controller object.
 type Controller struct {
-	name               string
-	namespace          string
-	cfg                *config.Config
-	wg                 sync.WaitGroup
-	watchingNamespaces *sync.Map
-	watchingLabels     types.Labels
-	apisix             apisix.APISIX
-	podCache           types.PodCache
-	translator         translation.Translator
-	apiServer          *api.Server
-	MetricsCollector   metrics.Collector
-	kubeClient         *kube.KubeClient
+	name             string
+	namespace        string
+	cfg              *config.Config
+	apisix           apisix.APISIX
+	podCache         types.PodCache
+	translator       translation.Translator
+	apiServer        *api.Server
+	MetricsCollector metrics.Collector
+	kubeClient       *kube.KubeClient
 	// recorder event
 	recorder record.EventRecorder
 	// this map enrolls which ApisixTls objects refer to a Kubernetes
@@ -93,8 +90,6 @@ type Controller struct {
 	leaderContextCancelFunc context.CancelFunc
 
 	// common informers and listers
-	namespaceInformer           cache.SharedIndexInformer
-	namespaceLister             listerscorev1.NamespaceLister
 	podInformer                 cache.SharedIndexInformer
 	podLister                   listerscorev1.PodLister
 	epInformer                  cache.SharedIndexInformer
@@ -117,20 +112,16 @@ type Controller struct {
 	apisixConsumerLister        kube.ApisixConsumerLister
 	apisixPluginConfigInformer  cache.SharedIndexInformer
 	apisixPluginConfigLister    kube.ApisixPluginConfigLister
-	gatewayInformer             cache.SharedIndexInformer
-	gatewayLister               gatewaylistersv1alpha2.GatewayLister
-	gatewayHttpRouteInformer    cache.SharedIndexInformer
-	gatewayHttpRouteLister      gatewaylistersv1alpha2.HTTPRouteLister
 
 	// resource controllers
-	namespaceController        *namespaceController
-	podController              *podController
-	endpointsController        *endpointsController
-	endpointSliceController    *endpointSliceController
-	ingressController          *ingressController
-	secretController           *secretController
-	gatewayController          *gatewayController
-	gatewayHTTPRouteController *gatewayHTTPRouteController
+	podController           *podController
+	endpointsController     *endpointsController
+	endpointSliceController *endpointSliceController
+	ingressController       *ingressController
+	secretController        *secretController
+
+	namespaceProvider namespace.WatchingProvider
+	gatewayProvider   *gateway.GatewayProvider
 
 	apisixUpstreamController      *apisixUpstreamController
 	apisixRouteController         *apisixRouteController
@@ -162,39 +153,21 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		return nil, err
 	}
 
-	var (
-		watchingNamespace = new(sync.Map)
-		watchingLabels    = make(map[string]string)
-	)
-	if len(cfg.Kubernetes.AppNamespaces) > 1 || cfg.Kubernetes.AppNamespaces[0] != v1.NamespaceAll {
-		for _, ns := range cfg.Kubernetes.AppNamespaces {
-			watchingNamespace.Store(ns, struct{}{})
-		}
-	}
-
-	// support namespace label-selector
-	for _, labels := range cfg.Kubernetes.NamespaceSelector {
-		labelSlice := strings.Split(labels, "=")
-		watchingLabels[labelSlice[0]] = labelSlice[1]
-	}
-
 	// recorder
 	utilruntime.Must(apisixscheme.AddToScheme(scheme.Scheme))
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.Client.CoreV1().Events("")})
 
 	c := &Controller{
-		name:               podName,
-		namespace:          podNamespace,
-		cfg:                cfg,
-		apiServer:          apiSrv,
-		apisix:             client,
-		MetricsCollector:   metrics.NewPrometheusCollector(),
-		kubeClient:         kubeClient,
-		watchingNamespaces: watchingNamespace,
-		watchingLabels:     watchingLabels,
-		secretSSLMap:       new(sync.Map),
-		recorder:           eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
+		name:             podName,
+		namespace:        podNamespace,
+		cfg:              cfg,
+		apiServer:        apiSrv,
+		apisix:           client,
+		MetricsCollector: metrics.NewPrometheusCollector(),
+		kubeClient:       kubeClient,
+		secretSSLMap:     new(sync.Map),
+		recorder:         eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
 
 		podCache: types.NewPodCache(),
 	}
@@ -213,9 +186,7 @@ func (c *Controller) initWhenStartLeading() {
 
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
 	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
-	gatewayFactory := c.kubeClient.NewGatewaySharedIndexInformerFactory()
 
-	c.namespaceLister = kubeFactory.Core().V1().Namespaces().Lister()
 	c.podLister = kubeFactory.Core().V1().Pods().Lister()
 	c.epLister, c.epInformer = kube.NewEndpointListerAndInformer(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
 	c.svcLister = kubeFactory.Core().V1().Services().Lister()
@@ -266,12 +237,6 @@ func (c *Controller) initWhenStartLeading() {
 		ingressInformer = kubeFactory.Extensions().V1beta1().Ingresses().Informer()
 	}
 
-	c.gatewayLister = gatewayFactory.Gateway().V1alpha2().Gateways().Lister()
-	c.gatewayInformer = gatewayFactory.Gateway().V1alpha2().Gateways().Informer()
-
-	c.gatewayHttpRouteLister = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Lister()
-	c.gatewayHttpRouteInformer = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Informer()
-
 	switch c.cfg.Kubernetes.ApisixRouteVersion {
 	case config.ApisixRouteV2beta2:
 		apisixRouteInformer = apisixFactory.Apisix().V2beta2().ApisixRoutes().Informer()
@@ -319,7 +284,6 @@ func (c *Controller) initWhenStartLeading() {
 		panic(fmt.Errorf("unsupported ApisixPluginConfig version %v", c.cfg.Kubernetes.ApisixPluginConfigVersion))
 	}
 
-	c.namespaceInformer = kubeFactory.Core().V1().Namespaces().Informer()
 	c.podInformer = kubeFactory.Core().V1().Pods().Informer()
 	c.svcInformer = kubeFactory.Core().V1().Services().Informer()
 	c.ingressInformer = ingressInformer
@@ -336,7 +300,6 @@ func (c *Controller) initWhenStartLeading() {
 	} else {
 		c.endpointsController = c.newEndpointsController()
 	}
-	c.namespaceController = c.newNamespaceController()
 	c.podController = c.newPodController()
 	c.apisixUpstreamController = c.newApisixUpstreamController()
 	c.ingressController = c.newIngressController()
@@ -346,8 +309,10 @@ func (c *Controller) initWhenStartLeading() {
 	c.secretController = c.newSecretController()
 	c.apisixConsumerController = c.newApisixConsumerController()
 	c.apisixPluginConfigController = c.newApisixPluginConfigController()
-	c.gatewayController = c.newGatewayController()
-	c.gatewayHTTPRouteController = c.newGatewayHTTPRouteController()
+}
+
+func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted *utils.Manifest) error {
+	return utils.SyncManifests(ctx, c.apisix, c.cfg.APISIX.DefaultClusterName, added, updated, deleted)
 }
 
 // recorderEvent recorder events for resources
@@ -364,14 +329,6 @@ func (c *Controller) recorderEvent(object runtime.Object, eventtype, reason stri
 // recorderEvent recorder events for resources
 func (c *Controller) recorderEventS(object runtime.Object, eventtype, reason string, msg string) {
 	c.recorder.Event(object, eventtype, reason, msg)
-}
-
-func (c *Controller) goAttach(handler func()) {
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
-		handler()
-	}()
 }
 
 // Eventf implements the resourcelock.EventRecorder interface.
@@ -501,63 +458,75 @@ func (c *Controller) run(ctx context.Context) {
 
 	c.initWhenStartLeading()
 
-	// list namespaces and init watchingNamespaces
-	if err := c.initWatchingNamespacesByLabels(ctx); err != nil {
+	c.namespaceProvider, err = namespace.NewWatchingProvider(ctx, c.kubeClient, c.cfg)
+	if err != nil {
 		ctx.Done()
 		return
 	}
+
+	c.gatewayProvider, err = gateway.NewGatewayProvider(&gateway.GatewayProviderOptions{
+		Cfg:               c.cfg,
+		APISIX:            c.apisix,
+		APISIXClusterName: c.cfg.APISIX.DefaultClusterName,
+		KubeTranslator:    c.translator,
+		RestConfig:        nil,
+		KubeClient:        c.kubeClient.Client,
+		MetricsCollector:  c.MetricsCollector,
+		NamespaceProvider: c.namespaceProvider,
+	})
+	if err != nil {
+		ctx.Done()
+		return
+	}
+
 	// compare resources of k8s with objects of APISIX
 	if err = c.CompareResources(ctx); err != nil {
 		ctx.Done()
 		return
 	}
 
-	c.goAttach(func() {
+	e := utils.ParallelExecutor{}
+
+	e.Add(func() {
 		c.checkClusterHealth(ctx, cancelFunc)
 	})
-	c.goAttach(func() {
-		c.namespaceInformer.Run(ctx.Done())
-	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.podInformer.Run(ctx.Done())
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.epInformer.Run(ctx.Done())
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.svcInformer.Run(ctx.Done())
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.ingressInformer.Run(ctx.Done())
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.apisixRouteInformer.Run(ctx.Done())
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.apisixUpstreamInformer.Run(ctx.Done())
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.apisixClusterConfigInformer.Run(ctx.Done())
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.secretInformer.Run(ctx.Done())
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.apisixTlsInformer.Run(ctx.Done())
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.apisixConsumerInformer.Run(ctx.Done())
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.apisixPluginConfigInformer.Run(ctx.Done())
 	})
-	c.goAttach(func() {
-		c.namespaceController.run(ctx)
-	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.podController.run(ctx)
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		if c.cfg.Kubernetes.WatchEndpointSlices {
 			c.endpointSliceController.run(ctx)
 		} else {
@@ -565,46 +534,38 @@ func (c *Controller) run(ctx context.Context) {
 		}
 	})
 
+	e.Add(func() {
+		c.namespaceProvider.Run(ctx)
+	})
+
 	if c.cfg.Kubernetes.EnableGatewayAPI {
-		c.goAttach(func() {
-			c.gatewayInformer.Run(ctx.Done())
-		})
-
-		c.goAttach(func() {
-			c.gatewayHttpRouteInformer.Run(ctx.Done())
-		})
-
-		c.goAttach(func() {
-			c.gatewayController.run(ctx)
-		})
-
-		c.goAttach(func() {
-			c.gatewayHTTPRouteController.run(ctx)
+		e.Add(func() {
+			c.gatewayProvider.Run(ctx)
 		})
 	}
 
-	c.goAttach(func() {
+	e.Add(func() {
 		c.apisixUpstreamController.run(ctx)
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.ingressController.run(ctx)
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.apisixRouteController.run(ctx)
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.apisixClusterConfigController.run(ctx)
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.apisixTlsController.run(ctx)
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.secretController.run(ctx)
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.apisixConsumerController.run(ctx)
 	})
-	c.goAttach(func() {
+	e.Add(func() {
 		c.apisixPluginConfigController.run(ctx)
 	})
 
@@ -616,25 +577,21 @@ func (c *Controller) run(ctx context.Context) {
 	)
 
 	<-ctx.Done()
-	c.wg.Wait()
+	e.Wait()
+
+	for _, execErr := range e.Errors() {
+		log.Error(execErr.Error())
+	}
+	if len(e.Errors()) > 0 {
+		log.Error("Start failed, abort...")
+		cancelFunc()
+	}
 }
 
 // isWatchingNamespace accepts a resource key, getting the namespace part
 // and checking whether the namespace is being watched.
 func (c *Controller) isWatchingNamespace(key string) (ok bool) {
-	if !validation.HasValueInSyncMap(c.watchingNamespaces) {
-		ok = true
-		return
-	}
-	ns, _, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		// Ignore resource with invalid key.
-		ok = false
-		log.Warnf("resource %s was ignored since: %s", key, err)
-		return
-	}
-	_, ok = c.watchingNamespaces.Load(ns)
-	return
+	return c.namespaceProvider.IsWatchingNamespace(key)
 }
 
 func (c *Controller) syncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types.EventType) error {
@@ -739,8 +696,8 @@ func (c *Controller) syncUpstreamNodesChangeToCluster(ctx context.Context, clust
 		zap.String("cluster", cluster.String()),
 	)
 
-	updated := &manifest{
-		upstreams: []*apisixv1.Upstream{upstream},
+	updated := &utils.Manifest{
+		Upstreams: []*apisixv1.Upstream{upstream},
 	}
 	return c.syncManifests(ctx, nil, updated, nil)
 }

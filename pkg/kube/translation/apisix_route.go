@@ -30,7 +30,7 @@ import (
 )
 
 func (t *translator) TranslateRouteV2beta2(ar *configv2beta2.ApisixRoute) (*TranslateContext, error) {
-	ctx := defaultEmptyTranslateContext()
+	ctx := DefaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2beta2(ctx, ar); err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (t *translator) TranslateRouteV2beta2(ar *configv2beta2.ApisixRoute) (*Tran
 }
 
 func (t *translator) TranslateRouteV2beta2NotStrictly(ar *configv2beta2.ApisixRoute) (*TranslateContext, error) {
-	ctx := defaultEmptyTranslateContext()
+	ctx := DefaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2beta2NotStrictly(ctx, ar); err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (t *translator) TranslateRouteV2beta2NotStrictly(ar *configv2beta2.ApisixRo
 }
 
 func (t *translator) TranslateRouteV2beta3(ar *configv2beta3.ApisixRoute) (*TranslateContext, error) {
-	ctx := defaultEmptyTranslateContext()
+	ctx := DefaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2beta3(ctx, ar); err != nil {
 		return nil, err
@@ -66,7 +66,7 @@ func (t *translator) TranslateRouteV2beta3(ar *configv2beta3.ApisixRoute) (*Tran
 }
 
 func (t *translator) TranslateRouteV2beta3NotStrictly(ar *configv2beta3.ApisixRoute) (*TranslateContext, error) {
-	ctx := defaultEmptyTranslateContext()
+	ctx := DefaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2beta3NotStrictly(ctx, ar); err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func (t *translator) TranslateRouteV2beta3NotStrictly(ar *configv2beta3.ApisixRo
 }
 
 func (t *translator) TranslateRouteV2(ar *configv2.ApisixRoute) (*TranslateContext, error) {
-	ctx := defaultEmptyTranslateContext()
+	ctx := DefaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2(ctx, ar); err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func (t *translator) TranslateRouteV2(ar *configv2.ApisixRoute) (*TranslateConte
 }
 
 func (t *translator) TranslateRouteV2NotStrictly(ar *configv2.ApisixRoute) (*TranslateContext, error) {
-	ctx := defaultEmptyTranslateContext()
+	ctx := DefaultEmptyTranslateContext()
 
 	if err := t.translateHTTPRouteV2NotStrictly(ctx, ar); err != nil {
 		return nil, err
@@ -200,13 +200,13 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *TranslateContext, ar *config
 			}
 			route.Plugins["traffic-split"] = plugin
 		}
-		ctx.addRoute(route)
-		if !ctx.checkUpstreamExist(upstreamName) {
+		ctx.AddRoute(route)
+		if !ctx.CheckUpstreamExist(upstreamName) {
 			ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
 			if err != nil {
 				return err
 			}
-			ctx.addUpstream(ups)
+			ctx.AddUpstream(ups)
 		}
 	}
 	return nil
@@ -336,13 +336,13 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 			}
 			route.Plugins["traffic-split"] = plugin
 		}
-		ctx.addRoute(route)
-		if !ctx.checkUpstreamExist(upstreamName) {
+		ctx.AddRoute(route)
+		if !ctx.CheckUpstreamExist(upstreamName) {
 			ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
 			if err != nil {
 				return err
 			}
-			ctx.addUpstream(ups)
+			ctx.AddUpstream(ups)
 		}
 	}
 	return nil
@@ -472,13 +472,13 @@ func (t *translator) translateHTTPRouteV2(ctx *TranslateContext, ar *configv2.Ap
 			}
 			route.Plugins["traffic-split"] = plugin
 		}
-		ctx.addRoute(route)
-		if !ctx.checkUpstreamExist(upstreamName) {
+		ctx.AddRoute(route)
+		if !ctx.CheckUpstreamExist(upstreamName) {
 			ups, err := t.translateUpstream(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
 			if err != nil {
 				return err
 			}
-			ctx.addUpstream(ups)
+			ctx.AddUpstream(ups)
 		}
 	}
 	return nil
@@ -595,13 +595,13 @@ func (t *translator) translateHTTPRouteV2beta2NotStrictly(ctx *TranslateContext,
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
-		ctx.addRoute(route)
-		if !ctx.checkUpstreamExist(upstreamName) {
+		ctx.AddRoute(route)
+		if !ctx.CheckUpstreamExist(upstreamName) {
 			ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
 			if err != nil {
 				return err
 			}
-			ctx.addUpstream(ups)
+			ctx.AddUpstream(ups)
 		}
 	}
 	return nil
@@ -654,13 +654,13 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *TranslateContext,
 			route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, part.PluginConfigName))
 		}
 
-		ctx.addRoute(route)
-		if !ctx.checkUpstreamExist(upstreamName) {
+		ctx.AddRoute(route)
+		if !ctx.CheckUpstreamExist(upstreamName) {
 			ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
 			if err != nil {
 				return err
 			}
-			ctx.addUpstream(ups)
+			ctx.AddUpstream(ups)
 		}
 	}
 	return nil
@@ -713,13 +713,13 @@ func (t *translator) translateHTTPRouteV2NotStrictly(ctx *TranslateContext, ar *
 			route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, part.PluginConfigName))
 		}
 
-		ctx.addRoute(route)
-		if !ctx.checkUpstreamExist(upstreamName) {
+		ctx.AddRoute(route)
+		if !ctx.CheckUpstreamExist(upstreamName) {
 			ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
 			if err != nil {
 				return err
 			}
-			ctx.addUpstream(ups)
+			ctx.AddUpstream(ups)
 		}
 	}
 	return nil
@@ -751,9 +751,9 @@ func (t *translator) translateStreamRouteV2beta2(ctx *TranslateContext, ar *conf
 			return err
 		}
 		sr.UpstreamId = ups.ID
-		ctx.addStreamRoute(sr)
-		if !ctx.checkUpstreamExist(ups.Name) {
-			ctx.addUpstream(ups)
+		ctx.AddStreamRoute(sr)
+		if !ctx.CheckUpstreamExist(ups.Name) {
+			ctx.AddUpstream(ups)
 		}
 
 	}
@@ -786,9 +786,9 @@ func (t *translator) translateStreamRouteV2beta3(ctx *TranslateContext, ar *conf
 			return err
 		}
 		sr.UpstreamId = ups.ID
-		ctx.addStreamRoute(sr)
-		if !ctx.checkUpstreamExist(ups.Name) {
-			ctx.addUpstream(ups)
+		ctx.AddStreamRoute(sr)
+		if !ctx.CheckUpstreamExist(ups.Name) {
+			ctx.AddUpstream(ups)
 		}
 
 	}
@@ -821,9 +821,9 @@ func (t *translator) translateStreamRouteV2(ctx *TranslateContext, ar *configv2.
 			return err
 		}
 		sr.UpstreamId = ups.ID
-		ctx.addStreamRoute(sr)
-		if !ctx.checkUpstreamExist(ups.Name) {
-			ctx.addUpstream(ups)
+		ctx.AddStreamRoute(sr)
+		if !ctx.CheckUpstreamExist(ups.Name) {
+			ctx.AddUpstream(ups)
 		}
 
 	}
@@ -843,9 +843,9 @@ func (t *translator) translateStreamRouteNotStrictlyV2beta2(ctx *TranslateContex
 			return err
 		}
 		sr.UpstreamId = ups.ID
-		ctx.addStreamRoute(sr)
-		if !ctx.checkUpstreamExist(ups.Name) {
-			ctx.addUpstream(ups)
+		ctx.AddStreamRoute(sr)
+		if !ctx.CheckUpstreamExist(ups.Name) {
+			ctx.AddUpstream(ups)
 		}
 	}
 	return nil
@@ -864,9 +864,9 @@ func (t *translator) translateStreamRouteNotStrictlyV2beta3(ctx *TranslateContex
 			return err
 		}
 		sr.UpstreamId = ups.ID
-		ctx.addStreamRoute(sr)
-		if !ctx.checkUpstreamExist(ups.Name) {
-			ctx.addUpstream(ups)
+		ctx.AddStreamRoute(sr)
+		if !ctx.CheckUpstreamExist(ups.Name) {
+			ctx.AddUpstream(ups)
 		}
 	}
 	return nil
@@ -885,9 +885,9 @@ func (t *translator) translateStreamRouteNotStrictlyV2(ctx *TranslateContext, ar
 			return err
 		}
 		sr.UpstreamId = ups.ID
-		ctx.addStreamRoute(sr)
-		if !ctx.checkUpstreamExist(ups.Name) {
-			ctx.addUpstream(ups)
+		ctx.AddStreamRoute(sr)
+		if !ctx.CheckUpstreamExist(ups.Name) {
+			ctx.AddUpstream(ups)
 		}
 	}
 	return nil
