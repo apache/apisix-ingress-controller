@@ -203,6 +203,11 @@ The expected response obtained is:
 
 ```bash
 kubectl exec -it -n ingress-apisix apisix-55d476c64-s5lzw -- curl http://127.0.0.1:9080/get -H 'Host: local.httpbin.org'
+```
+
+And you will see the result as follows:
+
+```bash
 Defaulted container "apisix" out of: apisix, wait-etcd (init)
 hello
 ```
