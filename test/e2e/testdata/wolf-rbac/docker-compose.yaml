@@ -29,7 +29,7 @@ services:
       - ./db-psql.sql:/docker-entrypoint-initdb.d/db.sql:ro
   server:
     container_name: wolf-server
-    image: igeeky/wolf-server
+    image: igeeky/wolf-server:0.5.2
     restart: always
     ports:
       - "12180:12180"
@@ -44,7 +44,7 @@ services:
     command: npm run start
   agent-or:
     container_name: wolf-agent-or
-    image: igeeky/wolf-agent
+    image: igeeky/wolf-agent:0.5.2
     restart: always
     ports:
      - "12182:12182"
@@ -56,13 +56,13 @@ services:
       RBAC_APP_ID: openresty
   restful-demo:
     container_name: restful-demo
-    image: igeeky/restful-demo:latest
+    image: igeeky/restful-demo:0.1.0
     restart: always
     ports:
      - "10090:10090"
   agent-demo:
     container_name: wolf-agent-demo
-    image: igeeky/wolf-agent
+    image: igeeky/wolf-agent:0.5.2
     restart: always
     ports:
      - "12184:12184"
