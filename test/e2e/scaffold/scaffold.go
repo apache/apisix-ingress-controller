@@ -28,6 +28,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 	"time"
@@ -52,6 +53,7 @@ type Options struct {
 	HTTPBinServicePort         int
 	APISIXRouteVersion         string
 	APISIXTlsVersion           string
+	APISIXConsumerVersion      string
 	APISIXClusterConfigVersion string
 	APISIXAdminAPIKey          string
 	EnableWebhooks             bool
@@ -110,6 +112,9 @@ func NewScaffold(o *Options) *Scaffold {
 	if o.APISIXTlsVersion == "" {
 		o.APISIXTlsVersion = config.ApisixV2beta3
 	}
+	if o.APISIXConsumerVersion == "" {
+		o.APISIXConsumerVersion = config.ApisixV2beta3
+	}
 	if o.APISIXClusterConfigVersion == "" {
 		o.APISIXClusterConfigVersion = config.ApisixV2beta3
 	}
@@ -139,6 +144,7 @@ func NewDefaultScaffold() *Scaffold {
 		HTTPBinServicePort:         80,
 		APISIXRouteVersion:         kube.ApisixRouteV2beta3,
 		APISIXTlsVersion:           config.ApisixV2beta3,
+		APISIXConsumerVersion:      config.ApisixV2beta3,
 		APISIXClusterConfigVersion: config.ApisixV2beta3,
 		EnableWebhooks:             false,
 		APISIXPublishAddress:       "",
@@ -156,6 +162,7 @@ func NewDefaultV2Scaffold() *Scaffold {
 		HTTPBinServicePort:         80,
 		APISIXRouteVersion:         kube.ApisixRouteV2,
 		APISIXTlsVersion:           config.ApisixV2,
+		APISIXConsumerVersion:      config.ApisixV2,
 		APISIXClusterConfigVersion: config.ApisixV2,
 		EnableWebhooks:             false,
 		APISIXPublishAddress:       "",
@@ -489,6 +496,14 @@ func (s *Scaffold) FormatNamespaceLabel(label string) string {
 		return "\"\""
 	}
 	return label
+}
+
+var (
+	versionRegex = regexp.MustCompile(`apiVersion: apisix.apache.org/.*?\n`)
+)
+
+func (s *Scaffold) replaceApiVersion(yml, ver string) string {
+	return versionRegex.ReplaceAllString(yml, "apiVersion: "+ver+"\n")
 }
 
 func (s *Scaffold) DisableNamespaceSelector() {
