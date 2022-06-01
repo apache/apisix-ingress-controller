@@ -14,7 +14,11 @@
 // limitations under the License.
 package scaffold
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
 
 var (
 	_apisixConsumerBasicAuth = `
@@ -81,5 +85,14 @@ func (s *Scaffold) ApisixConsumerKeyAuthCreated(name, key string) error {
 
 func (s *Scaffold) ApisixConsumerKeyAuthSecretCreated(name, secret string) error {
 	ac := fmt.Sprintf(_apisixConsumerKeyAuthSecret, s.opts.APISIXConsumerVersion, name, secret)
+	return s.CreateResourceFromString(ac)
+}
+
+func (s *Scaffold) CreateVersionedApisixConsumer(yml string) error {
+	if !strings.Contains(yml, "kind: ApisixConsumer") {
+		return errors.New("not a ApisixConsumer")
+	}
+
+	ac := s.replaceApiVersion(yml, s.opts.APISIXConsumerVersion)
 	return s.CreateResourceFromString(ac)
 }

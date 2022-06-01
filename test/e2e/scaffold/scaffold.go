@@ -28,6 +28,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 	"time"
@@ -495,6 +496,14 @@ func (s *Scaffold) FormatNamespaceLabel(label string) string {
 		return "\"\""
 	}
 	return label
+}
+
+var (
+	versionRegex = regexp.MustCompile(`apiVersion: apisix.apache.org/.*?\n`)
+)
+
+func (s *Scaffold) replaceApiVersion(yml, ver string) string {
+	return versionRegex.ReplaceAllString(yml, "apiVersion: "+ver+"\n")
 }
 
 func (s *Scaffold) DisableNamespaceSelector() {
