@@ -35,25 +35,25 @@ var _ = ginkgo.Describe("suite-ingress: mqtt-proxy plugin", func() {
 		APISIXRouteVersion:    "apisix.apache.org/v2",
 	}
 	s := scaffold.NewScaffold(opts)
-	// setup mosquitto service
+	// setup mosquito service
 	ginkgo.It("stream mqtt proxy", func() {
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(`
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mosquitto
+  name: mosquito
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: mosquitto
+      app: mosquito
   template:
     metadata:
       labels:
-        app: mosquitto
+        app: mosquito
     spec:
       containers:
-      - name: mosquitto
+      - name: mosquito
         image: eclipse-mosquitto:1.6
         livenessProbe:
           tcpSocket:
@@ -66,7 +66,7 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 10
         ports:
-        - name: mosquitto
+        - name: mosquito
           containerPort: 1883
           protocol: TCP
 `))
@@ -74,17 +74,17 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: mosquitto
+  name: mosquito
 spec:
   selector:
-    app: mosquitto
+    app: mosquito
   type: ClusterIP
   ports:
   - port: 1883
     targetPort: 1883
     protocol: TCP
 `))
-		s.EnsureNumEndpointsReady(ginkgo.GinkgoT(), "mosquitto", 1)
+		s.EnsureNumEndpointsReady(ginkgo.GinkgoT(), "mosquito", 1)
 		// setup Apisix Route for mqtt proxy
 		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -98,7 +98,7 @@ spec:
     match:
       ingressPort: 9100
     backend:
-      serviceName: mosquitto
+      serviceName: mosquito
       servicePort: 1883
     plugins:
     - name: mqtt-proxy
