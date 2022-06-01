@@ -68,7 +68,7 @@ unit-test:
 .PHONY: e2e-test
 e2e-test: ginkgo-check push-images
 	kubectl apply -k $(PWD)/samples/deploy/crd
-	kubectl apply -k $(PWD)/samples/deploy/gateway-api
+	kubectl apply -f $(PWD)/samples/deploy/gateway-api
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
