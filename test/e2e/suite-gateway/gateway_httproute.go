@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-package features
+package gateway
 
 import (
 	"fmt"
@@ -28,7 +28,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-gatewayapi: HTTP Route", func() {
+var _ = ginkgo.Describe("suite-gateway: HTTP Route", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("Basic HTTPRoute with 1 Hosts 1 Rule 1 Match 1 BackendRef", func() {

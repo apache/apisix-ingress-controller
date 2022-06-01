@@ -42,4 +42,5 @@ header:
     - '**/*.pem'
     - '**/*.key'
     - 'samples/deploy/gateway-api/**'
+    - '.gitattributes'
   comment: on-failure
