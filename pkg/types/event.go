@@ -46,6 +46,8 @@ type Event struct {
 	Type EventType
 	// Object is the event subject.
 	Object interface{}
+	// OldObject is the old object in update event.
+	OldObject interface{}
 	// Tombstone is the final state before object was delete,
 	// it's useful for DELETE event.
 	Tombstone interface{}

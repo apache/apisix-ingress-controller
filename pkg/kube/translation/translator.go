@@ -20,6 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
@@ -108,6 +109,8 @@ type Translator interface {
 	// ExtractKeyPair extracts certificate and private key pair from secret
 	// Supports APISIX style ("cert" and "key") and Kube style ("tls.crt" and "tls.key)
 	ExtractKeyPair(s *corev1.Secret, hasPrivateKey bool) ([]byte, []byte, error)
+	// TranslateGatewayHTTPRouteV1Alpha2 translates Gateway API HTTPRoute to APISIX resources
+	TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha2.HTTPRoute) (*TranslateContext, error)
 }
 
 // TranslatorOptions contains options to help Translator
@@ -173,7 +176,7 @@ func (t *translator) TranslateUpstream(namespace, name, subset string, port int3
 	ups := apisixv1.NewDefaultUpstream()
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			// If subset in ApisixRoute is not empty but the ApisixUpstream resouce not found,
+			// If subset in ApisixRoute is not empty but the ApisixUpstream resource not found,
 			// just set an empty node list.
 			if subset != "" {
 				ups.Nodes = apisixv1.UpstreamNodes{}

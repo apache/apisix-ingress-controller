@@ -21,7 +21,7 @@ title: Install Ingress APISIX on ACK
 #
 -->
 
-This document explains how to install Ingress APISIX on [ali-cloud ACK](https://www.aliyun.com/product/kubernetes).
+This document explains how to install Ingress APISIX on Alibaba Cloud Container Service for Kubernetes (ACK).
 
 ## Prerequisites
 
