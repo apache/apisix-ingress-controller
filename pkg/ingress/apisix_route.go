@@ -82,9 +82,6 @@ func (c *apisixRouteController) runWorker(ctx context.Context) {
 		}
 		err := c.sync(ctx, obj.(*types.Event))
 		c.workqueue.Done(obj)
-		if err != nil {
-			log.Debug("[sync err] --> ", err)
-		}
 		c.handleSyncErr(obj, err)
 	}
 }
