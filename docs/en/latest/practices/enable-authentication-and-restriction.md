@@ -265,7 +265,8 @@ HTTP/1.1 200 OK
 <details>
   <summary>ApisixRoute with keyAuth consumer using secret example</summary>
 
-* Creates an `Secret` object:
+* Creates a `Secret` object:
+
 
 ```shell
 kubectl apply -f - <<EOF
