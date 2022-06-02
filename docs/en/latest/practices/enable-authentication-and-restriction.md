@@ -267,7 +267,6 @@ HTTP/1.1 200 OK
 
 * Creates a `Secret` object:
 
-
 ```shell
 kubectl apply -f - <<EOF
 apiVersion: v1
