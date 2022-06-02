@@ -14,11 +14,15 @@
 // limitations under the License.
 package scaffold
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
 
-func (s *Scaffold) ApisixConsumerBasicAuthCreated(name, username, password string) error {
-	ac := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+var (
+	_apisixConsumerBasicAuth = `
+apiVersion: %s
 kind: ApisixConsumer
 metadata:
   name: %s
@@ -28,6 +32,67 @@ spec:
       value:
         username: %s
         password: %s
-`, name, username, password)
+`
+	_apisixConsumerBasicAuthSecret = `
+apiVersion: %s
+kind: ApisixConsumer
+metadata:
+  name: %s
+spec:
+  authParameter:
+    basicAuth:
+      secretRef:
+        name: %s
+`
+	_apisixConsumerKeyAuth = `
+  apiVersion: %s
+  kind: ApisixConsumer
+  metadata:
+    name: %s
+  spec:
+    authParameter:
+      keyAuth:
+        value:
+          key: %s
+  `
+	_apisixConsumerKeyAuthSecret = `
+  apiVersion: %s
+  kind: ApisixConsumer
+  metadata:
+    name: %s
+  spec:
+    authParameter:
+      keyAuth:
+        secretRef:
+          name: %s
+  `
+)
+
+func (s *Scaffold) ApisixConsumerBasicAuthCreated(name, username, password string) error {
+	ac := fmt.Sprintf(_apisixConsumerBasicAuth, s.opts.APISIXConsumerVersion, name, username, password)
+	return s.CreateResourceFromString(ac)
+}
+
+func (s *Scaffold) ApisixConsumerBasicAuthSecretCreated(name, secret string) error {
+	ac := fmt.Sprintf(_apisixConsumerBasicAuthSecret, s.opts.APISIXConsumerVersion, name, secret)
+	return s.CreateResourceFromString(ac)
+}
+
+func (s *Scaffold) ApisixConsumerKeyAuthCreated(name, key string) error {
+	ac := fmt.Sprintf(_apisixConsumerKeyAuth, s.opts.APISIXConsumerVersion, name, key)
+	return s.CreateResourceFromString(ac)
+}
+
+func (s *Scaffold) ApisixConsumerKeyAuthSecretCreated(name, secret string) error {
+	ac := fmt.Sprintf(_apisixConsumerKeyAuthSecret, s.opts.APISIXConsumerVersion, name, secret)
+	return s.CreateResourceFromString(ac)
+}
+
+func (s *Scaffold) CreateVersionedApisixConsumer(yml string) error {
+	if !strings.Contains(yml, "kind: ApisixConsumer") {
+		return errors.New("not a ApisixConsumer")
+	}
+
+	ac := s.replaceApiVersion(yml, s.opts.APISIXConsumerVersion)
 	return s.CreateResourceFromString(ac)
 }

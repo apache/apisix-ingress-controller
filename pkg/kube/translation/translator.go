@@ -20,6 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
@@ -83,23 +84,39 @@ type Translator interface {
 	// TranslateRouteV2NotStrictly translates the configv2.ApisixRoute object into several Route,
 	// Upstream and PluginConfig resources not strictly, only used for delete event.
 	TranslateRouteV2NotStrictly(*configv2.ApisixRoute) (*TranslateContext, error)
-	// TranslateSSL translates the configv2beta3.ApisixTls object into the APISIX SSL resource.
-	TranslateSSL(*configv2beta3.ApisixTls) (*apisixv1.Ssl, error)
+	// TranslateSSLV2Beta3 translates the configv2beta3.ApisixTls object into the APISIX SSL resource.
+	TranslateSSLV2Beta3(*configv2beta3.ApisixTls) (*apisixv1.Ssl, error)
+	// TranslateSSLV2 translates the configv2.ApisixTls object into the APISIX SSL resource.
+	TranslateSSLV2(*configv2.ApisixTls) (*apisixv1.Ssl, error)
 	// TranslateClusterConfig translates the configv2beta3.ApisixClusterConfig object into the APISIX
 	// Global Rule resource.
-	TranslateClusterConfig(*configv2beta3.ApisixClusterConfig) (*apisixv1.GlobalRule, error)
+	TranslateClusterConfigV2beta3(*configv2beta3.ApisixClusterConfig) (*apisixv1.GlobalRule, error)
+	// TranslateClusterConfigV2 translates the configv2.ApisixClusterConfig object into the APISIX
+	// Global Rule resource.
+	TranslateClusterConfigV2(*configv2.ApisixClusterConfig) (*apisixv1.GlobalRule, error)
 	// TranslateApisixConsumer translates the configv2beta3.APisixConsumer object into the APISIX Consumer
 	// resource.
-	TranslateApisixConsumer(*configv2beta3.ApisixConsumer) (*apisixv1.Consumer, error)
-	// TranslatePluginConfigV2beta3 translates the configv2beta3.ApisixPluginConfig object into several PluginConfig
+	TranslateApisixConsumerV2beta3(*configv2beta3.ApisixConsumer) (*apisixv1.Consumer, error)
+	// TranslateApisixConsumerV2 translates the configv2beta3.APisixConsumer object into the APISIX Consumer
+	// resource.
+	TranslateApisixConsumerV2(ac *configv2.ApisixConsumer) (*apisixv1.Consumer, error)
+	// TranslatePluginConfigV2beta3 translates the configv2.ApisixPluginConfig object into several PluginConfig
 	// resources.
 	TranslatePluginConfigV2beta3(*configv2beta3.ApisixPluginConfig) (*TranslateContext, error)
 	// TranslatePluginConfigV2beta3NotStrictly translates the configv2beta3.ApisixPluginConfig object into several PluginConfig
 	// resources not strictly, only used for delete event.
 	TranslatePluginConfigV2beta3NotStrictly(*configv2beta3.ApisixPluginConfig) (*TranslateContext, error)
+	// TranslatePluginConfigV2 translates the configv2.ApisixPluginConfig object into several PluginConfig
+	// resources.
+	TranslatePluginConfigV2(*configv2.ApisixPluginConfig) (*TranslateContext, error)
+	// TranslatePluginConfigV2NotStrictly translates the configv2.ApisixPluginConfig object into several PluginConfig
+	// resources not strictly, only used for delete event.
+	TranslatePluginConfigV2NotStrictly(*configv2.ApisixPluginConfig) (*TranslateContext, error)
 	// ExtractKeyPair extracts certificate and private key pair from secret
 	// Supports APISIX style ("cert" and "key") and Kube style ("tls.crt" and "tls.key)
 	ExtractKeyPair(s *corev1.Secret, hasPrivateKey bool) ([]byte, []byte, error)
+	// TranslateGatewayHTTPRouteV1Alpha2 translates Gateway API HTTPRoute to APISIX resources
+	TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha2.HTTPRoute) (*TranslateContext, error)
 }
 
 // TranslatorOptions contains options to help Translator
@@ -165,7 +182,7 @@ func (t *translator) TranslateUpstream(namespace, name, subset string, port int3
 	ups := apisixv1.NewDefaultUpstream()
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			// If subset in ApisixRoute is not empty but the ApisixUpstream resouce not found,
+			// If subset in ApisixRoute is not empty but the ApisixUpstream resource not found,
 			// just set an empty node list.
 			if subset != "" {
 				ups.Nodes = apisixv1.UpstreamNodes{}

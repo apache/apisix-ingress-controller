@@ -50,7 +50,7 @@ data:
   cert: %s
 `
 	_api6tlsTemplate = `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: %s
 kind: ApisixTls
 metadata:
   name: %s
@@ -62,7 +62,7 @@ spec:
     namespace: %s
 `
 	_api6tlsWithClientCATemplate = `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: %s
 kind: ApisixTls
 metadata:
   name: %s
@@ -114,7 +114,7 @@ func (s *Scaffold) NewClientCASecret(name, cert, key string) error {
 
 // NewApisixTls new a ApisixTls CRD
 func (s *Scaffold) NewApisixTls(name, host, secretName string) error {
-	tls := fmt.Sprintf(_api6tlsTemplate, name, host, secretName, s.kubectlOptions.Namespace)
+	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.APISIXTlsVersion, name, host, secretName, s.kubectlOptions.Namespace)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, tls); err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func (s *Scaffold) NewApisixTls(name, host, secretName string) error {
 
 // NewApisixTlsWithClientCA new a ApisixTls CRD
 func (s *Scaffold) NewApisixTlsWithClientCA(name, host, secretName, clientCASecret string) error {
-	tls := fmt.Sprintf(_api6tlsWithClientCATemplate, name, host, secretName, s.kubectlOptions.Namespace, clientCASecret, s.kubectlOptions.Namespace)
+	tls := fmt.Sprintf(_api6tlsWithClientCATemplate, s.opts.APISIXTlsVersion, name, host, secretName, s.kubectlOptions.Namespace, clientCASecret, s.kubectlOptions.Namespace)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, tls); err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func (s *Scaffold) NewApisixTlsWithClientCA(name, host, secretName, clientCASecr
 
 // DeleteApisixTls remove ApisixTls CRD
 func (s *Scaffold) DeleteApisixTls(name string, host, secretName string) error {
-	tls := fmt.Sprintf(_api6tlsTemplate, name, host, secretName, s.kubectlOptions.Namespace)
+	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.APISIXTlsVersion, name, host, secretName, s.kubectlOptions.Namespace)
 	if err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, tls); err != nil {
 		return err
 	}

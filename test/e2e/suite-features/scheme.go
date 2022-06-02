@@ -16,11 +16,10 @@
 package features
 
 import (
-	"fmt"
 	"io/ioutil"
 	"time"
 
-	"github.com/onsi/ginkgo"
+	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
@@ -163,18 +162,7 @@ spec:
        servicePort: 50052
 `))
 
-		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
-kind: ApisixTls
-metadata:
-  name: grpc-secret
-spec:
-  hosts:
-    - "e2e.apisix.local"
-  secret:
-    name: grpc-secret
-    namespace: %s
-`, s.Namespace())))
+		assert.NoError(ginkgo.GinkgoT(), s.NewApisixTls("grpc-secret", "e2e.apisix.local", "grpc-secret"))
 
 		time.Sleep(2 * time.Second)
 		ups, err := s.ListApisixUpstreams()

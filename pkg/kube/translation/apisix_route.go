@@ -272,6 +272,12 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *TranslateContext, ar *config
 				pluginMap["key-auth"] = part.Authentication.KeyAuth
 			case "basicAuth":
 				pluginMap["basic-auth"] = make(map[string]interface{})
+			case "wolfRBAC":
+				pluginMap["wolf-rbac"] = make(map[string]interface{})
+			case "jwtAuth":
+				pluginMap["jwt-auth"] = part.Authentication.JwtAuth
+			case "hmacAuth":
+				pluginMap["hmac-auth"] = make(map[string]interface{})
 			default:
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			}
@@ -402,6 +408,12 @@ func (t *translator) translateHTTPRouteV2(ctx *TranslateContext, ar *configv2.Ap
 				pluginMap["key-auth"] = part.Authentication.KeyAuth
 			case "basicAuth":
 				pluginMap["basic-auth"] = make(map[string]interface{})
+			case "wolfRBAC":
+				pluginMap["wolf-rbac"] = make(map[string]interface{})
+			case "jwtAuth":
+				pluginMap["jwt-auth"] = part.Authentication.JwtAuth
+			case "hmacAuth":
+				pluginMap["hmac-auth"] = make(map[string]interface{})
 			default:
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			}
@@ -623,6 +635,12 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *TranslateContext,
 				pluginMap["key-auth"] = part.Authentication.KeyAuth
 			case "basicAuth":
 				pluginMap["basic-auth"] = make(map[string]interface{})
+			case "wolfRBAC":
+				pluginMap["wolf-rbac"] = make(map[string]interface{})
+			case "jwtAuth":
+				pluginMap["jwt-auth"] = part.Authentication.JwtAuth
+			case "hmacAuth":
+				pluginMap["hmac-auth"] = make(map[string]interface{})
 			default:
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			}
@@ -676,6 +694,12 @@ func (t *translator) translateHTTPRouteV2NotStrictly(ctx *TranslateContext, ar *
 				pluginMap["key-auth"] = part.Authentication.KeyAuth
 			case "basicAuth":
 				pluginMap["basic-auth"] = make(map[string]interface{})
+			case "wolfRBAC":
+				pluginMap["wolf-rbac"] = make(map[string]interface{})
+			case "jwtAuth":
+				pluginMap["jwt-auth"] = part.Authentication.JwtAuth
+			case "hmacAuth":
+				pluginMap["hmac-auth"] = make(map[string]interface{})
 			default:
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			}

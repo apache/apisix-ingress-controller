@@ -32,6 +32,45 @@ spec:
   versions:
     - name: v2beta3
       served: true
+      storage: false
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                admin:
+                  type: object
+                  required:
+                    - baseURL
+                  properties:
+                    baseURL:
+                      type: string
+                      pattern: "https?://[^:]+:(\\d+)"
+                    adminKey:
+                      type: string
+                monitoring:
+                  type: object
+                  properties:
+                    prometheus:
+                      type: object
+                      properties:
+                        enable:
+                          type: boolean
+                    skywalking:
+                      type: object
+                      properties:
+                        enable:
+                          type: boolean
+                        sampleRatio:
+                          type: number
+                          minimum: 0.00001
+                          maximum: 1
+    - name: v2
+      served: true
       storage: true
       subresources:
         status: {}

@@ -16,12 +16,11 @@
 package ingress
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
 
-	"github.com/onsi/ginkgo"
+	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
@@ -39,7 +38,7 @@ var _ = ginkgo.Describe("suite-ingress: ApisixUpstreams mTLS test", func() {
 	assert.NoError(ginkgo.GinkgoT(), err, "read client key")
 	clientKey := string(f)
 
-	s := scaffold.NewDefaultV2Scaffold()
+	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("create ApisixUpstreams with http mTLS", func() {
 		// create client secret
 		err := s.NewSecret(clientSecret, clientCert, clientKey)
@@ -117,18 +116,7 @@ spec:
        servicePort: 50053
 `))
 
-		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
-kind: ApisixTls
-metadata:
-  name: grpc-secret
-spec:
-  hosts:
-    - "e2e.apisix.local"
-  secret:
-    name: grpc-secret
-    namespace: %s
-`, s.Namespace())))
+		assert.NoError(ginkgo.GinkgoT(), s.NewApisixTls("grpc-secret", "e2e.apisix.local", "grpc-secret"))
 
 		assert.NoError(ginkgo.GinkgoT(), err, "create ApisixRoute for backend that require mTLS")
 		time.Sleep(10 * time.Second)
