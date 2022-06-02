@@ -111,7 +111,7 @@ spec:
 To use wolfRbac authentication, you need to start and install [wolf-server](https://github.com/iGeeky/wolf/blob/master/quick-start-with-docker/README.md). For more information about `Wolf RBAC`, please refer to [APISIX wolf-rbac plugin](https://apisix.apache.org/zh/docs/apisix/plugins/wolf-rbac/).  
 Also, we can using the `secretRef` field to reference a K8s Secret object so that we can avoid the hardcoded sensitive data in the ApisixConsumer object. For reference Secret use example, please refer to the [key-auth-reference-secret-object](#key-auth-reference-secret-object).
 
-:::note This plugin will add several API
+:::note This plugin will add several APIs
 
 * /apisix/plugin/wolf-rbac/login
 * /apisix/plugin/wolf-rbac/change_pwd
@@ -208,7 +208,7 @@ kubectl expose pod httpbin --port 80
 
 The following is an example. The `keyAuth` is enabled on the specified route to restrict user access.  
 
-* Creates a ApisixConsumer, and set the attributes of plugin `key-auth`:
+* Creates an ApisixConsumer, and set the attributes of plugin `key-auth`:
 
 ```shell
 kubectl apply -f - <<EOF
@@ -224,7 +224,7 @@ spec:
 EOF
 ```
 
-* Creates a ApisixRoute, and enable plugin `key-auth`:
+* Creates an ApisixRoute, and enable plugin `key-auth`:
 
 ```shell
 kubectl apply -f - <<EOF
@@ -265,7 +265,7 @@ HTTP/1.1 200 OK
 <details>
   <summary>ApisixRoute with keyAuth consumer using secret example</summary>
 
-* Creates a `Secret` object:
+* Creates an `Secret` object:
 
 ```shell
 kubectl apply -f - <<EOF
@@ -278,7 +278,7 @@ data:
 EOF
 ```
 
-* Creates a ApisixConsumer and reference `Secret` object:
+* Creates an ApisixConsumer and reference `Secret` object:
 
 ```shell
 kubectl apply -f - <<EOF
@@ -294,7 +294,7 @@ spec:
 EOF
 ```
 
-* Creates a ApisixRoute, and enable plugin `key-auth`:
+* Creates an ApisixRoute, and enables plugin `key-auth`:
 
 ```shell
 kubectl apply -f - <<EOF
@@ -334,7 +334,7 @@ HTTP/1.1 200 OK
 
 #### Enable `JWT Auth`
 
-* Creates a ApisixConsumer, and set the attributes of plugin `jwt-auth`:
+* Creates an ApisixConsumer, and set the attributes of plugin `jwt-auth`:
 
 ```shell
 kubectl apply -f - <<EOF
@@ -373,7 +373,7 @@ spec:
 EOF
 ```
 
-* Creates a ApisixRoute, and enable the jwt-auth plugin:
+* Creates an ApisixRoute, and enable the jwt-auth plugin:
 
 ```shell
 kubectl apply -f - <<EOF
@@ -475,7 +475,7 @@ spec:
 EOF
 ```
 
-* Creates a ApisixRoute, and enable config `whitelist`  of the plugin `consumer-restriction`:
+* Creates an ApisixRoute, and enable config `whitelist`  of the plugin `consumer-restriction`:
 
 ```shell
 kubectl apply -f - <<EOF
@@ -553,7 +553,7 @@ HTTP/1.1 403 Forbidden
 
 This example restrict the user `jack2` to only `GET` on the resource.
 
-* Creates a ApisixRoute, and enable config `allowed_by_methods`  of the plugin `consumer-restriction`:
+* Creates an ApisixRoute, and enable config `allowed_by_methods`  of the plugin `consumer-restriction`:
 
 ```shell
 kubectl apply -f - <<EOF
