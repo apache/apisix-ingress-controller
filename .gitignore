@@ -30,6 +30,7 @@
 *.out
 release
 
+.vscode
 .idea
 .DS_Store
 coverage.txt

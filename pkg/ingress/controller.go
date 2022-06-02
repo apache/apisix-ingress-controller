@@ -119,15 +119,18 @@ type Controller struct {
 	apisixPluginConfigLister    kube.ApisixPluginConfigLister
 	gatewayInformer             cache.SharedIndexInformer
 	gatewayLister               gatewaylistersv1alpha2.GatewayLister
+	gatewayHttpRouteInformer    cache.SharedIndexInformer
+	gatewayHttpRouteLister      gatewaylistersv1alpha2.HTTPRouteLister
 
 	// resource controllers
-	namespaceController     *namespaceController
-	podController           *podController
-	endpointsController     *endpointsController
-	endpointSliceController *endpointSliceController
-	ingressController       *ingressController
-	secretController        *secretController
-	gatewayController       *gatewayController
+	namespaceController        *namespaceController
+	podController              *podController
+	endpointsController        *endpointsController
+	endpointSliceController    *endpointSliceController
+	ingressController          *ingressController
+	secretController           *secretController
+	gatewayController          *gatewayController
+	gatewayHTTPRouteController *gatewayHTTPRouteController
 
 	apisixUpstreamController      *apisixUpstreamController
 	apisixRouteController         *apisixRouteController
@@ -202,6 +205,7 @@ func (c *Controller) initWhenStartLeading() {
 	var (
 		ingressInformer             cache.SharedIndexInformer
 		apisixRouteInformer         cache.SharedIndexInformer
+		apisixPluginConfigInformer  cache.SharedIndexInformer
 		apisixTlsInformer           cache.SharedIndexInformer
 		apisixClusterConfigInformer cache.SharedIndexInformer
 		apisixConsumerInformer      cache.SharedIndexInformer
@@ -241,6 +245,7 @@ func (c *Controller) initWhenStartLeading() {
 	)
 	c.apisixPluginConfigLister = kube.NewApisixPluginConfigLister(
 		apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+		apisixFactory.Apisix().V2().ApisixPluginConfigs().Lister(),
 	)
 
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
@@ -263,6 +268,9 @@ func (c *Controller) initWhenStartLeading() {
 
 	c.gatewayLister = gatewayFactory.Gateway().V1alpha2().Gateways().Lister()
 	c.gatewayInformer = gatewayFactory.Gateway().V1alpha2().Gateways().Informer()
+
+	c.gatewayHttpRouteLister = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Lister()
+	c.gatewayHttpRouteInformer = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Informer()
 
 	switch c.cfg.Kubernetes.ApisixRouteVersion {
 	case config.ApisixRouteV2beta2:
@@ -298,6 +306,17 @@ func (c *Controller) initWhenStartLeading() {
 		apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
 	case config.ApisixRouteV2:
 		apisixConsumerInformer = apisixFactory.Apisix().V2().ApisixConsumers().Informer()
+	default:
+		panic(fmt.Errorf("unsupported ApisixConsumer version %v", c.cfg.Kubernetes.ApisixConsumerVersion))
+	}
+
+	switch c.cfg.Kubernetes.ApisixPluginConfigVersion {
+	case config.ApisixV2beta3:
+		apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
+	case config.ApisixV2:
+		apisixPluginConfigInformer = apisixFactory.Apisix().V2().ApisixPluginConfigs().Informer()
+	default:
+		panic(fmt.Errorf("unsupported ApisixPluginConfig version %v", c.cfg.Kubernetes.ApisixPluginConfigVersion))
 	}
 
 	c.namespaceInformer = kubeFactory.Core().V1().Namespaces().Informer()
@@ -310,7 +329,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
 	c.apisixTlsInformer = apisixTlsInformer
 	c.apisixConsumerInformer = apisixConsumerInformer
-	c.apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
+	c.apisixPluginConfigInformer = apisixPluginConfigInformer
 
 	if c.cfg.Kubernetes.WatchEndpointSlices {
 		c.endpointSliceController = c.newEndpointSliceController()
@@ -328,6 +347,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixConsumerController = c.newApisixConsumerController()
 	c.apisixPluginConfigController = c.newApisixPluginConfigController()
 	c.gatewayController = c.newGatewayController()
+	c.gatewayHTTPRouteController = c.newGatewayHTTPRouteController()
 }
 
 // recorderEvent recorder events for resources
@@ -551,7 +571,15 @@ func (c *Controller) run(ctx context.Context) {
 		})
 
 		c.goAttach(func() {
+			c.gatewayHttpRouteInformer.Run(ctx.Done())
+		})
+
+		c.goAttach(func() {
 			c.gatewayController.run(ctx)
+		})
+
+		c.goAttach(func() {
+			c.gatewayHTTPRouteController.run(ctx)
 		})
 	}
 
