@@ -1,13 +1,28 @@
+// Licensed to the Apache Software Foundation (ASF) under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// The ASF licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package apisix
 
 import (
 	"context"
 	"strings"
 
+	"go.uber.org/zap"
+
 	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-	"go.uber.org/zap"
 )
 
 // There is no need to ensure the consistency between the upstream to services, only need to ensure that the upstream-node can be delete after deleting the service
@@ -59,12 +74,8 @@ func (u *upstreamService) Delete(ctx context.Context, svcId string) error {
 	if err != nil {
 		return err
 	}
-	u.cluster.cache.DeleteUpstreamServiceRelation(us)
-	_, err = u.List(ctx)
-	if err != nil {
-		return err
-	}
-	return nil
+	err = u.cluster.cache.DeleteUpstreamServiceRelation(us)
+	return err
 }
 
 func (u *upstreamService) Create(ctx context.Context, upstreamName string) error {
