@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
-	"github.com/onsi/ginkgo"
+	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 

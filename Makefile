@@ -71,7 +71,7 @@ e2e-test: ginkgo-check push-images
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
-		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace --nodes=$(E2E_CONCURRENCY) --focus=$(E2E_FOCUS)
+		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_CONCURRENCY) --focus=$(E2E_FOCUS)
 
 ### e2e-test-local:        Run e2e test cases (kind is required)
 .PHONY: e2e-test-local
@@ -80,7 +80,7 @@ e2e-test-local: kind-up e2e-test
 .PHONY: ginkgo-check
 ginkgo-check:
 ifeq ("$(wildcard $(GINKGO))", "")
-	@echo "ERROR: Need to install ginkgo first, run: go get -u github.com/onsi/ginkgo/ginkgo"
+	@echo "ERROR: Need to install ginkgo first, run: go get -u github.com/onsi/ginkgo/v2/ginkgo@v2.1.4 or go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo@v2.1.4"
 	exit 1
 endif
 

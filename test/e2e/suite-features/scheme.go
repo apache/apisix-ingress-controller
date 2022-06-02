@@ -19,7 +19,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/onsi/ginkgo"
+	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
