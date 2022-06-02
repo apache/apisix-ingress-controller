@@ -25,7 +25,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress: mqtt-proxy plugin", func() {
+var _ = ginkgo.Describe("suite-plugins: mqtt-proxy plugin", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
@@ -127,6 +127,6 @@ spec:
 		c := s.NewMQTTClient()
 		token := c.Connect()
 		token.WaitTimeout(3 * time.Second)
-		assert.Nil(ginkgo.GinkgoT(), token.Error(), "mqtt connection error")
+		assert.Nil(ginkgo.GinkgoT(), token.Error(), "Checking mqtt connection")
 	})
 })
