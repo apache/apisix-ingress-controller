@@ -41,7 +41,7 @@ metadata:
   name: ingress-v1
 spec:
   rules:
-  - host: httpbin.org
+  - host: httpbin.local
     http:
       paths:
       - path: /sample
@@ -56,9 +56,9 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect()
+		resp := s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.local").Expect()
 		resp.Status(http.StatusMovedPermanently)
-		resp.Header("Location").Equal("https://httpbin.org/sample")
+		resp.Header("Location").Equal("https://httpbin.local:9443/sample")
 	})
 
 	ginkgo.It("redirect http-to-https in ingress networking/v1beta1", func() {
@@ -73,7 +73,7 @@ metadata:
   name: ingress-v1beta1
 spec:
   rules:
-  - host: httpbin.org
+  - host: httpbin.local
     http:
       paths:
       - path: /sample
@@ -86,9 +86,9 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect()
+		resp := s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.local").Expect()
 		resp.Status(http.StatusMovedPermanently)
-		resp.Header("Location").Equal("https://httpbin.org/sample")
+		resp.Header("Location").Equal("https://httpbin.local:9443/sample")
 	})
 
 	ginkgo.It("redirect http-to-https in ingress extensions/v1beta1", func() {
@@ -103,7 +103,7 @@ metadata:
   name: ingress-extensions-v1beta1
 spec:
   rules:
-  - host: httpbin.org
+  - host: httpbin.local
     http:
       paths:
       - path: /sample
@@ -116,9 +116,9 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect()
+		resp := s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.local").Expect()
 		resp.Status(http.StatusMovedPermanently)
-		resp.Header("Location").Equal("https://httpbin.org/sample")
+		resp.Header("Location").Equal("https://httpbin.local:9443/sample")
 	})
 
 	ginkgo.It("redirect http-redirect in ingress networking/v1", func() {

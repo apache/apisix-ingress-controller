@@ -47,7 +47,7 @@ spec:
  - name: rule1
    match:
      hosts:
-     - httpbin.org
+     - httpbin.local
      paths:
        - /ip
    backends:
@@ -68,9 +68,9 @@ spec:
 		err = s.EnsureNumApisixRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.local").Expect()
 		resp.Status(http.StatusMovedPermanently)
-		resp.Header("Location").Equal("https://httpbin.org/ip")
+		resp.Header("Location").Equal("https://httpbin.local:9443/ip")
 	})
 	ginkgo.It("redirect to specific uri", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
