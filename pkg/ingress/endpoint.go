@@ -27,6 +27,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type endpointsController struct {
@@ -94,7 +95,9 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 	}
 	if ev.Type == types.EventDelete {
 		clusterName := c.controller.cfg.APISIX.DefaultClusterName
-		err := c.controller.apisix.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx, ep.Namespace()+"_"+ep.ServiceName())
+		err := c.controller.apisix.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx, &v1.UpstreamServiceRelation{
+			ServiceName: ep.Namespace() + "_" + ep.ServiceName(),
+		})
 		if err != nil {
 			return err
 		}

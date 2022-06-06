@@ -468,10 +468,7 @@ func TestMemDBCacheUpstreamServiceRelation(t *testing.T) {
 	assert.Nil(t, err, "NewMemDBCache")
 
 	us1 := &v1.UpstreamServiceRelation{
-		Metadata: v1.Metadata{
-			ID:   "1",
-			Name: "abc",
-		},
+		ServiceName: "1",
 	}
 	assert.Nil(t, c.InsertUpstreamServiceRelation(us1), "inserting route 1")
 
@@ -480,10 +477,7 @@ func TestMemDBCacheUpstreamServiceRelation(t *testing.T) {
 	assert.Equal(t, us1, us)
 
 	us2 := &v1.UpstreamServiceRelation{
-		Metadata: v1.Metadata{
-			ID:   "2",
-			Name: "abc",
-		},
+		ServiceName: "2",
 	}
 	assert.Nil(t, c.InsertUpstreamServiceRelation(us2), "inserting route 1")
 
@@ -496,10 +490,8 @@ func TestMemDBCacheUpstreamServiceRelation(t *testing.T) {
 	assert.Len(t, uss, 2)
 
 	us3 := &v1.UpstreamServiceRelation{
-		Metadata: v1.Metadata{
-			ID: "httpbin",
-		},
-		UpstreamId: "upstream",
+		ServiceName:  "httpbin",
+		UpstreamName: "upstream",
 	}
 	assert.Nil(t, c.InsertUpstreamServiceRelation(us3), "inserting route 1")
 

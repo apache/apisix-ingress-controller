@@ -16,6 +16,7 @@ package apisix
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"go.uber.org/zap"
@@ -55,55 +56,58 @@ func (u *upstreamService) Get(ctx context.Context, svcId string) (*v1.UpstreamSe
 	return nil, err
 }
 
-func (u *upstreamService) Delete(ctx context.Context, svcId string) error {
+func (u *upstreamService) Delete(ctx context.Context, relation *v1.UpstreamServiceRelation) error {
 	log.Debugw("try to delete upstreamService in cache",
-		zap.String("svcId", svcId),
 		zap.String("cluster", "default"),
 	)
-	us, err := u.cluster.cache.GetUpstreamServiceRelation(svcId)
-	if err != nil {
-		return err
+	u.initUpstreamServiceRelation(relation)
+	if relation == nil || relation.ServiceName == "" && relation.UpstreamName == "" {
+		return fmt.Errorf("UpstreamServiceRelation is empty object")
 	}
-	ups, err := u.cluster.upstream.Get(ctx, us.UpstreamId)
-	if err != nil {
-		log.Errorf("failed to get upstream in cache: %s", err)
-		return err
-	}
-	ups.Nodes = make(v1.UpstreamNodes, 0)
-	_, err = u.cluster.upstream.Update(ctx, ups)
-	if err != nil {
-		return err
-	}
-	err = u.cluster.cache.DeleteUpstreamServiceRelation(us)
-	return err
-}
-
-func (u *upstreamService) Create(ctx context.Context, upstreamName string) error {
-	log.Debugw("try to create upstreamService in cache",
-		zap.String("upstreamName", upstreamName),
-		zap.String("cluster", "default"),
-	)
-	upsId, svcId := u.parseUpstreamName(upstreamName)
-	if upsId == "" || svcId == "" {
-		log.Error("failed to parse upstreamName",
-			zap.String("upstreamName", upstreamName),
-		)
-		return nil
-	}
-	us, err := u.cluster.cache.GetUpstreamServiceRelation(svcId)
-	if err != nil {
-		if err != cache.ErrNotFound {
+	if relation.UpstreamName != "" {
+		err := u.cluster.cache.DeleteUpstreamServiceRelation(relation)
+		if err != nil {
 			return err
 		}
-		us = &v1.UpstreamServiceRelation{
-			Metadata: v1.Metadata{
-				ID: svcId,
-			},
-			UpstreamId: upsId,
+	} else {
+		usr, err := u.cluster.cache.GetUpstreamServiceRelation(relation.ServiceName)
+		if err != nil {
+			return err
+		}
+		ups, err := u.cluster.upstream.Get(ctx, usr.UpstreamName)
+		if err != nil {
+			return err
+		}
+		ups.Nodes = make(v1.UpstreamNodes, 0)
+		_, err = u.cluster.upstream.Update(ctx, ups)
+		if err != nil {
+			return err
+		}
+		err = u.cluster.cache.DeleteUpstreamServiceRelation(usr)
+		if err != nil {
+			return err
 		}
 	}
+	return nil
+}
+
+func (u *upstreamService) Create(ctx context.Context, relation *v1.UpstreamServiceRelation) error {
+	log.Debugw("try to create upstreamService in cache",
+		zap.String("cluster", "default"),
+	)
+	u.initUpstreamServiceRelation(relation)
+	if relation == nil || relation.ServiceName == "" || relation.UpstreamName == "" {
+		log.Error("UpstreamServiceRelation object ")
+		return nil
+	}
+	us, err := u.cluster.cache.GetUpstreamServiceRelation(relation.ServiceName)
+	if err != nil && err != cache.ErrNotFound {
+		return err
+	}
 	if us != nil {
-		us.UpstreamId = upsId
+		us.UpstreamName = relation.UpstreamName
+	} else {
+		us = relation
 	}
 	if err := u.cluster.cache.InsertUpstreamServiceRelation(us); err != nil {
 		log.Errorf("failed to reflect upstreamService create to cache: %s", err)
@@ -126,15 +130,14 @@ func (u *upstreamService) List(ctx context.Context) ([]*v1.UpstreamServiceRelati
 	return usrs, nil
 }
 
-func (u *upstreamService) parseUpstreamName(upsName string) (upsId string, svcId string) {
-	log.Debugw("try to parse upstreamName",
-		zap.String("upstreamName", upsName),
-		zap.String("cluster", "default"),
-	)
-	args := strings.Split(upsName, "_")
+func (u *upstreamService) initUpstreamServiceRelation(us *v1.UpstreamServiceRelation) {
+	if us.UpstreamName == "" || us.ServiceName != "" {
+		return
+	}
+	args := strings.Split(us.UpstreamName, "_")
 	// namespace_service_subcret_port
 	if len(args) < 2 {
 		return
 	}
-	return upsName, args[0] + "_" + args[1]
+	us.ServiceName = args[0] + "_" + args[1]
 }

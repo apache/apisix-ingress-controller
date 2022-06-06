@@ -364,8 +364,8 @@ type PluginConfig struct {
 // UpstreamServiceRelation Upstream association object
 // +k8s:deepcopy-gen=true
 type UpstreamServiceRelation struct {
-	Metadata   `json:",inline" yaml:",inline"`
-	UpstreamId string `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
+	ServiceName  string `json:"service_name" yaml:"service_name"`
+	UpstreamName string `json:"upstream_name,omitempty" yaml:"upstream_name,omitempty"`
 }
 
 // NewDefaultUpstream returns an empty Upstream with default values.

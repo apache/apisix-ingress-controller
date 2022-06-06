@@ -248,13 +248,13 @@ type dummyUpstreamServiceRelation struct {
 func (f *dummyUpstreamServiceRelation) Get(_ context.Context, _ string) (*v1.UpstreamServiceRelation, error) {
 	return nil, ErrClusterNotExist
 }
-func (f *dummyUpstreamServiceRelation) Create(_ context.Context, _ string) error {
+func (f *dummyUpstreamServiceRelation) Create(_ context.Context, _ *v1.UpstreamServiceRelation) error {
 	return ErrClusterNotExist
 }
 func (f *dummyUpstreamServiceRelation) List(_ context.Context) ([]*v1.UpstreamServiceRelation, error) {
 	return nil, ErrClusterNotExist
 }
-func (f *dummyUpstreamServiceRelation) Delete(_ context.Context, _ string) error {
+func (f *dummyUpstreamServiceRelation) Delete(_ context.Context, _ *v1.UpstreamServiceRelation) error {
 	return ErrClusterNotExist
 }
 
