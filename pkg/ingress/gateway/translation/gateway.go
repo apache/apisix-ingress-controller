@@ -63,16 +63,20 @@ func (t *translator) TranslateGatewayV1Alpha2(gateway *gatewayv1alpha2.Gateway) 
 		}
 
 		conf := &types.ListenerConf{
-			Protocol:     listener.Protocol,
-			Port:         listener.Port,
-			AllowedKinds: allowedKinds,
+			Namespace:      gateway.Namespace,
+			Name:           gateway.Name,
+			SectionName:    string(listener.Name),
+			Protocol:       listener.Protocol,
+			Port:           listener.Port,
+			RouteNamespace: nil,
+			AllowedKinds:   allowedKinds,
 		}
 
 		if listener.AllowedRoutes.Namespaces != nil {
 			conf.RouteNamespace = listener.AllowedRoutes.Namespaces
 		}
 
-		listeners[string(listener.Name)] = conf
+		listeners[conf.SectionName] = conf
 	}
 
 	return listeners, nil

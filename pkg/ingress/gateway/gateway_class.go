@@ -155,8 +155,8 @@ func (c *gatewayClassController) runWorker(ctx context.Context) {
 }
 
 func (c *gatewayClassController) sync(ctx context.Context, ev *types.Event) error {
+	key := ev.Object.(string)
 	if ev.Type == types.EventAdd {
-		key := ev.Object.(string)
 		gatewayClass, err := c.controller.gatewayClassLister.Get(key)
 		if err != nil {
 			return err
@@ -166,8 +166,7 @@ func (c *gatewayClassController) sync(ctx context.Context, ev *types.Event) erro
 			return c.markAsUpdated(gatewayClass)
 		}
 	} else if ev.Type == types.EventDelete {
-		key := ev.Object.(string)
-		c.controller.RemoveGatewayClass(key)
+		c.controller.RemoveGatewayClass(ev.Tombstone.(*v1alpha2.GatewayClass).Name)
 	}
 
 	return nil
@@ -199,7 +198,9 @@ func (c *gatewayClassController) handleSyncErr(obj interface{}, err error) {
 func (c *gatewayClassController) onAdd(obj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
-		log.Errorf("found gateway HTTPRoute resource with bad meta namespace key: %s", err)
+		log.Errorw("found gateway HTTPRoute resource with bad meta namespace key",
+			zap.Error(err),
+		)
 		return
 	}
 	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {
@@ -220,10 +221,31 @@ func (c *gatewayClassController) onUpdate(oldObj, newObj interface{}) {
 }
 
 func (c *gatewayClassController) onDelete(obj interface{}) {
-	gatewayClass := obj.(*v1alpha2.GatewayClass)
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Errorw("failed to handle deletion GatewayClass meta key",
+			zap.Error(err),
+			zap.Any("obj", obj),
+		)
+		return
+	}
+
+	gatewayClass, ok := obj.(*v1alpha2.GatewayClass)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			log.Errorw("GatewayClass in bad tombstone state",
+				zap.String("key", key),
+				zap.Any("obj", obj),
+			)
+			return
+		}
+		gatewayClass = tombstone.Obj.(*v1alpha2.GatewayClass)
+	}
+
 	c.workqueue.Add(&types.Event{
 		Type:      types.EventDelete,
-		Object:    gatewayClass.Name,
+		Object:    key,
 		Tombstone: gatewayClass,
 	})
 }

@@ -20,8 +20,16 @@ package types
 import gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 type ListenerConf struct {
-	Protocol       gatewayv1alpha2.ProtocolType
-	Port           gatewayv1alpha2.PortNumber
+	// Gateway namespace
+	Namespace string
+	// Gateway name
+	Name string
+
+	SectionName string
+	Protocol    gatewayv1alpha2.ProtocolType
+	Port        gatewayv1alpha2.PortNumber
+
+	// namespace selector of AllowedRoutes
 	RouteNamespace *gatewayv1alpha2.RouteNamespaces
 	AllowedKinds   []gatewayv1alpha2.RouteGroupKind
 }

@@ -5,7 +5,7 @@
 // (the "License"); you may not use this file except in compliance with
 // the License.  You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//     tls://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,20 +30,20 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
-type gatewayHTTPRouteController struct {
+type gatewayTLSRouteController struct {
 	controller *Provider
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
 }
 
-func newGatewayHTTPRouteController(c *Provider) *gatewayHTTPRouteController {
-	ctrl := &gatewayHTTPRouteController{
+func newGatewayTLSRouteController(c *Provider) *gatewayTLSRouteController {
+	ctrl := &gatewayTLSRouteController{
 		controller: c,
-		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "GatewayHTTPRoute"),
+		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "GatewayTLSRoute"),
 		workers:    1,
 	}
 
-	ctrl.controller.gatewayHTTPRouteInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	ctrl.controller.gatewayTLSRouteInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ctrl.onAdd,
 		UpdateFunc: ctrl.onUpdate,
 		DeleteFunc: ctrl.OnDelete,
@@ -51,13 +51,13 @@ func newGatewayHTTPRouteController(c *Provider) *gatewayHTTPRouteController {
 	return ctrl
 }
 
-func (c *gatewayHTTPRouteController) run(ctx context.Context) {
-	log.Info("gateway HTTPRoute controller started")
-	defer log.Info("gateway HTTPRoute controller exited")
+func (c *gatewayTLSRouteController) run(ctx context.Context) {
+	log.Info("gateway TLSRoute controller started")
+	defer log.Info("gateway TLSRoute controller exited")
 	defer c.workqueue.ShutDown()
 
-	if !cache.WaitForCacheSync(ctx.Done(), c.controller.gatewayHTTPRouteInformer.HasSynced) {
-		log.Error("sync Gateway HTTPRoute cache failed")
+	if !cache.WaitForCacheSync(ctx.Done(), c.controller.gatewayTLSRouteInformer.HasSynced) {
+		log.Error("sync Gateway TLSRoute cache failed")
 		return
 	}
 
@@ -67,7 +67,7 @@ func (c *gatewayHTTPRouteController) run(ctx context.Context) {
 	<-ctx.Done()
 }
 
-func (c *gatewayHTTPRouteController) runWorker(ctx context.Context) {
+func (c *gatewayTLSRouteController) runWorker(ctx context.Context) {
 	for {
 		obj, quit := c.workqueue.Get()
 		if quit {
@@ -79,30 +79,30 @@ func (c *gatewayHTTPRouteController) runWorker(ctx context.Context) {
 	}
 }
 
-func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) error {
+func (c *gatewayTLSRouteController) sync(ctx context.Context, ev *types.Event) error {
 	key := ev.Object.(string)
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		log.Errorw("found Gateway HTTPRoute resource with invalid key",
+		log.Errorw("found Gateway TLSRoute resource with invalid key",
 			zap.Error(err),
 			zap.String("key", key),
 		)
 		return err
 	}
 
-	log.Debugw("sync HTTPRoute", zap.String("key", key))
+	log.Debugw("sync TLSRoute", zap.String("key", key))
 
-	httpRoute, err := c.controller.gatewayHTTPRouteLister.HTTPRoutes(namespace).Get(name)
+	tlsRoute, err := c.controller.gatewayTLSRouteLister.TLSRoutes(namespace).Get(name)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
-			log.Errorw("failed to get Gateway HTTPRoute",
+			log.Errorw("failed to get Gateway TLSRoute",
 				zap.Error(err),
 				zap.String("key", key),
 			)
 			return err
 		}
 		if ev.Type != types.EventDelete {
-			log.Warnw("Gateway HTTPRoute was deleted before process",
+			log.Warnw("Gateway TLSRoute was deleted before process",
 				zap.String("key", key),
 			)
 			// Don't need to retry.
@@ -111,7 +111,7 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 	}
 
 	if ev.Type == types.EventDelete {
-		if httpRoute != nil {
+		if tlsRoute != nil {
 			// We still find the resource while we are processing the DELETE event,
 			// that means object with same namespace and name was created, discarding
 			// this stale DELETE event.
@@ -120,20 +120,20 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 			)
 			return nil
 		}
-		httpRoute = ev.Tombstone.(*gatewayv1alpha2.HTTPRoute)
+		tlsRoute = ev.Tombstone.(*gatewayv1alpha2.TLSRoute)
 	}
 
-	tctx, err := c.controller.translator.TranslateGatewayHTTPRouteV1Alpha2(httpRoute)
+	tctx, err := c.controller.translator.TranslateGatewayTLSRouteV1Alpha2(tlsRoute)
 
 	if err != nil {
-		log.Errorw("failed to translate gateway HTTPRoute",
+		log.Warnw("failed to translate gateway TLSRoute",
 			zap.Error(err),
-			zap.Any("object", httpRoute),
+			zap.Any("object", tlsRoute),
 		)
 		return err
 	}
 
-	log.Debugw("translated HTTPRoute",
+	log.Debugw("translated TLSRoute",
 		zap.Any("routes", tctx.Routes),
 		zap.Any("upstreams", tctx.Upstreams),
 	)
@@ -154,13 +154,13 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 		added = m
 	} else {
 		var oldCtx *translation.TranslateContext
-		oldObj := ev.OldObject.(*gatewayv1alpha2.HTTPRoute)
-		oldCtx, err = c.controller.translator.TranslateGatewayHTTPRouteV1Alpha2(oldObj)
+		oldObj := ev.OldObject.(*gatewayv1alpha2.TLSRoute)
+		oldCtx, err = c.controller.translator.TranslateGatewayTLSRouteV1Alpha2(oldObj)
 		if err != nil {
-			log.Errorw("failed to translate old HTTPRoute",
+			log.Errorw("failed to translate old TLSRoute",
 				zap.String("version", oldObj.APIVersion),
 				zap.String("event_type", "update"),
-				zap.Any("HTTPRoute", oldObj),
+				zap.Any("TLSRoute", oldObj),
 				zap.Error(err),
 			)
 			return err
@@ -176,33 +176,33 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 	return utils.SyncManifests(ctx, c.controller.APISIX, c.controller.APISIXClusterName, added, updated, deleted)
 }
 
-func (c *gatewayHTTPRouteController) handleSyncErr(obj interface{}, err error) {
+func (c *gatewayTLSRouteController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
-		c.controller.MetricsCollector.IncrSyncOperation("gateway_httproute", "success")
+		c.controller.MetricsCollector.IncrSyncOperation("gateway_tlsroute", "success")
 		return
 	}
 	event := obj.(*types.Event)
 	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
-		log.Infow("sync gateway HTTPRoute but not found, ignore",
+		log.Infow("sync gateway TLSRoute but not found, ignore",
 			zap.String("event_type", event.Type.String()),
-			zap.String("HTTPRoute ", event.Object.(string)),
+			zap.String("TLSRoute ", event.Object.(string)),
 		)
 		c.workqueue.Forget(event)
 		return
 	}
-	log.Warnw("sync gateway HTTPRoute failed, will retry",
+	log.Warnw("sync gateway TLSRoute failed, will retry",
 		zap.Any("object", obj),
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
-	c.controller.MetricsCollector.IncrSyncOperation("gateway_httproute", "failure")
+	c.controller.MetricsCollector.IncrSyncOperation("gateway_tlsroute", "failure")
 }
 
-func (c *gatewayHTTPRouteController) onAdd(obj interface{}) {
+func (c *gatewayTLSRouteController) onAdd(obj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
-		log.Errorw("found gateway HTTPRoute resource with bad meta namespace key",
+		log.Errorw("found gateway TLSRoute resource with bad meta namespace key",
 			zap.Error(err),
 		)
 		return
@@ -210,15 +210,15 @@ func (c *gatewayHTTPRouteController) onAdd(obj interface{}) {
 	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
-	log.Debugw("gateway HTTPRoute add event arrived",
+	log.Debugw("gateway TLSRoute add event arrived",
 		zap.Any("object", obj),
 	)
 
-	log.Debugw("add HTTPRoute", zap.String("key", key))
+	log.Debugw("add TLSRoute", zap.String("key", key))
 	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
 	})
 }
-func (c *gatewayHTTPRouteController) onUpdate(oldObj, newObj interface{}) {}
-func (c *gatewayHTTPRouteController) OnDelete(obj interface{})            {}
+func (c *gatewayTLSRouteController) onUpdate(oldObj, newObj interface{}) {}
+func (c *gatewayTLSRouteController) OnDelete(obj interface{})            {}
