@@ -31,19 +31,19 @@ import (
 )
 
 type gatewayHTTPRouteController struct {
-	controller *GatewayProvider
+	controller *Provider
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
 }
 
-func newGatewayHTTPRouteController(c *GatewayProvider) *gatewayHTTPRouteController {
+func newGatewayHTTPRouteController(c *Provider) *gatewayHTTPRouteController {
 	ctrl := &gatewayHTTPRouteController{
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "GatewayHTTPRoute"),
 		workers:    1,
 	}
 
-	ctrl.controller.gatewayHttpRouteInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	ctrl.controller.gatewayHTTPRouteInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ctrl.onAdd,
 		UpdateFunc: ctrl.onUpdate,
 		DeleteFunc: ctrl.OnDelete,
@@ -56,7 +56,7 @@ func (c *gatewayHTTPRouteController) run(ctx context.Context) {
 	defer log.Info("gateway HTTPRoute controller exited")
 	defer c.workqueue.ShutDown()
 
-	if !cache.WaitForCacheSync(ctx.Done(), c.controller.gatewayHttpRouteInformer.HasSynced) {
+	if !cache.WaitForCacheSync(ctx.Done(), c.controller.gatewayHTTPRouteInformer.HasSynced) {
 		log.Error("sync Gateway HTTPRoute cache failed")
 		return
 	}
@@ -92,7 +92,7 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 
 	log.Debugw("sync HTTPRoute", zap.String("key", key))
 
-	httpRoute, err := c.controller.gatewayHttpRouteLister.HTTPRoutes(namespace).Get(name)
+	httpRoute, err := c.controller.gatewayHTTPRouteLister.HTTPRoutes(namespace).Get(name)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Errorw("failed to get Gateway HTTPRoute",

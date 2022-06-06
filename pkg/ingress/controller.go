@@ -121,7 +121,7 @@ type Controller struct {
 	secretController        *secretController
 
 	namespaceProvider namespace.WatchingProvider
-	gatewayProvider   *gateway.GatewayProvider
+	gatewayProvider   *gateway.Provider
 
 	apisixUpstreamController      *apisixUpstreamController
 	apisixRouteController         *apisixRouteController
@@ -464,7 +464,7 @@ func (c *Controller) run(ctx context.Context) {
 		return
 	}
 
-	c.gatewayProvider, err = gateway.NewGatewayProvider(&gateway.GatewayProviderOptions{
+	c.gatewayProvider, err = gateway.NewGatewayProvider(&gateway.ProviderOptions{
 		Cfg:               c.cfg,
 		APISIX:            c.apisix,
 		APISIXClusterName: c.cfg.APISIX.DefaultClusterName,

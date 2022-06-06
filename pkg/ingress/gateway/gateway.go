@@ -33,12 +33,12 @@ import (
 )
 
 type gatewayController struct {
-	controller *GatewayProvider
+	controller *Provider
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
 }
 
-func newGatewayController(c *GatewayProvider) *gatewayController {
+func newGatewayController(c *Provider) *gatewayController {
 	ctl := &gatewayController{
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "Gateway"),

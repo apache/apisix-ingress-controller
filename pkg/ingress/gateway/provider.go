@@ -38,13 +38,13 @@ import (
 )
 
 const (
-	GatewayProviderName = "GatewayAPI"
+	ProviderName = "GatewayAPI"
 )
 
-type GatewayProvider struct {
+type Provider struct {
 	name string
 
-	*GatewayProviderOptions
+	*ProviderOptions
 	gatewayClient gatewayclientset.Interface
 
 	translator gatewaytranslation.Translator
@@ -58,11 +58,11 @@ type GatewayProvider struct {
 	gatewayClassLister     gatewaylistersv1alpha2.GatewayClassLister
 
 	gatewayHTTPRouteController *gatewayHTTPRouteController
-	gatewayHttpRouteInformer   cache.SharedIndexInformer
-	gatewayHttpRouteLister     gatewaylistersv1alpha2.HTTPRouteLister
+	gatewayHTTPRouteInformer   cache.SharedIndexInformer
+	gatewayHTTPRouteLister     gatewaylistersv1alpha2.HTTPRouteLister
 }
 
-type GatewayProviderOptions struct {
+type ProviderOptions struct {
 	Cfg               *config.Config
 	APISIX            apisix.APISIX
 	APISIXClusterName string
@@ -73,7 +73,7 @@ type GatewayProviderOptions struct {
 	NamespaceProvider namespace.WatchingProvider
 }
 
-func NewGatewayProvider(opts *GatewayProviderOptions) (*GatewayProvider, error) {
+func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	var err error
 	if opts.RestConfig == nil {
 		restConfig, err := kube.BuildRestConfig(opts.Cfg.Kubernetes.Kubeconfig, "")
@@ -88,11 +88,11 @@ func NewGatewayProvider(opts *GatewayProviderOptions) (*GatewayProvider, error) 
 		return nil, err
 	}
 
-	p := &GatewayProvider{
-		name: GatewayProviderName,
+	p := &Provider{
+		name: ProviderName,
 
-		GatewayProviderOptions: opts,
-		gatewayClient:          gatewayKubeClient,
+		ProviderOptions: opts,
+		gatewayClient:   gatewayKubeClient,
 
 		translator: gatewaytranslation.NewTranslator(&gatewaytranslation.TranslatorOptions{
 			KubeTranslator: opts.KubeTranslator,
@@ -107,8 +107,8 @@ func NewGatewayProvider(opts *GatewayProviderOptions) (*GatewayProvider, error) 
 	p.gatewayClassLister = gatewayFactory.Gateway().V1alpha2().GatewayClasses().Lister()
 	p.gatewayClassInformer = gatewayFactory.Gateway().V1alpha2().GatewayClasses().Informer()
 
-	p.gatewayHttpRouteLister = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Lister()
-	p.gatewayHttpRouteInformer = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Informer()
+	p.gatewayHTTPRouteLister = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Lister()
+	p.gatewayHTTPRouteInformer = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Informer()
 
 	p.gatewayController = newGatewayController(p)
 
@@ -122,7 +122,7 @@ func NewGatewayProvider(opts *GatewayProviderOptions) (*GatewayProvider, error) 
 	return p, nil
 }
 
-func (p *GatewayProvider) Run(ctx context.Context) {
+func (p *Provider) Run(ctx context.Context) {
 	e := utils.ParallelExecutor{}
 
 	e.Add(func() {
@@ -134,7 +134,7 @@ func (p *GatewayProvider) Run(ctx context.Context) {
 	})
 
 	e.Add(func() {
-		p.gatewayHttpRouteInformer.Run(ctx.Done())
+		p.gatewayHTTPRouteInformer.Run(ctx.Done())
 	})
 
 	e.Add(func() {

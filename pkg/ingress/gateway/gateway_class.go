@@ -36,12 +36,12 @@ const (
 )
 
 type gatewayClassController struct {
-	controller *GatewayProvider
+	controller *Provider
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
 }
 
-func newGatewayClassController(c *GatewayProvider) (*gatewayClassController, error) {
+func newGatewayClassController(c *Provider) (*gatewayClassController, error) {
 	ctrl := &gatewayClassController{
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "GatewayClass"),
