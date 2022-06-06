@@ -53,8 +53,9 @@ type GatewayProvider struct {
 	gatewayInformer   cache.SharedIndexInformer
 	gatewayLister     gatewaylistersv1alpha2.GatewayLister
 
-	gatewayClassInformer cache.SharedIndexInformer
-	gatewayClassLister   gatewaylistersv1alpha2.GatewayClassLister
+	gatewayClassController *gatewayClassController
+	gatewayClassInformer   cache.SharedIndexInformer
+	gatewayClassLister     gatewaylistersv1alpha2.GatewayClassLister
 
 	gatewayHTTPRouteController *gatewayHTTPRouteController
 	gatewayHttpRouteInformer   cache.SharedIndexInformer
@@ -73,6 +74,7 @@ type GatewayProviderOptions struct {
 }
 
 func NewGatewayProvider(opts *GatewayProviderOptions) (*GatewayProvider, error) {
+	var err error
 	if opts.RestConfig == nil {
 		restConfig, err := kube.BuildRestConfig(opts.Cfg.Kubernetes.Kubeconfig, "")
 		if err != nil {
@@ -109,6 +111,12 @@ func NewGatewayProvider(opts *GatewayProviderOptions) (*GatewayProvider, error) 
 	p.gatewayHttpRouteInformer = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Informer()
 
 	p.gatewayController = newGatewayController(p)
+
+	p.gatewayClassController, err = newGatewayClassController(p)
+	if err != nil {
+		return nil, err
+	}
+
 	p.gatewayHTTPRouteController = newGatewayHTTPRouteController(p)
 
 	return p, nil

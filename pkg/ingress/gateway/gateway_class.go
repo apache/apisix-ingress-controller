@@ -41,21 +41,25 @@ type gatewayClassController struct {
 	workers    int
 }
 
-func newGatewayClassController(c *GatewayProvider) *gatewayClassController {
+func newGatewayClassController(c *GatewayProvider) (*gatewayClassController, error) {
 	ctrl := &gatewayClassController{
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "GatewayClass"),
 		workers:    1,
 	}
 
-	ctrl.init()
+	err := ctrl.init()
+	if err != nil {
+		return nil, err
+	}
 
+	// TODO: change to event channel
 	ctrl.controller.gatewayClassInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ctrl.onAdd,
 		UpdateFunc: ctrl.onUpdate,
 		DeleteFunc: ctrl.OnDelete,
 	})
-	return ctrl
+	return ctrl, nil
 }
 
 func (c *gatewayClassController) init() error {
@@ -66,7 +70,6 @@ func (c *gatewayClassController) init() error {
 
 	for _, gatewayClass := range classes {
 		if gatewayClass.Spec.ControllerName == GatewayClassName {
-
 			err := c.recordStatus(gatewayClass, metav1.Condition{
 				Type:               string(v1alpha2.GatewayClassConditionStatusAccepted),
 				Status:             metav1.ConditionTrue,
