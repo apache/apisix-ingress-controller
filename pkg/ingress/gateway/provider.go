@@ -24,6 +24,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned"
 	gatewayexternalversions "sigs.k8s.io/gateway-api/pkg/client/informers/gateway/externalversions"
 	gatewaylistersv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/gateway/apis/v1alpha2"
@@ -31,6 +32,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	gatewaytranslation "github.com/apache/apisix-ingress-controller/pkg/ingress/gateway/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/gateway/types"
 	"github.com/apache/apisix-ingress-controller/pkg/ingress/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/ingress/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
@@ -47,6 +49,9 @@ type Provider struct {
 
 	gatewayNamesLock sync.RWMutex
 	gatewayNames     map[string]struct{}
+
+	listeners    map[string]*types.ListenerConf
+	portListener map[gatewayv1alpha2.PortNumber]*types.ListenerConf
 
 	*ProviderOptions
 	gatewayClient gatewayclientset.Interface
@@ -94,6 +99,11 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 
 	p := &Provider{
 		name: ProviderName,
+
+		gatewayNames: make(map[string]struct{}),
+
+		listeners:    make(map[string]*types.ListenerConf),
+		portListener: make(map[gatewayv1alpha2.PortNumber]*types.ListenerConf),
 
 		ProviderOptions: opts,
 		gatewayClient:   gatewayKubeClient,
@@ -161,8 +171,8 @@ func (p *Provider) AddGatewayClass(name string) {
 	defer p.gatewayNamesLock.Unlock()
 
 	p.gatewayNames[name] = struct{}{}
-
 }
+
 func (p *Provider) RemoveGatewayClass(name string) {
 	p.gatewayNamesLock.Lock()
 	defer p.gatewayNamesLock.Unlock()
@@ -176,4 +186,8 @@ func (p *Provider) HasGatewayClass(name string) bool {
 
 	_, ok := p.gatewayNames[name]
 	return ok
+}
+
+func (p *Provider) AddListeners(listeners map[string]*types.ListenerConf) {
+
 }

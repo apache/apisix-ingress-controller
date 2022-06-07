@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	GatewayClassName = "apisix-ingress-controller"
+	GatewayClassName = "apisix.apache.org/gateway-controller"
 )
 
 type gatewayClassController struct {
