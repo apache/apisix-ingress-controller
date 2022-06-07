@@ -57,7 +57,7 @@ func newGatewayClassController(c *Provider) (*gatewayClassController, error) {
 	ctrl.controller.gatewayClassInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ctrl.onAdd,
 		UpdateFunc: ctrl.onUpdate,
-		DeleteFunc: ctrl.OnDelete,
+		DeleteFunc: ctrl.onDelete,
 	})
 	return ctrl, nil
 }
@@ -70,13 +70,7 @@ func (c *gatewayClassController) init() error {
 
 	for _, gatewayClass := range classes {
 		if gatewayClass.Spec.ControllerName == GatewayClassName {
-			err := c.recordStatus(gatewayClass, metav1.Condition{
-				Type:               string(v1alpha2.GatewayClassConditionStatusAccepted),
-				Status:             metav1.ConditionTrue,
-				Reason:             "Updated",
-				Message:            fmt.Sprintf("Updated by apisix-ingress-controller, sync at %v", time.Now()),
-				LastTransitionTime: metav1.Now(),
-			})
+			err := c.markAsUpdated(gatewayClass)
 			if err != nil {
 				return err
 			}
@@ -86,8 +80,16 @@ func (c *gatewayClassController) init() error {
 	return nil
 }
 
-func (c *gatewayClassController) recordStatus(gatewayClass *v1alpha2.GatewayClass, condition metav1.Condition) error {
+func (c *gatewayClassController) markAsUpdated(gatewayClass *v1alpha2.GatewayClass) error {
 	gc := gatewayClass.DeepCopy()
+
+	condition := metav1.Condition{
+		Type:               string(v1alpha2.GatewayClassConditionStatusAccepted),
+		Status:             metav1.ConditionTrue,
+		Reason:             "Updated",
+		Message:            fmt.Sprintf("Updated by apisix-ingress-controller, sync at %v", time.Now()),
+		LastTransitionTime: metav1.Now(),
+	}
 
 	var newConditions []metav1.Condition
 	for _, cond := range gc.Status.Conditions {
@@ -118,6 +120,8 @@ func (c *gatewayClassController) recordStatus(gatewayClass *v1alpha2.GatewayClas
 		)
 		return err
 	}
+
+	c.controller.AddGatewayClass(gatewayClass.Name)
 
 	return nil
 }
@@ -151,8 +155,21 @@ func (c *gatewayClassController) runWorker(ctx context.Context) {
 }
 
 func (c *gatewayClassController) sync(ctx context.Context, ev *types.Event) error {
-	key := ev.Object.(string)
-	_ = key
+	if ev.Type == types.EventAdd {
+		key := ev.Object.(string)
+		gatewayClass, err := c.controller.gatewayClassLister.Get(key)
+		if err != nil {
+			return err
+		}
+
+		if gatewayClass.Spec.ControllerName == GatewayClassName {
+			return c.markAsUpdated(gatewayClass)
+		}
+	} else if ev.Type == types.EventDelete {
+		key := ev.Object.(string)
+		c.controller.RemoveGatewayClass(key)
+	}
+
 	return nil
 }
 
@@ -197,5 +214,16 @@ func (c *gatewayClassController) onAdd(obj interface{}) {
 		Object: key,
 	})
 }
-func (c *gatewayClassController) onUpdate(oldObj, newObj interface{}) {}
-func (c *gatewayClassController) OnDelete(obj interface{})            {}
+
+func (c *gatewayClassController) onUpdate(oldObj, newObj interface{}) {
+	// Ignore update event since ControllerName is immutable
+}
+
+func (c *gatewayClassController) onDelete(obj interface{}) {
+	gatewayClass := obj.(*v1alpha2.GatewayClass)
+	c.workqueue.Add(&types.Event{
+		Type:      types.EventDelete,
+		Object:    gatewayClass.Name,
+		Tombstone: gatewayClass,
+	})
+}

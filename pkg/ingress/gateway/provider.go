@@ -19,6 +19,7 @@ package gateway
 
 import (
 	"context"
+	"sync"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -43,6 +44,9 @@ const (
 
 type Provider struct {
 	name string
+
+	gatewayNamesLock sync.RWMutex
+	gatewayNames     map[string]struct{}
 
 	*ProviderOptions
 	gatewayClient gatewayclientset.Interface
@@ -146,4 +150,26 @@ func (p *Provider) Run(ctx context.Context) {
 	})
 
 	e.Wait()
+}
+
+func (p *Provider) AddGatewayClass(name string) {
+	p.gatewayNamesLock.Lock()
+	defer p.gatewayNamesLock.Unlock()
+
+	p.gatewayNames[name] = struct{}{}
+
+}
+func (p *Provider) RemoveGatewayClass(name string) {
+	p.gatewayNamesLock.Lock()
+	defer p.gatewayNamesLock.Unlock()
+
+	delete(p.gatewayNames, name)
+}
+
+func (p *Provider) HasGatewayClass(name string) bool {
+	p.gatewayNamesLock.RLock()
+	defer p.gatewayNamesLock.RUnlock()
+
+	_, ok := p.gatewayNames[name]
+	return ok
 }
