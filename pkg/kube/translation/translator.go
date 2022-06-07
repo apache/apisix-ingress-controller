@@ -108,6 +108,12 @@ type Translator interface {
 	// TranslatePluginConfigV2beta3NotStrictly translates the configv2beta3.ApisixPluginConfig object into several PluginConfig
 	// resources not strictly, only used for delete event.
 	TranslatePluginConfigV2beta3NotStrictly(*configv2beta3.ApisixPluginConfig) (*TranslateContext, error)
+	// TranslatePluginConfigV2 translates the configv2.ApisixPluginConfig object into several PluginConfig
+	// resources.
+	TranslatePluginConfigV2(*configv2.ApisixPluginConfig) (*TranslateContext, error)
+	// TranslatePluginConfigV2NotStrictly translates the configv2.ApisixPluginConfig object into several PluginConfig
+	// resources not strictly, only used for delete event.
+	TranslatePluginConfigV2NotStrictly(*configv2.ApisixPluginConfig) (*TranslateContext, error)
 	// ExtractKeyPair extracts certificate and private key pair from secret
 	// Supports APISIX style ("cert" and "key") and Kube style ("tls.crt" and "tls.key)
 	ExtractKeyPair(s *corev1.Secret, hasPrivateKey bool) ([]byte, []byte, error)

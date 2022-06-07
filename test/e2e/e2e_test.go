@@ -18,7 +18,7 @@ package e2e
 import (
 	"testing"
 
-	"github.com/onsi/ginkgo"
+	ginkgo "github.com/onsi/ginkgo/v2"
 )
 
 func TestRunE2E(t *testing.T) {
