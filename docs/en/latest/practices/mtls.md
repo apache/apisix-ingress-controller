@@ -88,7 +88,7 @@ It should output:
 
 Before configuring SSL, we must have certificates. Certificates often authorized by certificate provider, which also known as Certification Authority (CA).
 
-You can use [OpenSSL](https://en.wikipedia.org/wiki/Openssl) to generate self-signed certificates for testing purposes. Some pre-generated certificates for this guide are [here](./mtls).
+You can use [OpenSSL](https://en.wikipedia.org/wiki/Openssl) to generate self-signed certificates for testing purposes. Some pre-generated certificates for this guide are [here](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/practices/mtls).
 
 - `ca.pem`: The root CA.
 - `server.pem` and `server.key`: Server certificate used to enable SSL (https). Contains correct `subjectAltName` matches domain `mtls.httpbin.local`.

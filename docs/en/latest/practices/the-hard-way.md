@@ -200,7 +200,7 @@ data:
       dns_resolver_valid: 30
       resolver_timeout: 5
 
-    nginx_config:                     # config for render the template to genarate nginx.conf
+    nginx_config:                     # config for render the template to generate nginx.conf
       error_log: "/dev/stderr"
       error_log_level: "warn"         # warn,error
       worker_rlimit_nofile: 20480     # the number of files a worker process can open, should be larger than worker_connections
