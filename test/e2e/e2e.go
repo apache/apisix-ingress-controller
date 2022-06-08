@@ -20,6 +20,7 @@ import (
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-config"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-endpoints"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-features"
+	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-gateway"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-ingress"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-plugins"
 )

@@ -89,6 +89,8 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 		return err
 	}
 
+	log.Debugw("sync HTTPRoute", zap.String("key", key))
+
 	httpRoute, err := c.controller.gatewayHttpRouteLister.HTTPRoutes(namespace).Get(name)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
@@ -207,6 +209,7 @@ func (c *gatewayHTTPRouteController) onAdd(obj interface{}) {
 		zap.Any("object", obj),
 	)
 
+	log.Debugw("add HTTPRoute", zap.String("key", key))
 	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,

@@ -15,6 +15,9 @@
 package kube
 
 import (
+	"errors"
+
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -22,6 +25,8 @@ import (
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	listersdiscoveryv1 "k8s.io/client-go/listers/discovery/v1"
 	"k8s.io/client-go/tools/cache"
+
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
 type HostPort struct {
@@ -53,8 +58,15 @@ func (lister *endpointLister) GetEndpoint(namespace, name string) (Endpoint, err
 	if err != nil {
 		return nil, err
 	}
+	if ep == nil {
+		log.Warnw("get endpoints but found nil",
+			zap.String("namespace", namespace),
+			zap.String("name", name),
+		)
+	}
 	return &endpoint{
-		endpoint: ep,
+		endpointType: endpointTypeEndpoints,
+		endpoint:     ep,
 	}, nil
 }
 
@@ -69,7 +81,15 @@ func (lister *endpointLister) GetEndpointSlices(namespace, svcName string) (Endp
 	if err != nil {
 		return nil, err
 	}
+	if len(eps) == 0 {
+		log.Warnw("get endpoint slices but found empty slice",
+			zap.String("namespace", namespace),
+			zap.String("service", svcName),
+			zap.Any("selector", selector),
+		)
+	}
 	return &endpoint{
+		endpointType:   endpointTypeEndpointSlices,
 		endpointSlices: eps,
 	}, nil
 }
@@ -79,12 +99,20 @@ type Endpoint interface {
 	// ServiceName returns the corresponding service owner of this endpoint.
 	ServiceName() string
 	// Namespace returns the residing namespace.
-	Namespace() string
+	Namespace() (string, error)
 	// Endpoints returns the corresponding endpoints which matches the ServicePort.
 	Endpoints(port *corev1.ServicePort) []HostPort
 }
 
+type endpointType string
+
+const (
+	endpointTypeEndpoints      endpointType = "Endpoint"
+	endpointTypeEndpointSlices endpointType = "EndpointSlices"
+)
+
 type endpoint struct {
+	endpointType   endpointType
 	endpoint       *corev1.Endpoints
 	endpointSlices []*discoveryv1.EndpointSlice
 }
@@ -96,11 +124,22 @@ func (e *endpoint) ServiceName() string {
 	return e.endpointSlices[0].Labels[discoveryv1.LabelServiceName]
 }
 
-func (e *endpoint) Namespace() string {
-	if e.endpoint != nil {
-		return e.endpoint.Namespace
+func (e *endpoint) Namespace() (string, error) {
+	switch e.endpointType {
+	case endpointTypeEndpointSlices:
+		if len(e.endpointSlices) > 0 {
+			return e.endpointSlices[0].Namespace, nil
+		} else {
+			return "", errors.New("endpoint slice is empty")
+		}
+	case endpointTypeEndpoints:
+		if e.endpoint != nil {
+			return e.endpoint.Namespace, nil
+		} else {
+			return "", errors.New("endpoint is nil")
+		}
 	}
-	return e.endpointSlices[0].Namespace
+	return "", errors.New("unknown endpoint type " + string(e.endpointType))
 }
 
 func (e *endpoint) Endpoints(svcPort *corev1.ServicePort) []HostPort {
@@ -171,13 +210,15 @@ func NewEndpointListerAndInformer(factory informers.SharedInformerFactory, useEn
 // NewEndpoint creates an Endpoint which entity is Kubernetes Endpoints.
 func NewEndpoint(ep *corev1.Endpoints) Endpoint {
 	return &endpoint{
-		endpoint: ep,
+		endpointType: endpointTypeEndpoints,
+		endpoint:     ep,
 	}
 }
 
 // NewEndpointWithSlice creates an Endpoint which entity is Kubernetes EndpointSlices.
 func NewEndpointWithSlice(ep *discoveryv1.EndpointSlice) Endpoint {
 	return &endpoint{
+		endpointType:   endpointTypeEndpointSlices,
 		endpointSlices: []*discoveryv1.EndpointSlice{ep},
 	}
 }

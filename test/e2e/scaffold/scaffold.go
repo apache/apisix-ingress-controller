@@ -19,6 +19,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -54,12 +55,14 @@ type Options struct {
 	APISIXRouteVersion         string
 	APISIXTlsVersion           string
 	APISIXConsumerVersion      string
+	ApisixPluginConfigVersion  string
 	APISIXClusterConfigVersion string
 	APISIXAdminAPIKey          string
 	EnableWebhooks             bool
 	APISIXPublishAddress       string
 	disableNamespaceSelector   bool
 	ApisixResourceSyncInterval string
+	EnableGatewayAPI           bool
 }
 
 type Scaffold struct {
@@ -116,6 +119,9 @@ func NewScaffold(o *Options) *Scaffold {
 	if o.APISIXConsumerVersion == "" {
 		o.APISIXConsumerVersion = config.ApisixV2beta3
 	}
+	if o.ApisixPluginConfigVersion == "" {
+		o.ApisixPluginConfigVersion = config.ApisixV2beta3
+	}
 	if o.APISIXClusterConfigVersion == "" {
 		o.APISIXClusterConfigVersion = config.ApisixV2beta3
 	}
@@ -149,9 +155,11 @@ func NewDefaultScaffold() *Scaffold {
 		APISIXRouteVersion:         kube.ApisixRouteV2beta3,
 		APISIXTlsVersion:           config.ApisixV2beta3,
 		APISIXConsumerVersion:      config.ApisixV2beta3,
+		ApisixPluginConfigVersion:  config.ApisixV2beta3,
 		APISIXClusterConfigVersion: config.ApisixV2beta3,
 		EnableWebhooks:             false,
 		APISIXPublishAddress:       "",
+		EnableGatewayAPI:           true,
 	}
 	return NewScaffold(opts)
 }
@@ -167,9 +175,11 @@ func NewDefaultV2Scaffold() *Scaffold {
 		APISIXRouteVersion:         kube.ApisixRouteV2,
 		APISIXTlsVersion:           config.ApisixV2,
 		APISIXConsumerVersion:      config.ApisixV2,
+		ApisixPluginConfigVersion:  config.ApisixV2,
 		APISIXClusterConfigVersion: config.ApisixV2,
 		EnableWebhooks:             false,
 		APISIXPublishAddress:       "",
+		EnableGatewayAPI:           true,
 	}
 	return NewScaffold(opts)
 }
@@ -535,4 +545,13 @@ func generateWebhookCert(ns string) error {
 	}
 
 	return nil
+}
+
+func (s *Scaffold) CreateVersionedApisixPluginConfig(yml string) error {
+	if !strings.Contains(yml, "kind: ApisixPluginConfig") {
+		return errors.New("not a ApisixPluginConfig")
+	}
+
+	ac := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
+	return s.CreateResourceFromString(ac)
 }
