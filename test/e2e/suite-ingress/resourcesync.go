@@ -74,7 +74,7 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-  name: ingress-v1
+  name: ingress-route
 spec:
   rules:
   - host: local.httpbin.org
