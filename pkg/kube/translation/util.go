@@ -263,7 +263,7 @@ func validateRemoteAddrs(remoteAddrs []string) error {
 }
 
 func truncate(s string, max int) string {
-	if max > len(s) {
+	if max > len(s) || max < 0 {
 		return s
 	}
 	return s[:max]

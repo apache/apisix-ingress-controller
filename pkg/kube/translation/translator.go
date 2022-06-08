@@ -234,7 +234,7 @@ func (t *translator) TranslateUpstream(namespace, name, subset string, port int3
 func (t *translator) TranslateUpstreamNodes(endpoint kube.Endpoint, port int32, labels types.Labels) (apisixv1.UpstreamNodes, error) {
 	namespace, err := endpoint.Namespace()
 	if err != nil {
-		log.Warnw("failed to get endpoint namespace",
+		log.Errorw("failed to get endpoint namespace",
 			zap.Error(err),
 			zap.Any("endpoint", endpoint),
 		)

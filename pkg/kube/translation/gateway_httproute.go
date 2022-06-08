@@ -88,6 +88,8 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 			}
 			name := apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port))
 
+			// APISIX limits max length of label value
+			// https://github.com/apache/apisix/blob/5b95b85faea3094d5e466ee2d39a52f1f805abbb/apisix/schema_def.lua#L85
 			ups.Labels["meta_namespace"] = truncate(ns, 64)
 			ups.Labels["meta_backend"] = truncate(string(backend.Name), 64)
 			ups.Labels["meta_port"] = fmt.Sprintf("%v", int32(*backend.Port))
