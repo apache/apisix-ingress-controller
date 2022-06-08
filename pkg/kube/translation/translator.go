@@ -17,6 +17,7 @@ package translation
 import (
 	"fmt"
 
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
@@ -27,6 +28,7 @@ import (
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -230,7 +232,14 @@ func (t *translator) TranslateUpstream(namespace, name, subset string, port int3
 }
 
 func (t *translator) TranslateUpstreamNodes(endpoint kube.Endpoint, port int32, labels types.Labels) (apisixv1.UpstreamNodes, error) {
-	namespace := endpoint.Namespace()
+	namespace, err := endpoint.Namespace()
+	if err != nil {
+		log.Errorw("failed to get endpoint namespace",
+			zap.Error(err),
+			zap.Any("endpoint", endpoint),
+		)
+		return nil, err
+	}
 	svcName := endpoint.ServiceName()
 	svc, err := t.ServiceLister.Services(namespace).Get(svcName)
 	if err != nil {
