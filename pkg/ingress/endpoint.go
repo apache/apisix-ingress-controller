@@ -95,9 +95,10 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 	}
 	if ev.Type == types.EventDelete {
 		clusterName := c.controller.cfg.APISIX.DefaultClusterName
-		err := c.controller.apisix.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx, &v1.UpstreamServiceRelation{
-			ServiceName: ep.Namespace() + "_" + ep.ServiceName(),
-		})
+		err := c.controller.apisix.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx,
+			&v1.UpstreamServiceRelation{
+				ServiceName: ep.Namespace() + "_" + ep.ServiceName(),
+			})
 		if err != nil {
 			return err
 		}
