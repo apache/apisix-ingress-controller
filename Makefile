@@ -38,7 +38,7 @@ VERSYM="github.com/apache/apisix-ingress-controller/pkg/version._buildVersion"
 GITSHASYM="github.com/apache/apisix-ingress-controller/pkg/version._buildGitRevision"
 BUILDOSSYM="github.com/apache/apisix-ingress-controller/pkg/version._buildOS"
 GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH)"
-E2E_CONCURRENCY ?= 1
+E2E_CONCURRENCY ?= 2
 E2E_SKIP_BUILD ?= 0
 
 ### build:                Build apisix-ingress-controller
@@ -71,7 +71,7 @@ e2e-test: ginkgo-check push-images
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
-		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_CONCURRENCY) --focus=$(E2E_FOCUS)
+		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=1 --focus=$(E2E_FOCUS)
 
 ### e2e-test-local:        Run e2e test cases (kind is required)
 .PHONY: e2e-test-local
