@@ -76,3 +76,13 @@ kubectl get crd apisixroutes.apisix.apache.org -o jsonpath='{ .spec.versions[*].
 If you can not find `v2beta3` in `ApisixRoute` definition file. Please apply the latest version of `ApisixRoute`.
 
 Ref to FAQ #7.
+
+### 9. Modify the Admin API key in APISIX-Ingress
+
+Usually, you need to modify the Admin API key to protect Apache APISIX. Please refer to this [link](https://apisix.apache.org/docs/apisix/how-to-build/#updating-admin-api-key) to simply change Apache APISIX.
+
+However, in apisix-ingress-controller, if we need to change the Admin API key, we also need to change the Admin API key in apisix-ingress-controller. There are two different ways to implement the requirements here.
+
+For the first method, we need to modify the Admin API credentials values in both the `apisix/values.yaml` and `apisix/apisix-ingress-controller/values.yaml` files. You can refer to these two links(apisix's [values.yaml](https://github.com/apache/apisix-helm-chart/blob/57cdbe461765cd49af2195cc6a1976cc55262e9b/charts/apisix/values.yaml#L181) && apisix-ingress-controller's [values.yaml](https://github.com/apache/apisix-helm-chart/blob/57cdbe461765cd49af2195cc6a1976cc55262e9b/charts/apisix-ingress-controller/values.yaml#L128)).
+
+Another method, you can just pass `--set ingress-controller.config.apisix.adminKey=<Your new admin key> --set admin.credentials.admin=<Your new admin key>`  to `helm install` command.
