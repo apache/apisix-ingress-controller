@@ -65,7 +65,7 @@ const (
 	// _messageResourceFailed is used to report error
 	_messageResourceFailed = "%s synced failed, with error: %s"
 	// ingress sync to apsix mininum interval
-	_mininumApisixCacheSyncInterval = 60 * time.Second
+	_mininumApisixResourceSyncInterval = 60 * time.Second
 )
 
 // Controller is the ingress apisix controller object.
@@ -610,7 +610,7 @@ func (c *Controller) run(ctx context.Context) {
 	})
 
 	c.goAttach(func() {
-		c.resourceSyncLoop(ctx, c.cfg.ApisixCacheSyncInterval.Duration)
+		c.resourceSyncLoop(ctx, c.cfg.ApisixResourceSyncInterval.Duration)
 	})
 	c.MetricsCollector.ResetLeader(true)
 
@@ -807,8 +807,8 @@ func (c *Controller) syncResourceAll() {
 
 func (c *Controller) resourceSyncLoop(ctx context.Context, interval time.Duration) {
 	// The interval shall not be less than 60 seconds.
-	if interval < _mininumApisixCacheSyncInterval {
-		interval = _mininumApisixCacheSyncInterval
+	if interval < _mininumApisixResourceSyncInterval {
+		interval = _mininumApisixResourceSyncInterval
 	}
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()

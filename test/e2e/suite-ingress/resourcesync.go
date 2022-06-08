@@ -29,13 +29,13 @@ import (
 
 var _ = ginkgo.Describe("suite-ingress: apisix resource sync", func() {
 	opts := &scaffold.Options{
-		Name:                    "default",
-		Kubeconfig:              scaffold.GetKubeconfig(),
-		APISIXConfigPath:        "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas:   1,
-		HTTPBinServicePort:      80,
-		APISIXRouteVersion:      "apisix.apache.org/v2beta3",
-		ApisixCacheSyncInterval: "60s",
+		Name:                       "default",
+		Kubeconfig:                 scaffold.GetKubeconfig(),
+		APISIXConfigPath:           "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas:      1,
+		HTTPBinServicePort:         80,
+		APISIXRouteVersion:         "apisix.apache.org/v2beta3",
+		ApisixResourceSyncInterval: "60s",
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.JustBeforeEach(func() {
