@@ -171,7 +171,7 @@ type ApisixRouteHTTPPluginConfig map[string]interface{}
 type ApisixRouteAuthentication struct {
 	Enable  bool                             `json:"enable" yaml:"enable"`
 	Type    string                           `json:"type" yaml:"type"`
-	KeyAuth ApisixRouteAuthenticationKeyAuth `json:"keyauth,omitempty" yaml:"keyauth,omitempty"`
+	KeyAuth ApisixRouteAuthenticationKeyAuth `json:"keyAuth,omitempty" yaml:"keyAuth,omitempty"`
 	JwtAuth ApisixRouteAuthenticationJwtAuth `json:"jwtAuth,omitempty" yaml:"jwtAuth,omitempty"`
 }
 
