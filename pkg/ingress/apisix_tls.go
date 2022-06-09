@@ -365,7 +365,7 @@ func (c *apisixTlsController) ResourceSync() {
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
-			log.Errorf("ApisixTls sync failed, found ApisixTls object with bad namespace/name: %s, ignore it", err)
+			log.Errorw("ApisixTls sync failed, found ApisixTls object with bad namespace/name ignore it", zap.String("error", err.Error()))
 			continue
 		}
 		if !c.controller.isWatchingNamespace(key) {

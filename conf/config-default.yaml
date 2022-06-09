@@ -44,7 +44,7 @@ ingress_status_address: []   # when there is no available information on the Ser
                              # For example, no available LB exists in the bare metal environment.
 enable_profiling: true # enable profiling via web interfaces
                        # host:port/debug/pprof, default is true.
-apisix-resource-sync-interval: "300s" # The Kubernetes resources sync to apisix default interval time.
+apisix-resource-sync-interval: "300s" # Default interval for synchronizing Kubernetes resources to APISIX
 # Kubernetes related configurations.
 kubernetes:
   kubeconfig: ""                       # the Kubernetes configuration file path, default is

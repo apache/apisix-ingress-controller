@@ -35,7 +35,7 @@ data:
    http_listen: ":8080"   # the HTTP Server listen address, default is ":8080"
    enable_profiling: true # enable profiling via web interfaces
                           # host:port/debug/pprof, default is true.
-   apisix-resource-sync-interval: 300s # Ingress sync to apisix default interval time.
+   apisix-resource-sync-interval: 300s # Default interval for synchronizing Kubernetes resources to APISIX
    # Kubernetes related configurations.
    kubernetes:
      kubeconfig: ""         # the Kubernetes configuration file path, default is

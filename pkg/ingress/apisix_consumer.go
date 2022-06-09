@@ -324,7 +324,7 @@ func (c *apisixConsumerController) ResourceSync() {
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
-			log.Errorf("ApisixConsumer sync failed, found ApisixConsumer resource with bad meta namespace key: %s", err)
+			log.Errorw("ApisixConsumer sync failed, found ApisixConsumer resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
 		if !c.controller.isWatchingNamespace(key) {
@@ -332,7 +332,7 @@ func (c *apisixConsumerController) ResourceSync() {
 		}
 		ac, err := kube.NewApisixConsumer(obj)
 		if err != nil {
-			log.Errorw("found ApisixConsumer resource with bad type", zap.Error(err))
+			log.Errorw("found ApisixConsumer resource with bad type", zap.String("error", err.Error()))
 			return
 		}
 		c.workqueue.Add(&types.Event{

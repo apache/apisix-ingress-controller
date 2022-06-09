@@ -454,7 +454,7 @@ func (c *apisixRouteController) ResourceSync() {
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
-			log.Errorf("ApisixRoute sync failed, found ApisixRoute resource with bad meta namespace key: %s", err)
+			log.Errorw("ApisixRoute sync failed, found ApisixRoute resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
 		if !c.controller.isWatchingNamespace(key) {

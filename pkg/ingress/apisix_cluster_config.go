@@ -409,7 +409,7 @@ func (c *apisixClusterConfigController) ResourceSync() {
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
-			log.Errorf("ApisixClusterConfig sync failed, found ApisixClusterConfig resource with bad meta namespace key: %s", err)
+			log.Errorw("ApisixClusterConfig sync failed, found ApisixClusterConfig resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
 		if !c.controller.isWatchingNamespace(key) {
@@ -417,7 +417,7 @@ func (c *apisixClusterConfigController) ResourceSync() {
 		}
 		acc, err := kube.NewApisixClusterConfig(obj)
 		if err != nil {
-			log.Errorw("found ApisixClusterConfig resource with bad type", zap.Error(err))
+			log.Errorw("found ApisixClusterConfig resource with bad type", zap.String("error", err.Error()))
 			return
 		}
 		c.workqueue.Add(&types.Event{

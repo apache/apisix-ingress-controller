@@ -307,7 +307,7 @@ func (c *apisixUpstreamController) ResourceSync() {
 	for _, clusterConfig := range clusterConfigs {
 		key, err := cache.MetaNamespaceKeyFunc(clusterConfig)
 		if err != nil {
-			log.Errorf("ApisixUpstream sync failed, found ApisixUpstream resource with bad meta namespace key: %s", err)
+			log.Errorw("ApisixUpstream sync failed, found ApisixUpstream resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
 		if !c.controller.isWatchingNamespace(key) {

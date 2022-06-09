@@ -408,7 +408,7 @@ func (c *ingressController) ResourceSync() {
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
-			log.Errorf("found ApisixConsumer resource with bad meta namespace key: %s", err)
+			log.Errorw("found ApisixConsumer resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
 		if !c.controller.isWatchingNamespace(key) {

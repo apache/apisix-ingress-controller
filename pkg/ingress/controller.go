@@ -64,7 +64,7 @@ const (
 	_resourceSyncAborted = "ResourceSyncAborted"
 	// _messageResourceFailed is used to report error
 	_messageResourceFailed = "%s synced failed, with error: %s"
-	// ingress sync to apsix mininum interval
+	// minimum interval for ingress sync to APISIX
 	_mininumApisixResourceSyncInterval = 60 * time.Second
 )
 
@@ -775,7 +775,7 @@ func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.
 	}
 }
 
-func (c *Controller) syncResourceAll() {
+func (c *Controller) syncAllResources() {
 	wg := sync.WaitGroup{}
 	goAttach := func(handler func()) {
 		wg.Add(1)
@@ -811,6 +811,9 @@ func (c *Controller) syncResourceAll() {
 func (c *Controller) resourceSyncLoop(ctx context.Context, interval time.Duration) {
 	// The interval shall not be less than 60 seconds.
 	if interval < _mininumApisixResourceSyncInterval {
+		log.Warnw("The apisix-resource-sync-interval shall not be less than 60 seconds.",
+			zap.String("apisix-resource-sync-interval", interval.String()),
+		)
 		interval = _mininumApisixResourceSyncInterval
 	}
 	ticker := time.NewTicker(interval)
@@ -818,7 +821,7 @@ func (c *Controller) resourceSyncLoop(ctx context.Context, interval time.Duratio
 	for {
 		select {
 		case <-ticker.C:
-			c.syncResourceAll()
+			c.syncAllResources()
 			continue
 		case <-ctx.Done():
 			return

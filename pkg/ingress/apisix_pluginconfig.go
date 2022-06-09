@@ -372,7 +372,7 @@ func (c *apisixPluginConfigController) ResourceSync() {
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
-			log.Errorf("ApisixPluginConfig sync failed, found ApisixPluginConfig resource with bad meta namespace key: %s", err)
+			log.Errorw("ApisixPluginConfig sync failed, found ApisixPluginConfig resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
 		if !c.controller.isWatchingNamespace(key) {
