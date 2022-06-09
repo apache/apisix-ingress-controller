@@ -184,12 +184,12 @@ spec:
 
 The above `ApisixRoute` has one route rule, which contains two backends `foo` and `bar`, the weight ratio is `100:50`,
 which means `2/3` requests (with `GET` method and `User-Agent` matching regex pattern `.*Chrome.*`) will be sent to service `foo` and `1/3` requests
-will be proxied to serivce `bar`.
+will be proxied to service `bar`.
 
 Plugins
 -------
 
-Apache APISIX provides more than 40 [plugins](https://github.com/apache/apisix/tree/master/docs/en/latest/plugins), which can be used
+Apache APISIX provides more than 70 [plugins](https://github.com/apache/apisix/tree/master/docs/en/latest/plugins), which can be used
 in `ApisixRoute`. All configuration items are named same to the one in APISIX.
 
 ```yaml
