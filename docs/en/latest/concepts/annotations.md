@@ -141,7 +141,7 @@ You can use the follow annotations to enable path regular expression
   
 If this annotations set to `true` and the `PathType` set to `ImplementationSpecific`, the path will be match as regular expression.
 
-For example, the follwing Ingress. Request path with `/api/*/action1` will use `service1` and `/api/*/action2` will be use `service2`
+For example, the following Ingress. Request path with `/api/*/action1` will use `service1` and `/api/*/action2` will be use `service2`
 
 ```yaml
 apiVersion: networking.k8s.io/v1
