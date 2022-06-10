@@ -112,9 +112,9 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 		}
 		gateway = ev.Tombstone.(*gatewayv1alpha2.Gateway)
 	} else {
-		if c.controller.HasGatewayClass(string(gateway.Spec.GatewayClassName)) {
-			// TODO: Translate listeners
-		}
+		//if c.controller.HasGatewayClass(string(gateway.Spec.GatewayClassName)) {
+		//	// TODO: Translate listeners
+		//}
 	}
 
 	// TODO The current implementation does not fully support the definition of Gateway.
@@ -122,7 +122,7 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 	// At present, we choose to directly update `GatewayStatus.Addresses`
 	// to indicate that we have picked the Gateway resource.
 
-	c.recordStatus(gateway, string(gatewayv1alpha2.ListenerReasonReady), nil, metav1.ConditionTrue, gateway.Generation)
+	c.recordStatus(gateway, string(gatewayv1alpha2.ListenerReasonReady), metav1.ConditionTrue, gateway.Generation)
 	return nil
 }
 
@@ -171,7 +171,7 @@ func (c *gatewayController) onUpdate(oldObj, newObj interface{}) {}
 func (c *gatewayController) OnDelete(obj interface{})            {}
 
 // recordStatus record resources status
-func (c *gatewayController) recordStatus(v *gatewayv1alpha2.Gateway, reason string, err error, status metav1.ConditionStatus, generation int64) {
+func (c *gatewayController) recordStatus(v *gatewayv1alpha2.Gateway, reason string, status metav1.ConditionStatus, generation int64) {
 	v = v.DeepCopy()
 
 	gatewayCondition := metav1.Condition{
