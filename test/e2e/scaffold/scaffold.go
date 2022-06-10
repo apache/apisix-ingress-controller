@@ -520,10 +520,6 @@ func (s *Scaffold) DisableNamespaceSelector() {
 	s.opts.disableNamespaceSelector = true
 }
 
-func (s *Scaffold) EnableNamespaceSelector() {
-	s.opts.disableNamespaceSelector = false
-}
-
 func waitExponentialBackoff(condFunc func() (bool, error)) error {
 	backoff := wait.Backoff{
 		Duration: 500 * time.Millisecond,
