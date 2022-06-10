@@ -111,7 +111,7 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 			return nil
 		}
 		gateway = ev.Tombstone.(*gatewayv1alpha2.Gateway)
-	} else {
+		//} else {
 		//if c.controller.HasGatewayClass(string(gateway.Spec.GatewayClassName)) {
 		//	// TODO: Translate listeners
 		//}
