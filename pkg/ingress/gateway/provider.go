@@ -146,6 +146,10 @@ func (p *Provider) Run(ctx context.Context) {
 	})
 
 	e.Add(func() {
+		p.gatewayClassController.run(ctx)
+	})
+
+	e.Add(func() {
 		p.gatewayHTTPRouteController.run(ctx)
 	})
 
