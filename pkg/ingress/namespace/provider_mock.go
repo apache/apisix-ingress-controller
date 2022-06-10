@@ -19,28 +19,34 @@ package namespace
 
 import (
 	"context"
+	"k8s.io/client-go/tools/cache"
 )
 
 func NewMockWatchingProvider(namespaces []string) WatchingProvider {
 	return &mockWatchingProvider{
-		keys: namespaces,
+		namespaces: namespaces,
 	}
 }
 
 type mockWatchingProvider struct {
-	keys []string
+	namespaces []string
 }
 
 func (c *mockWatchingProvider) Run(ctx context.Context) {
 }
 
 func (c *mockWatchingProvider) WatchingNamespaces() []string {
-	return c.keys
+	return c.namespaces
 }
 
 func (c *mockWatchingProvider) IsWatchingNamespace(key string) (ok bool) {
-	for _, ns := range c.keys {
-		if ns == key {
+	ns, _, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		return false
+	}
+
+	for _, namespace := range c.namespaces {
+		if namespace == ns {
 			return true
 		}
 	}

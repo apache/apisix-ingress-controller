@@ -39,7 +39,7 @@ import (
 
 type WatchingProvider interface {
 	Run(ctx context.Context)
-	IsWatchingNamespace(ns string) bool
+	IsWatchingNamespace(key string) bool
 	WatchingNamespaces() []string
 }
 
