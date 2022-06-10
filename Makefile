@@ -38,7 +38,7 @@ VERSYM="github.com/apache/apisix-ingress-controller/pkg/version._buildVersion"
 GITSHASYM="github.com/apache/apisix-ingress-controller/pkg/version._buildGitRevision"
 BUILDOSSYM="github.com/apache/apisix-ingress-controller/pkg/version._buildOS"
 GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH)"
-E2E_CONCURRENCY ?= 1
+E2E_CONCURRENCY ?= 2
 E2E_SKIP_BUILD ?= 0
 
 ### build:                Build apisix-ingress-controller
