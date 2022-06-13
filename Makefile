@@ -16,10 +16,11 @@
 #
 default: help
 
-VERSION ?= 1.4.0
+VERSION ?= 1.4.1
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 REGISTRY ?="localhost:5000"
 IMAGE_TAG ?= dev
+ENABLE_PROXY ?= true
 
 GITSHA ?= "no-git-module"
 ifneq ("$(wildcard .git)", "")
@@ -67,10 +68,11 @@ unit-test:
 .PHONY: e2e-test
 e2e-test: ginkgo-check push-images
 	kubectl apply -k $(PWD)/samples/deploy/crd
+	kubectl apply -f $(PWD)/samples/deploy/gateway-api
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
-		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace --nodes=$(E2E_CONCURRENCY)
+		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_CONCURRENCY) --focus=$(E2E_FOCUS)
 
 ### e2e-test-local:        Run e2e test cases (kind is required)
 .PHONY: e2e-test-local
@@ -79,16 +81,24 @@ e2e-test-local: kind-up e2e-test
 .PHONY: ginkgo-check
 ginkgo-check:
 ifeq ("$(wildcard $(GINKGO))", "")
-	@echo "ERROR: Need to install ginkgo first, run: go get -u github.com/onsi/ginkgo/ginkgo"
+	@echo "ERROR: Need to install ginkgo first, run: go get -u github.com/onsi/ginkgo/v2/ginkgo@v2.1.4 or go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo@v2.1.4"
 	exit 1
 endif
+
+
+### push-ingress-images:  Build and push Ingress image used in e2e test suites to kind or custom registry.
+.PHONY: push-ingress-images
+push-ingress-images:
+	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
+	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 
 ### push-images:  Push images used in e2e test suites to kind or custom registry.
 .PHONY: push-images
 push-images:
 ifeq ($(E2E_SKIP_BUILD), 0)
-	docker pull apache/apisix:2.12.0-alpine
-	docker tag apache/apisix:2.12.0-alpine $(REGISTRY)/apache/apisix:dev
+	docker pull apache/apisix:2.13.1-alpine
+	docker tag apache/apisix:2.13.1-alpine $(REGISTRY)/apache/apisix:dev
 	docker push $(REGISTRY)/apache/apisix:dev
 
 	docker pull bitnami/etcd:3.4.14-debian-10-r0
@@ -99,11 +109,11 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker tag kennethreitz/httpbin $(REGISTRY)/kennethreitz/httpbin
 	docker push $(REGISTRY)/kennethreitz/httpbin
 
-	docker build -t test-backend:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true ./test/e2e/testbackend
+	docker build -t test-backend:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) ./test/e2e/testbackend
 	docker tag test-backend:$(IMAGE_TAG) $(REGISTRY)/test-backend:$(IMAGE_TAG)
 	docker push $(REGISTRY)/test-backend:$(IMAGE_TAG)
 
-	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true .
+	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 
@@ -203,3 +213,8 @@ update-gofmt:
 ### update-all:           Update all update- rules.
 .PHONY: update-all
 update-all: update-codegen update-license update-mdlint update-gofmt
+
+### e2e-names-check:          Check if e2e test cases' names have the prefix "suite-<suite-name>".
+.PHONY: e2e-names-check
+e2e-names-check:
+	chmod +x ./utils/check-e2e-names.sh && ./utils/check-e2e-names.sh

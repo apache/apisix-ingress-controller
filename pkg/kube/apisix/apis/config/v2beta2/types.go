@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 )
 
 // +genclient
@@ -66,10 +66,10 @@ type ApisixRouteHTTP struct {
 	// Backends represents potential backends to proxy after the route
 	// rule matched. When number of backends are more than one, traffic-split
 	// plugin in APISIX will be used to split traffic based on the backend weight.
-	Backends       []v2beta3.ApisixRouteHTTPBackend `json:"backends,omitempty" yaml:"backends,omitempty"`
-	Websocket      bool                             `json:"websocket" yaml:"websocket"`
-	Plugins        []ApisixRouteHTTPPlugin          `json:"plugins,omitempty" yaml:"plugins,omitempty"`
-	Authentication ApisixRouteAuthentication        `json:"authentication,omitempty" yaml:"authentication,omitempty"`
+	Backends       []v2.ApisixRouteHTTPBackend `json:"backends,omitempty" yaml:"backends,omitempty"`
+	Websocket      bool                        `json:"websocket" yaml:"websocket"`
+	Plugins        []ApisixRouteHTTPPlugin     `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Authentication ApisixRouteAuthentication   `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
 // ApisixRouteHTTPMatch represents the match condition for hitting this route.
@@ -99,7 +99,7 @@ type ApisixRouteHTTPMatch struct {
 	//     value:
 	//       - "127.0.0.1"
 	//       - "10.0.5.11"
-	NginxVars []v2beta3.ApisixRouteHTTPMatchExpr `json:"exprs,omitempty" yaml:"exprs,omitempty"`
+	NginxVars []v2.ApisixRouteHTTPMatchExpr `json:"exprs,omitempty" yaml:"exprs,omitempty"`
 }
 
 // ApisixRouteHTTPMatchExprSubject describes the route match expression subject.
@@ -132,7 +132,7 @@ type ApisixRouteHTTPPluginConfig map[string]interface{}
 type ApisixRouteAuthentication struct {
 	Enable  bool                             `json:"enable" yaml:"enable"`
 	Type    string                           `json:"type" yaml:"type"`
-	KeyAuth ApisixRouteAuthenticationKeyAuth `json:"keyauth,omitempty" yaml:"keyauth,omitempty"`
+	KeyAuth ApisixRouteAuthenticationKeyAuth `json:"keyAuth,omitempty" yaml:"keyAuth,omitempty"`
 }
 
 // ApisixRouteAuthenticationKeyAuth is the keyAuth-related

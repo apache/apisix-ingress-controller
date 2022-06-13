@@ -28,6 +28,10 @@ var (
 		annotations.NewIPRestrictionHandler(),
 		annotations.NewRewriteHandler(),
 		annotations.NewRedirectHandler(),
+		annotations.NewForwardAuthHandler(),
+		annotations.NewBasicAuthHandler(),
+		annotations.NewKeyAuthHandler(),
+		annotations.NewCSRFHandler(),
 	}
 )
 

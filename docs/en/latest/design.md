@@ -59,7 +59,7 @@ Apache APISIX ingress for Kubernetes.
 
 ## CRD design
 
-Currently `apisix-ingress-controller` CRDs consist of 3 parts: ApisixRoute/ApisixUpstream. The design follows the following ideas.
+Currently `apisix-ingress-controller` CRDs consist of 6 parts: ApisixRoute/ApisixUpstream/ApisixConsumer/ApisixTls/ApisixClusterConfig/ApisixPluginConfig. The design follows the following ideas.
 
 1. The most important part of the gateway is the route part, which is used to define the distribution rules of the gateway traffics.
 2. In order to facilitate understanding and configuration, the design structure of `ApisixRoute` is basically similar to Kubernetes Ingress.

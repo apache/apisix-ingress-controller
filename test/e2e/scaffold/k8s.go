@@ -15,6 +15,7 @@
 package scaffold
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -31,7 +32,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/testing"
-	"github.com/onsi/ginkgo"
+	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -249,6 +250,50 @@ func (s *Scaffold) EnsureNumApisixPluginConfigCreated(desired int) error {
 		Path:   "/apisix/admin/plugin_configs",
 	}
 	return s.ensureNumApisixCRDsCreated(u.String(), desired)
+}
+
+// CreateApisixRouteByApisixAdmin create a route
+func (s *Scaffold) CreateApisixRouteByApisixAdmin(routeID string, body []byte) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/routes/" + routeID,
+	}
+	return s.ensureAdminOperationIsSuccessful(u.String(), "PUT", body)
+}
+
+// DeleteApisixRouteByApisixAdmin deletes a route by its route name in APISIX cluster.
+func (s *Scaffold) DeleteApisixRouteByApisixAdmin(routeID string) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/routes/" + routeID,
+	}
+	return s.ensureAdminOperationIsSuccessful(u.String(), "DELETE", nil)
+}
+
+func (s *Scaffold) ensureAdminOperationIsSuccessful(url, method string, body []byte) error {
+	condFunc := func() (bool, error) {
+		req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
+		if err != nil {
+			return false, err
+		}
+		if s.opts.APISIXAdminAPIKey != "" {
+			req.Header.Set("X-API-Key", s.opts.APISIXAdminAPIKey)
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			ginkgo.GinkgoT().Logf("failed to delete resources from APISIX: %s", err.Error())
+			return false, nil
+		}
+		if resp.StatusCode != http.StatusOK {
+			ginkgo.GinkgoT().Logf("got status code %d from APISIX", resp.StatusCode)
+			return false, nil
+		}
+		return true, nil
+	}
+	return wait.Poll(3*time.Second, 35*time.Second, condFunc)
 }
 
 // GetServerInfo collect server info from "/v1/server_info" (Control API) exposed by server-info plugin

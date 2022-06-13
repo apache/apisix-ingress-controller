@@ -85,7 +85,11 @@ func (c *endpointsController) run(ctx context.Context) {
 
 func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 	ep := ev.Object.(kube.Endpoint)
-	newestEp, err := c.controller.epLister.GetEndpoint(ep.Namespace(), ep.ServiceName())
+	ns, err := ep.Namespace()
+	if err != nil {
+		return err
+	}
+	newestEp, err := c.controller.epLister.GetEndpoint(ns, ep.ServiceName())
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return err

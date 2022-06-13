@@ -47,11 +47,11 @@ Meaning of each field in the spec of ApisixRoute are followed, the top level fie
 | http[].backends[].servicePort | integer or string | The backend service port, can be the port number or the name defined in the service object.
 | http[].backends[].resolveGranularity | string | See [Service Resolve Granularity](#service-resolve-granularity) for the details.
 | http[].backends[].weight | int | The backend weight, which is critical when shifting traffic between multiple backends, default is `100`. Weight is ignored when there is only one backend.
-| http[].backends[].subnet | string | Subset specifies a subset for the target Service. The subset should be pre-definedin ApisixUpstream about this service.
+| http[].backends[].subset | string | Subset specifies a subset for the target Service. The subset should be pre-definedin ApisixUpstream about this service.
 | http[].plugins | array | A series of APISIX plugins that will be executed once this route rule is matched |
 | http[].plugins[].name | string | The plugin name, see [docs](http://apisix.apache.org/docs/apisix/getting-started) for learning the available plugins.
-| http[].plugins[].enable | boolean | Whether the plugin is in use |
-| http[].plugins[].config | object | The plugin configuration, fields should be same as in APISIX. |
+| http[].plugins[].enable | boolean | Whether the plugin would be used |
+| http[].plugins[].config | object | The configuration of the plugin that must have the same fields as in APISIX. |
 | http[].websocket | boolean | Whether enable websocket proxy. |
 | stream | array | ApisixRoutes' stream route rules, which contains TCP or UDP rules.|
 | stream[].protocol | string (required) | The protocol of rule. Support `TCP` or `UDP`|

@@ -109,25 +109,28 @@ type Controller struct {
 	apisixUpstreamLister        listersv2beta3.ApisixUpstreamLister
 	apisixRouteLister           kube.ApisixRouteLister
 	apisixRouteInformer         cache.SharedIndexInformer
-	apisixTlsLister             listersv2beta3.ApisixTlsLister
+	apisixTlsLister             kube.ApisixTlsLister
 	apisixTlsInformer           cache.SharedIndexInformer
-	apisixClusterConfigLister   listersv2beta3.ApisixClusterConfigLister
+	apisixClusterConfigLister   kube.ApisixClusterConfigLister
 	apisixClusterConfigInformer cache.SharedIndexInformer
 	apisixConsumerInformer      cache.SharedIndexInformer
-	apisixConsumerLister        listersv2beta3.ApisixConsumerLister
+	apisixConsumerLister        kube.ApisixConsumerLister
 	apisixPluginConfigInformer  cache.SharedIndexInformer
 	apisixPluginConfigLister    kube.ApisixPluginConfigLister
 	gatewayInformer             cache.SharedIndexInformer
 	gatewayLister               gatewaylistersv1alpha2.GatewayLister
+	gatewayHttpRouteInformer    cache.SharedIndexInformer
+	gatewayHttpRouteLister      gatewaylistersv1alpha2.HTTPRouteLister
 
 	// resource controllers
-	namespaceController     *namespaceController
-	podController           *podController
-	endpointsController     *endpointsController
-	endpointSliceController *endpointSliceController
-	ingressController       *ingressController
-	secretController        *secretController
-	gatewayController       *gatewayController
+	namespaceController        *namespaceController
+	podController              *podController
+	endpointsController        *endpointsController
+	endpointSliceController    *endpointSliceController
+	ingressController          *ingressController
+	secretController           *secretController
+	gatewayController          *gatewayController
+	gatewayHTTPRouteController *gatewayHTTPRouteController
 
 	apisixUpstreamController      *apisixUpstreamController
 	apisixRouteController         *apisixRouteController
@@ -200,8 +203,12 @@ func NewController(cfg *config.Config) (*Controller, error) {
 
 func (c *Controller) initWhenStartLeading() {
 	var (
-		ingressInformer     cache.SharedIndexInformer
-		apisixRouteInformer cache.SharedIndexInformer
+		ingressInformer             cache.SharedIndexInformer
+		apisixRouteInformer         cache.SharedIndexInformer
+		apisixPluginConfigInformer  cache.SharedIndexInformer
+		apisixTlsInformer           cache.SharedIndexInformer
+		apisixClusterConfigInformer cache.SharedIndexInformer
+		apisixConsumerInformer      cache.SharedIndexInformer
 	)
 
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
@@ -221,13 +228,24 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixRouteLister = kube.NewApisixRouteLister(
 		apisixFactory.Apisix().V2beta2().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2().ApisixRoutes().Lister(),
 	)
 	c.apisixUpstreamLister = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister()
-	c.apisixTlsLister = apisixFactory.Apisix().V2beta3().ApisixTlses().Lister()
-	c.apisixClusterConfigLister = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister()
-	c.apisixConsumerLister = apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister()
+	c.apisixTlsLister = kube.NewApisixTlsLister(
+		apisixFactory.Apisix().V2beta3().ApisixTlses().Lister(),
+		apisixFactory.Apisix().V2().ApisixTlses().Lister(),
+	)
+	c.apisixClusterConfigLister = kube.NewApisixClusterConfigLister(
+		apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister(),
+		apisixFactory.Apisix().V2().ApisixClusterConfigs().Lister(),
+	)
+	c.apisixConsumerLister = kube.NewApisixConsumerLister(
+		apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister(),
+		apisixFactory.Apisix().V2().ApisixConsumers().Lister(),
+	)
 	c.apisixPluginConfigLister = kube.NewApisixPluginConfigLister(
 		apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+		apisixFactory.Apisix().V2().ApisixPluginConfigs().Lister(),
 	)
 
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
@@ -251,11 +269,54 @@ func (c *Controller) initWhenStartLeading() {
 	c.gatewayLister = gatewayFactory.Gateway().V1alpha2().Gateways().Lister()
 	c.gatewayInformer = gatewayFactory.Gateway().V1alpha2().Gateways().Informer()
 
+	c.gatewayHttpRouteLister = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Lister()
+	c.gatewayHttpRouteInformer = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Informer()
+
 	switch c.cfg.Kubernetes.ApisixRouteVersion {
 	case config.ApisixRouteV2beta2:
 		apisixRouteInformer = apisixFactory.Apisix().V2beta2().ApisixRoutes().Informer()
 	case config.ApisixRouteV2beta3:
 		apisixRouteInformer = apisixFactory.Apisix().V2beta3().ApisixRoutes().Informer()
+	case config.ApisixRouteV2:
+		apisixRouteInformer = apisixFactory.Apisix().V2().ApisixRoutes().Informer()
+	default:
+		panic(fmt.Errorf("unsupported ApisixRoute version %s", c.cfg.Kubernetes.ApisixRouteVersion))
+	}
+
+	switch c.cfg.Kubernetes.ApisixTlsVersion {
+	case config.ApisixV2beta3:
+		apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
+	case config.ApisixV2:
+		apisixTlsInformer = apisixFactory.Apisix().V2().ApisixTlses().Informer()
+	default:
+		panic(fmt.Errorf("unsupported ApisixTls version %s", c.cfg.Kubernetes.ApisixTlsVersion))
+	}
+
+	switch c.cfg.Kubernetes.ApisixClusterConfigVersion {
+	case config.ApisixV2beta3:
+		apisixClusterConfigInformer = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Informer()
+	case config.ApisixV2:
+		apisixClusterConfigInformer = apisixFactory.Apisix().V2().ApisixClusterConfigs().Informer()
+	default:
+		panic(fmt.Errorf("unsupported ApisixClusterConfig version %v", c.cfg.Kubernetes.ApisixClusterConfigVersion))
+	}
+
+	switch c.cfg.Kubernetes.ApisixConsumerVersion {
+	case config.ApisixRouteV2beta3:
+		apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
+	case config.ApisixRouteV2:
+		apisixConsumerInformer = apisixFactory.Apisix().V2().ApisixConsumers().Informer()
+	default:
+		panic(fmt.Errorf("unsupported ApisixConsumer version %v", c.cfg.Kubernetes.ApisixConsumerVersion))
+	}
+
+	switch c.cfg.Kubernetes.ApisixPluginConfigVersion {
+	case config.ApisixV2beta3:
+		apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
+	case config.ApisixV2:
+		apisixPluginConfigInformer = apisixFactory.Apisix().V2().ApisixPluginConfigs().Informer()
+	default:
+		panic(fmt.Errorf("unsupported ApisixPluginConfig version %v", c.cfg.Kubernetes.ApisixPluginConfigVersion))
 	}
 
 	c.namespaceInformer = kubeFactory.Core().V1().Namespaces().Informer()
@@ -264,11 +325,11 @@ func (c *Controller) initWhenStartLeading() {
 	c.ingressInformer = ingressInformer
 	c.apisixRouteInformer = apisixRouteInformer
 	c.apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
-	c.apisixClusterConfigInformer = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Informer()
+	c.apisixClusterConfigInformer = apisixClusterConfigInformer
 	c.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
-	c.apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
-	c.apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
-	c.apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
+	c.apisixTlsInformer = apisixTlsInformer
+	c.apisixConsumerInformer = apisixConsumerInformer
+	c.apisixPluginConfigInformer = apisixPluginConfigInformer
 
 	if c.cfg.Kubernetes.WatchEndpointSlices {
 		c.endpointSliceController = c.newEndpointSliceController()
@@ -286,6 +347,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixConsumerController = c.newApisixConsumerController()
 	c.apisixPluginConfigController = c.newApisixPluginConfigController()
 	c.gatewayController = c.newGatewayController()
+	c.gatewayHTTPRouteController = c.newGatewayHTTPRouteController()
 }
 
 // recorderEvent recorder events for resources
@@ -509,7 +571,15 @@ func (c *Controller) run(ctx context.Context) {
 		})
 
 		c.goAttach(func() {
+			c.gatewayHttpRouteInformer.Run(ctx.Done())
+		})
+
+		c.goAttach(func() {
 			c.gatewayController.run(ctx)
+		})
+
+		c.goAttach(func() {
+			c.gatewayHTTPRouteController.run(ctx)
 		})
 	}
 
@@ -595,15 +665,18 @@ func (c *Controller) syncConsumer(ctx context.Context, consumer *apisixv1.Consum
 }
 
 func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
-	namespace := ep.Namespace()
+	namespace, err := ep.Namespace()
+	if err != nil {
+		return err
+	}
 	svcName := ep.ServiceName()
-	svc, err := c.svcLister.Services(ep.Namespace()).Get(svcName)
+	svc, err := c.svcLister.Services(namespace).Get(svcName)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			log.Infof("service %s/%s not found", ep.Namespace(), svcName)
+			log.Infof("service %s/%s not found", namespace, svcName)
 			return nil
 		}
-		log.Errorf("failed to get service %s/%s: %s", ep.Namespace(), svcName, err)
+		log.Errorf("failed to get service %s/%s: %s", namespace, svcName, err)
 		return err
 	}
 	var subsets []configv2beta3.ApisixUpstreamSubset
@@ -611,7 +684,7 @@ func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
 	au, err := c.apisixUpstreamLister.ApisixUpstreams(namespace).Get(svcName)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
-			log.Errorf("failed to get ApisixUpstream %s/%s: %s", ep.Namespace(), svcName, err)
+			log.Errorf("failed to get ApisixUpstream %s/%s: %s", namespace, svcName, err)
 			return err
 		}
 	} else if au.Spec != nil && len(au.Spec.Subsets) > 0 {
