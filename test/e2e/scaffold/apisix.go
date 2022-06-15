@@ -119,6 +119,10 @@ spec:
       port: 9100
       protocol: TCP
       targetPort: 9100
+    - name: tcp-tls
+      port: 9110
+      protocol: TCP
+      targetPort: 9110
     - name: udp
       port: 9200
       protocol: UDP

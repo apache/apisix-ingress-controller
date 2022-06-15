@@ -131,7 +131,7 @@ func (t *translator) TranslateGatewayTLSRouteV1Alpha2(tlsRoute *gatewayv1alpha2.
 			route.SNI = host
 
 			route.UpstreamId = ruleUpstreams[0].ID
-			if len(ruleUpstreams) > 0 {
+			if len(ruleUpstreams) > 1 {
 				log.Warnw("ignore backends which is not the first one",
 					zap.String("namespace", tlsRoute.Namespace),
 					zap.String("tlsroute", tlsRoute.Name),

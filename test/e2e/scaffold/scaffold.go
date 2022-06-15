@@ -76,12 +76,13 @@ type Scaffold struct {
 	testBackendService *corev1.Service
 	finializers        []func()
 
-	apisixAdminTunnel   *k8s.Tunnel
-	apisixHttpTunnel    *k8s.Tunnel
-	apisixHttpsTunnel   *k8s.Tunnel
-	apisixTCPTunnel     *k8s.Tunnel
-	apisixUDPTunnel     *k8s.Tunnel
-	apisixControlTunnel *k8s.Tunnel
+	apisixAdminTunnel      *k8s.Tunnel
+	apisixHttpTunnel       *k8s.Tunnel
+	apisixHttpsTunnel      *k8s.Tunnel
+	apisixTCPTunnel        *k8s.Tunnel
+	apisixTLSOverTCPTunnel *k8s.Tunnel
+	apisixUDPTunnel        *k8s.Tunnel
+	apisixControlTunnel    *k8s.Tunnel
 
 	// Used for template rendering.
 	EtcdServiceFQDN string
@@ -250,6 +251,32 @@ func (s *Scaffold) NewAPISIXClientWithTCPProxy() *httpexpect.Expect {
 	})
 }
 
+// NewAPISIXClientWithTLSOverTCP creates a TSL over TCP client
+func (s *Scaffold) NewAPISIXClientWithTLSOverTCP(host string) *httpexpect.Expect {
+	u := url.URL{
+		Scheme: "https",
+		Host:   s.apisixTLSOverTCPTunnel.Endpoint(),
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					// accept any certificate; for testing only!
+					InsecureSkipVerify: true,
+					ServerName:         host,
+				},
+			},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
+		),
+	})
+}
+
 func (s *Scaffold) DNSResolver() *net.Resolver {
 	return &net.Resolver{
 		PreferGo: false,
@@ -392,25 +419,25 @@ func (s *Scaffold) afterEach() {
 	defer ginkgo.GinkgoRecover()
 
 	if ginkgo.CurrentSpecReport().Failed() {
-		_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
-		output, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods")
-		if output != "" {
-			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
-		}
-		output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "describe", "pods")
-		if output != "" {
-			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
-		}
-		// Get the logs of apisix
-		output = s.GetDeploymentLogs("apisix-deployment-e2e-test")
-		if output != "" {
-			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
-		}
-		// Get the logs of ingress
-		output = s.GetDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
-		if output != "" {
-			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
-		}
+		//_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
+		//output, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods")
+		//if output != "" {
+		//	_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		//}
+		//output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "describe", "pods")
+		//if output != "" {
+		//	_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		//}
+		//// Get the logs of apisix
+		//output = s.GetDeploymentLogs("apisix-deployment-e2e-test")
+		//if output != "" {
+		//	_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		//}
+		//// Get the logs of ingress
+		//output = s.GetDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
+		//if output != "" {
+		//	_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		//}
 	}
 
 	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)

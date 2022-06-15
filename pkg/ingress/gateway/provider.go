@@ -133,6 +133,9 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	p.gatewayHTTPRouteLister = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Lister()
 	p.gatewayHTTPRouteInformer = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Informer()
 
+	p.gatewayTLSRouteLister = gatewayFactory.Gateway().V1alpha2().TLSRoutes().Lister()
+	p.gatewayTLSRouteInformer = gatewayFactory.Gateway().V1alpha2().TLSRoutes().Informer()
+
 	p.gatewayController = newGatewayController(p)
 
 	p.gatewayClassController, err = newGatewayClassController(p)
@@ -141,6 +144,7 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	}
 
 	p.gatewayHTTPRouteController = newGatewayHTTPRouteController(p)
+	p.gatewayTLSRouteController = newGatewayTLSRouteController(p)
 
 	return p, nil
 }
@@ -161,6 +165,10 @@ func (p *Provider) Run(ctx context.Context) {
 	})
 
 	e.Add(func() {
+		p.gatewayTLSRouteInformer.Run(ctx.Done())
+	})
+
+	e.Add(func() {
 		p.gatewayController.run(ctx)
 	})
 
@@ -170,6 +178,10 @@ func (p *Provider) Run(ctx context.Context) {
 
 	e.Add(func() {
 		p.gatewayHTTPRouteController.run(ctx)
+	})
+
+	e.Add(func() {
+		p.gatewayTLSRouteController.run(ctx)
 	})
 
 	e.Wait()

@@ -189,7 +189,9 @@ rules:
     - gateway.networking.k8s.io
     resources:
     - httproutes
+    - tlsroutes
     - gateways
+    - gatewayclasses
     verbs:
     - get
     - list

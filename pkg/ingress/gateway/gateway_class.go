@@ -127,12 +127,12 @@ func (c *gatewayClassController) markAsUpdated(gatewayClass *v1alpha2.GatewayCla
 }
 
 func (c *gatewayClassController) run(ctx context.Context) {
-	log.Info("gateway HTTPRoute controller started")
-	defer log.Info("gateway HTTPRoute controller exited")
+	log.Info("GatewayClass controller started")
+	defer log.Info("GatewayClass controller exited")
 	defer c.workqueue.ShutDown()
 
 	if !cache.WaitForCacheSync(ctx.Done(), c.controller.gatewayClassInformer.HasSynced) {
-		log.Error("sync Gateway HTTPRoute cache failed")
+		log.Error("sync GatewayClass cache failed")
 		return
 	}
 
@@ -180,14 +180,14 @@ func (c *gatewayClassController) handleSyncErr(obj interface{}, err error) {
 	}
 	event := obj.(*types.Event)
 	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
-		log.Infow("sync gateway HTTPRoute but not found, ignore",
+		log.Infow("sync gateway class but not found, ignore",
 			zap.String("event_type", event.Type.String()),
-			zap.String("HTTPRoute ", event.Object.(string)),
+			zap.String("GatewayClass", event.Object.(string)),
 		)
 		c.workqueue.Forget(event)
 		return
 	}
-	log.Warnw("sync gateway HTTPRoute failed, will retry",
+	log.Warnw("sync gateway class failed, will retry",
 		zap.Any("object", obj),
 		zap.Error(err),
 	)
@@ -198,7 +198,7 @@ func (c *gatewayClassController) handleSyncErr(obj interface{}, err error) {
 func (c *gatewayClassController) onAdd(obj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
-		log.Errorw("found gateway HTTPRoute resource with bad meta namespace key",
+		log.Errorw("found gateway class resource with bad meta namespace key",
 			zap.Error(err),
 		)
 		return
@@ -206,7 +206,7 @@ func (c *gatewayClassController) onAdd(obj interface{}) {
 	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
-	log.Debugw("gateway HTTPRoute add event arrived",
+	log.Debugw("gateway class add event arrived",
 		zap.Any("object", obj),
 	)
 
