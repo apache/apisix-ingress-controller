@@ -152,7 +152,7 @@ func (c *watchingProvider) WatchingNamespaces() []string {
 	return keys
 }
 
-// isWatchingNamespace accepts a resource key, getting the namespace part
+// IsWatchingNamespace accepts a resource key, getting the namespace part
 // and checking whether the namespace is being watched.
 func (c *watchingProvider) IsWatchingNamespace(key string) (ok bool) {
 	if !validation.HasValueInSyncMap(c.watchingNamespaces) {
