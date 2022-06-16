@@ -52,7 +52,6 @@ func (t *translator) TranslateGatewayTLSRouteV1Alpha2(tlsRoute *gatewayv1alpha2.
 		}
 
 		var ruleUpstreams []*apisixv1.Upstream
-		var weightedUpstreams []apisixv1.TrafficSplitConfigRuleWeightedUpstream
 
 		for j, backend := range backends {
 			//TODO: Support filters
@@ -100,18 +99,6 @@ func (t *translator) TranslateGatewayTLSRouteV1Alpha2(tlsRoute *gatewayv1alpha2.
 			ups.ID = id.GenID(name)
 			ctx.AddUpstream(ups)
 			ruleUpstreams = append(ruleUpstreams, ups)
-
-			if backend.Weight == nil {
-				weightedUpstreams = append(weightedUpstreams, apisixv1.TrafficSplitConfigRuleWeightedUpstream{
-					UpstreamID: ups.ID,
-					Weight:     1, // 1 is default value of BackendRef
-				})
-			} else {
-				weightedUpstreams = append(weightedUpstreams, apisixv1.TrafficSplitConfigRuleWeightedUpstream{
-					UpstreamID: ups.ID,
-					Weight:     int(*backend.Weight),
-				})
-			}
 		}
 		if len(ruleUpstreams) == 0 {
 			log.Warnw(fmt.Sprintf("ignore all-failed backend refs at Rules[%v]", i),

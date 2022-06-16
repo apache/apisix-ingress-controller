@@ -19,7 +19,6 @@ package gateway
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 
@@ -219,8 +218,8 @@ func (p *Provider) AddListeners(ns, name string, listeners map[string]*types.Lis
 	for _, listenerConf := range listeners {
 		if allocated, found := p.portListeners[listenerConf.Port]; found {
 			// TODO: support multi-error
-			return errors.New(fmt.Sprintf("Port %d already allocated by %s/%s section %s",
-				listenerConf.Port, allocated.Namespace, allocated.Name, allocated.SectionName))
+			return fmt.Errorf("port %d already allocated by %s/%s section %s",
+				listenerConf.Port, allocated.Namespace, allocated.Name, allocated.SectionName)
 		}
 	}
 
@@ -228,9 +227,7 @@ func (p *Provider) AddListeners(ns, name string, listeners map[string]*types.Lis
 	if ok {
 		// remove previous listeners
 		for _, listenerConf := range previousListeners {
-			if _, found := p.portListeners[listenerConf.Port]; found {
-				delete(p.portListeners, listenerConf.Port)
-			}
+			delete(p.portListeners, listenerConf.Port)
 		}
 	}
 

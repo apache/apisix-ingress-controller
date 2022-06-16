@@ -184,7 +184,7 @@ func getAllowedKinds(listener gatewayv1alpha2.Listener) ([]gatewayv1alpha2.Route
 		return expectedKinds, nil
 	}
 
-	var uniqueAllowedKinds map[gatewayv1alpha2.Kind]struct{}
+	uniqueAllowedKinds := make(map[gatewayv1alpha2.Kind]struct{})
 	var allowedKinds []gatewayv1alpha2.RouteGroupKind
 
 	for _, kind := range listener.AllowedRoutes.Kinds {
