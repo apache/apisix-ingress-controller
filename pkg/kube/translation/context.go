@@ -26,25 +26,25 @@ type TranslateContext struct {
 	PluginConfigs []*apisix.PluginConfig
 }
 
-func defaultEmptyTranslateContext() *TranslateContext {
+func DefaultEmptyTranslateContext() *TranslateContext {
 	return &TranslateContext{
 		upstreamMap: make(map[string]struct{}),
 	}
 }
 
-func (tc *TranslateContext) addRoute(r *apisix.Route) {
+func (tc *TranslateContext) AddRoute(r *apisix.Route) {
 	tc.Routes = append(tc.Routes, r)
 }
 
-func (tc *TranslateContext) addSSL(ssl *apisix.Ssl) {
+func (tc *TranslateContext) AddSSL(ssl *apisix.Ssl) {
 	tc.SSL = append(tc.SSL, ssl)
 }
 
-func (tc *TranslateContext) addStreamRoute(sr *apisix.StreamRoute) {
+func (tc *TranslateContext) AddStreamRoute(sr *apisix.StreamRoute) {
 	tc.StreamRoutes = append(tc.StreamRoutes, sr)
 }
 
-func (tc *TranslateContext) addUpstream(u *apisix.Upstream) {
+func (tc *TranslateContext) AddUpstream(u *apisix.Upstream) {
 	if _, ok := tc.upstreamMap[u.Name]; ok {
 		return
 	}
@@ -52,11 +52,11 @@ func (tc *TranslateContext) addUpstream(u *apisix.Upstream) {
 	tc.Upstreams = append(tc.Upstreams, u)
 }
 
-func (tc *TranslateContext) checkUpstreamExist(name string) (ok bool) {
+func (tc *TranslateContext) CheckUpstreamExist(name string) (ok bool) {
 	_, ok = tc.upstreamMap[name]
 	return
 }
 
-func (tc *TranslateContext) addPluginConfig(pc *apisix.PluginConfig) {
+func (tc *TranslateContext) AddPluginConfig(pc *apisix.PluginConfig) {
 	tc.PluginConfigs = append(tc.PluginConfigs, pc)
 }
