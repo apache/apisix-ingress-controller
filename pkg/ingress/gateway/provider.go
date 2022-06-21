@@ -64,6 +64,10 @@ type Provider struct {
 	gatewayHTTPRouteController *gatewayHTTPRouteController
 	gatewayHTTPRouteInformer   cache.SharedIndexInformer
 	gatewayHTTPRouteLister     gatewaylistersv1alpha2.HTTPRouteLister
+
+	gatewayTCPRouteController *gatewayTCPRouteController
+	gatewayTCPRouteInformer   cache.SharedIndexInformer
+	gatewayTCPRouteLister     gatewaylistersv1alpha2.TCPRouteLister
 }
 
 type ProviderOptions struct {
@@ -122,6 +126,7 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	}
 
 	p.gatewayHTTPRouteController = newGatewayHTTPRouteController(p)
+	p.gatewayTCPRouteController = newGatewayTCPRouteController(p)
 
 	return p, nil
 }
@@ -153,6 +158,9 @@ func (p *Provider) Run(ctx context.Context) {
 		p.gatewayHTTPRouteController.run(ctx)
 	})
 
+	e.Add(func() {
+		p.gatewayTCPRouteController.run(ctx)
+	})
 	e.Wait()
 }
 

@@ -34,6 +34,7 @@ type translator struct {
 type Translator interface {
 	// TranslateGatewayHTTPRouteV1Alpha2 translates Gateway API HTTPRoute to APISIX resources
 	TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha2.HTTPRoute) (*translation.TranslateContext, error)
+	TranslateGatewayTCPRouteV1Alpha2(*gatewayv1alpha2.TCPRoute) (*translation.TranslateContext, error)
 }
 
 // NewTranslator initializes a APISIX CRD resources Translator.

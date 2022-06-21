@@ -261,7 +261,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.name
           image: "localhost:5000/apache/apisix-ingress-controller:dev"
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           name: ingress-apisix-controller-deployment-e2e-test
           ports:
             - containerPort: 8080
