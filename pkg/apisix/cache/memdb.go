@@ -156,8 +156,8 @@ func (c *dbCache) GetPluginConfig(name string) (*v1.PluginConfig, error) {
 	return obj.(*v1.PluginConfig).DeepCopy(), nil
 }
 
-func (c *dbCache) GetUpstreamServiceRelation(serverName string) (*v1.UpstreamServiceRelation, error) {
-	obj, err := c.get("upstream_service", serverName)
+func (c *dbCache) GetUpstreamServiceRelation(serviceName string) (*v1.UpstreamServiceRelation, error) {
+	obj, err := c.get("upstream_service", serviceName)
 	if err != nil {
 		return nil, err
 	}

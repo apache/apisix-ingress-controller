@@ -470,7 +470,7 @@ func TestMemDBCacheUpstreamServiceRelation(t *testing.T) {
 	us1 := &v1.UpstreamServiceRelation{
 		ServiceName: "1",
 	}
-	assert.Nil(t, c.InsertUpstreamServiceRelation(us1), "inserting route 1")
+	assert.Nil(t, c.InsertUpstreamServiceRelation(us1), "inserting upstream_service 1")
 
 	us, err := c.GetUpstreamServiceRelation("1")
 	assert.Nil(t, err)
@@ -479,27 +479,23 @@ func TestMemDBCacheUpstreamServiceRelation(t *testing.T) {
 	us2 := &v1.UpstreamServiceRelation{
 		ServiceName: "2",
 	}
-	assert.Nil(t, c.InsertUpstreamServiceRelation(us2), "inserting route 1")
+	assert.Nil(t, c.InsertUpstreamServiceRelation(us2), "inserting upstream_service 2")
 
 	us, err = c.GetUpstreamServiceRelation("2")
 	assert.Nil(t, err)
 	assert.Equal(t, us2, us)
 
-	uss, err := c.ListUpstreamServiceRelation()
-	assert.Nil(t, err)
-	assert.Len(t, uss, 2)
-
 	us3 := &v1.UpstreamServiceRelation{
 		ServiceName:  "httpbin",
 		UpstreamName: "upstream",
 	}
-	assert.Nil(t, c.InsertUpstreamServiceRelation(us3), "inserting route 1")
+	assert.Nil(t, c.InsertUpstreamServiceRelation(us3), "inserting upstream_service 3")
 
 	us, err = c.GetUpstreamServiceRelation("httpbin")
 	assert.Nil(t, err)
 	assert.Equal(t, us3, us)
 
-	uss, err = c.ListUpstreamServiceRelation()
+	uss, err := c.ListUpstreamServiceRelation()
 	assert.Nil(t, err)
 	assert.Len(t, uss, 3)
 
