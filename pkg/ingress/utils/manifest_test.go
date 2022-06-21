@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package ingress
+package utils
 
 import (
 	"testing"
@@ -36,7 +36,7 @@ func TestDiffRoutes(t *testing.T) {
 			Methods: []string{"POST"},
 		},
 	}
-	added, updated, deleted := diffRoutes(nil, news)
+	added, updated, deleted := DiffRoutes(nil, news)
 	assert.Nil(t, updated)
 	assert.Nil(t, deleted)
 	assert.Len(t, added, 2)
@@ -57,7 +57,7 @@ func TestDiffRoutes(t *testing.T) {
 			Methods: []string{"POST", "PUT"},
 		},
 	}
-	added, updated, deleted = diffRoutes(olds, nil)
+	added, updated, deleted = DiffRoutes(olds, nil)
 	assert.Nil(t, updated)
 	assert.Nil(t, added)
 	assert.Len(t, deleted, 2)
@@ -65,7 +65,7 @@ func TestDiffRoutes(t *testing.T) {
 	assert.Equal(t, "3", deleted[1].ID)
 	assert.Equal(t, []string{"POST", "PUT"}, deleted[1].Methods)
 
-	added, updated, deleted = diffRoutes(olds, news)
+	added, updated, deleted = DiffRoutes(olds, news)
 	assert.Len(t, added, 1)
 	assert.Equal(t, "1", added[0].ID)
 	assert.Len(t, updated, 1)
@@ -85,7 +85,7 @@ func TestDiffStreamRoutes(t *testing.T) {
 			ServerPort: 8080,
 		},
 	}
-	added, updated, deleted := diffStreamRoutes(nil, news)
+	added, updated, deleted := DiffStreamRoutes(nil, news)
 	assert.Nil(t, updated)
 	assert.Nil(t, deleted)
 	assert.Len(t, added, 2)
@@ -102,7 +102,7 @@ func TestDiffStreamRoutes(t *testing.T) {
 			ServerPort: 8081,
 		},
 	}
-	added, updated, deleted = diffStreamRoutes(olds, nil)
+	added, updated, deleted = DiffStreamRoutes(olds, nil)
 	assert.Nil(t, updated)
 	assert.Nil(t, added)
 	assert.Len(t, deleted, 2)
@@ -110,7 +110,7 @@ func TestDiffStreamRoutes(t *testing.T) {
 	assert.Equal(t, "3", deleted[1].ID)
 	assert.Equal(t, int32(8081), deleted[1].ServerPort)
 
-	added, updated, deleted = diffStreamRoutes(olds, news)
+	added, updated, deleted = DiffStreamRoutes(olds, news)
 	assert.Len(t, added, 1)
 	assert.Equal(t, "1", added[0].ID)
 	assert.Len(t, updated, 1)
@@ -135,7 +135,7 @@ func TestDiffUpstreams(t *testing.T) {
 			Retries: &retries,
 		},
 	}
-	added, updated, deleted := diffUpstreams(nil, news)
+	added, updated, deleted := DiffUpstreams(nil, news)
 	assert.Nil(t, updated)
 	assert.Nil(t, deleted)
 	assert.Len(t, added, 2)
@@ -160,7 +160,7 @@ func TestDiffUpstreams(t *testing.T) {
 			},
 		},
 	}
-	added, updated, deleted = diffUpstreams(olds, nil)
+	added, updated, deleted = DiffUpstreams(olds, nil)
 	assert.Nil(t, updated)
 	assert.Nil(t, added)
 	assert.Len(t, deleted, 2)
@@ -169,7 +169,7 @@ func TestDiffUpstreams(t *testing.T) {
 	assert.Equal(t, 5, *deleted[1].Retries)
 	assert.Equal(t, 10, deleted[1].Timeout.Connect)
 
-	added, updated, deleted = diffUpstreams(olds, news)
+	added, updated, deleted = DiffUpstreams(olds, news)
 	assert.Len(t, added, 1)
 	assert.Equal(t, "1", added[0].ID)
 	assert.Len(t, updated, 1)
@@ -196,7 +196,7 @@ func TestDiffPluginConfigs(t *testing.T) {
 			},
 		},
 	}
-	added, updated, deleted := diffPluginConfigs(nil, news)
+	added, updated, deleted := DiffPluginConfigs(nil, news)
 	assert.Nil(t, updated)
 	assert.Nil(t, deleted)
 	assert.Len(t, added, 2)
@@ -225,7 +225,7 @@ func TestDiffPluginConfigs(t *testing.T) {
 			},
 		},
 	}
-	added, updated, deleted = diffPluginConfigs(olds, nil)
+	added, updated, deleted = DiffPluginConfigs(olds, nil)
 	assert.Nil(t, updated)
 	assert.Nil(t, added)
 	assert.Len(t, deleted, 2)
@@ -233,7 +233,7 @@ func TestDiffPluginConfigs(t *testing.T) {
 	assert.Equal(t, "3", deleted[1].ID)
 	assert.Equal(t, olds[1].Plugins, deleted[1].Plugins)
 
-	added, updated, deleted = diffPluginConfigs(olds, news)
+	added, updated, deleted = DiffPluginConfigs(olds, news)
 	assert.Len(t, added, 1)
 	assert.Equal(t, "1", added[0].ID)
 	assert.Len(t, updated, 1)
@@ -245,8 +245,8 @@ func TestDiffPluginConfigs(t *testing.T) {
 
 func TestManifestDiff(t *testing.T) {
 	retries := 2
-	m := &manifest{
-		routes: []*apisixv1.Route{
+	m := &Manifest{
+		Routes: []*apisixv1.Route{
 			{
 				Metadata: apisixv1.Metadata{
 					ID: "1",
@@ -259,7 +259,7 @@ func TestManifestDiff(t *testing.T) {
 				Methods: []string{"GET"},
 			},
 		},
-		upstreams: []*apisixv1.Upstream{
+		Upstreams: []*apisixv1.Upstream{
 			{
 				Metadata: apisixv1.Metadata{
 					ID: "4",
@@ -267,7 +267,7 @@ func TestManifestDiff(t *testing.T) {
 				Retries: &retries,
 			},
 		},
-		pluginConfigs: []*apisixv1.PluginConfig{
+		PluginConfigs: []*apisixv1.PluginConfig{
 			{
 				Metadata: apisixv1.Metadata{
 					ID: "5",
@@ -284,8 +284,8 @@ func TestManifestDiff(t *testing.T) {
 			},
 		},
 	}
-	om := &manifest{
-		routes: []*apisixv1.Route{
+	om := &Manifest{
+		Routes: []*apisixv1.Route{
 			{
 				Metadata: apisixv1.Metadata{
 					ID: "2",
@@ -300,22 +300,22 @@ func TestManifestDiff(t *testing.T) {
 		},
 	}
 
-	added, updated, deleted := m.diff(om)
-	assert.Len(t, added.routes, 1)
-	assert.Equal(t, "1", added.routes[0].ID)
-	assert.Len(t, added.upstreams, 1)
-	assert.Equal(t, "4", added.upstreams[0].ID)
-	assert.Len(t, added.pluginConfigs, 1)
-	assert.Equal(t, "5", added.pluginConfigs[0].ID)
+	added, updated, deleted := m.Diff(om)
+	assert.Len(t, added.Routes, 1)
+	assert.Equal(t, "1", added.Routes[0].ID)
+	assert.Len(t, added.Upstreams, 1)
+	assert.Equal(t, "4", added.Upstreams[0].ID)
+	assert.Len(t, added.PluginConfigs, 1)
+	assert.Equal(t, "5", added.PluginConfigs[0].ID)
 
-	assert.Len(t, updated.routes, 1)
-	assert.Equal(t, "3", updated.routes[0].ID)
-	assert.Equal(t, []string{"GET"}, updated.routes[0].Methods)
-	assert.Nil(t, updated.upstreams)
-	assert.Nil(t, updated.pluginConfigs)
+	assert.Len(t, updated.Routes, 1)
+	assert.Equal(t, "3", updated.Routes[0].ID)
+	assert.Equal(t, []string{"GET"}, updated.Routes[0].Methods)
+	assert.Nil(t, updated.Upstreams)
+	assert.Nil(t, updated.PluginConfigs)
 
-	assert.Len(t, deleted.routes, 1)
-	assert.Equal(t, "2", deleted.routes[0].ID)
-	assert.Nil(t, updated.upstreams)
-	assert.Nil(t, updated.pluginConfigs)
+	assert.Len(t, deleted.Routes, 1)
+	assert.Equal(t, "2", deleted.Routes[0].ID)
+	assert.Nil(t, updated.Upstreams)
+	assert.Nil(t, updated.PluginConfigs)
 }

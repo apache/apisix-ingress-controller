@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-package translation
+package gateway_translation
 
 import (
 	"fmt"
@@ -26,12 +26,14 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/utils"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha2.HTTPRoute) (*TranslateContext, error) {
-	ctx := defaultEmptyTranslateContext()
+func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha2.HTTPRoute) (*translation.TranslateContext, error) {
+	ctx := translation.DefaultEmptyTranslateContext()
 
 	var hosts []string
 	for _, hostname := range httpRoute.Spec.Hostnames {
@@ -82,7 +84,7 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 				continue
 			}
 
-			ups, err := t.TranslateUpstream(ns, string(backend.Name), "", int32(*backend.Port))
+			ups, err := t.KubeTranslator.TranslateUpstream(ns, string(backend.Name), "", int32(*backend.Port))
 			if err != nil {
 				return nil, errors.Wrap(err, fmt.Sprintf("failed to translate Rules[%v].BackendRefs[%v]", i, j))
 			}
@@ -90,12 +92,12 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 
 			// APISIX limits max length of label value
 			// https://github.com/apache/apisix/blob/5b95b85faea3094d5e466ee2d39a52f1f805abbb/apisix/schema_def.lua#L85
-			ups.Labels["meta_namespace"] = truncate(ns, 64)
-			ups.Labels["meta_backend"] = truncate(string(backend.Name), 64)
+			ups.Labels["meta_namespace"] = utils.TruncateString(ns, 64)
+			ups.Labels["meta_backend"] = utils.TruncateString(string(backend.Name), 64)
 			ups.Labels["meta_port"] = fmt.Sprintf("%v", int32(*backend.Port))
 
 			ups.ID = id.GenID(name)
-			ctx.addUpstream(ups)
+			ctx.AddUpstream(ups)
 			ruleUpstreams = append(ruleUpstreams, ups)
 
 			if backend.Weight == nil {
@@ -154,7 +156,7 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 				}
 			}
 
-			ctx.addRoute(route)
+			ctx.AddRoute(route)
 		}
 
 		//TODO: Support filters

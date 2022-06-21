@@ -38,7 +38,7 @@ VERSYM="github.com/apache/apisix-ingress-controller/pkg/version._buildVersion"
 GITSHASYM="github.com/apache/apisix-ingress-controller/pkg/version._buildGitRevision"
 BUILDOSSYM="github.com/apache/apisix-ingress-controller/pkg/version._buildOS"
 GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH)"
-E2E_CONCURRENCY ?= 1
+E2E_CONCURRENCY ?= 2
 E2E_SKIP_BUILD ?= 0
 
 ### build:                Build apisix-ingress-controller
@@ -66,7 +66,7 @@ unit-test:
 
 ### e2e-test:             Run e2e test cases (in existing clusters directly)
 .PHONY: e2e-test
-e2e-test: ginkgo-check push-images
+e2e-test: ginkgo-check push-images e2e-wolf-rbac
 	kubectl apply -k $(PWD)/samples/deploy/crd
 	kubectl apply -f $(PWD)/samples/deploy/gateway-api
 	cd test/e2e \
@@ -218,3 +218,14 @@ update-all: update-codegen update-license update-mdlint update-gofmt
 .PHONY: e2e-names-check
 e2e-names-check:
 	chmod +x ./utils/check-e2e-names.sh && ./utils/check-e2e-names.sh
+
+.PHONY: e2e-wolf-rbac
+e2e-wolf-rbac:
+ifeq ("$(E2E_FOCUS)", "")
+	chmod +x ./test/e2e/testdata/wolf-rbac/cmd.sh && ./test/e2e/testdata/wolf-rbac/cmd.sh start
+endif
+ifneq ("$(E2E_FOCUS)", "")
+	echo $(E2E_FOCUS) | grep -E 'suite-features|consumer|wolf' || exit 0 \
+	&& chmod +x ./test/e2e/testdata/wolf-rbac/cmd.sh \
+	&& ./test/e2e/testdata/wolf-rbac/cmd.sh start
+endif

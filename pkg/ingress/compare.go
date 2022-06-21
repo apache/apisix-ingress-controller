@@ -20,7 +20,6 @@ import (
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/apache/apisix-ingress-controller/pkg/api/validation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
@@ -46,24 +45,9 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 		consumerMapA6     = make(map[string]string)
 		pluginConfigMapA6 = make(map[string]string)
 	)
-	// watchingNamespaces and watchingLabels are empty means to monitor all namespaces.
-	if !validation.HasValueInSyncMap(c.watchingNamespaces) && len(c.watchingLabels) == 0 {
-		opts := v1.ListOptions{}
-		// list all namespaces
-		nsList, err := c.kubeClient.Client.CoreV1().Namespaces().List(ctx, opts)
-		if err != nil {
-			log.Error(err.Error())
-			ctx.Done()
-		} else {
-			wns := new(sync.Map)
-			for _, v := range nsList.Items {
-				wns.Store(v.Name, struct{}{})
-			}
-			c.watchingNamespaces = wns
-		}
-	}
 
-	c.watchingNamespaces.Range(func(key, value interface{}) bool {
+	namespaces := c.namespaceProvider.WatchingNamespaces()
+	for _, key := range namespaces {
 		log.Debugf("start to watch namespace: %s", key)
 		wg.Add(1)
 		go func(ns string) {
@@ -139,9 +123,8 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 					}
 				}
 			}
-		}(key.(string))
-		return true
-	})
+		}(key)
+	}
 	wg.Wait()
 
 	// 2.get all cache routes
