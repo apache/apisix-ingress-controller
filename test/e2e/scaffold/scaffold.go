@@ -509,7 +509,7 @@ func (s *Scaffold) FormatNamespaceLabel(label string) string {
 }
 
 var (
-	versionRegex = regexp.MustCompile(`apiVersion: apisix.apache.org/.*?\n`)
+	versionRegex = regexp.MustCompile(`apiVersion: apisix.apache.org/v.*?\n`)
 )
 
 func (s *Scaffold) replaceApiVersion(yml, ver string) string {
@@ -549,5 +549,14 @@ func (s *Scaffold) CreateVersionedApisixPluginConfig(yml string) error {
 	}
 
 	ac := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
+	return s.CreateResourceFromString(ac)
+}
+
+func (s *Scaffold) CreateVersionedApisixRoute(yml string) error {
+	if !strings.Contains(yml, "kind: ApisixRoute") {
+		return errors.New("not a ApisixRoute")
+	}
+
+	ac := s.replaceApiVersion(yml, s.opts.APISIXRouteVersion)
 	return s.CreateResourceFromString(ac)
 }
