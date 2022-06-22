@@ -45,7 +45,7 @@ runs:
     - name: Setup Go Env
       uses: actions/setup-go@v2
       with:
-        go-version: "1.16"
+        go-version: "1.18"
 
     - name: Install ginkgo
       shell: bash
