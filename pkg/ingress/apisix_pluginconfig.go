@@ -367,25 +367,3 @@ func (c *apisixPluginConfigController) onDelete(obj interface{}) {
 
 	c.controller.MetricsCollector.IncrEvents("PluginConfig", "delete")
 }
-
-func (c *apisixPluginConfigController) ResourceSync() {
-	objs := c.controller.apisixPluginConfigInformer.GetIndexer().List()
-	for _, obj := range objs {
-		key, err := cache.MetaNamespaceKeyFunc(obj)
-		if err != nil {
-			log.Errorw("ApisixPluginConfig sync failed, found ApisixPluginConfig resource with bad meta namespace key", zap.String("error", err.Error()))
-			continue
-		}
-		if !c.controller.isWatchingNamespace(key) {
-			continue
-		}
-		apc := kube.MustNewApisixPluginConfig(obj)
-		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
-			Object: kube.ApisixPluginConfigEvent{
-				Key:          key,
-				GroupVersion: apc.GroupVersion(),
-			},
-		})
-	}
-}

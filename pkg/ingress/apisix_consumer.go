@@ -318,29 +318,3 @@ func (c *apisixConsumerController) onDelete(obj interface{}) {
 
 	c.controller.MetricsCollector.IncrEvents("consumer", "delete")
 }
-
-func (c *apisixConsumerController) ResourceSync() {
-	objs := c.controller.apisixConsumerInformer.GetIndexer().List()
-	for _, obj := range objs {
-		key, err := cache.MetaNamespaceKeyFunc(obj)
-		if err != nil {
-			log.Errorw("ApisixConsumer sync failed, found ApisixConsumer resource with bad meta namespace key", zap.String("error", err.Error()))
-			continue
-		}
-		if !c.controller.isWatchingNamespace(key) {
-			continue
-		}
-		ac, err := kube.NewApisixConsumer(obj)
-		if err != nil {
-			log.Errorw("found ApisixConsumer resource with bad type", zap.String("error", err.Error()))
-			return
-		}
-		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
-			Object: kube.ApisixConsumerEvent{
-				Key:          key,
-				GroupVersion: ac.GroupVersion(),
-			},
-		})
-	}
-}
