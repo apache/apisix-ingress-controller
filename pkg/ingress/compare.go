@@ -16,12 +16,12 @@ package ingress
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"go.uber.org/zap"
 	"sync"
 
+	"go.uber.org/zap"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 

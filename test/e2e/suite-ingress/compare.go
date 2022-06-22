@@ -66,10 +66,10 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold)
 	})
-	ginkgo.Describe("scaffold v2", func() {
+	ginkgo.Describe("suite-ingress: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })
