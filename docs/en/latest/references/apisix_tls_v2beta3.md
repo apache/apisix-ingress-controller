@@ -1,5 +1,5 @@
 ---
-title: ApisixTls Reference
+title: ApisixTls/v2beta3 Reference
 ---
 
 <!--

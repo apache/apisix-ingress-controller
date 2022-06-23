@@ -1,5 +1,5 @@
 ---
-title: ApisixPluginConfig/v2beta3 Reference
+title: ApisixPluginConfig/v2 Reference
 ---
 
 <!--

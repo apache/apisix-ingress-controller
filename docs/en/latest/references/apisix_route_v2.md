@@ -1,5 +1,5 @@
 ---
-title: ApisixRoute/v2beta3 Reference
+title: ApisixRoute/v2 Reference
 ---
 
 <!--
