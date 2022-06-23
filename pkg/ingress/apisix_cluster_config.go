@@ -403,29 +403,3 @@ func (c *apisixClusterConfigController) onDelete(obj interface{}) {
 
 	c.controller.MetricsCollector.IncrEvents("clusterConfig", "delete")
 }
-
-func (c *apisixClusterConfigController) ResourceSync() {
-	objs := c.controller.apisixClusterConfigInformer.GetIndexer().List()
-	for _, obj := range objs {
-		key, err := cache.MetaNamespaceKeyFunc(obj)
-		if err != nil {
-			log.Errorw("ApisixClusterConfig sync failed, found ApisixClusterConfig resource with bad meta namespace key", zap.String("error", err.Error()))
-			continue
-		}
-		if !c.controller.isWatchingNamespace(key) {
-			continue
-		}
-		acc, err := kube.NewApisixClusterConfig(obj)
-		if err != nil {
-			log.Errorw("found ApisixClusterConfig resource with bad type", zap.String("error", err.Error()))
-			return
-		}
-		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
-			Object: kube.ApisixClusterConfigEvent{
-				Key:          key,
-				GroupVersion: acc.GroupVersion(),
-			},
-		})
-	}
-}

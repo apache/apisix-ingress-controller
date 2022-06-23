@@ -277,8 +277,6 @@ spec:
             - debug
             - --log-output
             - stdout
-            - --apisix-resource-sync-interval
-            - %s
             - --http-listen
             - :8080
             - --https-listen
@@ -419,10 +417,10 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	var ingressAPISIXDeployment string
 	label := fmt.Sprintf("apisix.ingress.watch=%s", s.namespace)
 	if s.opts.EnableWebhooks {
-		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.ApisixResourceSyncInterval,
+		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace,
 			s.FormatNamespaceLabel(label), s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, s.opts.EnableGatewayAPI, _volumeMounts, _webhookCertSecret)
 	} else {
-		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.ApisixResourceSyncInterval,
+		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace,
 			s.FormatNamespaceLabel(label), s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, s.opts.EnableGatewayAPI, "", _webhookCertSecret)
 	}
 
@@ -529,10 +527,9 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 	var ingressDeployment string
 	label := fmt.Sprintf("apisix.ingress.watch=%s", s.namespace)
 	if s.opts.EnableWebhooks {
-
-		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, s.opts.EnableGatewayAPI, _volumeMounts, _webhookCertSecret)
+		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, label, s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, s.opts.EnableGatewayAPI, _volumeMounts, _webhookCertSecret)
 	} else {
-		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, s.opts.EnableGatewayAPI, "", _webhookCertSecret)
+		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, label, s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, s.opts.EnableGatewayAPI, "", _webhookCertSecret)
 	}
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressDeployment); err != nil {
 		return err

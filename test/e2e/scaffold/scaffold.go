@@ -61,7 +61,6 @@ type Options struct {
 	EnableWebhooks             bool
 	APISIXPublishAddress       string
 	disableNamespaceSelector   bool
-	ApisixResourceSyncInterval string
 	EnableGatewayAPI           bool
 }
 
@@ -127,9 +126,6 @@ func NewScaffold(o *Options) *Scaffold {
 	}
 	if o.APISIXAdminAPIKey == "" {
 		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
-	}
-	if o.ApisixResourceSyncInterval == "" {
-		o.ApisixResourceSyncInterval = "300s"
 	}
 	defer ginkgo.GinkgoRecover()
 
