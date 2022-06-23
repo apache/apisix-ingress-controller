@@ -135,7 +135,7 @@ func (u *upstreamService) initUpstreamServiceRelation(us *v1.UpstreamServiceRela
 		return
 	}
 	args := strings.Split(us.UpstreamName, "_")
-	// namespace_service_subcret_port
+	// namespace_service_subset_port
 	if len(args) < 2 {
 		return
 	}
