@@ -70,7 +70,7 @@ Currently we using KIND latest version v0.11.1 and using Kubernetes v1.21.1 for 
 
 ```shell
 cd /path/to/apisix-ingress-controller
-make e2e-test
+make e2e-test-local
 ```
 
 Note the running of e2e cases is somewhat slow, so please be patient.
@@ -79,6 +79,8 @@ Note the running of e2e cases is somewhat slow, so please be patient.
 how to just run partial e2e cases.
 
 ### Build docker image
+
+Suppose our image tag is `a.b.c`:
 
 ```shell
 cd /path/to/apisix-ingress-controller
@@ -91,14 +93,20 @@ If you're coding for apisix-ingress-controller and adding some e2e test cases to
 you should push the images to the image registry that your Kubernetes cluster can access, if you're using Kind, just run the following command:
 
 ```shell
-make push-images-to-kind
+make push-images IMAGE_TAG=a.b.c
 ```
 
 ## Run apisix-ingress-controller locally
 
 We assume all prerequisites above mentioned are met, what's more, since we want to run apisix-ingress-controller in bare-metal environment, please make sure both the proxy service and admin api service of Apache APISIX are exposed outside of the Kubernetes cluster, e.g. configuring them as [NodePort](https://kubernetes.io/docs/concepts/services-networking/service/#nodeport) services.
 
-Let's assume the Admin API service address of Apache APISIX is `http://192.168.65.2:31156`. Next launch the ingress-apisix-controller by the following command.
+Also, we can also use `port-forward` to expose the Admin API port of Apache APISIX Pod. The default port of Apache APISIX Admin API is 9180, next I'll expose the local port `127.0.0.1:9180`:
+
+```shell
+kubectl port-forward -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} 9180:9180
+```
+
+Run apisix-ingress-controller:
 
 ```shell
 cd /path/to/apisix-ingress-controller
@@ -106,7 +114,7 @@ cd /path/to/apisix-ingress-controller
     --kubeconfig /path/to/kubeconfig \
     --http-listen :8080 \
     --log-output stderr \
-    --default-apisix-cluster-base-url http://192.168.65.2:31156/apisix/admin
+    --default-apisix-cluster-base-url http://127.0.0.1:9180/apisix/admin \
     --default-apisix-cluster-admin-key edd1c9f034335f136f87ad84b625c8f1
 ```
 

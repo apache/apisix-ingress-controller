@@ -17,6 +17,7 @@ package translation
 import (
 	"fmt"
 
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
@@ -26,6 +27,7 @@ import (
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -105,6 +107,12 @@ type Translator interface {
 	// TranslatePluginConfigV2beta3NotStrictly translates the configv2beta3.ApisixPluginConfig object into several PluginConfig
 	// resources not strictly, only used for delete event.
 	TranslatePluginConfigV2beta3NotStrictly(*configv2beta3.ApisixPluginConfig) (*TranslateContext, error)
+	// TranslatePluginConfigV2 translates the configv2.ApisixPluginConfig object into several PluginConfig
+	// resources.
+	TranslatePluginConfigV2(*configv2.ApisixPluginConfig) (*TranslateContext, error)
+	// TranslatePluginConfigV2NotStrictly translates the configv2.ApisixPluginConfig object into several PluginConfig
+	// resources not strictly, only used for delete event.
+	TranslatePluginConfigV2NotStrictly(*configv2.ApisixPluginConfig) (*TranslateContext, error)
 	// ExtractKeyPair extracts certificate and private key pair from secret
 	// Supports APISIX style ("cert" and "key") and Kube style ("tls.crt" and "tls.key)
 	ExtractKeyPair(s *corev1.Secret, hasPrivateKey bool) ([]byte, []byte, error)
@@ -173,7 +181,7 @@ func (t *translator) TranslateUpstream(namespace, name, subset string, port int3
 	ups := apisixv1.NewDefaultUpstream()
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			// If subset in ApisixRoute is not empty but the ApisixUpstream resouce not found,
+			// If subset in ApisixRoute is not empty but the ApisixUpstream resource not found,
 			// just set an empty node list.
 			if subset != "" {
 				ups.Nodes = apisixv1.UpstreamNodes{}
@@ -221,7 +229,14 @@ func (t *translator) TranslateUpstream(namespace, name, subset string, port int3
 }
 
 func (t *translator) TranslateUpstreamNodes(endpoint kube.Endpoint, port int32, labels types.Labels) (apisixv1.UpstreamNodes, error) {
-	namespace := endpoint.Namespace()
+	namespace, err := endpoint.Namespace()
+	if err != nil {
+		log.Errorw("failed to get endpoint namespace",
+			zap.Error(err),
+			zap.Any("endpoint", endpoint),
+		)
+		return nil, err
+	}
 	svcName := endpoint.ServiceName()
 	svc, err := t.ServiceLister.Services(namespace).Get(svcName)
 	if err != nil {

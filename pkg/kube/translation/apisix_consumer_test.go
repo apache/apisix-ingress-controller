@@ -126,6 +126,29 @@ func TestTranslateApisixConsumerV2beta3(t *testing.T) {
 	assert.Equal(t, "https://httpbin.org", cfg4.Server)
 	assert.Equal(t, "test01", cfg4.Appid)
 
+	ac = &configv2beta3.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "jack",
+			Namespace: "qa",
+		},
+		Spec: configv2beta3.ApisixConsumerSpec{
+			AuthParameter: configv2beta3.ApisixConsumerAuthParameter{
+				HMACAuth: &configv2beta3.ApisixConsumerHMACAuth{
+					Value: &configv2beta3.ApisixConsumerHMACAuthValue{
+						AccessKey: "foo",
+						SecretKey: "bar",
+					},
+				},
+			},
+		},
+	}
+	consumer, err = (&translator{}).TranslateApisixConsumerV2beta3(ac)
+	assert.Nil(t, err)
+	assert.Len(t, consumer.Plugins, 1)
+	cfg5 := consumer.Plugins["hmac-auth"].(*apisixv1.HMACAuthConsumerConfig)
+	assert.Equal(t, "foo", cfg5.AccessKey)
+	assert.Equal(t, "bar", cfg5.SecretKey)
+
 	// No test test cases for secret references as we already test them
 	// in plugin_test.go.
 }
@@ -230,6 +253,29 @@ func TestTranslateApisixConsumerV2(t *testing.T) {
 	cfg4 := consumer.Plugins["wolf-rbac"].(*apisixv1.WolfRBACConsumerConfig)
 	assert.Equal(t, "https://httpbin.org", cfg4.Server)
 	assert.Equal(t, "test01", cfg4.Appid)
+
+	ac = &configv2.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "jack",
+			Namespace: "qa",
+		},
+		Spec: configv2.ApisixConsumerSpec{
+			AuthParameter: configv2.ApisixConsumerAuthParameter{
+				HMACAuth: &configv2.ApisixConsumerHMACAuth{
+					Value: &configv2.ApisixConsumerHMACAuthValue{
+						AccessKey: "foo",
+						SecretKey: "bar",
+					},
+				},
+			},
+		},
+	}
+	consumer, err = (&translator{}).TranslateApisixConsumerV2(ac)
+	assert.Nil(t, err)
+	assert.Len(t, consumer.Plugins, 1)
+	cfg5 := consumer.Plugins["hmac-auth"].(*apisixv1.HMACAuthConsumerConfig)
+	assert.Equal(t, "foo", cfg5.AccessKey)
+	assert.Equal(t, "bar", cfg5.SecretKey)
 
 	// No test test cases for secret references as we already test them
 	// in plugin_test.go.

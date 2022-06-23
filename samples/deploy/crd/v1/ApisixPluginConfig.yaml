@@ -31,6 +31,59 @@ spec:
   versions:
     - name: v2beta3
       served: true
+      storage: false
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+          priority: 0
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - plugins
+              properties:
+                plugins:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        minLength: 1
+                      enable:
+                        type: boolean
+                      config:
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true # we have to enable it since plugin config
+                  required:
+                    - name
+                    - enable
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      "type":
+                        type: string
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      message:
+                        type: string
+                      observedGeneration:
+                        type: integer
+    - name: v2
+      served: true
       storage: true
       subresources:
         status: {}

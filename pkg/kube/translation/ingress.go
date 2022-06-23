@@ -39,8 +39,8 @@ const (
 	_regexPriority = 100
 )
 
-func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bool) (*TranslateContext, error) {
-	ctx := defaultEmptyTranslateContext()
+func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*TranslateContext, error) {
+	ctx := DefaultEmptyTranslateContext()
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
@@ -72,7 +72,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 			)
 			return nil, err
 		}
-		ctx.addSSL(ssl)
+		ctx.AddSSL(ssl)
 	}
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
@@ -82,19 +82,15 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 				err          error
 			)
 			if pathRule.Backend.Service != nil {
-				if skipVerify {
-					ups = t.translateDefaultUpstreamFromIngressV1(ing.Namespace, pathRule.Backend.Service)
-				} else {
-					ups, err = t.translateUpstreamFromIngressV1(ing.Namespace, pathRule.Backend.Service)
-					if err != nil {
-						log.Errorw("failed to translate ingress backend to upstream",
-							zap.Error(err),
-							zap.Any("ingress", ing),
-						)
-						return nil, err
-					}
+				ups, err = t.translateUpstreamFromIngressV1(ing.Namespace, pathRule.Backend.Service)
+				if err != nil {
+					log.Errorw("failed to translate ingress backend to upstream",
+						zap.Error(err),
+						zap.Any("ingress", ing),
+					)
+					return nil, err
 				}
-				ctx.addUpstream(ups)
+				ctx.AddUpstream(ups)
 			}
 			uris := []string{pathRule.Path}
 			var nginxVars []kubev2.ApisixRouteHTTPMatchExpr
@@ -147,21 +143,21 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 				pluginConfig.Name = composeIngressPluginName(ing.Namespace, pathRule.Backend.Service.Name)
 				pluginConfig.ID = id.GenID(route.Name)
 				pluginConfig.Plugins = *(plugins.DeepCopy())
-				ctx.addPluginConfig(pluginConfig)
+				ctx.AddPluginConfig(pluginConfig)
 
 				route.PluginConfigId = pluginConfig.ID
 			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
 			}
-			ctx.addRoute(route)
+			ctx.AddRoute(route)
 		}
 	}
 	return ctx, nil
 }
 
-func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, skipVerify bool) (*TranslateContext, error) {
-	ctx := defaultEmptyTranslateContext()
+func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*TranslateContext, error) {
+	ctx := DefaultEmptyTranslateContext()
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
@@ -193,7 +189,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 			)
 			return nil, err
 		}
-		ctx.addSSL(ssl)
+		ctx.AddSSL(ssl)
 	}
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
@@ -203,19 +199,15 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 				err          error
 			)
 			if pathRule.Backend.ServiceName != "" {
-				if skipVerify {
-					ups = t.translateDefaultUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
-				} else {
-					ups, err = t.translateUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
-					if err != nil {
-						log.Errorw("failed to translate ingress backend to upstream",
-							zap.Error(err),
-							zap.Any("ingress", ing),
-						)
-						return nil, err
-					}
+				ups, err = t.translateUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
+				if err != nil {
+					log.Errorw("failed to translate ingress backend to upstream",
+						zap.Error(err),
+						zap.Any("ingress", ing),
+					)
+					return nil, err
 				}
-				ctx.addUpstream(ups)
+				ctx.AddUpstream(ups)
 			}
 			uris := []string{pathRule.Path}
 			var nginxVars []kubev2.ApisixRouteHTTPMatchExpr
@@ -268,42 +260,19 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 				pluginConfig.Name = composeIngressPluginName(ing.Namespace, pathRule.Backend.ServiceName)
 				pluginConfig.ID = id.GenID(route.Name)
 				pluginConfig.Plugins = *(plugins.DeepCopy())
-				ctx.addPluginConfig(pluginConfig)
+				ctx.AddPluginConfig(pluginConfig)
 
 				route.PluginConfigId = pluginConfig.ID
 			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
 			}
-			ctx.addRoute(route)
+			ctx.AddRoute(route)
 		}
 	}
 	return ctx, nil
 }
 
-func (t *translator) translateDefaultUpstreamFromIngressV1(namespace string, backend *networkingv1.IngressServiceBackend) *apisixv1.Upstream {
-	var portNumber int32
-	if backend.Port.Name != "" {
-		svc, err := t.ServiceLister.Services(namespace).Get(backend.Name)
-		if err != nil {
-			portNumber = 0
-		} else {
-			for _, port := range svc.Spec.Ports {
-				if port.Name == backend.Port.Name {
-					portNumber = port.Port
-					break
-				}
-			}
-		}
-
-	} else {
-		portNumber = backend.Port.Number
-	}
-	ups := apisixv1.NewDefaultUpstream()
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, "", portNumber)
-	ups.ID = id.GenID(ups.Name)
-	return ups
-}
 func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *networkingv1.IngressServiceBackend) (*apisixv1.Upstream, error) {
 	var svcPort int32
 	if backend.Port.Name != "" {
@@ -335,8 +304,8 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 	return ups, nil
 }
 
-func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress, skipVerify bool) (*TranslateContext, error) {
-	ctx := defaultEmptyTranslateContext()
+func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress) (*TranslateContext, error) {
+	ctx := DefaultEmptyTranslateContext()
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
@@ -350,19 +319,15 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 			)
 			if pathRule.Backend.ServiceName != "" {
 				// Structure here is same to ingress.extensions/v1beta1, so just use this method.
-				if skipVerify {
-					ups = t.translateDefaultUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
-				} else {
-					ups, err = t.translateUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
-					if err != nil {
-						log.Errorw("failed to translate ingress backend to upstream",
-							zap.Error(err),
-							zap.Any("ingress", ing),
-						)
-						return nil, err
-					}
+				ups, err = t.translateUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
+				if err != nil {
+					log.Errorw("failed to translate ingress backend to upstream",
+						zap.Error(err),
+						zap.Any("ingress", ing),
+					)
+					return nil, err
 				}
-				ctx.addUpstream(ups)
+				ctx.AddUpstream(ups)
 			}
 			uris := []string{pathRule.Path}
 			var nginxVars []kubev2.ApisixRouteHTTPMatchExpr
@@ -415,40 +380,17 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 				pluginConfig.Name = composeIngressPluginName(ing.Namespace, pathRule.Backend.ServiceName)
 				pluginConfig.ID = id.GenID(route.Name)
 				pluginConfig.Plugins = *(plugins.DeepCopy())
-				ctx.addPluginConfig(pluginConfig)
+				ctx.AddPluginConfig(pluginConfig)
 
 				route.PluginConfigId = pluginConfig.ID
 			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
 			}
-			ctx.addRoute(route)
+			ctx.AddRoute(route)
 		}
 	}
 	return ctx, nil
-}
-
-func (t *translator) translateDefaultUpstreamFromIngressV1beta1(namespace string, svcName string, svcPort intstr.IntOrString) *apisixv1.Upstream {
-	var portNumber int32
-	if svcPort.Type == intstr.String {
-		svc, err := t.ServiceLister.Services(namespace).Get(svcName)
-		if err != nil {
-			portNumber = 0
-		} else {
-			for _, port := range svc.Spec.Ports {
-				if port.Name == svcPort.StrVal {
-					portNumber = port.Port
-					break
-				}
-			}
-		}
-	} else {
-		portNumber = svcPort.IntVal
-	}
-	ups := apisixv1.NewDefaultUpstream()
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber)
-	ups.ID = id.GenID(ups.Name)
-	return ups
 }
 
 func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcName string, svcPort intstr.IntOrString) (*apisixv1.Upstream, error) {

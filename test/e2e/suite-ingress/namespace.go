@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
-	"github.com/onsi/ginkgo"
+	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
@@ -36,7 +36,7 @@ type headers struct {
 	} `json:"headers"`
 }
 
-var _ = ginkgo.Describe("suite-ingress: namespacing filtering", func() {
+var _ = ginkgo.Describe("suite-ingress: namespacing filtering enable", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
@@ -100,7 +100,18 @@ spec:
 			_ = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)
 		})
 	})
+})
 
+var _ = ginkgo.Describe("suite-ingress: namespacing filtering disable", func() {
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
+	}
+	s := scaffold.NewScaffold(opts)
 	ginkgo.Context("without namespace_selector", func() {
 		// make namespace_selector empty
 		s.DisableNamespaceSelector()
@@ -150,13 +161,13 @@ spec:
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
- name: httpbin-route
+ name: httpbin-route-second-httpbin-service-namespace
 spec:
   http:
   - name: rule1
     match:
       hosts:
-      - httpbin.com
+      - second-httpbin-service-namespace.httpbin.com
       paths:
       - /headers
     backends:
@@ -182,7 +193,7 @@ spec:
 			err = json.Unmarshal([]byte(body), &placeholder)
 			assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling IP")
 			assert.NotEqual(ginkgo.GinkgoT(), ip{}, placeholder)
-			body = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
+			body = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "second-httpbin-service-namespace.httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
 			var headerResponse headers
 			err = json.Unmarshal([]byte(body), &headerResponse)
 			assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling header")

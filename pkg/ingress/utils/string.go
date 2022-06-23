@@ -15,33 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-package scaffold
+package utils
 
-import (
-	"fmt"
-	"os/exec"
-)
-
-func (s *Scaffold) StartWolfRBACServer() error {
-	cmd := exec.Command("sh", "testdata/wolf-rbac/start.sh")
-	return cmd.Run()
-}
-
-func (s *Scaffold) GetWolfRBACServerURL() (string, error) {
-	cmd := exec.Command("sh", "testdata/wolf-rbac/ip.sh")
-	ip, err := cmd.Output()
-	if err != nil {
-		return "", err
+func TruncateString(s string, max int) string {
+	if max > len(s) || max < 0 {
+		return s
 	}
-	if len(ip) == 0 {
-		return "", fmt.Errorf("wolf-server start failed")
-	}
-	httpsvc := fmt.Sprintf("http://%s:12180", string(ip))
-	return httpsvc, nil
-}
-
-func (s *Scaffold) StopWolfRBACServer() error {
-	cmd := exec.Command("sh", "testdata/wolf-rbac/stop.sh")
-	err := cmd.Run()
-	return err
+	return s[:max]
 }
