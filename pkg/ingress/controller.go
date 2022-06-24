@@ -570,7 +570,7 @@ func (c *Controller) run(ctx context.Context) {
 		c.apisixPluginConfigController.run(ctx)
 	})
 
-	c.goAttach(func() {
+	e.Add(func() {
 		c.resourceSyncLoop(ctx, c.cfg.ApisixResourceSyncInterval.Duration)
 	})
 	c.MetricsCollector.ResetLeader(true)
