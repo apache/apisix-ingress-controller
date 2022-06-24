@@ -17,9 +17,6 @@ package ingress
 
 import (
 	"context"
-	"fmt"
-	"net"
-	"time"
 
 	"go.uber.org/zap"
 	apiv1 "k8s.io/api/core/v1"
@@ -29,9 +26,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/cache"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/utils"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
@@ -39,9 +35,8 @@ import (
 )
 
 const (
-	_conditionType            = "ResourcesAvailable"
-	_commonSuccessMessage     = "Sync Successfully"
-	_gatewayLBNotReadyMessage = "The LoadBalancer used by the APISIX gateway is not yet ready"
+	_conditionType        = "ResourcesAvailable"
+	_commonSuccessMessage = "Sync Successfully"
 )
 
 // verifyGeneration verify generation to decide whether to update status
@@ -301,148 +296,13 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 				zap.String("namespace", v.Namespace),
 			)
 		}
-	case *gatewayv1alpha2.Gateway:
-		gatewayCondition := metav1.Condition{
-			Type:               string(gatewayv1alpha2.ListenerConditionReady),
-			Reason:             reason,
-			Status:             status,
-			Message:            "Gateway's status has been successfully updated",
-			ObservedGeneration: generation,
-		}
-
-		gatewayKubeClient := c.kubeClient.GatewayClient
-
-		if v.Status.Conditions == nil {
-			conditions := make([]metav1.Condition, 0)
-			v.Status.Conditions = conditions
-		} else {
-			meta.SetStatusCondition(&v.Status.Conditions, gatewayCondition)
-		}
-
-		lbips, err := c.ingressLBStatusIPs()
-		if err != nil {
-			log.Errorw("failed to get APISIX gateway external IPs",
-				zap.Error(err),
-			)
-		}
-
-		v.Status.Addresses = convLBIPToGatewayAddr(lbips)
-		if _, errRecord := gatewayKubeClient.GatewayV1alpha2().Gateways(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-			log.Errorw("failed to record status change for Gateway resource",
-				zap.Error(errRecord),
-				zap.String("name", v.Name),
-				zap.String("namespace", v.Namespace),
-			)
-		}
 	default:
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
 	}
 }
 
-// ingressPublishAddresses get addressed used to expose Ingress
-func (c *Controller) ingressPublishAddresses() ([]string, error) {
-	ingressPublishService := c.cfg.IngressPublishService
-	ingressStatusAddress := c.cfg.IngressStatusAddress
-	addrs := []string{}
-
-	// if ingressStatusAddress is specified, it will be used first
-	if len(ingressStatusAddress) > 0 {
-		addrs = append(addrs, ingressStatusAddress...)
-		return addrs, nil
-	}
-
-	namespace, name, err := cache.SplitMetaNamespaceKey(ingressPublishService)
-	if err != nil {
-		log.Errorf("invalid ingressPublishService %s: %s", ingressPublishService, err)
-		return nil, err
-	}
-
-	kubeClient := c.kubeClient.Client
-	svc, err := kubeClient.CoreV1().Services(namespace).Get(context.TODO(), name, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	switch svc.Spec.Type {
-	case apiv1.ServiceTypeLoadBalancer:
-		if len(svc.Status.LoadBalancer.Ingress) < 1 {
-			return addrs, fmt.Errorf("%s", _gatewayLBNotReadyMessage)
-		}
-
-		for _, ip := range svc.Status.LoadBalancer.Ingress {
-			if ip.IP == "" {
-				// typically AWS load-balancers
-				addrs = append(addrs, ip.Hostname)
-			} else {
-				addrs = append(addrs, ip.IP)
-			}
-		}
-
-		addrs = append(addrs, svc.Spec.ExternalIPs...)
-		return addrs, nil
-	default:
-		return addrs, nil
-	}
-
-}
-
 // ingressLBStatusIPs organizes the available addresses
 func (c *Controller) ingressLBStatusIPs() ([]apiv1.LoadBalancerIngress, error) {
-	lbips := []apiv1.LoadBalancerIngress{}
-	var ips []string
-
-	for {
-		var err error
-		ips, err = c.ingressPublishAddresses()
-		if err != nil {
-			if err.Error() == _gatewayLBNotReadyMessage {
-				log.Warnf("%s. Provided service: %s", _gatewayLBNotReadyMessage, c.cfg.IngressPublishService)
-				time.Sleep(time.Second)
-				continue
-			}
-
-			return nil, err
-		}
-		break
-	}
-
-	for _, ip := range ips {
-		if net.ParseIP(ip) == nil {
-			lbips = append(lbips, apiv1.LoadBalancerIngress{Hostname: ip})
-		} else {
-			lbips = append(lbips, apiv1.LoadBalancerIngress{IP: ip})
-		}
-
-	}
-
-	return lbips, nil
-}
-
-// convLBIPToGatewayAddr convert LoadBalancerIngress to GatewayAddress format
-func convLBIPToGatewayAddr(lbips []apiv1.LoadBalancerIngress) []gatewayv1alpha2.GatewayAddress {
-	gas := []gatewayv1alpha2.GatewayAddress{}
-
-	// In the definition, there is also an address type called NamedAddress,
-	// which we currently do not implement
-	HostnameAddressType := gatewayv1alpha2.HostnameAddressType
-	IPAddressType := gatewayv1alpha2.IPAddressType
-
-	for _, lbip := range lbips {
-		if v := lbip.Hostname; v != "" {
-			gas = append(gas, gatewayv1alpha2.GatewayAddress{
-				Type:  &HostnameAddressType,
-				Value: v,
-			})
-		}
-
-		if v := lbip.IP; v != "" {
-			gas = append(gas, gatewayv1alpha2.GatewayAddress{
-				Type:  &IPAddressType,
-				Value: v,
-			})
-		}
-	}
-
-	return gas
+	return utils.IngressLBStatusIPs(c.cfg.IngressPublishService, c.cfg.IngressStatusAddress, c.kubeClient.Client)
 }

@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
@@ -143,17 +144,17 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		zap.Any("pluginConfigs", tctx.PluginConfigs),
 	)
 
-	m := &manifest{
-		ssl:           tctx.SSL,
-		routes:        tctx.Routes,
-		upstreams:     tctx.Upstreams,
-		pluginConfigs: tctx.PluginConfigs,
+	m := &utils.Manifest{
+		SSLs:          tctx.SSL,
+		Routes:        tctx.Routes,
+		Upstreams:     tctx.Upstreams,
+		PluginConfigs: tctx.PluginConfigs,
 	}
 
 	var (
-		added   *manifest
-		updated *manifest
-		deleted *manifest
+		added   *utils.Manifest
+		updated *utils.Manifest
+		deleted *utils.Manifest
 	)
 
 	if ev.Type == types.EventDelete {
@@ -170,13 +171,13 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 			)
 			return err
 		}
-		om := &manifest{
-			routes:        oldCtx.Routes,
-			upstreams:     oldCtx.Upstreams,
-			ssl:           oldCtx.SSL,
-			pluginConfigs: oldCtx.PluginConfigs,
+		om := &utils.Manifest{
+			Routes:        oldCtx.Routes,
+			Upstreams:     oldCtx.Upstreams,
+			SSLs:          oldCtx.SSL,
+			PluginConfigs: oldCtx.PluginConfigs,
 		}
-		added, updated, deleted = m.diff(om)
+		added, updated, deleted = m.Diff(om)
 	}
 	if err := c.controller.syncManifests(ctx, added, updated, deleted); err != nil {
 		log.Errorw("failed to sync ingress artifacts",

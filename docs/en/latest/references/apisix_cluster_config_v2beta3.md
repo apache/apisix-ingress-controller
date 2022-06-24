@@ -1,5 +1,5 @@
 ---
-title: ApisixClusterConfig/v2alpha1 Reference
+title: ApisixClusterConfig/v2beta3 Reference
 ---
 
 <!--

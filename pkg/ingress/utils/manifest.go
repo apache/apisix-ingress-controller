@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package ingress
+package utils
 
 import (
 	"context"
@@ -21,12 +21,13 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func diffSSL(olds, news []*apisixv1.Ssl) (added, updated, deleted []*apisixv1.Ssl) {
+func DiffSSL(olds, news []*apisixv1.Ssl) (added, updated, deleted []*apisixv1.Ssl) {
 	if olds == nil {
 		return news, nil, nil
 	}
@@ -58,7 +59,7 @@ func diffSSL(olds, news []*apisixv1.Ssl) (added, updated, deleted []*apisixv1.Ss
 	return
 }
 
-func diffRoutes(olds, news []*apisixv1.Route) (added, updated, deleted []*apisixv1.Route) {
+func DiffRoutes(olds, news []*apisixv1.Route) (added, updated, deleted []*apisixv1.Route) {
 	if olds == nil {
 		return news, nil, nil
 	}
@@ -90,7 +91,7 @@ func diffRoutes(olds, news []*apisixv1.Route) (added, updated, deleted []*apisix
 	return
 }
 
-func diffUpstreams(olds, news []*apisixv1.Upstream) (added, updated, deleted []*apisixv1.Upstream) {
+func DiffUpstreams(olds, news []*apisixv1.Upstream) (added, updated, deleted []*apisixv1.Upstream) {
 	oldMap := make(map[string]*apisixv1.Upstream, len(olds))
 	newMap := make(map[string]*apisixv1.Upstream, len(news))
 	for _, u := range olds {
@@ -115,7 +116,7 @@ func diffUpstreams(olds, news []*apisixv1.Upstream) (added, updated, deleted []*
 	return
 }
 
-func diffStreamRoutes(olds, news []*apisixv1.StreamRoute) (added, updated, deleted []*apisixv1.StreamRoute) {
+func DiffStreamRoutes(olds, news []*apisixv1.StreamRoute) (added, updated, deleted []*apisixv1.StreamRoute) {
 	oldMap := make(map[string]*apisixv1.StreamRoute, len(olds))
 	newMap := make(map[string]*apisixv1.StreamRoute, len(news))
 	for _, sr := range olds {
@@ -140,7 +141,7 @@ func diffStreamRoutes(olds, news []*apisixv1.StreamRoute) (added, updated, delet
 	return
 }
 
-func diffPluginConfigs(olds, news []*apisixv1.PluginConfig) (added, updated, deleted []*apisixv1.PluginConfig) {
+func DiffPluginConfigs(olds, news []*apisixv1.PluginConfig) (added, updated, deleted []*apisixv1.PluginConfig) {
 	oldMap := make(map[string]*apisixv1.PluginConfig, len(olds))
 	newMap := make(map[string]*apisixv1.PluginConfig, len(news))
 	for _, sr := range olds {
@@ -165,73 +166,72 @@ func diffPluginConfigs(olds, news []*apisixv1.PluginConfig) (added, updated, del
 	return
 }
 
-type manifest struct {
-	routes        []*apisixv1.Route
-	upstreams     []*apisixv1.Upstream
-	streamRoutes  []*apisixv1.StreamRoute
-	ssl           []*apisixv1.Ssl
-	pluginConfigs []*apisixv1.PluginConfig
+type Manifest struct {
+	Routes        []*apisixv1.Route
+	Upstreams     []*apisixv1.Upstream
+	StreamRoutes  []*apisixv1.StreamRoute
+	SSLs          []*apisixv1.Ssl
+	PluginConfigs []*apisixv1.PluginConfig
 }
 
-func (m *manifest) diff(om *manifest) (added, updated, deleted *manifest) {
-	sa, su, sd := diffSSL(om.ssl, m.ssl)
-	ar, ur, dr := diffRoutes(om.routes, m.routes)
-	au, uu, du := diffUpstreams(om.upstreams, m.upstreams)
-	asr, usr, dsr := diffStreamRoutes(om.streamRoutes, m.streamRoutes)
-	apc, upc, dpc := diffPluginConfigs(om.pluginConfigs, m.pluginConfigs)
+func (m *Manifest) Diff(om *Manifest) (added, updated, deleted *Manifest) {
+	sa, su, sd := DiffSSL(om.SSLs, m.SSLs)
+	ar, ur, dr := DiffRoutes(om.Routes, m.Routes)
+	au, uu, du := DiffUpstreams(om.Upstreams, m.Upstreams)
+	asr, usr, dsr := DiffStreamRoutes(om.StreamRoutes, m.StreamRoutes)
+	apc, upc, dpc := DiffPluginConfigs(om.PluginConfigs, m.PluginConfigs)
 
 	if ar != nil || au != nil || asr != nil || sa != nil || apc != nil {
-		added = &manifest{
-			routes:        ar,
-			upstreams:     au,
-			streamRoutes:  asr,
-			ssl:           sa,
-			pluginConfigs: apc,
+		added = &Manifest{
+			Routes:        ar,
+			Upstreams:     au,
+			StreamRoutes:  asr,
+			SSLs:          sa,
+			PluginConfigs: apc,
 		}
 	}
 	if ur != nil || uu != nil || usr != nil || su != nil || upc != nil {
-		updated = &manifest{
-			routes:        ur,
-			upstreams:     uu,
-			streamRoutes:  usr,
-			ssl:           su,
-			pluginConfigs: upc,
+		updated = &Manifest{
+			Routes:        ur,
+			Upstreams:     uu,
+			StreamRoutes:  usr,
+			SSLs:          su,
+			PluginConfigs: upc,
 		}
 	}
 	if dr != nil || du != nil || dsr != nil || sd != nil || dpc != nil {
-		deleted = &manifest{
-			routes:        dr,
-			upstreams:     du,
-			streamRoutes:  dsr,
-			ssl:           sd,
-			pluginConfigs: dpc,
+		deleted = &Manifest{
+			Routes:        dr,
+			Upstreams:     du,
+			StreamRoutes:  dsr,
+			SSLs:          sd,
+			PluginConfigs: dpc,
 		}
 	}
 	return
 }
 
-func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted *manifest) error {
+func SyncManifests(ctx context.Context, apisix apisix.APISIX, clusterName string, added, updated, deleted *Manifest) error {
 	var merr *multierror.Error
 
-	clusterName := c.cfg.APISIX.DefaultClusterName
 	if deleted != nil {
-		for _, ssl := range deleted.ssl {
-			if err := c.apisix.Cluster(clusterName).SSL().Delete(ctx, ssl); err != nil {
+		for _, ssl := range deleted.SSLs {
+			if err := apisix.Cluster(clusterName).SSL().Delete(ctx, ssl); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
-		for _, r := range deleted.routes {
-			if err := c.apisix.Cluster(clusterName).Route().Delete(ctx, r); err != nil {
+		for _, r := range deleted.Routes {
+			if err := apisix.Cluster(clusterName).Route().Delete(ctx, r); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
-		for _, sr := range deleted.streamRoutes {
-			if err := c.apisix.Cluster(clusterName).StreamRoute().Delete(ctx, sr); err != nil {
+		for _, sr := range deleted.StreamRoutes {
+			if err := apisix.Cluster(clusterName).StreamRoute().Delete(ctx, sr); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
-		for _, u := range deleted.upstreams {
-			if err := c.apisix.Cluster(clusterName).Upstream().Delete(ctx, u); err != nil {
+		for _, u := range deleted.Upstreams {
+			if err := apisix.Cluster(clusterName).Upstream().Delete(ctx, u); err != nil {
 				// Upstream might be referenced by other routes.
 				if err != cache.ErrStillInUse {
 					merr = multierror.Append(merr, err)
@@ -243,8 +243,8 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 				}
 			}
 		}
-		for _, pc := range deleted.pluginConfigs {
-			if err := c.apisix.Cluster(clusterName).PluginConfig().Delete(ctx, pc); err != nil {
+		for _, pc := range deleted.PluginConfigs {
+			if err := apisix.Cluster(clusterName).PluginConfig().Delete(ctx, pc); err != nil {
 				// pluginConfig might be referenced by other routes.
 				if err != cache.ErrStillInUse {
 					merr = multierror.Append(merr, err)
@@ -259,55 +259,55 @@ func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted 
 	}
 	if added != nil {
 		// Should create upstreams firstly due to the dependencies.
-		for _, ssl := range added.ssl {
-			if _, err := c.apisix.Cluster(clusterName).SSL().Create(ctx, ssl); err != nil {
+		for _, ssl := range added.SSLs {
+			if _, err := apisix.Cluster(clusterName).SSL().Create(ctx, ssl); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
-		for _, u := range added.upstreams {
-			if _, err := c.apisix.Cluster(clusterName).Upstream().Create(ctx, u); err != nil {
+		for _, u := range added.Upstreams {
+			if _, err := apisix.Cluster(clusterName).Upstream().Create(ctx, u); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
-		for _, pc := range added.pluginConfigs {
-			if _, err := c.apisix.Cluster(clusterName).PluginConfig().Create(ctx, pc); err != nil {
+		for _, pc := range added.PluginConfigs {
+			if _, err := apisix.Cluster(clusterName).PluginConfig().Create(ctx, pc); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
-		for _, r := range added.routes {
-			if _, err := c.apisix.Cluster(clusterName).Route().Create(ctx, r); err != nil {
+		for _, r := range added.Routes {
+			if _, err := apisix.Cluster(clusterName).Route().Create(ctx, r); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
-		for _, sr := range added.streamRoutes {
-			if _, err := c.apisix.Cluster(clusterName).StreamRoute().Create(ctx, sr); err != nil {
+		for _, sr := range added.StreamRoutes {
+			if _, err := apisix.Cluster(clusterName).StreamRoute().Create(ctx, sr); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
 	}
 	if updated != nil {
-		for _, ssl := range updated.ssl {
-			if _, err := c.apisix.Cluster(clusterName).SSL().Update(ctx, ssl); err != nil {
+		for _, ssl := range updated.SSLs {
+			if _, err := apisix.Cluster(clusterName).SSL().Update(ctx, ssl); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
-		for _, r := range updated.upstreams {
-			if _, err := c.apisix.Cluster(clusterName).Upstream().Update(ctx, r); err != nil {
+		for _, r := range updated.Upstreams {
+			if _, err := apisix.Cluster(clusterName).Upstream().Update(ctx, r); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
-		for _, pc := range updated.pluginConfigs {
-			if _, err := c.apisix.Cluster(clusterName).PluginConfig().Update(ctx, pc); err != nil {
+		for _, pc := range updated.PluginConfigs {
+			if _, err := apisix.Cluster(clusterName).PluginConfig().Update(ctx, pc); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
-		for _, r := range updated.routes {
-			if _, err := c.apisix.Cluster(clusterName).Route().Update(ctx, r); err != nil {
+		for _, r := range updated.Routes {
+			if _, err := apisix.Cluster(clusterName).Route().Update(ctx, r); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
-		for _, sr := range updated.streamRoutes {
-			if _, err := c.apisix.Cluster(clusterName).StreamRoute().Create(ctx, sr); err != nil {
+		for _, sr := range updated.StreamRoutes {
+			if _, err := apisix.Cluster(clusterName).StreamRoute().Create(ctx, sr); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}

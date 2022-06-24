@@ -1,5 +1,8 @@
-#!/bin/sh
+---
+title: ApisixPluginConfig/v2 Reference
+---
 
+<!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -16,5 +19,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+-->
 
-echo -n `docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' wolf-server`
+## Spec
+
+Spec describes the desired state of an ApisixPluginConfig object.
+
+|     Field     |  Type    |                    Description                     |
+|---------------|----------|----------------------------------------------------|
+| plugins         | array    | A series of custom plugins that will be executed once this route rule is matched |
+| plugins[].name | string | The plugin name, see [docs](http://apisix.apache.org/docs/apisix/getting-started) for learning the available plugins. |
+| plugins[].enable | boolean | Whether the plugin would be used |
+| plugins[].config | object | The configuration of the plugin that must have the same fields as in APISIX. |

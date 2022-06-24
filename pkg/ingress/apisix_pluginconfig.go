@@ -27,6 +27,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -167,14 +168,14 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 		zap.Any("pluginConfigs", tctx.PluginConfigs),
 	)
 
-	m := &manifest{
-		pluginConfigs: tctx.PluginConfigs,
+	m := &utils.Manifest{
+		PluginConfigs: tctx.PluginConfigs,
 	}
 
 	var (
-		added   *manifest
-		updated *manifest
-		deleted *manifest
+		added   *utils.Manifest
+		updated *utils.Manifest
+		deleted *utils.Manifest
 	)
 
 	if ev.Type == types.EventDelete {
@@ -199,10 +200,10 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 			return err
 		}
 
-		om := &manifest{
-			pluginConfigs: oldCtx.PluginConfigs,
+		om := &utils.Manifest{
+			PluginConfigs: oldCtx.PluginConfigs,
 		}
-		added, updated, deleted = m.diff(om)
+		added, updated, deleted = m.Diff(om)
 	}
 
 	return c.controller.syncManifests(ctx, added, updated, deleted)

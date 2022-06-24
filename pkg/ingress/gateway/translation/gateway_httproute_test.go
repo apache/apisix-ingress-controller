@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package translation
+package gateway_translation
 
 import (
 	"context"
@@ -30,6 +30,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -102,9 +103,11 @@ func mockHTTPRouteTranslator(t *testing.T) (*translator, <-chan struct{}) {
 
 	tr := &translator{
 		&TranslatorOptions{
-			EndpointLister:       epLister,
-			ServiceLister:        svcLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			KubeTranslator: translation.NewTranslator(&translation.TranslatorOptions{
+				EndpointLister:       epLister,
+				ServiceLister:        svcLister,
+				ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			}),
 		},
 	}
 
