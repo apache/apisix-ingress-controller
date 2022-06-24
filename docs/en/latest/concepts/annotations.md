@@ -171,3 +171,36 @@ spec:
             port:
               number: 80
 ```
+
+Enable websocket
+---------
+
+You can use the follow annotations to enable websocket
+
+* `k8s.apisix.apache.org/enable-websocket`
+  
+If this annotations set to `true` the route will enable websoket
+
+For example, the following Ingress, if we set `k8s.apisix.apache.org/enable-websocket: "true"`. `/api/* ` route will enable websocket
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/enable-websocket: "true"
+  name: ingress-v1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /api/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: service1
+            port:
+              number: 80
+```
