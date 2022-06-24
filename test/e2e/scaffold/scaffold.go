@@ -384,10 +384,8 @@ func (s *Scaffold) beforeEach() {
 	err = s.newIngressAPISIXController()
 	assert.Nil(s.t, err, "initializing ingress apisix controller")
 
-	if s.opts.IngressAPISIXReplicas != 0 {
-		err = s.WaitAllIngressControllerPodsAvailable()
-		assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
-	}
+	err = s.WaitAllIngressControllerPodsAvailable()
+	assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
 }
 
 func (s *Scaffold) afterEach() {
