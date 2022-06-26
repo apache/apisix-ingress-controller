@@ -181,7 +181,7 @@ You can use the follow annotations to enable websocket
   
 If this annotations set to `true` the route will enable websoket
 
-For example, the following Ingress, if we set `k8s.apisix.apache.org/enable-websocket: "true"`. `/api/* ` route will enable websocket
+For example, the following Ingress, if we set `k8s.apisix.apache.org/enable-websocket: "true"`. `/api/*` route will enable websocket
 
 ```yaml
 apiVersion: networking.k8s.io/v1
