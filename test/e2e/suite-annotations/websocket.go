@@ -27,7 +27,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress: support ingress.networking/v1 with websocket", func() {
+var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1 websocket", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
@@ -121,7 +121,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("suite-ingress: support ingress.networking/v1beta1 with websocket", func() {
+var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1beta1 with websocket", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
@@ -213,7 +213,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("suite-ingress: support ingress.networking/v1beta1 with websocket", func() {
+var _ = ginkgo.Describe("suite-annotations: ingress.networking/v1beta1 with websocket", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		Kubeconfig:            scaffold.GetKubeconfig(),
