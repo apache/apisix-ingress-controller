@@ -511,7 +511,7 @@ spec:
     - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
 			time.Sleep(10 * time.Second)
 
 			apisixRoutes, err := s.ListApisixRoutes()

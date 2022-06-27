@@ -28,18 +28,10 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-ingress: Status subresource Testing", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
-	ginkgo.It("check the status is recorded", func() {
-		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
-		apisixRoute := fmt.Sprintf(`
+	suites := func(s *scaffold.Scaffold) {
+		ginkgo.It("check the status is recorded", func() {
+			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+			apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -56,19 +48,27 @@ spec:
     - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
 
-		err := s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-		err = s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		// status should be recorded as successful
-		output, err := s.GetOutputFromString("ar", "httpbin-route", "-o", "yaml")
-		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixRoute resource")
-		hasType := strings.Contains(output, "type: ResourcesAvailable")
-		assert.True(ginkgo.GinkgoT(), hasType, "Status is recorded")
-		hasMsg := strings.Contains(output, "message: Sync Successfully")
-		assert.True(ginkgo.GinkgoT(), hasMsg, "Status is recorded")
+			err := s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			err = s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			// status should be recorded as successful
+			output, err := s.GetOutputFromString("ar", "httpbin-route", "-o", "yaml")
+			assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixRoute resource")
+			hasType := strings.Contains(output, "type: ResourcesAvailable")
+			assert.True(ginkgo.GinkgoT(), hasType, "Status is recorded")
+			hasMsg := strings.Contains(output, "message: Sync Successfully")
+			assert.True(ginkgo.GinkgoT(), hasMsg, "Status is recorded")
+		})
+	}
+
+	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+		suites(scaffold.NewDefaultScaffold())
+	})
+	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+		suites(scaffold.NewDefaultV2Scaffold())
 	})
 })
 

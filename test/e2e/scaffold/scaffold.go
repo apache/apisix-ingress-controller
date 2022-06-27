@@ -62,6 +62,7 @@ type Options struct {
 	APISIXPublishAddress       string
 	disableNamespaceSelector   bool
 	EnableGatewayAPI           bool
+	ApisixResourceVersion      string
 }
 
 type Scaffold struct {
@@ -87,6 +88,18 @@ type Scaffold struct {
 	EtcdServiceFQDN string
 }
 
+type apisixResourceVersionOpt struct {
+	V2      string
+	V2beta3 string
+}
+
+var (
+	apisixResourceVersion = &apisixResourceVersionOpt{
+		V2:      "apisix.apache.org/v2",
+		V2beta3: "apisix.apache.org/v2beta3",
+	}
+)
+
 // GetKubeconfig returns the kubeconfig file path.
 // Order:
 // env KUBECONFIG;
@@ -109,20 +122,38 @@ func GetKubeconfig() string {
 
 // NewScaffold creates an e2e test scaffold.
 func NewScaffold(o *Options) *Scaffold {
-	if o.APISIXRouteVersion == "" {
-		o.APISIXRouteVersion = kube.ApisixRouteV2beta3
-	}
-	if o.APISIXTlsVersion == "" {
-		o.APISIXTlsVersion = config.ApisixV2beta3
-	}
-	if o.APISIXConsumerVersion == "" {
-		o.APISIXConsumerVersion = config.ApisixV2beta3
-	}
-	if o.ApisixPluginConfigVersion == "" {
-		o.ApisixPluginConfigVersion = config.ApisixV2beta3
-	}
-	if o.APISIXClusterConfigVersion == "" {
-		o.APISIXClusterConfigVersion = config.ApisixV2beta3
+	if o.ApisixResourceVersion == ApisixResourceVersion().V2 {
+		if o.APISIXRouteVersion == "" {
+			o.APISIXRouteVersion = kube.ApisixRouteV2
+		}
+		if o.APISIXTlsVersion == "" {
+			o.APISIXTlsVersion = config.ApisixV2
+		}
+		if o.APISIXConsumerVersion == "" {
+			o.APISIXConsumerVersion = config.ApisixV2
+		}
+		if o.ApisixPluginConfigVersion == "" {
+			o.ApisixPluginConfigVersion = config.ApisixV2
+		}
+		if o.APISIXClusterConfigVersion == "" {
+			o.APISIXClusterConfigVersion = config.ApisixV2
+		}
+	} else {
+		if o.APISIXRouteVersion == "" {
+			o.APISIXRouteVersion = kube.ApisixRouteV2beta3
+		}
+		if o.APISIXTlsVersion == "" {
+			o.APISIXTlsVersion = config.ApisixV2beta3
+		}
+		if o.APISIXConsumerVersion == "" {
+			o.APISIXConsumerVersion = config.ApisixV2beta3
+		}
+		if o.ApisixPluginConfigVersion == "" {
+			o.ApisixPluginConfigVersion = config.ApisixV2beta3
+		}
+		if o.APISIXClusterConfigVersion == "" {
+			o.APISIXClusterConfigVersion = config.ApisixV2beta3
+		}
 	}
 	if o.APISIXAdminAPIKey == "" {
 		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
@@ -143,19 +174,15 @@ func NewScaffold(o *Options) *Scaffold {
 // NewDefaultScaffold creates a scaffold with some default options.
 func NewDefaultScaffold() *Scaffold {
 	opts := &Options{
-		Name:                       "default",
-		Kubeconfig:                 GetKubeconfig(),
-		APISIXConfigPath:           "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas:      1,
-		HTTPBinServicePort:         80,
-		APISIXRouteVersion:         kube.ApisixRouteV2beta3,
-		APISIXTlsVersion:           config.ApisixV2beta3,
-		APISIXConsumerVersion:      config.ApisixV2beta3,
-		ApisixPluginConfigVersion:  config.ApisixV2beta3,
-		APISIXClusterConfigVersion: config.ApisixV2beta3,
-		EnableWebhooks:             false,
-		APISIXPublishAddress:       "",
-		EnableGatewayAPI:           true,
+		Name:                  "default",
+		Kubeconfig:            GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		ApisixResourceVersion: ApisixResourceVersion().V2beta3,
+		EnableWebhooks:        false,
+		APISIXPublishAddress:  "",
+		EnableGatewayAPI:      true,
 	}
 	return NewScaffold(opts)
 }
@@ -163,19 +190,15 @@ func NewDefaultScaffold() *Scaffold {
 // NewDefaultV2Scaffold creates a scaffold with some default options.
 func NewDefaultV2Scaffold() *Scaffold {
 	opts := &Options{
-		Name:                       "default",
-		Kubeconfig:                 GetKubeconfig(),
-		APISIXConfigPath:           "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas:      1,
-		HTTPBinServicePort:         80,
-		APISIXRouteVersion:         kube.ApisixRouteV2,
-		APISIXTlsVersion:           config.ApisixV2,
-		APISIXConsumerVersion:      config.ApisixV2,
-		ApisixPluginConfigVersion:  config.ApisixV2,
-		APISIXClusterConfigVersion: config.ApisixV2,
-		EnableWebhooks:             false,
-		APISIXPublishAddress:       "",
-		EnableGatewayAPI:           true,
+		Name:                  "default",
+		Kubeconfig:            GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		ApisixResourceVersion: ApisixResourceVersion().V2,
+		EnableWebhooks:        false,
+		APISIXPublishAddress:  "",
+		EnableGatewayAPI:      true,
 	}
 	return NewScaffold(opts)
 }
@@ -558,16 +581,36 @@ func (s *Scaffold) GetApisixRouteVersion() string {
 
 func (s *Scaffold) CreateVersionedApisixResource(yml string) error {
 	if strings.Contains(yml, "kind: ApisixRoute") {
-		ac := s.replaceApiVersion(yml, s.opts.APISIXRouteVersion)
-		return s.CreateResourceFromString(ac)
+		ar := s.replaceApiVersion(yml, s.opts.APISIXRouteVersion)
+		return s.CreateResourceFromString(ar)
 	}
 	if strings.Contains(yml, "kind: ApisixConsumer") {
 		ac := s.replaceApiVersion(yml, s.opts.APISIXConsumerVersion)
 		return s.CreateResourceFromString(ac)
 	}
 	if strings.Contains(yml, "kind: ApisixPluginConfig") {
-		ac := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
-		return s.CreateResourceFromString(ac)
+		apc := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
+		return s.CreateResourceFromString(apc)
 	}
 	return errors.New("this resource does not support")
+}
+
+func (s *Scaffold) CreateVersionedApisixResourceWithNamespace(yml, namespace string) error {
+	if strings.Contains(yml, "kind: ApisixRoute") {
+		ar := s.replaceApiVersion(yml, s.opts.APISIXRouteVersion)
+		return s.CreateResourceFromStringWithNamespace(ar, namespace)
+	}
+	if strings.Contains(yml, "kind: ApisixConsumer") {
+		ac := s.replaceApiVersion(yml, s.opts.APISIXConsumerVersion)
+		return s.CreateResourceFromStringWithNamespace(ac, namespace)
+	}
+	if strings.Contains(yml, "kind: ApisixPluginConfig") {
+		apc := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
+		return s.CreateResourceFromStringWithNamespace(apc, namespace)
+	}
+	return errors.New("this resource does not support")
+}
+
+func ApisixResourceVersion() *apisixResourceVersionOpt {
+	return apisixResourceVersion
 }

@@ -27,18 +27,10 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-ingress: ApisixRoute stream Testing with v2beta2", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
-	ginkgo.It("stream tcp proxy", func() {
-		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
-		apisixRoute := fmt.Sprintf(`
+	suites := func(s *scaffold.Scaffold) {
+		ginkgo.It("stream tcp proxy", func() {
+			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+			apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -54,25 +46,25 @@ spec:
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
-		time.Sleep(12 * time.Second)
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
+			time.Sleep(12 * time.Second)
 
-		err := s.EnsureNumApisixStreamRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			err := s.EnsureNumApisixStreamRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		sr, err := s.ListApisixStreamRoutes()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), sr, 1)
-		assert.Equal(ginkgo.GinkgoT(), sr[0].ServerPort, int32(9100))
+			sr, err := s.ListApisixStreamRoutes()
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.Len(ginkgo.GinkgoT(), sr, 1)
+			assert.Equal(ginkgo.GinkgoT(), sr[0].ServerPort, int32(9100))
 
-		resp := s.NewAPISIXClientWithTCPProxy().GET("/ip").Expect()
-		resp.Body().Contains("origin")
+			resp := s.NewAPISIXClientWithTCPProxy().GET("/ip").Expect()
+			resp.Body().Contains("origin")
 
-		resp = s.NewAPISIXClientWithTCPProxy().GET("/get").WithHeader("x-my-header", "x-my-value").Expect()
-		resp.Body().Contains("x-my-value")
-	})
-	ginkgo.It("stream udp proxy", func() {
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(`
+			resp = s.NewAPISIXClientWithTCPProxy().GET("/get").WithHeader("x-my-header", "x-my-value").Expect()
+			resp.Body().Contains("x-my-value")
+		})
+		ginkgo.It("stream udp proxy", func() {
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(`
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -105,7 +97,7 @@ spec:
           containerPort: 53
           protocol: UDP
 `))
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(`
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(`
 kind: Service
 apiVersion: v1
 metadata:
@@ -120,9 +112,9 @@ spec:
     protocol: UDP
 `))
 
-		s.EnsureNumEndpointsReady(ginkgo.GinkgoT(), "coredns", 1)
+			s.EnsureNumEndpointsReady(ginkgo.GinkgoT(), "coredns", 1)
 
-		apisixRoute := fmt.Sprintf(`
+			apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -137,24 +129,31 @@ spec:
       serviceName: coredns
       servicePort: 53
 `)
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
-		defer func() {
-			err := s.RemoveResourceByString(apisixRoute)
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
+			defer func() {
+				err := s.RemoveResourceByString(apisixRoute)
+				assert.Nil(ginkgo.GinkgoT(), err)
+			}()
+			time.Sleep(9 * time.Second)
+
+			err := s.EnsureNumApisixStreamRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+			sr, err := s.ListApisixStreamRoutes()
 			assert.Nil(ginkgo.GinkgoT(), err)
-		}()
-		time.Sleep(9 * time.Second)
-
-		err := s.EnsureNumApisixStreamRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
-		sr, err := s.ListApisixStreamRoutes()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), sr, 1)
-		assert.Equal(ginkgo.GinkgoT(), sr[0].ServerPort, int32(9200))
-		// test dns query
-		r := s.DNSResolver()
-		host := "httpbin.org"
-		_, err = r.LookupIPAddr(context.Background(), host)
-		assert.Nil(ginkgo.GinkgoT(), err, "dns query error")
+			assert.Len(ginkgo.GinkgoT(), sr, 1)
+			assert.Equal(ginkgo.GinkgoT(), sr[0].ServerPort, int32(9200))
+			// test dns query
+			r := s.DNSResolver()
+			host := "httpbin.org"
+			_, err = r.LookupIPAddr(context.Background(), host)
+			assert.Nil(ginkgo.GinkgoT(), err, "dns query error")
+		})
+	}
+	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+		suites(scaffold.NewDefaultScaffold())
+	})
+	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+		suites(scaffold.NewDefaultV2Scaffold())
 	})
 })
