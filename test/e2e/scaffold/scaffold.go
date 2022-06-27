@@ -509,7 +509,7 @@ func (s *Scaffold) FormatNamespaceLabel(label string) string {
 }
 
 var (
-	versionRegex = regexp.MustCompile(`apiVersion: apisix.apache.org/.*?\n`)
+	versionRegex = regexp.MustCompile(`apiVersion: apisix.apache.org/v.*?\n`)
 )
 
 func (s *Scaffold) replaceApiVersion(yml, ver string) string {
