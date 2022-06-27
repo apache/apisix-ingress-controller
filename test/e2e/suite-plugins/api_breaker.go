@@ -26,18 +26,11 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-plugins: api-breaker plugin", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
-	ginkgo.It("sanity", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
+		s := scaffoldFunc()
+		ginkgo.It("sanity", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -70,31 +63,31 @@ spec:
          successes: 2
 `, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp := s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusOK)
+			resp := s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").Expect()
+			resp.Status(http.StatusOK)
 
-		for i := 0; i < 2; i++ {
+			for i := 0; i < 2; i++ {
+				resp = s.NewAPISIXClient().GET("/status/505").WithHeader("Host", "httpbin.org").Expect()
+				resp.Status(505)
+			}
+
+			// Trigger the api-breaker threshold
 			resp = s.NewAPISIXClient().GET("/status/505").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(505)
-		}
+			resp.Status(http.StatusBadGateway)
 
-		// Trigger the api-breaker threshold
-		resp = s.NewAPISIXClient().GET("/status/505").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusBadGateway)
-
-		time.Sleep(3500 * time.Millisecond)
-		resp = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusOK)
-	})
-	ginkgo.It("disable plugin", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+			time.Sleep(3500 * time.Millisecond)
+			resp = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").Expect()
+			resp.Status(http.StatusOK)
+		})
+		ginkgo.It("disable plugin", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -127,22 +120,30 @@ spec:
          successes: 2
 `, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp := s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusOK)
+			resp := s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").Expect()
+			resp.Status(http.StatusOK)
 
-		for i := 0; i < 2; i++ {
+			for i := 0; i < 2; i++ {
+				resp = s.NewAPISIXClient().GET("/status/505").WithHeader("Host", "httpbin.org").Expect()
+				resp.Status(505)
+			}
+
+			// Trigger the api-breaker threshold
 			resp = s.NewAPISIXClient().GET("/status/505").WithHeader("Host", "httpbin.org").Expect()
 			resp.Status(505)
-		}
+		})
+	}
 
-		// Trigger the api-breaker threshold
-		resp = s.NewAPISIXClient().GET("/status/505").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(505)
+	ginkgo.Describe("suite-plugins: scaffold v2beta3", func() {
+		suites(scaffold.NewDefaultScaffold)
+	})
+	ginkgo.Describe("suite-plugins: scaffold v2", func() {
+		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })

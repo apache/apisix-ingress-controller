@@ -26,18 +26,11 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-plugins: redirect plugin", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
-	ginkgo.It("http_to_https", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
+		s := scaffoldFunc()
+		ginkgo.It("http_to_https", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -61,20 +54,20 @@ spec:
        http_to_https: true
 `, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusMovedPermanently)
-		resp.Header("Location").Equal("https://httpbin.org/ip")
-	})
-	ginkgo.It("redirect to specific uri", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+			resp.Status(http.StatusMovedPermanently)
+			resp.Header("Location").Equal("https://httpbin.org/ip")
+		})
+		ginkgo.It("redirect to specific uri", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -99,20 +92,20 @@ spec:
        ret_code: 308
 `, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusPermanentRedirect)
-		resp.Header("Location").Equal("/ip/ipip")
-	})
-	ginkgo.It("disable plugin", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+			resp.Status(http.StatusPermanentRedirect)
+			resp.Header("Location").Equal("/ip/ipip")
+		})
+		ginkgo.It("disable plugin", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -138,20 +131,20 @@ spec:
        ret_code: 308
 `, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-		time.Sleep(6 * time.Second)
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			time.Sleep(6 * time.Second)
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusOK)
-	})
-	ginkgo.It("enable plugin and then delete it", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+			resp.Status(http.StatusOK)
+		})
+		ginkgo.It("enable plugin and then delete it", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -176,18 +169,18 @@ spec:
        ret_code: 308
 `, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-		time.Sleep(5 * time.Second)
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+			time.Sleep(5 * time.Second)
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusPermanentRedirect)
-		resp.Header("Location").Equal("/ip/ipip")
+			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+			resp.Status(http.StatusPermanentRedirect)
+			resp.Header("Location").Equal("/ip/ipip")
 
-		ar = fmt.Sprintf(`
+			ar = fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -206,15 +199,23 @@ spec:
      weight: 10
 `, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-		err = s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			err = s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusOK)
-		resp.Body().Contains("origin")
+			resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+			resp.Status(http.StatusOK)
+			resp.Body().Contains("origin")
+		})
+	}
+
+	ginkgo.Describe("suite-plugins: scaffold v2beta3", func() {
+		suites(scaffold.NewDefaultScaffold)
+	})
+	ginkgo.Describe("suite-plugins: scaffold v2", func() {
+		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })

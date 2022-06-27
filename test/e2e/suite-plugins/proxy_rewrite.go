@@ -25,18 +25,11 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-plugins: proxy-rewrite plugin", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
-	ginkgo.It("proxy rewrite request uri", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
+		s := scaffoldFunc()
+		ginkgo.It("proxy rewrite request uri", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -60,23 +53,23 @@ spec:
        uri: /ip
 `, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(200).
-			Body().
-			Contains("origin")
-	})
+			s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
+		})
 
-	ginkgo.It("proxy rewrite request uri and host", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+		ginkgo.It("proxy rewrite request uri and host", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -101,24 +94,24 @@ spec:
        host: httpbin.org
 `, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-		time.Sleep(6 * time.Second)
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			time.Sleep(6 * time.Second)
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		s.NewAPISIXClient().GET("/hello").WithHeader("Host", "test.com").
-			Expect().
-			Status(200).
-			Body().
-			Contains("origin")
-	})
+			s.NewAPISIXClient().GET("/hello").WithHeader("Host", "test.com").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
+		})
 
-	ginkgo.It("proxy rewrite request regex_uri and headers", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+		ginkgo.It("proxy rewrite request regex_uri and headers", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -144,24 +137,24 @@ spec:
          host: httpbin.org
 `, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-		time.Sleep(6 * time.Second)
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			time.Sleep(6 * time.Second)
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		s.NewAPISIXClient().GET("/hello/ip").
-			Expect().
-			Status(200).
-			Body().
-			Contains("origin")
-	})
+			s.NewAPISIXClient().GET("/hello/ip").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
+		})
 
-	ginkgo.It("the regex_uri of the proxy-rewrite plugin does not match", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+		ginkgo.It("the regex_uri of the proxy-rewrite plugin does not match", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -187,22 +180,22 @@ spec:
          host: httpbin.org
 `, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-		time.Sleep(6 * time.Second)
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			time.Sleep(6 * time.Second)
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		s.NewAPISIXClient().GET("/hello/ip").
-			Expect().
-			Status(404)
-	})
+			s.NewAPISIXClient().GET("/hello/ip").
+				Expect().
+				Status(404)
+		})
 
-	ginkgo.It("disable plugin", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+		ginkgo.It("disable plugin", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -226,15 +219,23 @@ spec:
        uri: /ip
 `, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(404)
+			s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(404)
+		})
+	}
+
+	ginkgo.Describe("suite-plugins: scaffold v2beta3", func() {
+		suites(scaffold.NewDefaultScaffold)
+	})
+	ginkgo.Describe("suite-plugins: scaffold v2", func() {
+		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })

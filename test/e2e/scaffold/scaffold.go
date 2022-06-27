@@ -551,3 +551,23 @@ func (s *Scaffold) CreateVersionedApisixPluginConfig(yml string) error {
 	ac := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
 	return s.CreateResourceFromString(ac)
 }
+
+func (s *Scaffold) GetApisixRouteVersion() string {
+	return s.opts.APISIXRouteVersion
+}
+
+func (s *Scaffold) CreateVersionedApisixResource(yml string) error {
+	if strings.Contains(yml, "kind: ApisixRoute") {
+		ac := s.replaceApiVersion(yml, s.opts.APISIXRouteVersion)
+		return s.CreateResourceFromString(ac)
+	}
+	if strings.Contains(yml, "kind: ApisixConsumer") {
+		ac := s.replaceApiVersion(yml, s.opts.APISIXConsumerVersion)
+		return s.CreateResourceFromString(ac)
+	}
+	if strings.Contains(yml, "kind: ApisixPluginConfig") {
+		ac := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
+		return s.CreateResourceFromString(ac)
+	}
+	return errors.New("this resource does not support")
+}

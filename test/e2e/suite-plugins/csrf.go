@@ -25,18 +25,11 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-plugins: csrf plugin", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
-	ginkgo.It("prevent csrf", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
+		s := scaffoldFunc()
+		ginkgo.It("prevent csrf", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -59,44 +52,44 @@ spec:
        key: "edd1c9f034335f136f87ad84b625c8f1"
 `, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		msg401 := s.NewAPISIXClient().
-			POST("/anything").
-			WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(http.StatusUnauthorized).
-			Body().
-			Raw()
-		assert.Contains(ginkgo.GinkgoT(), msg401, "no csrf token in headers")
+			msg401 := s.NewAPISIXClient().
+				POST("/anything").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusUnauthorized).
+				Body().
+				Raw()
+			assert.Contains(ginkgo.GinkgoT(), msg401, "no csrf token in headers")
 
-		resp := s.NewAPISIXClient().
-			GET("/anything").
-			WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(http.StatusOK)
-		resp.Header("Set-Cookie").NotEmpty()
+			resp := s.NewAPISIXClient().
+				GET("/anything").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusOK)
+			resp.Header("Set-Cookie").NotEmpty()
 
-		cookie := resp.Cookie("apisix-csrf-token")
-		token := cookie.Value().Raw()
+			cookie := resp.Cookie("apisix-csrf-token")
+			token := cookie.Value().Raw()
 
-		_ = s.NewAPISIXClient().
-			POST("/anything").
-			WithHeader("Host", "httpbin.org").
-			WithHeader("apisix-csrf-token", token).
-			WithCookie("apisix-csrf-token", token).
-			Expect().
-			Status(http.StatusOK)
-	})
+			_ = s.NewAPISIXClient().
+				POST("/anything").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("apisix-csrf-token", token).
+				WithCookie("apisix-csrf-token", token).
+				Expect().
+				Status(http.StatusOK)
+		})
 
-	ginkgo.It("disable plugin", func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+		ginkgo.It("disable plugin", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -119,23 +112,31 @@ spec:
        key: "edd1c9f034335f136f87ad84b625c8f1"
 `, backendSvc, backendPorts[0])
 
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		_ = s.NewAPISIXClient().
-			GET("/anything").
-			WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(http.StatusOK)
+			_ = s.NewAPISIXClient().
+				GET("/anything").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusOK)
 
-		_ = s.NewAPISIXClient().
-			POST("/anything").
-			WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(http.StatusOK)
+			_ = s.NewAPISIXClient().
+				POST("/anything").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusOK)
+		})
+	}
+
+	ginkgo.Describe("suite-plugins: scaffold v2beta3", func() {
+		suites(scaffold.NewDefaultScaffold)
+	})
+	ginkgo.Describe("suite-plugins: scaffold v2", func() {
+		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })

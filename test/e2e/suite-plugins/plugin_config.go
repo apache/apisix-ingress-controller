@@ -74,7 +74,7 @@ spec:
       weight: 10
     plugin_config_name: echo-and-cors-apc
 `, backendSvc, backendPorts[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
@@ -135,7 +135,7 @@ spec:
    plugin_config_name: test-apc-1
 `, backendSvc, backendPorts[0])
 
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
@@ -185,7 +185,7 @@ spec:
    plugin_config_name: test-apc-1
 `, backendSvc, backendPorts[0])
 
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
 			time.Sleep(6 * time.Second)
 			err := s.EnsureNumApisixUpstreamsCreated(1)
@@ -237,7 +237,7 @@ spec:
    plugin_config_name: test-apc-1 
 `, backendSvc, backendPorts[0])
 
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
@@ -310,7 +310,7 @@ spec:
    plugin_config_name: test-apc-1
 `, backendSvc, backendPorts[0])
 
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixPluginConfigCreated(1)
@@ -368,7 +368,7 @@ spec:
    plugin_config_name: test-apc-1
 `, backendSvc, backendPorts[0])
 
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixPluginConfigCreated(1)
@@ -435,7 +435,7 @@ spec:
    plugin_config_name: test-apc-1
 `, backendSvc, backendPorts[0])
 
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixPluginConfigCreated(1)
@@ -487,7 +487,7 @@ spec:
    plugin_config_name: test-apc-1
 `, backendSvc, backendPorts[0])
 
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixPluginConfigCreated(1)
@@ -517,7 +517,7 @@ spec:
 `)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixPluginConfig(apc))
 
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 			err = s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixPluginConfigCreated(1)
