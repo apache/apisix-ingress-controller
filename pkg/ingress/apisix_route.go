@@ -449,3 +449,25 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 
 	c.controller.MetricsCollector.IncrEvents("route", "delete")
 }
+
+func (c *apisixRouteController) ResourceSync() {
+	objs := c.controller.apisixRouteInformer.GetIndexer().List()
+	for _, obj := range objs {
+		key, err := cache.MetaNamespaceKeyFunc(obj)
+		if err != nil {
+			log.Errorw("ApisixRoute sync failed, found ApisixRoute resource with bad meta namespace key", zap.String("error", err.Error()))
+			continue
+		}
+		if !c.controller.isWatchingNamespace(key) {
+			continue
+		}
+		ar := kube.MustNewApisixRoute(obj)
+		c.workqueue.Add(&types.Event{
+			Type: types.EventAdd,
+			Object: kube.ApisixRouteEvent{
+				Key:          key,
+				GroupVersion: ar.GroupVersion(),
+			},
+		})
+	}
+}
