@@ -16,7 +16,6 @@ package plugins
 
 import (
 	"fmt"
-	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -28,7 +27,6 @@ var _ = ginkgo.Describe("suite-plugins: ip-restriction plugin", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
 		ginkgo.It("ip whitelist", func() {
-			time.Sleep(20 * time.Minute)
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3

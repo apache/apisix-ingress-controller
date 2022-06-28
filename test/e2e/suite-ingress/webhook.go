@@ -71,7 +71,7 @@ spec:
 			IngressAPISIXReplicas: 1,
 			HTTPBinServicePort:    80,
 			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2beta3,
-			EnableWebhooks:        true,
+			EnableWebhooks:        false,
 		}))
 	})
 	ginkgo.Describe("suite-ingress: scaffold v2", func() {
@@ -82,7 +82,7 @@ spec:
 			IngressAPISIXReplicas: 1,
 			HTTPBinServicePort:    80,
 			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
-			EnableWebhooks:        true,
+			EnableWebhooks:        false,
 		}))
 	})
 })
