@@ -16,7 +16,6 @@ package plugins
 
 import (
 	"fmt"
-	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -24,12 +23,51 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-plugins: request-id plugin", func() {
+var _ = ginkgo.Describe("suite-plugins-security: ip-restriction plugin", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
-		ginkgo.It("sanity", func() {
+		ginkgo.It("ip whitelist", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /hello
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: ip-restriction
+     enable: true
+     config:
+       whitelist:
+       - "192.168.3.3"
+`, backendSvc, backendPorts[0])
+
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+			// As we use port forwarding so the ip address is 127.0.0.1
+			s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(403).
+				Body().
+				Contains("Your IP address is not allowed")
+
+			ar = fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -47,22 +85,106 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: request-id
+   - name: ip-restriction
      enable: true
+     config:
+       whitelist:
+       - "127.0.0.1"
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-			time.Sleep(6 * time.Second)
+			err = s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+			// As we use port forwarding so the ip address is 127.0.0.1
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
+		})
+		ginkgo.It("ip blacklist", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /hello
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: ip-restriction
+     enable: true
+     config:
+       blacklist:
+       - "127.0.0.1"
+`, backendSvc, backendPorts[0])
+
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(200)
-			resp.Header("X-Request-Id").NotEmpty()
-			resp.Body().Contains("origin")
+			// As we use port forwarding so the ip address is 127.0.0.1
+			s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(403).
+				Body().
+				Contains("Your IP address is not allowed")
+
+			ar = fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: ip-restriction
+     enable: true
+     config:
+       blacklist:
+       - "192.168.12.12"
+`, backendSvc, backendPorts[0])
+
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+			err = s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+			// As we use port forwarding so the ip address is 127.0.0.1
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
 		})
 
 		ginkgo.It("disable plugin", func() {
@@ -85,90 +207,26 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: request-id
+   - name: ip-restriction
      enable: false
+     config:
+       blacklist:
+       - "127.0.0.1"
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-			time.Sleep(6 * time.Second)
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(200)
-			resp.Header("X-Request-Id").Empty()
-			resp.Body().Contains("origin")
-		})
-		ginkgo.It("enable plugin and then delete it", func() {
-			backendSvc, backendPorts := s.DefaultHTTPBackend()
-			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
-kind: ApisixRoute
-metadata:
- name: httpbin-route
-spec:
- http:
- - name: rule1
-   match:
-     hosts:
-     - httpbin.org
-     paths:
-       - /ip
-   backends:
-   - serviceName: %s
-     servicePort: %d
-     weight: 10
-   plugins:
-   - name: request-id
-     enable: true
-`, backendSvc, backendPorts[0])
-
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
-
-			time.Sleep(6 * time.Second)
-			err := s.EnsureNumApisixUpstreamsCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-			err = s.EnsureNumApisixRoutesCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
-			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(200)
-			resp.Header("X-Request-Id").NotEmpty()
-			resp.Body().Contains("origin")
-
-			ar = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
-kind: ApisixRoute
-metadata:
- name: httpbin-route
-spec:
- http:
- - name: rule1
-   match:
-     hosts:
-     - httpbin.org
-     paths:
-       - /ip
-   backends:
-   - serviceName: %s
-     servicePort: %d
-     weight: 10
-`, backendSvc, backendPorts[0])
-
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
-
-			err = s.EnsureNumApisixUpstreamsCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-			err = s.EnsureNumApisixRoutesCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
-			resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(200)
-			resp.Header("X-Request-Id").Empty()
-			resp.Body().Contains("origin")
+			// As we use port forwarding so the ip address is 127.0.0.1
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
 		})
 	}
 

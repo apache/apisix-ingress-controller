@@ -16,6 +16,7 @@ package plugins
 
 import (
 	"fmt"
+	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -23,10 +24,10 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-plugins: ip-restriction plugin", func() {
+var _ = ginkgo.Describe("suite-plugins-transformation: proxy-rewrite plugin", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
-		ginkgo.It("ip whitelist", func() {
+		ginkgo.It("proxy rewrite request uri", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -46,11 +47,10 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: ip-restriction
+   - name: proxy-rewrite
      enable: true
      config:
-       whitelist:
-       - "192.168.3.3"
+       uri: /ip
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
@@ -60,53 +60,14 @@ spec:
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			// As we use port forwarding so the ip address is 127.0.0.1
 			s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(403).
-				Body().
-				Contains("Your IP address is not allowed")
-
-			ar = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
-kind: ApisixRoute
-metadata:
- name: httpbin-route
-spec:
- http:
- - name: rule1
-   match:
-     hosts:
-     - httpbin.org
-     paths:
-       - /ip
-   backends:
-   - serviceName: %s
-     servicePort: %d
-     weight: 10
-   plugins:
-   - name: ip-restriction
-     enable: true
-     config:
-       whitelist:
-       - "127.0.0.1"
-`, backendSvc, backendPorts[0])
-
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
-
-			err = s.EnsureNumApisixUpstreamsCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-			err = s.EnsureNumApisixRoutesCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
-			// As we use port forwarding so the ip address is 127.0.0.1
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
 				Expect().
 				Status(200).
 				Body().
 				Contains("origin")
 		})
-		ginkgo.It("ip blacklist", func() {
+
+		ginkgo.It("proxy rewrite request uri and host", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -118,7 +79,7 @@ spec:
  - name: rule1
    match:
      hosts:
-     - httpbin.org
+     - test.com
      paths:
        - /hello
    backends:
@@ -126,28 +87,31 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: ip-restriction
+   - name: proxy-rewrite
      enable: true
      config:
-       blacklist:
-       - "127.0.0.1"
+       uri: /ip
+       host: httpbin.org
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
+			time.Sleep(6 * time.Second)
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			// As we use port forwarding so the ip address is 127.0.0.1
-			s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
+			s.NewAPISIXClient().GET("/hello").WithHeader("Host", "test.com").
 				Expect().
-				Status(403).
+				Status(200).
 				Body().
-				Contains("Your IP address is not allowed")
+				Contains("origin")
+		})
 
-			ar = fmt.Sprintf(`
+		ginkgo.It("proxy rewrite request regex_uri and headers", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -156,35 +120,77 @@ spec:
  http:
  - name: rule1
    match:
-     hosts:
-     - httpbin.org
      paths:
-       - /ip
+       - /hello/ip
    backends:
    - serviceName: %s
      servicePort: %d
      weight: 10
    plugins:
-   - name: ip-restriction
+   - name: proxy-rewrite
      enable: true
      config:
-       blacklist:
-       - "192.168.12.12"
+       regex_uri:
+         - ^/hello/(.*)
+         - /$1
+       headers:
+         host: httpbin.org
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-			err = s.EnsureNumApisixUpstreamsCreated(1)
+			time.Sleep(6 * time.Second)
+			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			// As we use port forwarding so the ip address is 127.0.0.1
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+			s.NewAPISIXClient().GET("/hello/ip").
 				Expect().
 				Status(200).
 				Body().
 				Contains("origin")
+		})
+
+		ginkgo.It("the regex_uri of the proxy-rewrite plugin does not match", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     paths:
+       - /hello/ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: proxy-rewrite
+     enable: true
+     config:
+       regex_uri:
+         - ^/world/(.*)
+         - /$1
+       headers:
+         host: httpbin.org
+`, backendSvc, backendPorts[0])
+
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+			time.Sleep(6 * time.Second)
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+			s.NewAPISIXClient().GET("/hello/ip").
+				Expect().
+				Status(404)
 		})
 
 		ginkgo.It("disable plugin", func() {
@@ -201,17 +207,16 @@ spec:
      hosts:
      - httpbin.org
      paths:
-       - /ip
+       - /hello
    backends:
    - serviceName: %s
      servicePort: %d
      weight: 10
    plugins:
-   - name: ip-restriction
+   - name: proxy-rewrite
      enable: false
      config:
-       blacklist:
-       - "127.0.0.1"
+       uri: /ip
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
@@ -221,12 +226,9 @@ spec:
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			// As we use port forwarding so the ip address is 127.0.0.1
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+			s.NewAPISIXClient().GET("/hello").WithHeader("Host", "httpbin.org").
 				Expect().
-				Status(200).
-				Body().
-				Contains("origin")
+				Status(404)
 		})
 	}
 

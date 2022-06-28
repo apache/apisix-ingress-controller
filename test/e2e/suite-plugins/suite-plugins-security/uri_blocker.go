@@ -25,10 +25,10 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-plugins: redirect plugin", func() {
+var _ = ginkgo.Describe("suite-plugins-security: uri-blocker plugin", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
-		ginkgo.It("http_to_https", func() {
+		ginkgo.It("sanity", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -43,15 +43,20 @@ spec:
      - httpbin.org
      paths:
        - /ip
+       - /status/200
+       - /headers
    backends:
    - serviceName: %s
      servicePort: %d
      weight: 10
    plugins:
-   - name: redirect
+   - name: uri-blocker
      enable: true
      config:
-       http_to_https: true
+       rejected_code: 403
+       block_rules:
+       - /status/200
+       - /headers
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
@@ -61,48 +66,24 @@ spec:
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(http.StatusMovedPermanently)
-			resp.Header("Location").Equal("https://httpbin.org/ip")
+			s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(403)
+			s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(403)
+			s.NewAPISIXClient().GET("/status/206").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(404).
+				Body().
+				Contains("404 Route Not Found")
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
 		})
-		ginkgo.It("redirect to specific uri", func() {
-			backendSvc, backendPorts := s.DefaultHTTPBackend()
-			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
-kind: ApisixRoute
-metadata:
- name: httpbin-route
-spec:
- http:
- - name: rule1
-   match:
-     hosts:
-     - httpbin.org
-     paths:
-       - /ip
-   backends:
-   - serviceName: %s
-     servicePort: %d
-     weight: 10
-   plugins:
-   - name: redirect
-     enable: true
-     config:
-       uri: "$uri/ipip"
-       ret_code: 308
-`, backendSvc, backendPorts[0])
 
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
-
-			err := s.EnsureNumApisixUpstreamsCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-			err = s.EnsureNumApisixRoutesCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
-			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(http.StatusPermanentRedirect)
-			resp.Header("Location").Equal("/ip/ipip")
-		})
 		ginkgo.It("disable plugin", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
@@ -118,30 +99,49 @@ spec:
      - httpbin.org
      paths:
        - /ip
+       - /status/200
+       - /headers
    backends:
    - serviceName: %s
      servicePort: %d
      weight: 10
    plugins:
-   - name: redirect
+   - name: uri-blocker
      enable: false
      config:
-       http_to_https: true
-       uri: "$uri/ipip"
-       ret_code: 308
+       rejected_code: 403
+       block_rules:
+       - /status/200
+       - /headers
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-			time.Sleep(6 * time.Second)
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(http.StatusOK)
+			s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200)
+			s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("httpbin.org")
+			s.NewAPISIXClient().GET("/status/206").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(404).
+				Body().
+				Contains("404 Route Not Found")
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
 		})
+
 		ginkgo.It("enable plugin and then delete it", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
@@ -157,28 +157,41 @@ spec:
      - httpbin.org
      paths:
        - /ip
+       - /status/200
+       - /headers
    backends:
    - serviceName: %s
      servicePort: %d
      weight: 10
    plugins:
-   - name: redirect
+   - name: uri-blocker
      enable: true
      config:
-       uri: "$uri/ipip"
-       ret_code: 308
+       rejected_code: 403
+       block_rules:
+       - /status/200
+       - /headers
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
-			time.Sleep(5 * time.Second)
+
+			time.Sleep(2 * time.Second)
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(http.StatusPermanentRedirect)
-			resp.Header("Location").Equal("/ip/ipip")
+			s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusForbidden)
+			s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusForbidden)
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
 
 			ar = fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -193,6 +206,8 @@ spec:
      - httpbin.org
      paths:
        - /ip
+       - /status/200
+       - /headers
    backends:
    - serviceName: %s
      servicePort: %d
@@ -206,9 +221,19 @@ spec:
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(http.StatusOK)
-			resp.Body().Contains("origin")
+			s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusOK)
+			s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusOK).
+				Body().
+				Contains("httpbin.org")
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
 		})
 	}
 

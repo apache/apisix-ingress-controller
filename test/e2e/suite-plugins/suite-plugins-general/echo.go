@@ -16,6 +16,7 @@ package plugins
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -24,10 +25,10 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-plugins: limit-count plugin", func() {
+var _ = ginkgo.Describe("suite-plugins-general: echo plugin", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
-		ginkgo.It("localized dimension, limited by remote address", func() {
+		ginkgo.It("insert preface and epilogue", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -47,13 +48,15 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: limit-count
+   - name: echo
      enable: true
      config:
-       rejected_code: 503
-       count: 2
-       time_window: 3
-       key: remote_addr
+       before_body: "This is the preface"
+       after_body: "This is the epilogue"
+       headers:
+         X-Foo: v1
+         X-Foo2: v2
+       
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
@@ -63,25 +66,52 @@ spec:
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(200).
-				Body().
-				Contains("origin")
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(200).
-				Body().
-				Contains("origin")
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(503)
-			time.Sleep(3 * time.Second)
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(200).
-				Body().
-				Contains("origin")
+			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+			resp.Status(http.StatusOK)
+			resp.Header("X-Foo").Equal("v1")
+			resp.Header("X-Foo2").Equal("v2")
+			resp.Body().Contains("This is the preface")
+			resp.Body().Contains("origin")
+			resp.Body().Contains("This is the epilogue")
+		})
+
+		ginkgo.It("replace body", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: echo
+     enable: true
+     config:
+       body: "my custom body"
+       
+`, backendSvc, backendPorts[0])
+
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+			resp.Status(http.StatusOK)
+			resp.Body().Equal("my custom body")
 		})
 
 		ginkgo.It("disable plugin", func() {
@@ -104,37 +134,25 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: limit-count
+   - name: echo
      enable: false
      config:
-       rejected_code: 503
-       count: 2
-       time_window: 3
-       key: remote_addr
+       body: "my custom body"
+       
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
+			time.Sleep(6 * time.Second)
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(200).
-				Body().
-				Contains("origin")
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(200).
-				Body().
-				Contains("origin")
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(200).
-				Body().
-				Contains("origin")
+			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+			resp.Status(http.StatusOK)
+			resp.Body().Contains("origin")
+			resp.Body().NotContains("my custom body")
 		})
 
 		ginkgo.It("enable plugin and then delete it", func() {
@@ -157,13 +175,11 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: limit-count
+   - name: echo
      enable: true
      config:
-       rejected_code: 503
-       count: 2
-       time_window: 3
-       key: remote_addr
+       body: "my custom body"
+       
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
@@ -173,19 +189,9 @@ spec:
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(200).
-				Body().
-				Contains("origin")
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(200).
-				Body().
-				Contains("origin")
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(503)
+			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+			resp.Status(http.StatusOK)
+			resp.Body().Equal("my custom body")
 
 			ar = fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -204,6 +210,7 @@ spec:
    - serviceName: %s
      servicePort: %d
      weight: 10
+       
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
@@ -213,21 +220,10 @@ spec:
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(200).
-				Body().
-				Contains("origin")
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(200).
-				Body().
-				Contains("origin")
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(200).
-				Body().
-				Contains("origin")
+			resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+			resp.Status(http.StatusOK)
+			resp.Body().NotContains("my custom body")
+			resp.Body().Contains("origin")
 		})
 	}
 

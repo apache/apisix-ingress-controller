@@ -17,7 +17,6 @@ package plugins
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -25,10 +24,10 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-plugins: echo plugin", func() {
+var _ = ginkgo.Describe("suite-plugins-security: referer-restriction plugin", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
-		ginkgo.It("insert preface and epilogue", func() {
+		ginkgo.It("configure a access list", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -48,15 +47,12 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: echo
+   - name: referer-restriction
      enable: true
      config:
-       before_body: "This is the preface"
-       after_body: "This is the epilogue"
-       headers:
-         X-Foo: v1
-         X-Foo2: v2
-       
+       whitelist:
+         - test.com
+         - "*.foo.com"
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
@@ -66,16 +62,39 @@ spec:
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+			// "Referer" match passed
+			resp := s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("Referer", "http://test.com").
+				Expect()
 			resp.Status(http.StatusOK)
-			resp.Header("X-Foo").Equal("v1")
-			resp.Header("X-Foo2").Equal("v2")
-			resp.Body().Contains("This is the preface")
 			resp.Body().Contains("origin")
-			resp.Body().Contains("This is the epilogue")
+
+			// "Referer" match failed
+			resp = s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("Referer", "http://www.test.com").
+				Expect()
+			resp.Status(http.StatusForbidden)
+			resp.Body().Contains("Your referer host is not allowed")
+
+			// "Referer" match passed
+			resp = s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("Referer", "http://www.foo.com").
+				Expect()
+			resp.Status(http.StatusOK)
+			resp.Body().Contains("origin")
+
+			// "Referer" is missing
+			resp = s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				Expect()
+			resp.Status(http.StatusForbidden)
+			resp.Body().Contains("Your referer host is not allowed")
 		})
 
-		ginkgo.It("replace body", func() {
+		ginkgo.It("configure a deny access list", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -95,23 +114,152 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: echo
+   - name: referer-restriction
      enable: true
      config:
-       body: "my custom body"
-       
+       blacklist:
+         - test.com
+         - "*.foo.com"
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
 			err := s.EnsureNumApisixUpstreamsCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking the number of upstreams")
 			err = s.EnsureNumApisixRoutesCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking the number of routes")
 
+			// "Referer" match failed
+			resp := s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("Referer", "http://test.com").
+				Expect()
+			resp.Status(http.StatusForbidden)
+			resp.Body().Contains("Your referer host is not allowed")
+
+			// "Referer" match passed
+			resp = s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("Referer", "http://www.test.com").
+				Expect()
+			resp.Status(http.StatusOK)
+			resp.Body().Contains("origin")
+
+			// "Referer" match failed
+			resp = s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("Referer", "http://www.foo.com").
+				Expect()
+			resp.Status(http.StatusForbidden)
+			resp.Body().Contains("Your referer host is not allowed")
+
+			// "Referer" is missing
+			resp = s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				Expect()
+			resp.Status(http.StatusForbidden)
+			resp.Body().Contains("Your referer host is not allowed")
+		})
+
+		ginkgo.It("customize return message", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: referer-restriction
+     enable: true
+     config:
+       whitelist:
+         - test.com
+         - "*.foo.com"
+       message: "You can customize the message any way you like"
+`, backendSvc, backendPorts[0])
+
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking the number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking the number of routes")
+
+			// "Referer" match failed
+			resp := s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("Referer", "http://www.test.com").
+				Expect()
+			resp.Status(http.StatusForbidden)
+			resp.Body().Contains("You can customize the message any way you like")
+
+			// "Referer" is missing
+			resp = s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				Expect()
+			resp.Status(http.StatusForbidden)
+			resp.Body().Contains("You can customize the message any way you like")
+		})
+
+		ginkgo.It("configure bypass_missing field to true", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: referer-restriction
+     enable: true
+     config:
+       whitelist:
+         - test.com
+       bypass_missing: true
+`, backendSvc, backendPorts[0])
+
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking the number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking the number of routes")
+
+			// "Referer" is missing
 			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
 			resp.Status(http.StatusOK)
-			resp.Body().Equal("my custom body")
+			resp.Body().Contains("origin")
+
+			// "Referer" format is incorrect
+			resp = s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("Referer", "test.com").
+				Expect()
+			resp.Status(http.StatusOK)
+			resp.Body().Contains("origin")
 		})
 
 		ginkgo.It("disable plugin", func() {
@@ -134,95 +282,31 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: echo
+   - name: referer-restriction
      enable: false
      config:
-       body: "my custom body"
-       
+       whitelist:
+         - test.com
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-			time.Sleep(6 * time.Second)
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+			// "Referer" is not in the whitelist.
+			resp := s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("Referer", "http://foo.com").
+				Expect()
 			resp.Status(http.StatusOK)
 			resp.Body().Contains("origin")
-			resp.Body().NotContains("my custom body")
-		})
 
-		ginkgo.It("enable plugin and then delete it", func() {
-			backendSvc, backendPorts := s.DefaultHTTPBackend()
-			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
-kind: ApisixRoute
-metadata:
- name: httpbin-route
-spec:
- http:
- - name: rule1
-   match:
-     hosts:
-     - httpbin.org
-     paths:
-       - /ip
-   backends:
-   - serviceName: %s
-     servicePort: %d
-     weight: 10
-   plugins:
-   - name: echo
-     enable: true
-     config:
-       body: "my custom body"
-       
-`, backendSvc, backendPorts[0])
-
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
-
-			err := s.EnsureNumApisixUpstreamsCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-			err = s.EnsureNumApisixRoutesCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
-			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(http.StatusOK)
-			resp.Body().Equal("my custom body")
-
-			ar = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
-kind: ApisixRoute
-metadata:
- name: httpbin-route
-spec:
- http:
- - name: rule1
-   match:
-     hosts:
-     - httpbin.org
-     paths:
-       - /ip
-   backends:
-   - serviceName: %s
-     servicePort: %d
-     weight: 10
-       
-`, backendSvc, backendPorts[0])
-
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
-
-			err = s.EnsureNumApisixUpstreamsCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-			err = s.EnsureNumApisixRoutesCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
+			// "Referer" is missing
 			resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
 			resp.Status(http.StatusOK)
-			resp.Body().NotContains("my custom body")
 			resp.Body().Contains("origin")
 		})
 	}

@@ -17,7 +17,6 @@ package plugins
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -25,10 +24,10 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-plugins: api-breaker plugin", func() {
+var _ = ginkgo.Describe("suite-plugins-security: csrf plugin", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
-		ginkgo.It("sanity", func() {
+		ginkgo.It("prevent csrf", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -42,49 +41,52 @@ spec:
      hosts:
      - httpbin.org
      paths:
-       - /status/*
+       - /anything
    backends:
    - serviceName: %s
      servicePort: %d
-     resolveGranularity: service
    plugins:
-   - name: api-breaker
+   - name: csrf
      enable: true
      config:
-       break_response_code: 502
-       unhealthy:
-         http_statuses:
-         - 505
-         failures: 2
-       max_breaker_sec: 3
-       healthy:
-         http_statuses:
-         - 200
-         successes: 2
+       key: "edd1c9f034335f136f87ad84b625c8f1"
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			resp := s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(http.StatusOK)
+			msg401 := s.NewAPISIXClient().
+				POST("/anything").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusUnauthorized).
+				Body().
+				Raw()
+			assert.Contains(ginkgo.GinkgoT(), msg401, "no csrf token in headers")
 
-			for i := 0; i < 2; i++ {
-				resp = s.NewAPISIXClient().GET("/status/505").WithHeader("Host", "httpbin.org").Expect()
-				resp.Status(505)
-			}
+			resp := s.NewAPISIXClient().
+				GET("/anything").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusOK)
+			resp.Header("Set-Cookie").NotEmpty()
 
-			// Trigger the api-breaker threshold
-			resp = s.NewAPISIXClient().GET("/status/505").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(http.StatusBadGateway)
+			cookie := resp.Cookie("apisix-csrf-token")
+			token := cookie.Value().Raw()
 
-			time.Sleep(3500 * time.Millisecond)
-			resp = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(http.StatusOK)
+			_ = s.NewAPISIXClient().
+				POST("/anything").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("apisix-csrf-token", token).
+				WithCookie("apisix-csrf-token", token).
+				Expect().
+				Status(http.StatusOK)
 		})
+
 		ginkgo.It("disable plugin", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
@@ -99,44 +101,35 @@ spec:
      hosts:
      - httpbin.org
      paths:
-       - /status/*
+       - /anything
    backends:
    - serviceName: %s
      servicePort: %d
-     resolveGranularity: service
    plugins:
-   - name: api-breaker
+   - name: csrf
      enable: false
      config:
-       break_response_code: 502
-       unhealthy:
-         http_statuses:
-         - 505
-         failures: 2
-       max_breaker_sec: 3
-       healthy:
-         http_statuses:
-         - 200
-         successes: 2
+       key: "edd1c9f034335f136f87ad84b625c8f1"
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			resp := s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(http.StatusOK)
+			_ = s.NewAPISIXClient().
+				GET("/anything").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusOK)
 
-			for i := 0; i < 2; i++ {
-				resp = s.NewAPISIXClient().GET("/status/505").WithHeader("Host", "httpbin.org").Expect()
-				resp.Status(505)
-			}
-
-			// Trigger the api-breaker threshold
-			resp = s.NewAPISIXClient().GET("/status/505").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(505)
+			_ = s.NewAPISIXClient().
+				POST("/anything").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusOK)
 		})
 	}
 

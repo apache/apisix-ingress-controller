@@ -16,7 +16,6 @@ package plugins
 
 import (
 	"fmt"
-	"net/http"
 	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -25,10 +24,10 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-plugins: fault-injection plugin", func() {
+var _ = ginkgo.Describe("suite-plugins-traffic: limit-count plugin", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
-		ginkgo.It("inject code and body to abort request", func() {
+		ginkgo.It("localized dimension, limited by remote address", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -48,14 +47,13 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: fault-injection
+   - name: limit-count
      enable: true
      config:
-       abort:
-         http_status: 500
-         body: "internal server error"
-         vars:
-         - [ ["http_x_foo", "==", "bar"], ["arg_name", "==", "bob"] ]
+       rejected_code: 503
+       count: 2
+       time_window: 3
+       key: remote_addr
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
@@ -65,64 +63,29 @@ spec:
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			// vars unsatisfied
-			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(http.StatusOK)
-
-			resp = s.NewAPISIXClient().GET("/ip").WithQuery("name", "bob").WithHeader("Host", "httpbin.org").WithHeader("X-Foo", "bar").Expect()
-			resp.Status(http.StatusInternalServerError)
-			resp.Body().Equal("internal server error")
-		})
-
-		ginkgo.It("delay request", func() {
-			backendSvc, backendPorts := s.DefaultHTTPBackend()
-			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
-kind: ApisixRoute
-metadata:
- name: httpbin-route
-spec:
- http:
- - name: rule1
-   match:
-     hosts:
-     - httpbin.org
-     paths:
-       - /ip
-   backends:
-   - serviceName: %s
-     servicePort: %d
-     weight: 10
-   plugins:
-   - name: fault-injection
-     enable: true
-     config:
-       delay:
-         duration: 3
-         vars:
-         - [ ["http_x_foo", "==", "bar"], ["arg_name", "==", "bob"] ]
-`, backendSvc, backendPorts[0])
-
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
-
-			err := s.EnsureNumApisixUpstreamsCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-			err = s.EnsureNumApisixRoutesCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-
-			// vars unsatisfied
-			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(http.StatusOK)
-
-			now := time.Now()
-			resp = s.NewAPISIXClient().GET("/ip").WithQuery("name", "bob").WithHeader("Host", "httpbin.org").WithHeader("X-Foo", "bar").Expect()
-			resp.Status(http.StatusOK)
-			assert.Less(ginkgo.GinkgoT(), float64((3 * time.Second).Nanoseconds()), float64(time.Since(now).Nanoseconds()))
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(503)
+			time.Sleep(3 * time.Second)
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
 		})
 
 		ginkgo.It("disable plugin", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
-
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
@@ -141,14 +104,13 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: fault-injection
+   - name: limit-count
      enable: false
      config:
-       abort:
-         http_status: 500
-         body: "internal server error"
-         vars:
-         - [ ["http_x_foo", "==", "bar"], ["arg_name", "==", "bob"] ]
+       rejected_code: 503
+       count: 2
+       time_window: 3
+       key: remote_addr
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
@@ -158,16 +120,25 @@ spec:
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			// vars unsatisfied
-			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(http.StatusOK)
-
-			resp = s.NewAPISIXClient().GET("/ip").WithQuery("name", "bob").WithHeader("Host", "httpbin.org").WithHeader("X-Foo", "bar").Expect()
-			resp.Status(http.StatusOK)
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
 		})
+
 		ginkgo.It("enable plugin and then delete it", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
-
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
@@ -186,11 +157,13 @@ spec:
      servicePort: %d
      weight: 10
    plugins:
-   - name: fault-injection
+   - name: limit-count
      enable: true
      config:
-       abort:
-         http_status: 500
+       rejected_code: 503
+       count: 2
+       time_window: 3
+       key: remote_addr
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
@@ -200,8 +173,19 @@ spec:
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			resp := s.NewAPISIXClient().GET("/ip").WithQuery("name", "bob").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(http.StatusInternalServerError)
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(503)
 
 			ar = fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -229,9 +213,21 @@ spec:
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			resp = s.NewAPISIXClient().GET("/ip").WithQuery("name", "bob").WithHeader("Host", "httpbin.org").Expect()
-			resp.Status(http.StatusOK)
-			resp.Body().Contains("origin")
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(200).
+				Body().
+				Contains("origin")
 		})
 	}
 
