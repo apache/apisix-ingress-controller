@@ -252,12 +252,22 @@ func (s *Scaffold) EnsureNumApisixPluginConfigCreated(desired int) error {
 	return s.ensureNumApisixCRDsCreated(u.String(), desired)
 }
 
-// CreateApisixRouteByApisixAdmin create a route
+// CreateApisixRouteByApisixAdmin create or update a route
 func (s *Scaffold) CreateApisixRouteByApisixAdmin(routeID string, body []byte) error {
 	u := url.URL{
 		Scheme: "http",
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin/routes/" + routeID,
+	}
+	return s.ensureAdminOperationIsSuccessful(u.String(), "PUT", body)
+}
+
+// CreateApisixRouteByApisixAdmin create or update a consumer
+func (s *Scaffold) CreateApisixConsumerByApisixAdmin(body []byte) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/consumers",
 	}
 	return s.ensureAdminOperationIsSuccessful(u.String(), "PUT", body)
 }
@@ -268,6 +278,16 @@ func (s *Scaffold) DeleteApisixRouteByApisixAdmin(routeID string) error {
 		Scheme: "http",
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin/routes/" + routeID,
+	}
+	return s.ensureAdminOperationIsSuccessful(u.String(), "DELETE", nil)
+}
+
+// DeleteApisixConsumerByApisixAdmin deletes a consumer by its consumer name in APISIX cluster.
+func (s *Scaffold) DeleteApisixConsumerByApisixAdmin(consumerName string) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/consumers/" + consumerName,
 	}
 	return s.ensureAdminOperationIsSuccessful(u.String(), "DELETE", nil)
 }

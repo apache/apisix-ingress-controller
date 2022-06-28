@@ -40,6 +40,8 @@ type Cache interface {
 	// InsertPluginConfig adds or updates plugin_config to cache.
 	InsertPluginConfig(*v1.PluginConfig) error
 
+	InsertUpstreamServiceRelation(*v1.UpstreamServiceRelation) error
+
 	// GetRoute finds the route from cache according to the primary index (id).
 	GetRoute(string) (*v1.Route, error)
 	// GetSSL finds the ssl from cache according to the primary index (id).
@@ -56,6 +58,8 @@ type Cache interface {
 	GetSchema(string) (*v1.Schema, error)
 	// GetPluginConfig finds the plugin_config from cache according to the primary index (id).
 	GetPluginConfig(string) (*v1.PluginConfig, error)
+
+	GetUpstreamServiceRelation(string) (*v1.UpstreamServiceRelation, error)
 
 	// ListRoutes lists all routes in cache.
 	ListRoutes() ([]*v1.Route, error)
@@ -74,6 +78,8 @@ type Cache interface {
 	// ListPluginConfigs lists all plugin_config in cache.
 	ListPluginConfigs() ([]*v1.PluginConfig, error)
 
+	ListUpstreamServiceRelation() ([]*v1.UpstreamServiceRelation, error)
+
 	// DeleteRoute deletes the specified route in cache.
 	DeleteRoute(*v1.Route) error
 	// DeleteSSL deletes the specified ssl in cache.
@@ -90,4 +96,6 @@ type Cache interface {
 	DeleteSchema(*v1.Schema) error
 	// DeletePluginConfig deletes the specified plugin_config in cache.
 	DeletePluginConfig(*v1.PluginConfig) error
+
+	DeleteUpstreamServiceRelation(*v1.UpstreamServiceRelation) error
 }

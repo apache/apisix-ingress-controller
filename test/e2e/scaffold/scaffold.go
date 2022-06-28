@@ -61,6 +61,7 @@ type Options struct {
 	EnableWebhooks             bool
 	APISIXPublishAddress       string
 	disableNamespaceSelector   bool
+	ApisixResourceSyncInterval string
 	EnableGatewayAPI           bool
 }
 
@@ -127,6 +128,9 @@ func NewScaffold(o *Options) *Scaffold {
 	}
 	if o.APISIXAdminAPIKey == "" {
 		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
+	}
+	if o.ApisixResourceSyncInterval == "" {
+		o.ApisixResourceSyncInterval = "300s"
 	}
 	defer ginkgo.GinkgoRecover()
 
@@ -536,7 +540,7 @@ func (s *Scaffold) FormatNamespaceLabel(label string) string {
 }
 
 var (
-	versionRegex = regexp.MustCompile(`apiVersion: apisix.apache.org/.*?\n`)
+	versionRegex = regexp.MustCompile(`apiVersion: apisix.apache.org/v.*?\n`)
 )
 
 func (s *Scaffold) replaceApiVersion(yml, ver string) string {
@@ -576,5 +580,14 @@ func (s *Scaffold) CreateVersionedApisixPluginConfig(yml string) error {
 	}
 
 	ac := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
+	return s.CreateResourceFromString(ac)
+}
+
+func (s *Scaffold) CreateVersionedApisixRoute(yml string) error {
+	if !strings.Contains(yml, "kind: ApisixRoute") {
+		return errors.New("not a ApisixRoute")
+	}
+
+	ac := s.replaceApiVersion(yml, s.opts.APISIXRouteVersion)
 	return s.CreateResourceFromString(ac)
 }
