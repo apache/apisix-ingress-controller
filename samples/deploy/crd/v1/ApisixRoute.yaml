@@ -184,9 +184,10 @@ spec:
                               type: string
                               minLength: 1
                             servicePort:
-                              type: integer
-                              minimum: 1
-                              maximum: 65535
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              x-kubernetes-int-or-string: true
                             resolveGranularity:
                               type: string
                               enum: ["endpoint", "service"]
@@ -260,9 +261,10 @@ spec:
                             type: string
                             minLength: 1
                           servicePort:
-                            type: integer
-                            minimum: 1
-                            maximum: 65535
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            x-kubernetes-int-or-string: true
                           resolveGranularity:
                             type: string
                             enum: ["endpoint", "service"]
@@ -445,9 +447,10 @@ spec:
                               type: string
                               minLength: 1
                             servicePort:
-                              type: integer
-                              minimum: 1
-                              maximum: 65535
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              x-kubernetes-int-or-string: true
                             resolveGranularity:
                               type: string
                               enum: ["endpoint", "service"]
@@ -533,9 +536,10 @@ spec:
                             type: string
                             minLength: 1
                           servicePort:
-                            type: integer
-                            minimum: 1
-                            maximum: 65535
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            x-kubernetes-int-or-string: true
                           resolveGranularity:
                             type: string
                             enum: ["endpoint", "service"]
@@ -718,9 +722,10 @@ spec:
                               type: string
                               minLength: 1
                             servicePort:
-                              type: integer
-                              minimum: 1
-                              maximum: 65535
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              x-kubernetes-int-or-string: true
                             resolveGranularity:
                               type: string
                               enum: ["endpoint", "service"]
@@ -794,9 +799,10 @@ spec:
                             type: string
                             minLength: 1
                           servicePort:
-                            type: integer
-                            minimum: 1
-                            maximum: 65535
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            x-kubernetes-int-or-string: true
                           resolveGranularity:
                             type: string
                             enum: ["endpoint", "service"]

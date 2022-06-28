@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package ingress
+package namespace
 
 import (
 	"context"
@@ -22,7 +22,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -30,13 +29,21 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
+// FIXME: Controller should be the Core Part,
+// Provider should act as "EventHandler", register there functions to Controller
+type EventHandler interface {
+	OnAdd()
+	OnUpdate()
+	OnDelete()
+}
+
 type namespaceController struct {
-	controller *Controller
+	controller *watchingProvider
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
 }
 
-func (c *Controller) newNamespaceController() *namespaceController {
+func newNamespaceController(c *watchingProvider) *namespaceController {
 	ctl := &namespaceController{
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "Namespace"),
@@ -50,25 +57,6 @@ func (c *Controller) newNamespaceController() *namespaceController {
 		},
 	)
 	return ctl
-}
-
-func (c *Controller) initWatchingNamespacesByLabels(ctx context.Context) error {
-	labelSelector := metav1.LabelSelector{MatchLabels: c.watchingLabels}
-	opts := metav1.ListOptions{
-		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
-	}
-	namespaces, err := c.kubeClient.Client.CoreV1().Namespaces().List(ctx, opts)
-	if err != nil {
-		return err
-	}
-	var nss []string
-
-	for _, ns := range namespaces.Items {
-		nss = append(nss, ns.Name)
-		c.watchingNamespaces.Store(ns.Name, struct{}{})
-	}
-	log.Infow("label selector watching namespaces", zap.Strings("namespaces", nss))
-	return nil
 }
 
 func (c *namespaceController) run(ctx context.Context) {
@@ -99,7 +87,7 @@ func (c *namespaceController) runWorker(ctx context.Context) {
 func (c *namespaceController) sync(ctx context.Context, ev *types.Event) error {
 	if ev.Type != types.EventDelete {
 		// check the labels of specify namespace
-		namespace, err := c.controller.kubeClient.Client.CoreV1().Namespaces().Get(ctx, ev.Object.(string), metav1.GetOptions{})
+		namespace, err := c.controller.kube.Client.CoreV1().Namespaces().Get(ctx, ev.Object.(string), metav1.GetOptions{})
 		if err != nil {
 			return err
 		} else {

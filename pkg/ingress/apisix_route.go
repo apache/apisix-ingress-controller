@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
@@ -189,17 +190,17 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		zap.Any("pluginConfigs", tctx.PluginConfigs),
 	)
 
-	m := &manifest{
-		routes:        tctx.Routes,
-		upstreams:     tctx.Upstreams,
-		streamRoutes:  tctx.StreamRoutes,
-		pluginConfigs: tctx.PluginConfigs,
+	m := &utils.Manifest{
+		Routes:        tctx.Routes,
+		Upstreams:     tctx.Upstreams,
+		StreamRoutes:  tctx.StreamRoutes,
+		PluginConfigs: tctx.PluginConfigs,
 	}
 
 	var (
-		added   *manifest
-		updated *manifest
-		deleted *manifest
+		added   *utils.Manifest
+		updated *utils.Manifest
+		deleted *utils.Manifest
 	)
 
 	if ev.Type == types.EventDelete {
@@ -226,13 +227,13 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			return err
 		}
 
-		om := &manifest{
-			routes:        oldCtx.Routes,
-			upstreams:     oldCtx.Upstreams,
-			streamRoutes:  oldCtx.StreamRoutes,
-			pluginConfigs: oldCtx.PluginConfigs,
+		om := &utils.Manifest{
+			Routes:        oldCtx.Routes,
+			Upstreams:     oldCtx.Upstreams,
+			StreamRoutes:  oldCtx.StreamRoutes,
+			PluginConfigs: oldCtx.PluginConfigs,
 		}
-		added, updated, deleted = m.diff(om)
+		added, updated, deleted = m.Diff(om)
 	}
 
 	return c.controller.syncManifests(ctx, added, updated, deleted)

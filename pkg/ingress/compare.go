@@ -18,9 +18,10 @@ import (
 	"context"
 	"sync"
 
+	"go.uber.org/zap"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/apache/apisix-ingress-controller/pkg/api/validation"
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
@@ -46,102 +47,175 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 		consumerMapA6     = make(map[string]string)
 		pluginConfigMapA6 = make(map[string]string)
 	)
-	// watchingNamespaces and watchingLabels are empty means to monitor all namespaces.
-	if !validation.HasValueInSyncMap(c.watchingNamespaces) && len(c.watchingLabels) == 0 {
-		opts := v1.ListOptions{}
-		// list all namespaces
-		nsList, err := c.kubeClient.Client.CoreV1().Namespaces().List(ctx, opts)
-		if err != nil {
-			log.Error(err.Error())
-			ctx.Done()
-		} else {
-			wns := new(sync.Map)
-			for _, v := range nsList.Items {
-				wns.Store(v.Name, struct{}{})
-			}
-			c.watchingNamespaces = wns
-		}
-	}
 
-	c.watchingNamespaces.Range(func(key, value interface{}) bool {
+	namespaces := c.namespaceProvider.WatchingNamespaces()
+	for _, key := range namespaces {
 		log.Debugf("start to watch namespace: %s", key)
 		wg.Add(1)
 		go func(ns string) {
 			defer wg.Done()
 			// ApisixRoute
 			opts := v1.ListOptions{}
-			retRoutes, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixRoutes(ns).List(ctx, opts)
-			if err != nil {
-				log.Error(err.Error())
-				ctx.Done()
-			} else {
-				for _, r := range retRoutes.Items {
-					tc, err := c.translator.TranslateRouteV2beta3NotStrictly(&r)
-					if err != nil {
-						log.Error(err.Error())
-						ctx.Done()
-					} else {
-						// routes
-						for _, route := range tc.Routes {
-							routeMapK8S.Store(route.ID, route.ID)
-						}
-						// streamRoutes
-						for _, stRoute := range tc.StreamRoutes {
-							streamRouteMapK8S.Store(stRoute.ID, stRoute.ID)
-						}
-						// upstreams
-						for _, upstream := range tc.Upstreams {
-							upstreamMapK8S.Store(upstream.ID, upstream.ID)
-						}
-						// ssl
-						for _, ssl := range tc.SSL {
-							sslMapK8S.Store(ssl.ID, ssl.ID)
-						}
-						// pluginConfigs
-						for _, pluginConfig := range tc.PluginConfigs {
-							pluginConfigMapK8S.Store(pluginConfig.ID, pluginConfig.ID)
+			switch c.cfg.Kubernetes.ApisixRouteVersion {
+			case config.ApisixRouteV2beta3:
+				retRoutes, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixRoutes(ns).List(ctx, opts)
+				if err != nil {
+					log.Error(err.Error())
+					ctx.Done()
+				} else {
+					for _, r := range retRoutes.Items {
+						tc, err := c.translator.TranslateRouteV2beta3NotStrictly(&r)
+						if err != nil {
+							log.Error(err.Error())
+							ctx.Done()
+						} else {
+							// routes
+							for _, route := range tc.Routes {
+								routeMapK8S.Store(route.ID, route.ID)
+							}
+							// streamRoutes
+							for _, stRoute := range tc.StreamRoutes {
+								streamRouteMapK8S.Store(stRoute.ID, stRoute.ID)
+							}
+							// upstreams
+							for _, upstream := range tc.Upstreams {
+								upstreamMapK8S.Store(upstream.ID, upstream.ID)
+							}
+							// ssl
+							for _, ssl := range tc.SSL {
+								sslMapK8S.Store(ssl.ID, ssl.ID)
+							}
+							// pluginConfigs
+							for _, pluginConfig := range tc.PluginConfigs {
+								pluginConfigMapK8S.Store(pluginConfig.ID, pluginConfig.ID)
+							}
 						}
 					}
 				}
+			case config.ApisixRouteV2:
+				retRoutes, err := c.kubeClient.APISIXClient.ApisixV2().ApisixRoutes(ns).List(ctx, opts)
+				if err != nil {
+					log.Error(err.Error())
+					ctx.Done()
+				} else {
+					for _, r := range retRoutes.Items {
+						tc, err := c.translator.TranslateRouteV2NotStrictly(&r)
+						if err != nil {
+							log.Error(err.Error())
+							ctx.Done()
+						} else {
+							// routes
+							for _, route := range tc.Routes {
+								routeMapK8S.Store(route.ID, route.ID)
+							}
+							// streamRoutes
+							for _, stRoute := range tc.StreamRoutes {
+								streamRouteMapK8S.Store(stRoute.ID, stRoute.ID)
+							}
+							// upstreams
+							for _, upstream := range tc.Upstreams {
+								upstreamMapK8S.Store(upstream.ID, upstream.ID)
+							}
+							// ssl
+							for _, ssl := range tc.SSL {
+								sslMapK8S.Store(ssl.ID, ssl.ID)
+							}
+							// pluginConfigs
+							for _, pluginConfig := range tc.PluginConfigs {
+								pluginConfigMapK8S.Store(pluginConfig.ID, pluginConfig.ID)
+							}
+						}
+					}
+				}
+			default:
+				log.Errorw("failed to sync ApisixRoute, unexpected version",
+					zap.String("version", c.cfg.Kubernetes.ApisixRouteVersion),
+				)
 			}
 			// todo ApisixUpstream and ApisixPluginConfig
 			// ApisixUpstream and ApisixPluginConfig should be synced with ApisixRoute resource
 
-			// ApisixSSL TODO: Support v2?
-			retSSL, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixTlses(ns).List(ctx, opts)
-			if err != nil {
-				log.Error(err.Error())
-				ctx.Done()
-			} else {
-				for _, s := range retSSL.Items {
-					ssl, err := c.translator.TranslateSSLV2Beta3(&s)
-					if err != nil {
-						log.Error(err.Error())
-						ctx.Done()
-					} else {
-						sslMapK8S.Store(ssl.ID, ssl.ID)
+			switch c.cfg.Kubernetes.ApisixTlsVersion {
+			case config.ApisixV2beta3:
+				retSSL, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixTlses(ns).List(ctx, opts)
+				if err != nil {
+					log.Error(err.Error())
+					ctx.Done()
+				} else {
+					for _, s := range retSSL.Items {
+						ssl, err := c.translator.TranslateSSLV2Beta3(&s)
+						if err != nil {
+							log.Error(err.Error())
+							ctx.Done()
+						} else {
+							sslMapK8S.Store(ssl.ID, ssl.ID)
+						}
 					}
 				}
-			}
-			// ApisixConsumer
-			retConsumer, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixConsumers(ns).List(ctx, opts)
-			if err != nil {
-				log.Error(err.Error())
-				ctx.Done()
-			} else {
-				for _, con := range retConsumer.Items {
-					consumer, err := c.translator.TranslateApisixConsumerV2beta3(&con)
-					if err != nil {
-						log.Error(err.Error())
-						ctx.Done()
-					} else {
-						consumerMapK8S.Store(consumer.Username, consumer.Username)
+			case config.ApisixV2:
+				retSSL, err := c.kubeClient.APISIXClient.ApisixV2().ApisixTlses(ns).List(ctx, opts)
+				if err != nil {
+					log.Error(err.Error())
+					ctx.Done()
+				} else {
+					for _, s := range retSSL.Items {
+						ssl, err := c.translator.TranslateSSLV2(&s)
+						if err != nil {
+							log.Error(err.Error())
+							ctx.Done()
+						} else {
+							sslMapK8S.Store(ssl.ID, ssl.ID)
+						}
 					}
 				}
+			default:
+				log.Errorw("failed to sync ApisixTls, unexpected version",
+					zap.String("version", c.cfg.Kubernetes.ApisixTlsVersion),
+				)
 			}
-		}(key.(string))
-		return true
-	})
+
+			switch c.cfg.Kubernetes.ApisixConsumerVersion {
+			case config.ApisixV2beta3:
+				// ApisixConsumer
+				retConsumer, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixConsumers(ns).List(ctx, opts)
+				if err != nil {
+					log.Error(err.Error())
+					ctx.Done()
+				} else {
+					for _, con := range retConsumer.Items {
+						consumer, err := c.translator.TranslateApisixConsumerV2beta3(&con)
+						if err != nil {
+							log.Error(err.Error())
+							ctx.Done()
+						} else {
+							consumerMapK8S.Store(consumer.Username, consumer.Username)
+						}
+					}
+				}
+			case config.ApisixV2:
+				// ApisixConsumer
+				retConsumer, err := c.kubeClient.APISIXClient.ApisixV2().ApisixConsumers(ns).List(ctx, opts)
+				if err != nil {
+					log.Error(err.Error())
+					ctx.Done()
+				} else {
+					for _, con := range retConsumer.Items {
+						consumer, err := c.translator.TranslateApisixConsumerV2(&con)
+						if err != nil {
+							log.Error(err.Error())
+							ctx.Done()
+						} else {
+							consumerMapK8S.Store(consumer.Username, consumer.Username)
+						}
+					}
+				}
+			default:
+				log.Errorw("failed to sync ApisixConsumer, unexpected version",
+					zap.String("version", c.cfg.Kubernetes.ApisixConsumerVersion),
+				)
+			}
+		}(key)
+	}
 	wg.Wait()
 
 	// 2.get all cache routes
