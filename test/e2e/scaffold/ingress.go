@@ -233,6 +233,7 @@ spec:
       initContainers:
       - name: wait-apisix-admin
         image: localhost:5000/busybox:1.28
+        imagePullPolicy: IfNotPresent
         command: ['sh', '-c', "until nc -z apisix-service-e2e-test.%s.svc.cluster.local 9180 ; do echo waiting for apisix-admin; sleep 2; done;"]
       containers:
         - livenessProbe:
@@ -261,7 +262,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.name
           image: "localhost:5000/apache/apisix-ingress-controller:dev"
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           name: ingress-apisix-controller-deployment-e2e-test
           ports:
             - containerPort: 8080
