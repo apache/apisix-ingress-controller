@@ -167,20 +167,20 @@ spec:
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
+  name: ingress-v1beta1
   annotations:
     kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/enable-websocket: 'true'
-  name: ingress-v1
 spec:
   rules:
   - host: httpbin.org
     http:
       paths:
       - path: /echo
-	    pathType: Exact
+        pathType: Exact
         backend:
-		  serviceName: websocket-server-service
-		  servicePort: 48733
+          serviceName: websocket-server-service
+          servicePort: 48733
 `
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 		err = s.EnsureNumApisixUpstreamsCreated(1)
@@ -259,20 +259,20 @@ spec:
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
+  name: ingress-ext-v1beta1
   annotations:
     kubernetes.io/ingress.class: apisix
-	k8s.apisix.apache.org/enable-websocket: 'true'
-  name: ingress-ext-v1beta1
+    k8s.apisix.apache.org/enable-websocket: 'true'
 spec:
   rules:
-	- host: httpbin.org
-      http:
-		paths:
-		- path: /echo
-	  	  pathType: Exact
-		  backend:
-			serviceName: websocket-server-service
-			servicePort: 48733
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /echo
+        pathType: Exact
+        backend:
+          serviceName: websocket-server-service
+          servicePort: 48733
 `
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 		err = s.EnsureNumApisixUpstreamsCreated(1)
