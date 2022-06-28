@@ -139,6 +139,9 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		zap.String("cluster", "default"),
 	)
 
+	if err := u.cluster.upstreamServiceRelation.Create(ctx, &v1.UpstreamServiceRelation{UpstreamName: obj.Name}); err != nil {
+		log.Errorf("failed to reflect upstreamService create to cache: %s", err)
+	}
 	if err := u.cluster.HasSynced(ctx); err != nil {
 		return nil, err
 	}
@@ -175,6 +178,9 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 		zap.String("url", u.url),
 	)
 
+	if err := u.cluster.upstreamServiceRelation.Delete(ctx, &v1.UpstreamServiceRelation{UpstreamName: obj.Name}); err != nil {
+		log.Errorf("failed to delete upstreamService in cache: %s", err)
+	}
 	if err := u.cluster.HasSynced(ctx); err != nil {
 		return err
 	}
@@ -201,6 +207,9 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		zap.String("url", u.url),
 	)
 
+	if err := u.cluster.upstreamServiceRelation.Create(ctx, &v1.UpstreamServiceRelation{UpstreamName: obj.Name}); err != nil {
+		log.Errorf("failed to reflect upstreamService create to cache: %s", err)
+	}
 	if err := u.cluster.HasSynced(ctx); err != nil {
 		return nil, err
 	}

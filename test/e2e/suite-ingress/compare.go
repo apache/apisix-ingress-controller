@@ -25,18 +25,11 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-ingress: Testing compare resources", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
-	ginkgo.It("Compare and find out the redundant objects in APISIX, and remove them", func() {
-		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
-		apisixRoute := fmt.Sprintf(`
+	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
+		s := scaffoldFunc()
+		ginkgo.It("Compare and find out the redundant objects in APISIX, and remove them", func() {
+			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+			apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -53,22 +46,30 @@ spec:
     - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixRoute(apisixRoute))
 
-		err := s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-		err = s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		// scale Ingres Controller --replicas=0
-		assert.Nil(ginkgo.GinkgoT(), s.ScaleIngressController(0), "scaling ingress controller instances = 0")
-		// remove ApisixRoute resource
-		assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
-		// scale Ingres Controller --replicas=1
-		assert.Nil(ginkgo.GinkgoT(), s.ScaleIngressController(1), "scaling ingress controller instances = 1")
-		time.Sleep(15 * time.Second)
-		// should find the warn log
-		output := s.GetDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
-		fmt.Println(output)
-		assert.Contains(ginkgo.GinkgoT(), output, "in APISIX but do not in declare yaml")
+			err := s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			err = s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			// scale Ingres Controller --replicas=0
+			assert.Nil(ginkgo.GinkgoT(), s.ScaleIngressController(0), "scaling ingress controller instances = 0")
+			// remove ApisixRoute resource
+			assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
+			// scale Ingres Controller --replicas=1
+			assert.Nil(ginkgo.GinkgoT(), s.ScaleIngressController(1), "scaling ingress controller instances = 1")
+			time.Sleep(15 * time.Second)
+			// should find the warn log
+			output := s.GetDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
+			fmt.Println(output)
+			assert.Contains(ginkgo.GinkgoT(), output, "in APISIX but do not in declare yaml")
+		})
+	}
+
+	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+		suites(scaffold.NewDefaultScaffold)
+	})
+	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })
