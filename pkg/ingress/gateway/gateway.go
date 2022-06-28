@@ -85,18 +85,26 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 	key := ev.Object.(string)
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		log.Errorf("found Gateway resource with invalid meta namespace key %s: %s", key, err)
+		log.Errorw("found Gateway resource with invalid meta namespace key",
+			zap.Error(err),
+			zap.String("key", key),
+		)
 		return err
 	}
 
 	gateway, err := c.controller.gatewayLister.Gateways(namespace).Get(name)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
-			log.Errorf("failed to get Gateway %s: %s", key, err)
+			log.Errorw("failed to get Gateway",
+				zap.Error(err),
+				zap.String("key", key),
+			)
 			return err
 		}
 		if ev.Type != types.EventDelete {
-			log.Warnf("Gateway %s was deleted before it can be delivered", key)
+			log.Warnw("Gateway was deleted before it can be delivered",
+				zap.String("key", key),
+			)
 			// Don't need to retry.
 			return nil
 		}
@@ -107,14 +115,30 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 			// We still find the resource while we are processing the DELETE event,
 			// that means object with same namespace and name was created, discarding
 			// this stale DELETE event.
-			log.Warnf("discard the stale Gateway delete event since the %s exists", key)
+			log.Warnw("discard the stale Gateway delete event since it exists",
+				zap.String("key", key),
+			)
 			return nil
 		}
 		gateway = ev.Tombstone.(*gatewayv1alpha2.Gateway)
-		//} else {
-		//if c.controller.HasGatewayClass(string(gateway.Spec.GatewayClassName)) {
-		//	// TODO: Translate listeners
-		//}
+
+		err = c.controller.RemoveListeners(gateway.Namespace, gateway.Name)
+		if err != nil {
+			return err
+		}
+	} else {
+		if c.controller.HasGatewayClass(string(gateway.Spec.GatewayClassName)) {
+			// TODO: handle listeners
+			listeners, err := c.controller.translator.TranslateGatewayV1Alpha2(gateway)
+			if err != nil {
+				return err
+			}
+
+			err = c.controller.AddListeners(gateway.Namespace, gateway.Name, listeners)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	// TODO The current implementation does not fully support the definition of Gateway.
@@ -152,7 +176,10 @@ func (c *gatewayController) handleSyncErr(obj interface{}, err error) {
 func (c *gatewayController) onAdd(obj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
-		log.Errorf("found gateway resource with bad meta namespace key: %s", err)
+		log.Errorw("found gateway resource with bad meta namespace key",
+			zap.Error(err),
+			zap.Any("obj", obj),
+		)
 		return
 	}
 	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {
@@ -167,8 +194,39 @@ func (c *gatewayController) onAdd(obj interface{}) {
 		Object: key,
 	})
 }
-func (c *gatewayController) onUpdate(oldObj, newObj interface{}) {}
-func (c *gatewayController) OnDelete(obj interface{})            {}
+func (c *gatewayController) onUpdate(oldObj, newObj interface{}) {
+
+}
+
+func (c *gatewayController) OnDelete(obj interface{}) {
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Errorw("failed to handle deletion Gateway meta key",
+			zap.Error(err),
+			zap.Any("obj", obj),
+		)
+		return
+	}
+
+	gateway, ok := obj.(*gatewayv1alpha2.Gateway)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			log.Errorw("Gateway in bad tombstone state",
+				zap.String("key", key),
+				zap.Any("obj", obj),
+			)
+			return
+		}
+		gateway = tombstone.Obj.(*gatewayv1alpha2.Gateway)
+	}
+
+	c.workqueue.Add(&types.Event{
+		Type:      types.EventDelete,
+		Object:    key,
+		Tombstone: gateway,
+	})
+}
 
 // recordStatus record resources status
 func (c *gatewayController) recordStatus(v *gatewayv1alpha2.Gateway, reason string, status metav1.ConditionStatus, generation int64) {

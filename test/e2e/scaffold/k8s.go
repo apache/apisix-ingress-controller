@@ -497,18 +497,20 @@ func (s *Scaffold) ListApisixPluginConfig() ([]*v1.PluginConfig, error) {
 
 func (s *Scaffold) newAPISIXTunnels() error {
 	var (
-		adminNodePort   int
-		httpNodePort    int
-		httpsNodePort   int
-		tcpNodePort     int
-		udpNodePort     int
-		controlNodePort int
-		adminPort       int
-		httpPort        int
-		httpsPort       int
-		tcpPort         int
-		udpPort         int
-		controlPort     int
+		adminNodePort      int
+		httpNodePort       int
+		httpsNodePort      int
+		tcpNodePort        int
+		tlsOverTcpNodePort int
+		udpNodePort        int
+		controlNodePort    int
+		adminPort          int
+		httpPort           int
+		httpsPort          int
+		tcpPort            int
+		tlsOverTcpPort     int
+		udpPort            int
+		controlPort        int
 	)
 	for _, port := range s.apisixService.Spec.Ports {
 		if port.Name == "http" {
@@ -523,6 +525,9 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		} else if port.Name == "tcp" {
 			tcpNodePort = int(port.NodePort)
 			tcpPort = int(port.Port)
+		} else if port.Name == "tcp-tls" {
+			tlsOverTcpNodePort = int(port.NodePort)
+			tlsOverTcpPort = int(port.Port)
 		} else if port.Name == "udp" {
 			udpNodePort = int(port.NodePort)
 			udpPort = int(port.Port)
@@ -540,6 +545,8 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		httpsNodePort, httpsPort)
 	s.apisixTCPTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
 		tcpNodePort, tcpPort)
+	s.apisixTLSOverTCPTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
+		tlsOverTcpNodePort, tlsOverTcpPort)
 	s.apisixUDPTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
 		udpNodePort, udpPort)
 	s.apisixControlTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
@@ -561,6 +568,10 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		return err
 	}
 	s.addFinalizers(s.apisixTCPTunnel.Close)
+	if err := s.apisixTLSOverTCPTunnel.ForwardPortE(s.t); err != nil {
+		return err
+	}
+	s.addFinalizers(s.apisixTLSOverTCPTunnel.Close)
 	if err := s.apisixUDPTunnel.ForwardPortE(s.t); err != nil {
 		return err
 	}
@@ -577,6 +588,7 @@ func (s *Scaffold) shutdownApisixTunnel() {
 	s.apisixHttpTunnel.Close()
 	s.apisixHttpsTunnel.Close()
 	s.apisixTCPTunnel.Close()
+	s.apisixTLSOverTCPTunnel.Close()
 	s.apisixUDPTunnel.Close()
 	s.apisixControlTunnel.Close()
 }

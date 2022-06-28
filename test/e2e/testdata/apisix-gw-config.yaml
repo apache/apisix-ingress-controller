@@ -30,6 +30,8 @@ apisix:
     only: false
     tcp:                        # TCP proxy port list
       - 9100
+      - addr: 9110
+        tls: true
     udp:
       - 9200
 etcd:

@@ -77,12 +77,13 @@ type Scaffold struct {
 	testBackendService *corev1.Service
 	finializers        []func()
 
-	apisixAdminTunnel   *k8s.Tunnel
-	apisixHttpTunnel    *k8s.Tunnel
-	apisixHttpsTunnel   *k8s.Tunnel
-	apisixTCPTunnel     *k8s.Tunnel
-	apisixUDPTunnel     *k8s.Tunnel
-	apisixControlTunnel *k8s.Tunnel
+	apisixAdminTunnel      *k8s.Tunnel
+	apisixHttpTunnel       *k8s.Tunnel
+	apisixHttpsTunnel      *k8s.Tunnel
+	apisixTCPTunnel        *k8s.Tunnel
+	apisixTLSOverTCPTunnel *k8s.Tunnel
+	apisixUDPTunnel        *k8s.Tunnel
+	apisixControlTunnel    *k8s.Tunnel
 
 	// Used for template rendering.
 	EtcdServiceFQDN string
@@ -244,6 +245,32 @@ func (s *Scaffold) NewAPISIXClientWithTCPProxy() *httpexpect.Expect {
 		BaseURL: u.String(),
 		Client: &http.Client{
 			Transport: &http.Transport{},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
+		),
+	})
+}
+
+// NewAPISIXClientWithTLSOverTCP creates a TSL over TCP client
+func (s *Scaffold) NewAPISIXClientWithTLSOverTCP(host string) *httpexpect.Expect {
+	u := url.URL{
+		Scheme: "https",
+		Host:   s.apisixTLSOverTCPTunnel.Endpoint(),
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					// accept any certificate; for testing only!
+					InsecureSkipVerify: true,
+					ServerName:         host,
+				},
+			},
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
 				return http.ErrUseLastResponse
 			},

@@ -19,11 +19,13 @@ package gateway
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned"
 	gatewayexternalversions "sigs.k8s.io/gateway-api/pkg/client/informers/gateway/externalversions"
 	gatewaylistersv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/gateway/apis/v1alpha2"
@@ -31,6 +33,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	gatewaytranslation "github.com/apache/apisix-ingress-controller/pkg/ingress/gateway/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/ingress/gateway/types"
 	"github.com/apache/apisix-ingress-controller/pkg/ingress/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/ingress/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
@@ -45,8 +48,14 @@ const (
 type Provider struct {
 	name string
 
-	gatewayNamesLock sync.RWMutex
-	gatewayNames     map[string]struct{}
+	gatewayClassesLock sync.RWMutex
+	// key is "name" of GatewayClass
+	gatewayClasses map[string]struct{}
+
+	listenersLock sync.RWMutex
+	// meta key ("ns/name") of Gateway -> section name -> ListenerConf
+	listeners     map[string]map[string]*types.ListenerConf
+	portListeners map[gatewayv1alpha2.PortNumber]*types.ListenerConf
 
 	*ProviderOptions
 	gatewayClient gatewayclientset.Interface
@@ -64,6 +73,10 @@ type Provider struct {
 	gatewayHTTPRouteController *gatewayHTTPRouteController
 	gatewayHTTPRouteInformer   cache.SharedIndexInformer
 	gatewayHTTPRouteLister     gatewaylistersv1alpha2.HTTPRouteLister
+
+	gatewayTLSRouteController *gatewayTLSRouteController
+	gatewayTLSRouteInformer   cache.SharedIndexInformer
+	gatewayTLSRouteLister     gatewaylistersv1alpha2.TLSRouteLister
 }
 
 type ProviderOptions struct {
@@ -95,6 +108,11 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	p := &Provider{
 		name: ProviderName,
 
+		gatewayClasses: make(map[string]struct{}),
+
+		listeners:     make(map[string]map[string]*types.ListenerConf),
+		portListeners: make(map[gatewayv1alpha2.PortNumber]*types.ListenerConf),
+
 		ProviderOptions: opts,
 		gatewayClient:   gatewayKubeClient,
 
@@ -114,6 +132,9 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	p.gatewayHTTPRouteLister = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Lister()
 	p.gatewayHTTPRouteInformer = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Informer()
 
+	p.gatewayTLSRouteLister = gatewayFactory.Gateway().V1alpha2().TLSRoutes().Lister()
+	p.gatewayTLSRouteInformer = gatewayFactory.Gateway().V1alpha2().TLSRoutes().Informer()
+
 	p.gatewayController = newGatewayController(p)
 
 	p.gatewayClassController, err = newGatewayClassController(p)
@@ -122,6 +143,7 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	}
 
 	p.gatewayHTTPRouteController = newGatewayHTTPRouteController(p)
+	p.gatewayTLSRouteController = newGatewayTLSRouteController(p)
 
 	return p, nil
 }
@@ -142,6 +164,10 @@ func (p *Provider) Run(ctx context.Context) {
 	})
 
 	e.Add(func() {
+		p.gatewayTLSRouteInformer.Run(ctx.Done())
+	})
+
+	e.Add(func() {
 		p.gatewayController.run(ctx)
 	})
 
@@ -153,27 +179,74 @@ func (p *Provider) Run(ctx context.Context) {
 		p.gatewayHTTPRouteController.run(ctx)
 	})
 
+	e.Add(func() {
+		p.gatewayTLSRouteController.run(ctx)
+	})
+
 	e.Wait()
 }
 
 func (p *Provider) AddGatewayClass(name string) {
-	p.gatewayNamesLock.Lock()
-	defer p.gatewayNamesLock.Unlock()
+	p.gatewayClassesLock.Lock()
+	defer p.gatewayClassesLock.Unlock()
 
-	p.gatewayNames[name] = struct{}{}
-
+	p.gatewayClasses[name] = struct{}{}
 }
-func (p *Provider) RemoveGatewayClass(name string) {
-	p.gatewayNamesLock.Lock()
-	defer p.gatewayNamesLock.Unlock()
 
-	delete(p.gatewayNames, name)
+func (p *Provider) RemoveGatewayClass(name string) {
+	p.gatewayClassesLock.Lock()
+	defer p.gatewayClassesLock.Unlock()
+
+	delete(p.gatewayClasses, name)
 }
 
 func (p *Provider) HasGatewayClass(name string) bool {
-	p.gatewayNamesLock.RLock()
-	defer p.gatewayNamesLock.RUnlock()
+	p.gatewayClassesLock.RLock()
+	defer p.gatewayClassesLock.RUnlock()
 
-	_, ok := p.gatewayNames[name]
+	_, ok := p.gatewayClasses[name]
 	return ok
+}
+
+func (p *Provider) AddListeners(ns, name string, listeners map[string]*types.ListenerConf) error {
+	p.listenersLock.Lock()
+	defer p.listenersLock.Unlock()
+
+	key := ns + "/" + name
+
+	// Check port conflicts
+	for _, listenerConf := range listeners {
+		if allocated, found := p.portListeners[listenerConf.Port]; found {
+			// TODO: support multi-error
+			return fmt.Errorf("port %d already allocated by %s/%s section %s",
+				listenerConf.Port, allocated.Namespace, allocated.Name, allocated.SectionName)
+		}
+	}
+
+	previousListeners, ok := p.listeners[key]
+	if ok {
+		// remove previous listeners
+		for _, listenerConf := range previousListeners {
+			delete(p.portListeners, listenerConf.Port)
+		}
+	}
+
+	// save data
+	p.listeners[key] = listeners
+
+	for _, listenerConf := range listeners {
+		p.portListeners[listenerConf.Port] = listenerConf
+	}
+
+	return nil
+}
+
+func (p *Provider) RemoveListeners(ns, name string) error {
+
+	return nil
+}
+
+func (p *Provider) FindListener(ns, name, sectionName string) (*types.ListenerConf, error) {
+
+	return nil, nil
 }
