@@ -66,7 +66,7 @@ type Translator interface {
 	TranslateUpstream(string, string, string, int32) (*apisixv1.Upstream, error)
 	// TranslateIngress composes a couple of APISIX Routes and upstreams according
 	// to the given Ingress resource.
-	TranslateIngress(kube.Ingress) (*TranslateContext, error)
+	TranslateIngress(kube.Ingress, ...bool) (*TranslateContext, error)
 	// TranslateRouteV2beta2 translates the configv2beta2.ApisixRoute object into several Route,
 	// and Upstream resources.
 	TranslateRouteV2beta2(*configv2beta2.ApisixRoute) (*TranslateContext, error)
@@ -277,14 +277,18 @@ func (t *translator) TranslateUpstreamNodes(endpoint kube.Endpoint, port int32, 
 	return nodes, nil
 }
 
-func (t *translator) TranslateIngress(ing kube.Ingress) (*TranslateContext, error) {
+func (t *translator) TranslateIngress(ing kube.Ingress, args ...bool) (*TranslateContext, error) {
+	var skipVerify = false
+	if len(args) != 0 {
+		skipVerify = args[0]
+	}
 	switch ing.GroupVersion() {
 	case kube.IngressV1:
-		return t.translateIngressV1(ing.V1())
+		return t.translateIngressV1(ing.V1(), skipVerify)
 	case kube.IngressV1beta1:
-		return t.translateIngressV1beta1(ing.V1beta1())
+		return t.translateIngressV1beta1(ing.V1beta1(), skipVerify)
 	case kube.IngressExtensionsV1beta1:
-		return t.translateIngressExtensionsV1beta1(ing.ExtensionsV1beta1())
+		return t.translateIngressExtensionsV1beta1(ing.ExtensionsV1beta1(), skipVerify)
 	default:
 		return nil, fmt.Errorf("translator: source group version not supported: %s", ing.GroupVersion())
 	}
