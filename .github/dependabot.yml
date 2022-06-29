@@ -1,0 +1,30 @@
+---
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "area/dependencies"
+    reviewers:
+      - "tao12345666333"
+      - "lingsamuel"
+  - package-ecosystem: "github-actions"
+    directory: ".github"
+    schedule:
+        interval: "weekly"
+    labels:
+      - "area/dependencies"
+    reviewers:
+      - "tao12345666333"
+      - "lingsamuel"
+  - package-ecosystem: "gomod"
+    directory: "/test/e2e"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "area/dependencies"
+    reviewers:
+      - "tao12345666333"
+      - "lingsamuel"
