@@ -359,3 +359,29 @@ func (c *apisixTlsController) onDelete(obj interface{}) {
 
 	c.controller.MetricsCollector.IncrEvents("TLS", "delete")
 }
+
+func (c *apisixTlsController) ResourceSync() {
+	objs := c.controller.apisixTlsInformer.GetIndexer().List()
+	for _, obj := range objs {
+		key, err := cache.MetaNamespaceKeyFunc(obj)
+		if err != nil {
+			log.Errorw("ApisixTls sync failed, found ApisixTls object with bad namespace/name ignore it", zap.String("error", err.Error()))
+			continue
+		}
+		if !c.controller.isWatchingNamespace(key) {
+			continue
+		}
+		tls, err := kube.NewApisixTls(obj)
+		if err != nil {
+			log.Errorw("ApisixTls sync failed, found ApisixTls resource with bad type", zap.Error(err))
+			continue
+		}
+		c.workqueue.Add(&types.Event{
+			Type: types.EventAdd,
+			Object: kube.ApisixTlsEvent{
+				Key:          key,
+				GroupVersion: tls.GroupVersion(),
+			},
+		})
+	}
+}
