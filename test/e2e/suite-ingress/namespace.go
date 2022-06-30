@@ -62,17 +62,15 @@ spec:
               number: %d
 `, backendSvc, backendSvcPort[0])
 
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "creating ApisixRoute")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "creating ingress")
 			time.Sleep(6 * time.Second)
-			// assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "checking number of routes")
-			// assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
 
 			body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
 			var placeholder ip
 			err := json.Unmarshal([]byte(body), &placeholder)
 			assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling IP")
 
-			// Now create another ApisixRoute in default namespace.
+			// Now create another ingress in default namespace.
 			route = fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -93,7 +91,7 @@ spec:
               number: %d
 `, backendSvc, backendSvcPort[0])
 
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route, "default"), "creating ApisixRoute")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route, "default"), "creating ingress")
 			_ = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)
 		})
 	})
@@ -143,10 +141,10 @@ spec:
             port:
               number: %d	  
 `, backendSvc, backendSvcPort[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "creating first ApisixRoute")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "creating first ingress")
 			time.Sleep(3 * time.Second)
 
-			// Now create another ApisixRoute in another namespace.
+			// Now create another ingress in another namespace.
 			backendSvc, backendSvcPort = s.DefaultHTTPBackend()
 			route = fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
@@ -168,7 +166,7 @@ spec:
               number: %d
 `, backendSvc, backendSvcPort[0])
 
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route, namespace), "creating second ApisixRoute")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route, namespace), "creating second ingress")
 
 			// restart ingress-controller
 			pods, err := s.GetIngressPodDetails()
@@ -177,9 +175,6 @@ spec:
 			ginkgo.GinkgoT().Logf("restart apisix-ingress-controller pod %s", pods[0].Name)
 			assert.Nil(ginkgo.GinkgoT(), s.KillPod(pods[0].Name))
 			time.Sleep(6 * time.Second)
-			// Two ApisixRoutes have been created at this time.
-			// assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2), "checking number of routes")
-			// assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(2), "checking number of upstreams")
 
 			body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "local.httpbin.org.host.only.734212").Expect().Status(http.StatusOK).Body().Raw()
 			var placeholder ip

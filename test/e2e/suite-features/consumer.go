@@ -372,7 +372,7 @@ spec:
         appid: "test-app"
         header_prefix: "X-"
 `, wolfSvr)
-				assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixConsumer(ac), "creating wolfRBAC ApisixConsumer")
+				assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "creating wolfRBAC ApisixConsumer")
 
 				// Wait until the ApisixConsumer create event was delivered.
 				time.Sleep(6 * time.Second)
@@ -497,7 +497,7 @@ spec:
       secretRef:
         name: rbac
 `
-				assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixConsumer(ac), "creating wolfRBAC ApisixConsumer")
+				assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "creating wolfRBAC ApisixConsumer")
 
 				// Wait until the ApisixConsumer create event was delivered.
 				time.Sleep(6 * time.Second)
@@ -611,7 +611,7 @@ spec:
         algorithm: "hmac-sha256"
         clock_skew: 0
 `
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixConsumer(ac), "creating hmacAuth ApisixConsumer")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "creating hmacAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
 			time.Sleep(6 * time.Second)
@@ -717,7 +717,7 @@ spec:
       secretRef:
         name: hmac
 `
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixConsumer(ac), "creating hmacAuth ApisixConsumer")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "creating hmacAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
 			time.Sleep(6 * time.Second)
@@ -810,7 +810,7 @@ spec:
       value:
         key: foo-key
 `
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixConsumer(ac), "creating jwtAuth ApisixConsumer")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "creating jwtAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
 			time.Sleep(6 * time.Second)
@@ -915,7 +915,7 @@ spec:
       secretRef:
         name: jwt
 `
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixConsumer(ac), "creating jwtAuth ApisixConsumer")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "creating jwtAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
 			time.Sleep(6 * time.Second)

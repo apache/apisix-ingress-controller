@@ -90,13 +90,13 @@ type Scaffold struct {
 	EtcdServiceFQDN string
 }
 
-type apisixResourceVersionOpt struct {
+type apisixResourceVersionInfo struct {
 	V2      string
 	V2beta3 string
 }
 
 var (
-	apisixResourceVersion = &apisixResourceVersionOpt{
+	apisixResourceVersion = &apisixResourceVersionInfo{
 		V2:      "apisix.apache.org/v2",
 		V2beta3: "apisix.apache.org/v2beta3",
 	}
@@ -606,10 +606,6 @@ func (s *Scaffold) CreateVersionedApisixPluginConfig(yml string) error {
 	return s.CreateResourceFromString(ac)
 }
 
-func (s *Scaffold) GetApisixRouteVersion() string {
-	return s.opts.APISIXRouteVersion
-}
-
 func (s *Scaffold) CreateVersionedApisixResource(yml string) error {
 	if strings.Contains(yml, "kind: ApisixRoute") {
 		ar := s.replaceApiVersion(yml, s.opts.APISIXRouteVersion)
@@ -642,6 +638,6 @@ func (s *Scaffold) CreateVersionedApisixResourceWithNamespace(yml, namespace str
 	return errors.New("this resource does not support")
 }
 
-func ApisixResourceVersion() *apisixResourceVersionOpt {
+func ApisixResourceVersion() *apisixResourceVersionInfo {
 	return apisixResourceVersion
 }
