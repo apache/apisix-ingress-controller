@@ -184,7 +184,7 @@ verify-license:
 ### verify-mdlint:        Verify markdown files lint rules.
 .PHONY: verify-mdlint
 verify-mdlint:
-	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' --ignore node_modules
+	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' --ignore node_modules --ignore CHANGELOG.md
 
 ### verify-all:           Verify all verify- rules.
 .PHONY: verify-all
