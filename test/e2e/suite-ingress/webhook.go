@@ -65,7 +65,7 @@ spec:
 
 	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
-			Name:                  "leaderelection",
+			Name:                  "webhook",
 			Kubeconfig:            scaffold.GetKubeconfig(),
 			APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 			IngressAPISIXReplicas: 1,
@@ -76,7 +76,7 @@ spec:
 	})
 	ginkgo.Describe("suite-ingress: scaffold v2", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
-			Name:                  "leaderelection",
+			Name:                  "webhook",
 			Kubeconfig:            scaffold.GetKubeconfig(),
 			APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 			IngressAPISIXReplicas: 1,
