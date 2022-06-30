@@ -61,4 +61,4 @@ Five Service resources were created.
 The gateway service type is set to `NodePort`, so that clients can access Apache APISIX through the Node IPs and the assigned port.
 If you are using K3S and you want to expose a `LoadBalancer` service, try to use [Klipper](https://github.com/k3s-io/klipper-lb).
 
-Now try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../practices/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
+Now try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../tutorials/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.

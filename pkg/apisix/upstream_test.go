@@ -150,11 +150,12 @@ func TestUpstreamClient(t *testing.T) {
 	closedCh := make(chan struct{})
 	close(closedCh)
 	cli := newUpstreamClient(&cluster{
-		baseURL:          u.String(),
-		cli:              http.DefaultClient,
-		cache:            &dummyCache{},
-		cacheSynced:      closedCh,
-		metricsCollector: metrics.NewPrometheusCollector(),
+		baseURL:                 u.String(),
+		cli:                     http.DefaultClient,
+		cache:                   &dummyCache{},
+		cacheSynced:             closedCh,
+		metricsCollector:        metrics.NewPrometheusCollector(),
+		upstreamServiceRelation: &dummyUpstreamServiceRelation{},
 	})
 
 	// Create

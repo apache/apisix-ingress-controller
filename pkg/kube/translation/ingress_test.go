@@ -121,7 +121,7 @@ func TestTranslateIngressV1NoBackend(t *testing.T) {
 		},
 	}
 	tr := &translator{}
-	ctx, err := tr.translateIngressV1(ing)
+	ctx, err := tr.translateIngressV1(ing, false)
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 0)
@@ -174,7 +174,7 @@ func TestTranslateIngressV1BackendWithInvalidService(t *testing.T) {
 			ServiceLister: svcLister,
 		},
 	}
-	ctx, err := tr.translateIngressV1(ing)
+	ctx, err := tr.translateIngressV1(ing, false)
 	assert.NotNil(t, err)
 	assert.Nil(t, ctx)
 	assert.Equal(t, "service \"test-service\" not found", err.Error())
@@ -197,7 +197,7 @@ func TestTranslateIngressV1BackendWithInvalidService(t *testing.T) {
 	assert.Nil(t, err)
 
 	<-processCh
-	ctx, err = tr.translateIngressV1(ing)
+	ctx, err = tr.translateIngressV1(ing, false)
 	assert.Nil(t, ctx, nil)
 	assert.Equal(t, &translateError{
 		field:  "service",
@@ -282,7 +282,7 @@ func TestTranslateIngressV1WithRegex(t *testing.T) {
 
 	<-processCh
 	<-processCh
-	ctx, err := tr.translateIngressV1(ing)
+	ctx, err := tr.translateIngressV1(ing, false)
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 1)
@@ -393,7 +393,7 @@ func TestTranslateIngressV1(t *testing.T) {
 
 	<-processCh
 	<-processCh
-	ctx, err := tr.translateIngressV1(ing)
+	ctx, err := tr.translateIngressV1(ing, false)
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
@@ -455,7 +455,7 @@ func TestTranslateIngressV1beta1NoBackend(t *testing.T) {
 		},
 	}
 	tr := &translator{}
-	ctx, err := tr.translateIngressV1beta1(ing)
+	ctx, err := tr.translateIngressV1beta1(ing, false)
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 0)
@@ -507,7 +507,7 @@ func TestTranslateIngressV1beta1BackendWithInvalidService(t *testing.T) {
 			ServiceLister: svcLister,
 		},
 	}
-	ctx, err := tr.translateIngressV1beta1(ing)
+	ctx, err := tr.translateIngressV1beta1(ing, false)
 	assert.NotNil(t, err)
 	assert.Nil(t, ctx)
 	assert.Equal(t, "service \"test-service\" not found", err.Error())
@@ -530,7 +530,7 @@ func TestTranslateIngressV1beta1BackendWithInvalidService(t *testing.T) {
 	assert.Nil(t, err)
 
 	<-processCh
-	ctx, err = tr.translateIngressV1beta1(ing)
+	ctx, err = tr.translateIngressV1beta1(ing, false)
 	assert.Nil(t, ctx)
 	assert.Equal(t, &translateError{
 		field:  "service",
@@ -615,7 +615,7 @@ func TestTranslateIngressV1beta1WithRegex(t *testing.T) {
 
 	<-processCh
 	<-processCh
-	ctx, err := tr.translateIngressV1beta1(ing)
+	ctx, err := tr.translateIngressV1beta1(ing, false)
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 1)
@@ -724,7 +724,7 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 
 	<-processCh
 	<-processCh
-	ctx, err := tr.translateIngressV1beta1(ing)
+	ctx, err := tr.translateIngressV1beta1(ing, false)
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
@@ -846,7 +846,7 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 
 	<-processCh
 	<-processCh
-	ctx, err := tr.translateIngressExtensionsV1beta1(ing)
+	ctx, err := tr.translateIngressExtensionsV1beta1(ing, false)
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
@@ -921,7 +921,7 @@ func TestTranslateIngressExtensionsV1beta1BackendWithInvalidService(t *testing.T
 			ServiceLister: svcLister,
 		},
 	}
-	ctx, err := tr.translateIngressExtensionsV1beta1(ing)
+	ctx, err := tr.translateIngressExtensionsV1beta1(ing, false)
 	assert.Nil(t, ctx)
 	assert.NotNil(t, err)
 	assert.Equal(t, "service \"test-service\" not found", err.Error())
@@ -944,7 +944,7 @@ func TestTranslateIngressExtensionsV1beta1BackendWithInvalidService(t *testing.T
 	assert.Nil(t, err)
 
 	<-processCh
-	ctx, err = tr.translateIngressExtensionsV1beta1(ing)
+	ctx, err = tr.translateIngressExtensionsV1beta1(ing, false)
 	assert.Nil(t, ctx)
 	assert.Equal(t, &translateError{
 		field:  "service",
@@ -1028,7 +1028,7 @@ func TestTranslateIngressExtensionsV1beta1WithRegex(t *testing.T) {
 
 	<-processCh
 	<-processCh
-	ctx, err := tr.translateIngressExtensionsV1beta1(ing)
+	ctx, err := tr.translateIngressExtensionsV1beta1(ing, false)
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 1)
