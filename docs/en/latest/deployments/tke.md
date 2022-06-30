@@ -66,7 +66,7 @@ kubectl get service apisix-gateway --namespace ingress-apisix -o jsonpath='{.sta
 
 Now open your [TKE console](https://console.cloud.tencent.com/tke2/overview), choosing your cluster and clicking the Workloads tag, you'll see all pods of Apache APISIX, etcd and apisix-ingress-controller are ready.
 
-Try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../practices/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
+Try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../tutorials/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
 
 ### Specify The Ingress Version
 
