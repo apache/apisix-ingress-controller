@@ -1126,7 +1126,7 @@ func TestTranslateIngressV1WithWebsocket(t *testing.T) {
 
 	<-processCh
 	<-processCh
-	ctx, err := tr.translateIngressV1(ing)
+	ctx, err := tr.translateIngressV1(ing, false)
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 1)
@@ -1213,7 +1213,7 @@ func TestTranslateIngressV1beta1WithWebsocket(t *testing.T) {
 
 	<-processCh
 	<-processCh
-	ctx, err := tr.translateIngressV1beta1(ing)
+	ctx, err := tr.translateIngressV1beta1(ing, false)
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 1)
@@ -1300,7 +1300,7 @@ func TestTranslateIngressExtensionsV1beta1WithWebsocket(t *testing.T) {
 
 	<-processCh
 	<-processCh
-	ctx, err := tr.translateIngressExtensionsV1beta1(ing)
+	ctx, err := tr.translateIngressExtensionsV1beta1(ing, false)
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 1)
 	assert.Len(t, ctx.Upstreams, 1)
