@@ -232,10 +232,10 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-plugins: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-plugins-transformation: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold)
 	})
-	ginkgo.Describe("suite-plugins: scaffold v2", func() {
+	ginkgo.Describe("suite-plugins-transformation: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })

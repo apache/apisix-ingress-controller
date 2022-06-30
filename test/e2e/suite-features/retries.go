@@ -120,10 +120,10 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-plugins: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold)
 	})
-	ginkgo.Describe("suite-plugins: scaffold v2", func() {
+	ginkgo.Describe("suite-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })
@@ -178,10 +178,10 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-plugins: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold)
 	})
-	ginkgo.Describe("suite-plugins: scaffold v2", func() {
+	ginkgo.Describe("suite-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })
