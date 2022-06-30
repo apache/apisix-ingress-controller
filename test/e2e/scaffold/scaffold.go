@@ -564,10 +564,17 @@ func (s *Scaffold) FormatNamespaceLabel(label string) string {
 
 var (
 	versionRegex = regexp.MustCompile(`apiVersion: apisix.apache.org/v.*?\n`)
+	kindRegex    = regexp.MustCompile(`kind: .*?\n`)
 )
 
 func (s *Scaffold) replaceApiVersion(yml, ver string) string {
 	return versionRegex.ReplaceAllString(yml, "apiVersion: "+ver+"\n")
+}
+
+func (s *Scaffold) getKindValue(yml string) string {
+	kind := strings.Replace(kindRegex.FindString(yml), "\n", "", -1)
+	kindValue := strings.Replace(kind, "kind: ", "", -1)
+	return kindValue
 }
 
 func (s *Scaffold) DisableNamespaceSelector() {
@@ -607,35 +614,37 @@ func (s *Scaffold) CreateVersionedApisixPluginConfig(yml string) error {
 }
 
 func (s *Scaffold) CreateVersionedApisixResource(yml string) error {
-	if strings.Contains(yml, "kind: ApisixRoute") {
+	kindValue := s.getKindValue(yml)
+	switch kindValue {
+	case "ApisixRoute":
 		ar := s.replaceApiVersion(yml, s.opts.APISIXRouteVersion)
 		return s.CreateResourceFromString(ar)
-	}
-	if strings.Contains(yml, "kind: ApisixConsumer") {
+	case "ApisixConsumer":
 		ac := s.replaceApiVersion(yml, s.opts.APISIXConsumerVersion)
 		return s.CreateResourceFromString(ac)
-	}
-	if strings.Contains(yml, "kind: ApisixPluginConfig") {
+	case "ApisixPluginConfig":
 		apc := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
 		return s.CreateResourceFromString(apc)
 	}
-	return errors.New("this resource does not support")
+	errString := fmt.Sprint("the resource ", kindValue, " does not support")
+	return errors.New(errString)
 }
 
 func (s *Scaffold) CreateVersionedApisixResourceWithNamespace(yml, namespace string) error {
-	if strings.Contains(yml, "kind: ApisixRoute") {
+	kindValue := s.getKindValue(yml)
+	switch kindValue {
+	case "ApisixRoute":
 		ar := s.replaceApiVersion(yml, s.opts.APISIXRouteVersion)
 		return s.CreateResourceFromStringWithNamespace(ar, namespace)
-	}
-	if strings.Contains(yml, "kind: ApisixConsumer") {
+	case "ApisixConsumer":
 		ac := s.replaceApiVersion(yml, s.opts.APISIXConsumerVersion)
 		return s.CreateResourceFromStringWithNamespace(ac, namespace)
-	}
-	if strings.Contains(yml, "kind: ApisixPluginConfig") {
+	case "ApisixPluginConfig":
 		apc := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
 		return s.CreateResourceFromStringWithNamespace(apc, namespace)
 	}
-	return errors.New("this resource does not support")
+	errString := fmt.Sprint("the resource ", kindValue, " does not support")
+	return errors.New(errString)
 }
 
 func ApisixResourceVersion() *apisixResourceVersionInfo {
