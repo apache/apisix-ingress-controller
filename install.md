@@ -46,4 +46,4 @@ Then you need to know which parameter need to be tweaked. If APISIX access token
 
 ## Verify Installation
 
-There are a lot of use examples (See [samples](docs/en/latest/practices/index.md) for more details), try to follow the operations there to verify the installation.
+There are a lot of use examples (See [samples](docs/en/latest/tutorials/index.md) for more details), try to follow the operations there to verify the installation.
