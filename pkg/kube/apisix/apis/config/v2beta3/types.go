@@ -44,8 +44,9 @@ type ApisixStatus struct {
 
 // ApisixRouteSpec is the spec definition for ApisixRouteSpec.
 type ApisixRouteSpec struct {
-	HTTP   []ApisixRouteHTTP   `json:"http,omitempty" yaml:"http,omitempty"`
-	Stream []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
+	IngressClassName string              `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
+	HTTP             []ApisixRouteHTTP   `json:"http,omitempty" yaml:"http,omitempty"`
+	Stream           []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
 }
 
 // UpstreamTimeout is settings for the read, send and connect to the upstream.

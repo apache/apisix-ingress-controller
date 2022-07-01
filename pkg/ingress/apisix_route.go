@@ -317,16 +317,16 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 }
 
 func (c *apisixRouteController) isApisixRouteEffective(ar kube.ApisixRoute) bool {
-	var ara string
+	var class string
 
-	if ar.GroupVersion() == kube.ApisixRouteV1 {
-		ara = ar.V1().GetAnnotations()[_apisixrouteKey]
-	} else if ar.GroupVersion() == kube.ApisixRouteV2alpha1 {
-		ara = ar.V2alpha1().GetAnnotations()[_apisixrouteKey]
-	} else if ar.GroupVersion() == kube.ApisixRouteV2beta1 {
-		ara = ar.V2beta1().GetAnnotations()[_apisixrouteKey]
+	if ar.GroupVersion() == kube.ApisixRouteV2beta2 {
+		class = ar.V2beta2().Spec.IngressClassName
+	} else if ar.GroupVersion() == kube.ApisixRouteV2beta3 {
+		class = ar.V2beta3().Spec.IngressClassName
+	} else if ar.GroupVersion() == kube.ApisixRouteV2 {
+		class = ar.V2().Spec.IngressClassName
 	} else {
-		ara = c.controller.cfg.Kubernetes.ApisixRouteClass
+		class = c.controller.cfg.Kubernetes.ApisixRouteClass
 	}
 
 	if c.controller.cfg.Kubernetes.ApisixRouteClass == "" || c.controller.cfg.Kubernetes.ApisixRouteClass == ara {
