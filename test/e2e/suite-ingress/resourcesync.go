@@ -28,20 +28,11 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-ingress: apisix resource sync", func() {
-	opts := &scaffold.Options{
-		Name:                       "default",
-		Kubeconfig:                 scaffold.GetKubeconfig(),
-		APISIXConfigPath:           "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas:      1,
-		HTTPBinServicePort:         80,
-		APISIXRouteVersion:         "apisix.apache.org/v2beta3",
-		ApisixResourceSyncInterval: "60s",
-	}
-	s := scaffold.NewScaffold(opts)
-	ginkgo.JustBeforeEach(func() {
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		// Create ApisixRoute resource
-		ar := fmt.Sprintf(`
+	suites := func(s *scaffold.Scaffold) {
+		ginkgo.JustBeforeEach(func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			// Create ApisixRoute resource
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -61,14 +52,14 @@ spec:
      enable: true
      type: keyAuth
 `, backendSvc, backendPorts[0])
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		// Create Ingress resource
-		ing := fmt.Sprintf(`
+			// Create Ingress resource
+			ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -88,25 +79,25 @@ spec:
             port:
               number: %d
 `, backendSvc, backendPorts[0])
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 
-		// Create ApisixConsumer resource
-		err = s.ApisixConsumerKeyAuthCreated("foo", "foo-key")
-		assert.Nil(ginkgo.GinkgoT(), err)
-	})
+			// Create ApisixConsumer resource
+			err = s.ApisixConsumerKeyAuthCreated("foo", "foo-key")
+			assert.Nil(ginkgo.GinkgoT(), err)
+		})
 
-	ginkgo.It("for modified resource sync consistency", func() {
-		// crd resource sync interval
-		readyTime := time.Now().Add(60 * time.Second)
+		ginkgo.It("for modified resource sync consistency", func() {
+			// crd resource sync interval
+			readyTime := time.Now().Add(60 * time.Second)
 
-		routes, _ := s.ListApisixRoutes()
-		assert.Len(ginkgo.GinkgoT(), routes, 2)
+			routes, _ := s.ListApisixRoutes()
+			assert.Len(ginkgo.GinkgoT(), routes, 2)
 
-		consumers, _ := s.ListApisixConsumers()
-		assert.Len(ginkgo.GinkgoT(), consumers, 1)
+			consumers, _ := s.ListApisixConsumers()
+			assert.Len(ginkgo.GinkgoT(), consumers, 1)
 
-		for _, route := range routes {
-			_ = s.CreateApisixRouteByApisixAdmin(id.GenID(route.Name), []byte(`
+			for _, route := range routes {
+				_ = s.CreateApisixRouteByApisixAdmin(id.GenID(route.Name), []byte(`
 {
 	"methods": ["GET"],
 	"uri": "/anything",
@@ -120,10 +111,10 @@ spec:
 		}
 	}
 }`))
-		}
+			}
 
-		for _, consumer := range consumers {
-			_ = s.CreateApisixConsumerByApisixAdmin([]byte(fmt.Sprintf(`
+			for _, consumer := range consumers {
+				_ = s.CreateApisixConsumerByApisixAdmin([]byte(fmt.Sprintf(`
 {
 	"username": "%s",
 	"plugins": {
@@ -132,96 +123,120 @@ spec:
 		}
 	}
 }`, consumer.Username)))
-		}
+			}
 
-		_ = s.NewAPISIXClient().
-			GET("/ip").
-			WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(http.StatusNotFound)
+			_ = s.NewAPISIXClient().
+				GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusNotFound)
 
-		_ = s.NewAPISIXClient().
-			GET("/headers").
-			WithHeader("Host", "local.httpbin.org").
-			Expect().
-			Status(http.StatusNotFound)
+			_ = s.NewAPISIXClient().
+				GET("/headers").
+				WithHeader("Host", "local.httpbin.org").
+				Expect().
+				Status(http.StatusNotFound)
 
-		waitTime := time.Until(readyTime).Seconds()
-		time.Sleep(time.Duration(waitTime) * time.Second)
+			waitTime := time.Until(readyTime).Seconds()
+			time.Sleep(time.Duration(waitTime) * time.Second)
 
-		_ = s.NewAPISIXClient().
-			GET("/ip").
-			WithHeader("Host", "httpbin.org").
-			WithHeader("apikey", "foo-key").
-			Expect().
-			Status(http.StatusOK)
+			_ = s.NewAPISIXClient().
+				GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("apikey", "foo-key").
+				Expect().
+				Status(http.StatusOK)
 
-		_ = s.NewAPISIXClient().
-			GET("/headers").
-			WithHeader("Host", "local.httpbin.org").
-			Expect().
-			Status(http.StatusOK)
+			_ = s.NewAPISIXClient().
+				GET("/headers").
+				WithHeader("Host", "local.httpbin.org").
+				Expect().
+				Status(http.StatusOK)
 
-		consumers, _ = s.ListApisixConsumers()
-		assert.Len(ginkgo.GinkgoT(), consumers, 1)
-		data, _ := json.Marshal(consumers[0])
-		assert.Contains(ginkgo.GinkgoT(), string(data), "foo-key")
+			consumers, _ = s.ListApisixConsumers()
+			assert.Len(ginkgo.GinkgoT(), consumers, 1)
+			data, _ := json.Marshal(consumers[0])
+			assert.Contains(ginkgo.GinkgoT(), string(data), "foo-key")
+		})
+
+		ginkgo.It("for deleted resource sync consistency", func() {
+			// crd resource sync interval
+			readyTime := time.Now().Add(60 * time.Second)
+
+			routes, _ := s.ListApisixRoutes()
+			assert.Len(ginkgo.GinkgoT(), routes, 2)
+
+			consumers, _ := s.ListApisixConsumers()
+			assert.Len(ginkgo.GinkgoT(), consumers, 1)
+
+			for _, route := range routes {
+				_ = s.DeleteApisixRouteByApisixAdmin(id.GenID(route.Name))
+			}
+
+			for _, consumer := range consumers {
+				s.DeleteApisixConsumerByApisixAdmin(consumer.Username)
+			}
+
+			_ = s.NewAPISIXClient().
+				GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusNotFound)
+
+			_ = s.NewAPISIXClient().
+				GET("/headers").
+				WithHeader("Host", "local.httpbin.org").
+				Expect().
+				Status(http.StatusNotFound)
+
+			routes, _ = s.ListApisixRoutes()
+			assert.Len(ginkgo.GinkgoT(), routes, 0)
+			consumers, _ = s.ListApisixConsumers()
+			assert.Len(ginkgo.GinkgoT(), consumers, 0)
+
+			waitTime := time.Until(readyTime).Seconds()
+			time.Sleep(time.Duration(waitTime) * time.Second)
+
+			_ = s.NewAPISIXClient().
+				GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("apikey", "foo-key").
+				Expect().
+				Status(http.StatusOK)
+
+			_ = s.NewAPISIXClient().
+				GET("/headers").
+				WithHeader("Host", "local.httpbin.org").
+				Expect().
+				Status(http.StatusOK)
+
+			consumers, _ = s.ListApisixConsumers()
+			assert.Len(ginkgo.GinkgoT(), consumers, 1)
+			data, _ := json.Marshal(consumers[0])
+			assert.Contains(ginkgo.GinkgoT(), string(data), "foo-key")
+		})
+	}
+
+	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+		suites(scaffold.NewScaffold(&scaffold.Options{
+			Name:                       "sync",
+			Kubeconfig:                 scaffold.GetKubeconfig(),
+			APISIXConfigPath:           "testdata/apisix-gw-config.yaml",
+			IngressAPISIXReplicas:      1,
+			HTTPBinServicePort:         80,
+			ApisixResourceVersion:      scaffold.ApisixResourceVersion().V2beta3,
+			ApisixResourceSyncInterval: "60s",
+		}))
 	})
-
-	ginkgo.It("for deleted resource sync consistency", func() {
-		// crd resource sync interval
-		readyTime := time.Now().Add(60 * time.Second)
-
-		routes, _ := s.ListApisixRoutes()
-		assert.Len(ginkgo.GinkgoT(), routes, 2)
-
-		consumers, _ := s.ListApisixConsumers()
-		assert.Len(ginkgo.GinkgoT(), consumers, 1)
-
-		for _, route := range routes {
-			_ = s.DeleteApisixRouteByApisixAdmin(id.GenID(route.Name))
-		}
-
-		for _, consumer := range consumers {
-			s.DeleteApisixConsumerByApisixAdmin(consumer.Username)
-		}
-
-		_ = s.NewAPISIXClient().
-			GET("/ip").
-			WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(http.StatusNotFound)
-
-		_ = s.NewAPISIXClient().
-			GET("/headers").
-			WithHeader("Host", "local.httpbin.org").
-			Expect().
-			Status(http.StatusNotFound)
-
-		routes, _ = s.ListApisixRoutes()
-		assert.Len(ginkgo.GinkgoT(), routes, 0)
-		consumers, _ = s.ListApisixConsumers()
-		assert.Len(ginkgo.GinkgoT(), consumers, 0)
-
-		waitTime := time.Until(readyTime).Seconds()
-		time.Sleep(time.Duration(waitTime) * time.Second)
-
-		_ = s.NewAPISIXClient().
-			GET("/ip").
-			WithHeader("Host", "httpbin.org").
-			WithHeader("apikey", "foo-key").
-			Expect().
-			Status(http.StatusOK)
-
-		_ = s.NewAPISIXClient().
-			GET("/headers").
-			WithHeader("Host", "local.httpbin.org").
-			Expect().
-			Status(http.StatusOK)
-
-		consumers, _ = s.ListApisixConsumers()
-		assert.Len(ginkgo.GinkgoT(), consumers, 1)
-		data, _ := json.Marshal(consumers[0])
-		assert.Contains(ginkgo.GinkgoT(), string(data), "foo-key")
+	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+		suites(scaffold.NewScaffold(&scaffold.Options{
+			Name:                       "sync",
+			Kubeconfig:                 scaffold.GetKubeconfig(),
+			APISIXConfigPath:           "testdata/apisix-gw-config.yaml",
+			IngressAPISIXReplicas:      1,
+			HTTPBinServicePort:         80,
+			ApisixResourceVersion:      scaffold.ApisixResourceVersion().V2,
+			ApisixResourceSyncInterval: "60s",
+		}))
 	})
 })

@@ -46,7 +46,7 @@ spec:
     - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixRoute(apisixRoute))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
 
 			err := s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")

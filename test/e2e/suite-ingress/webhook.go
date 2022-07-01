@@ -25,22 +25,12 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-ingress: Enable webhooks", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-		// EnableWebhooks:        true,
-	}
-	s := scaffold.NewScaffold(opts)
-
-	ginkgo.It("should fail to create the ApisixRoute with invalid plugin configuration", func() {
-		// #FIXME: just skip this case and we can enable it on other PR
-		ginkgo.Skip("just skip this case")
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ar := fmt.Sprintf(`
+	suites := func(s *scaffold.Scaffold) {
+		ginkgo.It("should fail to create the ApisixRoute with invalid plugin configuration", func() {
+			// #FIXME: just skip this case and we can enable it on other PR
+			ginkgo.Skip("just skip this case")
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -64,11 +54,35 @@ spec:
        break_response_code: 100 # should in [200, 599]
 `, backendSvc, backendPorts[0])
 
-		err := s.CreateResourceFromString(ar)
-		assert.Error(ginkgo.GinkgoT(), err, "Failed to create ApisixRoute")
-		assert.Contains(ginkgo.GinkgoT(), err.Error(), "admission webhook")
-		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
-		assert.Contains(ginkgo.GinkgoT(), err.Error(), "api-breaker plugin's config is invalid")
-		assert.Contains(ginkgo.GinkgoT(), err.Error(), "Must be greater than or equal to 200")
+			err := s.CreateResourceFromString(ar)
+			assert.Error(ginkgo.GinkgoT(), err, "Failed to create ApisixRoute")
+			assert.Contains(ginkgo.GinkgoT(), err.Error(), "admission webhook")
+			assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
+			assert.Contains(ginkgo.GinkgoT(), err.Error(), "api-breaker plugin's config is invalid")
+			assert.Contains(ginkgo.GinkgoT(), err.Error(), "Must be greater than or equal to 200")
+		})
+	}
+
+	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+		suites(scaffold.NewScaffold(&scaffold.Options{
+			Name:                  "webhook",
+			Kubeconfig:            scaffold.GetKubeconfig(),
+			APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+			IngressAPISIXReplicas: 1,
+			HTTPBinServicePort:    80,
+			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2beta3,
+			EnableWebhooks:        false,
+		}))
+	})
+	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+		suites(scaffold.NewScaffold(&scaffold.Options{
+			Name:                  "webhook",
+			Kubeconfig:            scaffold.GetKubeconfig(),
+			APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+			IngressAPISIXReplicas: 1,
+			HTTPBinServicePort:    80,
+			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
+			EnableWebhooks:        false,
+		}))
 	})
 })

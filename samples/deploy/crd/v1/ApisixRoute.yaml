@@ -761,10 +761,22 @@ spec:
                             enum:
                               - "basicAuth"
                               - "keyAuth"
+                              - "jwtAuth"
+                              - "wolfRBAC"
+                              - "hmacAuth"
                           keyAuth:
                             type: object
                             properties:
                               header:
+                                type: string
+                          jwtAuth:
+                            type: object
+                            properties:
+                              header:
+                                type: string
+                              query:
+                                type: string
+                              cookie:
                                 type: string
                         required:
                           - enable

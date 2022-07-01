@@ -75,7 +75,7 @@ spec:
      enable: true
      type: basicAuth
 `, backendSvc, backendPorts[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute with basicAuth")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar), "creating ApisixRoute with basicAuth")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
@@ -159,7 +159,7 @@ spec:
      enable: true
      type: basicAuth
 `, backendSvc, backendPorts[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute with basicAuth")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar), "creating ApisixRoute with basicAuth")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
@@ -232,7 +232,7 @@ spec:
      enable: true
      type: keyAuth
 `, backendSvc, backendPorts[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute with keyAuth")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar), "creating ApisixRoute with keyAuth")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
@@ -314,7 +314,7 @@ spec:
      enable: true
      type: keyAuth
 `, backendSvc, backendPorts[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute with keyAuth")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar), "creating ApisixRoute with keyAuth")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
@@ -372,7 +372,7 @@ spec:
         appid: "test-app"
         header_prefix: "X-"
 `, wolfSvr)
-				assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixConsumer(ac), "creating wolfRBAC ApisixConsumer")
+				assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "creating wolfRBAC ApisixConsumer")
 
 				// Wait until the ApisixConsumer create event was delivered.
 				time.Sleep(6 * time.Second)
@@ -406,7 +406,7 @@ spec:
     - name: public-api
       enable: true
 `, adminSvc, adminPort)
-				assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar1), "creating ApisixRoute")
+				assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar1), "creating ApisixRoute")
 				assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
 				assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
@@ -431,7 +431,7 @@ spec:
      enable: true
      type: wolfRBAC
 `, backendSvc, backendPorts[0])
-				assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar2), "creating ApisixRoute")
+				assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar2), "creating ApisixRoute")
 				assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2), "Checking number of routes")
 				assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(2), "Checking number of upstreams")
 				payload := []byte(`
@@ -497,7 +497,7 @@ spec:
       secretRef:
         name: rbac
 `
-				assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixConsumer(ac), "creating wolfRBAC ApisixConsumer")
+				assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "creating wolfRBAC ApisixConsumer")
 
 				// Wait until the ApisixConsumer create event was delivered.
 				time.Sleep(6 * time.Second)
@@ -531,7 +531,7 @@ spec:
     - name: public-api
       enable: true
 `, adminSvc, adminPort)
-				assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar1), "creating ApisixRoute")
+				assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar1), "creating ApisixRoute")
 				assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
 				assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
@@ -556,7 +556,7 @@ spec:
      enable: true
      type: wolfRBAC
 `, backendSvc, backendPorts[0])
-				assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar2), "creating ApisixRoute")
+				assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar2), "creating ApisixRoute")
 				assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2), "Checking number of routes")
 				assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(2), "Checking number of upstreams")
 				payload := []byte(`
@@ -611,7 +611,7 @@ spec:
         algorithm: "hmac-sha256"
         clock_skew: 0
 `
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixConsumer(ac), "creating hmacAuth ApisixConsumer")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "creating hmacAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
 			time.Sleep(6 * time.Second)
@@ -653,7 +653,7 @@ spec:
      enable: true
      type: hmacAuth
 `, backendSvc, backendPorts[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute with hmacAuth")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar), "creating ApisixRoute with hmacAuth")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
@@ -717,7 +717,7 @@ spec:
       secretRef:
         name: hmac
 `
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixConsumer(ac), "creating hmacAuth ApisixConsumer")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "creating hmacAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
 			time.Sleep(6 * time.Second)
@@ -759,7 +759,7 @@ spec:
      enable: true
      type: hmacAuth
 `, backendSvc, backendPorts[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute with hmacAuth")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar), "creating ApisixRoute with hmacAuth")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
@@ -810,7 +810,7 @@ spec:
       value:
         key: foo-key
 `
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixConsumer(ac), "creating jwtAuth ApisixConsumer")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "creating jwtAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
 			time.Sleep(6 * time.Second)
@@ -841,7 +841,7 @@ spec:
     - name: public-api
       enable: true
 `, adminSvc, adminPort)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar1), "creating ApisixRoute")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar1), "creating ApisixRoute")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
@@ -915,7 +915,7 @@ spec:
       secretRef:
         name: jwt
 `
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixConsumer(ac), "creating jwtAuth ApisixConsumer")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "creating jwtAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
 			time.Sleep(6 * time.Second)
@@ -946,7 +946,7 @@ spec:
     - name: public-api
       enable: true
 `, adminSvc, adminPort)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar1), "creating ApisixRoute")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar1), "creating ApisixRoute")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
@@ -971,7 +971,7 @@ spec:
      enable: true
      type: jwtAuth
 `, backendSvc, backendPorts[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar2), "Creating ApisixRoute with jwtAuth")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar2), "Creating ApisixRoute with jwtAuth")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2), "Checking number of routes")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(2), "Checking number of upstreams")
 
@@ -1025,7 +1025,7 @@ spec:
    authentication:
      enable: false
 `, backendSvc, backendPorts[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute without authentication")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar), "creating ApisixRoute without authentication")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 

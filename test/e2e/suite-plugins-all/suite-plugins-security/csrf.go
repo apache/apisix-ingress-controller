@@ -12,11 +12,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package features
+package plugins
 
 import (
 	"fmt"
-	"math"
 	"net/http"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -25,13 +24,11 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-features: traffic split", func() {
+var _ = ginkgo.Describe("suite-plugins-security: csrf plugin", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
-
-		ginkgo.It("sanity", func() {
+		ginkgo.It("prevent csrf", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
-			adminSvc, adminPort := s.ApisixAdminServiceAndPort()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
@@ -44,50 +41,54 @@ spec:
      hosts:
      - httpbin.org
      paths:
-       - /get
+       - /anything
    backends:
    - serviceName: %s
      servicePort: %d
-     weight: 10
-   - serviceName: %s
-     servicePort: %d
-     weight: 5
-`, backendSvc, backendPorts[0], adminSvc, adminPort)
+   plugins:
+   - name: csrf
+     enable: true
+     config:
+       key: "edd1c9f034335f136f87ad84b625c8f1"
+`, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-			err := s.EnsureNumApisixUpstreamsCreated(2)
+			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			// Send requests to APISIX.
-			var (
-				num404 int
-				num200 int
-			)
-			for i := 0; i < 90; i++ {
-				// For requests sent to http-admin, 404 will be given.
-				// For requests sent to httpbin, 200 will be given.
-				resp := s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect()
-				status := resp.Raw().StatusCode
-				if status != http.StatusOK && status != http.StatusNotFound {
-					assert.FailNow(ginkgo.GinkgoT(), "invalid status code")
-				}
-				if status == 200 {
-					num200++
-					resp.Body().Contains("origin")
-				} else {
-					num404++
-				}
-			}
-			dev := math.Abs(float64(num200)/float64(num404) - float64(2))
-			assert.Less(ginkgo.GinkgoT(), dev, 0.2)
+			msg401 := s.NewAPISIXClient().
+				POST("/anything").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusUnauthorized).
+				Body().
+				Raw()
+			assert.Contains(ginkgo.GinkgoT(), msg401, "no csrf token in headers")
+
+			resp := s.NewAPISIXClient().
+				GET("/anything").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusOK)
+			resp.Header("Set-Cookie").NotEmpty()
+
+			cookie := resp.Cookie("apisix-csrf-token")
+			token := cookie.Value().Raw()
+
+			_ = s.NewAPISIXClient().
+				POST("/anything").
+				WithHeader("Host", "httpbin.org").
+				WithHeader("apisix-csrf-token", token).
+				WithCookie("apisix-csrf-token", token).
+				Expect().
+				Status(http.StatusOK)
 		})
 
-		ginkgo.It("zero-weight", func() {
+		ginkgo.It("disable plugin", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
-			adminSvc, adminPort := s.ApisixAdminServiceAndPort()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
@@ -100,52 +101,42 @@ spec:
      hosts:
      - httpbin.org
      paths:
-       - /get
+       - /anything
    backends:
    - serviceName: %s
      servicePort: %d
-     weight: 100
-   - serviceName: %s
-     servicePort: %d
-     weight: 0
-`, backendSvc, backendPorts[0], adminSvc, adminPort)
+   plugins:
+   - name: csrf
+     enable: false
+     config:
+       key: "edd1c9f034335f136f87ad84b625c8f1"
+`, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-			err := s.EnsureNumApisixUpstreamsCreated(2)
+			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			// Send requests to APISIX.
-			var (
-				num404 int
-				num200 int
-			)
-			for i := 0; i < 90; i++ {
-				// For requests sent to http-admin, 404 will be given.
-				// For requests sent to httpbin, 200 will be given.
-				resp := s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect()
-				status := resp.Raw().StatusCode
-				if status != http.StatusOK && status != http.StatusNotFound {
-					assert.FailNow(ginkgo.GinkgoT(), "invalid status code")
-				}
-				if status == 200 {
-					num200++
-					resp.Body().Contains("origin")
-				} else {
-					num404++
-				}
-			}
-			assert.Equal(ginkgo.GinkgoT(), num404, 0)
-			assert.Equal(ginkgo.GinkgoT(), num200, 90)
+			_ = s.NewAPISIXClient().
+				GET("/anything").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusOK)
+
+			_ = s.NewAPISIXClient().
+				POST("/anything").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusOK)
 		})
 	}
 
-	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-plugins-security: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold)
 	})
-	ginkgo.Describe("suite-features: scaffold v2", func() {
+	ginkgo.Describe("suite-plugins-security: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })
