@@ -39,7 +39,7 @@ type ApisixRoute struct {
 
 // ApisixRouteSpec is the spec definition for ApisixRouteSpec.
 type ApisixRouteSpec struct {
-	IngressClassName string `json:"IngressClassName,omitempty" yaml:"IngressClassName,omitempty"`
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	Rules            []Rule `json:"rules,omitempty" yaml:"rules,omitempty"`
 }
 
