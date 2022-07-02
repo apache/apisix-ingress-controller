@@ -25,7 +25,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-plugins-other: ApisixPluginConfig", func() {
+var _ = ginkgo.Describe("suite-plugins-all: ApisixPluginConfig", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
 		ginkgo.It("add crd from definition", func() {
@@ -538,10 +538,10 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-plugins-other: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-plugins-all: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold)
 	})
-	ginkgo.Describe("suite-plugins-other: scaffold v2", func() {
+	ginkgo.Describe("suite-plugins-all: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })

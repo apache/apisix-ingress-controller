@@ -75,13 +75,9 @@ spec:
 var _ = ginkgo.Describe("suite-ingress: Ingress LB Status Testing", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
 		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
 		APISIXPublishAddress:  "10.6.6.6",
-		EnableWebhooks:        false,
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("check the ingress lb status is updated", func() {

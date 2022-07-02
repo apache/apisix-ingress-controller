@@ -187,8 +187,6 @@ var _ = ginkgo.Describe("suite-ingress: leader election", func() {
 	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                  "leaderelection",
-			Kubeconfig:            scaffold.GetKubeconfig(),
-			APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 			IngressAPISIXReplicas: 2,
 			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2beta3,
 		}))
@@ -196,8 +194,6 @@ var _ = ginkgo.Describe("suite-ingress: leader election", func() {
 	ginkgo.Describe("suite-ingress: scaffold v2", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                  "leaderelection",
-			Kubeconfig:            scaffold.GetKubeconfig(),
-			APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 			IngressAPISIXReplicas: 2,
 			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
 		}))
