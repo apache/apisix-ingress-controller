@@ -23,6 +23,7 @@ import (
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-gateway"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-ingress/suite-ingress-features"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-ingress/suite-ingress-resource"
+	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-plugins/suite-plugins-authentication"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-plugins/suite-plugins-general"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-plugins/suite-plugins-other"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-plugins/suite-plugins-security"

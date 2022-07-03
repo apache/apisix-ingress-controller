@@ -250,7 +250,7 @@ RU+QPRECgYB6XW24EI5+w3STbpnc6VoTS+sy9I9abTJPYo9LpCJwfMYc9Tg9Cx2K
 	})
 })
 
-var _ = ginkgo.Describe("suite-ingress: ApisixTls mTLS Test", func() {
+var _ = ginkgo.Describe("suite-ingress-resource: ApisixTls mTLS Test", func() {
 	// RootCA -> Server
 	// RootCA -> UserCert
 	// These certs come from mTLS practice
@@ -534,10 +534,10 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-resource: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold)
 	})
-	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })
