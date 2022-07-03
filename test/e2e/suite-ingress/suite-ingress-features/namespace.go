@@ -36,7 +36,7 @@ type headers struct {
 	} `json:"headers"`
 }
 
-var _ = ginkgo.Describe("suite-ingress: namespacing filtering enable", func() {
+var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.Context("with namespace_selector", func() {
@@ -97,7 +97,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("suite-ingress: namespacing filtering disable", func() {
+var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering disable", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.Context("without namespace_selector", func() {
 		// make namespace_selector empty

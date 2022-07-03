@@ -26,7 +26,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress: ApisixRoute stream Testing with v2beta2", func() {
+var _ = ginkgo.Describe("suite-ingress-resource: ApisixRoute stream Testing with v2beta2", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("stream tcp proxy", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -150,10 +150,10 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "dns query error")
 		})
 	}
-	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-resource: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold())
 	})
-	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})
 })

@@ -27,7 +27,7 @@ import (
 )
 
 // TODO: FIXME
-var _ = ginkgo.Describe("suite-ingress: secret Testing", func() {
+var _ = ginkgo.Describe("suite-ingress-features: secret Testing", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("create a SSL and then update secret ", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -496,10 +496,10 @@ UnBVSIGJ/c0AhVSDuOAJiF36pvsDysTZXMTFE/9i5bkGOiwtzRNe4Hym/SEZUCpn
 		})
 	}
 
-	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold())
 	})
-	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})
 })

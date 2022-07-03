@@ -27,7 +27,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress: Status subresource Testing", func() {
+var _ = ginkgo.Describe("suite-ingress-features: Status subresource Testing", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("check the status is recorded", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -64,15 +64,15 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold())
 	})
-	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})
 })
 
-var _ = ginkgo.Describe("suite-ingress: Ingress LB Status Testing", func() {
+var _ = ginkgo.Describe("suite-ingress-features: Ingress LB Status Testing", func() {
 	opts := &scaffold.Options{
 		Name:                  "default",
 		IngressAPISIXReplicas: 1,
