@@ -44,6 +44,8 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
+	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
+
 	// add https
 	for _, tls := range ing.Spec.TLS {
 		apisixTls := kubev2.ApisixTls{
@@ -132,6 +134,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
+			route.EnableWebsocket = enableWebsocket
 			if len(nginxVars) > 0 {
 				routeVars, err := t.translateRouteMatchExprs(nginxVars)
 				if err != nil {
@@ -165,6 +168,8 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
+	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
+
 	// add https
 	for _, tls := range ing.Spec.TLS {
 		apisixTls := kubev2beta3.ApisixTls{
@@ -253,6 +258,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
+			route.EnableWebsocket = enableWebsocket
 			if len(nginxVars) > 0 {
 				routeVars, err := t.translateRouteMatchExprs(nginxVars)
 				if err != nil {
@@ -340,6 +346,7 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 	plugins := t.translateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
+	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
 
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
@@ -400,6 +407,7 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
+			route.EnableWebsocket = enableWebsocket
 			if len(nginxVars) > 0 {
 				routeVars, err := t.translateRouteMatchExprs(nginxVars)
 				if err != nil {
