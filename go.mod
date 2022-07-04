@@ -21,7 +21,7 @@ require (
 	k8s.io/apimachinery v0.22.4
 	k8s.io/client-go v0.22.4
 	k8s.io/code-generator v0.22.1
-	sigs.k8s.io/gateway-api v0.4.0
+	sigs.k8s.io/gateway-api v0.4.3
 )
 
 require (
