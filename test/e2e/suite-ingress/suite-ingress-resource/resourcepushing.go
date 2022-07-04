@@ -17,7 +17,6 @@ package ingress
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -55,9 +54,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(2), "scaling number of httpbin instances")
 			assert.Nil(ginkgo.GinkgoT(), s.WaitAllHTTPBINPodsAvailable(), "waiting for all httpbin pods ready")
-			// TODO When ingress controller can feedback the lifecycle of CRDs to the
-			// status field, we can poll it rather than sleeping.
-			time.Sleep(10 * time.Second)
+
 			ups, err := s.ListApisixUpstreams()
 			assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
 			assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 2, "upstreams nodes not expect")
@@ -120,9 +117,6 @@ spec:
 `, backendSvc, backendSvcPort[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
-			// TODO When ingress controller can feedback the lifecycle of CRDs to the
-			// status field, we can poll it rather than sleeping.
-			time.Sleep(10 * time.Second)
 
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
@@ -136,9 +130,9 @@ spec:
 
 			// remove
 			assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
-			// TODO When ingress controller can feedback the lifecycle of CRDs to the
-			// status field, we can poll it rather than sleeping.
-			time.Sleep(10 * time.Second)
+
+			err = s.EnsureNumApisixUpstreamsCreated(0)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 			ups, err := s.ListApisixUpstreams()
 			assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
 			assert.Len(ginkgo.GinkgoT(), ups, 0, "upstreams nodes not expect")
@@ -206,9 +200,6 @@ spec:
 `, backendSvc, backendSvcPort[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
-			// TODO When ingress controller can feedback the lifecycle of CRDs to the
-			// status field, we can poll it rather than sleeping.
-			time.Sleep(10 * time.Second)
 
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
@@ -223,8 +214,7 @@ spec:
 			// assert.Nil(ginkgo.GinkgoT(), s.DeleteHTTPBINService())
 			// remove
 			assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
-			// TODO When ingress controller can feedback the lifecycle of CRDs to the
-			// status field, we can poll it rather than sleeping.
+
 			err = s.EnsureNumApisixUpstreamsCreated(0)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 			err = s.EnsureNumApisixUpstreamsCreated(0)
@@ -534,13 +524,11 @@ spec:
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
-			err := s.CreateVersionedApisixResource(ar1)
-			assert.Nil(ginkgo.GinkgoT(), err)
-			err = s.CreateVersionedApisixResource(ar2)
-			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar1))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar2))
 
-			time.Sleep(6 * time.Second)
-
+			err := s.EnsureNumApisixRoutesCreated(2)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 			routes, err := s.ListApisixRoutes()
 			assert.Nil(ginkgo.GinkgoT(), err, "listing routes")
 			assert.Len(ginkgo.GinkgoT(), routes, 2)
@@ -565,8 +553,9 @@ spec:
 			// Delete ar1
 			err = s.RemoveResourceByString(ar1)
 			assert.Nil(ginkgo.GinkgoT(), err)
-			time.Sleep(6 * time.Second)
 
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 			routes, err = s.ListApisixRoutes()
 			assert.Nil(ginkgo.GinkgoT(), err, "listing routes")
 			assert.Len(ginkgo.GinkgoT(), routes, 1)
@@ -590,9 +579,9 @@ spec:
 			resp.Status(http.StatusOK)
 
 			// Delete ar2
-			err = s.RemoveResourceByString(ar2)
-			assert.Nil(ginkgo.GinkgoT(), err)
-			time.Sleep(10 * time.Second)
+			assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(ar2))
+
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(0), "Checking number of routes")
 
 			routes, err = s.ListApisixRoutes()
 			assert.Nil(ginkgo.GinkgoT(), err, "listing routes")
