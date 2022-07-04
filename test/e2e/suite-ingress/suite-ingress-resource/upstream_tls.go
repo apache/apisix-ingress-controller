@@ -18,7 +18,6 @@ package ingress
 import (
 	"io/ioutil"
 	"net/http"
-	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -69,7 +68,8 @@ spec:
     name: upstream-is-mtls
 `)
 			assert.NoError(ginkgo.GinkgoT(), err, "create ApisixRoute for backend that require mTLS")
-			time.Sleep(10 * time.Second)
+
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 			apisixRoutes, err := s.ListApisixRoutes()
 			assert.NoError(ginkgo.GinkgoT(), err, "list routes error")
 			assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
@@ -118,8 +118,7 @@ spec:
 
 			assert.NoError(ginkgo.GinkgoT(), s.NewApisixTls("grpc-secret", "e2e.apisix.local", "grpc-secret"))
 
-			assert.NoError(ginkgo.GinkgoT(), err, "create ApisixRoute for backend that require mTLS")
-			time.Sleep(10 * time.Second)
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 			apisixRoutes, err := s.ListApisixRoutes()
 			assert.NoError(ginkgo.GinkgoT(), err, "list routes error")
 			assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")

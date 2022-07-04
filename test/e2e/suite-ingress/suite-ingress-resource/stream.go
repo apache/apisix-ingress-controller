@@ -18,7 +18,6 @@ package ingress
 import (
 	"context"
 	"fmt"
-	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -47,7 +46,6 @@ spec:
 `, backendSvc, backendSvcPort[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
-			time.Sleep(12 * time.Second)
 
 			err := s.EnsureNumApisixStreamRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
@@ -130,11 +128,6 @@ spec:
       servicePort: 53
 `)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
-			defer func() {
-				err := s.RemoveResourceByString(apisixRoute)
-				assert.Nil(ginkgo.GinkgoT(), err)
-			}()
-			time.Sleep(9 * time.Second)
 
 			err := s.EnsureNumApisixStreamRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")

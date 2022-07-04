@@ -208,6 +208,8 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 	return wait.Poll(3*time.Second, 35*time.Second, condFunc)
 }
 
+// EnsureNumIngressCreated waits until desired number of route are created in
+// APISIX cluster.
 func (s *Scaffold) EnsureNumIngressCreated(desired int) error {
 	return s.EnsureNumApisixRoutesCreated(desired)
 }
@@ -252,6 +254,17 @@ func (s *Scaffold) EnsureNumApisixPluginConfigCreated(desired int) error {
 		Scheme: "http",
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin/plugin_configs",
+	}
+	return s.ensureNumApisixCRDsCreated(u.String(), desired)
+}
+
+// EnsureNumApisixTlsCreated waits until desired number of tls ssl created in
+// APISIX cluster.
+func (s *Scaffold) EnsureNumApisixTlsCreated(desired int) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/ssl",
 	}
 	return s.ensureNumApisixCRDsCreated(u.String(), desired)
 }
