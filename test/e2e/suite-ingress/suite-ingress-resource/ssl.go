@@ -89,9 +89,6 @@ wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 			assert.Nil(ginkgo.GinkgoT(), err, "create tls error")
 			// check ssl in APISIX
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixTlsCreated(1))
-			tls, err := s.ListApisixSsl()
-			assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
-			assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
 		})
 		ginkgo.It("update a SSL from ApisixTls ", func() {
 			secretName := "test-apisix-tls"
@@ -235,9 +232,6 @@ RU+QPRECgYB6XW24EI5+w3STbpnc6VoTS+sy9I9abTJPYo9LpCJwfMYc9Tg9Cx2K
 			assert.Nil(ginkgo.GinkgoT(), err, "delete tls error")
 			// check ssl in APISIX
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixTlsCreated(0))
-			tls, err = s.ListApisixSsl()
-			assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
-			assert.Len(ginkgo.GinkgoT(), tls, 0, "tls number not expect")
 		})
 	}
 
@@ -487,9 +481,6 @@ yXwQ0N/qK7uMh9w0d+yac8h8bjMa
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixTls with client CA error")
 			// check ssl in APISIX
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixTlsCreated(1))
-			apisixSsls, err := s.ListApisixSsl()
-			assert.Nil(ginkgo.GinkgoT(), err, "list ssl error")
-			assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "ssl number not expect")
 
 			// create route
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -512,10 +503,6 @@ spec:
 `, backendSvc, backendSvcPort[0])
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
-
-			apisixRoutes, err := s.ListApisixRoutes()
-			assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
-			assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
 
 			// Without Client Cert
 			s.NewAPISIXHttpsClient(host).GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusBadRequest).Body().Raw()

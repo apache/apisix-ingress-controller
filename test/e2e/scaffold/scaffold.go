@@ -62,7 +62,6 @@ type Options struct {
 	APISIXPublishAddress       string
 	disableNamespaceSelector   bool
 	ApisixResourceSyncInterval string
-	enableGatewayAPI           bool
 	ApisixResourceVersion      string
 }
 
@@ -172,7 +171,6 @@ func NewScaffold(o *Options) *Scaffold {
 	if o.HTTPBinServicePort == 0 {
 		o.HTTPBinServicePort = 80
 	}
-	o.enableGatewayAPI = true
 	defer ginkgo.GinkgoRecover()
 
 	s := &Scaffold{
@@ -579,10 +577,6 @@ func (s *Scaffold) getKindValue(yml string) string {
 
 func (s *Scaffold) DisableNamespaceSelector() {
 	s.opts.disableNamespaceSelector = true
-}
-
-func (s *Scaffold) DisableGatewayAPI() {
-	s.opts.enableGatewayAPI = false
 }
 
 func waitExponentialBackoff(condFunc func() (bool, error)) error {

@@ -187,7 +187,7 @@ spec:
           servicePort: %d
 `, host, serverCertSecret, host, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumIngressCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 		apisixRoutes, err := s.ListApisixRoutes()
 		assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
@@ -241,7 +241,7 @@ spec:
               number: %d
 `, host, serverCertSecret, host, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumIngressCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 		apisixRoutes, err := s.ListApisixRoutes()
 		assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
@@ -295,7 +295,7 @@ spec:
               number: %d
 `, host, serverCertSecret, host, backendSvc, backendSvcPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumIngressCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 		apisixRoutes, err := s.ListApisixRoutes()
 		assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
@@ -342,7 +342,7 @@ spec:
               number: %d
 `, backendSvc, backendPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumIngressCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 		// Exact path, doesn't match /ip/aha
@@ -374,7 +374,7 @@ spec:
               number: %d
 `, backendSvc, backendPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumIngressCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 		_ = s.NewAPISIXClient().GET("/status/500").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusInternalServerError)
 		_ = s.NewAPISIXClient().GET("/status/504").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusGatewayTimeout)
@@ -407,7 +407,7 @@ spec:
               number: %d
 `, backendSvc, backendPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumIngressCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 		_ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 		_ = s.NewAPISIXClient().GET("/anything/aaa/notok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
@@ -441,7 +441,7 @@ spec:
           servicePort: %d
 `, backendSvc, backendPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumIngressCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 		// Exact path, doesn't match /ip/aha
@@ -471,7 +471,7 @@ spec:
           servicePort: %d
 `, backendSvc, backendPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumIngressCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 		_ = s.NewAPISIXClient().GET("/status/500").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusInternalServerError)
 		_ = s.NewAPISIXClient().GET("/status/504").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusGatewayTimeout)
@@ -502,7 +502,7 @@ spec:
           servicePort: %d
 `, backendSvc, backendPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumIngressCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 		_ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 		_ = s.NewAPISIXClient().GET("/anything/aaa/notok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
@@ -536,7 +536,7 @@ spec:
           servicePort: %d
 `, backendSvc, backendPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumIngressCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 		// Exact path, doesn't match /ip/aha
@@ -566,7 +566,7 @@ spec:
           servicePort: %d
 `, backendSvc, backendPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumIngressCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 		_ = s.NewAPISIXClient().GET("/status/500").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusInternalServerError)
 		_ = s.NewAPISIXClient().GET("/status/504").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusGatewayTimeout)
@@ -597,7 +597,7 @@ spec:
           servicePort: %d
 `, backendSvc, backendPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumIngressCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 		_ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 		_ = s.NewAPISIXClient().GET("/anything/aaa/notok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
@@ -669,7 +669,7 @@ spec:
               number: %d
 `, backendSvc, backendPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumIngressCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 		// Exact path, doesn't match /ip/aha
@@ -700,7 +700,7 @@ spec:
               number: %d
 `, backendSvc, backendPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumIngressCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 		_ = s.NewAPISIXClient().GET("/status/500").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusInternalServerError)
 		_ = s.NewAPISIXClient().GET("/status/504").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusGatewayTimeout)
@@ -732,7 +732,7 @@ spec:
               number: %d
 `, backendSvc, backendPort[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumIngressCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 		_ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 		_ = s.NewAPISIXClient().GET("/anything/aaa/notok").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")

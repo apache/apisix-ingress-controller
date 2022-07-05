@@ -70,9 +70,6 @@ spec:
 			assert.NoError(ginkgo.GinkgoT(), err, "create ApisixRoute for backend that require mTLS")
 
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
-			apisixRoutes, err := s.ListApisixRoutes()
-			assert.NoError(ginkgo.GinkgoT(), err, "list routes error")
-			assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
 
 			s.NewAPISIXClient().GET("/hello").WithHeader("Host", "upstream-is-mtls.httpbin.local").Expect().Status(http.StatusOK).Body().Raw()
 		})
@@ -119,9 +116,6 @@ spec:
 			assert.NoError(ginkgo.GinkgoT(), s.NewApisixTls("grpc-secret", "e2e.apisix.local", "grpc-secret"))
 
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
-			apisixRoutes, err := s.ListApisixRoutes()
-			assert.NoError(ginkgo.GinkgoT(), err, "list routes error")
-			assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
 
 			ca, err := ioutil.ReadFile("testbackend/tls/ca.pem")
 			assert.NoError(ginkgo.GinkgoT(), err, "read ca cert")

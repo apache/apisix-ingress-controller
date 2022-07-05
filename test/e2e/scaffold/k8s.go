@@ -208,12 +208,6 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 	return wait.Poll(3*time.Second, 35*time.Second, condFunc)
 }
 
-// EnsureNumIngressCreated waits until desired number of route are created in
-// APISIX cluster.
-func (s *Scaffold) EnsureNumIngressCreated(desired int) error {
-	return s.EnsureNumApisixRoutesCreated(desired)
-}
-
 // EnsureNumApisixRoutesCreated waits until desired number of Routes are created in
 // APISIX cluster.
 func (s *Scaffold) EnsureNumApisixRoutesCreated(desired int) error {
