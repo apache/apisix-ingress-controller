@@ -55,6 +55,14 @@ func (c *Controller) newApisixRouteController() *apisixRouteController {
 			DeleteFunc: ctl.onDelete,
 		},
 	)
+	c.svcInformer.AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    ctl.onSvcAdd,
+			UpdateFunc: ctl.onSvcUpdate,
+			DeleteFunc: ctl.onSvcDelete,
+		},
+	)
+
 	return ctl
 }
 
