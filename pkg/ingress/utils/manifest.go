@@ -245,51 +245,53 @@ func SyncManifests(ctx context.Context, apisix apisix.APISIX, clusterName string
 						zap.String("upstream_name", u.Name),
 					)
 
-					// this could also happen when the route is synced(deleted) in another syncManifest call,
-					// but arrives later than this
-					// So log the deleted routes in this call to see if it's true
-					if len(deleted.Routes) == 0 {
-						log.Debugw("syncManifest deletes upstream but doesn't delete any routes")
-					} else {
-						found := false
+					if log.Level() <= zap.DebugLevel {
+						// this could also happen when the route is synced(deleted) in another syncManifest call,
+						// but arrives later than this
+						// So log the deleted routes in this call to see if it's true
+						if len(deleted.Routes) == 0 {
+							log.Debugw("syncManifest deletes upstream but doesn't delete any routes")
+						} else {
+							found := false
 
-						for _, r := range deleted.Routes {
+							for _, r := range deleted.Routes {
+								if r.UpstreamId == u.ID {
+									found = true
+									log.Debugw("a deleted route is referencing upstream",
+										zap.Any("route", r),
+									)
+								}
+							}
+							if !found {
+								log.Debugw("no any deleted route is referencing this upstream",
+									zap.String("upstream_id", u.ID),
+								)
+							}
+						}
+
+						// try to find which route is referencing the upstream
+						routes, err := apisix.Cluster(clusterName).Route().List(ctx)
+						if err != nil {
+							log.Debugw("try to find referencing routes, but failed to list",
+								zap.Error(err),
+							)
+						}
+
+						found := false
+						for _, r := range routes {
 							if r.UpstreamId == u.ID {
 								found = true
-								log.Debugw("a deleted route is referencing upstream",
+								log.Debugw("route is referencing upstream",
 									zap.Any("route", r),
 								)
 							}
 						}
 						if !found {
-							log.Debugw("no any deleted route is referencing this upstream",
+							log.Debugw("failed to find a route that references the upstream",
 								zap.String("upstream_id", u.ID),
+								zap.Any("routes", routes),
 							)
 						}
-					}
-
-					// try to find which route is referencing the upstream
-					routes, err := apisix.Cluster(clusterName).Route().List(ctx)
-					if err != nil {
-						log.Debugw("try to find referencing routes, but failed to list",
-							zap.Error(err),
-						)
-					}
-
-					found := false
-					for _, r := range routes {
-						if r.UpstreamId == u.ID {
-							found = true
-							log.Debugw("route is referencing upstream",
-								zap.Any("route", r),
-							)
-						}
-					}
-					if !found {
-						log.Debugw("failed to find a route that references the upstream",
-							zap.String("upstream_id", u.ID),
-							zap.Any("routes", routes),
-						)
 					}
 				}
 			}
