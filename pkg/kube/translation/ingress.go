@@ -164,8 +164,10 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 }
 
 func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, skipVerify bool) (*TranslateContext, error) {
+	ing.GetObjectMeta()
+	ing.GetAnnotations()
 	ctx := DefaultEmptyTranslateContext()
-	plugins := t.translateAnnotations(ing.Annotations)
+	plugins := t.translateAnnotations(ing.Annotations, ing.ObjectMeta)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
 	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")

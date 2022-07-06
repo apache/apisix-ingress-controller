@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package annotations
+package plugins
 
 import (
 	"testing"
@@ -22,32 +22,33 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func TestForwardAuthHandler(t *testing.T) {
+func TestIPRestrictionHandler(t *testing.T) {
 	annotations := map[string]string{
-		_forwardAuthURI:             "http://127.0.0.1:9080",
-		_forwardAuthRequestHeaders:  "Authorization",
-		_forwardAuthClientHeaders:   "Location",
-		_forwardAuthUpstreamHeaders: "X-User-ID",
+		_allowlistSourceRange: "10.2.2.2,192.168.0.0/16",
 	}
-	p := NewForwardAuthHandler()
+	p := NewIPRestrictionHandler()
 	out, err := p.Handle(NewExtractor(annotations))
 	assert.Nil(t, err, "checking given error")
-	config := out.(*apisixv1.ForwardAuthConfig)
-	assert.Equal(t, "http://127.0.0.1:9080", config.URI)
-	assert.Equal(t, []string{"Authorization"}, config.RequestHeaders)
-	assert.Equal(t, []string{"Location"}, config.ClientHeaders)
-	assert.Equal(t, []string{"X-User-ID"}, config.UpstreamHeaders)
-	assert.Equal(t, true, config.SSLVerify)
-	assert.Equal(t, "forward-auth", p.PluginName())
+	config := out.(*apisixv1.IPRestrictConfig)
+	assert.Len(t, config.Allowlist, 2, "checking size of white list")
+	assert.Equal(t, "10.2.2.2", config.Allowlist[0])
+	assert.Equal(t, "192.168.0.0/16", config.Allowlist[1])
+	assert.Equal(t, "ip-restriction", p.PluginName())
 
-	annotations[_forwardAuthSSLVerify] = "false"
+	annotations[_blocklistSourceRange] = "172.17.0.0/16,127.0.0.1"
 	out, err = p.Handle(NewExtractor(annotations))
 	assert.Nil(t, err, "checking given error")
-	config = out.(*apisixv1.ForwardAuthConfig)
-	assert.Equal(t, false, config.SSLVerify)
+	config = out.(*apisixv1.IPRestrictConfig)
+	assert.Len(t, config.Allowlist, 2, "checking size of white list")
+	assert.Equal(t, "10.2.2.2", config.Allowlist[0])
+	assert.Equal(t, "192.168.0.0/16", config.Allowlist[1])
+	assert.Len(t, config.Blocklist, 2, "checking size of black list")
+	assert.Equal(t, "172.17.0.0/16", config.Blocklist[0])
+	assert.Equal(t, "127.0.0.1", config.Blocklist[1])
 
-	annotations[_forwardAuthURI] = ""
+	delete(annotations, _allowlistSourceRange)
+	delete(annotations, _blocklistSourceRange)
 	out, err = p.Handle(NewExtractor(annotations))
 	assert.Nil(t, err, "checking given error")
-	assert.Nil(t, out, "checking given output")
+	assert.Nil(t, out, "checking the given ip-restrction plugin config")
 }

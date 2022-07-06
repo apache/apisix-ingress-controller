@@ -16,30 +16,25 @@ package translation
 
 import (
 	"go.uber.org/zap"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 var (
-	_handlers = []annotations.Handler{
-		annotations.NewCorsHandler(),
-		annotations.NewIPRestrictionHandler(),
-		annotations.NewRewriteHandler(),
-		annotations.NewRedirectHandler(),
-		annotations.NewForwardAuthHandler(),
-		annotations.NewBasicAuthHandler(),
-		annotations.NewKeyAuthHandler(),
-		annotations.NewCSRFHandler(),
+	_handlers = map[string]annotations.IngressAnnotations{
+		"Plugins": annotations.NewPluginsParser(),
 	}
 )
 
-func (t *translator) translateAnnotations(anno map[string]string) apisix.Plugins {
-	extractor := annotations.NewExtractor(anno)
-	plugins := make(apisix.Plugins)
-	for _, handler := range _handlers {
-		out, err := handler.Handle(extractor)
+func (t *translator) translateAnnotations(meta metav1.ObjectMeta) *annotations.Ingress {
+	ing := &annotations.Ingress{
+		ObjectMeta: &meta,
+	}
+	data := make(map[string]interface{})
+	for name, handler := range _handlers {
+		out, err := handler.Parse(ing)
 		if err != nil {
 			log.Warnw("failed to handle annotations",
 				zap.Error(err),
@@ -47,8 +42,8 @@ func (t *translator) translateAnnotations(anno map[string]string) apisix.Plugins
 			continue
 		}
 		if out != nil {
-			plugins[handler.PluginName()] = out
+			data[name] = out
 		}
 	}
-	return plugins
+	return ing
 }

@@ -12,36 +12,36 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package annotations
+package plugins
 
 import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
-	_enableCsrf = AnnotationsPrefix + "enable-csrf"
-	_csrfKey    = AnnotationsPrefix + "csrf-key"
+	_allowlistSourceRange = AnnotationsPrefix + "allowlist-source-range"
+	_blocklistSourceRange = AnnotationsPrefix + "blocklist-source-range"
 )
 
-type csrf struct{}
+type ipRestriction struct{}
 
-// NewCSRFHandler creates a handler to convert annotations about
-// CSRF to APISIX csrf plugin.
-func NewCSRFHandler() Handler {
-	return &csrf{}
+// NewIPRestrictionHandler creates a handler to convert
+// annotations about client ips control to APISIX ip-restrict plugin.
+func NewIPRestrictionHandler() Handler {
+	return &ipRestriction{}
 }
 
-func (c *csrf) PluginName() string {
-	return "csrf"
+func (i *ipRestriction) PluginName() string {
+	return "ip-restriction"
 }
 
-func (c *csrf) Handle(e Extractor) (interface{}, error) {
-	if !e.GetBoolAnnotation(_enableCsrf) {
-		return nil, nil
-	}
-	var plugin apisixv1.CSRFConfig
-	plugin.Key = e.GetStringAnnotation(_csrfKey)
-	if plugin.Key != "" {
+func (i *ipRestriction) Handle(e Extractor) (interface{}, error) {
+	var plugin apisixv1.IPRestrictConfig
+	allowlist := e.GetStringsAnnotation(_allowlistSourceRange)
+	blocklist := e.GetStringsAnnotation(_blocklistSourceRange)
+	if allowlist != nil || blocklist != nil {
+		plugin.Allowlist = allowlist
+		plugin.Blocklist = blocklist
 		return &plugin, nil
 	}
 	return nil, nil

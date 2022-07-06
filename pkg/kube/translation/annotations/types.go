@@ -16,12 +16,20 @@ package annotations
 
 import (
 	"strings"
+
+	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
 	// AnnotationsPrefix is the apisix annotation prefix
 	AnnotationsPrefix = "k8s.apisix.apache.org/"
 )
+
+type Ingress struct {
+	*metav1.ObjectMeta
+	Plugins apisix.Plugins
+}
 
 // Extractor encapsulates some auxiliary methods to extract annotations.
 type Extractor interface {
@@ -40,38 +48,25 @@ type Extractor interface {
 
 // Handler abstracts the behavior so that the apisix-ingress-controller knows
 // how to parse some annotations and convert them to APISIX plugins.
-type Handler interface {
+type IngressAnnotations interface {
 	// Handle parses the target annotation and converts it to the type-agnostic structure.
 	// The return value might be nil since some features have an explicit switch, users should
 	// judge whether Handle is failed by the second error value.
-	Handle(Extractor) (interface{}, error)
-	// PluginName returns a string which indicates the target plugin name in APISIX.
-	PluginName() string
+	Parse(*Ingress) (interface{}, error)
 }
 
-type extractor struct {
-	annotations map[string]string
+func GetStringAnnotation(name string, ing *Ingress) string {
+	return ing.Annotations[name]
 }
 
-func (e *extractor) GetStringAnnotation(name string) string {
-	return e.annotations[name]
-}
-
-func (e *extractor) GetStringsAnnotation(name string) []string {
-	value := e.GetStringAnnotation(name)
+func GetStringsAnnotation(name string, ing *Ingress) []string {
+	value := GetStringAnnotation(name, ing)
 	if value == "" {
 		return nil
 	}
-	return strings.Split(e.annotations[name], ",")
+	return strings.Split(ing.Annotations[name], ",")
 }
 
-func (e *extractor) GetBoolAnnotation(name string) bool {
-	return e.annotations[name] == "true"
-}
-
-// NewExtractor creates an annotations extractor.
-func NewExtractor(annotations map[string]string) Extractor {
-	return &extractor{
-		annotations: annotations,
-	}
+func GetBoolAnnotation(name string, ing *Ingress) bool {
+	return ing.Annotations[name] == "true"
 }
