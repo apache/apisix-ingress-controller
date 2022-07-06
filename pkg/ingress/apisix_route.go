@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/ingress/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
@@ -99,11 +100,11 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		tctx *translation.TranslateContext
 	)
 	switch obj.GroupVersion {
-	case kube.ApisixRouteV2beta2:
+	case config.ApisixV2beta2:
 		ar, err = c.controller.apisixRouteLister.V2beta2(namespace, name)
-	case kube.ApisixRouteV2beta3:
+	case config.ApisixV2beta3:
 		ar, err = c.controller.apisixRouteLister.V2beta3(namespace, name)
-	case kube.ApisixRouteV2:
+	case config.ApisixV2:
 		ar, err = c.controller.apisixRouteLister.V2(namespace, name)
 	}
 	if err != nil {
@@ -138,7 +139,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	}
 
 	switch obj.GroupVersion {
-	case kube.ApisixRouteV2beta2:
+	case config.ApisixV2beta2:
 		if ev.Type != types.EventDelete {
 			tctx, err = c.controller.translator.TranslateRouteV2beta2(ar.V2beta2())
 		} else {
@@ -151,7 +152,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			)
 			return err
 		}
-	case kube.ApisixRouteV2beta3:
+	case config.ApisixV2beta3:
 		if ev.Type != types.EventDelete {
 			if err = c.checkPluginNameIfNotEmptyV2beta3(ctx, ar.V2beta3()); err == nil {
 				tctx, err = c.controller.translator.TranslateRouteV2beta3(ar.V2beta3())
@@ -166,7 +167,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			)
 			return err
 		}
-	case kube.ApisixRouteV2:
+	case config.ApisixV2:
 		if ev.Type != types.EventDelete {
 			if err = c.checkPluginNameIfNotEmptyV2(ctx, ar.V2()); err == nil {
 				tctx, err = c.controller.translator.TranslateRouteV2(ar.V2())
@@ -210,11 +211,11 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	} else {
 		var oldCtx *translation.TranslateContext
 		switch obj.GroupVersion {
-		case kube.ApisixRouteV2beta2:
+		case config.ApisixV2beta2:
 			oldCtx, err = c.controller.translator.TranslateRouteV2beta2(obj.OldObject.V2beta2())
-		case kube.ApisixRouteV2beta3:
+		case config.ApisixV2beta3:
 			oldCtx, err = c.controller.translator.TranslateRouteV2beta3(obj.OldObject.V2beta3())
-		case kube.ApisixRouteV2:
+		case config.ApisixV2:
 			oldCtx, err = c.controller.translator.TranslateRouteV2(obj.OldObject.V2())
 		}
 		if err != nil {
@@ -304,24 +305,24 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	}
 	var ar kube.ApisixRoute
 	switch event.GroupVersion {
-	case kube.ApisixRouteV2beta2:
+	case config.ApisixV2beta2:
 		ar, errLocal = c.controller.apisixRouteLister.V2beta2(namespace, name)
-	case kube.ApisixRouteV2beta3:
+	case config.ApisixV2beta3:
 		ar, errLocal = c.controller.apisixRouteLister.V2beta3(namespace, name)
-	case kube.ApisixRouteV2:
+	case config.ApisixV2:
 		ar, errLocal = c.controller.apisixRouteLister.V2(namespace, name)
 	}
 	if errOrigin == nil {
 		if ev.Type != types.EventDelete {
 			if errLocal == nil {
 				switch ar.GroupVersion() {
-				case kube.ApisixRouteV2beta2:
+				case config.ApisixV2beta2:
 					c.controller.recorderEvent(ar.V2beta2(), v1.EventTypeNormal, _resourceSynced, nil)
 					c.controller.recordStatus(ar.V2beta2(), _resourceSynced, nil, metav1.ConditionTrue, ar.V2beta2().GetGeneration())
-				case kube.ApisixRouteV2beta3:
+				case config.ApisixV2beta3:
 					c.controller.recorderEvent(ar.V2beta3(), v1.EventTypeNormal, _resourceSynced, nil)
 					c.controller.recordStatus(ar.V2beta3(), _resourceSynced, nil, metav1.ConditionTrue, ar.V2beta3().GetGeneration())
-				case kube.ApisixRouteV2:
+				case config.ApisixV2:
 					c.controller.recorderEvent(ar.V2(), v1.EventTypeNormal, _resourceSynced, nil)
 					c.controller.recordStatus(ar.V2(), _resourceSynced, nil, metav1.ConditionTrue, ar.V2().GetGeneration())
 				}
@@ -343,13 +344,13 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	)
 	if errLocal == nil {
 		switch ar.GroupVersion() {
-		case kube.ApisixRouteV2beta2:
+		case config.ApisixV2beta2:
 			c.controller.recorderEvent(ar.V2beta2(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
 			c.controller.recordStatus(ar.V2beta2(), _resourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta2().GetGeneration())
-		case kube.ApisixRouteV2beta3:
+		case config.ApisixV2beta3:
 			c.controller.recorderEvent(ar.V2beta3(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
 			c.controller.recordStatus(ar.V2beta3(), _resourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta3().GetGeneration())
-		case kube.ApisixRouteV2:
+		case config.ApisixV2:
 			c.controller.recorderEvent(ar.V2(), v1.EventTypeWarning, _resourceSyncAborted, errOrigin)
 			c.controller.recordStatus(ar.V2(), _resourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2().GetGeneration())
 		}
