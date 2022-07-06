@@ -397,16 +397,15 @@ func TestTranslateIngressV1(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
-	assert.Len(t, ctx.PluginConfigs, 2)
 
 	assert.Equal(t, []string{"/foo", "/foo/*"}, ctx.Routes[0].Uris)
 	assert.Equal(t, ctx.Upstreams[0].ID, ctx.Routes[0].UpstreamId)
-	assert.Equal(t, ctx.PluginConfigs[0].ID, ctx.Routes[0].PluginConfigId)
 	assert.Equal(t, "apisix.apache.org", ctx.Routes[0].Host)
+	assert.Len(t, ctx.Routes[0].Plugins, 2)
 	assert.Equal(t, []string{"/bar"}, ctx.Routes[1].Uris)
 	assert.Equal(t, ctx.Upstreams[1].ID, ctx.Routes[1].UpstreamId)
-	assert.Equal(t, ctx.PluginConfigs[1].ID, ctx.Routes[1].PluginConfigId)
 	assert.Equal(t, "apisix.apache.org", ctx.Routes[1].Host)
+	assert.Len(t, ctx.Routes[1].Plugins, 2)
 
 	assert.Equal(t, "roundrobin", ctx.Upstreams[0].Type)
 	assert.Equal(t, "http", ctx.Upstreams[0].Scheme)
@@ -423,9 +422,6 @@ func TestTranslateIngressV1(t *testing.T) {
 	assert.Equal(t, "192.168.1.1", ctx.Upstreams[1].Nodes[0].Host)
 	assert.Equal(t, 9443, ctx.Upstreams[1].Nodes[1].Port)
 	assert.Equal(t, "192.168.1.2", ctx.Upstreams[1].Nodes[1].Host)
-
-	assert.Len(t, ctx.PluginConfigs[0].Plugins, 2)
-	assert.Len(t, ctx.PluginConfigs[1].Plugins, 2)
 }
 
 func TestTranslateIngressV1beta1NoBackend(t *testing.T) {
@@ -728,14 +724,15 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
-	assert.Len(t, ctx.PluginConfigs, 2)
 
 	assert.Equal(t, []string{"/foo", "/foo/*"}, ctx.Routes[0].Uris)
 	assert.Equal(t, ctx.Upstreams[0].ID, ctx.Routes[0].UpstreamId)
 	assert.Equal(t, "apisix.apache.org", ctx.Routes[0].Host)
+	assert.Len(t, ctx.Routes[0].Plugins, 2)
 	assert.Equal(t, []string{"/bar"}, ctx.Routes[1].Uris)
 	assert.Equal(t, ctx.Upstreams[1].ID, ctx.Routes[1].UpstreamId)
 	assert.Equal(t, "apisix.apache.org", ctx.Routes[1].Host)
+	assert.Len(t, ctx.Routes[1].Plugins, 2)
 
 	assert.Equal(t, "roundrobin", ctx.Upstreams[0].Type)
 	assert.Equal(t, "http", ctx.Upstreams[0].Scheme)
@@ -752,9 +749,6 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	assert.Equal(t, "192.168.1.1", ctx.Upstreams[1].Nodes[0].Host)
 	assert.Equal(t, 9443, ctx.Upstreams[1].Nodes[1].Port)
 	assert.Equal(t, "192.168.1.2", ctx.Upstreams[1].Nodes[1].Host)
-
-	assert.Len(t, ctx.PluginConfigs[0].Plugins, 2)
-	assert.Len(t, ctx.PluginConfigs[1].Plugins, 2)
 }
 
 func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
@@ -850,14 +844,16 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
-	assert.Len(t, ctx.PluginConfigs, 2)
 
 	assert.Equal(t, []string{"/foo", "/foo/*"}, ctx.Routes[0].Uris)
 	assert.Equal(t, ctx.Upstreams[0].ID, ctx.Routes[0].UpstreamId)
 	assert.Equal(t, "apisix.apache.org", ctx.Routes[0].Host)
+	assert.Len(t, ctx.Routes[0].Plugins, 2)
+
 	assert.Equal(t, []string{"/bar"}, ctx.Routes[1].Uris)
 	assert.Equal(t, ctx.Upstreams[1].ID, ctx.Routes[1].UpstreamId)
 	assert.Equal(t, "apisix.apache.org", ctx.Routes[1].Host)
+	assert.Len(t, ctx.Routes[1].Plugins, 2)
 
 	assert.Equal(t, "roundrobin", ctx.Upstreams[0].Type)
 	assert.Equal(t, "http", ctx.Upstreams[0].Scheme)
@@ -874,9 +870,6 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 	assert.Equal(t, "192.168.1.1", ctx.Upstreams[1].Nodes[0].Host)
 	assert.Equal(t, 9443, ctx.Upstreams[1].Nodes[1].Port)
 	assert.Equal(t, "192.168.1.2", ctx.Upstreams[1].Nodes[1].Host)
-
-	assert.Len(t, ctx.PluginConfigs[0].Plugins, 2)
-	assert.Len(t, ctx.PluginConfigs[1].Plugins, 2)
 }
 
 func TestTranslateIngressExtensionsV1beta1BackendWithInvalidService(t *testing.T) {
