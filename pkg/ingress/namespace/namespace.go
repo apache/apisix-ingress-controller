@@ -90,12 +90,15 @@ func (c *namespaceController) sync(ctx context.Context, ev *types.Event) error {
 		namespace, err := c.controller.kube.Client.CoreV1().Namespaces().Get(ctx, ev.Object.(string), metav1.GetOptions{})
 		if err != nil {
 			return err
-		} else {
-			// if labels of namespace contains the watchingLabels, the namespace should be set to controller.watchingNamespaces
-			if c.controller.watchingLabels.IsSubsetOf(namespace.Labels) {
-				c.controller.watchingNamespaces.Store(namespace.Name, struct{}{})
-			}
 		}
+
+		// if labels of namespace contains the watchingLabels, the namespace should be set to controller.watchingNamespaces
+		if c.controller.watchingLabels.IsSubsetOf(namespace.Labels) {
+			c.controller.watchingNamespaces.Store(namespace.Name, struct{}{})
+		} else {
+			c.controller.watchingNamespaces.Delete(namespace.Name)
+		}
+
 	} else { // type == types.EventDelete
 		namespace := ev.Tombstone.(*corev1.Namespace)
 		if _, ok := c.controller.watchingNamespaces.Load(namespace.Name); ok {

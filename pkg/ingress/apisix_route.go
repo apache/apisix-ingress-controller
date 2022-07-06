@@ -22,10 +22,12 @@ import (
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
 	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/ingress/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
@@ -57,9 +59,7 @@ func (c *Controller) newApisixRouteController() *apisixRouteController {
 	)
 	c.svcInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    ctl.onSvcAdd,
-			UpdateFunc: ctl.onSvcUpdate,
-			DeleteFunc: ctl.onSvcDelete,
+			AddFunc: ctl.onSvcAdd,
 		},
 	)
 
@@ -478,4 +478,91 @@ func (c *apisixRouteController) ResourceSync() {
 			},
 		})
 	}
+}
+
+func (c *apisixRouteController) onSvcAdd(obj interface{}) {
+	err := c.handleSvcAdd(obj)
+	c.handleSvcErr(obj, err)
+}
+
+func (c *apisixRouteController) handleSvcAdd(obj interface{}) error {
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Errorw("found Service with bad meta key",
+			zap.Error(err),
+			zap.String("key", key),
+		)
+		return nil
+	}
+	if !c.controller.isWatchingNamespace(key) {
+		return nil
+	}
+	log.Debugw("Service add event arrived",
+		zap.Any("object", obj),
+	)
+
+	ns, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		log.Errorw("failed to split Service meta key",
+			zap.Error(err),
+			zap.String("key", key),
+		)
+		return nil
+	}
+
+	var toUpdateRoutes []string
+
+	switch c.controller.cfg.Kubernetes.ApisixRouteVersion {
+	case "apisix.apache.org/v2beta2": // TODO: use config.ApisixV2beta2
+	case config.ApisixV2beta3:
+		routes, err := c.controller.apisixRouteLister.V2beta3Lister().ApisixRoutes(ns).List(labels.Everything())
+		if err != nil {
+			log.Errorw("found Service with bad meta key",
+				zap.Error(err),
+				zap.String("key", key),
+			)
+			// TODO: retry
+			return nil
+		}
+
+		for _, route := range routes {
+			found := false
+			for _, rule := range route.Spec.HTTP {
+				for _, backend := range rule.Backends {
+					if backend.ServiceName == name {
+						found = true
+						break
+					}
+				}
+				if found {
+					break
+				}
+			}
+
+			if found {
+				key, err := cache.MetaNamespaceKeyFunc(route)
+				if err != nil {
+					log.Errorw("found ApisixRoute with bad meta key",
+						zap.Error(err),
+						zap.String("key", key),
+					)
+					// TODO: handle error
+					continue
+				}
+				toUpdateRoutes = append(toUpdateRoutes, key)
+			}
+		}
+	case config.ApisixV2:
+	default:
+
+	}
+
+	return nil
+}
+
+func (c *apisixRouteController) handleSvcErr(obj interface{}, errOrigin error) {
+	log.Warnw("sync Service failed, will retry",
+		zap.Any("object", obj),
+		zap.Error(errOrigin),
+	)
 }

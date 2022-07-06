@@ -59,7 +59,7 @@ The gateway service type is set to `LoadBalancer`, so that clients can access Ap
 kubectl get service apisix-gateway --namespace ingress-apisix -o jsonpath='{.status.loadBalancer.ingress[].ip}'
 ```
 
-Now try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../practices/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
+Now try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../tutorials/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
 
 ### Specify The Ingress Version
 

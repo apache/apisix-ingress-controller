@@ -43,6 +43,12 @@ type ApisixRouteLister interface {
 	V2beta3(string, string) (ApisixRoute, error)
 	// V2 gets the ApisixRoute in apisix.apache.org/v2.
 	V2(string, string) (ApisixRoute, error)
+	// V2beta2Lister gets the v2beta2 lister
+	V2beta2Lister() listersv2beta2.ApisixRouteLister
+	// V2beta3Lister gets the v2beta3 lister
+	V2beta3Lister() listersv2beta3.ApisixRouteLister
+	// V2Lister gets the v2 lister
+	V2Lister() listersv2.ApisixRouteLister
 }
 
 // ApisixRouteInformer is an encapsulation for the informer of ApisixRoute,
@@ -84,6 +90,18 @@ type apisixRoute struct {
 	v2beta2      *configv2beta2.ApisixRoute
 	v2beta3      *configv2beta3.ApisixRoute
 	v2           *configv2.ApisixRoute
+}
+
+func (l *apisixRouteLister) V2beta2Lister() listersv2beta2.ApisixRouteLister {
+	return l.v2beta2Lister
+}
+
+func (l *apisixRouteLister) V2beta3Lister() listersv2beta3.ApisixRouteLister {
+	return l.v2beta3Lister
+}
+
+func (l *apisixRouteLister) V2Lister() listersv2.ApisixRouteLister {
+	return l.v2Lister
 }
 
 func (ar *apisixRoute) V2beta2() *configv2beta2.ApisixRoute {

@@ -27,17 +27,11 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-features: choose scheme", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
-	ginkgo.It("grpc", func() {
-		err := s.CreateResourceFromString(`
+	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
+		s := scaffoldFunc()
+
+		ginkgo.It("grpc", func() {
+			err := s.CreateResourceFromString(`
 apiVersion: v1
 kind: Pod
 metadata:
@@ -62,8 +56,8 @@ spec:
     protocol: TCP
     targetPort: 50051
 `)
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(`
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
@@ -73,7 +67,7 @@ spec:
     - port: 50051
       scheme: grpc
 `))
-		err = s.CreateResourceFromString(`
+			err = s.CreateVersionedApisixResource(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -90,52 +84,52 @@ spec:
     -  serviceName: grpc-server-service
        servicePort: 50051
 `)
-		assert.Nil(ginkgo.GinkgoT(), err)
-		time.Sleep(2 * time.Second)
-		ups, err := s.ListApisixUpstreams()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), ups, 1)
-		assert.Equal(ginkgo.GinkgoT(), ups[0].Scheme, "grpc")
+			assert.Nil(ginkgo.GinkgoT(), err)
+			time.Sleep(2 * time.Second)
+			ups, err := s.ListApisixUpstreams()
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.Len(ginkgo.GinkgoT(), ups, 1)
+			assert.Equal(ginkgo.GinkgoT(), ups[0].Scheme, "grpc")
 
-		// TODO enable the following test cases once APISIX supports HTTP/2 in plain.
-		// ep, err := s.GetAPISIXEndpoint()
-		// assert.Nil(ginkgo.GinkgoT(), err)
-		// ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		// defer cancel()
-		// dialFunc := func(ctx context.Context, addr string) (net.Conn, error) {
-		//	return (&net.Dialer{}).DialContext(ctx, "tcp", addr)
-		// }
-		//
-		// grpcConn, err := grpc.DialContext(ctx, ep,
-		//	grpc.WithBlock(),
-		//	grpc.WithInsecure(),
-		//	grpc.WithContextDialer(dialFunc),
-		// )
-		// assert.Nil(ginkgo.GinkgoT(), err)
-		// defer grpcConn.Close()
-		// cli := helloworld.NewGreeterClient(grpcConn)
-		// hr := &helloworld.HelloRequest{
-		//	Name: "Alex",
-		// }
-		// resp, err := cli.SayHello(context.TODO(), hr)
-		// assert.Nil(ginkgo.GinkgoT(), err)
-		// assert.Equal(ginkgo.GinkgoT(), resp.Message, "Alex")
-	})
+			// TODO enable the following test cases once APISIX supports HTTP/2 in plain.
+			// ep, err := s.GetAPISIXEndpoint()
+			// assert.Nil(ginkgo.GinkgoT(), err)
+			// ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			// defer cancel()
+			// dialFunc := func(ctx context.Context, addr string) (net.Conn, error) {
+			//	return (&net.Dialer{}).DialContext(ctx, "tcp", addr)
+			// }
+			//
+			// grpcConn, err := grpc.DialContext(ctx, ep,
+			//	grpc.WithBlock(),
+			//	grpc.WithInsecure(),
+			//	grpc.WithContextDialer(dialFunc),
+			// )
+			// assert.Nil(ginkgo.GinkgoT(), err)
+			// defer grpcConn.Close()
+			// cli := helloworld.NewGreeterClient(grpcConn)
+			// hr := &helloworld.HelloRequest{
+			//	Name: "Alex",
+			// }
+			// resp, err := cli.SayHello(context.TODO(), hr)
+			// assert.Nil(ginkgo.GinkgoT(), err)
+			// assert.Equal(ginkgo.GinkgoT(), resp.Message, "Alex")
+		})
 
-	ginkgo.It("grpcs", func() {
-		grpcSecret := `grpc-secret`
-		f, err := ioutil.ReadFile("testbackend/tls/server.pem")
-		assert.NoError(ginkgo.GinkgoT(), err, "read server cert")
-		serverCert := string(f)
+		ginkgo.It("grpcs", func() {
+			grpcSecret := `grpc-secret`
+			f, err := ioutil.ReadFile("testbackend/tls/server.pem")
+			assert.NoError(ginkgo.GinkgoT(), err, "read server cert")
+			serverCert := string(f)
 
-		f, err = ioutil.ReadFile("testbackend/tls/server.key")
-		assert.NoError(ginkgo.GinkgoT(), err, "read server key")
-		serverKey := string(f)
+			f, err = ioutil.ReadFile("testbackend/tls/server.key")
+			assert.NoError(ginkgo.GinkgoT(), err, "read server key")
+			serverKey := string(f)
 
-		err = s.NewSecret(grpcSecret, serverCert, serverKey)
-		assert.NoError(ginkgo.GinkgoT(), err, "create server cert secret")
+			err = s.NewSecret(grpcSecret, serverCert, serverKey)
+			assert.NoError(ginkgo.GinkgoT(), err, "create server cert secret")
 
-		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(`
+			assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
@@ -144,7 +138,7 @@ spec:
   scheme: grpcs
 `))
 
-		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(`
+			assert.NoError(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(`
 apiVersion: apisix.apache.org/v2beta2
 kind: ApisixRoute
 metadata:
@@ -162,16 +156,24 @@ spec:
        servicePort: 50052
 `))
 
-		assert.NoError(ginkgo.GinkgoT(), s.NewApisixTls("grpc-secret", "e2e.apisix.local", "grpc-secret"))
+			assert.NoError(ginkgo.GinkgoT(), s.NewApisixTls("grpc-secret", "e2e.apisix.local", "grpc-secret"))
 
-		time.Sleep(2 * time.Second)
-		ups, err := s.ListApisixUpstreams()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), ups, 1)
-		assert.Equal(ginkgo.GinkgoT(), ups[0].Scheme, "grpcs")
+			time.Sleep(2 * time.Second)
+			ups, err := s.ListApisixUpstreams()
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.Len(ginkgo.GinkgoT(), ups, 1)
+			assert.Equal(ginkgo.GinkgoT(), ups[0].Scheme, "grpcs")
 
-		ca, err := ioutil.ReadFile("testbackend/tls/ca.pem")
-		assert.NoError(ginkgo.GinkgoT(), err, "read ca cert")
-		assert.NoError(ginkgo.GinkgoT(), client.RequestHello(s.GetAPISIXHTTPSEndpoint(), ca), "request apisix using grpc protocol")
+			ca, err := ioutil.ReadFile("testbackend/tls/ca.pem")
+			assert.NoError(ginkgo.GinkgoT(), err, "read ca cert")
+			assert.NoError(ginkgo.GinkgoT(), client.RequestHello(s.GetAPISIXHTTPSEndpoint(), ca), "request apisix using grpc protocol")
+		})
+	}
+
+	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
+		suites(scaffold.NewDefaultScaffold)
+	})
+	ginkgo.Describe("suite-features: scaffold v2", func() {
+		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })

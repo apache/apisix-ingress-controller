@@ -184,7 +184,7 @@ verify-license:
 ### verify-mdlint:        Verify markdown files lint rules.
 .PHONY: verify-mdlint
 verify-mdlint:
-	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' --ignore node_modules
+	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' --ignore node_modules --ignore CHANGELOG.md
 
 ### verify-all:           Verify all verify- rules.
 .PHONY: verify-all
@@ -225,7 +225,7 @@ ifeq ("$(E2E_FOCUS)", "")
 	chmod +x ./test/e2e/testdata/wolf-rbac/cmd.sh && ./test/e2e/testdata/wolf-rbac/cmd.sh start
 endif
 ifneq ("$(E2E_FOCUS)", "")
-	echo $(E2E_FOCUS) | grep -E 'suite-features|consumer|wolf' || exit 0 \
+	echo $(E2E_FOCUS) | grep -E 'suite-plugins-authentication|consumer|wolf|suite-plugins' || exit 0 \
 	&& chmod +x ./test/e2e/testdata/wolf-rbac/cmd.sh \
 	&& ./test/e2e/testdata/wolf-rbac/cmd.sh start
 endif
