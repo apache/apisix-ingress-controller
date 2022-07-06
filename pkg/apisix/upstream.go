@@ -178,11 +178,17 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 		zap.String("url", u.url),
 	)
 
-	if err := u.cluster.upstreamServiceRelation.Delete(ctx, &v1.UpstreamServiceRelation{UpstreamName: obj.Name}); err != nil {
-		log.Errorf("failed to delete upstreamService in cache: %s", err)
-	}
 	if err := u.cluster.HasSynced(ctx); err != nil {
 		return err
+	}
+	if err := u.cluster.cache.DeleteUpstream(obj); err != nil {
+		log.Errorf("failed to reflect upstream delete to cache: %s", err.Error())
+		if err != cache.ErrNotFound {
+			return err
+		}
+	}
+	if err := u.cluster.upstreamServiceRelation.Delete(ctx, &v1.UpstreamServiceRelation{UpstreamName: obj.Name}); err != nil {
+		log.Errorf("failed to delete upstreamService in cache: %s", err)
 	}
 	url := u.url + "/" + obj.ID
 	if err := u.cluster.deleteResource(ctx, url, "upstream"); err != nil {
@@ -190,12 +196,6 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 		return err
 	}
 	u.cluster.metricsCollector.IncrAPISIXRequest("upstream")
-	if err := u.cluster.cache.DeleteUpstream(obj); err != nil {
-		log.Errorf("failed to reflect upstream delete to cache: %s", err.Error())
-		if err != cache.ErrNotFound {
-			return err
-		}
-	}
 	return nil
 }
 
