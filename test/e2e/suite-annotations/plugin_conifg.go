@@ -27,22 +27,22 @@ import (
 
 func _createAPC(s *scaffold.Scaffold) {
 	apc := fmt.Sprintf(`
-	apiVersion: apisix.apache.org/v2beta3
-	kind: ApisixPluginConfig
-	metadata:
-	 name: echo-and-cors-apc
-	spec:
-	 plugins:
-	 - name: echo
-	   enable: true
-	   config:
-		before_body: "This is the preface"
-		after_body: "This is the epilogue"
-		headers:
-		 X-Foo: v1
-		 X-Foo2: v2
-	 - name: cors
-	   enable: true
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixPluginConfig
+metadata:
+  name: echo-and-cors-apc
+spec:
+  plugins:
+  - name: echo
+    enable: true
+    config:
+      before_body: "This is the preface"
+      after_body: "This is the epilogue"
+      headers:
+        X-Foo: v1
+        X-Foo2: v2
+  - name: cors
+    enable: true
 	`)
 	assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixPluginConfig(apc))
 
@@ -129,8 +129,8 @@ spec:
       - path: /ip
         pathType: Exact
         backend:
-		  serviceName: %s
-		  servicePort: %d
+      serviceName: %s
+      servicePort: %d
 `, backendSvc, backendPorts[0])
 			_assert(s, ing)
 		})
@@ -156,8 +156,8 @@ spec:
       - path: /ip
         pathType: Exact
         backend:
-		  serviceName: %s
-		  servicePort:%d
+          serviceName: %s
+          servicePort:%d
 `, backendSvc, backendPorts[0])
 			_assert(s, ing)
 		})
