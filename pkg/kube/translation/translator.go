@@ -51,9 +51,12 @@ type Translator interface {
 	// according to the give port. Extra labels can be passed to filter the ultimate
 	// upstream nodes.
 	TranslateUpstreamNodes(kube.Endpoint, int32, types.Labels) (apisixv1.UpstreamNodes, error)
-	// TranslateUpstreamConfig translates ApisixUpstreamConfig (part of ApisixUpstream)
+	// TranslateUpstreamConfigV2beta3 translates ApisixUpstreamConfig (part of ApisixUpstream)
 	// to APISIX Upstream, it doesn't fill the the Upstream metadata and nodes.
-	TranslateUpstreamConfig(*configv2beta3.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
+	TranslateUpstreamConfigV2beta3(*configv2beta3.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
+	// TranslateUpstreamConfigV2 translates ApisixUpstreamConfig (part of ApisixUpstream)
+	// to APISIX Upstream, it doesn't fill the the Upstream metadata and nodes.
+	TranslateUpstreamConfigV2(*configv2.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
 	// TranslateUpstream composes an upstream according to the
 	// given namespace, name (searching Service/Endpoints) and port (filtering Endpoints).
 	// The returned Upstream doesn't have metadata info.
@@ -141,21 +144,41 @@ func NewTranslator(opts *TranslatorOptions) Translator {
 	}
 }
 
-func (t *translator) TranslateUpstreamConfig(au *configv2beta3.ApisixUpstreamConfig) (*apisixv1.Upstream, error) {
+func (t *translator) TranslateUpstreamConfigV2beta3(au *configv2beta3.ApisixUpstreamConfig) (*apisixv1.Upstream, error) {
 	ups := apisixv1.NewDefaultUpstream()
 	if err := t.translateUpstreamScheme(au.Scheme, ups); err != nil {
 		return nil, err
 	}
-	if err := t.translateUpstreamLoadBalancer(au.LoadBalancer, ups); err != nil {
+	if err := t.translateUpstreamLoadBalancerV2beta3(au.LoadBalancer, ups); err != nil {
 		return nil, err
 	}
-	if err := t.translateUpstreamHealthCheck(au.HealthCheck, ups); err != nil {
+	if err := t.translateUpstreamHealthCheckV2beta3(au.HealthCheck, ups); err != nil {
 		return nil, err
 	}
-	if err := t.translateUpstreamRetriesAndTimeout(au.Retries, au.Timeout, ups); err != nil {
+	if err := t.translateUpstreamRetriesAndTimeoutV2beta3(au.Retries, au.Timeout, ups); err != nil {
 		return nil, err
 	}
-	if err := t.translateClientTLS(au.TLSSecret, ups); err != nil {
+	if err := t.translateClientTLSV2beta3(au.TLSSecret, ups); err != nil {
+		return nil, err
+	}
+	return ups, nil
+}
+
+func (t *translator) TranslateUpstreamConfigV2(au *configv2.ApisixUpstreamConfig) (*apisixv1.Upstream, error) {
+	ups := apisixv1.NewDefaultUpstream()
+	if err := t.translateUpstreamScheme(au.Scheme, ups); err != nil {
+		return nil, err
+	}
+	if err := t.translateUpstreamLoadBalancerV2(au.LoadBalancer, ups); err != nil {
+		return nil, err
+	}
+	if err := t.translateUpstreamHealthCheckV2(au.HealthCheck, ups); err != nil {
+		return nil, err
+	}
+	if err := t.translateUpstreamRetriesAndTimeoutV2(au.Retries, au.Timeout, ups); err != nil {
+		return nil, err
+	}
+	if err := t.translateClientTLSV2(au.TLSSecret, ups); err != nil {
 		return nil, err
 	}
 	return ups, nil
@@ -177,6 +200,7 @@ func (t *translator) TranslateUpstream(namespace, name, subset string, port int3
 			reason: err.Error(),
 		}
 	}
+
 	au, err := t.ApisixUpstreamLister.ApisixUpstreams(namespace).Get(name)
 	ups := apisixv1.NewDefaultUpstream()
 	if err != nil {

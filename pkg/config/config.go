@@ -100,6 +100,7 @@ type KubernetesConfig struct {
 	ApisixConsumerVersion      string             `json:"apisix_consumer_version" yaml:"apisix_consumer_version"`
 	ApisixTlsVersion           string             `json:"apisix_tls_version" yaml:"apisix_tls_version"`
 	ApisixClusterConfigVersion string             `json:"apisix_cluster_config_version" yaml:"apisix_cluster_config_version"`
+	ApisixUpstreamVersion      string             `json:"apisix_upstream_version" yaml:"apisix_upstream_version"`
 	EnableGatewayAPI           bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
 }
 
@@ -139,6 +140,7 @@ func NewDefaultConfig() *Config {
 			ApisixConsumerVersion:      ApisixV2beta3,
 			ApisixTlsVersion:           ApisixV2beta3,
 			ApisixClusterConfigVersion: ApisixV2beta3,
+			ApisixUpstreamVersion:      ApisixV2beta3,
 			WatchEndpointSlices:        false,
 			EnableGatewayAPI:           false,
 		},

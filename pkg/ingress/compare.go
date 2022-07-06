@@ -107,7 +107,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 					}
 				}
 			}
-			// ApisixConsumer
+			// ApisixConsumer TODO: Support v2
 			retConsumer, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixConsumers(ns).List(ctx, opts)
 			if err != nil {
 				log.Error(err.Error())

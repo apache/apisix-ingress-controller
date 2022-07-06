@@ -45,7 +45,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
-	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
@@ -101,7 +100,7 @@ type Controller struct {
 	secretInformer              cache.SharedIndexInformer
 	secretLister                listerscorev1.SecretLister
 	apisixUpstreamInformer      cache.SharedIndexInformer
-	apisixUpstreamLister        listersv2beta3.ApisixUpstreamLister
+	apisixUpstreamLister        kube.ApisixUpstreamLister
 	apisixRouteLister           kube.ApisixRouteLister
 	apisixRouteInformer         cache.SharedIndexInformer
 	apisixTlsLister             kube.ApisixTlsLister
@@ -182,6 +181,7 @@ func (c *Controller) initWhenStartLeading() {
 		apisixTlsInformer           cache.SharedIndexInformer
 		apisixClusterConfigInformer cache.SharedIndexInformer
 		apisixConsumerInformer      cache.SharedIndexInformer
+		apisixUpstreamInformer      cache.SharedIndexInformer
 	)
 
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
@@ -201,7 +201,10 @@ func (c *Controller) initWhenStartLeading() {
 		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2().ApisixRoutes().Lister(),
 	)
-	c.apisixUpstreamLister = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister()
+	c.apisixUpstreamLister = kube.NewApisixUpstreamLister(
+		apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+		apisixFactory.Apisix().V2().ApisixUpstreams().Lister(),
+	)
 	c.apisixTlsLister = kube.NewApisixTlsLister(
 		apisixFactory.Apisix().V2beta3().ApisixTlses().Lister(),
 		apisixFactory.Apisix().V2().ApisixTlses().Lister(),
@@ -248,6 +251,15 @@ func (c *Controller) initWhenStartLeading() {
 		panic(fmt.Errorf("unsupported ApisixRoute version %s", c.cfg.Kubernetes.ApisixRouteVersion))
 	}
 
+	switch c.cfg.Kubernetes.ApisixUpstreamVersion {
+	case config.ApisixRouteV2beta3:
+		apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+	case config.ApisixRouteV2:
+		apisixUpstreamInformer = apisixFactory.Apisix().V2().ApisixUpstreams().Informer()
+	default:
+		panic(fmt.Errorf("unsupported ApisixUpstream version %v", c.cfg.Kubernetes.ApisixUpstreamVersion))
+	}
+
 	switch c.cfg.Kubernetes.ApisixTlsVersion {
 	case config.ApisixV2beta3:
 		apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
@@ -288,7 +300,7 @@ func (c *Controller) initWhenStartLeading() {
 	c.svcInformer = kubeFactory.Core().V1().Services().Informer()
 	c.ingressInformer = ingressInformer
 	c.apisixRouteInformer = apisixRouteInformer
-	c.apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+	c.apisixUpstreamInformer = apisixUpstreamInformer
 	c.apisixClusterConfigInformer = apisixClusterConfigInformer
 	c.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
 	c.apisixTlsInformer = apisixTlsInformer
@@ -636,6 +648,7 @@ func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
 		log.Errorf("failed to get service %s/%s: %s", namespace, svcName, err)
 		return err
 	}
+	// TODO: support v2
 	var subsets []configv2beta3.ApisixUpstreamSubset
 	subsets = append(subsets, configv2beta3.ApisixUpstreamSubset{})
 	au, err := c.apisixUpstreamLister.ApisixUpstreams(namespace).Get(svcName)
