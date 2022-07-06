@@ -316,7 +316,7 @@ func TestTranslateIngressV1(t *testing.T) {
 				"k8s.apisix.apache.org/use-regex":                                  "true",
 				path.Join(annotations.AnnotationsPrefix, "enable-cors"):            "true",
 				path.Join(annotations.AnnotationsPrefix, "allowlist-source-range"): "127.0.0.1",
-				path.Join(annotations.AnnotationsPrefix, "plugin-conifg"):          "echo-and-cors-apc",
+				path.Join(annotations.AnnotationsPrefix, "plugin-conifg-name"):     "echo-and-cors-apc",
 			},
 		},
 		Spec: networkingv1.IngressSpec{
@@ -398,7 +398,7 @@ func TestTranslateIngressV1(t *testing.T) {
 	<-processCh
 	ctx, err := tr.translateIngressV1(ing, false)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
-	pluginConfigName := annoExtractor.GetStringAnnotation(path.Join(annotations.AnnotationsPrefix, "plugin-conifg"))
+	pluginConfigName := annoExtractor.GetStringAnnotation(path.Join(annotations.AnnotationsPrefix, "plugin-conifg-name"))
 
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
@@ -651,7 +651,7 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 				path.Join(annotations.AnnotationsPrefix, "enable-cors"):            "true",
 				path.Join(annotations.AnnotationsPrefix, "allowlist-source-range"): "127.0.0.1",
 				path.Join(annotations.AnnotationsPrefix, "enable-cors222"):         "true",
-				path.Join(annotations.AnnotationsPrefix, "plugin-conifg"):          "echo-and-cors-apc",
+				path.Join(annotations.AnnotationsPrefix, "plugin-conifg-name"):     "echo-and-cors-apc",
 			},
 		},
 		Spec: networkingv1beta1.IngressSpec{
@@ -731,7 +731,7 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	<-processCh
 	ctx, err := tr.translateIngressV1beta1(ing, false)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
-	pluginConfigName := annoExtractor.GetStringAnnotation(path.Join(annotations.AnnotationsPrefix, "plugin-conifg"))
+	pluginConfigName := annoExtractor.GetStringAnnotation(path.Join(annotations.AnnotationsPrefix, "plugin-conifg-name"))
 
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
@@ -778,7 +778,7 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 				path.Join(annotations.AnnotationsPrefix, "enable-cors"):            "true",
 				path.Join(annotations.AnnotationsPrefix, "allowlist-source-range"): "127.0.0.1",
 				path.Join(annotations.AnnotationsPrefix, "enable-cors222"):         "true",
-				path.Join(annotations.AnnotationsPrefix, "plugin-conifg"):          "echo-and-cors-apc",
+				path.Join(annotations.AnnotationsPrefix, "plugin-conifg-name"):     "echo-and-cors-apc",
 			},
 		},
 		Spec: extensionsv1beta1.IngressSpec{
@@ -858,7 +858,7 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 	<-processCh
 	ctx, err := tr.translateIngressExtensionsV1beta1(ing, false)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
-	pluginConfigName := annoExtractor.GetStringAnnotation(path.Join(annotations.AnnotationsPrefix, "plugin-conifg"))
+	pluginConfigName := annoExtractor.GetStringAnnotation(path.Join(annotations.AnnotationsPrefix, "plugin-conifg-name"))
 
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)

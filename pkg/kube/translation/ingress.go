@@ -45,7 +45,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
 	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
-	pluginConfigName := annoExtractor.GetStringAnnotation(annotations.AnnotationsPrefix + "plugin-conifg")
+	pluginConfigName := annoExtractor.GetStringAnnotation(annotations.AnnotationsPrefix + "plugin-conifg-name")
 
 	// add https
 	for _, tls := range ing.Spec.TLS {
@@ -165,7 +165,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
 	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
-	pluginConfigName := annoExtractor.GetStringAnnotation(annotations.AnnotationsPrefix + "plugin-conifg")
+	pluginConfigName := annoExtractor.GetStringAnnotation(annotations.AnnotationsPrefix + "plugin-conifg-name")
 
 	// add https
 	for _, tls := range ing.Spec.TLS {
@@ -339,7 +339,7 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
 	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
-	pluginConfigName := annoExtractor.GetStringAnnotation(annotations.AnnotationsPrefix + "plugin-conifg")
+	pluginConfigName := annoExtractor.GetStringAnnotation(annotations.AnnotationsPrefix + "plugin-conifg-name")
 
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
