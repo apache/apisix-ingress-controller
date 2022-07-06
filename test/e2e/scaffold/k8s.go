@@ -252,6 +252,17 @@ func (s *Scaffold) EnsureNumApisixPluginConfigCreated(desired int) error {
 	return s.ensureNumApisixCRDsCreated(u.String(), desired)
 }
 
+// EnsureNumApisixTlsCreated waits until desired number of tls ssl created in
+// APISIX cluster.
+func (s *Scaffold) EnsureNumApisixTlsCreated(desired int) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/ssl",
+	}
+	return s.ensureNumApisixCRDsCreated(u.String(), desired)
+}
+
 // CreateApisixRouteByApisixAdmin create or update a route
 func (s *Scaffold) CreateApisixRouteByApisixAdmin(routeID string, body []byte) error {
 	u := url.URL{

@@ -17,7 +17,6 @@ package ingress
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +24,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress: ApisixRoute Testing", func() {
+var _ = ginkgo.Describe("suite-ingress-resource: ApisixRoute Testing", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
 		ginkgo.It("create and then scale upstream pods to 2 ", func() {
@@ -55,9 +54,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(2), "scaling number of httpbin instances")
 			assert.Nil(ginkgo.GinkgoT(), s.WaitAllHTTPBINPodsAvailable(), "waiting for all httpbin pods ready")
-			// TODO When ingress controller can feedback the lifecycle of CRDs to the
-			// status field, we can poll it rather than sleeping.
-			time.Sleep(10 * time.Second)
+
 			ups, err := s.ListApisixUpstreams()
 			assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
 			assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 2, "upstreams nodes not expect")
@@ -120,9 +117,6 @@ spec:
 `, backendSvc, backendSvcPort[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
-			// TODO When ingress controller can feedback the lifecycle of CRDs to the
-			// status field, we can poll it rather than sleeping.
-			time.Sleep(10 * time.Second)
 
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
@@ -136,15 +130,10 @@ spec:
 
 			// remove
 			assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
-			// TODO When ingress controller can feedback the lifecycle of CRDs to the
-			// status field, we can poll it rather than sleeping.
-			time.Sleep(10 * time.Second)
-			ups, err := s.ListApisixUpstreams()
-			assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
-			assert.Len(ginkgo.GinkgoT(), ups, 0, "upstreams nodes not expect")
-			pluginConfigs, err := s.ListApisixPluginConfig()
-			assert.Nil(ginkgo.GinkgoT(), err, "list pluginConfigs error")
-			assert.Len(ginkgo.GinkgoT(), pluginConfigs, 0, "pluginConfigs nodes not expect")
+
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(0), "Checking number of routes")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(0), "Checking number of upstreams")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(0), "Checking number of pluginConfigs")
 
 			body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound).Body().Raw()
 			assert.Contains(ginkgo.GinkgoT(), body, "404 Route Not Found")
@@ -206,9 +195,6 @@ spec:
 `, backendSvc, backendSvcPort[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
-			// TODO When ingress controller can feedback the lifecycle of CRDs to the
-			// status field, we can poll it rather than sleeping.
-			time.Sleep(10 * time.Second)
 
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
@@ -223,15 +209,10 @@ spec:
 			// assert.Nil(ginkgo.GinkgoT(), s.DeleteHTTPBINService())
 			// remove
 			assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
-			// TODO When ingress controller can feedback the lifecycle of CRDs to the
-			// status field, we can poll it rather than sleeping.
-			time.Sleep(10 * time.Second)
-			ups, err := s.ListApisixUpstreams()
-			assert.Nil(ginkgo.GinkgoT(), err, "list upstreams error")
-			assert.Len(ginkgo.GinkgoT(), ups, 0, "upstreams nodes not expect")
-			pluginConfigs, err := s.ListApisixPluginConfig()
-			assert.Nil(ginkgo.GinkgoT(), err, "list pluginConfigs error")
-			assert.Len(ginkgo.GinkgoT(), pluginConfigs, 0, "pluginConfigs nodes not expect")
+
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(0), "Checking number of routes")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(0), "Checking number of upstreams")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(0), "Checking number of pluginConfigs")
 
 			body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound).Body().Raw()
 			assert.Contains(ginkgo.GinkgoT(), body, "404 Route Not Found")
@@ -531,13 +512,11 @@ spec:
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 
-			err := s.CreateVersionedApisixResource(ar1)
-			assert.Nil(ginkgo.GinkgoT(), err)
-			err = s.CreateVersionedApisixResource(ar2)
-			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar1))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar2))
 
-			time.Sleep(6 * time.Second)
-
+			err := s.EnsureNumApisixRoutesCreated(2)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 			routes, err := s.ListApisixRoutes()
 			assert.Nil(ginkgo.GinkgoT(), err, "listing routes")
 			assert.Len(ginkgo.GinkgoT(), routes, 2)
@@ -562,8 +541,9 @@ spec:
 			// Delete ar1
 			err = s.RemoveResourceByString(ar1)
 			assert.Nil(ginkgo.GinkgoT(), err)
-			time.Sleep(6 * time.Second)
 
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 			routes, err = s.ListApisixRoutes()
 			assert.Nil(ginkgo.GinkgoT(), err, "listing routes")
 			assert.Len(ginkgo.GinkgoT(), routes, 1)
@@ -587,31 +567,21 @@ spec:
 			resp.Status(http.StatusOK)
 
 			// Delete ar2
-			err = s.RemoveResourceByString(ar2)
-			assert.Nil(ginkgo.GinkgoT(), err)
-			time.Sleep(10 * time.Second)
+			assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(ar2))
 
-			routes, err = s.ListApisixRoutes()
-			assert.Nil(ginkgo.GinkgoT(), err, "listing routes")
-			assert.Len(ginkgo.GinkgoT(), routes, 0)
-
-			ups, err = s.ListApisixUpstreams()
-			assert.Nil(ginkgo.GinkgoT(), err, "listing upstreams")
-			assert.Len(ginkgo.GinkgoT(), ups, 0)
-
-			pluginConfigs, err = s.ListApisixPluginConfig()
-			assert.Nil(ginkgo.GinkgoT(), err, "listing pluginConfigs")
-			assert.Len(ginkgo.GinkgoT(), pluginConfigs, 0)
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(0), "Checking number of routes")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(0), "Checking number of upstreams")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(0), "Checking number of upstreams")
 
 			resp = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.com").Expect()
 			resp.Status(http.StatusNotFound)
 		})
 	}
 
-	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-resource: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold)
 	})
-	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })

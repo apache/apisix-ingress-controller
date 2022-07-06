@@ -225,7 +225,7 @@ ifeq ("$(E2E_FOCUS)", "")
 	chmod +x ./test/e2e/testdata/wolf-rbac/cmd.sh && ./test/e2e/testdata/wolf-rbac/cmd.sh start
 endif
 ifneq ("$(E2E_FOCUS)", "")
-	echo $(E2E_FOCUS) | grep -E 'suite-features|consumer|wolf' || exit 0 \
+	echo $(E2E_FOCUS) | grep -E 'suite-plugins-authentication|consumer|wolf|suite-plugins' || exit 0 \
 	&& chmod +x ./test/e2e/testdata/wolf-rbac/cmd.sh \
 	&& ./test/e2e/testdata/wolf-rbac/cmd.sh start
 endif

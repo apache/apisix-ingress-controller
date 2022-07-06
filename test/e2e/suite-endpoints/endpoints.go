@@ -137,8 +137,6 @@ spec:
 	ginkgo.Describe("suite-endpoints: scaffold v2beta3", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                  "endpoints-port",
-			Kubeconfig:            scaffold.GetKubeconfig(),
-			APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 			IngressAPISIXReplicas: 1,
 			HTTPBinServicePort:    8080,
 			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2beta3,
@@ -147,8 +145,6 @@ spec:
 	ginkgo.Describe("suite-endpoints: scaffold v2", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                  "endpoints-port",
-			Kubeconfig:            scaffold.GetKubeconfig(),
-			APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 			IngressAPISIXReplicas: 1,
 			HTTPBinServicePort:    8080,
 			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,

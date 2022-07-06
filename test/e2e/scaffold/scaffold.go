@@ -62,7 +62,6 @@ type Options struct {
 	APISIXPublishAddress       string
 	disableNamespaceSelector   bool
 	ApisixResourceSyncInterval string
-	EnableGatewayAPI           bool
 	ApisixResourceVersion      string
 }
 
@@ -163,6 +162,15 @@ func NewScaffold(o *Options) *Scaffold {
 	if o.ApisixResourceSyncInterval == "" {
 		o.ApisixResourceSyncInterval = "300s"
 	}
+	if o.Kubeconfig == "" {
+		o.Kubeconfig = GetKubeconfig()
+	}
+	if o.APISIXConfigPath == "" {
+		o.APISIXConfigPath = "testdata/apisix-gw-config.yaml"
+	}
+	if o.HTTPBinServicePort == 0 {
+		o.HTTPBinServicePort = 80
+	}
 	defer ginkgo.GinkgoRecover()
 
 	s := &Scaffold{
@@ -180,14 +188,8 @@ func NewScaffold(o *Options) *Scaffold {
 func NewDefaultScaffold() *Scaffold {
 	opts := &Options{
 		Name:                  "default",
-		Kubeconfig:            GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
 		ApisixResourceVersion: ApisixResourceVersion().V2beta3,
-		EnableWebhooks:        false,
-		APISIXPublishAddress:  "",
-		EnableGatewayAPI:      true,
 	}
 	return NewScaffold(opts)
 }
@@ -196,14 +198,8 @@ func NewDefaultScaffold() *Scaffold {
 func NewDefaultV2Scaffold() *Scaffold {
 	opts := &Options{
 		Name:                  "default",
-		Kubeconfig:            GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
 		ApisixResourceVersion: ApisixResourceVersion().V2,
-		EnableWebhooks:        false,
-		APISIXPublishAddress:  "",
-		EnableGatewayAPI:      true,
 	}
 	return NewScaffold(opts)
 }
@@ -564,7 +560,7 @@ func (s *Scaffold) FormatNamespaceLabel(label string) string {
 
 var (
 	versionRegex = regexp.MustCompile(`apiVersion: apisix.apache.org/v.*?\n`)
-	kindRegex    = regexp.MustCompile(`kind: .*?\n`)
+	kindRegex    = regexp.MustCompile(`kind: (.*?)\n`)
 )
 
 func (s *Scaffold) replaceApiVersion(yml, ver string) string {
@@ -572,9 +568,11 @@ func (s *Scaffold) replaceApiVersion(yml, ver string) string {
 }
 
 func (s *Scaffold) getKindValue(yml string) string {
-	kind := strings.Replace(kindRegex.FindString(yml), "\n", "", -1)
-	kindValue := strings.Replace(kind, "kind: ", "", -1)
-	return kindValue
+	subStr := kindRegex.FindStringSubmatch(yml)
+	if len(subStr) < 2 {
+		return ""
+	}
+	return subStr[1]
 }
 
 func (s *Scaffold) DisableNamespaceSelector() {
@@ -626,8 +624,7 @@ func (s *Scaffold) CreateVersionedApisixResource(yml string) error {
 		apc := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
 		return s.CreateResourceFromString(apc)
 	}
-	errString := fmt.Sprint("the resource ", kindValue, " does not support")
-	return errors.New(errString)
+	return fmt.Errorf("the resource %s does not support", kindValue)
 }
 
 func (s *Scaffold) CreateVersionedApisixResourceWithNamespace(yml, namespace string) error {
@@ -643,8 +640,7 @@ func (s *Scaffold) CreateVersionedApisixResourceWithNamespace(yml, namespace str
 		apc := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
 		return s.CreateResourceFromStringWithNamespace(apc, namespace)
 	}
-	errString := fmt.Sprint("the resource ", kindValue, " does not support")
-	return errors.New(errString)
+	return fmt.Errorf("the resource %s does not support", kindValue)
 }
 
 func ApisixResourceVersion() *apisixResourceVersionInfo {
