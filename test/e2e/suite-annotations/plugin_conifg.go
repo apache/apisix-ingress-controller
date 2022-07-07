@@ -43,19 +43,16 @@ spec:
         X-Foo2: v2
   - name: cors
     enable: true
-	`)
-	assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixPluginConfig(apc))
-
-	err := s.EnsureNumApisixPluginConfigCreated(1)
-	assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
-
+`)
+	err := s.CreateResourceFromString(apc)
+	assert.Nil(ginkgo.GinkgoT(), err)
+	err = s.EnsureNumApisixPluginConfigCreated(1)
+	assert.Nil(ginkgo.GinkgoT(), err, "Checking number of ApisixPluginConfig")
 	time.Sleep(time.Second * 3)
 }
 
 func _assert(s *scaffold.Scaffold, ing string) {
-	assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ing))
-	err := s.EnsureNumApisixRoutesCreated(1)
-	assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+	assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 
 	time.Sleep(3 * time.Second)
 	pcs, err := s.ListApisixPluginConfig()
@@ -77,13 +74,20 @@ func _assert(s *scaffold.Scaffold, ing string) {
 	resp.Body().Contains("This is the epilogue")
 }
 
-var _ = ginkgo.Describe("suite-annotations: annotations plugin config", func() {
-	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
-		s := scaffoldFunc()
-		ginkgo.It("networking/v1", func() {
-			backendSvc, backendPorts := s.DefaultHTTPBackend()
-			_createAPC(s)
-			ing := fmt.Sprintf(`
+var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1 with ApisixPluginConfig", func() {
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
+	}
+	s := scaffold.NewScaffold(opts)
+	ginkgo.It("networking/v1", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		_createAPC(s)
+		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -105,14 +109,25 @@ spec:
             port:
               number: %d
 `, backendSvc, backendPorts[0])
-			_assert(s, ing)
-		})
+		_assert(s, ing)
+	})
+})
 
-		ginkgo.It("networking/v1beta1", func() {
-			_createAPC(s)
+var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1beta1 with ApisixPluginConfig", func() {
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
+	}
+	s := scaffold.NewScaffold(opts)
+	ginkgo.It("networking/v1beta1", func() {
+		_createAPC(s)
 
-			backendSvc, backendPorts := s.DefaultHTTPBackend()
-			ing := fmt.Sprintf(`
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
@@ -120,7 +135,6 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/plugin-config-name: echo-and-cors-apc
-  name: ingress-v1
 spec:
   rules:
   - host: httpbin.org
@@ -132,14 +146,25 @@ spec:
       serviceName: %s
       servicePort: %d
 `, backendSvc, backendPorts[0])
-			_assert(s, ing)
-		})
+		_assert(s, ing)
+	})
+})
 
-		ginkgo.It("extensions/v1beta1", func() {
-			_createAPC(s)
+var _ = ginkgo.Describe("suite-annotations: annotations.extensions/v1beta1 with ApisixPluginConfig", func() {
+	opts := &scaffold.Options{
+		Name:                  "default",
+		Kubeconfig:            scaffold.GetKubeconfig(),
+		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		IngressAPISIXReplicas: 1,
+		HTTPBinServicePort:    80,
+		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
+	}
+	s := scaffold.NewScaffold(opts)
+	ginkgo.It("extensions/v1beta1", func() {
+		_createAPC(s)
 
-			backendSvc, backendPorts := s.DefaultHTTPBackend()
-			ing := fmt.Sprintf(`
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -147,7 +172,6 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/plugin-config-name: echo-and-cors-apc
-  name: ingress-v1
 spec:
   rules:
   - host: httpbin.org
@@ -157,18 +181,8 @@ spec:
         pathType: Exact
         backend:
           serviceName: %s
-          servicePort:%d
+          servicePort: %d
 `, backendSvc, backendPorts[0])
-			_assert(s, ing)
-		})
-
-	}
-
-	ginkgo.Describe("suite-plugins-other: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultScaffold)
-	})
-
-	ginkgo.Describe("suite-plugins-other: scaffold v2", func() {
-		suites(scaffold.NewDefaultV2Scaffold)
+		_assert(s, ing)
 	})
 })
