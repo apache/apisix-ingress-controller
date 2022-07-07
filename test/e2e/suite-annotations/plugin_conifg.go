@@ -146,26 +146,7 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPorts[0])
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-
-		time.Sleep(3 * time.Second)
-		pcs, err := s.ListApisixPluginConfig()
-		assert.Nil(ginkgo.GinkgoT(), err, nil, "listing pluginConfigs")
-		assert.Len(ginkgo.GinkgoT(), pcs, 1)
-		assert.Len(ginkgo.GinkgoT(), pcs[0].Plugins, 2)
-
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusOK)
-		resp.Header("X-Foo").Equal("v1")
-		resp.Header("X-Foo2").Equal("v2")
-		resp.Header("Access-Control-Allow-Origin").Equal("*")
-		resp.Header("Access-Control-Allow-Methods").Equal("*")
-		resp.Header("Access-Control-Allow-Headers").Equal("*")
-		resp.Header("Access-Control-Expose-Headers").Equal("*")
-		resp.Header("Access-Control-Max-Age").Equal("5")
-		resp.Body().Contains("This is the preface")
-		resp.Body().Contains("origin")
-		resp.Body().Contains("This is the epilogue")
+		_assert(s, ing)
 	})
 })
 
@@ -202,25 +183,6 @@ spec:
           serviceName: %s
           servicePort: %d
 `, backendSvc, backendPorts[0])
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-
-		time.Sleep(3 * time.Second)
-		pcs, err := s.ListApisixPluginConfig()
-		assert.Nil(ginkgo.GinkgoT(), err, nil, "listing pluginConfigs")
-		assert.Len(ginkgo.GinkgoT(), pcs, 1)
-		assert.Len(ginkgo.GinkgoT(), pcs[0].Plugins, 2)
-
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusOK)
-		resp.Header("X-Foo").Equal("v1")
-		resp.Header("X-Foo2").Equal("v2")
-		resp.Header("Access-Control-Allow-Origin").Equal("*")
-		resp.Header("Access-Control-Allow-Methods").Equal("*")
-		resp.Header("Access-Control-Allow-Headers").Equal("*")
-		resp.Header("Access-Control-Expose-Headers").Equal("*")
-		resp.Header("Access-Control-Max-Age").Equal("5")
-		resp.Body().Contains("This is the preface")
-		resp.Body().Contains("origin")
-		resp.Body().Contains("This is the epilogue")
+		_assert(s, ing)
 	})
 })
