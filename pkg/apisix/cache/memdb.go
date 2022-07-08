@@ -78,6 +78,10 @@ func (c *dbCache) InsertPluginConfig(pc *v1.PluginConfig) error {
 	return c.insert("plugin_config", pc.DeepCopy())
 }
 
+func (c *dbCache) InsertUpstreamServiceRelation(us *v1.UpstreamServiceRelation) error {
+	return c.insert("upstream_service", us.DeepCopy())
+}
+
 func (c *dbCache) insert(table string, obj interface{}) error {
 	txn := c.db.Txn(true)
 	defer txn.Abort()
@@ -150,6 +154,14 @@ func (c *dbCache) GetPluginConfig(name string) (*v1.PluginConfig, error) {
 		return nil, err
 	}
 	return obj.(*v1.PluginConfig).DeepCopy(), nil
+}
+
+func (c *dbCache) GetUpstreamServiceRelation(serviceName string) (*v1.UpstreamServiceRelation, error) {
+	obj, err := c.get("upstream_service", serviceName)
+	if err != nil {
+		return nil, err
+	}
+	return obj.(*v1.UpstreamServiceRelation).DeepCopy(), nil
 }
 
 func (c *dbCache) get(table, id string) (interface{}, error) {
@@ -264,6 +276,18 @@ func (c *dbCache) ListPluginConfigs() ([]*v1.PluginConfig, error) {
 	return pluginConfigs, nil
 }
 
+func (c *dbCache) ListUpstreamServiceRelation() ([]*v1.UpstreamServiceRelation, error) {
+	raws, err := c.list("upstream_service")
+	if err != nil {
+		return nil, err
+	}
+	upstreamServices := make([]*v1.UpstreamServiceRelation, 0, len(raws))
+	for _, raw := range raws {
+		upstreamServices = append(upstreamServices, raw.(*v1.UpstreamServiceRelation).DeepCopy())
+	}
+	return upstreamServices, nil
+}
+
 func (c *dbCache) list(table string) ([]interface{}, error) {
 	txn := c.db.Txn(false)
 	defer txn.Abort()
@@ -314,6 +338,10 @@ func (c *dbCache) DeletePluginConfig(pc *v1.PluginConfig) error {
 		return err
 	}
 	return c.delete("plugin_config", pc)
+}
+
+func (c *dbCache) DeleteUpstreamServiceRelation(us *v1.UpstreamServiceRelation) error {
+	return c.delete("upstream_service", us)
 }
 
 func (c *dbCache) delete(table string, obj interface{}) error {

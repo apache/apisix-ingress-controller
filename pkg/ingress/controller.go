@@ -63,6 +63,8 @@ const (
 	_resourceSyncAborted = "ResourceSyncAborted"
 	// _messageResourceFailed is used to report error
 	_messageResourceFailed = "%s synced failed, with error: %s"
+	// minimum interval for ingress sync to APISIX
+	_mininumApisixResourceSyncInterval = 60 * time.Second
 )
 
 // Controller is the ingress apisix controller object.
@@ -241,11 +243,11 @@ func (c *Controller) initWhenStartLeading() {
 	}
 
 	switch c.cfg.Kubernetes.ApisixRouteVersion {
-	case config.ApisixRouteV2beta2:
+	case config.ApisixV2beta2:
 		apisixRouteInformer = apisixFactory.Apisix().V2beta2().ApisixRoutes().Informer()
-	case config.ApisixRouteV2beta3:
+	case config.ApisixV2beta3:
 		apisixRouteInformer = apisixFactory.Apisix().V2beta3().ApisixRoutes().Informer()
-	case config.ApisixRouteV2:
+	case config.ApisixV2:
 		apisixRouteInformer = apisixFactory.Apisix().V2().ApisixRoutes().Informer()
 	default:
 		panic(fmt.Errorf("unsupported ApisixRoute version %s", c.cfg.Kubernetes.ApisixRouteVersion))
@@ -279,9 +281,9 @@ func (c *Controller) initWhenStartLeading() {
 	}
 
 	switch c.cfg.Kubernetes.ApisixConsumerVersion {
-	case config.ApisixRouteV2beta3:
+	case config.ApisixV2beta3:
 		apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
-	case config.ApisixRouteV2:
+	case config.ApisixV2:
 		apisixConsumerInformer = apisixFactory.Apisix().V2().ApisixConsumers().Informer()
 	default:
 		panic(fmt.Errorf("unsupported ApisixConsumer version %v", c.cfg.Kubernetes.ApisixConsumerVersion))
@@ -411,7 +413,6 @@ func (c *Controller) Run(stop chan struct{}) error {
 		ReleaseOnCancel: true,
 		Name:            "ingress-apisix",
 	}
-
 	elector, err := leaderelection.NewLeaderElector(cfg)
 	if err != nil {
 		log.Errorf("failed to create leader elector: %s", err.Error())
@@ -581,6 +582,9 @@ func (c *Controller) run(ctx context.Context) {
 		c.apisixPluginConfigController.run(ctx)
 	})
 
+	e.Add(func() {
+		c.resourceSyncLoop(ctx, c.cfg.ApisixResourceSyncInterval.Duration)
+	})
 	c.MetricsCollector.ResetLeader(true)
 
 	log.Infow("controller now is running as leader",
@@ -738,5 +742,59 @@ func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.
 		}
 		log.Debugf("success check health for default cluster")
 		c.MetricsCollector.IncrCheckClusterHealth(c.name)
+	}
+}
+
+func (c *Controller) syncAllResources() {
+	wg := sync.WaitGroup{}
+	goAttach := func(handler func()) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			handler()
+		}()
+	}
+	goAttach(func() {
+		c.apisixConsumerController.ResourceSync()
+	})
+	goAttach(func() {
+		c.apisixRouteController.ResourceSync()
+	})
+	goAttach(func() {
+		c.apisixClusterConfigController.ResourceSync()
+	})
+	goAttach(func() {
+		c.apisixPluginConfigController.ResourceSync()
+	})
+	goAttach(func() {
+		c.apisixUpstreamController.ResourceSync()
+	})
+	goAttach(func() {
+		c.apisixTlsController.ResourceSync()
+	})
+	goAttach(func() {
+		c.ingressController.ResourceSync()
+	})
+	wg.Wait()
+}
+
+func (c *Controller) resourceSyncLoop(ctx context.Context, interval time.Duration) {
+	// The interval shall not be less than 60 seconds.
+	if interval < _mininumApisixResourceSyncInterval {
+		log.Warnw("The apisix-resource-sync-interval shall not be less than 60 seconds.",
+			zap.String("apisix-resource-sync-interval", interval.String()),
+		)
+		interval = _mininumApisixResourceSyncInterval
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			c.syncAllResources()
+			continue
+		case <-ctx.Done():
+			return
+		}
 	}
 }

@@ -121,7 +121,25 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 				)
 			}
 		}
+
 	case *configv2.ApisixUpstream:
+  // set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		if c.verifyGeneration(&v.Status.Conditions, condition) {
+			meta.SetStatusCondition(&v.Status.Conditions, condition)
+  	if _, errRecord := client.ApisixV2().ApisixUpstreams(v.Namespace).
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for ApisixUpstream",
+            zap.Error(errRecord),
+					  zap.String("name", v.Name),
+					  zap.String("namespace", v.Namespace),
+        )
+    }
+    }
+	case *configv2.ApisixRoute:
 		// set to status
 		if v.Status.Conditions == nil {
 			conditions := make([]metav1.Condition, 0)
@@ -129,9 +147,9 @@ func (c *Controller) recordStatus(at interface{}, reason string, err error, stat
 		}
 		if c.verifyGeneration(&v.Status.Conditions, condition) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
-			if _, errRecord := client.ApisixV2().ApisixUpstreams(v.Namespace).
+			if _, errRecord := client.ApisixV2().ApisixRoutes(v.Namespace).
 				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-				log.Errorw("failed to record status change for ApisixUpstream",
+				log.Errorw("failed to record status change for ApisixRoute",
 					zap.Error(errRecord),
 					zap.String("name", v.Name),
 					zap.String("namespace", v.Namespace),

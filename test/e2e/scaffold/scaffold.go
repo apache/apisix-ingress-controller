@@ -35,7 +35,6 @@ import (
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/testing"
@@ -61,7 +60,8 @@ type Options struct {
 	EnableWebhooks             bool
 	APISIXPublishAddress       string
 	disableNamespaceSelector   bool
-	EnableGatewayAPI           bool
+	ApisixResourceSyncInterval string
+	ApisixResourceVersion      string
 }
 
 type Scaffold struct {
@@ -76,16 +76,29 @@ type Scaffold struct {
 	testBackendService *corev1.Service
 	finializers        []func()
 
-	apisixAdminTunnel   *k8s.Tunnel
-	apisixHttpTunnel    *k8s.Tunnel
-	apisixHttpsTunnel   *k8s.Tunnel
-	apisixTCPTunnel     *k8s.Tunnel
-	apisixUDPTunnel     *k8s.Tunnel
-	apisixControlTunnel *k8s.Tunnel
+	apisixAdminTunnel      *k8s.Tunnel
+	apisixHttpTunnel       *k8s.Tunnel
+	apisixHttpsTunnel      *k8s.Tunnel
+	apisixTCPTunnel        *k8s.Tunnel
+	apisixTLSOverTCPTunnel *k8s.Tunnel
+	apisixUDPTunnel        *k8s.Tunnel
+	apisixControlTunnel    *k8s.Tunnel
 
 	// Used for template rendering.
 	EtcdServiceFQDN string
 }
+
+type apisixResourceVersionInfo struct {
+	V2      string
+	V2beta3 string
+}
+
+var (
+	apisixResourceVersion = &apisixResourceVersionInfo{
+		V2:      config.ApisixV2,
+		V2beta3: config.ApisixV2beta3,
+	}
+)
 
 // GetKubeconfig returns the kubeconfig file path.
 // Order:
@@ -109,23 +122,53 @@ func GetKubeconfig() string {
 
 // NewScaffold creates an e2e test scaffold.
 func NewScaffold(o *Options) *Scaffold {
-	if o.APISIXRouteVersion == "" {
-		o.APISIXRouteVersion = kube.ApisixRouteV2beta3
-	}
-	if o.APISIXTlsVersion == "" {
-		o.APISIXTlsVersion = config.ApisixV2beta3
-	}
-	if o.APISIXConsumerVersion == "" {
-		o.APISIXConsumerVersion = config.ApisixV2beta3
-	}
-	if o.ApisixPluginConfigVersion == "" {
-		o.ApisixPluginConfigVersion = config.ApisixV2beta3
-	}
-	if o.APISIXClusterConfigVersion == "" {
-		o.APISIXClusterConfigVersion = config.ApisixV2beta3
+	if o.ApisixResourceVersion == ApisixResourceVersion().V2 {
+		if o.APISIXRouteVersion == "" {
+			o.APISIXRouteVersion = config.ApisixV2
+		}
+		if o.APISIXTlsVersion == "" {
+			o.APISIXTlsVersion = config.ApisixV2
+		}
+		if o.APISIXConsumerVersion == "" {
+			o.APISIXConsumerVersion = config.ApisixV2
+		}
+		if o.ApisixPluginConfigVersion == "" {
+			o.ApisixPluginConfigVersion = config.ApisixV2
+		}
+		if o.APISIXClusterConfigVersion == "" {
+			o.APISIXClusterConfigVersion = config.ApisixV2
+		}
+	} else {
+		if o.APISIXRouteVersion == "" {
+			o.APISIXRouteVersion = config.ApisixV2beta3
+		}
+		if o.APISIXTlsVersion == "" {
+			o.APISIXTlsVersion = config.ApisixV2beta3
+		}
+		if o.APISIXConsumerVersion == "" {
+			o.APISIXConsumerVersion = config.ApisixV2beta3
+		}
+		if o.ApisixPluginConfigVersion == "" {
+			o.ApisixPluginConfigVersion = config.ApisixV2beta3
+		}
+		if o.APISIXClusterConfigVersion == "" {
+			o.APISIXClusterConfigVersion = config.ApisixV2beta3
+		}
 	}
 	if o.APISIXAdminAPIKey == "" {
 		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
+	}
+	if o.ApisixResourceSyncInterval == "" {
+		o.ApisixResourceSyncInterval = "300s"
+	}
+	if o.Kubeconfig == "" {
+		o.Kubeconfig = GetKubeconfig()
+	}
+	if o.APISIXConfigPath == "" {
+		o.APISIXConfigPath = "testdata/apisix-gw-config.yaml"
+	}
+	if o.HTTPBinServicePort == 0 {
+		o.HTTPBinServicePort = 80
 	}
 	defer ginkgo.GinkgoRecover()
 
@@ -143,19 +186,9 @@ func NewScaffold(o *Options) *Scaffold {
 // NewDefaultScaffold creates a scaffold with some default options.
 func NewDefaultScaffold() *Scaffold {
 	opts := &Options{
-		Name:                       "default",
-		Kubeconfig:                 GetKubeconfig(),
-		APISIXConfigPath:           "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas:      1,
-		HTTPBinServicePort:         80,
-		APISIXRouteVersion:         kube.ApisixRouteV2beta3,
-		APISIXTlsVersion:           config.ApisixV2beta3,
-		APISIXConsumerVersion:      config.ApisixV2beta3,
-		ApisixPluginConfigVersion:  config.ApisixV2beta3,
-		APISIXClusterConfigVersion: config.ApisixV2beta3,
-		EnableWebhooks:             false,
-		APISIXPublishAddress:       "",
-		EnableGatewayAPI:           true,
+		Name:                  "default",
+		IngressAPISIXReplicas: 1,
+		ApisixResourceVersion: ApisixResourceVersion().V2beta3,
 	}
 	return NewScaffold(opts)
 }
@@ -163,19 +196,9 @@ func NewDefaultScaffold() *Scaffold {
 // NewDefaultV2Scaffold creates a scaffold with some default options.
 func NewDefaultV2Scaffold() *Scaffold {
 	opts := &Options{
-		Name:                       "default",
-		Kubeconfig:                 GetKubeconfig(),
-		APISIXConfigPath:           "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas:      1,
-		HTTPBinServicePort:         80,
-		APISIXRouteVersion:         kube.ApisixRouteV2,
-		APISIXTlsVersion:           config.ApisixV2,
-		APISIXConsumerVersion:      config.ApisixV2,
-		ApisixPluginConfigVersion:  config.ApisixV2,
-		APISIXClusterConfigVersion: config.ApisixV2,
-		EnableWebhooks:             false,
-		APISIXPublishAddress:       "",
-		EnableGatewayAPI:           true,
+		Name:                  "default",
+		IngressAPISIXReplicas: 1,
+		ApisixResourceVersion: ApisixResourceVersion().V2,
 	}
 	return NewScaffold(opts)
 }
@@ -240,6 +263,32 @@ func (s *Scaffold) NewAPISIXClientWithTCPProxy() *httpexpect.Expect {
 		BaseURL: u.String(),
 		Client: &http.Client{
 			Transport: &http.Transport{},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
+		),
+	})
+}
+
+// NewAPISIXClientWithTLSOverTCP creates a TSL over TCP client
+func (s *Scaffold) NewAPISIXClientWithTLSOverTCP(host string) *httpexpect.Expect {
+	u := url.URL{
+		Scheme: "https",
+		Host:   s.apisixTLSOverTCPTunnel.Endpoint(),
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					// accept any certificate; for testing only!
+					InsecureSkipVerify: true,
+					ServerName:         host,
+				},
+			},
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
 				return http.ErrUseLastResponse
 			},
@@ -509,11 +558,20 @@ func (s *Scaffold) FormatNamespaceLabel(label string) string {
 }
 
 var (
-	versionRegex = regexp.MustCompile(`apiVersion: apisix.apache.org/.*?\n`)
+	versionRegex = regexp.MustCompile(`apiVersion: apisix.apache.org/v.*?\n`)
+	kindRegex    = regexp.MustCompile(`kind: (.*?)\n`)
 )
 
 func (s *Scaffold) replaceApiVersion(yml, ver string) string {
 	return versionRegex.ReplaceAllString(yml, "apiVersion: "+ver+"\n")
+}
+
+func (s *Scaffold) getKindValue(yml string) string {
+	subStr := kindRegex.FindStringSubmatch(yml)
+	if len(subStr) < 2 {
+		return ""
+	}
+	return subStr[1]
 }
 
 func (s *Scaffold) DisableNamespaceSelector() {
@@ -550,4 +608,40 @@ func (s *Scaffold) CreateVersionedApisixPluginConfig(yml string) error {
 
 	ac := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
 	return s.CreateResourceFromString(ac)
+}
+
+func (s *Scaffold) CreateVersionedApisixResource(yml string) error {
+	kindValue := s.getKindValue(yml)
+	switch kindValue {
+	case "ApisixRoute":
+		ar := s.replaceApiVersion(yml, s.opts.APISIXRouteVersion)
+		return s.CreateResourceFromString(ar)
+	case "ApisixConsumer":
+		ac := s.replaceApiVersion(yml, s.opts.APISIXConsumerVersion)
+		return s.CreateResourceFromString(ac)
+	case "ApisixPluginConfig":
+		apc := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
+		return s.CreateResourceFromString(apc)
+	}
+	return fmt.Errorf("the resource %s does not support", kindValue)
+}
+
+func (s *Scaffold) CreateVersionedApisixResourceWithNamespace(yml, namespace string) error {
+	kindValue := s.getKindValue(yml)
+	switch kindValue {
+	case "ApisixRoute":
+		ar := s.replaceApiVersion(yml, s.opts.APISIXRouteVersion)
+		return s.CreateResourceFromStringWithNamespace(ar, namespace)
+	case "ApisixConsumer":
+		ac := s.replaceApiVersion(yml, s.opts.APISIXConsumerVersion)
+		return s.CreateResourceFromStringWithNamespace(ac, namespace)
+	case "ApisixPluginConfig":
+		apc := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
+		return s.CreateResourceFromStringWithNamespace(apc, namespace)
+	}
+	return fmt.Errorf("the resource %s does not support", kindValue)
+}
+
+func ApisixResourceVersion() *apisixResourceVersionInfo {
+	return apisixResourceVersion
 }

@@ -52,4 +52,4 @@ Five Service resources were created.
 * `apisix-ingress-controller`, which exposes apisix-ingress-controller's metrics.
 * `apisix-etcd` and `apisix-etcd-headless` for etcd service and internal communication.
 
-Now try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running of Ingress APISIX. As a minimalist example, see [proxy-the-httpbin-service](../practices/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
+Now try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running of Ingress APISIX. As a minimalist example, see [proxy-the-httpbin-service](../tutorials/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
