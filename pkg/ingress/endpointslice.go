@@ -117,7 +117,6 @@ func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) err
 			epEvent.ServiceName, err)
 		return err
 	}
-
 	return c.controller.syncEndpoint(ctx, ep)
 }
 
