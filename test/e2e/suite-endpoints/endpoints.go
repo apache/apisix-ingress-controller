@@ -34,7 +34,7 @@ func ensureNumListUpstreamNodes(s *scaffold.Scaffold, upsNum int, upsNodesNum in
 		}
 		return true, nil
 	}
-	return wait.Poll(2*time.Second, 36*time.Second, condFunc)
+	return wait.Poll(3*time.Second, 35*time.Second, condFunc)
 }
 
 var _ = ginkgo.Describe("suite-endpoints: endpoints", func() {
@@ -84,7 +84,7 @@ spec:
     - serviceName: %s
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
 			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK)
 
