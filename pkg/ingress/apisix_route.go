@@ -375,7 +375,9 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 		return
 	}
 	log.Debugw("ApisixRoute add event arrived",
-		zap.Any("object", obj))
+		zap.String("key", key),
+		zap.Any("object", obj),
+	)
 
 	ar := kube.MustNewApisixRoute(obj)
 	c.workqueue.Add(&types.Event{
@@ -404,8 +406,9 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 		return
 	}
 	log.Debugw("ApisixRoute update event arrived",
-		zap.Any("new object", curr),
-		zap.Any("old object", prev),
+		zap.String("key", key),
+		zap.Any("new object", oldObj),
+		zap.Any("old object", newObj),
 	)
 	c.workqueue.Add(&types.Event{
 		Type: types.EventUpdate,
@@ -437,6 +440,7 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 		return
 	}
 	log.Debugw("ApisixRoute delete event arrived",
+		zap.String("key", key),
 		zap.Any("final state", ar),
 	)
 	c.workqueue.Add(&types.Event{

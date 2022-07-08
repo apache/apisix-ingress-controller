@@ -34,7 +34,7 @@ func ensureNumListUpstreamNodes(s *scaffold.Scaffold, upsNum int, upsNodesNum in
 		}
 		return true, nil
 	}
-	return wait.Poll(2*time.Second, 40*time.Second, condFunc)
+	return wait.Poll(2*time.Second, 36*time.Second, condFunc)
 }
 
 var _ = ginkgo.Describe("suite-endpoints: endpoints", func() {

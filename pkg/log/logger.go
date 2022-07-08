@@ -43,6 +43,11 @@ type Logger struct {
 	level  zapcore.Level
 }
 
+// Level returns the log level
+func (logger *Logger) Level() zapcore.Level {
+	return logger.level
+}
+
 func (logger *Logger) write(level zapcore.Level, message string, fields []zapcore.Field) {
 	e := zapcore.Entry{
 		Level:   level,
