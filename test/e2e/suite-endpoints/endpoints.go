@@ -59,7 +59,7 @@ spec:
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "checking number of upstreams")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "checking number of routes")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
 
 			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
