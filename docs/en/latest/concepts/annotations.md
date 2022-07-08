@@ -212,9 +212,13 @@ You can use the following annotations to use the `ApisixPluginConfig`.
 
 * `k8s.apisix.apache.org/plugin-conifg-name`
   
-If this annotations set to `ApisixPluginConfig.metadata.name` the route will enable websoket
+If this annotations set to `ApisixPluginConfig.metadata.name` the route will use `ApisixPluginConfig`
 
-For example, the following Ingress, if we set `k8s.apisix.apache.org/plugin-conifg-name: "echo-and-cors-apc"`. `/api/*` route will enable echo-and-cors-apc
+If this comment is set to the `ApisixPluginConfig` resource name, the route will set the corresponding `PluginConfig`
+
+ApisixPluginConfig is a resource under the same Namespace as Ingress
+
+As an example, we attach the annotation `k8s.apisix.apache.org/plugin-conifg-name: "echo-and-cors-apc` for the following Ingress resource, so that `/api/*` route will enable the [echo](https://apisix.apache.org/docs/apisix/plugins/echo/) and [cors](https://apisix.apache.org/docs/apisix/plugins/cors/) plugins.
 
 ```yaml
 apiVersion: apisix.apache.org/v2beta3
