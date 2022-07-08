@@ -173,20 +173,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 					zap.String("version", c.cfg.Kubernetes.ApisixTlsVersion),
 				)
 			}
-			// ApisixConsumer TODO: Support v2
-			retConsumer, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixConsumers(ns).List(ctx, opts)
-			if err != nil {
-				log.Error(err.Error())
-				ctx.Done()
-			} else {
-				for _, con := range retConsumer.Items {
-					consumer, err := c.translator.TranslateApisixConsumerV2beta3(&con)
-					if err != nil {
-						log.Error(err.Error())
-						ctx.Done()
-					} else {
-						consumerMapK8S.Store(consumer.Username, consumer.Username)
-}
+
 			switch c.cfg.Kubernetes.ApisixConsumerVersion {
 			case config.ApisixV2beta3:
 				// ApisixConsumer
