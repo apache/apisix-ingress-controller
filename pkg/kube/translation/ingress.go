@@ -501,17 +501,3 @@ func composeIngressRouteName(namespace, name, host, path string) string {
 
 	return buf.String()
 }
-
-func composeIngressPluginName(svc, name string) string {
-	p := make([]byte, 0, len(svc)+len(name)+len("ingress")+2)
-	buf := bytes.NewBuffer(p)
-
-	buf.WriteString("ingress")
-	buf.WriteByte('_')
-	buf.WriteString(svc)
-	buf.WriteByte('_')
-	buf.WriteString(name)
-
-	return buf.String()
-
-}
