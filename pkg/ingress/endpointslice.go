@@ -26,6 +26,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
@@ -98,12 +99,25 @@ func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) err
 		log.Errorf("found endpointSlice object with bad namespace/name: %s, ignore it", epEvent.Key)
 		return nil
 	}
+	if ev.Type == types.EventDelete {
+		log.Debugw("endpointsplice upstream serviece sync",
+			zap.String("service_name", epEvent.ServiceName))
+		clusterName := c.controller.cfg.APISIX.DefaultClusterName
+		err = c.controller.apisix.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx,
+			&v1.UpstreamServiceRelation{
+				ServiceName: namespace + "_" + epEvent.ServiceName,
+			})
+		if err != nil {
+			return err
+		}
+	}
 	ep, err := c.controller.epLister.GetEndpointSlices(namespace, epEvent.ServiceName)
 	if err != nil {
 		log.Errorf("failed to get all endpointSlices for service %s: %s",
 			epEvent.ServiceName, err)
 		return err
 	}
+
 	return c.controller.syncEndpoint(ctx, ep)
 }
 

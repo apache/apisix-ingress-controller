@@ -17,23 +17,24 @@ package endpoints
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 func ensureNumListUpstreamNodes(s *scaffold.Scaffold, upsNum int, upsNodesNum int) error {
-	return s.HandlefuncLoop(
-		func() (bool, error) {
-			ups, err := s.ListApisixUpstreams()
-			if err != nil || len(ups) != upsNum || len(ups[0].Nodes) != upsNodesNum {
-				return false, fmt.Errorf("ensureNumListUpstreamNodes failed")
-			}
-			return true, nil
-		},
-	)
+	condFunc := func() (bool, error) {
+		ups, err := s.ListApisixUpstreams()
+		if err != nil || len(ups) != upsNum || len(ups[0].Nodes) != upsNodesNum {
+			return false, fmt.Errorf("ensureNumListUpstreamNodes failed")
+		}
+		return true, nil
+	}
+	return wait.Poll(2*time.Second, 40*time.Second, condFunc)
 }
 
 var _ = ginkgo.Describe("suite-endpoints: endpoints", func() {
@@ -89,9 +90,10 @@ spec:
 
 			// Now delete the backend httpbin service resource.
 			assert.Nil(ginkgo.GinkgoT(), s.DeleteHTTPBINService())
-			//assert.Nil(ginkgo.GinkgoT(), ensureNumListUpstreamNodes(s, 1, 0))
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK)
+			assert.Nil(ginkgo.GinkgoT(), ensureNumListUpstreamNodes(s, 1, 0))
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusServiceUnavailable)
 		})
+
 		ginkgo.It("when endpoint is 0, upstream nodes is also 0", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			apisixRoute := fmt.Sprintf(`
@@ -118,16 +120,14 @@ spec:
 			// scale HTTPBIN, so the endpoints controller has the opportunity to update upstream.
 			assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(0))
 			assert.Nil(ginkgo.GinkgoT(), ensureNumListUpstreamNodes(s, 1, 0))
-
-			assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(3))
-			assert.Nil(ginkgo.GinkgoT(), ensureNumListUpstreamNodes(s, 1, 3))
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusServiceUnavailable)
 		})
 	}
 	ginkgo.Describe("suite-endpoints: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold())
 	})
 	ginkgo.Describe("suite-endpoints: scaffold v2", func() {
-		//suites(scaffold.NewDefaultV2Scaffold())
+		suites(scaffold.NewDefaultV2Scaffold())
 	})
 })
 
