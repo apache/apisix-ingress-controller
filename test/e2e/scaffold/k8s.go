@@ -105,7 +105,7 @@ func (s *Scaffold) CreateApisixRoute(name string, rules []ApisixRouteRule) {
 	route := &apisixRoute{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ApisixRoute",
-			APIVersion: "apisix.apache.org/v1",
+			APIVersion: s.opts.APISIXRouteVersion,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
