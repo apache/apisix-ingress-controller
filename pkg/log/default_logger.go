@@ -33,6 +33,11 @@ func init() {
 	DefaultLogger = l
 }
 
+// Level returns the DefaultLogger log level
+func Level() zapcore.Level {
+	return DefaultLogger.Level()
+}
+
 // Debug uses the fmt.Sprint to construct and log a message using the DefaultLogger.
 func Debug(args ...interface{}) {
 	DefaultLogger.Debug(args...)
