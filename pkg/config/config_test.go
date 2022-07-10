@@ -51,6 +51,7 @@ func TestNewConfigFromFile(t *testing.T) {
 			ApisixTlsVersion:           ApisixV2beta3,
 			ApisixClusterConfigVersion: ApisixV2beta3,
 			ApisixUpstreamVersion:      ApisixV2beta3,
+			ApisxiVersion:              ApisixV2beta3,
 		},
 		APISIX: APISIXConfig{
 			DefaultClusterName:     "default",
@@ -95,6 +96,7 @@ kubernetes:
   election_id: my-election-id
   ingress_class: apisix
   ingress_version: networking/v1
+  apisix_version: apisix.apache.org/v2beta3
 apisix:
   default_cluster_base_url: http://127.0.0.1:8080/apisix
   default_cluster_admin_key: "123456"
@@ -139,6 +141,7 @@ func TestConfigWithEnvVar(t *testing.T) {
 			ApisixTlsVersion:           ApisixV2beta3,
 			ApisixClusterConfigVersion: ApisixV2beta3,
 			ApisixUpstreamVersion:      ApisixV2beta3,
+			ApisxiVersion:              ApisixV2beta3,
 		},
 		APISIX: APISIXConfig{
 			DefaultClusterName:     "default",

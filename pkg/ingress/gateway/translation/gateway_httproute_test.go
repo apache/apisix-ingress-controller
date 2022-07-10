@@ -27,6 +27,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
@@ -104,9 +105,13 @@ func mockHTTPRouteTranslator(t *testing.T) (*translator, <-chan struct{}) {
 	tr := &translator{
 		&TranslatorOptions{
 			KubeTranslator: translation.NewTranslator(&translation.TranslatorOptions{
-				EndpointLister:       epLister,
-				ServiceLister:        svcLister,
-				ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+				EndpointLister: epLister,
+				ServiceLister:  svcLister,
+				ApisixUpstreamLister: kube.NewApisixUpstreamLister(
+					apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+					apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
+				),
+				ApisixVersion: config.DefaultApisixVersion,
 			}),
 		},
 	}

@@ -185,7 +185,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 						cfg = &au.Spec.ApisixUpstreamConfig
 					}
 					// FIXME Same ApisixUpstreamConfig might be translated multiple times.
-					newUps, err = c.controller.translator.TranslateUpstreamConfig(cfg)
+					newUps, err = c.controller.translator.TranslateUpstreamConfigV2beta3(cfg)
 					if err != nil {
 						log.Errorw("found malformed ApisixUpstream",
 							zap.Any("object", au),
@@ -269,7 +269,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 						cfg = &au.Spec.ApisixUpstreamConfig
 					}
 					// FIXME Same ApisixUpstreamConfig might be translated multiple times.
-					newUps, err = c.controller.translator.TranslateUpstreamConfig(cfg)
+					newUps, err = c.controller.translator.TranslateUpstreamConfigV2(cfg)
 					if err != nil {
 						log.Errorw("found malformed ApisixUpstream",
 							zap.Any("object", au),

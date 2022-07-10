@@ -27,6 +27,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
@@ -187,7 +188,7 @@ func TestRouteMatchExpr(t *testing.T) {
 	assert.Equal(t, []string{"foo.com"}, results[9][2].SliceVal)
 }
 
-func mockTranslator(t *testing.T) (*translator, <-chan struct{}) {
+func mockTranslatorV2beta3(t *testing.T) (*translator, <-chan struct{}) {
 	svc := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
@@ -256,9 +257,13 @@ func mockTranslator(t *testing.T) (*translator, <-chan struct{}) {
 
 	tr := &translator{
 		&TranslatorOptions{
-			EndpointLister:       epLister,
-			ServiceLister:        svcLister,
-			ApisixUpstreamLister: apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+			EndpointLister: epLister,
+			ServiceLister:  svcLister,
+			ApisixUpstreamLister: kube.NewApisixUpstreamLister(
+				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
+			),
+			ApisixVersion: config.ApisixV2beta3,
 		},
 	}
 
@@ -284,7 +289,7 @@ func mockTranslator(t *testing.T) (*translator, <-chan struct{}) {
 }
 
 func TestTranslateApisixRouteV2beta3WithDuplicatedName(t *testing.T) {
-	tr, processCh := mockTranslator(t)
+	tr, processCh := mockTranslatorV2beta3(t)
 	<-processCh
 	<-processCh
 
@@ -337,7 +342,7 @@ func TestTranslateApisixRouteV2beta3WithDuplicatedName(t *testing.T) {
 }
 
 func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
-	tr, processCh := mockTranslator(t)
+	tr, processCh := mockTranslatorV2beta3(t)
 	<-processCh
 	<-processCh
 

@@ -490,7 +490,7 @@ func TestTranslateUpstreamPassiveHealthCheckUnusuallyV2(t *testing.T) {
 		},
 	}
 
-	err := tr.translateUpstreamHealthCheckV2beta3(hc, nil)
+	err := tr.translateUpstreamHealthCheckV2(hc, nil)
 	assert.Equal(t, &translateError{
 		field:  "healthCheck.passive.Type",
 		reason: "invalid value",
@@ -505,7 +505,7 @@ func TestTranslateUpstreamPassiveHealthCheckUnusuallyV2(t *testing.T) {
 			},
 		},
 	}
-	err = tr.translateUpstreamHealthCheck(hc, nil)
+	err = tr.translateUpstreamHealthCheckV2(hc, nil)
 	assert.Equal(t, &translateError{
 		field:  "healthCheck.passive.healthy.successes",
 		reason: "invalid value",
@@ -551,7 +551,7 @@ func TestTranslateUpstreamPassiveHealthCheckUnusuallyV2(t *testing.T) {
 			},
 		},
 	}
-	err = tr.translateUpstreamHealthCheck(hc, nil)
+	err = tr.translateUpstreamHealthCheckV2(hc, nil)
 	assert.Equal(t, &translateError{
 		field:  "healthCheck.passive.unhealthy.tcpFailures",
 		reason: "invalid value",
