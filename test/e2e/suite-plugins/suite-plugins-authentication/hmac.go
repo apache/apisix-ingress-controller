@@ -108,7 +108,7 @@ spec:
 				Status(http.StatusUnauthorized).
 				Body().
 				Raw()
-			assert.Contains(ginkgo.GinkgoT(), msg, "access key or signature missing")
+			assert.Contains(ginkgo.GinkgoT(), msg, "client request can't be validated")
 
 			msg = s.NewAPISIXClient().GET("/ip").
 				WithHeader("Host", "httpbin.org").
@@ -214,7 +214,7 @@ spec:
 				Status(http.StatusUnauthorized).
 				Body().
 				Raw()
-			assert.Contains(ginkgo.GinkgoT(), msg, "access key or signature missing")
+			assert.Contains(ginkgo.GinkgoT(), msg, "client request can't be validated")
 
 			msg = s.NewAPISIXClient().GET("/ip").
 				WithHeader("Host", "httpbin.org").

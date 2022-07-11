@@ -58,7 +58,7 @@ spec:
 
 		resp := s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect()
 		resp.Status(http.StatusMovedPermanently)
-		resp.Header("Location").Equal("https://httpbin.org/sample")
+		resp.Header("Location").Equal("https://httpbin.org:9443/sample")
 	})
 
 	ginkgo.It("redirect http-to-https in ingress networking/v1beta1", func() {
@@ -88,7 +88,7 @@ spec:
 
 		resp := s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect()
 		resp.Status(http.StatusMovedPermanently)
-		resp.Header("Location").Equal("https://httpbin.org/sample")
+		resp.Header("Location").Equal("https://httpbin.org:9443/sample")
 	})
 
 	ginkgo.It("redirect http-to-https in ingress extensions/v1beta1", func() {
@@ -118,7 +118,7 @@ spec:
 
 		resp := s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect()
 		resp.Status(http.StatusMovedPermanently)
-		resp.Header("Location").Equal("https://httpbin.org/sample")
+		resp.Header("Location").Equal("https://httpbin.org:9443/sample")
 	})
 
 	ginkgo.It("redirect http-redirect in ingress networking/v1", func() {

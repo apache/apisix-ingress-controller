@@ -77,8 +77,8 @@ pack-images: build-images push-images
 .PHONY: build-images
 build-images:
 ifeq ($(E2E_SKIP_BUILD), 0)
-	docker pull apache/apisix:2.13.1-alpine
-	docker tag apache/apisix:2.13.1-alpine $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
+	docker pull apache/apisix:2.14.1-alpine
+	docker tag apache/apisix:2.14.1-alpine $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
 
 	docker pull bitnami/etcd:3.4.14-debian-10-r0
 	docker tag bitnami/etcd:3.4.14-debian-10-r0 $(REGISTRY)/bitnami/etcd:$(IMAGE_TAG)
