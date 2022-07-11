@@ -32,7 +32,7 @@ var _ = ginkgo.Describe("suite-chaos: Chaos Testing", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    config.DefaultApisixVersion,
+		APISIXRouteVersion:    config.DefaultAPIVersion,
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.Context("simulate apisix deployment restart", func() {
