@@ -111,7 +111,7 @@ func mockHTTPRouteTranslator(t *testing.T) (*translator, <-chan struct{}) {
 					apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 					apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 				),
-				ApiVersion: config.DefaultApisixVersion,
+				ApiVersion: config.DefaultAPIVersion,
 			}),
 		},
 	}

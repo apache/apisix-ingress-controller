@@ -35,7 +35,7 @@ var _ = ginkgo.Describe("suite-config: deploy ingress controller with config", f
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    config.DefaultApisixVersion,
+		APISIXRouteVersion:    config.DefaultAPIVersion,
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.It("use configmap with env", func() {
