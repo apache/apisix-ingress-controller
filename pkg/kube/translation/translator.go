@@ -131,7 +131,7 @@ type TranslatorOptions struct {
 	ApisixUpstreamLister kube.ApisixUpstreamLister
 	SecretLister         listerscorev1.SecretLister
 	UseEndpointSlices    bool
-	ApisixVersion        string
+	ApiVersion           string
 }
 
 type translator struct {
@@ -202,13 +202,13 @@ func (t *translator) TranslateUpstream(namespace, name, subset string, port int3
 		}
 	}
 
-	switch t.ApisixVersion {
+	switch t.ApiVersion {
 	case config.ApisixV2beta3:
 		return t.translateUpstreamV2beta3(&endpoint, namespace, name, subset, port)
 	case config.ApisixV2:
 		return t.translateUpstreamV2(&endpoint, namespace, name, subset, port)
 	default:
-		panic(fmt.Errorf("unsupported ApisixUpstream version %v", t.ApisixVersion))
+		panic(fmt.Errorf("unsupported ApisixUpstream version %v", t.ApiVersion))
 	}
 }
 

@@ -179,7 +179,7 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 		ServiceLister:        svcLister,
 		EndpointLister:       epLister,
 		ApisixUpstreamLister: auLister,
-		ApisixVersion:        config.DefaultApisixVersion,
+		ApiVersion:           config.DefaultApisixVersion,
 	}}
 	ctx := &TranslateContext{
 		upstreamMap: make(map[string]struct{}),
@@ -354,7 +354,7 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 		ServiceLister:        svcLister,
 		EndpointLister:       epLister,
 		ApisixUpstreamLister: auLister,
-		ApisixVersion:        config.DefaultApisixVersion,
+		ApiVersion:           config.DefaultApisixVersion,
 	}}
 	ctx := &TranslateContext{upstreamMap: make(map[string]struct{})}
 	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
@@ -522,7 +522,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 		ServiceLister:        svcLister,
 		EndpointLister:       epLister,
 		ApisixUpstreamLister: auLister,
-		ApisixVersion:        config.DefaultApisixVersion,
+		ApiVersion:           config.DefaultApisixVersion,
 	}}
 	ctx := &TranslateContext{upstreamMap: make(map[string]struct{})}
 	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)

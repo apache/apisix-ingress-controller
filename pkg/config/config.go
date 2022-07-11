@@ -67,8 +67,6 @@ const (
 	ControllerName = "apisix.apache.org/gateway-controller"
 )
 
-type ApisxiVersion string
-
 // Config contains all config items which are necessary for
 // apisix-ingress-controller's running.
 type Config struct {
@@ -101,8 +99,7 @@ type KubernetesConfig struct {
 	ApisixConsumerVersion      string             `json:"apisix_consumer_version" yaml:"apisix_consumer_version"`
 	ApisixTlsVersion           string             `json:"apisix_tls_version" yaml:"apisix_tls_version"`
 	ApisixClusterConfigVersion string             `json:"apisix_cluster_config_version" yaml:"apisix_cluster_config_version"`
-	ApisixUpstreamVersion      string             `json:"apisix_upstream_version" yaml:"apisix_upstream_version"`
-	ApisxiVersion              string             `json:"apisix_version" yaml:"apisix_version"`
+	ApiVersion                 string             `json:"api_version" yaml:"api_version"`
 	EnableGatewayAPI           bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
 }
 
@@ -143,8 +140,7 @@ func NewDefaultConfig() *Config {
 			ApisixConsumerVersion:      ApisixV2beta3,
 			ApisixTlsVersion:           ApisixV2beta3,
 			ApisixClusterConfigVersion: ApisixV2beta3,
-			ApisixUpstreamVersion:      ApisixV2beta3,
-			ApisxiVersion:              ApisixV2beta3,
+			ApiVersion:                 DefaultApisixVersion,
 			WatchEndpointSlices:        false,
 			EnableGatewayAPI:           false,
 		},

@@ -207,31 +207,38 @@ func TestTranslateIngressV1BackendWithInvalidService(t *testing.T) {
 }
 
 func TestTranslateIngressV1WithRegex(t *testing.T) {
-	prefix := networkingv1.PathTypeImplementationSpecific
-	regexPath := "/foo/*/bar"
-	ing := &networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "default",
-			Annotations: map[string]string{
-				"k8s.apisix.apache.org/use-regex": "true",
+	testTranslateIngressV1WithRegexReferenceUpstreamVersion(t, config.ApisixV2)
+	testTranslateIngressV1WithRegexReferenceUpstreamVersion(t, config.ApisixV2beta3)
+}
+
+func testTranslateIngressV1WithRegexReferenceUpstreamVersion(t *testing.T, apiVersion string) func(t *testing.T) {
+	return func(t *testing.T) {
+		prefix := networkingv1.PathTypeImplementationSpecific
+		regexPath := "/foo/*/bar"
+		ing := &networkingv1.Ingress{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+				Annotations: map[string]string{
+					"k8s.apisix.apache.org/use-regex": "true",
+				},
 			},
-		},
-		Spec: networkingv1.IngressSpec{
-			Rules: []networkingv1.IngressRule{
-				{
-					Host: "apisix.apache.org",
-					IngressRuleValue: networkingv1.IngressRuleValue{
-						HTTP: &networkingv1.HTTPIngressRuleValue{
-							Paths: []networkingv1.HTTPIngressPath{
-								{
-									Path:     regexPath,
-									PathType: &prefix,
-									Backend: networkingv1.IngressBackend{
-										Service: &networkingv1.IngressServiceBackend{
-											Name: "test-service",
-											Port: networkingv1.ServiceBackendPort{
-												Name: "port1",
+			Spec: networkingv1.IngressSpec{
+				Rules: []networkingv1.IngressRule{
+					{
+						Host: "apisix.apache.org",
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{
+									{
+										Path:     regexPath,
+										PathType: &prefix,
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: "test-service",
+												Port: networkingv1.ServiceBackendPort{
+													Name: "port1",
+												},
 											},
 										},
 									},
@@ -241,71 +248,71 @@ func TestTranslateIngressV1WithRegex(t *testing.T) {
 					},
 				},
 			},
-		},
+		}
+		client := fake.NewSimpleClientset()
+		informersFactory := informers.NewSharedInformerFactory(client, 0)
+		svcInformer := informersFactory.Core().V1().Services().Informer()
+		svcLister := informersFactory.Core().V1().Services().Lister()
+		epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
+		apisixClient := fakeapisix.NewSimpleClientset()
+		apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
+		processCh := make(chan struct{})
+		svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				processCh <- struct{}{}
+			},
+		})
+		epInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				processCh <- struct{}{}
+			},
+		})
+
+		stopCh := make(chan struct{})
+		defer close(stopCh)
+		go svcInformer.Run(stopCh)
+		go epInformer.Run(stopCh)
+		cache.WaitForCacheSync(stopCh, svcInformer.HasSynced)
+
+		_, err := client.CoreV1().Services("default").Create(context.Background(), _testSvc, metav1.CreateOptions{})
+		assert.Nil(t, err)
+		_, err = client.CoreV1().Endpoints("default").Create(context.Background(), _testEp, metav1.CreateOptions{})
+		assert.Nil(t, err)
+
+		tr := &translator{
+			TranslatorOptions: &TranslatorOptions{
+				ServiceLister:  svcLister,
+				EndpointLister: epLister,
+				ApisixUpstreamLister: kube.NewApisixUpstreamLister(
+					apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+					apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
+				),
+				ApiVersion: apiVersion,
+			},
+		}
+
+		<-processCh
+		<-processCh
+		ctx, err := tr.translateIngressV1(ing, false)
+		assert.Nil(t, err)
+		assert.Len(t, ctx.Routes, 1)
+		assert.Len(t, ctx.Upstreams, 1)
+		// the number of the PluginConfigs should be zero, cause there no available Annotations matched te rule
+		assert.Len(t, ctx.PluginConfigs, 0)
+		routeVars, err := tr.translateRouteMatchExprs([]configv2.ApisixRouteHTTPMatchExpr{{
+			Subject: configv2.ApisixRouteHTTPMatchExprSubject{
+				Scope: apisixconst.ScopePath,
+			},
+			Op:    apisixconst.OpRegexMatch,
+			Value: &regexPath,
+		}})
+		assert.Nil(t, err)
+
+		var expectedVars v1.Vars = routeVars
+
+		assert.Equal(t, []string{"/*"}, ctx.Routes[0].Uris)
+		assert.Equal(t, expectedVars, ctx.Routes[0].Vars)
 	}
-	client := fake.NewSimpleClientset()
-	informersFactory := informers.NewSharedInformerFactory(client, 0)
-	svcInformer := informersFactory.Core().V1().Services().Informer()
-	svcLister := informersFactory.Core().V1().Services().Lister()
-	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
-	apisixClient := fakeapisix.NewSimpleClientset()
-	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
-	processCh := make(chan struct{})
-	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			processCh <- struct{}{}
-		},
-	})
-	epInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			processCh <- struct{}{}
-		},
-	})
-
-	stopCh := make(chan struct{})
-	defer close(stopCh)
-	go svcInformer.Run(stopCh)
-	go epInformer.Run(stopCh)
-	cache.WaitForCacheSync(stopCh, svcInformer.HasSynced)
-
-	_, err := client.CoreV1().Services("default").Create(context.Background(), _testSvc, metav1.CreateOptions{})
-	assert.Nil(t, err)
-	_, err = client.CoreV1().Endpoints("default").Create(context.Background(), _testEp, metav1.CreateOptions{})
-	assert.Nil(t, err)
-
-	tr := &translator{
-		TranslatorOptions: &TranslatorOptions{
-			ServiceLister:  svcLister,
-			EndpointLister: epLister,
-			ApisixUpstreamLister: kube.NewApisixUpstreamLister(
-				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
-				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
-			),
-			ApisixVersion: config.DefaultApisixVersion,
-		},
-	}
-
-	<-processCh
-	<-processCh
-	ctx, err := tr.translateIngressV1(ing, false)
-	assert.Nil(t, err)
-	assert.Len(t, ctx.Routes, 1)
-	assert.Len(t, ctx.Upstreams, 1)
-	// the number of the PluginConfigs should be zero, cause there no available Annotations matched te rule
-	assert.Len(t, ctx.PluginConfigs, 0)
-	routeVars, err := tr.translateRouteMatchExprs([]configv2.ApisixRouteHTTPMatchExpr{{
-		Subject: configv2.ApisixRouteHTTPMatchExprSubject{
-			Scope: apisixconst.ScopePath,
-		},
-		Op:    apisixconst.OpRegexMatch,
-		Value: &regexPath,
-	}})
-	assert.Nil(t, err)
-
-	var expectedVars v1.Vars = routeVars
-
-	assert.Equal(t, []string{"/*"}, ctx.Routes[0].Uris)
-	assert.Equal(t, expectedVars, ctx.Routes[0].Vars)
 }
 
 func TestTranslateIngressV1(t *testing.T) {
@@ -313,7 +320,7 @@ func TestTranslateIngressV1(t *testing.T) {
 	testTranslateIngressV1ReferenceUpstreamVersion(t, config.ApisixV2)
 }
 
-func testTranslateIngressV1ReferenceUpstreamVersion(t *testing.T, apisixVersoin string) func(*testing.T) {
+func testTranslateIngressV1ReferenceUpstreamVersion(t *testing.T, apiVersoin string) func(*testing.T) {
 	return func(*testing.T) {
 		prefix := networkingv1.PathTypePrefix
 		// no backend.
@@ -402,7 +409,7 @@ func testTranslateIngressV1ReferenceUpstreamVersion(t *testing.T, apisixVersoin 
 					apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 					apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 				),
-				ApisixVersion: apisixVersoin,
+				ApiVersion: apiVersoin,
 			},
 		}
 
@@ -629,7 +636,7 @@ func TestTranslateIngressV1beta1WithRegex(t *testing.T) {
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
-			ApisixVersion: config.DefaultApisixVersion,
+			ApiVersion: config.DefaultApisixVersion,
 		},
 	}
 
@@ -742,7 +749,7 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
-			ApisixVersion: config.DefaultApisixVersion,
+			ApiVersion: config.DefaultApisixVersion,
 		},
 	}
 
@@ -868,7 +875,7 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
-			ApisixVersion: config.DefaultApisixVersion,
+			ApiVersion: config.DefaultApisixVersion,
 		},
 	}
 
@@ -1054,7 +1061,7 @@ func TestTranslateIngressExtensionsV1beta1WithRegex(t *testing.T) {
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
-			ApisixVersion: config.DefaultApisixVersion,
+			ApiVersion: config.DefaultApisixVersion,
 		},
 	}
 
@@ -1156,7 +1163,7 @@ func TestTranslateIngressV1WithWebsocket(t *testing.T) {
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
-			ApisixVersion: config.DefaultApisixVersion,
+			ApiVersion: config.DefaultApisixVersion,
 		},
 	}
 
@@ -1247,7 +1254,7 @@ func TestTranslateIngressV1beta1WithWebsocket(t *testing.T) {
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
-			ApisixVersion: config.DefaultApisixVersion,
+			ApiVersion: config.DefaultApisixVersion,
 		},
 	}
 
@@ -1338,7 +1345,7 @@ func TestTranslateIngressExtensionsV1beta1WithWebsocket(t *testing.T) {
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
-			ApisixVersion: config.DefaultApisixVersion,
+			ApiVersion: config.DefaultApisixVersion,
 		},
 	}
 

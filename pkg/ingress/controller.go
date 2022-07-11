@@ -233,8 +233,29 @@ func (c *Controller) initWhenStartLeading() {
 		ApisixUpstreamLister: c.apisixUpstreamLister,
 		SecretLister:         c.secretLister,
 		UseEndpointSlices:    c.cfg.Kubernetes.WatchEndpointSlices,
-		ApisixVersion:        c.cfg.Kubernetes.ApisxiVersion,
+		ApiVersion:           c.cfg.Kubernetes.ApiVersion,
 	})
+
+	switch c.cfg.Kubernetes.ApiVersion {
+	case config.ApisixV2beta3:
+		apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+		// to do list:
+		// ApisixRoute
+		// ApisixPluginConfig
+		// ApisixTls
+		// ApisixConsumer
+		// ApisixClusterConfig
+	case config.ApisixV2:
+		apisixUpstreamInformer = apisixFactory.Apisix().V2().ApisixUpstreams().Informer()
+		// to do list:
+		// ApisixRoute
+		// ApisixPluginConfig
+		// ApisixTls
+		// ApisixConsumer
+		// ApisixClusterConfig
+	default:
+		panic(fmt.Errorf("unsupported ApisixUpstream version %v", c.cfg.Kubernetes.ApiVersion))
+	}
 
 	if c.cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1 {
 		ingressInformer = kubeFactory.Networking().V1().Ingresses().Informer()
@@ -253,15 +274,6 @@ func (c *Controller) initWhenStartLeading() {
 		apisixRouteInformer = apisixFactory.Apisix().V2().ApisixRoutes().Informer()
 	default:
 		panic(fmt.Errorf("unsupported ApisixRoute version %s", c.cfg.Kubernetes.ApisixRouteVersion))
-	}
-
-	switch c.cfg.Kubernetes.ApisixUpstreamVersion {
-	case config.ApisixV2beta3:
-		apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
-	case config.ApisixV2:
-		apisixUpstreamInformer = apisixFactory.Apisix().V2().ApisixUpstreams().Informer()
-	default:
-		panic(fmt.Errorf("unsupported ApisixUpstream version %v", c.cfg.Kubernetes.ApisixUpstreamVersion))
 	}
 
 	switch c.cfg.Kubernetes.ApisixTlsVersion {
@@ -655,7 +667,7 @@ func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
 		return err
 	}
 
-	switch c.cfg.Kubernetes.ApisixUpstreamVersion {
+	switch c.cfg.Kubernetes.ApiVersion {
 	case config.ApisixV2beta3:
 		var subsets []configv2beta3.ApisixUpstreamSubset
 		subsets = append(subsets, configv2beta3.ApisixUpstreamSubset{})
@@ -719,7 +731,7 @@ func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
 			}
 		}
 	default:
-		panic(fmt.Errorf("unsupported ApisixUpstream version %v", c.cfg.Kubernetes.ApisixUpstreamVersion))
+		panic(fmt.Errorf("unsupported ApisixUpstream version %v", c.cfg.Kubernetes.ApiVersion))
 	}
 	return nil
 }
