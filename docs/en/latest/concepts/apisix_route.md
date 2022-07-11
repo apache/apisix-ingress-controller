@@ -257,7 +257,7 @@ spec:
       protocol: TCP
       match:
         ingressPort: 9100
-      backend:
+      backends:
         serviceName: tcp-server
         servicePort: 8080
 ```
@@ -282,7 +282,7 @@ spec:
       protocol: UDP
       match:
         ingressPort: 9200
-      backend:
+      backends:
         serviceName: udp-server
         servicePort: 53
 ```
