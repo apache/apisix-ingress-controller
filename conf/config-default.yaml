@@ -77,7 +77,7 @@ kubernetes:
                                        # Note: This feature is currently under development and may not work as expected. 
                                        # It is not recommended to use it in a production environment.
                                        # Before we announce support for it to reach Beta level or GA.
-  api_version: apisix.apache.org/v2beta3 #the api group version default "apisix.apache.org/v2beta3", can be "apisix.apache.org/v2beta3" or "apisix.apache.org/v2"
+  api_version: apisix.apache.org/v2beta3 # the default value of API version is "apisix.apache.org/v2beta3", support "apisix.apache.org/v2beta3" and "apisix.apache.org/v2".
 
 # APISIX related configurations.
 apisix:

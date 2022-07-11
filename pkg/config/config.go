@@ -69,7 +69,7 @@ const (
 
 var (
 	// Description information of API version, including default values and supported API version.
-	APIVersionDescribe = fmt.Sprintf("the default value of API version is \"%s\", support \"%s\" or \"%s\"", DefaultAPIVersion, ApisixV2beta3, ApisixV2)
+	APIVersionDescribe = fmt.Sprintf(`the default value of API version is "%s", support "%s" and "%s".`, DefaultAPIVersion, ApisixV2beta3, ApisixV2)
 )
 
 // Config contains all config items which are necessary for
