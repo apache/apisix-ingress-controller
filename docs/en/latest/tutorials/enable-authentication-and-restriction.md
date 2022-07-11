@@ -187,7 +187,7 @@ plugins:
 
 ## Example
 
-[Refer to the corresponding e2e test case.](../../../../test/e2e/suite-features/consumer.go)
+[Refer to the corresponding e2e test case.](../../../../test/e2e/suite-plugins/suite-plugins-authentication/)
 
 ### Prepare env
 

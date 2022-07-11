@@ -35,7 +35,6 @@ import (
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/testing"
@@ -96,8 +95,8 @@ type apisixResourceVersionInfo struct {
 
 var (
 	apisixResourceVersion = &apisixResourceVersionInfo{
-		V2:      "apisix.apache.org/v2",
-		V2beta3: "apisix.apache.org/v2beta3",
+		V2:      config.ApisixV2,
+		V2beta3: config.ApisixV2beta3,
 	}
 )
 
@@ -125,7 +124,7 @@ func GetKubeconfig() string {
 func NewScaffold(o *Options) *Scaffold {
 	if o.ApisixResourceVersion == ApisixResourceVersion().V2 {
 		if o.APISIXRouteVersion == "" {
-			o.APISIXRouteVersion = kube.ApisixRouteV2
+			o.APISIXRouteVersion = config.ApisixV2
 		}
 		if o.APISIXTlsVersion == "" {
 			o.APISIXTlsVersion = config.ApisixV2
@@ -141,7 +140,7 @@ func NewScaffold(o *Options) *Scaffold {
 		}
 	} else {
 		if o.APISIXRouteVersion == "" {
-			o.APISIXRouteVersion = kube.ApisixRouteV2beta3
+			o.APISIXRouteVersion = config.ApisixV2beta3
 		}
 		if o.APISIXTlsVersion == "" {
 			o.APISIXTlsVersion = config.ApisixV2beta3
@@ -434,8 +433,10 @@ func (s *Scaffold) beforeEach() {
 	err = s.newIngressAPISIXController()
 	assert.Nil(s.t, err, "initializing ingress apisix controller")
 
-	err = s.WaitAllIngressControllerPodsAvailable()
-	assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
+	if s.opts.IngressAPISIXReplicas != 0 {
+		err = s.WaitAllIngressControllerPodsAvailable()
+		assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
+	}
 }
 
 func (s *Scaffold) afterEach() {
