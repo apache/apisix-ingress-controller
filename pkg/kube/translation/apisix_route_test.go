@@ -263,7 +263,7 @@ func mockTranslatorV2beta3(t *testing.T) (*translator, <-chan struct{}) {
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
-			ApiVersion: config.ApisixV2beta3,
+			APIVersion: config.ApisixV2beta3,
 		},
 	}
 

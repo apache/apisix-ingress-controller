@@ -287,7 +287,7 @@ func testTranslateIngressV1WithRegexReferenceUpstreamVersion(t *testing.T, apiVe
 					apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 					apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 				),
-				ApiVersion: apiVersion,
+				APIVersion: apiVersion,
 			},
 		}
 
@@ -409,7 +409,7 @@ func testTranslateIngressV1ReferenceUpstreamVersion(t *testing.T, apiVersoin str
 					apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 					apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 				),
-				ApiVersion: apiVersoin,
+				APIVersion: apiVersoin,
 			},
 		}
 
@@ -636,7 +636,7 @@ func TestTranslateIngressV1beta1WithRegex(t *testing.T) {
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
-			ApiVersion: config.DefaultAPIVersion,
+			APIVersion: config.DefaultAPIVersion,
 		},
 	}
 
@@ -749,7 +749,7 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
-			ApiVersion: config.DefaultAPIVersion,
+			APIVersion: config.DefaultAPIVersion,
 		},
 	}
 
@@ -875,7 +875,7 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
-			ApiVersion: config.DefaultAPIVersion,
+			APIVersion: config.DefaultAPIVersion,
 		},
 	}
 
@@ -1061,7 +1061,7 @@ func TestTranslateIngressExtensionsV1beta1WithRegex(t *testing.T) {
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
-			ApiVersion: config.DefaultAPIVersion,
+			APIVersion: config.DefaultAPIVersion,
 		},
 	}
 
@@ -1163,7 +1163,7 @@ func TestTranslateIngressV1WithWebsocket(t *testing.T) {
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
-			ApiVersion: config.DefaultAPIVersion,
+			APIVersion: config.DefaultAPIVersion,
 		},
 	}
 
@@ -1254,7 +1254,7 @@ func TestTranslateIngressV1beta1WithWebsocket(t *testing.T) {
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
-			ApiVersion: config.DefaultAPIVersion,
+			APIVersion: config.DefaultAPIVersion,
 		},
 	}
 
@@ -1345,7 +1345,7 @@ func TestTranslateIngressExtensionsV1beta1WithWebsocket(t *testing.T) {
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
-			ApiVersion: config.DefaultAPIVersion,
+			APIVersion: config.DefaultAPIVersion,
 		},
 	}
 

@@ -50,7 +50,7 @@ func TestNewConfigFromFile(t *testing.T) {
 			ApisixConsumerVersion:      ApisixV2beta3,
 			ApisixTlsVersion:           ApisixV2beta3,
 			ApisixClusterConfigVersion: ApisixV2beta3,
-			ApiVersion:                 DefaultAPIVersion,
+			APIVersion:                 DefaultAPIVersion,
 		},
 		APISIX: APISIXConfig{
 			DefaultClusterName:     "default",
@@ -139,7 +139,7 @@ func TestConfigWithEnvVar(t *testing.T) {
 			ApisixConsumerVersion:      ApisixV2beta3,
 			ApisixTlsVersion:           ApisixV2beta3,
 			ApisixClusterConfigVersion: ApisixV2beta3,
-			ApiVersion:                 DefaultAPIVersion,
+			APIVersion:                 DefaultAPIVersion,
 		},
 		APISIX: APISIXConfig{
 			DefaultClusterName:     "default",
