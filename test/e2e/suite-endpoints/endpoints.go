@@ -17,25 +17,12 @@ package endpoints
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
-
-func ensureNumListUpstreamNodes(s *scaffold.Scaffold, upsNum int, upsNodesNum int) error {
-	condFunc := func() (bool, error) {
-		ups, err := s.ListApisixUpstreams()
-		if err != nil || len(ups) != upsNum || len(ups[0].Nodes) != upsNodesNum {
-			return false, fmt.Errorf("ensureNumListUpstreamNodes failed")
-		}
-		return true, nil
-	}
-	return wait.Poll(3*time.Second, 35*time.Second, condFunc)
-}
 
 var _ = ginkgo.Describe("suite-endpoints: endpoints", func() {
 	suites := func(s *scaffold.Scaffold) {
@@ -90,7 +77,7 @@ spec:
 
 			// Now delete the backend httpbin service resource.
 			assert.Nil(ginkgo.GinkgoT(), s.DeleteHTTPBINService())
-			assert.Nil(ginkgo.GinkgoT(), ensureNumListUpstreamNodes(s, 1, 0))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumListUpstreamNodesNth(1, 0))
 			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusServiceUnavailable)
 		})
 
@@ -115,11 +102,11 @@ spec:
 `, backendSvc, backendSvcPort[0])
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "checking number of upstreams")
-			assert.Nil(ginkgo.GinkgoT(), ensureNumListUpstreamNodes(s, 1, 1))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumListUpstreamNodesNth(1, 1))
 
 			// scale HTTPBIN, so the endpoints controller has the opportunity to update upstream.
 			assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(0))
-			assert.Nil(ginkgo.GinkgoT(), ensureNumListUpstreamNodes(s, 1, 0))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumListUpstreamNodesNth(1, 0))
 			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusServiceUnavailable)
 		})
 	}
@@ -153,7 +140,7 @@ spec:
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
-			assert.Nil(ginkgo.GinkgoT(), ensureNumListUpstreamNodes(s, 1, 1))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumListUpstreamNodesNth(1, 1))
 
 			// port in nodes is still the targetPort, not the service port
 			ups, err := s.ListApisixUpstreams()
@@ -162,7 +149,7 @@ spec:
 
 			// scale HTTPBIN, so the endpoints controller has the opportunity to update upstream.
 			assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(3))
-			assert.Nil(ginkgo.GinkgoT(), ensureNumListUpstreamNodes(s, 1, 3))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumListUpstreamNodesNth(1, 3))
 
 			// port in nodes is still the targetPort, not the service port
 			ups, err = s.ListApisixUpstreams()
