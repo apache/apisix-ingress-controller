@@ -47,7 +47,7 @@ spec:
         httpFailures: 2
         interval: 1s
 `, backendSvc)
-			err := s.CreateResourceFromString(au)
+			err := s.CreateVersionedApisixResource(au)
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 
 			ar := fmt.Sprintf(`
@@ -109,7 +109,7 @@ spec:
       unhealthy:
         httpCodes: [502]
 `, backendSvc)
-			err := s.CreateResourceFromString(au)
+			err := s.CreateVersionedApisixResource(au)
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 
 			ar := fmt.Sprintf(`
@@ -129,7 +129,7 @@ spec:
     - serviceName: %s
       servicePort: %d
 `, backendSvc, backendPorts[0])
-			err = s.CreateResourceFromString(ar)
+			err = s.CreateVersionedApisixResource(ar)
 			assert.Nil(ginkgo.GinkgoT(), err)
 
 			time.Sleep(3 * time.Second)
