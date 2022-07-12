@@ -52,7 +52,7 @@ spec:
        op: Equal
        value: bar
    backends:
-     serviceName: httpbin
+   - serviceName: httpbin
      servicePort: 80
 ```
 

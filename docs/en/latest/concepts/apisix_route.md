@@ -48,15 +48,15 @@ spec:
       paths:
       - "/foo*"
     backends:
-     - serviceName: foo
-       servicePort: 80
+    - serviceName: foo
+      servicePort: 80
   - name: bar
     match:
       paths:
         - "/bar"
     backends:
-      - serviceName: bar
-        servicePort: 80
+    - serviceName: bar
+      servicePort: 80
 ```
 
 There are two path types can be used, `prefix` and `exact`, default is `exact`,
@@ -86,8 +86,8 @@ spec:
         methods:
         - GET
       backends:
-        - serviceName: foo
-          servicePort: 80
+      - serviceName: foo
+        servicePort: 80
 ```
 
 The `exprs` allows user to configure match conditions with arbitrary predicates in HTTP, such as queries, HTTP headers, Cookie.
@@ -111,8 +111,8 @@ spec:
             op: Equal
             value: "2143"
       backends:
-        - serviceName: foo
-          servicePort: 80
+      - serviceName: foo
+        servicePort: 80
 ```
 
 The above configuration configures an extra route match condition, which asks the
@@ -141,9 +141,9 @@ spec:
         methods:
           - GET
       backends:
-        - serviceName: foo
-          servicePort: 80
-          resolveGranularity: service
+      - serviceName: foo
+        servicePort: 80
+        resolveGranularity: service
 ```
 
 Weight Based Traffic Split
@@ -174,12 +174,12 @@ spec:
             op: RegexMatch
             value: ".*Chrome.*"
       backends:
-        - serviceName: foo
-          servicePort: 80
-          weight: 100
-        - serviceName: bar
-          servicePort: 81
-          weight: 50
+      - serviceName: foo
+        servicePort: 80
+        weight: 100
+      - serviceName: bar
+        servicePort: 81
+        weight: 50
 ```
 
 The above `ApisixRoute` has one route rule, which contains two backends `foo` and `bar`, the weight ratio is `100:50`,
@@ -206,8 +206,8 @@ spec:
         paths:
           - /*
       backends:
-        - serviceName: foo
-          servicePort: 80
+      - serviceName: foo
+        servicePort: 80
       plugins:
         - name: cors
           enable: true
@@ -236,8 +236,8 @@ spec:
         paths:
           - /*
       backends:
-        - serviceName: websocket-server
-          servicePort: 8080
+      - serviceName: websocket-server
+        servicePort: 8080
       websocket: true
 ```
 
@@ -257,7 +257,7 @@ spec:
       protocol: TCP
       match:
         ingressPort: 9100
-      backends:
+      backend:
         serviceName: tcp-server
         servicePort: 8080
 ```
@@ -282,7 +282,7 @@ spec:
       protocol: UDP
       match:
         ingressPort: 9200
-      backends:
+      backend:
         serviceName: udp-server
         servicePort: 53
 ```
