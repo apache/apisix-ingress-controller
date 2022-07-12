@@ -57,7 +57,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 			// ApisixRoute
 			opts := v1.ListOptions{}
 			switch c.cfg.Kubernetes.ApisixRouteVersion {
-			case config.ApisixRouteV2beta3:
+			case config.ApisixV2beta3:
 				retRoutes, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixRoutes(ns).List(ctx, opts)
 				if err != nil {
 					log.Error(err.Error())
@@ -92,7 +92,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 						}
 					}
 				}
-			case config.ApisixRouteV2:
+			case config.ApisixV2:
 				retRoutes, err := c.kubeClient.APISIXClient.ApisixV2().ApisixRoutes(ns).List(ctx, opts)
 				if err != nil {
 					log.Error(err.Error())

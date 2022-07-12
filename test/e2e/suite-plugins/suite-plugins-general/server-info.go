@@ -22,15 +22,7 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-plugins-general: server-info plugin", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
+	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("enable server-info plugin", func() {
 		serverInfoKey := [...]string{"etcd_version", "id", "hostname", "version", "boot_time"}

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
@@ -31,7 +32,7 @@ var _ = ginkgo.Describe("suite-chaos: Chaos Testing", func() {
 		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 		IngressAPISIXReplicas: 1,
 		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
+		APISIXRouteVersion:    config.DefaultAPIVersion,
 	}
 	s := scaffold.NewScaffold(opts)
 	ginkgo.Context("simulate apisix deployment restart", func() {

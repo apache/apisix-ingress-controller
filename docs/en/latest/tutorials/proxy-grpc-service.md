@@ -106,7 +106,7 @@ EOF
 
 ```bash
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: yages
@@ -134,7 +134,7 @@ Inform APISIX SSL configuration through ApisixTls.
 
 ```bash
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixTls
 metadata:
   name: grpc-secret

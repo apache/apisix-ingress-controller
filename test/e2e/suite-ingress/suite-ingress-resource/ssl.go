@@ -20,7 +20,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net/http"
-	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -28,7 +27,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress: SSL Testing", func() {
+var _ = ginkgo.Describe("suite-ingress-resource: SSL Testing", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
 		ginkgo.It("create a SSL from ApisixTls ", func() {
@@ -89,10 +88,7 @@ wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 			err = s.NewApisixTls(tlsName, host, secretName)
 			assert.Nil(ginkgo.GinkgoT(), err, "create tls error")
 			// check ssl in APISIX
-			time.Sleep(10 * time.Second)
-			tls, err := s.ListApisixSsl()
-			assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
-			assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixTlsCreated(1))
 		})
 		ginkgo.It("update a SSL from ApisixTls ", func() {
 			secretName := "test-apisix-tls"
@@ -157,7 +153,7 @@ RU+QPRECgYB6XW24EI5+w3STbpnc6VoTS+sy9I9abTJPYo9LpCJwfMYc9Tg9Cx2K
 			assert.Nil(ginkgo.GinkgoT(), err, "update tls error")
 
 			// check ssl in APISIX
-			time.Sleep(10 * time.Second)
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixTlsCreated(1))
 			tls, err := s.ListApisixSsl()
 			assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
 			assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
@@ -225,7 +221,7 @@ RU+QPRECgYB6XW24EI5+w3STbpnc6VoTS+sy9I9abTJPYo9LpCJwfMYc9Tg9Cx2K
 			assert.Nil(ginkgo.GinkgoT(), err, "create tls error")
 
 			// check ssl in APISIX
-			time.Sleep(10 * time.Second)
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixTlsCreated(1))
 			tls, err := s.ListApisixSsl()
 			assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
 			assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
@@ -235,22 +231,19 @@ RU+QPRECgYB6XW24EI5+w3STbpnc6VoTS+sy9I9abTJPYo9LpCJwfMYc9Tg9Cx2K
 			err = s.DeleteApisixTls(tlsName, host, secretName)
 			assert.Nil(ginkgo.GinkgoT(), err, "delete tls error")
 			// check ssl in APISIX
-			time.Sleep(10 * time.Second)
-			tls, err = s.ListApisixSsl()
-			assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
-			assert.Len(ginkgo.GinkgoT(), tls, 0, "tls number not expect")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixTlsCreated(0))
 		})
 	}
 
-	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-resource: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold)
 	})
-	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })
 
-var _ = ginkgo.Describe("suite-ingress: ApisixTls mTLS Test", func() {
+var _ = ginkgo.Describe("suite-ingress-resource: ApisixTls mTLS Test", func() {
 	// RootCA -> Server
 	// RootCA -> UserCert
 	// These certs come from mTLS practice
@@ -487,10 +480,7 @@ yXwQ0N/qK7uMh9w0d+yac8h8bjMa
 			err = s.NewApisixTlsWithClientCA(tlsName, host, serverCertSecret, clientCASecret)
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixTls with client CA error")
 			// check ssl in APISIX
-			time.Sleep(10 * time.Second)
-			apisixSsls, err := s.ListApisixSsl()
-			assert.Nil(ginkgo.GinkgoT(), err, "list ssl error")
-			assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "ssl number not expect")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixTlsCreated(1))
 
 			// create route
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -512,11 +502,7 @@ spec:
       servicePort: %d
 `, backendSvc, backendSvcPort[0])
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
-			time.Sleep(10 * time.Second)
-
-			apisixRoutes, err := s.ListApisixRoutes()
-			assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
-			assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 			// Without Client Cert
 			s.NewAPISIXHttpsClient(host).GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusBadRequest).Body().Raw()
@@ -534,10 +520,10 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-resource: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold)
 	})
-	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })

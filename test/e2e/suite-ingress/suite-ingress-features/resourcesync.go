@@ -20,14 +20,14 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/apache/apisix-ingress-controller/pkg/id"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress: apisix resource sync", func() {
+var _ = ginkgo.Describe("suite-ingress-features: apisix resource sync", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.JustBeforeEach(func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
@@ -217,24 +217,18 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                       "sync",
-			Kubeconfig:                 scaffold.GetKubeconfig(),
-			APISIXConfigPath:           "testdata/apisix-gw-config.yaml",
 			IngressAPISIXReplicas:      1,
-			HTTPBinServicePort:         80,
 			ApisixResourceVersion:      scaffold.ApisixResourceVersion().V2beta3,
 			ApisixResourceSyncInterval: "60s",
 		}))
 	})
-	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                       "sync",
-			Kubeconfig:                 scaffold.GetKubeconfig(),
-			APISIXConfigPath:           "testdata/apisix-gw-config.yaml",
 			IngressAPISIXReplicas:      1,
-			HTTPBinServicePort:         80,
 			ApisixResourceVersion:      scaffold.ApisixResourceVersion().V2,
 			ApisixResourceSyncInterval: "60s",
 		}))
