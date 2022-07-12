@@ -239,22 +239,20 @@ func (c *Controller) initWhenStartLeading() {
 	switch c.cfg.Kubernetes.APIVersion {
 	case config.ApisixV2beta3:
 		apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
-		// to do list:
-		// ApisixRoute
-		// ApisixPluginConfig
-		// ApisixTls
-		// ApisixConsumer
-		// ApisixClusterConfig
+		// to do ApisixRoute
+		apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
+		apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
+		apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
+		apisixClusterConfigInformer = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Informer()
 	case config.ApisixV2:
 		apisixUpstreamInformer = apisixFactory.Apisix().V2().ApisixUpstreams().Informer()
-		// to do list:
-		// ApisixRoute
-		// ApisixPluginConfig
-		// ApisixTls
-		// ApisixConsumer
-		// ApisixClusterConfig
+		// to do ApisixRoute
+		apisixPluginConfigInformer = apisixFactory.Apisix().V2().ApisixPluginConfigs().Informer()
+		apisixTlsInformer = apisixFactory.Apisix().V2().ApisixTlses().Informer()
+		apisixConsumerInformer = apisixFactory.Apisix().V2().ApisixConsumers().Informer()
+		apisixClusterConfigInformer = apisixFactory.Apisix().V2().ApisixClusterConfigs().Informer()
 	default:
-		panic(fmt.Errorf("unsupported ApisixUpstream version %v", c.cfg.Kubernetes.APIVersion))
+		panic(fmt.Errorf("unsupported API version %v", c.cfg.Kubernetes.APIVersion))
 	}
 
 	if c.cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1 {
@@ -274,42 +272,6 @@ func (c *Controller) initWhenStartLeading() {
 		apisixRouteInformer = apisixFactory.Apisix().V2().ApisixRoutes().Informer()
 	default:
 		panic(fmt.Errorf("unsupported ApisixRoute version %s", c.cfg.Kubernetes.ApisixRouteVersion))
-	}
-
-	switch c.cfg.Kubernetes.ApisixTlsVersion {
-	case config.ApisixV2beta3:
-		apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
-	case config.ApisixV2:
-		apisixTlsInformer = apisixFactory.Apisix().V2().ApisixTlses().Informer()
-	default:
-		panic(fmt.Errorf("unsupported ApisixTls version %s", c.cfg.Kubernetes.ApisixTlsVersion))
-	}
-
-	switch c.cfg.Kubernetes.ApisixClusterConfigVersion {
-	case config.ApisixV2beta3:
-		apisixClusterConfigInformer = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Informer()
-	case config.ApisixV2:
-		apisixClusterConfigInformer = apisixFactory.Apisix().V2().ApisixClusterConfigs().Informer()
-	default:
-		panic(fmt.Errorf("unsupported ApisixClusterConfig version %v", c.cfg.Kubernetes.ApisixClusterConfigVersion))
-	}
-
-	switch c.cfg.Kubernetes.ApisixConsumerVersion {
-	case config.ApisixV2beta3:
-		apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
-	case config.ApisixV2:
-		apisixConsumerInformer = apisixFactory.Apisix().V2().ApisixConsumers().Informer()
-	default:
-		panic(fmt.Errorf("unsupported ApisixConsumer version %v", c.cfg.Kubernetes.ApisixConsumerVersion))
-	}
-
-	switch c.cfg.Kubernetes.ApisixPluginConfigVersion {
-	case config.ApisixV2beta3:
-		apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
-	case config.ApisixV2:
-		apisixPluginConfigInformer = apisixFactory.Apisix().V2().ApisixPluginConfigs().Informer()
-	default:
-		panic(fmt.Errorf("unsupported ApisixPluginConfig version %v", c.cfg.Kubernetes.ApisixPluginConfigVersion))
 	}
 
 	c.podInformer = kubeFactory.Core().V1().Pods().Informer()

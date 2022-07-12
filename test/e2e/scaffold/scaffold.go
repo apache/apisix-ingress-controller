@@ -92,7 +92,7 @@ var (
 	apisixResourceVersion = &apisixResourceVersionInfo{
 		V2:      config.ApisixV2,
 		V2beta3: config.ApisixV2beta3,
-		Default: config.DefaultApisixVersion,
+		Default: config.DefaultAPIVersion,
 	}
 
 	createVersionedApisixResourceMap = map[string]struct{}{
