@@ -48,7 +48,7 @@ spec:
  - name: cors
    enable: true
 `)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixPluginConfig(apc))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 
 			err := s.EnsureNumApisixPluginConfigCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
@@ -113,7 +113,7 @@ spec:
    config:
     body: "my custom body"
 `)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixPluginConfig(apc))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -163,7 +163,7 @@ spec:
    config:
     body: "my custom body"
 `)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixPluginConfig(apc))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -215,7 +215,7 @@ spec:
    config:
     body: "my custom body"
 `)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixPluginConfig(apc))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -262,7 +262,7 @@ spec:
    config:
     body: "my custom body"
 `)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixPluginConfig(apc))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 
 			err = s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
@@ -289,7 +289,7 @@ spec:
  - name: cors
    enable: true
 `)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixPluginConfig(apc))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
@@ -347,7 +347,7 @@ spec:
         allow_headers: x-from-ingress
         allow_credential: true
 `)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixPluginConfig(apc))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
@@ -414,7 +414,7 @@ spec:
     - name: cors
       enable: false
 `)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixPluginConfig(apc))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
@@ -466,7 +466,7 @@ spec:
   - name: cors
     enable: true
 `)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixPluginConfig(apc))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
@@ -515,7 +515,7 @@ spec:
   - name: cors
     enable: false
 `)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixPluginConfig(apc))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 			err = s.EnsureNumApisixUpstreamsCreated(1)

@@ -19,7 +19,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -51,11 +50,6 @@ type Options struct {
 	APISIXConfigPath           string
 	IngressAPISIXReplicas      int
 	HTTPBinServicePort         int
-	APISIXRouteVersion         string
-	APISIXTlsVersion           string
-	APISIXConsumerVersion      string
-	ApisixPluginConfigVersion  string
-	APISIXClusterConfigVersion string
 	APISIXAdminAPIKey          string
 	EnableWebhooks             bool
 	APISIXPublishAddress       string
@@ -91,12 +85,21 @@ type Scaffold struct {
 type apisixResourceVersionInfo struct {
 	V2      string
 	V2beta3 string
+	Default string
 }
 
 var (
 	apisixResourceVersion = &apisixResourceVersionInfo{
 		V2:      config.ApisixV2,
 		V2beta3: config.ApisixV2beta3,
+		Default: config.DefaultApisixVersion,
+	}
+
+	createVersionedApisixResourceMap = map[string]struct{}{
+		"ApisixRoute":        struct{}{},
+		"ApisixConsumer":     struct{}{},
+		"ApisixPluginConfig": struct{}{},
+		"ApisixUpstream":     struct{}{},
 	}
 )
 
@@ -122,38 +125,8 @@ func GetKubeconfig() string {
 
 // NewScaffold creates an e2e test scaffold.
 func NewScaffold(o *Options) *Scaffold {
-	if o.ApisixResourceVersion == ApisixResourceVersion().V2 {
-		if o.APISIXRouteVersion == "" {
-			o.APISIXRouteVersion = config.ApisixV2
-		}
-		if o.APISIXTlsVersion == "" {
-			o.APISIXTlsVersion = config.ApisixV2
-		}
-		if o.APISIXConsumerVersion == "" {
-			o.APISIXConsumerVersion = config.ApisixV2
-		}
-		if o.ApisixPluginConfigVersion == "" {
-			o.ApisixPluginConfigVersion = config.ApisixV2
-		}
-		if o.APISIXClusterConfigVersion == "" {
-			o.APISIXClusterConfigVersion = config.ApisixV2
-		}
-	} else {
-		if o.APISIXRouteVersion == "" {
-			o.APISIXRouteVersion = config.ApisixV2beta3
-		}
-		if o.APISIXTlsVersion == "" {
-			o.APISIXTlsVersion = config.ApisixV2beta3
-		}
-		if o.APISIXConsumerVersion == "" {
-			o.APISIXConsumerVersion = config.ApisixV2beta3
-		}
-		if o.ApisixPluginConfigVersion == "" {
-			o.ApisixPluginConfigVersion = config.ApisixV2beta3
-		}
-		if o.APISIXClusterConfigVersion == "" {
-			o.APISIXClusterConfigVersion = config.ApisixV2beta3
-		}
+	if o.ApisixResourceVersion == "" {
+		o.ApisixResourceVersion = ApisixResourceVersion().Default
 	}
 	if o.APISIXAdminAPIKey == "" {
 		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
@@ -184,11 +157,12 @@ func NewScaffold(o *Options) *Scaffold {
 }
 
 // NewDefaultScaffold creates a scaffold with some default options.
+// apisix-version default v2beta3
 func NewDefaultScaffold() *Scaffold {
 	opts := &Options{
 		Name:                  "default",
 		IngressAPISIXReplicas: 1,
-		ApisixResourceVersion: ApisixResourceVersion().V2beta3,
+		ApisixResourceVersion: ApisixResourceVersion().Default,
 	}
 	return NewScaffold(opts)
 }
@@ -199,6 +173,16 @@ func NewDefaultV2Scaffold() *Scaffold {
 		Name:                  "default",
 		IngressAPISIXReplicas: 1,
 		ApisixResourceVersion: ApisixResourceVersion().V2,
+	}
+	return NewScaffold(opts)
+}
+
+// NewDefaultV2beta3Scaffold creates a scaffold with some default options.
+func NewDefaultV2beta3Scaffold() *Scaffold {
+	opts := &Options{
+		Name:                  "default",
+		IngressAPISIXReplicas: 1,
+		ApisixResourceVersion: ApisixResourceVersion().V2beta3,
 	}
 	return NewScaffold(opts)
 }
@@ -599,47 +583,24 @@ func generateWebhookCert(ns string) error {
 		ginkgo.GinkgoT().Errorf("%s", output)
 		return fmt.Errorf("failed to execute the script: %v", err)
 	}
-
 	return nil
-}
-
-func (s *Scaffold) CreateVersionedApisixPluginConfig(yml string) error {
-	if !strings.Contains(yml, "kind: ApisixPluginConfig") {
-		return errors.New("not a ApisixPluginConfig")
-	}
-
-	ac := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
-	return s.CreateResourceFromString(ac)
 }
 
 func (s *Scaffold) CreateVersionedApisixResource(yml string) error {
 	kindValue := s.getKindValue(yml)
-	switch kindValue {
-	case "ApisixRoute":
-		ar := s.replaceApiVersion(yml, s.opts.APISIXRouteVersion)
-		return s.CreateResourceFromString(ar)
-	case "ApisixConsumer":
-		ac := s.replaceApiVersion(yml, s.opts.APISIXConsumerVersion)
-		return s.CreateResourceFromString(ac)
-	case "ApisixPluginConfig":
-		apc := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
-		return s.CreateResourceFromString(apc)
+	if _, ok := createVersionedApisixResourceMap[kindValue]; ok {
+		resource := s.replaceApiVersion(yml, s.opts.ApisixResourceVersion)
+		return s.CreateResourceFromString(resource)
 	}
 	return fmt.Errorf("the resource %s does not support", kindValue)
 }
 
 func (s *Scaffold) CreateVersionedApisixResourceWithNamespace(yml, namespace string) error {
 	kindValue := s.getKindValue(yml)
-	switch kindValue {
-	case "ApisixRoute":
-		ar := s.replaceApiVersion(yml, s.opts.APISIXRouteVersion)
-		return s.CreateResourceFromStringWithNamespace(ar, namespace)
-	case "ApisixConsumer":
-		ac := s.replaceApiVersion(yml, s.opts.APISIXConsumerVersion)
-		return s.CreateResourceFromStringWithNamespace(ac, namespace)
-	case "ApisixPluginConfig":
-		apc := s.replaceApiVersion(yml, s.opts.ApisixPluginConfigVersion)
-		return s.CreateResourceFromStringWithNamespace(apc, namespace)
+	if _, ok := createVersionedApisixResourceMap[kindValue]; ok {
+		resource := s.replaceApiVersion(yml, s.opts.ApisixResourceVersion)
+		return s.CreateResourceFromStringWithNamespace(resource, namespace)
+
 	}
 	return fmt.Errorf("the resource %s does not support", kindValue)
 }

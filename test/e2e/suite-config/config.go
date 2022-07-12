@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
