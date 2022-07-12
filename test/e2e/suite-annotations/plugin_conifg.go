@@ -75,15 +75,7 @@ func _assert(s *scaffold.Scaffold, ing string) {
 }
 
 var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1 with ApisixPluginConfig", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
+	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("networking/v1", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		_createAPC(s)
@@ -114,15 +106,7 @@ spec:
 })
 
 var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1beta1 with ApisixPluginConfig", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
+	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("networking/v1beta1", func() {
 		_createAPC(s)
 
@@ -151,15 +135,7 @@ spec:
 })
 
 var _ = ginkgo.Describe("suite-annotations: annotations.extensions/v1beta1 with ApisixPluginConfig", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
+	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("extensions/v1beta1", func() {
 		_createAPC(s)
 
