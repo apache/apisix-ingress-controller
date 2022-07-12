@@ -51,8 +51,8 @@ spec:
          name: X-Foo
        op: Equal
        value: bar
-   backend:
-     serviceName: httpbin
+   backends:
+   - serviceName: httpbin
      servicePort: 80
 ```
 
