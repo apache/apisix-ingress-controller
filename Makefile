@@ -49,14 +49,31 @@ build:
 		-ldflags $(GO_LDFLAGS) \
 		main.go
 
+### clean-image:		clean apisix-ingress-controller image
+.PHONY: clean-image
+clean-image: ## Removes local image
+	echo "removing old image $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)"
+	@docker rmi -f $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG) || true
+
 ### build-image:          Build apisix-ingress-controller image
 .PHONY: build-image
 build-image:
 	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true .
 
+### pack-ingress-image:  Build and push Ingress image used in e2e test suites to kind or custom registry.
+.PHONY: pack-ingress-image
+pack-ingress-image:
+	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
+	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+
+### pack-images: Build and push images used in e2e test suites to kind or custom registry.
+.PHONY: pack-images
+pack-images: build-images push-images
+
 ### build-image:          Build apisix-ingress-controller image
 .PHONY: build-images
-build-image:
+build-images:
 	docker pull apache/apisix:2.13.1-alpine
 	docker tag apache/apisix:2.13.1-alpine $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
 
@@ -78,10 +95,18 @@ build-image:
 	docker pull busybox:1.28
 	docker tag  busybox:1.28 $(REGISTRY)/busybox:$(IMAGE_TAG)
 
-.PHONY: clean-image
-clean-image: ## Removes local image
-	echo "removing old image $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)"
-	@docker rmi -f $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG) || true
+### push-images:		Push images used in e2e test suites to kind or custom registry.
+.PHONY: push-images
+push-images:
+ifeq ($(E2E_SKIP_BUILD), 0)
+	docker push $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
+	docker push $(REGISTRY)/bitnami/etcd:$(IMAGE_TAG)
+	docker push $(REGISTRY)/kennethreitz/httpbin:$(IMAGE_TAG)
+	docker push $(REGISTRY)/test-backend:$(IMAGE_TAG)
+	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+	docker push $(REGISTRY)/jmalloc/echo-server:$(IMAGE_TAG)
+	docker push $(REGISTRY)/busybox:$(IMAGE_TAG)
+endif
 
 ### lint:                 Do static lint check
 .PHONY: lint
@@ -95,7 +120,7 @@ unit-test:
 
 ### e2e-test:             Run e2e test cases (in existing clusters directly)
 .PHONY: e2e-test
-e2e-test: ginkgo-check push-images e2e-wolf-rbac
+e2e-test: ginkgo-check e2e-wolf-rbac
 	kubectl apply -k $(PWD)/samples/deploy/crd
 	kubectl apply -f $(PWD)/samples/deploy/gateway-api
 	cd test/e2e \
@@ -105,7 +130,7 @@ e2e-test: ginkgo-check push-images e2e-wolf-rbac
 
 ### e2e-test-local:        Run e2e test cases (kind is required)
 .PHONY: e2e-test-local
-e2e-test-local: kind-up e2e-test
+e2e-test-local: kind-up pack-images e2e-test
 
 .PHONY: ginkgo-check
 ginkgo-check:
@@ -113,30 +138,6 @@ ifeq ("$(wildcard $(GINKGO))", "")
 	@echo "ERROR: Need to install ginkgo first, run: go get -u github.com/onsi/ginkgo/v2/ginkgo@v2.1.4 or go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo@v2.1.4"
 	exit 1
 endif
-
-
-### push-ingress-images:  Build and push Ingress image used in e2e test suites to kind or custom registry.
-.PHONY: pack-ingress-image
-push-ingress-images:
-	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
-	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
-	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
-
-### push-images:  Push images used in e2e test suites to kind or custom registry.
-.PHONY: push-images
-push-images:
-ifeq ($(E2E_SKIP_BUILD), 0)
-	docker push $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
-	docker push $(REGISTRY)/bitnami/etcd:$(IMAGE_TAG)
-	docker push $(REGISTRY)/kennethreitz/httpbin:$(IMAGE_TAG)
-	docker push $(REGISTRY)/test-backend:$(IMAGE_TAG)
-	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
-	docker push $(REGISTRY)/jmalloc/echo-server:$(IMAGE_TAG)
-	docker push $(REGISTRY)/busybox:$(IMAGE_TAG)
-endif
-
-.PHONY: pack-images
-push-images: build-images push-images
 
 ### kind-up:              Launch a Kubernetes cluster with a image registry by Kind.
 .PHONY: kind-up
@@ -241,3 +242,15 @@ ifneq ("$(E2E_FOCUS)", "")
 	&& chmod +x ./test/e2e/testdata/wolf-rbac/cmd.sh \
 	&& ./test/e2e/testdata/wolf-rbac/cmd.sh start
 endif
+
+### kind-load-image:		Load the image to the kind cluster
+.PHONY: kind-load-image
+kind-load-image:
+	kind load docker-image --name=apisix \
+			localhost:5000/apache/apisix:dev \
+            localhost:5000/bitnami/etcd:dev \
+            localhost:5000/apache/apisix-ingress-controller:dev \
+            localhost:5000/kennethreitz/httpbin:dev \
+            localhost:5000/test-backend:dev \
+            localhost:5000/jmalloc/echo-server:dev \
+            localhost:5000/busybox:dev

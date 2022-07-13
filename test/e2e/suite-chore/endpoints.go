@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package endpoints
+package chore
 
 import (
 	"fmt"
@@ -24,7 +24,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-endpoints: endpoints", func() {
+var _ = ginkgo.Describe("suite-chore: endpoints", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("ignore applied only if there is an ApisixRoute referenced", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -110,15 +110,15 @@ spec:
 			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusServiceUnavailable)
 		})
 	}
-	ginkgo.Describe("suite-endpoints: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-chore: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold())
 	})
-	ginkgo.Describe("suite-endpoints: scaffold v2", func() {
+	ginkgo.Describe("suite-chore: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})
 })
 
-var _ = ginkgo.Describe("suite-endpoints: port usage", func() {
+var _ = ginkgo.Describe("suite-chore: port usage", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("service port != target port", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -159,7 +159,7 @@ spec:
 			assert.Equal(ginkgo.GinkgoT(), ups[0].Nodes[2].Port, 80)
 		})
 	}
-	ginkgo.Describe("suite-endpoints: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-chore: scaffold v2beta3", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                  "endpoints-port",
 			IngressAPISIXReplicas: 1,
@@ -167,7 +167,7 @@ spec:
 			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2beta3,
 		}))
 	})
-	ginkgo.Describe("suite-endpoints: scaffold v2", func() {
+	ginkgo.Describe("suite-chore: scaffold v2", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                  "endpoints-port",
 			IngressAPISIXReplicas: 1,

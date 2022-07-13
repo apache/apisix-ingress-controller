@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package config
+package chore
 
 import (
 	"context"
@@ -27,7 +27,31 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-config: deploy ingress controller with config", func() {
+const (
+	_ingressAPISIXConfigMapTemplate = `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-apisix-controller-config
+data:
+  config.yaml: |
+    apisix:
+      default_cluster_base_url: "{{.DEFAULT_CLUSTER_BASE_URL}}"
+      default_cluster_admin_key: "{{.DEFAULT_CLUSTER_ADMIN_KEY}}"
+    log_level: "debug"
+    log_output: "stdout"
+    http_listen: ":8080"
+    https_listen: ":8443"
+    enable_profiling: true
+    kubernetes:
+      namespace_selector:
+      - %s
+      apisix_route_version: "apisix.apache.org/v2beta3"
+      watch_endpoint_slices: true
+`
+)
+
+var _ = ginkgo.Describe("suite-chore: deploy ingress controller with config", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("use configmap with env", func() {
 		label := fmt.Sprintf("apisix.ingress.watch=%s", s.Namespace())

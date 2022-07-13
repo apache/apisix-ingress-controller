@@ -97,9 +97,10 @@ jobs:
           TAG: dev
           ARCH: amd64
           REGISTRY: localhost:5000
+          ENABLE_PROXY: "false"
         run: |
           echo "building images..."
-          make clean-image build-image
+          make clean-image build-images
 
           echo "creating images cache..."
           docker save \
@@ -155,22 +156,27 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install ginkgo
+        run: |
+          go install github.com/onsi/ginkgo/v2/ginkgo@v2.1.4
+          sudo cp ~/go/bin/ginkgo /usr/local/bin
+
       - name: cache
         uses: actions/download-artifact@v2 # v2
         with:
           name: docker.tar.gz
-
-      - name: Install ginkgo
-        shell: bash
-        run: |
-          go install github.com/onsi/ginkgo/v2/ginkgo@v2.1.4
-          sudo cp ~/go/bin/ginkgo /usr/local/bin
 
       - name: Create K8s cluster
         shell: bash
         run: |
           make kind-up
           kubectl wait --for=condition=Ready nodes --all
+
+      - name: Load images from cache
+        run: |
+          echo "loading docker images..."
+          pigz -dc docker.tar.gz | docker load
+          make push-images
 
       - name: Run E2E test suite
         shell: bash
