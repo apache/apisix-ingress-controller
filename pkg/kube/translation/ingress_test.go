@@ -31,12 +31,14 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
+	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -332,6 +334,7 @@ func testTranslateIngressV1ReferenceUpstreamVersion(t *testing.T, apiVersoin str
 					"k8s.apisix.apache.org/use-regex":                                  "true",
 					path.Join(annotations.AnnotationsPrefix, "enable-cors"):            "true",
 					path.Join(annotations.AnnotationsPrefix, "allowlist-source-range"): "127.0.0.1",
+					path.Join(annotations.AnnotationsPrefix, "plugin-config-name"):     "echo-and-cors-apc",
 				},
 			},
 			Spec: networkingv1.IngressSpec{
@@ -416,19 +419,23 @@ func testTranslateIngressV1ReferenceUpstreamVersion(t *testing.T, apiVersoin str
 		<-processCh
 		<-processCh
 		ctx, err := tr.translateIngressV1(ing, false)
+		annoExtractor := annotations.NewExtractor(ing.Annotations)
+		pluginConfigName := annoExtractor.GetStringAnnotation(path.Join(annotations.AnnotationsPrefix, "plugin-config-name"))
+
 		assert.Nil(t, err)
 		assert.Len(t, ctx.Routes, 2)
 		assert.Len(t, ctx.Upstreams, 2)
-		assert.Len(t, ctx.PluginConfigs, 2)
 
 		assert.Equal(t, []string{"/foo", "/foo/*"}, ctx.Routes[0].Uris)
 		assert.Equal(t, ctx.Upstreams[0].ID, ctx.Routes[0].UpstreamId)
-		assert.Equal(t, ctx.PluginConfigs[0].ID, ctx.Routes[0].PluginConfigId)
 		assert.Equal(t, "apisix.apache.org", ctx.Routes[0].Host)
+		assert.Len(t, ctx.Routes[0].Plugins, 2)
+		assert.Equal(t, ctx.Routes[0].PluginConfigId, id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, pluginConfigName)))
 		assert.Equal(t, []string{"/bar"}, ctx.Routes[1].Uris)
 		assert.Equal(t, ctx.Upstreams[1].ID, ctx.Routes[1].UpstreamId)
-		assert.Equal(t, ctx.PluginConfigs[1].ID, ctx.Routes[1].PluginConfigId)
 		assert.Equal(t, "apisix.apache.org", ctx.Routes[1].Host)
+		assert.Len(t, ctx.Routes[1].Plugins, 2)
+		assert.Equal(t, ctx.Routes[1].PluginConfigId, id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, pluginConfigName)))
 
 		assert.Equal(t, "roundrobin", ctx.Upstreams[0].Type)
 		assert.Equal(t, "http", ctx.Upstreams[0].Scheme)
@@ -445,9 +452,6 @@ func testTranslateIngressV1ReferenceUpstreamVersion(t *testing.T, apiVersoin str
 		assert.Equal(t, "192.168.1.1", ctx.Upstreams[1].Nodes[0].Host)
 		assert.Equal(t, 9443, ctx.Upstreams[1].Nodes[1].Port)
 		assert.Equal(t, "192.168.1.2", ctx.Upstreams[1].Nodes[1].Host)
-
-		assert.Len(t, ctx.PluginConfigs[0].Plugins, 2)
-		assert.Len(t, ctx.PluginConfigs[1].Plugins, 2)
 	}
 }
 
@@ -674,6 +678,7 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 				path.Join(annotations.AnnotationsPrefix, "enable-cors"):            "true",
 				path.Join(annotations.AnnotationsPrefix, "allowlist-source-range"): "127.0.0.1",
 				path.Join(annotations.AnnotationsPrefix, "enable-cors222"):         "true",
+				path.Join(annotations.AnnotationsPrefix, "plugin-config-name"):     "echo-and-cors-apc",
 			},
 		},
 		Spec: networkingv1beta1.IngressSpec{
@@ -756,17 +761,24 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	<-processCh
 	<-processCh
 	ctx, err := tr.translateIngressV1beta1(ing, false)
+	annoExtractor := annotations.NewExtractor(ing.Annotations)
+	pluginConfigName := annoExtractor.GetStringAnnotation(path.Join(annotations.AnnotationsPrefix, "plugin-config-name"))
+
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
-	assert.Len(t, ctx.PluginConfigs, 2)
 
 	assert.Equal(t, []string{"/foo", "/foo/*"}, ctx.Routes[0].Uris)
 	assert.Equal(t, ctx.Upstreams[0].ID, ctx.Routes[0].UpstreamId)
 	assert.Equal(t, "apisix.apache.org", ctx.Routes[0].Host)
+	assert.Len(t, ctx.Routes[0].Plugins, 2)
+	assert.Equal(t, ctx.Routes[0].PluginConfigId, id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, pluginConfigName)))
+
 	assert.Equal(t, []string{"/bar"}, ctx.Routes[1].Uris)
 	assert.Equal(t, ctx.Upstreams[1].ID, ctx.Routes[1].UpstreamId)
 	assert.Equal(t, "apisix.apache.org", ctx.Routes[1].Host)
+	assert.Len(t, ctx.Routes[1].Plugins, 2)
+	assert.Equal(t, ctx.Routes[1].PluginConfigId, id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, pluginConfigName)))
 
 	assert.Equal(t, "roundrobin", ctx.Upstreams[0].Type)
 	assert.Equal(t, "http", ctx.Upstreams[0].Scheme)
@@ -783,9 +795,6 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	assert.Equal(t, "192.168.1.1", ctx.Upstreams[1].Nodes[0].Host)
 	assert.Equal(t, 9443, ctx.Upstreams[1].Nodes[1].Port)
 	assert.Equal(t, "192.168.1.2", ctx.Upstreams[1].Nodes[1].Host)
-
-	assert.Len(t, ctx.PluginConfigs[0].Plugins, 2)
-	assert.Len(t, ctx.PluginConfigs[1].Plugins, 2)
 }
 
 func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
@@ -800,6 +809,7 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 				path.Join(annotations.AnnotationsPrefix, "enable-cors"):            "true",
 				path.Join(annotations.AnnotationsPrefix, "allowlist-source-range"): "127.0.0.1",
 				path.Join(annotations.AnnotationsPrefix, "enable-cors222"):         "true",
+				path.Join(annotations.AnnotationsPrefix, "plugin-config-name"):     "echo-and-cors-apc",
 			},
 		},
 		Spec: extensionsv1beta1.IngressSpec{
@@ -882,17 +892,24 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 	<-processCh
 	<-processCh
 	ctx, err := tr.translateIngressExtensionsV1beta1(ing, false)
+	annoExtractor := annotations.NewExtractor(ing.Annotations)
+	pluginConfigName := annoExtractor.GetStringAnnotation(path.Join(annotations.AnnotationsPrefix, "plugin-config-name"))
+
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
 	assert.Len(t, ctx.Upstreams, 2)
-	assert.Len(t, ctx.PluginConfigs, 2)
 
 	assert.Equal(t, []string{"/foo", "/foo/*"}, ctx.Routes[0].Uris)
 	assert.Equal(t, ctx.Upstreams[0].ID, ctx.Routes[0].UpstreamId)
 	assert.Equal(t, "apisix.apache.org", ctx.Routes[0].Host)
+	assert.Len(t, ctx.Routes[0].Plugins, 2)
+	assert.Equal(t, ctx.Routes[0].PluginConfigId, id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, pluginConfigName)))
+
 	assert.Equal(t, []string{"/bar"}, ctx.Routes[1].Uris)
 	assert.Equal(t, ctx.Upstreams[1].ID, ctx.Routes[1].UpstreamId)
 	assert.Equal(t, "apisix.apache.org", ctx.Routes[1].Host)
+	assert.Len(t, ctx.Routes[1].Plugins, 2)
+	assert.Equal(t, ctx.Routes[1].PluginConfigId, id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, pluginConfigName)))
 
 	assert.Equal(t, "roundrobin", ctx.Upstreams[0].Type)
 	assert.Equal(t, "http", ctx.Upstreams[0].Scheme)
@@ -909,9 +926,6 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 	assert.Equal(t, "192.168.1.1", ctx.Upstreams[1].Nodes[0].Host)
 	assert.Equal(t, 9443, ctx.Upstreams[1].Nodes[1].Port)
 	assert.Equal(t, "192.168.1.2", ctx.Upstreams[1].Nodes[1].Host)
-
-	assert.Len(t, ctx.PluginConfigs[0].Plugins, 2)
-	assert.Len(t, ctx.PluginConfigs[1].Plugins, 2)
 }
 
 func TestTranslateIngressExtensionsV1beta1BackendWithInvalidService(t *testing.T) {
