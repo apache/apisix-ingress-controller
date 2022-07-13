@@ -54,6 +54,35 @@ build:
 build-image:
 	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true .
 
+### build-image:          Build apisix-ingress-controller image
+.PHONY: build-images
+build-image:
+	docker pull apache/apisix:2.13.1-alpine
+	docker tag apache/apisix:2.13.1-alpine $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
+
+	docker pull bitnami/etcd:3.4.14-debian-10-r0
+	docker tag bitnami/etcd:3.4.14-debian-10-r0 $(REGISTRY)/bitnami/etcd:$(IMAGE_TAG)
+
+	docker pull kennethreitz/httpbin
+	docker tag kennethreitz/httpbin $(REGISTRY)/kennethreitz/httpbin:$(IMAGE_TAG)
+
+	docker build -t test-backend:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) ./test/e2e/testbackend
+	docker tag test-backend:$(IMAGE_TAG) $(REGISTRY)/test-backend:$(IMAGE_TAG)
+
+	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
+	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+
+	docker pull jmalloc/echo-server:latest
+	docker tag  jmalloc/echo-server:latest $(REGISTRY)/jmalloc/echo-server:$(IMAGE_TAG)
+
+	docker pull busybox:1.28
+	docker tag  busybox:1.28 $(REGISTRY)/busybox:$(IMAGE_TAG)
+
+.PHONY: clean-image
+clean-image: ## Removes local image
+	echo "removing old image $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)"
+	@docker rmi -f $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG) || true
+
 ### lint:                 Do static lint check
 .PHONY: lint
 lint:
@@ -87,7 +116,7 @@ endif
 
 
 ### push-ingress-images:  Build and push Ingress image used in e2e test suites to kind or custom registry.
-.PHONY: push-ingress-images
+.PHONY: pack-ingress-image
 push-ingress-images:
 	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
@@ -97,34 +126,17 @@ push-ingress-images:
 .PHONY: push-images
 push-images:
 ifeq ($(E2E_SKIP_BUILD), 0)
-	docker pull apache/apisix:2.13.1-alpine
-	docker tag apache/apisix:2.13.1-alpine $(REGISTRY)/apache/apisix:dev
-	docker push $(REGISTRY)/apache/apisix:dev
-
-	docker pull bitnami/etcd:3.4.14-debian-10-r0
-	docker tag bitnami/etcd:3.4.14-debian-10-r0 $(REGISTRY)/bitnami/etcd:3.4.14-debian-10-r0
-	docker push $(REGISTRY)/bitnami/etcd:3.4.14-debian-10-r0
-
-	docker pull kennethreitz/httpbin
-	docker tag kennethreitz/httpbin $(REGISTRY)/kennethreitz/httpbin
-	docker push $(REGISTRY)/kennethreitz/httpbin
-
-	docker build -t test-backend:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) ./test/e2e/testbackend
-	docker tag test-backend:$(IMAGE_TAG) $(REGISTRY)/test-backend:$(IMAGE_TAG)
+	docker push $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
+	docker push $(REGISTRY)/bitnami/etcd:$(IMAGE_TAG)
+	docker push $(REGISTRY)/kennethreitz/httpbin:$(IMAGE_TAG)
 	docker push $(REGISTRY)/test-backend:$(IMAGE_TAG)
-
-	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
-	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
-
-	docker pull jmalloc/echo-server:latest
-	docker tag  jmalloc/echo-server:latest $(REGISTRY)/jmalloc/echo-server:latest
-	docker push $(REGISTRY)/jmalloc/echo-server:latest
-
-	docker pull busybox:1.28
-	docker tag  busybox:1.28 $(REGISTRY)/busybox:1.28
-	docker push $(REGISTRY)/busybox:1.28
+	docker push $(REGISTRY)/jmalloc/echo-server:$(IMAGE_TAG)
+	docker push $(REGISTRY)/busybox:$(IMAGE_TAG)
 endif
+
+.PHONY: pack-images
+push-images: build-images push-images
 
 ### kind-up:              Launch a Kubernetes cluster with a image registry by Kind.
 .PHONY: kind-up

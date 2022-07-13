@@ -40,7 +40,7 @@ metadata:
 spec:
   containers:
   - name: websocket-server
-    image: localhost:5000/jmalloc/echo-server:latest
+    image: localhost:5000/jmalloc/echo-server:dev
     ports:
     - containerPort: 8080
 ---
@@ -126,7 +126,7 @@ metadata:
 spec:
   containers:
   - name: websocket-server
-    image: localhost:5000/jmalloc/echo-server:latest
+    image: localhost:5000/jmalloc/echo-server:dev
     ports:
     - containerPort: 8080
 ---
@@ -210,7 +210,7 @@ metadata:
 spec:
   containers:
   - name: websocket-server
-    image: localhost:5000/jmalloc/echo-server:latest
+    image: localhost:5000/jmalloc/echo-server:dev
     ports:
     - containerPort: 8080
 ---

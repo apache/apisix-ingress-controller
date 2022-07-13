@@ -31,9 +31,15 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v2
       with:
         submodules: recursive
+
+    - name: cache
+      uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741 # v2
+      with:
+        name: docker.tar.gz
 
     - name: Install kind
       shell: bash
