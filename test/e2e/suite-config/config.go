@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
@@ -29,15 +28,7 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-config: deploy ingress controller with config", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    config.DefaultAPIVersion,
-	}
-	s := scaffold.NewScaffold(opts)
+	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("use configmap with env", func() {
 		label := fmt.Sprintf("apisix.ingress.watch=%s", s.Namespace())
 		configMap := fmt.Sprintf(_ingressAPISIXConfigMapTemplate, label)

@@ -135,46 +135,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 			// todo ApisixUpstream and ApisixPluginConfig
 			// ApisixUpstream and ApisixPluginConfig should be synced with ApisixRoute resource
 
-			switch c.cfg.Kubernetes.ApisixTlsVersion {
-			case config.ApisixV2beta3:
-				retSSL, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixTlses(ns).List(ctx, opts)
-				if err != nil {
-					log.Error(err.Error())
-					ctx.Done()
-				} else {
-					for _, s := range retSSL.Items {
-						ssl, err := c.translator.TranslateSSLV2Beta3(&s)
-						if err != nil {
-							log.Error(err.Error())
-							ctx.Done()
-						} else {
-							sslMapK8S.Store(ssl.ID, ssl.ID)
-						}
-					}
-				}
-			case config.ApisixV2:
-				retSSL, err := c.kubeClient.APISIXClient.ApisixV2().ApisixTlses(ns).List(ctx, opts)
-				if err != nil {
-					log.Error(err.Error())
-					ctx.Done()
-				} else {
-					for _, s := range retSSL.Items {
-						ssl, err := c.translator.TranslateSSLV2(&s)
-						if err != nil {
-							log.Error(err.Error())
-							ctx.Done()
-						} else {
-							sslMapK8S.Store(ssl.ID, ssl.ID)
-						}
-					}
-				}
-			default:
-				log.Errorw("failed to sync ApisixTls, unexpected version",
-					zap.String("version", c.cfg.Kubernetes.ApisixTlsVersion),
-				)
-			}
-
-			switch c.cfg.Kubernetes.ApisixConsumerVersion {
+			switch c.cfg.Kubernetes.APIVersion {
 			case config.ApisixV2beta3:
 				// ApisixConsumer
 				retConsumer, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixConsumers(ns).List(ctx, opts)
@@ -189,6 +150,22 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 							ctx.Done()
 						} else {
 							consumerMapK8S.Store(consumer.Username, consumer.Username)
+						}
+					}
+				}
+				// ApisixTls
+				retSSL, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixTlses(ns).List(ctx, opts)
+				if err != nil {
+					log.Error(err.Error())
+					ctx.Done()
+				} else {
+					for _, s := range retSSL.Items {
+						ssl, err := c.translator.TranslateSSLV2Beta3(&s)
+						if err != nil {
+							log.Error(err.Error())
+							ctx.Done()
+						} else {
+							sslMapK8S.Store(ssl.ID, ssl.ID)
 						}
 					}
 				}
@@ -209,9 +186,25 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 						}
 					}
 				}
+				// ApisixTls
+				retSSL, err := c.kubeClient.APISIXClient.ApisixV2().ApisixTlses(ns).List(ctx, opts)
+				if err != nil {
+					log.Error(err.Error())
+					ctx.Done()
+				} else {
+					for _, s := range retSSL.Items {
+						ssl, err := c.translator.TranslateSSLV2(&s)
+						if err != nil {
+							log.Error(err.Error())
+							ctx.Done()
+						} else {
+							sslMapK8S.Store(ssl.ID, ssl.ID)
+						}
+					}
+				}
 			default:
 				log.Errorw("failed to sync ApisixConsumer, unexpected version",
-					zap.String("version", c.cfg.Kubernetes.ApisixConsumerVersion),
+					zap.String("version", c.cfg.Kubernetes.APIVersion),
 				)
 			}
 		}(key)
