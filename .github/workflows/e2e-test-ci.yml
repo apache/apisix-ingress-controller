@@ -182,7 +182,7 @@ jobs:
         shell: bash
         env:
           E2E_FOCUS: "${{ matrix.suite }}"
-          E2E_CONCURRENCY: "2"
           ENABLE_PROXY: "false"
+          E2E_SKIP_BUILD: "1"
         run: |
           make e2e-test

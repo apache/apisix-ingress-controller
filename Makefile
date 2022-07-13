@@ -38,7 +38,7 @@ VERSYM="github.com/apache/apisix-ingress-controller/pkg/version._buildVersion"
 GITSHASYM="github.com/apache/apisix-ingress-controller/pkg/version._buildGitRevision"
 BUILDOSSYM="github.com/apache/apisix-ingress-controller/pkg/version._buildOS"
 GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH)"
-E2E_CONCURRENCY ?= 2
+E2E_NODES ?= 4
 E2E_SKIP_BUILD ?= 0
 
 ### build:                Build apisix-ingress-controller
@@ -74,6 +74,7 @@ pack-images: build-images push-images
 ### build-image:          Build apisix-ingress-controller image
 .PHONY: build-images
 build-images:
+ifeq ($(E2E_SKIP_BUILD), 0)
 	docker pull apache/apisix:2.13.1-alpine
 	docker tag apache/apisix:2.13.1-alpine $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
 
@@ -94,6 +95,7 @@ build-images:
 
 	docker pull busybox:1.28
 	docker tag  busybox:1.28 $(REGISTRY)/busybox:$(IMAGE_TAG)
+endif
 
 ### push-images:		Push images used in e2e test suites to kind or custom registry.
 .PHONY: push-images
@@ -120,17 +122,17 @@ unit-test:
 
 ### e2e-test:             Run e2e test cases (in existing clusters directly)
 .PHONY: e2e-test
-e2e-test: ginkgo-check e2e-wolf-rbac
+e2e-test: ginkgo-check pack-images e2e-wolf-rbac
 	kubectl apply -k $(PWD)/samples/deploy/crd
 	kubectl apply -f $(PWD)/samples/deploy/gateway-api
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
-		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_CONCURRENCY) --focus=$(E2E_FOCUS)
+		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_NODES) --focus=$(E2E_FOCUS)
 
 ### e2e-test-local:        Run e2e test cases (kind is required)
 .PHONY: e2e-test-local
-e2e-test-local: kind-up pack-images e2e-test
+e2e-test-local: kind-up e2e-test
 
 .PHONY: ginkgo-check
 ginkgo-check:
@@ -238,7 +240,7 @@ ifeq ("$(E2E_FOCUS)", "")
 	chmod +x ./test/e2e/testdata/wolf-rbac/cmd.sh && ./test/e2e/testdata/wolf-rbac/cmd.sh start
 endif
 ifneq ("$(E2E_FOCUS)", "")
-	echo $(E2E_FOCUS) | grep -E 'suite-plugins-authentication|consumer|wolf|suite-plugins' || exit 0 \
+	echo $(E2E_FOCUS) | grep -E 'suite-plugins-authentication|consumer|wolf' || exit 0 \
 	&& chmod +x ./test/e2e/testdata/wolf-rbac/cmd.sh \
 	&& ./test/e2e/testdata/wolf-rbac/cmd.sh start
 endif
