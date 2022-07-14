@@ -98,7 +98,7 @@ func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) err
 		log.Errorf("found endpointSlice object with bad namespace/name: %s, ignore it", epEvent.Key)
 		return nil
 	}
-	ep, err := c.controller.epLister.GetEndpointSlices(namespace, epEvent.ServiceName)
+	ep, err := c.controller.epLister.GetEndpoint(namespace, epEvent.ServiceName)
 	if err != nil {
 		log.Errorf("failed to get all endpointSlices for service %s: %s",
 			epEvent.ServiceName, err)

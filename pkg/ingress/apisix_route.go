@@ -71,7 +71,7 @@ func (c *apisixRouteController) run(ctx context.Context) {
 	defer log.Info("ApisixRoute controller exited")
 	defer c.workqueue.ShutDown()
 
-	ok := cache.WaitForCacheSync(ctx.Done(), c.controller.apisixRouteInformer.HasSynced)
+	ok := cache.WaitForCacheSync(ctx.Done(), c.controller.apisixRouteInformer.HasSynced, c.controller.svcInformer.HasSynced)
 	if !ok {
 		log.Error("cache sync failed")
 		return
@@ -89,9 +89,17 @@ func (c *apisixRouteController) runWorker(ctx context.Context) {
 		if quit {
 			return
 		}
-		err := c.sync(ctx, obj.(*types.Event))
-		c.workqueue.Done(obj)
-		c.handleSyncErr(obj, err)
+
+		switch val := obj.(type) {
+		case *types.Event:
+			err := c.sync(ctx, val)
+			c.workqueue.Done(obj)
+			c.handleSyncErr(obj, err)
+		case string:
+			err := c.handleSvcAdd(val)
+			c.workqueue.Done(obj)
+			c.handleSvcErr(val, err)
+		}
 	}
 }
 
@@ -481,26 +489,44 @@ func (c *apisixRouteController) ResourceSync() {
 }
 
 func (c *apisixRouteController) onSvcAdd(obj interface{}) {
-	err := c.handleSvcAdd(obj)
-	c.handleSvcErr(obj, err)
-}
-
-func (c *apisixRouteController) handleSvcAdd(obj interface{}) error {
+	log.Debugw("Service add event arrived",
+		zap.Any("object", obj),
+	)
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
 		log.Errorw("found Service with bad meta key",
 			zap.Error(err),
 			zap.String("key", key),
 		)
-		return nil
+		return
 	}
 	if !c.controller.isWatchingNamespace(key) {
-		return nil
+		return
 	}
-	log.Debugw("Service add event arrived",
+
+	c.workqueue.Add(key)
+}
+
+func (c *apisixRouteController) onSvcUpdate(old, obj interface{}) {
+	log.Debugw("Service update event arrived",
 		zap.Any("object", obj),
 	)
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Errorw("found Service with bad meta key",
+			zap.Error(err),
+			zap.String("key", key),
+		)
+		return
+	}
+	if !c.controller.isWatchingNamespace(key) {
+		return
+	}
 
+	c.workqueue.Add(key)
+}
+
+func (c *apisixRouteController) handleSvcAdd(key string) error {
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		log.Errorw("failed to split Service meta key",
@@ -514,15 +540,42 @@ func (c *apisixRouteController) handleSvcAdd(obj interface{}) error {
 
 	switch c.controller.cfg.Kubernetes.ApisixRouteVersion {
 	case "apisix.apache.org/v2beta2": // TODO: use config.ApisixV2beta2
+		routes, err := c.controller.apisixRouteLister.V2beta2Lister().ApisixRoutes(ns).List(labels.Everything())
+		if err != nil {
+			return err
+		}
+
+		// FIXME: add a reference cache to query ApisixRoutes by service name
+		for _, route := range routes {
+			found := false
+			for _, rule := range route.Spec.HTTP {
+				for _, backend := range rule.Backends {
+					if backend.ServiceName == name {
+						found = true
+						break
+					}
+				}
+				if found {
+					break
+				}
+			}
+
+			if found {
+				key, err := cache.MetaNamespaceKeyFunc(route)
+				if err != nil {
+					log.Errorw("found ApisixRoute with bad meta key",
+						zap.Error(err),
+						zap.String("key", key),
+					)
+					continue
+				}
+				toUpdateRoutes = append(toUpdateRoutes, key)
+			}
+		}
 	case config.ApisixV2beta3:
 		routes, err := c.controller.apisixRouteLister.V2beta3Lister().ApisixRoutes(ns).List(labels.Everything())
 		if err != nil {
-			log.Errorw("found Service with bad meta key",
-				zap.Error(err),
-				zap.String("key", key),
-			)
-			// TODO: retry
-			return nil
+			return err
 		}
 
 		for _, route := range routes {
@@ -546,23 +599,73 @@ func (c *apisixRouteController) handleSvcAdd(obj interface{}) error {
 						zap.Error(err),
 						zap.String("key", key),
 					)
-					// TODO: handle error
 					continue
 				}
 				toUpdateRoutes = append(toUpdateRoutes, key)
 			}
 		}
 	case config.ApisixV2:
-	default:
+		routes, err := c.controller.apisixRouteLister.V2Lister().ApisixRoutes(ns).List(labels.Everything())
+		if err != nil {
+			return err
+		}
 
+		for _, route := range routes {
+			found := false
+			for _, rule := range route.Spec.HTTP {
+				for _, backend := range rule.Backends {
+					if backend.ServiceName == name {
+						found = true
+						break
+					}
+				}
+				if found {
+					break
+				}
+			}
+
+			if found {
+				key, err := cache.MetaNamespaceKeyFunc(route)
+				if err != nil {
+					log.Errorw("found ApisixRoute with bad meta key",
+						zap.Error(err),
+						zap.String("key", key),
+					)
+					continue
+				}
+				toUpdateRoutes = append(toUpdateRoutes, key)
+			}
+		}
+	default:
+		log.Errorw("unknown ApisixRoute version",
+			zap.String("version", c.controller.cfg.Kubernetes.ApisixRouteVersion),
+		)
+		// This error can't be handled
+		return nil
 	}
 
+	for _, route := range toUpdateRoutes {
+		c.workqueue.Add(&types.Event{
+			Type: types.EventAdd,
+			Object: kube.ApisixRouteEvent{
+				Key:          route,
+				GroupVersion: c.controller.cfg.Kubernetes.ApisixRouteVersion,
+			},
+		})
+	}
 	return nil
 }
 
-func (c *apisixRouteController) handleSvcErr(obj interface{}, errOrigin error) {
+func (c *apisixRouteController) handleSvcErr(key string, errOrigin error) {
+	if errOrigin == nil {
+		c.workqueue.Forget(key)
+
+		return
+	}
+
 	log.Warnw("sync Service failed, will retry",
-		zap.Any("object", obj),
+		zap.Any("key", key),
 		zap.Error(errOrigin),
 	)
+	c.workqueue.AddRateLimited(key)
 }
