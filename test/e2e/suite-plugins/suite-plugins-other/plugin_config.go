@@ -456,7 +456,7 @@ spec:
 
 		ginkgo.It("enable plugin and then delete it", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
-			apc := fmt.Sprintf(`
+			apc := `
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixPluginConfig
 metadata:
@@ -465,7 +465,7 @@ spec:
   plugins:
   - name: cors
     enable: true
-`)
+`
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -505,7 +505,7 @@ spec:
 			resp.Header("Access-Control-Max-Age").Equal("5")
 			resp.Body().Contains("origin")
 
-			apc = fmt.Sprintf(`
+			apc = `
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixPluginConfig
 metadata:
@@ -514,16 +514,12 @@ spec:
   plugins:
   - name: cors
     enable: false
-`)
+`
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
-
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
-			err = s.EnsureNumApisixUpstreamsCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-			err = s.EnsureNumApisixPluginConfigCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
-			err = s.EnsureNumApisixRoutesCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+			// EnsureNumApisixRoutesCreated cannot be used to ensure update Correctness.
+			time.Sleep(6 * time.Second)
 
 			resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
 			resp.Status(http.StatusOK)

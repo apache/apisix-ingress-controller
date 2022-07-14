@@ -17,6 +17,7 @@ package plugins
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -66,6 +67,7 @@ spec:
 			resp.Header("Access-Control-Max-Age").Equal("5")
 			resp.Body().Contains("origin")
 		})
+
 		ginkgo.It("finer granularity config", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
@@ -128,6 +130,7 @@ spec:
 			// resp.Header("Access-Control-Allow-Credentials").Empty()
 			resp.Body().Contains("origin")
 		})
+
 		ginkgo.It("allow_origins_by_regex", func() {
 			ginkgo.Skip("APISIX version priors to 2.5 doesn't contain allow_origins_by_regex in cors plugin")
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
@@ -204,6 +207,7 @@ spec:
 			// resp.Header("Access-Control-Allow-Credentials").Empty()
 			resp.Body().Contains("origin")
 		})
+
 		ginkgo.It("disable plugin", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
@@ -244,6 +248,7 @@ spec:
 			resp.Header("Access-Control-Max-Age").Empty()
 			resp.Body().Contains("origin")
 		})
+
 		ginkgo.It("enable plugin and then delete it", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
@@ -304,10 +309,9 @@ spec:
 `, backendSvc, backendPorts[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
-			err = s.EnsureNumApisixUpstreamsCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-			err = s.EnsureNumApisixRoutesCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+			// EnsureNumApisixRoutesCreated cannot be used to ensure update Correctness.
+			time.Sleep(6 * time.Second)
 
 			resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
 			resp.Status(http.StatusOK)
