@@ -511,25 +511,6 @@ func (c *apisixRouteController) onSvcAdd(obj interface{}) {
 	c.workqueue.Add(key)
 }
 
-func (c *apisixRouteController) onSvcUpdate(old, obj interface{}) {
-	log.Debugw("Service update event arrived",
-		zap.Any("object", obj),
-	)
-	key, err := cache.MetaNamespaceKeyFunc(obj)
-	if err != nil {
-		log.Errorw("found Service with bad meta key",
-			zap.Error(err),
-			zap.String("key", key),
-		)
-		return
-	}
-	if !c.controller.isWatchingNamespace(key) {
-		return
-	}
-
-	c.workqueue.Add(key)
-}
-
 func (c *apisixRouteController) handleSvcAdd(key string) error {
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
