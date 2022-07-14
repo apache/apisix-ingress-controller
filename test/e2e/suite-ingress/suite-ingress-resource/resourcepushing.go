@@ -25,7 +25,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.FDescribe("suite-ingress-resource: ApisixRoute Testing", func() {
+var _ = ginkgo.Describe("suite-ingress-resource: ApisixRoute Testing", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
 		ginkgo.It("create and then scale upstream pods to 2 ", func() {
@@ -578,7 +578,7 @@ spec:
 			resp.Status(http.StatusNotFound)
 		})
 
-		ginkgo.FIt("k8s service is created later than ApisixRoute", func() {
+		ginkgo.It("k8s service is created later than ApisixRoute", func() {
 			createSvc := func() {
 				_httpbinDeploymentTemplate := `
 apiVersion: apps/v1
@@ -642,7 +642,7 @@ spec:
   type: ClusterIP
 `
 
-				err := s.CreateResourceFromString(_httpbinDeploymentTemplate)
+				err := s.CreateResourceFromString(s.FormatRegistry(_httpbinDeploymentTemplate))
 				if err != nil {
 					log.Errorf(err.Error())
 				}
@@ -677,8 +677,6 @@ spec:
 			err = s.EnsureNumApisixPluginConfigCreated(0)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
 
-			// FIXME remove this debug line
-			_ = createSvc
 			createSvc()
 			time.Sleep(time.Second * 10)
 			err = s.EnsureNumApisixRoutesCreated(1)
@@ -690,10 +688,10 @@ spec:
 		})
 	}
 
-	//ginkgo.Describe("suite-ingress-resource: scaffold v2beta3", func() {
-	//	suites(scaffold.NewDefaultScaffold)
-	//})
-	ginkgo.FDescribe("suite-ingress-resource: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-resource: scaffold v2beta3", func() {
+		suites(scaffold.NewDefaultScaffold)
+	})
+	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })
