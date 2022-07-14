@@ -17,6 +17,7 @@ package chore
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -149,6 +150,8 @@ spec:
 
 			// scale HTTPBIN, so the endpoints controller has the opportunity to update upstream.
 			assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(3))
+			// s.ScaleHTTPBIN(3) process will be slow, and need time.
+			time.Sleep(10 * time.Second)
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumListUpstreamNodesNth(1, 3))
 
 			// port in nodes is still the targetPort, not the service port

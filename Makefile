@@ -53,7 +53,7 @@ build:
 .PHONY: clean-image
 clean-image: ## Removes local image
 	echo "removing old image $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)"
-	@docker rmi -f $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG) || true
+	docker rmi -f $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG) || true
 
 ### build-image:          Build apisix-ingress-controller image
 .PHONY: build-image
