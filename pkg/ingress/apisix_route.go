@@ -16,13 +16,13 @@ package ingress
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -31,6 +31,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/ingress/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -42,6 +43,11 @@ type apisixRouteController struct {
 	controller *Controller
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
+
+	// svc meta key -> ApisixRoute name -> empty
+	// map[string]map[string]struct{}
+	svcLock sync.RWMutex
+	svcMap  map[string]map[string]struct{} //*sync.Map
 }
 
 func (c *Controller) newApisixRouteController() *apisixRouteController {
@@ -49,6 +55,8 @@ func (c *Controller) newApisixRouteController() *apisixRouteController {
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),
 		workers:    1,
+
+		svcMap: make(map[string]map[string]struct{}),
 	}
 	c.apisixRouteInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -103,6 +111,142 @@ func (c *apisixRouteController) runWorker(ctx context.Context) {
 	}
 }
 
+func (c *apisixRouteController) syncServiceRelationship(ev *types.Event, name string, ar kube.ApisixRoute) {
+	obj := ev.Object.(kube.ApisixRouteEvent)
+
+	var (
+		oldBackends []string
+		newBackends []string
+	)
+	switch obj.GroupVersion {
+	case config.ApisixV2beta2:
+		var (
+			old    *v2beta2.ApisixRoute
+			newObj *v2beta2.ApisixRoute
+		)
+
+		if ev.Type == types.EventUpdate {
+			old = obj.OldObject.V2beta2()
+		} else if ev.Type == types.EventDelete {
+			old = ev.Tombstone.(kube.ApisixRoute).V2beta2()
+		}
+
+		if ev.Type == types.EventAdd {
+			newObj = ar.V2beta2()
+		} else if ev.Type == types.EventUpdate {
+			newObj = ar.V2beta2()
+		}
+
+		// calculate diff, so we don't need to care about the event order
+		if old != nil {
+			for _, rule := range old.Spec.HTTP {
+				for _, backend := range rule.Backends {
+					oldBackends = append(oldBackends, backend.ServiceName)
+
+					delete(c.svcMap[old.Namespace+"/"+backend.ServiceName], old.Name)
+				}
+			}
+		}
+		if newObj != nil {
+			for _, rule := range newObj.Spec.HTTP {
+				for _, backend := range rule.Backends {
+					newBackends = append(newBackends, newObj.Namespace+"/"+backend.ServiceName)
+				}
+			}
+		}
+	case config.ApisixV2beta3:
+		var (
+			old    *v2beta3.ApisixRoute
+			newObj *v2beta3.ApisixRoute
+		)
+
+		if ev.Type == types.EventUpdate {
+			old = obj.OldObject.V2beta3()
+		} else if ev.Type == types.EventDelete {
+			old = ev.Tombstone.(kube.ApisixRoute).V2beta3()
+		}
+
+		if ev.Type == types.EventAdd {
+			newObj = ar.V2beta3()
+		} else if ev.Type == types.EventUpdate {
+			newObj = ar.V2beta3()
+		}
+
+		// calculate diff, so we don't need to care about the event order
+		if old != nil {
+			for _, rule := range old.Spec.HTTP {
+				for _, backend := range rule.Backends {
+					oldBackends = append(oldBackends, backend.ServiceName)
+
+					delete(c.svcMap[old.Namespace+"/"+backend.ServiceName], old.Name)
+				}
+			}
+		}
+		if newObj != nil {
+			for _, rule := range newObj.Spec.HTTP {
+				for _, backend := range rule.Backends {
+					newBackends = append(newBackends, newObj.Namespace+"/"+backend.ServiceName)
+				}
+			}
+		}
+	case config.ApisixV2:
+		var (
+			old    *v2.ApisixRoute
+			newObj *v2.ApisixRoute
+		)
+
+		if ev.Type == types.EventUpdate {
+			old = obj.OldObject.V2()
+		} else if ev.Type == types.EventDelete {
+			old = ev.Tombstone.(kube.ApisixRoute).V2()
+		}
+
+		if ev.Type == types.EventAdd {
+			newObj = ar.V2()
+		} else if ev.Type == types.EventUpdate {
+			newObj = ar.V2()
+		}
+
+		// calculate diff, so we don't need to care about the event order
+		if old != nil {
+			for _, rule := range old.Spec.HTTP {
+				for _, backend := range rule.Backends {
+					oldBackends = append(oldBackends, backend.ServiceName)
+
+					delete(c.svcMap[old.Namespace+"/"+backend.ServiceName], old.Name)
+				}
+			}
+		}
+		if newObj != nil {
+			for _, rule := range newObj.Spec.HTTP {
+				for _, backend := range rule.Backends {
+					newBackends = append(newBackends, newObj.Namespace+"/"+backend.ServiceName)
+				}
+			}
+		}
+	}
+
+	// NOTE:
+	// This implementation MAY cause potential problem due to unstable event order
+	// The last event processed MAY not be the logical last event, so it may override the logical previous event
+	// We have a periodic full-sync, which reduce this problem, but it doesn't solve it completely.
+
+	c.svcLock.Lock()
+	defer c.svcLock.Unlock()
+	toDelete := utils.Difference(oldBackends, newBackends)
+	toAdd := utils.Difference(newBackends, oldBackends)
+	for _, svc := range toDelete {
+		delete(c.svcMap[svc], name)
+	}
+
+	for _, svc := range toAdd {
+		if _, ok := c.svcMap[svc]; !ok {
+			c.svcMap[svc] = make(map[string]struct{})
+		}
+		c.svcMap[svc][name] = struct{}{}
+	}
+}
+
 func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error {
 	obj := ev.Object.(kube.ApisixRouteEvent)
 	namespace, name, err := cache.SplitMetaNamespaceKey(obj.Key)
@@ -140,6 +284,9 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			return nil
 		}
 	}
+
+	c.syncServiceRelationship(ev, name, ar)
+
 	if ev.Type == types.EventDelete {
 		if ar != nil {
 			// We still find the resource while we are processing the DELETE event,
@@ -472,10 +619,18 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 
 func (c *apisixRouteController) ResourceSync() {
 	objs := c.controller.apisixRouteInformer.GetIndexer().List()
+
+	c.svcLock.Lock()
+	defer c.svcLock.Unlock()
+
+	c.svcMap = make(map[string]map[string]struct{})
+
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
-			log.Errorw("ApisixRoute sync failed, found ApisixRoute resource with bad meta namespace key", zap.String("error", err.Error()))
+			log.Errorw("ApisixRoute sync failed, found ApisixRoute resource with bad meta namespace key",
+				zap.Error(err),
+			)
 			continue
 		}
 		if !c.controller.isWatchingNamespace(key) {
@@ -489,6 +644,43 @@ func (c *apisixRouteController) ResourceSync() {
 				GroupVersion: ar.GroupVersion(),
 			},
 		})
+
+		ns, name, err := cache.SplitMetaNamespaceKey(key)
+		if err != nil {
+			log.Errorw("split ApisixRoute meta key failed",
+				zap.Error(err),
+				zap.String("key", key),
+			)
+			continue
+		}
+
+		var backends []string
+		switch ar.GroupVersion() {
+		case config.ApisixV2beta2:
+			for _, rule := range ar.V2beta2().Spec.HTTP {
+				for _, backend := range rule.Backends {
+					backends = append(backends, ns+"/"+backend.ServiceName)
+				}
+			}
+		case config.ApisixV2beta3:
+			for _, rule := range ar.V2beta3().Spec.HTTP {
+				for _, backend := range rule.Backends {
+					backends = append(backends, ns+"/"+backend.ServiceName)
+				}
+			}
+		case config.ApisixV2:
+			for _, rule := range ar.V2().Spec.HTTP {
+				for _, backend := range rule.Backends {
+					backends = append(backends, ns+"/"+backend.ServiceName)
+				}
+			}
+		}
+		for _, svcKey := range backends {
+			if _, ok := c.svcMap[svcKey]; !ok {
+				c.svcMap[svcKey] = make(map[string]struct{})
+			}
+			c.svcMap[svcKey][name] = struct{}{}
+		}
 	}
 }
 
@@ -512,7 +704,7 @@ func (c *apisixRouteController) onSvcAdd(obj interface{}) {
 }
 
 func (c *apisixRouteController) handleSvcAdd(key string) error {
-	ns, name, err := cache.SplitMetaNamespaceKey(key)
+	ns, _, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		log.Errorw("failed to split Service meta key",
 			zap.Error(err),
@@ -521,122 +713,16 @@ func (c *apisixRouteController) handleSvcAdd(key string) error {
 		return nil
 	}
 
-	var toUpdateRoutes []string
-
-	switch c.controller.cfg.Kubernetes.ApisixRouteVersion {
-	case "apisix.apache.org/v2beta2": // TODO: use config.ApisixV2beta2
-		routes, err := c.controller.apisixRouteLister.V2beta2Lister().ApisixRoutes(ns).List(labels.Everything())
-		if err != nil {
-			return err
+	if routes, ok := c.svcMap[key]; ok {
+		for route := range routes {
+			c.workqueue.Add(&types.Event{
+				Type: types.EventAdd,
+				Object: kube.ApisixRouteEvent{
+					Key:          ns + "/" + route,
+					GroupVersion: c.controller.cfg.Kubernetes.ApisixRouteVersion,
+				},
+			})
 		}
-
-		// FIXME: add a reference cache to query ApisixRoutes by service name
-		for _, route := range routes {
-			found := false
-			for _, rule := range route.Spec.HTTP {
-				for _, backend := range rule.Backends {
-					if backend.ServiceName == name {
-						found = true
-						break
-					}
-				}
-				if found {
-					break
-				}
-			}
-
-			if found {
-				key, err := cache.MetaNamespaceKeyFunc(route)
-				if err != nil {
-					log.Errorw("found ApisixRoute with bad meta key",
-						zap.Error(err),
-						zap.String("key", key),
-					)
-					continue
-				}
-				toUpdateRoutes = append(toUpdateRoutes, key)
-			}
-		}
-	case config.ApisixV2beta3:
-		routes, err := c.controller.apisixRouteLister.V2beta3Lister().ApisixRoutes(ns).List(labels.Everything())
-		if err != nil {
-			return err
-		}
-
-		for _, route := range routes {
-			found := false
-			for _, rule := range route.Spec.HTTP {
-				for _, backend := range rule.Backends {
-					if backend.ServiceName == name {
-						found = true
-						break
-					}
-				}
-				if found {
-					break
-				}
-			}
-
-			if found {
-				key, err := cache.MetaNamespaceKeyFunc(route)
-				if err != nil {
-					log.Errorw("found ApisixRoute with bad meta key",
-						zap.Error(err),
-						zap.String("key", key),
-					)
-					continue
-				}
-				toUpdateRoutes = append(toUpdateRoutes, key)
-			}
-		}
-	case config.ApisixV2:
-		routes, err := c.controller.apisixRouteLister.V2Lister().ApisixRoutes(ns).List(labels.Everything())
-		if err != nil {
-			return err
-		}
-
-		for _, route := range routes {
-			found := false
-			for _, rule := range route.Spec.HTTP {
-				for _, backend := range rule.Backends {
-					if backend.ServiceName == name {
-						found = true
-						break
-					}
-				}
-				if found {
-					break
-				}
-			}
-
-			if found {
-				key, err := cache.MetaNamespaceKeyFunc(route)
-				if err != nil {
-					log.Errorw("found ApisixRoute with bad meta key",
-						zap.Error(err),
-						zap.String("key", key),
-					)
-					continue
-				}
-				toUpdateRoutes = append(toUpdateRoutes, key)
-			}
-		}
-	default:
-		log.Errorw("unknown ApisixRoute version",
-			zap.String("version", c.controller.cfg.Kubernetes.ApisixRouteVersion),
-		)
-		// This error can't be handled
-		return nil
-	}
-
-	for _, route := range toUpdateRoutes {
-		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
-			Object: kube.ApisixRouteEvent{
-				Key:          route,
-				GroupVersion: c.controller.cfg.Kubernetes.ApisixRouteVersion,
-			},
-		})
 	}
 	return nil
 }
