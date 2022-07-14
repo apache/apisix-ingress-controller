@@ -16,11 +16,12 @@ package ingress
 
 import (
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"time"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
