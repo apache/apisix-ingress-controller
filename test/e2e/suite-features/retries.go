@@ -59,7 +59,7 @@ metadata:
   name: %s
 spec:
 `, backendSvc)
-			err = s.CreateResourceFromString(au)
+			err = s.CreateVersionedApisixResource(au)
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 			time.Sleep(2 * time.Second)
 
@@ -84,7 +84,7 @@ metadata:
 spec:
   retries: 0
 `, backendSvc)
-			err = s.CreateResourceFromString(au)
+			err = s.CreateVersionedApisixResource(au)
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 			time.Sleep(2 * time.Second)
 
@@ -109,7 +109,7 @@ metadata:
 spec:
   retries: 3
 `, backendSvc)
-			err = s.CreateResourceFromString(au)
+			err = s.CreateVersionedApisixResource(au)
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 			time.Sleep(2 * time.Second)
 
@@ -144,7 +144,7 @@ spec:
     read: 10s
     send: 10s
 `, backendSvc)
-			err := s.CreateResourceFromString(au)
+			err := s.CreateVersionedApisixResource(au)
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 			time.Sleep(2 * time.Second)
 

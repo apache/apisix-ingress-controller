@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
@@ -43,7 +44,10 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 	apisixClient := apisixfake.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
 	auInformer := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
-	auLister := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister()
+	auLister := kube.NewApisixUpstreamLister(
+		apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+		apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
+	)
 
 	processCh := make(chan struct{})
 	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -175,6 +179,7 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 		ServiceLister:        svcLister,
 		EndpointLister:       epLister,
 		ApisixUpstreamLister: auLister,
+		APIVersion:           config.DefaultAPIVersion,
 	}}
 	ctx := &TranslateContext{
 		upstreamMap: make(map[string]struct{}),
@@ -214,7 +219,10 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 	apisixClient := apisixfake.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
 	auInformer := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
-	auLister := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister()
+	auLister := kube.NewApisixUpstreamLister(
+		apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+		apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
+	)
 
 	processCh := make(chan struct{})
 	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -346,6 +354,7 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 		ServiceLister:        svcLister,
 		EndpointLister:       epLister,
 		ApisixUpstreamLister: auLister,
+		APIVersion:           config.DefaultAPIVersion,
 	}}
 	ctx := &TranslateContext{upstreamMap: make(map[string]struct{})}
 	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
@@ -378,7 +387,10 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	apisixClient := apisixfake.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
 	auInformer := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
-	auLister := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister()
+	auLister := kube.NewApisixUpstreamLister(
+		apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+		apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
+	)
 
 	processCh := make(chan struct{})
 	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -510,6 +522,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 		ServiceLister:        svcLister,
 		EndpointLister:       epLister,
 		ApisixUpstreamLister: auLister,
+		APIVersion:           config.DefaultAPIVersion,
 	}}
 	ctx := &TranslateContext{upstreamMap: make(map[string]struct{})}
 	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)

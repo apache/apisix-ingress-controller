@@ -135,7 +135,7 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 	}
 	sslMap := ssls.(*sync.Map)
 
-	switch c.controller.cfg.Kubernetes.ApisixTlsVersion {
+	switch c.controller.cfg.Kubernetes.APIVersion {
 	case config.ApisixV2beta3:
 		sslMap.Range(c.syncV2Beta3Handler(ctx, ev, sec, key))
 	case config.ApisixV2:

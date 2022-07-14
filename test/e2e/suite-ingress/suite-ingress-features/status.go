@@ -76,7 +76,6 @@ var _ = ginkgo.Describe("suite-ingress-features: Ingress LB Status Testing", fun
 	opts := &scaffold.Options{
 		Name:                  "default",
 		IngressAPISIXReplicas: 1,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta2",
 		APISIXPublishAddress:  "10.6.6.6",
 	}
 	s := scaffold.NewScaffold(opts)

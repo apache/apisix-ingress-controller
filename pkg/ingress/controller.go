@@ -43,9 +43,9 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/ingress/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/ingress/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
-	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
@@ -103,7 +103,7 @@ type Controller struct {
 	secretInformer              cache.SharedIndexInformer
 	secretLister                listerscorev1.SecretLister
 	apisixUpstreamInformer      cache.SharedIndexInformer
-	apisixUpstreamLister        listersv2beta3.ApisixUpstreamLister
+	apisixUpstreamLister        kube.ApisixUpstreamLister
 	apisixRouteLister           kube.ApisixRouteLister
 	apisixRouteInformer         cache.SharedIndexInformer
 	apisixTlsLister             kube.ApisixTlsLister
@@ -184,6 +184,7 @@ func (c *Controller) initWhenStartLeading() {
 		apisixTlsInformer           cache.SharedIndexInformer
 		apisixClusterConfigInformer cache.SharedIndexInformer
 		apisixConsumerInformer      cache.SharedIndexInformer
+		apisixUpstreamInformer      cache.SharedIndexInformer
 	)
 
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
@@ -203,7 +204,10 @@ func (c *Controller) initWhenStartLeading() {
 		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2().ApisixRoutes().Lister(),
 	)
-	c.apisixUpstreamLister = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister()
+	c.apisixUpstreamLister = kube.NewApisixUpstreamLister(
+		apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+		apisixFactory.Apisix().V2().ApisixUpstreams().Lister(),
+	)
 	c.apisixTlsLister = kube.NewApisixTlsLister(
 		apisixFactory.Apisix().V2beta3().ApisixTlses().Lister(),
 		apisixFactory.Apisix().V2().ApisixTlses().Lister(),
@@ -229,7 +233,27 @@ func (c *Controller) initWhenStartLeading() {
 		ApisixUpstreamLister: c.apisixUpstreamLister,
 		SecretLister:         c.secretLister,
 		UseEndpointSlices:    c.cfg.Kubernetes.WatchEndpointSlices,
+		APIVersion:           c.cfg.Kubernetes.APIVersion,
 	})
+
+	switch c.cfg.Kubernetes.APIVersion {
+	case config.ApisixV2beta3:
+		apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+		// to do ApisixRoute
+		apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
+		apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
+		apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
+		apisixClusterConfigInformer = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Informer()
+	case config.ApisixV2:
+		apisixUpstreamInformer = apisixFactory.Apisix().V2().ApisixUpstreams().Informer()
+		// to do ApisixRoute
+		apisixPluginConfigInformer = apisixFactory.Apisix().V2().ApisixPluginConfigs().Informer()
+		apisixTlsInformer = apisixFactory.Apisix().V2().ApisixTlses().Informer()
+		apisixConsumerInformer = apisixFactory.Apisix().V2().ApisixConsumers().Informer()
+		apisixClusterConfigInformer = apisixFactory.Apisix().V2().ApisixClusterConfigs().Informer()
+	default:
+		panic(fmt.Errorf("unsupported API version %v", c.cfg.Kubernetes.APIVersion))
+	}
 
 	if c.cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1 {
 		ingressInformer = kubeFactory.Networking().V1().Ingresses().Informer()
@@ -250,47 +274,11 @@ func (c *Controller) initWhenStartLeading() {
 		panic(fmt.Errorf("unsupported ApisixRoute version %s", c.cfg.Kubernetes.ApisixRouteVersion))
 	}
 
-	switch c.cfg.Kubernetes.ApisixTlsVersion {
-	case config.ApisixV2beta3:
-		apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
-	case config.ApisixV2:
-		apisixTlsInformer = apisixFactory.Apisix().V2().ApisixTlses().Informer()
-	default:
-		panic(fmt.Errorf("unsupported ApisixTls version %s", c.cfg.Kubernetes.ApisixTlsVersion))
-	}
-
-	switch c.cfg.Kubernetes.ApisixClusterConfigVersion {
-	case config.ApisixV2beta3:
-		apisixClusterConfigInformer = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Informer()
-	case config.ApisixV2:
-		apisixClusterConfigInformer = apisixFactory.Apisix().V2().ApisixClusterConfigs().Informer()
-	default:
-		panic(fmt.Errorf("unsupported ApisixClusterConfig version %v", c.cfg.Kubernetes.ApisixClusterConfigVersion))
-	}
-
-	switch c.cfg.Kubernetes.ApisixConsumerVersion {
-	case config.ApisixV2beta3:
-		apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
-	case config.ApisixV2:
-		apisixConsumerInformer = apisixFactory.Apisix().V2().ApisixConsumers().Informer()
-	default:
-		panic(fmt.Errorf("unsupported ApisixConsumer version %v", c.cfg.Kubernetes.ApisixConsumerVersion))
-	}
-
-	switch c.cfg.Kubernetes.ApisixPluginConfigVersion {
-	case config.ApisixV2beta3:
-		apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
-	case config.ApisixV2:
-		apisixPluginConfigInformer = apisixFactory.Apisix().V2().ApisixPluginConfigs().Informer()
-	default:
-		panic(fmt.Errorf("unsupported ApisixPluginConfig version %v", c.cfg.Kubernetes.ApisixPluginConfigVersion))
-	}
-
 	c.podInformer = kubeFactory.Core().V1().Pods().Informer()
 	c.svcInformer = kubeFactory.Core().V1().Services().Informer()
 	c.ingressInformer = ingressInformer
 	c.apisixRouteInformer = apisixRouteInformer
-	c.apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+	c.apisixUpstreamInformer = apisixUpstreamInformer
 	c.apisixClusterConfigInformer = apisixClusterConfigInformer
 	c.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
 	c.apisixTlsInformer = apisixTlsInformer
@@ -640,36 +628,72 @@ func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
 		log.Errorf("failed to get service %s/%s: %s", namespace, svcName, err)
 		return err
 	}
-	var subsets []configv2beta3.ApisixUpstreamSubset
-	subsets = append(subsets, configv2beta3.ApisixUpstreamSubset{})
-	au, err := c.apisixUpstreamLister.ApisixUpstreams(namespace).Get(svcName)
-	if err != nil {
-		if !k8serrors.IsNotFound(err) {
-			log.Errorf("failed to get ApisixUpstream %s/%s: %s", namespace, svcName, err)
-			return err
-		}
-	} else if au.Spec != nil && len(au.Spec.Subsets) > 0 {
-		subsets = append(subsets, au.Spec.Subsets...)
-	}
 
-	clusters := c.apisix.ListClusters()
-	for _, port := range svc.Spec.Ports {
-		for _, subset := range subsets {
-			nodes, err := c.translator.TranslateUpstreamNodes(ep, port.Port, subset.Labels)
-			if err != nil {
-				log.Errorw("failed to translate upstream nodes",
-					zap.Error(err),
-					zap.Any("endpoints", ep),
-					zap.Int32("port", port.Port),
-				)
+	switch c.cfg.Kubernetes.APIVersion {
+	case config.ApisixV2beta3:
+		var subsets []configv2beta3.ApisixUpstreamSubset
+		subsets = append(subsets, configv2beta3.ApisixUpstreamSubset{})
+		auKube, err := c.apisixUpstreamLister.V2beta3(namespace, svcName)
+		if err != nil {
+			if !k8serrors.IsNotFound(err) {
+				log.Errorf("failed to get ApisixUpstream %s/%s: %s", namespace, svcName, err)
+				return err
 			}
-			name := apisixv1.ComposeUpstreamName(namespace, svcName, subset.Name, port.Port)
-			for _, cluster := range clusters {
-				if err := c.syncUpstreamNodesChangeToCluster(ctx, cluster, nodes, name); err != nil {
-					return err
+		} else if auKube.V2beta3().Spec != nil && len(auKube.V2beta3().Spec.Subsets) > 0 {
+			subsets = append(subsets, auKube.V2beta3().Spec.Subsets...)
+		}
+		clusters := c.apisix.ListClusters()
+		for _, port := range svc.Spec.Ports {
+			for _, subset := range subsets {
+				nodes, err := c.translator.TranslateUpstreamNodes(ep, port.Port, subset.Labels)
+				if err != nil {
+					log.Errorw("failed to translate upstream nodes",
+						zap.Error(err),
+						zap.Any("endpoints", ep),
+						zap.Int32("port", port.Port),
+					)
+				}
+				name := apisixv1.ComposeUpstreamName(namespace, svcName, subset.Name, port.Port)
+				for _, cluster := range clusters {
+					if err := c.syncUpstreamNodesChangeToCluster(ctx, cluster, nodes, name); err != nil {
+						return err
+					}
 				}
 			}
 		}
+	case config.ApisixV2:
+		var subsets []configv2.ApisixUpstreamSubset
+		subsets = append(subsets, configv2.ApisixUpstreamSubset{})
+		auKube, err := c.apisixUpstreamLister.V2beta3(namespace, svcName)
+		if err != nil {
+			if !k8serrors.IsNotFound(err) {
+				log.Errorf("failed to get ApisixUpstream %s/%s: %s", namespace, svcName, err)
+				return err
+			}
+		} else if auKube.V2().Spec != nil && len(auKube.V2().Spec.Subsets) > 0 {
+			subsets = append(subsets, auKube.V2().Spec.Subsets...)
+		}
+		clusters := c.apisix.ListClusters()
+		for _, port := range svc.Spec.Ports {
+			for _, subset := range subsets {
+				nodes, err := c.translator.TranslateUpstreamNodes(ep, port.Port, subset.Labels)
+				if err != nil {
+					log.Errorw("failed to translate upstream nodes",
+						zap.Error(err),
+						zap.Any("endpoints", ep),
+						zap.Int32("port", port.Port),
+					)
+				}
+				name := apisixv1.ComposeUpstreamName(namespace, svcName, subset.Name, port.Port)
+				for _, cluster := range clusters {
+					if err := c.syncUpstreamNodesChangeToCluster(ctx, cluster, nodes, name); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	default:
+		panic(fmt.Errorf("unsupported ApisixUpstream version %v", c.cfg.Kubernetes.APIVersion))
 	}
 	return nil
 }

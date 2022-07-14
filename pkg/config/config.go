@@ -57,14 +57,19 @@ const (
 	ApisixV2beta3 = "apisix.apache.org/v2beta3"
 	// ApisixV2 represents apisix.apache.org/v2
 	ApisixV2 = "apisix.apache.org/v2"
-	// DefaultApisixVersion refers to the default resource version
-	DefaultApisixVersion = ApisixV2beta3
+	// DefaultAPIVersion refers to the default resource version
+	DefaultAPIVersion = ApisixV2beta3
 
 	_minimalResyncInterval = 30 * time.Second
 
 	// ControllerName is the name of the controller used to identify
 	// the controller of the GatewayClass.
 	ControllerName = "apisix.apache.org/gateway-controller"
+)
+
+var (
+	// Description information of API version, including default values and supported API version.
+	APIVersionDescribe = fmt.Sprintf(`the default value of API version is "%s", support "%s" and "%s".`, DefaultAPIVersion, ApisixV2beta3, ApisixV2)
 )
 
 // Config contains all config items which are necessary for
@@ -86,20 +91,17 @@ type Config struct {
 
 // KubernetesConfig contains all Kubernetes related config items.
 type KubernetesConfig struct {
-	Kubeconfig                 string             `json:"kubeconfig" yaml:"kubeconfig"`
-	ResyncInterval             types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
-	AppNamespaces              []string           `json:"app_namespaces" yaml:"app_namespaces"`
-	NamespaceSelector          []string           `json:"namespace_selector" yaml:"namespace_selector"`
-	ElectionID                 string             `json:"election_id" yaml:"election_id"`
-	IngressClass               string             `json:"ingress_class" yaml:"ingress_class"`
-	IngressVersion             string             `json:"ingress_version" yaml:"ingress_version"`
-	WatchEndpointSlices        bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
-	ApisixRouteVersion         string             `json:"apisix_route_version" yaml:"apisix_route_version"`
-	ApisixPluginConfigVersion  string             `json:"apisix_plugin_config_version" yaml:"apisix_plugin_config_version"`
-	ApisixConsumerVersion      string             `json:"apisix_consumer_version" yaml:"apisix_consumer_version"`
-	ApisixTlsVersion           string             `json:"apisix_tls_version" yaml:"apisix_tls_version"`
-	ApisixClusterConfigVersion string             `json:"apisix_cluster_config_version" yaml:"apisix_cluster_config_version"`
-	EnableGatewayAPI           bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
+	Kubeconfig          string             `json:"kubeconfig" yaml:"kubeconfig"`
+	ResyncInterval      types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
+	AppNamespaces       []string           `json:"app_namespaces" yaml:"app_namespaces"`
+	NamespaceSelector   []string           `json:"namespace_selector" yaml:"namespace_selector"`
+	ElectionID          string             `json:"election_id" yaml:"election_id"`
+	IngressClass        string             `json:"ingress_class" yaml:"ingress_class"`
+	IngressVersion      string             `json:"ingress_version" yaml:"ingress_version"`
+	WatchEndpointSlices bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
+	ApisixRouteVersion  string             `json:"apisix_route_version" yaml:"apisix_route_version"`
+	APIVersion          string             `json:"api_version" yaml:"api_version"`
+	EnableGatewayAPI    bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
 }
 
 // APISIXConfig contains all APISIX related config items.
@@ -128,19 +130,16 @@ func NewDefaultConfig() *Config {
 		EnableProfiling:            true,
 		ApisixResourceSyncInterval: types.TimeDuration{Duration: 300 * time.Second},
 		Kubernetes: KubernetesConfig{
-			Kubeconfig:                 "", // Use in-cluster configurations.
-			ResyncInterval:             types.TimeDuration{Duration: 6 * time.Hour},
-			AppNamespaces:              []string{v1.NamespaceAll},
-			ElectionID:                 IngressAPISIXLeader,
-			IngressClass:               IngressClass,
-			IngressVersion:             IngressNetworkingV1,
-			ApisixRouteVersion:         ApisixV2beta3,
-			ApisixPluginConfigVersion:  ApisixV2beta3,
-			ApisixConsumerVersion:      ApisixV2beta3,
-			ApisixTlsVersion:           ApisixV2beta3,
-			ApisixClusterConfigVersion: ApisixV2beta3,
-			WatchEndpointSlices:        false,
-			EnableGatewayAPI:           false,
+			Kubeconfig:          "", // Use in-cluster configurations.
+			ResyncInterval:      types.TimeDuration{Duration: 6 * time.Hour},
+			AppNamespaces:       []string{v1.NamespaceAll},
+			ElectionID:          IngressAPISIXLeader,
+			IngressClass:        IngressClass,
+			IngressVersion:      IngressNetworkingV1,
+			ApisixRouteVersion:  DefaultAPIVersion,
+			APIVersion:          DefaultAPIVersion,
+			WatchEndpointSlices: false,
+			EnableGatewayAPI:    false,
 		},
 	}
 }

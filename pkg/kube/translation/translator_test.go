@@ -28,11 +28,12 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func TestTranslateUpstreamConfig(t *testing.T) {
+func TestTranslateUpstreamConfigV2beta3(t *testing.T) {
 	tr := &translator{}
 
 	au := &configv2beta3.ApisixUpstreamConfig{
@@ -40,7 +41,7 @@ func TestTranslateUpstreamConfig(t *testing.T) {
 		Scheme:       apisixv1.SchemeGRPC,
 	}
 
-	ups, err := tr.TranslateUpstreamConfig(au)
+	ups, err := tr.TranslateUpstreamConfigV2beta3(au)
 	assert.Nil(t, err, "checking upstream config translating")
 	assert.Equal(t, apisixv1.LbRoundRobin, ups.Type)
 	assert.Equal(t, apisixv1.SchemeGRPC, ups.Scheme)
@@ -53,7 +54,7 @@ func TestTranslateUpstreamConfig(t *testing.T) {
 		},
 		Scheme: apisixv1.SchemeHTTP,
 	}
-	ups, err = tr.TranslateUpstreamConfig(au)
+	ups, err = tr.TranslateUpstreamConfigV2beta3(au)
 	assert.Nil(t, err, "checking upstream config translating")
 	assert.Equal(t, apisixv1.LbConsistentHash, ups.Type)
 	assert.Equal(t, "user-agent", ups.Key)
@@ -68,7 +69,7 @@ func TestTranslateUpstreamConfig(t *testing.T) {
 		},
 		Scheme: "dns",
 	}
-	_, err = tr.TranslateUpstreamConfig(au)
+	_, err = tr.TranslateUpstreamConfigV2beta3(au)
 	assert.Error(t, err, &translateError{
 		field:  "scheme",
 		reason: "invalid value",
@@ -79,7 +80,7 @@ func TestTranslateUpstreamConfig(t *testing.T) {
 			Type: "hash",
 		},
 	}
-	_, err = tr.TranslateUpstreamConfig(au)
+	_, err = tr.TranslateUpstreamConfigV2beta3(au)
 	assert.Error(t, err, &translateError{
 		field:  "loadbalancer.type",
 		reason: "invalid value",
@@ -91,7 +92,73 @@ func TestTranslateUpstreamConfig(t *testing.T) {
 			HashOn: "arg",
 		},
 	}
-	_, err = tr.TranslateUpstreamConfig(au)
+	_, err = tr.TranslateUpstreamConfigV2beta3(au)
+	assert.Error(t, err, &translateError{
+		field:  "loadbalancer.hashOn",
+		reason: "invalid value",
+	})
+}
+
+func TestTranslateUpstreamConfigV2(t *testing.T) {
+	tr := &translator{}
+
+	au := &configv2.ApisixUpstreamConfig{
+		LoadBalancer: nil,
+		Scheme:       apisixv1.SchemeGRPC,
+	}
+
+	ups, err := tr.TranslateUpstreamConfigV2(au)
+	assert.Nil(t, err, "checking upstream config translating")
+	assert.Equal(t, apisixv1.LbRoundRobin, ups.Type)
+	assert.Equal(t, apisixv1.SchemeGRPC, ups.Scheme)
+
+	au = &configv2.ApisixUpstreamConfig{
+		LoadBalancer: &configv2.LoadBalancer{
+			Type:   apisixv1.LbConsistentHash,
+			HashOn: apisixv1.HashOnHeader,
+			Key:    "user-agent",
+		},
+		Scheme: apisixv1.SchemeHTTP,
+	}
+	ups, err = tr.TranslateUpstreamConfigV2(au)
+	assert.Nil(t, err, "checking upstream config translating")
+	assert.Equal(t, apisixv1.LbConsistentHash, ups.Type)
+	assert.Equal(t, "user-agent", ups.Key)
+	assert.Equal(t, apisixv1.HashOnHeader, ups.HashOn)
+	assert.Equal(t, apisixv1.SchemeHTTP, ups.Scheme)
+
+	au = &configv2.ApisixUpstreamConfig{
+		LoadBalancer: &configv2.LoadBalancer{
+			Type:   apisixv1.LbConsistentHash,
+			HashOn: apisixv1.HashOnHeader,
+			Key:    "user-agent",
+		},
+		Scheme: "dns",
+	}
+	_, err = tr.TranslateUpstreamConfigV2(au)
+	assert.Error(t, err, &translateError{
+		field:  "scheme",
+		reason: "invalid value",
+	})
+
+	au = &configv2.ApisixUpstreamConfig{
+		LoadBalancer: &configv2.LoadBalancer{
+			Type: "hash",
+		},
+	}
+	_, err = tr.TranslateUpstreamConfigV2(au)
+	assert.Error(t, err, &translateError{
+		field:  "loadbalancer.type",
+		reason: "invalid value",
+	})
+
+	au = &configv2.ApisixUpstreamConfig{
+		LoadBalancer: &configv2.LoadBalancer{
+			Type:   apisixv1.LbConsistentHash,
+			HashOn: "arg",
+		},
+	}
+	_, err = tr.TranslateUpstreamConfigV2(au)
 	assert.Error(t, err, &translateError{
 		field:  "loadbalancer.hashOn",
 		reason: "invalid value",

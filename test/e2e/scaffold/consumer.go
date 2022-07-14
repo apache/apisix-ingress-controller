@@ -67,21 +67,21 @@ spec:
 )
 
 func (s *Scaffold) ApisixConsumerBasicAuthCreated(name, username, password string) error {
-	ac := fmt.Sprintf(_apisixConsumerBasicAuth, s.opts.APISIXConsumerVersion, name, username, password)
+	ac := fmt.Sprintf(_apisixConsumerBasicAuth, s.opts.ApisixResourceVersion, name, username, password)
 	return s.CreateVersionedApisixResource(ac)
 }
 
 func (s *Scaffold) ApisixConsumerBasicAuthSecretCreated(name, secret string) error {
-	ac := fmt.Sprintf(_apisixConsumerBasicAuthSecret, s.opts.APISIXConsumerVersion, name, secret)
+	ac := fmt.Sprintf(_apisixConsumerBasicAuthSecret, s.opts.ApisixResourceVersion, name, secret)
 	return s.CreateVersionedApisixResource(ac)
 }
 
 func (s *Scaffold) ApisixConsumerKeyAuthCreated(name, key string) error {
-	ac := fmt.Sprintf(_apisixConsumerKeyAuth, s.opts.APISIXConsumerVersion, name, key)
+	ac := fmt.Sprintf(_apisixConsumerKeyAuth, s.opts.ApisixResourceVersion, name, key)
 	return s.CreateVersionedApisixResource(ac)
 }
 
 func (s *Scaffold) ApisixConsumerKeyAuthSecretCreated(name, secret string) error {
-	ac := fmt.Sprintf(_apisixConsumerKeyAuthSecret, s.opts.APISIXConsumerVersion, name, secret)
+	ac := fmt.Sprintf(_apisixConsumerKeyAuthSecret, s.opts.ApisixResourceVersion, name, secret)
 	return s.CreateVersionedApisixResource(ac)
 }

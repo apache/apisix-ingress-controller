@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
@@ -26,15 +25,7 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-chaos: Chaos Testing", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    config.DefaultApisixVersion,
-	}
-	s := scaffold.NewScaffold(opts)
+	s := scaffold.NewDefaultScaffold()
 	ginkgo.Context("simulate apisix deployment restart", func() {
 		ginkgo.Specify("ingress controller can synchronize rules normally after apisix recovery", func() {
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(0), "checking number of upstreams")

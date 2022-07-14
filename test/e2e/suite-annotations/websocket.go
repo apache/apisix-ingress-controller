@@ -28,15 +28,7 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1 websocket", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
+	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("sanity", func() {
 		resources := `
 apiVersion: v1
@@ -122,15 +114,7 @@ spec:
 })
 
 var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1beta1 with websocket", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
+	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("sanity", func() {
 		resources := `
 apiVersion: v1
@@ -214,15 +198,7 @@ spec:
 })
 
 var _ = ginkgo.Describe("suite-annotations: ingress.networking/v1beta1 with websocket", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
+	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("sanity", func() {
 		resources := `
 apiVersion: v1
