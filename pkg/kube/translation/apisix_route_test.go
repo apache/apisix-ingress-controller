@@ -267,7 +267,7 @@ func mockTranslatorV2beta3(t *testing.T) (*translator, <-chan struct{}) {
 		},
 	}
 
-	processCh := make(chan struct{})
+	processCh := make(chan struct{}, 2)
 	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			processCh <- struct{}{}
