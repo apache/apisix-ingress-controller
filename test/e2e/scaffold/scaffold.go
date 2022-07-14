@@ -426,6 +426,8 @@ func (s *Scaffold) beforeEach() {
 func (s *Scaffold) afterEach() {
 	defer ginkgo.GinkgoRecover()
 
+	shouldKeepNamespace := false
+
 	if ginkgo.CurrentSpecReport().Failed() {
 		_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
 		output, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods")
@@ -446,10 +448,15 @@ func (s *Scaffold) afterEach() {
 		if output != "" {
 			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
 		}
+		// Keep the namespace when the test is failed if the test is running locally.
+		if os.Getenv("E2E_ENV") == "dev" {
+			shouldKeepNamespace = true
+		}
 	}
-
-	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
-	assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
+	if !shouldKeepNamespace {
+		err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
+		assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
+	}
 
 	for _, f := range s.finializers {
 		runWithRecover(f)
