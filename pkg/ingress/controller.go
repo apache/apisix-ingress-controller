@@ -240,11 +240,11 @@ func (c *Controller) initWhenStartLeading() {
 	}
 
 	switch c.cfg.Kubernetes.ApisixRouteVersion {
-	case config.ApisixRouteV2beta2:
+	case config.ApisixV2beta2:
 		apisixRouteInformer = apisixFactory.Apisix().V2beta2().ApisixRoutes().Informer()
-	case config.ApisixRouteV2beta3:
+	case config.ApisixV2beta3:
 		apisixRouteInformer = apisixFactory.Apisix().V2beta3().ApisixRoutes().Informer()
-	case config.ApisixRouteV2:
+	case config.ApisixV2:
 		apisixRouteInformer = apisixFactory.Apisix().V2().ApisixRoutes().Informer()
 	default:
 		panic(fmt.Errorf("unsupported ApisixRoute version %s", c.cfg.Kubernetes.ApisixRouteVersion))
@@ -269,9 +269,9 @@ func (c *Controller) initWhenStartLeading() {
 	}
 
 	switch c.cfg.Kubernetes.ApisixConsumerVersion {
-	case config.ApisixRouteV2beta3:
+	case config.ApisixV2beta3:
 		apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
-	case config.ApisixRouteV2:
+	case config.ApisixV2:
 		apisixConsumerInformer = apisixFactory.Apisix().V2().ApisixConsumers().Informer()
 	default:
 		panic(fmt.Errorf("unsupported ApisixConsumer version %v", c.cfg.Kubernetes.ApisixConsumerVersion))
