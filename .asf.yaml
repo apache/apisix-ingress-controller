@@ -16,18 +16,20 @@
 #
 
 github:
-    description: ingress controller for K8s
+    description: APISIX Ingress Controller for Kubernetes
     homepage: https://apisix.apache.org/
     labels:
       - ingress
-      - controller
       - kubernetes
+      - controller
+      - apisix
+      - crds
       - k8s
       - apigateway
       - microservices
       - api
+      - kubernetes-ingress
       - loadbalancing
-      - apisix
       - devops
 
     enabled_merge_buttons:
@@ -38,8 +40,3 @@ github:
       master:
         required_pull_request_reviews:
           required_approving_review_count: 2
-
-notifications:
-    commits:      notifications@apisix.apache.org
-    issues:       notifications@apisix.apache.org
-    pullrequests: notifications@apisix.apache.org
