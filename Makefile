@@ -245,9 +245,9 @@ ifneq ("$(E2E_FOCUS)", "")
 	&& ./test/e2e/testdata/wolf-rbac/cmd.sh start
 endif
 
-### kind-load-image:		Load the image to the kind cluster
-.PHONY: kind-load-image
-kind-load-image:
+### kind-load-images:		Load the images to the kind cluster
+.PHONY: kind-load-images
+kind-load-images:
 	kind load docker-image --name=apisix \
 			localhost:5000/apache/apisix:dev \
             localhost:5000/bitnami/etcd:dev \

@@ -156,11 +156,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install ginkgo
-        run: |
-          go install github.com/onsi/ginkgo/v2/ginkgo@v2.1.4
-          sudo cp ~/go/bin/ginkgo /usr/local/bin
-
       - name: cache
         uses: actions/download-artifact@v2 # v2
         with:
@@ -177,6 +172,11 @@ jobs:
           echo "loading docker images..."
           pigz -dc docker.tar.gz | docker load
           make push-images
+
+      - name: Install ginkgo
+        run: |
+          go install github.com/onsi/ginkgo/v2/ginkgo@v2.1.4
+          sudo cp ~/go/bin/ginkgo /usr/local/bin
 
       - name: Run E2E test suite
         shell: bash
