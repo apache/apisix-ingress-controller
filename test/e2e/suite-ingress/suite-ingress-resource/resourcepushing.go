@@ -129,8 +129,6 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
 
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(0), "Checking number of routes")
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(0), "Checking number of upstreams")
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(0), "Checking number of pluginConfigs")
 
 			body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound).Body().Raw()
 			assert.Contains(ginkgo.GinkgoT(), body, "404 Route Not Found")

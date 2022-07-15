@@ -39,6 +39,7 @@ GITSHASYM="github.com/apache/apisix-ingress-controller/pkg/version._buildGitRevi
 BUILDOSSYM="github.com/apache/apisix-ingress-controller/pkg/version._buildOS"
 GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH)"
 E2E_NODES ?= 4
+E2E_FLAKE_ATTEMPTS ?= 0
 E2E_SKIP_BUILD ?= 0
 
 ### build:                Build apisix-ingress-controller
@@ -128,7 +129,7 @@ e2e-test: ginkgo-check pack-images e2e-wolf-rbac
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
-		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_NODES) --focus=$(E2E_FOCUS)
+		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_NODES) --focus=$(E2E_FOCUS) --flake-attempts=$(E2E_FLAKE_ATTEMPTS)
 
 ### e2e-test-local:        Run e2e test cases (kind is required)
 .PHONY: e2e-test-local
