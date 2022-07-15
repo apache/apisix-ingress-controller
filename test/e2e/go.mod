@@ -6,7 +6,7 @@ require (
 	github.com/apache/apisix-ingress-controller v0.0.0-20210105024109-72e53386de5a
 	github.com/apache/apisix-ingress-controller/test/e2e/testbackend v0.0.0
 	github.com/gavv/httpexpect/v2 v2.3.1
-	github.com/gorilla/websocket v1.4.2
+	github.com/gorilla/websocket v1.5.0
 	github.com/gruntwork-io/terratest v0.40.17
 	github.com/onsi/ginkgo/v2 v2.1.4
 	github.com/stretchr/testify v1.8.0
@@ -46,6 +46,7 @@ require (
 	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
 	github.com/hashicorp/go-memdb v1.3.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/imkira/go-interpol v1.0.0 // indirect
@@ -53,6 +54,7 @@ require (
 	github.com/json-iterator/go v1.1.11 // indirect
 	github.com/klauspost/compress v1.15.0 // indirect
 	github.com/leodido/go-urn v1.2.0 // indirect
+	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/mattn/go-zglob v0.0.2-0.20190814121620-e3c945676326 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
@@ -60,6 +62,7 @@ require (
 	github.com/moby/spdystream v0.2.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
+	github.com/onsi/ginkgo v1.16.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pquerna/otp v1.2.0 // indirect
 	github.com/prometheus/client_golang v1.11.0 // indirect
@@ -100,7 +103,6 @@ require (
 	k8s.io/klog/v2 v2.10.0 // indirect
 	k8s.io/utils v0.0.0-20210820185131-d34e5cb4466e // indirect
 	moul.io/http2curl v1.0.1-0.20190925090545-5cd742060b0e // indirect
-	sigs.k8s.io/gateway-api v0.4.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
