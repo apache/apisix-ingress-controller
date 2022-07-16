@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 default: help
-# 4th
+# 5th
 VERSION ?= 1.4.1
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 REGISTRY ?="localhost:5000"
