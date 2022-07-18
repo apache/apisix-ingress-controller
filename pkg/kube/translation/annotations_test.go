@@ -12,41 +12,28 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package plugins
+package translation
 
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/stretchr/testify/assert"
+	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestCorsHandler(t *testing.T) {
-	ingress := &annotations.Ingress{
+func TestAnnotations(t *testing.T) {
+	ing := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
+			Name:      "jack",
+			Namespace: "qa",
 			Annotations: map[string]string{
-				_enableCors:       "true",
-				_corsAllowHeaders: "abc,def",
-				_corsAllowOrigin:  "https://a.com",
-				_corsAllowMethods: "GET,HEAD",
+				annotations.AnnotationsPrefix + "auth-type": "basicAuth",
 			},
 		},
+		Spec: networkingv1.IngressSpec{},
 	}
-	p := NewCorsHandler()
-	out, err := p.Handle(ingress)
-	assert.Nil(t, err, "checking given error")
-	config := out.(*apisixv1.CorsConfig)
-	assert.Equal(t, "abc,def", config.AllowHeaders)
-	assert.Equal(t, "https://a.com", config.AllowOrigins)
-	assert.Equal(t, "GET,HEAD", config.AllowMethods)
-
-	assert.Equal(t, "cors", p.PluginName())
-
-	ingress.Annotations[_enableCors] = "false"
-	out, err = p.Handle(ingress)
-	assert.Nil(t, err, "checking given error")
-	assert.Nil(t, out, "checking given output")
+	ingress := (&translator{}).translateAnnotations(ing.ObjectMeta)
+	assert.Len(t, ingress.Plugins, 1)
 }

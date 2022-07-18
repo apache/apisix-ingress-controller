@@ -27,8 +27,11 @@ const (
 )
 
 type Ingress struct {
-	*metav1.ObjectMeta
-	Plugins apisix.Plugins
+	metav1.ObjectMeta
+	Plugins          apisix.Plugins
+	UseRegex         bool
+	EnableWebsocket  bool
+	PluginConfigName string
 }
 
 // Extractor encapsulates some auxiliary methods to extract annotations.

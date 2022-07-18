@@ -30,7 +30,6 @@ import (
 	kubev2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	kubev2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -41,11 +40,11 @@ const (
 
 func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bool) (*TranslateContext, error) {
 	ctx := DefaultEmptyTranslateContext()
-	plugins := t.translateAnnotations(ing.Annotations)
-	annoExtractor := annotations.NewExtractor(ing.Annotations)
-	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
-	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
-	pluginConfigName := annoExtractor.GetStringAnnotation(annotations.AnnotationsPrefix + "plugin-config-name")
+	ingress := t.translateAnnotations(ing.ObjectMeta)
+	plugins := ingress.Plugins
+	useRegex := ingress.UseRegex                 // use-regex
+	enableWebsocket := ingress.EnableWebsocket   // enable-websocket
+	pluginConfigName := ingress.PluginConfigName //plugin-config-name
 
 	// add https
 	for _, tls := range ing.Spec.TLS {
@@ -160,14 +159,12 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 }
 
 func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, skipVerify bool) (*TranslateContext, error) {
-	ing.GetObjectMeta()
-	ing.GetAnnotations()
 	ctx := DefaultEmptyTranslateContext()
-	plugins := t.translateAnnotations(ing.Annotations, ing.ObjectMeta)
-	annoExtractor := annotations.NewExtractor(ing.Annotations)
-	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
-	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
-	pluginConfigName := annoExtractor.GetStringAnnotation(annotations.AnnotationsPrefix + "plugin-config-name")
+	ingress := t.translateAnnotations(ing.ObjectMeta)
+	plugins := ingress.Plugins
+	useRegex := ingress.UseRegex                 // use-regex
+	enableWebsocket := ingress.EnableWebsocket   // enable-websocket
+	pluginConfigName := ingress.PluginConfigName //plugin-config-name
 
 	// add https
 	for _, tls := range ing.Spec.TLS {
@@ -337,11 +334,11 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 
 func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress, skipVerify bool) (*TranslateContext, error) {
 	ctx := DefaultEmptyTranslateContext()
-	plugins := t.translateAnnotations(ing.Annotations)
-	annoExtractor := annotations.NewExtractor(ing.Annotations)
-	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
-	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
-	pluginConfigName := annoExtractor.GetStringAnnotation(annotations.AnnotationsPrefix + "plugin-config-name")
+	ingress := t.translateAnnotations(ing.ObjectMeta)
+	plugins := ingress.Plugins
+	useRegex := ingress.UseRegex                 // use-regex
+	enableWebsocket := ingress.EnableWebsocket   // enable-websocket
+	pluginConfigName := ingress.PluginConfigName //plugin-config-name
 
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {

@@ -15,7 +15,6 @@
 package plugins
 
 import (
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -41,7 +40,7 @@ type PluginHandler interface {
 	// Handle parses the target annotation and converts it to the type-agnostic structure.
 	// The return value might be nil since some features have an explicit switch, users should
 	// judge whether Handle is failed by the second error value.
-	Handle(translation.Ingress) (interface{}, error)
+	Handle(*annotations.Ingress) (interface{}, error)
 	// PluginName returns a string which indicates the target plugin name in APISIX.
 	PluginName() string
 }
@@ -52,7 +51,7 @@ func NewPluginsParser() annotations.IngressAnnotations {
 	return &plugins{}
 }
 
-func (p *plugins) Parse(ing *translation.Ingress) (interface{}, error) {
+func (p *plugins) Parse(ing *annotations.Ingress) (interface{}, error) {
 	plugins := make(apisix.Plugins)
 	for _, handler := range _handlers {
 		out, err := handler.Handle(ing)
@@ -67,7 +66,4 @@ func (p *plugins) Parse(ing *translation.Ingress) (interface{}, error) {
 		}
 	}
 	return plugins, nil
-}
-
-type IngressResource interface {
 }

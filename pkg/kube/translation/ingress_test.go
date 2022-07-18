@@ -419,8 +419,8 @@ func testTranslateIngressV1ReferenceUpstreamVersion(t *testing.T, apiVersoin str
 		<-processCh
 		<-processCh
 		ctx, err := tr.translateIngressV1(ing, false)
-		annoExtractor := annotations.NewExtractor(ing.Annotations)
-		pluginConfigName := annoExtractor.GetStringAnnotation(path.Join(annotations.AnnotationsPrefix, "plugin-config-name"))
+		ingress := tr.translateAnnotations(ing.ObjectMeta)
+		pluginConfigName := ingress.PluginConfigName
 
 		assert.Nil(t, err)
 		assert.Len(t, ctx.Routes, 2)
@@ -761,8 +761,8 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	<-processCh
 	<-processCh
 	ctx, err := tr.translateIngressV1beta1(ing, false)
-	annoExtractor := annotations.NewExtractor(ing.Annotations)
-	pluginConfigName := annoExtractor.GetStringAnnotation(path.Join(annotations.AnnotationsPrefix, "plugin-config-name"))
+	ingress := tr.translateAnnotations(ing.ObjectMeta)
+	pluginConfigName := ingress.PluginConfigName
 
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)
@@ -892,8 +892,8 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 	<-processCh
 	<-processCh
 	ctx, err := tr.translateIngressExtensionsV1beta1(ing, false)
-	annoExtractor := annotations.NewExtractor(ing.Annotations)
-	pluginConfigName := annoExtractor.GetStringAnnotation(path.Join(annotations.AnnotationsPrefix, "plugin-config-name"))
+	ingress := tr.translateAnnotations(ing.ObjectMeta)
+	pluginConfigName := ingress.PluginConfigName
 
 	assert.Nil(t, err)
 	assert.Len(t, ctx.Routes, 2)

@@ -17,20 +17,21 @@ package plugins
 import (
 	"regexp"
 
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
-	_rewriteTarget              = AnnotationsPrefix + "rewrite-target"
-	_rewriteTargetRegex         = AnnotationsPrefix + "rewrite-target-regex"
-	_rewriteTargetRegexTemplate = AnnotationsPrefix + "rewrite-target-regex-template"
+	_rewriteTarget              = annotations.AnnotationsPrefix + "rewrite-target"
+	_rewriteTargetRegex         = annotations.AnnotationsPrefix + "rewrite-target-regex"
+	_rewriteTargetRegexTemplate = annotations.AnnotationsPrefix + "rewrite-target-regex-template"
 )
 
 type rewrite struct{}
 
 // NewRewriteHandler creates a handler to convert
 // annotations about request rewrite control to APISIX proxy-rewrite plugin.
-func NewRewriteHandler() Handler {
+func NewRewriteHandler() PluginHandler {
 	return &rewrite{}
 }
 
@@ -38,11 +39,11 @@ func (i *rewrite) PluginName() string {
 	return "proxy-rewrite"
 }
 
-func (i *rewrite) Handle(e Extractor) (interface{}, error) {
+func (i *rewrite) Handle(ing *annotations.Ingress) (interface{}, error) {
 	var plugin apisixv1.RewriteConfig
-	rewriteTarget := e.GetStringAnnotation(_rewriteTarget)
-	rewriteTargetRegex := e.GetStringAnnotation(_rewriteTargetRegex)
-	rewriteTemplate := e.GetStringAnnotation(_rewriteTargetRegexTemplate)
+	rewriteTarget := annotations.GetStringAnnotation(_rewriteTarget, ing)
+	rewriteTargetRegex := annotations.GetStringAnnotation(_rewriteTargetRegex, ing)
+	rewriteTemplate := annotations.GetStringAnnotation(_rewriteTargetRegexTemplate, ing)
 	if rewriteTarget != "" || rewriteTargetRegex != "" || rewriteTemplate != "" {
 		plugin.RewriteTarget = rewriteTarget
 		if rewriteTargetRegex != "" && rewriteTemplate != "" {

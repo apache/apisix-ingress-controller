@@ -19,18 +19,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations/plugins"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/imdario/mergo"
 )
 
 var (
 	_handlers = map[string]annotations.IngressAnnotations{
-		"Plugins": annotations.NewPluginsParser(),
+		"Plugins": plugins.NewPluginsParser(),
 	}
 )
 
 func (t *translator) translateAnnotations(meta metav1.ObjectMeta) *annotations.Ingress {
 	ing := &annotations.Ingress{
-		ObjectMeta: &meta,
+		ObjectMeta: meta,
 	}
 	data := make(map[string]interface{})
 	for name, handler := range _handlers {
@@ -44,6 +46,10 @@ func (t *translator) translateAnnotations(meta metav1.ObjectMeta) *annotations.I
 		if out != nil {
 			data[name] = out
 		}
+	}
+	err := mergo.MapWithOverwrite(ing, data)
+	if err != nil {
+		log.Errorw("unexpected error merging extracted annotations", zap.Error(err))
 	}
 	return ing
 }

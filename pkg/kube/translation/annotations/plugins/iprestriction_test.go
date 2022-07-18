@@ -19,15 +19,21 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestIPRestrictionHandler(t *testing.T) {
-	annotations := map[string]string{
-		_allowlistSourceRange: "10.2.2.2,192.168.0.0/16",
+	ingress := &annotations.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				_allowlistSourceRange: "10.2.2.2,192.168.0.0/16",
+			},
+		},
 	}
 	p := NewIPRestrictionHandler()
-	out, err := p.Handle(NewExtractor(annotations))
+	out, err := p.Handle(ingress)
 	assert.Nil(t, err, "checking given error")
 	config := out.(*apisixv1.IPRestrictConfig)
 	assert.Len(t, config.Allowlist, 2, "checking size of white list")
@@ -35,8 +41,8 @@ func TestIPRestrictionHandler(t *testing.T) {
 	assert.Equal(t, "192.168.0.0/16", config.Allowlist[1])
 	assert.Equal(t, "ip-restriction", p.PluginName())
 
-	annotations[_blocklistSourceRange] = "172.17.0.0/16,127.0.0.1"
-	out, err = p.Handle(NewExtractor(annotations))
+	ingress.Annotations[_blocklistSourceRange] = "172.17.0.0/16,127.0.0.1"
+	out, err = p.Handle(ingress)
 	assert.Nil(t, err, "checking given error")
 	config = out.(*apisixv1.IPRestrictConfig)
 	assert.Len(t, config.Allowlist, 2, "checking size of white list")
@@ -46,9 +52,9 @@ func TestIPRestrictionHandler(t *testing.T) {
 	assert.Equal(t, "172.17.0.0/16", config.Blocklist[0])
 	assert.Equal(t, "127.0.0.1", config.Blocklist[1])
 
-	delete(annotations, _allowlistSourceRange)
-	delete(annotations, _blocklistSourceRange)
-	out, err = p.Handle(NewExtractor(annotations))
+	delete(ingress.Annotations, _allowlistSourceRange)
+	delete(ingress.Annotations, _blocklistSourceRange)
+	out, err = p.Handle(ingress)
 	assert.Nil(t, err, "checking given error")
 	assert.Nil(t, out, "checking the given ip-restrction plugin config")
 }
