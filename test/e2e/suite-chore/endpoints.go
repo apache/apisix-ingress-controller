@@ -12,11 +12,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package endpoints
+package chore
 
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-endpoints: endpoints", func() {
+var _ = ginkgo.Describe("suite-chore: endpoints", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("ignore applied only if there is an ApisixRoute referenced", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -110,69 +111,56 @@ spec:
 			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusServiceUnavailable)
 		})
 	}
-	ginkgo.Describe("suite-endpoints: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-chore: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold())
 	})
-	ginkgo.Describe("suite-endpoints: scaffold v2", func() {
+	ginkgo.Describe("suite-chore: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})
 })
 
-var _ = ginkgo.Describe("suite-endpoints: port usage", func() {
-	suites := func(s *scaffold.Scaffold) {
-		ginkgo.It("service port != target port", func() {
-			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
-			apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
-kind: ApisixRoute
+var _ = ginkgo.Describe("suite-chore: port usage", func() {
+	s := scaffold.NewDefaultScaffold()
+	ginkgo.It("service port != target port", func() {
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
 metadata:
- name: httpbin-route
+  name: httpbin-route
 spec:
-  http:
-  - name: rule1
-    match:
-      hosts:
-      - httpbin.com
+  ingressClassName: apisix
+  rules:
+  - host: httpbin.com
+    http:
       paths:
-      - /ip
-    backends:
-    - serviceName: %s
-      servicePort: %d
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
 `, backendSvc, backendSvcPort[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumListUpstreamNodesNth(1, 1))
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumListUpstreamNodesNth(1, 1))
 
-			// port in nodes is still the targetPort, not the service port
-			ups, err := s.ListApisixUpstreams()
-			assert.Nil(ginkgo.GinkgoT(), err, "listing APISIX upstreams")
-			assert.Equal(ginkgo.GinkgoT(), ups[0].Nodes[0].Port, 80)
+		// port in nodes is still the targetPort, not the service port
+		ups, err := s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing APISIX upstreams")
+		assert.Equal(ginkgo.GinkgoT(), ups[0].Nodes[0].Port, 80)
 
-			// scale HTTPBIN, so the endpoints controller has the opportunity to update upstream.
-			assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(3))
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumListUpstreamNodesNth(1, 3))
+		// scale HTTPBIN, so the endpoints controller has the opportunity to update upstream.
+		assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(3))
+		// s.ScaleHTTPBIN(3) process will be slow, and need time.
+		time.Sleep(10 * time.Second)
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumListUpstreamNodesNth(1, 3))
 
-			// port in nodes is still the targetPort, not the service port
-			ups, err = s.ListApisixUpstreams()
-			assert.Nil(ginkgo.GinkgoT(), err, "listing APISIX upstreams")
-			assert.Equal(ginkgo.GinkgoT(), ups[0].Nodes[0].Port, 80)
-			assert.Equal(ginkgo.GinkgoT(), ups[0].Nodes[1].Port, 80)
-			assert.Equal(ginkgo.GinkgoT(), ups[0].Nodes[2].Port, 80)
-		})
-	}
-	ginkgo.Describe("suite-endpoints: scaffold v2beta3", func() {
-		suites(scaffold.NewScaffold(&scaffold.Options{
-			Name:                  "endpoints-port",
-			IngressAPISIXReplicas: 1,
-			HTTPBinServicePort:    8080,
-			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2beta3,
-		}))
-	})
-	ginkgo.Describe("suite-endpoints: scaffold v2", func() {
-		suites(scaffold.NewScaffold(&scaffold.Options{
-			Name:                  "endpoints-port",
-			IngressAPISIXReplicas: 1,
-			HTTPBinServicePort:    8080,
-			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
-		}))
+		// port in nodes is still the targetPort, not the service port
+		ups, err = s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing APISIX upstreams")
+		assert.Equal(ginkgo.GinkgoT(), ups[0].Nodes[0].Port, 80)
+		assert.Equal(ginkgo.GinkgoT(), ups[0].Nodes[1].Port, 80)
+		assert.Equal(ginkgo.GinkgoT(), ups[0].Nodes[2].Port, 80)
 	})
 })

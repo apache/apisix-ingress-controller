@@ -234,7 +234,7 @@ spec:
       terminationGracePeriodSeconds: 0
       initContainers:
       - name: wait-apisix-admin
-        image: localhost:5000/busybox:1.28
+        image: localhost:5000/busybox:dev
         imagePullPolicy: IfNotPresent
         command: ['sh', '-c', "until nc -z apisix-service-e2e-test.%s.svc.cluster.local 9180 ; do echo waiting for apisix-admin; sleep 2; done;"]
       containers:

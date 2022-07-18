@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package chaos
+package chore
 
 import (
 	"fmt"
@@ -24,7 +24,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-chaos: Chaos Testing", func() {
+var _ = ginkgo.Describe("suite-chore: Chaos Testing", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.Context("simulate apisix deployment restart", func() {
 		ginkgo.Specify("ingress controller can synchronize rules normally after apisix recovery", func() {

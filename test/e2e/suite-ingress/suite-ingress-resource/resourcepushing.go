@@ -17,6 +17,7 @@ package ingress
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -118,12 +119,8 @@ spec:
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
 
-			err = s.EnsureNumApisixRoutesCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-			err = s.EnsureNumApisixUpstreamsCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-			err = s.EnsureNumApisixPluginConfigCreated(0)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
+			// EnsureNumApisixRoutesCreated cannot be used to ensure update Correctness.
+			time.Sleep(6 * time.Second)
 
 			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)
 			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").WithHeader("X-Foo", "barbaz").Expect().Status(http.StatusOK)
@@ -132,8 +129,6 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
 
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(0), "Checking number of routes")
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(0), "Checking number of upstreams")
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(0), "Checking number of pluginConfigs")
 
 			body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound).Body().Raw()
 			assert.Contains(ginkgo.GinkgoT(), body, "404 Route Not Found")
@@ -196,12 +191,8 @@ spec:
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
 
-			err = s.EnsureNumApisixRoutesCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-			err = s.EnsureNumApisixUpstreamsCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-			err = s.EnsureNumApisixPluginConfigCreated(0)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
+			// EnsureNumApisixRoutesCreated cannot be used to ensure update Correctness.
+			time.Sleep(6 * time.Second)
 
 			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)
 			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").WithHeader("X-Foo", "barbaz").Expect().Status(http.StatusOK)
@@ -209,10 +200,7 @@ spec:
 			// assert.Nil(ginkgo.GinkgoT(), s.DeleteHTTPBINService())
 			// remove
 			assert.Nil(ginkgo.GinkgoT(), s.RemoveResourceByString(apisixRoute))
-
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(0), "Checking number of routes")
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(0), "Checking number of upstreams")
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(0), "Checking number of pluginConfigs")
 
 			body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound).Body().Raw()
 			assert.Contains(ginkgo.GinkgoT(), body, "404 Route Not Found")

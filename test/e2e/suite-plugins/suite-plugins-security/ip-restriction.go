@@ -16,6 +16,7 @@ package plugins
 
 import (
 	"fmt"
+	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -174,10 +175,8 @@ spec:
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
-			err = s.EnsureNumApisixUpstreamsCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-			err = s.EnsureNumApisixRoutesCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			// EnsureNumApisixRoutesCreated cannot be used to ensure update Correctness.
+			time.Sleep(6 * time.Second)
 
 			// As we use port forwarding so the ip address is 127.0.0.1
 			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").
