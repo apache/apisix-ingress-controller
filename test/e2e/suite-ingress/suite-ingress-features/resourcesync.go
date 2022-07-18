@@ -139,6 +139,7 @@ spec:
 
 			waitTime := time.Until(readyTime).Seconds()
 			time.Sleep(time.Duration(waitTime) * time.Second)
+			time.Sleep(time.Second * 6)
 
 			_ = s.NewAPISIXClient().
 				GET("/ip").
@@ -196,6 +197,7 @@ spec:
 
 			waitTime := time.Until(readyTime).Seconds()
 			time.Sleep(time.Duration(waitTime) * time.Second)
+			time.Sleep(time.Second * 6)
 
 			_ = s.NewAPISIXClient().
 				GET("/ip").
