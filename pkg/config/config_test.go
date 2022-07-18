@@ -28,27 +28,25 @@ import (
 
 func TestNewConfigFromFile(t *testing.T) {
 	cfg := &Config{
-		LogLevel:              "warn",
-		LogOutput:             "stdout",
-		HTTPListen:            ":9090",
-		HTTPSListen:           ":9443",
-		IngressPublishService: "",
-		IngressStatusAddress:  []string{},
-		CertFilePath:          "/etc/webhook/certs/cert.pem",
-		KeyFilePath:           "/etc/webhook/certs/key.pem",
-		EnableProfiling:       true,
+		LogLevel:                   "warn",
+		LogOutput:                  "stdout",
+		HTTPListen:                 ":9090",
+		HTTPSListen:                ":9443",
+		IngressPublishService:      "",
+		IngressStatusAddress:       []string{},
+		CertFilePath:               "/etc/webhook/certs/cert.pem",
+		KeyFilePath:                "/etc/webhook/certs/key.pem",
+		EnableProfiling:            true,
+		ApisixResourceSyncInterval: types.TimeDuration{Duration: 200 * time.Second},
 		Kubernetes: KubernetesConfig{
-			ResyncInterval:             types.TimeDuration{Duration: time.Hour},
-			Kubeconfig:                 "/path/to/foo/baz",
-			AppNamespaces:              []string{""},
-			ElectionID:                 "my-election-id",
-			IngressClass:               IngressClass,
-			IngressVersion:             IngressNetworkingV1,
-			ApisixRouteVersion:         ApisixRouteV2beta3,
-			ApisixPluginConfigVersion:  ApisixV2beta3,
-			ApisixConsumerVersion:      ApisixV2beta3,
-			ApisixTlsVersion:           ApisixV2beta3,
-			ApisixClusterConfigVersion: ApisixV2beta3,
+			ResyncInterval:     types.TimeDuration{Duration: time.Hour},
+			Kubeconfig:         "/path/to/foo/baz",
+			AppNamespaces:      []string{""},
+			ElectionID:         "my-election-id",
+			IngressClass:       IngressClass,
+			IngressVersion:     IngressNetworkingV1,
+			ApisixRouteVersion: DefaultAPIVersion,
+			APIVersion:         DefaultAPIVersion,
 		},
 		APISIX: APISIXConfig{
 			DefaultClusterName:     "default",
@@ -86,12 +84,14 @@ https_listen: :9443
 ingress_publish_service: ""
 ingress_status_address: []
 enable_profiling: true
+apisix-resource-sync-interval: 200s
 kubernetes:
   kubeconfig: /path/to/foo/baz
   resync_interval: 1h0m0s
   election_id: my-election-id
   ingress_class: apisix
   ingress_version: networking/v1
+  api_version: apisix.apache.org/v2beta3
 apisix:
   default_cluster_base_url: http://127.0.0.1:8080/apisix
   default_cluster_admin_key: "123456"
@@ -113,27 +113,25 @@ apisix:
 
 func TestConfigWithEnvVar(t *testing.T) {
 	cfg := &Config{
-		LogLevel:              "warn",
-		LogOutput:             "stdout",
-		HTTPListen:            ":9090",
-		HTTPSListen:           ":9443",
-		IngressPublishService: "",
-		IngressStatusAddress:  []string{},
-		CertFilePath:          "/etc/webhook/certs/cert.pem",
-		KeyFilePath:           "/etc/webhook/certs/key.pem",
-		EnableProfiling:       true,
+		LogLevel:                   "warn",
+		LogOutput:                  "stdout",
+		HTTPListen:                 ":9090",
+		HTTPSListen:                ":9443",
+		IngressPublishService:      "",
+		IngressStatusAddress:       []string{},
+		CertFilePath:               "/etc/webhook/certs/cert.pem",
+		KeyFilePath:                "/etc/webhook/certs/key.pem",
+		EnableProfiling:            true,
+		ApisixResourceSyncInterval: types.TimeDuration{Duration: 200 * time.Second},
 		Kubernetes: KubernetesConfig{
-			ResyncInterval:             types.TimeDuration{Duration: time.Hour},
-			Kubeconfig:                 "",
-			AppNamespaces:              []string{""},
-			ElectionID:                 "my-election-id",
-			IngressClass:               IngressClass,
-			IngressVersion:             IngressNetworkingV1,
-			ApisixRouteVersion:         ApisixRouteV2beta3,
-			ApisixPluginConfigVersion:  ApisixV2beta3,
-			ApisixConsumerVersion:      ApisixV2beta3,
-			ApisixTlsVersion:           ApisixV2beta3,
-			ApisixClusterConfigVersion: ApisixV2beta3,
+			ResyncInterval:     types.TimeDuration{Duration: time.Hour},
+			Kubeconfig:         "",
+			AppNamespaces:      []string{""},
+			ElectionID:         "my-election-id",
+			IngressClass:       IngressClass,
+			IngressVersion:     IngressNetworkingV1,
+			ApisixRouteVersion: DefaultAPIVersion,
+			APIVersion:         DefaultAPIVersion,
 		},
 		APISIX: APISIXConfig{
 			DefaultClusterName:     "default",
@@ -160,6 +158,7 @@ func TestConfigWithEnvVar(t *testing.T) {
 	"ingress_publish_service": "",
 	"ingress_status_address": [],
     "enable_profiling": true,
+	"apisix-resource-sync-interval": "200s",
     "kubernetes": {
         "kubeconfig": "{{.KUBECONFIG}}",
         "resync_interval": "1h0m0s",
@@ -195,6 +194,7 @@ https_listen: :9443
 ingress_publish_service: ""
 ingress_status_address: []
 enable_profiling: true
+apisix-resource-sync-interval: 200s
 kubernetes:
   resync_interval: 1h0m0s
   kubeconfig: "{{.KUBECONFIG}}"

@@ -183,8 +183,15 @@ func (pc *pluginConfigClient) Delete(ctx context.Context, obj *v1.PluginConfig) 
 		zap.String("cluster", "default"),
 		zap.String("url", pc.url),
 	)
+
 	if err := pc.cluster.HasSynced(ctx); err != nil {
 		return err
+	}
+	if err := pc.cluster.cache.DeletePluginConfig(obj); err != nil {
+		log.Errorf("failed to reflect pluginConfig delete to cache: %s", err)
+		if err != cache.ErrNotFound {
+			return err
+		}
 	}
 	url := pc.url + "/" + obj.ID
 	if err := pc.cluster.deleteResource(ctx, url, "pluginConfig"); err != nil {
@@ -192,12 +199,6 @@ func (pc *pluginConfigClient) Delete(ctx context.Context, obj *v1.PluginConfig) 
 		return err
 	}
 	pc.cluster.metricsCollector.IncrAPISIXRequest("pluginConfig")
-	if err := pc.cluster.cache.DeletePluginConfig(obj); err != nil {
-		log.Errorf("failed to reflect pluginConfig delete to cache: %s", err)
-		if err != cache.ErrNotFound {
-			return err
-		}
-	}
 	return nil
 }
 

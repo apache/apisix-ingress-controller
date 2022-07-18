@@ -115,7 +115,9 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 			// We still find the resource while we are processing the DELETE event,
 			// that means object with same namespace and name was created, discarding
 			// this stale DELETE event.
-			log.Warnf("discard the stale Gateway delete event since the %s exists", key)
+			log.Warnw("discard the stale Gateway delete event since it exists",
+				zap.String("key", key),
+			)
 			return nil
 		}
 		httpRoute = ev.Tombstone.(*gatewayv1alpha2.HTTPRoute)
@@ -200,7 +202,9 @@ func (c *gatewayHTTPRouteController) handleSyncErr(obj interface{}, err error) {
 func (c *gatewayHTTPRouteController) onAdd(obj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
-		log.Errorf("found gateway HTTPRoute resource with bad meta namespace key: %s", err)
+		log.Errorw("found gateway HTTPRoute resource with bad meta namespace key",
+			zap.Error(err),
+		)
 		return
 	}
 	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {

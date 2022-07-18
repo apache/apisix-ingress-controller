@@ -84,25 +84,26 @@ type ClusterOptions struct {
 }
 
 type cluster struct {
-	name             string
-	baseURL          string
-	baseURLHost      string
-	adminKey         string
-	cli              *http.Client
-	cacheState       int32
-	cache            cache.Cache
-	cacheSynced      chan struct{}
-	cacheSyncErr     error
-	route            Route
-	upstream         Upstream
-	ssl              SSL
-	streamRoute      StreamRoute
-	globalRules      GlobalRule
-	consumer         Consumer
-	plugin           Plugin
-	schema           Schema
-	pluginConfig     PluginConfig
-	metricsCollector metrics.Collector
+	name                    string
+	baseURL                 string
+	baseURLHost             string
+	adminKey                string
+	cli                     *http.Client
+	cacheState              int32
+	cache                   cache.Cache
+	cacheSynced             chan struct{}
+	cacheSyncErr            error
+	route                   Route
+	upstream                Upstream
+	ssl                     SSL
+	streamRoute             StreamRoute
+	globalRules             GlobalRule
+	consumer                Consumer
+	plugin                  Plugin
+	schema                  Schema
+	pluginConfig            PluginConfig
+	metricsCollector        metrics.Collector
+	upstreamServiceRelation UpstreamServiceRelation
 }
 
 func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
@@ -144,6 +145,7 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 	c.plugin = newPluginClient(c)
 	c.schema = newSchemaClient(c)
 	c.pluginConfig = newPluginConfigClient(c)
+	c.upstreamServiceRelation = newUpstreamServiceRelation(c)
 
 	c.cache, err = cache.NewMemDBCache()
 	if err != nil {
@@ -458,6 +460,10 @@ func (c *cluster) PluginConfig() PluginConfig {
 // Schema implements Cluster.Schema method.
 func (c *cluster) Schema() Schema {
 	return c.schema
+}
+
+func (c *cluster) UpstreamServiceRelation() UpstreamServiceRelation {
+	return c.upstreamServiceRelation
 }
 
 // HealthCheck implements Cluster.HealthCheck method.

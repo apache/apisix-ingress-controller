@@ -27,17 +27,11 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-features: websocket", func() {
-	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2beta3",
-	}
-	s := scaffold.NewScaffold(opts)
-	ginkgo.It("sanity", func() {
-		resources := `
+	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
+		s := scaffoldFunc()
+
+		ginkgo.It("sanity", func() {
+			resources := `
 apiVersion: v1
 kind: Pod
 metadata:
@@ -47,7 +41,7 @@ metadata:
 spec:
   containers:
   - name: websocket-server
-    image: localhost:5000/jmalloc/echo-server:latest
+    image: localhost:5000/jmalloc/echo-server:dev
     ports:
     - containerPort: 8080
 ---
@@ -64,11 +58,11 @@ spec:
     protocol: TCP
     targetPort: 8080
 `
-		err := s.CreateResourceFromString(resources)
-		assert.Nil(ginkgo.GinkgoT(), err)
-		time.Sleep(5 * time.Second)
+			err := s.CreateResourceFromString(resources)
+			assert.Nil(ginkgo.GinkgoT(), err)
+			time.Sleep(5 * time.Second)
 
-		ar := `
+			ar := `
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -86,33 +80,41 @@ spec:
    - serviceName: websocket-server-service
      servicePort: 48733
 `
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-		err = s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		err = s.EnsureNumApisixRoutesCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+			err = s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-		dialer := websocket.Dialer{}
-		u := url.URL{
-			Scheme: "ws",
-			Host:   s.APISIXGatewayServiceEndpoint(),
-			Path:   "/echo",
-		}
-		header := http.Header{
-			"Host": []string{"httpbin.org"},
-		}
-		conn, resp, err := dialer.Dial(u.String(), header)
-		assert.Nil(ginkgo.GinkgoT(), err, "websocket handshake failure")
-		assert.Equal(ginkgo.GinkgoT(), resp.StatusCode, http.StatusSwitchingProtocols)
+			dialer := websocket.Dialer{}
+			u := url.URL{
+				Scheme: "ws",
+				Host:   s.APISIXGatewayServiceEndpoint(),
+				Path:   "/echo",
+			}
+			header := http.Header{
+				"Host": []string{"httpbin.org"},
+			}
+			conn, resp, err := dialer.Dial(u.String(), header)
+			assert.Nil(ginkgo.GinkgoT(), err, "websocket handshake failure")
+			assert.Equal(ginkgo.GinkgoT(), resp.StatusCode, http.StatusSwitchingProtocols)
 
-		assert.Nil(ginkgo.GinkgoT(), conn.WriteMessage(websocket.TextMessage, []byte("hello, I'm gorilla")), "writing message")
-		msgType, buf, err := conn.ReadMessage()
-		assert.Nil(ginkgo.GinkgoT(), err, "reading message")
-		assert.Equal(ginkgo.GinkgoT(), string(buf), "Request served by websocket-server")
-		msgType, buf, err = conn.ReadMessage()
-		assert.Nil(ginkgo.GinkgoT(), err, "reading message")
-		assert.Equal(ginkgo.GinkgoT(), msgType, websocket.TextMessage)
-		assert.Equal(ginkgo.GinkgoT(), string(buf), "hello, I'm gorilla")
-		assert.Nil(ginkgo.GinkgoT(), conn.Close(), "closing ws connection")
+			assert.Nil(ginkgo.GinkgoT(), conn.WriteMessage(websocket.TextMessage, []byte("hello, I'm gorilla")), "writing message")
+			msgType, buf, err := conn.ReadMessage()
+			assert.Nil(ginkgo.GinkgoT(), err, "reading message")
+			assert.Equal(ginkgo.GinkgoT(), string(buf), "Request served by websocket-server")
+			msgType, buf, err = conn.ReadMessage()
+			assert.Nil(ginkgo.GinkgoT(), err, "reading message")
+			assert.Equal(ginkgo.GinkgoT(), msgType, websocket.TextMessage)
+			assert.Equal(ginkgo.GinkgoT(), string(buf), "hello, I'm gorilla")
+			assert.Nil(ginkgo.GinkgoT(), conn.Close(), "closing ws connection")
+		})
+	}
+
+	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
+		suites(scaffold.NewDefaultScaffold)
+	})
+	ginkgo.Describe("suite-features: scaffold v2", func() {
+		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })

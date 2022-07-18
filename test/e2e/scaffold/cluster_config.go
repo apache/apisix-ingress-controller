@@ -39,7 +39,7 @@ spec:
 
 // NewApisixClusterConfig creates an ApisixClusterConfig CRD
 func (s *Scaffold) NewApisixClusterConfig(name string, enable bool) error {
-	cc := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.APISIXClusterConfigVersion, name, enable)
+	cc := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.ApisixResourceVersion, name, enable)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, cc); err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func (s *Scaffold) NewApisixClusterConfig(name string, enable bool) error {
 
 // DeleteApisixClusterConfig removes an ApisixClusterConfig CRD
 func (s *Scaffold) DeleteApisixClusterConfig(name string, enable bool) error {
-	cc := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.APISIXClusterConfigVersion, name, enable)
+	cc := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.ApisixResourceVersion, name, enable)
 	if err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, cc); err != nil {
 		return err
 	}

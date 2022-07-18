@@ -334,6 +334,7 @@ type StreamRoute struct {
 	Desc       string            `json:"desc,omitempty" yaml:"desc,omitempty"`
 	Labels     map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 	ServerPort int32             `json:"server_port,omitempty" yaml:"server_port,omitempty"`
+	SNI        string            `json:"sni,omitempty" yaml:"sni,omitempty"`
 	UpstreamId string            `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
 	Upstream   *Upstream         `json:"upstream,omitempty" yaml:"upstream,omitempty"`
 }
@@ -359,6 +360,13 @@ type Consumer struct {
 type PluginConfig struct {
 	Metadata `json:",inline" yaml:",inline"`
 	Plugins  Plugins `json:"plugins" yaml:"plugins"`
+}
+
+// UpstreamServiceRelation Upstream association object
+// +k8s:deepcopy-gen=true
+type UpstreamServiceRelation struct {
+	ServiceName  string `json:"service_name" yaml:"service_name"`
+	UpstreamName string `json:"upstream_name,omitempty" yaml:"upstream_name,omitempty"`
 }
 
 // NewDefaultUpstream returns an empty Upstream with default values.

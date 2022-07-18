@@ -38,6 +38,14 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 	var hosts []string
 	for _, hostname := range httpRoute.Spec.Hostnames {
 		hosts = append(hosts, string(hostname))
+
+		// TODO: See the document of gatewayv1alpha2.Listener.Hostname
+		_ = gatewayv1alpha2.Listener{}.Hostname
+		// For HTTPRoute and TLSRoute resources, there is an interaction with the
+		// `spec.hostnames` array. When both listener and route specify hostnames,
+		// there MUST be an intersection between the values for a Route to be
+		// accepted. For more information, refer to the Route specific Hostnames
+		// documentation.
 	}
 
 	rules := httpRoute.Spec.Rules

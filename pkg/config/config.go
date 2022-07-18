@@ -51,16 +51,14 @@ const (
 	// WARNING: ingress.extensions/v1beta1 is deprecated in v1.14+, and will be unavilable
 	// in v1.22.
 	IngressExtensionsV1beta1 = "extensions/v1beta1"
-	// ApisixRouteV2beta2 represents apisixroute.apisix.apache.org/v2beta2
-	ApisixRouteV2beta2 = "apisix.apache.org/v2beta2"
-	// ApisixRouteV2beta3 represents apisixroute.apisix.apache.org/v2beta3
-	ApisixRouteV2beta3 = "apisix.apache.org/v2beta3"
-	// ApisixRouteV2 represents apisixroute.apisix.apache.org/v2
-	ApisixRouteV2 = "apisix.apache.org/v2"
+	// ApisixV2beta2 represents apisix.apache.org/v2beta2
+	ApisixV2beta2 = "apisix.apache.org/v2beta2"
 	// ApisixV2beta3 represents apisix.apache.org/v2beta3
 	ApisixV2beta3 = "apisix.apache.org/v2beta3"
 	// ApisixV2 represents apisix.apache.org/v2
 	ApisixV2 = "apisix.apache.org/v2"
+	// DefaultAPIVersion refers to the default resource version
+	DefaultAPIVersion = ApisixV2beta3
 
 	_minimalResyncInterval = 30 * time.Second
 
@@ -69,38 +67,41 @@ const (
 	ControllerName = "apisix.apache.org/gateway-controller"
 )
 
+var (
+	// Description information of API version, including default values and supported API version.
+	APIVersionDescribe = fmt.Sprintf(`the default value of API version is "%s", support "%s" and "%s".`, DefaultAPIVersion, ApisixV2beta3, ApisixV2)
+)
+
 // Config contains all config items which are necessary for
 // apisix-ingress-controller's running.
 type Config struct {
-	CertFilePath          string           `json:"cert_file" yaml:"cert_file"`
-	KeyFilePath           string           `json:"key_file" yaml:"key_file"`
-	LogLevel              string           `json:"log_level" yaml:"log_level"`
-	LogOutput             string           `json:"log_output" yaml:"log_output"`
-	HTTPListen            string           `json:"http_listen" yaml:"http_listen"`
-	HTTPSListen           string           `json:"https_listen" yaml:"https_listen"`
-	IngressPublishService string           `json:"ingress_publish_service" yaml:"ingress_publish_service"`
-	IngressStatusAddress  []string         `json:"ingress_status_address" yaml:"ingress_status_address"`
-	EnableProfiling       bool             `json:"enable_profiling" yaml:"enable_profiling"`
-	Kubernetes            KubernetesConfig `json:"kubernetes" yaml:"kubernetes"`
-	APISIX                APISIXConfig     `json:"apisix" yaml:"apisix"`
+	CertFilePath               string             `json:"cert_file" yaml:"cert_file"`
+	KeyFilePath                string             `json:"key_file" yaml:"key_file"`
+	LogLevel                   string             `json:"log_level" yaml:"log_level"`
+	LogOutput                  string             `json:"log_output" yaml:"log_output"`
+	HTTPListen                 string             `json:"http_listen" yaml:"http_listen"`
+	HTTPSListen                string             `json:"https_listen" yaml:"https_listen"`
+	IngressPublishService      string             `json:"ingress_publish_service" yaml:"ingress_publish_service"`
+	IngressStatusAddress       []string           `json:"ingress_status_address" yaml:"ingress_status_address"`
+	EnableProfiling            bool               `json:"enable_profiling" yaml:"enable_profiling"`
+	Kubernetes                 KubernetesConfig   `json:"kubernetes" yaml:"kubernetes"`
+	APISIX                     APISIXConfig       `json:"apisix" yaml:"apisix"`
+	ApisixResourceSyncInterval types.TimeDuration `json:"apisix-resource-sync-interval" yaml:"apisix-resource-sync-interval"`
 }
 
 // KubernetesConfig contains all Kubernetes related config items.
 type KubernetesConfig struct {
-	Kubeconfig                 string             `json:"kubeconfig" yaml:"kubeconfig"`
-	ResyncInterval             types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
-	AppNamespaces              []string           `json:"app_namespaces" yaml:"app_namespaces"`
-	NamespaceSelector          []string           `json:"namespace_selector" yaml:"namespace_selector"`
-	ElectionID                 string             `json:"election_id" yaml:"election_id"`
-	IngressClass               string             `json:"ingress_class" yaml:"ingress_class"`
-	IngressVersion             string             `json:"ingress_version" yaml:"ingress_version"`
-	WatchEndpointSlices        bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
-	ApisixRouteVersion         string             `json:"apisix_route_version" yaml:"apisix_route_version"`
-	ApisixPluginConfigVersion  string             `json:"apisix_plugin_config_version" yaml:"apisix_plugin_config_version"`
-	ApisixConsumerVersion      string             `json:"apisix_consumer_version" yaml:"apisix_consumer_version"`
-	ApisixTlsVersion           string             `json:"apisix_tls_version" yaml:"apisix_tls_version"`
-	ApisixClusterConfigVersion string             `json:"apisix_cluster_config_version" yaml:"apisix_cluster_config_version"`
-	EnableGatewayAPI           bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
+	Kubeconfig          string             `json:"kubeconfig" yaml:"kubeconfig"`
+	ResyncInterval      types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
+	AppNamespaces       []string           `json:"app_namespaces" yaml:"app_namespaces"`
+	NamespaceSelector   []string           `json:"namespace_selector" yaml:"namespace_selector"`
+	ElectionID          string             `json:"election_id" yaml:"election_id"`
+	IngressClass        string             `json:"ingress_class" yaml:"ingress_class"`
+	IngressVersion      string             `json:"ingress_version" yaml:"ingress_version"`
+	WatchEndpointSlices bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
+	ApisixRouteVersion  string             `json:"apisix_route_version" yaml:"apisix_route_version"`
+	APIVersion          string             `json:"api_version" yaml:"api_version"`
+	EnableGatewayAPI    bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
 }
 
 // APISIXConfig contains all APISIX related config items.
@@ -118,29 +119,27 @@ type APISIXConfig struct {
 // default value.
 func NewDefaultConfig() *Config {
 	return &Config{
-		LogLevel:              "warn",
-		LogOutput:             "stderr",
-		HTTPListen:            ":8080",
-		HTTPSListen:           ":8443",
-		IngressPublishService: "",
-		IngressStatusAddress:  []string{},
-		CertFilePath:          "/etc/webhook/certs/cert.pem",
-		KeyFilePath:           "/etc/webhook/certs/key.pem",
-		EnableProfiling:       true,
+		LogLevel:                   "warn",
+		LogOutput:                  "stderr",
+		HTTPListen:                 ":8080",
+		HTTPSListen:                ":8443",
+		IngressPublishService:      "",
+		IngressStatusAddress:       []string{},
+		CertFilePath:               "/etc/webhook/certs/cert.pem",
+		KeyFilePath:                "/etc/webhook/certs/key.pem",
+		EnableProfiling:            true,
+		ApisixResourceSyncInterval: types.TimeDuration{Duration: 300 * time.Second},
 		Kubernetes: KubernetesConfig{
-			Kubeconfig:                 "", // Use in-cluster configurations.
-			ResyncInterval:             types.TimeDuration{Duration: 6 * time.Hour},
-			AppNamespaces:              []string{v1.NamespaceAll},
-			ElectionID:                 IngressAPISIXLeader,
-			IngressClass:               IngressClass,
-			IngressVersion:             IngressNetworkingV1,
-			ApisixRouteVersion:         ApisixRouteV2beta3,
-			ApisixPluginConfigVersion:  ApisixV2beta3,
-			ApisixConsumerVersion:      ApisixV2beta3,
-			ApisixTlsVersion:           ApisixV2beta3,
-			ApisixClusterConfigVersion: ApisixV2beta3,
-			WatchEndpointSlices:        false,
-			EnableGatewayAPI:           false,
+			Kubeconfig:          "", // Use in-cluster configurations.
+			ResyncInterval:      types.TimeDuration{Duration: 6 * time.Hour},
+			AppNamespaces:       []string{v1.NamespaceAll},
+			ElectionID:          IngressAPISIXLeader,
+			IngressClass:        IngressClass,
+			IngressVersion:      IngressNetworkingV1,
+			ApisixRouteVersion:  DefaultAPIVersion,
+			APIVersion:          DefaultAPIVersion,
+			WatchEndpointSlices: false,
+			EnableGatewayAPI:    false,
 		},
 	}
 }
