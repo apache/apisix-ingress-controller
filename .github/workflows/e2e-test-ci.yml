@@ -185,5 +185,6 @@ jobs:
           ENABLE_PROXY: "false"
           E2E_SKIP_BUILD: "1"
           E2E_FLAKE_ATTEMPTS: "2"
+          E2E_ENV: "ci"
         run: |
           make e2e-test
