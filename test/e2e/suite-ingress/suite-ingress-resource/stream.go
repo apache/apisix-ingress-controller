@@ -18,7 +18,6 @@ package ingress
 import (
 	"context"
 	"fmt"
-	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +25,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress: ApisixRoute stream Testing with v2beta2", func() {
+var _ = ginkgo.Describe("suite-ingress-resource: ApisixRoute stream Testing with v2beta2", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("stream tcp proxy", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -47,7 +46,6 @@ spec:
 `, backendSvc, backendSvcPort[0])
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
-			time.Sleep(12 * time.Second)
 
 			err := s.EnsureNumApisixStreamRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
@@ -130,11 +128,6 @@ spec:
       servicePort: 53
 `)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
-			defer func() {
-				err := s.RemoveResourceByString(apisixRoute)
-				assert.Nil(ginkgo.GinkgoT(), err)
-			}()
-			time.Sleep(9 * time.Second)
 
 			err := s.EnsureNumApisixStreamRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
@@ -150,10 +143,10 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "dns query error")
 		})
 	}
-	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-resource: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold())
 	})
-	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})
 })

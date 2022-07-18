@@ -32,7 +32,7 @@ To learn more, please check the [Apache APISIX architecture-design docs](https:/
 A proper load balancing algorithm is required to scatter requests reasonably for a Kubernetes Service.
 
 ```yaml
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: httpbin
@@ -58,7 +58,7 @@ The above example shows that [ewma](https://linkerd.io/2016/03/16/beyond-round-r
 Sometimes the session sticky is desired, and you can use the [Consistent Hashing](https://en.wikipedia.org/wiki/Consistent_hashing) load balancing algorithm.
 
 ```yaml
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: httpbin
@@ -77,7 +77,7 @@ Although Kubelet already provides [probes](https://kubernetes.io/docs/tasks/conf
 like the passive feedback capability.
 
 ```yaml
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: httpbin
@@ -128,7 +128,7 @@ if nothing has been sent to a client yet. That is, if an error or timeout occurs
 of the transferring of a response, fixing this is impossible.
 
 ```yaml
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: httpbin
@@ -140,7 +140,7 @@ The default connect, read and send timeout are `60s`, which might not proper for
 just change them in the `timeout` field.
 
 ```yaml
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: httpbin
@@ -159,7 +159,7 @@ Once in a while a single Kubernetes Service might expose multiple ports which pr
 In that case, you can create configurations for individual port.
 
 ```yaml
-apiVersion: apisix.apache.org/v1
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
   name: foo

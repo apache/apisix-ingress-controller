@@ -105,7 +105,7 @@ func (s *Scaffold) CreateApisixRoute(name string, rules []ApisixRouteRule) {
 	route := &apisixRoute{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ApisixRoute",
-			APIVersion: "apisix.apache.org/v1",
+			APIVersion: s.opts.ApisixResourceVersion,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -250,6 +250,31 @@ func (s *Scaffold) EnsureNumApisixPluginConfigCreated(desired int) error {
 		Path:   "/apisix/admin/plugin_configs",
 	}
 	return s.ensureNumApisixCRDsCreated(u.String(), desired)
+}
+
+// EnsureNumApisixTlsCreated waits until desired number of tls ssl created in
+// APISIX cluster.
+func (s *Scaffold) EnsureNumApisixTlsCreated(desired int) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/ssl",
+	}
+	return s.ensureNumApisixCRDsCreated(u.String(), desired)
+}
+
+// EnsureNumListUpstreamNodesNth waits until desired number of upstreams[n-1].Nodes created in
+// APISIX cluster.
+// The upstreams[n-1].Nodes number is equal to desired.
+func (s *Scaffold) EnsureNumListUpstreamNodesNth(n, desired int) error {
+	condFunc := func() (bool, error) {
+		ups, err := s.ListApisixUpstreams()
+		if err != nil || len(ups) < n || len(ups[n-1].Nodes) != desired {
+			return false, fmt.Errorf("EnsureNumListUpstreamNodes failed")
+		}
+		return true, nil
+	}
+	return wait.Poll(3*time.Second, 35*time.Second, condFunc)
 }
 
 // CreateApisixRouteByApisixAdmin create or update a route

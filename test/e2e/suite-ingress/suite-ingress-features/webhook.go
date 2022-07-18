@@ -24,7 +24,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress: Enable webhooks", func() {
+var _ = ginkgo.Describe("suite-ingress-features: Enable webhooks", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("should fail to create the ApisixRoute with invalid plugin configuration", func() {
 			// #FIXME: just skip this case and we can enable it on other PR
@@ -63,24 +63,18 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                  "webhook",
-			Kubeconfig:            scaffold.GetKubeconfig(),
-			APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 			IngressAPISIXReplicas: 1,
-			HTTPBinServicePort:    80,
 			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2beta3,
 			EnableWebhooks:        false,
 		}))
 	})
-	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                  "webhook",
-			Kubeconfig:            scaffold.GetKubeconfig(),
-			APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 			IngressAPISIXReplicas: 1,
-			HTTPBinServicePort:    80,
 			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
 			EnableWebhooks:        false,
 		}))

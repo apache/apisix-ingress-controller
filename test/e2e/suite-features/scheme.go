@@ -57,7 +57,7 @@ spec:
     targetPort: 50051
 `)
 			assert.Nil(ginkgo.GinkgoT(), err)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(`
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:
@@ -129,7 +129,7 @@ spec:
 			err = s.NewSecret(grpcSecret, serverCert, serverKey)
 			assert.NoError(ginkgo.GinkgoT(), err, "create server cert secret")
 
-			assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(`
+			assert.NoError(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixUpstream
 metadata:

@@ -29,7 +29,7 @@ updates:
       - "tao12345666333"
       - "lingsamuel"
   - package-ecosystem: "github-actions"
-    directory: ".github"
+    directory: "/.github"
     schedule:
         interval: "weekly"
     labels:

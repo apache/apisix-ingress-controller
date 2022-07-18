@@ -18,7 +18,6 @@ package ingress
 import (
 	"io/ioutil"
 	"net/http"
-	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -27,7 +26,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/testbackend/client"
 )
 
-var _ = ginkgo.Describe("suite-ingress: ApisixUpstreams mTLS test", func() {
+var _ = ginkgo.Describe("suite-ingress-resource: ApisixUpstreams mTLS test", func() {
 	clientSecret := `client-secret`
 
 	f, err := ioutil.ReadFile("testbackend/tls/client.pem")
@@ -69,10 +68,8 @@ spec:
     name: upstream-is-mtls
 `)
 			assert.NoError(ginkgo.GinkgoT(), err, "create ApisixRoute for backend that require mTLS")
-			time.Sleep(10 * time.Second)
-			apisixRoutes, err := s.ListApisixRoutes()
-			assert.NoError(ginkgo.GinkgoT(), err, "list routes error")
-			assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
+
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 			s.NewAPISIXClient().GET("/hello").WithHeader("Host", "upstream-is-mtls.httpbin.local").Expect().Status(http.StatusOK).Body().Raw()
 		})
@@ -118,11 +115,7 @@ spec:
 
 			assert.NoError(ginkgo.GinkgoT(), s.NewApisixTls("grpc-secret", "e2e.apisix.local", "grpc-secret"))
 
-			assert.NoError(ginkgo.GinkgoT(), err, "create ApisixRoute for backend that require mTLS")
-			time.Sleep(10 * time.Second)
-			apisixRoutes, err := s.ListApisixRoutes()
-			assert.NoError(ginkgo.GinkgoT(), err, "list routes error")
-			assert.Len(ginkgo.GinkgoT(), apisixRoutes, 1, "route number not expect")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 			ca, err := ioutil.ReadFile("testbackend/tls/ca.pem")
 			assert.NoError(ginkgo.GinkgoT(), err, "read ca cert")
@@ -130,10 +123,10 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-resource: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold())
 	})
-	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})
 })

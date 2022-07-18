@@ -78,7 +78,7 @@ spec:
       aa: bb
       cc: dd
 `, backendSvc)
-			err := s.CreateResourceFromString(au)
+			err := s.CreateVersionedApisixResource(au)
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 			time.Sleep(1 * time.Second)
 			ar := fmt.Sprintf(`
@@ -129,7 +129,7 @@ spec:
     labels:
       app: httpbin-deployment-e2e-test
 `, backendSvc)
-			err := s.CreateResourceFromString(au)
+			err := s.CreateVersionedApisixResource(au)
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 			time.Sleep(1 * time.Second)
 			ar := fmt.Sprintf(`

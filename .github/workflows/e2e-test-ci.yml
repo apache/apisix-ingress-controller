@@ -77,7 +77,7 @@ jobs:
       - name: List test suites and set the matrix
         id: set-matrix
         run: |
-          SUITES=($(find test/e2e -type d -iname 'suite-*' | grep -E -o '(\w|\-)*' | grep -v 'test' | grep -v 'e2e' | sort | uniq))
+          SUITES=($(find test/e2e -type d -iname 'suite-*' | grep -E -o '(\w|\-)*' | grep -v 'test' | grep -v 'e2e' | sort | uniq -u))
           echo $SUITES
           echo "::set-output name=matrix::$(jq --compact-output --null-input '$ARGS.positional' --args "${SUITES[@]}")"
     outputs:

@@ -30,7 +30,7 @@ type ip struct {
 	IP string `json:"origin"`
 }
 
-var _ = ginkgo.Describe("suite-ingress: single-route", func() {
+var _ = ginkgo.Describe("suite-ingress-features: single-route", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("/ip should return your ip", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -69,15 +69,15 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold())
 	})
-	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})
 })
 
-var _ = ginkgo.Describe("suite-ingress: double-routes", func() {
+var _ = ginkgo.Describe("suite-ingress-features: double-routes", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("double routes work independently", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -127,15 +127,15 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold())
 	})
-	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})
 })
 
-var _ = ginkgo.Describe("suite-ingress: leader election", func() {
+var _ = ginkgo.Describe("suite-ingress-features: leader election", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("lease check", func() {
 			pods, err := s.GetIngressPodDetails()
@@ -184,27 +184,23 @@ var _ = ginkgo.Describe("suite-ingress: leader election", func() {
 		})
 	}
 
-	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                  "leaderelection",
-			Kubeconfig:            scaffold.GetKubeconfig(),
-			APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 			IngressAPISIXReplicas: 2,
 			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2beta3,
 		}))
 	})
-	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                  "leaderelection",
-			Kubeconfig:            scaffold.GetKubeconfig(),
-			APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
 			IngressAPISIXReplicas: 2,
 			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
 		}))
 	})
 })
 
-var _ = ginkgo.Describe("suite-ingress: stream_routes disabled", func() {
+var _ = ginkgo.Describe("suite-ingress-features: stream_routes disabled", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("/ip should return your ip", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -243,10 +239,10 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold())
 	})
-	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})
 })

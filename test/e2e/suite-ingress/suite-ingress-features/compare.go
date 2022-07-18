@@ -24,7 +24,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress: Testing compare resources", func() {
+var _ = ginkgo.Describe("suite-ingress-features: Testing compare resources", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
 		ginkgo.It("Compare and find out the redundant objects in APISIX, and remove them", func() {
@@ -66,10 +66,10 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultScaffold)
 	})
-	ginkgo.Describe("suite-ingress: scaffold v2", func() {
+	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })
