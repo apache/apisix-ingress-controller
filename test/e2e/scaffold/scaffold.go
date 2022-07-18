@@ -426,34 +426,13 @@ func (s *Scaffold) beforeEach() {
 func (s *Scaffold) afterEach() {
 	defer ginkgo.GinkgoRecover()
 
-	shouldKeepNamespace := false
-
-	if ginkgo.CurrentSpecReport().Failed() {
-		_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
-		output, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods")
-		if output != "" {
-			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
-		}
-		output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "describe", "pods")
-		if output != "" {
-			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
-		}
-		// Get the logs of apisix
-		output = s.GetDeploymentLogs("apisix-deployment-e2e-test")
-		if output != "" {
-			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
-		}
-		// Get the logs of ingress
-		output = s.GetDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
-		if output != "" {
-			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
-		}
-		// Keep the namespace when the test is failed if the test is running locally.
-		if os.Getenv("E2E_ENV") == "dev" {
-			shouldKeepNamespace = true
-		}
+	shouldDeleteNamespace := true
+	if ginkgo.CurrentSpecReport().Failed() && os.Getenv("E2E_ENV") == "dev" {
+		// Keep namespace if test failed in dev mode
+		shouldDeleteNamespace = false
 	}
-	if !shouldKeepNamespace {
+
+	if shouldDeleteNamespace {
 		err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
 		assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
 	}
