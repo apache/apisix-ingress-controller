@@ -18,25 +18,20 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestForwardAuthHandler(t *testing.T) {
-	ingress := &annotations.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{
-				_forwardAuthURI:             "http://127.0.0.1:9080",
-				_forwardAuthRequestHeaders:  "Authorization",
-				_forwardAuthClientHeaders:   "Location",
-				_forwardAuthUpstreamHeaders: "X-User-ID",
-			},
-		},
+	anno := map[string]string{
+		annotations.AnnotationsForwardAuthURI:             "http://127.0.0.1:9080",
+		annotations.AnnotationsForwardAuthRequestHeaders:  "Authorization",
+		annotations.AnnotationsForwardAuthClientHeaders:   "Location",
+		annotations.AnnotationsForwardAuthUpstreamHeaders: "X-User-ID",
 	}
 	p := NewForwardAuthHandler()
-	out, err := p.Handle(ingress)
+	out, err := p.Handle(annotations.NewExtractor(anno))
 	assert.Nil(t, err, "checking given error")
 	config := out.(*apisixv1.ForwardAuthConfig)
 	assert.Equal(t, "http://127.0.0.1:9080", config.URI)
@@ -46,14 +41,14 @@ func TestForwardAuthHandler(t *testing.T) {
 	assert.Equal(t, true, config.SSLVerify)
 	assert.Equal(t, "forward-auth", p.PluginName())
 
-	ingress.Annotations[_forwardAuthSSLVerify] = "false"
-	out, err = p.Handle(ingress)
+	anno[annotations.AnnotationsForwardAuthSSLVerify] = "false"
+	out, err = p.Handle(annotations.NewExtractor(anno))
 	assert.Nil(t, err, "checking given error")
 	config = out.(*apisixv1.ForwardAuthConfig)
 	assert.Equal(t, false, config.SSLVerify)
 
-	ingress.Annotations[_forwardAuthURI] = ""
-	out, err = p.Handle(ingress)
+	anno[annotations.AnnotationsForwardAuthURI] = ""
+	out, err = p.Handle(annotations.NewExtractor(anno))
 	assert.Nil(t, err, "checking given error")
 	assert.Nil(t, out, "checking given output")
 }

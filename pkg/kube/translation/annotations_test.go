@@ -18,22 +18,56 @@ import (
 	"testing"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
+	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/stretchr/testify/assert"
-	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestAnnotations(t *testing.T) {
-	ing := &networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "jack",
-			Namespace: "qa",
-			Annotations: map[string]string{
-				annotations.AnnotationsPrefix + "auth-type": "basicAuth",
-			},
-		},
-		Spec: networkingv1.IngressSpec{},
+func TestAnnotationsPlugins(t *testing.T) {
+	anno := map[string]string{
+		annotations.AnnotationsAuthType: "basicAuth",
 	}
-	ingress := (&translator{}).translateAnnotations(ing.ObjectMeta)
+
+	ingress := (&translator{}).translateAnnotations(anno)
 	assert.Len(t, ingress.Plugins, 1)
+	assert.Equal(t, apisix.Plugins{
+		"basic-auth": &apisix.BasicAuthConfig{},
+	}, ingress.Plugins)
+
+	anno[annotations.AnnotationsEnableCsrf] = "true"
+	anno[annotations.AnnotationsCsrfKey] = "csrf-key"
+	ingress = (&translator{}).translateAnnotations(anno)
+	assert.Len(t, ingress.Plugins, 2)
+	assert.Equal(t, apisix.Plugins{
+		"basic-auth": &apisix.BasicAuthConfig{},
+		"csrf": &apisix.CSRFConfig{
+			Key: "csrf-key",
+		},
+	}, ingress.Plugins)
+}
+
+func TestAnnotationsPluginConfigName(t *testing.T) {
+	anno := map[string]string{
+		annotations.AnnotationsPluginConfigName: "plugin-config-echo",
+	}
+
+	ingress := (&translator{}).translateAnnotations(anno)
+	assert.Equal(t, "plugin-config-echo", ingress.PluginConfigName)
+}
+
+func TestAnnotationsEnableWebSocket(t *testing.T) {
+	anno := map[string]string{
+		annotations.AnnotationsEnableWebSocket: "true",
+	}
+
+	ingress := (&translator{}).translateAnnotations(anno)
+	assert.Equal(t, true, ingress.EnableWebSocket)
+}
+
+func TestAnnotationsUseRegex(t *testing.T) {
+	anno := map[string]string{
+		annotations.AnnotationsUseRegex: "true",
+	}
+
+	ingress := (&translator{}).translateAnnotations(anno)
+	assert.Equal(t, true, ingress.UseRegex)
 }

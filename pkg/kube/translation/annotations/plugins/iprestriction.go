@@ -3,15 +3,15 @@
 // this work for additional information regarding copyright ownership.
 // The ASF licenses this file to You under the Apache License, Version 2.0
 // (the "License"); you may not use this file except in compliance with
-// the Licensannotations.  You may obtain a copy of the License at
+// the License.  You may obtain a copy of the License at
 //
-//     http://www.apachannotations.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
-// limitations under the Licensannotations.
+// limitations under the License.
 package plugins
 
 import (
@@ -19,16 +19,11 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-const (
-	_allowlistSourceRange = annotations.AnnotationsPrefix + "allowlist-source-range"
-	_blocklistSourceRange = annotations.AnnotationsPrefix + "blocklist-source-range"
-)
-
 type ipRestriction struct{}
 
 // NewIPRestrictionHandler creates a handler to convert
 // annotations about client ips control to APISIX ip-restrict plugin.
-func NewIPRestrictionHandler() PluginHandler {
+func NewIPRestrictionHandler() PluginAnnotationsHandler {
 	return &ipRestriction{}
 }
 
@@ -36,10 +31,10 @@ func (i *ipRestriction) PluginName() string {
 	return "ip-restriction"
 }
 
-func (i *ipRestriction) Handle(ing *annotations.Ingress) (interface{}, error) {
+func (i *ipRestriction) Handle(e annotations.Extractor) (interface{}, error) {
 	var plugin apisixv1.IPRestrictConfig
-	allowlist := annotations.GetStringsAnnotation(_allowlistSourceRange, ing)
-	blocklist := annotations.GetStringsAnnotation(_blocklistSourceRange, ing)
+	allowlist := e.GetStringsAnnotation(annotations.AnnotationsAllowlistSourceRange)
+	blocklist := e.GetStringsAnnotation(annotations.AnnotationsBlocklistSourceRange)
 	if allowlist != nil || blocklist != nil {
 		plugin.Allowlist = allowlist
 		plugin.Blocklist = blocklist

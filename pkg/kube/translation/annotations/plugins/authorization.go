@@ -3,15 +3,15 @@
 // this work for additional information regarding copyright ownership.
 // The ASF licenses this file to You under the Apache License, Version 2.0
 // (the "License"); you may not use this file except in compliance with
-// the Licensannotations.  You may obtain a copy of the License at
+// the License.  You may obtain a copy of the License at
 //
-//     http://www.apachannotations.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
-// limitations under the Licensannotations.
+// limitations under the License.
 package plugins
 
 import (
@@ -19,16 +19,11 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-const (
-	// auth-type: keyAuth | basicAuth
-	_authType = annotations.AnnotationsPrefix + "auth-type"
-)
-
 type basicAuth struct{}
 
 // NewkeyBasicHandler creates a handler to convert
 // annotations about basicAuth control to APISIX basic-auth plugin.
-func NewBasicAuthHandler() PluginHandler {
+func NewBasicAuthHandler() PluginAnnotationsHandler {
 	return &basicAuth{}
 }
 
@@ -36,8 +31,8 @@ func (b *basicAuth) PluginName() string {
 	return "basic-auth"
 }
 
-func (b *basicAuth) Handle(ing *annotations.Ingress) (interface{}, error) {
-	if annotations.GetStringAnnotation(_authType, ing) != "basicAuth" {
+func (b *basicAuth) Handle(e annotations.Extractor) (interface{}, error) {
+	if e.GetStringAnnotation(annotations.AnnotationsAuthType) != "basicAuth" {
 		return nil, nil
 	}
 	plugin := apisixv1.BasicAuthConfig{}
@@ -48,7 +43,7 @@ type keyAuth struct{}
 
 // NewkeyAuthHandler creates a handler to convert
 // annotations about keyAuth control to APISIX key-auth plugin.
-func NewKeyAuthHandler() PluginHandler {
+func NewKeyAuthHandler() PluginAnnotationsHandler {
 	return &keyAuth{}
 }
 
@@ -56,8 +51,8 @@ func (k *keyAuth) PluginName() string {
 	return "key-auth"
 }
 
-func (k *keyAuth) Handle(ing *annotations.Ingress) (interface{}, error) {
-	if annotations.GetStringAnnotation(_authType, ing) != "keyAuth" {
+func (k *keyAuth) Handle(e annotations.Extractor) (interface{}, error) {
+	if e.GetStringAnnotation(annotations.AnnotationsAuthType) != "keyAuth" {
 		return nil, nil
 	}
 	plugin := apisixv1.KeyAuthConfig{}

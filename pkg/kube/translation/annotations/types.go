@@ -16,22 +16,63 @@ package annotations
 
 import (
 	"strings"
-
-	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
 	// AnnotationsPrefix is the apisix annotation prefix
 	AnnotationsPrefix = "k8s.apisix.apache.org/"
+
+	// Supported annotations
+	AnnotationsUseRegex         = AnnotationsPrefix + "use-regex"
+	AnnotationsEnableWebSocket  = AnnotationsPrefix + "enable-websocket"
+	AnnotationsPluginConfigName = AnnotationsPrefix + "plugin-config-name"
 )
 
-type Ingress struct {
-	metav1.ObjectMeta
-	Plugins          apisix.Plugins
-	UseRegex         bool
-	EnableWebsocket  bool
-	PluginConfigName string
+const (
+	// Supported the annotations of the APISIX plugins
+
+	// cors plugin
+	AnnotationsEnableCors       = AnnotationsPrefix + "enable-cors"
+	AnnotationsCorsAllowOrigin  = AnnotationsPrefix + "cors-allow-origin"
+	AnnotationsCorsAllowHeaders = AnnotationsPrefix + "cors-allow-headers"
+	AnnotationsCorsAllowMethods = AnnotationsPrefix + "cors-allow-methods"
+
+	// csrf plugin
+	AnnotationsEnableCsrf = AnnotationsPrefix + "enable-csrf"
+	AnnotationsCsrfKey    = AnnotationsPrefix + "csrf-key"
+
+	// redirect plugin
+	AnnotationsHttpToHttps      = AnnotationsPrefix + "http-to-https"
+	AnnotationsHttpRedirect     = AnnotationsPrefix + "http-redirect"
+	AnnotationsHttpRedirectCode = AnnotationsPrefix + "http-redirect-code"
+
+	// rewrite plugin
+	AnnotationsRewriteTarget              = AnnotationsPrefix + "rewrite-target"
+	AnnotationsRewriteTargetRegex         = AnnotationsPrefix + "rewrite-target-regex"
+	AnnotationsRewriteTargetRegexTemplate = AnnotationsPrefix + "rewrite-target-regex-template"
+
+	// forward-auth plugin
+	AnnotationsForwardAuthURI             = AnnotationsPrefix + "auth-uri"
+	AnnotationsForwardAuthSSLVerify       = AnnotationsPrefix + "auth-ssl-verify"
+	AnnotationsForwardAuthRequestHeaders  = AnnotationsPrefix + "auth-request-headers"
+	AnnotationsForwardAuthUpstreamHeaders = AnnotationsPrefix + "auth-upstream-headers"
+	AnnotationsForwardAuthClientHeaders   = AnnotationsPrefix + "auth-client-headers"
+
+	// ip-restriction plugin
+	AnnotationsAllowlistSourceRange = AnnotationsPrefix + "allowlist-source-range"
+	AnnotationsBlocklistSourceRange = AnnotationsPrefix + "blocklist-source-range"
+
+	// key-auth plugin and basic-auth plugin
+	// auth-type: keyAuth | basicAuth
+	AnnotationsAuthType = AnnotationsPrefix + "auth-type"
+)
+
+// Handler abstracts the behavior so that the apisix-ingress-controller knows
+type IngressAnnotationsParser interface {
+	// Handle parses the target annotation and converts it to the type-agnostic structure.
+	// The return value might be nil since some features have an explicit switch, users should
+	// judge whether Handle is failed by the second error value.
+	Parse(Extractor) (interface{}, error)
 }
 
 // Extractor encapsulates some auxiliary methods to extract annotations.
@@ -49,27 +90,29 @@ type Extractor interface {
 	GetBoolAnnotation(string) bool
 }
 
-// Handler abstracts the behavior so that the apisix-ingress-controller knows
-// how to parse some annotations and convert them to APISIX plugins.
-type IngressAnnotations interface {
-	// Handle parses the target annotation and converts it to the type-agnostic structure.
-	// The return value might be nil since some features have an explicit switch, users should
-	// judge whether Handle is failed by the second error value.
-	Parse(*Ingress) (interface{}, error)
+type extractor struct {
+	annotations map[string]string
 }
 
-func GetStringAnnotation(name string, ing *Ingress) string {
-	return ing.Annotations[name]
+func (e *extractor) GetStringAnnotation(name string) string {
+	return e.annotations[name]
 }
 
-func GetStringsAnnotation(name string, ing *Ingress) []string {
-	value := GetStringAnnotation(name, ing)
+func (e *extractor) GetStringsAnnotation(name string) []string {
+	value := e.GetStringAnnotation(name)
 	if value == "" {
 		return nil
 	}
-	return strings.Split(ing.Annotations[name], ",")
+	return strings.Split(e.annotations[name], ",")
 }
 
-func GetBoolAnnotation(name string, ing *Ingress) bool {
-	return ing.Annotations[name] == "true"
+func (e *extractor) GetBoolAnnotation(name string) bool {
+	return e.annotations[name] == "true"
+}
+
+// NewExtractor creates an annotations extractor.
+func NewExtractor(annotations map[string]string) Extractor {
+	return &extractor{
+		annotations: annotations,
+	}
 }

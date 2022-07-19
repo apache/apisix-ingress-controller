@@ -419,7 +419,7 @@ func testTranslateIngressV1ReferenceUpstreamVersion(t *testing.T, apiVersoin str
 		<-processCh
 		<-processCh
 		ctx, err := tr.translateIngressV1(ing, false)
-		ingress := tr.translateAnnotations(ing.ObjectMeta)
+		ingress := tr.translateAnnotations(ing.Annotations)
 		pluginConfigName := ingress.PluginConfigName
 
 		assert.Nil(t, err)
@@ -761,7 +761,7 @@ func TestTranslateIngressV1beta1(t *testing.T) {
 	<-processCh
 	<-processCh
 	ctx, err := tr.translateIngressV1beta1(ing, false)
-	ingress := tr.translateAnnotations(ing.ObjectMeta)
+	ingress := tr.translateAnnotations(ing.Annotations)
 	pluginConfigName := ingress.PluginConfigName
 
 	assert.Nil(t, err)
@@ -892,7 +892,7 @@ func TestTranslateIngressExtensionsV1beta1(t *testing.T) {
 	<-processCh
 	<-processCh
 	ctx, err := tr.translateIngressExtensionsV1beta1(ing, false)
-	ingress := tr.translateAnnotations(ing.ObjectMeta)
+	ingress := tr.translateAnnotations(ing.Annotations)
 	pluginConfigName := ingress.PluginConfigName
 
 	assert.Nil(t, err)

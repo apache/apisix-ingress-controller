@@ -15,16 +15,26 @@
 package plugins
 
 import (
+	"go.uber.org/zap"
+
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-	"go.uber.org/zap"
 )
 
-const ()
+// Handler abstracts the behavior so that the apisix-ingress-controller knows
+// how to parse some annotations and convert them to APISIX plugins.
+type PluginAnnotationsHandler interface {
+	// Handle parses the target annotation and converts it to the type-agnostic structure.
+	// The return value might be nil since some features have an explicit switch, users should
+	// judge whether Handle is failed by the second error value.
+	Handle(annotations.Extractor) (interface{}, error)
+	// PluginName returns a string which indicates the target plugin name in APISIX.
+	PluginName() string
+}
 
 var (
-	_handlers = []PluginHandler{
+	_handlers = []PluginAnnotationsHandler{
 		NewCorsHandler(),
 		NewIPRestrictionHandler(),
 		NewRewriteHandler(),
@@ -36,25 +46,16 @@ var (
 	}
 )
 
-type PluginHandler interface {
-	// Handle parses the target annotation and converts it to the type-agnostic structure.
-	// The return value might be nil since some features have an explicit switch, users should
-	// judge whether Handle is failed by the second error value.
-	Handle(*annotations.Ingress) (interface{}, error)
-	// PluginName returns a string which indicates the target plugin name in APISIX.
-	PluginName() string
-}
-
 type plugins struct{}
 
-func NewPluginsParser() annotations.IngressAnnotations {
+func NewParser() annotations.IngressAnnotationsParser {
 	return &plugins{}
 }
 
-func (p *plugins) Parse(ing *annotations.Ingress) (interface{}, error) {
+func (p *plugins) Parse(e annotations.Extractor) (interface{}, error) {
 	plugins := make(apisix.Plugins)
 	for _, handler := range _handlers {
-		out, err := handler.Handle(ing)
+		out, err := handler.Handle(e)
 		if err != nil {
 			log.Warnw("failed to handle annotations",
 				zap.Error(err),

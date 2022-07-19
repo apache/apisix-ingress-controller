@@ -16,29 +16,42 @@ package translation
 
 import (
 	"go.uber.org/zap"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/imdario/mergo"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations/pluginconfig"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations/plugins"
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/imdario/mergo"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations/regex"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations/websocket"
 )
+
+type Ingress struct {
+	Plugins          apisix.Plugins
+	UseRegex         bool
+	EnableWebSocket  bool
+	PluginConfigName string
+}
 
 var (
-	_handlers = map[string]annotations.IngressAnnotations{
-		"Plugins": plugins.NewPluginsParser(),
+	_parsers = map[string]annotations.IngressAnnotationsParser{
+		"Plugins":          plugins.NewParser(),
+		"UseRegex":         regex.NewParser(),
+		"EnableWebSocket":  websocket.NewParser(),
+		"PluginConfigName": pluginconfig.NewParser(),
 	}
 )
 
-func (t *translator) translateAnnotations(meta metav1.ObjectMeta) *annotations.Ingress {
-	ing := &annotations.Ingress{
-		ObjectMeta: meta,
-	}
+func (t *translator) translateAnnotations(anno map[string]string) *Ingress {
+	ing := &Ingress{}
+	extractor := annotations.NewExtractor(anno)
 	data := make(map[string]interface{})
-	for name, handler := range _handlers {
-		out, err := handler.Parse(ing)
+	for name, parser := range _parsers {
+		out, err := parser.Parse(extractor)
 		if err != nil {
-			log.Warnw("failed to handle annotations",
+			log.Warnw("failed to parse annotations",
 				zap.Error(err),
 			)
 			continue

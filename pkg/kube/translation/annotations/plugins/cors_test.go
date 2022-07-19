@@ -18,25 +18,20 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestCorsHandler(t *testing.T) {
-	ingress := &annotations.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{
-				_enableCors:       "true",
-				_corsAllowHeaders: "abc,def",
-				_corsAllowOrigin:  "https://a.com",
-				_corsAllowMethods: "GET,HEAD",
-			},
-		},
+	anno := map[string]string{
+		annotations.AnnotationsEnableCors:       "true",
+		annotations.AnnotationsCorsAllowHeaders: "abc,def",
+		annotations.AnnotationsCorsAllowOrigin:  "https://a.com",
+		annotations.AnnotationsCorsAllowMethods: "GET,HEAD",
 	}
 	p := NewCorsHandler()
-	out, err := p.Handle(ingress)
+	out, err := p.Handle(annotations.NewExtractor(anno))
 	assert.Nil(t, err, "checking given error")
 	config := out.(*apisixv1.CorsConfig)
 	assert.Equal(t, "abc,def", config.AllowHeaders)
@@ -45,8 +40,8 @@ func TestCorsHandler(t *testing.T) {
 
 	assert.Equal(t, "cors", p.PluginName())
 
-	ingress.Annotations[_enableCors] = "false"
-	out, err = p.Handle(ingress)
+	anno[annotations.AnnotationsEnableCors] = "false"
+	out, err = p.Handle(annotations.NewExtractor(anno))
 	assert.Nil(t, err, "checking given error")
 	assert.Nil(t, out, "checking given output")
 }

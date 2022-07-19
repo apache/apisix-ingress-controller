@@ -12,33 +12,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package plugins
+package pluginconfig
 
 import (
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-type csrf struct{}
+type pluginconfig struct{}
 
-// NewCSRFHandler creates a handler to convert annotations about
-// CSRF to APISIX csrf plugin.
-func NewCSRFHandler() PluginAnnotationsHandler {
-	return &csrf{}
+func NewParser() annotations.IngressAnnotationsParser {
+	return &pluginconfig{}
 }
 
-func (c *csrf) PluginName() string {
-	return "csrf"
-}
-
-func (c *csrf) Handle(e annotations.Extractor) (interface{}, error) {
-	if !e.GetBoolAnnotation(annotations.AnnotationsEnableCsrf) {
-		return nil, nil
-	}
-	var plugin apisixv1.CSRFConfig
-	plugin.Key = e.GetStringAnnotation(annotations.AnnotationsCsrfKey)
-	if plugin.Key != "" {
-		return &plugin, nil
-	}
-	return nil, nil
+func (w *pluginconfig) Parse(e annotations.Extractor) (interface{}, error) {
+	return e.GetStringAnnotation(annotations.AnnotationsPluginConfigName), nil
 }
