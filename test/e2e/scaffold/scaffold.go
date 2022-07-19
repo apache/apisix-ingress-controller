@@ -427,9 +427,37 @@ func (s *Scaffold) afterEach() {
 	defer ginkgo.GinkgoRecover()
 
 	shouldDeleteNamespace := true
-	if ginkgo.CurrentSpecReport().Failed() && os.Getenv("E2E_ENV") == "dev" {
-		// Keep namespace if test failed in dev mode
-		shouldDeleteNamespace = false
+	shouldDumpNamespace := false
+	if ginkgo.CurrentSpecReport().Failed() {
+		e2eEnv := os.Getenv("E2E_ENV")
+		switch e2eEnv {
+		case "ci":
+			shouldDumpNamespace = true
+		case "dev":
+			shouldDeleteNamespace = false
+		}
+	}
+
+	if shouldDumpNamespace {
+		_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
+		output, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods")
+		if output != "" {
+			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		}
+		output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "describe", "pods")
+		if output != "" {
+			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		}
+		// Get the logs of apisix
+		output = s.GetDeploymentLogs("apisix-deployment-e2e-test")
+		if output != "" {
+			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		}
+		// Get the logs of ingress
+		output = s.GetDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
+		if output != "" {
+			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		}
 	}
 
 	if shouldDeleteNamespace {
