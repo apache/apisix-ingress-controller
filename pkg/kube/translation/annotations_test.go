@@ -17,9 +17,10 @@ package translation
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestAnnotationsPlugins(t *testing.T) {

@@ -15,17 +15,16 @@
 package translation
 
 import (
-	"go.uber.org/zap"
-
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/imdario/mergo"
+	"go.uber.org/zap"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations/pluginconfig"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations/plugins"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations/regex"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations/websocket"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type Ingress struct {
