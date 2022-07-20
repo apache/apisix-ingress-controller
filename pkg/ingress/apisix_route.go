@@ -44,9 +44,8 @@ type apisixRouteController struct {
 	workers    int
 
 	// svc meta key -> ApisixRoute name -> empty
-	// map[string]map[string]struct{}
 	svcLock sync.RWMutex
-	svcMap  map[string]map[string]struct{} //*sync.Map
+	svcMap  map[string]map[string]struct{}
 }
 
 func (c *Controller) newApisixRouteController() *apisixRouteController {
