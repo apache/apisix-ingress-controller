@@ -31,7 +31,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/ingress/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -119,41 +118,6 @@ func (c *apisixRouteController) syncServiceRelationship(ev *types.Event, name st
 		newBackends []string
 	)
 	switch obj.GroupVersion {
-	case config.ApisixV2beta2:
-		var (
-			old    *v2beta2.ApisixRoute
-			newObj *v2beta2.ApisixRoute
-		)
-
-		if ev.Type == types.EventUpdate {
-			old = obj.OldObject.V2beta2()
-		} else if ev.Type == types.EventDelete {
-			old = ev.Tombstone.(kube.ApisixRoute).V2beta2()
-		}
-
-		if ev.Type == types.EventAdd {
-			newObj = ar.V2beta2()
-		} else if ev.Type == types.EventUpdate {
-			newObj = ar.V2beta2()
-		}
-
-		// calculate diff, so we don't need to care about the event order
-		if old != nil {
-			for _, rule := range old.Spec.HTTP {
-				for _, backend := range rule.Backends {
-					oldBackends = append(oldBackends, backend.ServiceName)
-
-					delete(c.svcMap[old.Namespace+"/"+backend.ServiceName], old.Name)
-				}
-			}
-		}
-		if newObj != nil {
-			for _, rule := range newObj.Spec.HTTP {
-				for _, backend := range rule.Backends {
-					newBackends = append(newBackends, newObj.Namespace+"/"+backend.ServiceName)
-				}
-			}
-		}
 	case config.ApisixV2beta3:
 		var (
 			old    *v2beta3.ApisixRoute
@@ -166,9 +130,7 @@ func (c *apisixRouteController) syncServiceRelationship(ev *types.Event, name st
 			old = ev.Tombstone.(kube.ApisixRoute).V2beta3()
 		}
 
-		if ev.Type == types.EventAdd {
-			newObj = ar.V2beta3()
-		} else if ev.Type == types.EventUpdate {
+		if ev.Type != types.EventDelete {
 			newObj = ar.V2beta3()
 		}
 
@@ -201,9 +163,7 @@ func (c *apisixRouteController) syncServiceRelationship(ev *types.Event, name st
 			old = ev.Tombstone.(kube.ApisixRoute).V2()
 		}
 
-		if ev.Type == types.EventAdd {
-			newObj = ar.V2()
-		} else if ev.Type == types.EventUpdate {
+		if ev.Type != types.EventDelete {
 			newObj = ar.V2()
 		}
 
@@ -656,12 +616,6 @@ func (c *apisixRouteController) ResourceSync() {
 
 		var backends []string
 		switch ar.GroupVersion() {
-		case config.ApisixV2beta2:
-			for _, rule := range ar.V2beta2().Spec.HTTP {
-				for _, backend := range rule.Backends {
-					backends = append(backends, ns+"/"+backend.ServiceName)
-				}
-			}
 		case config.ApisixV2beta3:
 			for _, rule := range ar.V2beta3().Spec.HTTP {
 				for _, backend := range rule.Backends {

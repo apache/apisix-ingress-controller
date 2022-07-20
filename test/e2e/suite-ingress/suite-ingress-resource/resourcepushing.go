@@ -670,13 +670,11 @@ spec:
 `, "httpbin-temp", 80)
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute), "creating ApisixRoute")
-			// We don't have service yet, so upstream==0
+			// We don't have service yet, so route/upstream==0
 			err := s.EnsureNumApisixRoutesCreated(0)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 			err = s.EnsureNumApisixUpstreamsCreated(0)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-			err = s.EnsureNumApisixPluginConfigCreated(0)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
 
 			createSvc()
 			time.Sleep(time.Second * 10)
