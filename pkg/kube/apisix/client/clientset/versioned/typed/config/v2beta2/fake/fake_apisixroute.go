@@ -116,7 +116,7 @@ func (c *FakeApisixRoutes) UpdateStatus(ctx context.Context, apisixRoute *v2beta
 // Delete takes name of the apisixRoute and deletes it. Returns an error if one occurs.
 func (c *FakeApisixRoutes) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(apisixroutesResource, c.ns, name), &v2beta2.ApisixRoute{})
+		Invokes(testing.NewDeleteActionWithOptions(apisixroutesResource, c.ns, name, opts), &v2beta2.ApisixRoute{})
 
 	return err
 }
