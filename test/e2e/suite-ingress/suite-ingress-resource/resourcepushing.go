@@ -619,7 +619,7 @@ spec:
             tcpSocket:
               port: 80
             timeoutSeconds: 2
-          image: "localhost:5000/kennethreitz/httpbin"
+          image: "localhost:5000/kennethreitz/httpbin:dev"
           imagePullPolicy: IfNotPresent
           name: httpbin-temp
           ports:

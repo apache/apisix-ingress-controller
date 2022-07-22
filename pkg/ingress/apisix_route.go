@@ -137,9 +137,7 @@ func (c *apisixRouteController) syncServiceRelationship(ev *types.Event, name st
 		if old != nil {
 			for _, rule := range old.Spec.HTTP {
 				for _, backend := range rule.Backends {
-					oldBackends = append(oldBackends, backend.ServiceName)
-
-					delete(c.svcMap[old.Namespace+"/"+backend.ServiceName], old.Name)
+					oldBackends = append(oldBackends, old.Namespace+"/"+backend.ServiceName)
 				}
 			}
 		}
@@ -170,9 +168,7 @@ func (c *apisixRouteController) syncServiceRelationship(ev *types.Event, name st
 		if old != nil {
 			for _, rule := range old.Spec.HTTP {
 				for _, backend := range rule.Backends {
-					oldBackends = append(oldBackends, backend.ServiceName)
-
-					delete(c.svcMap[old.Namespace+"/"+backend.ServiceName], old.Name)
+					oldBackends = append(oldBackends, old.Namespace+"/"+backend.ServiceName)
 				}
 			}
 		}
