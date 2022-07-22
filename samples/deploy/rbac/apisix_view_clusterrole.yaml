@@ -124,10 +124,16 @@ rules:
       - networking.k8s.io
     resources:
       - ingresses
-      - ingresses/status
-      - networkpolicies
     verbs:
-      - '*'
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - networking.k8s.io
+    resources:
+      - ingresses/status
+    verbs:
+      - update
   - apiGroups:
       - metrics.k8s.io
     resources:
@@ -178,3 +184,12 @@ rules:
       - get
       - list
       - watch
+  - apiGroups:
+      - gateway.networking.k8s.io
+    resources:
+      - httproutes/status
+      - tlsroutes/status
+      - gateways/status
+      - gatewayclasses/status
+    verbs:
+      - update
