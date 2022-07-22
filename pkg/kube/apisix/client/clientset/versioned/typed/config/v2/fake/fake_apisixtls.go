@@ -116,7 +116,7 @@ func (c *FakeApisixTlses) UpdateStatus(ctx context.Context, apisixTls *v2.Apisix
 // Delete takes name of the apisixTls and deletes it. Returns an error if one occurs.
 func (c *FakeApisixTlses) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(apisixtlsesResource, c.ns, name), &v2.ApisixTls{})
+		Invokes(testing.NewDeleteActionWithOptions(apisixtlsesResource, c.ns, name, opts), &v2.ApisixTls{})
 
 	return err
 }

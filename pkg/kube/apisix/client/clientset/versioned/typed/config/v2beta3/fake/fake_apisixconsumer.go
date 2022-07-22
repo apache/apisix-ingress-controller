@@ -116,7 +116,7 @@ func (c *FakeApisixConsumers) UpdateStatus(ctx context.Context, apisixConsumer *
 // Delete takes name of the apisixConsumer and deletes it. Returns an error if one occurs.
 func (c *FakeApisixConsumers) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(apisixconsumersResource, c.ns, name), &v2beta3.ApisixConsumer{})
+		Invokes(testing.NewDeleteActionWithOptions(apisixconsumersResource, c.ns, name, opts), &v2beta3.ApisixConsumer{})
 
 	return err
 }
