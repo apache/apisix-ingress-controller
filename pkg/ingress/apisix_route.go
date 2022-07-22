@@ -662,7 +662,11 @@ func (c *apisixRouteController) handleSvcAdd(key string) error {
 		return nil
 	}
 
-	if routes, ok := c.svcMap[key]; ok {
+	c.svcLock.RLock()
+	routes, ok := c.svcMap[key]
+	c.svcLock.RUnlock()
+
+	if ok {
 		for route := range routes {
 			c.workqueue.Add(&types.Event{
 				Type: types.EventAdd,
