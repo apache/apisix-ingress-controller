@@ -87,7 +87,7 @@ func (c *apisixUpstreamController) runWorker(ctx context.Context) {
 }
 
 // sync Used to synchronize ApisixUpstream resources, because upstream alone exists in APISIX and will not be affected,
-// the synchronization logic only includes upsttream's unique configuration management
+// the synchronization logic only includes upstream's unique configuration management
 // So when ApisixUpstream was deleted, only the scheme / load balancer / healthcheck / retry / timeout
 // on ApisixUpstream was cleaned up
 func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) error {
