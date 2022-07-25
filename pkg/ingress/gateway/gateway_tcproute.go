@@ -190,7 +190,6 @@ func (c *gatewayTCPRouteController) onAdd(obj interface{}) {
 		Object: key,
 	})
 }
-func (c *gatewayTCPRouteController) onUpdate(oldObj, newObj interface{}) {
 
-}
-func (c *gatewayTCPRouteController) OnDelete(obj interface{}) {}
+func (c *gatewayTCPRouteController) onUpdate(oldObj, newObj interface{}) {}
+func (c *gatewayTCPRouteController) OnDelete(obj interface{})            {}
