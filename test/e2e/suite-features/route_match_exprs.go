@@ -224,13 +224,13 @@ spec:
 
 			_ = s.NewAPISIXClient().GET("/ip").
 				WithHeader("Host", "httpbin.org").
-				WithQuery("id", 12).
+				WithQuery("ID", 12).
 				Expect().
 				Status(http.StatusOK)
 
 			msg := s.NewAPISIXClient().GET("/ip").
 				WithHeader("Host", "httpbin.org").
-				WithQuery("id", 13).
+				WithQuery("ID", 13).
 				Expect().
 				Status(http.StatusNotFound).
 				Body().
