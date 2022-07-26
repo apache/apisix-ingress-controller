@@ -33,7 +33,7 @@ you can use the [`conftest`](https://github.com/open-policy-agent/conftest) tool
 Here's a quick example.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
