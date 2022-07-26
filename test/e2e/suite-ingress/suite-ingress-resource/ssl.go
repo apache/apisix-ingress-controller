@@ -243,7 +243,7 @@ RU+QPRECgYB6XW24EI5+w3STbpnc6VoTS+sy9I9abTJPYo9LpCJwfMYc9Tg9Cx2K
 	})
 })
 
-var _ = ginkgo.FDescribe("suite-ingress-resource: ApisixTls mTLS Test", func() {
+var _ = ginkgo.Describe("suite-ingress-resource: ApisixTls mTLS Test", func() {
 	// RootCA -> Server
 	// RootCA -> UserCert
 	// These certs come from mTLS practice
@@ -281,8 +281,7 @@ kRKIoaIQTjhu8524GO//bsmKEZg+eCJ0RqLi3A0uH/xAq513zejNw6Ij30EGH9Qu
 oVUuT4oL/s7yDtDeI5Nkolf+Ue8utKXPEIbNYlo/XUtbYQ4oChunuyKeKgCAN+HI
 onTtJIlTwQI0r79pbJ5KpUPcHzKWeX5PHQnYFe0vzFXhRCfof898AMhRT0f7Mvkc
 bAupufi5aCbmxOo/CFWHDMsWNv9RueSjwC/8R7n7z8M=
------END CERTIFICATE-----
-`
+-----END CERTIFICATE-----`
 
 	serverCertSecret := `server-secret`
 	serverCert := `-----BEGIN CERTIFICATE-----
@@ -318,8 +317,8 @@ OaN81GHwxJeXxY704VbrKVFIW3uf67ACXiKQuVVb8zSIyo5qM8ctQxr0mgzi6uEj
 536mKPeRmSd9EIG9Ebk6Xg2I8SZw+Ljfzo60bxlbNsBtBXFLS5IjxYP1y2x/cCzk
 AVy9rgsNPVkPSfH0Jy9ZrDJkV4c/yIvelBj/tHL9mL+8kZEmfhffR+PwtRUfonYl
 +KFB4CWLG1UPFpkLB22o8CWMnFdn2fji3jk=
------END CERTIFICATE-----
-`
+-----END CERTIFICATE-----`
+
 	serverKey := `-----BEGIN RSA PRIVATE KEY-----
 MIIJJwIBAAKCAgEAv6korMaGhJUZ46YuCXuZ13s+AQC/Y2utw/T1/qwQRNzQO/RQ
 6hFSNTunws2AvYzKzxWyKMK+5rHrkbQ2s9UCtpDd1LLpA0W8t4dmwe3geDtlwW31
@@ -370,8 +369,8 @@ qLmIXu89grekMAdHs+wsJ9L5XSEyI2LQDTo0Kmw396WFOiMHXO+hd4hu55j6KIC4
 r2LfnMEchQOHG+fVedkkxy+jckBqA9Qf2tsDYG+KYUj/nVsBQzfRiC4bp/04x16b
 j+0ntnGGA9b4ZaWhybh4UKEY9YwUOAvq/Y3gHqwaWDZscd/5s8MHZwKNfKriateP
 6tz2gipPdAsLQNaCS1d1OXHgh960gKziQNZM/wNgJQO/7ZeGvMkk6ml+0w==
------END RSA PRIVATE KEY-----
-`
+-----END RSA PRIVATE KEY-----`
+
 	clientCASecret := `client-ca-secret`
 	clientCert := `-----BEGIN CERTIFICATE-----
 MIIF5jCCA86gAwIBAgIUBigWd84H8JCiKERdO40wSZ1JgP4wDQYJKoZIhvcNAQEL
@@ -406,8 +405,7 @@ ng6CE/96m4HIMjvpxSlLiGKNyjuwxPhfZLpwPGLHu5ZDS689QL3EZR5La3ilXO7B
 Kwy0m3Ku3d+8Kb+WDWUvzu+HQGzIwFqHVoyp1nCg/w9Jc6Hl30nM0bA59G4IcRnI
 qP64MCb6dqPgEBgR5cEZOs75XNgI8f1thE7S5DQQC2z5vOGPI9FD0sDJNTKnHusX
 PLApoDRtuZpYJBY4acuPqyBLs+xn0fZ5pmM=
------END CERTIFICATE-----
-`
+-----END CERTIFICATE-----`
 
 	clientKey := `-----BEGIN RSA PRIVATE KEY-----
 MIIJKAIBAAKCAgEAyo9HShACWpGwzpXbzfhic7jtmnJKT2ywqKA5p4THMbGpDAkz
@@ -502,7 +500,9 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 			// Without Client Cert
-			s.NewAPISIXHttpsClient(host).GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusBadRequest).Body().Raw()
+			// From APISIX v2.14, If the client does not carry a certificate request, it will fail directly.
+			// Previous versions would return 400.
+			// s.NewAPISIXHttpsClient(host).GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusBadRequest).Body().Raw()
 
 			// With client cert
 			caCertPool := x509.NewCertPool()
