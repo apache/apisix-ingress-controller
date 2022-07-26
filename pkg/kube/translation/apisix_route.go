@@ -500,7 +500,7 @@ func (t *translator) translateRouteMatchExprs(nginxVars []configv2.ApisixRouteHT
 		}
 		switch expr.Subject.Scope {
 		case _const.ScopeQuery:
-			subj = "arg_" + strings.ToLower(expr.Subject.Name)
+			subj = "arg_" + expr.Subject.Name
 		case _const.ScopeHeader:
 			name := strings.ToLower(expr.Subject.Name)
 			name = strings.ReplaceAll(name, "-", "_")
