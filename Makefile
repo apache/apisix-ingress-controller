@@ -73,9 +73,9 @@ pack-ingress-image:
 .PHONY: pack-images
 pack-images: build-images push-images
 
-### build-image:          Build apisix-ingress-controller image
+### build-images:         Prepare all required Images
 .PHONY: build-images
-build-images:
+build-images: build-image
 ifeq ($(E2E_SKIP_BUILD), 0)
 	docker pull apache/apisix:2.14.1-alpine
 	docker tag apache/apisix:2.14.1-alpine $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
@@ -89,7 +89,6 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker build -t test-backend:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) ./test/e2e/testbackend
 	docker tag test-backend:$(IMAGE_TAG) $(REGISTRY)/test-backend:$(IMAGE_TAG)
 
-	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 
 	docker pull jmalloc/echo-server:latest
