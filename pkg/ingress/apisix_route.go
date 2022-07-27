@@ -326,25 +326,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	} else if ev.Type == types.EventAdd {
 		added = m
 	} else {
-		var oldCtx *translation.TranslateContext
-		switch obj.GroupVersion {
-		case config.ApisixV2beta2:
-			oldCtx, err = c.controller.translator.TranslateRouteV2beta2(obj.OldObject.V2beta2())
-		case config.ApisixV2beta3:
-			oldCtx, err = c.controller.translator.TranslateRouteV2beta3(obj.OldObject.V2beta3())
-		case config.ApisixV2:
-			oldCtx, err = c.controller.translator.TranslateRouteV2(obj.OldObject.V2())
-		}
-		if err != nil {
-			log.Errorw("failed to translate old ApisixRoute",
-				zap.String("version", obj.GroupVersion),
-				zap.String("event", "update"),
-				zap.Error(err),
-				zap.Any("ApisixRoute", ar),
-			)
-			return err
-		}
-
+		oldCtx, _ := c.getOldTranslateContext(ctx, obj.OldObject)
 		om := &utils.Manifest{
 			Routes:        oldCtx.Routes,
 			Upstreams:     oldCtx.Upstreams,
@@ -692,4 +674,82 @@ func (c *apisixRouteController) handleSvcErr(key string, errOrigin error) {
 		zap.Error(errOrigin),
 	)
 	c.workqueue.AddRateLimited(key)
+}
+
+// Building objects from cache
+// For old objects, you cannot use TranslateRoute to build. Because it needs to parse the latest service, which will cause data inconsistency
+func (c *apisixRouteController) getOldTranslateContext(ctx context.Context, kar kube.ApisixRoute) (*translation.TranslateContext, error) {
+	clusterName := c.controller.cfg.APISIX.DefaultClusterName
+	oldCtx := translation.DefaultEmptyTranslateContext()
+
+	switch c.controller.cfg.Kubernetes.ApisixRouteVersion {
+	case config.ApisixV2beta3:
+		ar := kar.V2beta3()
+		for _, part := range ar.Spec.Stream {
+			name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
+			sr, err := c.controller.apisix.Cluster(clusterName).StreamRoute().Get(ctx, name)
+			if err != nil {
+				continue
+			}
+			if sr.UpstreamId != "" {
+				ups := apisixv1.NewDefaultUpstream()
+				ups.ID = sr.UpstreamId
+				oldCtx.AddUpstream(ups)
+			}
+			oldCtx.AddStreamRoute(sr)
+		}
+		for _, part := range ar.Spec.HTTP {
+			name := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
+			r, err := c.controller.apisix.Cluster(clusterName).Route().Get(ctx, name)
+			if err != nil {
+				continue
+			}
+			if r.UpstreamId != "" {
+				ups := apisixv1.NewDefaultUpstream()
+				ups.ID = r.UpstreamId
+				oldCtx.AddUpstream(ups)
+			}
+			if r.PluginConfigId != "" {
+				pc := apisixv1.NewDefaultPluginConfig()
+				pc.ID = r.PluginConfigId
+				oldCtx.AddPluginConfig(pc)
+			}
+			oldCtx.AddRoute(r)
+		}
+	case config.ApisixV2:
+		ar := kar.V2()
+		for _, part := range ar.Spec.Stream {
+			name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
+			sr, err := c.controller.apisix.Cluster(clusterName).StreamRoute().Get(ctx, name)
+			if err != nil {
+				continue
+			}
+			if sr.UpstreamId != "" {
+				ups := apisixv1.NewDefaultUpstream()
+				ups.ID = sr.UpstreamId
+				oldCtx.AddUpstream(ups)
+			}
+			oldCtx.AddStreamRoute(sr)
+		}
+		for _, part := range ar.Spec.HTTP {
+			name := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
+			r, err := c.controller.apisix.Cluster(clusterName).Route().Get(ctx, name)
+			if err != nil {
+				continue
+			}
+			if r.UpstreamId != "" {
+				ups := apisixv1.NewDefaultUpstream()
+				ups.ID = r.UpstreamId
+				oldCtx.AddUpstream(ups)
+			}
+			if r.PluginConfigId != "" {
+				pc := apisixv1.NewDefaultPluginConfig()
+				pc.ID = r.PluginConfigId
+				oldCtx.AddPluginConfig(pc)
+			}
+			oldCtx.AddRoute(r)
+
+		}
+	}
+	return oldCtx, nil
 }
