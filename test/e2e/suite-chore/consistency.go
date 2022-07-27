@@ -72,9 +72,6 @@ var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and Ingress", f
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1))
 
-			routes, err := s.ListApisixRoutes()
-			assert.Nil(ginkgo.GinkgoT(), err)
-			assert.Len(ginkgo.GinkgoT(), routes, 1)
 			upstreams, err := s.ListApisixUpstreams()
 			assert.Nil(ginkgo.GinkgoT(), err)
 			assert.Len(ginkgo.GinkgoT(), upstreams, 1)
@@ -90,7 +87,7 @@ var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and Ingress", f
 
 			time.Sleep(6 * time.Second)
 
-			routes, err = s.ListApisixRoutes()
+			routes, err := s.ListApisixRoutes()
 			assert.Nil(ginkgo.GinkgoT(), err)
 			assert.Len(ginkgo.GinkgoT(), routes, 1)
 			upstreams, err = s.ListApisixUpstreams()
