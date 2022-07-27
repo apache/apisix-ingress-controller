@@ -82,7 +82,7 @@ If you don't see a command prompt, try pressing enter.
 
 ```bash
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: grpc-proxy-route
@@ -106,7 +106,7 @@ EOF
 
 ```bash
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: yages
@@ -134,7 +134,7 @@ Inform APISIX SSL configuration through ApisixTls.
 
 ```bash
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixTls
 metadata:
   name: grpc-secret
