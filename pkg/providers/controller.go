@@ -649,7 +649,7 @@ func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
 		clusters := c.apisix.ListClusters()
 		for _, port := range svc.Spec.Ports {
 			for _, subset := range subsets {
-				nodes, err := c.translator.TranslateUpstreamNodes(ep, port.Port, subset.Labels)
+				nodes, err := c.translator.TranslateEndpoint(ep, port.Port, subset.Labels)
 				if err != nil {
 					log.Errorw("failed to translate upstream nodes",
 						zap.Error(err),
@@ -680,7 +680,7 @@ func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
 		clusters := c.apisix.ListClusters()
 		for _, port := range svc.Spec.Ports {
 			for _, subset := range subsets {
-				nodes, err := c.translator.TranslateUpstreamNodes(ep, port.Port, subset.Labels)
+				nodes, err := c.translator.TranslateEndpoint(ep, port.Port, subset.Labels)
 				if err != nil {
 					log.Errorw("failed to translate upstream nodes",
 						zap.Error(err),

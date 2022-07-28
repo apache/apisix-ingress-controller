@@ -16,10 +16,10 @@ package endpoint
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/providers"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"time"
 
 	"go.uber.org/zap"
@@ -39,7 +39,7 @@ type endpointsController struct {
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
 
-	cfg *config.Config
+	cfg *providertypes.CommonConfig
 
 	epInformer cache.SharedIndexInformer
 	epLister   kube.EndpointLister
@@ -105,8 +105,8 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 		return err
 	}
 	if ev.Type == types.EventDelete {
-		clusterName := c.cfg.APISIX.DefaultClusterName
-		err = c.controller.apisix.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx,
+		clusterName := c.cfg.Config.APISIX.DefaultClusterName
+		err = c.cfg.APISIX.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx,
 			&v1.UpstreamServiceRelation{
 				ServiceName: ns + "_" + ep.ServiceName(),
 			})

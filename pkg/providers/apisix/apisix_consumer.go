@@ -17,9 +17,16 @@ package apisix
 import (
 	"context"
 	"fmt"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/providers"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
 	"time"
 
 	"go.uber.org/zap"
@@ -39,12 +46,14 @@ type apisixConsumerController struct {
 	controller        *providers.Controller
 	workqueue         workqueue.RateLimitingInterface
 	workers           int
-	cfg               *config.Config
+	cfg               *providertypes.CommonConfig
 	MetricsCollector  metrics.Collector
 	NamespaceProvider namespace.WatchingNamespaceProvider
 
 	apisixConsumerInformer cache.SharedIndexInformer
 	apisixConsumerLister   kube.ApisixConsumerLister
+
+	translator translation.ApisixTranslator
 }
 
 func newApisixConsumerController() *apisixConsumerController {
@@ -141,14 +150,14 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 	case config.ApisixV2beta3:
 		ac := multiVersioned.V2beta3()
 
-		consumer, err := c.controller.translator.TranslateApisixConsumerV2beta3(ac)
+		consumer, err := c.translator.TranslateApisixConsumerV2beta3(ac)
 		if err != nil {
 			log.Errorw("failed to translate ApisixConsumer",
 				zap.Error(err),
 				zap.Any("ApisixConsumer", ac),
 			)
-			c.controller.recorderEvent(ac, corev1.EventTypeWarning, providers._resourceSyncAborted, err)
-			c.controller.recordStatus(ac, providers._resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
+			c.cfg.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.recordStatus(ac, utils.ResourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 			return err
 		}
 		log.Debugw("got consumer object from ApisixConsumer",
@@ -161,23 +170,23 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 				zap.Error(err),
 				zap.Any("consumer", consumer),
 			)
-			c.controller.recorderEvent(ac, corev1.EventTypeWarning, providers._resourceSyncAborted, err)
-			c.controller.recordStatus(ac, providers._resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
+			c.cfg.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.recordStatus(ac, utils.ResourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 			return err
 		}
 
-		c.controller.recorderEvent(ac, corev1.EventTypeNormal, providers._resourceSynced, nil)
+		c.cfg.RecordEvent(ac, corev1.EventTypeNormal, utils.ResourceSynced, nil)
 	case config.ApisixV2:
 		ac := multiVersioned.V2()
 
-		consumer, err := c.controller.translator.TranslateApisixConsumerV2(ac)
+		consumer, err := c.translator.TranslateApisixConsumerV2(ac)
 		if err != nil {
 			log.Errorw("failed to translate ApisixConsumer",
 				zap.Error(err),
 				zap.Any("ApisixConsumer", ac),
 			)
-			c.controller.recorderEvent(ac, corev1.EventTypeWarning, providers._resourceSyncAborted, err)
-			c.controller.recordStatus(ac, providers._resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
+			c.cfg.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.recordStatus(ac, utils.ResourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 			return err
 		}
 		log.Debugw("got consumer object from ApisixConsumer",
@@ -190,12 +199,12 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 				zap.Error(err),
 				zap.Any("consumer", consumer),
 			)
-			c.controller.recorderEvent(ac, corev1.EventTypeWarning, providers._resourceSyncAborted, err)
-			c.controller.recordStatus(ac, providers._resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
+			c.cfg.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.recordStatus(ac, utils.ResourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 			return err
 		}
 
-		c.controller.recorderEvent(ac, corev1.EventTypeNormal, providers._resourceSynced, nil)
+		c.cfg.RecordEvent(ac, corev1.EventTypeNormal, utils.ResourceSynced, nil)
 	}
 	return nil
 }
@@ -351,5 +360,66 @@ func (c *apisixConsumerController) ResourceSync() {
 				GroupVersion: ac.GroupVersion(),
 			},
 		})
+	}
+}
+
+// recordStatus record resources status
+func (c *apisixConsumerController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
+	// build condition
+	message := utils.CommonSuccessMessage
+	if err != nil {
+		message = err.Error()
+	}
+	condition := metav1.Condition{
+		Type:               utils.ConditionType,
+		Reason:             reason,
+		Status:             status,
+		Message:            message,
+		ObservedGeneration: generation,
+	}
+	apisixClient := c.cfg.KubeClient.APISIXClient
+
+	if kubeObj, ok := at.(runtime.Object); ok {
+		at = kubeObj.DeepCopyObject()
+	}
+
+	switch v := at.(type) {
+	case *configv2beta3.ApisixConsumer:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			if _, errRecord := apisixClient.ApisixV2beta3().ApisixConsumers(v.Namespace).
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for ApisixConsumer",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+					zap.String("namespace", v.Namespace),
+				)
+			}
+		}
+	case *configv2.ApisixConsumer:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			if _, errRecord := apisixClient.ApisixV2().ApisixConsumers(v.Namespace).
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for ApisixConsumer",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+					zap.String("namespace", v.Namespace),
+				)
+			}
+		}
+	default:
+		// This should not be executed
+		log.Errorf("unsupported resource record: %s", v)
 	}
 }

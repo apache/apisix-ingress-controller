@@ -33,16 +33,16 @@ import (
 )
 
 const (
-	_defaultWeight = 100
+	DefaultWeight = 100
 )
 
-type translateError struct {
-	field  string
-	reason string
+type TranslateError struct {
+	Field  string
+	Reason string
 }
 
-func (te *translateError) Error() string {
-	return fmt.Sprintf("%s: %s", te.field, te.reason)
+func (te *TranslateError) Error() string {
+	return fmt.Sprintf("%s: %s", te.Field, te.Reason)
 }
 
 // Translator translates Apisix* CRD resources to the description in APISIX.
@@ -50,7 +50,7 @@ type Translator interface {
 	// TranslateUpstreamNodes translate Endpoints resources to APISIX Upstream nodes
 	// according to the give port. Extra labels can be passed to filter the ultimate
 	// upstream nodes.
-	TranslateUpstreamNodes(kube.Endpoint, int32, types.Labels) (apisixv1.UpstreamNodes, error)
+	TranslateEndpoint(kube.Endpoint, int32, types.Labels) (apisixv1.UpstreamNodes, error)
 	// TranslateUpstreamConfigV2beta3 translates ApisixUpstreamConfig (part of ApisixUpstream)
 	// to APISIX Upstream, it doesn't fill the the Upstream metadata and nodes.
 	TranslateUpstreamConfigV2beta3(*configv2beta3.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
@@ -66,7 +66,7 @@ type Translator interface {
 	// matching the subset labels (defined in ApisixUpstream) will be selected.
 	// When the subset is not found, the node list will be empty. When the subset is empty,
 	// all pods IP will be filled.
-	TranslateUpstream(string, string, string, int32) (*apisixv1.Upstream, error)
+	TranslateService(string, string, string, int32) (*apisixv1.Upstream, error)
 	// TranslateIngress composes a couple of APISIX Routes and upstreams according
 	// to the given Ingress resource.
 	TranslateIngress(kube.Ingress, ...bool) (*TranslateContext, error)
@@ -119,6 +119,25 @@ type Translator interface {
 	// ExtractKeyPair extracts certificate and private key pair from secret
 	// Supports APISIX style ("cert" and "key") and Kube style ("tls.crt" and "tls.key)
 	ExtractKeyPair(s *corev1.Secret, hasPrivateKey bool) ([]byte, []byte, error)
+}
+
+type BaseTranslator interface {
+	// TranslateUpstream composes an upstream according to the
+	// given namespace, name (searching Service/Endpoints) and port (filtering Endpoints).
+	// The returned Upstream doesn't have metadata info.
+	// It doesn't assign any metadata fields, so it's caller's responsibility to decide
+	// the metadata.
+	// Note the subset is used to filter the ultimate node list, only pods whose labels
+	// matching the subset labels (defined in ApisixUpstream) will be selected.
+	// When the subset is not found, the node list will be empty. When the subset is empty,
+	// all pods IP will be filled.
+	TranslateService(string, string, string, int32) (*apisixv1.Upstream, error)
+	// TranslateUpstreamNodes translate Endpoints resources to APISIX Upstream nodes
+	// according to the give port. Extra labels can be passed to filter the ultimate
+	// upstream nodes.
+	TranslateEndpoint(kube.Endpoint, int32, types.Labels) (apisixv1.UpstreamNodes, error)
+
+	TranslateAnnotations(anno map[string]string) apisixv1.Plugins
 }
 
 // TranslatorOptions contains options to help Translator
@@ -185,12 +204,12 @@ func (t *translator) TranslateUpstreamConfigV2(au *configv2.ApisixUpstreamConfig
 	return ups, nil
 }
 
-func (t *translator) TranslateUpstream(namespace, name, subset string, port int32) (*apisixv1.Upstream, error) {
+func (t *translator) TranslateService(namespace, name, subset string, port int32) (*apisixv1.Upstream, error) {
 	endpoint, err := t.EndpointLister.GetEndpoint(namespace, name)
 	if err != nil {
-		return nil, &translateError{
-			field:  "endpoints",
-			reason: err.Error(),
+		return nil, &TranslateError{
+			Field:  "endpoints",
+			Reason: err.Error(),
 		}
 	}
 
@@ -216,9 +235,9 @@ func (t *translator) translateUpstreamV2(ep *kube.Endpoint, namespace, name, sub
 				return ups, nil
 			}
 		} else {
-			return nil, &translateError{
-				field:  "ApisixUpstream",
-				reason: err.Error(),
+			return nil, &TranslateError{
+				Field:  "ApisixUpstream",
+				Reason: err.Error(),
 			}
 		}
 	}
@@ -232,7 +251,7 @@ func (t *translator) translateUpstreamV2(ep *kube.Endpoint, namespace, name, sub
 		}
 	}
 	// Filter nodes by subset.
-	nodes, err := t.TranslateUpstreamNodes(*ep, port, labels)
+	nodes, err := t.TranslateEndpoint(*ep, port, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -268,9 +287,9 @@ func (t *translator) translateUpstreamV2beta3(ep *kube.Endpoint, namespace, name
 				return ups, nil
 			}
 		} else {
-			return nil, &translateError{
-				field:  "ApisixUpstream",
-				reason: err.Error(),
+			return nil, &TranslateError{
+				Field:  "ApisixUpstream",
+				Reason: err.Error(),
 			}
 		}
 	}
@@ -283,9 +302,9 @@ func (t *translator) translateUpstreamV2beta3(ep *kube.Endpoint, namespace, name
 				return ups, nil
 			}
 		} else {
-			return nil, &translateError{
-				field:  "ApisixUpstream",
-				reason: err.Error(),
+			return nil, &TranslateError{
+				Field:  "ApisixUpstream",
+				Reason: err.Error(),
 			}
 		}
 	}
@@ -299,7 +318,7 @@ func (t *translator) translateUpstreamV2beta3(ep *kube.Endpoint, namespace, name
 		}
 	}
 	// Filter nodes by subset.
-	nodes, err := t.TranslateUpstreamNodes(*ep, port, labels)
+	nodes, err := t.TranslateEndpoint(*ep, port, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +342,7 @@ func (t *translator) translateUpstreamV2beta3(ep *kube.Endpoint, namespace, name
 	return ups, nil
 }
 
-func (t *translator) TranslateUpstreamNodes(endpoint kube.Endpoint, port int32, labels types.Labels) (apisixv1.UpstreamNodes, error) {
+func (t *translator) TranslateEndpoint(endpoint kube.Endpoint, port int32, labels types.Labels) (apisixv1.UpstreamNodes, error) {
 	namespace, err := endpoint.Namespace()
 	if err != nil {
 		log.Errorw("failed to get endpoint namespace",
@@ -335,9 +354,9 @@ func (t *translator) TranslateUpstreamNodes(endpoint kube.Endpoint, port int32, 
 	svcName := endpoint.ServiceName()
 	svc, err := t.ServiceLister.Services(namespace).Get(svcName)
 	if err != nil {
-		return nil, &translateError{
-			field:  "service",
-			reason: err.Error(),
+		return nil, &TranslateError{
+			Field:  "service",
+			Reason: err.Error(),
 		}
 	}
 
@@ -349,9 +368,9 @@ func (t *translator) TranslateUpstreamNodes(endpoint kube.Endpoint, port int32, 
 		}
 	}
 	if svcPort == nil {
-		return nil, &translateError{
-			field:  "service.spec.ports",
-			reason: "port not defined",
+		return nil, &TranslateError{
+			Field:  "service.spec.ports",
+			Reason: "port not defined",
 		}
 	}
 	// As nodes is not optional, here we create an empty slice,
@@ -362,11 +381,11 @@ func (t *translator) TranslateUpstreamNodes(endpoint kube.Endpoint, port int32, 
 			Host: hostport.Host,
 			Port: hostport.Port,
 			// FIXME Custom node weight
-			Weight: _defaultWeight,
+			Weight: DefaultWeight,
 		})
 	}
 	if labels != nil {
-		nodes = t.filterNodesByLabels(nodes, labels, namespace)
+		nodes = t.FilterNodesByLabels(nodes, labels, namespace)
 		return nodes, nil
 	}
 	return nodes, nil

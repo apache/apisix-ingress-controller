@@ -34,7 +34,7 @@ var (
 	_errInvalidAddress = errors.New("address is neither IP or CIDR")
 )
 
-func (t *translator) getServiceClusterIPAndPort(backend *configv2.ApisixRouteHTTPBackend, ns string) (string, int32, error) {
+func (t *translator) GetServiceClusterIPAndPort(backend *configv2.ApisixRouteHTTPBackend, ns string) (string, int32, error) {
 	svc, err := t.ServiceLister.Services(ns).Get(backend.ServiceName)
 	if err != nil {
 		return "", 0, err
@@ -202,7 +202,7 @@ func (t *translator) translateUpstreamNotStrictly(namespace, svcName, subset str
 }
 
 func (t *translator) translateUpstream(namespace, svcName, subset, svcResolveGranularity, svcClusterIP string, svcPort int32) (*apisixv1.Upstream, error) {
-	ups, err := t.TranslateUpstream(namespace, svcName, subset, svcPort)
+	ups, err := t.TranslateService(namespace, svcName, subset, svcPort)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func (t *translator) translateUpstream(namespace, svcName, subset, svcResolveGra
 			{
 				Host:   svcClusterIP,
 				Port:   int(svcPort),
-				Weight: _defaultWeight,
+				Weight: DefaultWeight,
 			},
 		}
 	}
@@ -220,7 +220,7 @@ func (t *translator) translateUpstream(namespace, svcName, subset, svcResolveGra
 	return ups, nil
 }
 
-func (t *translator) filterNodesByLabels(nodes apisixv1.UpstreamNodes, labels types.Labels, namespace string) apisixv1.UpstreamNodes {
+func (t *translator) FilterNodesByLabels(nodes apisixv1.UpstreamNodes, labels types.Labels, namespace string) apisixv1.UpstreamNodes {
 	if labels == nil {
 		return nodes
 	}
@@ -250,7 +250,7 @@ func (t *translator) filterNodesByLabels(nodes apisixv1.UpstreamNodes, labels ty
 	return filteredNodes
 }
 
-func validateRemoteAddrs(remoteAddrs []string) error {
+func ValidateRemoteAddrs(remoteAddrs []string) error {
 	for _, addr := range remoteAddrs {
 		if ip := net.ParseIP(addr); ip == nil {
 			// addr is not an IP address, try to parse it as a CIDR.

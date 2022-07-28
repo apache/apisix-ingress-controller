@@ -35,7 +35,7 @@ var (
 	}
 )
 
-func (t *translator) translateAnnotations(anno map[string]string) apisix.Plugins {
+func (t *translator) TranslateAnnotations(anno map[string]string) apisix.Plugins {
 	extractor := annotations.NewExtractor(anno)
 	plugins := make(apisix.Plugins)
 	for _, handler := range _handlers {

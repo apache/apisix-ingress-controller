@@ -16,10 +16,10 @@ package endpoint
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"time"
 
 	"go.uber.org/zap"
@@ -43,7 +43,7 @@ type endpointSliceEvent struct {
 }
 
 type endpointSliceController struct {
-	cfg       *config.Config
+	cfg       *providertypes.CommonConfig
 	workqueue workqueue.RateLimitingInterface
 	workers   int
 
@@ -54,7 +54,7 @@ type endpointSliceController struct {
 	NamespaceProvider namespace.WatchingNamespaceProvider
 }
 
-func newEndpointSliceController(cfg *config.Config, epInformer cache.SharedIndexInformer, epLister kube.EndpointLister) *endpointSliceController {
+func newEndpointSliceController(cfg *providertypes.CommonConfig, epInformer cache.SharedIndexInformer, epLister kube.EndpointLister) *endpointSliceController {
 	ctl := &endpointSliceController{
 		cfg:       cfg,
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(time.Second, 60*time.Second, 5), "endpointSlice"),
@@ -115,8 +115,8 @@ func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) err
 	if ev.Type == types.EventDelete {
 		log.Debugw("endpointsplice upstream serviece sync",
 			zap.String("service_name", epEvent.ServiceName))
-		clusterName := c.cfg.APISIX.DefaultClusterName
-		err = c.controller.apisix.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx,
+		clusterName := c.cfg.Config.APISIX.DefaultClusterName
+		err = c.cfg.APISIX.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx,
 			&v1.UpstreamServiceRelation{
 				ServiceName: namespace + "_" + epEvent.ServiceName,
 			})

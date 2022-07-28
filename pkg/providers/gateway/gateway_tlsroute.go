@@ -140,7 +140,7 @@ func (c *gatewayTLSRouteController) sync(ctx context.Context, ev *types.Event) e
 		tlsRoute = ev.Tombstone.(*gatewayv1alpha2.TLSRoute)
 	}
 
-	tctx, err := c.controller.translator.TranslateGatewayTLSRouteV1Alpha2(tlsRoute)
+	tctx, err := c.translator.TranslateGatewayTLSRouteV1Alpha2(tlsRoute)
 
 	if err != nil {
 		log.Warnw("failed to translate gateway TLSRoute",
@@ -172,7 +172,7 @@ func (c *gatewayTLSRouteController) sync(ctx context.Context, ev *types.Event) e
 	} else {
 		var oldCtx *translation.TranslateContext
 		oldObj := ev.OldObject.(*gatewayv1alpha2.TLSRoute)
-		oldCtx, err = c.controller.translator.TranslateGatewayTLSRouteV1Alpha2(oldObj)
+		oldCtx, err = c.translator.TranslateGatewayTLSRouteV1Alpha2(oldObj)
 		if err != nil {
 			log.Errorw("failed to translate old TLSRoute",
 				zap.String("version", oldObj.APIVersion),

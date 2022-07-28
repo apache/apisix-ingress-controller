@@ -16,9 +16,9 @@ package k8s
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
 	"go.uber.org/zap"
@@ -30,7 +30,7 @@ import (
 )
 
 type podController struct {
-	cfg *config.Config
+	cfg *providertypes.CommonConfig
 
 	podInformer cache.SharedIndexInformer
 	podLister   listerscorev1.PodLister
@@ -41,7 +41,7 @@ type podController struct {
 	podCache types.PodCache
 }
 
-func newPodController(cfg *config.Config, podInformer cache.SharedIndexInformer, podLister listerscorev1.PodLister) *podController {
+func newPodController(cfg *providertypes.CommonConfig, podInformer cache.SharedIndexInformer, podLister listerscorev1.PodLister) *podController {
 	ctl := &podController{
 		cfg:      cfg,
 		podCache: types.NewPodCache(),

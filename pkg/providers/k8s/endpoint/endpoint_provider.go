@@ -2,7 +2,7 @@ package endpoint
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/config"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 )
 
@@ -10,13 +10,13 @@ type Provider interface {
 }
 
 type provider struct {
-	cfg *config.Config
+	cfg *providertypes.CommonConfig
 
 	endpointsController     *endpointsController
 	endpointSliceController *endpointSliceController
 }
 
-func NewProvider(cfg *config.Config) (Provider, error) {
+func NewProvider(cfg *providertypes.CommonConfig) (Provider, error) {
 	p := &provider{
 		cfg: cfg,
 	}

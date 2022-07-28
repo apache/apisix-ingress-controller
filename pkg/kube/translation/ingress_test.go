@@ -202,9 +202,9 @@ func TestTranslateIngressV1BackendWithInvalidService(t *testing.T) {
 	<-processCh
 	ctx, err = tr.translateIngressV1(ing, false)
 	assert.Nil(t, ctx, nil)
-	assert.Equal(t, &translateError{
-		field:  "service",
-		reason: "port not found",
+	assert.Equal(t, &TranslateError{
+		Field:  "service",
+		Reason: "port not found",
 	}, err)
 }
 
@@ -301,7 +301,7 @@ func testTranslateIngressV1WithRegexReferenceUpstreamVersion(t *testing.T, apiVe
 		assert.Len(t, ctx.Upstreams, 1)
 		// the number of the PluginConfigs should be zero, cause there no available Annotations matched te rule
 		assert.Len(t, ctx.PluginConfigs, 0)
-		routeVars, err := tr.translateRouteMatchExprs([]configv2.ApisixRouteHTTPMatchExpr{{
+		routeVars, err := tr.TranslateRouteMatchExprs([]configv2.ApisixRouteHTTPMatchExpr{{
 			Subject: configv2.ApisixRouteHTTPMatchExprSubject{
 				Scope: apisixconst.ScopePath,
 			},
@@ -559,9 +559,9 @@ func TestTranslateIngressV1beta1BackendWithInvalidService(t *testing.T) {
 	<-processCh
 	ctx, err = tr.translateIngressV1beta1(ing, false)
 	assert.Nil(t, ctx)
-	assert.Equal(t, &translateError{
-		field:  "service",
-		reason: "port not found",
+	assert.Equal(t, &TranslateError{
+		Field:  "service",
+		Reason: "port not found",
 	}, err)
 }
 
@@ -653,7 +653,7 @@ func TestTranslateIngressV1beta1WithRegex(t *testing.T) {
 	// the number of the PluginConfigs should be zero, cause there no available Annotations matched te rule
 	assert.Len(t, ctx.PluginConfigs, 0)
 
-	routeVars, err := tr.translateRouteMatchExprs([]configv2.ApisixRouteHTTPMatchExpr{{
+	routeVars, err := tr.TranslateRouteMatchExprs([]configv2.ApisixRouteHTTPMatchExpr{{
 		Subject: configv2.ApisixRouteHTTPMatchExprSubject{
 			Scope: apisixconst.ScopePath,
 		},
@@ -995,9 +995,9 @@ func TestTranslateIngressExtensionsV1beta1BackendWithInvalidService(t *testing.T
 	<-processCh
 	ctx, err = tr.translateIngressExtensionsV1beta1(ing, false)
 	assert.Nil(t, ctx)
-	assert.Equal(t, &translateError{
-		field:  "service",
-		reason: "port not found",
+	assert.Equal(t, &TranslateError{
+		Field:  "service",
+		Reason: "port not found",
 	}, err)
 }
 
@@ -1087,7 +1087,7 @@ func TestTranslateIngressExtensionsV1beta1WithRegex(t *testing.T) {
 	assert.Len(t, ctx.Upstreams, 1)
 	// the number of the PluginConfigs should be zero, cause there no available Annotations matched te rule
 	assert.Len(t, ctx.PluginConfigs, 0)
-	routeVars, err := tr.translateRouteMatchExprs([]configv2.ApisixRouteHTTPMatchExpr{{
+	routeVars, err := tr.TranslateRouteMatchExprs([]configv2.ApisixRouteHTTPMatchExpr{{
 		Subject: configv2.ApisixRouteHTTPMatchExprSubject{
 			Scope: apisixconst.ScopePath,
 		},

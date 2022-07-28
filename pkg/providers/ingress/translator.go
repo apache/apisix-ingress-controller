@@ -1,46 +1,64 @@
-// Licensed to the Apache Software Foundation (ASF) under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// The ASF licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-package translation
+package ingress
 
 import (
 	"bytes"
 	"fmt"
-	"strings"
-
+	"github.com/apache/apisix-ingress-controller/pkg/id"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	kubev2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	kubev2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"go.uber.org/zap"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-
-	"github.com/apache/apisix-ingress-controller/pkg/id"
-	kubev2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	kubev2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
-	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
+	"strings"
 )
+
+type translator struct {
+	PodCache             types.PodCache
+	PodLister            listerscorev1.PodLister
+	EndpointLister       kube.EndpointLister
+	ServiceLister        listerscorev1.ServiceLister
+	ApisixUpstreamLister kube.ApisixUpstreamLister
+	SecretLister         listerscorev1.SecretLister
+	UseEndpointSlices    bool
+	APIVersion           string
+
+	translation.BaseTranslator
+}
+
+func (t *translator) TranslateIngress(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error) {
+	var skipVerify = false
+	if len(args) != 0 {
+		skipVerify = args[0]
+	}
+	switch ing.GroupVersion() {
+	case kube.IngressV1:
+		return t.translateIngressV1(ing.V1(), skipVerify)
+	case kube.IngressV1beta1:
+		return t.translateIngressV1beta1(ing.V1beta1(), skipVerify)
+	case kube.IngressExtensionsV1beta1:
+		return t.translateIngressExtensionsV1beta1(ing.ExtensionsV1beta1(), skipVerify)
+	default:
+		return nil, fmt.Errorf("translator: source group version not supported: %s", ing.GroupVersion())
+	}
+}
 
 const (
 	_regexPriority = 100
 )
 
-func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bool) (*TranslateContext, error) {
-	ctx := DefaultEmptyTranslateContext()
+func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bool) (*translation.TranslateContext, error) {
+	ctx := translation.DefaultEmptyTranslateContext()
 	plugins := t.TranslateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
@@ -159,8 +177,8 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 	return ctx, nil
 }
 
-func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, skipVerify bool) (*TranslateContext, error) {
-	ctx := DefaultEmptyTranslateContext()
+func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, skipVerify bool) (*translation.TranslateContext, error) {
+	ctx := translation.DefaultEmptyTranslateContext()
 	plugins := t.TranslateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
@@ -316,7 +334,7 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 			}
 		}
 		if svcPort == 0 {
-			return nil, &TranslateError{
+			return nil, &translation.TranslateError{
 				Field:  "service",
 				Reason: "port not found",
 			}
@@ -333,8 +351,8 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 	return ups, nil
 }
 
-func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress, skipVerify bool) (*TranslateContext, error) {
-	ctx := DefaultEmptyTranslateContext()
+func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress, skipVerify bool) (*translation.TranslateContext, error) {
+	ctx := translation.DefaultEmptyTranslateContext()
 	plugins := t.TranslateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
@@ -462,7 +480,7 @@ func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcNa
 			}
 		}
 		if portNumber == 0 {
-			return nil, &TranslateError{
+			return nil, &translation.TranslateError{
 				Field:  "service",
 				Reason: "port not found",
 			}

@@ -16,6 +16,7 @@ package translation
 
 import (
 	"errors"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"strconv"
 
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
@@ -38,7 +39,7 @@ var (
 	_hmacAuthMaxReqBodyDefaultValue          = int64(524288)
 )
 
-func (t *translator) translateTrafficSplitPlugin(ctx *TranslateContext, ns string, defaultBackendWeight int,
+func (t *translator) translateTrafficSplitPlugin(ctx *translation.TranslateContext, ns string, defaultBackendWeight int,
 	backends []configv2.ApisixRouteHTTPBackend) (*apisixv1.TrafficSplitConfig, error) {
 	var (
 		wups []apisixv1.TrafficSplitConfigRuleWeightedUpstream
@@ -49,13 +50,13 @@ func (t *translator) translateTrafficSplitPlugin(ctx *TranslateContext, ns strin
 		if err != nil {
 			return nil, err
 		}
-		ups, err := t.translateUpstream(ns, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
+		ups, err := t.translateService(ns, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
 		if err != nil {
 			return nil, err
 		}
 		ctx.AddUpstream(ups)
 
-		weight := DefaultWeight
+		weight := translation.DefaultWeight
 		if backend.Weight != nil {
 			weight = *backend.Weight
 		}

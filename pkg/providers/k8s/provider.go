@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/endpoint"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
@@ -21,7 +20,7 @@ type Provider interface {
 }
 
 type k8sProvider struct {
-	cfg *config.Config
+	cfg *providertypes.CommonConfig
 
 	podController    *podController
 	secretController *secretController
@@ -30,7 +29,7 @@ type k8sProvider struct {
 	namespace namespace.WatchingNamespaceProvider
 }
 
-func NewProvider(ctx context.Context, kube *kube.KubeClient, cfg *config.Config) (Provider, error) {
+func NewProvider(ctx context.Context, kube *kube.KubeClient, cfg *providertypes.CommonConfig) (Provider, error) {
 	var err error
 	provider := &k8sProvider{
 		cfg: cfg,

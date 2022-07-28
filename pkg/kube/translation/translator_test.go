@@ -70,9 +70,9 @@ func TestTranslateUpstreamConfigV2beta3(t *testing.T) {
 		Scheme: "dns",
 	}
 	_, err = tr.TranslateUpstreamConfigV2beta3(au)
-	assert.Error(t, err, &translateError{
-		field:  "scheme",
-		reason: "invalid value",
+	assert.Error(t, err, &TranslateError{
+		Field:  "scheme",
+		Reason: "invalid value",
 	})
 
 	au = &configv2beta3.ApisixUpstreamConfig{
@@ -81,9 +81,9 @@ func TestTranslateUpstreamConfigV2beta3(t *testing.T) {
 		},
 	}
 	_, err = tr.TranslateUpstreamConfigV2beta3(au)
-	assert.Error(t, err, &translateError{
-		field:  "loadbalancer.type",
-		reason: "invalid value",
+	assert.Error(t, err, &TranslateError{
+		Field:  "loadbalancer.type",
+		Reason: "invalid value",
 	})
 
 	au = &configv2beta3.ApisixUpstreamConfig{
@@ -93,9 +93,9 @@ func TestTranslateUpstreamConfigV2beta3(t *testing.T) {
 		},
 	}
 	_, err = tr.TranslateUpstreamConfigV2beta3(au)
-	assert.Error(t, err, &translateError{
-		field:  "loadbalancer.hashOn",
-		reason: "invalid value",
+	assert.Error(t, err, &TranslateError{
+		Field:  "loadbalancer.hashOn",
+		Reason: "invalid value",
 	})
 }
 
@@ -136,9 +136,9 @@ func TestTranslateUpstreamConfigV2(t *testing.T) {
 		Scheme: "dns",
 	}
 	_, err = tr.TranslateUpstreamConfigV2(au)
-	assert.Error(t, err, &translateError{
-		field:  "scheme",
-		reason: "invalid value",
+	assert.Error(t, err, &TranslateError{
+		Field:  "scheme",
+		Reason: "invalid value",
 	})
 
 	au = &configv2.ApisixUpstreamConfig{
@@ -147,9 +147,9 @@ func TestTranslateUpstreamConfigV2(t *testing.T) {
 		},
 	}
 	_, err = tr.TranslateUpstreamConfigV2(au)
-	assert.Error(t, err, &translateError{
-		field:  "loadbalancer.type",
-		reason: "invalid value",
+	assert.Error(t, err, &TranslateError{
+		Field:  "loadbalancer.type",
+		Reason: "invalid value",
 	})
 
 	au = &configv2.ApisixUpstreamConfig{
@@ -159,9 +159,9 @@ func TestTranslateUpstreamConfigV2(t *testing.T) {
 		},
 	}
 	_, err = tr.TranslateUpstreamConfigV2(au)
-	assert.Error(t, err, &translateError{
-		field:  "loadbalancer.hashOn",
-		reason: "invalid value",
+	assert.Error(t, err, &TranslateError{
+		Field:  "loadbalancer.hashOn",
+		Reason: "invalid value",
 	})
 }
 
@@ -244,14 +244,14 @@ func TestTranslateUpstreamNodes(t *testing.T) {
 	}}
 	<-processCh
 
-	nodes, err := tr.TranslateUpstreamNodes(kube.NewEndpoint(endpoints), 10080, nil)
+	nodes, err := tr.TranslateEndpoint(kube.NewEndpoint(endpoints), 10080, nil)
 	assert.Nil(t, nodes)
-	assert.Equal(t, &translateError{
-		field:  "service.spec.ports",
-		reason: "port not defined",
+	assert.Equal(t, &TranslateError{
+		Field:  "service.spec.ports",
+		Reason: "port not defined",
 	}, err)
 
-	nodes, err = tr.TranslateUpstreamNodes(kube.NewEndpoint(endpoints), 80, nil)
+	nodes, err = tr.TranslateEndpoint(kube.NewEndpoint(endpoints), 80, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, apisixv1.UpstreamNodes{
 		{
@@ -266,7 +266,7 @@ func TestTranslateUpstreamNodes(t *testing.T) {
 		},
 	}, nodes)
 
-	nodes, err = tr.TranslateUpstreamNodes(kube.NewEndpoint(endpoints), 443, nil)
+	nodes, err = tr.TranslateEndpoint(kube.NewEndpoint(endpoints), 443, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, apisixv1.UpstreamNodes{
 		{
@@ -373,14 +373,14 @@ func TestTranslateUpstreamNodesWithEndpointSlices(t *testing.T) {
 	}}
 	<-processCh
 
-	nodes, err := tr.TranslateUpstreamNodes(kube.NewEndpointWithSlice(ep), 10080, nil)
+	nodes, err := tr.TranslateEndpoint(kube.NewEndpointWithSlice(ep), 10080, nil)
 	assert.Nil(t, nodes)
-	assert.Equal(t, err, &translateError{
-		field:  "service.spec.ports",
-		reason: "port not defined",
+	assert.Equal(t, err, &TranslateError{
+		Field:  "service.spec.ports",
+		Reason: "port not defined",
 	})
 
-	nodes, err = tr.TranslateUpstreamNodes(kube.NewEndpointWithSlice(ep), 80, nil)
+	nodes, err = tr.TranslateEndpoint(kube.NewEndpointWithSlice(ep), 80, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, apisixv1.UpstreamNodes{
 		{
@@ -395,7 +395,7 @@ func TestTranslateUpstreamNodesWithEndpointSlices(t *testing.T) {
 		},
 	}, nodes)
 
-	nodes, err = tr.TranslateUpstreamNodes(kube.NewEndpointWithSlice(ep), 443, nil)
+	nodes, err = tr.TranslateEndpoint(kube.NewEndpointWithSlice(ep), 443, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, apisixv1.UpstreamNodes{
 		{

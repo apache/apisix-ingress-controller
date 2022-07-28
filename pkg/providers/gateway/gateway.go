@@ -129,7 +129,7 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 	} else {
 		if c.controller.HasGatewayClass(string(gateway.Spec.GatewayClassName)) {
 			// TODO: handle listeners
-			listeners, err := c.controller.translator.TranslateGatewayV1Alpha2(gateway)
+			listeners, err := c.translator.TranslateGatewayV1Alpha2(gateway)
 			if err != nil {
 				return err
 			}
