@@ -2,6 +2,8 @@ package k8s
 
 import (
 	"context"
+	apisixprovider "github.com/apache/apisix-ingress-controller/pkg/providers/apisix"
+	"k8s.io/client-go/tools/cache"
 
 	"github.com/pkg/errors"
 
@@ -20,26 +22,35 @@ type Provider interface {
 
 type k8sProvider struct {
 	secretController *secretController
+	endpoint         endpoint.Provider
 
-	endpoint endpoint.Provider
+	secretInformer cache.SharedIndexInformer
 }
 
-func NewProvider(common *providertypes.Common, translator translation.Translator, namespaceProvider namespace.WatchingNamespaceProvider) (Provider, error) {
+func NewProvider(common *providertypes.Common, translator translation.Translator,
+	namespaceProvider namespace.WatchingNamespaceProvider, apisixProvider apisixprovider.Provider) (Provider, error) {
 	var err error
 	provider := &k8sProvider{}
+
+	kubeFactory := common.KubeClient.NewSharedIndexInformerFactory()
+	provider.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
 
 	provider.endpoint, err = endpoint.NewProvider(common, translator, namespaceProvider)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init endpoint provider")
 	}
 
-	provider.secretController = newSecretController()
+	provider.secretController = newSecretController(common, translator, namespaceProvider, apisixProvider, provider.secretInformer)
 
 	return provider, nil
 }
 
 func (p *k8sProvider) Run(ctx context.Context) {
 	e := utils.ParallelExecutor{}
+
+	e.Add(func() {
+		p.secretInformer.Run(ctx.Done())
+	})
 
 	e.Add(func() {
 		p.secretController.run(ctx)

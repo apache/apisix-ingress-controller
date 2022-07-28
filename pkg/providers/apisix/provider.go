@@ -3,6 +3,7 @@ package apisix
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"k8s.io/client-go/tools/cache"
 
@@ -31,6 +32,8 @@ type Provider interface {
 	providertypes.Provider
 
 	ResourceSync()
+
+	GetSslFromSecretKey(string) *sync.Map
 }
 
 type apisixProvider struct {
@@ -170,4 +173,14 @@ func (p *apisixProvider) ResourceSync() {
 	e.Add(p.apisixPluginConfigController.ResourceSync)
 
 	e.Wait()
+}
+
+func (p *apisixProvider) GetSslFromSecretKey(secretMapKey string) *sync.Map {
+	ssls, ok := p.apisixTlsController.secretSSLMap.Load(secretMapKey)
+	if !ok {
+		// This secret is not concerned.
+		return nil
+	}
+	sslMap := ssls.(*sync.Map)
+	return sslMap
 }

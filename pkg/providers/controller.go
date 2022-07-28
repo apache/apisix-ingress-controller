@@ -287,13 +287,13 @@ func (c *Controller) run(ctx context.Context) {
 		APIVersion:           c.cfg.Kubernetes.APIVersion,
 	})
 
-	c.kubeProvider, err = k8s.NewProvider(common, c.translator, c.namespaceProvider)
+	c.apisixProvider, c.apisixTranslator, err = apisixprovider.NewProvider(common, c.namespaceProvider, c.translator)
 	if err != nil {
 		ctx.Done()
 		return
 	}
 
-	c.apisixProvider, c.apisixTranslator, err = apisixprovider.NewProvider(common, c.namespaceProvider, c.translator)
+	c.kubeProvider, err = k8s.NewProvider(common, c.translator, c.namespaceProvider, c.apisixProvider)
 	if err != nil {
 		ctx.Done()
 		return
