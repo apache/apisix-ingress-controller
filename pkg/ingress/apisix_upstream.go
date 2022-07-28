@@ -454,7 +454,7 @@ func (c *apisixUpstreamController) ResourceSync() {
 		}
 		au, err := kube.NewApisixUpstream(obj)
 		if err != nil {
-			log.Errorw("found ApisixUpstream resource with bad type", zap.Error(err))
+			log.Errorw("ApisixUpstream sync failed, found ApisixUpstream resource with bad type", zap.Error(err))
 			return
 		}
 		c.workqueue.Add(&types.Event{
