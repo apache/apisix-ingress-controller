@@ -442,9 +442,9 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 }
 
 func (c *apisixUpstreamController) ResourceSync() {
-	clusterConfigs := c.controller.apisixUpstreamInformer.GetIndexer().List()
-	for _, clusterConfig := range clusterConfigs {
-		key, err := cache.MetaNamespaceKeyFunc(clusterConfig)
+	objs := c.controller.apisixUpstreamInformer.GetIndexer().List()
+	for _, obj := range objs {
+		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
 			log.Errorw("ApisixUpstream sync failed, found ApisixUpstream resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
@@ -452,9 +452,17 @@ func (c *apisixUpstreamController) ResourceSync() {
 		if !c.controller.isWatchingNamespace(key) {
 			continue
 		}
+		au, err := kube.NewApisixUpstream(obj)
+		if err != nil {
+			log.Errorw("found ApisixUpstream resource with bad type", zap.Error(err))
+			return
+		}
 		c.workqueue.Add(&types.Event{
-			Type:   types.EventAdd,
-			Object: key,
+			Type: types.EventAdd,
+			Object: kube.ApisixUpstreamEvent{
+				Key:          key,
+				GroupVersion: au.GroupVersion(),
+			},
 		})
 	}
 }
