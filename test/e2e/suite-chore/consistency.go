@@ -58,6 +58,26 @@ spec:
       targetPort: %d
   type: ClusterIP
 `
+	_IngressConfig = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+  name: ingress-v1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /*
+        pathType: Prefix
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`
 )
 
 var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and Ingress", func() {
@@ -84,6 +104,42 @@ var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and Ingress", f
 
 			ar = fmt.Sprintf(_routeConfig, "httpbin-service-e2e-test", 80)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+			time.Sleep(6 * time.Second)
+
+			routes, err := s.ListApisixRoutes()
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.Len(ginkgo.GinkgoT(), routes, 1)
+			upstreams, err = s.ListApisixUpstreams()
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.Len(ginkgo.GinkgoT(), upstreams, 1)
+			assert.Contains(ginkgo.GinkgoT(), upstreams[0].Name, "httpbin-service-e2e-test_80")
+
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+		})
+
+		ginkgo.It("Ingress and APISIX of route and upstream", func() {
+			httpService := fmt.Sprintf(_httpServiceConfig, 8080, 8080)
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httpService))
+
+			ing := fmt.Sprintf(_IngressConfig, "httpbin-service-e2e-test", 8080)
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1))
+
+			upstreams, err := s.ListApisixUpstreams()
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.Len(ginkgo.GinkgoT(), upstreams, 1)
+			assert.Contains(ginkgo.GinkgoT(), upstreams[0].Name, "httpbin-service-e2e-test_8080")
+			// The correct httpbin pod port is 80
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusBadGateway)
+
+			httpService = fmt.Sprintf(_httpServiceConfig, 80, 80)
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httpService))
+
+			ing = fmt.Sprintf(_IngressConfig, "httpbin-service-e2e-test", 80)
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 
 			time.Sleep(6 * time.Second)
 

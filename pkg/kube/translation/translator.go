@@ -22,6 +22,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	config "github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
@@ -70,6 +71,8 @@ type Translator interface {
 	// TranslateIngress composes a couple of APISIX Routes and upstreams according
 	// to the given Ingress resource.
 	TranslateIngress(kube.Ingress, ...bool) (*TranslateContext, error)
+
+	TranslateOldIngress(kube.Ingress) (*TranslateContext, error)
 	// TranslateRouteV2beta2 translates the configv2beta2.ApisixRoute object into several Route,
 	// and Upstream resources.
 	TranslateRouteV2beta2(*configv2beta2.ApisixRoute) (*TranslateContext, error)
@@ -88,6 +91,8 @@ type Translator interface {
 	// TranslateRouteV2NotStrictly translates the configv2.ApisixRoute object into several Route,
 	// Upstream and PluginConfig resources not strictly, only used for delete event.
 	TranslateRouteV2NotStrictly(*configv2.ApisixRoute) (*TranslateContext, error)
+
+	TranslateOldRoute(kube.ApisixRoute) (*TranslateContext, error)
 	// TranslateSSLV2Beta3 translates the configv2beta3.ApisixTls object into the APISIX SSL resource.
 	TranslateSSLV2Beta3(*configv2beta3.ApisixTls) (*apisixv1.Ssl, error)
 	// TranslateSSLV2 translates the configv2.ApisixTls object into the APISIX SSL resource.
@@ -132,6 +137,8 @@ type TranslatorOptions struct {
 	SecretLister         listerscorev1.SecretLister
 	UseEndpointSlices    bool
 	APIVersion           string
+	Apisix               apisix.APISIX
+	ClusterName          string
 }
 
 type translator struct {
@@ -384,6 +391,32 @@ func (t *translator) TranslateIngress(ing kube.Ingress, args ...bool) (*Translat
 		return t.translateIngressV1beta1(ing.V1beta1(), skipVerify)
 	case kube.IngressExtensionsV1beta1:
 		return t.translateIngressExtensionsV1beta1(ing.ExtensionsV1beta1(), skipVerify)
+	default:
+		return nil, fmt.Errorf("translator: source group version not supported: %s", ing.GroupVersion())
+	}
+}
+
+func (t *translator) TranslateOldRoute(ar kube.ApisixRoute) (*TranslateContext, error) {
+	switch ar.GroupVersion() {
+	case config.ApisixV2:
+		return t.translateOldRouteV2(ar.V2())
+	case config.ApisixV2beta3:
+		return t.translateOldRouteV2beta3(ar.V2beta3())
+	case config.ApisixV2beta2:
+		return DefaultEmptyTranslateContext(), nil
+	default:
+		return nil, fmt.Errorf("translator: source group version not supported: %s", ar.GroupVersion())
+	}
+}
+
+// Building objects from cache
+// For old objects, you cannot use TranslateRoute to build. Because it needs to parse the latest service, which will cause data inconsistency
+func (t *translator) TranslateOldIngress(ing kube.Ingress) (*TranslateContext, error) {
+	switch ing.GroupVersion() {
+	case kube.IngressV1:
+		return t.translateOldIngressV1(ing.V1())
+	case kube.IngressV1beta1:
+		return t.translateOldIngressV1beta1(ing.V1beta1())
 	default:
 		return nil, fmt.Errorf("translator: source group version not supported: %s", ing.GroupVersion())
 	}
