@@ -109,7 +109,7 @@ func (c *FakeApisixClusterConfigs) UpdateStatus(ctx context.Context, apisixClust
 // Delete takes name of the apisixClusterConfig and deletes it. Returns an error if one occurs.
 func (c *FakeApisixClusterConfigs) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(apisixclusterconfigsResource, name), &v2.ApisixClusterConfig{})
+		Invokes(testing.NewRootDeleteActionWithOptions(apisixclusterconfigsResource, name, opts), &v2.ApisixClusterConfig{})
 	return err
 }
 

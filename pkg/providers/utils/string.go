@@ -23,3 +23,18 @@ func TruncateString(s string, max int) string {
 	}
 	return s[:max]
 }
+
+// Difference returns elements only in a
+func Difference(a, b []string) []string {
+	bMap := make(map[string]struct{}, len(b))
+	for _, elem := range b {
+		bMap[elem] = struct{}{}
+	}
+	var onlyInA []string
+	for _, elem := range a {
+		if _, found := bMap[elem]; !found {
+			onlyInA = append(onlyInA, elem)
+		}
+	}
+	return onlyInA
+}

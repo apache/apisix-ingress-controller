@@ -186,15 +186,7 @@ func (t *translator) TranslateUpstreamConfigV2(au *configv2.ApisixUpstreamConfig
 }
 
 func (t *translator) TranslateUpstream(namespace, name, subset string, port int32) (*apisixv1.Upstream, error) {
-	var (
-		endpoint kube.Endpoint
-		err      error
-	)
-	if t.UseEndpointSlices {
-		endpoint, err = t.EndpointLister.GetEndpointSlices(namespace, name)
-	} else {
-		endpoint, err = t.EndpointLister.GetEndpoint(namespace, name)
-	}
+	endpoint, err := t.EndpointLister.GetEndpoint(namespace, name)
 	if err != nil {
 		return nil, &translateError{
 			field:  "endpoints",

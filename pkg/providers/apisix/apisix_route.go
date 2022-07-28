@@ -19,6 +19,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/providers"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -51,6 +52,10 @@ type apisixRouteController struct {
 
 	apisixRouteLister   kube.ApisixRouteLister
 	apisixRouteInformer cache.SharedIndexInformer
+	svcInformer         cache.SharedIndexInformer
+
+	svcLock sync.RWMutex
+	svcMap  map[string]map[string]struct{}
 }
 
 func newApisixRouteController() *apisixRouteController {
@@ -58,6 +63,8 @@ func newApisixRouteController() *apisixRouteController {
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),
 		workers:    1,
+
+		svcMap: make(map[string]map[string]struct{}),
 	}
 	ctl.apisixRouteInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -66,6 +73,12 @@ func newApisixRouteController() *apisixRouteController {
 			DeleteFunc: ctl.onDelete,
 		},
 	)
+	ctl.svcInformer.AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc: ctl.onSvcAdd,
+		},
+	)
+
 	return ctl
 }
 
@@ -74,7 +87,7 @@ func (c *apisixRouteController) run(ctx context.Context) {
 	defer log.Info("ApisixRoute controller exited")
 	defer c.workqueue.ShutDown()
 
-	ok := cache.WaitForCacheSync(ctx.Done(), c.apisixRouteInformer.HasSynced)
+	ok := cache.WaitForCacheSync(ctx.Done(), c.apisixRouteInformer.HasSynced, c.svcInformer.HasSynced)
 	if !ok {
 		log.Error("cache sync failed")
 		return
@@ -92,9 +105,110 @@ func (c *apisixRouteController) runWorker(ctx context.Context) {
 		if quit {
 			return
 		}
-		err := c.sync(ctx, obj.(*types.Event))
-		c.workqueue.Done(obj)
-		c.handleSyncErr(obj, err)
+
+		switch val := obj.(type) {
+		case *types.Event:
+			err := c.sync(ctx, val)
+			c.workqueue.Done(obj)
+			c.handleSyncErr(obj, err)
+		case string:
+			err := c.handleSvcAdd(val)
+			c.workqueue.Done(obj)
+			c.handleSvcErr(val, err)
+		}
+	}
+}
+
+func (c *apisixRouteController) syncServiceRelationship(ev *types.Event, name string, ar kube.ApisixRoute) {
+	obj := ev.Object.(kube.ApisixRouteEvent)
+
+	var (
+		oldBackends []string
+		newBackends []string
+	)
+	switch obj.GroupVersion {
+	case config.ApisixV2beta3:
+		var (
+			old    *v2beta3.ApisixRoute
+			newObj *v2beta3.ApisixRoute
+		)
+
+		if ev.Type == types.EventUpdate {
+			old = obj.OldObject.V2beta3()
+		} else if ev.Type == types.EventDelete {
+			old = ev.Tombstone.(kube.ApisixRoute).V2beta3()
+		}
+
+		if ev.Type != types.EventDelete {
+			newObj = ar.V2beta3()
+		}
+
+		// calculate diff, so we don't need to care about the event order
+		if old != nil {
+			for _, rule := range old.Spec.HTTP {
+				for _, backend := range rule.Backends {
+					oldBackends = append(oldBackends, old.Namespace+"/"+backend.ServiceName)
+				}
+			}
+		}
+		if newObj != nil {
+			for _, rule := range newObj.Spec.HTTP {
+				for _, backend := range rule.Backends {
+					newBackends = append(newBackends, newObj.Namespace+"/"+backend.ServiceName)
+				}
+			}
+		}
+	case config.ApisixV2:
+		var (
+			old    *v2.ApisixRoute
+			newObj *v2.ApisixRoute
+		)
+
+		if ev.Type == types.EventUpdate {
+			old = obj.OldObject.V2()
+		} else if ev.Type == types.EventDelete {
+			old = ev.Tombstone.(kube.ApisixRoute).V2()
+		}
+
+		if ev.Type != types.EventDelete {
+			newObj = ar.V2()
+		}
+
+		// calculate diff, so we don't need to care about the event order
+		if old != nil {
+			for _, rule := range old.Spec.HTTP {
+				for _, backend := range rule.Backends {
+					oldBackends = append(oldBackends, old.Namespace+"/"+backend.ServiceName)
+				}
+			}
+		}
+		if newObj != nil {
+			for _, rule := range newObj.Spec.HTTP {
+				for _, backend := range rule.Backends {
+					newBackends = append(newBackends, newObj.Namespace+"/"+backend.ServiceName)
+				}
+			}
+		}
+	}
+
+	// NOTE:
+	// This implementation MAY cause potential problem due to unstable event order
+	// The last event processed MAY not be the logical last event, so it may override the logical previous event
+	// We have a periodic full-sync, which reduce this problem, but it doesn't solve it completely.
+
+	c.svcLock.Lock()
+	defer c.svcLock.Unlock()
+	toDelete := utils.Difference(oldBackends, newBackends)
+	toAdd := utils.Difference(newBackends, oldBackends)
+	for _, svc := range toDelete {
+		delete(c.svcMap[svc], name)
+	}
+
+	for _, svc := range toAdd {
+		if _, ok := c.svcMap[svc]; !ok {
+			c.svcMap[svc] = make(map[string]struct{})
+		}
+		c.svcMap[svc][name] = struct{}{}
 	}
 }
 
@@ -135,6 +249,9 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			return nil
 		}
 	}
+
+	c.syncServiceRelationship(ev, name, ar)
+
 	if ev.Type == types.EventDelete {
 		if ar != nil {
 			// We still find the resource while we are processing the DELETE event,
@@ -219,25 +336,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	} else if ev.Type == types.EventAdd {
 		added = m
 	} else {
-		var oldCtx *translation.TranslateContext
-		switch obj.GroupVersion {
-		case config.ApisixV2beta2:
-			oldCtx, err = c.controller.translator.TranslateRouteV2beta2(obj.OldObject.V2beta2())
-		case config.ApisixV2beta3:
-			oldCtx, err = c.controller.translator.TranslateRouteV2beta3(obj.OldObject.V2beta3())
-		case config.ApisixV2:
-			oldCtx, err = c.controller.translator.TranslateRouteV2(obj.OldObject.V2())
-		}
-		if err != nil {
-			log.Errorw("failed to translate old ApisixRoute",
-				zap.String("version", obj.GroupVersion),
-				zap.String("event", "update"),
-				zap.Error(err),
-				zap.Any("ApisixRoute", ar),
-			)
-			return err
-		}
-
+		oldCtx, _ := c.getOldTranslateContext(ctx, obj.OldObject)
 		om := &utils.Manifest{
 			Routes:        oldCtx.Routes,
 			Upstreams:     oldCtx.Upstreams,
@@ -467,10 +566,18 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 
 func (c *apisixRouteController) ResourceSync() {
 	objs := c.apisixRouteInformer.GetIndexer().List()
+
+	c.svcLock.Lock()
+	defer c.svcLock.Unlock()
+
+	c.svcMap = make(map[string]map[string]struct{})
+
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
-			log.Errorw("ApisixRoute sync failed, found ApisixRoute resource with bad meta namespace key", zap.String("error", err.Error()))
+			log.Errorw("ApisixRoute sync failed, found ApisixRoute resource with bad meta namespace key",
+				zap.Error(err),
+			)
 			continue
 		}
 		if !c.NamespaceProvider.IsWatchingNamespace(key) {
@@ -484,5 +591,175 @@ func (c *apisixRouteController) ResourceSync() {
 				GroupVersion: ar.GroupVersion(),
 			},
 		})
+
+		ns, name, err := cache.SplitMetaNamespaceKey(key)
+		if err != nil {
+			log.Errorw("split ApisixRoute meta key failed",
+				zap.Error(err),
+				zap.String("key", key),
+			)
+			continue
+		}
+
+		var backends []string
+		switch ar.GroupVersion() {
+		case config.ApisixV2beta3:
+			for _, rule := range ar.V2beta3().Spec.HTTP {
+				for _, backend := range rule.Backends {
+					backends = append(backends, ns+"/"+backend.ServiceName)
+				}
+			}
+		case config.ApisixV2:
+			for _, rule := range ar.V2().Spec.HTTP {
+				for _, backend := range rule.Backends {
+					backends = append(backends, ns+"/"+backend.ServiceName)
+				}
+			}
+		}
+		for _, svcKey := range backends {
+			if _, ok := c.svcMap[svcKey]; !ok {
+				c.svcMap[svcKey] = make(map[string]struct{})
+			}
+			c.svcMap[svcKey][name] = struct{}{}
+		}
 	}
+}
+
+func (c *apisixRouteController) onSvcAdd(obj interface{}) {
+	log.Debugw("Service add event arrived",
+		zap.Any("object", obj),
+	)
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Errorw("found Service with bad meta key",
+			zap.Error(err),
+			zap.String("key", key),
+		)
+		return
+	}
+	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+
+	c.workqueue.Add(key)
+}
+
+func (c *apisixRouteController) handleSvcAdd(key string) error {
+	ns, _, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		log.Errorw("failed to split Service meta key",
+			zap.Error(err),
+			zap.String("key", key),
+		)
+		return nil
+	}
+
+	c.svcLock.RLock()
+	routes, ok := c.svcMap[key]
+	c.svcLock.RUnlock()
+
+	if ok {
+		for route := range routes {
+			c.workqueue.Add(&types.Event{
+				Type: types.EventAdd,
+				Object: kube.ApisixRouteEvent{
+					Key:          ns + "/" + route,
+					GroupVersion: c.cfg.Kubernetes.ApisixRouteVersion,
+				},
+			})
+		}
+	}
+	return nil
+}
+
+func (c *apisixRouteController) handleSvcErr(key string, errOrigin error) {
+	if errOrigin == nil {
+		c.workqueue.Forget(key)
+
+		return
+	}
+
+	log.Warnw("sync Service failed, will retry",
+		zap.Any("key", key),
+		zap.Error(errOrigin),
+	)
+	c.workqueue.AddRateLimited(key)
+}
+
+// Building objects from cache
+// For old objects, you cannot use TranslateRoute to build. Because it needs to parse the latest service, which will cause data inconsistency
+func (c *apisixRouteController) getOldTranslateContext(ctx context.Context, kar kube.ApisixRoute) (*translation.TranslateContext, error) {
+	clusterName := c.cfg.APISIX.DefaultClusterName
+	oldCtx := translation.DefaultEmptyTranslateContext()
+
+	switch c.cfg.Kubernetes.ApisixRouteVersion {
+	case config.ApisixV2beta3:
+		ar := kar.V2beta3()
+		for _, part := range ar.Spec.Stream {
+			name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
+			sr, err := c.controller.apisix.Cluster(clusterName).StreamRoute().Get(ctx, name)
+			if err != nil {
+				continue
+			}
+			if sr.UpstreamId != "" {
+				ups := apisixv1.NewDefaultUpstream()
+				ups.ID = sr.UpstreamId
+				oldCtx.AddUpstream(ups)
+			}
+			oldCtx.AddStreamRoute(sr)
+		}
+		for _, part := range ar.Spec.HTTP {
+			name := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
+			r, err := c.controller.apisix.Cluster(clusterName).Route().Get(ctx, name)
+			if err != nil {
+				continue
+			}
+			if r.UpstreamId != "" {
+				ups := apisixv1.NewDefaultUpstream()
+				ups.ID = r.UpstreamId
+				oldCtx.AddUpstream(ups)
+			}
+			if r.PluginConfigId != "" {
+				pc := apisixv1.NewDefaultPluginConfig()
+				pc.ID = r.PluginConfigId
+				oldCtx.AddPluginConfig(pc)
+			}
+			oldCtx.AddRoute(r)
+		}
+	case config.ApisixV2:
+		ar := kar.V2()
+		for _, part := range ar.Spec.Stream {
+			name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
+			sr, err := c.controller.apisix.Cluster(clusterName).StreamRoute().Get(ctx, name)
+			if err != nil {
+				continue
+			}
+			if sr.UpstreamId != "" {
+				ups := apisixv1.NewDefaultUpstream()
+				ups.ID = sr.UpstreamId
+				oldCtx.AddUpstream(ups)
+			}
+			oldCtx.AddStreamRoute(sr)
+		}
+		for _, part := range ar.Spec.HTTP {
+			name := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
+			r, err := c.controller.apisix.Cluster(clusterName).Route().Get(ctx, name)
+			if err != nil {
+				continue
+			}
+			if r.UpstreamId != "" {
+				ups := apisixv1.NewDefaultUpstream()
+				ups.ID = r.UpstreamId
+				oldCtx.AddUpstream(ups)
+			}
+			if r.PluginConfigId != "" {
+				pc := apisixv1.NewDefaultPluginConfig()
+				pc.ID = r.PluginConfigId
+				oldCtx.AddPluginConfig(pc)
+			}
+			oldCtx.AddRoute(r)
+
+		}
+	}
+	return oldCtx, nil
 }

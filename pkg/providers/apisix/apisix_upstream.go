@@ -100,7 +100,7 @@ func (c *apisixUpstreamController) runWorker(ctx context.Context) {
 }
 
 // sync Used to synchronize ApisixUpstream resources, because upstream alone exists in APISIX and will not be affected,
-// the synchronization logic only includes upsttream's unique configuration management
+// the synchronization logic only includes upstream's unique configuration management
 // So when ApisixUpstream was deleted, only the scheme / load balancer / healthcheck / retry / timeout
 // on ApisixUpstream was cleaned up
 func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) error {
@@ -455,9 +455,9 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 }
 
 func (c *apisixUpstreamController) ResourceSync() {
-	clusterConfigs := c.apisixUpstreamInformer.GetIndexer().List()
-	for _, clusterConfig := range clusterConfigs {
-		key, err := cache.MetaNamespaceKeyFunc(clusterConfig)
+	objs := c.apisixUpstreamInformer.GetIndexer().List()
+	for _, obj := range objs {
+		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
 			log.Errorw("ApisixUpstream sync failed, found ApisixUpstream resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
@@ -465,9 +465,17 @@ func (c *apisixUpstreamController) ResourceSync() {
 		if !c.NamespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
+		au, err := kube.NewApisixUpstream(obj)
+		if err != nil {
+			log.Errorw("ApisixUpstream sync failed, found ApisixUpstream resource with bad type", zap.Error(err))
+			return
+		}
 		c.workqueue.Add(&types.Event{
-			Type:   types.EventAdd,
-			Object: key,
+			Type: types.EventAdd,
+			Object: kube.ApisixUpstreamEvent{
+				Key:          key,
+				GroupVersion: au.GroupVersion(),
+			},
 		})
 	}
 }

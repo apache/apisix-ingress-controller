@@ -41,6 +41,7 @@ GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM
 E2E_NODES ?= 4
 E2E_FLAKE_ATTEMPTS ?= 0
 E2E_SKIP_BUILD ?= 0
+E2E_ENV ?= "dev"
 
 ### build:                Build apisix-ingress-controller
 .PHONY: build
@@ -72,12 +73,12 @@ pack-ingress-image:
 .PHONY: pack-images
 pack-images: build-images push-images
 
-### build-image:          Build apisix-ingress-controller image
+### build-images:         Prepare all required Images
 .PHONY: build-images
-build-images:
+build-images: build-image
 ifeq ($(E2E_SKIP_BUILD), 0)
-	docker pull apache/apisix:2.13.1-alpine
-	docker tag apache/apisix:2.13.1-alpine $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
+	docker pull apache/apisix:2.14.1-alpine
+	docker tag apache/apisix:2.14.1-alpine $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
 
 	docker pull bitnami/etcd:3.4.14-debian-10-r0
 	docker tag bitnami/etcd:3.4.14-debian-10-r0 $(REGISTRY)/bitnami/etcd:$(IMAGE_TAG)
@@ -88,7 +89,6 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker build -t test-backend:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) ./test/e2e/testbackend
 	docker tag test-backend:$(IMAGE_TAG) $(REGISTRY)/test-backend:$(IMAGE_TAG)
 
-	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 
 	docker pull jmalloc/echo-server:latest
@@ -129,7 +129,7 @@ e2e-test: ginkgo-check pack-images e2e-wolf-rbac
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
-		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_NODES) --focus=$(E2E_FOCUS) --flake-attempts=$(E2E_FLAKE_ATTEMPTS)
+		&& E2E_ENV=$(E2E_ENV) ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_NODES) --focus=$(E2E_FOCUS) --flake-attempts=$(E2E_FLAKE_ATTEMPTS)
 
 ### e2e-test-local:       Run e2e test cases (kind is required)
 .PHONY: e2e-test-local

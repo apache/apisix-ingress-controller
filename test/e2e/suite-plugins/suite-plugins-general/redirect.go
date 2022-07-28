@@ -63,7 +63,7 @@ spec:
 
 			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
 			resp.Status(http.StatusMovedPermanently)
-			resp.Header("Location").Equal("https://httpbin.org/ip")
+			resp.Header("Location").Equal("https://httpbin.org:9443/ip")
 		})
 		ginkgo.It("redirect to specific uri", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
