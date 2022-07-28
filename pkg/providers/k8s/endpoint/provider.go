@@ -2,23 +2,34 @@ package endpoint
 
 import (
 	"context"
+
+	"k8s.io/client-go/tools/cache"
+
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 )
 
-type Controller struct {
+var _ Provider = (*endpointProvider)(nil)
+
+type Provider interface {
+	providertypes.Provider
+}
+
+type endpointProvider struct {
 	cfg *config.Config
 
+	epInformer              cache.SharedIndexInformer
+	epLister                kube.EndpointLister
 	endpointsController     *endpointsController
 	endpointSliceController *endpointSliceController
 }
 
-func NewController(common *providertypes.Common, translator translation.Translator, namespaceProvider namespace.WatchingNamespaceProvider) (*Controller, error) {
-	p := &Controller{
+func NewProvider(common *providertypes.Common, translator translation.Translator, namespaceProvider namespace.WatchingNamespaceProvider) (Provider, error) {
+	p := &endpointProvider{
 		cfg: common.Config,
 	}
 
@@ -36,18 +47,22 @@ func NewController(common *providertypes.Common, translator translation.Translat
 		apisixFactory.Apisix().V2().ApisixUpstreams().Lister(),
 	)
 
-	epLister, epInformer := kube.NewEndpointListerAndInformer(kubeFactory, common.Config.Kubernetes.WatchEndpointSlices)
+	p.epLister, p.epInformer = kube.NewEndpointListerAndInformer(kubeFactory, common.Config.Kubernetes.WatchEndpointSlices)
 	if common.Kubernetes.WatchEndpointSlices {
-		p.endpointSliceController = newEndpointSliceController(base, namespaceProvider, epInformer, epLister)
+		p.endpointSliceController = newEndpointSliceController(base, namespaceProvider, p.epInformer, p.epLister)
 	} else {
-		p.endpointsController = newEndpointsController(base, namespaceProvider, epInformer, epLister)
+		p.endpointsController = newEndpointsController(base, namespaceProvider, p.epInformer, p.epLister)
 	}
 
 	return p, nil
 }
 
-func (p *Controller) Run(ctx context.Context) {
+func (p *endpointProvider) Run(ctx context.Context) {
 	e := utils.ParallelExecutor{}
+
+	e.Add(func() {
+		p.epInformer.Run(ctx.Done())
+	})
 
 	e.Add(func() {
 		if p.cfg.Kubernetes.WatchEndpointSlices {

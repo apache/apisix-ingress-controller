@@ -25,6 +25,7 @@ import (
 	config "github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/pod"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -72,6 +73,9 @@ type TranslatorOptions struct {
 	ServiceLister        listerscorev1.ServiceLister
 	ApisixUpstreamLister kube.ApisixUpstreamLister
 	APIVersion           string
+
+	PodProvider pod.Provider
+	PodLister   listerscorev1.PodLister
 }
 
 type translator struct {
@@ -266,8 +270,38 @@ func (t *translator) TranslateEndpoint(endpoint kube.Endpoint, port int32, label
 		})
 	}
 	if labels != nil {
-		nodes = t.FilterNodesByLabels(nodes, labels, namespace)
+		nodes = t.filterNodesByLabels(nodes, labels, namespace)
 		return nodes, nil
 	}
 	return nodes, nil
+}
+
+func (t *translator) filterNodesByLabels(nodes apisixv1.UpstreamNodes, labels types.Labels, namespace string) apisixv1.UpstreamNodes {
+	if labels == nil {
+		return nodes
+	}
+
+	filteredNodes := make(apisixv1.UpstreamNodes, 0)
+	for _, node := range nodes {
+		podName, err := t.PodProvider.GetPodCache().GetNameByIP(node.Host)
+		if err != nil {
+			log.Errorw("failed to find pod name by ip, ignore it",
+				zap.Error(err),
+				zap.String("pod_ip", node.Host),
+			)
+			continue
+		}
+		pod, err := t.PodLister.Pods(namespace).Get(podName)
+		if err != nil {
+			log.Errorw("failed to find pod, ignore it",
+				zap.Error(err),
+				zap.String("pod_name", podName),
+			)
+			continue
+		}
+		if labels.IsSubsetOf(pod.Labels) {
+			filteredNodes = append(filteredNodes, node)
+		}
+	}
+	return filteredNodes
 }

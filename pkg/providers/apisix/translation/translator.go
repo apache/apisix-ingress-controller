@@ -1,12 +1,12 @@
 package translation
 
 import (
-	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -73,16 +73,14 @@ type ApisixTranslator interface {
 	// TranslatePluginConfigV2NotStrictly translates the configv2.ApisixPluginConfig object into several PluginConfig
 	// resources not strictly, only used for delete event.
 	TranslatePluginConfigV2NotStrictly(*configv2.ApisixPluginConfig) (*translation.TranslateContext, error)
+
+	TranslateRouteMatchExprs(nginxVars []configv2.ApisixRouteHTTPMatchExpr) ([][]apisixv1.StringOrSlice, error)
 }
 
-func NewApisixTranslator(kubeProvider k8s.Provider,
-	podLister listerscorev1.PodLister,
-	serviceLister listerscorev1.ServiceLister,
+func NewApisixTranslator(serviceLister listerscorev1.ServiceLister,
 	secretLister listerscorev1.SecretLister,
 	commonTranslator translation.Translator) ApisixTranslator {
 	t := &translator{
-		KubeProvider:  kubeProvider,
-		PodLister:     podLister,
 		ServiceLister: serviceLister,
 		SecretLister:  secretLister,
 		Translator:    commonTranslator,

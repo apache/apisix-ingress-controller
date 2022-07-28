@@ -16,8 +16,6 @@ package providers
 
 import (
 	"context"
-	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"os"
 	"time"
 
@@ -40,11 +38,14 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	apisixprovider "github.com/apache/apisix-ingress-controller/pkg/providers/apisix"
+	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/gateway"
 	ingressprovider "github.com/apache/apisix-ingress-controller/pkg/providers/ingress"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/pod"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 )
 
@@ -75,6 +76,7 @@ type Controller struct {
 	apisixTranslator apisixtranslation.ApisixTranslator // TODO: this is temporary solution, should remove this, see compare.go
 
 	namespaceProvider namespace.WatchingNamespaceProvider
+	podProvider       pod.Provider
 	kubeProvider      k8s.Provider
 	gatewayProvider   *gateway.Provider
 	apisixProvider    apisixprovider.Provider
@@ -119,24 +121,6 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		recorder:         eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
 	}
 	return c, nil
-}
-
-func (c *Controller) initWhenStartLeading() {
-	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
-	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
-
-	epLister := kube.NewEndpointLister(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
-	svcLister := kubeFactory.Core().V1().Services().Lister()
-	apisixUpstreamLister := kube.NewApisixUpstreamLister(
-		apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
-		apisixFactory.Apisix().V2().ApisixUpstreams().Lister(),
-	)
-	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
-		EndpointLister:       epLister,
-		ServiceLister:        svcLister,
-		ApisixUpstreamLister: apisixUpstreamLister,
-		APIVersion:           c.cfg.Kubernetes.APIVersion,
-	})
 }
 
 // Eventf implements the resourcelock.EventRecorder interface.
@@ -263,7 +247,16 @@ func (c *Controller) run(ctx context.Context) {
 		return
 	}
 
-	c.initWhenStartLeading()
+	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
+	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
+
+	epLister := kube.NewEndpointLister(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
+	svcLister := kubeFactory.Core().V1().Services().Lister()
+	apisixUpstreamLister := kube.NewApisixUpstreamLister(
+		apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+		apisixFactory.Apisix().V2().ApisixUpstreams().Lister(),
+	)
+	podLister := kubeFactory.Core().V1().Pods().Lister()
 
 	common := &providertypes.Common{
 		Config:           c.cfg,
@@ -278,6 +271,21 @@ func (c *Controller) run(ctx context.Context) {
 		ctx.Done()
 		return
 	}
+
+	c.podProvider, err = pod.NewProvider(common, c.namespaceProvider)
+	if err != nil {
+		ctx.Done()
+		return
+	}
+
+	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
+		PodProvider:          c.podProvider,
+		PodLister:            podLister,
+		EndpointLister:       epLister,
+		ServiceLister:        svcLister,
+		ApisixUpstreamLister: apisixUpstreamLister,
+		APIVersion:           c.cfg.Kubernetes.APIVersion,
+	})
 
 	c.kubeProvider, err = k8s.NewProvider(common, c.translator, c.namespaceProvider)
 	if err != nil {

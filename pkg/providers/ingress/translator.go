@@ -19,6 +19,7 @@ import (
 	kubev2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -28,6 +29,7 @@ type translator struct {
 	ServiceLister listerscorev1.ServiceLister
 
 	translation.Translator
+	apisixtranslation.ApisixTranslator // TODO: remove this
 }
 
 type IngressTranslator interface {
@@ -35,10 +37,11 @@ type IngressTranslator interface {
 }
 
 func newIngressTranslator(serviceLister listerscorev1.ServiceLister,
-	commonTranslator translation.Translator) IngressTranslator {
+	commonTranslator translation.Translator, apisixTranslator apisixtranslation.ApisixTranslator) IngressTranslator {
 	t := &translator{
-		ServiceLister: serviceLister,
-		Translator:    commonTranslator,
+		ServiceLister:    serviceLister,
+		Translator:       commonTranslator,
+		ApisixTranslator: apisixTranslator,
 	}
 
 	return t

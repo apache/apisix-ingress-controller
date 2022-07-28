@@ -3,14 +3,16 @@ package apisix
 import (
 	"context"
 	"fmt"
+
+	"k8s.io/client-go/tools/cache"
+
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
-	"k8s.io/client-go/tools/cache"
 )
 
 const (
@@ -69,9 +71,7 @@ func NewProvider(common *providertypes.Common,
 	secretLister := kubeFactory.Core().V1().Secrets().Lister()
 	p.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
 
-	podLister := kubeFactory.Core().V1().Pods().Lister()
-
-	apisixTranslator := apisixtranslation.NewApisixTranslator(kubeProvider, podLister, svcLister, secretLister, translator)
+	apisixTranslator := apisixtranslation.NewApisixTranslator(svcLister, secretLister, translator)
 	c := &apisixCommon{
 		Common:            common,
 		namespaceProvider: namespaceProvider,

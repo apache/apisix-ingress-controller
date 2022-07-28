@@ -36,7 +36,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	gatewaytranslation "github.com/apache/apisix-ingress-controller/pkg/providers/gateway/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/gateway/types"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 )
