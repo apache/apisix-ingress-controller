@@ -70,8 +70,10 @@ type Translator interface {
 	TranslateUpstream(string, string, string, int32) (*apisixv1.Upstream, error)
 	// TranslateIngress composes a couple of APISIX Routes and upstreams according
 	// to the given Ingress resource.
+	// For old objects, you cannot use TranslateIngress to build. Because it needs to parse the latest service, which will cause data inconsistency.
 	TranslateIngress(kube.Ingress, ...bool) (*TranslateContext, error)
-
+	// TranslateOldIngress get route objects from cache
+	// Build upstream and plugin_config through route
 	TranslateOldIngress(kube.Ingress) (*TranslateContext, error)
 	// TranslateRouteV2beta2 translates the configv2beta2.ApisixRoute object into several Route,
 	// and Upstream resources.
@@ -91,7 +93,8 @@ type Translator interface {
 	// TranslateRouteV2NotStrictly translates the configv2.ApisixRoute object into several Route,
 	// Upstream and PluginConfig resources not strictly, only used for delete event.
 	TranslateRouteV2NotStrictly(*configv2.ApisixRoute) (*TranslateContext, error)
-
+	// TranslateOldRoute get route and stream_route objects from cache
+	// Build upstream and plugin_config through route and stream_route
 	TranslateOldRoute(kube.ApisixRoute) (*TranslateContext, error)
 	// TranslateSSLV2Beta3 translates the configv2beta3.ApisixTls object into the APISIX SSL resource.
 	TranslateSSLV2Beta3(*configv2beta3.ApisixTls) (*apisixv1.Ssl, error)
@@ -409,8 +412,6 @@ func (t *translator) TranslateOldRoute(ar kube.ApisixRoute) (*TranslateContext, 
 	}
 }
 
-// Building objects from cache
-// For old objects, you cannot use TranslateRoute to build. Because it needs to parse the latest service, which will cause data inconsistency
 func (t *translator) TranslateOldIngress(ing kube.Ingress) (*TranslateContext, error) {
 	switch ing.GroupVersion() {
 	case kube.IngressV1:

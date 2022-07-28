@@ -132,7 +132,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 				}
 			}
 			route := apisixv1.NewDefaultRoute()
-			route.Name = ComposeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
+			route.Name = composeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
@@ -252,7 +252,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 				}
 			}
 			route := apisixv1.NewDefaultRoute()
-			route.Name = ComposeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
+			route.Name = composeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
@@ -397,7 +397,7 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 				}
 			}
 			route := apisixv1.NewDefaultRoute()
-			route.Name = ComposeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
+			route.Name = composeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
@@ -515,7 +515,7 @@ func (t *translator) translateOldIngressV1(ing *networkingv1.Ingress) (*Translat
 	}
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
-			name := ComposeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
+			name := composeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
 			r, err := t.Apisix.Cluster(t.ClusterName).Route().Get(context.Background(), name)
 			if err != nil {
 				continue
@@ -566,7 +566,7 @@ func (t *translator) translateOldIngressV1beta1(ing *networkingv1beta1.Ingress) 
 	}
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
-			name := ComposeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
+			name := composeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
 			r, err := t.Apisix.Cluster(t.ClusterName).Route().Get(context.Background(), name)
 			if err != nil {
 				continue
@@ -594,7 +594,7 @@ func (t *translator) translateOldIngressV1beta1(ing *networkingv1beta1.Ingress) 
 // ref: https://github.com/apache/apisix-ingress-controller/issues/781
 // We will construct the following structure for easy reading and debugging.
 // ing_namespace_ingressName_id
-func ComposeIngressRouteName(namespace, name, host, path string) string {
+func composeIngressRouteName(namespace, name, host, path string) string {
 	pID := id.GenID(host + path)
 	p := make([]byte, 0, len(namespace)+len(name)+len("ing")+len(pID)+3)
 	buf := bytes.NewBuffer(p)
