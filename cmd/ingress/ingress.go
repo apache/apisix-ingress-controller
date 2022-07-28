@@ -27,8 +27,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
-	controller "github.com/apache/apisix-ingress-controller/pkg/ingress"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	controller "github.com/apache/apisix-ingress-controller/pkg/providers"
 	"github.com/apache/apisix-ingress-controller/pkg/version"
 )
 
