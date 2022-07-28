@@ -26,7 +26,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress-resource: ApisixRoute Testing", func() {
+var _ = ginkgo.FDescribe("suite-ingress-resource: ApisixRoute Testing", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
 		ginkgo.It("create and then scale upstream pods to 2 ", func() {

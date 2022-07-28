@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"context"
-
 	"github.com/pkg/errors"
 	"k8s.io/client-go/tools/cache"
 
@@ -40,7 +39,7 @@ func NewProvider(common *providertypes.Common, translator translation.Translator
 		return nil, errors.Wrap(err, "failed to init endpoint provider")
 	}
 
-	provider.secretController = newSecretController(common, translator, namespaceProvider, apisixProvider, provider.secretInformer)
+	provider.secretController = newSecretController(common, translator, namespaceProvider, apisixProvider)
 
 	return provider, nil
 }

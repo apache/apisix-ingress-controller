@@ -50,8 +50,8 @@ type secretController struct {
 	workqueue workqueue.RateLimitingInterface
 	workers   int
 
-	secretInformer  cache.SharedIndexInformer
 	secretLister    listerscorev1.SecretLister
+	secretInformer  cache.SharedIndexInformer
 	apisixTlsLister kube.ApisixTlsLister
 
 	namespaceProvider namespace.WatchingNamespaceProvider
@@ -61,28 +61,21 @@ type secretController struct {
 }
 
 func newSecretController(common *providertypes.Common, translator translation.Translator,
-	namespaceProvider namespace.WatchingNamespaceProvider, apisixProvider apisixprovider.Provider,
-	secretInformer cache.SharedIndexInformer) *secretController {
+	namespaceProvider namespace.WatchingNamespaceProvider, apisixProvider apisixprovider.Provider) *secretController {
 	c := &secretController{
 		Common: common,
 
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "Secrets"),
 		workers:   1,
 
-		secretInformer: secretInformer,
+		secretLister:    common.SecretLister,
+		secretInformer:  common.SecretInformer,
+		apisixTlsLister: common.ApisixTlsLister,
 
 		namespaceProvider: namespaceProvider,
 		apisixProvider:    apisixProvider,
 		translator:        translator,
 	}
-
-	kubeFactory := common.KubeClient.NewSharedIndexInformerFactory()
-	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
-	c.secretLister = kubeFactory.Core().V1().Secrets().Lister()
-	c.apisixTlsLister = kube.NewApisixTlsLister(
-		apisixFactory.Apisix().V2beta3().ApisixTlses().Lister(),
-		apisixFactory.Apisix().V2().ApisixTlses().Lister(),
-	)
 
 	c.secretInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{

@@ -30,11 +30,10 @@ type podProvider struct {
 func NewProvider(common *providertypes.Common, namespaceProvider namespace.WatchingNamespaceProvider) (Provider, error) {
 	p := &podProvider{
 		cfg: common.Config,
+
+		podInformer: common.PodInformer,
 	}
 
-	kubeFactory := common.KubeClient.NewSharedIndexInformerFactory()
-
-	p.podInformer = kubeFactory.Core().V1().Pods().Informer()
 	p.podController = newPodController(common, namespaceProvider, p.podInformer)
 
 	return p, nil

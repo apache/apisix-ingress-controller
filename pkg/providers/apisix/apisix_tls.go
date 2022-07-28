@@ -56,23 +56,18 @@ type apisixTlsController struct {
 	secretSSLMap *sync.Map
 }
 
-func newApisixTlsController(common *apisixCommon, secretInformer cache.SharedIndexInformer, apisixTlsInformer cache.SharedIndexInformer) *apisixTlsController {
+func newApisixTlsController(common *apisixCommon) *apisixTlsController {
 	c := &apisixTlsController{
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixTls"),
 		workers:      1,
 
-		secretInformer:    secretInformer,
-		apisixTlsInformer: apisixTlsInformer,
+		secretInformer:    common.SecretInformer,
+		apisixTlsLister:   common.ApisixTlsLister,
+		apisixTlsInformer: common.ApisixTlsInformer,
 
 		secretSSLMap: new(sync.Map),
 	}
-
-	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
-	c.apisixTlsLister = kube.NewApisixTlsLister(
-		apisixFactory.Apisix().V2beta3().ApisixTlses().Lister(),
-		apisixFactory.Apisix().V2().ApisixTlses().Lister(),
-	)
 
 	c.apisixTlsInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{

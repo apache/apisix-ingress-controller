@@ -2,7 +2,6 @@ package ingress
 
 import (
 	"context"
-
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
@@ -49,13 +48,6 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 	}
 
 	kubeFactory := common.KubeClient.NewSharedIndexInformerFactory()
-
-	svcLister := kubeFactory.Core().V1().Services().Lister()
-	ingressLister := kube.NewIngressLister(
-		kubeFactory.Networking().V1().Ingresses().Lister(),
-		kubeFactory.Networking().V1beta1().Ingresses().Lister(),
-		kubeFactory.Extensions().V1beta1().Ingresses().Lister(),
-	)
 	switch common.Config.Kubernetes.IngressVersion {
 	case config.IngressNetworkingV1:
 		p.ingressInformer = kubeFactory.Networking().V1().Ingresses().Informer()
@@ -64,11 +56,16 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 	default:
 		p.ingressInformer = kubeFactory.Extensions().V1beta1().Ingresses().Informer()
 	}
+	ingressLister := kube.NewIngressLister(
+		kubeFactory.Networking().V1().Ingresses().Lister(),
+		kubeFactory.Networking().V1beta1().Ingresses().Lister(),
+		kubeFactory.Extensions().V1beta1().Ingresses().Lister(),
+	)
 
 	c := &ingressCommon{
 		Common:            common,
 		namespaceProvider: namespaceProvider,
-		translator:        ingresstranslation.NewIngressTranslator(svcLister, translator, apisixTranslator),
+		translator:        ingresstranslation.NewIngressTranslator(common.SvcLister, translator, apisixTranslator),
 	}
 
 	p.ingressController = newIngressController(c, ingressLister, p.ingressInformer)

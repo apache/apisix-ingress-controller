@@ -71,10 +71,10 @@ type TranslatorOptions struct {
 	EndpointLister       kube.EndpointLister
 	ServiceLister        listerscorev1.ServiceLister
 	SecretLister         listerscorev1.SecretLister
+	PodLister            listerscorev1.PodLister
 	ApisixUpstreamLister kube.ApisixUpstreamLister
 
 	PodProvider pod.Provider
-	PodLister   listerscorev1.PodLister
 }
 
 type translator struct {

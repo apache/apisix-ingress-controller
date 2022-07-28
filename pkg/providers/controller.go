@@ -16,6 +16,8 @@ package providers
 
 import (
 	"context"
+	"fmt"
+	"k8s.io/client-go/tools/cache"
 	"os"
 	"time"
 
@@ -74,6 +76,8 @@ type Controller struct {
 
 	translator       translation.Translator
 	apisixTranslator apisixtranslation.ApisixTranslator
+
+	informers providertypes.ListerInformer
 
 	namespaceProvider namespace.WatchingNamespaceProvider
 	podProvider       pod.Provider
@@ -209,6 +213,62 @@ election:
 	}
 }
 
+func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
+	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
+	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
+
+	epLister, epInformer := kube.NewEndpointListerAndInformer(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
+	svcInformer := kubeFactory.Core().V1().Services().Informer()
+	svcLister := kubeFactory.Core().V1().Services().Lister()
+
+	var (
+		apisixUpstreamInformer cache.SharedIndexInformer
+		apisixTlsInformer      cache.SharedIndexInformer
+	)
+	switch c.cfg.Kubernetes.APIVersion {
+	case config.ApisixV2beta3:
+		apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+		apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
+	case config.ApisixV2:
+		apisixUpstreamInformer = apisixFactory.Apisix().V2().ApisixUpstreams().Informer()
+		apisixTlsInformer = apisixFactory.Apisix().V2().ApisixTlses().Informer()
+	default:
+		panic(fmt.Errorf("unsupported API version %v", c.cfg.Kubernetes.APIVersion))
+	}
+
+	apisixUpstreamLister := kube.NewApisixUpstreamLister(
+		apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+		apisixFactory.Apisix().V2().ApisixUpstreams().Lister(),
+	)
+	apisixTlsLister := kube.NewApisixTlsLister(
+		apisixFactory.Apisix().V2beta3().ApisixTlses().Lister(),
+		apisixFactory.Apisix().V2().ApisixTlses().Lister(),
+	)
+
+	podInformer := kubeFactory.Core().V1().Pods().Informer()
+	podLister := kubeFactory.Core().V1().Pods().Lister()
+
+	secretInformer := kubeFactory.Core().V1().Secrets().Informer()
+	secretLister := kubeFactory.Core().V1().Secrets().Lister()
+
+	listerInformer := &providertypes.ListerInformer{
+		EpLister:               epLister,
+		EpInformer:             epInformer,
+		SvcLister:              svcLister,
+		SvcInformer:            svcInformer,
+		SecretLister:           secretLister,
+		SecretInformer:         secretInformer,
+		PodLister:              podLister,
+		PodInformer:            podInformer,
+		ApisixUpstreamLister:   apisixUpstreamLister,
+		ApisixUpstreamInformer: apisixUpstreamInformer,
+		ApisixTlsLister:        apisixTlsLister,
+		ApisixTlsInformer:      apisixTlsInformer,
+	}
+
+	return listerInformer
+}
+
 func (c *Controller) run(ctx context.Context) {
 	log.Infow("controller tries to leading ...",
 		zap.String("namespace", c.namespace),
@@ -249,18 +309,9 @@ func (c *Controller) run(ctx context.Context) {
 
 	// Creation Phase
 
-	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
-	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
-
-	epLister := kube.NewEndpointLister(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
-	svcLister := kubeFactory.Core().V1().Services().Lister()
-	apisixUpstreamLister := kube.NewApisixUpstreamLister(
-		apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
-		apisixFactory.Apisix().V2().ApisixUpstreams().Lister(),
-	)
-	podLister := kubeFactory.Core().V1().Pods().Lister()
-
+	listerInformer := c.initSharedInformers()
 	common := &providertypes.Common{
+		ListerInformer:   listerInformer,
 		Config:           c.cfg,
 		APISIX:           c.apisix,
 		KubeClient:       c.kubeClient,
@@ -281,12 +332,13 @@ func (c *Controller) run(ctx context.Context) {
 	}
 
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
-		PodProvider:          c.podProvider,
-		PodLister:            podLister,
-		EndpointLister:       epLister,
-		ServiceLister:        svcLister,
-		ApisixUpstreamLister: apisixUpstreamLister,
 		APIVersion:           c.cfg.Kubernetes.APIVersion,
+		EndpointLister:       listerInformer.EpLister,
+		ServiceLister:        listerInformer.SvcLister,
+		SecretLister:         listerInformer.SecretLister,
+		PodLister:            listerInformer.PodLister,
+		ApisixUpstreamLister: listerInformer.ApisixUpstreamLister,
+		PodProvider:          c.podProvider,
 	})
 
 	c.apisixProvider, c.apisixTranslator, err = apisixprovider.NewProvider(common, c.namespaceProvider, c.translator)
@@ -341,6 +393,10 @@ func (c *Controller) run(ctx context.Context) {
 
 	e.Add(func() {
 		c.checkClusterHealth(ctx, cancelFunc)
+	})
+
+	e.Add(func() {
+		c.informers.Run(ctx)
 	})
 
 	e.Add(func() {

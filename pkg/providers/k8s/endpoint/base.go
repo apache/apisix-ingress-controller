@@ -77,7 +77,7 @@ func (c *baseEndpointController) syncEndpoint(ctx context.Context, ep kube.Endpo
 	case config.ApisixV2:
 		var subsets []configv2.ApisixUpstreamSubset
 		subsets = append(subsets, configv2.ApisixUpstreamSubset{})
-		auKube, err := c.apisixUpstreamLister.V2beta3(namespace, svcName)
+		auKube, err := c.apisixUpstreamLister.V2(namespace, svcName)
 		if err != nil {
 			if !k8serrors.IsNotFound(err) {
 				log.Errorf("failed to get ApisixUpstream %s/%s: %s", namespace, svcName, err)

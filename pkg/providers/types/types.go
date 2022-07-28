@@ -3,6 +3,8 @@ package types
 import (
 	"context"
 	"fmt"
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -24,8 +26,53 @@ type Provider interface {
 	Run(ctx context.Context)
 }
 
+type ListerInformer struct {
+	EpLister   kube.EndpointLister
+	EpInformer cache.SharedIndexInformer
+
+	SvcLister   listerscorev1.ServiceLister
+	SvcInformer cache.SharedIndexInformer
+
+	SecretLister   listerscorev1.SecretLister
+	SecretInformer cache.SharedIndexInformer
+
+	PodLister   listerscorev1.PodLister
+	PodInformer cache.SharedIndexInformer
+
+	ApisixUpstreamLister   kube.ApisixUpstreamLister
+	ApisixUpstreamInformer cache.SharedIndexInformer
+	ApisixTlsLister        kube.ApisixTlsLister
+	ApisixTlsInformer      cache.SharedIndexInformer
+}
+
+func (c *ListerInformer) Run(ctx context.Context) {
+	e := utils.ParallelExecutor{}
+
+	e.Add(func() {
+		c.EpInformer.Run(ctx.Done())
+	})
+	e.Add(func() {
+		c.SvcInformer.Run(ctx.Done())
+	})
+	e.Add(func() {
+		c.SecretInformer.Run(ctx.Done())
+	})
+	e.Add(func() {
+		c.PodInformer.Run(ctx.Done())
+	})
+	e.Add(func() {
+		c.ApisixUpstreamInformer.Run(ctx.Done())
+	})
+	e.Add(func() {
+		c.ApisixTlsInformer.Run(ctx.Done())
+	})
+
+	e.Wait()
+}
+
 type Common struct {
 	*config.Config
+	*ListerInformer
 
 	APISIX           apisix.APISIX
 	KubeClient       *kube.KubeClient

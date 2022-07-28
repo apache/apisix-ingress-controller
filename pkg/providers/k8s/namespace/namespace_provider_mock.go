@@ -33,6 +33,10 @@ type mockWatchingProvider struct {
 	namespaces []string
 }
 
+func (c *mockWatchingProvider) Init(ctx context.Context) error {
+	return nil
+}
+
 func (c *mockWatchingProvider) Run(ctx context.Context) {
 }
 
