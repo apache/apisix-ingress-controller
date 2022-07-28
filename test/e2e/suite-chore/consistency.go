@@ -52,7 +52,7 @@ spec:
   selector:
     app: httpbin-deployment-e2e-test
   ports:
-    - name: http
+    - name: %s
       port: %d
       protocol: TCP
       targetPort: %d
@@ -76,17 +76,36 @@ spec:
           service:
             name: %s
             port:
-              number: %d
+              name: %s
+`
+
+	_IngressV1beta1Config = `
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+  name: ingress-v1beta1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /*
+        pathType: Prefix
+        backend:
+          serviceName: %s
+          servicePort: %d
 `
 )
 
-var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and Ingress", func() {
+var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the CRDs resource of the IngressController", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("ApisixRoute and APISIX of route and upstream", func() {
-			httpService := fmt.Sprintf(_httpServiceConfig, 8080, 8080)
+			httpService := fmt.Sprintf(_httpServiceConfig, "port1", 9080, 9080)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httpService))
 
-			ar := fmt.Sprintf(_routeConfig, "httpbin-service-e2e-test", 8080)
+			ar := fmt.Sprintf(_routeConfig, "httpbin-service-e2e-test", 9080)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
@@ -95,51 +114,15 @@ var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and Ingress", f
 			upstreams, err := s.ListApisixUpstreams()
 			assert.Nil(ginkgo.GinkgoT(), err)
 			assert.Len(ginkgo.GinkgoT(), upstreams, 1)
-			assert.Contains(ginkgo.GinkgoT(), upstreams[0].Name, "httpbin-service-e2e-test_8080")
+			assert.Contains(ginkgo.GinkgoT(), upstreams[0].Name, "httpbin-service-e2e-test_9080")
 			// The correct httpbin pod port is 80
 			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusBadGateway)
 
-			httpService = fmt.Sprintf(_httpServiceConfig, 80, 80)
+			httpService = fmt.Sprintf(_httpServiceConfig, "port1", 80, 80)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httpService))
 
 			ar = fmt.Sprintf(_routeConfig, "httpbin-service-e2e-test", 80)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
-
-			time.Sleep(6 * time.Second)
-
-			routes, err := s.ListApisixRoutes()
-			assert.Nil(ginkgo.GinkgoT(), err)
-			assert.Len(ginkgo.GinkgoT(), routes, 1)
-			upstreams, err = s.ListApisixUpstreams()
-			assert.Nil(ginkgo.GinkgoT(), err)
-			assert.Len(ginkgo.GinkgoT(), upstreams, 1)
-			assert.Contains(ginkgo.GinkgoT(), upstreams[0].Name, "httpbin-service-e2e-test_80")
-
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
-		})
-
-		ginkgo.It("Ingress and APISIX of route and upstream", func() {
-			httpService := fmt.Sprintf(_httpServiceConfig, 8080, 8080)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httpService))
-
-			ing := fmt.Sprintf(_IngressConfig, "httpbin-service-e2e-test", 8080)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1))
-
-			upstreams, err := s.ListApisixUpstreams()
-			assert.Nil(ginkgo.GinkgoT(), err)
-			assert.Len(ginkgo.GinkgoT(), upstreams, 1)
-			assert.Contains(ginkgo.GinkgoT(), upstreams[0].Name, "httpbin-service-e2e-test_8080")
-			// The correct httpbin pod port is 80
-			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusBadGateway)
-
-			httpService = fmt.Sprintf(_httpServiceConfig, 80, 80)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httpService))
-
-			ing = fmt.Sprintf(_IngressConfig, "httpbin-service-e2e-test", 80)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 
 			time.Sleep(6 * time.Second)
 
@@ -161,4 +144,80 @@ var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and Ingress", f
 	ginkgo.Describe("suite-chore: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})
+})
+
+var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the Ingress resource of the IngressController", func() {
+	s := scaffold.NewDefaultScaffold()
+	ginkgo.It("Ingress v1 and APISIX of route and upstream", func() {
+		httpService := fmt.Sprintf(_httpServiceConfig, "port1", 9080, 9080)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httpService))
+
+		ing := fmt.Sprintf(_IngressConfig, "httpbin-service-e2e-test", "port1")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1))
+
+		upstreams, err := s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), upstreams, 1)
+		assert.Contains(ginkgo.GinkgoT(), upstreams[0].Name, "httpbin-service-e2e-test_9080")
+		// The correct httpbin pod port is 80
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusBadGateway)
+
+		httpService = fmt.Sprintf(_httpServiceConfig, "port2", 80, 80)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httpService))
+
+		ing = fmt.Sprintf(_IngressConfig, "httpbin-service-e2e-test", "port2")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+
+		time.Sleep(6 * time.Second)
+
+		routes, err := s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), routes, 1)
+		upstreams, err = s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), upstreams, 1)
+		assert.Contains(ginkgo.GinkgoT(), upstreams[0].Name, "httpbin-service-e2e-test_80")
+
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+	})
+
+	ginkgo.It("Ingress v1beta1 and APISIX of route and upstream", func() {
+		httpService := fmt.Sprintf(_httpServiceConfig, "port1", 9080, 9080)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httpService))
+
+		ing := fmt.Sprintf(_IngressV1beta1Config, "httpbin-service-e2e-test", "port1")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1))
+
+		upstreams, err := s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), upstreams, 1)
+		assert.Contains(ginkgo.GinkgoT(), upstreams[0].Name, "httpbin-service-e2e-test_9080")
+		// The correct httpbin pod port is 80
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusBadGateway)
+
+		httpService = fmt.Sprintf(_httpServiceConfig, "port2", 80, 80)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httpService))
+
+		ing = fmt.Sprintf(_IngressV1beta1Config, "httpbin-service-e2e-test", "port2")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+
+		time.Sleep(6 * time.Second)
+
+		routes, err := s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), routes, 1)
+		upstreams, err = s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), upstreams, 1)
+		assert.Contains(ginkgo.GinkgoT(), upstreams[0].Name, "httpbin-service-e2e-test_80")
+
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+	})
+
 })
