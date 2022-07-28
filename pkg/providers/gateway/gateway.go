@@ -129,7 +129,7 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 	} else {
 		if c.controller.HasGatewayClass(string(gateway.Spec.GatewayClassName)) {
 			// TODO: handle listeners
-			listeners, err := c.translator.TranslateGatewayV1Alpha2(gateway)
+			listeners, err := c.controller.translator.TranslateGatewayV1Alpha2(gateway)
 			if err != nil {
 				return err
 			}
@@ -153,7 +153,7 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 func (c *gatewayController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
-		c.MetricsCollector.IncrSyncOperation("gateway", "success")
+		c.controller.MetricsCollector.IncrSyncOperation("gateway", "success")
 		return
 	}
 	event := obj.(*types.Event)
@@ -170,7 +170,7 @@ func (c *gatewayController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
-	c.MetricsCollector.IncrSyncOperation("gateway", "failure")
+	c.controller.MetricsCollector.IncrSyncOperation("gateway", "failure")
 }
 
 func (c *gatewayController) onAdd(obj interface{}) {

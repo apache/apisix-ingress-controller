@@ -123,7 +123,7 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 		httpRoute = ev.Tombstone.(*gatewayv1alpha2.HTTPRoute)
 	}
 
-	tctx, err := c.translator.TranslateGatewayHTTPRouteV1Alpha2(httpRoute)
+	tctx, err := c.controller.translator.TranslateGatewayHTTPRouteV1Alpha2(httpRoute)
 
 	if err != nil {
 		log.Errorw("failed to translate gateway HTTPRoute",
@@ -155,7 +155,7 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 	} else {
 		var oldCtx *translation.TranslateContext
 		oldObj := ev.OldObject.(*gatewayv1alpha2.HTTPRoute)
-		oldCtx, err = c.translator.TranslateGatewayHTTPRouteV1Alpha2(oldObj)
+		oldCtx, err = c.controller.translator.TranslateGatewayHTTPRouteV1Alpha2(oldObj)
 		if err != nil {
 			log.Errorw("failed to translate old HTTPRoute",
 				zap.String("version", oldObj.APIVersion),
@@ -179,7 +179,7 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 func (c *gatewayHTTPRouteController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
-		c.MetricsCollector.IncrSyncOperation("gateway_httproute", "success")
+		c.controller.MetricsCollector.IncrSyncOperation("gateway_httproute", "success")
 		return
 	}
 	event := obj.(*types.Event)
@@ -196,7 +196,7 @@ func (c *gatewayHTTPRouteController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
-	c.MetricsCollector.IncrSyncOperation("gateway_httproute", "failure")
+	c.controller.MetricsCollector.IncrSyncOperation("gateway_httproute", "failure")
 }
 
 func (c *gatewayHTTPRouteController) onAdd(obj interface{}) {

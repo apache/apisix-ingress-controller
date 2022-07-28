@@ -17,38 +17,37 @@ package apisix
 import (
 	"context"
 	"fmt"
-	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime"
 	"time"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 type apisixClusterConfigController struct {
+	*providertypes.CommonConfig
+
 	controller        *providers.Controller
 	workqueue         workqueue.RateLimitingInterface
 	workers           int
-	cfg               *providertypes.CommonConfig
-	MetricsCollector  metrics.Collector
 	NamespaceProvider namespace.WatchingNamespaceProvider
 
 	apisixClusterConfigLister   kube.ApisixClusterConfigLister
@@ -151,9 +150,9 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 		acc := multiVersioned.V2beta3()
 		// Currently we don't handle multiple cluster, so only process
 		// the default apisix cluster.
-		if acc.Name != c.cfg.Config.APISIX.DefaultClusterName {
+		if acc.Name != c.Config.APISIX.DefaultClusterName {
 			log.Infow("ignore non-default apisix cluster config",
-				zap.String("default_cluster_name", c.cfg.Config.APISIX.DefaultClusterName),
+				zap.String("default_cluster_name", c.Config.APISIX.DefaultClusterName),
 				zap.Any("ApisixClusterConfig", acc),
 			)
 			return nil
@@ -176,13 +175,13 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 			)
 			// TODO we may first call AddCluster.
 			// Since now we already have the default cluster, we just call UpdateCluster.
-			if err := c.cfg.APISIX.UpdateCluster(ctx, clusterOpts); err != nil {
+			if err := c.APISIX.UpdateCluster(ctx, clusterOpts); err != nil {
 				log.Errorw("failed to update cluster",
 					zap.String("cluster_name", acc.Name),
 					zap.Error(err),
 					zap.Any("opts", clusterOpts),
 				)
-				c.cfg.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+				c.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 				c.recordStatus(acc, utils.ResourceSyncAborted, err, metav1.ConditionFalse, acc.GetGeneration())
 				return err
 			}
@@ -195,7 +194,7 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 				zap.String("key", key),
 				zap.Any("object", acc),
 			)
-			c.cfg.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 			c.recordStatus(acc, utils.ResourceSyncAborted, err, metav1.ConditionFalse, acc.GetGeneration())
 			return err
 		}
@@ -205,29 +204,29 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 
 		// TODO multiple cluster support
 		if ev.Type == types.EventAdd {
-			_, err = c.cfg.APISIX.Cluster(acc.Name).GlobalRule().Create(ctx, globalRule)
+			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Create(ctx, globalRule)
 		} else {
-			_, err = c.cfg.APISIX.Cluster(acc.Name).GlobalRule().Update(ctx, globalRule)
+			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Update(ctx, globalRule)
 		}
 		if err != nil {
 			log.Errorw("failed to reflect global_rule changes to apisix cluster",
 				zap.Any("global_rule", globalRule),
 				zap.Any("cluster", acc.Name),
 			)
-			c.cfg.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 			c.recordStatus(acc, utils.ResourceSyncAborted, err, metav1.ConditionFalse, acc.GetGeneration())
 			return err
 		}
-		c.cfg.RecordEvent(acc, corev1.EventTypeNormal, utils.ResourceSynced, nil)
+		c.RecordEvent(acc, corev1.EventTypeNormal, utils.ResourceSynced, nil)
 		c.recordStatus(acc, utils.ResourceSynced, nil, metav1.ConditionTrue, acc.GetGeneration())
 		return nil
 	case config.ApisixV2:
 		acc := multiVersioned.V2()
 		// Currently we don't handle multiple cluster, so only process
 		// the default apisix cluster.
-		if acc.Name != c.cfg.Config.APISIX.DefaultClusterName {
+		if acc.Name != c.Config.APISIX.DefaultClusterName {
 			log.Infow("ignore non-default apisix cluster config",
-				zap.String("default_cluster_name", c.cfg.Config.APISIX.DefaultClusterName),
+				zap.String("default_cluster_name", c.Config.APISIX.DefaultClusterName),
 				zap.Any("ApisixClusterConfig", acc),
 			)
 			return nil
@@ -250,13 +249,13 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 			)
 			// TODO we may first call AddCluster.
 			// Since now we already have the default cluster, we just call UpdateCluster.
-			if err := c.cfg.APISIX.UpdateCluster(ctx, clusterOpts); err != nil {
+			if err := c.APISIX.UpdateCluster(ctx, clusterOpts); err != nil {
 				log.Errorw("failed to update cluster",
 					zap.String("cluster_name", acc.Name),
 					zap.Error(err),
 					zap.Any("opts", clusterOpts),
 				)
-				c.cfg.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+				c.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 				c.recordStatus(acc, utils.ResourceSyncAborted, err, metav1.ConditionFalse, acc.GetGeneration())
 				return err
 			}
@@ -269,7 +268,7 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 				zap.String("key", key),
 				zap.Any("object", acc),
 			)
-			c.cfg.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 			c.recordStatus(acc, utils.ResourceSyncAborted, err, metav1.ConditionFalse, acc.GetGeneration())
 			return err
 		}
@@ -279,20 +278,20 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 
 		// TODO multiple cluster support
 		if ev.Type == types.EventAdd {
-			_, err = c.cfg.APISIX.Cluster(acc.Name).GlobalRule().Create(ctx, globalRule)
+			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Create(ctx, globalRule)
 		} else {
-			_, err = c.cfg.APISIX.Cluster(acc.Name).GlobalRule().Update(ctx, globalRule)
+			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Update(ctx, globalRule)
 		}
 		if err != nil {
 			log.Errorw("failed to reflect global_rule changes to apisix cluster",
 				zap.Any("global_rule", globalRule),
 				zap.Any("cluster", acc.Name),
 			)
-			c.cfg.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 			c.recordStatus(acc, utils.ResourceSyncAborted, err, metav1.ConditionFalse, acc.GetGeneration())
 			return err
 		}
-		c.cfg.RecordEvent(acc, corev1.EventTypeNormal, utils.ResourceSynced, nil)
+		c.RecordEvent(acc, corev1.EventTypeNormal, utils.ResourceSynced, nil)
 		c.recordStatus(acc, utils.ResourceSynced, nil, metav1.ConditionTrue, acc.GetGeneration())
 		return nil
 	default:
@@ -461,7 +460,7 @@ func (c *apisixClusterConfigController) recordStatus(at interface{}, reason stri
 		Message:            message,
 		ObservedGeneration: generation,
 	}
-	apisixClient := c.cfg.KubeClient.APISIXClient
+	apisixClient := c.KubeClient.APISIXClient
 
 	if kubeObj, ok := at.(runtime.Object); ok {
 		at = kubeObj.DeepCopyObject()

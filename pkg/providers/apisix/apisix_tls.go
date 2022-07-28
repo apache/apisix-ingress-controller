@@ -17,39 +17,37 @@ package apisix
 import (
 	"context"
 	"fmt"
-	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sync"
 	"time"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type apisixTlsController struct {
-	controller        *providers.Controller
-	workqueue         workqueue.RateLimitingInterface
-	workers           int
-	cfg               *providertypes.CommonConfig
-	MetricsCollector  metrics.Collector
+	*providertypes.CommonConfig
+
+	workqueue workqueue.RateLimitingInterface
+	workers   int
+
 	NamespaceProvider namespace.WatchingNamespaceProvider
 
 	secretInformer    cache.SharedIndexInformer
@@ -57,6 +55,12 @@ type apisixTlsController struct {
 	apisixTlsInformer cache.SharedIndexInformer
 
 	translator translation.ApisixTranslator
+
+	// this map enrolls which ApisixTls objects refer to a Kubernetes
+	// Secret object.
+	// type: Map<SecretKey, Map<ApisixTlsKey, ApisixTls>>
+	// SecretKey is `namespace_name`, ApisixTlsKey is kube style meta key: `namespace/name`
+	secretSSLMap *sync.Map
 }
 
 func newApisixTlsController() *apisixTlsController {
@@ -159,7 +163,7 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 				zap.Error(err),
 				zap.Any("ApisixTls", tls),
 			)
-			c.cfg.RecordEvent(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.RecordEvent(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 			c.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 			return err
 		}
@@ -177,16 +181,16 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			}
 		}
 
-		if err := c.controller.syncSSL(ctx, ssl, ev.Type); err != nil {
+		if err := c.SyncSSL(ctx, ssl, ev.Type); err != nil {
 			log.Errorw("failed to sync SSL to APISIX",
 				zap.Error(err),
 				zap.Any("ssl", ssl),
 			)
-			c.cfg.RecordEvent(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.RecordEvent(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 			c.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 			return err
 		}
-		c.cfg.RecordEvent(tls, corev1.EventTypeNormal, utils.ResourceSynced, nil)
+		c.RecordEvent(tls, corev1.EventTypeNormal, utils.ResourceSynced, nil)
 		c.recordStatus(tls, utils.ResourceSynced, nil, metav1.ConditionTrue, tls.GetGeneration())
 		return err
 	case config.ApisixV2:
@@ -197,7 +201,7 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 				zap.Error(err),
 				zap.Any("ApisixTls", tls),
 			)
-			c.cfg.RecordEvent(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.RecordEvent(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 			c.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 			return err
 		}
@@ -215,16 +219,16 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			}
 		}
 
-		if err := c.controller.syncSSL(ctx, ssl, ev.Type); err != nil {
+		if err := c.SyncSSL(ctx, ssl, ev.Type); err != nil {
 			log.Errorw("failed to sync SSL to APISIX",
 				zap.Error(err),
 				zap.Any("ssl", ssl),
 			)
-			c.cfg.RecordEvent(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.RecordEvent(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 			c.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 			return err
 		}
-		c.cfg.RecordEvent(tls, corev1.EventTypeNormal, utils.ResourceSynced, nil)
+		c.RecordEvent(tls, corev1.EventTypeNormal, utils.ResourceSynced, nil)
 		c.recordStatus(tls, utils.ResourceSynced, nil, metav1.ConditionTrue, tls.GetGeneration())
 		return err
 	default:
@@ -233,20 +237,20 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 }
 
 func (c *apisixTlsController) syncSecretSSL(secretKey string, apisixTlsKey string, ssl *v1.Ssl, event types.EventType) {
-	if ssls, ok := c.controller.secretSSLMap.Load(secretKey); ok {
+	if ssls, ok := c.secretSSLMap.Load(secretKey); ok {
 		sslMap := ssls.(*sync.Map)
 		switch event {
 		case types.EventDelete:
 			sslMap.Delete(apisixTlsKey)
-			c.controller.secretSSLMap.Store(secretKey, sslMap)
+			c.secretSSLMap.Store(secretKey, sslMap)
 		default:
 			sslMap.Store(apisixTlsKey, ssl)
-			c.controller.secretSSLMap.Store(secretKey, sslMap)
+			c.secretSSLMap.Store(secretKey, sslMap)
 		}
 	} else if event != types.EventDelete {
 		sslMap := new(sync.Map)
 		sslMap.Store(apisixTlsKey, ssl)
-		c.controller.secretSSLMap.Store(secretKey, sslMap)
+		c.secretSSLMap.Store(secretKey, sslMap)
 	}
 }
 
@@ -418,7 +422,7 @@ func (c *apisixTlsController) recordStatus(at interface{}, reason string, err er
 		Message:            message,
 		ObservedGeneration: generation,
 	}
-	apisixClient := c.cfg.KubeClient.APISIXClient
+	apisixClient := c.KubeClient.APISIXClient
 
 	if kubeObj, ok := at.(runtime.Object); ok {
 		at = kubeObj.DeepCopyObject()

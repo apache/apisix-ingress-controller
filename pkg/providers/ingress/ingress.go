@@ -17,26 +17,23 @@ package ingress
 import (
 	"context"
 	"fmt"
-	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
+	"time"
+
+	"go.uber.org/zap"
 	apiv1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"time"
-
-	"go.uber.org/zap"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
@@ -46,18 +43,16 @@ const (
 )
 
 type ingressController struct {
-	controller *providers.Controller
-	workqueue  workqueue.RateLimitingInterface
-	workers    int
+	*providertypes.CommonConfig
 
-	cfg             *providertypes.CommonConfig
+	workqueue workqueue.RateLimitingInterface
+	workers   int
+
 	ingressLister   kube.IngressLister
 	ingressInformer cache.SharedIndexInformer
 
 	translator *translator
 
-	apisix            apisix.APISIX
-	MetricsCollector  metrics.Collector
 	NamespaceProvider namespace.WatchingNamespaceProvider
 }
 
@@ -201,7 +196,7 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		}
 		added, updated, deleted = m.Diff(om)
 	}
-	if err := c.cfg.SyncManifests(ctx, added, updated, deleted); err != nil {
+	if err := c.SyncManifests(ctx, added, updated, deleted); err != nil {
 		log.Errorw("failed to sync ingress artifacts",
 			zap.Error(err),
 		)
@@ -418,10 +413,10 @@ func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 
 	// kubernetes.io/ingress.class takes the precedence.
 	if ica != "" {
-		return ica == c.cfg.Kubernetes.IngressClass
+		return ica == c.Kubernetes.IngressClass
 	}
 	if ic != nil {
-		return *ic == c.cfg.Kubernetes.IngressClass
+		return *ic == c.Kubernetes.IngressClass
 	}
 	return false
 }
@@ -450,7 +445,7 @@ func (c *ingressController) ResourceSync() {
 
 // recordStatus record resources status
 func (c *ingressController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
-	client := c.cfg.KubeClient.Client
+	client := c.KubeClient.Client
 
 	if kubeObj, ok := at.(runtime.Object); ok {
 		at = kubeObj.DeepCopyObject()
@@ -523,5 +518,5 @@ func (c *ingressController) recordStatus(at interface{}, reason string, err erro
 
 // ingressLBStatusIPs organizes the available addresses
 func (c *ingressController) ingressLBStatusIPs() ([]apiv1.LoadBalancerIngress, error) {
-	return utils.IngressLBStatusIPs(c.cfg.IngressPublishService, c.cfg.IngressStatusAddress, c.cfg.KubeClient.Client)
+	return utils.IngressLBStatusIPs(c.IngressPublishService, c.IngressStatusAddress, c.KubeClient.Client)
 }

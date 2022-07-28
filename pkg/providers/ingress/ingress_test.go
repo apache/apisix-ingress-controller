@@ -15,7 +15,6 @@
 package ingress
 
 import (
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,6 +25,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	"github.com/apache/apisix-ingress-controller/pkg/providers"
 )
 
 func TestIsIngressEffective(t *testing.T) {

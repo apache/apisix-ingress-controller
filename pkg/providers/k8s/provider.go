@@ -2,13 +2,15 @@ package k8s
 
 import (
 	"context"
+
+	"github.com/pkg/errors"
+
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/endpoint"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
-	"github.com/pkg/errors"
 )
 
 var _ Provider = (*k8sProvider)(nil)
@@ -20,8 +22,6 @@ type Provider interface {
 }
 
 type k8sProvider struct {
-	cfg *providertypes.CommonConfig
-
 	podController    *podController
 	secretController *secretController
 
@@ -31,9 +31,7 @@ type k8sProvider struct {
 
 func NewProvider(ctx context.Context, kube *kube.KubeClient, cfg *providertypes.CommonConfig) (Provider, error) {
 	var err error
-	provider := &k8sProvider{
-		cfg: cfg,
-	}
+	provider := &k8sProvider{}
 
 	provider.endpoint, err = endpoint.NewProvider(cfg)
 	if err != nil {

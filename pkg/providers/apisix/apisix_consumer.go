@@ -17,37 +17,36 @@ package apisix
 import (
 	"context"
 	"fmt"
-	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime"
 	"time"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 type apisixConsumerController struct {
+	*providertypes.CommonConfig
+
 	controller        *providers.Controller
 	workqueue         workqueue.RateLimitingInterface
 	workers           int
-	cfg               *providertypes.CommonConfig
-	MetricsCollector  metrics.Collector
 	NamespaceProvider namespace.WatchingNamespaceProvider
 
 	apisixConsumerInformer cache.SharedIndexInformer
@@ -58,9 +57,8 @@ type apisixConsumerController struct {
 
 func newApisixConsumerController() *apisixConsumerController {
 	ctl := &apisixConsumerController{
-		controller: c,
-		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixConsumer"),
-		workers:    1,
+		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixConsumer"),
+		workers:   1,
 	}
 	ctl.apisixConsumerInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -156,7 +154,7 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 				zap.Error(err),
 				zap.Any("ApisixConsumer", ac),
 			)
-			c.cfg.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 			c.recordStatus(ac, utils.ResourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 			return err
 		}
@@ -165,17 +163,17 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 			zap.Any("ApisixConsumer", ac),
 		)
 
-		if err := c.controller.syncConsumer(ctx, consumer, ev.Type); err != nil {
+		if err := c.SyncConsumer(ctx, consumer, ev.Type); err != nil {
 			log.Errorw("failed to sync Consumer to APISIX",
 				zap.Error(err),
 				zap.Any("consumer", consumer),
 			)
-			c.cfg.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 			c.recordStatus(ac, utils.ResourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 			return err
 		}
 
-		c.cfg.RecordEvent(ac, corev1.EventTypeNormal, utils.ResourceSynced, nil)
+		c.RecordEvent(ac, corev1.EventTypeNormal, utils.ResourceSynced, nil)
 	case config.ApisixV2:
 		ac := multiVersioned.V2()
 
@@ -185,7 +183,7 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 				zap.Error(err),
 				zap.Any("ApisixConsumer", ac),
 			)
-			c.cfg.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 			c.recordStatus(ac, utils.ResourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 			return err
 		}
@@ -194,17 +192,17 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 			zap.Any("ApisixConsumer", ac),
 		)
 
-		if err := c.controller.syncConsumer(ctx, consumer, ev.Type); err != nil {
+		if err := c.SyncConsumer(ctx, consumer, ev.Type); err != nil {
 			log.Errorw("failed to sync Consumer to APISIX",
 				zap.Error(err),
 				zap.Any("consumer", consumer),
 			)
-			c.cfg.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 			c.recordStatus(ac, utils.ResourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 			return err
 		}
 
-		c.cfg.RecordEvent(ac, corev1.EventTypeNormal, utils.ResourceSynced, nil)
+		c.RecordEvent(ac, corev1.EventTypeNormal, utils.ResourceSynced, nil)
 	}
 	return nil
 }
@@ -377,7 +375,7 @@ func (c *apisixConsumerController) recordStatus(at interface{}, reason string, e
 		Message:            message,
 		ObservedGeneration: generation,
 	}
-	apisixClient := c.cfg.KubeClient.APISIXClient
+	apisixClient := c.KubeClient.APISIXClient
 
 	if kubeObj, ok := at.(runtime.Object); ok {
 		at = kubeObj.DeepCopyObject()

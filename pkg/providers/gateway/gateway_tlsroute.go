@@ -140,7 +140,7 @@ func (c *gatewayTLSRouteController) sync(ctx context.Context, ev *types.Event) e
 		tlsRoute = ev.Tombstone.(*gatewayv1alpha2.TLSRoute)
 	}
 
-	tctx, err := c.translator.TranslateGatewayTLSRouteV1Alpha2(tlsRoute)
+	tctx, err := c.controller.translator.TranslateGatewayTLSRouteV1Alpha2(tlsRoute)
 
 	if err != nil {
 		log.Warnw("failed to translate gateway TLSRoute",
@@ -172,7 +172,7 @@ func (c *gatewayTLSRouteController) sync(ctx context.Context, ev *types.Event) e
 	} else {
 		var oldCtx *translation.TranslateContext
 		oldObj := ev.OldObject.(*gatewayv1alpha2.TLSRoute)
-		oldCtx, err = c.translator.TranslateGatewayTLSRouteV1Alpha2(oldObj)
+		oldCtx, err = c.controller.translator.TranslateGatewayTLSRouteV1Alpha2(oldObj)
 		if err != nil {
 			log.Errorw("failed to translate old TLSRoute",
 				zap.String("version", oldObj.APIVersion),
@@ -196,7 +196,7 @@ func (c *gatewayTLSRouteController) sync(ctx context.Context, ev *types.Event) e
 func (c *gatewayTLSRouteController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
-		c.MetricsCollector.IncrSyncOperation("gateway_tlsroute", "success")
+		c.controller.MetricsCollector.IncrSyncOperation("gateway_tlsroute", "success")
 		return
 	}
 	event := obj.(*types.Event)
@@ -213,7 +213,7 @@ func (c *gatewayTLSRouteController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
-	c.MetricsCollector.IncrSyncOperation("gateway_tlsroute", "failure")
+	c.controller.MetricsCollector.IncrSyncOperation("gateway_tlsroute", "failure")
 }
 
 func (c *gatewayTLSRouteController) onAdd(obj interface{}) {

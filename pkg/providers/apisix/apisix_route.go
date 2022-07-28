@@ -16,21 +16,15 @@ package apisix
 
 import (
 	"context"
-	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
-	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sync"
 	"time"
 
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -38,21 +32,23 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type apisixRouteController struct {
-	controller *providers.Controller
-	workqueue  workqueue.RateLimitingInterface
-	workers    int
+	*providertypes.CommonConfig
+	workqueue workqueue.RateLimitingInterface
+	workers   int
 
-	cfg               *providertypes.CommonConfig
-	MetricsCollector  metrics.Collector
 	NamespaceProvider namespace.WatchingNamespaceProvider
 
 	apisixRouteLister   kube.ApisixRouteLister
@@ -352,13 +348,13 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		added, updated, deleted = m.Diff(om)
 	}
 
-	return c.cfg.SyncManifests(ctx, added, updated, deleted)
+	return c.SyncManifests(ctx, added, updated, deleted)
 }
 
 func (c *apisixRouteController) checkPluginNameIfNotEmptyV2beta3(ctx context.Context, in *v2beta3.ApisixRoute) error {
 	for _, v := range in.Spec.HTTP {
 		if v.PluginConfigName != "" {
-			_, err := c.cfg.APISIX.Cluster(c.cfg.Config.APISIX.DefaultClusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName))
+			_, err := c.APISIX.Cluster(c.Config.APISIX.DefaultClusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName))
 			if err != nil {
 				if err == apisixcache.ErrNotFound {
 					log.Errorw("checkPluginNameIfNotEmptyV2beta3 error: plugin_config not found",
@@ -381,7 +377,7 @@ func (c *apisixRouteController) checkPluginNameIfNotEmptyV2beta3(ctx context.Con
 func (c *apisixRouteController) checkPluginNameIfNotEmptyV2(ctx context.Context, in *v2.ApisixRoute) error {
 	for _, v := range in.Spec.HTTP {
 		if v.PluginConfigName != "" {
-			_, err := c.cfg.APISIX.Cluster(c.cfg.Config.APISIX.DefaultClusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName))
+			_, err := c.APISIX.Cluster(c.Config.APISIX.DefaultClusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName))
 			if err != nil {
 				if err == apisixcache.ErrNotFound {
 					log.Errorw("checkPluginNameIfNotEmptyV2 error: plugin_config not found",
@@ -432,13 +428,13 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 			if errLocal == nil {
 				switch ar.GroupVersion() {
 				case config.ApisixV2beta2:
-					c.cfg.RecordEvent(ar.V2beta2(), v1.EventTypeNormal, utils.ResourceSynced, nil)
+					c.RecordEvent(ar.V2beta2(), v1.EventTypeNormal, utils.ResourceSynced, nil)
 					c.recordStatus(ar.V2beta2(), utils.ResourceSynced, nil, metav1.ConditionTrue, ar.V2beta2().GetGeneration())
 				case config.ApisixV2beta3:
-					c.cfg.RecordEvent(ar.V2beta3(), v1.EventTypeNormal, utils.ResourceSynced, nil)
+					c.RecordEvent(ar.V2beta3(), v1.EventTypeNormal, utils.ResourceSynced, nil)
 					c.recordStatus(ar.V2beta3(), utils.ResourceSynced, nil, metav1.ConditionTrue, ar.V2beta3().GetGeneration())
 				case config.ApisixV2:
-					c.cfg.RecordEvent(ar.V2(), v1.EventTypeNormal, utils.ResourceSynced, nil)
+					c.RecordEvent(ar.V2(), v1.EventTypeNormal, utils.ResourceSynced, nil)
 					c.recordStatus(ar.V2(), utils.ResourceSynced, nil, metav1.ConditionTrue, ar.V2().GetGeneration())
 				}
 			} else {
@@ -460,13 +456,13 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	if errLocal == nil {
 		switch ar.GroupVersion() {
 		case config.ApisixV2beta2:
-			c.cfg.RecordEvent(ar.V2beta2(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
+			c.RecordEvent(ar.V2beta2(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
 			c.recordStatus(ar.V2beta2(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta2().GetGeneration())
 		case config.ApisixV2beta3:
-			c.cfg.RecordEvent(ar.V2beta3(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
+			c.RecordEvent(ar.V2beta3(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
 			c.recordStatus(ar.V2beta3(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta3().GetGeneration())
 		case config.ApisixV2:
-			c.cfg.RecordEvent(ar.V2(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
+			c.RecordEvent(ar.V2(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
 			c.recordStatus(ar.V2(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2().GetGeneration())
 		}
 	} else {
@@ -670,7 +666,7 @@ func (c *apisixRouteController) handleSvcAdd(key string) error {
 				Type: types.EventAdd,
 				Object: kube.ApisixRouteEvent{
 					Key:          ns + "/" + route,
-					GroupVersion: c.cfg.Kubernetes.ApisixRouteVersion,
+					GroupVersion: c.Kubernetes.ApisixRouteVersion,
 				},
 			})
 		}
@@ -695,15 +691,15 @@ func (c *apisixRouteController) handleSvcErr(key string, errOrigin error) {
 // Building objects from cache
 // For old objects, you cannot use TranslateRoute to build. Because it needs to parse the latest service, which will cause data inconsistency
 func (c *apisixRouteController) getOldTranslateContext(ctx context.Context, kar kube.ApisixRoute) (*translation.TranslateContext, error) {
-	clusterName := c.cfg.Config.APISIX.DefaultClusterName
+	clusterName := c.Config.APISIX.DefaultClusterName
 	oldCtx := translation.DefaultEmptyTranslateContext()
 
-	switch c.cfg.Kubernetes.ApisixRouteVersion {
+	switch c.Kubernetes.ApisixRouteVersion {
 	case config.ApisixV2beta3:
 		ar := kar.V2beta3()
 		for _, part := range ar.Spec.Stream {
 			name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
-			sr, err := c.cfg.APISIX.Cluster(clusterName).StreamRoute().Get(ctx, name)
+			sr, err := c.APISIX.Cluster(clusterName).StreamRoute().Get(ctx, name)
 			if err != nil {
 				continue
 			}
@@ -716,7 +712,7 @@ func (c *apisixRouteController) getOldTranslateContext(ctx context.Context, kar 
 		}
 		for _, part := range ar.Spec.HTTP {
 			name := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
-			r, err := c.cfg.APISIX.Cluster(clusterName).Route().Get(ctx, name)
+			r, err := c.APISIX.Cluster(clusterName).Route().Get(ctx, name)
 			if err != nil {
 				continue
 			}
@@ -736,7 +732,7 @@ func (c *apisixRouteController) getOldTranslateContext(ctx context.Context, kar 
 		ar := kar.V2()
 		for _, part := range ar.Spec.Stream {
 			name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
-			sr, err := c.cfg.APISIX.Cluster(clusterName).StreamRoute().Get(ctx, name)
+			sr, err := c.APISIX.Cluster(clusterName).StreamRoute().Get(ctx, name)
 			if err != nil {
 				continue
 			}
@@ -749,7 +745,7 @@ func (c *apisixRouteController) getOldTranslateContext(ctx context.Context, kar 
 		}
 		for _, part := range ar.Spec.HTTP {
 			name := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
-			r, err := c.cfg.APISIX.Cluster(clusterName).Route().Get(ctx, name)
+			r, err := c.APISIX.Cluster(clusterName).Route().Get(ctx, name)
 			if err != nil {
 				continue
 			}
@@ -784,7 +780,7 @@ func (c *apisixRouteController) recordStatus(at interface{}, reason string, err 
 		Message:            message,
 		ObservedGeneration: generation,
 	}
-	apisixClient := c.cfg.KubeClient.APISIXClient
+	apisixClient := c.KubeClient.APISIXClient
 
 	if kubeObj, ok := at.(runtime.Object); ok {
 		at = kubeObj.DeepCopyObject()

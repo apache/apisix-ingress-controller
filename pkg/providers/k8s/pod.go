@@ -16,34 +16,31 @@ package k8s
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
-	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 type podController struct {
-	cfg *providertypes.CommonConfig
+	*providertypes.CommonConfig
 
 	podInformer cache.SharedIndexInformer
 	podLister   listerscorev1.PodLister
 
-	MetricsCollector  metrics.Collector
 	NamespaceProvider namespace.WatchingNamespaceProvider
 
 	podCache types.PodCache
 }
 
-func newPodController(cfg *providertypes.CommonConfig, podInformer cache.SharedIndexInformer, podLister listerscorev1.PodLister) *podController {
+func newPodController(podInformer cache.SharedIndexInformer, podLister listerscorev1.PodLister) *podController {
 	ctl := &podController{
-		cfg:      cfg,
 		podCache: types.NewPodCache(),
 	}
 	ctl.podInformer.AddEventHandler(

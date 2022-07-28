@@ -20,7 +20,6 @@ package gateway
 import (
 	"context"
 	"fmt"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
 	"sync"
 
 	"k8s.io/client-go/kubernetes"
@@ -38,6 +37,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	gatewaytranslation "github.com/apache/apisix-ingress-controller/pkg/providers/gateway/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/gateway/types"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 )
 

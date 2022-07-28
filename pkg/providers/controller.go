@@ -17,17 +17,12 @@ package providers
 import (
 	"context"
 	"fmt"
-	apisix2 "github.com/apache/apisix-ingress-controller/pkg/providers/apisix"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
 	"os"
 	"sync"
 	"time"
 
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -41,19 +36,19 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/api"
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
+	apisix2 "github.com/apache/apisix-ingress-controller/pkg/providers/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/gateway"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
@@ -302,26 +297,6 @@ func (c *Controller) initWhenStartLeading() {
 	c.apisixTlsController = c.newApisixTlsController()
 	c.apisixConsumerController = c.newApisixConsumerController()
 	c.apisixPluginConfigController = c.newApisixPluginConfigController()
-}
-
-func (c *Controller) syncManifests(ctx context.Context, added, updated, deleted *utils.Manifest) error {
-	return utils.SyncManifests(ctx, c.apisix, c.cfg.APISIX.DefaultClusterName, added, updated, deleted)
-}
-
-// recorderEvent recorder events for resources
-func (c *Controller) recorderEvent(object runtime.Object, eventtype, reason string, err error) {
-	if err != nil {
-		message := fmt.Sprintf(_messageResourceFailed, _component, err.Error())
-		c.recorder.Event(object, eventtype, reason, message)
-	} else {
-		message := fmt.Sprintf(_messageResourceSynced, _component)
-		c.recorder.Event(object, eventtype, reason, message)
-	}
-}
-
-// recorderEvent recorder events for resources
-func (c *Controller) recorderEventS(object runtime.Object, eventtype, reason string, msg string) {
-	c.recorder.Event(object, eventtype, reason, msg)
 }
 
 // Eventf implements the resourcelock.EventRecorder interface.
@@ -582,156 +557,6 @@ func (c *Controller) run(ctx context.Context) {
 		log.Error("Start failed, abort...")
 		cancelFunc()
 	}
-}
-
-// isWatchingNamespace accepts a resource key, getting the namespace part
-// and checking whether the namespace is being watched.
-func (c *Controller) isWatchingNamespace(key string) (ok bool) {
-	return c.namespaceProvider.IsWatchingNamespace(key)
-}
-
-func (c *Controller) syncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types.EventType) error {
-	var (
-		err error
-	)
-	clusterName := c.cfg.APISIX.DefaultClusterName
-	if event == types.EventDelete {
-		err = c.apisix.Cluster(clusterName).SSL().Delete(ctx, ssl)
-	} else if event == types.EventUpdate {
-		_, err = c.apisix.Cluster(clusterName).SSL().Update(ctx, ssl)
-	} else {
-		_, err = c.apisix.Cluster(clusterName).SSL().Create(ctx, ssl)
-	}
-	return err
-}
-
-func (c *Controller) syncConsumer(ctx context.Context, consumer *apisixv1.Consumer, event types.EventType) (err error) {
-	clusterName := c.cfg.APISIX.DefaultClusterName
-	if event == types.EventDelete {
-		err = c.apisix.Cluster(clusterName).Consumer().Delete(ctx, consumer)
-	} else if event == types.EventUpdate {
-		_, err = c.apisix.Cluster(clusterName).Consumer().Update(ctx, consumer)
-	} else {
-		_, err = c.apisix.Cluster(clusterName).Consumer().Create(ctx, consumer)
-	}
-	return
-}
-
-func (c *Controller) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
-	namespace, err := ep.Namespace()
-	if err != nil {
-		return err
-	}
-	svcName := ep.ServiceName()
-	svc, err := c.svcLister.Services(namespace).Get(svcName)
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			log.Infof("service %s/%s not found", namespace, svcName)
-			return nil
-		}
-		log.Errorf("failed to get service %s/%s: %s", namespace, svcName, err)
-		return err
-	}
-
-	switch c.cfg.Kubernetes.APIVersion {
-	case config.ApisixV2beta3:
-		var subsets []configv2beta3.ApisixUpstreamSubset
-		subsets = append(subsets, configv2beta3.ApisixUpstreamSubset{})
-		auKube, err := c.apisixUpstreamLister.V2beta3(namespace, svcName)
-		if err != nil {
-			if !k8serrors.IsNotFound(err) {
-				log.Errorf("failed to get ApisixUpstream %s/%s: %s", namespace, svcName, err)
-				return err
-			}
-		} else if auKube.V2beta3().Spec != nil && len(auKube.V2beta3().Spec.Subsets) > 0 {
-			subsets = append(subsets, auKube.V2beta3().Spec.Subsets...)
-		}
-		clusters := c.apisix.ListClusters()
-		for _, port := range svc.Spec.Ports {
-			for _, subset := range subsets {
-				nodes, err := c.translator.TranslateEndpoint(ep, port.Port, subset.Labels)
-				if err != nil {
-					log.Errorw("failed to translate upstream nodes",
-						zap.Error(err),
-						zap.Any("endpoints", ep),
-						zap.Int32("port", port.Port),
-					)
-				}
-				name := apisixv1.ComposeUpstreamName(namespace, svcName, subset.Name, port.Port)
-				for _, cluster := range clusters {
-					if err := c.syncUpstreamNodesChangeToCluster(ctx, cluster, nodes, name); err != nil {
-						return err
-					}
-				}
-			}
-		}
-	case config.ApisixV2:
-		var subsets []configv2.ApisixUpstreamSubset
-		subsets = append(subsets, configv2.ApisixUpstreamSubset{})
-		auKube, err := c.apisixUpstreamLister.V2beta3(namespace, svcName)
-		if err != nil {
-			if !k8serrors.IsNotFound(err) {
-				log.Errorf("failed to get ApisixUpstream %s/%s: %s", namespace, svcName, err)
-				return err
-			}
-		} else if auKube.V2().Spec != nil && len(auKube.V2().Spec.Subsets) > 0 {
-			subsets = append(subsets, auKube.V2().Spec.Subsets...)
-		}
-		clusters := c.apisix.ListClusters()
-		for _, port := range svc.Spec.Ports {
-			for _, subset := range subsets {
-				nodes, err := c.translator.TranslateEndpoint(ep, port.Port, subset.Labels)
-				if err != nil {
-					log.Errorw("failed to translate upstream nodes",
-						zap.Error(err),
-						zap.Any("endpoints", ep),
-						zap.Int32("port", port.Port),
-					)
-				}
-				name := apisixv1.ComposeUpstreamName(namespace, svcName, subset.Name, port.Port)
-				for _, cluster := range clusters {
-					if err := c.syncUpstreamNodesChangeToCluster(ctx, cluster, nodes, name); err != nil {
-						return err
-					}
-				}
-			}
-		}
-	default:
-		panic(fmt.Errorf("unsupported ApisixUpstream version %v", c.cfg.Kubernetes.APIVersion))
-	}
-	return nil
-}
-
-func (c *Controller) syncUpstreamNodesChangeToCluster(ctx context.Context, cluster apisix.Cluster, nodes apisixv1.UpstreamNodes, upsName string) error {
-	upstream, err := cluster.Upstream().Get(ctx, upsName)
-	if err != nil {
-		if err == apisixcache.ErrNotFound {
-			log.Warnw("upstream is not referenced",
-				zap.String("cluster", cluster.String()),
-				zap.String("upstream", upsName),
-			)
-			return nil
-		} else {
-			log.Errorw("failed to get upstream",
-				zap.String("upstream", upsName),
-				zap.String("cluster", cluster.String()),
-				zap.Error(err),
-			)
-			return err
-		}
-	}
-
-	upstream.Nodes = nodes
-
-	log.Debugw("upstream binds new nodes",
-		zap.Any("upstream", upstream),
-		zap.String("cluster", cluster.String()),
-	)
-
-	updated := &utils.Manifest{
-		Upstreams: []*apisixv1.Upstream{upstream},
-	}
-	return c.syncManifests(ctx, nil, updated, nil)
 }
 
 func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.CancelFunc) {

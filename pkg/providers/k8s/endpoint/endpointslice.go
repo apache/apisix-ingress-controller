@@ -16,10 +16,6 @@ package endpoint
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"time"
 
 	"go.uber.org/zap"
@@ -28,6 +24,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -43,20 +40,17 @@ type endpointSliceEvent struct {
 }
 
 type endpointSliceController struct {
-	cfg       *providertypes.CommonConfig
+	*baseEndpointController
+
 	workqueue workqueue.RateLimitingInterface
 	workers   int
 
 	epInformer cache.SharedIndexInformer
 	epLister   kube.EndpointLister
-
-	MetricsCollector  metrics.Collector
-	NamespaceProvider namespace.WatchingNamespaceProvider
 }
 
-func newEndpointSliceController(cfg *providertypes.CommonConfig, epInformer cache.SharedIndexInformer, epLister kube.EndpointLister) *endpointSliceController {
+func newEndpointSliceController(epInformer cache.SharedIndexInformer, epLister kube.EndpointLister) *endpointSliceController {
 	ctl := &endpointSliceController{
-		cfg:       cfg,
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(time.Second, 60*time.Second, 5), "endpointSlice"),
 		workers:   1,
 
@@ -115,8 +109,8 @@ func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) err
 	if ev.Type == types.EventDelete {
 		log.Debugw("endpointsplice upstream serviece sync",
 			zap.String("service_name", epEvent.ServiceName))
-		clusterName := c.cfg.Config.APISIX.DefaultClusterName
-		err = c.cfg.APISIX.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx,
+		clusterName := c.Config.APISIX.DefaultClusterName
+		err = c.APISIX.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx,
 			&v1.UpstreamServiceRelation{
 				ServiceName: namespace + "_" + epEvent.ServiceName,
 			})
@@ -130,7 +124,7 @@ func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) err
 			epEvent.ServiceName, err)
 		return err
 	}
-	return c.controller.syncEndpoint(ctx, ep)
+	return c.syncEndpoint(ctx, ep)
 }
 
 func (c *endpointSliceController) handleSyncErr(obj interface{}, err error) {

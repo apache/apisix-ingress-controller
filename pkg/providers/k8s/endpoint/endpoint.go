@@ -16,10 +16,6 @@ package endpoint
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"time"
 
 	"go.uber.org/zap"
@@ -35,17 +31,13 @@ import (
 )
 
 type endpointsController struct {
-	controller *providers.Controller
-	workqueue  workqueue.RateLimitingInterface
-	workers    int
+	*baseEndpointController
 
-	cfg *providertypes.CommonConfig
+	workqueue workqueue.RateLimitingInterface
+	workers   int
 
 	epInformer cache.SharedIndexInformer
 	epLister   kube.EndpointLister
-
-	MetricsCollector  metrics.Collector
-	NamespaceProvider namespace.WatchingNamespaceProvider
 }
 
 func NewEndpointsController(epInformer cache.SharedIndexInformer, epLister kube.EndpointLister) *endpointsController {
@@ -105,8 +97,8 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 		return err
 	}
 	if ev.Type == types.EventDelete {
-		clusterName := c.cfg.Config.APISIX.DefaultClusterName
-		err = c.cfg.APISIX.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx,
+		clusterName := c.Config.APISIX.DefaultClusterName
+		err = c.APISIX.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx,
 			&v1.UpstreamServiceRelation{
 				ServiceName: ns + "_" + ep.ServiceName(),
 			})
@@ -121,7 +113,7 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 		}
 		newestEp = ep
 	}
-	return c.controller.syncEndpoint(ctx, newestEp)
+	return c.syncEndpoint(ctx, newestEp)
 }
 
 func (c *endpointsController) handleSyncErr(obj interface{}, err error) {

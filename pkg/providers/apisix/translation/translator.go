@@ -1,6 +1,8 @@
 package translation
 
 import (
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
+
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
@@ -8,7 +10,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-	listerscorev1 "k8s.io/client-go/listers/core/v1"
 )
 
 type translator struct {
