@@ -17,8 +17,8 @@ package translation
 import (
 	"go.uber.org/zap"
 
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation/annotations"
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -35,7 +35,7 @@ var (
 	}
 )
 
-func (t *translator) translateAnnotations(anno map[string]string) apisix.Plugins {
+func (t *translator) TranslateAnnotations(anno map[string]string) apisix.Plugins {
 	extractor := annotations.NewExtractor(anno)
 	plugins := make(apisix.Plugins)
 	for _, handler := range _handlers {

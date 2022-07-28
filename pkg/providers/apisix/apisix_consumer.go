@@ -17,50 +17,59 @@ package apisix
 import (
 	"context"
 	"fmt"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
 	"time"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 type apisixConsumerController struct {
-	controller        *providers.Controller
-	workqueue         workqueue.RateLimitingInterface
-	workers           int
-	cfg               *config.Config
-	MetricsCollector  metrics.Collector
-	NamespaceProvider namespace.WatchingNamespaceProvider
+	*apisixCommon
 
-	apisixConsumerInformer cache.SharedIndexInformer
+	workqueue workqueue.RateLimitingInterface
+	workers   int
+
 	apisixConsumerLister   kube.ApisixConsumerLister
+	apisixConsumerInformer cache.SharedIndexInformer
 }
 
-func newApisixConsumerController() *apisixConsumerController {
-	ctl := &apisixConsumerController{
-		controller: c,
-		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixConsumer"),
-		workers:    1,
+func newApisixConsumerController(common *apisixCommon, apisixConsumerInformer cache.SharedIndexInformer) *apisixConsumerController {
+	c := &apisixConsumerController{
+		apisixCommon: common,
+		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixConsumer"),
+		workers:      1,
+
+		apisixConsumerInformer: apisixConsumerInformer,
 	}
-	ctl.apisixConsumerInformer.AddEventHandler(
+
+	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
+	c.apisixConsumerLister = kube.NewApisixConsumerLister(
+		apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister(),
+		apisixFactory.Apisix().V2().ApisixConsumers().Lister(),
+	)
+
+	c.apisixConsumerInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    ctl.onAdd,
-			UpdateFunc: ctl.onUpdate,
-			DeleteFunc: ctl.onDelete,
+			AddFunc:    c.onAdd,
+			UpdateFunc: c.onUpdate,
+			DeleteFunc: c.onDelete,
 		},
 	)
-	return ctl
+	return c
 }
 
 func (c *apisixConsumerController) run(ctx context.Context) {
@@ -141,14 +150,14 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 	case config.ApisixV2beta3:
 		ac := multiVersioned.V2beta3()
 
-		consumer, err := c.controller.translator.TranslateApisixConsumerV2beta3(ac)
+		consumer, err := c.translator.TranslateApisixConsumerV2beta3(ac)
 		if err != nil {
 			log.Errorw("failed to translate ApisixConsumer",
 				zap.Error(err),
 				zap.Any("ApisixConsumer", ac),
 			)
-			c.controller.recorderEvent(ac, corev1.EventTypeWarning, providers._resourceSyncAborted, err)
-			c.controller.recordStatus(ac, providers._resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
+			c.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.recordStatus(ac, utils.ResourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 			return err
 		}
 		log.Debugw("got consumer object from ApisixConsumer",
@@ -156,28 +165,28 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 			zap.Any("ApisixConsumer", ac),
 		)
 
-		if err := c.controller.syncConsumer(ctx, consumer, ev.Type); err != nil {
+		if err := c.SyncConsumer(ctx, consumer, ev.Type); err != nil {
 			log.Errorw("failed to sync Consumer to APISIX",
 				zap.Error(err),
 				zap.Any("consumer", consumer),
 			)
-			c.controller.recorderEvent(ac, corev1.EventTypeWarning, providers._resourceSyncAborted, err)
-			c.controller.recordStatus(ac, providers._resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
+			c.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.recordStatus(ac, utils.ResourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 			return err
 		}
 
-		c.controller.recorderEvent(ac, corev1.EventTypeNormal, providers._resourceSynced, nil)
+		c.RecordEvent(ac, corev1.EventTypeNormal, utils.ResourceSynced, nil)
 	case config.ApisixV2:
 		ac := multiVersioned.V2()
 
-		consumer, err := c.controller.translator.TranslateApisixConsumerV2(ac)
+		consumer, err := c.translator.TranslateApisixConsumerV2(ac)
 		if err != nil {
 			log.Errorw("failed to translate ApisixConsumer",
 				zap.Error(err),
 				zap.Any("ApisixConsumer", ac),
 			)
-			c.controller.recorderEvent(ac, corev1.EventTypeWarning, providers._resourceSyncAborted, err)
-			c.controller.recordStatus(ac, providers._resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
+			c.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.recordStatus(ac, utils.ResourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 			return err
 		}
 		log.Debugw("got consumer object from ApisixConsumer",
@@ -185,17 +194,17 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 			zap.Any("ApisixConsumer", ac),
 		)
 
-		if err := c.controller.syncConsumer(ctx, consumer, ev.Type); err != nil {
+		if err := c.SyncConsumer(ctx, consumer, ev.Type); err != nil {
 			log.Errorw("failed to sync Consumer to APISIX",
 				zap.Error(err),
 				zap.Any("consumer", consumer),
 			)
-			c.controller.recorderEvent(ac, corev1.EventTypeWarning, providers._resourceSyncAborted, err)
-			c.controller.recordStatus(ac, providers._resourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
+			c.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.recordStatus(ac, utils.ResourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
 			return err
 		}
 
-		c.controller.recorderEvent(ac, corev1.EventTypeNormal, providers._resourceSynced, nil)
+		c.RecordEvent(ac, corev1.EventTypeNormal, utils.ResourceSynced, nil)
 	}
 	return nil
 }
@@ -234,7 +243,7 @@ func (c *apisixConsumerController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixConsumer resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixConsumer add event arrived",
@@ -271,7 +280,7 @@ func (c *apisixConsumerController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorf("found ApisixConsumer resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixConsumer update event arrived",
@@ -310,7 +319,7 @@ func (c *apisixConsumerController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixConsumer resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixConsumer delete event arrived",
@@ -336,7 +345,7 @@ func (c *apisixConsumerController) ResourceSync() {
 			log.Errorw("ApisixConsumer sync failed, found ApisixConsumer resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
-		if !c.NamespaceProvider.IsWatchingNamespace(key) {
+		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
 		ac, err := kube.NewApisixConsumer(obj)
@@ -351,5 +360,66 @@ func (c *apisixConsumerController) ResourceSync() {
 				GroupVersion: ac.GroupVersion(),
 			},
 		})
+	}
+}
+
+// recordStatus record resources status
+func (c *apisixConsumerController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
+	// build condition
+	message := utils.CommonSuccessMessage
+	if err != nil {
+		message = err.Error()
+	}
+	condition := metav1.Condition{
+		Type:               utils.ConditionType,
+		Reason:             reason,
+		Status:             status,
+		Message:            message,
+		ObservedGeneration: generation,
+	}
+	apisixClient := c.KubeClient.APISIXClient
+
+	if kubeObj, ok := at.(runtime.Object); ok {
+		at = kubeObj.DeepCopyObject()
+	}
+
+	switch v := at.(type) {
+	case *configv2beta3.ApisixConsumer:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			if _, errRecord := apisixClient.ApisixV2beta3().ApisixConsumers(v.Namespace).
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for ApisixConsumer",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+					zap.String("namespace", v.Namespace),
+				)
+			}
+		}
+	case *configv2.ApisixConsumer:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			if _, errRecord := apisixClient.ApisixV2().ApisixConsumers(v.Namespace).
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for ApisixConsumer",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+					zap.String("namespace", v.Namespace),
+				)
+			}
+		}
+	default:
+		// This should not be executed
+		log.Errorf("unsupported resource record: %s", v)
 	}
 }

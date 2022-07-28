@@ -153,7 +153,7 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 func (c *gatewayController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
-		c.MetricsCollector.IncrSyncOperation("gateway", "success")
+		c.controller.MetricsCollector.IncrSyncOperation("gateway", "success")
 		return
 	}
 	event := obj.(*types.Event)
@@ -170,7 +170,7 @@ func (c *gatewayController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
-	c.MetricsCollector.IncrSyncOperation("gateway", "failure")
+	c.controller.MetricsCollector.IncrSyncOperation("gateway", "failure")
 }
 
 func (c *gatewayController) onAdd(obj interface{}) {

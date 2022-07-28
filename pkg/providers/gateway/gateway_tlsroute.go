@@ -41,8 +41,8 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
@@ -196,7 +196,7 @@ func (c *gatewayTLSRouteController) sync(ctx context.Context, ev *types.Event) e
 func (c *gatewayTLSRouteController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
-		c.MetricsCollector.IncrSyncOperation("gateway_tlsroute", "success")
+		c.controller.MetricsCollector.IncrSyncOperation("gateway_tlsroute", "success")
 		return
 	}
 	event := obj.(*types.Event)
@@ -213,7 +213,7 @@ func (c *gatewayTLSRouteController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
-	c.MetricsCollector.IncrSyncOperation("gateway_tlsroute", "failure")
+	c.controller.MetricsCollector.IncrSyncOperation("gateway_tlsroute", "failure")
 }
 
 func (c *gatewayTLSRouteController) onAdd(obj interface{}) {

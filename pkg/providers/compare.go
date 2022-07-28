@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package utils
+package providers
 
 import (
 	"context"
@@ -25,12 +25,13 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
+// TODO: This should be the init phase of APISIX provider
 // CompareResources used to compare the object IDs in resources and APISIX
 // Find out the rest of objects in APISIX
 // AND warn them in log.
 // This func is NOT concurrency safe.
 // cc https://github.com/apache/apisix-ingress-controller/pull/742#discussion_r757197791
-func (c *providers.Controller) CompareResources(ctx context.Context) error {
+func (c *Controller) CompareResources(ctx context.Context) error {
 	var (
 		wg                 sync.WaitGroup
 		routeMapK8S        = new(sync.Map)
@@ -64,7 +65,7 @@ func (c *providers.Controller) CompareResources(ctx context.Context) error {
 					ctx.Done()
 				} else {
 					for _, r := range retRoutes.Items {
-						tc, err := c.translator.TranslateRouteV2beta3NotStrictly(&r)
+						tc, err := c.apisixTranslator.TranslateRouteV2beta3NotStrictly(&r)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -99,7 +100,7 @@ func (c *providers.Controller) CompareResources(ctx context.Context) error {
 					ctx.Done()
 				} else {
 					for _, r := range retRoutes.Items {
-						tc, err := c.translator.TranslateRouteV2NotStrictly(&r)
+						tc, err := c.apisixTranslator.TranslateRouteV2NotStrictly(&r)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -144,7 +145,7 @@ func (c *providers.Controller) CompareResources(ctx context.Context) error {
 					ctx.Done()
 				} else {
 					for _, con := range retConsumer.Items {
-						consumer, err := c.translator.TranslateApisixConsumerV2beta3(&con)
+						consumer, err := c.apisixTranslator.TranslateApisixConsumerV2beta3(&con)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -160,7 +161,7 @@ func (c *providers.Controller) CompareResources(ctx context.Context) error {
 					ctx.Done()
 				} else {
 					for _, s := range retSSL.Items {
-						ssl, err := c.translator.TranslateSSLV2Beta3(&s)
+						ssl, err := c.apisixTranslator.TranslateSSLV2Beta3(&s)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -177,7 +178,7 @@ func (c *providers.Controller) CompareResources(ctx context.Context) error {
 					ctx.Done()
 				} else {
 					for _, con := range retConsumer.Items {
-						consumer, err := c.translator.TranslateApisixConsumerV2(&con)
+						consumer, err := c.apisixTranslator.TranslateApisixConsumerV2(&con)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -193,7 +194,7 @@ func (c *providers.Controller) CompareResources(ctx context.Context) error {
 					ctx.Done()
 				} else {
 					for _, s := range retSSL.Items {
-						ssl, err := c.translator.TranslateSSLV2(&s)
+						ssl, err := c.apisixTranslator.TranslateSSLV2(&s)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -267,7 +268,7 @@ func findRedundant(src map[string]string, dest *sync.Map) map[string]string {
 	return result
 }
 
-func (c *providers.Controller) listRouteCache(ctx context.Context, routeMapA6 map[string]string) error {
+func (c *Controller) listRouteCache(ctx context.Context, routeMapA6 map[string]string) error {
 	routesInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Route().List(ctx)
 	if err != nil {
 		return err
@@ -279,7 +280,7 @@ func (c *providers.Controller) listRouteCache(ctx context.Context, routeMapA6 ma
 	return nil
 }
 
-func (c *providers.Controller) listStreamRouteCache(ctx context.Context, streamRouteMapA6 map[string]string) error {
+func (c *Controller) listStreamRouteCache(ctx context.Context, streamRouteMapA6 map[string]string) error {
 	streamRoutesInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).StreamRoute().List(ctx)
 	if err != nil {
 		return err
@@ -291,7 +292,7 @@ func (c *providers.Controller) listStreamRouteCache(ctx context.Context, streamR
 	return nil
 }
 
-func (c *providers.Controller) listUpstreamCache(ctx context.Context, upstreamMapA6 map[string]string) error {
+func (c *Controller) listUpstreamCache(ctx context.Context, upstreamMapA6 map[string]string) error {
 	upstreamsInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Upstream().List(ctx)
 	if err != nil {
 		return err
@@ -303,7 +304,7 @@ func (c *providers.Controller) listUpstreamCache(ctx context.Context, upstreamMa
 	return nil
 }
 
-func (c *providers.Controller) listSSLCache(ctx context.Context, sslMapA6 map[string]string) error {
+func (c *Controller) listSSLCache(ctx context.Context, sslMapA6 map[string]string) error {
 	sslInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).SSL().List(ctx)
 	if err != nil {
 		return err
@@ -315,7 +316,7 @@ func (c *providers.Controller) listSSLCache(ctx context.Context, sslMapA6 map[st
 	return nil
 }
 
-func (c *providers.Controller) listConsumerCache(ctx context.Context, consumerMapA6 map[string]string) error {
+func (c *Controller) listConsumerCache(ctx context.Context, consumerMapA6 map[string]string) error {
 	consumerInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Consumer().List(ctx)
 	if err != nil {
 		return err
@@ -327,7 +328,7 @@ func (c *providers.Controller) listConsumerCache(ctx context.Context, consumerMa
 	return nil
 }
 
-func (c *providers.Controller) listPluginConfigCache(ctx context.Context, pluginConfigMapA6 map[string]string) error {
+func (c *Controller) listPluginConfigCache(ctx context.Context, pluginConfigMapA6 map[string]string) error {
 	pluginConfigInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).PluginConfig().List(ctx)
 	if err != nil {
 		return err

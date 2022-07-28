@@ -16,10 +16,6 @@ package endpoint
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
 	"time"
 
 	"go.uber.org/zap"
@@ -30,28 +26,33 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type endpointsController struct {
-	controller *providers.Controller
-	workqueue  workqueue.RateLimitingInterface
-	workers    int
+	*baseEndpointController
 
-	cfg *config.Config
+	workqueue workqueue.RateLimitingInterface
+	workers   int
+
+	namespaceProvider namespace.WatchingNamespaceProvider
 
 	epInformer cache.SharedIndexInformer
 	epLister   kube.EndpointLister
-
-	MetricsCollector  metrics.Collector
-	NamespaceProvider namespace.WatchingNamespaceProvider
 }
 
-func NewEndpointsController(epInformer cache.SharedIndexInformer, epLister kube.EndpointLister) *endpointsController {
+func newEndpointsController(base *baseEndpointController,
+	namespaceProvider namespace.WatchingNamespaceProvider,
+	epInformer cache.SharedIndexInformer, epLister kube.EndpointLister) *endpointsController {
 	ctl := &endpointsController{
+		baseEndpointController: base,
+
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "endpoints"),
 		workers:   1,
+
+		namespaceProvider: namespaceProvider,
 
 		epInformer: epInformer,
 		epLister:   epLister,
@@ -105,8 +106,8 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 		return err
 	}
 	if ev.Type == types.EventDelete {
-		clusterName := c.cfg.APISIX.DefaultClusterName
-		err = c.controller.apisix.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx,
+		clusterName := c.Config.APISIX.DefaultClusterName
+		err = c.APISIX.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx,
 			&v1.UpstreamServiceRelation{
 				ServiceName: ns + "_" + ep.ServiceName(),
 			})
@@ -121,7 +122,7 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 		}
 		newestEp = ep
 	}
-	return c.controller.syncEndpoint(ctx, newestEp)
+	return c.syncEndpoint(ctx, newestEp)
 }
 
 func (c *endpointsController) handleSyncErr(obj interface{}, err error) {
@@ -152,7 +153,7 @@ func (c *endpointsController) onAdd(obj interface{}) {
 		log.Errorf("found endpoints object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("endpoints add event arrived",
@@ -179,7 +180,7 @@ func (c *endpointsController) onUpdate(prev, curr interface{}) {
 		log.Errorf("found endpoints object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("endpoints update event arrived",
@@ -209,7 +210,7 @@ func (c *endpointsController) onDelete(obj interface{}) {
 	// FIXME Refactor Controller.isWatchingNamespace to just use
 	// namespace after all controllers use the same way to fetch
 	// the object.
-	if !c.NamespaceProvider.IsWatchingNamespace(ep.Namespace + "/" + ep.Name) {
+	if !c.namespaceProvider.IsWatchingNamespace(ep.Namespace + "/" + ep.Name) {
 		return
 	}
 	log.Debugw("endpoints delete event arrived",

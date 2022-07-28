@@ -20,6 +20,7 @@ import (
 
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -38,24 +39,24 @@ var (
 	_hmacAuthMaxReqBodyDefaultValue          = int64(524288)
 )
 
-func (t *translator) translateTrafficSplitPlugin(ctx *TranslateContext, ns string, defaultBackendWeight int,
+func (t *translator) translateTrafficSplitPlugin(ctx *translation.TranslateContext, ns string, defaultBackendWeight int,
 	backends []configv2.ApisixRouteHTTPBackend) (*apisixv1.TrafficSplitConfig, error) {
 	var (
 		wups []apisixv1.TrafficSplitConfigRuleWeightedUpstream
 	)
 
 	for _, backend := range backends {
-		svcClusterIP, svcPort, err := t.getServiceClusterIPAndPort(&backend, ns)
+		svcClusterIP, svcPort, err := t.GetServiceClusterIPAndPort(&backend, ns)
 		if err != nil {
 			return nil, err
 		}
-		ups, err := t.translateUpstream(ns, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
+		ups, err := t.translateService(ns, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
 		if err != nil {
 			return nil, err
 		}
 		ctx.AddUpstream(ups)
 
-		weight := _defaultWeight
+		weight := translation.DefaultWeight
 		if backend.Weight != nil {
 			weight = *backend.Weight
 		}

@@ -16,16 +16,15 @@ package apisix
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
 	"sync"
 	"time"
 
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -33,53 +32,61 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type apisixRouteController struct {
-	controller *providers.Controller
-	workqueue  workqueue.RateLimitingInterface
-	workers    int
+	*apisixCommon
+	workqueue workqueue.RateLimitingInterface
+	workers   int
 
-	cfg               *config.Config
-	MetricsCollector  metrics.Collector
-	NamespaceProvider namespace.WatchingNamespaceProvider
-
+	svcInformer         cache.SharedIndexInformer
 	apisixRouteLister   kube.ApisixRouteLister
 	apisixRouteInformer cache.SharedIndexInformer
-	svcInformer         cache.SharedIndexInformer
 
 	svcLock sync.RWMutex
 	svcMap  map[string]map[string]struct{}
 }
 
-func newApisixRouteController() *apisixRouteController {
-	ctl := &apisixRouteController{
-		controller: c,
-		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),
-		workers:    1,
+func newApisixRouteController(common *apisixCommon, svcInformer cache.SharedIndexInformer, apisixRouteInformer cache.SharedIndexInformer) *apisixRouteController {
+	c := &apisixRouteController{
+		apisixCommon: common,
+		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),
+		workers:      1,
+
+		svcInformer:         svcInformer,
+		apisixRouteInformer: apisixRouteInformer,
 
 		svcMap: make(map[string]map[string]struct{}),
 	}
-	ctl.apisixRouteInformer.AddEventHandler(
+
+	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
+	c.apisixRouteLister = kube.NewApisixRouteLister(
+		apisixFactory.Apisix().V2beta2().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2().ApisixRoutes().Lister(),
+	)
+
+	c.apisixRouteInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    ctl.onAdd,
-			UpdateFunc: ctl.onUpdate,
-			DeleteFunc: ctl.onDelete,
+			AddFunc:    c.onAdd,
+			UpdateFunc: c.onUpdate,
+			DeleteFunc: c.onDelete,
 		},
 	)
-	ctl.svcInformer.AddEventHandler(
+	c.svcInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc: ctl.onSvcAdd,
+			AddFunc: c.onSvcAdd,
 		},
 	)
 
-	return ctl
+	return c
 }
 
 func (c *apisixRouteController) run(ctx context.Context) {
@@ -268,9 +275,9 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	switch obj.GroupVersion {
 	case config.ApisixV2beta2:
 		if ev.Type != types.EventDelete {
-			tctx, err = c.controller.translator.TranslateRouteV2beta2(ar.V2beta2())
+			tctx, err = c.translator.TranslateRouteV2beta2(ar.V2beta2())
 		} else {
-			tctx, err = c.controller.translator.TranslateRouteV2beta2NotStrictly(ar.V2beta2())
+			tctx, err = c.translator.TranslateRouteV2beta2NotStrictly(ar.V2beta2())
 		}
 		if err != nil {
 			log.Errorw("failed to translate ApisixRoute v2beta2",
@@ -282,10 +289,10 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	case config.ApisixV2beta3:
 		if ev.Type != types.EventDelete {
 			if err = c.checkPluginNameIfNotEmptyV2beta3(ctx, ar.V2beta3()); err == nil {
-				tctx, err = c.controller.translator.TranslateRouteV2beta3(ar.V2beta3())
+				tctx, err = c.translator.TranslateRouteV2beta3(ar.V2beta3())
 			}
 		} else {
-			tctx, err = c.controller.translator.TranslateRouteV2beta3NotStrictly(ar.V2beta3())
+			tctx, err = c.translator.TranslateRouteV2beta3NotStrictly(ar.V2beta3())
 		}
 		if err != nil {
 			log.Errorw("failed to translate ApisixRoute v2beta3",
@@ -297,10 +304,10 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	case config.ApisixV2:
 		if ev.Type != types.EventDelete {
 			if err = c.checkPluginNameIfNotEmptyV2(ctx, ar.V2()); err == nil {
-				tctx, err = c.controller.translator.TranslateRouteV2(ar.V2())
+				tctx, err = c.translator.TranslateRouteV2(ar.V2())
 			}
 		} else {
-			tctx, err = c.controller.translator.TranslateRouteV2NotStrictly(ar.V2())
+			tctx, err = c.translator.TranslateRouteV2NotStrictly(ar.V2())
 		}
 		if err != nil {
 			log.Errorw("failed to translate ApisixRoute v2",
@@ -346,13 +353,13 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		added, updated, deleted = m.Diff(om)
 	}
 
-	return c.controller.syncManifests(ctx, added, updated, deleted)
+	return c.SyncManifests(ctx, added, updated, deleted)
 }
 
 func (c *apisixRouteController) checkPluginNameIfNotEmptyV2beta3(ctx context.Context, in *v2beta3.ApisixRoute) error {
 	for _, v := range in.Spec.HTTP {
 		if v.PluginConfigName != "" {
-			_, err := c.controller.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName))
+			_, err := c.APISIX.Cluster(c.Config.APISIX.DefaultClusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName))
 			if err != nil {
 				if err == apisixcache.ErrNotFound {
 					log.Errorw("checkPluginNameIfNotEmptyV2beta3 error: plugin_config not found",
@@ -375,7 +382,7 @@ func (c *apisixRouteController) checkPluginNameIfNotEmptyV2beta3(ctx context.Con
 func (c *apisixRouteController) checkPluginNameIfNotEmptyV2(ctx context.Context, in *v2.ApisixRoute) error {
 	for _, v := range in.Spec.HTTP {
 		if v.PluginConfigName != "" {
-			_, err := c.controller.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName))
+			_, err := c.APISIX.Cluster(c.Config.APISIX.DefaultClusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName))
 			if err != nil {
 				if err == apisixcache.ErrNotFound {
 					log.Errorw("checkPluginNameIfNotEmptyV2 error: plugin_config not found",
@@ -426,14 +433,14 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 			if errLocal == nil {
 				switch ar.GroupVersion() {
 				case config.ApisixV2beta2:
-					c.controller.recorderEvent(ar.V2beta2(), v1.EventTypeNormal, providers._resourceSynced, nil)
-					c.controller.recordStatus(ar.V2beta2(), providers._resourceSynced, nil, metav1.ConditionTrue, ar.V2beta2().GetGeneration())
+					c.RecordEvent(ar.V2beta2(), v1.EventTypeNormal, utils.ResourceSynced, nil)
+					c.recordStatus(ar.V2beta2(), utils.ResourceSynced, nil, metav1.ConditionTrue, ar.V2beta2().GetGeneration())
 				case config.ApisixV2beta3:
-					c.controller.recorderEvent(ar.V2beta3(), v1.EventTypeNormal, providers._resourceSynced, nil)
-					c.controller.recordStatus(ar.V2beta3(), providers._resourceSynced, nil, metav1.ConditionTrue, ar.V2beta3().GetGeneration())
+					c.RecordEvent(ar.V2beta3(), v1.EventTypeNormal, utils.ResourceSynced, nil)
+					c.recordStatus(ar.V2beta3(), utils.ResourceSynced, nil, metav1.ConditionTrue, ar.V2beta3().GetGeneration())
 				case config.ApisixV2:
-					c.controller.recorderEvent(ar.V2(), v1.EventTypeNormal, providers._resourceSynced, nil)
-					c.controller.recordStatus(ar.V2(), providers._resourceSynced, nil, metav1.ConditionTrue, ar.V2().GetGeneration())
+					c.RecordEvent(ar.V2(), v1.EventTypeNormal, utils.ResourceSynced, nil)
+					c.recordStatus(ar.V2(), utils.ResourceSynced, nil, metav1.ConditionTrue, ar.V2().GetGeneration())
 				}
 			} else {
 				log.Errorw("failed list ApisixRoute",
@@ -454,14 +461,14 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	if errLocal == nil {
 		switch ar.GroupVersion() {
 		case config.ApisixV2beta2:
-			c.controller.recorderEvent(ar.V2beta2(), v1.EventTypeWarning, providers._resourceSyncAborted, errOrigin)
-			c.controller.recordStatus(ar.V2beta2(), providers._resourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta2().GetGeneration())
+			c.RecordEvent(ar.V2beta2(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
+			c.recordStatus(ar.V2beta2(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta2().GetGeneration())
 		case config.ApisixV2beta3:
-			c.controller.recorderEvent(ar.V2beta3(), v1.EventTypeWarning, providers._resourceSyncAborted, errOrigin)
-			c.controller.recordStatus(ar.V2beta3(), providers._resourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta3().GetGeneration())
+			c.RecordEvent(ar.V2beta3(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
+			c.recordStatus(ar.V2beta3(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta3().GetGeneration())
 		case config.ApisixV2:
-			c.controller.recorderEvent(ar.V2(), v1.EventTypeWarning, providers._resourceSyncAborted, errOrigin)
-			c.controller.recordStatus(ar.V2(), providers._resourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2().GetGeneration())
+			c.RecordEvent(ar.V2(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
+			c.recordStatus(ar.V2(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2().GetGeneration())
 		}
 	} else {
 		log.Errorw("failed list ApisixRoute",
@@ -480,7 +487,7 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixRoute resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixRoute add event arrived",
@@ -511,7 +518,7 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorf("found ApisixRoute resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixRoute update event arrived",
@@ -545,7 +552,7 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixRoute resource with bad meta namesapce key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixRoute delete event arrived",
@@ -580,7 +587,7 @@ func (c *apisixRouteController) ResourceSync() {
 			)
 			continue
 		}
-		if !c.NamespaceProvider.IsWatchingNamespace(key) {
+		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
 		ar := kube.MustNewApisixRoute(obj)
@@ -637,7 +644,7 @@ func (c *apisixRouteController) onSvcAdd(obj interface{}) {
 		)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 
@@ -664,7 +671,7 @@ func (c *apisixRouteController) handleSvcAdd(key string) error {
 				Type: types.EventAdd,
 				Object: kube.ApisixRouteEvent{
 					Key:          ns + "/" + route,
-					GroupVersion: c.cfg.Kubernetes.ApisixRouteVersion,
+					GroupVersion: c.Kubernetes.ApisixRouteVersion,
 				},
 			})
 		}
@@ -689,15 +696,15 @@ func (c *apisixRouteController) handleSvcErr(key string, errOrigin error) {
 // Building objects from cache
 // For old objects, you cannot use TranslateRoute to build. Because it needs to parse the latest service, which will cause data inconsistency
 func (c *apisixRouteController) getOldTranslateContext(ctx context.Context, kar kube.ApisixRoute) (*translation.TranslateContext, error) {
-	clusterName := c.cfg.APISIX.DefaultClusterName
+	clusterName := c.Config.APISIX.DefaultClusterName
 	oldCtx := translation.DefaultEmptyTranslateContext()
 
-	switch c.cfg.Kubernetes.ApisixRouteVersion {
+	switch c.Kubernetes.ApisixRouteVersion {
 	case config.ApisixV2beta3:
 		ar := kar.V2beta3()
 		for _, part := range ar.Spec.Stream {
 			name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
-			sr, err := c.controller.apisix.Cluster(clusterName).StreamRoute().Get(ctx, name)
+			sr, err := c.APISIX.Cluster(clusterName).StreamRoute().Get(ctx, name)
 			if err != nil {
 				continue
 			}
@@ -710,7 +717,7 @@ func (c *apisixRouteController) getOldTranslateContext(ctx context.Context, kar 
 		}
 		for _, part := range ar.Spec.HTTP {
 			name := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
-			r, err := c.controller.apisix.Cluster(clusterName).Route().Get(ctx, name)
+			r, err := c.APISIX.Cluster(clusterName).Route().Get(ctx, name)
 			if err != nil {
 				continue
 			}
@@ -730,7 +737,7 @@ func (c *apisixRouteController) getOldTranslateContext(ctx context.Context, kar 
 		ar := kar.V2()
 		for _, part := range ar.Spec.Stream {
 			name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
-			sr, err := c.controller.apisix.Cluster(clusterName).StreamRoute().Get(ctx, name)
+			sr, err := c.APISIX.Cluster(clusterName).StreamRoute().Get(ctx, name)
 			if err != nil {
 				continue
 			}
@@ -743,7 +750,7 @@ func (c *apisixRouteController) getOldTranslateContext(ctx context.Context, kar 
 		}
 		for _, part := range ar.Spec.HTTP {
 			name := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
-			r, err := c.controller.apisix.Cluster(clusterName).Route().Get(ctx, name)
+			r, err := c.APISIX.Cluster(clusterName).Route().Get(ctx, name)
 			if err != nil {
 				continue
 			}
@@ -762,4 +769,82 @@ func (c *apisixRouteController) getOldTranslateContext(ctx context.Context, kar 
 		}
 	}
 	return oldCtx, nil
+}
+
+// recordStatus record resources status
+func (c *apisixRouteController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
+	// build condition
+	message := utils.CommonSuccessMessage
+	if err != nil {
+		message = err.Error()
+	}
+	condition := metav1.Condition{
+		Type:               utils.ConditionType,
+		Reason:             reason,
+		Status:             status,
+		Message:            message,
+		ObservedGeneration: generation,
+	}
+	apisixClient := c.KubeClient.APISIXClient
+
+	if kubeObj, ok := at.(runtime.Object); ok {
+		at = kubeObj.DeepCopyObject()
+	}
+
+	switch v := at.(type) {
+	case *configv2beta2.ApisixRoute:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			if _, errRecord := apisixClient.ApisixV2beta2().ApisixRoutes(v.Namespace).
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for ApisixRoute",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+					zap.String("namespace", v.Namespace),
+				)
+			}
+		}
+	case *v2beta3.ApisixRoute:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			if _, errRecord := apisixClient.ApisixV2beta3().ApisixRoutes(v.Namespace).
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for ApisixRoute",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+					zap.String("namespace", v.Namespace),
+				)
+			}
+		}
+	case *v2.ApisixRoute:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			if _, errRecord := apisixClient.ApisixV2().ApisixRoutes(v.Namespace).
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for ApisixRoute",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+					zap.String("namespace", v.Namespace),
+				)
+			}
+		}
+	default:
+		// This should not be executed
+		log.Errorf("unsupported resource record: %s", v)
+	}
 }

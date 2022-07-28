@@ -17,16 +17,58 @@ package translation
 import (
 	"fmt"
 
+	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
+func (t *translator) TranslateUpstreamConfigV2beta3(au *configv2beta3.ApisixUpstreamConfig) (*apisixv1.Upstream, error) {
+	ups := apisixv1.NewDefaultUpstream()
+	if err := t.translateUpstreamScheme(au.Scheme, ups); err != nil {
+		return nil, err
+	}
+	if err := t.translateUpstreamLoadBalancerV2beta3(au.LoadBalancer, ups); err != nil {
+		return nil, err
+	}
+	if err := t.translateUpstreamHealthCheckV2beta3(au.HealthCheck, ups); err != nil {
+		return nil, err
+	}
+	if err := t.translateUpstreamRetriesAndTimeoutV2beta3(au.Retries, au.Timeout, ups); err != nil {
+		return nil, err
+	}
+	if err := t.translateClientTLSV2beta3(au.TLSSecret, ups); err != nil {
+		return nil, err
+	}
+	return ups, nil
+}
+
+func (t *translator) TranslateUpstreamConfigV2(au *configv2.ApisixUpstreamConfig) (*apisixv1.Upstream, error) {
+	ups := apisixv1.NewDefaultUpstream()
+	if err := t.translateUpstreamScheme(au.Scheme, ups); err != nil {
+		return nil, err
+	}
+	if err := t.translateUpstreamLoadBalancerV2(au.LoadBalancer, ups); err != nil {
+		return nil, err
+	}
+	if err := t.translateUpstreamHealthCheckV2(au.HealthCheck, ups); err != nil {
+		return nil, err
+	}
+	if err := t.translateUpstreamRetriesAndTimeoutV2(au.Retries, au.Timeout, ups); err != nil {
+		return nil, err
+	}
+	if err := t.translateClientTLSV2(au.TLSSecret, ups); err != nil {
+		return nil, err
+	}
+	return ups, nil
+}
+
 func (t *translator) translateUpstreamRetriesAndTimeoutV2beta3(retries *int, timeout *configv2beta3.UpstreamTimeout, ups *apisixv1.Upstream) error {
 	if retries != nil && *retries < 0 {
-		return &translateError{
-			field:  "retries",
-			reason: "invalid value",
+		return &translation.TranslateError{
+			Field:  "retries",
+			Reason: "invalid value",
 		}
 	}
 	ups.Retries = retries
@@ -40,25 +82,25 @@ func (t *translator) translateUpstreamRetriesAndTimeoutV2beta3(retries *int, tim
 	readTimeout := apisixv1.DefaultUpstreamTimeout
 	sendTimeout := apisixv1.DefaultUpstreamTimeout
 	if timeout.Connect.Duration < 0 {
-		return &translateError{
-			field:  "timeout.connect",
-			reason: "invalid value",
+		return &translation.TranslateError{
+			Field:  "timeout.connect",
+			Reason: "invalid value",
 		}
 	} else if timeout.Connect.Duration > 0 {
 		connTimeout = int(timeout.Connect.Seconds())
 	}
 	if timeout.Read.Duration < 0 {
-		return &translateError{
-			field:  "timeout.read",
-			reason: "invalid value",
+		return &translation.TranslateError{
+			Field:  "timeout.read",
+			Reason: "invalid value",
 		}
 	} else if timeout.Read.Duration > 0 {
 		readTimeout = int(timeout.Read.Seconds())
 	}
 	if timeout.Send.Duration < 0 {
-		return &translateError{
-			field:  "timeout.send",
-			reason: "invalid value",
+		return &translation.TranslateError{
+			Field:  "timeout.send",
+			Reason: "invalid value",
 		}
 	} else if timeout.Send.Duration > 0 {
 		sendTimeout = int(timeout.Send.Seconds())
@@ -81,7 +123,7 @@ func (t *translator) translateUpstreamScheme(scheme string, ups *apisixv1.Upstre
 		ups.Scheme = scheme
 		return nil
 	default:
-		return &translateError{field: "scheme", reason: "invalid value"}
+		return &translation.TranslateError{Field: "scheme", Reason: "invalid value"}
 	}
 }
 
@@ -108,12 +150,12 @@ func (t *translator) translateUpstreamLoadBalancerV2beta3(lb *configv2beta3.Load
 		case apisixv1.HashOnVarsCombination:
 			ups.HashOn = lb.HashOn
 		default:
-			return &translateError{field: "loadbalancer.hashOn", reason: "invalid value"}
+			return &translation.TranslateError{Field: "loadbalancer.hashOn", Reason: "invalid value"}
 		}
 	default:
-		return &translateError{
-			field:  "loadbalancer.type",
-			reason: "invalid value",
+		return &translation.TranslateError{
+			Field:  "loadbalancer.type",
+			Reason: "invalid value",
 		}
 	}
 	return nil
@@ -139,9 +181,9 @@ func (t *translator) translateUpstreamHealthCheckV2beta3(config *configv2beta3.H
 		}
 		hc.Active = active
 	} else {
-		return &translateError{
-			field:  "healthCheck.active",
-			reason: "not exist",
+		return &translation.TranslateError{
+			Field:  "healthCheck.active",
+			Reason: "not exist",
 		}
 	}
 
@@ -155,16 +197,16 @@ func (t translator) translateClientTLSV2beta3(config *configv2beta3.ApisixSecret
 	}
 	s, err := t.SecretLister.Secrets(config.Namespace).Get(config.Name)
 	if err != nil {
-		return &translateError{
-			field:  "tlsSecret",
-			reason: fmt.Sprintf("get secret failed, %v", err),
+		return &translation.TranslateError{
+			Field:  "tlsSecret",
+			Reason: fmt.Sprintf("get secret failed, %v", err),
 		}
 	}
 	cert, key, err := t.ExtractKeyPair(s, true)
 	if err != nil {
-		return &translateError{
-			field:  "tlsSecret",
-			reason: fmt.Sprintf("extract cert and key from secret failed, %v", err),
+		return &translation.TranslateError{
+			Field:  "tlsSecret",
+			Reason: fmt.Sprintf("extract cert and key from secret failed, %v", err),
 		}
 	}
 	ups.TLS = &apisixv1.ClientTLS{
@@ -182,25 +224,25 @@ func (t *translator) translateUpstreamActiveHealthCheckV2beta3(config *configv2b
 	case "":
 		active.Type = apisixv1.HealthCheckHTTP
 	default:
-		return nil, &translateError{
-			field:  "healthCheck.active.Type",
-			reason: "invalid value",
+		return nil, &translation.TranslateError{
+			Field:  "healthCheck.active.Type",
+			Reason: "invalid value",
 		}
 	}
 
 	active.Timeout = int(config.Timeout.Seconds())
 	if config.Port < 0 || config.Port > 65535 {
-		return nil, &translateError{
-			field:  "healthCheck.active.port",
-			reason: "invalid value",
+		return nil, &translation.TranslateError{
+			Field:  "healthCheck.active.port",
+			Reason: "invalid value",
 		}
 	} else {
 		active.Port = config.Port
 	}
 	if config.Concurrency < 0 {
-		return nil, &translateError{
-			field:  "healthCheck.active.concurrency",
-			reason: "invalid value",
+		return nil, &translation.TranslateError{
+			Field:  "healthCheck.active.concurrency",
+			Reason: "invalid value",
 		}
 	} else {
 		active.Concurrency = config.Concurrency
@@ -215,24 +257,24 @@ func (t *translator) translateUpstreamActiveHealthCheckV2beta3(config *configv2b
 
 	if config.Healthy != nil {
 		if config.Healthy.Successes < 0 || config.Healthy.Successes > apisixv1.HealthCheckMaxConsecutiveNumber {
-			return nil, &translateError{
-				field:  "healthCheck.active.healthy.successes",
-				reason: "invalid value",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.active.healthy.successes",
+				Reason: "invalid value",
 			}
 		}
 		active.Healthy.Successes = config.Healthy.Successes
 		if config.Healthy.HTTPCodes != nil && len(config.Healthy.HTTPCodes) < 1 {
-			return nil, &translateError{
-				field:  "healthCheck.active.healthy.httpCodes",
-				reason: "empty",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.active.healthy.httpCodes",
+				Reason: "empty",
 			}
 		}
 		active.Healthy.HTTPStatuses = config.Healthy.HTTPCodes
 
 		if config.Healthy.Interval.Duration < apisixv1.ActiveHealthCheckMinInterval {
-			return nil, &translateError{
-				field:  "healthCheck.active.healthy.interval",
-				reason: "invalid value",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.active.healthy.interval",
+				Reason: "invalid value",
 			}
 		}
 		active.Healthy.Interval = int(config.Healthy.Interval.Seconds())
@@ -240,34 +282,34 @@ func (t *translator) translateUpstreamActiveHealthCheckV2beta3(config *configv2b
 
 	if config.Unhealthy != nil {
 		if config.Unhealthy.HTTPFailures < 0 || config.Unhealthy.HTTPFailures > apisixv1.HealthCheckMaxConsecutiveNumber {
-			return nil, &translateError{
-				field:  "healthCheck.active.unhealthy.httpFailures",
-				reason: "invalid value",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.active.unhealthy.httpFailures",
+				Reason: "invalid value",
 			}
 		}
 		active.Unhealthy.HTTPFailures = config.Unhealthy.HTTPFailures
 
 		if config.Unhealthy.TCPFailures < 0 || config.Unhealthy.TCPFailures > apisixv1.HealthCheckMaxConsecutiveNumber {
-			return nil, &translateError{
-				field:  "healthCheck.active.unhealthy.tcpFailures",
-				reason: "invalid value",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.active.unhealthy.tcpFailures",
+				Reason: "invalid value",
 			}
 		}
 		active.Unhealthy.TCPFailures = config.Unhealthy.TCPFailures
 		active.Unhealthy.Timeouts = config.Unhealthy.Timeouts
 
 		if config.Unhealthy.HTTPCodes != nil && len(config.Unhealthy.HTTPCodes) < 1 {
-			return nil, &translateError{
-				field:  "healthCheck.active.unhealthy.httpCodes",
-				reason: "empty",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.active.unhealthy.httpCodes",
+				Reason: "empty",
 			}
 		}
 		active.Unhealthy.HTTPStatuses = config.Unhealthy.HTTPCodes
 
 		if config.Unhealthy.Interval.Duration < apisixv1.ActiveHealthCheckMinInterval {
-			return nil, &translateError{
-				field:  "healthCheck.active.unhealthy.interval",
-				reason: "invalid value",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.active.unhealthy.interval",
+				Reason: "invalid value",
 			}
 		}
 		active.Unhealthy.Interval = int(config.Unhealthy.Interval.Seconds())
@@ -284,24 +326,24 @@ func (t *translator) translateUpstreamPassiveHealthCheckV2beta3(config *configv2
 	case "":
 		passive.Type = apisixv1.HealthCheckHTTP
 	default:
-		return nil, &translateError{
-			field:  "healthCheck.passive.Type",
-			reason: "invalid value",
+		return nil, &translation.TranslateError{
+			Field:  "healthCheck.passive.Type",
+			Reason: "invalid value",
 		}
 	}
 	if config.Healthy != nil {
 		// zero means use the default value.
 		if config.Healthy.Successes < 0 || config.Healthy.Successes > apisixv1.HealthCheckMaxConsecutiveNumber {
-			return nil, &translateError{
-				field:  "healthCheck.passive.healthy.successes",
-				reason: "invalid value",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.passive.healthy.successes",
+				Reason: "invalid value",
 			}
 		}
 		passive.Healthy.Successes = config.Healthy.Successes
 		if config.Healthy.HTTPCodes != nil && len(config.Healthy.HTTPCodes) < 1 {
-			return nil, &translateError{
-				field:  "healthCheck.passive.healthy.httpCodes",
-				reason: "empty",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.passive.healthy.httpCodes",
+				Reason: "empty",
 			}
 		}
 		passive.Healthy.HTTPStatuses = config.Healthy.HTTPCodes
@@ -309,26 +351,26 @@ func (t *translator) translateUpstreamPassiveHealthCheckV2beta3(config *configv2
 
 	if config.Unhealthy != nil {
 		if config.Unhealthy.HTTPFailures < 0 || config.Unhealthy.HTTPFailures > apisixv1.HealthCheckMaxConsecutiveNumber {
-			return nil, &translateError{
-				field:  "healthCheck.passive.unhealthy.httpFailures",
-				reason: "invalid value",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.passive.unhealthy.httpFailures",
+				Reason: "invalid value",
 			}
 		}
 		passive.Unhealthy.HTTPFailures = config.Unhealthy.HTTPFailures
 
 		if config.Unhealthy.TCPFailures < 0 || config.Unhealthy.TCPFailures > apisixv1.HealthCheckMaxConsecutiveNumber {
-			return nil, &translateError{
-				field:  "healthCheck.passive.unhealthy.tcpFailures",
-				reason: "invalid value",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.passive.unhealthy.tcpFailures",
+				Reason: "invalid value",
 			}
 		}
 		passive.Unhealthy.TCPFailures = config.Unhealthy.TCPFailures
 		passive.Unhealthy.Timeouts = config.Unhealthy.Timeouts
 
 		if config.Unhealthy.HTTPCodes != nil && len(config.Unhealthy.HTTPCodes) < 1 {
-			return nil, &translateError{
-				field:  "healthCheck.passive.unhealthy.httpCodes",
-				reason: "empty",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.passive.unhealthy.httpCodes",
+				Reason: "empty",
 			}
 		}
 		passive.Unhealthy.HTTPStatuses = config.Unhealthy.HTTPCodes
@@ -338,9 +380,9 @@ func (t *translator) translateUpstreamPassiveHealthCheckV2beta3(config *configv2
 
 func (t *translator) translateUpstreamRetriesAndTimeoutV2(retries *int, timeout *configv2.UpstreamTimeout, ups *apisixv1.Upstream) error {
 	if retries != nil && *retries < 0 {
-		return &translateError{
-			field:  "retries",
-			reason: "invalid value",
+		return &translation.TranslateError{
+			Field:  "retries",
+			Reason: "invalid value",
 		}
 	}
 	ups.Retries = retries
@@ -354,25 +396,25 @@ func (t *translator) translateUpstreamRetriesAndTimeoutV2(retries *int, timeout 
 	readTimeout := apisixv1.DefaultUpstreamTimeout
 	sendTimeout := apisixv1.DefaultUpstreamTimeout
 	if timeout.Connect.Duration < 0 {
-		return &translateError{
-			field:  "timeout.connect",
-			reason: "invalid value",
+		return &translation.TranslateError{
+			Field:  "timeout.connect",
+			Reason: "invalid value",
 		}
 	} else if timeout.Connect.Duration > 0 {
 		connTimeout = int(timeout.Connect.Seconds())
 	}
 	if timeout.Read.Duration < 0 {
-		return &translateError{
-			field:  "timeout.read",
-			reason: "invalid value",
+		return &translation.TranslateError{
+			Field:  "timeout.read",
+			Reason: "invalid value",
 		}
 	} else if timeout.Read.Duration > 0 {
 		readTimeout = int(timeout.Read.Seconds())
 	}
 	if timeout.Send.Duration < 0 {
-		return &translateError{
-			field:  "timeout.send",
-			reason: "invalid value",
+		return &translation.TranslateError{
+			Field:  "timeout.send",
+			Reason: "invalid value",
 		}
 	} else if timeout.Send.Duration > 0 {
 		sendTimeout = int(timeout.Send.Seconds())
@@ -408,12 +450,12 @@ func (t *translator) translateUpstreamLoadBalancerV2(lb *configv2.LoadBalancer, 
 		case apisixv1.HashOnVarsCombination:
 			ups.HashOn = lb.HashOn
 		default:
-			return &translateError{field: "loadbalancer.hashOn", reason: "invalid value"}
+			return &translation.TranslateError{Field: "loadbalancer.hashOn", Reason: "invalid value"}
 		}
 	default:
-		return &translateError{
-			field:  "loadbalancer.type",
-			reason: "invalid value",
+		return &translation.TranslateError{
+			Field:  "loadbalancer.type",
+			Reason: "invalid value",
 		}
 	}
 	return nil
@@ -439,9 +481,9 @@ func (t *translator) translateUpstreamHealthCheckV2(config *configv2.HealthCheck
 		}
 		hc.Active = active
 	} else {
-		return &translateError{
-			field:  "healthCheck.active",
-			reason: "not exist",
+		return &translation.TranslateError{
+			Field:  "healthCheck.active",
+			Reason: "not exist",
 		}
 	}
 
@@ -455,16 +497,16 @@ func (t translator) translateClientTLSV2(config *configv2.ApisixSecret, ups *api
 	}
 	s, err := t.SecretLister.Secrets(config.Namespace).Get(config.Name)
 	if err != nil {
-		return &translateError{
-			field:  "tlsSecret",
-			reason: fmt.Sprintf("get secret failed, %v", err),
+		return &translation.TranslateError{
+			Field:  "tlsSecret",
+			Reason: fmt.Sprintf("get secret failed, %v", err),
 		}
 	}
 	cert, key, err := t.ExtractKeyPair(s, true)
 	if err != nil {
-		return &translateError{
-			field:  "tlsSecret",
-			reason: fmt.Sprintf("extract cert and key from secret failed, %v", err),
+		return &translation.TranslateError{
+			Field:  "tlsSecret",
+			Reason: fmt.Sprintf("extract cert and key from secret failed, %v", err),
 		}
 	}
 	ups.TLS = &apisixv1.ClientTLS{
@@ -482,25 +524,25 @@ func (t *translator) translateUpstreamActiveHealthCheckV2(config *configv2.Activ
 	case "":
 		active.Type = apisixv1.HealthCheckHTTP
 	default:
-		return nil, &translateError{
-			field:  "healthCheck.active.Type",
-			reason: "invalid value",
+		return nil, &translation.TranslateError{
+			Field:  "healthCheck.active.Type",
+			Reason: "invalid value",
 		}
 	}
 
 	active.Timeout = int(config.Timeout.Seconds())
 	if config.Port < 0 || config.Port > 65535 {
-		return nil, &translateError{
-			field:  "healthCheck.active.port",
-			reason: "invalid value",
+		return nil, &translation.TranslateError{
+			Field:  "healthCheck.active.port",
+			Reason: "invalid value",
 		}
 	} else {
 		active.Port = config.Port
 	}
 	if config.Concurrency < 0 {
-		return nil, &translateError{
-			field:  "healthCheck.active.concurrency",
-			reason: "invalid value",
+		return nil, &translation.TranslateError{
+			Field:  "healthCheck.active.concurrency",
+			Reason: "invalid value",
 		}
 	} else {
 		active.Concurrency = config.Concurrency
@@ -515,24 +557,24 @@ func (t *translator) translateUpstreamActiveHealthCheckV2(config *configv2.Activ
 
 	if config.Healthy != nil {
 		if config.Healthy.Successes < 0 || config.Healthy.Successes > apisixv1.HealthCheckMaxConsecutiveNumber {
-			return nil, &translateError{
-				field:  "healthCheck.active.healthy.successes",
-				reason: "invalid value",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.active.healthy.successes",
+				Reason: "invalid value",
 			}
 		}
 		active.Healthy.Successes = config.Healthy.Successes
 		if config.Healthy.HTTPCodes != nil && len(config.Healthy.HTTPCodes) < 1 {
-			return nil, &translateError{
-				field:  "healthCheck.active.healthy.httpCodes",
-				reason: "empty",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.active.healthy.httpCodes",
+				Reason: "empty",
 			}
 		}
 		active.Healthy.HTTPStatuses = config.Healthy.HTTPCodes
 
 		if config.Healthy.Interval.Duration < apisixv1.ActiveHealthCheckMinInterval {
-			return nil, &translateError{
-				field:  "healthCheck.active.healthy.interval",
-				reason: "invalid value",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.active.healthy.interval",
+				Reason: "invalid value",
 			}
 		}
 		active.Healthy.Interval = int(config.Healthy.Interval.Seconds())
@@ -540,34 +582,34 @@ func (t *translator) translateUpstreamActiveHealthCheckV2(config *configv2.Activ
 
 	if config.Unhealthy != nil {
 		if config.Unhealthy.HTTPFailures < 0 || config.Unhealthy.HTTPFailures > apisixv1.HealthCheckMaxConsecutiveNumber {
-			return nil, &translateError{
-				field:  "healthCheck.active.unhealthy.httpFailures",
-				reason: "invalid value",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.active.unhealthy.httpFailures",
+				Reason: "invalid value",
 			}
 		}
 		active.Unhealthy.HTTPFailures = config.Unhealthy.HTTPFailures
 
 		if config.Unhealthy.TCPFailures < 0 || config.Unhealthy.TCPFailures > apisixv1.HealthCheckMaxConsecutiveNumber {
-			return nil, &translateError{
-				field:  "healthCheck.active.unhealthy.tcpFailures",
-				reason: "invalid value",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.active.unhealthy.tcpFailures",
+				Reason: "invalid value",
 			}
 		}
 		active.Unhealthy.TCPFailures = config.Unhealthy.TCPFailures
 		active.Unhealthy.Timeouts = config.Unhealthy.Timeouts
 
 		if config.Unhealthy.HTTPCodes != nil && len(config.Unhealthy.HTTPCodes) < 1 {
-			return nil, &translateError{
-				field:  "healthCheck.active.unhealthy.httpCodes",
-				reason: "empty",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.active.unhealthy.httpCodes",
+				Reason: "empty",
 			}
 		}
 		active.Unhealthy.HTTPStatuses = config.Unhealthy.HTTPCodes
 
 		if config.Unhealthy.Interval.Duration < apisixv1.ActiveHealthCheckMinInterval {
-			return nil, &translateError{
-				field:  "healthCheck.active.unhealthy.interval",
-				reason: "invalid value",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.active.unhealthy.interval",
+				Reason: "invalid value",
 			}
 		}
 		active.Unhealthy.Interval = int(config.Unhealthy.Interval.Seconds())
@@ -584,24 +626,24 @@ func (t *translator) translateUpstreamPassiveHealthCheckV2(config *configv2.Pass
 	case "":
 		passive.Type = apisixv1.HealthCheckHTTP
 	default:
-		return nil, &translateError{
-			field:  "healthCheck.passive.Type",
-			reason: "invalid value",
+		return nil, &translation.TranslateError{
+			Field:  "healthCheck.passive.Type",
+			Reason: "invalid value",
 		}
 	}
 	if config.Healthy != nil {
 		// zero means use the default value.
 		if config.Healthy.Successes < 0 || config.Healthy.Successes > apisixv1.HealthCheckMaxConsecutiveNumber {
-			return nil, &translateError{
-				field:  "healthCheck.passive.healthy.successes",
-				reason: "invalid value",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.passive.healthy.successes",
+				Reason: "invalid value",
 			}
 		}
 		passive.Healthy.Successes = config.Healthy.Successes
 		if config.Healthy.HTTPCodes != nil && len(config.Healthy.HTTPCodes) < 1 {
-			return nil, &translateError{
-				field:  "healthCheck.passive.healthy.httpCodes",
-				reason: "empty",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.passive.healthy.httpCodes",
+				Reason: "empty",
 			}
 		}
 		passive.Healthy.HTTPStatuses = config.Healthy.HTTPCodes
@@ -609,29 +651,56 @@ func (t *translator) translateUpstreamPassiveHealthCheckV2(config *configv2.Pass
 
 	if config.Unhealthy != nil {
 		if config.Unhealthy.HTTPFailures < 0 || config.Unhealthy.HTTPFailures > apisixv1.HealthCheckMaxConsecutiveNumber {
-			return nil, &translateError{
-				field:  "healthCheck.passive.unhealthy.httpFailures",
-				reason: "invalid value",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.passive.unhealthy.httpFailures",
+				Reason: "invalid value",
 			}
 		}
 		passive.Unhealthy.HTTPFailures = config.Unhealthy.HTTPFailures
 
 		if config.Unhealthy.TCPFailures < 0 || config.Unhealthy.TCPFailures > apisixv1.HealthCheckMaxConsecutiveNumber {
-			return nil, &translateError{
-				field:  "healthCheck.passive.unhealthy.tcpFailures",
-				reason: "invalid value",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.passive.unhealthy.tcpFailures",
+				Reason: "invalid value",
 			}
 		}
 		passive.Unhealthy.TCPFailures = config.Unhealthy.TCPFailures
 		passive.Unhealthy.Timeouts = config.Unhealthy.Timeouts
 
 		if config.Unhealthy.HTTPCodes != nil && len(config.Unhealthy.HTTPCodes) < 1 {
-			return nil, &translateError{
-				field:  "healthCheck.passive.unhealthy.httpCodes",
-				reason: "empty",
+			return nil, &translation.TranslateError{
+				Field:  "healthCheck.passive.unhealthy.httpCodes",
+				Reason: "empty",
 			}
 		}
 		passive.Unhealthy.HTTPStatuses = config.Unhealthy.HTTPCodes
 	}
 	return &passive, nil
+}
+
+// translateUpstreamNotStrictly translates Upstream nodes with a loose way, only generate ID and Name for delete Event.
+func (t *translator) translateUpstreamNotStrictly(namespace, svcName, subset string, svcPort int32) (*apisixv1.Upstream, error) {
+	ups := &apisixv1.Upstream{}
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, subset, svcPort)
+	ups.ID = id.GenID(ups.Name)
+	return ups, nil
+}
+
+func (t *translator) translateService(namespace, svcName, subset, svcResolveGranularity, svcClusterIP string, svcPort int32) (*apisixv1.Upstream, error) {
+	ups, err := t.TranslateService(namespace, svcName, subset, svcPort)
+	if err != nil {
+		return nil, err
+	}
+	if svcResolveGranularity == "service" {
+		ups.Nodes = apisixv1.UpstreamNodes{
+			{
+				Host:   svcClusterIP,
+				Port:   int(svcPort),
+				Weight: translation.DefaultWeight,
+			},
+		}
+	}
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, subset, svcPort)
+	ups.ID = id.GenID(ups.Name)
+	return ups, nil
 }

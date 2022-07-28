@@ -131,7 +131,7 @@ func TestRouteMatchExpr(t *testing.T) {
 			},
 		},
 	}
-	results, err := tr.translateRouteMatchExprs(exprs)
+	results, err := tr.TranslateRouteMatchExprs(exprs)
 	assert.Nil(t, err)
 	assert.Len(t, results, 10)
 

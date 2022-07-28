@@ -12,38 +12,38 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package k8s
+package pod
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 type podController struct {
-	cfg *config.Config
+	*providertypes.Common
 
-	podInformer cache.SharedIndexInformer
-	podLister   listerscorev1.PodLister
-
-	MetricsCollector  metrics.Collector
-	NamespaceProvider namespace.WatchingNamespaceProvider
+	namespaceProvider namespace.WatchingNamespaceProvider
+	podInformer       cache.SharedIndexInformer
 
 	podCache types.PodCache
 }
 
-func newPodController(cfg *config.Config, podInformer cache.SharedIndexInformer, podLister listerscorev1.PodLister) *podController {
+func newPodController(common *providertypes.Common, nsProvider namespace.WatchingNamespaceProvider,
+	podInformer cache.SharedIndexInformer) *podController {
 	ctl := &podController{
-		cfg:      cfg,
+		Common: common,
+
+		namespaceProvider: nsProvider,
+		podInformer:       podInformer,
+
 		podCache: types.NewPodCache(),
 	}
 	ctl.podInformer.AddEventHandler(
@@ -74,7 +74,7 @@ func (c *podController) onAdd(obj interface{}) {
 		log.Errorf("found pod with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("pod add event arrived",
@@ -104,7 +104,7 @@ func (c *podController) onUpdate(oldObj, newObj interface{}) {
 		return
 	}
 
-	if !c.NamespaceProvider.IsWatchingNamespace(curr.Namespace + "/" + curr.Name) {
+	if !c.namespaceProvider.IsWatchingNamespace(curr.Namespace + "/" + curr.Name) {
 		return
 	}
 	log.Debugw("pod update event arrived",
@@ -142,7 +142,7 @@ func (c *podController) onDelete(obj interface{}) {
 		pod = tombstone.Obj.(*corev1.Pod)
 	}
 
-	if !c.NamespaceProvider.IsWatchingNamespace(pod.Namespace + "/" + pod.Name) {
+	if !c.namespaceProvider.IsWatchingNamespace(pod.Namespace + "/" + pod.Name) {
 		return
 	}
 	log.Debugw("pod delete event arrived",

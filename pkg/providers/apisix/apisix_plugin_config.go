@@ -17,52 +17,60 @@ package apisix
 import (
 	"context"
 	"fmt"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
 	"time"
 
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 type apisixPluginConfigController struct {
-	controller        *providers.Controller
-	workqueue         workqueue.RateLimitingInterface
-	workers           int
-	cfg               *config.Config
-	MetricsCollector  metrics.Collector
-	NamespaceProvider namespace.WatchingNamespaceProvider
+	*apisixCommon
 
-	apisixPluginConfigInformer cache.SharedIndexInformer
+	workqueue workqueue.RateLimitingInterface
+	workers   int
+
 	apisixPluginConfigLister   kube.ApisixPluginConfigLister
+	apisixPluginConfigInformer cache.SharedIndexInformer
 }
 
-func newApisixPluginConfigController() *apisixPluginConfigController {
-	ctl := &apisixPluginConfigController{
-		controller: c,
-		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixPluginConfig"),
-		workers:    1,
+func newApisixPluginConfigController(common *apisixCommon, apisixPluginConfigInformer cache.SharedIndexInformer) *apisixPluginConfigController {
+	c := &apisixPluginConfigController{
+		apisixCommon: common,
+		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixPluginConfig"),
+		workers:      1,
+
+		apisixPluginConfigInformer: apisixPluginConfigInformer,
 	}
-	ctl.apisixPluginConfigInformer.AddEventHandler(
+
+	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
+	c.apisixPluginConfigLister = kube.NewApisixPluginConfigLister(
+		apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+		apisixFactory.Apisix().V2().ApisixPluginConfigs().Lister(),
+	)
+
+	c.apisixPluginConfigInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    ctl.onAdd,
-			UpdateFunc: ctl.onUpdate,
-			DeleteFunc: ctl.onDelete,
+			AddFunc:    c.onAdd,
+			UpdateFunc: c.onUpdate,
+			DeleteFunc: c.onDelete,
 		},
 	)
-	return ctl
+	return c
 }
 
 func (c *apisixPluginConfigController) run(ctx context.Context) {
@@ -147,9 +155,9 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 	switch obj.GroupVersion {
 	case config.ApisixV2beta3:
 		if ev.Type != types.EventDelete {
-			tctx, err = c.controller.translator.TranslatePluginConfigV2beta3(apc.V2beta3())
+			tctx, err = c.translator.TranslatePluginConfigV2beta3(apc.V2beta3())
 		} else {
-			tctx, err = c.controller.translator.TranslatePluginConfigV2beta3NotStrictly(apc.V2beta3())
+			tctx, err = c.translator.TranslatePluginConfigV2beta3NotStrictly(apc.V2beta3())
 		}
 		if err != nil {
 			log.Errorw("failed to translate ApisixPluginConfig v2beta3",
@@ -160,9 +168,9 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 		}
 	case config.ApisixV2:
 		if ev.Type != types.EventDelete {
-			tctx, err = c.controller.translator.TranslatePluginConfigV2(apc.V2())
+			tctx, err = c.translator.TranslatePluginConfigV2(apc.V2())
 		} else {
-			tctx, err = c.controller.translator.TranslatePluginConfigV2NotStrictly(apc.V2())
+			tctx, err = c.translator.TranslatePluginConfigV2NotStrictly(apc.V2())
 		}
 		if err != nil {
 			log.Errorw("failed to translate ApisixPluginConfig v2",
@@ -195,9 +203,9 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 		var oldCtx *translation.TranslateContext
 		switch obj.GroupVersion {
 		case config.ApisixV2beta3:
-			oldCtx, err = c.controller.translator.TranslatePluginConfigV2beta3(obj.OldObject.V2beta3())
+			oldCtx, err = c.translator.TranslatePluginConfigV2beta3(obj.OldObject.V2beta3())
 		case config.ApisixV2:
-			oldCtx, err = c.controller.translator.TranslatePluginConfigV2(obj.OldObject.V2())
+			oldCtx, err = c.translator.TranslatePluginConfigV2(obj.OldObject.V2())
 		}
 		if err != nil {
 			log.Errorw("failed to translate old ApisixPluginConfig",
@@ -215,7 +223,7 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 		added, updated, deleted = m.Diff(om)
 	}
 
-	return c.controller.syncManifests(ctx, added, updated, deleted)
+	return c.SyncManifests(ctx, added, updated, deleted)
 }
 
 func (c *apisixPluginConfigController) handleSyncErr(obj interface{}, errOrigin error) {
@@ -249,11 +257,11 @@ func (c *apisixPluginConfigController) handleSyncErr(obj interface{}, errOrigin 
 			if errLocal == nil {
 				switch apc.GroupVersion() {
 				case config.ApisixV2beta3:
-					c.controller.recorderEvent(apc.V2beta3(), v1.EventTypeNormal, providers._resourceSynced, nil)
-					c.controller.recordStatus(apc.V2beta3(), providers._resourceSynced, nil, metav1.ConditionTrue, apc.V2beta3().GetGeneration())
+					c.RecordEvent(apc.V2beta3(), v1.EventTypeNormal, utils.ResourceSynced, nil)
+					c.recordStatus(apc.V2beta3(), utils.ResourceSynced, nil, metav1.ConditionTrue, apc.V2beta3().GetGeneration())
 				case config.ApisixV2:
-					c.controller.recorderEvent(apc.V2(), v1.EventTypeNormal, providers._resourceSynced, nil)
-					c.controller.recordStatus(apc.V2(), providers._resourceSynced, nil, metav1.ConditionTrue, apc.V2().GetGeneration())
+					c.RecordEvent(apc.V2(), v1.EventTypeNormal, utils.ResourceSynced, nil)
+					c.recordStatus(apc.V2(), utils.ResourceSynced, nil, metav1.ConditionTrue, apc.V2().GetGeneration())
 				}
 			} else {
 				log.Errorw("failed list ApisixPluginConfig",
@@ -274,11 +282,11 @@ func (c *apisixPluginConfigController) handleSyncErr(obj interface{}, errOrigin 
 	if errLocal == nil {
 		switch apc.GroupVersion() {
 		case config.ApisixV2beta3:
-			c.controller.recorderEvent(apc.V2beta3(), v1.EventTypeWarning, providers._resourceSyncAborted, errOrigin)
-			c.controller.recordStatus(apc.V2beta3(), providers._resourceSyncAborted, errOrigin, metav1.ConditionFalse, apc.V2beta3().GetGeneration())
+			c.RecordEvent(apc.V2beta3(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
+			c.recordStatus(apc.V2beta3(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, apc.V2beta3().GetGeneration())
 		case config.ApisixV2:
-			c.controller.recorderEvent(apc.V2(), v1.EventTypeWarning, providers._resourceSyncAborted, errOrigin)
-			c.controller.recordStatus(apc.V2(), providers._resourceSyncAborted, errOrigin, metav1.ConditionFalse, apc.V2().GetGeneration())
+			c.RecordEvent(apc.V2(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
+			c.recordStatus(apc.V2(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, apc.V2().GetGeneration())
 		}
 	} else {
 		log.Errorw("failed list ApisixPluginConfig",
@@ -297,7 +305,7 @@ func (c *apisixPluginConfigController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixPluginConfig resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixPluginConfig add event arrived",
@@ -326,7 +334,7 @@ func (c *apisixPluginConfigController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorf("found ApisixPluginConfig resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixPluginConfig update event arrived",
@@ -359,7 +367,7 @@ func (c *apisixPluginConfigController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixPluginConfig resource with bad meta namesapce key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixPluginConfig delete event arrived",
@@ -385,7 +393,7 @@ func (c *apisixPluginConfigController) ResourceSync() {
 			log.Errorw("ApisixPluginConfig sync failed, found ApisixPluginConfig resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
-		if !c.NamespaceProvider.IsWatchingNamespace(key) {
+		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
 		apc := kube.MustNewApisixPluginConfig(obj)
@@ -396,5 +404,66 @@ func (c *apisixPluginConfigController) ResourceSync() {
 				GroupVersion: apc.GroupVersion(),
 			},
 		})
+	}
+}
+
+// recordStatus record resources status
+func (c *apisixPluginConfigController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
+	// build condition
+	message := utils.CommonSuccessMessage
+	if err != nil {
+		message = err.Error()
+	}
+	condition := metav1.Condition{
+		Type:               utils.ConditionType,
+		Reason:             reason,
+		Status:             status,
+		Message:            message,
+		ObservedGeneration: generation,
+	}
+	apisixClient := c.KubeClient.APISIXClient
+
+	if kubeObj, ok := at.(runtime.Object); ok {
+		at = kubeObj.DeepCopyObject()
+	}
+
+	switch v := at.(type) {
+	case *configv2beta3.ApisixPluginConfig:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			if _, errRecord := apisixClient.ApisixV2beta3().ApisixPluginConfigs(v.Namespace).
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for ApisixPluginConfig",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+					zap.String("namespace", v.Namespace),
+				)
+			}
+		}
+	case *configv2.ApisixPluginConfig:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			if _, errRecord := apisixClient.ApisixV2().ApisixPluginConfigs(v.Namespace).
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for ApisixPluginConfig",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+					zap.String("namespace", v.Namespace),
+				)
+			}
+		}
+	default:
+		// This should not be executed
+		log.Errorf("unsupported resource record: %s", v)
 	}
 }

@@ -197,6 +197,19 @@ func (e *endpoint) Endpoints(svcPort *corev1.ServicePort) []HostPort {
 	return addrs
 }
 
+// NewEndpointLister creates an EndpointLister
+func NewEndpointLister(factory informers.SharedInformerFactory, useEndpointSlice bool) EndpointLister {
+	epLister := endpointLister{
+		useEndpointSlice: useEndpointSlice,
+	}
+	if !useEndpointSlice {
+		epLister.epLister = factory.Core().V1().Endpoints().Lister()
+	} else {
+		epLister.epsLister = factory.Discovery().V1().EndpointSlices().Lister()
+	}
+	return &epLister
+}
+
 // NewEndpointListerAndInformer creates an EndpointLister and the sharedIndexInformer.
 func NewEndpointListerAndInformer(factory informers.SharedInformerFactory, useEndpointSlice bool) (EndpointLister, cache.SharedIndexInformer) {
 	var informer cache.SharedIndexInformer

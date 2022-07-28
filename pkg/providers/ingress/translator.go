@@ -1,18 +1,4 @@
-// Licensed to the Apache Software Foundation (ASF) under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// The ASF licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-package translation
+package ingress
 
 import (
 	"bytes"
@@ -25,23 +11,66 @@ import (
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	kubev2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	kubev2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
+
+type translator struct {
+	ServiceLister listerscorev1.ServiceLister
+
+	translation.Translator
+	apisixtranslation.ApisixTranslator // TODO: remove this
+}
+
+type IngressTranslator interface {
+	TranslateIngress(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error)
+}
+
+func newIngressTranslator(serviceLister listerscorev1.ServiceLister,
+	commonTranslator translation.Translator, apisixTranslator apisixtranslation.ApisixTranslator) IngressTranslator {
+	t := &translator{
+		ServiceLister:    serviceLister,
+		Translator:       commonTranslator,
+		ApisixTranslator: apisixTranslator,
+	}
+
+	return t
+}
+
+func (t *translator) TranslateIngress(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error) {
+	var skipVerify = false
+	if len(args) != 0 {
+		skipVerify = args[0]
+	}
+	switch ing.GroupVersion() {
+	case kube.IngressV1:
+		return t.translateIngressV1(ing.V1(), skipVerify)
+	case kube.IngressV1beta1:
+		return t.translateIngressV1beta1(ing.V1beta1(), skipVerify)
+	case kube.IngressExtensionsV1beta1:
+		return t.translateIngressExtensionsV1beta1(ing.ExtensionsV1beta1(), skipVerify)
+	default:
+		return nil, fmt.Errorf("translator: source group version not supported: %s", ing.GroupVersion())
+	}
+}
 
 const (
 	_regexPriority = 100
 )
 
-func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bool) (*TranslateContext, error) {
-	ctx := DefaultEmptyTranslateContext()
-	plugins := t.translateAnnotations(ing.Annotations)
+func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bool) (*translation.TranslateContext, error) {
+	ctx := translation.DefaultEmptyTranslateContext()
+	plugins := t.TranslateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
 	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
@@ -136,7 +165,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 			route.Uris = uris
 			route.EnableWebsocket = enableWebsocket
 			if len(nginxVars) > 0 {
-				routeVars, err := t.translateRouteMatchExprs(nginxVars)
+				routeVars, err := t.TranslateRouteMatchExprs(nginxVars)
 				if err != nil {
 					return nil, err
 				}
@@ -159,9 +188,9 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 	return ctx, nil
 }
 
-func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, skipVerify bool) (*TranslateContext, error) {
-	ctx := DefaultEmptyTranslateContext()
-	plugins := t.translateAnnotations(ing.Annotations)
+func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, skipVerify bool) (*translation.TranslateContext, error) {
+	ctx := translation.DefaultEmptyTranslateContext()
+	plugins := t.TranslateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
 	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
@@ -256,7 +285,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 			route.Uris = uris
 			route.EnableWebsocket = enableWebsocket
 			if len(nginxVars) > 0 {
-				routeVars, err := t.translateRouteMatchExprs(nginxVars)
+				routeVars, err := t.TranslateRouteMatchExprs(nginxVars)
 				if err != nil {
 					return nil, err
 				}
@@ -316,15 +345,15 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 			}
 		}
 		if svcPort == 0 {
-			return nil, &translateError{
-				field:  "service",
-				reason: "port not found",
+			return nil, &translation.TranslateError{
+				Field:  "service",
+				Reason: "port not found",
 			}
 		}
 	} else {
 		svcPort = backend.Port.Number
 	}
-	ups, err := t.TranslateUpstream(namespace, backend.Name, "", svcPort)
+	ups, err := t.TranslateService(namespace, backend.Name, "", svcPort)
 	if err != nil {
 		return nil, err
 	}
@@ -333,9 +362,9 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 	return ups, nil
 }
 
-func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress, skipVerify bool) (*TranslateContext, error) {
-	ctx := DefaultEmptyTranslateContext()
-	plugins := t.translateAnnotations(ing.Annotations)
+func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress, skipVerify bool) (*translation.TranslateContext, error) {
+	ctx := translation.DefaultEmptyTranslateContext()
+	plugins := t.TranslateAnnotations(ing.Annotations)
 	annoExtractor := annotations.NewExtractor(ing.Annotations)
 	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
 	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
@@ -401,7 +430,7 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 			route.Uris = uris
 			route.EnableWebsocket = enableWebsocket
 			if len(nginxVars) > 0 {
-				routeVars, err := t.translateRouteMatchExprs(nginxVars)
+				routeVars, err := t.TranslateRouteMatchExprs(nginxVars)
 				if err != nil {
 					return nil, err
 				}
@@ -462,15 +491,15 @@ func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcNa
 			}
 		}
 		if portNumber == 0 {
-			return nil, &translateError{
-				field:  "service",
-				reason: "port not found",
+			return nil, &translation.TranslateError{
+				Field:  "service",
+				Reason: "port not found",
 			}
 		}
 	} else {
 		portNumber = svcPort.IntVal
 	}
-	ups, err := t.TranslateUpstream(namespace, svcName, "", portNumber)
+	ups, err := t.TranslateService(namespace, svcName, "", portNumber)
 	if err != nil {
 		return nil, err
 	}

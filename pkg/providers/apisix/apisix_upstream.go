@@ -17,16 +17,15 @@ package apisix
 import (
 	"context"
 	"fmt"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"time"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -36,39 +35,50 @@ import (
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type apisixUpstreamController struct {
-	controller        *providers.Controller
-	workqueue         workqueue.RateLimitingInterface
-	workers           int
-	cfg               *config.Config
-	MetricsCollector  metrics.Collector
-	NamespaceProvider namespace.WatchingNamespaceProvider
+	*apisixCommon
 
-	svcInformer cache.SharedIndexInformer
-	svcLister   listerscorev1.ServiceLister
+	workqueue workqueue.RateLimitingInterface
+	workers   int
 
+	svcInformer            cache.SharedIndexInformer
+	svcLister              listerscorev1.ServiceLister
 	apisixUpstreamInformer cache.SharedIndexInformer
 	apisixUpstreamLister   kube.ApisixUpstreamLister
 }
 
-func newApisixUpstreamController() *apisixUpstreamController {
-	ctl := &apisixUpstreamController{
-		controller: c,
-		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixUpstream"),
-		workers:    1,
+func newApisixUpstreamController(common *apisixCommon, svcInformer cache.SharedIndexInformer, svcLister listerscorev1.ServiceLister,
+	apisixUpstreamInformer cache.SharedIndexInformer) *apisixUpstreamController {
+	c := &apisixUpstreamController{
+		apisixCommon: common,
+		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixUpstream"),
+		workers:      1,
+
+		svcInformer:            svcInformer,
+		apisixUpstreamInformer: apisixUpstreamInformer,
+
+		svcLister: svcLister,
 	}
-	ctl.apisixUpstreamInformer.AddEventHandler(
+
+	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
+	c.apisixUpstreamLister = kube.NewApisixUpstreamLister(
+		apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+		apisixFactory.Apisix().V2().ApisixUpstreams().Lister(),
+	)
+
+	c.apisixUpstreamInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    ctl.onAdd,
-			UpdateFunc: ctl.onUpdate,
-			DeleteFunc: ctl.onDelete,
+			AddFunc:    c.onAdd,
+			UpdateFunc: c.onUpdate,
+			DeleteFunc: c.onDelete,
 		},
 	)
-	return ctl
+	return c
 }
 
 func (c *apisixUpstreamController) run(ctx context.Context) {
@@ -163,11 +173,11 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 			}
 		}
 
-		svc, err := c.controller.svcLister.Services(namespace).Get(name)
+		svc, err := c.svcLister.Services(namespace).Get(name)
 		if err != nil {
 			log.Errorf("failed to get service %s: %s", key, err)
-			c.controller.recorderEvent(au, corev1.EventTypeWarning, providers._resourceSyncAborted, err)
-			c.controller.recordStatus(au, providers._resourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+			c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 			return err
 		}
 
@@ -176,19 +186,19 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 		if au.Spec != nil && len(au.Spec.Subsets) > 0 {
 			subsets = append(subsets, au.Spec.Subsets...)
 		}
-		clusterName := c.cfg.APISIX.DefaultClusterName
+		clusterName := c.Config.APISIX.DefaultClusterName
 		for _, port := range svc.Spec.Ports {
 			for _, subset := range subsets {
 				upsName := apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port)
 				// TODO: multiple cluster
-				ups, err := c.controller.apisix.Cluster(clusterName).Upstream().Get(ctx, upsName)
+				ups, err := c.APISIX.Cluster(clusterName).Upstream().Get(ctx, upsName)
 				if err != nil {
 					if err == apisixcache.ErrNotFound {
 						continue
 					}
 					log.Errorf("failed to get upstream %s: %s", upsName, err)
-					c.controller.recorderEvent(au, corev1.EventTypeWarning, providers._resourceSyncAborted, err)
-					c.controller.recordStatus(au, providers._resourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+					c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+					c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 					return err
 				}
 				var newUps *apisixv1.Upstream
@@ -198,14 +208,14 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 						cfg = &au.Spec.ApisixUpstreamConfig
 					}
 					// FIXME Same ApisixUpstreamConfig might be translated multiple times.
-					newUps, err = c.controller.translator.TranslateUpstreamConfigV2beta3(cfg)
+					newUps, err = c.translator.TranslateUpstreamConfigV2beta3(cfg)
 					if err != nil {
 						log.Errorw("found malformed ApisixUpstream",
 							zap.Any("object", au),
 							zap.Error(err),
 						)
-						c.controller.recorderEvent(au, corev1.EventTypeWarning, providers._resourceSyncAborted, err)
-						c.controller.recordStatus(au, providers._resourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+						c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+						c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 						return err
 					}
 				} else {
@@ -219,22 +229,22 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 					zap.Any("upstream", newUps),
 					zap.Any("ApisixUpstream", au),
 				)
-				if _, err := c.controller.apisix.Cluster(clusterName).Upstream().Update(ctx, newUps); err != nil {
+				if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, newUps); err != nil {
 					log.Errorw("failed to update upstream",
 						zap.Error(err),
 						zap.Any("upstream", newUps),
 						zap.Any("ApisixUpstream", au),
 						zap.String("cluster", clusterName),
 					)
-					c.controller.recorderEvent(au, corev1.EventTypeWarning, providers._resourceSyncAborted, err)
-					c.controller.recordStatus(au, providers._resourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+					c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+					c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 					return err
 				}
 			}
 		}
 		if ev.Type != types.EventDelete {
-			c.controller.recorderEvent(au, corev1.EventTypeNormal, providers._resourceSynced, nil)
-			c.controller.recordStatus(au, providers._resourceSynced, nil, metav1.ConditionTrue, au.GetGeneration())
+			c.RecordEvent(au, corev1.EventTypeNormal, utils.ResourceSynced, nil)
+			c.recordStatus(au, utils.ResourceSynced, nil, metav1.ConditionTrue, au.GetGeneration())
 		}
 	case config.ApisixV2:
 		au := multiVersioned.V2()
@@ -250,8 +260,8 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 		svc, err := c.svcLister.Services(namespace).Get(name)
 		if err != nil {
 			log.Errorf("failed to get service %s: %s", key, err)
-			c.controller.recorderEvent(au, corev1.EventTypeWarning, providers._resourceSyncAborted, err)
-			c.controller.recordStatus(au, providers._resourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+			c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 			return err
 		}
 
@@ -260,19 +270,19 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 		if au.Spec != nil && len(au.Spec.Subsets) > 0 {
 			subsets = append(subsets, au.Spec.Subsets...)
 		}
-		clusterName := c.cfg.APISIX.DefaultClusterName
+		clusterName := c.Config.APISIX.DefaultClusterName
 		for _, port := range svc.Spec.Ports {
 			for _, subset := range subsets {
 				upsName := apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port)
 				// TODO: multiple cluster
-				ups, err := c.controller.apisix.Cluster(clusterName).Upstream().Get(ctx, upsName)
+				ups, err := c.APISIX.Cluster(clusterName).Upstream().Get(ctx, upsName)
 				if err != nil {
 					if err == apisixcache.ErrNotFound {
 						continue
 					}
 					log.Errorf("failed to get upstream %s: %s", upsName, err)
-					c.controller.recorderEvent(au, corev1.EventTypeWarning, providers._resourceSyncAborted, err)
-					c.controller.recordStatus(au, providers._resourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+					c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+					c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 					return err
 				}
 				var newUps *apisixv1.Upstream
@@ -282,14 +292,14 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 						cfg = &au.Spec.ApisixUpstreamConfig
 					}
 					// FIXME Same ApisixUpstreamConfig might be translated multiple times.
-					newUps, err = c.controller.translator.TranslateUpstreamConfigV2(cfg)
+					newUps, err = c.translator.TranslateUpstreamConfigV2(cfg)
 					if err != nil {
 						log.Errorw("found malformed ApisixUpstream",
 							zap.Any("object", au),
 							zap.Error(err),
 						)
-						c.controller.recorderEvent(au, corev1.EventTypeWarning, providers._resourceSyncAborted, err)
-						c.controller.recordStatus(au, providers._resourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+						c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+						c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 						return err
 					}
 				} else {
@@ -303,22 +313,22 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 					zap.Any("upstream", newUps),
 					zap.Any("ApisixUpstream", au),
 				)
-				if _, err := c.controller.apisix.Cluster(clusterName).Upstream().Update(ctx, newUps); err != nil {
+				if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, newUps); err != nil {
 					log.Errorw("failed to update upstream",
 						zap.Error(err),
 						zap.Any("upstream", newUps),
 						zap.Any("ApisixUpstream", au),
 						zap.String("cluster", clusterName),
 					)
-					c.controller.recorderEvent(au, corev1.EventTypeWarning, providers._resourceSyncAborted, err)
-					c.controller.recordStatus(au, providers._resourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+					c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+					c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 					return err
 				}
 			}
 		}
 		if ev.Type != types.EventDelete {
-			c.controller.recorderEvent(au, corev1.EventTypeNormal, providers._resourceSynced, nil)
-			c.controller.recordStatus(au, providers._resourceSynced, nil, metav1.ConditionTrue, au.GetGeneration())
+			c.RecordEvent(au, corev1.EventTypeNormal, utils.ResourceSynced, nil)
+			c.recordStatus(au, utils.ResourceSynced, nil, metav1.ConditionTrue, au.GetGeneration())
 		}
 	}
 
@@ -361,7 +371,7 @@ func (c *apisixUpstreamController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixUpstream resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixUpstream add event arrived",
@@ -397,7 +407,7 @@ func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorf("found ApisixUpstream resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixUpstream update event arrived",
@@ -436,7 +446,7 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixUpstream resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixUpstream delete event arrived",
@@ -462,7 +472,7 @@ func (c *apisixUpstreamController) ResourceSync() {
 			log.Errorw("ApisixUpstream sync failed, found ApisixUpstream resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
-		if !c.NamespaceProvider.IsWatchingNamespace(key) {
+		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
 		au, err := kube.NewApisixUpstream(obj)
@@ -477,5 +487,67 @@ func (c *apisixUpstreamController) ResourceSync() {
 				GroupVersion: au.GroupVersion(),
 			},
 		})
+	}
+}
+
+// recordStatus record resources status
+func (c *apisixUpstreamController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
+	// build condition
+	message := utils.CommonSuccessMessage
+	if err != nil {
+		message = err.Error()
+	}
+	condition := metav1.Condition{
+		Type:               utils.ConditionType,
+		Reason:             reason,
+		Status:             status,
+		Message:            message,
+		ObservedGeneration: generation,
+	}
+	apisixClient := c.KubeClient.APISIXClient
+
+	if kubeObj, ok := at.(runtime.Object); ok {
+		at = kubeObj.DeepCopyObject()
+	}
+
+	switch v := at.(type) {
+	case *configv2beta3.ApisixUpstream:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			if _, errRecord := apisixClient.ApisixV2beta3().ApisixUpstreams(v.Namespace).
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for ApisixUpstream",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+					zap.String("namespace", v.Namespace),
+				)
+			}
+		}
+
+	case *configv2.ApisixUpstream:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			if _, errRecord := apisixClient.ApisixV2().ApisixUpstreams(v.Namespace).
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for ApisixUpstream",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+					zap.String("namespace", v.Namespace),
+				)
+			}
+		}
+	default:
+		// This should not be executed
+		log.Errorf("unsupported resource record: %s", v)
 	}
 }

@@ -20,7 +20,6 @@ package gateway
 import (
 	"context"
 	"fmt"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
 	"sync"
 
 	"k8s.io/client-go/kubernetes"
@@ -34,10 +33,11 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	gatewaytranslation "github.com/apache/apisix-ingress-controller/pkg/providers/gateway/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/gateway/types"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 )
 
@@ -154,15 +154,12 @@ func (p *Provider) Run(ctx context.Context) {
 	e.Add(func() {
 		p.gatewayInformer.Run(ctx.Done())
 	})
-
 	e.Add(func() {
 		p.gatewayClassInformer.Run(ctx.Done())
 	})
-
 	e.Add(func() {
 		p.gatewayHTTPRouteInformer.Run(ctx.Done())
 	})
-
 	e.Add(func() {
 		p.gatewayTLSRouteInformer.Run(ctx.Done())
 	})
@@ -170,15 +167,12 @@ func (p *Provider) Run(ctx context.Context) {
 	e.Add(func() {
 		p.gatewayController.run(ctx)
 	})
-
 	e.Add(func() {
 		p.gatewayClassController.run(ctx)
 	})
-
 	e.Add(func() {
 		p.gatewayHTTPRouteController.run(ctx)
 	})
-
 	e.Add(func() {
 		p.gatewayTLSRouteController.run(ctx)
 	})

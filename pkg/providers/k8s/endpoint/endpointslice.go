@@ -16,10 +16,6 @@ package endpoint
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
 	"time"
 
 	"go.uber.org/zap"
@@ -28,7 +24,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -43,25 +41,29 @@ type endpointSliceEvent struct {
 }
 
 type endpointSliceController struct {
-	cfg       *config.Config
+	*baseEndpointController
+
 	workqueue workqueue.RateLimitingInterface
 	workers   int
 
+	namespaceProvider namespace.WatchingNamespaceProvider
+
 	epInformer cache.SharedIndexInformer
 	epLister   kube.EndpointLister
-
-	MetricsCollector  metrics.Collector
-	NamespaceProvider namespace.WatchingNamespaceProvider
 }
 
-func newEndpointSliceController(cfg *config.Config, epInformer cache.SharedIndexInformer, epLister kube.EndpointLister) *endpointSliceController {
+func newEndpointSliceController(base *baseEndpointController,
+	namespaceProvider namespace.WatchingNamespaceProvider,
+	epInformer cache.SharedIndexInformer, epLister kube.EndpointLister) *endpointSliceController {
 	ctl := &endpointSliceController{
-		cfg:       cfg,
+		baseEndpointController: base,
+
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(time.Second, 60*time.Second, 5), "endpointSlice"),
 		workers:   1,
 
-		epInformer: epInformer,
-		epLister:   epLister,
+		namespaceProvider: namespaceProvider,
+		epInformer:        epInformer,
+		epLister:          epLister,
 	}
 
 	ctl.epInformer.AddEventHandler(
@@ -115,8 +117,8 @@ func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) err
 	if ev.Type == types.EventDelete {
 		log.Debugw("endpointsplice upstream serviece sync",
 			zap.String("service_name", epEvent.ServiceName))
-		clusterName := c.cfg.APISIX.DefaultClusterName
-		err = c.controller.apisix.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx,
+		clusterName := c.Config.APISIX.DefaultClusterName
+		err = c.APISIX.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx,
 			&v1.UpstreamServiceRelation{
 				ServiceName: namespace + "_" + epEvent.ServiceName,
 			})
@@ -130,7 +132,7 @@ func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) err
 			epEvent.ServiceName, err)
 		return err
 	}
-	return c.controller.syncEndpoint(ctx, ep)
+	return c.syncEndpoint(ctx, ep)
 }
 
 func (c *endpointSliceController) handleSyncErr(obj interface{}, err error) {
@@ -160,7 +162,7 @@ func (c *endpointSliceController) onAdd(obj interface{}) {
 	if err != nil {
 		log.Errorf("found endpointSlice object with bad namespace")
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	ep := obj.(*discoveryv1.EndpointSlice)
@@ -201,7 +203,7 @@ func (c *endpointSliceController) onUpdate(prev, curr interface{}) {
 		log.Errorf("found endpointSlice object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	if currEp.Labels[discoveryv1.LabelManagedBy] != _endpointSlicesManagedBy {
@@ -245,7 +247,7 @@ func (c *endpointSliceController) onDelete(obj interface{}) {
 		log.Errorf("found endpointSlice object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	if ep.Labels[discoveryv1.LabelManagedBy] != _endpointSlicesManagedBy {

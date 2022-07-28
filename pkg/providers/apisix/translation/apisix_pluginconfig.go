@@ -21,11 +21,12 @@ import (
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func (t *translator) TranslatePluginConfigV2beta3(config *configv2beta3.ApisixPluginConfig) (*TranslateContext, error) {
-	ctx := DefaultEmptyTranslateContext()
+func (t *translator) TranslatePluginConfigV2beta3(config *configv2beta3.ApisixPluginConfig) (*translation.TranslateContext, error) {
+	ctx := translation.DefaultEmptyTranslateContext()
 	pluginMap := make(apisixv1.Plugins)
 	if len(config.Spec.Plugins) > 0 {
 		for _, plugin := range config.Spec.Plugins {
@@ -55,8 +56,8 @@ func (t *translator) TranslatePluginConfigV2beta3(config *configv2beta3.ApisixPl
 	return ctx, nil
 }
 
-func (t *translator) TranslatePluginConfigV2beta3NotStrictly(config *configv2beta3.ApisixPluginConfig) (*TranslateContext, error) {
-	ctx := DefaultEmptyTranslateContext()
+func (t *translator) TranslatePluginConfigV2beta3NotStrictly(config *configv2beta3.ApisixPluginConfig) (*translation.TranslateContext, error) {
+	ctx := translation.DefaultEmptyTranslateContext()
 	pc := apisixv1.NewDefaultPluginConfig()
 	pc.Name = apisixv1.ComposePluginConfigName(config.Namespace, config.Name)
 	pc.ID = id.GenID(pc.Name)
@@ -64,8 +65,8 @@ func (t *translator) TranslatePluginConfigV2beta3NotStrictly(config *configv2bet
 	return ctx, nil
 }
 
-func (t *translator) TranslatePluginConfigV2(config *configv2.ApisixPluginConfig) (*TranslateContext, error) {
-	ctx := DefaultEmptyTranslateContext()
+func (t *translator) TranslatePluginConfigV2(config *configv2.ApisixPluginConfig) (*translation.TranslateContext, error) {
+	ctx := translation.DefaultEmptyTranslateContext()
 	pluginMap := make(apisixv1.Plugins)
 	if len(config.Spec.Plugins) > 0 {
 		for _, plugin := range config.Spec.Plugins {
@@ -95,8 +96,8 @@ func (t *translator) TranslatePluginConfigV2(config *configv2.ApisixPluginConfig
 	return ctx, nil
 }
 
-func (t *translator) TranslatePluginConfigV2NotStrictly(config *configv2.ApisixPluginConfig) (*TranslateContext, error) {
-	ctx := DefaultEmptyTranslateContext()
+func (t *translator) TranslatePluginConfigV2NotStrictly(config *configv2.ApisixPluginConfig) (*translation.TranslateContext, error) {
+	ctx := translation.DefaultEmptyTranslateContext()
 	pc := apisixv1.NewDefaultPluginConfig()
 	pc.Name = apisixv1.ComposePluginConfigName(config.Namespace, config.Name)
 	pc.ID = id.GenID(pc.Name)
