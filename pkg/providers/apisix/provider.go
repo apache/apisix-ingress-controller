@@ -8,7 +8,6 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
@@ -55,8 +54,7 @@ type apisixProvider struct {
 	apisixPluginConfigInformer  cache.SharedIndexInformer
 }
 
-func NewProvider(common *providertypes.Common,
-	kubeProvider k8s.Provider, namespaceProvider namespace.WatchingNamespaceProvider,
+func NewProvider(common *providertypes.Common, namespaceProvider namespace.WatchingNamespaceProvider,
 	translator translation.Translator) (Provider, apisixtranslation.ApisixTranslator, error) {
 	p := &apisixProvider{
 		name: ProviderName,
@@ -71,7 +69,10 @@ func NewProvider(common *providertypes.Common,
 	secretLister := kubeFactory.Core().V1().Secrets().Lister()
 	p.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
 
-	apisixTranslator := apisixtranslation.NewApisixTranslator(svcLister, secretLister, translator)
+	apisixTranslator := apisixtranslation.NewApisixTranslator(&apisixtranslation.TranslatorOptions{
+		ServiceLister: svcLister,
+		SecretLister:  secretLister,
+	}, translator)
 	c := &apisixCommon{
 		Common:            common,
 		namespaceProvider: namespaceProvider,

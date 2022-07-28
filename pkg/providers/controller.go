@@ -293,13 +293,13 @@ func (c *Controller) run(ctx context.Context) {
 		return
 	}
 
-	c.apisixProvider, c.apisixTranslator, err = apisixprovider.NewProvider(common, c.kubeProvider, c.namespaceProvider, c.translator)
+	c.apisixProvider, c.apisixTranslator, err = apisixprovider.NewProvider(common, c.namespaceProvider, c.translator)
 	if err != nil {
 		ctx.Done()
 		return
 	}
 
-	c.ingressProvider, err = ingressprovider.NewProvider(common, c.namespaceProvider, c.translator)
+	c.ingressProvider, err = ingressprovider.NewProvider(common, c.namespaceProvider, c.translator, c.apisixTranslator)
 	if err != nil {
 		ctx.Done()
 		return

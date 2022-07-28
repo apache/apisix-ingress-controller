@@ -2,6 +2,8 @@ package ingress
 
 import (
 	"context"
+	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
+	ingresstranslation "github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation"
 
 	"k8s.io/client-go/tools/cache"
 
@@ -21,7 +23,7 @@ type ingressCommon struct {
 	*providertypes.Common
 
 	namespaceProvider namespace.WatchingNamespaceProvider
-	translator        IngressTranslator
+	translator        ingresstranslation.IngressTranslator
 }
 
 var _ Provider = (*ingressProvider)(nil)
@@ -40,7 +42,8 @@ type ingressProvider struct {
 	ingressInformer cache.SharedIndexInformer
 }
 
-func NewProvider(common *providertypes.Common, namespaceProvider namespace.WatchingNamespaceProvider, translator translation.Translator) (Provider, error) {
+func NewProvider(common *providertypes.Common, namespaceProvider namespace.WatchingNamespaceProvider,
+	translator translation.Translator, apisixTranslator apisixtranslation.ApisixTranslator) (Provider, error) {
 	p := &ingressProvider{
 		name: ProviderName,
 	}
@@ -65,7 +68,7 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 	c := &ingressCommon{
 		Common:            common,
 		namespaceProvider: namespaceProvider,
-		translator:        newIngressTranslator(svcLister, translator),
+		translator:        ingresstranslation.NewIngressTranslator(svcLister, translator, apisixTranslator),
 	}
 
 	p.ingressController = newIngressController(c, ingressLister, p.ingressInformer)

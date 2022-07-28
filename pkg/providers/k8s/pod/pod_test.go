@@ -15,6 +15,7 @@
 package pod
 
 import (
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"testing"
 	"time"
 
@@ -23,19 +24,22 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
-func TestPodOnAdd(t *testing.T) {
-	ctl := &podController{
-		controller: &providers.Controller{
-			namespaceProvider: namespace.NewMockWatchingNamespaceProvider([]string{"default"}),
-			podCache:          types.NewPodCache(),
-			MetricsCollector:  metrics.NewPrometheusCollector(),
+func mockController() *podController {
+	return &podController{
+		podCache:          types.NewPodCache(),
+		namespaceProvider: namespace.NewMockWatchingNamespaceProvider([]string{"default"}),
+		Common: &providertypes.Common{
+			MetricsCollector: metrics.NewPrometheusCollector(),
 		},
 	}
+}
+
+func TestPodOnAdd(t *testing.T) {
+	ctl := mockController()
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -48,7 +52,7 @@ func TestPodOnAdd(t *testing.T) {
 		},
 	}
 	ctl.onAdd(pod)
-	name, err := ctl.controller.podCache.GetNameByIP("10.0.5.12")
+	name, err := ctl.podCache.GetNameByIP("10.0.5.12")
 	assert.Nil(t, err)
 	assert.Equal(t, "nginx", name)
 
@@ -63,19 +67,13 @@ func TestPodOnAdd(t *testing.T) {
 		},
 	}
 	ctl.onAdd(pod2)
-	name, err = ctl.controller.podCache.GetNameByIP("10.0.5.13")
+	name, err = ctl.podCache.GetNameByIP("10.0.5.13")
 	assert.Empty(t, name)
 	assert.Equal(t, types.ErrPodNotFound, err)
 }
 
 func TestPodOnDelete(t *testing.T) {
-	ctl := &podController{
-		controller: &providers.Controller{
-			namespaceProvider: namespace.NewMockWatchingNamespaceProvider([]string{"default"}),
-			podCache:          types.NewPodCache(),
-			MetricsCollector:  metrics.NewPrometheusCollector(),
-		},
-	}
+	ctl := mockController()
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -87,10 +85,10 @@ func TestPodOnDelete(t *testing.T) {
 			PodIP: "10.0.5.12",
 		},
 	}
-	assert.Nil(t, ctl.controller.podCache.Add(pod), "adding pod")
+	assert.Nil(t, ctl.podCache.Add(pod), "adding pod")
 
 	ctl.onDelete(pod)
-	name, err := ctl.controller.podCache.GetNameByIP("10.0.5.12")
+	name, err := ctl.podCache.GetNameByIP("10.0.5.12")
 	assert.Empty(t, name)
 	assert.Equal(t, types.ErrPodNotFound, err)
 
@@ -104,21 +102,15 @@ func TestPodOnDelete(t *testing.T) {
 			PodIP: "10.0.5.13",
 		},
 	}
-	assert.Nil(t, ctl.controller.podCache.Add(pod2), "adding pod")
+	assert.Nil(t, ctl.podCache.Add(pod2), "adding pod")
 	ctl.onDelete(pod2)
-	name, err = ctl.controller.podCache.GetNameByIP("10.0.5.13")
+	name, err = ctl.podCache.GetNameByIP("10.0.5.13")
 	assert.Equal(t, "abc", name)
 	assert.Nil(t, err)
 }
 
 func TestPodOnUpdate(t *testing.T) {
-	ctl := &podController{
-		controller: &providers.Controller{
-			namespaceProvider: namespace.NewMockWatchingNamespaceProvider([]string{"default"}),
-			podCache:          types.NewPodCache(),
-			MetricsCollector:  metrics.NewPrometheusCollector(),
-		},
-	}
+	ctl := mockController()
 
 	pod0 := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -137,12 +129,12 @@ func TestPodOnUpdate(t *testing.T) {
 	pod1.SetResourceVersion("1")
 
 	ctl.onUpdate(pod1, pod0)
-	name, err := ctl.controller.podCache.GetNameByIP("10.0.5.12")
+	name, err := ctl.podCache.GetNameByIP("10.0.5.12")
 	assert.Equal(t, "", name)
 	assert.Equal(t, types.ErrPodNotFound, err)
 
 	ctl.onUpdate(pod0, pod1)
-	name, err = ctl.controller.podCache.GetNameByIP("10.0.5.12")
+	name, err = ctl.podCache.GetNameByIP("10.0.5.12")
 	assert.Equal(t, "nginx", name)
 	assert.Equal(t, nil, err)
 
@@ -157,9 +149,9 @@ func TestPodOnUpdate(t *testing.T) {
 			PodIP: "10.0.5.13",
 		},
 	}
-	assert.Nil(t, ctl.controller.podCache.Add(pod2), "adding pod")
+	assert.Nil(t, ctl.podCache.Add(pod2), "adding pod")
 	ctl.onUpdate(pod1, pod2)
-	name, err = ctl.controller.podCache.GetNameByIP("10.0.5.13")
+	name, err = ctl.podCache.GetNameByIP("10.0.5.13")
 	assert.Equal(t, "abc", name)
 	assert.Nil(t, err)
 }
