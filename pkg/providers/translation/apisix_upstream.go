@@ -17,7 +17,6 @@ package translation
 import (
 	"fmt"
 
-	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -675,31 +674,4 @@ func (t *translator) translateUpstreamPassiveHealthCheckV2(config *configv2.Pass
 		passive.Unhealthy.HTTPStatuses = config.Unhealthy.HTTPCodes
 	}
 	return &passive, nil
-}
-
-// translateUpstreamNotStrictly translates Upstream nodes with a loose way, only generate ID and Name for delete Event.
-func (t *translator) translateUpstreamNotStrictly(namespace, svcName, subset string, svcPort int32) (*apisixv1.Upstream, error) {
-	ups := &apisixv1.Upstream{}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, subset, svcPort)
-	ups.ID = id.GenID(ups.Name)
-	return ups, nil
-}
-
-func (t *translator) translateService(namespace, svcName, subset, svcResolveGranularity, svcClusterIP string, svcPort int32) (*apisixv1.Upstream, error) {
-	ups, err := t.TranslateService(namespace, svcName, subset, svcPort)
-	if err != nil {
-		return nil, err
-	}
-	if svcResolveGranularity == "service" {
-		ups.Nodes = apisixv1.UpstreamNodes{
-			{
-				Host:   svcClusterIP,
-				Port:   int(svcPort),
-				Weight: DefaultWeight,
-			},
-		}
-	}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, subset, svcPort)
-	ups.ID = id.GenID(ups.Name)
-	return ups, nil
 }

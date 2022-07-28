@@ -29,7 +29,7 @@ type translator struct {
 	ServiceLister listerscorev1.ServiceLister
 
 	translation.Translator
-	apisixtranslation.ApisixTranslator // TODO: remove this
+	ApisixTranslator apisixtranslation.ApisixTranslator // TODO: remove this
 }
 
 type IngressTranslator interface {
@@ -96,7 +96,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 			Name:      tls.SecretName,
 			Namespace: ing.Namespace,
 		}
-		ssl, err := t.TranslateSSLV2(&apisixTls)
+		ssl, err := t.ApisixTranslator.TranslateSSLV2(&apisixTls)
 		if err != nil {
 			log.Errorw("failed to translate ingress tls to apisix tls",
 				zap.Error(err),
@@ -165,7 +165,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 			route.Uris = uris
 			route.EnableWebsocket = enableWebsocket
 			if len(nginxVars) > 0 {
-				routeVars, err := t.TranslateRouteMatchExprs(nginxVars)
+				routeVars, err := t.ApisixTranslator.TranslateRouteMatchExprs(nginxVars)
 				if err != nil {
 					return nil, err
 				}
@@ -216,7 +216,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 			Name:      tls.SecretName,
 			Namespace: ing.Namespace,
 		}
-		ssl, err := t.TranslateSSLV2Beta3(&apisixTls)
+		ssl, err := t.ApisixTranslator.TranslateSSLV2Beta3(&apisixTls)
 		if err != nil {
 			log.Errorw("failed to translate ingress tls to apisix tls",
 				zap.Error(err),
@@ -285,7 +285,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 			route.Uris = uris
 			route.EnableWebsocket = enableWebsocket
 			if len(nginxVars) > 0 {
-				routeVars, err := t.TranslateRouteMatchExprs(nginxVars)
+				routeVars, err := t.ApisixTranslator.TranslateRouteMatchExprs(nginxVars)
 				if err != nil {
 					return nil, err
 				}
@@ -430,7 +430,7 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 			route.Uris = uris
 			route.EnableWebsocket = enableWebsocket
 			if len(nginxVars) > 0 {
-				routeVars, err := t.TranslateRouteMatchExprs(nginxVars)
+				routeVars, err := t.ApisixTranslator.TranslateRouteMatchExprs(nginxVars)
 				if err != nil {
 					return nil, err
 				}

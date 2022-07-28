@@ -17,6 +17,7 @@ package translation
 import (
 	"context"
 	"fmt"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -257,14 +258,17 @@ func mockTranslatorV2beta3(t *testing.T) (*translator, <-chan struct{}) {
 
 	tr := &translator{
 		&TranslatorOptions{
-			EndpointLister: epLister,
+			ServiceLister: svcLister,
+		},
+		translation.NewTranslator(&translation.TranslatorOptions{
 			ServiceLister:  svcLister,
+			EndpointLister: epLister,
 			ApisixUpstreamLister: kube.NewApisixUpstreamLister(
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
 			APIVersion: config.ApisixV2beta3,
-		},
+		}),
 	}
 
 	processCh := make(chan struct{}, 2)
@@ -418,6 +422,7 @@ func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
 func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {
 	tr := &translator{
 		&TranslatorOptions{},
+		translation.NewTranslator(nil),
 	}
 	ar := &configv2beta3.ApisixRoute{
 		ObjectMeta: metav1.ObjectMeta{
