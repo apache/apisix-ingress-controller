@@ -17,7 +17,6 @@ package translation
 import (
 	"context"
 	"fmt"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,6 +35,7 @@ import (
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	_const "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 

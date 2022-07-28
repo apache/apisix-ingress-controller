@@ -2,11 +2,11 @@ package k8s
 
 import (
 	"context"
-	apisixprovider "github.com/apache/apisix-ingress-controller/pkg/providers/apisix"
-	"k8s.io/client-go/tools/cache"
 
 	"github.com/pkg/errors"
+	"k8s.io/client-go/tools/cache"
 
+	apisixprovider "github.com/apache/apisix-ingress-controller/pkg/providers/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/endpoint"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"

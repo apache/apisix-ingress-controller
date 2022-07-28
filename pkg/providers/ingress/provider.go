@@ -2,13 +2,13 @@ package ingress
 
 import (
 	"context"
-	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
-	ingresstranslation "github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation"
 
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
+	ingresstranslation "github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"

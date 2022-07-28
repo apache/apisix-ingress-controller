@@ -16,7 +16,6 @@ package translation
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,6 +33,7 @@ import (
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixfake "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 )
 
 func TestTranslateTrafficSplitPlugin(t *testing.T) {
