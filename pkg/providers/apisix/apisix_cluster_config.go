@@ -34,41 +34,43 @@ import (
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 type apisixClusterConfigController struct {
-	*providertypes.CommonConfig
+	*apisixCommon
 
-	controller        *providers.Controller
-	workqueue         workqueue.RateLimitingInterface
-	workers           int
-	NamespaceProvider namespace.WatchingNamespaceProvider
+	workqueue workqueue.RateLimitingInterface
+	workers   int
 
 	apisixClusterConfigLister   kube.ApisixClusterConfigLister
 	apisixClusterConfigInformer cache.SharedIndexInformer
-
-	translator translation.ApisixTranslator
 }
 
-func NewApisixClusterConfigController() *apisixClusterConfigController {
-	ctl := &apisixClusterConfigController{
-		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(time.Second, 60*time.Second, 5), "ApisixClusterConfig"),
-		workers:   1,
+func newApisixClusterConfigController(common *apisixCommon, apisixClusterConfigInformer cache.SharedIndexInformer) *apisixClusterConfigController {
+	c := &apisixClusterConfigController{
+		apisixCommon: common,
+		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(time.Second, 60*time.Second, 5), "ApisixClusterConfig"),
+		workers:      1,
+
+		apisixClusterConfigInformer: apisixClusterConfigInformer,
 	}
-	ctl.apisixClusterConfigInformer.AddEventHandler(
+
+	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
+	c.apisixClusterConfigLister = kube.NewApisixClusterConfigLister(
+		apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister(),
+		apisixFactory.Apisix().V2().ApisixClusterConfigs().Lister(),
+	)
+
+	c.apisixClusterConfigInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    ctl.onAdd,
-			UpdateFunc: ctl.onUpdate,
-			DeleteFunc: ctl.onDelete,
+			AddFunc:    c.onAdd,
+			UpdateFunc: c.onUpdate,
+			DeleteFunc: c.onDelete,
 		},
 	)
-	return ctl
+	return c
 }
 
 func (c *apisixClusterConfigController) run(ctx context.Context) {
@@ -428,7 +430,7 @@ func (c *apisixClusterConfigController) ResourceSync() {
 			log.Errorw("ApisixClusterConfig sync failed, found ApisixClusterConfig resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
-		if !c.NamespaceProvider.IsWatchingNamespace(key) {
+		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
 		acc, err := kube.NewApisixClusterConfig(obj)

@@ -32,8 +32,6 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
@@ -43,31 +41,32 @@ const (
 )
 
 type ingressController struct {
-	*providertypes.CommonConfig
+	*ingressCommon
 
 	workqueue workqueue.RateLimitingInterface
 	workers   int
 
 	ingressLister   kube.IngressLister
 	ingressInformer cache.SharedIndexInformer
-
-	translator *translator
-
-	NamespaceProvider namespace.WatchingNamespaceProvider
 }
 
-func newIngressController() *ingressController {
-	ctl := &ingressController{
+func newIngressController(common *ingressCommon, ingressLister kube.IngressLister, ingressInformer cache.SharedIndexInformer) *ingressController {
+	c := &ingressController{
+		ingressCommon: common,
+
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ingress"),
 		workers:   1,
+
+		ingressLister:   ingressLister,
+		ingressInformer: ingressInformer,
 	}
 
-	ctl.ingressInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    ctl.onAdd,
-		UpdateFunc: ctl.onUpdate,
-		DeleteFunc: ctl.OnDelete,
+	c.ingressInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    c.onAdd,
+		UpdateFunc: c.onUpdate,
+		DeleteFunc: c.OnDelete,
 	})
-	return ctl
+	return c
 }
 
 func (c *ingressController) run(ctx context.Context) {
@@ -285,7 +284,7 @@ func (c *ingressController) onAdd(obj interface{}) {
 		log.Errorf("found ingress resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 
@@ -325,7 +324,7 @@ func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorf("found ingress resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	valid := c.isIngressEffective(curr)
@@ -369,7 +368,7 @@ func (c *ingressController) OnDelete(obj interface{}) {
 		log.Errorf("found ingress resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	valid := c.isIngressEffective(ing)
@@ -429,7 +428,7 @@ func (c *ingressController) ResourceSync() {
 			log.Errorw("found Ingress resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
-		if !c.NamespaceProvider.IsWatchingNamespace(key) {
+		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
 		ing := kube.MustNewIngress(obj)

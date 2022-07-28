@@ -16,9 +16,9 @@ package providers
 
 import (
 	"context"
-	"fmt"
+	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"os"
-	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -28,8 +28,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	listerscorev1 "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
@@ -39,29 +37,20 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	apisix2 "github.com/apache/apisix-ingress-controller/pkg/providers/apisix"
+	apisixprovider "github.com/apache/apisix-ingress-controller/pkg/providers/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/gateway"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress"
+	ingressprovider "github.com/apache/apisix-ingress-controller/pkg/providers/ingress"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
-	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 const (
 	// _component is used for event component
 	_component = "ApisixIngress"
-	// _resourceSynced is used when a resource is synced successfully
-	_resourceSynced = "ResourcesSynced"
-	// _messageResourceSynced is used to specify controller
-	_messageResourceSynced = "%s synced successfully"
-	// _resourceSyncAborted is used when a resource synced failed
-	_resourceSyncAborted = "ResourceSyncAborted"
-	// _messageResourceFailed is used to report error
-	_messageResourceFailed = "%s synced failed, with error: %s"
 	// minimum interval for ingress sync to APISIX
 	_mininumApisixResourceSyncInterval = 60 * time.Second
 )
@@ -72,63 +61,24 @@ type Controller struct {
 	namespace        string
 	cfg              *config.Config
 	apisix           apisix.APISIX
-	podCache         types.PodCache
-	translator       translation.Translator
 	apiServer        *api.Server
 	MetricsCollector metrics.Collector
 	kubeClient       *kube.KubeClient
 	// recorder event
 	recorder record.EventRecorder
-	// this map enrolls which ApisixTls objects refer to a Kubernetes
-	// Secret object.
-	// type: Map<SecretKey, Map<ApisixTlsKey, ApisixTls>>
-	// SecretKey is `namespace_name`, ApisixTlsKey is kube style meta key: `namespace/name`
-	secretSSLMap *sync.Map
 
 	// leaderContextCancelFunc will be called when apisix-ingress-controller
 	// decides to give up its leader role.
 	leaderContextCancelFunc context.CancelFunc
 
-	// common informers and listers
-	podInformer                 cache.SharedIndexInformer
-	podLister                   listerscorev1.PodLister
-	epInformer                  cache.SharedIndexInformer
-	epLister                    kube.EndpointLister
-	svcInformer                 cache.SharedIndexInformer
-	svcLister                   listerscorev1.ServiceLister
-	ingressLister               kube.IngressLister
-	ingressInformer             cache.SharedIndexInformer
-	secretInformer              cache.SharedIndexInformer
-	secretLister                listerscorev1.SecretLister
-	apisixUpstreamInformer      cache.SharedIndexInformer
-	apisixUpstreamLister        kube.ApisixUpstreamLister
-	apisixRouteLister           kube.ApisixRouteLister
-	apisixRouteInformer         cache.SharedIndexInformer
-	apisixTlsLister             kube.ApisixTlsLister
-	apisixTlsInformer           cache.SharedIndexInformer
-	apisixClusterConfigLister   kube.ApisixClusterConfigLister
-	apisixClusterConfigInformer cache.SharedIndexInformer
-	apisixConsumerInformer      cache.SharedIndexInformer
-	apisixConsumerLister        kube.ApisixConsumerLister
-	apisixPluginConfigInformer  cache.SharedIndexInformer
-	apisixPluginConfigLister    kube.ApisixPluginConfigLister
-
-	// resource controllers
-	podController           *k8s.podController
-	endpointsController     *k8s.endpointsController
-	endpointSliceController *k8s.endpointSliceController
-	ingressController       *ingress.ingressController
-	secretController        *k8s.secretController
+	translator       translation.Translator
+	apisixTranslator apisixtranslation.ApisixTranslator // TODO: this is temporary solution, should remove this, see compare.go
 
 	namespaceProvider namespace.WatchingNamespaceProvider
+	kubeProvider      k8s.Provider
 	gatewayProvider   *gateway.Provider
-
-	apisixUpstreamController      *apisix2.apisixUpstreamController
-	apisixRouteController         *apisix2.apisixRouteController
-	apisixTlsController           *apisix2.apisixTlsController
-	apisixClusterConfigController *apisix2.apisixClusterConfigController
-	apisixConsumerController      *apisix2.apisixConsumerController
-	apisixPluginConfigController  *apisix2.apisixPluginConfigController
+	apisixProvider    apisixprovider.Provider
+	ingressProvider   ingressprovider.Provider
 }
 
 // NewController creates an ingress apisix controller object.
@@ -166,137 +116,27 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		apisix:           client,
 		MetricsCollector: metrics.NewPrometheusCollector(),
 		kubeClient:       kubeClient,
-		secretSSLMap:     new(sync.Map),
 		recorder:         eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: _component}),
-
-		podCache: types.NewPodCache(),
 	}
 	return c, nil
 }
 
 func (c *Controller) initWhenStartLeading() {
-	var (
-		ingressInformer             cache.SharedIndexInformer
-		apisixRouteInformer         cache.SharedIndexInformer
-		apisixPluginConfigInformer  cache.SharedIndexInformer
-		apisixTlsInformer           cache.SharedIndexInformer
-		apisixClusterConfigInformer cache.SharedIndexInformer
-		apisixConsumerInformer      cache.SharedIndexInformer
-		apisixUpstreamInformer      cache.SharedIndexInformer
-	)
-
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
 	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
 
-	c.podLister = kubeFactory.Core().V1().Pods().Lister()
-	c.epLister, c.epInformer = kube.NewEndpointListerAndInformer(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
-	c.svcLister = kubeFactory.Core().V1().Services().Lister()
-	c.ingressLister = kube.NewIngressLister(
-		kubeFactory.Networking().V1().Ingresses().Lister(),
-		kubeFactory.Networking().V1beta1().Ingresses().Lister(),
-		kubeFactory.Extensions().V1beta1().Ingresses().Lister(),
-	)
-	c.secretLister = kubeFactory.Core().V1().Secrets().Lister()
-	c.apisixRouteLister = kube.NewApisixRouteLister(
-		apisixFactory.Apisix().V2beta2().ApisixRoutes().Lister(),
-		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
-		apisixFactory.Apisix().V2().ApisixRoutes().Lister(),
-	)
-	c.apisixUpstreamLister = kube.NewApisixUpstreamLister(
+	epLister := kube.NewEndpointLister(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
+	svcLister := kubeFactory.Core().V1().Services().Lister()
+	apisixUpstreamLister := kube.NewApisixUpstreamLister(
 		apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		apisixFactory.Apisix().V2().ApisixUpstreams().Lister(),
 	)
-	c.apisixTlsLister = kube.NewApisixTlsLister(
-		apisixFactory.Apisix().V2beta3().ApisixTlses().Lister(),
-		apisixFactory.Apisix().V2().ApisixTlses().Lister(),
-	)
-	c.apisixClusterConfigLister = kube.NewApisixClusterConfigLister(
-		apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister(),
-		apisixFactory.Apisix().V2().ApisixClusterConfigs().Lister(),
-	)
-	c.apisixConsumerLister = kube.NewApisixConsumerLister(
-		apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister(),
-		apisixFactory.Apisix().V2().ApisixConsumers().Lister(),
-	)
-	c.apisixPluginConfigLister = kube.NewApisixPluginConfigLister(
-		apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
-		apisixFactory.Apisix().V2().ApisixPluginConfigs().Lister(),
-	)
-
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
-		PodCache:             c.podCache,
-		PodLister:            c.podLister,
-		EndpointLister:       c.epLister,
-		ServiceLister:        c.svcLister,
-		ApisixUpstreamLister: c.apisixUpstreamLister,
-		SecretLister:         c.secretLister,
-		UseEndpointSlices:    c.cfg.Kubernetes.WatchEndpointSlices,
+		EndpointLister:       epLister,
+		ServiceLister:        svcLister,
+		ApisixUpstreamLister: apisixUpstreamLister,
 		APIVersion:           c.cfg.Kubernetes.APIVersion,
 	})
-
-	switch c.cfg.Kubernetes.APIVersion {
-	case config.ApisixV2beta3:
-		apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
-		// to do ApisixRoute
-		apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
-		apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
-		apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
-		apisixClusterConfigInformer = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Informer()
-	case config.ApisixV2:
-		apisixUpstreamInformer = apisixFactory.Apisix().V2().ApisixUpstreams().Informer()
-		// to do ApisixRoute
-		apisixPluginConfigInformer = apisixFactory.Apisix().V2().ApisixPluginConfigs().Informer()
-		apisixTlsInformer = apisixFactory.Apisix().V2().ApisixTlses().Informer()
-		apisixConsumerInformer = apisixFactory.Apisix().V2().ApisixConsumers().Informer()
-		apisixClusterConfigInformer = apisixFactory.Apisix().V2().ApisixClusterConfigs().Informer()
-	default:
-		panic(fmt.Errorf("unsupported API version %v", c.cfg.Kubernetes.APIVersion))
-	}
-
-	if c.cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1 {
-		ingressInformer = kubeFactory.Networking().V1().Ingresses().Informer()
-	} else if c.cfg.Kubernetes.IngressVersion == config.IngressNetworkingV1beta1 {
-		ingressInformer = kubeFactory.Networking().V1beta1().Ingresses().Informer()
-	} else {
-		ingressInformer = kubeFactory.Extensions().V1beta1().Ingresses().Informer()
-	}
-
-	switch c.cfg.Kubernetes.ApisixRouteVersion {
-	case config.ApisixV2beta2:
-		apisixRouteInformer = apisixFactory.Apisix().V2beta2().ApisixRoutes().Informer()
-	case config.ApisixV2beta3:
-		apisixRouteInformer = apisixFactory.Apisix().V2beta3().ApisixRoutes().Informer()
-	case config.ApisixV2:
-		apisixRouteInformer = apisixFactory.Apisix().V2().ApisixRoutes().Informer()
-	default:
-		panic(fmt.Errorf("unsupported ApisixRoute version %s", c.cfg.Kubernetes.ApisixRouteVersion))
-	}
-
-	c.podInformer = kubeFactory.Core().V1().Pods().Informer()
-	c.svcInformer = kubeFactory.Core().V1().Services().Informer()
-	c.ingressInformer = ingressInformer
-	c.apisixRouteInformer = apisixRouteInformer
-	c.apisixUpstreamInformer = apisixUpstreamInformer
-	c.apisixClusterConfigInformer = apisixClusterConfigInformer
-	c.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
-	c.apisixTlsInformer = apisixTlsInformer
-	c.apisixConsumerInformer = apisixConsumerInformer
-	c.apisixPluginConfigInformer = apisixPluginConfigInformer
-
-	if c.cfg.Kubernetes.WatchEndpointSlices {
-		c.endpointSliceController = c.newEndpointSliceController()
-	} else {
-		c.endpointsController = c.newEndpointsController()
-	}
-	c.podController = c.newPodController()
-	c.secretController = c.newSecretController()
-	c.apisixUpstreamController = c.newApisixUpstreamController()
-	c.ingressController = c.newIngressController()
-	c.apisixRouteController = c.newApisixRouteController()
-	c.apisixClusterConfigController = c.newApisixClusterConfigController()
-	c.apisixTlsController = c.newApisixTlsController()
-	c.apisixConsumerController = c.newApisixConsumerController()
-	c.apisixPluginConfigController = c.newApisixPluginConfigController()
 }
 
 // Eventf implements the resourcelock.EventRecorder interface.
@@ -425,25 +265,53 @@ func (c *Controller) run(ctx context.Context) {
 
 	c.initWhenStartLeading()
 
+	common := &providertypes.Common{
+		Config:           c.cfg,
+		APISIX:           c.apisix,
+		KubeClient:       c.kubeClient,
+		MetricsCollector: c.MetricsCollector,
+		Recorder:         c.recorder,
+	}
+
 	c.namespaceProvider, err = namespace.NewWatchingNamespaceProvider(ctx, c.kubeClient, c.cfg)
 	if err != nil {
 		ctx.Done()
 		return
 	}
 
-	c.gatewayProvider, err = gateway.NewGatewayProvider(&gateway.ProviderOptions{
-		Cfg:               c.cfg,
-		APISIX:            c.apisix,
-		APISIXClusterName: c.cfg.APISIX.DefaultClusterName,
-		KubeTranslator:    c.translator,
-		RestConfig:        nil,
-		KubeClient:        c.kubeClient.Client,
-		MetricsCollector:  c.MetricsCollector,
-		NamespaceProvider: c.namespaceProvider,
-	})
+	c.kubeProvider, err = k8s.NewProvider(common, c.translator, c.namespaceProvider)
 	if err != nil {
 		ctx.Done()
 		return
+	}
+
+	c.apisixProvider, c.apisixTranslator, err = apisixprovider.NewProvider(common, c.kubeProvider, c.namespaceProvider, c.translator)
+	if err != nil {
+		ctx.Done()
+		return
+	}
+
+	c.ingressProvider, err = ingressprovider.NewProvider(common, c.namespaceProvider, c.translator)
+	if err != nil {
+		ctx.Done()
+		return
+	}
+
+	if c.cfg.Kubernetes.EnableGatewayAPI {
+		c.gatewayProvider, err = gateway.NewGatewayProvider(&gateway.ProviderOptions{
+			Cfg:               c.cfg,
+			APISIX:            c.apisix,
+			APISIXClusterName: c.cfg.APISIX.DefaultClusterName,
+			KubeTranslator:    c.translator,
+			RestConfig:        nil,
+			KubeClient:        c.kubeClient.Client,
+			MetricsCollector:  c.MetricsCollector,
+			NamespaceProvider: c.namespaceProvider,
+		})
+		if err != nil {
+			ctx.Done()
+			return
+		}
 	}
 
 	// compare resources of k8s with objects of APISIX
@@ -457,56 +325,21 @@ func (c *Controller) run(ctx context.Context) {
 	e.Add(func() {
 		c.checkClusterHealth(ctx, cancelFunc)
 	})
-	e.Add(func() {
-		c.podInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.epInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.svcInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.ingressInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.apisixRouteInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.apisixUpstreamInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.apisixClusterConfigInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.secretInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.apisixTlsInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.apisixConsumerInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.apisixPluginConfigInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.podController.run(ctx)
-	})
-	e.Add(func() {
-		if c.cfg.Kubernetes.WatchEndpointSlices {
-			c.endpointSliceController.run(ctx)
-		} else {
-			c.endpointsController.run(ctx)
-		}
-	})
 
 	e.Add(func() {
 		c.namespaceProvider.Run(ctx)
 	})
 
 	e.Add(func() {
-		c.secretController.run(ctx)
+		c.kubeProvider.Run(ctx)
+	})
+
+	e.Add(func() {
+		c.apisixProvider.Run(ctx)
+	})
+
+	e.Add(func() {
+		c.ingressProvider.Run(ctx)
 	})
 
 	if c.cfg.Kubernetes.EnableGatewayAPI {
@@ -514,28 +347,6 @@ func (c *Controller) run(ctx context.Context) {
 			c.gatewayProvider.Run(ctx)
 		})
 	}
-
-	e.Add(func() {
-		c.apisixUpstreamController.run(ctx)
-	})
-	e.Add(func() {
-		c.ingressController.run(ctx)
-	})
-	e.Add(func() {
-		c.apisixRouteController.run(ctx)
-	})
-	e.Add(func() {
-		c.apisixClusterConfigController.run(ctx)
-	})
-	e.Add(func() {
-		c.apisixTlsController.run(ctx)
-	})
-	e.Add(func() {
-		c.apisixConsumerController.run(ctx)
-	})
-	e.Add(func() {
-		c.apisixPluginConfigController.run(ctx)
-	})
 
 	e.Add(func() {
 		c.resourceSyncLoop(ctx, c.cfg.ApisixResourceSyncInterval.Duration)
@@ -586,36 +397,12 @@ func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.
 }
 
 func (c *Controller) syncAllResources() {
-	wg := sync.WaitGroup{}
-	goAttach := func(handler func()) {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			handler()
-		}()
-	}
-	goAttach(func() {
-		c.apisixConsumerController.ResourceSync()
-	})
-	goAttach(func() {
-		c.apisixRouteController.ResourceSync()
-	})
-	goAttach(func() {
-		c.apisixClusterConfigController.ResourceSync()
-	})
-	goAttach(func() {
-		c.apisixPluginConfigController.ResourceSync()
-	})
-	goAttach(func() {
-		c.apisixUpstreamController.ResourceSync()
-	})
-	goAttach(func() {
-		c.apisixTlsController.ResourceSync()
-	})
-	goAttach(func() {
-		c.ingressController.ResourceSync()
-	})
-	wg.Wait()
+	e := utils.ParallelExecutor{}
+
+	e.Add(c.ingressProvider.ResourceSync)
+	e.Add(c.apisixProvider.ResourceSync)
+
+	e.Wait()
 }
 
 func (c *Controller) resourceSyncLoop(ctx context.Context, interval time.Duration) {

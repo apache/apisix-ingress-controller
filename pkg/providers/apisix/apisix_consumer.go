@@ -33,41 +33,43 @@ import (
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 type apisixConsumerController struct {
-	*providertypes.CommonConfig
+	*apisixCommon
 
-	controller        *providers.Controller
-	workqueue         workqueue.RateLimitingInterface
-	workers           int
-	NamespaceProvider namespace.WatchingNamespaceProvider
+	workqueue workqueue.RateLimitingInterface
+	workers   int
 
-	apisixConsumerInformer cache.SharedIndexInformer
 	apisixConsumerLister   kube.ApisixConsumerLister
-
-	translator translation.ApisixTranslator
+	apisixConsumerInformer cache.SharedIndexInformer
 }
 
-func newApisixConsumerController() *apisixConsumerController {
-	ctl := &apisixConsumerController{
-		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixConsumer"),
-		workers:   1,
+func newApisixConsumerController(common *apisixCommon, apisixConsumerInformer cache.SharedIndexInformer) *apisixConsumerController {
+	c := &apisixConsumerController{
+		apisixCommon: common,
+		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixConsumer"),
+		workers:      1,
+
+		apisixConsumerInformer: apisixConsumerInformer,
 	}
-	ctl.apisixConsumerInformer.AddEventHandler(
+
+	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
+	c.apisixConsumerLister = kube.NewApisixConsumerLister(
+		apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister(),
+		apisixFactory.Apisix().V2().ApisixConsumers().Lister(),
+	)
+
+	c.apisixConsumerInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    ctl.onAdd,
-			UpdateFunc: ctl.onUpdate,
-			DeleteFunc: ctl.onDelete,
+			AddFunc:    c.onAdd,
+			UpdateFunc: c.onUpdate,
+			DeleteFunc: c.onDelete,
 		},
 	)
-	return ctl
+	return c
 }
 
 func (c *apisixConsumerController) run(ctx context.Context) {
@@ -241,7 +243,7 @@ func (c *apisixConsumerController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixConsumer resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixConsumer add event arrived",
@@ -278,7 +280,7 @@ func (c *apisixConsumerController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorf("found ApisixConsumer resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixConsumer update event arrived",
@@ -317,7 +319,7 @@ func (c *apisixConsumerController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixConsumer resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixConsumer delete event arrived",
@@ -343,7 +345,7 @@ func (c *apisixConsumerController) ResourceSync() {
 			log.Errorw("ApisixConsumer sync failed, found ApisixConsumer resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
-		if !c.NamespaceProvider.IsWatchingNamespace(key) {
+		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
 		ac, err := kube.NewApisixConsumer(obj)

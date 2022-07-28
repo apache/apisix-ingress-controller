@@ -2,10 +2,10 @@ package k8s
 
 import (
 	"context"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 
 	"github.com/pkg/errors"
 
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/endpoint"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
@@ -25,19 +25,22 @@ type k8sProvider struct {
 	podController    *podController
 	secretController *secretController
 
-	endpoint  endpoint.Provider
-	namespace namespace.WatchingNamespaceProvider
+	endpoint *endpoint.Controller
 }
 
-func NewProvider(ctx context.Context, kube *kube.KubeClient, cfg *providertypes.CommonConfig) (Provider, error) {
+func NewProvider(common *providertypes.Common, translator translation.Translator, namespaceProvider namespace.WatchingNamespaceProvider) (Provider, error) {
 	var err error
 	provider := &k8sProvider{}
 
-	provider.endpoint, err = endpoint.NewProvider(cfg)
+	provider.endpoint, err = endpoint.NewController(common, translator, namespaceProvider)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init endpoint provider")
 	}
-	provider.podController = newPodController()
+
+	kubeFactory := common.KubeClient.NewSharedIndexInformerFactory()
+	podInformer := kubeFactory.Core().V1().Pods().Informer()
+
+	provider.podController = newPodController(common, namespaceProvider, podInformer)
 	provider.secretController = newSecretController()
 
 	return provider, nil

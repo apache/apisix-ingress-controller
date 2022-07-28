@@ -34,54 +34,59 @@ import (
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type apisixRouteController struct {
-	*providertypes.CommonConfig
+	*apisixCommon
 	workqueue workqueue.RateLimitingInterface
 	workers   int
 
-	NamespaceProvider namespace.WatchingNamespaceProvider
-
+	svcInformer         cache.SharedIndexInformer
 	apisixRouteLister   kube.ApisixRouteLister
 	apisixRouteInformer cache.SharedIndexInformer
-	svcInformer         cache.SharedIndexInformer
 
 	svcLock sync.RWMutex
 	svcMap  map[string]map[string]struct{}
-
-	translator apisixtranslation.ApisixTranslator
 }
 
-func newApisixRouteController() *apisixRouteController {
-	ctl := &apisixRouteController{
-		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),
-		workers:   1,
+func newApisixRouteController(common *apisixCommon, svcInformer cache.SharedIndexInformer, apisixRouteInformer cache.SharedIndexInformer) *apisixRouteController {
+	c := &apisixRouteController{
+		apisixCommon: common,
+		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),
+		workers:      1,
+
+		svcInformer:         svcInformer,
+		apisixRouteInformer: apisixRouteInformer,
 
 		svcMap: make(map[string]map[string]struct{}),
 	}
-	ctl.apisixRouteInformer.AddEventHandler(
+
+	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
+	c.apisixRouteLister = kube.NewApisixRouteLister(
+		apisixFactory.Apisix().V2beta2().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2().ApisixRoutes().Lister(),
+	)
+
+	c.apisixRouteInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    ctl.onAdd,
-			UpdateFunc: ctl.onUpdate,
-			DeleteFunc: ctl.onDelete,
+			AddFunc:    c.onAdd,
+			UpdateFunc: c.onUpdate,
+			DeleteFunc: c.onDelete,
 		},
 	)
-	ctl.svcInformer.AddEventHandler(
+	c.svcInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc: ctl.onSvcAdd,
+			AddFunc: c.onSvcAdd,
 		},
 	)
 
-	return ctl
+	return c
 }
 
 func (c *apisixRouteController) run(ctx context.Context) {
@@ -482,7 +487,7 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixRoute resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixRoute add event arrived",
@@ -513,7 +518,7 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorf("found ApisixRoute resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixRoute update event arrived",
@@ -547,7 +552,7 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixRoute resource with bad meta namesapce key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixRoute delete event arrived",
@@ -582,7 +587,7 @@ func (c *apisixRouteController) ResourceSync() {
 			)
 			continue
 		}
-		if !c.NamespaceProvider.IsWatchingNamespace(key) {
+		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
 		ar := kube.MustNewApisixRoute(obj)
@@ -639,7 +644,7 @@ func (c *apisixRouteController) onSvcAdd(obj interface{}) {
 		)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 

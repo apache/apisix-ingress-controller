@@ -31,7 +31,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 

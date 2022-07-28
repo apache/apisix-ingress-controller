@@ -34,27 +34,20 @@ import (
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type apisixTlsController struct {
-	*providertypes.CommonConfig
+	*apisixCommon
 
 	workqueue workqueue.RateLimitingInterface
 	workers   int
 
-	NamespaceProvider namespace.WatchingNamespaceProvider
-
 	secretInformer    cache.SharedIndexInformer
 	apisixTlsLister   kube.ApisixTlsLister
 	apisixTlsInformer cache.SharedIndexInformer
-
-	translator translation.ApisixTranslator
 
 	// this map enrolls which ApisixTls objects refer to a Kubernetes
 	// Secret object.
@@ -63,19 +56,32 @@ type apisixTlsController struct {
 	secretSSLMap *sync.Map
 }
 
-func newApisixTlsController() *apisixTlsController {
-	ctl := &apisixTlsController{
-		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixTls"),
-		workers:   1,
+func newApisixTlsController(common *apisixCommon, secretInformer cache.SharedIndexInformer, apisixTlsInformer cache.SharedIndexInformer) *apisixTlsController {
+	c := &apisixTlsController{
+		apisixCommon: common,
+		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixTls"),
+		workers:      1,
+
+		secretInformer:    secretInformer,
+		apisixTlsInformer: apisixTlsInformer,
+
+		secretSSLMap: new(sync.Map),
 	}
-	ctl.apisixTlsInformer.AddEventHandler(
+
+	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
+	c.apisixTlsLister = kube.NewApisixTlsLister(
+		apisixFactory.Apisix().V2beta3().ApisixTlses().Lister(),
+		apisixFactory.Apisix().V2().ApisixTlses().Lister(),
+	)
+
+	c.apisixTlsInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    ctl.onAdd,
-			UpdateFunc: ctl.onUpdate,
-			DeleteFunc: ctl.onDelete,
+			AddFunc:    c.onAdd,
+			UpdateFunc: c.onUpdate,
+			DeleteFunc: c.onDelete,
 		},
 	)
-	return ctl
+	return c
 }
 
 func (c *apisixTlsController) run(ctx context.Context) {
@@ -291,7 +297,7 @@ func (c *apisixTlsController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixTls object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixTls add event arrived",
@@ -327,7 +333,7 @@ func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
 		log.Errorf("found ApisixTls object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixTls update event arrived",
@@ -364,7 +370,7 @@ func (c *apisixTlsController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixTls resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixTls delete event arrived",
@@ -390,7 +396,7 @@ func (c *apisixTlsController) ResourceSync() {
 			log.Errorw("ApisixTls sync failed, found ApisixTls object with bad namespace/name ignore it", zap.String("error", err.Error()))
 			continue
 		}
-		if !c.NamespaceProvider.IsWatchingNamespace(key) {
+		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
 		tls, err := kube.NewApisixTls(obj)

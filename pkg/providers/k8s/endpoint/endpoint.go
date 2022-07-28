@@ -16,6 +16,7 @@ package endpoint
 
 import (
 	"context"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
 	"time"
 
 	"go.uber.org/zap"
@@ -36,14 +37,22 @@ type endpointsController struct {
 	workqueue workqueue.RateLimitingInterface
 	workers   int
 
+	namespaceProvider namespace.WatchingNamespaceProvider
+
 	epInformer cache.SharedIndexInformer
 	epLister   kube.EndpointLister
 }
 
-func NewEndpointsController(epInformer cache.SharedIndexInformer, epLister kube.EndpointLister) *endpointsController {
+func newEndpointsController(base *baseEndpointController,
+	namespaceProvider namespace.WatchingNamespaceProvider,
+	epInformer cache.SharedIndexInformer, epLister kube.EndpointLister) *endpointsController {
 	ctl := &endpointsController{
+		baseEndpointController: base,
+
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "endpoints"),
 		workers:   1,
+
+		namespaceProvider: namespaceProvider,
 
 		epInformer: epInformer,
 		epLister:   epLister,
@@ -144,7 +153,7 @@ func (c *endpointsController) onAdd(obj interface{}) {
 		log.Errorf("found endpoints object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("endpoints add event arrived",
@@ -171,7 +180,7 @@ func (c *endpointsController) onUpdate(prev, curr interface{}) {
 		log.Errorf("found endpoints object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("endpoints update event arrived",
@@ -201,7 +210,7 @@ func (c *endpointsController) onDelete(obj interface{}) {
 	// FIXME Refactor Controller.isWatchingNamespace to just use
 	// namespace after all controllers use the same way to fetch
 	// the object.
-	if !c.NamespaceProvider.IsWatchingNamespace(ep.Namespace + "/" + ep.Name) {
+	if !c.namespaceProvider.IsWatchingNamespace(ep.Namespace + "/" + ep.Name) {
 		return
 	}
 	log.Debugw("endpoints delete event arrived",

@@ -32,41 +32,45 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 type apisixPluginConfigController struct {
-	*providertypes.CommonConfig
+	*apisixCommon
 
-	workqueue         workqueue.RateLimitingInterface
-	workers           int
-	NamespaceProvider namespace.WatchingNamespaceProvider
+	workqueue workqueue.RateLimitingInterface
+	workers   int
 
-	apisixPluginConfigInformer cache.SharedIndexInformer
 	apisixPluginConfigLister   kube.ApisixPluginConfigLister
-
-	translator apisixtranslation.ApisixTranslator
+	apisixPluginConfigInformer cache.SharedIndexInformer
 }
 
-func newApisixPluginConfigController() *apisixPluginConfigController {
-	ctl := &apisixPluginConfigController{
-		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixPluginConfig"),
-		workers:   1,
+func newApisixPluginConfigController(common *apisixCommon, apisixPluginConfigInformer cache.SharedIndexInformer) *apisixPluginConfigController {
+	c := &apisixPluginConfigController{
+		apisixCommon: common,
+		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixPluginConfig"),
+		workers:      1,
+
+		apisixPluginConfigInformer: apisixPluginConfigInformer,
 	}
-	ctl.apisixPluginConfigInformer.AddEventHandler(
+
+	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
+	c.apisixPluginConfigLister = kube.NewApisixPluginConfigLister(
+		apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+		apisixFactory.Apisix().V2().ApisixPluginConfigs().Lister(),
+	)
+
+	c.apisixPluginConfigInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    ctl.onAdd,
-			UpdateFunc: ctl.onUpdate,
-			DeleteFunc: ctl.onDelete,
+			AddFunc:    c.onAdd,
+			UpdateFunc: c.onUpdate,
+			DeleteFunc: c.onDelete,
 		},
 	)
-	return ctl
+	return c
 }
 
 func (c *apisixPluginConfigController) run(ctx context.Context) {
@@ -301,7 +305,7 @@ func (c *apisixPluginConfigController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixPluginConfig resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixPluginConfig add event arrived",
@@ -330,7 +334,7 @@ func (c *apisixPluginConfigController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorf("found ApisixPluginConfig resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixPluginConfig update event arrived",
@@ -363,7 +367,7 @@ func (c *apisixPluginConfigController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixPluginConfig resource with bad meta namesapce key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixPluginConfig delete event arrived",
@@ -389,7 +393,7 @@ func (c *apisixPluginConfigController) ResourceSync() {
 			log.Errorw("ApisixPluginConfig sync failed, found ApisixPluginConfig resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
-		if !c.NamespaceProvider.IsWatchingNamespace(key) {
+		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
 		apc := kube.MustNewApisixPluginConfig(obj)

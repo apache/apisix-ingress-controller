@@ -16,6 +16,7 @@ package endpoint
 
 import (
 	"context"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
 	"time"
 
 	"go.uber.org/zap"
@@ -45,17 +46,24 @@ type endpointSliceController struct {
 	workqueue workqueue.RateLimitingInterface
 	workers   int
 
+	namespaceProvider namespace.WatchingNamespaceProvider
+
 	epInformer cache.SharedIndexInformer
 	epLister   kube.EndpointLister
 }
 
-func newEndpointSliceController(epInformer cache.SharedIndexInformer, epLister kube.EndpointLister) *endpointSliceController {
+func newEndpointSliceController(base *baseEndpointController,
+	namespaceProvider namespace.WatchingNamespaceProvider,
+	epInformer cache.SharedIndexInformer, epLister kube.EndpointLister) *endpointSliceController {
 	ctl := &endpointSliceController{
+		baseEndpointController: base,
+
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(time.Second, 60*time.Second, 5), "endpointSlice"),
 		workers:   1,
 
-		epInformer: epInformer,
-		epLister:   epLister,
+		namespaceProvider: namespaceProvider,
+		epInformer:        epInformer,
+		epLister:          epLister,
 	}
 
 	ctl.epInformer.AddEventHandler(
@@ -154,7 +162,7 @@ func (c *endpointSliceController) onAdd(obj interface{}) {
 	if err != nil {
 		log.Errorf("found endpointSlice object with bad namespace")
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	ep := obj.(*discoveryv1.EndpointSlice)
@@ -195,7 +203,7 @@ func (c *endpointSliceController) onUpdate(prev, curr interface{}) {
 		log.Errorf("found endpointSlice object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	if currEp.Labels[discoveryv1.LabelManagedBy] != _endpointSlicesManagedBy {
@@ -239,7 +247,7 @@ func (c *endpointSliceController) onDelete(obj interface{}) {
 		log.Errorf("found endpointSlice object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	if ep.Labels[discoveryv1.LabelManagedBy] != _endpointSlicesManagedBy {

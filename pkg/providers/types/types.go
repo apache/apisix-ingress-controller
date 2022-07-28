@@ -20,21 +20,21 @@ import (
 )
 
 type Provider interface {
+	// Init() // TODO: implement this
 	Run(ctx context.Context)
 }
 
-// TODO: rename to BaseController
-type CommonConfig struct {
+type Common struct {
 	*config.Config
 
-	MetricsCollector metrics.Collector
-	Recorder         record.EventRecorder
 	APISIX           apisix.APISIX
 	KubeClient       *kube.KubeClient
+	MetricsCollector metrics.Collector
+	Recorder         record.EventRecorder
 }
 
 // RecordEvent recorder events for resources
-func (c *CommonConfig) RecordEvent(object runtime.Object, eventtype, reason string, err error) {
+func (c *Common) RecordEvent(object runtime.Object, eventtype, reason string, err error) {
 	if err != nil {
 		message := fmt.Sprintf(utils.MessageResourceFailed, utils.Component, err.Error())
 		c.Recorder.Event(object, eventtype, reason, message)
@@ -45,18 +45,16 @@ func (c *CommonConfig) RecordEvent(object runtime.Object, eventtype, reason stri
 }
 
 // RecordEventS recorder events for resources
-func (c *CommonConfig) RecordEventS(object runtime.Object, eventtype, reason string, msg string) {
+func (c *Common) RecordEventS(object runtime.Object, eventtype, reason string, msg string) {
 	c.Recorder.Event(object, eventtype, reason, msg)
 }
 
-// === TODO ===
-// Move sync utils to apisix.APISIX interface
-
-func (c *CommonConfig) SyncManifests(ctx context.Context, added, updated, deleted *utils.Manifest) error {
+// TODO: Move sync utils to apisix.APISIX interface?
+func (c *Common) SyncManifests(ctx context.Context, added, updated, deleted *utils.Manifest) error {
 	return utils.SyncManifests(ctx, c.APISIX, c.Config.APISIX.DefaultClusterName, added, updated, deleted)
 }
 
-func (c *CommonConfig) SyncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types.EventType) error {
+func (c *Common) SyncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types.EventType) error {
 	var (
 		err error
 	)
@@ -71,7 +69,7 @@ func (c *CommonConfig) SyncSSL(ctx context.Context, ssl *apisixv1.Ssl, event typ
 	return err
 }
 
-func (c *CommonConfig) SyncConsumer(ctx context.Context, consumer *apisixv1.Consumer, event types.EventType) (err error) {
+func (c *Common) SyncConsumer(ctx context.Context, consumer *apisixv1.Consumer, event types.EventType) (err error) {
 	clusterName := c.Config.APISIX.DefaultClusterName
 	if event == types.EventDelete {
 		err = c.APISIX.Cluster(clusterName).Consumer().Delete(ctx, consumer)
@@ -83,7 +81,7 @@ func (c *CommonConfig) SyncConsumer(ctx context.Context, consumer *apisixv1.Cons
 	return
 }
 
-func (c *CommonConfig) SyncUpstreamNodesChangeToCluster(ctx context.Context, cluster apisix.Cluster, nodes apisixv1.UpstreamNodes, upsName string) error {
+func (c *Common) SyncUpstreamNodesChangeToCluster(ctx context.Context, cluster apisix.Cluster, nodes apisixv1.UpstreamNodes, upsName string) error {
 	upstream, err := cluster.Upstream().Get(ctx, upsName)
 	if err != nil {
 		if err == apisixcache.ErrNotFound {

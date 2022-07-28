@@ -44,6 +44,7 @@ type WatchingNamespaceProvider interface {
 	WatchingNamespaces() []string
 }
 
+// TODO: 将初始化与New分离
 func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cfg *config.Config) (WatchingNamespaceProvider, error) {
 	var (
 		watchingNamespaces = new(sync.Map)

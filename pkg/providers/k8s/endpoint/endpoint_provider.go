@@ -2,36 +2,51 @@ package endpoint
 
 import (
 	"context"
-
+	"github.com/apache/apisix-ingress-controller/pkg/config"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 )
 
-type Provider interface {
-}
-
-type provider struct {
-	cfg *providertypes.CommonConfig
+type Controller struct {
+	cfg *config.Config
 
 	endpointsController     *endpointsController
 	endpointSliceController *endpointSliceController
 }
 
-func NewProvider(cfg *providertypes.CommonConfig) (Provider, error) {
-	p := &provider{
-		cfg: cfg,
+func NewController(common *providertypes.Common, translator translation.Translator, namespaceProvider namespace.WatchingNamespaceProvider) (*Controller, error) {
+	p := &Controller{
+		cfg: common.Config,
 	}
 
-	if cfg.Kubernetes.WatchEndpointSlices {
-		p.endpointSliceController = newEndpointSliceController()
+	base := &baseEndpointController{
+		Common:     common,
+		translator: translator,
+	}
+
+	kubeFactory := common.KubeClient.NewSharedIndexInformerFactory()
+	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
+
+	base.svcLister = kubeFactory.Core().V1().Services().Lister()
+	base.apisixUpstreamLister = kube.NewApisixUpstreamLister(
+		apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+		apisixFactory.Apisix().V2().ApisixUpstreams().Lister(),
+	)
+
+	epLister, epInformer := kube.NewEndpointListerAndInformer(kubeFactory, common.Config.Kubernetes.WatchEndpointSlices)
+	if common.Kubernetes.WatchEndpointSlices {
+		p.endpointSliceController = newEndpointSliceController(base, namespaceProvider, epInformer, epLister)
 	} else {
-		p.endpointsController = NewEndpointsController()
+		p.endpointsController = newEndpointsController(base, namespaceProvider, epInformer, epLister)
 	}
 
 	return p, nil
 }
 
-func (p *provider) Run(ctx context.Context) {
+func (p *Controller) Run(ctx context.Context) {
 	e := utils.ParallelExecutor{}
 
 	e.Add(func() {

@@ -1,28 +1,23 @@
 package translation
 
 import (
+	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/types"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type translator struct {
-	PodCache             types.PodCache
-	PodLister            listerscorev1.PodLister
-	EndpointLister       kube.EndpointLister
-	ServiceLister        listerscorev1.ServiceLister
-	ApisixUpstreamLister kube.ApisixUpstreamLister
-	SecretLister         listerscorev1.SecretLister
-	UseEndpointSlices    bool
-	APIVersion           string
+	KubeProvider  k8s.Provider
+	PodLister     listerscorev1.PodLister
+	ServiceLister listerscorev1.ServiceLister
+	SecretLister  listerscorev1.SecretLister
 
-	translation.BaseTranslator
+	translation.Translator
 }
 
 type ApisixTranslator interface {
@@ -80,8 +75,18 @@ type ApisixTranslator interface {
 	TranslatePluginConfigV2NotStrictly(*configv2.ApisixPluginConfig) (*translation.TranslateContext, error)
 }
 
-func NewApisixTranslator() (ApisixTranslator, error) {
-	t := &translator{}
+func NewApisixTranslator(kubeProvider k8s.Provider,
+	podLister listerscorev1.PodLister,
+	serviceLister listerscorev1.ServiceLister,
+	secretLister listerscorev1.SecretLister,
+	commonTranslator translation.Translator) ApisixTranslator {
+	t := &translator{
+		KubeProvider:  kubeProvider,
+		PodLister:     podLister,
+		ServiceLister: serviceLister,
+		SecretLister:  secretLister,
+		Translator:    commonTranslator,
+	}
 
-	return t, nil
+	return t
 }

@@ -26,8 +26,8 @@ import (
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	_const "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -1062,7 +1062,7 @@ func (t *translator) FilterNodesByLabels(nodes apisixv1.UpstreamNodes, labels ty
 
 	filteredNodes := make(apisixv1.UpstreamNodes, 0)
 	for _, node := range nodes {
-		podName, err := t.PodCache.GetNameByIP(node.Host)
+		podName, err := t.KubeProvider.GetPodCache().GetNameByIP(node.Host)
 		if err != nil {
 			log.Errorw("failed to find pod name by ip, ignore it",
 				zap.Error(err),

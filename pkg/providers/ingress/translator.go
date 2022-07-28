@@ -18,24 +18,30 @@ import (
 	kubev2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	kubev2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/translation/annotations"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/types"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type translator struct {
-	PodCache             types.PodCache
-	PodLister            listerscorev1.PodLister
-	EndpointLister       kube.EndpointLister
-	ServiceLister        listerscorev1.ServiceLister
-	ApisixUpstreamLister kube.ApisixUpstreamLister
-	SecretLister         listerscorev1.SecretLister
-	UseEndpointSlices    bool
-	APIVersion           string
+	ServiceLister listerscorev1.ServiceLister
 
-	translation.BaseTranslator
+	translation.Translator
+}
+
+type IngressTranslator interface {
+	TranslateIngress(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error)
+}
+
+func newIngressTranslator(serviceLister listerscorev1.ServiceLister,
+	commonTranslator translation.Translator) IngressTranslator {
+	t := &translator{
+		ServiceLister: serviceLister,
+		Translator:    commonTranslator,
+	}
+
+	return t
 }
 
 func (t *translator) TranslateIngress(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error) {

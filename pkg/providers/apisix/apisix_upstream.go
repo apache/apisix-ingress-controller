@@ -35,43 +35,50 @@ import (
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type apisixUpstreamController struct {
-	*providertypes.CommonConfig
+	*apisixCommon
+
 	workqueue workqueue.RateLimitingInterface
 	workers   int
 
-	NamespaceProvider namespace.WatchingNamespaceProvider
-
-	svcInformer cache.SharedIndexInformer
-	svcLister   listerscorev1.ServiceLister
-
+	svcInformer            cache.SharedIndexInformer
+	svcLister              listerscorev1.ServiceLister
 	apisixUpstreamInformer cache.SharedIndexInformer
 	apisixUpstreamLister   kube.ApisixUpstreamLister
-
-	translator translation.ApisixTranslator
 }
 
-func newApisixUpstreamController() *apisixUpstreamController {
-	ctl := &apisixUpstreamController{
-		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixUpstream"),
-		workers:   1,
+func newApisixUpstreamController(common *apisixCommon, svcInformer cache.SharedIndexInformer, svcLister listerscorev1.ServiceLister,
+	apisixUpstreamInformer cache.SharedIndexInformer) *apisixUpstreamController {
+	c := &apisixUpstreamController{
+		apisixCommon: common,
+		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixUpstream"),
+		workers:      1,
+
+		svcInformer:            svcInformer,
+		apisixUpstreamInformer: apisixUpstreamInformer,
+
+		svcLister: svcLister,
 	}
-	ctl.apisixUpstreamInformer.AddEventHandler(
+
+	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
+	c.apisixUpstreamLister = kube.NewApisixUpstreamLister(
+		apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+		apisixFactory.Apisix().V2().ApisixUpstreams().Lister(),
+	)
+
+	c.apisixUpstreamInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    ctl.onAdd,
-			UpdateFunc: ctl.onUpdate,
-			DeleteFunc: ctl.onDelete,
+			AddFunc:    c.onAdd,
+			UpdateFunc: c.onUpdate,
+			DeleteFunc: c.onDelete,
 		},
 	)
-	return ctl
+	return c
 }
 
 func (c *apisixUpstreamController) run(ctx context.Context) {
@@ -364,7 +371,7 @@ func (c *apisixUpstreamController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixUpstream resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixUpstream add event arrived",
@@ -400,7 +407,7 @@ func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorf("found ApisixUpstream resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixUpstream update event arrived",
@@ -439,7 +446,7 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixUpstream resource with bad meta namespace key: %s", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixUpstream delete event arrived",
@@ -465,7 +472,7 @@ func (c *apisixUpstreamController) ResourceSync() {
 			log.Errorw("ApisixUpstream sync failed, found ApisixUpstream resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
-		if !c.NamespaceProvider.IsWatchingNamespace(key) {
+		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
 		au, err := kube.NewApisixUpstream(obj)
