@@ -73,7 +73,7 @@ type Controller struct {
 	leaderContextCancelFunc context.CancelFunc
 
 	translator       translation.Translator
-	apisixTranslator apisixtranslation.ApisixTranslator // TODO: this is temporary solution, should remove this, see compare.go
+	apisixTranslator apisixtranslation.ApisixTranslator
 
 	namespaceProvider namespace.WatchingNamespaceProvider
 	podProvider       pod.Provider
@@ -247,6 +247,8 @@ func (c *Controller) run(ctx context.Context) {
 		return
 	}
 
+	// Creation Phase
+
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
 	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
 
@@ -322,11 +324,18 @@ func (c *Controller) run(ctx context.Context) {
 		}
 	}
 
-	// compare resources of k8s with objects of APISIX
-	if err = c.CompareResources(ctx); err != nil {
+	// Init Phase
+
+	if err = c.namespaceProvider.Init(ctx); err != nil {
 		ctx.Done()
 		return
 	}
+	if err = c.apisixProvider.Init(ctx); err != nil {
+		ctx.Done()
+		return
+	}
+
+	// Run Phase
 
 	e := utils.ParallelExecutor{}
 

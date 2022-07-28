@@ -40,11 +40,13 @@ import (
 
 type WatchingNamespaceProvider interface {
 	provider.Provider
+
+	Init(ctx context.Context) error
+
 	IsWatchingNamespace(key string) bool
 	WatchingNamespaces() []string
 }
 
-// TODO: 将初始化与New分离
 func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cfg *config.Config) (WatchingNamespaceProvider, error) {
 	var (
 		watchingNamespaces = new(sync.Map)
@@ -92,10 +94,6 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 
 	c.controller = newNamespaceController(c)
 
-	err := c.initWatchingNamespacesByLabels(ctx)
-	if err != nil {
-		return nil, err
-	}
 	return c, nil
 }
 
@@ -110,6 +108,14 @@ type watchingProvider struct {
 	namespaceLister   listerscorev1.NamespaceLister
 
 	controller *namespaceController
+}
+
+func (c *watchingProvider) Init(ctx context.Context) error {
+	err := c.initWatchingNamespacesByLabels(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) error {
