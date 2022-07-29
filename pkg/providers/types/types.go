@@ -129,6 +129,11 @@ func (c *Common) SyncConsumer(ctx context.Context, consumer *apisixv1.Consumer, 
 }
 
 func (c *Common) SyncUpstreamNodesChangeToCluster(ctx context.Context, cluster apisix.Cluster, nodes apisixv1.UpstreamNodes, upsName string) error {
+	log.Debugw("sync upstream nodes change",
+		zap.String("cluster", cluster.String()),
+		zap.String("upstream_name", upsName),
+		zap.Any("nodes", nodes),
+	)
 	upstream, err := cluster.Upstream().Get(ctx, upsName)
 	if err != nil {
 		if err == apisixcache.ErrNotFound {

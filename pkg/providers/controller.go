@@ -77,7 +77,7 @@ type Controller struct {
 	translator       translation.Translator
 	apisixTranslator apisixtranslation.ApisixTranslator
 
-	informers providertypes.ListerInformer
+	informers *providertypes.ListerInformer
 
 	namespaceProvider namespace.WatchingNamespaceProvider
 	podProvider       pod.Provider
@@ -309,9 +309,9 @@ func (c *Controller) run(ctx context.Context) {
 
 	// Creation Phase
 
-	listerInformer := c.initSharedInformers()
+	c.informers = c.initSharedInformers()
 	common := &providertypes.Common{
-		ListerInformer:   listerInformer,
+		ListerInformer:   c.informers,
 		Config:           c.cfg,
 		APISIX:           c.apisix,
 		KubeClient:       c.kubeClient,
@@ -333,11 +333,11 @@ func (c *Controller) run(ctx context.Context) {
 
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
 		APIVersion:           c.cfg.Kubernetes.APIVersion,
-		EndpointLister:       listerInformer.EpLister,
-		ServiceLister:        listerInformer.SvcLister,
-		SecretLister:         listerInformer.SecretLister,
-		PodLister:            listerInformer.PodLister,
-		ApisixUpstreamLister: listerInformer.ApisixUpstreamLister,
+		EndpointLister:       c.informers.EpLister,
+		ServiceLister:        c.informers.SvcLister,
+		SecretLister:         c.informers.SecretLister,
+		PodLister:            c.informers.PodLister,
+		ApisixUpstreamLister: c.informers.ApisixUpstreamLister,
 		PodProvider:          c.podProvider,
 	})
 
