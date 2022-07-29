@@ -70,14 +70,14 @@ kubernetes:
                                        # "extensions/v1beta1", default is "networking/v1".
   watch_endpointslices: false          # whether to watch EndpointSlices rather than Endpoints.
 
-  apisix_route_version: "apisix.apache.org/v2beta3"  # the supported apisixroute api group version.
-                                                     # the latest version is "apisix.apache.org/v2beta3".
+  apisix_route_version: "apisix.apache.org/v2"  # the supported apisixroute api group version.
+                                                     # the latest version is "apisix.apache.org/v2".
 
   enable_gateway_api: false            # whether to enable support for Gateway API.
                                        # Note: This feature is currently under development and may not work as expected. 
                                        # It is not recommended to use it in a production environment.
                                        # Before we announce support for it to reach Beta level or GA.
-  api_version: apisix.apache.org/v2beta3 # the default value of API version is "apisix.apache.org/v2beta3", support "apisix.apache.org/v2beta3" and "apisix.apache.org/v2".
+  api_version: apisix.apache.org/v2    # the default value of API version is "apisix.apache.org/v2", support "apisix.apache.org/v2beta3" and "apisix.apache.org/v2".
 
 # APISIX related configurations.
 apisix:
