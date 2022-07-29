@@ -234,6 +234,8 @@ func (c *Controller) initWhenStartLeading() {
 		SecretLister:         c.secretLister,
 		UseEndpointSlices:    c.cfg.Kubernetes.WatchEndpointSlices,
 		APIVersion:           c.cfg.Kubernetes.APIVersion,
+		Apisix:               c.apisix,
+		ClusterName:          c.cfg.APISIX.DefaultClusterName,
 	})
 
 	switch c.cfg.Kubernetes.APIVersion {
