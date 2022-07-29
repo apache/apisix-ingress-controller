@@ -418,6 +418,8 @@ func (t *translator) TranslateOldIngress(ing kube.Ingress) (*TranslateContext, e
 		return t.translateOldIngressV1(ing.V1())
 	case kube.IngressV1beta1:
 		return t.translateOldIngressV1beta1(ing.V1beta1())
+	case kube.IngressExtensionsV1beta1:
+		return t.translateOldIngressExtensionsv1beta1(ing.ExtensionsV1beta1())
 	default:
 		return nil, fmt.Errorf("translator: source group version not supported: %s", ing.GroupVersion())
 	}
