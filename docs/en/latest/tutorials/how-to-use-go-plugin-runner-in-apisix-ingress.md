@@ -155,7 +155,7 @@ kubectl expose pod httpbin --port 80
 Create the `go-plugin-runner-route.yaml` file to enable the ApisixRoute resource, with the following configuration file:
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: plugin-runner-demo

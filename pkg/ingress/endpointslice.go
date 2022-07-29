@@ -111,7 +111,7 @@ func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) err
 			return err
 		}
 	}
-	ep, err := c.controller.epLister.GetEndpointSlices(namespace, epEvent.ServiceName)
+	ep, err := c.controller.epLister.GetEndpoint(namespace, epEvent.ServiceName)
 	if err != nil {
 		log.Errorf("failed to get all endpointSlices for service %s: %s",
 			epEvent.ServiceName, err)

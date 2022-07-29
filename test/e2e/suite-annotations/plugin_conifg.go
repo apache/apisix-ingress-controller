@@ -20,9 +20,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 func _createAPC(s *scaffold.Scaffold) {

@@ -41,6 +41,7 @@ GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM
 E2E_NODES ?= 4
 E2E_FLAKE_ATTEMPTS ?= 0
 E2E_SKIP_BUILD ?= 0
+E2E_ENV ?= "dev"
 
 ### build:                Build apisix-ingress-controller
 .PHONY: build
@@ -50,7 +51,7 @@ build:
 		-ldflags $(GO_LDFLAGS) \
 		main.go
 
-### clean-image:		clean apisix-ingress-controller image
+### clean-image:          clean apisix-ingress-controller image
 .PHONY: clean-image
 clean-image: ## Removes local image
 	echo "removing old image $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)"
@@ -61,23 +62,23 @@ clean-image: ## Removes local image
 build-image:
 	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true .
 
-### pack-ingress-image:  Build and push Ingress image used in e2e test suites to kind or custom registry.
+### pack-ingress-image:   Build and push Ingress image used in e2e test suites to kind or custom registry.
 .PHONY: pack-ingress-image
 pack-ingress-image:
 	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 
-### pack-images: Build and push images used in e2e test suites to kind or custom registry.
+### pack-images:          Build and push images used in e2e test suites to kind or custom registry.
 .PHONY: pack-images
 pack-images: build-images push-images
 
-### build-image:          Build apisix-ingress-controller image
+### build-images:         Prepare all required Images
 .PHONY: build-images
-build-images:
+build-images: build-image
 ifeq ($(E2E_SKIP_BUILD), 0)
-	docker pull apache/apisix:2.13.1-alpine
-	docker tag apache/apisix:2.13.1-alpine $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
+	docker pull apache/apisix:2.14.1-alpine
+	docker tag apache/apisix:2.14.1-alpine $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
 
 	docker pull bitnami/etcd:3.4.14-debian-10-r0
 	docker tag bitnami/etcd:3.4.14-debian-10-r0 $(REGISTRY)/bitnami/etcd:$(IMAGE_TAG)
@@ -88,7 +89,6 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker build -t test-backend:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) ./test/e2e/testbackend
 	docker tag test-backend:$(IMAGE_TAG) $(REGISTRY)/test-backend:$(IMAGE_TAG)
 
-	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 
 	docker pull jmalloc/echo-server:latest
@@ -98,7 +98,7 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker tag  busybox:1.28 $(REGISTRY)/busybox:$(IMAGE_TAG)
 endif
 
-### push-images:		Push images used in e2e test suites to kind or custom registry.
+### push-images:          Push images used in e2e test suites to kind or custom registry.
 .PHONY: push-images
 push-images:
 ifeq ($(E2E_SKIP_BUILD), 0)
@@ -129,9 +129,9 @@ e2e-test: ginkgo-check pack-images e2e-wolf-rbac
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
-		&& ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_NODES) --focus=$(E2E_FOCUS) --flake-attempts=$(E2E_FLAKE_ATTEMPTS)
+		&& E2E_ENV=$(E2E_ENV) ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_NODES) --focus=$(E2E_FOCUS) --flake-attempts=$(E2E_FLAKE_ATTEMPTS)
 
-### e2e-test-local:        Run e2e test cases (kind is required)
+### e2e-test-local:       Run e2e test cases (kind is required)
 .PHONY: e2e-test-local
 e2e-test-local: kind-up e2e-test
 
@@ -221,7 +221,7 @@ update-license:
 update-mdlint:
 	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' -f --ignore node_modules --ignore vendor
 
-### gofmt:                Format all go codes
+### update-gofmt:         Format all go codes
 .PHONY: update-gofmt
 update-gofmt:
 	./utils/goimports-reviser.sh
@@ -230,7 +230,7 @@ update-gofmt:
 .PHONY: update-all
 update-all: update-codegen update-license update-mdlint update-gofmt
 
-### e2e-names-check:          Check if e2e test cases' names have the prefix "suite-<suite-name>".
+### e2e-names-check:      Check if e2e test cases' names have the prefix "suite-<suite-name>".
 .PHONY: e2e-names-check
 e2e-names-check:
 	chmod +x ./utils/check-e2e-names.sh && ./utils/check-e2e-names.sh
@@ -246,7 +246,7 @@ ifneq ("$(E2E_FOCUS)", "")
 	&& ./test/e2e/testdata/wolf-rbac/cmd.sh start
 endif
 
-### kind-load-images:		Load the images to the kind cluster
+### kind-load-images:	  Load the images to the kind cluster
 .PHONY: kind-load-images
 kind-load-images:
 	kind load docker-image --name=apisix \

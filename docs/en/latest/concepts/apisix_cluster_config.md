@@ -35,7 +35,7 @@ if you'd like to learn the real running status of your cluster. In such a case, 
 could create a `ApisixClusterConfig` to enable these features explicitly.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixClusterConfig
 metadata:
   name: default
@@ -58,7 +58,7 @@ The default APISIX cluster is configured through command line options like `--de
 of Deployment or Pod template. Now with the help of `ApisixClusterConfig`, you can change some administrative fields on it.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixClusterConfig
 metadata:
   name: default

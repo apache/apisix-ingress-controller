@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
@@ -563,6 +564,113 @@ spec:
 
 			resp = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "httpbin.com").Expect()
 			resp.Status(http.StatusNotFound)
+		})
+
+		ginkgo.It("k8s service is created later than ApisixRoute", func() {
+			createSvc := func() {
+				_httpbinDeploymentTemplate := `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: httpbin-temp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: httpbin-temp
+  strategy:
+    rollingUpdate:
+      maxSurge: 50%
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: httpbin-temp
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+        - livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            successThreshold: 1
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 2
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            successThreshold: 1
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 2
+          image: "localhost:5000/kennethreitz/httpbin:dev"
+          imagePullPolicy: IfNotPresent
+          name: httpbin-temp
+          ports:
+            - containerPort: 80
+              name: "http"
+              protocol: "TCP"
+`
+				_httpService := `
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpbin-temp
+spec:
+  selector:
+    app: httpbin-temp
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  type: ClusterIP
+`
+
+				err := s.CreateResourceFromString(s.FormatRegistry(_httpbinDeploymentTemplate))
+				if err != nil {
+					log.Errorf(err.Error())
+				}
+				assert.Nil(ginkgo.GinkgoT(), err, "create temp httpbin deployment")
+				assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(_httpService), "create temp httpbin service")
+			}
+
+			apisixRoute := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backends:
+    - serviceName: %s
+      servicePort: %d
+`, "httpbin-temp", 80)
+
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute), "creating ApisixRoute")
+			// We don't have service yet, so route/upstream==0
+			err := s.EnsureNumApisixRoutesCreated(0)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			err = s.EnsureNumApisixUpstreamsCreated(0)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+
+			createSvc()
+			time.Sleep(time.Second * 10)
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			err = s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+
+			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK)
 		})
 	}
 

@@ -219,7 +219,7 @@ ApisixPluginConfig is a resource under the same Namespace as Ingress
 As an example, we attach the annotation `k8s.apisix.apache.org/plugin-conifg-name: "echo-and-cors-apc` for the following Ingress resource, so that `/api/*` route will enable the [echo](https://apisix.apache.org/docs/apisix/plugins/echo/) and [cors](https://apisix.apache.org/docs/apisix/plugins/cors/) plugins.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
   name: echo-and-cors-apc

@@ -32,6 +32,8 @@ a e2e test scaffold is prepared to run test cases easily. The source codes are i
 * Create a http server with [kennethreitz/httpbin](https://hub.docker.com/r/kennethreitz/httpbin/) as the upstream.
 
 The above mentioned steps are run before each case starts and all resources will be destroyed after the case finishes.
+Sepecially, if test case failed and e2e-test run in dev mode, the related resources will not be destroyed. This fearure is useful for debugging.
+Also, you can disable this feature by unset `E2E_ENV=dev`.
 
 Plugins
 -------

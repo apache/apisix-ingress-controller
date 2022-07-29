@@ -23,7 +23,7 @@ title: Enable authentication and restriction
 
 ## Description
 
-Consumers are used for the authentication method controlled by Apache APISIX, if users want to use their own auth system or 3rd party systems, use OIDC.  
+Consumers are used for the authentication method controlled by Apache APISIX, if users want to use their own auth system or 3rd party systems, use OIDC.
 
 ## Attributes
 
@@ -31,14 +31,14 @@ Consumers are used for the authentication method controlled by Apache APISIX, if
 
 #### Key Auth
 
-Consumers add their key either in a header or query string parameter to authenticate their requests. For more information about `Key Auth`, please refer to [APISIX key-auth plugin](https://apisix.apache.org/docs/apisix/plugins/key-auth/).  
+Consumers add their key either in a header or query string parameter to authenticate their requests. For more information about `Key Auth`, please refer to [APISIX key-auth plugin](https://apisix.apache.org/docs/apisix/plugins/key-auth/).
 Also, we can using the `secretRef` field to reference a K8s Secret object so that we can avoid the hardcoded sensitive data in the ApisixConsumer object. For reference Secret use example, please refer to the [key-auth-reference-secret-object](#key-auth-reference-secret-object).
 
 <details>
   <summary>Key Auth yaml configure</summary>
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
   name: ${name}
@@ -53,14 +53,14 @@ spec:
 
 #### Basic Auth
 
-Consumers add their key in a header to authenticate their requests. For more information about `Basic Auth`, please refer to [APISIX basic-auth plugin](https://apisix.apache.org/docs/apisix/plugins/basic-auth/).  
+Consumers add their key in a header to authenticate their requests. For more information about `Basic Auth`, please refer to [APISIX basic-auth plugin](https://apisix.apache.org/docs/apisix/plugins/basic-auth/).
 Also, we can using the `secretRef` field to reference a K8s Secret object so that we can avoid the hardcoded sensitive data in the ApisixConsumer object. For reference Secret use example, please refer to the [key-auth-reference-secret-object](#key-auth-reference-secret-object).
 
 <details>
   <summary>Basic Auth yaml configure</summary>
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
   name: ${name}
@@ -76,18 +76,18 @@ spec:
 
 #### JWT Auth
 
-The consumer then adds its key to the query string parameter, request header, or cookie to verify its request. For more information about `JWT Auth`, please refer to [APISIX jwt-auth plugin](https://apisix.apache.org/docs/apisix/plugins/jwt-auth/).  
+The consumer then adds its key to the query string parameter, request header, or cookie to verify its request. For more information about `JWT Auth`, please refer to [APISIX jwt-auth plugin](https://apisix.apache.org/docs/apisix/plugins/jwt-auth/).
 Also, we can using the `secretRef` field to reference a K8s Secret object so that we can avoid the hardcoded sensitive data in the ApisixConsumer object. For reference Secret use example, please refer to the [key-auth-reference-secret-object](#key-auth-reference-secret-object).
 
-:::note Need to expose API  
-This plugin will add `/apisix/plugin/jwt/sign` to sign. You may need to use `public-api` plugin to expose it.  
+:::note Need to expose API
+This plugin will add `/apisix/plugin/jwt/sign` to sign. You may need to use `public-api` plugin to expose it.
 :::
 
 <details>
   <summary>JWT Auth yaml configure</summary>
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
   name: ${name}
@@ -108,7 +108,7 @@ spec:
 
 #### `Wolf RBAC`
 
-To use wolfRbac authentication, you need to start and install [wolf-server](https://github.com/iGeeky/wolf/blob/master/quick-start-with-docker/README.md). For more information about `Wolf RBAC`, please refer to [APISIX wolf-rbac plugin](https://apisix.apache.org/zh/docs/apisix/plugins/wolf-rbac/).  
+To use wolfRbac authentication, you need to start and install [wolf-server](https://github.com/iGeeky/wolf/blob/master/quick-start-with-docker/README.md). For more information about `Wolf RBAC`, please refer to [APISIX wolf-rbac plugin](https://apisix.apache.org/zh/docs/apisix/plugins/wolf-rbac/).
 Also, we can using the `secretRef` field to reference a K8s Secret object so that we can avoid the hardcoded sensitive data in the ApisixConsumer object. For reference Secret use example, please refer to the [key-auth-reference-secret-object](#key-auth-reference-secret-object).
 
 :::note This plugin will add several APIs
@@ -117,14 +117,14 @@ Also, we can using the `secretRef` field to reference a K8s Secret object so tha
 * /apisix/plugin/wolf-rbac/change_pwd
 * /apisix/plugin/wolf-rbac/user_info
 
-You may need to use `public-api` plugin to expose it.  
+You may need to use `public-api` plugin to expose it.
 :::
 
 <details>
   <summary>Wolf RBAC yaml configure</summary>
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
   name: ${name}
@@ -143,7 +143,7 @@ spec:
 
 #### `whitelist` or `blacklist`
 
-`whitelist`: Grant full access to all users specified in the provided list, **has the priority over `allowed_by_methods`**  
+`whitelist`: Grant full access to all users specified in the provided list, **has the priority over `allowed_by_methods`**
 `blacklist`: Reject connection to all users specified in the provided list, **has the priority over `whitelist`**
 
 <details>
@@ -206,13 +206,13 @@ kubectl expose pod httpbin --port 80
 
 #### Enable `keyAuth`
 
-The following is an example. The `keyAuth` is enabled on the specified route to restrict user access.  
+The following is an example. The `keyAuth` is enabled on the specified route to restrict user access.
 
 * Creates an ApisixConsumer, and set the attributes of plugin `key-auth`:
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
   name: foo
@@ -228,7 +228,7 @@ EOF
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpserver-route
@@ -282,7 +282,7 @@ EOF
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
   name: foo
@@ -298,7 +298,7 @@ EOF
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpserver-route
@@ -338,7 +338,7 @@ HTTP/1.1 200 OK
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
   name: foo2
@@ -354,7 +354,7 @@ EOF
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: default
@@ -377,7 +377,7 @@ EOF
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -447,7 +447,7 @@ The following is an example. The `consumer-restriction` plugin is enabled on the
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
   name: jack1
@@ -463,7 +463,7 @@ EOF
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
   name: jack2
@@ -479,7 +479,7 @@ EOF
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpserver-route
@@ -518,8 +518,8 @@ jack1   14h
 jack2   14h
 ```
 
-`${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_foo`  
-`${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_jack1`  
+`${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_foo`
+`${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_jack1`
 `${consumer_name}` = `${namespace}_${ApisixConsumer_name}` --> `default_jack2`
 
 :::
@@ -557,7 +557,7 @@ This example restrict the user `jack2` to only `GET` on the resource.
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpserver-route
@@ -634,12 +634,12 @@ HTTP/1.1 403 Forbidden
 
 ### Disable authentication and restriction
 
-To disable the `consumer-restriction` Plugin, you can set the `enable: false` from the `plugins` configuration.  
+To disable the `consumer-restriction` Plugin, you can set the `enable: false` from the `plugins` configuration.
 Also, disable the `keyAuth`, you can set the `enable: false` from the `authentication` configuration.
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpserver-route

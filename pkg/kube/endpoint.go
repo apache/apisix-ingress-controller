@@ -39,18 +39,24 @@ type HostPort struct {
 type EndpointLister interface {
 	// GetEndpoint fetches an Endpoint which entity is the Kubernetes
 	// Endpoint according to the namespace and name.
+	// Automatically choose from endpoint/endpointslice
 	GetEndpoint(string, string) (Endpoint, error)
-	// GetEndpointSlices fetches an EndpointSlices which entity is the Kubernetes
-	// EndpointSlice according to the namespace and service name label.
-	GetEndpointSlices(string, string) (Endpoint, error)
 }
 
 type endpointLister struct {
-	epLister  listerscorev1.EndpointsLister
-	epsLister listersdiscoveryv1.EndpointSliceLister
+	useEndpointSlice bool
+	epLister         listerscorev1.EndpointsLister
+	epsLister        listersdiscoveryv1.EndpointSliceLister
 }
 
 func (lister *endpointLister) GetEndpoint(namespace, name string) (Endpoint, error) {
+	if lister.useEndpointSlice {
+		return lister.getEndpointSlices(namespace, name)
+	}
+	return lister.getEndpoint(namespace, name)
+}
+
+func (lister *endpointLister) getEndpoint(namespace, name string) (Endpoint, error) {
 	if lister.epLister == nil {
 		panic("not a endpoint lister")
 	}
@@ -70,7 +76,7 @@ func (lister *endpointLister) GetEndpoint(namespace, name string) (Endpoint, err
 	}, nil
 }
 
-func (lister *endpointLister) GetEndpointSlices(namespace, svcName string) (Endpoint, error) {
+func (lister *endpointLister) getEndpointSlices(namespace, svcName string) (Endpoint, error) {
 	if lister.epsLister == nil {
 		panic("not a endpointSlice lister")
 	}
@@ -193,10 +199,10 @@ func (e *endpoint) Endpoints(svcPort *corev1.ServicePort) []HostPort {
 
 // NewEndpointListerAndInformer creates an EndpointLister and the sharedIndexInformer.
 func NewEndpointListerAndInformer(factory informers.SharedInformerFactory, useEndpointSlice bool) (EndpointLister, cache.SharedIndexInformer) {
-	var (
-		epLister endpointLister
-		informer cache.SharedIndexInformer
-	)
+	var informer cache.SharedIndexInformer
+	epLister := endpointLister{
+		useEndpointSlice: useEndpointSlice,
+	}
 	if !useEndpointSlice {
 		epLister.epLister = factory.Core().V1().Endpoints().Lister()
 		informer = factory.Core().V1().Endpoints().Informer()

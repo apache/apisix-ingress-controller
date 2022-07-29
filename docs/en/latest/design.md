@@ -122,7 +122,7 @@ Unlike the implementation of Kubernetes Nginx Ingress, the implementation of Ann
 For example, the settings of the black and white list can be configured through the `k8s.apisix.apache.org/whitelist-source-range` annotation in the `ApisixRoute` resource object.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   annotations:
