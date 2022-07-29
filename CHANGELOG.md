@@ -60,7 +60,7 @@ In next release(v1.5), custom resource's API version v2 will be GA released. Ple
 * fix: ingress update event handler not filter by watching namespaces [#947](https://github.com/apache/apisix-ingress-controller/pull/)
 
 Please try out the release binaries and report any issues at
-https://github.com/apache/apisix-ingress-controller/issues.
+<https://github.com/apache/apisix-ingress-controller/issues>.
 
 ### Contributors
 
@@ -76,6 +76,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * chen zhuo
 
 ### Changes
+
 <details><summary>24 commits</summary>
 <p>
 
@@ -103,6 +104,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * [`4a2ebaf`](https://github.com/apache/apisix-ingress-controller/commit/4a2ebaf43ee4cf42212659b412e7ed8a8ab8ee21) chore: fix typo in ApidixRoute CRD (#830)
 * [`46fcf3f`](https://github.com/apache/apisix-ingress-controller/commit/46fcf3f153a00cef868454b06452065172500dd1) fix: consumer name contain "-" (#828)
 * [`b7dd90a`](https://github.com/apache/apisix-ingress-controller/commit/b7dd90ad9d6a5102fe67c91c29ab76fc4bad4b1a) chore: v1.4 release
+
 </p>
 </details>
 

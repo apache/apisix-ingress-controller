@@ -30,6 +30,10 @@ func TestNewConfigFromFile(t *testing.T) {
 	cfg := &Config{
 		LogLevel:                   "warn",
 		LogOutput:                  "stdout",
+		RotateOutputPath:           "",
+		RotationMaxSize:            100,
+		RotationMaxAge:             0,
+		RotationMaxBackups:         0,
 		HTTPListen:                 ":9090",
 		HTTPSListen:                ":9443",
 		IngressPublishService:      "",
@@ -115,6 +119,10 @@ func TestConfigWithEnvVar(t *testing.T) {
 	cfg := &Config{
 		LogLevel:                   "warn",
 		LogOutput:                  "stdout",
+		RotateOutputPath:           "",
+		RotationMaxSize:            100,
+		RotationMaxAge:             0,
+		RotationMaxBackups:         0,
 		HTTPListen:                 ":9090",
 		HTTPSListen:                ":9443",
 		IngressPublishService:      "",
