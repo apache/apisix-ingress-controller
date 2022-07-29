@@ -91,7 +91,7 @@ kubernetes:
   election_id: my-election-id
   ingress_class: apisix
   ingress_version: networking/v1
-  api_version: apisix.apache.org/v2beta3
+  api_version: apisix.apache.org/v2
 apisix:
   default_cluster_base_url: http://127.0.0.1:8080/apisix
   default_cluster_admin_key: "123456"

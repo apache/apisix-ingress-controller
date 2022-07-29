@@ -157,7 +157,7 @@ func NewScaffold(o *Options) *Scaffold {
 }
 
 // NewDefaultScaffold creates a scaffold with some default options.
-// apisix-version default v2beta3
+// apisix-version default v2
 func NewDefaultScaffold() *Scaffold {
 	opts := &Options{
 		Name:                  "default",
