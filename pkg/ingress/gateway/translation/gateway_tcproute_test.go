@@ -132,6 +132,7 @@ func mockTCPRouteTranslator(t *testing.T) (*translator, <-chan struct{}) {
 	go svcInformer.Run(stopCh)
 	go epInformer.Run(stopCh)
 	cache.WaitForCacheSync(stopCh, svcInformer.HasSynced)
+	cache.WaitForCacheSync(stopCh, epInformer.HasSynced)
 
 	return tr, processCh
 }
@@ -180,14 +181,16 @@ func TestTranslateGatewayTCPRoute(t *testing.T) {
 	tctx, err := tr.TranslateGatewayTCPRouteV1Alpha2(tcpRoute)
 	assert.Nil(t, err)
 
-	assert.Equal(t, 1, len(tctx.Routes))
+	assert.Equal(t, 1, len(tctx.StreamRoutes))
 	assert.Equal(t, 1, len(tctx.Upstreams))
 
-	r := tctx.Routes[0]
+	r := tctx.StreamRoutes[0]
 	u := tctx.Upstreams[0]
 
 	// Metadata
 	// FIXME
-	assert.NotEqual(t, "", u.ID)
 	assert.Equal(t, u.ID, r.UpstreamId)
+	assert.Len(t, u.Nodes, 2)
+	assert.Equal(t, "192.168.1.1", u.Nodes[0].Host)
+	assert.Equal(t, "192.168.1.2", u.Nodes[1].Host)
 }

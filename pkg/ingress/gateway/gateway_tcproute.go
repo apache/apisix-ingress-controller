@@ -103,8 +103,8 @@ func (c *gatewayTCPRouteController) sync(ctx context.Context, ev *types.Event) e
 		zap.Any("upstreams", tctx.Upstreams),
 	)
 	m := &utils.Manifest{
-		Routes:    tctx.Routes,
-		Upstreams: tctx.Upstreams,
+		StreamRoutes: tctx.StreamRoutes,
+		Upstreams:    tctx.Upstreams,
 	}
 
 	var (
@@ -132,8 +132,8 @@ func (c *gatewayTCPRouteController) sync(ctx context.Context, ev *types.Event) e
 		}
 
 		om := &utils.Manifest{
-			Routes:    oldCtx.Routes,
-			Upstreams: oldCtx.Upstreams,
+			StreamRoutes: oldCtx.StreamRoutes,
+			Upstreams:    oldCtx.Upstreams,
 		}
 		added, updated, deleted = m.Diff(om)
 	}
