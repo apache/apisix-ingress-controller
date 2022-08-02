@@ -16,6 +16,7 @@ package apisix
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -54,24 +55,18 @@ type apisixRouteController struct {
 	svcMap  map[string]map[string]struct{}
 }
 
-func newApisixRouteController(common *apisixCommon, svcInformer cache.SharedIndexInformer, apisixRouteInformer cache.SharedIndexInformer) *apisixRouteController {
+func newApisixRouteController(common *apisixCommon, apisixRouteInformer cache.SharedIndexInformer, apisixRouteLister kube.ApisixRouteLister) *apisixRouteController {
 	c := &apisixRouteController{
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),
 		workers:      1,
 
-		svcInformer:         svcInformer,
+		svcInformer:         common.SvcInformer,
+		apisixRouteLister:   apisixRouteLister,
 		apisixRouteInformer: apisixRouteInformer,
 
 		svcMap: make(map[string]map[string]struct{}),
 	}
-
-	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
-	c.apisixRouteLister = kube.NewApisixRouteLister(
-		apisixFactory.Apisix().V2beta2().ApisixRoutes().Lister(),
-		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
-		apisixFactory.Apisix().V2().ApisixRoutes().Lister(),
-	)
 
 	c.apisixRouteInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -196,6 +191,11 @@ func (c *apisixRouteController) syncServiceRelationship(ev *types.Event, name st
 				}
 			}
 		}
+	default:
+		log.Errorw("unknown ApisixRoute version",
+			zap.String("version", obj.GroupVersion),
+			zap.String("key", obj.Key),
+		)
 	}
 
 	// NOTE:
@@ -237,6 +237,12 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		ar, err = c.apisixRouteLister.V2beta3(namespace, name)
 	case config.ApisixV2:
 		ar, err = c.apisixRouteLister.V2(namespace, name)
+	default:
+		log.Errorw("unknown ApisixRoute version",
+			zap.String("version", obj.GroupVersion),
+			zap.String("key", obj.Key),
+		)
+		return fmt.Errorf("unknown ApisixRoute version %v", obj.GroupVersion)
 	}
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
@@ -316,6 +322,12 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			)
 			return err
 		}
+	default:
+		log.Errorw("unknown ApisixRoute version",
+			zap.String("version", obj.GroupVersion),
+			zap.String("key", obj.Key),
+		)
+		return fmt.Errorf("unknown ApisixRoute version %v", obj.GroupVersion)
 	}
 
 	log.Debugw("translated ApisixRoute",
@@ -427,6 +439,11 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 		ar, errLocal = c.apisixRouteLister.V2beta3(namespace, name)
 	case config.ApisixV2:
 		ar, errLocal = c.apisixRouteLister.V2(namespace, name)
+	default:
+		log.Errorw("unknown ApisixRoute version",
+			zap.String("version", event.GroupVersion),
+			zap.String("key", event.Key),
+		)
 	}
 	if errOrigin == nil {
 		if ev.Type != types.EventDelete {
@@ -622,6 +639,11 @@ func (c *apisixRouteController) ResourceSync() {
 					backends = append(backends, ns+"/"+backend.ServiceName)
 				}
 			}
+		default:
+			log.Errorw("unknown ApisixRoute version",
+				zap.String("version", ar.GroupVersion()),
+				zap.String("key", key),
+			)
 		}
 		for _, svcKey := range backends {
 			if _, ok := c.svcMap[svcKey]; !ok {
@@ -671,7 +693,7 @@ func (c *apisixRouteController) handleSvcAdd(key string) error {
 				Type: types.EventAdd,
 				Object: kube.ApisixRouteEvent{
 					Key:          ns + "/" + route,
-					GroupVersion: c.Kubernetes.ApisixRouteVersion,
+					GroupVersion: c.Kubernetes.APIVersion,
 				},
 			})
 		}
@@ -699,7 +721,7 @@ func (c *apisixRouteController) getOldTranslateContext(ctx context.Context, kar 
 	clusterName := c.Config.APISIX.DefaultClusterName
 	oldCtx := translation.DefaultEmptyTranslateContext()
 
-	switch c.Kubernetes.ApisixRouteVersion {
+	switch c.Kubernetes.APIVersion {
 	case config.ApisixV2beta3:
 		ar := kar.V2beta3()
 		for _, part := range ar.Spec.Stream {

@@ -56,7 +56,7 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 			defer wg.Done()
 			// ApisixRoute
 			opts := v1.ListOptions{}
-			switch p.common.Config.Kubernetes.ApisixRouteVersion {
+			switch p.common.Config.Kubernetes.APIVersion {
 			case config.ApisixV2beta3:
 				retRoutes, err := p.common.KubeClient.APISIXClient.ApisixV2beta3().ApisixRoutes(ns).List(ctx, opts)
 				if err != nil {
@@ -129,7 +129,7 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 				}
 			default:
 				log.Errorw("failed to sync ApisixRoute, unexpected version",
-					zap.String("version", p.common.Config.Kubernetes.ApisixRouteVersion),
+					zap.String("version", p.common.Config.Kubernetes.APIVersion),
 				)
 			}
 			// todo ApisixUpstream and ApisixPluginConfig

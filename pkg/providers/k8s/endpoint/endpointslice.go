@@ -52,9 +52,7 @@ type endpointSliceController struct {
 	epLister   kube.EndpointLister
 }
 
-func newEndpointSliceController(base *baseEndpointController,
-	namespaceProvider namespace.WatchingNamespaceProvider,
-	epInformer cache.SharedIndexInformer, epLister kube.EndpointLister) *endpointSliceController {
+func newEndpointSliceController(base *baseEndpointController, namespaceProvider namespace.WatchingNamespaceProvider) *endpointSliceController {
 	ctl := &endpointSliceController{
 		baseEndpointController: base,
 
@@ -62,8 +60,9 @@ func newEndpointSliceController(base *baseEndpointController,
 		workers:   1,
 
 		namespaceProvider: namespaceProvider,
-		epInformer:        epInformer,
-		epLister:          epLister,
+
+		epLister:   base.EpLister,
+		epInformer: base.EpInformer,
 	}
 
 	ctl.epInformer.AddEventHandler(

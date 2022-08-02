@@ -3,6 +3,7 @@ package apisix
 import (
 	"context"
 	"fmt"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"k8s.io/client-go/tools/cache"
 	"sync"
 
@@ -49,12 +50,7 @@ type apisixProvider struct {
 	apisixConsumerController      *apisixConsumerController
 	apisixPluginConfigController  *apisixPluginConfigController
 
-	svcInformer    cache.SharedIndexInformer
-	secretInformer cache.SharedIndexInformer
-
-	apisixUpstreamInformer      cache.SharedIndexInformer
 	apisixRouteInformer         cache.SharedIndexInformer
-	apisixTlsInformer           cache.SharedIndexInformer
 	apisixClusterConfigInformer cache.SharedIndexInformer
 	apisixConsumerInformer      cache.SharedIndexInformer
 	apisixPluginConfigInformer  cache.SharedIndexInformer
@@ -68,18 +64,11 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 		namespaceProvider: namespaceProvider,
 	}
 
-	kubeFactory := common.KubeClient.NewSharedIndexInformerFactory()
 	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
 
-	svcLister := kubeFactory.Core().V1().Services().Lister()
-	p.svcInformer = kubeFactory.Core().V1().Services().Informer()
-
-	secretLister := kubeFactory.Core().V1().Secrets().Lister()
-	p.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
-
 	p.apisixTranslator = apisixtranslation.NewApisixTranslator(&apisixtranslation.TranslatorOptions{
-		ServiceLister: svcLister,
-		SecretLister:  secretLister,
+		ServiceLister: common.SvcLister,
+		SecretLister:  common.SecretLister,
 	}, translator)
 	c := &apisixCommon{
 		Common:            common,
@@ -89,16 +78,13 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 
 	switch c.Config.Kubernetes.APIVersion {
 	case config.ApisixV2beta3:
-		p.apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
 		p.apisixRouteInformer = apisixFactory.Apisix().V2beta3().ApisixRoutes().Informer()
-		p.apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
 		p.apisixClusterConfigInformer = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Informer()
 		p.apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
 		p.apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
+
 	case config.ApisixV2:
-		p.apisixUpstreamInformer = apisixFactory.Apisix().V2().ApisixUpstreams().Informer()
 		p.apisixRouteInformer = apisixFactory.Apisix().V2().ApisixRoutes().Informer()
-		p.apisixTlsInformer = apisixFactory.Apisix().V2().ApisixTlses().Informer()
 		p.apisixClusterConfigInformer = apisixFactory.Apisix().V2().ApisixClusterConfigs().Informer()
 		p.apisixConsumerInformer = apisixFactory.Apisix().V2().ApisixConsumers().Informer()
 		p.apisixPluginConfigInformer = apisixFactory.Apisix().V2().ApisixPluginConfigs().Informer()
@@ -106,12 +92,30 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 		panic(fmt.Errorf("unsupported API version %v", c.Config.Kubernetes.APIVersion))
 	}
 
-	p.apisixUpstreamController = newApisixUpstreamController(c, p.svcInformer, svcLister, p.apisixUpstreamInformer)
-	p.apisixRouteController = newApisixRouteController(c, p.svcInformer, p.apisixRouteInformer)
-	p.apisixTlsController = newApisixTlsController(c, p.secretInformer, p.apisixTlsInformer)
-	p.apisixClusterConfigController = newApisixClusterConfigController(c, p.apisixClusterConfigInformer)
-	p.apisixConsumerController = newApisixConsumerController(c, p.apisixConsumerInformer)
-	p.apisixPluginConfigController = newApisixPluginConfigController(c, p.apisixPluginConfigInformer)
+	apisixRouteLister := kube.NewApisixRouteLister(
+		apisixFactory.Apisix().V2beta2().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2().ApisixRoutes().Lister(),
+	)
+	apisixClusterConfigLister := kube.NewApisixClusterConfigLister(
+		apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister(),
+		apisixFactory.Apisix().V2().ApisixClusterConfigs().Lister(),
+	)
+	apisixConsumerLister := kube.NewApisixConsumerLister(
+		apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister(),
+		apisixFactory.Apisix().V2().ApisixConsumers().Lister(),
+	)
+	apisixPluginConfigLister := kube.NewApisixPluginConfigLister(
+		apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+		apisixFactory.Apisix().V2().ApisixPluginConfigs().Lister(),
+	)
+
+	p.apisixUpstreamController = newApisixUpstreamController(c)
+	p.apisixRouteController = newApisixRouteController(c, p.apisixRouteInformer, apisixRouteLister)
+	p.apisixTlsController = newApisixTlsController(c)
+	p.apisixClusterConfigController = newApisixClusterConfigController(c, p.apisixClusterConfigInformer, apisixClusterConfigLister)
+	p.apisixConsumerController = newApisixConsumerController(c, p.apisixConsumerInformer, apisixConsumerLister)
+	p.apisixPluginConfigController = newApisixPluginConfigController(c, p.apisixPluginConfigInformer, apisixPluginConfigLister)
 
 	return p, p.apisixTranslator, nil
 }
@@ -120,20 +124,7 @@ func (p *apisixProvider) Run(ctx context.Context) {
 	e := utils.ParallelExecutor{}
 
 	e.Add(func() {
-		p.svcInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		p.secretInformer.Run(ctx.Done())
-	})
-
-	e.Add(func() {
-		p.apisixUpstreamInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
 		p.apisixRouteInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		p.apisixTlsInformer.Run(ctx.Done())
 	})
 	e.Add(func() {
 		p.apisixClusterConfigInformer.Run(ctx.Done())

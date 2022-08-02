@@ -52,24 +52,17 @@ type apisixUpstreamController struct {
 	apisixUpstreamLister   kube.ApisixUpstreamLister
 }
 
-func newApisixUpstreamController(common *apisixCommon, svcInformer cache.SharedIndexInformer, svcLister listerscorev1.ServiceLister,
-	apisixUpstreamInformer cache.SharedIndexInformer) *apisixUpstreamController {
+func newApisixUpstreamController(common *apisixCommon) *apisixUpstreamController {
 	c := &apisixUpstreamController{
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixUpstream"),
 		workers:      1,
 
-		svcInformer:            svcInformer,
-		apisixUpstreamInformer: apisixUpstreamInformer,
-
-		svcLister: svcLister,
+		svcInformer:            common.SvcInformer,
+		svcLister:              common.SvcLister,
+		apisixUpstreamLister:   common.ApisixUpstreamLister,
+		apisixUpstreamInformer: common.ApisixUpstreamInformer,
 	}
-
-	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
-	c.apisixUpstreamLister = kube.NewApisixUpstreamLister(
-		apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
-		apisixFactory.Apisix().V2().ApisixUpstreams().Lister(),
-	)
 
 	c.apisixUpstreamInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{

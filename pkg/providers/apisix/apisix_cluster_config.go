@@ -48,20 +48,16 @@ type apisixClusterConfigController struct {
 	apisixClusterConfigInformer cache.SharedIndexInformer
 }
 
-func newApisixClusterConfigController(common *apisixCommon, apisixClusterConfigInformer cache.SharedIndexInformer) *apisixClusterConfigController {
+func newApisixClusterConfigController(common *apisixCommon,
+	apisixClusterConfigInformer cache.SharedIndexInformer, apisixClusterConfigLister kube.ApisixClusterConfigLister) *apisixClusterConfigController {
 	c := &apisixClusterConfigController{
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(time.Second, 60*time.Second, 5), "ApisixClusterConfig"),
 		workers:      1,
 
+		apisixClusterConfigLister:   apisixClusterConfigLister,
 		apisixClusterConfigInformer: apisixClusterConfigInformer,
 	}
-
-	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
-	c.apisixClusterConfigLister = kube.NewApisixClusterConfigLister(
-		apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister(),
-		apisixFactory.Apisix().V2().ApisixClusterConfigs().Lister(),
-	)
 
 	c.apisixClusterConfigInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{

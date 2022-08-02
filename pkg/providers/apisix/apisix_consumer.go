@@ -47,20 +47,16 @@ type apisixConsumerController struct {
 	apisixConsumerInformer cache.SharedIndexInformer
 }
 
-func newApisixConsumerController(common *apisixCommon, apisixConsumerInformer cache.SharedIndexInformer) *apisixConsumerController {
+func newApisixConsumerController(common *apisixCommon,
+	apisixConsumerInformer cache.SharedIndexInformer, apisixConsumerLister kube.ApisixConsumerLister) *apisixConsumerController {
 	c := &apisixConsumerController{
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixConsumer"),
 		workers:      1,
 
+		apisixConsumerLister:   apisixConsumerLister,
 		apisixConsumerInformer: apisixConsumerInformer,
 	}
-
-	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
-	c.apisixConsumerLister = kube.NewApisixConsumerLister(
-		apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister(),
-		apisixFactory.Apisix().V2().ApisixConsumers().Lister(),
-	)
 
 	c.apisixConsumerInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
