@@ -53,7 +53,7 @@ type endpointSliceController struct {
 }
 
 func newEndpointSliceController(base *baseEndpointController, namespaceProvider namespace.WatchingNamespaceProvider) *endpointSliceController {
-	ctl := &endpointSliceController{
+	c := &endpointSliceController{
 		baseEndpointController: base,
 
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(time.Second, 60*time.Second, 5), "endpointSlice"),
@@ -65,15 +65,15 @@ func newEndpointSliceController(base *baseEndpointController, namespaceProvider 
 		epInformer: base.EpInformer,
 	}
 
-	ctl.epInformer.AddEventHandler(
+	c.epInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    ctl.onAdd,
-			UpdateFunc: ctl.onUpdate,
-			DeleteFunc: ctl.onDelete,
+			AddFunc:    c.onAdd,
+			UpdateFunc: c.onUpdate,
+			DeleteFunc: c.onDelete,
 		},
 	)
 
-	return ctl
+	return c
 }
 
 func (c *endpointSliceController) run(ctx context.Context) {
@@ -107,6 +107,9 @@ func (c *endpointSliceController) run(ctx context.Context) {
 }
 
 func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) error {
+	log.Debugw("process endpoint slice event",
+		zap.Any("event", ev),
+	)
 	epEvent := ev.Object.(endpointSliceEvent)
 	namespace, _, err := cache.SplitMetaNamespaceKey(epEvent.Key)
 	if err != nil {

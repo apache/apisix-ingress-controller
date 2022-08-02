@@ -27,6 +27,10 @@ type baseEndpointController struct {
 }
 
 func (c *baseEndpointController) syncEndpoint(ctx context.Context, ep kube.Endpoint) error {
+	log.Debugw("endpoint controller syncing endpoint",
+		zap.Any("endpoint", ep),
+	)
+
 	namespace, err := ep.Namespace()
 	if err != nil {
 		return err

@@ -54,6 +54,9 @@ func (p *k8sProvider) Run(ctx context.Context) {
 	e.Add(func() {
 		p.secretController.run(ctx)
 	})
+	e.Add(func() {
+		p.endpoint.Run(ctx)
+	})
 
 	e.Wait()
 }
