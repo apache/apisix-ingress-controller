@@ -29,7 +29,7 @@ import (
 // Find out the rest of objects in APISIX
 // AND warn them in log.
 // This func is NOT concurrency safe.
-// cc https://github.com/apache/apisix-ingress-apisixProvider/pull/742#discussion_r757197791
+// cc https://github.com/apache/apisix-ingress-controller/pull/742#discussion_r757197791
 func (p *apisixProvider) Init(ctx context.Context) error {
 	var (
 		wg                 sync.WaitGroup
