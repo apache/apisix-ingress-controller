@@ -18,9 +18,9 @@ package k8s
 import (
 	"context"
 	"fmt"
+	apisixprovider "github.com/apache/apisix-ingress-controller/pkg/providers/apisix"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -54,26 +54,45 @@ type secretController struct {
 	secretLister    listerscorev1.SecretLister
 	apisixTlsLister kube.ApisixTlsLister
 
-	NamespaceProvider namespace.WatchingNamespaceProvider
+	namespaceProvider namespace.WatchingNamespaceProvider
+	apisixProvider    apisixprovider.Provider
 
 	translator translation.Translator
 }
 
-func newSecretController() *secretController {
-	ctl := &secretController{
+func newSecretController(common *providertypes.Common, translator translation.Translator,
+	namespaceProvider namespace.WatchingNamespaceProvider, apisixProvider apisixprovider.Provider,
+	secretInformer cache.SharedIndexInformer) *secretController {
+	c := &secretController{
+		Common: common,
+
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "Secrets"),
 		workers:   1,
+
+		secretInformer: secretInformer,
+
+		namespaceProvider: namespaceProvider,
+		apisixProvider:    apisixProvider,
+		translator:        translator,
 	}
 
-	ctl.secretInformer.AddEventHandler(
+	kubeFactory := common.KubeClient.NewSharedIndexInformerFactory()
+	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
+	c.secretLister = kubeFactory.Core().V1().Secrets().Lister()
+	c.apisixTlsLister = kube.NewApisixTlsLister(
+		apisixFactory.Apisix().V2beta3().ApisixTlses().Lister(),
+		apisixFactory.Apisix().V2().ApisixTlses().Lister(),
+	)
+
+	c.secretInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    ctl.onAdd,
-			UpdateFunc: ctl.onUpdate,
-			DeleteFunc: ctl.onDelete,
+			AddFunc:    c.onAdd,
+			UpdateFunc: c.onUpdate,
+			DeleteFunc: c.onDelete,
 		},
 	)
 
-	return ctl
+	return c
 }
 
 func (c *secretController) run(ctx context.Context) {
@@ -144,12 +163,10 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 
 	secretMapKey := namespace + "_" + name
 	// sync SSL in APISIX which is store in secretSSLMap
-	ssls, ok := c.secretSSLMap.Load(secretMapKey)
-	if !ok {
-		// This secret is not concerned.
+	sslMap := c.apisixProvider.GetSslFromSecretKey(secretMapKey)
+	if sslMap == nil {
 		return nil
 	}
-	sslMap := ssls.(*sync.Map)
 
 	switch c.Kubernetes.APIVersion {
 	case config.ApisixV2beta3:
@@ -359,7 +376,7 @@ func (c *secretController) onAdd(obj interface{}) {
 		log.Errorf("found secret object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 
@@ -386,7 +403,7 @@ func (c *secretController) onUpdate(prev, curr interface{}) {
 		log.Errorf("found secrets object with bad namespace/name: %s, ignore it", err)
 		return
 	}
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("secret update event arrived",
@@ -420,7 +437,7 @@ func (c *secretController) onDelete(obj interface{}) {
 	// FIXME Refactor Controller.isWatchingNamespace to just use
 	// namespace after all controllers use the same way to fetch
 	// the object.
-	if !c.NamespaceProvider.IsWatchingNamespace(key) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("secret delete event arrived",
