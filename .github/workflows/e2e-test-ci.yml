@@ -111,6 +111,7 @@ jobs:
             localhost:5000/test-backend:dev \
             localhost:5000/jmalloc/echo-server:dev \
             localhost:5000/busybox:dev \
+            golang:1.18 \
             | pigz > docker.tar.gz
 
       - name: cache

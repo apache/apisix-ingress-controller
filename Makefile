@@ -17,7 +17,6 @@
 default: help
 
 VERSION ?= 1.4.1
-K8S_VERSION ?="v1.21.1@sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6"
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 REGISTRY ?="localhost:5000"
 IMAGE_TAG ?= dev
@@ -97,6 +96,8 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 
 	docker pull busybox:1.28
 	docker tag  busybox:1.28 $(REGISTRY)/busybox:$(IMAGE_TAG)
+	
+	docker pull golang:1.18
 endif
 
 ### push-images:          Push images used in e2e test suites to kind or custom registry.
@@ -110,6 +111,8 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 	docker push $(REGISTRY)/jmalloc/echo-server:$(IMAGE_TAG)
 	docker push $(REGISTRY)/busybox:$(IMAGE_TAG)
+
+	docker push golang:1.18
 endif
 
 ### lint:                 Do static lint check

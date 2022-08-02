@@ -22,6 +22,7 @@ set -o pipefail
 
 # desired cluster name; default is "apisix"
 KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-apisix}"
+K8S_VERSION=${K8S_VERSION:-v1.21.1@sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6}
 
 if kind get clusters | grep -q ^apisix$ ; then
   echo "cluster already exists, moving on"
