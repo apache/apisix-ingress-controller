@@ -27,10 +27,6 @@ on:
       - master
   schedule:
     - cron: '0 4 * * 5'
-    
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
 
 jobs:
   changes:
@@ -141,7 +137,7 @@ jobs:
     strategy:
       fail-fast: false # If false, GitHub will not cancels all in-progress jobs in the matrix if any matrix job fails.
       matrix:
-        k8s: [v1.18.0, v1.21.1, v1.24.0]
+        k8s: [v1.21.1, v1.24.0]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -158,17 +154,13 @@ jobs:
         with:
           name: docker.tar.gz
 
-      - name: Create docker registry
+      - name: Create Kubernetes ${{ matrix.k8s }} cluster
+        shell: bash
+        env:
+          NODE_VERSION: ${{ matrix.k8s }}
         run: |
-          docker run -d --restart=always -p "5000:5000" --name "kind-registry" registry:2
-
-      - name: Create K8s cluster
-        id: kind
-        uses: engineerd/setup-kind@aa272fe2a7309878ffc2a81c56cfe3ef108ae7d0 #v0.5.0
-        with:
-          version: v0.14.0
-          config: test/e2e/kind.yml
-          image: kindest/node:${{ matrix.k8s }}
+          make kind-up
+          kubectl wait --for=condition=Ready nodes --all
 
       - name: Load images from cache
         run: |
@@ -183,6 +175,5 @@ jobs:
           E2E_SKIP_BUILD: "1"
           E2E_FLAKE_ATTEMPTS: "2"
           E2E_ENV: "ci"
-          E2E_NODES: "8"
         run: |
           make e2e-test
