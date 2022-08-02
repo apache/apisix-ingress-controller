@@ -16,7 +16,6 @@
 package plugins
 
 import (
-	"fmt"
 	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -25,14 +24,11 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-plugins: mqtt-proxy plugin", func() {
+var _ = ginkgo.FDescribe("suite-plugins: mqtt-proxy plugin", func() {
 	opts := &scaffold.Options{
-		Name:                  "default",
-		Kubeconfig:            scaffold.GetKubeconfig(),
-		APISIXConfigPath:      "testdata/apisix-gw-config.yaml",
+		Name:                  "mqtt-proxy",
 		IngressAPISIXReplicas: 1,
-		HTTPBinServicePort:    80,
-		APISIXRouteVersion:    "apisix.apache.org/v2",
+		ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
 	}
 	s := scaffold.NewScaffold(opts)
 	// setup mosquito service
@@ -86,7 +82,7 @@ spec:
 `))
 		s.EnsureNumEndpointsReady(ginkgo.GinkgoT(), "mosquito", 1)
 		// setup Apisix Route for mqtt proxy
-		apisixRoute := fmt.Sprintf(`
+		apisixRoute := `
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
@@ -106,17 +102,11 @@ spec:
       config:
         protocol_name: MQTT
         protocol_level: 4
-`)
+`
 
-		time.Sleep(12 * time.Second)
-		err := s.CreateResourceFromString(apisixRoute)
-		assert.Nil(ginkgo.GinkgoT(), err)
-		defer func() {
-			err := s.RemoveResourceByString(apisixRoute)
-			assert.Nil(ginkgo.GinkgoT(), err)
-		}()
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
 
-		err = s.EnsureNumApisixStreamRoutesCreated(1)
+		err := s.EnsureNumApisixStreamRoutesCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
 		sr, err := s.ListApisixStreamRoutes()
