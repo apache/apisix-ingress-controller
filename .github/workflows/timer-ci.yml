@@ -19,6 +19,12 @@
 name: timer-ci
 
 on:
+  push:
+    branches:
+      - ci/k8s
+  pull_request:
+    branches:
+      - master
   schedule:
     - cron: '0 4 * * 5'
     
@@ -163,9 +169,6 @@ jobs:
           version: v0.14.0
           config: test/e2e/kind.yaml
           image: kindest/node:${{ matrix.k8s }}
-        shell: bash
-        run: |
-          kubectl wait --for=condition=Ready nodes --all
 
       - name: Load images from cache
         run: |
