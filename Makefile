@@ -111,8 +111,6 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 	docker push $(REGISTRY)/jmalloc/echo-server:$(IMAGE_TAG)
 	docker push $(REGISTRY)/busybox:$(IMAGE_TAG)
-
-	docker push golang:1.18
 endif
 
 ### lint:                 Do static lint check
