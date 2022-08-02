@@ -26,7 +26,7 @@ on:
     branches:
       - master
   schedule:
-    - cron: '0 4 * * 5'
+    - cron: '0 4 * * 1'
 
 jobs:
   changes:
@@ -137,7 +137,7 @@ jobs:
     strategy:
       fail-fast: false # If false, GitHub will not cancels all in-progress jobs in the matrix if any matrix job fails.
       matrix:
-        k8s: [v1.21.1, v1.24.0]
+        k8s: [v1.19.1, v1.21.1, v1.24.0]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -175,5 +175,6 @@ jobs:
           E2E_SKIP_BUILD: "1"
           E2E_FLAKE_ATTEMPTS: "2"
           E2E_ENV: "ci"
+          E2E_NODES: "8"
         run: |
           make e2e-test
