@@ -168,8 +168,6 @@ jobs:
 
       - name: Create K8s cluster
         shell: bash
-        env:
-          K8S_VERSION: v1.21.1
         run: |
           make kind-up
           kubectl wait --for=condition=Ready nodes --all

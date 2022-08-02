@@ -16,7 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-name: timer-ci
+name: k8s-timer-ci
 
 on:
   push:
@@ -128,7 +128,7 @@ jobs:
       - name: Check e2e test cases' naming
         run: make e2e-names-check
 
-  e2e-test:
+  Kubernetes-e2e-test:
     needs: 
       - changes
       - prepare
@@ -137,7 +137,13 @@ jobs:
     strategy:
       fail-fast: false # If false, GitHub will not cancels all in-progress jobs in the matrix if any matrix job fails.
       matrix:
-        k8s: [v1.21.1, v1.22.9, v1.24.0]
+        k8s:
+          - v1.16.15@sha256:83067ed51bf2a3395b24687094e283a7c7c865ccc12a8b1d7aa673ba0c5e8861
+          - v1.17.17@sha256:66f1d0d91a88b8a001811e2f1054af60eef3b669a9a74f9b6db871f2f1eeed00
+          - v1.18.19@sha256:7af1492e19b3192a79f606e43c35fb741e520d195f96399284515f077b3b622c
+          - v1.19.11@sha256:07db187ae84b4b7de440a73886f008cf903fcf5764ba8106a9fd5243d6f32729
+          - v1.20.7@sha256:cbeaf907fc78ac97ce7b625e4bf0de16e3ea725daf6b04f930bd14c67c671ff9
+          - v1.21.1@sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6
     steps:
       - name: Checkout
         uses: actions/checkout@v2

@@ -17,7 +17,7 @@
 default: help
 
 VERSION ?= 1.4.1
-K8S_VERSION ?="v1.21.1"
+K8S_VERSION ?="v1.21.1@sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6"
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 REGISTRY ?="localhost:5000"
 IMAGE_TAG ?= dev
