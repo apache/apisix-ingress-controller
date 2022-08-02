@@ -1,8 +1,27 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+//
 package translation
 
 import (
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
@@ -11,6 +30,9 @@ import (
 )
 
 type TranslatorOptions struct {
+	Apisix      apisix.APISIX
+	ClusterName string
+
 	ServiceLister listerscorev1.ServiceLister
 	SecretLister  listerscorev1.SecretLister
 }
@@ -41,6 +63,9 @@ type ApisixTranslator interface {
 	// TranslateRouteV2NotStrictly translates the configv2.ApisixRoute object into several Route,
 	// Upstream and PluginConfig resources not strictly, only used for delete event.
 	TranslateRouteV2NotStrictly(*configv2.ApisixRoute) (*translation.TranslateContext, error)
+	// TranslateOldRoute get route and stream_route objects from cache
+	// Build upstream and plugin_config through route and stream_route
+	TranslateOldRoute(kube.ApisixRoute) (*translation.TranslateContext, error)
 	// TranslateSSLV2Beta3 translates the configv2beta3.ApisixTls object into the APISIX SSL resource.
 	TranslateSSLV2Beta3(*configv2beta3.ApisixTls) (*apisixv1.Ssl, error)
 	// TranslateSSLV2 translates the configv2.ApisixTls object into the APISIX SSL resource.

@@ -15,13 +15,17 @@
 package translation
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/id"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
@@ -1052,4 +1056,91 @@ loop:
 	}
 
 	return svc.Spec.ClusterIP, svcPort, nil
+}
+
+func (t *translator) TranslateOldRoute(ar kube.ApisixRoute) (*translation.TranslateContext, error) {
+	switch ar.GroupVersion() {
+	case config.ApisixV2:
+		return t.translateOldRouteV2(ar.V2())
+	case config.ApisixV2beta3:
+		return t.translateOldRouteV2beta3(ar.V2beta3())
+	case config.ApisixV2beta2:
+		return translation.DefaultEmptyTranslateContext(), nil
+	default:
+		return nil, fmt.Errorf("translator: source group version not supported: %s", ar.GroupVersion())
+	}
+}
+
+func (t *translator) translateOldRouteV2(ar *configv2.ApisixRoute) (*translation.TranslateContext, error) {
+	oldCtx := translation.DefaultEmptyTranslateContext()
+
+	for _, part := range ar.Spec.Stream {
+		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
+		sr, err := t.Apisix.Cluster(t.ClusterName).StreamRoute().Get(context.Background(), name)
+		if err != nil {
+			continue
+		}
+		if sr.UpstreamId != "" {
+			ups := apisixv1.NewDefaultUpstream()
+			ups.ID = sr.UpstreamId
+			oldCtx.AddUpstream(ups)
+		}
+		oldCtx.AddStreamRoute(sr)
+	}
+	for _, part := range ar.Spec.HTTP {
+		name := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
+		r, err := t.Apisix.Cluster(t.ClusterName).Route().Get(context.Background(), name)
+		if err != nil {
+			continue
+		}
+		if r.UpstreamId != "" {
+			ups := apisixv1.NewDefaultUpstream()
+			ups.ID = r.UpstreamId
+			oldCtx.AddUpstream(ups)
+		}
+		if r.PluginConfigId != "" {
+			pc := apisixv1.NewDefaultPluginConfig()
+			pc.ID = r.PluginConfigId
+			oldCtx.AddPluginConfig(pc)
+		}
+		oldCtx.AddRoute(r)
+	}
+	return oldCtx, nil
+}
+
+func (t *translator) translateOldRouteV2beta3(ar *configv2beta3.ApisixRoute) (*translation.TranslateContext, error) {
+	oldCtx := translation.DefaultEmptyTranslateContext()
+
+	for _, part := range ar.Spec.Stream {
+		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
+		sr, err := t.Apisix.Cluster(t.ClusterName).StreamRoute().Get(context.Background(), name)
+		if err != nil {
+			continue
+		}
+		if sr.UpstreamId != "" {
+			ups := apisixv1.NewDefaultUpstream()
+			ups.ID = sr.UpstreamId
+			oldCtx.AddUpstream(ups)
+		}
+		oldCtx.AddStreamRoute(sr)
+	}
+	for _, part := range ar.Spec.HTTP {
+		name := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
+		r, err := t.Apisix.Cluster(t.ClusterName).Route().Get(context.Background(), name)
+		if err != nil {
+			continue
+		}
+		if r.UpstreamId != "" {
+			ups := apisixv1.NewDefaultUpstream()
+			ups.ID = r.UpstreamId
+			oldCtx.AddUpstream(ups)
+		}
+		if r.PluginConfigId != "" {
+			pc := apisixv1.NewDefaultPluginConfig()
+			pc.ID = r.PluginConfigId
+			oldCtx.AddPluginConfig(pc)
+		}
+		oldCtx.AddRoute(r)
+	}
+	return oldCtx, nil
 }

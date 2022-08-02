@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
-	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
@@ -31,6 +31,33 @@ var _ = ginkgo.Describe("suite-ingress-features: apisix resource sync", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.JustBeforeEach(func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
+
+			au := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixUpstream
+metadata:
+  name: %s
+spec:
+  timeout:
+    read: 10s
+    send: 10s
+`, backendSvc)
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(au))
+
+			apc := `
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixPluginConfig
+metadata:
+ name: my-echo
+spec:
+ plugins:
+ - name: echo
+   enable: true
+   config:
+    body: "my-echo"
+`
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
+
 			// Create ApisixRoute resource
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -53,11 +80,30 @@ spec:
      type: keyAuth
 `, backendSvc, backendPorts[0])
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
-			err := s.EnsureNumApisixUpstreamsCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-			err = s.EnsureNumApisixRoutesCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
+			ar2 := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+ name: httpbin-route2
+spec:
+ http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backends:
+    - serviceName: %s
+      servicePort: %d
+      weight: 10
+    plugin_config_name: my-echo
+`, backendSvc, backendPorts[0])
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar2))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2), "Checking number of routes")
 			// Create Ingress resource
 			ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
@@ -80,24 +126,25 @@ spec:
               number: %d
 `, backendSvc, backendPorts[0])
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(3), "Checking number of routes")
 
 			// Create ApisixConsumer resource
-			err = s.ApisixConsumerKeyAuthCreated("foo", "foo-key")
+			err := s.ApisixConsumerKeyAuthCreated("foo", "foo-key")
 			assert.Nil(ginkgo.GinkgoT(), err)
 		})
 
 		ginkgo.It("for modified resource sync consistency", func() {
 			// crd resource sync interval
-			readyTime := time.Now().Add(60 * time.Second)
+			readyTime := time.Now().Add(100 * time.Second)
 
 			routes, _ := s.ListApisixRoutes()
-			assert.Len(ginkgo.GinkgoT(), routes, 2)
+			assert.Len(ginkgo.GinkgoT(), routes, 3)
 
 			consumers, _ := s.ListApisixConsumers()
 			assert.Len(ginkgo.GinkgoT(), consumers, 1)
 
 			for _, route := range routes {
-				_ = s.CreateApisixRouteByApisixAdmin(id.GenID(route.Name), []byte(`
+				err := s.CreateApisixRouteByApisixAdmin(route.ID, []byte(`
 {
 	"methods": ["GET"],
 	"uri": "/anything",
@@ -111,6 +158,7 @@ spec:
 		}
 	}
 }`))
+				assert.Nil(ginkgo.GinkgoT(), err)
 			}
 
 			for _, consumer := range consumers {
@@ -125,6 +173,12 @@ spec:
 }`, consumer.Username)))
 			}
 
+			routes, _ = s.ListApisixRoutes()
+			assert.Len(ginkgo.GinkgoT(), routes, 3)
+			for _, route := range routes {
+				assert.Equal(ginkgo.GinkgoT(), "/anything", route.Uri)
+			}
+
 			_ = s.NewAPISIXClient().
 				GET("/ip").
 				WithHeader("Host", "httpbin.org").
@@ -137,9 +191,14 @@ spec:
 				Expect().
 				Status(http.StatusNotFound)
 
+			_ = s.NewAPISIXClient().
+				GET("/ip").
+				WithHeader("Host", "httpbin.com").
+				Expect().
+				Status(http.StatusNotFound)
+
 			waitTime := time.Until(readyTime).Seconds()
 			time.Sleep(time.Duration(waitTime) * time.Second)
-			time.Sleep(time.Second * 6)
 
 			_ = s.NewAPISIXClient().
 				GET("/ip").
@@ -154,6 +213,14 @@ spec:
 				Expect().
 				Status(http.StatusOK)
 
+			_ = s.NewAPISIXClient().
+				GET("/ip").
+				WithHeader("Host", "httpbin.com").
+				Expect().
+				Status(http.StatusOK).
+				Body().
+				Contains("my-echo")
+
 			consumers, _ = s.ListApisixConsumers()
 			assert.Len(ginkgo.GinkgoT(), consumers, 1)
 			data, _ := json.Marshal(consumers[0])
@@ -162,11 +229,10 @@ spec:
 
 		ginkgo.It("for deleted resource sync consistency", func() {
 			// crd resource sync interval
-			readyTime := time.Now().Add(60 * time.Second)
+			readyTime := time.Now().Add(100 * time.Second)
 
 			routes, _ := s.ListApisixRoutes()
-			assert.Len(ginkgo.GinkgoT(), routes, 2)
-
+			assert.Len(ginkgo.GinkgoT(), routes, 3)
 			consumers, _ := s.ListApisixConsumers()
 			assert.Len(ginkgo.GinkgoT(), consumers, 1)
 
@@ -178,6 +244,11 @@ spec:
 				s.DeleteApisixConsumerByApisixAdmin(consumer.Username)
 			}
 
+			routes, _ = s.ListApisixRoutes()
+			assert.Len(ginkgo.GinkgoT(), routes, 0)
+			consumers, _ = s.ListApisixConsumers()
+			assert.Len(ginkgo.GinkgoT(), consumers, 0)
+
 			_ = s.NewAPISIXClient().
 				GET("/ip").
 				WithHeader("Host", "httpbin.org").
@@ -190,6 +261,12 @@ spec:
 				Expect().
 				Status(http.StatusNotFound)
 
+			_ = s.NewAPISIXClient().
+				GET("/ip").
+				WithHeader("Host", "httpbin.com").
+				Expect().
+				Status(http.StatusNotFound)
+
 			routes, _ = s.ListApisixRoutes()
 			assert.Len(ginkgo.GinkgoT(), routes, 0)
 			consumers, _ = s.ListApisixConsumers()
@@ -197,7 +274,6 @@ spec:
 
 			waitTime := time.Until(readyTime).Seconds()
 			time.Sleep(time.Duration(waitTime) * time.Second)
-			time.Sleep(time.Second * 6)
 
 			_ = s.NewAPISIXClient().
 				GET("/ip").
@@ -211,6 +287,14 @@ spec:
 				WithHeader("Host", "local.httpbin.org").
 				Expect().
 				Status(http.StatusOK)
+
+			_ = s.NewAPISIXClient().
+				GET("/ip").
+				WithHeader("Host", "httpbin.com").
+				Expect().
+				Status(http.StatusOK).
+				Body().
+				Contains("my-echo")
 
 			consumers, _ = s.ListApisixConsumers()
 			assert.Len(ginkgo.GinkgoT(), consumers, 1)
@@ -224,7 +308,7 @@ spec:
 			Name:                       "sync",
 			IngressAPISIXReplicas:      1,
 			ApisixResourceVersion:      scaffold.ApisixResourceVersion().V2beta3,
-			ApisixResourceSyncInterval: "60s",
+			ApisixResourceSyncInterval: "100s",
 		}))
 	})
 	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
@@ -232,7 +316,7 @@ spec:
 			Name:                       "sync",
 			IngressAPISIXReplicas:      1,
 			ApisixResourceVersion:      scaffold.ApisixResourceVersion().V2,
-			ApisixResourceSyncInterval: "60s",
+			ApisixResourceSyncInterval: "100s",
 		}))
 	})
 })

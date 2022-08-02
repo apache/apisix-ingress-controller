@@ -132,7 +132,7 @@ func NewScaffold(o *Options) *Scaffold {
 		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
 	}
 	if o.ApisixResourceSyncInterval == "" {
-		o.ApisixResourceSyncInterval = "300s"
+		o.ApisixResourceSyncInterval = "60s"
 	}
 	if o.Kubeconfig == "" {
 		o.Kubeconfig = GetKubeconfig()
@@ -157,7 +157,7 @@ func NewScaffold(o *Options) *Scaffold {
 }
 
 // NewDefaultScaffold creates a scaffold with some default options.
-// apisix-version default v2beta3
+// apisix-version default v2
 func NewDefaultScaffold() *Scaffold {
 	opts := &Options{
 		Name:                  "default",

@@ -1,7 +1,25 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+//
 package translation
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 
@@ -13,8 +31,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	kubev2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	kubev2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
@@ -25,23 +45,35 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-type translator struct {
-	ServiceLister listerscorev1.ServiceLister
+type TranslatorOptions struct {
+	Apisix      apisix.APISIX
+	ClusterName string
 
+	ServiceLister listerscorev1.ServiceLister
+}
+
+type translator struct {
+	*TranslatorOptions
 	translation.Translator
 	ApisixTranslator apisixtranslation.ApisixTranslator
 }
 
 type IngressTranslator interface {
+	// TranslateIngress composes a couple of APISIX Routes and upstreams according
+	// to the given Ingress resource.
+	// For old objects, you cannot use TranslateIngress to build. Because it needs to parse the latest service, which will cause data inconsistency.
 	TranslateIngress(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error)
+	// TranslateOldIngress get route objects from cache
+	// Build upstream and plugin_config through route
+	TranslateOldIngress(kube.Ingress) (*translation.TranslateContext, error)
 }
 
-func NewIngressTranslator(serviceLister listerscorev1.ServiceLister,
+func NewIngressTranslator(opts *TranslatorOptions,
 	commonTranslator translation.Translator, apisixTranslator apisixtranslation.ApisixTranslator) IngressTranslator {
 	t := &translator{
-		ServiceLister:    serviceLister,
-		Translator:       commonTranslator,
-		ApisixTranslator: apisixTranslator,
+		TranslatorOptions: opts,
+		Translator:        commonTranslator,
+		ApisixTranslator:  apisixTranslator,
 	}
 
 	return t
@@ -506,6 +538,176 @@ func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcNa
 	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
+}
+
+func (t *translator) TranslateOldIngress(ing kube.Ingress) (*translation.TranslateContext, error) {
+	switch ing.GroupVersion() {
+	case kube.IngressV1:
+		return t.translateOldIngressV1(ing.V1())
+	case kube.IngressV1beta1:
+		return t.translateOldIngressV1beta1(ing.V1beta1())
+	case kube.IngressExtensionsV1beta1:
+		return t.translateOldIngressExtensionsv1beta1(ing.ExtensionsV1beta1())
+	default:
+		return nil, fmt.Errorf("translator: source group version not supported: %s", ing.GroupVersion())
+	}
+}
+
+func (t *translator) translateOldIngressV1(ing *networkingv1.Ingress) (*translation.TranslateContext, error) {
+	oldCtx := translation.DefaultEmptyTranslateContext()
+
+	for _, tls := range ing.Spec.TLS {
+		apisixTls := configv2.ApisixTls{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ApisixTls",
+				APIVersion: "apisix.apache.org/v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
+				Namespace: ing.Namespace,
+			},
+			Spec: &configv2.ApisixTlsSpec{},
+		}
+		for _, host := range tls.Hosts {
+			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, configv2.HostType(host))
+		}
+		apisixTls.Spec.Secret = configv2.ApisixSecret{
+			Name:      tls.SecretName,
+			Namespace: ing.Namespace,
+		}
+		ssl, err := t.ApisixTranslator.TranslateSSLV2(&apisixTls)
+		if err != nil {
+			log.Debugw("failed to translate ingress tls to apisix tls",
+				zap.Error(err),
+				zap.Any("ingress", ing),
+			)
+			continue
+		}
+		oldCtx.AddSSL(ssl)
+	}
+	for _, rule := range ing.Spec.Rules {
+		for _, pathRule := range rule.HTTP.Paths {
+			name := composeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
+			r, err := t.Apisix.Cluster(t.ClusterName).Route().Get(context.Background(), name)
+			if err != nil {
+				continue
+			}
+			if r.UpstreamId != "" {
+				ups := apisixv1.NewDefaultUpstream()
+				ups.ID = r.UpstreamId
+				oldCtx.AddUpstream(ups)
+			}
+			if r.PluginConfigId != "" {
+				pc := apisixv1.NewDefaultPluginConfig()
+				pc.ID = r.PluginConfigId
+				oldCtx.AddPluginConfig(pc)
+			}
+			oldCtx.AddRoute(r)
+		}
+	}
+	return oldCtx, nil
+}
+
+func (t *translator) translateOldIngressV1beta1(ing *networkingv1beta1.Ingress) (*translation.TranslateContext, error) {
+	oldCtx := translation.DefaultEmptyTranslateContext()
+
+	for _, tls := range ing.Spec.TLS {
+		apisixTls := configv2.ApisixTls{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ApisixTls",
+				APIVersion: "apisix.apache.org/v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
+				Namespace: ing.Namespace,
+			},
+			Spec: &configv2.ApisixTlsSpec{},
+		}
+		for _, host := range tls.Hosts {
+			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, configv2.HostType(host))
+		}
+		apisixTls.Spec.Secret = configv2.ApisixSecret{
+			Name:      tls.SecretName,
+			Namespace: ing.Namespace,
+		}
+		ssl, err := t.ApisixTranslator.TranslateSSLV2(&apisixTls)
+		if err != nil {
+			continue
+		}
+		oldCtx.AddSSL(ssl)
+	}
+	for _, rule := range ing.Spec.Rules {
+		for _, pathRule := range rule.HTTP.Paths {
+			name := composeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
+			r, err := t.Apisix.Cluster(t.ClusterName).Route().Get(context.Background(), name)
+			if err != nil {
+				continue
+			}
+			if r.UpstreamId != "" {
+				ups := apisixv1.NewDefaultUpstream()
+				ups.ID = r.UpstreamId
+				oldCtx.AddUpstream(ups)
+			}
+			if r.PluginConfigId != "" {
+				pc := apisixv1.NewDefaultPluginConfig()
+				pc.ID = r.PluginConfigId
+				oldCtx.AddPluginConfig(pc)
+			}
+			oldCtx.AddRoute(r)
+		}
+	}
+	return oldCtx, nil
+}
+
+func (t *translator) translateOldIngressExtensionsv1beta1(ing *extensionsv1beta1.Ingress) (*translation.TranslateContext, error) {
+	oldCtx := translation.DefaultEmptyTranslateContext()
+
+	for _, tls := range ing.Spec.TLS {
+		apisixTls := configv2.ApisixTls{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ApisixTls",
+				APIVersion: "apisix.apache.org/v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
+				Namespace: ing.Namespace,
+			},
+			Spec: &configv2.ApisixTlsSpec{},
+		}
+		for _, host := range tls.Hosts {
+			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, configv2.HostType(host))
+		}
+		apisixTls.Spec.Secret = configv2.ApisixSecret{
+			Name:      tls.SecretName,
+			Namespace: ing.Namespace,
+		}
+		ssl, err := t.ApisixTranslator.TranslateSSLV2(&apisixTls)
+		if err != nil {
+			continue
+		}
+		oldCtx.AddSSL(ssl)
+	}
+	for _, rule := range ing.Spec.Rules {
+		for _, pathRule := range rule.HTTP.Paths {
+			name := composeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
+			r, err := t.Apisix.Cluster(t.ClusterName).Route().Get(context.Background(), name)
+			if err != nil {
+				continue
+			}
+			if r.UpstreamId != "" {
+				ups := apisixv1.NewDefaultUpstream()
+				ups.ID = r.UpstreamId
+				oldCtx.AddUpstream(ups)
+			}
+			if r.PluginConfigId != "" {
+				pc := apisixv1.NewDefaultPluginConfig()
+				pc.ID = r.PluginConfigId
+				oldCtx.AddPluginConfig(pc)
+			}
+			oldCtx.AddRoute(r)
+		}
+	}
+	return oldCtx, nil
 }
 
 // In the past, we used host + path directly to form its route name for readability,

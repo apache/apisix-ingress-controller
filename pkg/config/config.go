@@ -58,7 +58,7 @@ const (
 	// ApisixV2 represents apisix.apache.org/v2
 	ApisixV2 = "apisix.apache.org/v2"
 	// DefaultAPIVersion refers to the default resource version
-	DefaultAPIVersion = ApisixV2beta3
+	DefaultAPIVersion = ApisixV2
 
 	_minimalResyncInterval = 30 * time.Second
 
