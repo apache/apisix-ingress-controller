@@ -25,7 +25,7 @@ on:
   pull_request:
     branches:
       - master
-    type: [review_requested, ready_for_review]
+    types: [review_requested, ready_for_review]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

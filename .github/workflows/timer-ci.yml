@@ -21,10 +21,11 @@ name: timer-ci
 on:
   push:
     branches:
-      - ci/k8s
+      - master
   pull_request:
     branches:
       - master
+    types: [review_requested, ready_for_review]
   schedule:
     - cron: '0 4 * * 5'
     
