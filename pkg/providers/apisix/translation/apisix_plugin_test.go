@@ -16,6 +16,7 @@ package translation
 
 import (
 	"context"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -176,13 +177,15 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 	}
 
 	tr := &translator{&TranslatorOptions{
+		ServiceLister: svcLister,
+	}, translation.NewTranslator(&translation.TranslatorOptions{
 		ServiceLister:        svcLister,
 		EndpointLister:       epLister,
 		ApisixUpstreamLister: auLister,
 		APIVersion:           config.DefaultAPIVersion,
-	}}
-	ctx := &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
+	})}
+	ctx := &translation.TranslateContext{
+		UpstreamMap: make(map[string]struct{}),
 	}
 	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, err)
@@ -351,12 +354,16 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 	}
 
 	tr := &translator{&TranslatorOptions{
+		ServiceLister: svcLister,
+	}, translation.NewTranslator(&translation.TranslatorOptions{
 		ServiceLister:        svcLister,
 		EndpointLister:       epLister,
 		ApisixUpstreamLister: auLister,
 		APIVersion:           config.DefaultAPIVersion,
-	}}
-	ctx := &TranslateContext{upstreamMap: make(map[string]struct{})}
+	})}
+	ctx := &translation.TranslateContext{
+		UpstreamMap: make(map[string]struct{}),
+	}
 	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, err)
 
@@ -519,12 +526,14 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	}
 
 	tr := &translator{&TranslatorOptions{
+		ServiceLister: svcLister,
+	}, translation.NewTranslator(&translation.TranslatorOptions{
 		ServiceLister:        svcLister,
 		EndpointLister:       epLister,
 		ApisixUpstreamLister: auLister,
 		APIVersion:           config.DefaultAPIVersion,
-	}}
-	ctx := &TranslateContext{upstreamMap: make(map[string]struct{})}
+	})}
+	ctx := &translation.TranslateContext{UpstreamMap: make(map[string]struct{})}
 	cfg, err := tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, cfg)
 	assert.Len(t, ctx.Upstreams, 0)
@@ -533,7 +542,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 
 	backends[0].ServiceName = "svc-1"
 	backends[1].ServicePort.StrVal = "port-not-found"
-	ctx = &TranslateContext{upstreamMap: make(map[string]struct{})}
+	ctx = &translation.TranslateContext{UpstreamMap: make(map[string]struct{})}
 	cfg, err = tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, cfg)
 	assert.NotNil(t, err)
@@ -541,7 +550,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 
 	backends[1].ServicePort.StrVal = "port2"
 	backends[1].ResolveGranularity = "service"
-	ctx = &TranslateContext{upstreamMap: make(map[string]struct{})}
+	ctx = &translation.TranslateContext{UpstreamMap: make(map[string]struct{})}
 	cfg, err = tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, cfg)
 	assert.NotNil(t, err)
@@ -582,11 +591,10 @@ func TestTranslateConsumerKeyAuthWithSecretRef(t *testing.T) {
 	})
 	go secretInformer.Run(stopCh)
 
-	tr := &translator{
-		&TranslatorOptions{
-			SecretLister: secretLister,
-		},
-	}
+	tr := &translator{&TranslatorOptions{
+		SecretLister: secretLister,
+	}, translation.NewTranslator(nil)}
+
 	_, err := client.CoreV1().Secrets("default").Create(context.Background(), sec, metav1.CreateOptions{})
 	assert.Nil(t, err)
 
@@ -656,11 +664,10 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 	})
 	go secretInformer.Run(stopCh)
 
-	tr := &translator{
-		&TranslatorOptions{
-			SecretLister: secretLister,
-		},
-	}
+	tr := &translator{&TranslatorOptions{
+		SecretLister: secretLister,
+	}, translation.NewTranslator(nil)}
+
 	_, err := client.CoreV1().Secrets("default").Create(context.Background(), sec, metav1.CreateOptions{})
 	assert.Nil(t, err)
 
@@ -769,11 +776,10 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	})
 	go secretInformer.Run(stopCh)
 
-	tr := &translator{
-		&TranslatorOptions{
-			SecretLister: secretLister,
-		},
-	}
+	tr := &translator{&TranslatorOptions{
+		SecretLister: secretLister,
+	}, translation.NewTranslator(nil)}
+
 	_, err := client.CoreV1().Secrets("default").Create(context.Background(), sec, metav1.CreateOptions{})
 	assert.Nil(t, err)
 
@@ -898,11 +904,10 @@ func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
 	})
 	go secretInformer.Run(stopCh)
 
-	tr := &translator{
-		&TranslatorOptions{
-			SecretLister: secretLister,
-		},
-	}
+	tr := &translator{&TranslatorOptions{
+		SecretLister: secretLister,
+	}, translation.NewTranslator(nil)}
+
 	_, err := client.CoreV1().Secrets("default").Create(context.Background(), sec, metav1.CreateOptions{})
 	assert.Nil(t, err)
 
@@ -995,11 +1000,10 @@ func TestTranslateConsumerHMACAuthPluginWithSecretRef(t *testing.T) {
 	})
 	go secretInformer.Run(stopCh)
 
-	tr := &translator{
-		&TranslatorOptions{
-			SecretLister: secretLister,
-		},
-	}
+	tr := &translator{&TranslatorOptions{
+		SecretLister: secretLister,
+	}, translation.NewTranslator(nil)}
+
 	_, err := client.CoreV1().Secrets("default").Create(context.Background(), sec, metav1.CreateOptions{})
 	assert.Nil(t, err)
 

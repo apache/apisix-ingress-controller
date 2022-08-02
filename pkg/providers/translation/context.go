@@ -21,14 +21,14 @@ type TranslateContext struct {
 	Routes        []*apisix.Route
 	StreamRoutes  []*apisix.StreamRoute
 	Upstreams     []*apisix.Upstream
-	upstreamMap   map[string]struct{}
+	UpstreamMap   map[string]struct{}
 	SSL           []*apisix.Ssl
 	PluginConfigs []*apisix.PluginConfig
 }
 
 func DefaultEmptyTranslateContext() *TranslateContext {
 	return &TranslateContext{
-		upstreamMap: make(map[string]struct{}),
+		UpstreamMap: make(map[string]struct{}),
 	}
 }
 
@@ -45,15 +45,15 @@ func (tc *TranslateContext) AddStreamRoute(sr *apisix.StreamRoute) {
 }
 
 func (tc *TranslateContext) AddUpstream(u *apisix.Upstream) {
-	if _, ok := tc.upstreamMap[u.Name]; ok {
+	if _, ok := tc.UpstreamMap[u.Name]; ok {
 		return
 	}
-	tc.upstreamMap[u.Name] = struct{}{}
+	tc.UpstreamMap[u.Name] = struct{}{}
 	tc.Upstreams = append(tc.Upstreams, u)
 }
 
 func (tc *TranslateContext) CheckUpstreamExist(name string) (ok bool) {
-	_, ok = tc.upstreamMap[name]
+	_, ok = tc.UpstreamMap[name]
 	return
 }
 

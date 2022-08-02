@@ -18,6 +18,8 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sync"
 	"time"
 
@@ -188,7 +190,7 @@ func (c *secretController) syncV2Beta3Handler(ctx context.Context, ev *types.Eve
 				go func(tls *configv2beta3.ApisixTls) {
 					c.RecordEventS(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted,
 						fmt.Sprintf("sync from secret %s changes failed, error: %s", secretKey, err.Error()))
-					c.controller.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
+					c.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 				}(tls)
 				return true
 			}
@@ -206,7 +208,7 @@ func (c *secretController) syncV2Beta3Handler(ctx context.Context, ev *types.Eve
 				go func(tls *configv2beta3.ApisixTls) {
 					c.RecordEventS(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted,
 						fmt.Sprintf("sync from ca secret %s changes failed, error: %s", secretKey, err.Error()))
-					c.controller.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
+					c.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 				}(tls)
 				return true
 			}
@@ -232,11 +234,11 @@ func (c *secretController) syncV2Beta3Handler(ctx context.Context, ev *types.Eve
 				)
 				c.RecordEventS(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted,
 					fmt.Sprintf("sync from secret %s changes failed, error: %s", secretKey, err.Error()))
-				c.controller.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
+				c.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 			} else {
 				c.RecordEventS(tls, corev1.EventTypeNormal, utils.ResourceSynced,
 					fmt.Sprintf("sync from secret %s changes", secretKey))
-				c.controller.recordStatus(tls, utils.ResourceSynced, nil, metav1.ConditionTrue, tls.GetGeneration())
+				c.recordStatus(tls, utils.ResourceSynced, nil, metav1.ConditionTrue, tls.GetGeneration())
 			}
 		}(ssl, tls)
 		return true
@@ -273,7 +275,7 @@ func (c *secretController) syncV2Handler(ctx context.Context, ev *types.Event, s
 				go func(tls *configv2.ApisixTls) {
 					c.RecordEventS(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted,
 						fmt.Sprintf("sync from secret %s changes failed, error: %s", secretKey, err.Error()))
-					c.controller.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
+					c.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 				}(tls)
 				return true
 			}
@@ -291,7 +293,7 @@ func (c *secretController) syncV2Handler(ctx context.Context, ev *types.Event, s
 				go func(tls *configv2.ApisixTls) {
 					c.RecordEventS(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted,
 						fmt.Sprintf("sync from ca secret %s changes failed, error: %s", secretKey, err.Error()))
-					c.controller.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
+					c.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 				}(tls)
 				return true
 			}
@@ -317,11 +319,11 @@ func (c *secretController) syncV2Handler(ctx context.Context, ev *types.Event, s
 				)
 				c.RecordEventS(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted,
 					fmt.Sprintf("sync from secret %s changes failed, error: %s", secretKey, err.Error()))
-				c.controller.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
+				c.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
 			} else {
 				c.RecordEventS(tls, corev1.EventTypeNormal, utils.ResourceSynced,
 					fmt.Sprintf("sync from secret %s changes", secretKey))
-				c.controller.recordStatus(tls, utils.ResourceSynced, nil, metav1.ConditionTrue, tls.GetGeneration())
+				c.recordStatus(tls, utils.ResourceSynced, nil, metav1.ConditionTrue, tls.GetGeneration())
 			}
 		}(ssl, tls)
 		return true
@@ -431,4 +433,66 @@ func (c *secretController) onDelete(obj interface{}) {
 	})
 
 	c.MetricsCollector.IncrEvents("secret", "delete")
+}
+
+// TODO: Remove this
+// recordStatus record resources status
+func (c *secretController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
+	// build condition
+	message := utils.CommonSuccessMessage
+	if err != nil {
+		message = err.Error()
+	}
+	condition := metav1.Condition{
+		Type:               utils.ConditionType,
+		Reason:             reason,
+		Status:             status,
+		Message:            message,
+		ObservedGeneration: generation,
+	}
+	apisixClient := c.KubeClient.APISIXClient
+
+	if kubeObj, ok := at.(runtime.Object); ok {
+		at = kubeObj.DeepCopyObject()
+	}
+
+	switch v := at.(type) {
+	case *configv2beta3.ApisixTls:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			if _, errRecord := apisixClient.ApisixV2beta3().ApisixTlses(v.Namespace).
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for ApisixTls",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+					zap.String("namespace", v.Namespace),
+				)
+			}
+		}
+	case *configv2.ApisixTls:
+		// set to status
+		if v.Status.Conditions == nil {
+			conditions := make([]metav1.Condition, 0)
+			v.Status.Conditions = conditions
+		}
+		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			if _, errRecord := apisixClient.ApisixV2().ApisixTlses(v.Namespace).
+				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for ApisixTls",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+					zap.String("namespace", v.Namespace),
+				)
+			}
+		}
+	default:
+		// This should not be executed
+		log.Errorf("unsupported resource record: %s", v)
+	}
 }
