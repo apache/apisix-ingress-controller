@@ -137,7 +137,7 @@ jobs:
     strategy:
       fail-fast: false # If false, GitHub will not cancels all in-progress jobs in the matrix if any matrix job fails.
       matrix:
-        k8s: [v1.19.1, v1.21.1, v1.24.0]
+        k8s: [v1.21.1, v1.22.9, v1.24.0]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -157,7 +157,7 @@ jobs:
       - name: Create Kubernetes ${{ matrix.k8s }} cluster
         shell: bash
         env:
-          NODE_VERSION: ${{ matrix.k8s }}
+          K8S_VERSION: ${{ matrix.k8s }}
         run: |
           make kind-up
           kubectl wait --for=condition=Ready nodes --all
