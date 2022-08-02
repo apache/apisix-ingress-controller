@@ -535,7 +535,7 @@ spec:
 	}
 
 	ginkgo.Describe("suite-plugins-other: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultScaffold)
+		suites(scaffold.NewDefaultV2beta3Scaffold)
 	})
 	ginkgo.Describe("suite-plugins-other: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)

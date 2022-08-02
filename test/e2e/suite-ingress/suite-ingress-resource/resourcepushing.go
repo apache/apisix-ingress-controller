@@ -29,7 +29,7 @@ import (
 var _ = ginkgo.Describe("suite-ingress-resource: ApisixRoute Testing", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
-		ginkgo.It("create and then scale upstream pods to 2 ", func() {
+		ginkgo.FIt("create and then scale upstream pods to 2 ", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -675,7 +675,7 @@ spec:
 	}
 
 	ginkgo.Describe("suite-ingress-resource: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultScaffold)
+		suites(scaffold.NewDefaultV2beta3Scaffold)
 	})
 	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)

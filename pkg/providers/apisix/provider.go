@@ -67,6 +67,8 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
 
 	p.apisixTranslator = apisixtranslation.NewApisixTranslator(&apisixtranslation.TranslatorOptions{
+		Apisix:        common.APISIX,
+		ClusterName:   common.Config.APISIX.DefaultClusterName,
 		ServiceLister: common.SvcLister,
 		SecretLister:  common.SecretLister,
 	}, translator)

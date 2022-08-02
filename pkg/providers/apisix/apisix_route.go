@@ -355,7 +355,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	} else if ev.Type == types.EventAdd {
 		added = m
 	} else {
-		oldCtx, _ := c.getOldTranslateContext(ctx, obj.OldObject)
+		oldCtx, _ := c.translator.TranslateOldRoute(obj.OldObject)
 		om := &utils.Manifest{
 			Routes:        oldCtx.Routes,
 			Upstreams:     oldCtx.Upstreams,

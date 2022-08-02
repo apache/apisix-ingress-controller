@@ -65,7 +65,11 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 	c := &ingressCommon{
 		Common:            common,
 		namespaceProvider: namespaceProvider,
-		translator:        ingresstranslation.NewIngressTranslator(common.SvcLister, translator, apisixTranslator),
+		translator: ingresstranslation.NewIngressTranslator(&ingresstranslation.TranslatorOptions{
+			Apisix:        common.APISIX,
+			ClusterName:   common.Config.APISIX.DefaultClusterName,
+			ServiceLister: common.SvcLister,
+		}, translator, apisixTranslator),
 	}
 
 	p.ingressController = newIngressController(c, ingressLister, p.ingressInformer)

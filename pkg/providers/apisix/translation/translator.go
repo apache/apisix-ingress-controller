@@ -1,6 +1,8 @@
 package translation
 
 import (
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
@@ -11,6 +13,9 @@ import (
 )
 
 type TranslatorOptions struct {
+	Apisix      apisix.APISIX
+	ClusterName string
+
 	ServiceLister listerscorev1.ServiceLister
 	SecretLister  listerscorev1.SecretLister
 }
@@ -41,6 +46,9 @@ type ApisixTranslator interface {
 	// TranslateRouteV2NotStrictly translates the configv2.ApisixRoute object into several Route,
 	// Upstream and PluginConfig resources not strictly, only used for delete event.
 	TranslateRouteV2NotStrictly(*configv2.ApisixRoute) (*translation.TranslateContext, error)
+	// TranslateOldRoute get route and stream_route objects from cache
+	// Build upstream and plugin_config through route and stream_route
+	TranslateOldRoute(kube.ApisixRoute) (*translation.TranslateContext, error)
 	// TranslateSSLV2Beta3 translates the configv2beta3.ApisixTls object into the APISIX SSL resource.
 	TranslateSSLV2Beta3(*configv2beta3.ApisixTls) (*apisixv1.Ssl, error)
 	// TranslateSSLV2 translates the configv2.ApisixTls object into the APISIX SSL resource.
