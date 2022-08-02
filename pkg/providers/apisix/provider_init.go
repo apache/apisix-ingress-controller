@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package providers
+package apisix
 
 import (
 	"context"
@@ -25,13 +25,12 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
-// TODO: This should be the init phase of APISIX provider
-// CompareResources used to compare the object IDs in resources and APISIX
+// Init used to compare the object IDs in resources and APISIX
 // Find out the rest of objects in APISIX
 // AND warn them in log.
 // This func is NOT concurrency safe.
-// cc https://github.com/apache/apisix-ingress-controller/pull/742#discussion_r757197791
-func (c *Controller) CompareResources(ctx context.Context) error {
+// cc https://github.com/apache/apisix-ingress-apisixProvider/pull/742#discussion_r757197791
+func (p *apisixProvider) Init(ctx context.Context) error {
 	var (
 		wg                 sync.WaitGroup
 		routeMapK8S        = new(sync.Map)
@@ -49,7 +48,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 		pluginConfigMapA6 = make(map[string]string)
 	)
 
-	namespaces := c.namespaceProvider.WatchingNamespaces()
+	namespaces := p.namespaceProvider.WatchingNamespaces()
 	for _, key := range namespaces {
 		log.Debugf("start to watch namespace: %s", key)
 		wg.Add(1)
@@ -57,15 +56,15 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 			defer wg.Done()
 			// ApisixRoute
 			opts := v1.ListOptions{}
-			switch c.cfg.Kubernetes.ApisixRouteVersion {
+			switch p.common.Config.Kubernetes.ApisixRouteVersion {
 			case config.ApisixV2beta3:
-				retRoutes, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixRoutes(ns).List(ctx, opts)
+				retRoutes, err := p.common.KubeClient.APISIXClient.ApisixV2beta3().ApisixRoutes(ns).List(ctx, opts)
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
 				} else {
 					for _, r := range retRoutes.Items {
-						tc, err := c.apisixTranslator.TranslateRouteV2beta3NotStrictly(&r)
+						tc, err := p.apisixTranslator.TranslateRouteV2beta3NotStrictly(&r)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -94,13 +93,13 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 					}
 				}
 			case config.ApisixV2:
-				retRoutes, err := c.kubeClient.APISIXClient.ApisixV2().ApisixRoutes(ns).List(ctx, opts)
+				retRoutes, err := p.common.KubeClient.APISIXClient.ApisixV2().ApisixRoutes(ns).List(ctx, opts)
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
 				} else {
 					for _, r := range retRoutes.Items {
-						tc, err := c.apisixTranslator.TranslateRouteV2NotStrictly(&r)
+						tc, err := p.apisixTranslator.TranslateRouteV2NotStrictly(&r)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -130,22 +129,22 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 				}
 			default:
 				log.Errorw("failed to sync ApisixRoute, unexpected version",
-					zap.String("version", c.cfg.Kubernetes.ApisixRouteVersion),
+					zap.String("version", p.common.Config.Kubernetes.ApisixRouteVersion),
 				)
 			}
 			// todo ApisixUpstream and ApisixPluginConfig
 			// ApisixUpstream and ApisixPluginConfig should be synced with ApisixRoute resource
 
-			switch c.cfg.Kubernetes.APIVersion {
+			switch p.common.Config.Kubernetes.APIVersion {
 			case config.ApisixV2beta3:
 				// ApisixConsumer
-				retConsumer, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixConsumers(ns).List(ctx, opts)
+				retConsumer, err := p.common.KubeClient.APISIXClient.ApisixV2beta3().ApisixConsumers(ns).List(ctx, opts)
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
 				} else {
 					for _, con := range retConsumer.Items {
-						consumer, err := c.apisixTranslator.TranslateApisixConsumerV2beta3(&con)
+						consumer, err := p.apisixTranslator.TranslateApisixConsumerV2beta3(&con)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -155,13 +154,13 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 					}
 				}
 				// ApisixTls
-				retSSL, err := c.kubeClient.APISIXClient.ApisixV2beta3().ApisixTlses(ns).List(ctx, opts)
+				retSSL, err := p.common.KubeClient.APISIXClient.ApisixV2beta3().ApisixTlses(ns).List(ctx, opts)
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
 				} else {
 					for _, s := range retSSL.Items {
-						ssl, err := c.apisixTranslator.TranslateSSLV2Beta3(&s)
+						ssl, err := p.apisixTranslator.TranslateSSLV2Beta3(&s)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -172,13 +171,13 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 				}
 			case config.ApisixV2:
 				// ApisixConsumer
-				retConsumer, err := c.kubeClient.APISIXClient.ApisixV2().ApisixConsumers(ns).List(ctx, opts)
+				retConsumer, err := p.common.KubeClient.APISIXClient.ApisixV2().ApisixConsumers(ns).List(ctx, opts)
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
 				} else {
 					for _, con := range retConsumer.Items {
-						consumer, err := c.apisixTranslator.TranslateApisixConsumerV2(&con)
+						consumer, err := p.apisixTranslator.TranslateApisixConsumerV2(&con)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -188,13 +187,13 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 					}
 				}
 				// ApisixTls
-				retSSL, err := c.kubeClient.APISIXClient.ApisixV2().ApisixTlses(ns).List(ctx, opts)
+				retSSL, err := p.common.KubeClient.APISIXClient.ApisixV2().ApisixTlses(ns).List(ctx, opts)
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
 				} else {
 					for _, s := range retSSL.Items {
-						ssl, err := c.apisixTranslator.TranslateSSLV2(&s)
+						ssl, err := p.apisixTranslator.TranslateSSLV2(&s)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -205,7 +204,7 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 				}
 			default:
 				log.Errorw("failed to sync ApisixConsumer, unexpected version",
-					zap.String("version", c.cfg.Kubernetes.APIVersion),
+					zap.String("version", p.common.Config.Kubernetes.APIVersion),
 				)
 			}
 		}(key)
@@ -213,22 +212,22 @@ func (c *Controller) CompareResources(ctx context.Context) error {
 	wg.Wait()
 
 	// 2.get all cache routes
-	if err := c.listRouteCache(ctx, routeMapA6); err != nil {
+	if err := p.listRouteCache(ctx, routeMapA6); err != nil {
 		return err
 	}
-	if err := c.listStreamRouteCache(ctx, streamRouteMapA6); err != nil {
+	if err := p.listStreamRouteCache(ctx, streamRouteMapA6); err != nil {
 		return err
 	}
-	if err := c.listUpstreamCache(ctx, upstreamMapA6); err != nil {
+	if err := p.listUpstreamCache(ctx, upstreamMapA6); err != nil {
 		return err
 	}
-	if err := c.listSSLCache(ctx, sslMapA6); err != nil {
+	if err := p.listSSLCache(ctx, sslMapA6); err != nil {
 		return err
 	}
-	if err := c.listConsumerCache(ctx, consumerMapA6); err != nil {
+	if err := p.listConsumerCache(ctx, consumerMapA6); err != nil {
 		return err
 	}
-	if err := c.listPluginConfigCache(ctx, pluginConfigMapA6); err != nil {
+	if err := p.listPluginConfigCache(ctx, pluginConfigMapA6); err != nil {
 		return err
 	}
 	// 3.compare
@@ -268,8 +267,8 @@ func findRedundant(src map[string]string, dest *sync.Map) map[string]string {
 	return result
 }
 
-func (c *Controller) listRouteCache(ctx context.Context, routeMapA6 map[string]string) error {
-	routesInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Route().List(ctx)
+func (p *apisixProvider) listRouteCache(ctx context.Context, routeMapA6 map[string]string) error {
+	routesInA6, err := p.common.APISIX.Cluster(p.common.Config.APISIX.DefaultClusterName).Route().List(ctx)
 	if err != nil {
 		return err
 	} else {
@@ -280,8 +279,8 @@ func (c *Controller) listRouteCache(ctx context.Context, routeMapA6 map[string]s
 	return nil
 }
 
-func (c *Controller) listStreamRouteCache(ctx context.Context, streamRouteMapA6 map[string]string) error {
-	streamRoutesInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).StreamRoute().List(ctx)
+func (p *apisixProvider) listStreamRouteCache(ctx context.Context, streamRouteMapA6 map[string]string) error {
+	streamRoutesInA6, err := p.common.APISIX.Cluster(p.common.Config.APISIX.DefaultClusterName).StreamRoute().List(ctx)
 	if err != nil {
 		return err
 	} else {
@@ -292,8 +291,8 @@ func (c *Controller) listStreamRouteCache(ctx context.Context, streamRouteMapA6 
 	return nil
 }
 
-func (c *Controller) listUpstreamCache(ctx context.Context, upstreamMapA6 map[string]string) error {
-	upstreamsInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Upstream().List(ctx)
+func (p *apisixProvider) listUpstreamCache(ctx context.Context, upstreamMapA6 map[string]string) error {
+	upstreamsInA6, err := p.common.APISIX.Cluster(p.common.Config.APISIX.DefaultClusterName).Upstream().List(ctx)
 	if err != nil {
 		return err
 	} else {
@@ -304,8 +303,8 @@ func (c *Controller) listUpstreamCache(ctx context.Context, upstreamMapA6 map[st
 	return nil
 }
 
-func (c *Controller) listSSLCache(ctx context.Context, sslMapA6 map[string]string) error {
-	sslInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).SSL().List(ctx)
+func (p *apisixProvider) listSSLCache(ctx context.Context, sslMapA6 map[string]string) error {
+	sslInA6, err := p.common.APISIX.Cluster(p.common.Config.APISIX.DefaultClusterName).SSL().List(ctx)
 	if err != nil {
 		return err
 	} else {
@@ -316,8 +315,8 @@ func (c *Controller) listSSLCache(ctx context.Context, sslMapA6 map[string]strin
 	return nil
 }
 
-func (c *Controller) listConsumerCache(ctx context.Context, consumerMapA6 map[string]string) error {
-	consumerInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).Consumer().List(ctx)
+func (p *apisixProvider) listConsumerCache(ctx context.Context, consumerMapA6 map[string]string) error {
+	consumerInA6, err := p.common.APISIX.Cluster(p.common.Config.APISIX.DefaultClusterName).Consumer().List(ctx)
 	if err != nil {
 		return err
 	} else {
@@ -328,8 +327,8 @@ func (c *Controller) listConsumerCache(ctx context.Context, consumerMapA6 map[st
 	return nil
 }
 
-func (c *Controller) listPluginConfigCache(ctx context.Context, pluginConfigMapA6 map[string]string) error {
-	pluginConfigInA6, err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).PluginConfig().List(ctx)
+func (p *apisixProvider) listPluginConfigCache(ctx context.Context, pluginConfigMapA6 map[string]string) error {
+	pluginConfigInA6, err := p.common.APISIX.Cluster(p.common.Config.APISIX.DefaultClusterName).PluginConfig().List(ctx)
 	if err != nil {
 		return err
 	} else {

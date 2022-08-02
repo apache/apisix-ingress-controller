@@ -3,9 +3,8 @@ package apisix
 import (
 	"context"
 	"fmt"
-	"sync"
-
 	"k8s.io/client-go/tools/cache"
+	"sync"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
@@ -31,14 +30,18 @@ var _ Provider = (*apisixProvider)(nil)
 type Provider interface {
 	providertypes.Provider
 
+	Init(ctx context.Context) error
 	ResourceSync()
 
 	GetSslFromSecretKey(string) *sync.Map
 }
 
 type apisixProvider struct {
-	name string
+	name              string
+	common            *providertypes.Common
+	namespaceProvider namespace.WatchingNamespaceProvider
 
+	apisixTranslator              apisixtranslation.ApisixTranslator
 	apisixUpstreamController      *apisixUpstreamController
 	apisixRouteController         *apisixRouteController
 	apisixTlsController           *apisixTlsController
@@ -60,7 +63,9 @@ type apisixProvider struct {
 func NewProvider(common *providertypes.Common, namespaceProvider namespace.WatchingNamespaceProvider,
 	translator translation.Translator) (Provider, apisixtranslation.ApisixTranslator, error) {
 	p := &apisixProvider{
-		name: ProviderName,
+		name:              ProviderName,
+		common:            common,
+		namespaceProvider: namespaceProvider,
 	}
 
 	kubeFactory := common.KubeClient.NewSharedIndexInformerFactory()
@@ -72,14 +77,14 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 	secretLister := kubeFactory.Core().V1().Secrets().Lister()
 	p.secretInformer = kubeFactory.Core().V1().Secrets().Informer()
 
-	apisixTranslator := apisixtranslation.NewApisixTranslator(&apisixtranslation.TranslatorOptions{
+	p.apisixTranslator = apisixtranslation.NewApisixTranslator(&apisixtranslation.TranslatorOptions{
 		ServiceLister: svcLister,
 		SecretLister:  secretLister,
 	}, translator)
 	c := &apisixCommon{
 		Common:            common,
 		namespaceProvider: namespaceProvider,
-		translator:        apisixTranslator,
+		translator:        p.apisixTranslator,
 	}
 
 	switch c.Config.Kubernetes.APIVersion {
@@ -108,7 +113,7 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 	p.apisixConsumerController = newApisixConsumerController(c, p.apisixConsumerInformer)
 	p.apisixPluginConfigController = newApisixPluginConfigController(c, p.apisixPluginConfigInformer)
 
-	return p, apisixTranslator, nil
+	return p, p.apisixTranslator, nil
 }
 
 func (p *apisixProvider) Run(ctx context.Context) {

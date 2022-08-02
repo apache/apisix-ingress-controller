@@ -29,7 +29,7 @@ type translator struct {
 	ServiceLister listerscorev1.ServiceLister
 
 	translation.Translator
-	ApisixTranslator apisixtranslation.ApisixTranslator // TODO: remove this
+	ApisixTranslator apisixtranslation.ApisixTranslator
 }
 
 type IngressTranslator interface {

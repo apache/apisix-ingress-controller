@@ -20,7 +20,7 @@ import (
 )
 
 type Provider interface {
-	// Init() // TODO: implement this
+	// Init() // TODO: should all provider implement this?
 	Run(ctx context.Context)
 }
 

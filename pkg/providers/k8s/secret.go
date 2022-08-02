@@ -452,7 +452,7 @@ func (c *secretController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("secret", "delete")
 }
 
-// TODO: Remove this
+// TODO: This is copied from ApisixTls, try to remove this by merge this and ApisixTls?
 // recordStatus record resources status
 func (c *secretController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
 	// build condition
