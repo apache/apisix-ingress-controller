@@ -1,8 +1,9 @@
-package ingress
+package translation
 
 import (
 	"bytes"
 	"fmt"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	"strings"
 
 	"go.uber.org/zap"
@@ -21,7 +22,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -36,7 +36,7 @@ type IngressTranslator interface {
 	TranslateIngress(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error)
 }
 
-func newIngressTranslator(serviceLister listerscorev1.ServiceLister,
+func NewIngressTranslator(serviceLister listerscorev1.ServiceLister,
 	commonTranslator translation.Translator, apisixTranslator apisixtranslation.ApisixTranslator) IngressTranslator {
 	t := &translator{
 		ServiceLister:    serviceLister,

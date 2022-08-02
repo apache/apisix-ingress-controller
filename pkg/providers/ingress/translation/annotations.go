@@ -15,28 +15,28 @@
 package translation
 
 import (
+	annotations2 "github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	"go.uber.org/zap"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation/annotations"
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 var (
-	_handlers = []annotations.Handler{
-		annotations.NewCorsHandler(),
-		annotations.NewIPRestrictionHandler(),
-		annotations.NewRewriteHandler(),
-		annotations.NewRedirectHandler(),
-		annotations.NewForwardAuthHandler(),
-		annotations.NewBasicAuthHandler(),
-		annotations.NewKeyAuthHandler(),
-		annotations.NewCSRFHandler(),
+	_handlers = []annotations2.Handler{
+		annotations2.NewCorsHandler(),
+		annotations2.NewIPRestrictionHandler(),
+		annotations2.NewRewriteHandler(),
+		annotations2.NewRedirectHandler(),
+		annotations2.NewForwardAuthHandler(),
+		annotations2.NewBasicAuthHandler(),
+		annotations2.NewKeyAuthHandler(),
+		annotations2.NewCSRFHandler(),
 	}
 )
 
 func (t *translator) TranslateAnnotations(anno map[string]string) apisix.Plugins {
-	extractor := annotations.NewExtractor(anno)
+	extractor := annotations2.NewExtractor(anno)
 	plugins := make(apisix.Plugins)
 	for _, handler := range _handlers {
 		out, err := handler.Handle(extractor)

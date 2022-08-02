@@ -6,27 +6,23 @@ import (
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-type translator struct {
-	KubeProvider  k8s.Provider
-	PodLister     listerscorev1.PodLister
+type TranslatorOptions struct {
 	ServiceLister listerscorev1.ServiceLister
 	SecretLister  listerscorev1.SecretLister
+}
 
+type translator struct {
+	*TranslatorOptions
 	translation.Translator
 }
 
 type ApisixTranslator interface {
-	// TranslateUpstreamConfigV2beta3 translates ApisixUpstreamConfig (part of ApisixUpstream)
-	// to APISIX Upstream, it doesn't fill the the Upstream metadata and nodes.
-	TranslateUpstreamConfigV2beta3(*configv2beta3.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
-	// TranslateUpstreamConfigV2 translates ApisixUpstreamConfig (part of ApisixUpstream)
-	// to APISIX Upstream, it doesn't fill the the Upstream metadata and nodes.
-	TranslateUpstreamConfigV2(*configv2.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
+	translation.Translator
+
 	// TranslateRouteV2beta2 translates the configv2beta2.ApisixRoute object into several Route,
 	// and Upstream resources.
 	TranslateRouteV2beta2(*configv2beta2.ApisixRoute) (*translation.TranslateContext, error)
@@ -77,14 +73,9 @@ type ApisixTranslator interface {
 	TranslateRouteMatchExprs(nginxVars []configv2.ApisixRouteHTTPMatchExpr) ([][]apisixv1.StringOrSlice, error)
 }
 
-func NewApisixTranslator(serviceLister listerscorev1.ServiceLister,
-	secretLister listerscorev1.SecretLister,
-	commonTranslator translation.Translator) ApisixTranslator {
-	t := &translator{
-		ServiceLister: serviceLister,
-		SecretLister:  secretLister,
-		Translator:    commonTranslator,
+func NewApisixTranslator(opts *TranslatorOptions, t translation.Translator) ApisixTranslator {
+	return &translator{
+		TranslatorOptions: opts,
+		Translator:        t,
 	}
-
-	return t
 }

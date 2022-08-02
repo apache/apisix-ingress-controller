@@ -15,6 +15,7 @@
 package ingress
 
 import (
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,13 +26,14 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
 )
 
 func TestIsIngressEffective(t *testing.T) {
 	c := &ingressController{
-		controller: &providers.Controller{
-			cfg: config.NewDefaultConfig(),
+		ingressCommon: &ingressCommon{
+			Common: &providertypes.Common{
+				Config: config.NewDefaultConfig(),
+			},
 		},
 	}
 	cn := "ingress"

@@ -18,6 +18,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -26,7 +27,7 @@ func (t *translator) TranslateSSLV2Beta3(tls *configv2beta3.ApisixTls) (*apisixv
 	if err != nil {
 		return nil, err
 	}
-	cert, key, err := t.ExtractKeyPair(s, true)
+	cert, key, err := translation.ExtractKeyPair(s, true)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +51,7 @@ func (t *translator) TranslateSSLV2Beta3(tls *configv2beta3.ApisixTls) (*apisixv
 		if err != nil {
 			return nil, err
 		}
-		ca, _, err := t.ExtractKeyPair(caSecret, false)
+		ca, _, err := translation.ExtractKeyPair(caSecret, false)
 		if err != nil {
 			return nil, err
 		}
@@ -68,7 +69,7 @@ func (t *translator) TranslateSSLV2(tls *configv2.ApisixTls) (*apisixv1.Ssl, err
 	if err != nil {
 		return nil, err
 	}
-	cert, key, err := t.ExtractKeyPair(s, true)
+	cert, key, err := translation.ExtractKeyPair(s, true)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +93,7 @@ func (t *translator) TranslateSSLV2(tls *configv2.ApisixTls) (*apisixv1.Ssl, err
 		if err != nil {
 			return nil, err
 		}
-		ca, _, err := t.ExtractKeyPair(caSecret, false)
+		ca, _, err := translation.ExtractKeyPair(caSecret, false)
 		if err != nil {
 			return nil, err
 		}

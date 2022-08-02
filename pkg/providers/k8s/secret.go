@@ -34,7 +34,6 @@ import (
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/providers"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
@@ -46,9 +45,8 @@ import (
 type secretController struct {
 	*providertypes.Common
 
-	controller *providers.Controller
-	workqueue  workqueue.RateLimitingInterface
-	workers    int
+	workqueue workqueue.RateLimitingInterface
+	workers   int
 
 	secretInformer  cache.SharedIndexInformer
 	secretLister    listerscorev1.SecretLister
@@ -181,7 +179,7 @@ func (c *secretController) syncV2Beta3Handler(ctx context.Context, ev *types.Eve
 
 		// We don't expect a secret to be used as both SSL and mTLS in ApisixTls
 		if tls.Spec.Secret.Namespace == secret.Namespace && tls.Spec.Secret.Name == secret.Name {
-			cert, pkey, err := c.translator.ExtractKeyPair(secret, true)
+			cert, pkey, err := translation.ExtractKeyPair(secret, true)
 			if err != nil {
 				log.Errorw("secret required by ApisixTls invalid",
 					zap.String("ApisixTls", tlsMetaKey),
@@ -199,7 +197,7 @@ func (c *secretController) syncV2Beta3Handler(ctx context.Context, ev *types.Eve
 			ssl.Key = string(pkey)
 		} else if tls.Spec.Client != nil &&
 			tls.Spec.Client.CASecret.Namespace == secret.Namespace && tls.Spec.Client.CASecret.Name == secret.Name {
-			ca, _, err := c.translator.ExtractKeyPair(secret, false)
+			ca, _, err := translation.ExtractKeyPair(secret, false)
 			if err != nil {
 				log.Errorw("ca secret required by ApisixTls invalid",
 					zap.String("ApisixTls", tlsMetaKey),
@@ -266,7 +264,7 @@ func (c *secretController) syncV2Handler(ctx context.Context, ev *types.Event, s
 
 		// We don't expect a secret to be used as both SSL and mTLS in ApisixTls
 		if tls.Spec.Secret.Namespace == secret.Namespace && tls.Spec.Secret.Name == secret.Name {
-			cert, pkey, err := c.translator.ExtractKeyPair(secret, true)
+			cert, pkey, err := translation.ExtractKeyPair(secret, true)
 			if err != nil {
 				log.Errorw("secret required by ApisixTls invalid",
 					zap.String("ApisixTls", tlsMetaKey),
@@ -284,7 +282,7 @@ func (c *secretController) syncV2Handler(ctx context.Context, ev *types.Event, s
 			ssl.Key = string(pkey)
 		} else if tls.Spec.Client != nil &&
 			tls.Spec.Client.CASecret.Namespace == secret.Namespace && tls.Spec.Client.CASecret.Name == secret.Name {
-			ca, _, err := c.translator.ExtractKeyPair(secret, false)
+			ca, _, err := translation.ExtractKeyPair(secret, false)
 			if err != nil {
 				log.Errorw("ca secret required by ApisixTls invalid",
 					zap.String("ApisixTls", tlsMetaKey),

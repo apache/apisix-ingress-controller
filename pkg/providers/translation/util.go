@@ -31,17 +31,19 @@ var (
 	ErrEmptyPrivKey = errors.New("missing key field")
 )
 
-func (t *translator) ExtractKeyPair(s *v1.Secret, hasPrivateKey bool) ([]byte, []byte, error) {
+// ExtractKeyPair extracts certificate and private key pair from secret
+// Supports APISIX style ("cert" and "key") and Kube style ("tls.crt" and "tls.key)
+func ExtractKeyPair(s *v1.Secret, hasPrivateKey bool) ([]byte, []byte, error) {
 	if _, ok := s.Data["cert"]; ok {
-		return t.extractApisixSecretKeyPair(s, hasPrivateKey)
+		return extractApisixSecretKeyPair(s, hasPrivateKey)
 	} else if _, ok := s.Data[v1.TLSCertKey]; ok {
-		return t.extractKubeSecretKeyPair(s, hasPrivateKey)
+		return extractKubeSecretKeyPair(s, hasPrivateKey)
 	} else {
 		return nil, nil, ErrUnknownSecretFormat
 	}
 }
 
-func (t *translator) extractApisixSecretKeyPair(s *v1.Secret, hasPrivateKey bool) (cert []byte, key []byte, err error) {
+func extractApisixSecretKeyPair(s *v1.Secret, hasPrivateKey bool) (cert []byte, key []byte, err error) {
 	var ok bool
 	cert, ok = s.Data["cert"]
 	if !ok {
@@ -57,7 +59,7 @@ func (t *translator) extractApisixSecretKeyPair(s *v1.Secret, hasPrivateKey bool
 	return
 }
 
-func (t *translator) extractKubeSecretKeyPair(s *v1.Secret, hasPrivateKey bool) (cert []byte, key []byte, err error) {
+func extractKubeSecretKeyPair(s *v1.Secret, hasPrivateKey bool) (cert []byte, key []byte, err error) {
 	var ok bool
 	cert, ok = s.Data[v1.TLSCertKey]
 	if !ok {
