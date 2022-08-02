@@ -78,7 +78,6 @@ Meaning of each field in the spec of ApisixRoute are followed, the top level fie
 | stream[].plugins[].enable            | boolean            | Whether the plugin would be used                                                                                                                                                                                                  |
 | stream[].plugins[].config            | object             | The configuration of the plugin that must have the same fields as in APISIX.                                                                                                                                                      |
 
-
 ## Expression Operators
 
 | Operator                     | Meaning                                                                                |
