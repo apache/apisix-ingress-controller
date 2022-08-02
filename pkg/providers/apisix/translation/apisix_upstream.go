@@ -15,9 +15,8 @@
 package translation
 
 import (
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
-
 	"github.com/apache/apisix-ingress-controller/pkg/id"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 

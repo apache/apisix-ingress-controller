@@ -3,7 +3,6 @@ package translation
 import (
 	"bytes"
 	"fmt"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	"strings"
 
 	"go.uber.org/zap"
@@ -21,6 +20,7 @@ import (
 	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )

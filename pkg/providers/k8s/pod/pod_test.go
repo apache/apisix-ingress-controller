@@ -15,7 +15,6 @@
 package pod
 
 import (
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"testing"
 	"time"
 
@@ -25,6 +24,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
