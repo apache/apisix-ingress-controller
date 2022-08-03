@@ -202,7 +202,7 @@ func TestRotateLog(t *testing.T) {
 	files, err := ioutil.ReadDir("./testlog")
 
 	if err != nil {
-		t.Fatalf("Unable to read dir: %v", err)
+		t.Fatalf("Unable to read log dir: %v", err)
 	}
 
 	assert.Equal(t, true, len(files) >= 2)
