@@ -60,13 +60,14 @@ clean-image: ## Removes local image
 ### build-image:          Build apisix-ingress-controller image
 .PHONY: build-image
 build-image:
-	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true .
-
-### pack-ingress-image:   Build and push Ingress image used in e2e test suites to kind or custom registry.
-.PHONY: pack-ingress-image
-pack-ingress-image:
+ifeq ($(E2E_SKIP_BUILD), 0)
 	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+endif
+
+### pack-image:   Build and push Ingress image used in e2e test suites to kind or custom registry.
+.PHONY: pack-image
+pack-ingress-image: build-image
 	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 
 ### pack-images:          Build and push images used in e2e test suites to kind or custom registry.
