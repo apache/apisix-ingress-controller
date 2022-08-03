@@ -24,7 +24,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.FDescribe("suite-plugins: mqtt-proxy plugin", func() {
+var _ = ginkgo.Describe("suite-plugins-other: mqtt-proxy plugin", func() {
 	opts := &scaffold.Options{
 		Name:                  "mqtt-proxy",
 		IngressAPISIXReplicas: 1,
