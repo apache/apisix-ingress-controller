@@ -67,7 +67,7 @@ endif
 
 ### pack-image:   Build and push Ingress image used in e2e test suites to kind or custom registry.
 .PHONY: pack-image
-pack-ingress-image: build-image
+pack-image: build-image
 	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 
 ### pack-images:          Build and push images used in e2e test suites to kind or custom registry.
@@ -97,8 +97,6 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 
 	docker pull busybox:1.28
 	docker tag  busybox:1.28 $(REGISTRY)/busybox:$(IMAGE_TAG)
-	
-	docker pull golang:1.18
 endif
 
 ### push-images:          Push images used in e2e test suites to kind or custom registry.

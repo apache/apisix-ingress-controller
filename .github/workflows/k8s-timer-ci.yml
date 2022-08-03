@@ -19,14 +19,8 @@
 name: k8s-timer-ci
 
 on:
-  push:
-    branches:
-      - ci/k8s
-  pull_request:
-    branches:
-      - master
   schedule:
-    - cron: '0 4 * * 1'
+    - cron: '0 1 * * 1'
 
 jobs:
   changes:
