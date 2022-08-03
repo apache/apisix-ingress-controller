@@ -61,7 +61,7 @@ spec:
 `, backendSvc)
 			err = s.CreateVersionedApisixResource(au)
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
-			time.Sleep(2 * time.Second)
+			time.Sleep(6 * time.Second)
 
 			ups, err := s.ListApisixUpstreams()
 			assert.Nil(ginkgo.GinkgoT(), err)

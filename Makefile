@@ -253,10 +253,10 @@ endif
 .PHONY: kind-load-images
 kind-load-images:
 	kind load docker-image --name=apisix \
-			localhost:5000/apache/apisix:dev \
-            localhost:5000/bitnami/etcd:dev \
-            localhost:5000/apache/apisix-ingress-controller:dev \
-            localhost:5000/kennethreitz/httpbin:dev \
-            localhost:5000/test-backend:dev \
-            localhost:5000/jmalloc/echo-server:dev \
-            localhost:5000/busybox:dev
+			$(REGISTRY)/apache/apisix:dev \
+            $(REGISTRY)/bitnami/etcd:dev \
+            $(REGISTRY)/apache/apisix-ingress-controller:dev \
+            $(REGISTRY)/kennethreitz/httpbin:dev \
+            $(REGISTRY)/test-backend:dev \
+            $(REGISTRY)/jmalloc/echo-server:dev \
+            $(REGISTRY)/busybox:dev
