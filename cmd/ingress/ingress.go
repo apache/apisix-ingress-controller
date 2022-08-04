@@ -105,8 +105,8 @@ the apisix cluster and others are created`,
 			}
 
 			var ws zapcore.WriteSyncer
-			var logger *log.Logger
-			var err error
+
+			options := []log.Option{log.WithLogLevel(cfg.LogLevel), log.WithOutputFile(cfg.LogOutput)}
 
 			if cfg.RotateOutputPath != "" {
 				ws = zapcore.AddSync(&lumberjack.Logger{
@@ -116,17 +116,10 @@ the apisix cluster and others are created`,
 					MaxAge:     cfg.RotationMaxAge,
 				})
 
-				logger, err = log.NewLogger(
-					log.WithLogLevel(cfg.LogLevel),
-					log.WithOutputFile(cfg.LogOutput),
-					log.WithWriteSyncer(ws),
-				)
-			} else {
-				logger, err = log.NewLogger(
-					log.WithLogLevel(cfg.LogLevel),
-					log.WithOutputFile(cfg.LogOutput),
-				)
+				options = append(options, log.WithWriteSyncer(ws))
 			}
+
+			logger, err := log.NewLogger(options...)
 
 			if err != nil {
 				dief("failed to initialize logging: %s", err)
