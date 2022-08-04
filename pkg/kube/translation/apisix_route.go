@@ -15,6 +15,7 @@
 package translation
 
 import (
+	"context"
 	"errors"
 	"strings"
 
@@ -891,4 +892,78 @@ func (t *translator) translateStreamRouteNotStrictlyV2(ctx *TranslateContext, ar
 		}
 	}
 	return nil
+}
+
+func (t *translator) translateOldRouteV2(ar *configv2.ApisixRoute) (*TranslateContext, error) {
+	oldCtx := DefaultEmptyTranslateContext()
+
+	for _, part := range ar.Spec.Stream {
+		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
+		sr, err := t.Apisix.Cluster(t.ClusterName).StreamRoute().Get(context.Background(), name)
+		if err != nil {
+			continue
+		}
+		if sr.UpstreamId != "" {
+			ups := apisixv1.NewDefaultUpstream()
+			ups.ID = sr.UpstreamId
+			oldCtx.AddUpstream(ups)
+		}
+		oldCtx.AddStreamRoute(sr)
+	}
+	for _, part := range ar.Spec.HTTP {
+		name := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
+		r, err := t.Apisix.Cluster(t.ClusterName).Route().Get(context.Background(), name)
+		if err != nil {
+			continue
+		}
+		if r.UpstreamId != "" {
+			ups := apisixv1.NewDefaultUpstream()
+			ups.ID = r.UpstreamId
+			oldCtx.AddUpstream(ups)
+		}
+		if r.PluginConfigId != "" {
+			pc := apisixv1.NewDefaultPluginConfig()
+			pc.ID = r.PluginConfigId
+			oldCtx.AddPluginConfig(pc)
+		}
+		oldCtx.AddRoute(r)
+	}
+	return oldCtx, nil
+}
+
+func (t *translator) translateOldRouteV2beta3(ar *configv2beta3.ApisixRoute) (*TranslateContext, error) {
+	oldCtx := DefaultEmptyTranslateContext()
+
+	for _, part := range ar.Spec.Stream {
+		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
+		sr, err := t.Apisix.Cluster(t.ClusterName).StreamRoute().Get(context.Background(), name)
+		if err != nil {
+			continue
+		}
+		if sr.UpstreamId != "" {
+			ups := apisixv1.NewDefaultUpstream()
+			ups.ID = sr.UpstreamId
+			oldCtx.AddUpstream(ups)
+		}
+		oldCtx.AddStreamRoute(sr)
+	}
+	for _, part := range ar.Spec.HTTP {
+		name := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
+		r, err := t.Apisix.Cluster(t.ClusterName).Route().Get(context.Background(), name)
+		if err != nil {
+			continue
+		}
+		if r.UpstreamId != "" {
+			ups := apisixv1.NewDefaultUpstream()
+			ups.ID = r.UpstreamId
+			oldCtx.AddUpstream(ups)
+		}
+		if r.PluginConfigId != "" {
+			pc := apisixv1.NewDefaultPluginConfig()
+			pc.ID = r.PluginConfigId
+			oldCtx.AddPluginConfig(pc)
+		}
+		oldCtx.AddRoute(r)
+	}
+	return oldCtx, nil
 }

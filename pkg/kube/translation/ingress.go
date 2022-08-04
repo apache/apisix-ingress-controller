@@ -16,6 +16,7 @@ package translation
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 
@@ -27,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	kubev2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	kubev2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
@@ -477,6 +479,163 @@ func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcNa
 	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
+}
+
+func (t *translator) translateOldIngressV1(ing *networkingv1.Ingress) (*TranslateContext, error) {
+	oldCtx := DefaultEmptyTranslateContext()
+
+	for _, tls := range ing.Spec.TLS {
+		apisixTls := configv2.ApisixTls{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ApisixTls",
+				APIVersion: "apisix.apache.org/v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
+				Namespace: ing.Namespace,
+			},
+			Spec: &configv2.ApisixTlsSpec{},
+		}
+		for _, host := range tls.Hosts {
+			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, configv2.HostType(host))
+		}
+		apisixTls.Spec.Secret = configv2.ApisixSecret{
+			Name:      tls.SecretName,
+			Namespace: ing.Namespace,
+		}
+		ssl, err := t.TranslateSSLV2(&apisixTls)
+		if err != nil {
+			log.Debugw("failed to translate ingress tls to apisix tls",
+				zap.Error(err),
+				zap.Any("ingress", ing),
+			)
+			continue
+		}
+		oldCtx.AddSSL(ssl)
+	}
+	for _, rule := range ing.Spec.Rules {
+		for _, pathRule := range rule.HTTP.Paths {
+			name := composeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
+			r, err := t.Apisix.Cluster(t.ClusterName).Route().Get(context.Background(), name)
+			if err != nil {
+				continue
+			}
+			if r.UpstreamId != "" {
+				ups := apisixv1.NewDefaultUpstream()
+				ups.ID = r.UpstreamId
+				oldCtx.AddUpstream(ups)
+			}
+			if r.PluginConfigId != "" {
+				pc := apisixv1.NewDefaultPluginConfig()
+				pc.ID = r.PluginConfigId
+				oldCtx.AddPluginConfig(pc)
+			}
+			oldCtx.AddRoute(r)
+		}
+	}
+	return oldCtx, nil
+}
+
+func (t *translator) translateOldIngressV1beta1(ing *networkingv1beta1.Ingress) (*TranslateContext, error) {
+	oldCtx := DefaultEmptyTranslateContext()
+
+	for _, tls := range ing.Spec.TLS {
+		apisixTls := configv2.ApisixTls{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ApisixTls",
+				APIVersion: "apisix.apache.org/v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
+				Namespace: ing.Namespace,
+			},
+			Spec: &configv2.ApisixTlsSpec{},
+		}
+		for _, host := range tls.Hosts {
+			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, configv2.HostType(host))
+		}
+		apisixTls.Spec.Secret = configv2.ApisixSecret{
+			Name:      tls.SecretName,
+			Namespace: ing.Namespace,
+		}
+		ssl, err := t.TranslateSSLV2(&apisixTls)
+		if err != nil {
+			continue
+		}
+		oldCtx.AddSSL(ssl)
+	}
+	for _, rule := range ing.Spec.Rules {
+		for _, pathRule := range rule.HTTP.Paths {
+			name := composeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
+			r, err := t.Apisix.Cluster(t.ClusterName).Route().Get(context.Background(), name)
+			if err != nil {
+				continue
+			}
+			if r.UpstreamId != "" {
+				ups := apisixv1.NewDefaultUpstream()
+				ups.ID = r.UpstreamId
+				oldCtx.AddUpstream(ups)
+			}
+			if r.PluginConfigId != "" {
+				pc := apisixv1.NewDefaultPluginConfig()
+				pc.ID = r.PluginConfigId
+				oldCtx.AddPluginConfig(pc)
+			}
+			oldCtx.AddRoute(r)
+		}
+	}
+	return oldCtx, nil
+}
+
+func (t *translator) translateOldIngressExtensionsv1beta1(ing *extensionsv1beta1.Ingress) (*TranslateContext, error) {
+	oldCtx := DefaultEmptyTranslateContext()
+
+	for _, tls := range ing.Spec.TLS {
+		apisixTls := configv2.ApisixTls{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ApisixTls",
+				APIVersion: "apisix.apache.org/v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
+				Namespace: ing.Namespace,
+			},
+			Spec: &configv2.ApisixTlsSpec{},
+		}
+		for _, host := range tls.Hosts {
+			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, configv2.HostType(host))
+		}
+		apisixTls.Spec.Secret = configv2.ApisixSecret{
+			Name:      tls.SecretName,
+			Namespace: ing.Namespace,
+		}
+		ssl, err := t.TranslateSSLV2(&apisixTls)
+		if err != nil {
+			continue
+		}
+		oldCtx.AddSSL(ssl)
+	}
+	for _, rule := range ing.Spec.Rules {
+		for _, pathRule := range rule.HTTP.Paths {
+			name := composeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
+			r, err := t.Apisix.Cluster(t.ClusterName).Route().Get(context.Background(), name)
+			if err != nil {
+				continue
+			}
+			if r.UpstreamId != "" {
+				ups := apisixv1.NewDefaultUpstream()
+				ups.ID = r.UpstreamId
+				oldCtx.AddUpstream(ups)
+			}
+			if r.PluginConfigId != "" {
+				pc := apisixv1.NewDefaultPluginConfig()
+				pc.ID = r.PluginConfigId
+				oldCtx.AddPluginConfig(pc)
+			}
+			oldCtx.AddRoute(r)
+		}
+	}
+	return oldCtx, nil
 }
 
 // In the past, we used host + path directly to form its route name for readability,

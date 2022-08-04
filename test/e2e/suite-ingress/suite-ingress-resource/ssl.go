@@ -236,7 +236,7 @@ RU+QPRECgYB6XW24EI5+w3STbpnc6VoTS+sy9I9abTJPYo9LpCJwfMYc9Tg9Cx2K
 	}
 
 	ginkgo.Describe("suite-ingress-resource: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultScaffold)
+		suites(scaffold.NewDefaultV2beta3Scaffold)
 	})
 	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
@@ -518,7 +518,7 @@ spec:
 	}
 
 	ginkgo.Describe("suite-ingress-resource: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultScaffold)
+		suites(scaffold.NewDefaultV2beta3Scaffold)
 	})
 	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
