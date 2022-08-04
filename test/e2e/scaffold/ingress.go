@@ -190,6 +190,7 @@ rules:
     resources:
     - httproutes
     - tlsroutes
+    - tcproutes
     - gateways
     - gatewayclasses
     verbs:

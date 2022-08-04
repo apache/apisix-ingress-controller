@@ -99,7 +99,7 @@ func (c *gatewayTCPRouteController) sync(ctx context.Context, ev *types.Event) e
 	}
 
 	log.Debugw("translated TCPRoute",
-		zap.Any("routes", tctx.Routes),
+		zap.Any("stream_routes", tctx.StreamRoutes),
 		zap.Any("upstreams", tctx.Upstreams),
 	)
 	m := &utils.Manifest{
@@ -142,7 +142,8 @@ func (c *gatewayTCPRouteController) sync(ctx context.Context, ev *types.Event) e
 }
 
 func (c *gatewayTCPRouteController) run(ctx context.Context) {
-	// log
+	log.Info("gateway TCPRoute controller started")
+	defer log.Info("gateway TCPRoute controller exited")
 	defer c.workqueue.ShutDown()
 
 	if !cache.WaitForCacheSync(ctx.Done(), c.controller.gatewayTCPRouteInformer.HasSynced) {
@@ -178,13 +179,17 @@ func (c *gatewayTCPRouteController) handleSyncErr(obj interface{}, err error) {
 func (c *gatewayTCPRouteController) onAdd(obj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
-		// log
+		log.Errorw("found gateway TCPRoute resource with bad meta namespace key",
+			zap.Error(err),
+		)
 		return
 	}
 	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
-	// log
+	log.Debugw("gateway TCPRoute add event arrived",
+		zap.Any("object", obj),
+	)
 	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,

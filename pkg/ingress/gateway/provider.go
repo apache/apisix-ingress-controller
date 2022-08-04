@@ -139,6 +139,9 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	p.gatewayTLSRouteLister = gatewayFactory.Gateway().V1alpha2().TLSRoutes().Lister()
 	p.gatewayTLSRouteInformer = gatewayFactory.Gateway().V1alpha2().TLSRoutes().Informer()
 
+	p.gatewayTCPRouteLister = gatewayFactory.Gateway().V1alpha2().TCPRoutes().Lister()
+	p.gatewayTCPRouteInformer = gatewayFactory.Gateway().V1alpha2().TCPRoutes().Informer()
+
 	p.gatewayController = newGatewayController(p)
 
 	p.gatewayClassController, err = newGatewayClassController(p)
@@ -158,38 +161,36 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 func (p *Provider) Run(ctx context.Context) {
 	e := utils.ParallelExecutor{}
 
+	// Run informer
 	e.Add(func() {
 		p.gatewayInformer.Run(ctx.Done())
 	})
-
 	e.Add(func() {
 		p.gatewayClassInformer.Run(ctx.Done())
 	})
-
 	e.Add(func() {
 		p.gatewayHTTPRouteInformer.Run(ctx.Done())
 	})
-
 	e.Add(func() {
 		p.gatewayTLSRouteInformer.Run(ctx.Done())
 	})
+	e.Add(func() {
+		p.gatewayTCPRouteInformer.Run(ctx.Done())
+	})
 
+	// Run Controller
 	e.Add(func() {
 		p.gatewayController.run(ctx)
 	})
-
 	e.Add(func() {
 		p.gatewayClassController.run(ctx)
 	})
-
 	e.Add(func() {
 		p.gatewayHTTPRouteController.run(ctx)
 	})
-
 	e.Add(func() {
 		p.gatewayTLSRouteController.run(ctx)
 	})
-
 	e.Add(func() {
 		p.gatewayTCPRouteController.run(ctx)
 	})

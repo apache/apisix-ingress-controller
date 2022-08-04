@@ -20,7 +20,6 @@ package gateway
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -56,38 +55,29 @@ spec:
     - name: tcp-service
       port: 8080
 */
-var _ = ginkgo.Describe("suite-gateway: HTTP Route", func() {
+var _ = ginkgo.Describe("suite-gateway: TCP Route", func() {
 	s := scaffold.NewDefaultScaffold()
-
-	ginkgo.It("Basic HTTPRoute with 1 Hosts 1 Rule 1 Match 1 BackendRef", func() {
+	ginkgo.It("TCPRoute", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		time.Sleep(time.Second * 15)
-		route := fmt.Sprintf(`
+		tcpRoute := fmt.Sprintf(`
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: TCPRoute
 metadata:
-  name: basic-http-route
+  name: httpbin-tcp-route
 spec:
-  hostnames: ["httpbin.org"]
   rules:
-    backendRefs:
-    - name: %s
-      port: %d
+    - backendRefs:
+      - name: %s
+        port: %d
 `, backendSvc, backendPorts[0])
-
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "creating HTTPRoute")
-		time.Sleep(time.Second * 6)
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(tcpRoute), "creating TCPRoute")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixStreamRoutesCreated(1), "Checking number of stream_routes")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
-		_ = s.NewAPISIXClient().GET("/ip").
-			WithHeader("Host", "httpbin.org").
+		_ = s.NewAPISIXClientWithTCPProxy().
+			GET("/get").
 			Expect().
 			Status(http.StatusOK)
-		_ = s.NewAPISIXClient().GET("/notfound").
-			WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(http.StatusNotFound)
 	})
 
 })
