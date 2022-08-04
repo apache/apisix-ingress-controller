@@ -374,8 +374,8 @@ func (c *secretController) onUpdate(prev, curr interface{}) {
 		return
 	}
 	log.Debugw("secret update event arrived",
-		zap.Any("new object", curr),
-		zap.Any("old object", prev),
+		zap.Any("new object", curr.(*corev1.Secret).ObjectMeta.Name),
+		zap.Any("old object", prev.(*corev1.Secret).ObjectMeta.Name),
 	)
 	c.workqueue.Add(&types.Event{
 		Type:   types.EventUpdate,
