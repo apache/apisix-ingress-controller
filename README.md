@@ -115,10 +115,7 @@ for us to fix.
 
 ## Todos
 
-* Support UDP definition. [#116](https://github.com/apache/apisix-ingress-controller/issues/116)
-* Support GRPC definition. [#114](https://github.com/apache/apisix-ingress-controller/issues/114)
-* Add a complete demo. [#9](https://github.com/apache/apisix-ingress-controller/issues/9)
-* More todos will display in [issues](https://github.com/apache/apisix-ingress-controller/issues)
+* More todos will display in [issues](https://github.com/apache/apisix-ingress-controller/issues?q=is%3Aopen+is%3Aissue+label%3Atriage%2Faccepted)
 
 ## User stories
 
