@@ -20,10 +20,11 @@ package gateway_translation
 import (
 	"fmt"
 
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/translation"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 func (t *translator) TranslateGatewayTCPRouteV1Alpha2(tcpRoute *gatewayv1alpha2.TCPRoute) (*translation.TranslateContext, error) {
