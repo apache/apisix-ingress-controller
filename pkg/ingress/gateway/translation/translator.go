@@ -39,7 +39,7 @@ type Translator interface {
 	TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha2.HTTPRoute) (*translation.TranslateContext, error)
 	// TranslateGatewayTLSRouteV1Alpha2 translates Gateway API TLSRoute to APISIX resources
 	TranslateGatewayTLSRouteV1Alpha2(tlsRoute *gatewayv1alpha2.TLSRoute) (*translation.TranslateContext, error)
-	//
+	// TranslateGatewayTCPRouteV1Alpha2 translates Gateway API TCPRoute to APISIX resources
 	TranslateGatewayTCPRouteV1Alpha2(*gatewayv1alpha2.TCPRoute) (*translation.TranslateContext, error)
 }
 

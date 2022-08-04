@@ -27,34 +27,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-/*
-apiVersion: gateway.networking.k8s.io/v1alpha2
-kind: Gateway
-metadata:
-  name: tcp-gateway
-spec:
-  gatewayClassName: tcp-gateway-class
-  listeners:
-  - name: foo
-    protocol: TCP
-    port: 9100
-    allowedRoutes:
-      kinds:
-      - kind: TCPRoute
----
-apiVersion: gateway.networking.k8s.io/v1alpha2
-kind: TCPRoute
-metadata:
-  name: tcp-app
-spec:
-  parentRefs:
-  - name: tcp-route
-    sectionName: foo
-  rules:
-  - backendRefs:
-    - name: tcp-service
-      port: 8080
-*/
 var _ = ginkgo.Describe("suite-gateway: TCP Route", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("TCPRoute", func() {

@@ -26,38 +26,10 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
-/*
-apiVersion: gateway.networking.k8s.io/v1alpha2
-kind: Gateway
-metadata:
-  name: tcp-gateway
-spec:
-  gatewayClassName: tcp-gateway-class
-  listeners:
-  - name: foo
-    protocol: TCP
-    port: 9100
-    allowedRoutes:
-      kinds:
-      - kind: TCPRoute
----
-apiVersion: gateway.networking.k8s.io/v1alpha2
-kind: TCPRoute
-metadata:
-  name: tcp-app
-spec:
-  parentRefs:
-  - name: tcp-route
-    sectionName: foo
-  rules:
-  - backendRefs:
-    - name: tcp-service
-      port: 8080
-*/
-
 func (t *translator) TranslateGatewayTCPRouteV1Alpha2(tcpRoute *gatewayv1alpha2.TCPRoute) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
 	var ns string
+
 	for i, rule := range tcpRoute.Spec.Rules {
 		for j, backend := range rule.BackendRefs {
 			if backend.Namespace != nil {
@@ -81,6 +53,5 @@ func (t *translator) TranslateGatewayTCPRouteV1Alpha2(tcpRoute *gatewayv1alpha2.
 			}
 		}
 	}
-
 	return ctx, nil
 }
