@@ -79,7 +79,7 @@ Ref to FAQ #7.
 
 ### 9. Modify the Admin API key in APISIX-Ingress
 
-Usually, you need to modify the Admin API key to protect Apache APISIX. Please refer to this [link](https://apisix.apache.org/docs/apisix/how-to-build/#updating-admin-api-key) to simply change Apache APISIX.
+Usually, you need to modify the Admin API key to protect Apache APISIX. Please refer to this [link](https://apisix.apache.org/docs/apisix/admin-api/) to simply change Apache APISIX.
 
 However, in apisix-ingress-controller, if we need to change the Admin API key, we also need to change the Admin API key in apisix-ingress-controller. There are two different ways to implement the requirements here.
 
