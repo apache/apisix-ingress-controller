@@ -21,6 +21,11 @@ cd test/e2e/testdata/wolf-rbac/
 
 OPTION=$1
 
+if  ! command -v "docker-compose" > /dev/null; then
+	echo "docker-compose not found, please install docker-compose"
+    exit 0
+fi
+
 if  [ $OPTION = "ip" ]; then
     echo -n `docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' wolf-server`
 elif [ $OPTION = "start" ]; then
@@ -43,7 +48,7 @@ elif [ $OPTION = "start" ]; then
     -H "Content-Type: application/json" \
     -H "x-rbac-token: $WOLF_TOKEN" \
     -d '{
-        "id": "test-app", 
+        "id": "test-app",
         "name": "application for test"
     }'
 
