@@ -31,8 +31,9 @@
         "deployments/aws",
         "deployments/azure",
         "deployments/gke",
-        "deployments/k3s-rke",
+        "deployments/kind",
         "deployments/kubesphere",
+        "deployments/k3s-rke",
         "deployments/minikube",
         "deployments/tke"
       ]
