@@ -19,6 +19,7 @@ package k8s
 
 import (
 	"context"
+	ingressprovider "github.com/apache/apisix-ingress-controller/pkg/providers/ingress"
 
 	"github.com/pkg/errors"
 	"k8s.io/client-go/tools/cache"
@@ -45,7 +46,8 @@ type k8sProvider struct {
 }
 
 func NewProvider(common *providertypes.Common, translator translation.Translator,
-	namespaceProvider namespace.WatchingNamespaceProvider, apisixProvider apisixprovider.Provider) (Provider, error) {
+	namespaceProvider namespace.WatchingNamespaceProvider,
+	apisixProvider apisixprovider.Provider, ingressProvider ingressprovider.Provider) (Provider, error) {
 	var err error
 	provider := &k8sProvider{}
 
@@ -57,7 +59,7 @@ func NewProvider(common *providertypes.Common, translator translation.Translator
 		return nil, errors.Wrap(err, "failed to init endpoint provider")
 	}
 
-	provider.secretController = newSecretController(common, translator, namespaceProvider, apisixProvider)
+	provider.secretController = newSecretController(common, namespaceProvider, apisixProvider, ingressProvider)
 
 	return provider, nil
 }

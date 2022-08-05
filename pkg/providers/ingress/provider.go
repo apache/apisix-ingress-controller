@@ -19,6 +19,8 @@ package ingress
 
 import (
 	"context"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
+	corev1 "k8s.io/api/core/v1"
 
 	"k8s.io/client-go/tools/cache"
 
@@ -49,6 +51,8 @@ type Provider interface {
 	providertypes.Provider
 
 	ResourceSync()
+
+	SyncSecretChange(ctx context.Context, ev *types.Event, secret *corev1.Secret, secretMapKey string)
 }
 
 type ingressProvider struct {
@@ -115,4 +119,8 @@ func (p *ingressProvider) ResourceSync() {
 	e.Add(p.ingressController.ResourceSync)
 
 	e.Wait()
+}
+
+func (p *ingressProvider) SyncSecretChange(ctx context.Context, ev *types.Event, secret *corev1.Secret, secretMapKey string) {
+	p.ingressController.SyncSecretChange(ctx, ev, secret, secretMapKey)
 }
