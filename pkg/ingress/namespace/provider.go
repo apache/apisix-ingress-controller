@@ -23,13 +23,11 @@ import (
 	"sync"
 
 	"go.uber.org/zap"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/apache/apisix-ingress-controller/pkg/api/validation"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/ingress/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
@@ -44,44 +42,25 @@ type WatchingProvider interface {
 }
 
 func NewWatchingProvider(ctx context.Context, kube *kube.KubeClient, cfg *config.Config) (WatchingProvider, error) {
-	var (
-		watchingNamespaces = new(sync.Map)
-		watchingLabels     = make(map[string]string)
-	)
-	if len(cfg.Kubernetes.AppNamespaces) > 1 || cfg.Kubernetes.AppNamespaces[0] != v1.NamespaceAll {
-		for _, ns := range cfg.Kubernetes.AppNamespaces {
-			watchingNamespaces.Store(ns, struct{}{})
-		}
-	}
-	// support namespace label-selector
-	for _, selector := range cfg.Kubernetes.NamespaceSelector {
-		labelSlice := strings.Split(selector, "=")
-		watchingLabels[labelSlice[0]] = labelSlice[1]
-	}
-
-	// watchingNamespaces and watchingLabels are empty means to monitor all namespaces.
-	if !validation.HasValueInSyncMap(watchingNamespaces) && len(watchingLabels) == 0 {
-		opts := metav1.ListOptions{}
-		// list all namespaces
-		nsList, err := kube.Client.CoreV1().Namespaces().List(ctx, opts)
-		if err != nil {
-			log.Error(err.Error())
-			ctx.Done()
-		} else {
-			wns := new(sync.Map)
-			for _, v := range nsList.Items {
-				wns.Store(v.Name, struct{}{})
-			}
-			watchingNamespaces = wns
-		}
-	}
-
 	c := &watchingProvider{
 		kube: kube,
 		cfg:  cfg,
 
-		watchingNamespaces: watchingNamespaces,
-		watchingLabels:     watchingLabels,
+		watchingNamespaces: new(sync.Map),
+		watchingLabels:     make(map[string]string),
+
+		enableLabelsWatching: false,
+	}
+
+	if len(cfg.Kubernetes.NamespaceSelector) == 0 {
+		return c, nil
+	}
+
+	// support namespace label-selector
+	c.enableLabelsWatching = true
+	for _, selector := range cfg.Kubernetes.NamespaceSelector {
+		labelSlice := strings.Split(selector, "=")
+		c.watchingLabels[labelSlice[0]] = labelSlice[1]
 	}
 
 	kubeFactory := kube.NewSharedIndexInformerFactory()
@@ -108,6 +87,8 @@ type watchingProvider struct {
 	namespaceLister   listerscorev1.NamespaceLister
 
 	controller *namespaceController
+
+	enableLabelsWatching bool
 }
 
 func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) error {
@@ -130,12 +111,14 @@ func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) e
 }
 
 func (c *watchingProvider) Run(ctx context.Context) {
-	e := utils.ParallelExecutor{}
+	if !c.enableLabelsWatching {
+		return
+	}
 
+	e := utils.ParallelExecutor{}
 	e.Add(func() {
 		c.namespaceInformer.Run(ctx.Done())
 	})
-
 	e.Add(func() {
 		c.controller.run(ctx)
 	})
@@ -145,17 +128,30 @@ func (c *watchingProvider) Run(ctx context.Context) {
 
 func (c *watchingProvider) WatchingNamespaces() []string {
 	var keys []string
-	c.watchingNamespaces.Range(func(key, _ interface{}) bool {
-		keys = append(keys, key.(string))
-		return true
-	})
+	if c.enableLabelsWatching {
+		c.watchingNamespaces.Range(func(key, _ interface{}) bool {
+			keys = append(keys, key.(string))
+			return true
+		})
+	} else {
+		namespaces, err := c.kube.Client.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{})
+		if err != nil {
+			log.Warnw("Namespace list get failed",
+				zap.Error(err),
+			)
+			return nil
+		}
+		for _, ns := range namespaces.Items {
+			keys = append(keys, ns.Name)
+		}
+	}
 	return keys
 }
 
 // IsWatchingNamespace accepts a resource key, getting the namespace part
 // and checking whether the namespace is being watched.
 func (c *watchingProvider) IsWatchingNamespace(key string) (ok bool) {
-	if !validation.HasValueInSyncMap(c.watchingNamespaces) {
+	if !c.enableLabelsWatching {
 		ok = true
 		return
 	}

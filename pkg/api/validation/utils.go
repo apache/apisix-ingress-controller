@@ -99,14 +99,3 @@ func validateSchema(schemaLoader *gojsonschema.JSONLoader, obj interface{}) (boo
 
 	return false, resultErr
 }
-
-func HasValueInSyncMap(m *sync.Map) bool {
-	hasValue := false
-	if m != nil {
-		m.Range(func(k, v interface{}) bool {
-			hasValue = true
-			return false
-		})
-	}
-	return hasValue
-}

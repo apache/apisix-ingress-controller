@@ -85,6 +85,9 @@ func (c *namespaceController) runWorker(ctx context.Context) {
 }
 
 func (c *namespaceController) sync(ctx context.Context, ev *types.Event) error {
+	log.Debugw("Namespace sync",
+		zap.String("Namespace name", ev.Object.(string)),
+	)
 	if ev.Type != types.EventDelete {
 		// check the labels of specify namespace
 		namespace, err := c.controller.kube.Client.CoreV1().Namespaces().Get(ctx, ev.Object.(string), metav1.GetOptions{})
@@ -94,11 +97,21 @@ func (c *namespaceController) sync(ctx context.Context, ev *types.Event) error {
 
 		// if labels of namespace contains the watchingLabels, the namespace should be set to controller.watchingNamespaces
 		if c.controller.watchingLabels.IsSubsetOf(namespace.Labels) {
+			log.Debugw("Namespace store",
+				zap.Any("Namespace obj", namespace),
+			)
 			c.controller.watchingNamespaces.Store(namespace.Name, struct{}{})
 		} else {
 			c.controller.watchingNamespaces.Delete(namespace.Name)
+			log.Debugw("Namespace delete",
+				zap.Any("Namespace obj", namespace),
+			)
 		}
-
+		for _, ns := range c.controller.WatchingNamespaces() {
+			log.Debugw("Namespace watching list",
+				zap.String("Namespace", ns),
+			)
+		}
 	} else { // type == types.EventDelete
 		namespace := ev.Tombstone.(*corev1.Namespace)
 		if _, ok := c.controller.watchingNamespaces.Load(namespace.Name); ok {
@@ -136,6 +149,9 @@ func (c *namespaceController) onAdd(obj interface{}) {
 		log.Errorf("found Namespace resource with error: %v", err)
 		return
 	}
+	log.Debugw("Namespace add event arrived",
+		zap.Any("object", obj),
+	)
 	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
@@ -153,6 +169,10 @@ func (c *namespaceController) onUpdate(pre, cur interface{}) {
 		log.Errorf("found Namespace resource with error: %v", err)
 		return
 	}
+	log.Debugw("Namespace update event arrived",
+		zap.Any("new object", cur),
+		zap.Any("old object", pre),
+	)
 	c.workqueue.Add(&types.Event{
 		Type:   types.EventUpdate,
 		Object: key,
@@ -160,6 +180,9 @@ func (c *namespaceController) onUpdate(pre, cur interface{}) {
 }
 
 func (c *namespaceController) onDelete(obj interface{}) {
+	log.Debugw("Namespace delete event arrived",
+		zap.Any("final state", obj),
+	)
 	namespace := obj.(*corev1.Namespace)
 	c.workqueue.Add(&types.Event{
 		Type:      types.EventDelete,
