@@ -390,7 +390,6 @@ spec:
             - %s
             - --ingress-status-address
             - "%s"
-            - --watch-endpointslices
             - --enable-gateway-api
             - "true"
           %s
