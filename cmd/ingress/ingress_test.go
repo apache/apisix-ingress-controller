@@ -168,8 +168,8 @@ func TestRotateLog(t *testing.T) {
 	listen := getRandomListen()
 	cmd := NewIngressCommand()
 	cmd.SetArgs([]string{
-		"--rotate-output-path", "./testlog/test.log",
-		"--rotate-max-size", "1",
+		"--log-rotate-output-path", "./testlog/test.log",
+		"--log-rotate-max-size", "1",
 		"--http-listen", listen,
 		"--enable-profiling",
 		"--kubeconfig", "/foo/bar/baz",

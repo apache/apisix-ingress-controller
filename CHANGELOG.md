@@ -60,7 +60,7 @@ In next release(v1.5), custom resource's API version v2 will be GA released. Ple
 * fix: ingress update event handler not filter by watching namespaces [#947](https://github.com/apache/apisix-ingress-controller/pull/)
 
 Please try out the release binaries and report any issues at
-<https://github.com/apache/apisix-ingress-controller/issues>.
+https://github.com/apache/apisix-ingress-controller/issues.
 
 ### Contributors
 

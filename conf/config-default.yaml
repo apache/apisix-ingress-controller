@@ -27,10 +27,10 @@ log_output: "stderr" # the output file path of error log, default is stderr, whe
                      # are marshalled in JSON format, which can be parsed by
                      # programs easily.
 
-rotate_output_path: ""  # rotate output path, the logs will be written in this file
-rotation_max_size: 100  # rotate max size, max size in megabytes of log file before it get rotated. It defaults to 100
-rotation_max_age: 0     # rotate max age, max age of old log files to retain
-rotation_max_backups: 0 # rotate max backups, max numbers of old log files to retain
+log_rotate_output_path: ""  # rotate output path, the logs will be written in this file
+log_rotation_max_size: 100  # rotate max size, max size in megabytes of log file before it get rotated. It defaults to 100
+log_rotation_max_age: 0     # rotate max age, max age of old log files to retain
+log_rotation_max_backups: 0 # rotate max backups, max numbers of old log files to retain
 
 cert_file: "/etc/webhook/certs/cert.pem" # the TLS certificate file path.
 key_file: "/etc/webhook/certs/key.pem"   # the TLS key file path.
