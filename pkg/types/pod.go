@@ -29,7 +29,7 @@ var (
 	ErrPodNotFound = errors.New("pod not found")
 )
 
-// PodCache caches pod. Currently it doesn't cache the pod object but only its
+// PodCache caches pod. Currently, it doesn't cache the pod object but only its
 // name.
 type PodCache interface {
 	// Add adds a pod to cache, only pod which state is RUNNING will be

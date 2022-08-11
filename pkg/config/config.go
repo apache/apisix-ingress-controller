@@ -99,7 +99,6 @@ type KubernetesConfig struct {
 	IngressClass        string             `json:"ingress_class" yaml:"ingress_class"`
 	IngressVersion      string             `json:"ingress_version" yaml:"ingress_version"`
 	WatchEndpointSlices bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
-	ApisixRouteVersion  string             `json:"apisix_route_version" yaml:"apisix_route_version"`
 	APIVersion          string             `json:"api_version" yaml:"api_version"`
 	EnableGatewayAPI    bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
 }
@@ -136,7 +135,6 @@ func NewDefaultConfig() *Config {
 			ElectionID:          IngressAPISIXLeader,
 			IngressClass:        IngressClass,
 			IngressVersion:      IngressNetworkingV1,
-			ApisixRouteVersion:  DefaultAPIVersion,
 			APIVersion:          DefaultAPIVersion,
 			WatchEndpointSlices: false,
 			EnableGatewayAPI:    false,

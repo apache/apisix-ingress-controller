@@ -19,6 +19,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
@@ -211,7 +213,97 @@ subjects:
   name: ingress-apisix-e2e-test-service-account
   namespace: %s
 `
-	_ingressAPISIXDeploymentTemplate = `
+	_ingressAPISIXAdmissionService = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: webhook
+  namespace: %s
+spec:
+  ports:
+    - name: https
+      protocol: TCP
+      port: 8443
+      targetPort: 8443
+  selector:
+    app: ingress-apisix-controller-deployment-e2e-test
+`
+	_ingressAPISIXAdmissionWebhook = `
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: apisix-validation-webhooks-e2e-test
+webhooks:
+  - name: apisixroute-validator-webhook.apisix.apache.org
+    clientConfig:
+      service:
+        name: webhook
+        namespace: %s
+        port: 8443
+        path: "/validation/apisixroutes"
+      caBundle: %s
+    rules:
+      - operations: [ "CREATE", "UPDATE" ]
+        apiGroups: ["apisix.apache.org"]
+        apiVersions: ["*"]
+        resources: ["apisixroutes"]
+    timeoutSeconds: 30
+    failurePolicy: Fail
+  - name: apisixconsumer-validator-webhook.apisix.apache.org
+    clientConfig:
+      service:
+        name: webhook
+        namespace: %s
+        port: 8443
+        path: "/validation/apisixconsumers"
+      caBundle: %s
+    rules:
+      - operations: [ "CREATE", "UPDATE" ]
+        apiGroups: ["apisix.apache.org"]
+        apiVersions: ["*"]
+        resources: ["apisixconsumers"]
+    timeoutSeconds: 30
+    failurePolicy: Fail
+  - name: apisixtls-validator-webhook.apisix.apache.org
+    clientConfig:
+      service:
+        name: webhook
+        namespace: %s
+        port: 8443
+        path: "/validation/apisixtlses"
+      caBundle: %s
+    rules:
+      - operations: [ "CREATE", "UPDATE" ]
+        apiGroups: ["apisix.apache.org"]
+        apiVersions: ["*"]
+        resources: ["apisixtlses"]
+    timeoutSeconds: 30
+    failurePolicy: Fail
+  - name: apisixupstream-validator-webhook.apisix.apache.org
+    clientConfig:
+      service:
+        name: webhook
+        namespace: %s
+        port: 8443
+        path: "/validation/apisixupstreams"
+      caBundle: %s
+    rules:
+      - operations: [ "CREATE", "UPDATE" ]
+        apiGroups: ["apisix.apache.org"]
+        apiVersions: ["*"]
+        resources: ["apisixupstreams"]
+    timeoutSeconds: 30
+    failurePolicy: Fail
+`
+	_webhookCertSecret = "webhook-certs"
+	_volumeMounts      = `volumeMounts:
+           - name: webhook-certs
+             mountPath: /etc/webhook/certs
+             readOnly: true
+`
+)
+
+var _ingressAPISIXDeploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -307,95 +399,12 @@ spec:
            secretName: %s
       serviceAccount: ingress-apisix-e2e-test-service-account
 `
-	_ingressAPISIXAdmissionService = `
-apiVersion: v1
-kind: Service
-metadata:
-  name: webhook
-  namespace: %s
-spec:
-  ports:
-    - name: https
-      protocol: TCP
-      port: 8443
-      targetPort: 8443
-  selector:
-    app: ingress-apisix-controller-deployment-e2e-test
-`
-	_ingressAPISIXAdmissionWebhook = `
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name: apisix-validation-webhooks-e2e-test
-webhooks:
-  - name: apisixroute-validator-webhook.apisix.apache.org
-    clientConfig:
-      service:
-        name: webhook
-        namespace: %s
-        port: 8443
-        path: "/validation/apisixroutes"
-      caBundle: %s
-    rules:
-      - operations: [ "CREATE", "UPDATE" ]
-        apiGroups: ["apisix.apache.org"]
-        apiVersions: ["*"]
-        resources: ["apisixroutes"]
-    timeoutSeconds: 30
-    failurePolicy: Fail
-  - name: apisixconsumer-validator-webhook.apisix.apache.org
-    clientConfig:
-      service:
-        name: webhook
-        namespace: %s
-        port: 8443
-        path: "/validation/apisixconsumers"
-      caBundle: %s
-    rules:
-      - operations: [ "CREATE", "UPDATE" ]
-        apiGroups: ["apisix.apache.org"]
-        apiVersions: ["*"]
-        resources: ["apisixconsumers"]
-    timeoutSeconds: 30
-    failurePolicy: Fail
-  - name: apisixtls-validator-webhook.apisix.apache.org
-    clientConfig:
-      service:
-        name: webhook
-        namespace: %s
-        port: 8443
-        path: "/validation/apisixtlses"
-      caBundle: %s
-    rules:
-      - operations: [ "CREATE", "UPDATE" ]
-        apiGroups: ["apisix.apache.org"]
-        apiVersions: ["*"]
-        resources: ["apisixtlses"]
-    timeoutSeconds: 30
-    failurePolicy: Fail
-  - name: apisixupstream-validator-webhook.apisix.apache.org
-    clientConfig:
-      service:
-        name: webhook
-        namespace: %s
-        port: 8443
-        path: "/validation/apisixupstreams"
-      caBundle: %s
-    rules:
-      - operations: [ "CREATE", "UPDATE" ]
-        apiGroups: ["apisix.apache.org"]
-        apiVersions: ["*"]
-        resources: ["apisixupstreams"]
-    timeoutSeconds: 30
-    failurePolicy: Fail
-`
-	_webhookCertSecret = "webhook-certs"
-	_volumeMounts      = `volumeMounts:
-           - name: webhook-certs
-             mountPath: /etc/webhook/certs
-             readOnly: true
-`
-)
+
+func init() {
+	if os.Getenv("E2E_ENV") != "ci" {
+		_ingressAPISIXDeploymentTemplate = strings.Replace(_ingressAPISIXDeploymentTemplate, "imagePullPolicy: IfNotPresent", "imagePullPolicy: Always", -1)
+	}
+}
 
 func (s *Scaffold) newIngressAPISIXController() error {
 	err := k8s.CreateServiceAccountE(s.t, s.kubectlOptions, _serviceAccount)
