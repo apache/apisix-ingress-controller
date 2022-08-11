@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"strings"
@@ -161,4 +162,49 @@ func parseLog(t *testing.T, r *bufio.Reader) *fields {
 	err = json.Unmarshal(line, &f)
 	assert.Nil(t, err)
 	return &f
+}
+
+func TestRotateLog(t *testing.T) {
+	listen := getRandomListen()
+	cmd := NewIngressCommand()
+	cmd.SetArgs([]string{
+		"--log-rotate-output-path", "./testlog/test.log",
+		"--log-rotate-max-size", "1",
+		"--http-listen", listen,
+		"--enable-profiling",
+		"--kubeconfig", "/foo/bar/baz",
+		"--resync-interval", "24h",
+		"--default-apisix-cluster-base-url", "http://apisixgw.default.cluster.local/apisix",
+		"--default-apisix-cluster-admin-key", "0x123",
+	})
+	defer os.RemoveAll("./testlog/")
+
+	stopCh := make(chan struct{})
+	go func() {
+		assert.Nil(t, cmd.Execute())
+		close(stopCh)
+	}()
+
+	// fill logs with data until the size > 1m
+	line := ""
+	for i := 0; i < 256; i++ {
+		line += "0"
+	}
+
+	for i := 0; i < 4096; i++ {
+		log.Info(line)
+	}
+
+	time.Sleep(5 * time.Second)
+	assert.Nil(t, syscall.Kill(os.Getpid(), syscall.SIGINT))
+	<-stopCh
+
+	files, err := ioutil.ReadDir("./testlog")
+
+	if err != nil {
+		t.Fatalf("Unable to read log dir: %v", err)
+	}
+
+	assert.Equal(t, true, len(files) >= 2)
+
 }
