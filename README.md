@@ -104,7 +104,7 @@ for us to fix.
 
 ### Contributor over time
 
-[![Contributor over time](https://contributor-graph-api.apiseven.com/contributors-svg?chart=contributorOverTime&repo=apache/apisix-ingress-controller)](https://www.apiseven.com/en/contributor-graph?chart=contributorOverTime&repo=apache/apisix-ingress-controller)
+[![Contributor over time](https://contributor-overtime-api.git-contributor.com/contributors-svg?chart=contributorOverTime&repo=apache/apisix-ingress-controller)](https://git-contributor.com/?chart=contributorOverTime&repo=apache/apisix-ingress-controller)
 
 ## Community
 
