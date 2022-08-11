@@ -16,7 +16,7 @@
 #
 default: help
 
-VERSION ?= 1.4.1
+VERSION ?= 1.5.0-rc1
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 REGISTRY ?="localhost:5000"
 IMAGE_TAG ?= dev
@@ -60,13 +60,14 @@ clean-image: ## Removes local image
 ### build-image:          Build apisix-ingress-controller image
 .PHONY: build-image
 build-image:
-	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=true .
-
-### pack-ingress-image:   Build and push Ingress image used in e2e test suites to kind or custom registry.
-.PHONY: pack-ingress-image
-pack-ingress-image:
+ifeq ($(E2E_SKIP_BUILD), 0)
 	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+endif
+
+### pack-image:   Build and push Ingress image used in e2e test suites to kind or custom registry.
+.PHONY: pack-image
+pack-image: build-image
 	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
 
 ### pack-images:          Build and push images used in e2e test suites to kind or custom registry.
@@ -250,10 +251,10 @@ endif
 .PHONY: kind-load-images
 kind-load-images:
 	kind load docker-image --name=apisix \
-			localhost:5000/apache/apisix:dev \
-            localhost:5000/bitnami/etcd:dev \
-            localhost:5000/apache/apisix-ingress-controller:dev \
-            localhost:5000/kennethreitz/httpbin:dev \
-            localhost:5000/test-backend:dev \
-            localhost:5000/jmalloc/echo-server:dev \
-            localhost:5000/busybox:dev
+			$(REGISTRY)/apache/apisix:dev \
+            $(REGISTRY)/bitnami/etcd:dev \
+            $(REGISTRY)/apache/apisix-ingress-controller:dev \
+            $(REGISTRY)/kennethreitz/httpbin:dev \
+            $(REGISTRY)/test-backend:dev \
+            $(REGISTRY)/jmalloc/echo-server:dev \
+            $(REGISTRY)/busybox:dev
