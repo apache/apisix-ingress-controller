@@ -61,7 +61,7 @@ spec:
 `, backendSvc)
 			err = s.CreateVersionedApisixResource(au)
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
-			time.Sleep(2 * time.Second)
+			time.Sleep(6 * time.Second)
 
 			ups, err := s.ListApisixUpstreams()
 			assert.Nil(ginkgo.GinkgoT(), err)
@@ -121,7 +121,7 @@ spec:
 	}
 
 	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultScaffold)
+		suites(scaffold.NewDefaultV2beta3Scaffold)
 	})
 	ginkgo.Describe("suite-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
@@ -179,7 +179,7 @@ spec:
 	}
 
 	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultScaffold)
+		suites(scaffold.NewDefaultV2beta3Scaffold)
 	})
 	ginkgo.Describe("suite-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)

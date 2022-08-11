@@ -53,14 +53,25 @@ This project is currently general availability.
 
 [More about comparison among multiple Ingress Controllers.](https://docs.google.com/spreadsheets/d/191WWNpjJ2za6-nbG4ZoUMXMpUK8KlCIosvQB0f-oq3k/edit?ts=5fd6c769#gid=907731238)
 
-## Internal Architecture
+## Get started
 
-<img src="./docs/assets/images/apisix-ingress-controller-arch.png" alt="module" width="74.3%" height="55.9%" />
+* [How to install](./install.md)
+* [Get Started](./docs/en/latest/getting-started.md)
+* [Design introduction](./docs/en/latest/design.md)
+* [FAQ](./docs/en/latest/FAQ.md)
 
 ## Prerequisites
 
 Apisix ingress controller requires Kubernetes version 1.16+. Because we used `CustomResourceDefinition` v1 stable API.
 From the version 1.0.0, APISIX-ingress-controller need to work with Apache APISIX version 2.7+.
+
+## Works with APISIX Dashboard
+
+Currently, APISIX Ingress Controller automatically manipulates some APISIX resources, which is not very compatible with APISIX Dashboard. In addition, users should not modify resources labeled `managed-by: apisix-ingress-controllers` via APISIX Dashboard.
+
+## Internal Architecture
+
+<img src="./docs/assets/images/apisix-ingress-controller-arch.png" alt="module" width="74.3%" height="55.9%" />
 
 ## Apache APISIX Ingress vs. Kubernetes Ingress Nginx
 
@@ -71,40 +82,29 @@ From the version 1.0.0, APISIX-ingress-controller need to work with Apache APISI
 * Supports APISIX custom resources and Kubernetes native Ingress resources.
 * More active community
 
-## Contributor over time
-
-[![Contributor over time](https://contributor-graph-api.apiseven.com/contributors-svg?chart=contributorOverTime&repo=apache/apisix-ingress-controller)](https://www.apiseven.com/en/contributor-graph?chart=contributorOverTime&repo=apache/apisix-ingress-controller)
-
-## Get started
-
-* [How to install](./install.md)
-
-## Todos
-
-* Support UDP definition. [#116](https://github.com/apache/apisix-ingress-controller/issues/116)
-* Support GRPC definition. [#114](https://github.com/apache/apisix-ingress-controller/issues/114)
-* Add a complete demo. [#9](https://github.com/apache/apisix-ingress-controller/issues/9)
-* More todos will display in [issues](https://github.com/apache/apisix-ingress-controller/issues)
-
-## Documents
-
-* [Get Started](./docs/en/latest/getting-started.md)
-* [Design introduction](./docs/en/latest/design.md)
-
-## FAQ
-
-* [FAQ](./docs/en/latest/FAQ.md)
-
-## User stories
-
-- [aispeech: Why we create a new k8s ingress controller?(Chinese)](https://mp.weixin.qq.com/s/bmm2ibk2V7-XYneLo9XAPQ)
-- [Tencent Cloud: Why choose Apache APISIX to implement the k8s ingress controller?(Chinese)](https://www.upyun.com/opentalk/448.html)
-
 ## Contributing
 
 We welcome all kinds of contributions from the open-source community, individuals and partners.
 
 * [Contributing Guide](./docs/en/latest/contribute.md)
+
+### How to contribute
+
+Most of the contributions that we receive are code contributions, but you can
+also contribute to the documentation or simply report solid bugs
+for us to fix.
+
+ For new contributors, please take a look at issues with a tag called [Good first issue](https://github.com/apache/apisix-ingress-controller/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [Help wanted](https://github.com/apache/apisix-ingress-controller/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
+
+### How to report a bug
+
+* **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/apache/apisix-ingress-controller/issues).
+
+* If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/apache/apisix-ingress-controller/issues/new). Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample** or an **executable test case** demonstrating the expected behavior that is not occurring.
+
+### Contributor over time
+
+[![Contributor over time](https://contributor-graph-api.apiseven.com/contributors-svg?chart=contributorOverTime&repo=apache/apisix-ingress-controller)](https://www.apiseven.com/en/contributor-graph?chart=contributorOverTime&repo=apache/apisix-ingress-controller)
 
 ## Community
 
@@ -112,6 +112,15 @@ We welcome all kinds of contributions from the open-source community, individual
 * QQ Group - 578997126
 * ![Twitter Follow](https://img.shields.io/twitter/follow/ApacheAPISIX?style=social) - follow and interact with us using hashtag `#ApacheAPISIX`
 * [Bilibili video](https://space.bilibili.com/551921247)
+
+## Todos
+
+* More todos will display in [issues](https://github.com/apache/apisix-ingress-controller/issues?q=is%3Aopen+is%3Aissue+label%3Atriage%2Faccepted)
+
+## User stories
+
+- [aispeech: Why we create a new k8s ingress controller?(Chinese)](https://mp.weixin.qq.com/s/bmm2ibk2V7-XYneLo9XAPQ)
+- [Tencent Cloud: Why choose Apache APISIX to implement the k8s ingress controller?(Chinese)](https://www.upyun.com/opentalk/448.html)
 
 ## Milestone
 
@@ -121,21 +130,3 @@ We welcome all kinds of contributions from the open-source community, individual
 
 * Ingress APISIX: the whole service that contains the proxy ([Apache APISIX](https://apisix.apache.org)) and ingress controller (apisix ingress controller).
 * apisix-ingress-controller: the ingress controller component.
-
-## How to contribute
-
-Most of the contributions that we receive are code contributions, but you can
-also contribute to the documentation or simply report solid bugs
-for us to fix.
-
- For new contributors, please take a look at issues with a tag called [Good first issue](https://github.com/apache/apisix-ingress-controller/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [Help wanted](https://github.com/apache/apisix-ingress-controller/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
-
-## How to report a bug
-
-* **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/apache/apisix-ingress-controller/issues).
-
-* If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/apache/apisix-ingress-controller/issues/new). Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample** or an **executable test case** demonstrating the expected behavior that is not occurring.
-
-## License
-
-[Apache License 2.0](https://github.com/apache/apisix-ingress-controller/blob/master/LICENSE)

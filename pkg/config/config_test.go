@@ -43,14 +43,13 @@ func TestNewConfigFromFile(t *testing.T) {
 		EnableProfiling:            true,
 		ApisixResourceSyncInterval: types.TimeDuration{Duration: 200 * time.Second},
 		Kubernetes: KubernetesConfig{
-			ResyncInterval:     types.TimeDuration{Duration: time.Hour},
-			Kubeconfig:         "/path/to/foo/baz",
-			AppNamespaces:      []string{""},
-			ElectionID:         "my-election-id",
-			IngressClass:       IngressClass,
-			IngressVersion:     IngressNetworkingV1,
-			ApisixRouteVersion: DefaultAPIVersion,
-			APIVersion:         DefaultAPIVersion,
+			ResyncInterval: types.TimeDuration{Duration: time.Hour},
+			Kubeconfig:     "/path/to/foo/baz",
+			AppNamespaces:  []string{""},
+			ElectionID:     "my-election-id",
+			IngressClass:   IngressClass,
+			IngressVersion: IngressNetworkingV1,
+			APIVersion:     DefaultAPIVersion,
 		},
 		APISIX: APISIXConfig{
 			DefaultClusterName:     "default",
@@ -95,7 +94,7 @@ kubernetes:
   election_id: my-election-id
   ingress_class: apisix
   ingress_version: networking/v1
-  api_version: apisix.apache.org/v2beta3
+  api_version: apisix.apache.org/v2
 apisix:
   default_cluster_base_url: http://127.0.0.1:8080/apisix
   default_cluster_admin_key: "123456"
@@ -132,14 +131,13 @@ func TestConfigWithEnvVar(t *testing.T) {
 		EnableProfiling:            true,
 		ApisixResourceSyncInterval: types.TimeDuration{Duration: 200 * time.Second},
 		Kubernetes: KubernetesConfig{
-			ResyncInterval:     types.TimeDuration{Duration: time.Hour},
-			Kubeconfig:         "",
-			AppNamespaces:      []string{""},
-			ElectionID:         "my-election-id",
-			IngressClass:       IngressClass,
-			IngressVersion:     IngressNetworkingV1,
-			ApisixRouteVersion: DefaultAPIVersion,
-			APIVersion:         DefaultAPIVersion,
+			ResyncInterval: types.TimeDuration{Duration: time.Hour},
+			Kubeconfig:     "",
+			AppNamespaces:  []string{""},
+			ElectionID:     "my-election-id",
+			IngressClass:   IngressClass,
+			IngressVersion: IngressNetworkingV1,
+			APIVersion:     DefaultAPIVersion,
 		},
 		APISIX: APISIXConfig{
 			DefaultClusterName:     "default",
