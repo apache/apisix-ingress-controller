@@ -19,12 +19,12 @@ package k8s
 
 import (
 	"context"
-	ingressprovider "github.com/apache/apisix-ingress-controller/pkg/providers/ingress"
 
 	"github.com/pkg/errors"
 	"k8s.io/client-go/tools/cache"
 
 	apisixprovider "github.com/apache/apisix-ingress-controller/pkg/providers/apisix"
+	ingressprovider "github.com/apache/apisix-ingress-controller/pkg/providers/ingress"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/endpoint"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"

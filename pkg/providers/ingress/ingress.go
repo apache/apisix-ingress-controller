@@ -17,8 +17,6 @@ package ingress
 import (
 	"context"
 	"fmt"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
-	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"strings"
 	"sync"
 	"time"
@@ -36,8 +34,10 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 const (

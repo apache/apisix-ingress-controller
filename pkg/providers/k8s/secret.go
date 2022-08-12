@@ -17,7 +17,6 @@ package k8s
 
 import (
 	"context"
-	ingressprovider "github.com/apache/apisix-ingress-controller/pkg/providers/ingress"
 	"time"
 
 	"go.uber.org/zap"
@@ -29,6 +28,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixprovider "github.com/apache/apisix-ingress-controller/pkg/providers/apisix"
+	ingressprovider "github.com/apache/apisix-ingress-controller/pkg/providers/ingress"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/types"

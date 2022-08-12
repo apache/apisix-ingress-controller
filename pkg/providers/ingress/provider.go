@@ -19,9 +19,8 @@ package ingress
 
 import (
 	"context"
-	"github.com/apache/apisix-ingress-controller/pkg/types"
-	corev1 "k8s.io/api/core/v1"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
@@ -32,6 +31,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 const (
