@@ -185,6 +185,12 @@ func TestRotateLog(t *testing.T) {
 		close(stopCh)
 	}()
 
+	fws := &fakeWriteSyncer{}
+	logger, err := log.NewLogger(log.WithLogLevel("info"), log.WithWriteSyncer(fws))
+	assert.Nil(t, err)
+	defer logger.Close()
+	log.DefaultLogger = logger
+
 	// fill logs with data until the size > 1m
 	line := ""
 	for i := 0; i < 256; i++ {
@@ -206,5 +212,4 @@ func TestRotateLog(t *testing.T) {
 	}
 
 	assert.Equal(t, true, len(files) >= 2)
-
 }
