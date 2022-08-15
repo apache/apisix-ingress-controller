@@ -27,6 +27,7 @@ import (
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
+// Structure extracted by Ingress Resource
 type Ingress struct {
 	Plugins          apisix.Plugins
 	UseRegex         bool
