@@ -170,6 +170,8 @@ func TestRotateLog(t *testing.T) {
 	cmd.SetArgs([]string{
 		"--log-rotate-output-path", "./testlog/test.log",
 		"--log-rotate-max-size", "1",
+		"--log-level", "info",
+		"--log-output", "./testlog/test.log",
 		"--http-listen", listen,
 		"--enable-profiling",
 		"--kubeconfig", "/foo/bar/baz",
