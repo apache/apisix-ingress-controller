@@ -79,6 +79,10 @@ type Config struct {
 	KeyFilePath                string             `json:"key_file" yaml:"key_file"`
 	LogLevel                   string             `json:"log_level" yaml:"log_level"`
 	LogOutput                  string             `json:"log_output" yaml:"log_output"`
+	LogRotateOutputPath        string             `json:"log_rotate_output_path" yaml:"log_rotate_output_path"`
+	LogRotationMaxSize         int                `json:"log_rotation_max_size" yaml:"log_rotation_max_size"`
+	LogRotationMaxAge          int                `json:"log_rotation_max_age" yaml:"log_rotation_max_age"`
+	LogRotationMaxBackups      int                `json:"log_rotation_max_backups" yaml:"log_rotation_max_backups"`
 	HTTPListen                 string             `json:"http_listen" yaml:"http_listen"`
 	HTTPSListen                string             `json:"https_listen" yaml:"https_listen"`
 	IngressPublishService      string             `json:"ingress_publish_service" yaml:"ingress_publish_service"`
@@ -120,6 +124,10 @@ func NewDefaultConfig() *Config {
 	return &Config{
 		LogLevel:                   "warn",
 		LogOutput:                  "stderr",
+		LogRotateOutputPath:        "",
+		LogRotationMaxSize:         100,
+		LogRotationMaxAge:          0,
+		LogRotationMaxBackups:      0,
 		HTTPListen:                 ":8080",
 		HTTPSListen:                ":8443",
 		IngressPublishService:      "",

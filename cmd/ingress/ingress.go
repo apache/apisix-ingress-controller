@@ -25,6 +25,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -102,10 +104,23 @@ the apisix cluster and others are created`,
 				dief("bad configuration: %s", err)
 			}
 
-			logger, err := log.NewLogger(
-				log.WithLogLevel(cfg.LogLevel),
-				log.WithOutputFile(cfg.LogOutput),
-			)
+			var ws zapcore.WriteSyncer
+
+			options := []log.Option{log.WithLogLevel(cfg.LogLevel), log.WithOutputFile(cfg.LogOutput)}
+
+			if cfg.LogRotateOutputPath != "" {
+				ws = zapcore.AddSync(&lumberjack.Logger{
+					Filename:   cfg.LogRotateOutputPath,
+					MaxSize:    cfg.LogRotationMaxSize,
+					MaxBackups: cfg.LogRotationMaxBackups,
+					MaxAge:     cfg.LogRotationMaxAge,
+				})
+
+				options = append(options, log.WithWriteSyncer(ws))
+			}
+
+			logger, err := log.NewLogger(options...)
+
 			if err != nil {
 				dief("failed to initialize logging: %s", err)
 			}
@@ -143,6 +158,10 @@ the apisix cluster and others are created`,
 	cmd.PersistentFlags().StringVar(&configPath, "config-path", "", "configuration file path for apisix-ingress-controller")
 	cmd.PersistentFlags().StringVar(&cfg.LogLevel, "log-level", "info", "error log level")
 	cmd.PersistentFlags().StringVar(&cfg.LogOutput, "log-output", "stderr", "error log output file")
+	cmd.PersistentFlags().StringVar(&cfg.LogRotateOutputPath, "log-rotate-output-path", "", "rotate log output path")
+	cmd.PersistentFlags().IntVar(&cfg.LogRotationMaxSize, "log-rotate-max-size", 100, "rotate log max size")
+	cmd.PersistentFlags().IntVar(&cfg.LogRotationMaxAge, "log-rotate-max-age", 0, "old rotate log max age to retain")
+	cmd.PersistentFlags().IntVar(&cfg.LogRotationMaxBackups, "log-rotate-max-backups", 0, "old rotate log max numbers to retain")
 	cmd.PersistentFlags().StringVar(&cfg.HTTPListen, "http-listen", ":8080", "the HTTP Server listen address")
 	cmd.PersistentFlags().StringVar(&cfg.HTTPSListen, "https-listen", ":8443", "the HTTPS Server listen address")
 	cmd.PersistentFlags().StringVar(&cfg.IngressPublishService, "ingress-publish-service", "",
