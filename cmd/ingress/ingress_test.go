@@ -170,7 +170,7 @@ func TestRotateLog(t *testing.T) {
 	cmd.SetArgs([]string{
 		"--log-rotate-output-path", "./testlog/test.log",
 		"--log-rotate-max-size", "1",
-		"--log-level", "info",
+		"--log-level", "debug",
 		"--log-output", "./testlog/test.log",
 		"--http-listen", listen,
 		"--enable-profiling",
@@ -188,7 +188,7 @@ func TestRotateLog(t *testing.T) {
 	}()
 
 	fws := &fakeWriteSyncer{}
-	logger, err := log.NewLogger(log.WithLogLevel("info"), log.WithWriteSyncer(fws))
+	logger, err := log.NewLogger(log.WithLogLevel("debug"), log.WithWriteSyncer(fws))
 	assert.Nil(t, err)
 	defer logger.Close()
 	log.DefaultLogger = logger
@@ -200,7 +200,7 @@ func TestRotateLog(t *testing.T) {
 	}
 
 	for i := 0; i < 4096; i++ {
-		log.Info(line)
+		log.Debug(line)
 	}
 
 	time.Sleep(5 * time.Second)
