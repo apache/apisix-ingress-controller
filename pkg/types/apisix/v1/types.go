@@ -243,8 +243,8 @@ func (n *UpstreamNodes) UnmarshalJSON(p []byte) error {
 func mapKV2Node(key string, val float64) (*UpstreamNode, error) {
 	hp := strings.Split(key, ":")
 	host := hp[0]
-	//  according to APISIX upstream nodes policy, port is optional
-	port := "0"
+	//  according to APISIX upstream nodes policy, port is required
+	port := "80"
 
 	if len(hp) > 2 {
 		return nil, errors.New("invalid upstream node")
