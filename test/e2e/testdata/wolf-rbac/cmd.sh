@@ -20,26 +20,26 @@
 cd test/e2e/testdata/wolf-rbac/
 
 OPTION=$1
-COMPOSE="docker-compose"
+COMPOSE=(docker-compose)
 
 if  ! command -v "docker-compose" > /dev/null; then
 	echo "docker-compose not found, try docker compose"
-    COMPOSE="docker compose"
+    COMPOSE=(docker-compose)
 fi
 
 if  [ $OPTION = "ip" ]; then
     echo -n `docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' wolf-server`
 elif [ $OPTION = "start" ]; then
-    eval "$COMPOSE -f 'docker-compose.yaml'  -p 'wolf-rbac' down"
+    $COMPOSE -f 'docker-compose.yaml'  -p 'wolf-rbac' down
     rm -rf db-psql.sql
 
     wget https://raw.githubusercontent.com/iGeeky/wolf/f6ddeb75a37bff90406f0f0a2b7ae5d16f6f3bd4/server/script/db-psql.sql
 
     # start database
-    eval "$COMPOSE up -d database"
+    $COMPOSE up -d database
 
     # start wolf-server
-    eval "$COMPOSE up -d server restful-demo agent-or agent-demo"
+    $COMPOSE up -d server restful-demo agent-or agent-demo
 
     sleep 6
 
@@ -74,7 +74,7 @@ elif [ $OPTION = "start" ]; then
         "appIDs": ["test-app"]
     }'
 elif [ $OPTION = "stop" ]; then
-    eval "$COMPOSE -f 'docker-compose.yaml'  -p 'wolf-rbac' down"
+    $COMPOSE -f 'docker-compose.yaml'  -p 'wolf-rbac' down
     rm -rf db-psql.sql
 else
     echo "argument is one of [ip, start, stop]"
