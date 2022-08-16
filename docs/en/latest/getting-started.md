@@ -1,5 +1,10 @@
 ---
-title: Getting Started
+title: Getting started
+keywords:
+  - APISIX ingress
+  - Apache APISIX
+  - Kubernetes ingress
+description: Guide to get started with Apache APISIX ingress controller.
 ---
 
 <!--
@@ -21,68 +26,109 @@ title: Getting Started
 #
 -->
 
-## What is apisix-ingress-controller
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-apisix-ingress-controller is yet another Ingress controller for Kubernetes using [Apache APISIX](https://apisix.apache.org) as the high performance reverse proxy.
+APISIX ingress controller is a [Kubernetes ingress controller](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/) using [Apache APISIX](https://apisix.apache.org) as the high performance reverse proxy.
 
-It's configured by using the declarative configurations like [ApisixRoute](./concepts/apisix_route.md), [ApisixUpstream](./concepts/apisix_upstream.md), [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/).
-All these resources are watched and converted to corresponding resources in Apache APISIX.
+APISIX ingress controller can be configured using native Kubernetes ingress resources as well as a declarative and easy to use custom resources provided by APISIX. The APISIX ingress controller converts these resources to APISIX configuration.
 
-Service Discovery are also supported through [Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/),
-and will be reflected to nodes in APISIX Upstream.
+The examples below show how these differ. Both the examples configure a Route in APISIX that routes to an httpbin service as the Upstream.
 
-![scene](../../assets/images/scene.png)
+<Tabs
+groupId="resources"
+defaultValue="apisix"
+values={[
+{label: 'APISIX custom resource', value: 'apisix'},
+{label: 'Kubernetes ingress resource', value: 'kubernetes'},
+]}>
+
+<TabItem value="apisix">
+
+```yaml title="httpbin-route.yaml"
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpserver-route
+spec:
+  http:
+    - name: rule1
+      match:
+        hosts:
+          - local.httpbin.org
+        paths:
+          - /*
+      backends:
+        - serviceName: httpbin
+          servicePort: 80
+```
+
+</TabItem>
+
+<TabItem value="kubernetes">
+
+```yaml title="httpbin-route.yaml"
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: httpserver-ingress
+spec:
+  ingressClassName: apisix
+  rules:
+    - host: local.httpbin.org
+      http:
+        paths:
+          - backend:
+              service:
+                name: httpbin
+                port:
+                  number: 80
+            path: /
+            pathType: Prefix
+```
+
+</TabItem>
+</Tabs>
+
+APISIX ingress controller defines the CRDs [ApisixRoute](./concepts/apisix_route.md), [ApisixUpstream](./concepts/apisix_upstream.md), [ApisixTlx](concepts/apisix_tls.md), and [ApisixClusterConfig](concepts/apisix_cluster_config.md).
+
+APISIX also supports [service discovery](/docs/apisix/discovery/kubernetes/) through [Kubernetes service](https://kubernetes.io/docs/concepts/services-networking/service/) abstraction.
+
+<!-- ![scene](../../assets/images/scene.png) -->
+
+See [Design](./design.md) to learn more about how APISIX ingress controller works under the hood.
 
 ## Features
 
-* Declarative configuration
-* Full dynamic capabilities to delivery configurations.
-* Native Kubernetes Ingress (both v1 and v1beta1) support.
-* Service Discovery based on Kubernetes Service.
-* Out of box support for node health check.
-* Support load balancing based on Pod (upstream nodes).
-* Rich plugins support.
-* Easy to deploy and use.
+To summarize, APISIX ingress controller has the following features:
 
-## How It Works
+- Declarative configuration with CRDs.
+- Fully dynamic configuration.
+- Supports native Kubernetes Ingress resource (both v1 and v1beta1).
+- Supports service discovery through Kubernetes Service.
+- Out-of-the-box node health check support.
+- Supports load balancing based on pods (Upstream nodes).
+- Rich [Plugins](/docs/apisix/plugins/batch-requests/) with [custom Plugin](/docs/apisix/plugin-develop/) support.
 
-See [Design](./design.md) for more details.
+## Get involved
 
-## Installation on Cloud
+You can contribute to the development of APISIX ingress controller. See [Development guide](./contribute.md) for instructions on setting up the project locally.
 
-apisix-ingress-controller supports to be installed on some clouds such as AWS, GCP.
+See the [Contribute to APISIX](/docs/general/contributor-guide/) section for details on the contributing flow.
 
-* [Install Ingress APISIX on Azure AKS](https://apisix.apache.org/docs/ingress-controller/deployments/azure)
-* [Install Ingress APISIX on AWS EKS](https://apisix.apache.org/docs/ingress-controller/deployments/aws)
-* [Install Ingress APISIX on ACK](https://apisix.apache.org/docs/ingress-controller/deployments/ack)
-* [Install Ingress APISIX on Google Cloud GKE](https://apisix.apache.org/docs/ingress-controller/deployments/gke)
-* [Install Ingress APISIX on Minikube](https://apisix.apache.org/docs/ingress-controller/deployments/minikube)
-* [Install Ingress APISIX on KubeSphere](https://apisix.apache.org/docs/ingress-controller/deployments/kubesphere)
-* [Install Ingress APISIX on K3S and RKE](https://apisix.apache.org/docs/ingress-controller/deployments/k3s-rke)
+## Compatibility with APISIX
 
-## Installation on Prem
+The table below shows the compatibility between APISIX ingress controller and the APISIX proxy.
 
-If you want to deploy apisix-ingress-controller on Prem, we recommend you to use [Helm](https://helm.sh/). Just a few steps
-
-## Get Involved to Contribute
-
-First, your supports and cooperations to make this project better are appreciated.
-But before you start, please read [How to Contribute](./contribute.md)
-
-## Compatibility with Apache APISIX
-
-The following table describes the compatibility between apisix-ingress-controller and
-[Apache APISIX](https://apisix.apache.org).
-
-| apisix-ingress-controller | Apache APISIX |
-| ----:| ---:|
-| `master` | `>= 2.7`, `2.11` is recommended. |
-| `1.4.0` | `>= 2.7`, `2.11` is recommended. |
-| `1.3.0` | `>= 2.7`, `2.10` is recommended. |
-| `1.2.0` | `>= 2.7`, `2.8` is recommended. |
-| `1.1.0` | `>= 2.7`, `2.7` is recommended. |
-| `1.1.0` | `>= 2.7`, `2.7` is recommended. |
-| `1.0.0` | `>= 2.7`, `2.7` is recommended. |
-| `0.6` | `>= 2.6`, `2.6` is recommended. |
-| `0.5` | `>= 2.4`, `2.5` is recommended. |
-| `0.4` |`>= 2.4`|
+| APISIX ingress controller | Recommended APISIX version |
+| ------------------------: | -------------------------: |
+|                  `master` |           `>= 2.7`, `2.11` |
+|                   `1.4.0` |           `>= 2.7`, `2.11` |
+|                   `1.3.0` |           `>= 2.7`, `2.10` |
+|                   `1.2.0` |            `>= 2.7`, `2.8` |
+|                   `1.1.0` |            `>= 2.7`, `2.7` |
+|                   `1.1.0` |            `>= 2.7`, `2.7` |
+|                   `1.0.0` |            `>= 2.7`, `2.7` |
+|                     `0.6` |            `>= 2.6`, `2.6` |
+|                     `0.5` |            `>= 2.4`, `2.5` |
+|                     `0.4` |                   `>= 2.4` |
