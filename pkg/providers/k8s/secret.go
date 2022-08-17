@@ -400,8 +400,7 @@ func (c *secretController) onUpdate(prev, curr interface{}) {
 		return
 	}
 	log.Debugw("secret update event arrived",
-		zap.Any("new object", curr),
-		zap.Any("old object", prev),
+		zap.Any("secret name", curr.(*corev1.Secret).ObjectMeta.Name),
 	)
 	c.workqueue.Add(&types.Event{
 		Type:   types.EventUpdate,
