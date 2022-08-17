@@ -39,7 +39,7 @@ The examples below show how these differ. Both the examples configure a Route in
 groupId="resources"
 defaultValue="apisix"
 values={[
-{label: 'APISIX custom resource', value: 'apisix'},
+{label: 'APISIX Ingress custom resource', value: 'apisix'},
 {label: 'Kubernetes ingress resource', value: 'kubernetes'},
 ]}>
 
