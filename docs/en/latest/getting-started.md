@@ -120,15 +120,15 @@ See the [Contribute to APISIX](/docs/general/contributor-guide/) section for det
 
 The table below shows the compatibility between APISIX ingress controller and the APISIX proxy.
 
-| APISIX ingress controller | Recommended APISIX version |
-| ------------------------: | -------------------------: |
-|                  `master` |           `>= 2.7`, `2.11` |
-|                   `1.4.0` |           `>= 2.7`, `2.11` |
-|                   `1.3.0` |           `>= 2.7`, `2.10` |
-|                   `1.2.0` |            `>= 2.7`, `2.8` |
-|                   `1.1.0` |            `>= 2.7`, `2.7` |
-|                   `1.1.0` |            `>= 2.7`, `2.7` |
-|                   `1.0.0` |            `>= 2.7`, `2.7` |
-|                     `0.6` |            `>= 2.6`, `2.6` |
-|                     `0.5` |            `>= 2.4`, `2.5` |
-|                     `0.4` |                   `>= 2.4` |
+| APISIX ingress controller | Supported APISIX versions | Recommended APISIX version |
+| ------------------------- | ------------------------- | -------------------------- |
+| `master`                  | `>= 2.7`                  | `2.11`                     |
+| `1.4.0`                   | `>= 2.7`                  | `2.11`                     |
+| `1.3.0`                   | `>= 2.7`                  | `2.10`                     |
+| `1.2.0`                   | `>= 2.7`                  | `2.8`                      |
+| `1.1.0`                   | `>= 2.7`                  | `2.7`                      |
+| `1.1.0`                   | `>= 2.7`                  | `2.7`                      |
+| `1.0.0`                   | `>= 2.7`                  | `2.7`                      |
+| `0.6`                     | `>= 2.6`                  | `2.6`                      |
+| `0.5`                     | `>= 2.4`                  | `2.5`                      |
+| `0.4`                     | `>= 2.4`                  |                            |
