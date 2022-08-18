@@ -130,16 +130,14 @@ func (u *upstreamService) List(ctx context.Context) ([]*v1.UpstreamServiceRelati
 	return usrs, nil
 }
 
-func (u *upstreamService) checkUpstreamServiceRelation(us *v1.UpstreamServiceRelation) bool {
+func (u *upstreamService) initUpstreamServiceRelation(us *v1.UpstreamServiceRelation) {
 	if us.UpstreamName == "" || us.ServiceName != "" {
-		return false
+		return
 	}
 	args := strings.Split(us.UpstreamName, "_")
-	argsLen := len(args)
 	// namespace_service_subset_port
-	if argsLen < 2 {
-		return false
+	if len(args) < 2 {
+		return
 	}
 	us.ServiceName = args[0] + "_" + args[1]
-	return true
 }
