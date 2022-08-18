@@ -7,6 +7,21 @@
     },
     {
       "type": "category",
+      "label": "Installation",
+      "items": [
+        "deployments/ack",
+        "deployments/aws",
+        "deployments/azure",
+        "deployments/gke",
+        "deployments/kind",
+        "deployments/kubesphere",
+        "deployments/k3s-rke",
+        "deployments/minikube",
+        "deployments/tke"
+      ]
+    },
+    {
+      "type": "category",
       "label": "Tutorials",
       "items": [
         "tutorials/index",
@@ -21,21 +36,6 @@
         "tutorials/enable-authentication-and-restriction",
         "tutorials/how-to-access-Apache-APISIX-Prometheus-Metrics-on-k8s",
         "tutorials/how-to-use-go-plugin-runner-in-apisix-ingress"
-      ]
-    },
-    {
-      "type": "category",
-      "label": "Installation",
-      "items": [
-        "deployments/ack",
-        "deployments/aws",
-        "deployments/azure",
-        "deployments/gke",
-        "deployments/kind",
-        "deployments/kubesphere",
-        "deployments/k3s-rke",
-        "deployments/minikube",
-        "deployments/tke"
       ]
     },
     {
