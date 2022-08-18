@@ -92,9 +92,9 @@ spec:
 
 APISIX ingress controller defines the CRDs [ApisixRoute](./concepts/apisix_route.md), [ApisixUpstream](./concepts/apisix_upstream.md), [ApisixTlx](concepts/apisix_tls.md), and [ApisixClusterConfig](concepts/apisix_cluster_config.md).
 
-APISIX also supports [service discovery](/docs/apisix/discovery/kubernetes/) through [Kubernetes service](https://kubernetes.io/docs/concepts/services-networking/service/) abstraction.
+APISIX also supports [service discovery](https://apisix.apache.org/docs/apisix/next/discovery/kubernetes/) through [Kubernetes service](https://kubernetes.io/docs/concepts/services-networking/service/) abstraction.
 
-<!-- ![scene](../../assets/images/scene.png) -->
+![scene](../../assets/images/scene.png)
 
 See [Design](./design.md) to learn more about how APISIX ingress controller works under the hood.
 
@@ -108,13 +108,13 @@ To summarize, APISIX ingress controller has the following features:
 - Supports service discovery through Kubernetes Service.
 - Out-of-the-box node health check support.
 - Supports load balancing based on pods (Upstream nodes).
-- Rich [Plugins](/docs/apisix/plugins/batch-requests/) with [custom Plugin](/docs/apisix/plugin-develop/) support.
+- Rich [Plugins](https://apisix.apache.org/docs/apisix/next/plugins/batch-requests/) with [custom Plugin](https://apisix.apache.org/docs/apisix/next/plugin-develop/) support.
 
 ## Get involved
 
 You can contribute to the development of APISIX ingress controller. See [Development guide](./contribute.md) for instructions on setting up the project locally.
 
-See the [Contribute to APISIX](/docs/general/contributor-guide/) section for details on the contributing flow.
+See the [Contribute to APISIX](https://apisix.apache.org/docs/general/contributor-guide/) section for details on the contributing flow.
 
 ## Compatibility with APISIX
 
