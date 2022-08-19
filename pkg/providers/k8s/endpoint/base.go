@@ -57,7 +57,7 @@ func (c *baseEndpointController) syncEndpoint(ctx context.Context, ep kube.Endpo
 	svc, err := c.svcLister.Services(namespace).Get(svcName)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			log.Infof("service %s/%s not found", namespace, svcName)
+			c.syncEmptyEndpoint(ctx, ep)
 			return nil
 		}
 		log.Errorf("failed to get service %s/%s: %s", namespace, svcName, err)
@@ -129,6 +129,26 @@ func (c *baseEndpointController) syncEndpoint(ctx context.Context, ep kube.Endpo
 		}
 	default:
 		panic(fmt.Errorf("unsupported ApisixUpstream version %v", c.Kubernetes.APIVersion))
+	}
+	return nil
+}
+
+func (c *baseEndpointController) syncEmptyEndpoint(ctx context.Context, ep kube.Endpoint) error {
+	namespace, err := ep.Namespace()
+	if err != nil {
+		return err
+	}
+	svcName := ep.ServiceName()
+	log.Infow("The syncEndpoint, service has been deleted, try to update upstream",
+		zap.String("Namespace", namespace),
+		zap.String("ServiceName", svcName),
+	)
+	clusterName := c.Config.APISIX.DefaultClusterName
+	err = c.APISIX.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx, namespace+"_"+svcName)
+	if err != nil {
+		log.Errorw("try to update upstream failed!",
+			zap.Error(err),
+		)
 	}
 	return nil
 }

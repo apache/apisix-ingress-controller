@@ -402,8 +402,8 @@ type PluginConfig struct {
 // UpstreamServiceRelation Upstream association object
 // +k8s:deepcopy-gen=true
 type UpstreamServiceRelation struct {
-	ServiceName  string `json:"service_name" yaml:"service_name"`
-	UpstreamName string `json:"upstream_name,omitempty" yaml:"upstream_name,omitempty"`
+	ServiceName   string              `json:"service_name" yaml:"service_name"`
+	UpstreamNames map[string]struct{} `json:"upstream_name,omitempty" yaml:"upstream_name,omitempty"`
 }
 
 // NewDefaultUpstream returns an empty Upstream with default values.
@@ -493,7 +493,7 @@ func ComposeUpstreamName(namespace, name, subset string, port int32, resolveGran
 		buf.WriteByte('_')
 	}
 	buf.WriteString(pstr)
-	if resolveGranularity != "" {
+	if resolveGranularity != "" && resolveGranularity != types.ResolveGranularity.Endpoint {
 		buf.WriteByte('_')
 		buf.WriteString(resolveGranularity)
 	}

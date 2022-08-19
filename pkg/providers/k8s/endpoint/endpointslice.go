@@ -20,6 +20,7 @@ import (
 
 	"go.uber.org/zap"
 	discoveryv1 "k8s.io/api/discovery/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -28,7 +29,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
-	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
@@ -107,34 +107,24 @@ func (c *endpointSliceController) run(ctx context.Context) {
 }
 
 func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) error {
-	log.Debugw("process endpoint slice event",
+	log.Debugw("process endpoint slice sync event",
 		zap.Any("event", ev),
 	)
-	epEvent := ev.Object.(endpointSliceEvent)
-	namespace, _, err := cache.SplitMetaNamespaceKey(epEvent.Key)
+	ep := ev.Object.(kube.Endpoint)
+	ns, err := ep.Namespace()
 	if err != nil {
-		log.Errorf("found endpointSlice object with bad namespace/name: %s, ignore it", epEvent.Key)
-		return nil
-	}
-	if ev.Type == types.EventDelete {
-		log.Debugw("endpointsplice upstream serviece sync",
-			zap.String("service_name", epEvent.ServiceName))
-		clusterName := c.Config.APISIX.DefaultClusterName
-		err = c.APISIX.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx,
-			&v1.UpstreamServiceRelation{
-				ServiceName: namespace + "_" + epEvent.ServiceName,
-			})
-		if err != nil {
-			return err
-		}
-	}
-	ep, err := c.epLister.GetEndpoint(namespace, epEvent.ServiceName)
-	if err != nil {
-		log.Errorf("failed to get all endpointSlices for service %s: %s",
-			epEvent.ServiceName, err)
 		return err
 	}
-	return c.syncEndpoint(ctx, ep)
+
+	newestEp, err := c.epLister.GetEndpoint(ns, ep.ServiceName())
+	if err != nil {
+		if errors.IsNotFound(err) {
+			c.syncEmptyEndpoint(ctx, ep)
+			return nil
+		}
+		return err
+	}
+	return c.syncEndpoint(ctx, newestEp)
 }
 
 func (c *endpointSliceController) handleSyncErr(obj interface{}, err error) {
@@ -183,11 +173,8 @@ func (c *endpointSliceController) onAdd(obj interface{}) {
 	)
 
 	c.workqueue.Add(&types.Event{
-		Type: types.EventAdd,
-		Object: endpointSliceEvent{
-			Key:         key,
-			ServiceName: svcName,
-		},
+		Type:   types.EventAdd,
+		Object: kube.NewEndpointWithSlice(ep),
 	})
 
 	c.MetricsCollector.IncrEvents("endpointSlice", "add")
@@ -208,13 +195,13 @@ func (c *endpointSliceController) onUpdate(prev, curr interface{}) {
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
+	svcName := currEp.Labels[discoveryv1.LabelServiceName]
+	if svcName == "" {
+		return
+	}
 	if currEp.Labels[discoveryv1.LabelManagedBy] != _endpointSlicesManagedBy {
 		// We only care about endpointSlice objects managed by the EndpointSlices
 		// controller.
-		return
-	}
-	svcName := currEp.Labels[discoveryv1.LabelServiceName]
-	if svcName == "" {
 		return
 	}
 
@@ -225,10 +212,7 @@ func (c *endpointSliceController) onUpdate(prev, curr interface{}) {
 	c.workqueue.Add(&types.Event{
 		Type: types.EventUpdate,
 		// TODO pass key.
-		Object: endpointSliceEvent{
-			Key:         key,
-			ServiceName: svcName,
-		},
+		Object: kube.NewEndpointWithSlice(currEp),
 	})
 
 	c.MetricsCollector.IncrEvents("endpointSlice", "update")
@@ -252,21 +236,21 @@ func (c *endpointSliceController) onDelete(obj interface{}) {
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
+	svcName := ep.Labels[discoveryv1.LabelServiceName]
+	if svcName == "" {
+		return
+	}
 	if ep.Labels[discoveryv1.LabelManagedBy] != _endpointSlicesManagedBy {
 		// We only care about endpointSlice objects managed by the EndpointSlices
 		// controller.
 		return
 	}
-	svcName := ep.Labels[discoveryv1.LabelServiceName]
 	log.Debugw("endpoints delete event arrived",
 		zap.Any("object-key", key),
 	)
 	c.workqueue.Add(&types.Event{
-		Type: types.EventDelete,
-		Object: endpointSliceEvent{
-			Key:         key,
-			ServiceName: svcName,
-		},
+		Type:   types.EventDelete,
+		Object: kube.NewEndpointWithSlice(ep),
 	})
 
 	c.MetricsCollector.IncrEvents("endpointSlice", "delete")
