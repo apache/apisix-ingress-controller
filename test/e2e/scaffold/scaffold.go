@@ -368,6 +368,19 @@ func (s *Scaffold) RestartAPISIXDeploy() {
 	assert.NoError(s.t, err, "renew apisix tunnels")
 }
 
+func (s *Scaffold) RestartIngressControllerDeploy() {
+	pods, err := k8s.ListPodsE(s.t, s.kubectlOptions, metav1.ListOptions{
+		LabelSelector: "app=ingress-apisix-controller-deployment-e2e-test",
+	})
+	assert.NoError(s.t, err, "list ingress-controller pod")
+	for _, pod := range pods {
+		err = s.KillPod(pod.Name)
+		assert.NoError(s.t, err, "killing ingress-controller pod")
+	}
+	err = s.WaitAllIngressControllerPodsAvailable()
+	assert.NoError(s.t, err, "waiting for new ingress-controller instance ready")
+}
+
 func (s *Scaffold) beforeEach() {
 	var err error
 	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.opts.Name, time.Now().Nanosecond())

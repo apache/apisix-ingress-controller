@@ -42,7 +42,7 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", 
 	ginkgo.Context("with namespace_selector", func() {
 		ginkgo.It("resources in other namespaces should be ignored", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
-			route := fmt.Sprintf(`
+			route1 := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -62,8 +62,8 @@ spec:
               number: %d
 `, backendSvc, backendSvcPort[0])
 
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "creating ingress")
-			time.Sleep(6 * time.Second)
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route1), "creating ingress")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
 			body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
 			var placeholder ip
@@ -71,7 +71,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling IP")
 
 			// Now create another ingress in default namespace.
-			route = fmt.Sprintf(`
+			route2 := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -90,9 +90,32 @@ spec:
             port:
               number: %d
 `, backendSvc, backendSvcPort[0])
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route2, "default"), "creating ingress")
+			time.Sleep(6 * time.Second)
 
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route, "default"), "creating ingress")
+			routes, err := s.ListApisixRoutes()
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.Len(ginkgo.GinkgoT(), routes, 1)
+
 			_ = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)
+
+			s.RemoveResourceByString(route1)
+			time.Sleep(6 * time.Second)
+
+			routes, err = s.ListApisixRoutes()
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.Len(ginkgo.GinkgoT(), routes, 0)
+
+			s.RestartIngressControllerDeploy()
+			time.Sleep(6 * time.Second)
+
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.Len(ginkgo.GinkgoT(), routes, 0)
+
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route1), "creating ingress")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
+
+			_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK)
 		})
 	})
 })
