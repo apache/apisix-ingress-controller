@@ -20,10 +20,11 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestUpstreamServiceRelation(t *testing.T) {
@@ -54,7 +55,7 @@ func TestUpstreamServiceRelation(t *testing.T) {
 	assert.Equal(t, relation, &v1.UpstreamServiceRelation{
 		ServiceName: svcName,
 		UpstreamNames: map[string]struct{}{
-			upsName: struct{}{},
+			upsName: {},
 		},
 	})
 
@@ -67,8 +68,8 @@ func TestUpstreamServiceRelation(t *testing.T) {
 	assert.Equal(t, relation, &v1.UpstreamServiceRelation{
 		ServiceName: svcName,
 		UpstreamNames: map[string]struct{}{
-			upsName:  struct{}{},
-			upsName2: struct{}{},
+			upsName:  {},
+			upsName2: {},
 		},
 	})
 
@@ -78,8 +79,8 @@ func TestUpstreamServiceRelation(t *testing.T) {
 	assert.Equal(t, relations[0], &v1.UpstreamServiceRelation{
 		ServiceName: svcName,
 		UpstreamNames: map[string]struct{}{
-			upsName:  struct{}{},
-			upsName2: struct{}{},
+			upsName:  {},
+			upsName2: {},
 		},
 	})
 
@@ -152,7 +153,7 @@ func TestUpstreamRelatoinClient(t *testing.T) {
 	assert.Equal(t, relations[0], &v1.UpstreamServiceRelation{
 		ServiceName: svcName,
 		UpstreamNames: map[string]struct{}{
-			upsName: struct{}{},
+			upsName: {},
 		},
 	})
 
@@ -181,8 +182,8 @@ func TestUpstreamRelatoinClient(t *testing.T) {
 	assert.Equal(t, relations[0], &v1.UpstreamServiceRelation{
 		ServiceName: svcName,
 		UpstreamNames: map[string]struct{}{
-			upsName:  struct{}{},
-			upsName2: struct{}{},
+			upsName:  {},
+			upsName2: {},
 		},
 	})
 

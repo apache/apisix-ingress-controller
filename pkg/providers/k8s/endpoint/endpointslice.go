@@ -35,11 +35,6 @@ const (
 	_endpointSlicesManagedBy = "endpointslice-controller.k8s.io"
 )
 
-type endpointSliceEvent struct {
-	Key         string
-	ServiceName string
-}
-
 type endpointSliceController struct {
 	*baseEndpointController
 
@@ -119,8 +114,7 @@ func (c *endpointSliceController) sync(ctx context.Context, ev *types.Event) err
 	newestEp, err := c.epLister.GetEndpoint(ns, ep.ServiceName())
 	if err != nil {
 		if errors.IsNotFound(err) {
-			c.syncEmptyEndpoint(ctx, ep)
-			return nil
+			return c.syncEmptyEndpoint(ctx, ep)
 		}
 		return err
 	}

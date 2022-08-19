@@ -57,8 +57,7 @@ func (c *baseEndpointController) syncEndpoint(ctx context.Context, ep kube.Endpo
 	svc, err := c.svcLister.Services(namespace).Get(svcName)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			c.syncEmptyEndpoint(ctx, ep)
-			return nil
+			return c.syncEmptyEndpoint(ctx, ep)
 		}
 		log.Errorf("failed to get service %s/%s: %s", namespace, svcName, err)
 		return err

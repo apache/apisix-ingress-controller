@@ -64,7 +64,7 @@ func (u *upstreamService) Delete(ctx context.Context, serviceName string) error 
 		}
 		return err
 	}
-	for upsName, _ := range relation.UpstreamNames {
+	for upsName := range relation.UpstreamNames {
 		ups, err := u.cluster.upstream.Get(ctx, upsName)
 		if err != nil {
 			continue
@@ -81,6 +81,8 @@ func (u *upstreamService) Delete(ctx context.Context, serviceName string) error 
 	}
 	return nil
 }
+
+// to do: delete one of
 
 func (u *upstreamService) Create(ctx context.Context, upstreamName string) error {
 	log.Debugw("try to create upstreamService in cache",
@@ -106,7 +108,7 @@ func (u *upstreamService) Create(ctx context.Context, upstreamName string) error
 		relation = &v1.UpstreamServiceRelation{
 			ServiceName: serviceName,
 			UpstreamNames: map[string]struct{}{
-				upstreamName: struct{}{},
+				upstreamName: {},
 			},
 		}
 	} else {

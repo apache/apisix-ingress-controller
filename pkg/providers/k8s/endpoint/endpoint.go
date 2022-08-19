@@ -105,8 +105,7 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 	newestEp, err := c.epLister.GetEndpoint(ns, ep.ServiceName())
 	if err != nil {
 		if errors.IsNotFound(err) {
-			c.syncEmptyEndpoint(ctx, ep)
-			return nil
+			return c.syncEmptyEndpoint(ctx, ep)
 		}
 		return err
 	}
