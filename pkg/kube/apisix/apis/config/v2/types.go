@@ -70,7 +70,7 @@ type ApisixRouteHTTP struct {
 	Backends         []ApisixRouteHTTPBackend  `json:"backends,omitempty" yaml:"backends,omitempty"`
 	Websocket        bool                      `json:"websocket" yaml:"websocket"`
 	PluginConfigName string                    `json:"plugin_config_name,omitempty" yaml:"plugin_config_name,omitempty"`
-	Plugins          []ApisixRouteHTTPPlugin   `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Plugins          []ApisixRoutePlugin       `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 	Authentication   ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
@@ -152,19 +152,19 @@ type ApisixRouteHTTPMatchExprSubject struct {
 	Name string `json:"name" yaml:"name"`
 }
 
-// ApisixRouteHTTPPlugin represents an APISIX plugin.
-type ApisixRouteHTTPPlugin struct {
+// ApisixRoutePlugin represents an APISIX plugin.
+type ApisixRoutePlugin struct {
 	// The plugin name.
 	Name string `json:"name" yaml:"name"`
 	// Whether this plugin is in use, default is true.
 	Enable bool `json:"enable" yaml:"enable"`
 	// Plugin configuration.
-	Config ApisixRouteHTTPPluginConfig `json:"config" yaml:"config"`
+	Config ApisixRoutePluginConfig `json:"config" yaml:"config"`
 }
 
-// ApisixRouteHTTPPluginConfig is the configuration for
+// ApisixRoutePluginConfig is the configuration for
 // any plugins.
-type ApisixRouteHTTPPluginConfig map[string]interface{}
+type ApisixRoutePluginConfig map[string]interface{}
 
 // ApisixRouteAuthentication is the authentication-related
 // configuration in ApisixRoute.
@@ -189,16 +189,16 @@ type ApisixRouteAuthenticationJwtAuth struct {
 	Cookie string `json:"cookie,omitempty" yaml:"cookie,omitempty"`
 }
 
-func (p ApisixRouteHTTPPluginConfig) DeepCopyInto(out *ApisixRouteHTTPPluginConfig) {
+func (p ApisixRoutePluginConfig) DeepCopyInto(out *ApisixRoutePluginConfig) {
 	b, _ := json.Marshal(&p)
 	_ = json.Unmarshal(b, out)
 }
 
-func (p *ApisixRouteHTTPPluginConfig) DeepCopy() *ApisixRouteHTTPPluginConfig {
+func (p *ApisixRoutePluginConfig) DeepCopy() *ApisixRoutePluginConfig {
 	if p == nil {
 		return nil
 	}
-	out := new(ApisixRouteHTTPPluginConfig)
+	out := new(ApisixRoutePluginConfig)
 	p.DeepCopyInto(out)
 	return out
 }
@@ -206,11 +206,11 @@ func (p *ApisixRouteHTTPPluginConfig) DeepCopy() *ApisixRouteHTTPPluginConfig {
 // ApisixRouteStream is the configuration for level 4 route
 type ApisixRouteStream struct {
 	// The rule name, cannot be empty.
-	Name     string                    `json:"name" yaml:"name"`
-	Protocol string                    `json:"protocol" yaml:"protocol"`
-	Match    ApisixRouteStreamMatch    `json:"match" yaml:"match"`
-	Backend  ApisixRouteStreamBackend  `json:"backend" yaml:"backend"`
-	Plugins  []ApisixRouteStreamPlugin `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Name     string                   `json:"name" yaml:"name"`
+	Protocol string                   `json:"protocol" yaml:"protocol"`
+	Match    ApisixRouteStreamMatch   `json:"match" yaml:"match"`
+	Backend  ApisixRouteStreamBackend `json:"backend" yaml:"backend"`
+	Plugins  []ApisixRoutePlugin      `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 // ApisixRouteStreamMatch represents the match conditions of stream route.
@@ -235,34 +235,6 @@ type ApisixRouteStreamBackend struct {
 	// Subset specifies a subset for the target Service. The subset should be pre-defined
 	// in ApisixUpstream about this service.
 	Subset string `json:"subset,omitempty" yaml:"subset,omitempty"`
-}
-
-// ApisixRouteStreamPlugin represents an APISIX strem plugin.
-type ApisixRouteStreamPlugin struct {
-	// The plugin name.
-	Name string `json:"name" yaml:"name"`
-	// Whether this plugin is in use, default is true.
-	Enable bool `json:"enable" yaml:"enable"`
-	// Plugin configuration.
-	Config ApisixRouteStreamPluginConfig `json:"config" yaml:"config"`
-}
-
-// ApisixRouteStreamPluginConfig is the configuration for
-// any stream plugins.
-type ApisixRouteStreamPluginConfig map[string]interface{}
-
-func (p ApisixRouteStreamPluginConfig) DeepCopyInto(out *ApisixRouteStreamPluginConfig) {
-	b, _ := json.Marshal(&p)
-	_ = json.Unmarshal(b, out)
-}
-
-func (p *ApisixRouteStreamPluginConfig) DeepCopy() *ApisixRouteStreamPluginConfig {
-	if p == nil {
-		return nil
-	}
-	out := new(ApisixRouteStreamPluginConfig)
-	p.DeepCopyInto(out)
-	return out
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -720,9 +692,9 @@ type ApisixPluginConfig struct {
 
 // ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
 type ApisixPluginConfigSpec struct {
-	// Plugins contains a list of ApisixRouteHTTPPlugin
+	// Plugins contains a list of ApisixRoutePlugin
 	// +required
-	Plugins []ApisixRouteHTTPPlugin `json:"plugins" yaml:"plugins"`
+	Plugins []ApisixRoutePlugin `json:"plugins" yaml:"plugins"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
