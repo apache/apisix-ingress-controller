@@ -124,7 +124,7 @@ func Test_validatePlugin(t *testing.T) {
 	fakeClient := newFakeSchemaClient()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotValid, _ := validatePlugin(fakeClient, tt.pluginName, v2.ApisixRouteHTTPPluginConfig(tt.pluginConfig))
+			gotValid, _ := validatePlugin(fakeClient, tt.pluginName, v2.ApisixRoutePluginConfig(tt.pluginConfig))
 			if gotValid != tt.wantValid {
 				t.Errorf("validatePlugin() gotValid = %v, want %v", gotValid, tt.wantValid)
 			}
