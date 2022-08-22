@@ -11,9 +11,9 @@ require (
 	github.com/gruntwork-io/terratest v0.40.19
 	github.com/onsi/ginkgo/v2 v2.1.4
 	github.com/stretchr/testify v1.8.0
-	k8s.io/api v0.24.3
-	k8s.io/apimachinery v0.24.3
-	k8s.io/client-go v0.24.3
+	k8s.io/api v0.24.4
+	k8s.io/apimachinery v0.24.4
+	k8s.io/client-go v0.24.4
 )
 
 require (
