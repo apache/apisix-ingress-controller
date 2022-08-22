@@ -79,6 +79,10 @@ type Config struct {
 	KeyFilePath                string             `json:"key_file" yaml:"key_file"`
 	LogLevel                   string             `json:"log_level" yaml:"log_level"`
 	LogOutput                  string             `json:"log_output" yaml:"log_output"`
+	LogRotateOutputPath        string             `json:"log_rotate_output_path" yaml:"log_rotate_output_path"`
+	LogRotationMaxSize         int                `json:"log_rotation_max_size" yaml:"log_rotation_max_size"`
+	LogRotationMaxAge          int                `json:"log_rotation_max_age" yaml:"log_rotation_max_age"`
+	LogRotationMaxBackups      int                `json:"log_rotation_max_backups" yaml:"log_rotation_max_backups"`
 	HTTPListen                 string             `json:"http_listen" yaml:"http_listen"`
 	HTTPSListen                string             `json:"https_listen" yaml:"https_listen"`
 	IngressPublishService      string             `json:"ingress_publish_service" yaml:"ingress_publish_service"`
@@ -99,7 +103,6 @@ type KubernetesConfig struct {
 	IngressClass        string             `json:"ingress_class" yaml:"ingress_class"`
 	IngressVersion      string             `json:"ingress_version" yaml:"ingress_version"`
 	WatchEndpointSlices bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
-	ApisixRouteVersion  string             `json:"apisix_route_version" yaml:"apisix_route_version"`
 	APIVersion          string             `json:"api_version" yaml:"api_version"`
 	EnableGatewayAPI    bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
 }
@@ -121,6 +124,10 @@ func NewDefaultConfig() *Config {
 	return &Config{
 		LogLevel:                   "warn",
 		LogOutput:                  "stderr",
+		LogRotateOutputPath:        "",
+		LogRotationMaxSize:         100,
+		LogRotationMaxAge:          0,
+		LogRotationMaxBackups:      0,
 		HTTPListen:                 ":8080",
 		HTTPSListen:                ":8443",
 		IngressPublishService:      "",
@@ -136,7 +143,6 @@ func NewDefaultConfig() *Config {
 			ElectionID:          IngressAPISIXLeader,
 			IngressClass:        IngressClass,
 			IngressVersion:      IngressNetworkingV1,
-			ApisixRouteVersion:  DefaultAPIVersion,
 			APIVersion:          DefaultAPIVersion,
 			WatchEndpointSlices: false,
 			EnableGatewayAPI:    false,

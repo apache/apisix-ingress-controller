@@ -78,6 +78,51 @@ func TestItemConvertRoute(t *testing.T) {
 	assert.Equal(t, r.Name, "unknown")
 }
 
+func TestItemConvertUpstream(t *testing.T) {
+	ite := &item{
+		Key:   "/apisix/upstreams/419655639963271872",
+		Value: json.RawMessage(`{ "nodes":{"httpbin.org:80":1, "foo.com:8080": 2}}`),
+	}
+	ups, err := ite.upstream()
+	assert.Nil(t, err)
+	assert.Len(t, ups.Nodes, 2)
+	assert.Equal(t, ups.Nodes[0], v1.UpstreamNode{Host: "httpbin.org", Port: 80, Weight: 1})
+	assert.Equal(t, ups.Nodes[1], v1.UpstreamNode{Host: "foo.com", Port: 8080, Weight: 2})
+
+	ite = &item{
+		Key: "/apisix/upstreams/419655639963271872",
+		Value: json.RawMessage(`
+{
+	"id": "419655639963271872",
+	"nodes": [
+		{
+			"host": "httpbin.org",
+			"port": 80,
+			  "weight": 1
+		},
+		{
+			"host": "httpbin.com",
+			"port": 8080,
+			"weight": 1
+		}
+	]
+}`),
+	}
+	ups, err = ite.upstream()
+	assert.Nil(t, err)
+	assert.Len(t, ups.Nodes, 2)
+	assert.Equal(t, ups.Nodes[0], v1.UpstreamNode{Host: "httpbin.org", Port: 80, Weight: 1})
+	assert.Equal(t, ups.Nodes[1], v1.UpstreamNode{Host: "httpbin.com", Port: 8080, Weight: 1})
+
+	ite = &item{
+		Key:   "/apisix/upstreams/419655639963271872",
+		Value: json.RawMessage(`{ "id":"419655639963271872" }`),
+	}
+	ups, err = ite.upstream()
+	assert.Nil(t, err)
+	assert.Len(t, ups.Nodes, 0)
+}
+
 func TestRouteVarsUnmarshalJSONCompatibility(t *testing.T) {
 	var route v1.Route
 	data := `{"vars":{}}`

@@ -19,6 +19,7 @@
 
 # Table of Contents
 
+- [1.5.0-rc1](#150-rc1)
 - [1.4.1](#141)
 - [1.4.0](#140)
 - [1.3.0](#130)
@@ -31,6 +32,292 @@
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 1.5.0-rc1
+
+Welcome to the 1.5.0 release of apisix-ingress-controller!
+
+This is a feature release.
+
+## Highlights
+
+The API version of all custom resources has been upgraded to v2 in this release and mark v2beta3 as deprecated. We plan to remove the v2beta2 API version in the next release. Please go to [#707](https://github.com/apache/apisix-ingress-controller/issues/707) for detail.
+
+We have added partial support for Gateway API, which is not enabled by default, you can set `enable_gateway_api=true` to enable it.
+
+Ingress resources can now use all APISIX plugin configurations by setting the annotation `k8s.apisix.apache.org/plugin-config-name=xxx`.
+
+Please try out the release binaries and report any issues at
+https://github.com/apache/apisix-ingress-controller/issues.
+
+### Contributors
+
+* Jintao Zhang
+* Sarasa Kisaragi
+* Xin Rong
+* John Chever
+* cmssczy
+* dependabot[bot]
+* nevercase
+* Gallardot
+* Nic
+* lsy
+* mango
+* Fatpa
+* Hoshea Jiang
+* JasonZhu
+* Xin Rong
+* Yu.Bozhong
+* seven dickens
+* FesonX
+* GhangZh
+* JasonZhu
+* Kowsz
+* LetsGO
+* Sindweller
+* SkyeYoung
+* Zack Sun
+* bin-ya
+* champly
+* chen zhuo
+* fengxsong
+* greenhandatsjtu
+* hahayyun
+* hf400159
+* wangyunpeng
+* 罗泽轩
+
+### Changes
+<details><summary>144 commits</summary>
+<p>
+
+* [`cccad72`](https://github.com/apache/apisix-ingress-controller/commit/cccad72a1e0ef60525c69371b4b27c4598c587c1) chore: mark v2beta3 deprecated (#1198)
+* [`698ab6d`](https://github.com/apache/apisix-ingress-controller/commit/698ab6d52d4eef0d4404fa3bec43b20039ce9370) chore: Using APISIX 2.15.0 for CI (#1197)
+* [`8094868`](https://github.com/apache/apisix-ingress-controller/commit/80948682d73cb7813d06f85e548392f19dc465f4) e2e: add sync case (#1196)
+* [`37a8e5c`](https://github.com/apache/apisix-ingress-controller/commit/37a8e5c837cd2a8a459bec054c3ed73bac9b52bb) fix: translate error of old Ingress (#1193)
+* [`339531f`](https://github.com/apache/apisix-ingress-controller/commit/339531f3eceb2ce24f07cc6b255fde94f201879a) doc: add a notice about the compatibility of Ingress and Dashboard (#1195)
+* [`2cc586b`](https://github.com/apache/apisix-ingress-controller/commit/2cc586bbe06d3dd4c1c904fd487a9eaa13b5b3a2) fix: apisix_upstream sync panic (#1192)
+* [`6cc718b`](https://github.com/apache/apisix-ingress-controller/commit/6cc718bb85a3d61f3702ba0514e5408d48a873da) helm: update deploy cluster role (#1131)
+* [`3d720c0`](https://github.com/apache/apisix-ingress-controller/commit/3d720c0f9ba41fb2067d3a552a45d357c7a420f7) fix: translate error of old ApisixRoute (#1191)
+* [`8b51c6e`](https://github.com/apache/apisix-ingress-controller/commit/8b51c6e173db12592f6fcfa8d59aaa6fd50e7922) docs: update all api-version to v2 (#1189)
+* [`5f45b63`](https://github.com/apache/apisix-ingress-controller/commit/5f45b63b3d3716dd5de9f0288a6dd5c28228c40d) fix: ScopeQuery should be case sensitive (#1168) (#1188)
+* [`af03e7a`](https://github.com/apache/apisix-ingress-controller/commit/af03e7a95785d0905f33a3458ce2cda02db41853) chore: update APISIX v2.14.1 (#1145)
+* [`516e677`](https://github.com/apache/apisix-ingress-controller/commit/516e6771ff9dd94347177c83b290a2292f4f350c) chore(deps): bump github.com/gin-gonic/gin from 1.7.7 to 1.8.1 (#1184)
+* [`a0bc739`](https://github.com/apache/apisix-ingress-controller/commit/a0bc73990c9d6e2aee4b063232e09de01de8012e) fix: trigger ApisixRoute event when service is created (#1152)
+* [`1765ec9`](https://github.com/apache/apisix-ingress-controller/commit/1765ec9ffe683a323fd3a851e0ea069173950481) test: keep namespace when test failed in dev mod (#1158)
+* [`b1add53`](https://github.com/apache/apisix-ingress-controller/commit/b1add53cbc915af476d61a2798db82eb6bef80b1) Chore dep update (#1180)
+* [`8c2cfbc`](https://github.com/apache/apisix-ingress-controller/commit/8c2cfbc24db8a0ee76a681dec92b85920abd47b8) chore(deps): bump github.com/stretchr/testify from 1.7.0 to 1.8.0 (#1175)
+* [`1a5f2c1`](https://github.com/apache/apisix-ingress-controller/commit/1a5f2c16f96034ec6d66c65a1eaec603fe1c85db) chore(deps): bump github.com/spf13/cobra from 1.2.1 to 1.5.0 (#1176)
+* [`3299260`](https://github.com/apache/apisix-ingress-controller/commit/3299260a958b200c2e3f51789a569971fe8d2157) chore(deps): bump k8s.io/client-go and go-memdb etc. (#1172)
+* [`628abb9`](https://github.com/apache/apisix-ingress-controller/commit/628abb945f7bc515bd5fcccf1479443305236478) ci: upgrade e2e-test-ci (#1149)
+* [`9a6bd92`](https://github.com/apache/apisix-ingress-controller/commit/9a6bd925a3bfb93b2734098d6e29860105b791b1) chore(deps): bump github.com/gruntwork-io/terratest in /test/e2e (#1156)
+* [`edb19cd`](https://github.com/apache/apisix-ingress-controller/commit/edb19cdf34e2f3b3558f0bdbbfa458e6093b51a3) chore(deps): bump github.com/gorilla/websocket in /test/e2e (#1114)
+* [`f198f33`](https://github.com/apache/apisix-ingress-controller/commit/f198f33c74fd2fc3361d01a60f37f37368f6a155) chore(deps): some dependency updates (#1160)
+* [`e75f7e9`](https://github.com/apache/apisix-ingress-controller/commit/e75f7e9b1a3c1b3a9bee3a764d379ca661bd7bb9) chore: change description and labels for this project (#1150)
+* [`35ca03c`](https://github.com/apache/apisix-ingress-controller/commit/35ca03cbb4a4779a131ed52f5da2515624c9f00d) test: add e2e tests and CRDs for ApisixUpstream v2 (#1147)
+* [`6cf8bb7`](https://github.com/apache/apisix-ingress-controller/commit/6cf8bb7c491f5ee9fbc887eef724308ba96e2242) feat: Add annotations to combine ApisixPluginConfig with k8s ingress resource (#1139)
+* [`73498bd`](https://github.com/apache/apisix-ingress-controller/commit/73498bd761e661989b7397eeb12bf18c57683abe) docs: update crd version (#1134)
+* [`a649751`](https://github.com/apache/apisix-ingress-controller/commit/a649751dbdd42cea64ad574dda6fe1eeba6a4a5a) feat: ApisixUpstream v2 (#1141)
+* [`a73b52d`](https://github.com/apache/apisix-ingress-controller/commit/a73b52d3946dcc08473888445a0c66152e659120) feat: support endpointslice, and improve test/e2e/endpoints.go tests. (#1140)
+* [`f0217ae`](https://github.com/apache/apisix-ingress-controller/commit/f0217ae5b022d6086bab2155dd3053567b3fc3aa) ci: pin skywalking-eyes to release (#1143)
+* [`62e0ea2`](https://github.com/apache/apisix-ingress-controller/commit/62e0ea20031ebfa664af5b0d5ab2e76336bac107) chore: add log for syncManifest delete upstream (#1132)
+* [`374f865`](https://github.com/apache/apisix-ingress-controller/commit/374f86565ac3c84b1a19e0450c2251b1dfce58f0) make api version const consistent (#1133)
+* [`93c10e6`](https://github.com/apache/apisix-ingress-controller/commit/93c10e6023ab10aa70e8a61992372ce0869139a9) fix: verify through the cache first, then delete (#1135)
+* [`a642b14`](https://github.com/apache/apisix-ingress-controller/commit/a642b1492dc9e00f350aaacb06fea6025bc4e809) doc: fix enable-authentication-and-restriction.md link failed (#1137)
+* [`e25abdb`](https://github.com/apache/apisix-ingress-controller/commit/e25abdb2be54865be03a7d486960e9c77eb1ba86) fix: ns should unwatch after unlabeling it (#1130)
+* [`398f816`](https://github.com/apache/apisix-ingress-controller/commit/398f816a57e496d0966c6103ab8ab1cae28cf852) e2e-test: Optimize the runtime of ingress/features, and support more default value in NewScaffold (#1128)
+* [`4d172a0`](https://github.com/apache/apisix-ingress-controller/commit/4d172a0306eed6216fd8bf057fd1506053a4a303) chore(deps): bump github.com/stretchr/testify in /test/e2e (#1113)
+* [`aae2105`](https://github.com/apache/apisix-ingress-controller/commit/aae2105e123008a0170b68a0133432695ee230c9) feat: ingress annotations support enable websocket (#1101)
+* [`70c0870`](https://github.com/apache/apisix-ingress-controller/commit/70c08706ae7cae73bc9b08d2ec2d29b98e5b4f89) chore(deps): bump github.com/gruntwork-io/terratest from 0.32.8 to 0.40.17 in /test/e2e (#1112)
+* [`4bc9f0c`](https://github.com/apache/apisix-ingress-controller/commit/4bc9f0cac1205ed71bf355817ec7db09690398f8) fix: update Makefile verify-mdlint (#1126)
+* [`4aa2ca5`](https://github.com/apache/apisix-ingress-controller/commit/4aa2ca5a80149e2cd5bddf8b1fb51ef2f64cfbc3) test: support ApisixRoute v2 and split suit-plugins (#1103)
+* [`810f1a1`](https://github.com/apache/apisix-ingress-controller/commit/810f1a1c5b232808e77f8f153d3ec90c3008e3c0) docs: rename practices to tutorials and add index (#1123)
+* [`b1dc75e`](https://github.com/apache/apisix-ingress-controller/commit/b1dc75e198dbacc4d66e9d2bfbb259cfea9c67a3) chore: enable dependabot for security (#1111)
+* [`0e1f8d4`](https://github.com/apache/apisix-ingress-controller/commit/0e1f8d4afdf4d90743ef238872d1e383cdfa93a4) fix : The ingress backend is modified several times, resulting in residual update events (#1040)
+* [`b33d70c`](https://github.com/apache/apisix-ingress-controller/commit/b33d70c429d32db6d2a065463d37a73ff59ab4ad) feat: support gateway TLSRoute (#1087)
+* [`49991e2`](https://github.com/apache/apisix-ingress-controller/commit/49991e2e74b3a9a40d2ee9bb645408a338458921) feat: sync CRD and ingress resource to apisix mechanism. (#1102)
+* [`f453e80`](https://github.com/apache/apisix-ingress-controller/commit/f453e8071fd7d320b7847235d6b61596c8ef3402) chore: enable stale GitHub action (#1107)
+* [`9e0c658`](https://github.com/apache/apisix-ingress-controller/commit/9e0c658cd2387165b5e0b5fc8d91f6464e3ad406) fix: upstream nodes filed IP occupation. (#1064)
+* [`d46b8e0`](https://github.com/apache/apisix-ingress-controller/commit/d46b8e0f79172ca38b3e8ce93552b7ba1225aca4) feat: support v2 in resource compare (#1093)
+* [`0f95dbe`](https://github.com/apache/apisix-ingress-controller/commit/0f95dbe989921d6b76156d62a3ec93804d21ac50) doc: add v2 CRD reference (#1068)
+* [`5756273`](https://github.com/apache/apisix-ingress-controller/commit/57562739ee06ae080bdbabc35ed3b2e2cd397e42) infra: update golang 1.18 (#1095)
+* [`a69a55a`](https://github.com/apache/apisix-ingress-controller/commit/a69a55aff459ff6aa842c4ab7914b022883a8d46) Revert "feat: sync CRD and ingress resource to APISIX mechanism. (#1022)" (#1099)
+* [`6394cdd`](https://github.com/apache/apisix-ingress-controller/commit/6394cdd11e96f205756bb8c19eaa047bdc114774) feat: sync CRD and ingress resource to APISIX mechanism. (#1022)
+* [`50d6026`](https://github.com/apache/apisix-ingress-controller/commit/50d6026df3953f9005bdd6ce4055909d0b2e3310) fix: make ApisixRouteHTTPBackend support serivce name (#1096)
+* [`3214c69`](https://github.com/apache/apisix-ingress-controller/commit/3214c698f9dd2dc7797fce837e16d15d60f64050) fix: e2e robustness. (#1078)
+* [`c48a62a`](https://github.com/apache/apisix-ingress-controller/commit/c48a62abfbd0b546c1d89bb7931caf1ed11abbb3) feat: support GatewayClass, refactor gateway modules (#1079)
+* [`a0b88d1`](https://github.com/apache/apisix-ingress-controller/commit/a0b88d11c4e906722d7928e7bdd985435e9cbe1c) fix: tag for keyAuth field (#1080)
+* [`f0d64b6`](https://github.com/apache/apisix-ingress-controller/commit/f0d64b6d8ce4f4f1b5f15d03938f3a87b71a84a8) docs: correct typo & link (#1073)
+* [`3520830`](https://github.com/apache/apisix-ingress-controller/commit/3520830ad446ffc8087d48c82e284d1ae08db64c) e2e: gateway api httproute (#1060)
+* [`2af39c9`](https://github.com/apache/apisix-ingress-controller/commit/2af39c949883dc831aa64be075aa7cc0edd2dd8a) docs: add how to change Admin API key for APISIX (#1031)
+* [`96dd07f`](https://github.com/apache/apisix-ingress-controller/commit/96dd07f847bff9d425b223e0bcac0eea2efe6316) e2e-test: add e2e tests for ApisixPluginConfig v2 (#1067)
+* [`d3a823f`](https://github.com/apache/apisix-ingress-controller/commit/d3a823f590843468a555ccc68502acc568d9a9f3) doc: update enable-authentication-and-restriction, jwt-auth and wolf-rbac examples. (#1018)
+* [`deb0440`](https://github.com/apache/apisix-ingress-controller/commit/deb044039e889e88310523f369833bb137c0e145) docs: add "how to use go plugin runner with APISIX Ingress" (#994)
+* [`8d76428`](https://github.com/apache/apisix-ingress-controller/commit/8d764286b018c22b20b62591b7bb68b93de0a93b) e2e-test: upgrade to ginkgo v2 (#1046)
+* [`408eb0d`](https://github.com/apache/apisix-ingress-controller/commit/408eb0d1c9b05517e530688e2e6e82c721699548) feat: support ApisixPluginConfig v2 (#984)
+* [`e1d496d`](https://github.com/apache/apisix-ingress-controller/commit/e1d496dd074eb19982b9e198370440ebd0d16f87) e2e-test: add e2e tests and CRDs for ApisixConsumer v2 (#1044)
+* [`6c7452f`](https://github.com/apache/apisix-ingress-controller/commit/6c7452ffab358c47e25882d802e4cc891e95eb37) feat: support gateway API HTTPRoute (#1037)
+* [`5477fb0`](https://github.com/apache/apisix-ingress-controller/commit/5477fb0e5f62f1c9b1716824bcf0fb7f038b02a7) test: fix wolf-rbac and mTLS test cases (#1055)
+* [`df7a724`](https://github.com/apache/apisix-ingress-controller/commit/df7a724ce11d23ad441209cf2592426f251f597c) e2e-test: add e2e tests and CRDs for ApisixClusterConfig v2 (#1016)
+* [`25daa6e`](https://github.com/apache/apisix-ingress-controller/commit/25daa6e2f02ceb459f605ca2bb5a3aaa8973c624) feat: add csrf plugin annotation in ingress resource (#1023)
+* [`59ba41a`](https://github.com/apache/apisix-ingress-controller/commit/59ba41a8c5780b9273610e944aabda700078a3db) feat: add hmac-auth authorization method (#1035)
+* [`49dd015`](https://github.com/apache/apisix-ingress-controller/commit/49dd015085a68ce4c26ba60076ef281ed71af2aa) doc: update contribute.md doc (#1036)
+* [`f6f0a3b`](https://github.com/apache/apisix-ingress-controller/commit/f6f0a3b5552ba8fda556e0edb9296c1c0a4c3e31) feat: support ApisixConsumer v2 (#989)
+* [`bef2010`](https://github.com/apache/apisix-ingress-controller/commit/bef2010bbc33667bbefd3e718997fe4d20e2f5f8) doc: paraphrasing some descriptions (#1028)
+* [`9bd4b71`](https://github.com/apache/apisix-ingress-controller/commit/9bd4b714ceb8fd427b325757e10090f056803cd3) chore: Changelog for 1.4.1 (#1029)
+* [`537b947`](https://github.com/apache/apisix-ingress-controller/commit/537b947ab708c12c50e33b37c94caf73589bb65d) doc: add apisix_pluginconfig document (#1025)
+* [`bb5104e`](https://github.com/apache/apisix-ingress-controller/commit/bb5104e46911d187b2d624378b0f4c3ed5e7e38a) feat: add wolf-rbac authorization method. (#1011)
+* [`3cccd56`](https://github.com/apache/apisix-ingress-controller/commit/3cccd5666e098f374c262eb443de194d69d6a55e) feat: add jwt-auth authorization method (#1009)
+* [`cd5063f`](https://github.com/apache/apisix-ingress-controller/commit/cd5063f04881248338595cb85100ef1009e75a80) e2e-test: add e2e tests and CRDs for ApisixTls v2 (#1014)
+* [`bac9813`](https://github.com/apache/apisix-ingress-controller/commit/bac9813e4c90a56dadba89808da2faa3d0834b79) feat: support ApisixClusterConfig v2 (#977)
+* [`e2f19b5`](https://github.com/apache/apisix-ingress-controller/commit/e2f19b563e672f21f9bc72c3890ed74908ddc9cc) feat: support ApisixTls v2 (#967)
+* [`75a4166`](https://github.com/apache/apisix-ingress-controller/commit/75a4166bf52fa24da1a9a0f92c0fd7dfc99d5480) docs: added "how to access Apache APISIX Prometheus Metrics on k8s" (#973)
+* [`670d671`](https://github.com/apache/apisix-ingress-controller/commit/670d671d436701ec8083248c6b23713a50ec0c4c) feat:add authorization-annotation the ingress resource (#985)
+* [`78efb00`](https://github.com/apache/apisix-ingress-controller/commit/78efb006a4285a9c558cb50524478f944f849906) feat: update an redirect annotation for ingress resource (#975)
+* [`3a175e5`](https://github.com/apache/apisix-ingress-controller/commit/3a175e5b9a2c221641c74271eca94079d41501a3) chore: modify metrics name apisix_bad_status_codes to apisix_status_codes (#1012)
+* [`f63a29f`](https://github.com/apache/apisix-ingress-controller/commit/f63a29f71e700b381503c9485f41e5225fbe1d9c) doc: add 'enable authentication and restriction' document (#972)
+* [`1899d90`](https://github.com/apache/apisix-ingress-controller/commit/1899d9018ba05eeb34c171d279c445815f248bf8) feat: improve the e2e test of referer-restriction plugin (#976)
+* [`795be22`](https://github.com/apache/apisix-ingress-controller/commit/795be227d9c73bccc079ca263f098cf54d745f62) docs: fix link in certificate management docs (#1007)
+* [`92b89b3`](https://github.com/apache/apisix-ingress-controller/commit/92b89b37d2f63eab6f5c6deb6e3d2a5ccae975aa) chore: update apisix to 2.13.1 (#996)
+* [`eefeec8`](https://github.com/apache/apisix-ingress-controller/commit/eefeec87c53bcf674f9f1241f47b11a163c6ee48) docs: update apisix_upstream.md (#983)
+* [`4a0fc0c`](https://github.com/apache/apisix-ingress-controller/commit/4a0fc0c4b91650bf073047f64c76e82080f3578f) chore: Fix some code formats (#968)
+* [`0f4391a`](https://github.com/apache/apisix-ingress-controller/commit/0f4391a87a38ae9a2c61a0cea717cb831fc55506) refactor: encapsulate functions to reuse code (#971)
+* [`64e2768`](https://github.com/apache/apisix-ingress-controller/commit/64e276813eb539baed44e574c20d2336e119b101) ci: add 3 plugin test cases for e2e (#965)
+* [`f081121`](https://github.com/apache/apisix-ingress-controller/commit/f0811211a718193f8c8a44b7ad12b163ed641f19) feat: add e2e test for serverless plugin (#964)
+* [`eb02429`](https://github.com/apache/apisix-ingress-controller/commit/eb02429de6b92fb7fc6e322f052f33098bd4654f) feat: support forward-auth plugin (#937)
+* [`77ab065`](https://github.com/apache/apisix-ingress-controller/commit/77ab065500cdcf2a95b9126d222f3ae82efac8f5) ci: add dependency-review (#963)
+* [`fe628f6`](https://github.com/apache/apisix-ingress-controller/commit/fe628f68ab8ed36547e0d224694a09cba06453b1) docs: fix subset field typo (#961)
+* [`aee6e78`](https://github.com/apache/apisix-ingress-controller/commit/aee6e7893a731b623fd3bf4f0c1f7bd8d35efae1) fix ApisixConsumerBasicAuthValue password-yaml field error (#960)
+* [`0790458`](https://github.com/apache/apisix-ingress-controller/commit/079045836392432e6836f67f9076f63c85dd6243) ci: fix server-info e2e test case(#959)
+* [`22cfb5e`](https://github.com/apache/apisix-ingress-controller/commit/22cfb5ec7482e1bca6d293091ce8c7aa5342260b) Add a pre-check for E2E tests (#957)
+* [`4bdc947`](https://github.com/apache/apisix-ingress-controller/commit/4bdc9471172a8b1574c61ba5ad5b8fbc4160fc22) Split e2e test cases (#949)
+* [`de33d05`](https://github.com/apache/apisix-ingress-controller/commit/de33d05aeff9ec5fdd1a2431c01535566437ee12) feat(e2e): add e2e test for prometheus (#942)
+* [`7e4ec36`](https://github.com/apache/apisix-ingress-controller/commit/7e4ec36e36c9114d99156e72b19142d2026533fc) fix: ingress update event handler not filter by watching namespaces (#947)
+* [`b5ea236`](https://github.com/apache/apisix-ingress-controller/commit/b5ea23679136b4fc6181d838c8bd36c03ef687b4) docs: update the hard way. (#946)
+* [`f58f3d5`](https://github.com/apache/apisix-ingress-controller/commit/f58f3d51889fe72609ca0b837b373e62306f9a3a) feat: change ApisixRoute to v2 api version (#943)
+* [`3b99353`](https://github.com/apache/apisix-ingress-controller/commit/3b993533d66b25c186f4096727d373e5ed4131c6) feat: introduce v2 apiversion (#939)
+* [`cb45119`](https://github.com/apache/apisix-ingress-controller/commit/cb45119b4c4ec7e9814487b4f29789b4778075e5) doc: add doc about installing apisix ingress with kind (#933)
+* [`4da91b7`](https://github.com/apache/apisix-ingress-controller/commit/4da91b7971d3defd137f35de84f107612e6f96bd) chore: drop v2beta1 api version (#928)
+* [`81831d5`](https://github.com/apache/apisix-ingress-controller/commit/81831d51b39a1df2db4beeb7d9d7af429e0425fc) docs: remove ApisixRoute v2beta1 & v2alphq1 (#930)
+* [`0a66151`](https://github.com/apache/apisix-ingress-controller/commit/0a66151853b2e0ee1d9c43af62f144f9dc63a688) fix: watch all namespaces by default (#919)
+* [`2178857`](https://github.com/apache/apisix-ingress-controller/commit/2178857fbe2608cec1dc8ce5b1e0ec232568b375) fix: ApisixRouteEvent type assertion (#925)
+* [`c9e0c96`](https://github.com/apache/apisix-ingress-controller/commit/c9e0c965cd2226e2c44aa4e692a8bf57d1586aa3) docs: remove development from sidebar config (#923)
+* [`f31f520`](https://github.com/apache/apisix-ingress-controller/commit/f31f5201100169a61cd6b8220683453f2f81379d) docs: merge contribute.md and development.md (#909)
+* [`11bd92b`](https://github.com/apache/apisix-ingress-controller/commit/11bd92beb7e45035a12ec2cd27f4295276fa1af2) docs: upgrade apiVersion from v2beta1 to v2beta3 (#916)
+* [`75098d1`](https://github.com/apache/apisix-ingress-controller/commit/75098d1e4b26136de3164a3aabd6ed018ffdcd6b) chore: clean up useless code (#902)
+* [`4025151`](https://github.com/apache/apisix-ingress-controller/commit/4025151e44b9f64aa0881248faa3088487b53ec6) feat: format gin logger (#904)
+* [`48c924c`](https://github.com/apache/apisix-ingress-controller/commit/48c924c3397f2a433482204934a37aac4c4726b8) docs: add pre-commit todo in the development guide (#907)
+* [`1159522`](https://github.com/apache/apisix-ingress-controller/commit/1159522bf22181b67c2f075055894f488e9bc648) fix: controller err handler should ignore not found error (#893)
+* [`f84a083`](https://github.com/apache/apisix-ingress-controller/commit/f84a083719b5de74c68dd3bf206b1a88f2a540c4) feat: support custom registry for e2e test (#896)
+* [`1ddbfa6`](https://github.com/apache/apisix-ingress-controller/commit/1ddbfa68bb05becda7eb301f3ce6740c02b4d0a1) fix: fix ep resourceVersion comparison and clean up (#901)
+* [`8348d01`](https://github.com/apache/apisix-ingress-controller/commit/8348d010507f679a17f6126e779780c76358446c) chore: shorten the route name for Ingress transformations (#898)
+* [`b5448c3`](https://github.com/apache/apisix-ingress-controller/commit/b5448c37e7b043b4d2a5b5d35b115429a20760a0) fetching newest Endpoint before sync (#821)
+* [`bbaba6f`](https://github.com/apache/apisix-ingress-controller/commit/bbaba6f9c22196e5d3142ad7e1a2224474a1c553) fix: filter useless pod update event (#894)
+* [`5f6a7c1`](https://github.com/apache/apisix-ingress-controller/commit/5f6a7c10b97c5eb575d23140db433bc8dfe60a2c) fix: avoid create pluginconfig in the tranlsation of route (#845)
+* [`035c60e`](https://github.com/apache/apisix-ingress-controller/commit/035c60e456abf064af23634822f8453606fc5cc5) fix: check if stream_routes is disabled (#868)
+* [`8d25525`](https://github.com/apache/apisix-ingress-controller/commit/8d255252a206311bde756eb21424c7b6743d6187) docs: fix #887 (#890)
+* [`cc9b6be`](https://github.com/apache/apisix-ingress-controller/commit/cc9b6be606b4d41267064c45e7ef1e9f5a6d8e47) fix json unmarshal error when list plguins (#888)
+* [`e2475cf`](https://github.com/apache/apisix-ingress-controller/commit/e2475cf8573f9f1efd6956c0e4e6eab2142b8061) feat: add format tool (#885)
+* [`d30bef5`](https://github.com/apache/apisix-ingress-controller/commit/d30bef56d5502724901c7eae42b319ad1b92c76c) fix: endless retry if namespace doesn't exist (#882)
+* [`27f0cfa`](https://github.com/apache/apisix-ingress-controller/commit/27f0cfa8879712070736a91b4b67c1ea0cdd4835) update the-hard-way.md (#875)
+* [`77383b8`](https://github.com/apache/apisix-ingress-controller/commit/77383b88d9c664a64a28374c7f48cdb1d4d5f823) fix ingress delete panic (#872)
+* [`26a1f43`](https://github.com/apache/apisix-ingress-controller/commit/26a1f43d5c2f360ce280f0aa81c8bbcc12036cbd) feat: add update command to Makefile (#881)
+* [`545d22d`](https://github.com/apache/apisix-ingress-controller/commit/545d22d47414e7635c8074aaa28ad6105ae116e3) chore: clean up v1 version related code (#867)
+* [`32a096c`](https://github.com/apache/apisix-ingress-controller/commit/32a096c24dd330e537fd5fed7fcccb63fd8dd813) fix: objects get from lister must be treated as read-only (#829)
+* [`6b0c139`](https://github.com/apache/apisix-ingress-controller/commit/6b0c139ce2fbf56c683d86b8f93c7b4ef854fbc6) fix: ApisixClusterConfig e2e test case (#859)
+* [`df8316a`](https://github.com/apache/apisix-ingress-controller/commit/df8316aaceec40ae86857b1ef972a812c55b1252) rename command line options and update doc. (#848)
+* [`de52243`](https://github.com/apache/apisix-ingress-controller/commit/de522437bd3db3dc3e8d8f33c92f322de67531b8) feat: ensure that the lease can be actively released before program shutdown to reduce the time required for failover (#827)
+* [`81d59b5`](https://github.com/apache/apisix-ingress-controller/commit/81d59b52882779b7b10c8e725c8b4d80ee01f8e0) chore: update ingress/comapre.go watchingNamespac from v2beta1 to v2beta3 (#832)
+* [`3040cf5`](https://github.com/apache/apisix-ingress-controller/commit/3040cf54c5dc95a444b9c3132f5b911495ad5f80) fix: add v2beta3 register resources (#833)
+* [`56d866b`](https://github.com/apache/apisix-ingress-controller/commit/56d866bcbb1f25060a6da31b088e22bee80500db) chore: Update NOTICE to 2022 (#834)
+* [`e40cc31`](https://github.com/apache/apisix-ingress-controller/commit/e40cc3152e4b80e9b95aeca01c1b737fbe183f8f) refactor: remove BaseURL and AdminKey in config (#826)
+* [`2edc4da`](https://github.com/apache/apisix-ingress-controller/commit/2edc4da9433af58db8ae2fd317f489b287405b2c) chore: fix typo in ApidixRoute CRD (#830)
+* [`8364821`](https://github.com/apache/apisix-ingress-controller/commit/83648210fe194fa42f5582e8773969be0a01fa57) fix: consumer name contain "-" (#828)
+* [`ae69cd3`](https://github.com/apache/apisix-ingress-controller/commit/ae69cd3ee42245100b1c559df4518a418f66f6bd) docs: Grafana Dashboard Configuration (#731)
+* [`990971d`](https://github.com/apache/apisix-ingress-controller/commit/990971d4e892b47a6758edb40042c3decde92846) chore: v1.4 release (#819)
+</p>
+</details>
+
+### Dependency Changes
+
+* **github.com/beorn7/perks**                           v1.0.1 **_new_**
+* **github.com/cespare/xxhash/v2**                      v2.1.2 **_new_**
+* **github.com/davecgh/go-spew**                        v1.1.1 **_new_**
+* **github.com/emicklei/go-restful/v3**                 v3.8.0 **_new_**
+* **github.com/evanphx/json-patch**                     v4.12.0 **_new_**
+* **github.com/gin-contrib/sse**                        v0.1.0 **_new_**
+* **github.com/gin-gonic/gin**                          v1.7.7 -> v1.8.1
+* **github.com/go-logr/logr**                           v1.2.3 **_new_**
+* **github.com/go-openapi/jsonpointer**                 v0.19.5 **_new_**
+* **github.com/go-openapi/jsonreference**               v0.20.0 **_new_**
+* **github.com/go-openapi/swag**                        v0.21.1 **_new_**
+* **github.com/go-playground/locales**                  v0.14.0 **_new_**
+* **github.com/go-playground/universal-translator**     v0.18.0 **_new_**
+* **github.com/go-playground/validator/v10**            v10.11.0 **_new_**
+* **github.com/goccy/go-json**                          v0.9.10 **_new_**
+* **github.com/gogo/protobuf**                          v1.3.2 **_new_**
+* **github.com/golang/groupcache**                      41bb18bfe9da **_new_**
+* **github.com/golang/protobuf**                        v1.5.2 **_new_**
+* **github.com/google/gnostic**                         v0.6.9 **_new_**
+* **github.com/google/go-cmp**                          v0.5.7 **_new_**
+* **github.com/google/gofuzz**                          v1.1.0 **_new_**
+* **github.com/hashicorp/errwrap**                      v1.0.0 **_new_**
+* **github.com/hashicorp/go-immutable-radix**           v1.3.0 **_new_**
+* **github.com/hashicorp/go-memdb**                     v1.3.2 -> v1.3.3
+* **github.com/hashicorp/golang-lru**                   v0.5.4 **_new_**
+* **github.com/imdario/mergo**                          v0.3.12 **_new_**
+* **github.com/inconshreveable/mousetrap**              v1.0.0 **_new_**
+* **github.com/josharian/intern**                       v1.0.0 **_new_**
+* **github.com/json-iterator/go**                       v1.1.12 **_new_**
+* **github.com/leodido/go-urn**                         v1.2.1 **_new_**
+* **github.com/mailru/easyjson**                        v0.7.7 **_new_**
+* **github.com/mattn/go-isatty**                        v0.0.14 **_new_**
+* **github.com/matttproud/golang_protobuf_extensions**  c182affec369 **_new_**
+* **github.com/modern-go/concurrent**                   bacd9c7ef1dd **_new_**
+* **github.com/modern-go/reflect2**                     v1.0.2 **_new_**
+* **github.com/munnerz/goautoneg**                      a7dc8b61c822 **_new_**
+* **github.com/pelletier/go-toml/v2**                   v2.0.2 **_new_**
+* **github.com/pkg/errors**                             v0.9.1 **_new_**
+* **github.com/pmezard/go-difflib**                     v1.0.0 **_new_**
+* **github.com/prometheus/client_golang**               v1.11.0 -> v1.12.2
+* **github.com/prometheus/common**                      v0.32.1 **_new_**
+* **github.com/prometheus/procfs**                      v0.7.3 **_new_**
+* **github.com/spf13/cobra**                            v1.2.1 -> v1.5.0
+* **github.com/spf13/pflag**                            v1.0.5 **_new_**
+* **github.com/stretchr/testify**                       v1.7.0 -> v1.8.0
+* **github.com/ugorji/go/codec**                        v1.2.7 **_new_**
+* **github.com/xeipuuv/gojsonpointer**                  4e3ac2762d5f **_new_**
+* **github.com/xeipuuv/gojsonreference**                bd5ef7bd5415 **_new_**
+* **go.uber.org/atomic**                                v1.7.0 **_new_**
+* **go.uber.org/multierr**                              v1.7.0 -> v1.8.0
+* **go.uber.org/zap**                                   v1.19.1 -> v1.21.0
+* **golang.org/x/crypto**                               630584e8d5aa **_new_**
+* **golang.org/x/mod**                                  86c51ed26bb4 **_new_**
+* **golang.org/x/net**                                  fe4d6282115f -> 46097bf591d3
+* **golang.org/x/oauth2**                               d3ed0bb246c8 **_new_**
+* **golang.org/x/sys**                                  bce67f096156 -> 8c9f86f7a55f
+* **golang.org/x/term**                                 03fcf44c2211 **_new_**
+* **golang.org/x/text**                                 v0.3.7 **_new_**
+* **golang.org/x/time**                                 90d013bbcef8 **_new_**
+* **golang.org/x/tools**                                v0.1.11 **_new_**
+* **golang.org/x/xerrors**                              65e65417b02f **_new_**
+* **google.golang.org/appengine**                       v1.6.7 **_new_**
+* **google.golang.org/protobuf**                        v1.28.0 **_new_**
+* **gopkg.in/inf.v0**                                   v0.9.1 **_new_**
+* **gopkg.in/yaml.v3**                                  v3.0.1 **_new_**
+* **k8s.io/api**                                        v0.22.4 -> v0.24.3
+* **k8s.io/apimachinery**                               v0.22.4 -> v0.24.3
+* **k8s.io/client-go**                                  v0.22.4 -> v0.24.3
+* **k8s.io/code-generator**                             v0.22.1 -> v0.24.3
+* **k8s.io/gengo**                                      397b4ae3bce7 **_new_**
+* **k8s.io/klog/v2**                                    v2.70.1 **_new_**
+* **k8s.io/kube-openapi**                               011e075b9cb8 **_new_**
+* **k8s.io/utils**                                      3a6ce19ff2f9 **_new_**
+* **sigs.k8s.io/json**                                  9f7c6b3444d2 **_new_**
+* **sigs.k8s.io/structured-merge-diff/v4**              v4.2.1 **_new_**
+* **sigs.k8s.io/yaml**                                  v1.3.0 **_new_**
+
+Previous release can be found at [1.4.0](https://github.com/apache/apisix-ingress-controller/releases/tag/1.4.0)
 
 # 1.4.1
 
@@ -76,6 +363,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * chen zhuo
 
 ### Changes
+
 <details><summary>24 commits</summary>
 <p>
 
@@ -103,6 +391,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * [`4a2ebaf`](https://github.com/apache/apisix-ingress-controller/commit/4a2ebaf43ee4cf42212659b412e7ed8a8ab8ee21) chore: fix typo in ApidixRoute CRD (#830)
 * [`46fcf3f`](https://github.com/apache/apisix-ingress-controller/commit/46fcf3f153a00cef868454b06452065172500dd1) fix: consumer name contain "-" (#828)
 * [`b7dd90a`](https://github.com/apache/apisix-ingress-controller/commit/b7dd90ad9d6a5102fe67c91c29ab76fc4bad4b1a) chore: v1.4 release
+
 </p>
 </details>
 

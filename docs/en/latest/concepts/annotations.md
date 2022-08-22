@@ -210,13 +210,13 @@ Use ApisixPluginConfig
 
 You can use the following annotations to use the `ApisixPluginConfig`.
 
-* `k8s.apisix.apache.org/plugin-conifg-name`
+* `k8s.apisix.apache.org/plugin-config-name`
   
 If this annotations set to `ApisixPluginConfig.metadata.name` the route will use `ApisixPluginConfig`
 
 ApisixPluginConfig is a resource under the same Namespace as Ingress
 
-As an example, we attach the annotation `k8s.apisix.apache.org/plugin-conifg-name: "echo-and-cors-apc` for the following Ingress resource, so that `/api/*` route will enable the [echo](https://apisix.apache.org/docs/apisix/plugins/echo/) and [cors](https://apisix.apache.org/docs/apisix/plugins/cors/) plugins.
+As an example, we attach the annotation `k8s.apisix.apache.org/plugin-config-name: "echo-and-cors-apc` for the following Ingress resource, so that `/api/*` route will enable the [echo](https://apisix.apache.org/docs/apisix/plugins/echo/) and [cors](https://apisix.apache.org/docs/apisix/plugins/cors/) plugins.
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -242,7 +242,7 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/plugin-conifg-name: "echo-and-cors-apc"
+    k8s.apisix.apache.org/plugin-config-name: "echo-and-cors-apc"
   name: ingress-v1
 spec:
   rules:
