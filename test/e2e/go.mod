@@ -8,7 +8,7 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.3.5
 	github.com/gavv/httpexpect/v2 v2.3.1
 	github.com/gorilla/websocket v1.5.0
-	github.com/gruntwork-io/terratest v0.40.19
+	github.com/gruntwork-io/terratest v0.40.20
 	github.com/onsi/ginkgo/v2 v2.1.4
 	github.com/stretchr/testify v1.8.0
 	k8s.io/api v0.24.3
