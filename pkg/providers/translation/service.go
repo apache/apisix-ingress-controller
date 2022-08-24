@@ -23,6 +23,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
@@ -50,7 +51,7 @@ func (t *translator) TranslateService(namespace, name, subset string, port int32
 	}
 }
 
-func (t *translator) translateUpstreamV2(ep *kube.Endpoint, namespace, name, subset string, port int32) (*apisixv1.Upstream, error) {
+func (t *translator) translateUpstreamV2(ep *kube.Endpoint, namespace, name, subset string, intstr.IntOrString) (*apisixv1.Upstream, error) {
 	au, err := t.ApisixUpstreamLister.V2(namespace, name)
 	ups := apisixv1.NewDefaultUpstream()
 	if err != nil {
@@ -102,7 +103,7 @@ func (t *translator) translateUpstreamV2(ep *kube.Endpoint, namespace, name, sub
 	return ups, nil
 }
 
-func (t *translator) translateUpstreamV2beta3(ep *kube.Endpoint, namespace, name, subset string, port int32) (*apisixv1.Upstream, error) {
+func (t *translator) translateUpstreamV2beta3(ep *kube.Endpoint, namespace, name, subset string, port intstr.IntOrString) (*apisixv1.Upstream, error) {
 	au, err := t.ApisixUpstreamLister.V2beta3(namespace, name)
 	ups := apisixv1.NewDefaultUpstream()
 	if err != nil {
@@ -145,7 +146,7 @@ func (t *translator) translateUpstreamV2beta3(ep *kube.Endpoint, namespace, name
 		}
 	}
 	// Filter nodes by subset.
-	nodes, err := t.TranslateEndpoint(*ep, port, labels)
+	nodes, err := t.TranslateEndpoints(namespace, name, port, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -203,6 +204,59 @@ func (t *translator) TranslateEndpoint(endpoint kube.Endpoint, port int32, label
 	// As nodes is not optional, here we create an empty slice,
 	// not a nil slice.
 	nodes := make(apisixv1.UpstreamNodes, 0)
+	for _, hostport := range endpoint.Endpoints(svcPort) {
+		nodes = append(nodes, apisixv1.UpstreamNode{
+			Host: hostport.Host,
+			Port: hostport.Port,
+			// FIXME Custom node weight
+			Weight: DefaultWeight,
+		})
+	}
+	if labels != nil {
+		nodes = t.filterNodesByLabels(nodes, labels, namespace)
+		return nodes, nil
+	}
+	return nodes, nil
+}
+
+func (t *translator) TranslateEndpoints(namespace, name string, port intstr.IntOrString, labels types.Labels) (apisixv1.UpstreamNodes, error) {
+	svc, err := t.ServiceLister.Services(namespace).Get(name)
+	if err != nil {
+		return nil, &TranslateError{
+			Field:  "service",
+			Reason: err.Error(),
+		}
+	}
+	var svcPort *corev1.ServicePort
+	if port.Type == intstr.String {
+		for _, exposePort := range svc.Spec.Ports {
+			if exposePort.Name == port.StrVal {
+				svcPort = &exposePort
+				break
+			}
+		}
+	} else {
+		for _, exposePort := range svc.Spec.Ports {
+			if exposePort.Port == port.IntVal {
+				svcPort = &exposePort
+				break
+			}
+		}
+	}
+	if svcPort == nil {
+		return nil, &TranslateError{
+			Field:  "service",
+			Reason: "port not found",
+		}
+	}
+	nodes := make(apisixv1.UpstreamNodes, 0)
+	endpoint, err := t.EndpointLister.GetEndpoint(namespace, name)
+	if err != nil {
+		return nodes, nil
+	}
+
+	// As nodes is not optional, here we create an empty slice,
+	// not a nil slice.
 	for _, hostport := range endpoint.Endpoints(svcPort) {
 		nodes = append(nodes, apisixv1.UpstreamNode{
 			Host: hostport.Host,
