@@ -31,7 +31,7 @@ This document explains how you can install APISIX ingress on [k3S](https://k3s.i
 
 :::tip
 
-K3s is built for IoT and edge computing applications. Apache APISIX also supports an MQTT Plugin and runs well on ARM processors. APISIX ingress is therefore a good choice to handle North-South traffic in K3s. 
+K3s is built for IoT and edge computing applications. Apache APISIX also supports an MQTT Plugin and runs well on ARM processors. APISIX ingress is therefore a good choice to handle North-South traffic in K3s.
 
 :::
 

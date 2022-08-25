@@ -34,9 +34,11 @@ Setting up APISIX ingress on AKS requires the following:
 
 * [Create an AKS cluster](https://docs.microsoft.com/en-us/azure/aks/learn/quick-kubernetes-deploy-portal?tabs=azure-cli).
 * Install [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/#:~:text=The%20Azure%20command%2Dline%20interface,with%20an%20emphasis%20on%20automation.) and update your kube config file by running:
+    
     ```shell
     az aks get-credentials
     ```
+
 * Install [Helm](https://helm.sh/).
 
 ## Install APISIX and ingress controller
