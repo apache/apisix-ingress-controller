@@ -9,15 +9,15 @@
       "type": "category",
       "label": "Installation",
       "items": [
-        "deployments/ack",
-        "deployments/aws",
-        "deployments/azure",
-        "deployments/gke",
-        "deployments/kind",
-        "deployments/kubesphere",
-        "deployments/k3s-rke",
         "deployments/minikube",
-        "deployments/tke"
+        "deployments/kind",
+        "deployments/aws",
+        "deployments/ack",
+        "deployments/gke",
+        "deployments/azure",
+        "deployments/tke",
+        "deployments/kubesphere",
+        "deployments/k3s-rke"
       ]
     },
     {
