@@ -428,7 +428,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	})
 
 	var ingressAPISIXDeployment string
-	label := "\"\""
+	label := `""`
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil && !s.opts.DisableNamespaceSelector {
 		label = labels[0]
 	}
