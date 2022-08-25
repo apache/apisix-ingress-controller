@@ -147,7 +147,7 @@ func (c *endpointSliceController) handleSyncErr(obj interface{}, err error) {
 	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
 		log.Infow("sync endpointSlice but not found, ignore",
 			zap.String("event_type", event.Type.String()),
-			zap.String("endpointSlice", event.Object.(string)),
+			zap.Any("endpointSlice", event.Object.(endpointSliceEvent)),
 		)
 		c.workqueue.Forget(event)
 		return

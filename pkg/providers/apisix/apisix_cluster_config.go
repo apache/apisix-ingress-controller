@@ -307,7 +307,7 @@ func (c *apisixClusterConfigController) handleSyncErr(obj interface{}, err error
 	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
 		log.Infow("sync ApisixClusterConfig but not found, ignore",
 			zap.String("event_type", event.Type.String()),
-			zap.String("ApisixClusterConfig", event.Object.(string)),
+			zap.Any("ApisixClusterConfig", event.Object.(kube.ApisixClusterConfigEvent)),
 		)
 		c.workqueue.Forget(event)
 		return
