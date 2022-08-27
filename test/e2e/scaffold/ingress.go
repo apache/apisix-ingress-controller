@@ -194,6 +194,7 @@ rules:
     - tlsroutes
     - gateways
     - gatewayclasses
+    - udproutes
     verbs:
     - get
     - list

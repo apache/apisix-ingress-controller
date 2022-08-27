@@ -55,6 +55,10 @@ const (
 	SchemeHTTPS = "https"
 	// SchemeGRPCS represents the GRPCS protocol.
 	SchemeGRPCS = "grpcs"
+	// SchemeTCP represents the TCP protocol.
+	SchemeTCP = "tcp"
+	// SchemeUDP represents the UDP protocol.
+	SchemeUDP = "udp"
 
 	// HealthCheckHTTP represents the HTTP kind health check.
 	HealthCheckHTTP = "http"
