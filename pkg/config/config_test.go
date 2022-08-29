@@ -178,7 +178,7 @@ func TestConfigWithEnvVar(t *testing.T) {
     "apisix": {
         "default_cluster_base_url": "{{.DEFAULT_CLUSTER_BASE_URL}}",
         "default_cluster_admin_key": "{{.DEFAULT_CLUSTER_ADMIN_KEY}}",
-		"default_cluster_name": "{{.DEFAULT_CLUSTER_NAME}}"
+        "default_cluster_name": "{{.DEFAULT_CLUSTER_NAME}}"
     }
 }
 `
