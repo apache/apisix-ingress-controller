@@ -75,12 +75,12 @@ Currently, APISIX Ingress Controller automatically manipulates some APISIX resou
 
 ## Apache APISIX Ingress vs. Kubernetes Ingress Nginx
 
+* The control plane and data plane are separated, which can improve security and deployment flexibility.
 * Hot-reload during yaml apply.
 * [More convenient canary deployment.](./docs/en/latest/concepts/apisix_route.md)
 * Verify the correctness of the configuration, safe and reliable.
 * [Rich plugins and ecology.](https://github.com/apache/apisix/tree/master/docs/en/latest/plugins)
 * Supports APISIX custom resources and Kubernetes native Ingress resources.
-* More active community
 
 ## Contributing
 
@@ -121,6 +121,10 @@ for us to fix.
 
 - [aispeech: Why we create a new k8s ingress controller?(Chinese)](https://mp.weixin.qq.com/s/bmm2ibk2V7-XYneLo9XAPQ)
 - [Tencent Cloud: Why choose Apache APISIX to implement the k8s ingress controller?(Chinese)](https://www.upyun.com/opentalk/448.html)
+
+If you are willing to share with us some scenarios and use cases when you use APISIX Ingress, 
+please reply to issue https://github.com/apache/apisix-ingress-controller/issues/501 ,
+or submit PR to update [Powered-BY](./powered-by.md) file
 
 ## Milestone
 
