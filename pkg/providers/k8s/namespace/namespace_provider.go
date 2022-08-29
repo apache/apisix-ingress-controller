@@ -19,6 +19,7 @@ package namespace
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -64,6 +65,9 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 	c.enableLabelsWatching = true
 	for _, selector := range cfg.Kubernetes.NamespaceSelector {
 		labelSlice := strings.Split(selector, "=")
+		if len(labelSlice) != 2 {
+			return nil, fmt.Errorf("Bad namespace-selector format: %s, expected namespace-selector format: xxx=xxx", selector)
+		}
 		c.watchingLabels[labelSlice[0]] = labelSlice[1]
 	}
 

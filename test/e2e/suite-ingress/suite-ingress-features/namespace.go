@@ -191,7 +191,7 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing fltering disable", 
 				ConfigPath: scaffold.GetKubeconfig(),
 			}, namespace)
 			_, err := s.NewHTTPBINWithNamespace(namespace)
-			assert.Nil(ginkgo.GinkgoT(), err, "create second httpbin service")
+			assert.Nil(ginkgo.GinkgoT(), err, "create new httpbin service")
 		})
 
 		// clean this tmp namespace when test case is done.
@@ -270,7 +270,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("suite-ingress-features: namespacing ub-label", func() {
+var _ = ginkgo.Describe("suite-ingress-features: namespacing un-label", func() {
 	labelName, labelValue := fmt.Sprintf("namespace-selector-%d", time.Now().Nanosecond()), "watch"
 	s := scaffold.NewScaffold(&scaffold.Options{
 		Name:                  "un-label",
