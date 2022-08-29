@@ -122,8 +122,8 @@ for us to fix.
 - [aispeech: Why we create a new k8s ingress controller?(Chinese)](https://mp.weixin.qq.com/s/bmm2ibk2V7-XYneLo9XAPQ)
 - [Tencent Cloud: Why choose Apache APISIX to implement the k8s ingress controller?(Chinese)](https://www.upyun.com/opentalk/448.html)
 
-If you are willing to share with us some scenarios and use cases when you use APISIX Ingress, 
-please reply to issue https://github.com/apache/apisix-ingress-controller/issues/501 ,
+If you are willing to share with us some scenarios and use cases when you use APISIX Ingress,
+please reply to the [issue](https://github.com/apache/apisix-ingress-controller/issues/501),
 or submit PR to update [Powered-BY](./powered-by.md) file
 
 ## Milestone
