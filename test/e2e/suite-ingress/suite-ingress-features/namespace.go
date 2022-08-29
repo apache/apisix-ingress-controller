@@ -16,6 +16,7 @@
 package ingress
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -24,6 +25,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
@@ -284,6 +286,8 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing un-label", func() {
 	namespace1 := fmt.Sprintf("un-label-%d", time.Now().Nanosecond())
 
 	ginkgo.It("un-label", func() {
+		client := s.GetKubernetesClient()
+
 		ns := fmt.Sprintf(`
 apiVersion: v1
 kind: Namespace
@@ -323,14 +327,16 @@ spec:
 		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
 
 		assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromStringWithNamespace(route1, namespace1), "deleting ingress")
-		ns = fmt.Sprintf(`
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: %s
-`, namespace1)
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ns), "creating namespace")
-		assert.Nil(ginkgo.GinkgoT(), err, "create httpbin service in", namespace1)
+		// un-label
+		_, err = client.CoreV1().Namespaces().Update(
+			context.Background(),
+			&v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+				Name:   namespace1,
+				Labels: map[string]string{},
+			}},
+			metav1.UpdateOptions{},
+		)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating namespace")
 		time.Sleep(6 * time.Second)
 		routes, err := s.ListApisixRoutes()
 		assert.Nil(ginkgo.GinkgoT(), err)
