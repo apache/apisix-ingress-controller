@@ -161,14 +161,18 @@ func (s *Scaffold) CreateResourceFromStringWithNamespace(yaml, namespace string)
 		s.kubectlOptions.Namespace = originalNamespace
 	}()
 	s.addFinalizers(func() {
-		originalNamespace := s.kubectlOptions.Namespace
-		s.kubectlOptions.Namespace = namespace
-		defer func() {
-			s.kubectlOptions.Namespace = originalNamespace
-		}()
-		assert.Nil(s.t, k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml))
+		_ = s.DeleteResourceFromStringWithNamespace(yaml, namespace)
 	})
 	return k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
+}
+
+func (s *Scaffold) DeleteResourceFromStringWithNamespace(yaml, namespace string) error {
+	originalNamespace := s.kubectlOptions.Namespace
+	s.kubectlOptions.Namespace = namespace
+	defer func() {
+		s.kubectlOptions.Namespace = originalNamespace
+	}()
+	return k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
 }
 
 func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
