@@ -17,6 +17,8 @@ package translation
 import (
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
@@ -47,6 +49,13 @@ type Translator interface {
 	// TranslateUpstreamConfigV2 translates ApisixUpstreamConfig (part of ApisixUpstream)
 	// to APISIX Upstream, it doesn't fill the the Upstream metadata and nodes.
 	TranslateUpstreamConfigV2(*configv2.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
+	// TranslateService translate Service resources to APISIX Upstream nodes (cluster ip)
+	// upstream nodes.
+	TranslateService(*corev1.Service, intstr.IntOrString) (apisixv1.UpstreamNodes, error)
+	// TranslateEndpoint translate Endpoints resources to APISIX Upstream nodes (pod ip)
+	// according to the give port. Extra labels can be passed to filter the ultimate
+	// upstream nodes.
+	TranslateEndpoint(kube.Endpoint, intstr.IntOrString, types.Labels) (apisixv1.UpstreamNodes, error)
 	// TranslateUpstream composes an upstream according to the
 	// given namespace, name (searching Service/Endpoints) and port (filtering Endpoints).
 	// The returned Upstream doesn't have metadata info.
@@ -56,11 +65,12 @@ type Translator interface {
 	// matching the subset labels (defined in ApisixUpstream) will be selected.
 	// When the subset is not found, the node list will be empty. When the subset is empty,
 	// all pods IP will be filled.
-	TranslateService(string, string, string, int32) (*apisixv1.Upstream, error)
+	// Resolvegranularity is used to resolve the granularity of the service. It supports service/endpoint.
+	TranslateUpstream(namespace string, name string, subset string, resolveGranularity string, port intstr.IntOrString) (*apisixv1.Upstream, error)
 	// TranslateUpstreamNodes translate Endpoints resources to APISIX Upstream nodes
 	// according to the give port. Extra labels can be passed to filter the ultimate
 	// upstream nodes.
-	TranslateEndpoint(kube.Endpoint, int32, types.Labels) (apisixv1.UpstreamNodes, error)
+	TranslateUpstreamNodes(namespace string, name string, resolveGranularity string, port intstr.IntOrString, labels types.Labels) (apisixv1.UpstreamNodes, error)
 }
 
 // TranslatorOptions contains options to help Translator

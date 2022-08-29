@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/id"
@@ -119,16 +120,6 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *translation.TranslateContext
 		backend := backends[0]
 		backends = backends[1:]
 
-		svcClusterIP, svcPort, err := t.GetServiceClusterIPAndPort(&backend, ar.Namespace)
-		if err != nil {
-			log.Errorw("failed to get service port in backend",
-				zap.Any("backend", backend),
-				zap.Any("apisix_route", ar),
-				zap.Error(err),
-			)
-			return err
-		}
-
 		pluginMap := make(apisixv1.Plugins)
 		// add route plugins
 		for _, plugin := range part.Plugins {
@@ -155,6 +146,7 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *translation.TranslateContext
 		}
 
 		var exprs [][]apisixv1.StringOrSlice
+		var err error
 		if part.Match.NginxVars != nil {
 			exprs, err = t.TranslateRouteMatchExprs(part.Match.NginxVars)
 			if err != nil {
@@ -174,7 +166,6 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *translation.TranslateContext
 			return err
 		}
 
-		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, svcPort)
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
@@ -184,7 +175,6 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *translation.TranslateContext
 		route.Hosts = part.Match.Hosts
 		route.Uris = part.Match.Paths
 		route.Methods = part.Match.Methods
-		route.UpstreamId = id.GenID(upstreamName)
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
 
@@ -205,14 +195,15 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *translation.TranslateContext
 			}
 			route.Plugins["traffic-split"] = plugin
 		}
-		ctx.AddRoute(route)
-		if !ctx.CheckUpstreamExist(upstreamName) {
-			ups, err := t.translateService(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
-			if err != nil {
-				return err
-			}
+		ups, err := t.TranslateUpstream(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, backend.ServicePort)
+		if err != nil {
+			return err
+		}
+		if !ctx.CheckUpstreamExist(ups.Name) {
 			ctx.AddUpstream(ups)
 		}
+		route.UpstreamId = ups.ID
+		ctx.AddRoute(route)
 	}
 	return nil
 }
@@ -230,16 +221,6 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *translation.TranslateContext
 		backend := backends[0]
 		backends = backends[1:]
 
-		svcClusterIP, svcPort, err := t.GetServiceClusterIPAndPort(&backend, ar.Namespace)
-		if err != nil {
-			log.Errorw("failed to get service port in backend",
-				zap.Any("backend", backend),
-				zap.Any("apisix_route", ar),
-				zap.Error(err),
-			)
-			return err
-		}
-
 		var timeout *apisixv1.UpstreamTimeout
 		if part.Timeout != nil {
 			timeout = &apisixv1.UpstreamTimeout{
@@ -289,6 +270,7 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *translation.TranslateContext
 		}
 
 		var exprs [][]apisixv1.StringOrSlice
+		var err error
 		if part.Match.NginxVars != nil {
 			exprs, err = t.TranslateRouteMatchExprs(part.Match.NginxVars)
 			if err != nil {
@@ -308,7 +290,6 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *translation.TranslateContext
 			return err
 		}
 
-		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, svcPort)
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
@@ -318,7 +299,6 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *translation.TranslateContext
 		route.Hosts = part.Match.Hosts
 		route.Uris = part.Match.Paths
 		route.Methods = part.Match.Methods
-		route.UpstreamId = id.GenID(upstreamName)
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
 		route.Timeout = timeout
@@ -341,14 +321,15 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *translation.TranslateContext
 			}
 			route.Plugins["traffic-split"] = plugin
 		}
-		ctx.AddRoute(route)
-		if !ctx.CheckUpstreamExist(upstreamName) {
-			ups, err := t.translateService(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
-			if err != nil {
-				return err
-			}
+		ups, err := t.TranslateUpstream(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, backend.ServicePort)
+		if err != nil {
+			return err
+		}
+		if !ctx.CheckUpstreamExist(ups.Name) {
 			ctx.AddUpstream(ups)
 		}
+		route.UpstreamId = ups.ID
+		ctx.AddRoute(route)
 	}
 	return nil
 }
@@ -366,16 +347,6 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 		backend := backends[0]
 		backends = backends[1:]
 
-		svcClusterIP, svcPort, err := t.GetServiceClusterIPAndPort(&backend, ar.Namespace)
-		if err != nil {
-			log.Errorw("failed to get service port in backend",
-				zap.Any("backend", backend),
-				zap.Any("apisix_route", ar),
-				zap.Error(err),
-			)
-			return err
-		}
-
 		var timeout *apisixv1.UpstreamTimeout
 		if part.Timeout != nil {
 			timeout = &apisixv1.UpstreamTimeout{
@@ -425,6 +396,7 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 		}
 
 		var exprs [][]apisixv1.StringOrSlice
+		var err error
 		if part.Match.NginxVars != nil {
 			exprs, err = t.TranslateRouteMatchExprs(part.Match.NginxVars)
 			if err != nil {
@@ -444,7 +416,6 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 			return err
 		}
 
-		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, svcPort)
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
@@ -454,7 +425,6 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 		route.Hosts = part.Match.Hosts
 		route.Uris = part.Match.Paths
 		route.Methods = part.Match.Methods
-		route.UpstreamId = id.GenID(upstreamName)
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
 		route.Timeout = timeout
@@ -477,14 +447,15 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 			}
 			route.Plugins["traffic-split"] = plugin
 		}
-		ctx.AddRoute(route)
-		if !ctx.CheckUpstreamExist(upstreamName) {
-			ups, err := t.translateService(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
-			if err != nil {
-				return err
-			}
+		ups, err := t.TranslateUpstream(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, backend.ServicePort)
+		if err != nil {
+			return err
+		}
+		if !ctx.CheckUpstreamExist(ups.Name) {
 			ctx.AddUpstream(ups)
 		}
+		route.UpstreamId = ups.ID
+		ctx.AddRoute(route)
 	}
 	return nil
 }
@@ -738,20 +709,12 @@ func (t *translator) translateStreamRouteV2beta2(ctx *translation.TranslateConte
 		}
 		ruleNameMap[part.Name] = struct{}{}
 		backend := part.Backend
-		svcClusterIP, svcPort, err := t.getStreamServiceClusterIPAndPortV2beta2(backend, ar.Namespace)
-		if err != nil {
-			log.Errorw("failed to get service port in backend",
-				zap.Any("backend", backend),
-				zap.Any("apisix_route", ar),
-				zap.Error(err),
-			)
-			return err
-		}
+
 		sr := apisixv1.NewDefaultStreamRoute()
 		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
 		sr.ID = id.GenID(name)
 		sr.ServerPort = part.Match.IngressPort
-		ups, err := t.translateService(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
+		ups, err := t.TranslateUpstream(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, backend.ServicePort)
 		if err != nil {
 			return err
 		}
@@ -773,20 +736,11 @@ func (t *translator) translateStreamRouteV2beta3(ctx *translation.TranslateConte
 		}
 		ruleNameMap[part.Name] = struct{}{}
 		backend := part.Backend
-		svcClusterIP, svcPort, err := t.getStreamServiceClusterIPAndPortV2beta3(backend, ar.Namespace)
-		if err != nil {
-			log.Errorw("failed to get service port in backend",
-				zap.Any("backend", backend),
-				zap.Any("apisix_route", ar),
-				zap.Error(err),
-			)
-			return err
-		}
 		sr := apisixv1.NewDefaultStreamRoute()
 		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
 		sr.ID = id.GenID(name)
 		sr.ServerPort = part.Match.IngressPort
-		ups, err := t.translateService(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
+		ups, err := t.TranslateUpstream(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, backend.ServicePort)
 		if err != nil {
 			return err
 		}
@@ -808,15 +762,6 @@ func (t *translator) translateStreamRouteV2(ctx *translation.TranslateContext, a
 		}
 		ruleNameMap[part.Name] = struct{}{}
 		backend := part.Backend
-		svcClusterIP, svcPort, err := t.getStreamServiceClusterIPAndPortV2(backend, ar.Namespace)
-		if err != nil {
-			log.Errorw("failed to get service port in backend",
-				zap.Any("backend", backend),
-				zap.Any("apisix_route", ar),
-				zap.Error(err),
-			)
-			return err
-		}
 
 		// add stream route plugins
 		pluginMap := make(apisixv1.Plugins)
@@ -835,7 +780,7 @@ func (t *translator) translateStreamRouteV2(ctx *translation.TranslateContext, a
 		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
 		sr.ID = id.GenID(name)
 		sr.ServerPort = part.Match.IngressPort
-		ups, err := t.translateService(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
+		ups, err := t.TranslateUpstream(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, backend.ServicePort)
 		if err != nil {
 			return err
 		}
@@ -998,4 +943,44 @@ func (t *translator) translateOldRouteV2beta3(ar *configv2beta3.ApisixRoute) (*t
 		oldCtx.AddRoute(r)
 	}
 	return oldCtx, nil
+}
+
+// getStreamServiceClusterIPAndPortV2beta2 is for v2beta2 streamRoute
+func (t *translator) getStreamServiceClusterIPAndPortV2beta2(backend configv2beta2.ApisixRouteStreamBackend, ns string) (string, int32, error) {
+	svc, err := t.ServiceLister.Services(ns).Get(backend.ServiceName)
+	if err != nil {
+		return "", 0, err
+	}
+	svcPort := int32(-1)
+	if backend.ResolveGranularity == "service" && svc.Spec.ClusterIP == "" {
+		log.Errorw("ApisixRoute refers to a headless service but want to use the service level resolve granularity",
+			zap.String("ApisixRoute namespace", ns),
+			zap.Any("service", svc),
+		)
+		return "", 0, errors.New("conflict headless service and backend resolve granularity")
+	}
+loop:
+	for _, port := range svc.Spec.Ports {
+		switch backend.ServicePort.Type {
+		case intstr.Int:
+			if backend.ServicePort.IntVal == port.Port {
+				svcPort = port.Port
+				break loop
+			}
+		case intstr.String:
+			if backend.ServicePort.StrVal == port.Name {
+				svcPort = port.Port
+				break loop
+			}
+		}
+	}
+	if svcPort == -1 {
+		log.Errorw("ApisixRoute refers to non-existent Service port",
+			zap.String("ApisixRoute namespace", ns),
+			zap.String("port", backend.ServicePort.String()),
+		)
+		return "", 0, err
+	}
+
+	return svc.Spec.ClusterIP, svcPort, nil
 }

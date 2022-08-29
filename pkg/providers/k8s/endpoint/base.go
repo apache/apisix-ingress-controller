@@ -23,6 +23,7 @@ import (
 
 	"go.uber.org/zap"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
@@ -79,7 +80,7 @@ func (c *baseEndpointController) syncEndpoint(ctx context.Context, ep kube.Endpo
 		clusters := c.APISIX.ListClusters()
 		for _, port := range svc.Spec.Ports {
 			for _, subset := range subsets {
-				nodes, err := c.translator.TranslateEndpoint(ep, port.Port, subset.Labels)
+				nodes, err := c.translator.TranslateEndpoint(ep, intstr.FromInt(int(port.Port)), subset.Labels)
 				if err != nil {
 					log.Errorw("failed to translate upstream nodes",
 						zap.Error(err),
@@ -110,7 +111,7 @@ func (c *baseEndpointController) syncEndpoint(ctx context.Context, ep kube.Endpo
 		clusters := c.APISIX.ListClusters()
 		for _, port := range svc.Spec.Ports {
 			for _, subset := range subsets {
-				nodes, err := c.translator.TranslateEndpoint(ep, port.Port, subset.Labels)
+				nodes, err := c.translator.TranslateEndpoint(ep, intstr.FromInt(int(port.Port)), subset.Labels)
 				if err != nil {
 					log.Errorw("failed to translate upstream nodes",
 						zap.Error(err),

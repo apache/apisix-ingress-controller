@@ -546,7 +546,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	cfg, err = tr.translateTrafficSplitPlugin(ctx, ar1.Namespace, 30, backends)
 	assert.Nil(t, cfg)
 	assert.NotNil(t, err)
-	assert.Equal(t, "service.spec.ports: port not defined", err.Error())
+	assert.Contains(t, err.Error(), "service.Spec.Ports: port.Name not defined")
 
 	backends[1].ServicePort.StrVal = "port2"
 	backends[1].ResolveGranularity = "service"

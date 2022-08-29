@@ -46,11 +46,7 @@ func (t *translator) translateTrafficSplitPlugin(ctx *translation.TranslateConte
 	)
 
 	for _, backend := range backends {
-		svcClusterIP, svcPort, err := t.GetServiceClusterIPAndPort(&backend, ns)
-		if err != nil {
-			return nil, err
-		}
-		ups, err := t.translateService(ns, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
+		ups, err := t.TranslateUpstream(ns, backend.ServiceName, backend.Subset, backend.ResolveGranularity, backend.ServicePort)
 		if err != nil {
 			return nil, err
 		}
