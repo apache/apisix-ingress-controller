@@ -151,7 +151,7 @@ spec:
 			_ = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "local.httpbin.org").Expect().Status(http.StatusNotFound)
 
 			// remove route1
-			assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromStringWithNamespace(route1, namespace1), "delte ingress")
+			assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromStringWithNamespace(route1, namespace1), "delete ingress")
 			time.Sleep(6 * time.Second)
 
 			deleteNamespace(namespace1)
@@ -177,7 +177,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("suite-ingress-features: namespacing fltering disable", func() {
+var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering disable", func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
 		Name:                     "disable-namespace-selector",
 		IngressAPISIXReplicas:    1,
@@ -336,7 +336,7 @@ spec:
 			}},
 			metav1.UpdateOptions{},
 		)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating namespace")
+		assert.Nil(ginkgo.GinkgoT(), err, "unlabel the namespace")
 		time.Sleep(6 * time.Second)
 		routes, err := s.ListApisixRoutes()
 		assert.Nil(ginkgo.GinkgoT(), err)
