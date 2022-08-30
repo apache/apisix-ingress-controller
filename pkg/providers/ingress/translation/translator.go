@@ -334,30 +334,6 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*t
 	return ctx, nil
 }
 
-func (t *translator) translateDefaultUpstreamFromIngressV1(namespace string, backend *networkingv1.IngressServiceBackend) *apisixv1.Upstream {
-	var portNumber int32
-	if backend.Port.Name != "" {
-		svc, err := t.ServiceLister.Services(namespace).Get(backend.Name)
-		if err != nil {
-			portNumber = 0
-		} else {
-			for _, port := range svc.Spec.Ports {
-				if port.Name == backend.Port.Name {
-					portNumber = port.Port
-					break
-				}
-			}
-		}
-
-	} else {
-		portNumber = backend.Port.Number
-	}
-	ups := apisixv1.NewDefaultUpstream()
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, "", portNumber)
-	ups.ID = id.GenID(ups.Name)
-	return ups
-}
-
 func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
 	plugins := t.TranslateAnnotations(ing.Annotations)

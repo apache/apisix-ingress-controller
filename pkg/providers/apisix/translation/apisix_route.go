@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"go.uber.org/zap"
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/id"
@@ -943,44 +942,4 @@ func (t *translator) translateOldRouteV2beta3(ar *configv2beta3.ApisixRoute) (*t
 		oldCtx.AddRoute(r)
 	}
 	return oldCtx, nil
-}
-
-// getStreamServiceClusterIPAndPortV2beta2 is for v2beta2 streamRoute
-func (t *translator) getStreamServiceClusterIPAndPortV2beta2(backend configv2beta2.ApisixRouteStreamBackend, ns string) (string, int32, error) {
-	svc, err := t.ServiceLister.Services(ns).Get(backend.ServiceName)
-	if err != nil {
-		return "", 0, err
-	}
-	svcPort := int32(-1)
-	if backend.ResolveGranularity == "service" && svc.Spec.ClusterIP == "" {
-		log.Errorw("ApisixRoute refers to a headless service but want to use the service level resolve granularity",
-			zap.String("ApisixRoute namespace", ns),
-			zap.Any("service", svc),
-		)
-		return "", 0, errors.New("conflict headless service and backend resolve granularity")
-	}
-loop:
-	for _, port := range svc.Spec.Ports {
-		switch backend.ServicePort.Type {
-		case intstr.Int:
-			if backend.ServicePort.IntVal == port.Port {
-				svcPort = port.Port
-				break loop
-			}
-		case intstr.String:
-			if backend.ServicePort.StrVal == port.Name {
-				svcPort = port.Port
-				break loop
-			}
-		}
-	}
-	if svcPort == -1 {
-		log.Errorw("ApisixRoute refers to non-existent Service port",
-			zap.String("ApisixRoute namespace", ns),
-			zap.String("port", backend.ServicePort.String()),
-		)
-		return "", 0, err
-	}
-
-	return svc.Spec.ClusterIP, svcPort, nil
 }

@@ -39,11 +39,11 @@ func (t *translator) TranslateUpstream(namespace, name, subset, resolveGranulari
 	if err != nil {
 		return nil, err
 	}
-	portInt32, err := t.parseServicePort(svc, port)
+	svcPort, err := t.parseServicePort(svc, port)
 	if err != nil {
 		return nil, err
 	}
-	port = intstr.FromInt(int(portInt32))
+	port = intstr.FromInt(int(svcPort.Port))
 	switch t.APIVersion {
 	case config.ApisixV2beta3:
 		return t.translateUpstreamV2beta3(namespace, name, subset, port, resolveGranularity)
@@ -164,6 +164,8 @@ func (t *translator) translateUpstreamV2beta3(namespace, name, subset string, po
 		return nil, err
 	}
 	ups.Nodes = nodes
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, name, subset, port.IntVal)
+	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }
 
@@ -184,18 +186,11 @@ func (t *translator) TranslateEndpoint(endpoint kube.Endpoint, port intstr.IntOr
 			Reason: err.Error(),
 		}
 	}
-
-	var svcPort *corev1.ServicePort
-	for _, exposePort := range svc.Spec.Ports {
-		if exposePort.Port == port.IntVal {
-			svcPort = &exposePort
-			break
-		}
-	}
-	if svcPort == nil {
+	svcPort, err := t.parseServicePort(svc, port)
+	if err != nil {
 		return nil, &TranslateError{
-			Field:  "service.spec.ports",
-			Reason: "port not defined",
+			Field:  "service.Spec.Ports",
+			Reason: err.Error(),
 		}
 	}
 	// As nodes is not optional, here we create an empty slice,
@@ -230,7 +225,7 @@ func (t *translator) TranslateService(svc *corev1.Service, port intstr.IntOrStri
 	return apisixv1.UpstreamNodes{
 		{
 			Host:   svc.Spec.ClusterIP,
-			Port:   int(svcPort),
+			Port:   int(svcPort.Port),
 			Weight: DefaultWeight,
 		},
 	}, nil
@@ -284,23 +279,23 @@ func (t *translator) filterNodesByLabels(nodes apisixv1.UpstreamNodes, labels ty
 	return filteredNodes
 }
 
-func (t *translator) parseServicePort(svc *corev1.Service, port intstr.IntOrString) (int32, error) {
+func (t *translator) parseServicePort(svc *corev1.Service, port intstr.IntOrString) (*corev1.ServicePort, error) {
 	if svc == nil {
-		return 0, fmt.Errorf("service does not exist")
+		return nil, fmt.Errorf("service does not exist")
 	}
 	if port.Type == intstr.String {
 		for _, p := range svc.Spec.Ports {
 			if p.Name == port.StrVal {
-				return p.Port, nil
+				return &p, nil
 			}
 		}
-		return 0, fmt.Errorf("service.Spec.Ports: port.Name not defined, port.Name: %s", port.StrVal)
+		return nil, fmt.Errorf("service.Spec.Ports: port.Name not defined, port.Name: %s", port.StrVal)
 	}
 	for _, p := range svc.Spec.Ports {
 		if p.Port == port.IntVal {
-			return p.Port, nil
+			return &p, nil
 		}
 	}
-	return 0, fmt.Errorf("service.Spec.Ports: port.Port not defined, port.Port: %d", port.IntVal)
+	return nil, fmt.Errorf("service.Spec.Ports: port.Port not defined, port.Port: %d", port.IntVal)
 
 }

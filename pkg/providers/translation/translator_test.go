@@ -247,8 +247,8 @@ func TestTranslateUpstreamNodes(t *testing.T) {
 	nodes, err := tr.TranslateEndpoint(kube.NewEndpoint(endpoints), intstr.FromInt(10080), nil)
 	assert.Nil(t, nodes)
 	assert.Equal(t, &TranslateError{
-		Field:  "service.spec.ports",
-		Reason: "port not defined",
+		Field:  "service.Spec.Ports",
+		Reason: "service.Spec.Ports: port.Port not defined, port.Port: 10080",
 	}, err)
 
 	nodes, err = tr.TranslateEndpoint(kube.NewEndpoint(endpoints), intstr.FromInt(80), nil)
@@ -376,8 +376,8 @@ func TestTranslateUpstreamNodesWithEndpointSlices(t *testing.T) {
 	nodes, err := tr.TranslateEndpoint(kube.NewEndpointWithSlice(ep), intstr.FromInt(10080), nil)
 	assert.Nil(t, nodes)
 	assert.Equal(t, err, &TranslateError{
-		Field:  "service.spec.ports",
-		Reason: "port not defined",
+		Field:  "service.Spec.Ports",
+		Reason: "service.Spec.Ports: port.Port not defined, port.Port: 10080",
 	})
 
 	nodes, err = tr.TranslateEndpoint(kube.NewEndpointWithSlice(ep), intstr.FromInt(80), nil)
