@@ -197,5 +197,48 @@ func (c *gatewayTCPRouteController) onAdd(obj interface{}) {
 	})
 }
 
-func (c *gatewayTCPRouteController) onUpdate(oldObj, newObj interface{}) {}
-func (c *gatewayTCPRouteController) OnDelete(obj interface{})            {}
+func (c *gatewayTCPRouteController) onUpdate(oldObj, newObj interface{}) {
+	oldTCPRoute := oldObj.(*gatewayv1alpha2.TCPRoute)
+	newTCPRoute := newObj.(*gatewayv1alpha2.TCPRoute)
+	if oldTCPRoute.ResourceVersion >= newTCPRoute.ResourceVersion {
+		return
+	}
+	key, err := cache.MetaNamespaceKeyFunc(oldObj)
+	if err != nil {
+		log.Errorw("found gateway TCPRoute resource with bad meta namespace key",
+			zap.Error(err),
+		)
+		return
+	}
+	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+	log.Debugw("gateway TCPRoute update event arrived",
+		zap.Any("old object", oldObj),
+		zap.Any("new object", newObj),
+	)
+	c.workqueue.Add(&types.Event{
+		Type:   types.EventUpdate,
+		Object: key,
+	})
+}
+
+func (c *gatewayTCPRouteController) OnDelete(obj interface{}) {
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Errorw("found gateway TCPRoute resource with bad meta namespace key",
+			zap.Error(err),
+		)
+		return
+	}
+	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+	log.Debugw("gateway TCPRoute update delete arrived",
+		zap.Any("object", obj),
+	)
+	c.workqueue.Add(&types.Event{
+		Type:   types.EventDelete,
+		Object: key,
+	})
+}
