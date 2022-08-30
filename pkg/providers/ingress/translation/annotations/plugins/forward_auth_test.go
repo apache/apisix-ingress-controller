@@ -12,25 +12,26 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package annotations
+package plugins
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestForwardAuthHandler(t *testing.T) {
-	annotations := map[string]string{
-		_forwardAuthURI:             "http://127.0.0.1:9080",
-		_forwardAuthRequestHeaders:  "Authorization",
-		_forwardAuthClientHeaders:   "Location",
-		_forwardAuthUpstreamHeaders: "X-User-ID",
+	anno := map[string]string{
+		annotations.AnnotationsForwardAuthURI:             "http://127.0.0.1:9080",
+		annotations.AnnotationsForwardAuthRequestHeaders:  "Authorization",
+		annotations.AnnotationsForwardAuthClientHeaders:   "Location",
+		annotations.AnnotationsForwardAuthUpstreamHeaders: "X-User-ID",
 	}
 	p := NewForwardAuthHandler()
-	out, err := p.Handle(NewExtractor(annotations))
+	out, err := p.Handle(annotations.NewExtractor(anno))
 	assert.Nil(t, err, "checking given error")
 	config := out.(*apisixv1.ForwardAuthConfig)
 	assert.Equal(t, "http://127.0.0.1:9080", config.URI)
@@ -40,14 +41,14 @@ func TestForwardAuthHandler(t *testing.T) {
 	assert.Equal(t, true, config.SSLVerify)
 	assert.Equal(t, "forward-auth", p.PluginName())
 
-	annotations[_forwardAuthSSLVerify] = "false"
-	out, err = p.Handle(NewExtractor(annotations))
+	anno[annotations.AnnotationsForwardAuthSSLVerify] = "false"
+	out, err = p.Handle(annotations.NewExtractor(anno))
 	assert.Nil(t, err, "checking given error")
 	config = out.(*apisixv1.ForwardAuthConfig)
 	assert.Equal(t, false, config.SSLVerify)
 
-	annotations[_forwardAuthURI] = ""
-	out, err = p.Handle(NewExtractor(annotations))
+	anno[annotations.AnnotationsForwardAuthURI] = ""
+	out, err = p.Handle(annotations.NewExtractor(anno))
 	assert.Nil(t, err, "checking given error")
 	assert.Nil(t, out, "checking given output")
 }
