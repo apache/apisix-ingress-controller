@@ -37,6 +37,7 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
+	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/testing"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -153,6 +154,8 @@ func NewScaffold(o *Options) *Scaffold {
 		opts: o,
 		t:    ginkgo.GinkgoT(),
 	}
+	// Disable logging of terratest library.
+	logger.Default = logger.Discard
 
 	ginkgo.BeforeEach(s.beforeEach)
 	ginkgo.AfterEach(s.afterEach)
