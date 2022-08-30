@@ -428,13 +428,17 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	})
 
 	var ingressAPISIXDeployment string
-	label := fmt.Sprintf("apisix.ingress.watch=%s", s.namespace)
+	label := `""`
+	if labels := s.NamespaceSelectorLabelStrings(); labels != nil && !s.opts.DisableNamespaceSelector {
+		label = labels[0]
+	}
+
 	if s.opts.EnableWebhooks {
 		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.ApisixResourceSyncInterval,
-			s.FormatNamespaceLabel(label), s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
+			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
 	} else {
 		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.ApisixResourceSyncInterval,
-			s.FormatNamespaceLabel(label), s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
+			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
 	}
 
 	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment)
@@ -538,7 +542,10 @@ func (s *Scaffold) GetIngressPodDetails() ([]corev1.Pod, error) {
 // ScaleIngressController scales the number of Ingress Controller pods to desired.
 func (s *Scaffold) ScaleIngressController(desired int) error {
 	var ingressDeployment string
-	label := fmt.Sprintf("apisix.ingress.watch=%s", s.namespace)
+	var label string
+	if labels := s.NamespaceSelectorLabelStrings(); labels != nil {
+		label = labels[0]
+	}
 	if s.opts.EnableWebhooks {
 		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
 	} else {
