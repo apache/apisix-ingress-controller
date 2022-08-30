@@ -24,7 +24,9 @@ on:
   pull_request:
     type: [review_requested, ready_for_review]
     # The branches below must be a subset of the branches above
-    branches: [ master ]
+    branches:
+      - master
+      - v1.5.0
   schedule:
     - cron: '25 5 * * 5'
 

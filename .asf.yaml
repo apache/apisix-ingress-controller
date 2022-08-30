@@ -40,3 +40,6 @@ github:
       master:
         required_pull_request_reviews:
           required_approving_review_count: 2
+      v1.5.0:
+        required_pull_request_reviews:
+          required_approving_review_count: 1
