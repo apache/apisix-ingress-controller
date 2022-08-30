@@ -99,5 +99,5 @@ The service resolve granularity determines whether the [Serivce ClusterIP](https
 
 | Granularity | Meaning                                                                                                                                                                        |
 |-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| endpoint    | Filled upstream nodes by Pods' IP.                                                                                                                                             |
+| endpoint    | Filled upstream nodes by Pods' IP. ApisixUpstream healthCheck is only effective on this case.                                                                                  |
 | service     | Filled upstream nodes by Service ClusterIP, in such a case, loadbalacing are implemented by [kube-proxy](https://kubernetes.io/docs/concepts/overview/components/#kube-proxy). |
