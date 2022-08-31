@@ -142,7 +142,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*translation
 			)
 			if pathRule.Backend.Service != nil {
 				var port intstr.IntOrString
-				if pathRule.Backend.Service.Name != "" {
+				if pathRule.Backend.Service.Port.Name != "" {
 					port = intstr.FromString(pathRule.Backend.Service.Port.Name)
 				} else {
 					port = intstr.FromInt(int(pathRule.Backend.Service.Port.Number))
