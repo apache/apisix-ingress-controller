@@ -496,3 +496,248 @@ func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {
 	assert.Equal(t, id.GenID("test_svc1_81"), tx.Upstreams[0].ID, "upstream1 id error")
 	assert.Equal(t, id.GenID("test_svc2_82"), tx.Upstreams[1].ID, "upstream2 id error")
 }
+
+func ptrOf[T interface{}](v T) *T {
+	return &v
+}
+
+func mockTranslatorV2(t *testing.T) (*translator, <-chan struct{}) {
+	svc := &corev1.Service{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "svc",
+			Namespace: "test",
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name: "port1",
+					Port: 80,
+					TargetPort: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: 9080,
+					},
+				},
+				{
+					Name: "port2",
+					Port: 443,
+					TargetPort: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: 9443,
+					},
+				},
+			},
+		},
+	}
+	endpoints := &corev1.Endpoints{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "svc",
+			Namespace: "test",
+		},
+		Subsets: []corev1.EndpointSubset{
+			{
+				Ports: []corev1.EndpointPort{
+					{
+						Name: "port1",
+						Port: 9080,
+					},
+					{
+						Name: "port2",
+						Port: 9443,
+					},
+				},
+				Addresses: []corev1.EndpointAddress{
+					{IP: "192.168.1.1"},
+					{IP: "192.168.1.2"},
+				},
+			},
+		},
+	}
+
+	au := &configv2.ApisixUpstream{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "au",
+			Namespace: "test",
+		},
+		Spec: &configv2.ApisixUpstreamSpec{
+			ExternalNodes: []configv2.ApisixUpstreamExternalNode{
+				{
+					Name:   "httpbin.org",
+					Type:   configv2.ExternalTypeDomain,
+					Weight: ptrOf(1),
+				},
+			},
+		},
+	}
+
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	svcInformer := informersFactory.Core().V1().Services().Informer()
+	svcLister := informersFactory.Core().V1().Services().Lister()
+	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
+	apisixClient := fakeapisix.NewSimpleClientset()
+	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
+
+	auInformer := apisixInformersFactory.Apisix().V2().ApisixUpstreams().Informer()
+	auLister := kube.NewApisixUpstreamLister(
+		apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+		apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
+	)
+
+	_, err := client.CoreV1().Endpoints("test").Create(context.Background(), endpoints, metav1.CreateOptions{})
+	assert.Nil(t, err)
+	_, err = client.CoreV1().Services("test").Create(context.Background(), svc, metav1.CreateOptions{})
+	assert.Nil(t, err)
+	_, err = apisixClient.ApisixV2().ApisixUpstreams("test").Create(context.Background(), au, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	tr := &translator{
+		&TranslatorOptions{
+			ServiceLister:        svcLister,
+			ApisixUpstreamLister: auLister,
+		},
+		translation.NewTranslator(&translation.TranslatorOptions{
+			ServiceLister:        svcLister,
+			EndpointLister:       epLister,
+			ApisixUpstreamLister: auLister,
+			APIVersion:           config.ApisixV2,
+		}),
+	}
+
+	processCh := make(chan struct{}, 2)
+	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+	epInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+	auInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	go svcInformer.Run(stopCh)
+	go epInformer.Run(stopCh)
+	go auInformer.Run(stopCh)
+	cache.WaitForCacheSync(stopCh, svcInformer.HasSynced)
+
+	return tr, processCh
+}
+
+func TestTranslateApisixRouteV2WithUpstream(t *testing.T) {
+	tr, processCh := mockTranslatorV2(t)
+	<-processCh
+	<-processCh
+
+	ar := &configv2.ApisixRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ar",
+			Namespace: "test",
+		},
+		Spec: configv2.ApisixRouteSpec{
+			HTTP: []configv2.ApisixRouteHTTP{
+				{
+					Name: "rule1",
+					Match: configv2.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Backends: []configv2.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc",
+							ServicePort: intstr.IntOrString{
+								IntVal: 80,
+							},
+							Weight: ptrOf(2),
+						},
+					},
+					Upstreams: []configv2.ApisixRouteUpstreamReference{
+						{
+							Name:   "au",
+							Weight: ptrOf(1),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	tctx, err := tr.TranslateRouteV2(ar)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(tctx.Routes))
+	r := tctx.Routes[0]
+
+	assert.NotNil(t, r.Plugins["traffic-split"])
+
+	tsCfg, ok := r.Plugins["traffic-split"].(*apisixv1.TrafficSplitConfig)
+	assert.Equal(t, true, ok)
+	assert.Equal(t, 1, len(tsCfg.Rules))
+	assert.NotNil(t, tsCfg.Rules[0])
+	assert.NotNil(t, tsCfg.Rules[0].WeightedUpstreams, "weighted upstreams")
+
+	wups := tsCfg.Rules[0].WeightedUpstreams
+
+	upsName := apisixv1.ComposeExternalUpstreamName(ar.Namespace, "au")
+	upsID := id.GenID(upsName)
+	assert.Equal(t, []apisixv1.TrafficSplitConfigRuleWeightedUpstream{
+		{
+			// Default
+			UpstreamID: "",
+			Weight:     2,
+		},
+		{
+			UpstreamID: upsID,
+			Weight:     1,
+		},
+	}, wups)
+
+	assert.Equal(t, 2, len(tctx.Upstreams))
+	var ups *apisixv1.Upstream
+	for _, u := range tctx.Upstreams {
+		if u.ID == upsID {
+			ups = u
+			break
+		}
+	}
+	assert.NotNil(t, ups)
+
+	// unset useless data
+	ups.Desc = ""
+	assert.Equal(t, &apisixv1.Upstream{
+		Metadata: apisixv1.Metadata{
+			ID:   upsID,
+			Name: upsName,
+			Desc: "",
+			Labels: map[string]string{
+				"managed-by":  "apisix-ingress-controller",
+				"meta_weight": "1",
+			},
+		},
+		Type:   apisixv1.LbRoundRobin,
+		HashOn: "",
+		Key:    "",
+		Checks: nil,
+		Nodes: []apisixv1.UpstreamNode{
+			{
+				Host:   "httpbin.org",
+				Port:   80,
+				Weight: 1,
+			},
+		},
+		Scheme:  apisixv1.SchemeHTTP,
+		Retries: nil,
+		Timeout: nil,
+		TLS:     nil,
+	}, ups)
+}

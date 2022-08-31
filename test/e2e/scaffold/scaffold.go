@@ -20,6 +20,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"go.uber.org/zap"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -613,4 +615,16 @@ func (s *Scaffold) CreateVersionedApisixResourceWithNamespace(yml, namespace str
 
 func ApisixResourceVersion() *apisixResourceVersionInfo {
 	return apisixResourceVersion
+}
+
+func (s *Scaffold) DeleteResource(resourceType, name string) error {
+	err := k8s.RunKubectlE(s.t, s.kubectlOptions, "delete", resourceType, name)
+	if err != nil {
+		log.Errorw("delete resource failed",
+			zap.Error(err),
+			zap.String("resource", resourceType),
+			zap.String("name", name),
+		)
+	}
+	return err
 }

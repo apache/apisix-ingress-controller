@@ -16,6 +16,7 @@ package kube
 
 import (
 	"errors"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
@@ -28,9 +29,11 @@ import (
 // it aims at to be compatible with different ApisixUpstream versions.
 type ApisixUpstreamLister interface {
 	// V2beta3 gets the ApisixUpstream in apisix.apache.org/v2beta3.
-	V2beta3(string, string) (ApisixUpstream, error)
+	V2beta3(namespace, name string) (ApisixUpstream, error)
 	// V2 gets the ApisixUpstream in apisix.apache.org/v2.
-	V2(string, string) (ApisixUpstream, error)
+	V2(namespace, name string) (ApisixUpstream, error)
+	// ListV2 gets v2.ApisixUpstreams
+	ListV2(namespace string) ([]*configv2.ApisixUpstream, error)
 }
 
 // ApisixUpstreamInformer is an encapsulation for the informer of ApisixUpstream,
@@ -118,6 +121,10 @@ func (l *apisixUpstreamLister) V2(namespace, name string) (ApisixUpstream, error
 		groupVersion: config.ApisixV2,
 		v2:           au,
 	}, nil
+}
+
+func (l *apisixUpstreamLister) ListV2(namespace string) ([]*configv2.ApisixUpstream, error) {
+	return l.v2Lister.ApisixUpstreams(namespace).List(labels.Everything())
 }
 
 // MustNewApisixUpstream creates a kube.ApisixUpstream object according to the

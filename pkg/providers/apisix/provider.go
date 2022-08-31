@@ -51,6 +51,7 @@ type Provider interface {
 
 	Init(ctx context.Context) error
 	ResourceSync()
+	NotifyServiceAdd(key string)
 
 	GetSslFromSecretKey(string) *sync.Map
 }
@@ -85,10 +86,12 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
 
 	p.apisixTranslator = apisixtranslation.NewApisixTranslator(&apisixtranslation.TranslatorOptions{
-		Apisix:        common.APISIX,
-		ClusterName:   common.Config.APISIX.DefaultClusterName,
-		ServiceLister: common.SvcLister,
-		SecretLister:  common.SecretLister,
+		Apisix:      common.APISIX,
+		ClusterName: common.Config.APISIX.DefaultClusterName,
+
+		ApisixUpstreamLister: common.ApisixUpstreamLister,
+		ServiceLister:        common.SvcLister,
+		SecretLister:         common.SecretLister,
 	}, translator)
 	c := &apisixCommon{
 		Common:            common,
@@ -130,7 +133,7 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 		apisixFactory.Apisix().V2().ApisixPluginConfigs().Lister(),
 	)
 
-	p.apisixUpstreamController = newApisixUpstreamController(c)
+	p.apisixUpstreamController = newApisixUpstreamController(c, p.NotifyApisixUpstreamAdd)
 	p.apisixRouteController = newApisixRouteController(c, p.apisixRouteInformer, apisixRouteLister)
 	p.apisixTlsController = newApisixTlsController(c)
 	p.apisixClusterConfigController = newApisixClusterConfigController(c, p.apisixClusterConfigInformer, apisixClusterConfigLister)
@@ -189,6 +192,14 @@ func (p *apisixProvider) ResourceSync() {
 	e.Add(p.apisixPluginConfigController.ResourceSync)
 
 	e.Wait()
+}
+
+func (p *apisixProvider) NotifyServiceAdd(key string) {
+	p.apisixRouteController.NotifyServiceAdd(key)
+}
+
+func (p *apisixProvider) NotifyApisixUpstreamAdd(key string) {
+	p.apisixRouteController.NotifyApisixUpstreamAdd(key)
 }
 
 func (p *apisixProvider) GetSslFromSecretKey(secretMapKey string) *sync.Map {

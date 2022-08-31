@@ -19,6 +19,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -123,6 +125,13 @@ func (s *Scaffold) CreateApisixRoute(name string, rules []ApisixRouteRule) {
 func (s *Scaffold) CreateResourceFromString(yaml string) error {
 	err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
 	time.Sleep(5 * time.Second)
+
+	// if the error raised, it may be a &shell.ErrWithCmdOutput, which is useless in debug
+	if err != nil {
+		log.Errorw("create resource failed",
+			zap.Error(err),
+		)
+	}
 	return err
 }
 
