@@ -972,7 +972,7 @@ func (c *apisixRouteController) NotifyServiceAdd(key string) {
 	})
 }
 
-func (c *apisixRouteController) NotifyApisixUpstreamAdd(key string) {
+func (c *apisixRouteController) NotifyApisixUpstreamChange(key string) {
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
