@@ -73,6 +73,10 @@ Meaning of each field in the spec of ApisixRoute are followed, the top level fie
 | stream[].backend.servicePort         | integer or string  | The backend service port, can be the port number or the name defined in the service object.                                                                                                                                       |
 | stream[].backend.resolveGranularity  | string             | See [Service Resolve Granularity](#service-resolve-granularity) for the details.                                                                                                                                                  |
 | stream[].backend.subset              | string             | Subset specifies a subset for the target Service. The subset should be pre-definedin ApisixUpstream about this service.                                                                                                           |
+| stream[].plugins                     | array              | A series of APISIX plugins that will be executed once this route rule is matched                                                                                                                                                  |
+| stream[].plugins[].name              | string             | The plugin name, see [docs](http://apisix.apache.org/docs/apisix/getting-started) for learning the available plugins.                                                                                                             |
+| stream[].plugins[].enable            | boolean            | Whether the plugin would be used                                                                                                                                                                                                  |
+| stream[].plugins[].config            | object             | The configuration of the plugin that must have the same fields as in APISIX.                                                                                                                                                      |
 
 ## Expression Operators
 
@@ -95,5 +99,5 @@ The service resolve granularity determines whether the [Serivce ClusterIP](https
 
 | Granularity | Meaning                                                                                                                                                                        |
 |-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| endpoint    | Filled upstream nodes by Pods' IP.                                                                                                                                             |
+| endpoint    | Filled upstream nodes by Pods' IP. ApisixUpstream healthCheck is only effective on this case.                                                                                  |
 | service     | Filled upstream nodes by Service ClusterIP, in such a case, loadbalacing are implemented by [kube-proxy](https://kubernetes.io/docs/concepts/overview/components/#kube-proxy). |
