@@ -121,9 +121,11 @@ func (s *Scaffold) CreateApisixRoute(name string, rules []ApisixRouteRule) {
 
 // CreateResourceFromString creates resource from a loaded yaml string.
 func (s *Scaffold) CreateResourceFromString(yaml string) error {
-	err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
-	time.Sleep(5 * time.Second)
-	return err
+	return k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
+}
+
+func (s *Scaffold) DeleteResourceFromString(yaml string) error {
+	return k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
 }
 
 func (s *Scaffold) GetOutputFromString(shell ...string) (string, error) {
