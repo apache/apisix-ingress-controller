@@ -746,7 +746,7 @@ func (c *apisixUpstreamController) handleSvcChange(ctx context.Context, key stri
 
 	c.externalSvcLock.RLock()
 	if ups, ok := c.externalServiceMap[key]; ok {
-		for upKey, _ := range ups {
+		for upKey := range ups {
 			toUpdateUpstreams = append(toUpdateUpstreams, upKey)
 		}
 	}
