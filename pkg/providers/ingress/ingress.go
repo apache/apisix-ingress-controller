@@ -428,7 +428,20 @@ func (c *ingressController) ResourceSync() {
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
+
 		ing := kube.MustNewIngress(obj)
+		valid := c.isIngressEffective(ing)
+		if valid {
+			log.Debugw("ingress add event arrived",
+				zap.Any("object", obj),
+			)
+		} else {
+			log.Debugw("ignore noneffective ingress add event",
+				zap.Any("object", obj),
+			)
+			return
+		}
+
 		c.workqueue.Add(&types.Event{
 			Type: types.EventAdd,
 			Object: kube.IngressEvent{
