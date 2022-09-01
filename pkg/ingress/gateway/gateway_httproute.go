@@ -220,5 +220,53 @@ func (c *gatewayHTTPRouteController) onAdd(obj interface{}) {
 		Object: key,
 	})
 }
-func (c *gatewayHTTPRouteController) onUpdate(oldObj, newObj interface{}) {}
-func (c *gatewayHTTPRouteController) OnDelete(obj interface{})            {}
+func (c *gatewayHTTPRouteController) onUpdate(oldObj, newObj interface{}) {
+	oldHTTPRoute := oldObj.(*gatewayv1alpha2.HTTPRoute)
+	newHTTPRoute := newObj.(*gatewayv1alpha2.HTTPRoute)
+	if oldHTTPRoute.ResourceVersion >= newHTTPRoute.ResourceVersion {
+		return
+	}
+	key, err := cache.MetaNamespaceKeyFunc(oldObj)
+	if err != nil {
+		log.Errorw("found gateway HTTPRoute resource with bad meta namespace key",
+			zap.Error(err),
+		)
+		return
+	}
+	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+	log.Debugw("Gateway HTTPRoute update event arrived",
+		zap.Any("old object", oldObj),
+		zap.Any("new object", newObj),
+	)
+
+	log.Debugw("update HTTPRoute", zap.String("key", key))
+	c.workqueue.Add(&types.Event{
+		Type:   types.EventUpdate,
+		Object: key,
+	})
+}
+
+func (c *gatewayHTTPRouteController) OnDelete(obj interface{}) {
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Errorw("found Gateway HTTPRoute resource with bad meta namespace key",
+			zap.Error(err),
+		)
+		return
+	}
+	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+	log.Debugw("Gateway HTTPRoute delete event arrived",
+		zap.Any("object", obj),
+	)
+
+	log.Debugw("delete HTTPRoute", zap.String("key", key))
+	c.workqueue.Add(&types.Event{
+		Type:      types.EventDelete,
+		Object:    key,
+		Tombstone: obj,
+	})
+}
