@@ -19,6 +19,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -295,7 +296,7 @@ type ApisixClusterSkywalkingConfig struct {
 	// Enable means whether enable Skywalking or not.
 	Enable bool `json:"enable" yaml:"enable"`
 	// SampleRatio means the ratio to collect
-	SampleRatio float64 `json:"sampleRatio" yaml:"sampleRatio"`
+	SampleRatio resource.Quantity `json:"sampleRatio" yaml:"sampleRatio"`
 }
 
 // ApisixClusterAdminConfig is the admin config for the corresponding APISIX Cluster.
