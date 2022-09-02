@@ -429,15 +429,12 @@ func (c *ingressController) ResourceSync() {
 			continue
 		}
 		ing := kube.MustNewIngress(obj)
-		valid := c.isIngressEffective(ing)
-		if valid {
-			log.Debugw("ingress add event arrived",
-				zap.Any("object", obj),
-			)
-		} else {
-			// resource sync do not care about the ingress class mismatch
+		if !c.isIngressEffective(ing) {
 			return
 		}
+		log.Debugw("ingress add event arrived",
+			zap.Any("object", obj),
+		)
 		c.workqueue.Add(&types.Event{
 			Type: types.EventAdd,
 			Object: kube.IngressEvent{
