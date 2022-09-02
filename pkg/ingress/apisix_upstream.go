@@ -323,7 +323,7 @@ func (c *apisixUpstreamController) handleSyncErr(obj interface{}, err error) {
 	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
 		log.Infow("sync ApisixUpstream but not found, ignore",
 			zap.String("event_type", event.Type.String()),
-			zap.String("ApisixUpstream", event.Object.(string)),
+			zap.Any("ApisixUpstream", event.Object.(kube.ApisixUpstreamEvent)),
 		)
 		c.workqueue.Forget(event)
 		return
