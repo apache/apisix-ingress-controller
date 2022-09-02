@@ -116,7 +116,7 @@ spec:
 		// test mqtt protocol
 		c := s.NewMQTTClient()
 		token := c.Connect()
-		token.WaitTimeout(3 * time.Second)
+		token.WaitTimeout(6 * time.Second)
 		assert.Nil(ginkgo.GinkgoT(), token.Error(), "Checking mqtt connection")
 	})
 })
