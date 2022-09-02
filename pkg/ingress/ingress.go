@@ -416,6 +416,12 @@ func (c *ingressController) ResourceSync() {
 			continue
 		}
 		ing := kube.MustNewIngress(obj)
+		if !c.isIngressEffective(ing) {
+			return
+		}
+		log.Debugw("ingress add event arrived",
+			zap.Any("object", obj),
+		)
 		c.workqueue.Add(&types.Event{
 			Type: types.EventAdd,
 			Object: kube.IngressEvent{
