@@ -286,7 +286,12 @@ func (c *ingressController) onAdd(obj interface{}) {
 	}
 
 	ing := kube.MustNewIngress(obj)
-	if !c.isIngressEffective(ing) {
+	valid := c.isIngressEffective(ing)
+	if valid {
+		log.Debugw("ingress add event arrived",
+			zap.Any("object", obj),
+		)
+	} else {
 		log.Debugw("ignore noneffective ingress add event",
 			zap.Any("object", obj),
 		)
@@ -319,7 +324,13 @@ func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
-	if !c.isIngressEffective(curr) {
+	valid := c.isIngressEffective(curr)
+	if valid {
+		log.Debugw("ingress update event arrived",
+			zap.Any("new object", newObj),
+			zap.Any("old object", oldObj),
+		)
+	} else {
 		log.Debugw("ignore noneffective ingress update event",
 			zap.Any("new object", oldObj),
 			zap.Any("old object", newObj),
@@ -357,7 +368,12 @@ func (c *ingressController) OnDelete(obj interface{}) {
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
-	if !c.isIngressEffective(ing) {
+	valid := c.isIngressEffective(ing)
+	if valid {
+		log.Debugw("ingress delete event arrived",
+			zap.Any("final state", ing),
+		)
+	} else {
 		log.Debugw("ignore noneffective ingress delete event",
 			zap.Any("object", ing),
 		)
@@ -412,15 +428,16 @@ func (c *ingressController) ResourceSync() {
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
-
 		ing := kube.MustNewIngress(obj)
-		if !c.isIngressEffective(ing) {
-			log.Debugw("ignore noneffective ingress add event",
+		valid := c.isIngressEffective(ing)
+		if valid {
+			log.Debugw("ingress add event arrived",
 				zap.Any("object", obj),
 			)
+		} else {
+			// resource sync do not care about the ingress class mismatch
 			return
 		}
-
 		c.workqueue.Add(&types.Event{
 			Type: types.EventAdd,
 			Object: kube.IngressEvent{
