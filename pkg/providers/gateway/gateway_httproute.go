@@ -211,10 +211,10 @@ func (c *gatewayHTTPRouteController) onAdd(obj interface{}) {
 		return
 	}
 	log.Debugw("gateway HTTPRoute add event arrived",
+		zap.String("key", key),
 		zap.Any("object", obj),
 	)
 
-	log.Debugw("add HTTPRoute", zap.String("key", key))
 	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
@@ -238,11 +238,11 @@ func (c *gatewayHTTPRouteController) onUpdate(oldObj, newObj interface{}) {
 		return
 	}
 	log.Debugw("Gateway HTTPRoute update event arrived",
+		zap.String("key", key),
 		zap.Any("old object", oldObj),
 		zap.Any("new object", newObj),
 	)
 
-	log.Debugw("update HTTPRoute", zap.String("key", key))
 	c.workqueue.Add(&types.Event{
 		Type:   types.EventUpdate,
 		Object: key,
@@ -261,10 +261,10 @@ func (c *gatewayHTTPRouteController) OnDelete(obj interface{}) {
 		return
 	}
 	log.Debugw("Gateway HTTPRoute delete event arrived",
+		zap.String("key", key),
 		zap.Any("object", obj),
 	)
 
-	log.Debugw("delete HTTPRoute", zap.String("key", key))
 	c.workqueue.Add(&types.Event{
 		Type:      types.EventDelete,
 		Object:    key,
