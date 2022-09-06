@@ -163,8 +163,8 @@ rules:
       - apisixroutes/status
       - apisixupstreams
       - apisixupstreams/status
-      - apisixtlses
-      - apisixtlses/status
+      - apisixtls
+      - apisixtls/status
       - apisixclusterconfigs
       - apisixclusterconfigs/status
       - apisixconsumers

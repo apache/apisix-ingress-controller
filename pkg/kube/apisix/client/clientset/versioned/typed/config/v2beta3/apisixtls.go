@@ -68,7 +68,7 @@ func (c *apisixTlses) Get(ctx context.Context, name string, options v1.GetOption
 	result = &v2beta3.ApisixTls{}
 	err = c.client.Get().
 		Namespace(c.ns).
-		Resource("apisixtlses").
+		Resource("apisixtls").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do(ctx).
