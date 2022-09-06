@@ -81,6 +81,7 @@ spec:
     protocol: TCP
 `))
 		s.EnsureNumEndpointsReady(ginkgo.GinkgoT(), "mosquito", 1)
+		time.Sleep(30 * time.Second)
 		// setup Apisix Route for mqtt proxy
 		apisixRoute := `
 apiVersion: apisix.apache.org/v2
@@ -116,7 +117,7 @@ spec:
 		// test mqtt protocol
 		c := s.NewMQTTClient()
 		token := c.Connect()
-		token.WaitTimeout(6 * time.Second)
+		token.WaitTimeout(3 * time.Second)
 		assert.Nil(ginkgo.GinkgoT(), token.Error(), "Checking mqtt connection")
 	})
 })
