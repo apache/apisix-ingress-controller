@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
@@ -30,32 +31,26 @@ func TestTranslatePluginConfigV2beta3(t *testing.T) {
 			Namespace: "test-ns",
 		},
 		Spec: configv2beta3.ApisixPluginConfigSpec{
-			Plugins: []configv2beta3.ApisixRouteHTTPPlugin{
+			Plugins: []configv2beta3.ApisixRoutePlugin{
 				{
 					Name:   "case1",
 					Enable: true,
-					Config: map[string]interface{}{
-						"key-1": 1,
-						"key-2": 2,
+					Config: v1.JSON{
+						Raw: []byte(`{"key-1": 123456, "key-2": "2121331"}`),
 					},
 				},
 				{
 					Name:   "case2",
 					Enable: false,
-					Config: map[string]interface{}{
-						"key-3": 3,
-						"key-4": 4,
-						"key-5": 5,
+					Config: v1.JSON{
+						Raw: []byte(`{"key-3": 3, "key-4": 4, "key-5": 5 }`),
 					},
 				},
 				{
 					Name:   "case3",
 					Enable: true,
-					Config: map[string]interface{}{
-						"key-6": 6,
-						"key-7": 7,
-						"key-8": 8,
-						"key-9": 9,
+					Config: v1.JSON{
+						Raw: []byte(`{"key-6": 6,"key-7": 7,"key-8": 8,"key-9": 9}}`),
 					},
 				},
 			},
@@ -75,32 +70,26 @@ func TestTranslatePluginConfigV2beta3NotStrictly(t *testing.T) {
 			Namespace: "test-ns",
 		},
 		Spec: configv2beta3.ApisixPluginConfigSpec{
-			Plugins: []configv2beta3.ApisixRouteHTTPPlugin{
+			Plugins: []configv2beta3.ApisixRoutePlugin{
 				{
 					Name:   "case1",
 					Enable: true,
-					Config: map[string]interface{}{
-						"key-1": 1,
-						"key-2": 2,
+					Config: v1.JSON{
+						Raw: []byte(`{"key-1": 123456, "key-2": "2121331"}`),
 					},
 				},
 				{
 					Name:   "case2",
 					Enable: false,
-					Config: map[string]interface{}{
-						"key-3": 3,
-						"key-4": 4,
-						"key-5": 5,
+					Config: v1.JSON{
+						Raw: []byte(`{"key-3": 3, "key-4": 4, "key-5": 5 }`),
 					},
 				},
 				{
 					Name:   "case3",
 					Enable: true,
-					Config: map[string]interface{}{
-						"key-6": 6,
-						"key-7": 7,
-						"key-8": 8,
-						"key-9": 9,
+					Config: v1.JSON{
+						Raw: []byte(`{"key-6": 6,"key-7": 7,"key-8": 8,"key-9": 9}}`),
 					},
 				},
 			},

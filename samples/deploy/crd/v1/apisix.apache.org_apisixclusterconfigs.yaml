@@ -5,21 +5,27 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.9.2
   creationTimestamp: null
-  name: apisixpluginconfigs.apisix.apache.org
+  name: apisixclusterconfigs.apisix.apache.org
 spec:
   group: apisix.apache.org
   names:
-    kind: ApisixPluginConfig
-    listKind: ApisixPluginConfigList
-    plural: apisixpluginconfigs
-    singular: apisixpluginconfig
-  scope: Namespaced
+    categories:
+    - apisix-ingress-controller
+    kind: ApisixClusterConfig
+    listKind: ApisixClusterConfigList
+    plural: apisixclusterconfigs
+    shortNames:
+    - acc
+    singular: apisixclusterconfig
+  scope: Cluster
   versions:
   - name: v2
     schema:
       openAPIV3Schema:
-        description: ApisixPluginConfig is the Schema for the ApisixPluginConfig resource.
-          An ApisixPluginConfig is used to support a group of plugin configs
+        description: ApisixClusterConfig is the Schema for the ApisixClusterConfig
+          resource. An ApisixClusterConfig is used to identify an APISIX cluster,
+          it's a ClusterScoped resource so the name is unique. It also contains some
+          cluster-level configurations like monitoring.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -34,29 +40,52 @@ spec:
           metadata:
             type: object
           spec:
-            description: Spec defines the desired state of ApisixPluginConfigSpec.
+            description: Spec defines the desired state of ApisixClusterConfigSpec.
             properties:
-              plugins:
-                description: Plugins contains a list of ApisixRoutePlugin
-                items:
-                  description: ApisixRoutePlugin represents an APISIX plugin.
-                  properties:
-                    config:
-                      description: Plugin configuration.
-                    enable:
-                      description: Whether this plugin is in use, default is true.
-                      type: boolean
-                    name:
-                      description: The plugin name.
-                      type: string
-                  required:
-                  - config
-                  - enable
-                  - name
-                  type: object
-                type: array
-            required:
-            - plugins
+              admin:
+                description: Admin contains the Admin API information about APISIX
+                  cluster.
+                properties:
+                  adminKey:
+                    description: AdminKey is used to verify the admin API user.
+                    type: string
+                  baseURL:
+                    description: BaseURL is the base URL for the APISIX Admin API.
+                      It looks like "http://apisix-admin.default.svc.cluster.local:9080/apisix/admin"
+                    type: string
+                  clientTimeout:
+                    description: ClientTimeout is request timeout for the APISIX Admin
+                      API client
+                    format: int64
+                    type: integer
+                type: object
+              monitoring:
+                description: Monitoring categories all monitoring related features.
+                properties:
+                  prometheus:
+                    description: Prometheus is the config for using Prometheus in
+                      APISIX Cluster.
+                    properties:
+                      enable:
+                        description: Enable means whether enable Prometheus or not.
+                        type: boolean
+                    type: object
+                  skywalking:
+                    description: Skywalking is the config for using Skywalking in
+                      APISIX Cluster.
+                    properties:
+                      enable:
+                        description: Enable means whether enable Skywalking or not.
+                        type: boolean
+                      sampleRatio:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: SampleRatio means the ratio to collect
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
             type: object
           status:
             description: ApisixStatus is the status report for Apisix ingress Resources
@@ -130,19 +159,18 @@ spec:
                   type: object
                 type: array
             type: object
-        required:
-        - metadata
-        - spec
         type: object
     served: true
-    storage: false
+    storage: true
     subresources:
       status: {}
   - name: v2beta3
     schema:
       openAPIV3Schema:
-        description: ApisixPluginConfig is the Schema for the ApisixPluginConfig resource.
-          An ApisixPluginConfig is used to support a group of plugin configs
+        description: ApisixClusterConfig is the Schema for the ApisixClusterConfig
+          resource. An ApisixClusterConfig is used to identify an APISIX cluster,
+          it's a ClusterScoped resource so the name is unique. It also contains some
+          cluster-level configurations like monitoring.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -157,29 +185,52 @@ spec:
           metadata:
             type: object
           spec:
-            description: Spec defines the desired state of ApisixPluginConfigSpec.
+            description: Spec defines the desired state of ApisixClusterConfigSpec.
             properties:
-              plugins:
-                description: Plugins contains a list of ApisixRouteHTTPPlugin
-                items:
-                  description: ApisixRouteHTTPPlugin represents an APISIX plugin.
-                  properties:
-                    config:
-                      description: Plugin configuration.
-                    enable:
-                      description: Whether this plugin is in use, default is true.
-                      type: boolean
-                    name:
-                      description: The plugin name.
-                      type: string
-                  required:
-                  - config
-                  - enable
-                  - name
-                  type: object
-                type: array
-            required:
-            - plugins
+              admin:
+                description: Admin contains the Admin API information about APISIX
+                  cluster.
+                properties:
+                  adminKey:
+                    description: AdminKey is used to verify the admin API user.
+                    type: string
+                  baseURL:
+                    description: BaseURL is the base URL for the APISIX Admin API.
+                      It looks like "http://apisix-admin.default.svc.cluster.local:9080/apisix/admin"
+                    type: string
+                  clientTimeout:
+                    description: ClientTimeout is request timeout for the APISIX Admin
+                      API client
+                    format: int64
+                    type: integer
+                type: object
+              monitoring:
+                description: Monitoring categories all monitoring related features.
+                properties:
+                  prometheus:
+                    description: Prometheus is the config for using Prometheus in
+                      APISIX Cluster.
+                    properties:
+                      enable:
+                        description: Enable means whether enable Prometheus or not.
+                        type: boolean
+                    type: object
+                  skywalking:
+                    description: Skywalking is the config for using Skywalking in
+                      APISIX Cluster.
+                    properties:
+                      enable:
+                        description: Enable means whether enable Skywalking or not.
+                        type: boolean
+                      sampleRatio:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: SampleRatio means the ratio to collect
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
             type: object
           status:
             description: ApisixStatus is the status report for Apisix ingress Resources
@@ -253,9 +304,6 @@ spec:
                   type: object
                 type: array
             type: object
-        required:
-        - metadata
-        - spec
         type: object
     served: true
     storage: false

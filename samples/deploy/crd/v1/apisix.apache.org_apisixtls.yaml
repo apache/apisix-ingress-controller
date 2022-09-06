@@ -5,23 +5,22 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.9.2
   creationTimestamp: null
-  name: apisixclusterconfigs.apisix.apache.org
+  name: apisixtls.apisix.apache.org
 spec:
   group: apisix.apache.org
   names:
-    kind: ApisixClusterConfig
-    listKind: ApisixClusterConfigList
-    plural: apisixclusterconfigs
-    singular: apisixclusterconfig
+    kind: ApisixTls
+    listKind: ApisixTlsList
+    plural: apisixtls
+    shortNames:
+    - atls
+    singular: apisixtls
   scope: Namespaced
   versions:
   - name: v2
     schema:
       openAPIV3Schema:
-        description: ApisixClusterConfig is the Schema for the ApisixClusterConfig
-          resource. An ApisixClusterConfig is used to identify an APISIX cluster,
-          it's a ClusterScoped resource so the name is unique. It also contains some
-          cluster-level configurations like monitoring.
+        description: ApisixTls defines SSL resource in APISIX.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -36,61 +35,52 @@ spec:
           metadata:
             type: object
           spec:
-            description: Spec defines the desired state of ApisixClusterConfigSpec.
+            description: ApisixTlsSpec is the specification of ApisixSSL.
             properties:
-              admin:
-                description: Admin contains the Admin API information about APISIX
-                  cluster.
+              client:
+                description: ApisixMutualTlsClientConfig describes the mutual TLS
+                  CA and verify depth
                 properties:
-                  adminKey:
-                    description: AdminKey is used to verify the admin API user.
-                    type: string
-                  baseURL:
-                    description: BaseURL is the base URL for the APISIX Admin API.
-                      It looks like "http://apisix-admin.default.svc.cluster.local:9080/apisix/admin"
-                    type: string
-                  clientTimeout:
-                    description: ClientTimeout is request timeout for the APISIX Admin
-                      API client
-                    format: int64
+                  caSecret:
+                    description: ApisixSecret describes the Kubernetes Secret name
+                      and namespace.
+                    properties:
+                      name:
+                        minLength: 1
+                        type: string
+                      namespace:
+                        minLength: 1
+                        type: string
+                    required:
+                    - name
+                    - namespace
+                    type: object
+                  depth:
                     type: integer
-                required:
-                - adminKey
-                - baseURL
-                - clientTimeout
                 type: object
-              monitoring:
-                description: Monitoring categories all monitoring related features.
+              hosts:
+                items:
+                  pattern: ^\*?[0-9a-zA-Z-.]+$
+                  type: string
+                minItems: 1
+                type: array
+              secret:
+                description: ApisixSecret describes the Kubernetes Secret name and
+                  namespace.
                 properties:
-                  prometheus:
-                    description: Prometheus is the config for using Prometheus in
-                      APISIX Cluster.
-                    properties:
-                      enable:
-                        description: Enable means whether enable Prometheus or not.
-                        type: boolean
-                    required:
-                    - enable
-                    type: object
-                  skywalking:
-                    description: Skywalking is the config for using Skywalking in
-                      APISIX Cluster.
-                    properties:
-                      enable:
-                        description: Enable means whether enable Skywalking or not.
-                        type: boolean
-                      sampleRatio:
-                        anyOf:
-                        - type: integer
-                        - type: string
-                        description: SampleRatio means the ratio to collect
-                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                        x-kubernetes-int-or-string: true
-                    required:
-                    - enable
-                    - sampleRatio
-                    type: object
+                  name:
+                    minLength: 1
+                    type: string
+                  namespace:
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                - namespace
                 type: object
+            required:
+            - hosts
+            - secret
             type: object
           status:
             description: ApisixStatus is the status report for Apisix ingress Resources
@@ -164,21 +154,15 @@ spec:
                   type: object
                 type: array
             type: object
-        required:
-        - metadata
-        - spec
         type: object
     served: true
-    storage: false
+    storage: true
     subresources:
       status: {}
   - name: v2beta3
     schema:
       openAPIV3Schema:
-        description: ApisixClusterConfig is the Schema for the ApisixClusterConfig
-          resource. An ApisixClusterConfig is used to identify an APISIX cluster,
-          it's a ClusterScoped resource so the name is unique. It also contains some
-          cluster-level configurations like monitoring.
+        description: ApisixTls defines SSL resource in APISIX.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -193,61 +177,52 @@ spec:
           metadata:
             type: object
           spec:
-            description: Spec defines the desired state of ApisixClusterConfigSpec.
+            description: ApisixTlsSpec is the specification of ApisixSSL.
             properties:
-              admin:
-                description: Admin contains the Admin API information about APISIX
-                  cluster.
+              client:
+                description: ApisixMutualTlsClientConfig describes the mutual TLS
+                  CA and verify depth
                 properties:
-                  adminKey:
-                    description: AdminKey is used to verify the admin API user.
-                    type: string
-                  baseURL:
-                    description: BaseURL is the base URL for the APISIX Admin API.
-                      It looks like "http://apisix-admin.default.svc.cluster.local:9080/apisix/admin"
-                    type: string
-                  clientTimeout:
-                    description: ClientTimeout is request timeout for the APISIX Admin
-                      API client
-                    format: int64
+                  caSecret:
+                    description: ApisixSecret describes the Kubernetes Secret name
+                      and namespace.
+                    properties:
+                      name:
+                        minLength: 1
+                        type: string
+                      namespace:
+                        minLength: 1
+                        type: string
+                    required:
+                    - name
+                    - namespace
+                    type: object
+                  depth:
                     type: integer
-                required:
-                - adminKey
-                - baseURL
-                - clientTimeout
                 type: object
-              monitoring:
-                description: Monitoring categories all monitoring related features.
+              hosts:
+                items:
+                  pattern: ^\*?[0-9a-zA-Z-.]+$
+                  type: string
+                minItems: 1
+                type: array
+              secret:
+                description: ApisixSecret describes the Kubernetes Secret name and
+                  namespace.
                 properties:
-                  prometheus:
-                    description: Prometheus is the config for using Prometheus in
-                      APISIX Cluster.
-                    properties:
-                      enable:
-                        description: Enable means whether enable Prometheus or not.
-                        type: boolean
-                    required:
-                    - enable
-                    type: object
-                  skywalking:
-                    description: Skywalking is the config for using Skywalking in
-                      APISIX Cluster.
-                    properties:
-                      enable:
-                        description: Enable means whether enable Skywalking or not.
-                        type: boolean
-                      sampleRatio:
-                        anyOf:
-                        - type: integer
-                        - type: string
-                        description: SampleRatio means the ratio to collect
-                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                        x-kubernetes-int-or-string: true
-                    required:
-                    - enable
-                    - sampleRatio
-                    type: object
+                  name:
+                    minLength: 1
+                    type: string
+                  namespace:
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                - namespace
                 type: object
+            required:
+            - hosts
+            - secret
             type: object
           status:
             description: ApisixStatus is the status report for Apisix ingress Resources
@@ -321,9 +296,6 @@ spec:
                   type: object
                 type: array
             type: object
-        required:
-        - metadata
-        - spec
         type: object
     served: true
     storage: false

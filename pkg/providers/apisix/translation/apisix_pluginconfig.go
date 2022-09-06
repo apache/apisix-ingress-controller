@@ -33,7 +33,7 @@ func (t *translator) TranslatePluginConfigV2beta3(config *configv2beta3.ApisixPl
 			if !plugin.Enable {
 				continue
 			}
-			if plugin.Config != nil {
+			if plugin.Config.Size() > 0 {
 				// Here, it will override same key.
 				if t, ok := pluginMap[plugin.Name]; ok {
 					log.Infow("TranslatePluginConfigV2beta3 override same plugin key",
@@ -73,7 +73,7 @@ func (t *translator) TranslatePluginConfigV2(config *configv2.ApisixPluginConfig
 			if !plugin.Enable {
 				continue
 			}
-			if plugin.Config != nil {
+			if plugin.Config.Size() > 0 {
 				// Here, it will override same key.
 				if t, ok := pluginMap[plugin.Name]; ok {
 					log.Infow("TranslatePluginConfigV2 override same plugin key",

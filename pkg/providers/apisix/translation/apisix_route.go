@@ -16,6 +16,7 @@ package translation
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -136,8 +137,10 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *translation.TranslateContext
 			if !plugin.Enable {
 				continue
 			}
-			if plugin.Config != nil {
-				pluginMap[plugin.Name] = plugin.Config
+			if plugin.Config.Size() > 0 {
+				config := map[string]interface{}{}
+				json.Unmarshal(plugin.Config.Raw, &config)
+				pluginMap[plugin.Name] = config
 			} else {
 				pluginMap[plugin.Name] = make(map[string]interface{})
 			}
@@ -264,7 +267,9 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *translation.TranslateContext
 			if !plugin.Enable {
 				continue
 			}
-			if plugin.Config != nil {
+			if plugin.Config.Size() > 0 {
+				config := map[string]interface{}{}
+				json.Unmarshal(plugin.Config.Raw, &config)
 				pluginMap[plugin.Name] = plugin.Config
 			} else {
 				pluginMap[plugin.Name] = make(map[string]interface{})
@@ -400,8 +405,10 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 			if !plugin.Enable {
 				continue
 			}
-			if plugin.Config != nil {
-				pluginMap[plugin.Name] = plugin.Config
+			if plugin.Config.Size() > 0 {
+				config := map[string]interface{}{}
+				json.Unmarshal(plugin.Config.Raw, &config)
+				pluginMap[plugin.Name] = config
 			} else {
 				pluginMap[plugin.Name] = make(map[string]interface{})
 			}
@@ -627,8 +634,10 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *translation.Trans
 			if !plugin.Enable {
 				continue
 			}
-			if plugin.Config != nil {
-				pluginMap[plugin.Name] = plugin.Config
+			if plugin.Config.Size() > 0 {
+				config := map[string]interface{}{}
+				json.Unmarshal(plugin.Config.Raw, &config)
+				pluginMap[plugin.Name] = config
 			} else {
 				pluginMap[plugin.Name] = make(map[string]interface{})
 			}
@@ -686,8 +695,10 @@ func (t *translator) translateHTTPRouteV2NotStrictly(ctx *translation.TranslateC
 			if !plugin.Enable {
 				continue
 			}
-			if plugin.Config != nil {
-				pluginMap[plugin.Name] = plugin.Config
+			if plugin.Config.Size() > 0 {
+				config := map[string]interface{}{}
+				json.Unmarshal(plugin.Config.Raw, &config)
+				pluginMap[plugin.Name] = config
 			} else {
 				pluginMap[plugin.Name] = make(map[string]interface{})
 			}
@@ -825,8 +836,10 @@ func (t *translator) translateStreamRouteV2(ctx *translation.TranslateContext, a
 			if !plugin.Enable {
 				continue
 			}
-			if plugin.Config != nil {
-				pluginMap[plugin.Name] = plugin.Config
+			if plugin.Config.Size() > 0 {
+				config := map[string]interface{}{}
+				json.Unmarshal(plugin.Config.Raw, &config)
+				pluginMap[plugin.Name] = config
 			} else {
 				pluginMap[plugin.Name] = make(map[string]interface{})
 			}

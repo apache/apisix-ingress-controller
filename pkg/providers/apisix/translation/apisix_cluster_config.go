@@ -39,7 +39,7 @@ func (t *translator) TranslateClusterConfigV2beta3(acc *configv2beta3.ApisixClus
 		}
 		if acc.Spec.Monitoring.Skywalking.Enable {
 			globalRule.Plugins["skywalking"] = &skywalkingPluginConfig{
-				SampleRatio: acc.Spec.Monitoring.Skywalking.SampleRatio,
+				SampleRatio: acc.Spec.Monitoring.Skywalking.SampleRatio.AsApproximateFloat64(),
 			}
 		}
 	}
@@ -59,7 +59,7 @@ func (t *translator) TranslateClusterConfigV2(acc *configv2.ApisixClusterConfig)
 		}
 		if acc.Spec.Monitoring.Skywalking.Enable {
 			globalRule.Plugins["skywalking"] = &skywalkingPluginConfig{
-				SampleRatio: acc.Spec.Monitoring.Skywalking.SampleRatio,
+				SampleRatio: acc.Spec.Monitoring.Skywalking.SampleRatio.AsApproximateFloat64(),
 			}
 		}
 	}

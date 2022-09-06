@@ -12,21 +12,24 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package v2beta2
+package v2
 
 import (
 	"encoding/json"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-
-	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +kubebuilder:subresource:status
+//+genclient
+//+k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+//+kubebuilder:object:root=true
+//+kubebuilder:resource:shortName=ar,categories=apisix-ingress-controller
+//+kubebuilder:subresource:status
+//+kubebuilder:storageversion
+//+kubebuilder:validation:Optional
+//+kubebuilder:printcolumn:name="Config",type=string,JSONPath=`.config`,description="Configuration of the plugin",priority=1
+
 // ApisixRoute is used to define the route rules and upstreams for Apache APISIX.
 type ApisixRoute struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
@@ -66,10 +69,30 @@ type ApisixRouteHTTP struct {
 	// Backends represents potential backends to proxy after the route
 	// rule matched. When number of backends are more than one, traffic-split
 	// plugin in APISIX will be used to split traffic based on the backend weight.
-	Backends       []v2.ApisixRouteHTTPBackend `json:"backends,omitempty" yaml:"backends,omitempty"`
-	Websocket      bool                        `json:"websocket" yaml:"websocket"`
-	Plugins        []ApisixRouteHTTPPlugin     `json:"plugins,omitempty" yaml:"plugins,omitempty"`
-	Authentication ApisixRouteAuthentication   `json:"authentication,omitempty" yaml:"authentication,omitempty"`
+	Backends         []ApisixRouteHTTPBackend  `json:"backends,omitempty" yaml:"backends,omitempty"`
+	Websocket        bool                      `json:"websocket" yaml:"websocket"`
+	PluginConfigName string                    `json:"plugin_config_name,omitempty" yaml:"plugin_config_name,omitempty"`
+	Plugins          []ApisixPlugin            `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Authentication   ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
+}
+
+// ApisixRouteHTTPBackend represents a HTTP backend (a Kuberentes Service).
+type ApisixRouteHTTPBackend struct {
+	// The name (short) of the service, note cross namespace is forbidden,
+	// so be sure the ApisixRoute and Service are in the same namespace.
+	ServiceName string `json:"serviceName" yaml:"serviceName"`
+	// The service port, could be the name or the port number.
+	ServicePort intstr.IntOrString `json:"servicePort" yaml:"servicePort"`
+	// The resolve granularity, can be "endpoints" or "service",
+	// when set to "endpoints", the pod ips will be used; other
+	// wise, the service ClusterIP or ExternalIP will be used,
+	// default is endpoints.
+	ResolveGranularity string `json:"resolveGranularity,omitempty" yaml:"resolveGranularity,omitempty"`
+	// Weight of this backend.
+	Weight *int `json:"weight" yaml:"weight"`
+	// Subset specifies a subset for the target Service. The subset should be pre-defined
+	// in ApisixUpstream about this service.
+	Subset string `json:"subset,omitempty" yaml:"subset,omitempty"`
 }
 
 // ApisixRouteHTTPMatch represents the match condition for hitting this route.
@@ -99,7 +122,25 @@ type ApisixRouteHTTPMatch struct {
 	//     value:
 	//       - "127.0.0.1"
 	//       - "10.0.5.11"
-	NginxVars []v2.ApisixRouteHTTPMatchExpr `json:"exprs,omitempty" yaml:"exprs,omitempty"`
+	NginxVars []ApisixRouteHTTPMatchExpr `json:"exprs,omitempty" yaml:"exprs,omitempty"`
+}
+
+// ApisixRouteHTTPMatchExpr represents a binary route match expression .
+type ApisixRouteHTTPMatchExpr struct {
+	// Subject is the expression subject, it can
+	// be any string composed by literals and nginx
+	// vars.
+	Subject ApisixRouteHTTPMatchExprSubject `json:"subject" yaml:"subject"`
+	// Op is the operator.
+	Op string `json:"op" yaml:"op"`
+	// Set is an array type object of the expression.
+	// It should be used when the Op is "in" or "not_in";
+	Set []string `json:"set" yaml:"set"`
+	// Value is the normal type object for the expression,
+	// it should be used when the Op is not "in" and "not_in".
+	// Set and Value are exclusive so only of them can be set
+	// in the same time.
+	Value *string `json:"value" yaml:"value"`
 }
 
 // ApisixRouteHTTPMatchExprSubject describes the route match expression subject.
@@ -113,19 +154,9 @@ type ApisixRouteHTTPMatchExprSubject struct {
 	Name string `json:"name" yaml:"name"`
 }
 
-// ApisixRouteHTTPPlugin represents an APISIX plugin.
-type ApisixRouteHTTPPlugin struct {
-	// The plugin name.
-	Name string `json:"name" yaml:"name"`
-	// Whether this plugin is in use, default is true.
-	Enable bool `json:"enable" yaml:"enable"`
-	// Plugin configuration.
-	Config apiextensionsv1.JSON `json:"config" yaml:"config"`
-}
-
-// ApisixRouteHTTPPluginConfig is the configuration for
+// ApisixRoutePluginConfig is the configuration for
 // any plugins.
-type ApisixRouteHTTPPluginConfig map[string]interface{}
+type ApisixRoutePluginConfig map[string]interface{}
 
 // ApisixRouteAuthentication is the authentication-related
 // configuration in ApisixRoute.
@@ -133,6 +164,7 @@ type ApisixRouteAuthentication struct {
 	Enable  bool                             `json:"enable" yaml:"enable"`
 	Type    string                           `json:"type" yaml:"type"`
 	KeyAuth ApisixRouteAuthenticationKeyAuth `json:"keyAuth,omitempty" yaml:"keyAuth,omitempty"`
+	JwtAuth ApisixRouteAuthenticationJwtAuth `json:"jwtAuth,omitempty" yaml:"jwtAuth,omitempty"`
 }
 
 // ApisixRouteAuthenticationKeyAuth is the keyAuth-related
@@ -141,16 +173,24 @@ type ApisixRouteAuthenticationKeyAuth struct {
 	Header string `json:"header,omitempty" yaml:"header,omitempty"`
 }
 
-func (p ApisixRouteHTTPPluginConfig) DeepCopyInto(out *ApisixRouteHTTPPluginConfig) {
+// ApisixRouteAuthenticationJwtAuth is the jwt auth related
+// configuration in ApisixRouteAuthentication.
+type ApisixRouteAuthenticationJwtAuth struct {
+	Header string `json:"header,omitempty" yaml:"header,omitempty"`
+	Query  string `json:"query,omitempty" yaml:"query,omitempty"`
+	Cookie string `json:"cookie,omitempty" yaml:"cookie,omitempty"`
+}
+
+func (p ApisixRoutePluginConfig) DeepCopyInto(out *ApisixRoutePluginConfig) {
 	b, _ := json.Marshal(&p)
 	_ = json.Unmarshal(b, out)
 }
 
-func (p *ApisixRouteHTTPPluginConfig) DeepCopy() *ApisixRouteHTTPPluginConfig {
+func (p *ApisixRoutePluginConfig) DeepCopy() *ApisixRoutePluginConfig {
 	if p == nil {
 		return nil
 	}
-	out := new(ApisixRouteHTTPPluginConfig)
+	out := new(ApisixRoutePluginConfig)
 	p.DeepCopyInto(out)
 	return out
 }
@@ -162,6 +202,7 @@ type ApisixRouteStream struct {
 	Protocol string                   `json:"protocol" yaml:"protocol"`
 	Match    ApisixRouteStreamMatch   `json:"match" yaml:"match"`
 	Backend  ApisixRouteStreamBackend `json:"backend" yaml:"backend"`
+	Plugins  []ApisixPlugin           `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 // ApisixRouteStreamMatch represents the match conditions of stream route.

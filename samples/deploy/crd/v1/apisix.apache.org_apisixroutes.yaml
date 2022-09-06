@@ -9,6 +9,8 @@ metadata:
 spec:
   group: apisix.apache.org
   names:
+    categories:
+    - apisix-ingress-controller
     kind: ApisixRoute
     listKind: ApisixRouteList
     plural: apisixroutes
@@ -17,88 +19,13 @@ spec:
     singular: apisixroute
   scope: Namespaced
   versions:
-  - name: v1
-    schema:
-      openAPIV3Schema:
-        description: ApisixRoute is used to define the route rules and upstreams for
-          Apache APISIX. The definition closes the Kubernetes Ingress resource.
-        properties:
-          apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-            type: string
-          kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-            type: string
-          metadata:
-            type: object
-          spec:
-            description: ApisixRouteSpec is the spec definition for ApisixRouteSpec.
-            properties:
-              rules:
-                items:
-                  description: Rule represents a single route rule in ApisixRoute.
-                  properties:
-                    host:
-                      type: string
-                    http:
-                      description: Http represents all route rules in HTTP scope.
-                      properties:
-                        paths:
-                          items:
-                            description: Path defines an URI based route rule.
-                            properties:
-                              backend:
-                                description: Backend defines an upstream, it should
-                                  be an existing Kubernetes Service. Note the Service
-                                  should be in the same namespace with ApisixRoute
-                                  resource, i.e. cross namespacing is not allowed.
-                                properties:
-                                  serviceName:
-                                    type: string
-                                  servicePort:
-                                    type: integer
-                                type: object
-                              path:
-                                type: string
-                              plugins:
-                                items:
-                                  properties:
-                                    config: {}
-                                    config_set:
-                                      items: {}
-                                      type: array
-                                    enable:
-                                      type: boolean
-                                    name:
-                                      type: string
-                                  type: object
-                                type: array
-                              timeout:
-                                description: UpstreamTimeout is settings for the read,
-                                  send and connect to the upstream.
-                                properties:
-                                  connect:
-                                    type: string
-                                  read:
-                                    type: string
-                                  send:
-                                    type: string
-                                type: object
-                            type: object
-                          type: array
-                      type: object
-                  type: object
-                type: array
-            type: object
-        type: object
-        x-kubernetes-preserve-unknown-fields: true
-    served: true
-    storage: false
-  - name: v2
+  - additionalPrinterColumns:
+    - description: Configuration of the plugin
+      jsonPath: .config
+      name: Config
+      priority: 1
+      type: string
+    name: v2
     schema:
       openAPIV3Schema:
         description: ApisixRoute is used to define the route rules and upstreams for
@@ -150,9 +77,6 @@ spec:
                           type: object
                         type:
                           type: string
-                      required:
-                      - enable
-                      - type
                       type: object
                     backends:
                       description: Backends represents potential backends to proxy
@@ -189,10 +113,6 @@ spec:
                           weight:
                             description: Weight of this backend.
                             type: integer
-                        required:
-                        - serviceName
-                        - servicePort
-                        - weight
                         type: object
                       type: array
                     match:
@@ -232,9 +152,6 @@ spec:
                                       ScopeHeader, ScopePath when subject is ScopePath,
                                       Name field will be ignored.'
                                     type: string
-                                required:
-                                - name
-                                - scope
                                 type: object
                               value:
                                 description: Value is the normal type object for the
@@ -242,11 +159,6 @@ spec:
                                   "in" and "not_in". Set and Value are exclusive so
                                   only of them can be set in the same time.
                                 type: string
-                            required:
-                            - op
-                            - set
-                            - subject
-                            - value
                             type: object
                           type: array
                         hosts:
@@ -275,8 +187,6 @@ spec:
                           items:
                             type: string
                           type: array
-                      required:
-                      - paths
                       type: object
                     name:
                       description: The rule name, cannot be empty.
@@ -289,6 +199,8 @@ spec:
                         properties:
                           config:
                             description: Plugin configuration.
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           enable:
                             description: Whether this plugin is in use, default is
                               true.
@@ -296,10 +208,6 @@ spec:
                           name:
                             description: The plugin name.
                             type: string
-                        required:
-                        - config
-                        - enable
-                        - name
                         type: object
                       type: array
                     priority:
@@ -320,9 +228,6 @@ spec:
                       type: object
                     websocket:
                       type: boolean
-                  required:
-                  - name
-                  - websocket
                   type: object
                 type: array
               stream:
@@ -357,9 +262,6 @@ spec:
                             The subset should be pre-defined in ApisixUpstream about
                             this service.
                           type: string
-                      required:
-                      - serviceName
-                      - servicePort
                       type: object
                     match:
                       description: ApisixRouteStreamMatch represents the match conditions
@@ -371,8 +273,6 @@ spec:
                             APISIX doesn't support dynamic listening.
                           format: int32
                           type: integer
-                      required:
-                      - ingressPort
                       type: object
                     name:
                       description: The rule name, cannot be empty.
@@ -383,6 +283,8 @@ spec:
                         properties:
                           config:
                             description: Plugin configuration.
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           enable:
                             description: Whether this plugin is in use, default is
                               true.
@@ -390,19 +292,10 @@ spec:
                           name:
                             description: The plugin name.
                             type: string
-                        required:
-                        - config
-                        - enable
-                        - name
                         type: object
                       type: array
                     protocol:
                       type: string
-                  required:
-                  - backend
-                  - match
-                  - name
-                  - protocol
                   type: object
                 type: array
             type: object
@@ -480,7 +373,7 @@ spec:
             type: object
         type: object
     served: true
-    storage: false
+    storage: true
     subresources:
       status: {}
   - name: v2beta2
@@ -563,10 +456,6 @@ spec:
                           weight:
                             description: Weight of this backend.
                             type: integer
-                        required:
-                        - serviceName
-                        - servicePort
-                        - weight
                         type: object
                       type: array
                     match:
@@ -606,9 +495,6 @@ spec:
                                       ScopeHeader, ScopePath when subject is ScopePath,
                                       Name field will be ignored.'
                                     type: string
-                                required:
-                                - name
-                                - scope
                                 type: object
                               value:
                                 description: Value is the normal type object for the
@@ -616,11 +502,6 @@ spec:
                                   "in" and "not_in". Set and Value are exclusive so
                                   only of them can be set in the same time.
                                 type: string
-                            required:
-                            - op
-                            - set
-                            - subject
-                            - value
                             type: object
                           type: array
                         hosts:
@@ -661,6 +542,7 @@ spec:
                         properties:
                           config:
                             description: Plugin configuration.
+                            x-kubernetes-preserve-unknown-fields: true
                           enable:
                             description: Whether this plugin is in use, default is
                               true.
@@ -836,7 +718,13 @@ spec:
     storage: false
     subresources:
       status: {}
-  - name: v2beta3
+  - additionalPrinterColumns:
+    - description: Configuration of the plugin
+      jsonPath: .config
+      name: Config
+      priority: 1
+      type: string
+    name: v2beta3
     schema:
       openAPIV3Schema:
         description: ApisixRoute is used to define the route rules and upstreams for
@@ -869,8 +757,8 @@ spec:
                         enable:
                           type: boolean
                         jwtAuth:
-                          description: ApisixRouteAuthenticationJwtAuth is the jwtAuth-related
-                            configuration in ApisixRouteAuthentication.
+                          description: ApisixRouteAuthenticationJwtAuth is the jwt
+                            auth related configuration in ApisixRouteAuthentication.
                           properties:
                             cookie:
                               type: string
@@ -888,9 +776,6 @@ spec:
                           type: object
                         type:
                           type: string
-                      required:
-                      - enable
-                      - type
                       type: object
                     backends:
                       description: Backends represents potential backends to proxy
@@ -927,10 +812,6 @@ spec:
                           weight:
                             description: Weight of this backend.
                             type: integer
-                        required:
-                        - serviceName
-                        - servicePort
-                        - weight
                         type: object
                       type: array
                     match:
@@ -970,9 +851,6 @@ spec:
                                       ScopeHeader, ScopePath when subject is ScopePath,
                                       Name field will be ignored.'
                                     type: string
-                                required:
-                                - name
-                                - scope
                                 type: object
                               value:
                                 description: Value is the normal type object for the
@@ -980,11 +858,6 @@ spec:
                                   "in" and "not_in". Set and Value are exclusive so
                                   only of them can be set in the same time.
                                 type: string
-                            required:
-                            - op
-                            - set
-                            - subject
-                            - value
                             type: object
                           type: array
                         hosts:
@@ -1013,8 +886,6 @@ spec:
                           items:
                             type: string
                           type: array
-                      required:
-                      - paths
                       type: object
                     name:
                       description: The rule name, cannot be empty.
@@ -1023,10 +894,12 @@ spec:
                       type: string
                     plugins:
                       items:
-                        description: ApisixRouteHTTPPlugin represents an APISIX plugin.
+                        description: ApisixRoutePlugin represents an APISIX plugin.
                         properties:
                           config:
                             description: Plugin configuration.
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           enable:
                             description: Whether this plugin is in use, default is
                               true.
@@ -1034,10 +907,6 @@ spec:
                           name:
                             description: The plugin name.
                             type: string
-                        required:
-                        - config
-                        - enable
-                        - name
                         type: object
                       type: array
                     priority:
@@ -1058,9 +927,6 @@ spec:
                       type: object
                     websocket:
                       type: boolean
-                  required:
-                  - name
-                  - websocket
                   type: object
                 type: array
               stream:
@@ -1095,9 +961,6 @@ spec:
                             The subset should be pre-defined in ApisixUpstream about
                             this service.
                           type: string
-                      required:
-                      - serviceName
-                      - servicePort
                       type: object
                     match:
                       description: ApisixRouteStreamMatch represents the match conditions
@@ -1109,19 +972,29 @@ spec:
                             APISIX doesn't support dynamic listening.
                           format: int32
                           type: integer
-                      required:
-                      - ingressPort
                       type: object
                     name:
                       description: The rule name, cannot be empty.
                       type: string
+                    plugins:
+                      items:
+                        description: ApisixRoutePlugin represents an APISIX plugin.
+                        properties:
+                          config:
+                            description: Plugin configuration.
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                          enable:
+                            description: Whether this plugin is in use, default is
+                              true.
+                            type: boolean
+                          name:
+                            description: The plugin name.
+                            type: string
+                        type: object
+                      type: array
                     protocol:
                       type: string
-                  required:
-                  - backend
-                  - match
-                  - name
-                  - protocol
                   type: object
                 type: array
             type: object

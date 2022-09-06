@@ -12,71 +12,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package v1
+package v2beta3
 
 import (
-	"encoding/json"
 	"time"
 
-	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// ApisixRoute is used to define the route rules and upstreams for Apache APISIX.
-// The definition closes the Kubernetes Ingress resource.
-type ApisixRoute struct {
-	metav1.TypeMeta   `json:",inline" yaml:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-	Spec              *ApisixRouteSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
-}
+//+genclient
+//+k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+//+kubebuilder:resource:shortName=ac,categories=apisix-ingress-controller
+//+kubebuilder:subresource:status
+//+kubebuilder:validation:Optional
 
-// ApisixStatus is the status report for Apisix ingress Resources
-type ApisixStatus struct {
-	Conditions []metav1.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
-}
-
-// ApisixRouteSpec is the spec definition for ApisixRouteSpec.
-type ApisixRouteSpec struct {
-	Rules []Rule `json:"rules,omitempty" yaml:"rules,omitempty"`
-}
-
-// Rule represents a single route rule in ApisixRoute.
-type Rule struct {
-	Host string `json:"host,omitempty" yaml:"host,omitempty"`
-	Http Http   `json:"http,omitempty" yaml:"http,omitempty"`
-}
-
-// Http represents all route rules in HTTP scope.
-type Http struct {
-	Paths []Path `json:"paths,omitempty" yaml:"paths,omitempty"`
-}
-
-// Path defines an URI based route rule.
-type Path struct {
-	Path    string           `json:"path,omitempty" yaml:"path,omitempty"`
-	Backend Backend          `json:"backend,omitempty" yaml:"backend,omitempty"`
-	Timeout *UpstreamTimeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-	Plugins []Plugin         `json:"plugins,omitempty" yaml:"plugins,omitempty"`
-}
-
-// Backend defines an upstream, it should be an existing Kubernetes Service.
-// Note the Service should be in the same namespace with ApisixRoute resource,
-// i.e. cross namespacing is not allowed.
-type Backend struct {
-	ServiceName string `json:"serviceName,omitempty" yaml:"serviceName,omitempty"`
-	ServicePort int    `json:"servicePort,omitempty" yaml:"servicePort,omitempty"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type ApisixRouteList struct {
-	metav1.TypeMeta `json:",inline" yaml:",inline"`
-	metav1.ListMeta `json:"metadata" yaml:"metadata"`
-	Items           []ApisixRoute `json:"items,omitempty" yaml:"items,omitempty"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // ApisixUpstream is a decorator for Kubernetes Service, it arms the Service
 // with rich features like health check, retry policies, load balancer and others.
 // It's designed to have same name with the Kubernetes Service and can be customized
@@ -86,7 +35,7 @@ type ApisixUpstream struct {
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 
 	Spec   *ApisixUpstreamSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
-	Status v2.ApisixStatus     `json:"status,omitempty" yaml:"status,omitempty"`
+	Status ApisixStatus        `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
 // ApisixUpstreamSpec describes the specification of ApisixUpstream.
@@ -137,13 +86,6 @@ type ApisixUpstreamSubset struct {
 	Name string `json:"name" yaml:"name"`
 	// Labels is the label set of this subset.
 	Labels map[string]string `json:"labels" yaml:"labels"`
-}
-
-// UpstreamTimeout is settings for the read, send and connect to the upstream.
-type UpstreamTimeout struct {
-	Connect metav1.Duration `json:"connect,omitempty" yaml:"connect,omitempty"`
-	Send    metav1.Duration `json:"send,omitempty" yaml:"send,omitempty"`
-	Read    metav1.Duration `json:"read,omitempty" yaml:"read,omitempty"`
 }
 
 // PortLevelSettings configures the ApisixUpstreamConfig for each individual port. It inherits
@@ -231,84 +173,4 @@ type ApisixUpstreamList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
 	metav1.ListMeta `json:"metadata" yaml:"metadata"`
 	Items           []ApisixUpstream `json:"items,omitempty" yaml:"items,omitempty"`
-}
-
-type Plugin struct {
-	Name      string               `json:"name,omitempty" yaml:"name,omitempty"`
-	Enable    bool                 `json:"enable,omitempty" yaml:"enable,omitempty"`
-	Config    apiextensionsv1.JSON `json:"config,omitempty" yaml:"config,omitempty"`
-	ConfigSet apiextensionsv1.JSON `json:"config_set,omitempty" yaml:"config_set,omitempty"`
-}
-
-type ConfigSet []interface{}
-
-func (p ConfigSet) DeepCopyInto(out *ConfigSet) {
-	b, _ := json.Marshal(&p)
-	_ = json.Unmarshal(b, out)
-}
-
-func (p *ConfigSet) DeepCopy() *ConfigSet {
-	if p == nil {
-		return nil
-	}
-	out := new(ConfigSet)
-	p.DeepCopyInto(out)
-	return out
-}
-
-type Config map[string]interface{}
-
-func (p Config) DeepCopyInto(out *Config) {
-	b, _ := json.Marshal(&p)
-	_ = json.Unmarshal(b, out)
-}
-
-func (p *Config) DeepCopy() *Config {
-	if p == nil {
-		return nil
-	}
-	out := new(Config)
-	p.DeepCopyInto(out)
-	return out
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// ApisixTls defines SSL resource in APISIX.
-type ApisixTls struct {
-	metav1.TypeMeta   `json:",inline" yaml:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-	Spec              *ApisixTlsSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
-	// +optional
-	Status v2.ApisixStatus `json:"status,omitempty" yaml:"status,omitempty"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type ApisixTlsList struct {
-	metav1.TypeMeta `json:",inline" yaml:",inline"`
-	metav1.ListMeta `json:"metadata" yaml:"metadata"`
-	Items           []ApisixTls `json:"items,omitempty" yaml:"items,omitempty"`
-}
-
-type HostType string
-
-// ApisixTlsSpec is the specification of ApisixSSL.
-type ApisixTlsSpec struct {
-	// +required
-	Hosts []HostType `json:"hosts" yaml:"hosts,omitempty"`
-	// +required
-	Secret ApisixSecret `json:"secret" yaml:"secret"`
-	// +optional
-	Client *ApisixMutualTlsClientConfig `json:"client,omitempty" yaml:"client,omitempty"`
-}
-
-// ApisixSecret describes the Kubernetes Secret name and namespace.
-type ApisixSecret struct {
-	Name      string `json:"name" yaml:"name"`
-	Namespace string `json:"namespace" yaml:"namespace"`
-}
-
-// ApisixMutualTlsClientConfig describes the mutual TLS CA and verify depth
-type ApisixMutualTlsClientConfig struct {
-	CASecret ApisixSecret `json:"caSecret,omitempty" yaml:"caSecret,omitempty"`
-	Depth    int          `json:"depth,omitempty" yaml:"depth,omitempty"`
 }

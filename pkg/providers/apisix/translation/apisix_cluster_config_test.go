@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
@@ -39,7 +40,7 @@ func TestTranslateClusterConfig(t *testing.T) {
 				},
 				Skywalking: configv2beta3.ApisixClusterSkywalkingConfig{
 					Enable:      true,
-					SampleRatio: 0.5,
+					SampleRatio: resource.MustParse("0.5"),
 				},
 			},
 		},

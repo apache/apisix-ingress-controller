@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/informers"
@@ -446,13 +447,12 @@ func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {
 							},
 						},
 					},
-					Plugins: []configv2beta3.ApisixRouteHTTPPlugin{
+					Plugins: []configv2beta3.ApisixRoutePlugin{
 						{
 							Name:   "plugin-1",
 							Enable: true,
-							Config: map[string]interface{}{
-								"key-1": 123456,
-								"key-2": "2121331",
+							Config: v1.JSON{
+								Raw: []byte(`{"key-1": 123456, "key-2": "2121331"}`),
 							},
 						},
 					},
