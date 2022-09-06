@@ -52,12 +52,12 @@ func TestUpstreamServiceRelation(t *testing.T) {
 	relation, err := cli.Get(context.TODO(), svcName)
 	assert.Nil(t, err)
 	assert.NotNil(t, relation)
-	assert.Equal(t, relation, &v1.UpstreamServiceRelation{
+	assert.Equal(t, &v1.UpstreamServiceRelation{
 		ServiceName: svcName,
 		UpstreamNames: map[string]struct{}{
 			upsName: {},
 		},
-	})
+	}, relation)
 
 	err = cli.Create(context.TODO(), upsName2)
 	assert.Nil(t, err)
@@ -65,24 +65,24 @@ func TestUpstreamServiceRelation(t *testing.T) {
 	relation, err = cli.Get(context.TODO(), svcName)
 	assert.Nil(t, err)
 	assert.NotNil(t, relation)
-	assert.Equal(t, relation, &v1.UpstreamServiceRelation{
+	assert.Equal(t, &v1.UpstreamServiceRelation{
 		ServiceName: svcName,
 		UpstreamNames: map[string]struct{}{
 			upsName:  {},
 			upsName2: {},
 		},
-	})
+	}, relation)
 
 	relations, err := cli.List(context.TODO())
 	assert.Nil(t, err)
 	assert.Len(t, relations, 1)
-	assert.Equal(t, relations[0], &v1.UpstreamServiceRelation{
+	assert.Equal(t, &v1.UpstreamServiceRelation{
 		ServiceName: svcName,
 		UpstreamNames: map[string]struct{}{
 			upsName:  {},
 			upsName2: {},
 		},
-	})
+	}, relations[0])
 
 	err = cli.Delete(context.TODO(), svcName)
 	assert.Nil(t, err)
@@ -150,12 +150,12 @@ func TestUpstreamRelatoinClient(t *testing.T) {
 	relations, err := relationCli.List(context.TODO())
 	assert.Nil(t, err)
 	assert.Len(t, relations, 1)
-	assert.Equal(t, relations[0], &v1.UpstreamServiceRelation{
+	assert.Equal(t, &v1.UpstreamServiceRelation{
 		ServiceName: svcName,
 		UpstreamNames: map[string]struct{}{
 			upsName: {},
 		},
-	})
+	}, relations[0])
 
 	id2 := "2"
 	obj, err = cli.Create(context.TODO(), &v1.Upstream{
@@ -179,13 +179,13 @@ func TestUpstreamRelatoinClient(t *testing.T) {
 	relations, err = relationCli.List(context.Background())
 	assert.Nil(t, err)
 	assert.Len(t, relations, 1)
-	assert.Equal(t, relations[0], &v1.UpstreamServiceRelation{
+	assert.Equal(t, &v1.UpstreamServiceRelation{
 		ServiceName: svcName,
 		UpstreamNames: map[string]struct{}{
 			upsName:  {},
 			upsName2: {},
 		},
-	})
+	}, relations[0])
 
 	err = relationCli.Delete(context.Background(), svcName)
 	assert.Nil(t, err)
@@ -194,5 +194,4 @@ func TestUpstreamRelatoinClient(t *testing.T) {
 	assert.Len(t, objs, 2)
 	assert.Equal(t, "1", objs[0].ID)
 	assert.Equal(t, "2", objs[1].ID)
-	//assert.Len(t, objs[0].Nodes, 0)
 }

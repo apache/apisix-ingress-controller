@@ -87,11 +87,11 @@ func TestItemConvertUpstream(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, ups.Nodes, 2)
 	if ups.Nodes[0].Host != "httbin.org" {
-		assert.Equal(t, ups.Nodes[0], v1.UpstreamNode{Host: "httpbin.org", Port: 80, Weight: 1})
-		assert.Equal(t, ups.Nodes[1], v1.UpstreamNode{Host: "foo.com", Port: 8080, Weight: 2})
+		assert.Equal(t, v1.UpstreamNode{Host: "httpbin.org", Port: 80, Weight: 1}, ups.Nodes[0])
+		assert.Equal(t, v1.UpstreamNode{Host: "foo.com", Port: 8080, Weight: 2}, ups.Nodes[1])
 	} else {
-		assert.Equal(t, ups.Nodes[0], v1.UpstreamNode{Host: "foo.com", Port: 8080, Weight: 2})
-		assert.Equal(t, ups.Nodes[1], v1.UpstreamNode{Host: "httpbin.org", Port: 80, Weight: 1})
+		assert.Equal(t, ups.Nodes[0], v1.UpstreamNode{Host: "foo.com", Port: 8080, Weight: 2}, ups.Nodes[0])
+		assert.Equal(t, ups.Nodes[1], v1.UpstreamNode{Host: "httpbin.org", Port: 80, Weight: 1}, ups.Nodes[1])
 	}
 
 	ite = &item{

@@ -64,6 +64,7 @@ func (u *upstreamService) Delete(ctx context.Context, serviceName string) error 
 		}
 		return err
 	}
+	_ = u.cluster.cache.DeleteUpstreamServiceRelation(relation)
 	for upsName := range relation.UpstreamNames {
 		ups, err := u.cluster.upstream.Get(ctx, upsName)
 		if err != nil {
@@ -74,10 +75,6 @@ func (u *upstreamService) Delete(ctx context.Context, serviceName string) error 
 		if err != nil {
 			continue
 		}
-	}
-	err = u.cluster.cache.DeleteUpstreamServiceRelation(relation)
-	if err != nil {
-		return err
 	}
 	return nil
 }
