@@ -465,6 +465,7 @@ func (in *StreamRoute) DeepCopyInto(out *StreamRoute) {
 		*out = new(Upstream)
 		(*in).DeepCopyInto(*out)
 	}
+	in.Plugins.DeepCopyInto(&out.Plugins)
 	return
 }
 

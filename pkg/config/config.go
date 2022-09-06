@@ -110,7 +110,7 @@ type KubernetesConfig struct {
 // APISIXConfig contains all APISIX related config items.
 type APISIXConfig struct {
 	// DefaultClusterName is the name of default cluster.
-	DefaultClusterName string `json:"default_cluster_name"`
+	DefaultClusterName string `json:"default_cluster_name" yaml:"default_cluster_name"`
 	// DefaultClusterBaseURL is the base url configuration for the default cluster.
 	DefaultClusterBaseURL string `json:"default_cluster_base_url" yaml:"default_cluster_base_url"`
 	// DefaultClusterAdminKey is the admin key for the default cluster.
