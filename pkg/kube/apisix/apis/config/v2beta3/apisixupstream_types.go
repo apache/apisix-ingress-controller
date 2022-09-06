@@ -22,7 +22,8 @@ import (
 
 //+genclient
 //+k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-//+kubebuilder:resource:shortName=ac,categories=apisix-ingress-controller
+//+kubebuilder:object:root=true
+//+kubebuilder:resource:shortName=au,categories=apisix-ingress-controller
 //+kubebuilder:subresource:status
 //+kubebuilder:validation:Optional
 

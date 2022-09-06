@@ -20,7 +20,7 @@ import (
 
 //+genclient
 //+k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-//+kubebuilder:resource:shortName=atls
+//+kubebuilder:resource:shortName=atls,path=apisixtlses
 //+kubebuilder:subresource:status
 //+kubebuilder:storageversion
 //+kubebuilder:validation:Optional

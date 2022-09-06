@@ -18,7 +18,7 @@
 resources:
   - ./apisix.apache.org_apisixroutes.yaml
   - ./apisix.apache.org_apisixupstreams.yaml
-  - ./apisix.apache.org_apisixtls.yaml
+  - ./apisix.apache.org_apisixtlses.yaml
   - ./apisix.apache.org_apisixclusterconfigs.yaml
   - ./apisix.apache.org_apisixconsumers.yaml
   - ./apisix.apache.org_apisixpluginconfigs.yaml
