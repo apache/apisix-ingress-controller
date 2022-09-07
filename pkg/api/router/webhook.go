@@ -33,6 +33,6 @@ func MountWebhooks(r *gin.Engine, co *apisix.ClusterOptions) {
 		validationGroup.POST("/apisixroutes", validation.NewHandlerFunc("ApisixRoute", validation.ApisixRouteValidator))
 		validationGroup.POST("/apisixupstreams", validation.NewHandlerFunc("ApisixUpstream", validation.ApisixUpstreamValidator))
 		validationGroup.POST("/apisixconsumers", validation.NewHandlerFunc("ApisixConsumer", validation.ApisixConsumerValidator))
-		validationGroup.POST("/apisixtls", validation.NewHandlerFunc("ApisixTls", validation.ApisixTlsValidator))
+		validationGroup.POST("/apisixtlses", validation.NewHandlerFunc("ApisixTls", validation.ApisixTlsValidator))
 	}
 }
