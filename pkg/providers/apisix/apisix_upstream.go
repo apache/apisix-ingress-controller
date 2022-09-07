@@ -287,7 +287,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 						// FIXME Same ApisixUpstreamConfig might be translated multiple times.
 						newUps, err = c.translator.TranslateUpstreamConfigV2(cfg)
 						if err != nil {
-							log.Errorw("found malformed ApisixUpstream",
+							log.Errorw("ApisixUpstream conversion cannot be completed, or the format is incorrect",
 								zap.Any("object", au),
 								zap.Error(err),
 							)

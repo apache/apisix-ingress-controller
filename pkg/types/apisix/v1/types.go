@@ -479,7 +479,7 @@ func ComposeUpstreamName(namespace, name, subset string, port int32, resolveGran
 	if subset != "" {
 		plen = plen + len(subset) + 1
 	}
-	if resolveGranularity != "" && resolveGranularity != types.ResolveGranularity.Endpoint {
+	if resolveGranularity == types.ResolveGranularity.Service {
 		plen = plen + len(resolveGranularity) + 1
 	}
 
@@ -494,7 +494,7 @@ func ComposeUpstreamName(namespace, name, subset string, port int32, resolveGran
 		buf.WriteByte('_')
 	}
 	buf.WriteString(pstr)
-	if resolveGranularity != "" && resolveGranularity != types.ResolveGranularity.Endpoint {
+	if resolveGranularity == types.ResolveGranularity.Service {
 		buf.WriteByte('_')
 		buf.WriteString(resolveGranularity)
 	}
