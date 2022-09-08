@@ -90,60 +90,28 @@ spec:
 			assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 2)
 			assert.Len(ginkgo.GinkgoT(), ups[1].Nodes, 1)
 		}
-		_ = s.NewAPISIXClient().GET("/get").
-			WithHeader("Host", "httpbin.com").
-			Expect().
-			Status(http.StatusOK)
+		// Verify consistency after apisix-ingress-controller restart
+		verify := func() {
+			s.RestartIngressControllerDeploy()
+			time.Sleep(15 * time.Second)
 
-		s.RestartIngressControllerDeploy()
-		time.Sleep(15 * time.Second)
-
-		ups, err = s.ListApisixUpstreams()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), ups, 2)
-		if len(ups[0].Nodes) == 1 {
-			assert.Len(ginkgo.GinkgoT(), ups[1].Nodes, 2)
-		} else {
-			assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 2)
-			assert.Len(ginkgo.GinkgoT(), ups[1].Nodes, 1)
+			ups, err = s.ListApisixUpstreams()
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.Len(ginkgo.GinkgoT(), ups, 2)
+			if len(ups[0].Nodes) == 1 {
+				assert.Len(ginkgo.GinkgoT(), ups[1].Nodes, 2)
+			} else {
+				assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 2)
+				assert.Len(ginkgo.GinkgoT(), ups[1].Nodes, 1)
+			}
+			_ = s.NewAPISIXClient().GET("/get").
+				WithHeader("Host", "httpbin.com").
+				Expect().
+				Status(http.StatusOK)
 		}
-		_ = s.NewAPISIXClient().GET("/get").
-			WithHeader("Host", "httpbin.com").
-			Expect().
-			Status(http.StatusOK)
 
-		s.RestartIngressControllerDeploy()
-		time.Sleep(15 * time.Second)
-
-		ups, err = s.ListApisixUpstreams()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), ups, 2)
-		if len(ups[0].Nodes) == 1 {
-			assert.Len(ginkgo.GinkgoT(), ups[1].Nodes, 2)
-		} else {
-			assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 2)
-			assert.Len(ginkgo.GinkgoT(), ups[1].Nodes, 1)
+		for i := 0; i < 5; i++ {
+			verify()
 		}
-		_ = s.NewAPISIXClient().GET("/get").
-			WithHeader("Host", "httpbin.com").
-			Expect().
-			Status(http.StatusOK)
-
-		s.RestartIngressControllerDeploy()
-		time.Sleep(15 * time.Second)
-
-		ups, err = s.ListApisixUpstreams()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), ups, 2)
-		if len(ups[0].Nodes) == 1 {
-			assert.Len(ginkgo.GinkgoT(), ups[1].Nodes, 2)
-		} else {
-			assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 2)
-			assert.Len(ginkgo.GinkgoT(), ups[1].Nodes, 1)
-		}
-		_ = s.NewAPISIXClient().GET("/get").
-			WithHeader("Host", "httpbin.com").
-			Expect().
-			Status(http.StatusOK)
 	})
 })
