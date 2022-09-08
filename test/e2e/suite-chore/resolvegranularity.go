@@ -90,6 +90,10 @@ spec:
 			assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 2)
 			assert.Len(ginkgo.GinkgoT(), ups[1].Nodes, 1)
 		}
+		_ = s.NewAPISIXClient().GET("/get").
+			WithHeader("Host", "httpbin.com").
+			Expect().
+			Status(http.StatusOK)
 		// Verify consistency after apisix-ingress-controller restart
 		verify := func() {
 			s.RestartIngressControllerDeploy()
@@ -104,6 +108,12 @@ spec:
 				assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 2)
 				assert.Len(ginkgo.GinkgoT(), ups[1].Nodes, 1)
 			}
+
+			_ = s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusOK)
+
 			_ = s.NewAPISIXClient().GET("/get").
 				WithHeader("Host", "httpbin.com").
 				Expect().
