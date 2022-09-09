@@ -41,6 +41,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -350,7 +351,7 @@ func (t *translator) translateDefaultUpstreamFromIngressV1(namespace string, bac
 		portNumber = backend.Port.Number
 	}
 	ups := apisixv1.NewDefaultUpstream()
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, "", portNumber)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, "", portNumber, types.ResolveGranularity.Endpoint)
 	ups.ID = id.GenID(ups.Name)
 	return ups
 }
@@ -380,7 +381,7 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 	if err != nil {
 		return nil, err
 	}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, "", svcPort)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, "", svcPort, types.ResolveGranularity.Endpoint)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }
@@ -491,7 +492,7 @@ func (t *translator) translateDefaultUpstreamFromIngressV1beta1(namespace string
 		portNumber = svcPort.IntVal
 	}
 	ups := apisixv1.NewDefaultUpstream()
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber, types.ResolveGranularity.Endpoint)
 	ups.ID = id.GenID(ups.Name)
 	return ups
 }
@@ -522,7 +523,7 @@ func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcNa
 	if err != nil {
 		return nil, err
 	}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber, types.ResolveGranularity.Endpoint)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }

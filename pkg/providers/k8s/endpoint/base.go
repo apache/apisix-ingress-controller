@@ -32,6 +32,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -56,8 +57,7 @@ func (c *baseEndpointController) syncEndpoint(ctx context.Context, ep kube.Endpo
 	svc, err := c.svcLister.Services(namespace).Get(svcName)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			log.Infof("service %s/%s not found", namespace, svcName)
-			return nil
+			return c.syncEmptyEndpoint(ctx, ep)
 		}
 		log.Errorf("failed to get service %s/%s: %s", namespace, svcName, err)
 		return err
@@ -87,7 +87,7 @@ func (c *baseEndpointController) syncEndpoint(ctx context.Context, ep kube.Endpo
 						zap.Int32("port", port.Port),
 					)
 				}
-				name := apisixv1.ComposeUpstreamName(namespace, svcName, subset.Name, port.Port)
+				name := apisixv1.ComposeUpstreamName(namespace, svcName, subset.Name, port.Port, types.ResolveGranularity.Endpoint)
 				for _, cluster := range clusters {
 					if err := c.SyncUpstreamNodesChangeToCluster(ctx, cluster, nodes, name); err != nil {
 						return err
@@ -118,7 +118,7 @@ func (c *baseEndpointController) syncEndpoint(ctx context.Context, ep kube.Endpo
 						zap.Int32("port", port.Port),
 					)
 				}
-				name := apisixv1.ComposeUpstreamName(namespace, svcName, subset.Name, port.Port)
+				name := apisixv1.ComposeUpstreamName(namespace, svcName, subset.Name, port.Port, types.ResolveGranularity.Endpoint)
 				for _, cluster := range clusters {
 					if err := c.SyncUpstreamNodesChangeToCluster(ctx, cluster, nodes, name); err != nil {
 						return err
@@ -128,6 +128,26 @@ func (c *baseEndpointController) syncEndpoint(ctx context.Context, ep kube.Endpo
 		}
 	default:
 		panic(fmt.Errorf("unsupported ApisixUpstream version %v", c.Kubernetes.APIVersion))
+	}
+	return nil
+}
+
+func (c *baseEndpointController) syncEmptyEndpoint(ctx context.Context, ep kube.Endpoint) error {
+	namespace, err := ep.Namespace()
+	if err != nil {
+		return err
+	}
+	svcName := ep.ServiceName()
+	log.Debugw("The service has been deleted, try to delete upstream relation",
+		zap.String("namespace", namespace),
+		zap.String("service_name", svcName),
+	)
+	clusterName := c.Config.APISIX.DefaultClusterName
+	err = c.APISIX.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx, namespace+"_"+svcName)
+	if err != nil {
+		log.Errorw("delete upstream relation failed",
+			zap.Error(err),
+		)
 	}
 	return nil
 }

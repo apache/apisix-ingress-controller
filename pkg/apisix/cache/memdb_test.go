@@ -486,8 +486,10 @@ func TestMemDBCacheUpstreamServiceRelation(t *testing.T) {
 	assert.Equal(t, us2, us)
 
 	us3 := &v1.UpstreamServiceRelation{
-		ServiceName:  "httpbin",
-		UpstreamName: "upstream",
+		ServiceName: "httpbin",
+		UpstreamNames: map[string]struct{}{
+			"upstream": {},
+		},
 	}
 	assert.Nil(t, c.InsertUpstreamServiceRelation(us3), "inserting upstream_service 3")
 
