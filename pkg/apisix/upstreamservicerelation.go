@@ -27,6 +27,10 @@ import (
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
+// to do: Delete one of the upstreams. Currently, only service is deleted. There will be some
+// redundant upstream objects, but the results will not be affected. It is hoped that  the service controller
+// can complete the update nodes logic to avoid the intrusion of relation modules into more code.
+
 // Maintain relationships only when resolveGranularity is endpoint
 // There is no need to ensure the consistency between the upstream to services, only need to ensure that the upstream-node can be delete after deleting the service
 type upstreamService struct {
@@ -78,8 +82,6 @@ func (u *upstreamService) Delete(ctx context.Context, serviceName string) error 
 	}
 	return nil
 }
-
-// to do: delete one of
 
 func (u *upstreamService) Create(ctx context.Context, upstreamName string) error {
 	log.Debugw("try to create upstreamService in cache",

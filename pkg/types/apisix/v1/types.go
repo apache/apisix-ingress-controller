@@ -468,8 +468,9 @@ func NewDefaultPluginConfig() *PluginConfig {
 	}
 }
 
-// ComposeUpstreamName uses namespace, name, subset (optional) and port info to compose
+// ComposeUpstreamName uses namespace, name, subset (optional), port, resolveGranularity info to compose
 // the upstream name.
+// the resolveGranularity is not composited in the upstream name when it is endpoint.
 func ComposeUpstreamName(namespace, name, subset string, port int32, resolveGranularity string) string {
 	pstr := strconv.Itoa(int(port))
 	// FIXME Use sync.Pool to reuse this buffer if the upstream
@@ -479,7 +480,6 @@ func ComposeUpstreamName(namespace, name, subset string, port int32, resolveGran
 	if subset != "" {
 		plen = plen + len(subset) + 1
 	}
-	// the resolveGranularity is not composited in the upstream name when it is endpoint.
 	if resolveGranularity == types.ResolveGranularity.Service {
 		plen = plen + len(resolveGranularity) + 1
 	}
