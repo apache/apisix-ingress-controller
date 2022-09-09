@@ -479,6 +479,7 @@ func ComposeUpstreamName(namespace, name, subset string, port int32, resolveGran
 	if subset != "" {
 		plen = plen + len(subset) + 1
 	}
+	// the resolveGranularity is not composited in the upstream name when it is endpoint.
 	if resolveGranularity == types.ResolveGranularity.Service {
 		plen = plen + len(resolveGranularity) + 1
 	}

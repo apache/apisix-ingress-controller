@@ -27,7 +27,7 @@ import (
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-// Only maintain the relationship that the resolution granularity is endpoint
+// Maintain relationships only when resolveGranularity is endpoint
 // There is no need to ensure the consistency between the upstream to services, only need to ensure that the upstream-node can be delete after deleting the service
 type upstreamService struct {
 	cluster *cluster
@@ -41,13 +41,13 @@ func newUpstreamServiceRelation(c *cluster) *upstreamService {
 
 func (u *upstreamService) Get(ctx context.Context, serviceName string) (*v1.UpstreamServiceRelation, error) {
 	log.Debugw("try to get upstreamService in cache",
-		zap.String("service name", serviceName),
+		zap.String("service_name", serviceName),
 		zap.String("cluster", "default"),
 	)
 	us, err := u.cluster.cache.GetUpstreamServiceRelation(serviceName)
 	if err != nil && err != cache.ErrNotFound {
 		log.Error("failed to find upstreamService in cache",
-			zap.String("service name", serviceName), zap.Error(err))
+			zap.String("service_name", serviceName), zap.Error(err))
 		return nil, err
 	}
 	return us, err
@@ -90,7 +90,8 @@ func (u *upstreamService) Create(ctx context.Context, upstreamName string) error
 	if len(args) < 2 {
 		return fmt.Errorf("wrong upstream name %s, must contains namespace_name", upstreamName)
 	}
-	// The last field of upstreanName(endpoint) is port. reference func func ComposeUpstreamName(namespace, name, subset, port, resolveGranularity)
+	// The last part of upstreanName should be a port number.
+	// Please refer to apisixv1.ComposeUpstreamName to see the detailed format.
 	_, err := strconv.Atoi(args[len(args)-1])
 	if err != nil {
 		return nil

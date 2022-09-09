@@ -138,14 +138,14 @@ func (c *baseEndpointController) syncEmptyEndpoint(ctx context.Context, ep kube.
 		return err
 	}
 	svcName := ep.ServiceName()
-	log.Infow("The syncEndpoint, service has been deleted, try to update upstream",
-		zap.String("Namespace", namespace),
-		zap.String("ServiceName", svcName),
+	log.Debugw("The service has been deleted, try to delete upstream relation",
+		zap.String("namespace", namespace),
+		zap.String("service_name", svcName),
 	)
 	clusterName := c.Config.APISIX.DefaultClusterName
 	err = c.APISIX.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx, namespace+"_"+svcName)
 	if err != nil {
-		log.Errorw("try to delete upstream relation and upstream nodes failed",
+		log.Errorw("delete upstream relation failed",
 			zap.Error(err),
 		)
 	}
