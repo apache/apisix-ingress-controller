@@ -20,7 +20,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
@@ -79,7 +78,7 @@ spec:
      enable: true
      type: keyAuth
 `, backendSvc, backendPorts[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
@@ -129,8 +128,29 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(3), "Checking number of routes")
 
 			// Create ApisixConsumer resource
-			err := s.ApisixConsumerKeyAuthCreated("foo", "foo-key")
-			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.Nil(ginkgo.GinkgoT(), s.ApisixConsumerKeyAuthCreated("foo", "foo-key"), "creating consumer foo")
+
+			ing2 := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-route2
+spec:
+  ingressClassName: apisix2
+  rules:
+  - host: local.httpbin.com
+    http:
+      paths:
+      - path: /get
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, backendSvc, backendPorts[0])
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing2))
+			time.Sleep(6 * time.Minute)
 		})
 
 		ginkgo.It("for modified resource sync consistency", func() {
@@ -200,6 +220,11 @@ spec:
 			waitTime := time.Until(readyTime).Seconds()
 			time.Sleep(time.Duration(waitTime) * time.Second)
 
+			routes, _ = s.ListApisixRoutes()
+			assert.Len(ginkgo.GinkgoT(), routes, 3)
+			consumers, _ = s.ListApisixConsumers()
+			assert.Len(ginkgo.GinkgoT(), consumers, 1)
+
 			_ = s.NewAPISIXClient().
 				GET("/ip").
 				WithHeader("Host", "httpbin.org").
@@ -229,7 +254,7 @@ spec:
 
 		ginkgo.It("for deleted resource sync consistency", func() {
 			// crd resource sync interval
-			readyTime := time.Now().Add(100 * time.Second)
+			readyTime := time.Now().Add(10 * time.Second)
 
 			routes, _ := s.ListApisixRoutes()
 			assert.Len(ginkgo.GinkgoT(), routes, 3)
@@ -237,7 +262,7 @@ spec:
 			assert.Len(ginkgo.GinkgoT(), consumers, 1)
 
 			for _, route := range routes {
-				_ = s.DeleteApisixRouteByApisixAdmin(id.GenID(route.Name))
+				_ = s.DeleteApisixRouteByApisixAdmin(route.ID)
 			}
 
 			for _, consumer := range consumers {
@@ -274,6 +299,11 @@ spec:
 
 			waitTime := time.Until(readyTime).Seconds()
 			time.Sleep(time.Duration(waitTime) * time.Second)
+
+			routes, _ = s.ListApisixRoutes()
+			assert.Len(ginkgo.GinkgoT(), routes, 3)
+			consumers, _ = s.ListApisixConsumers()
+			assert.Len(ginkgo.GinkgoT(), consumers, 1)
 
 			_ = s.NewAPISIXClient().
 				GET("/ip").
