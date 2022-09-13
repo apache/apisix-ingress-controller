@@ -48,12 +48,11 @@ type Translator interface {
 	TranslateUpstreamConfigV2beta3(*configv2beta3.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
 	// TranslateUpstreamConfigV2 translates ApisixUpstreamConfig (part of ApisixUpstream)
 	// to APISIX Upstream, it doesn't fill the the Upstream metadata and nodes.
-	TranslateUpstreamConfigV2(*configv2.ApisixUpstreamConfig) (*apisixv1.Upstream, error)
-	// TranslateService translate Service resources to APISIX Upstream nodes (cluster ip)
-	// upstream nodes.
+	TranslateUpstreamConfigV2(*configv2.ApisixUpstreamConfig, *apisixv1.Upstream) error
+	// TranslateService translates the K8s Service to APISIX Upstream nodes (cluster ip)
 	TranslateService(*corev1.Service, intstr.IntOrString) (apisixv1.UpstreamNodes, error)
 	// TranslateEndpoint translate Endpoints resources to APISIX Upstream nodes (pod ip)
-	// according to the give port. Extra labels can be passed to filter the ultimate
+	// according to the given port. Extra labels can be passed to filter the ultimate
 	// upstream nodes.
 	TranslateEndpoint(kube.Endpoint, intstr.IntOrString, types.Labels) (apisixv1.UpstreamNodes, error)
 	// TranslateUpstream composes an upstream according to the
@@ -65,10 +64,10 @@ type Translator interface {
 	// matching the subset labels (defined in ApisixUpstream) will be selected.
 	// When the subset is not found, the node list will be empty. When the subset is empty,
 	// all pods IP will be filled.
-	// Resolvegranularity is used to resolve the granularity of the service. It supports service/endpoint.
+	// ResolveGranularity determines the granularity of the generated nodes of upstream. It supports service/endpoint.
 	TranslateUpstream(namespace string, name string, subset string, resolveGranularity string, port intstr.IntOrString) (*apisixv1.Upstream, error)
-	// TranslateUpstreamNodes translate Endpoints resources to APISIX Upstream nodes
-	// according to the give port. Extra labels can be passed to filter the ultimate
+	// TranslateUpstreamNodes translates the K8s Endpoint to APISIX Upstream nodes
+	// according to the given port. Extra labels can be passed to filter the ultimate
 	// upstream nodes.
 	TranslateUpstreamNodes(namespace string, name string, resolveGranularity string, port intstr.IntOrString, labels types.Labels) (apisixv1.UpstreamNodes, error)
 }

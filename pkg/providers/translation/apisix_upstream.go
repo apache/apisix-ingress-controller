@@ -42,24 +42,23 @@ func (t *translator) TranslateUpstreamConfigV2beta3(au *configv2beta3.ApisixUpst
 	return ups, nil
 }
 
-func (t *translator) TranslateUpstreamConfigV2(au *configv2.ApisixUpstreamConfig) (*apisixv1.Upstream, error) {
-	ups := apisixv1.NewDefaultUpstream()
+func (t *translator) TranslateUpstreamConfigV2(au *configv2.ApisixUpstreamConfig, ups *apisixv1.Upstream) error {
 	if err := t.translateUpstreamScheme(au.Scheme, ups); err != nil {
-		return nil, err
+		return err
 	}
 	if err := t.translateUpstreamLoadBalancerV2(au.LoadBalancer, ups); err != nil {
-		return nil, err
+		return err
 	}
 	if err := t.translateUpstreamHealthCheckV2(au.HealthCheck, ups); err != nil {
-		return nil, err
+		return err
 	}
 	if err := t.translateUpstreamRetriesAndTimeoutV2(au.Retries, au.Timeout, ups); err != nil {
-		return nil, err
+		return err
 	}
 	if err := t.translateClientTLSV2(au.TLSSecret, ups); err != nil {
-		return nil, err
+		return err
 	}
-	return ups, nil
+	return nil
 }
 
 func (t *translator) translateUpstreamRetriesAndTimeoutV2beta3(retries *int, timeout *configv2beta3.UpstreamTimeout, ups *apisixv1.Upstream) error {

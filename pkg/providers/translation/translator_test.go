@@ -107,7 +107,8 @@ func TestTranslateUpstreamConfigV2(t *testing.T) {
 		Scheme:       apisixv1.SchemeGRPC,
 	}
 
-	ups, err := tr.TranslateUpstreamConfigV2(au)
+	ups := apisixv1.NewDefaultUpstream()
+	err := tr.TranslateUpstreamConfigV2(au, ups)
 	assert.Nil(t, err, "checking upstream config translating")
 	assert.Equal(t, apisixv1.LbRoundRobin, ups.Type)
 	assert.Equal(t, apisixv1.SchemeGRPC, ups.Scheme)
@@ -120,7 +121,7 @@ func TestTranslateUpstreamConfigV2(t *testing.T) {
 		},
 		Scheme: apisixv1.SchemeHTTP,
 	}
-	ups, err = tr.TranslateUpstreamConfigV2(au)
+	err = tr.TranslateUpstreamConfigV2(au, ups)
 	assert.Nil(t, err, "checking upstream config translating")
 	assert.Equal(t, apisixv1.LbConsistentHash, ups.Type)
 	assert.Equal(t, "user-agent", ups.Key)
@@ -135,7 +136,7 @@ func TestTranslateUpstreamConfigV2(t *testing.T) {
 		},
 		Scheme: "dns",
 	}
-	_, err = tr.TranslateUpstreamConfigV2(au)
+	err = tr.TranslateUpstreamConfigV2(au, ups)
 	assert.Error(t, err, &TranslateError{
 		Field:  "scheme",
 		Reason: "invalid value",
@@ -146,7 +147,7 @@ func TestTranslateUpstreamConfigV2(t *testing.T) {
 			Type: "hash",
 		},
 	}
-	_, err = tr.TranslateUpstreamConfigV2(au)
+	err = tr.TranslateUpstreamConfigV2(au, ups)
 	assert.Error(t, err, &TranslateError{
 		Field:  "loadbalancer.type",
 		Reason: "invalid value",
@@ -158,7 +159,7 @@ func TestTranslateUpstreamConfigV2(t *testing.T) {
 			HashOn: "arg",
 		},
 	}
-	_, err = tr.TranslateUpstreamConfigV2(au)
+	err = tr.TranslateUpstreamConfigV2(au, ups)
 	assert.Error(t, err, &TranslateError{
 		Field:  "loadbalancer.hashOn",
 		Reason: "invalid value",
@@ -248,7 +249,7 @@ func TestTranslateUpstreamNodes(t *testing.T) {
 	assert.Nil(t, nodes)
 	assert.Equal(t, &TranslateError{
 		Field:  "service.Spec.Ports",
-		Reason: "service.Spec.Ports: port.Port not defined, port.Port: 10080",
+		Reason: "service.Spec.Ports: port 10080 not found",
 	}, err)
 
 	nodes, err = tr.TranslateEndpoint(kube.NewEndpoint(endpoints), intstr.FromInt(80), nil)
@@ -377,7 +378,7 @@ func TestTranslateUpstreamNodesWithEndpointSlices(t *testing.T) {
 	assert.Nil(t, nodes)
 	assert.Equal(t, err, &TranslateError{
 		Field:  "service.Spec.Ports",
-		Reason: "service.Spec.Ports: port.Port not defined, port.Port: 10080",
+		Reason: "service.Spec.Ports: port 10080 not found",
 	})
 
 	nodes, err = tr.TranslateEndpoint(kube.NewEndpointWithSlice(ep), intstr.FromInt(80), nil)

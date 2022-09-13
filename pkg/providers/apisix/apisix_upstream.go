@@ -278,15 +278,14 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 						c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 						return err
 					}
-					var newUps *apisixv1.Upstream
+					newUps := apisixv1.NewDefaultUpstream()
 					if au.Spec != nil && ev.Type != types.EventDelete {
 						cfg, ok := portLevelSettings[port.Port]
 						if !ok {
 							cfg = &au.Spec.ApisixUpstreamConfig
 						}
 						// FIXME Same ApisixUpstreamConfig might be translated multiple times.
-						newUps, err = c.translator.TranslateUpstreamConfigV2(cfg)
-						if err != nil {
+						if err = c.translator.TranslateUpstreamConfigV2(cfg, newUps); err != nil {
 							log.Errorw("ApisixUpstream conversion cannot be completed, or the format is incorrect",
 								zap.Any("object", au),
 								zap.Error(err),
@@ -295,8 +294,6 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 							c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 							return err
 						}
-					} else {
-						newUps = apisixv1.NewDefaultUpstream()
 					}
 
 					newUps.Metadata = ups.Metadata

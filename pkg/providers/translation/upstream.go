@@ -56,7 +56,7 @@ func (t *translator) TranslateUpstream(namespace, name, subset, resolveGranulari
 
 func (t *translator) translateUpstreamV2(namespace, name, subset string, port intstr.IntOrString, resolveGranularity string) (*apisixv1.Upstream, error) {
 	ups := apisixv1.NewDefaultUpstream()
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, name, subset, port.IntVal)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, name, subset, port.IntVal, resolveGranularity)
 	ups.ID = id.GenID(ups.Name)
 
 	au, err := t.ApisixUpstreamLister.V2(namespace, name)
@@ -85,12 +85,11 @@ func (t *translator) translateUpstreamV2(namespace, name, subset string, port in
 		}
 	}
 	// Filter nodes by subset.
-	nodes, err := t.TranslateUpstreamNodes(namespace, name, resolveGranularity, port, labels)
+	ups.Nodes, err = t.TranslateUpstreamNodes(namespace, name, resolveGranularity, port, labels)
 	if err != nil {
 		return nil, err
 	}
 	if au == nil || au.V2().Spec == nil {
-		ups.Nodes = nodes
 		return ups, nil
 	}
 
@@ -101,19 +100,15 @@ func (t *translator) translateUpstreamV2(namespace, name, subset string, port in
 			break
 		}
 	}
-	ups, err = t.TranslateUpstreamConfigV2(upsCfg)
-	if err != nil {
+	if err := t.TranslateUpstreamConfigV2(upsCfg, ups); err != nil {
 		return nil, err
 	}
-	ups.Nodes = nodes
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, name, subset, port.IntVal)
-	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }
 
 func (t *translator) translateUpstreamV2beta3(namespace, name, subset string, port intstr.IntOrString, resolveGranularity string) (*apisixv1.Upstream, error) {
 	ups := apisixv1.NewDefaultUpstream()
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, name, subset, port.IntVal)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, name, subset, port.IntVal, resolveGranularity)
 	ups.ID = id.GenID(ups.Name)
 
 	au, err := t.ApisixUpstreamLister.V2beta3(namespace, name)
@@ -164,7 +159,7 @@ func (t *translator) translateUpstreamV2beta3(namespace, name, subset string, po
 		return nil, err
 	}
 	ups.Nodes = nodes
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, name, subset, port.IntVal)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, name, subset, port.IntVal, resolveGranularity)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }
@@ -289,13 +284,13 @@ func (t *translator) parseServicePort(svc *corev1.Service, port intstr.IntOrStri
 				return &p, nil
 			}
 		}
-		return nil, fmt.Errorf("service.Spec.Ports: port.Name not defined, port.Name: %s", port.StrVal)
+		return nil, fmt.Errorf("service.Spec.Ports: port %s not found", port.StrVal)
 	}
 	for _, p := range svc.Spec.Ports {
 		if p.Port == port.IntVal {
 			return &p, nil
 		}
 	}
-	return nil, fmt.Errorf("service.Spec.Ports: port.Port not defined, port.Port: %d", port.IntVal)
+	return nil, fmt.Errorf("service.Spec.Ports: port %d not found", port.IntVal)
 
 }
