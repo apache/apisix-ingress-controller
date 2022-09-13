@@ -37,6 +37,7 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
+	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/testing"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -54,9 +55,12 @@ type Options struct {
 	APISIXAdminAPIKey          string
 	EnableWebhooks             bool
 	APISIXPublishAddress       string
-	disableNamespaceSelector   bool
 	ApisixResourceSyncInterval string
 	ApisixResourceVersion      string
+
+	NamespaceSelectorLabel   map[string]string
+	DisableNamespaceSelector bool
+	DisableNamespaceLabel    bool
 }
 
 type Scaffold struct {
@@ -97,10 +101,10 @@ var (
 	}
 
 	createVersionedApisixResourceMap = map[string]struct{}{
-		"ApisixRoute":        struct{}{},
-		"ApisixConsumer":     struct{}{},
-		"ApisixPluginConfig": struct{}{},
-		"ApisixUpstream":     struct{}{},
+		"ApisixRoute":        {},
+		"ApisixConsumer":     {},
+		"ApisixPluginConfig": {},
+		"ApisixUpstream":     {},
 	}
 )
 
@@ -150,6 +154,8 @@ func NewScaffold(o *Options) *Scaffold {
 		opts: o,
 		t:    ginkgo.GinkgoT(),
 	}
+	// Disable logging of terratest library.
+	logger.Default = logger.Discard
 
 	ginkgo.BeforeEach(s.beforeEach)
 	ginkgo.AfterEach(s.afterEach)
@@ -376,6 +382,19 @@ func (s *Scaffold) RestartAPISIXDeploy() {
 	assert.NoError(s.t, err, "renew apisix tunnels")
 }
 
+func (s *Scaffold) RestartIngressControllerDeploy() {
+	pods, err := k8s.ListPodsE(s.t, s.kubectlOptions, metav1.ListOptions{
+		LabelSelector: "app=ingress-apisix-controller-deployment-e2e-test",
+	})
+	assert.NoError(s.t, err, "list ingress-controller pod")
+	for _, pod := range pods {
+		err = s.KillPod(pod.Name)
+		assert.NoError(s.t, err, "killing ingress-controller pod")
+	}
+	err = s.WaitAllIngressControllerPodsAvailable()
+	assert.NoError(s.t, err, "waiting for new ingress-controller instance ready")
+}
+
 func (s *Scaffold) beforeEach() {
 	var err error
 	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.opts.Name, time.Now().Nanosecond())
@@ -383,11 +402,19 @@ func (s *Scaffold) beforeEach() {
 		ConfigPath: s.opts.Kubeconfig,
 		Namespace:  s.namespace,
 	}
-
 	s.finializers = nil
-	labels := make(map[string]string)
-	labels["apisix.ingress.watch"] = s.namespace
-	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: s.namespace, Labels: labels})
+
+	label := map[string]string{}
+	if !s.opts.DisableNamespaceLabel {
+		if s.opts.NamespaceSelectorLabel == nil {
+			label["apisix.ingress.watch"] = s.namespace
+			s.opts.NamespaceSelectorLabel = label
+		} else {
+			label = s.opts.NamespaceSelectorLabel
+		}
+	}
+
+	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: s.namespace, Labels: label})
 
 	s.nodes, err = k8s.GetReadyNodesE(s.t, s.kubectlOptions)
 	assert.Nil(s.t, err, "querying ready nodes")
@@ -549,14 +576,6 @@ func (s *Scaffold) FormatRegistry(workloadTemplate string) string {
 	}
 }
 
-// FormatNamespaceLabel set label to be empty if s.opts.disableNamespaceSelector is true.
-func (s *Scaffold) FormatNamespaceLabel(label string) string {
-	if s.opts.disableNamespaceSelector {
-		return "\"\""
-	}
-	return label
-}
-
 var (
 	versionRegex = regexp.MustCompile(`apiVersion: apisix.apache.org/v.*?\n`)
 	kindRegex    = regexp.MustCompile(`kind: (.*?)\n`)
@@ -572,10 +591,6 @@ func (s *Scaffold) getKindValue(yml string) string {
 		return ""
 	}
 	return subStr[1]
-}
-
-func (s *Scaffold) DisableNamespaceSelector() {
-	s.opts.disableNamespaceSelector = true
 }
 
 func waitExponentialBackoff(condFunc func() (bool, error)) error {
@@ -621,4 +636,16 @@ func (s *Scaffold) CreateVersionedApisixResourceWithNamespace(yml, namespace str
 
 func ApisixResourceVersion() *apisixResourceVersionInfo {
 	return apisixResourceVersion
+}
+
+func (s *Scaffold) NamespaceSelectorLabelStrings() []string {
+	var labels []string
+	for k, v := range s.opts.NamespaceSelectorLabel {
+		labels = append(labels, fmt.Sprintf("%s=%s", k, v))
+	}
+	return labels
+}
+
+func (s *Scaffold) NamespaceSelectorLabel() map[string]string {
+	return s.opts.NamespaceSelectorLabel
 }

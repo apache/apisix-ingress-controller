@@ -29,6 +29,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -90,7 +91,7 @@ func (t *translator) TranslateGatewayTLSRouteV1Alpha2(tlsRoute *gatewayv1alpha2.
 			if err != nil {
 				return nil, errors.Wrap(err, fmt.Sprintf("failed to translate Rules[%v].BackendRefs[%v]", i, j))
 			}
-			name := apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port))
+			name := apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port), types.ResolveGranularity.Endpoint)
 
 			ups.Labels["meta_namespace"] = utils.TruncateString(ns, 64)
 			ups.Labels["meta_backend"] = utils.TruncateString(string(backend.Name), 64)

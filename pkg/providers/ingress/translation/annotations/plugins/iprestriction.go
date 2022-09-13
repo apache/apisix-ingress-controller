@@ -12,38 +12,33 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package annotations
+package plugins
 
 import (
+	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-const (
-	_enableCors       = AnnotationsPrefix + "enable-cors"
-	_corsAllowOrigin  = AnnotationsPrefix + "cors-allow-origin"
-	_corsAllowHeaders = AnnotationsPrefix + "cors-allow-headers"
-	_corsAllowMethods = AnnotationsPrefix + "cors-allow-methods"
-)
+type ipRestriction struct{}
 
-type cors struct{}
-
-// NewCorsHandler creates a handler to convert annotations about
-// CORS to APISIX cors plugin.
-func NewCorsHandler() Handler {
-	return &cors{}
+// NewIPRestrictionHandler creates a handler to convert
+// annotations about client ips control to APISIX ip-restrict plugin.
+func NewIPRestrictionHandler() PluginAnnotationsHandler {
+	return &ipRestriction{}
 }
 
-func (c *cors) PluginName() string {
-	return "cors"
+func (i *ipRestriction) PluginName() string {
+	return "ip-restriction"
 }
 
-func (c *cors) Handle(e Extractor) (interface{}, error) {
-	if !e.GetBoolAnnotation(_enableCors) {
-		return nil, nil
+func (i *ipRestriction) Handle(e annotations.Extractor) (interface{}, error) {
+	var plugin apisixv1.IPRestrictConfig
+	allowlist := e.GetStringsAnnotation(annotations.AnnotationsAllowlistSourceRange)
+	blocklist := e.GetStringsAnnotation(annotations.AnnotationsBlocklistSourceRange)
+	if allowlist != nil || blocklist != nil {
+		plugin.Allowlist = allowlist
+		plugin.Blocklist = blocklist
+		return &plugin, nil
 	}
-	return &apisixv1.CorsConfig{
-		AllowOrigins: e.GetStringAnnotation(_corsAllowOrigin),
-		AllowMethods: e.GetStringAnnotation(_corsAllowMethods),
-		AllowHeaders: e.GetStringAnnotation(_corsAllowHeaders),
-	}, nil
+	return nil, nil
 }

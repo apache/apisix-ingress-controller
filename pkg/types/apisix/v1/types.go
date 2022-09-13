@@ -22,6 +22,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 const (
@@ -405,8 +407,8 @@ type PluginConfig struct {
 // UpstreamServiceRelation Upstream association object
 // +k8s:deepcopy-gen=true
 type UpstreamServiceRelation struct {
-	ServiceName  string `json:"service_name" yaml:"service_name"`
-	UpstreamName string `json:"upstream_name,omitempty" yaml:"upstream_name,omitempty"`
+	ServiceName   string              `json:"service_name" yaml:"service_name"`
+	UpstreamNames map[string]struct{} `json:"upstream_name,omitempty" yaml:"upstream_name,omitempty"`
 }
 
 // NewDefaultUpstream returns an empty Upstream with default values.
@@ -470,19 +472,23 @@ func NewDefaultPluginConfig() *PluginConfig {
 	}
 }
 
-// ComposeUpstreamName uses namespace, name, subset (optional) and port info to compose
+// ComposeUpstreamName uses namespace, name, subset (optional), port, resolveGranularity info to compose
 // the upstream name.
-func ComposeUpstreamName(namespace, name, subset string, port int32) string {
+// the resolveGranularity is not composited in the upstream name when it is endpoint.
+func ComposeUpstreamName(namespace, name, subset string, port int32, resolveGranularity string) string {
 	pstr := strconv.Itoa(int(port))
 	// FIXME Use sync.Pool to reuse this buffer if the upstream
 	// name composing code path is hot.
 	var p []byte
-	if subset == "" {
-		p = make([]byte, 0, len(namespace)+len(name)+len(pstr)+2)
-	} else {
-		p = make([]byte, 0, len(namespace)+len(name)+len(subset)+len(pstr)+3)
+	plen := len(namespace) + len(name) + len(pstr) + 2
+	if subset != "" {
+		plen = plen + len(subset) + 1
+	}
+	if resolveGranularity == types.ResolveGranularity.Service {
+		plen = plen + len(resolveGranularity) + 1
 	}
 
+	p = make([]byte, 0, plen)
 	buf := bytes.NewBuffer(p)
 	buf.WriteString(namespace)
 	buf.WriteByte('_')
@@ -493,6 +499,10 @@ func ComposeUpstreamName(namespace, name, subset string, port int32) string {
 		buf.WriteByte('_')
 	}
 	buf.WriteString(pstr)
+	if resolveGranularity == types.ResolveGranularity.Service {
+		buf.WriteByte('_')
+		buf.WriteString(resolveGranularity)
+	}
 
 	return buf.String()
 }
