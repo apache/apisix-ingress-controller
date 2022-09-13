@@ -19,6 +19,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -319,6 +320,90 @@ spec:
 var _ = ginkgo.Describe("suite-ingress-resource: support ingress.networking/v1", func() {
 	s := scaffold.NewDefaultScaffold()
 
+	ginkgo.It("other ingressClass should be ignored", func() {
+		backendSvc, backendPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: class1
+  name: ingress-class1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /get
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, backendSvc, backendPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
+		time.Sleep(6 * time.Second)
+
+		routes, err := s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err, "ListApisixRoutes failed")
+		assert.Len(ginkgo.GinkgoT(), routes, 0)
+
+		_ = s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
+
+		ing = fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-class2
+spec:
+  ingressClassName: class2
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /headers
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, backendSvc, backendPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
+		time.Sleep(6 * time.Second)
+
+		routes, err = s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err, "ListApisixRoutes failed")
+		assert.Len(ginkgo.GinkgoT(), routes, 0)
+
+		_ = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
+
+		ing = fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-apisix
+spec:
+  ingressClassName: apisix
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, backendSvc, backendPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
+
+		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+	})
+
 	ginkgo.It("path exact match", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
@@ -419,6 +504,84 @@ spec:
 
 var _ = ginkgo.Describe("suite-ingress-resource: support ingress.networking/v1beta1", func() {
 	s := scaffold.NewDefaultScaffold()
+
+	ginkgo.It("other ingressClass should be ignored", func() {
+		backendSvc, backendPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: class1
+  name: ingress-class1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /get
+        pathType: Exact
+        backend:
+          serviceName: %s
+          servicePort: %d
+`, backendSvc, backendPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
+		time.Sleep(6 * time.Second)
+
+		routes, err := s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err, "ListApisixRoutes failed")
+		assert.Len(ginkgo.GinkgoT(), routes, 0)
+
+		_ = s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
+
+		ing = fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-class2
+spec:
+  ingressClassName: class2
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /headers
+        pathType: Exact
+        backend:
+          serviceName: %s
+          servicePort: %d
+`, backendSvc, backendPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
+		time.Sleep(6 * time.Second)
+
+		routes, err = s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err, "ListApisixRoutes failed")
+		assert.Len(ginkgo.GinkgoT(), routes, 0)
+
+		_ = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
+
+		ing = fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-apisix
+spec:
+  ingressClassName: apisix
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          serviceName: %s
+          servicePort: %d
+`, backendSvc, backendPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing), "creating ingress")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
+
+		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+	})
 
 	ginkgo.It("path exact match", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
