@@ -51,7 +51,7 @@ type Translator interface {
 	TranslateUpstreamConfigV2(*configv2.ApisixUpstreamConfig, *apisixv1.Upstream) error
 	// TranslateService translates the K8s Service to APISIX Upstream nodes (cluster ip)
 	TranslateService(*corev1.Service, intstr.IntOrString) (apisixv1.UpstreamNodes, error)
-	// TranslateEndpoint translate Endpoints resources to APISIX Upstream nodes (pod ip)
+	// TranslateEndpoint translates the K8s Endpoint to APISIX Upstream nodes (pod ip)
 	// according to the given port. Extra labels can be passed to filter the ultimate
 	// upstream nodes.
 	TranslateEndpoint(kube.Endpoint, intstr.IntOrString, types.Labels) (apisixv1.UpstreamNodes, error)
