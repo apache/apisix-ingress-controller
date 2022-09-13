@@ -12,25 +12,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package annotations
+package plugins
 
 import (
+	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-)
-
-const (
-	_forwardAuthURI             = AnnotationsPrefix + "auth-uri"
-	_forwardAuthSSLVerify       = AnnotationsPrefix + "auth-ssl-verify"
-	_forwardAuthRequestHeaders  = AnnotationsPrefix + "auth-request-headers"
-	_forwardAuthUpstreamHeaders = AnnotationsPrefix + "auth-upstream-headers"
-	_forwardAuthClientHeaders   = AnnotationsPrefix + "auth-client-headers"
 )
 
 type forwardAuth struct{}
 
 // NewForwardAuthHandler creates a handler to convert
 // annotations about forward authentication to APISIX forward-auth plugin.
-func NewForwardAuthHandler() Handler {
+func NewForwardAuthHandler() PluginAnnotationsHandler {
 	return &forwardAuth{}
 }
 
@@ -38,19 +31,19 @@ func (i *forwardAuth) PluginName() string {
 	return "forward-auth"
 }
 
-func (i *forwardAuth) Handle(e Extractor) (interface{}, error) {
-	uri := e.GetStringAnnotation(_forwardAuthURI)
+func (i *forwardAuth) Handle(e annotations.Extractor) (interface{}, error) {
+	uri := e.GetStringAnnotation(annotations.AnnotationsForwardAuthURI)
 	sslVerify := true
-	if e.GetStringAnnotation(_forwardAuthSSLVerify) == "false" {
+	if e.GetStringAnnotation(annotations.AnnotationsForwardAuthSSLVerify) == "false" {
 		sslVerify = false
 	}
 	if len(uri) > 0 {
 		return &apisixv1.ForwardAuthConfig{
 			URI:             uri,
 			SSLVerify:       sslVerify,
-			RequestHeaders:  e.GetStringsAnnotation(_forwardAuthRequestHeaders),
-			UpstreamHeaders: e.GetStringsAnnotation(_forwardAuthUpstreamHeaders),
-			ClientHeaders:   e.GetStringsAnnotation(_forwardAuthClientHeaders),
+			RequestHeaders:  e.GetStringsAnnotation(annotations.AnnotationsForwardAuthRequestHeaders),
+			UpstreamHeaders: e.GetStringsAnnotation(annotations.AnnotationsForwardAuthUpstreamHeaders),
+			ClientHeaders:   e.GetStringsAnnotation(annotations.AnnotationsForwardAuthClientHeaders),
 		}, nil
 	}
 

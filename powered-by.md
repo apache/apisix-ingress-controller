@@ -1,3 +1,8 @@
+---
+title: Powered by Apache APISIX Ingress
+---
+
+<!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -14,32 +19,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+-->
 
-github:
-    description: APISIX Ingress Controller for Kubernetes
-    homepage: https://apisix.apache.org/
-    labels:
-      - ingress
-      - kubernetes
-      - controller
-      - apisix
-      - crds
-      - k8s
-      - apigateway
-      - microservices
-      - api
-      - kubernetes-ingress
-      - loadbalancing
-      - devops
+This page documents an alphabetical list of institutions that are using APISIX Ingress for research and production,
+or providing commercial products including APISIX Ingress.
 
-    enabled_merge_buttons:
-      squash:  true
-      merge:   false
-      rebase:  false
-    protected_branches:
-      master:
-        required_pull_request_reviews:
-          required_approving_review_count: 2
-      v1.5.0:
-        required_pull_request_reviews:
-          required_approving_review_count: 1
+Users are encouraged to add themselves to this page, [issue](https://github.com/apache/apisix-ingress-controller/issues/501) and PR are welcomed.
+
+1. <a href="https://www.aispeech.com/" rel="nofollow">AISpeech 思必驰</a>
+1. <a href="https://cloud.tencent.com/" rel="nofollow">Tencent Cloud 腾讯云</a>
+1. <a href="https://www.upyun.com/" rel="nofollow">UPYUN 又拍云</a>

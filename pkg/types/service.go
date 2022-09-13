@@ -12,17 +12,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package translation
+package types
 
-import (
-	"github.com/apache/apisix-ingress-controller/pkg/id"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+var (
+	ResolveGranularity = struct {
+		Endpoint string
+		Service  string
+	}{
+		Endpoint: "endpoint",
+		Service:  "service",
+	}
 )
-
-// translateUpstreamNotStrictly translates Upstream nodes with a loose way, only generate ID and Name for delete Event.
-func (t *translator) translateUpstreamNotStrictly(namespace, svcName, subset string, svcPort int32, resolveGranularity string) (*apisixv1.Upstream, error) {
-	ups := &apisixv1.Upstream{}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, subset, svcPort, resolveGranularity)
-	ups.ID = id.GenID(ups.Name)
-	return ups, nil
-}

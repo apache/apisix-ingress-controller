@@ -107,7 +107,6 @@ spec:
 
 	ginkgo.It("Basic HTTPRoute with 1 Hosts 1 Rule 2 Match 1 BackendRef", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		time.Sleep(time.Second * 15)
 		route := fmt.Sprintf(`
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: HTTPRoute
@@ -142,6 +141,97 @@ spec:
 			Expect().
 			Status(http.StatusOK)
 		_ = s.NewAPISIXClient().GET("/notfound").
+			WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(http.StatusNotFound)
+	})
+
+	ginkgo.It("Update HTTPRoute", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		route := fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: HTTPRoute
+metadata:
+  name: basic-http-route
+spec:
+  hostnames: ["httpbin.org"]
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /ip
+    backendRefs:
+    - name: %s
+      port: %d
+`, backendSvc, backendPorts[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "creating HTTPRoute")
+		time.Sleep(time.Second * 6)
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
+
+		route = fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: HTTPRoute
+metadata:
+  name: basic-http-route
+spec:
+  hostnames: ["httpbin.org"]
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /get
+    backendRefs:
+    - name: %s
+      port: %d
+`, backendSvc, backendPorts[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "update HTTPRoute")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
+
+		time.Sleep(6 * time.Second)
+
+		_ = s.NewAPISIXClient().GET("/get").
+			WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(http.StatusOK)
+		_ = s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(http.StatusNotFound)
+	})
+
+	ginkgo.It("Delete HTTPRoute", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		route := fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: HTTPRoute
+metadata:
+  name: basic-http-route
+spec:
+  hostnames: ["httpbin.org"]
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /ip
+    backendRefs:
+    - name: %s
+      port: %d
+`, backendSvc, backendPorts[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "creating HTTPRoute")
+		time.Sleep(time.Second * 6)
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
+
+		_ = s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(http.StatusOK)
+
+		assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromString(route), "delete HTTPRoute")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(0), "Checking number of routes")
+
+		_ = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			Expect().
 			Status(http.StatusNotFound)

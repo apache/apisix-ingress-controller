@@ -40,7 +40,6 @@ import (
 	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -98,11 +97,7 @@ const (
 
 func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
-	plugins := t.TranslateAnnotations(ing.Annotations)
-	annoExtractor := annotations.NewExtractor(ing.Annotations)
-	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
-	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
-	pluginConfigName := annoExtractor.GetStringAnnotation(annotations.AnnotationsPrefix + "plugin-config-name")
+	ingress := t.TranslateAnnotations(ing.Annotations)
 
 	// add https
 	for _, tls := range ing.Spec.TLS {
@@ -177,7 +172,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*translation
 						prefix += "/*"
 					}
 					uris = append(uris, prefix)
-				} else if *pathRule.PathType == networkingv1.PathTypeImplementationSpecific && useRegex {
+				} else if *pathRule.PathType == networkingv1.PathTypeImplementationSpecific && ingress.UseRegex {
 					nginxVars = append(nginxVars, kubev2.ApisixRouteHTTPMatchExpr{
 						Subject: kubev2.ApisixRouteHTTPMatchExprSubject{
 							Scope: apisixconst.ScopePath,
@@ -193,7 +188,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*translation
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
-			route.EnableWebsocket = enableWebsocket
+			route.EnableWebsocket = ingress.EnableWebSocket
 			if len(nginxVars) > 0 {
 				routeVars, err := t.ApisixTranslator.TranslateRouteMatchExprs(nginxVars)
 				if err != nil {
@@ -202,12 +197,12 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*translation
 				route.Vars = routeVars
 				route.Priority = _regexPriority
 			}
-			if len(plugins) > 0 {
-				route.Plugins = *(plugins.DeepCopy())
+			if len(ingress.Plugins) > 0 {
+				route.Plugins = *(ingress.Plugins.DeepCopy())
 			}
 
-			if pluginConfigName != "" {
-				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, pluginConfigName))
+			if ingress.PluginConfigName != "" {
+				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, ingress.PluginConfigName))
 			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
@@ -220,11 +215,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*translation
 
 func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
-	plugins := t.TranslateAnnotations(ing.Annotations)
-	annoExtractor := annotations.NewExtractor(ing.Annotations)
-	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
-	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
-	pluginConfigName := annoExtractor.GetStringAnnotation(annotations.AnnotationsPrefix + "plugin-config-name")
+	ingress := t.TranslateAnnotations(ing.Annotations)
 
 	// add https
 	for _, tls := range ing.Spec.TLS {
@@ -293,7 +284,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*t
 						prefix += "/*"
 					}
 					uris = append(uris, prefix)
-				} else if *pathRule.PathType == networkingv1beta1.PathTypeImplementationSpecific && useRegex {
+				} else if *pathRule.PathType == networkingv1beta1.PathTypeImplementationSpecific && ingress.UseRegex {
 					nginxVars = append(nginxVars, kubev2.ApisixRouteHTTPMatchExpr{
 						Subject: kubev2.ApisixRouteHTTPMatchExprSubject{
 							Scope: apisixconst.ScopePath,
@@ -309,7 +300,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*t
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
-			route.EnableWebsocket = enableWebsocket
+			route.EnableWebsocket = ingress.EnableWebSocket
 			if len(nginxVars) > 0 {
 				routeVars, err := t.ApisixTranslator.TranslateRouteMatchExprs(nginxVars)
 				if err != nil {
@@ -318,12 +309,12 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*t
 				route.Vars = routeVars
 				route.Priority = _regexPriority
 			}
-			if len(plugins) > 0 {
-				route.Plugins = *(plugins.DeepCopy())
+			if len(ingress.Plugins) > 0 {
+				route.Plugins = *(ingress.Plugins.DeepCopy())
 			}
 
-			if pluginConfigName != "" {
-				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, pluginConfigName))
+			if ingress.PluginConfigName != "" {
+				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, ingress.PluginConfigName))
 			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
@@ -336,11 +327,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*t
 
 func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
-	plugins := t.TranslateAnnotations(ing.Annotations)
-	annoExtractor := annotations.NewExtractor(ing.Annotations)
-	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
-	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
-	pluginConfigName := annoExtractor.GetStringAnnotation(annotations.AnnotationsPrefix + "plugin-config-name")
+	ingress := t.TranslateAnnotations(ing.Annotations)
 
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
@@ -380,7 +367,7 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 						prefix += "/*"
 					}
 					uris = append(uris, prefix)
-				} else if *pathRule.PathType == extensionsv1beta1.PathTypeImplementationSpecific && useRegex {
+				} else if *pathRule.PathType == extensionsv1beta1.PathTypeImplementationSpecific && ingress.UseRegex {
 					nginxVars = append(nginxVars, kubev2.ApisixRouteHTTPMatchExpr{
 						Subject: kubev2.ApisixRouteHTTPMatchExprSubject{
 							Scope: apisixconst.ScopePath,
@@ -396,7 +383,7 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
-			route.EnableWebsocket = enableWebsocket
+			route.EnableWebsocket = ingress.EnableWebSocket
 			if len(nginxVars) > 0 {
 				routeVars, err := t.ApisixTranslator.TranslateRouteMatchExprs(nginxVars)
 				if err != nil {
@@ -405,12 +392,12 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 				route.Vars = routeVars
 				route.Priority = _regexPriority
 			}
-			if len(plugins) > 0 {
-				route.Plugins = *(plugins.DeepCopy())
+			if len(ingress.Plugins) > 0 {
+				route.Plugins = *(ingress.Plugins.DeepCopy())
 			}
 
-			if pluginConfigName != "" {
-				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, pluginConfigName))
+			if ingress.PluginConfigName != "" {
+				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, ingress.PluginConfigName))
 			}
 
 			if ups != nil {
