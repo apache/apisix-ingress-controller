@@ -212,6 +212,7 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering disable",
 			}, namespace)
 			_, err := s.NewHTTPBINWithNamespace(namespace)
 			assert.Nil(ginkgo.GinkgoT(), err, "create new httpbin service")
+			time.Sleep(6 * time.Second)
 		})
 
 		// clean this tmp namespace when test case is done.

@@ -253,8 +253,8 @@ spec:
 		})
 
 		ginkgo.It("for deleted resource sync consistency", func() {
-			// crd resource sync interval
-			readyTime := time.Now().Add(10 * time.Second)
+			// resource sync interval
+			readyTime := time.Now().Add(100 * time.Second)
 
 			routes, _ := s.ListApisixRoutes()
 			assert.Len(ginkgo.GinkgoT(), routes, 3)
