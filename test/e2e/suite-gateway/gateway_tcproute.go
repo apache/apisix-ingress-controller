@@ -20,6 +20,7 @@ package gateway
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +30,7 @@ import (
 
 var _ = ginkgo.Describe("suite-gateway: TCP Route", func() {
 	s := scaffold.NewDefaultScaffold()
-	ginkgo.It("TCPRoute", func() {
+	ginkgo.It("create TCPRoute", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		tcpRoute := fmt.Sprintf(`
 apiVersion: gateway.networking.k8s.io/v1alpha2
@@ -52,4 +53,72 @@ spec:
 			Status(http.StatusOK)
 	})
 
+	ginkgo.It("update TCPRoute", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		tcpRoute := fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: httpbin-tcp-route
+spec:
+  rules:
+    - backendRefs:
+      - name: %s
+        port: %d
+`, "httpbin", 80)
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(tcpRoute), "creating TCPRoute")
+
+		time.Sleep(6 * time.Second)
+		// Non existent k8s service, service not found
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixStreamRoutesCreated(0), "The number of stream_routes should be 0")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(0), "The number of upstreams should be 0")
+
+		tcpRoute = fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: httpbin-tcp-route
+spec:
+  rules:
+    - backendRefs:
+      - name: %s
+        port: %d
+`, backendSvc, backendPorts[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(tcpRoute), "creating TCPRoute")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixStreamRoutesCreated(1), "The number of stream_routes should be 1")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "The number of upstreams should be 1")
+
+		_ = s.NewAPISIXClientWithTCPProxy().
+			GET("/get").
+			Expect().
+			Status(http.StatusOK)
+	})
+
+	ginkgo.It("delete TCPRoute", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		tcpRoute := fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: httpbin-tcp-route
+spec:
+  rules:
+    - backendRefs:
+      - name: %s
+        port: %d
+`, backendSvc, backendPorts[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(tcpRoute), "creating TCPRoute")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixStreamRoutesCreated(1), "The number of stream_routes should be 1")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "The number of upstreams should be 1")
+
+		_ = s.NewAPISIXClientWithTCPProxy().
+			GET("/get").
+			Expect().
+			Status(http.StatusOK)
+
+		assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromString(tcpRoute), "deleting TCPRoute")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixStreamRoutesCreated(0), "The number of stream_routes should be 0")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(0), "The number of upstreams should be 0")
+	})
 })

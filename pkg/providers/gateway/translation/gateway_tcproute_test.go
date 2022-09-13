@@ -187,8 +187,6 @@ func TestTranslateGatewayTCPRoute(t *testing.T) {
 	r := tctx.StreamRoutes[0]
 	u := tctx.Upstreams[0]
 
-	// Metadata
-	// FIXME
 	assert.Equal(t, u.ID, r.UpstreamId)
 	assert.Len(t, u.Nodes, 2)
 	assert.Equal(t, "192.168.1.1", u.Nodes[0].Host)

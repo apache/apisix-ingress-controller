@@ -81,11 +81,13 @@ func (c *gatewayTCPRouteController) sync(ctx context.Context, ev *types.Event) e
 		}
 	}
 	if ev.Type == types.EventDelete {
-		if tcpRoute == nil {
+		if tcpRoute != nil {
 			// We still find the resource while we are processing the DELETE event,
 			// that means object with same namespace and name was created, discarding
 			// this stale DELETE event.
-			log.Warnf("discard the stale Gateway delete event since the %s exists", key)
+			log.Warnw("discard the stale Gateway/TCPRoute delete event since it exists",
+				zap.String("key", key),
+			)
 			return nil
 		}
 		tcpRoute = ev.Tombstone.(*gatewayv1alpha2.TCPRoute)
@@ -175,6 +177,21 @@ func (c *gatewayTCPRouteController) handleSyncErr(obj interface{}, err error) {
 		c.controller.MetricsCollector.IncrSyncOperation("gateway_tcproute", "success")
 		return
 	}
+	event := obj.(*types.Event)
+	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
+		log.Infow("sync gateway TCPRoute but not found, ignore",
+			zap.String("event_type", event.Type.String()),
+			zap.String("TCPRoute ", event.Object.(string)),
+		)
+		c.workqueue.Forget(event)
+		return
+	}
+	log.Warnw("sync gateway TCPRoute failed, will retry",
+		zap.Any("object", obj),
+		zap.Error(err),
+	)
+	c.workqueue.AddRateLimited(obj)
+	c.controller.MetricsCollector.IncrSyncOperation("gateway_tcpproute", "failure")
 }
 
 func (c *gatewayTCPRouteController) onAdd(obj interface{}) {
@@ -234,11 +251,12 @@ func (c *gatewayTCPRouteController) OnDelete(obj interface{}) {
 	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
-	log.Debugw("gateway TCPRoute update delete arrived",
+	log.Debugw("gateway TCPRoute delete event arrived",
 		zap.Any("object", obj),
 	)
 	c.workqueue.Add(&types.Event{
-		Type:   types.EventDelete,
-		Object: key,
+		Type:      types.EventDelete,
+		Object:    key,
+		Tombstone: obj,
 	})
 }
