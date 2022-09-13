@@ -191,7 +191,7 @@ func (c *gatewayTCPRouteController) handleSyncErr(obj interface{}, err error) {
 		zap.Error(err),
 	)
 	c.workqueue.AddRateLimited(obj)
-	c.controller.MetricsCollector.IncrSyncOperation("gateway_tcpproute", "failure")
+	c.controller.MetricsCollector.IncrSyncOperation("gateway_tcproute", "failure")
 }
 
 func (c *gatewayTCPRouteController) onAdd(obj interface{}) {
