@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-package gateway_translation
+package translation
 
 import (
 	"fmt"
@@ -32,14 +32,14 @@ func (t *translator) TranslateGatewayTCPRouteV1Alpha2(tcpRoute *gatewayv1alpha2.
 	var ns string
 
 	for i, rule := range tcpRoute.Spec.Rules {
-		for j, backend := range rule.BackendRefs {
+		for _, backend := range rule.BackendRefs {
 			if backend.Namespace != nil {
 				ns = string(*backend.Namespace)
 			} else {
 				ns = tcpRoute.Namespace
 			}
 			sr := apisixv1.NewDefaultStreamRoute()
-			name := apisixv1.ComposeStreamRouteName(tcpRoute.Namespace, tcpRoute.Name, fmt.Sprintf("%d-%d", i, j))
+			name := apisixv1.ComposeStreamRouteName(tcpRoute.Namespace, tcpRoute.Name, fmt.Sprintf("%d-%s", i, string(backend.Name)))
 			sr.ID = id.GenID(name)
 			ups, err := t.KubeTranslator.TranslateService(ns, string(backend.Name), "", int32(*backend.Port))
 			if err != nil {

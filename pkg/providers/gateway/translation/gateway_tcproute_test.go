@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package gateway_translation
+package translation
 
 import (
 	"context"
@@ -32,6 +32,7 @@ import (
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 )
 
 func mockTCPRouteTranslator(t *testing.T) (*translator, <-chan struct{}) {
@@ -138,18 +139,6 @@ func mockTCPRouteTranslator(t *testing.T) (*translator, <-chan struct{}) {
 }
 
 func TestTranslateGatewayTCPRoute(t *testing.T) {
-	refKind := func(str gatewayv1alpha2.Kind) *gatewayv1alpha2.Kind {
-		return &str
-	}
-	refNamespace := func(str gatewayv1alpha2.Namespace) *gatewayv1alpha2.Namespace {
-		return &str
-	}
-	refPortNumber := func(i gatewayv1alpha2.PortNumber) *gatewayv1alpha2.PortNumber {
-		return &i
-	}
-	refInt32 := func(i int32) *int32 {
-		return &i
-	}
 	tr, processCh := mockTCPRouteTranslator(t)
 	<-processCh
 	<-processCh
@@ -165,12 +154,12 @@ func TestTranslateGatewayTCPRoute(t *testing.T) {
 					BackendRefs: []gatewayv1alpha2.BackendRef{
 						{
 							BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-								Kind:      refKind("Service"),
+								Kind:      utils.PtrOf(gatewayv1alpha2.Kind("Service")),
 								Name:      "svc",
-								Namespace: refNamespace("test"),
-								Port:      refPortNumber(80),
+								Namespace: utils.PtrOf(gatewayv1alpha2.Namespace("test")),
+								Port:      utils.PtrOf(gatewayv1alpha2.PortNumber(80)),
 							},
-							Weight: refInt32(100),
+							Weight: utils.PtrOf(int32(100)),
 						},
 					},
 				},
