@@ -6,7 +6,7 @@
 // "License"); you may not use this file except in compliance
 // with the License.  You may obtain a copy of the License at
 //
-//   http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing,
 // software distributed under the License is distributed on an
@@ -14,7 +14,6 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-//
 package gateway_translation
 
 import (
@@ -28,6 +27,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -78,7 +78,7 @@ func (t *translator) TranslateGatewayUDPRouteV1Alpha2(udpRoute *gatewayv1alpha2.
 				return nil, errors.Wrap(err, fmt.Sprintf("failed to translate Rules[%v].BackendRefs[%v]", i, j))
 			}
 			ups.Scheme = apisixv1.SchemeUDP
-			name = apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port))
+			name = apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port), types.ResolveGranularity.Endpoint)
 			ups.ID = id.GenID(name)
 			sr.UpstreamId = ups.ID
 			ctx.AddStreamRoute(sr)
