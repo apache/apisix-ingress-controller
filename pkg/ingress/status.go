@@ -42,7 +42,7 @@ const (
 // verifyGeneration verify generation to decide whether to update status
 func (c *Controller) verifyGeneration(conditions *[]metav1.Condition, newCondition metav1.Condition) bool {
 	existingCondition := meta.FindStatusCondition(*conditions, newCondition.Type)
-	if existingCondition != nil && existingCondition.ObservedGeneration >= newCondition.ObservedGeneration {
+	if existingCondition != nil && existingCondition.ObservedGeneration > newCondition.ObservedGeneration {
 		return false
 	}
 	return true
