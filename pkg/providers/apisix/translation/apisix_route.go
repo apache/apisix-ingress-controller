@@ -175,7 +175,7 @@ func (t *translator) translateHTTPRouteV2beta2(ctx *translation.TranslateContext
 			return err
 		}
 
-		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, svcPort)
+		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, svcPort, backend.ResolveGranularity)
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
@@ -309,7 +309,7 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *translation.TranslateContext
 			return err
 		}
 
-		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, svcPort)
+		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, svcPort, backend.ResolveGranularity)
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
@@ -445,7 +445,7 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 			return err
 		}
 
-		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, svcPort)
+		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, svcPort, backend.ResolveGranularity)
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
@@ -597,13 +597,13 @@ func (t *translator) translateHTTPRouteV2beta2NotStrictly(ctx *translation.Trans
 		// Use the first backend as the default backend in Route,
 		// others will be configured in traffic-split plugin.
 		backend := backends[0]
-		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
+		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
 		ctx.AddRoute(route)
 		if !ctx.CheckUpstreamExist(upstreamName) {
-			ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
+			ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
 			if err != nil {
 				return err
 			}
@@ -652,7 +652,7 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *translation.Trans
 			}
 		}
 
-		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
+		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
@@ -662,7 +662,7 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *translation.Trans
 
 		ctx.AddRoute(route)
 		if !ctx.CheckUpstreamExist(upstreamName) {
-			ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
+			ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
 			if err != nil {
 				return err
 			}
@@ -711,7 +711,7 @@ func (t *translator) translateHTTPRouteV2NotStrictly(ctx *translation.TranslateC
 			}
 		}
 
-		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
+		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
@@ -721,7 +721,7 @@ func (t *translator) translateHTTPRouteV2NotStrictly(ctx *translation.TranslateC
 
 		ctx.AddRoute(route)
 		if !ctx.CheckUpstreamExist(upstreamName) {
-			ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
+			ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
 			if err != nil {
 				return err
 			}
@@ -818,6 +818,20 @@ func (t *translator) translateStreamRouteV2(ctx *translation.TranslateContext, a
 			)
 			return err
 		}
+
+		// add stream route plugins
+		pluginMap := make(apisixv1.Plugins)
+		for _, plugin := range part.Plugins {
+			if !plugin.Enable {
+				continue
+			}
+			if plugin.Config != nil {
+				pluginMap[plugin.Name] = plugin.Config
+			} else {
+				pluginMap[plugin.Name] = make(map[string]interface{})
+			}
+		}
+
 		sr := apisixv1.NewDefaultStreamRoute()
 		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
 		sr.ID = id.GenID(name)
@@ -827,6 +841,7 @@ func (t *translator) translateStreamRouteV2(ctx *translation.TranslateContext, a
 			return err
 		}
 		sr.UpstreamId = ups.ID
+		sr.Plugins = pluginMap
 		ctx.AddStreamRoute(sr)
 		if !ctx.CheckUpstreamExist(ups.Name) {
 			ctx.AddUpstream(ups)
@@ -844,7 +859,7 @@ func (t *translator) translateStreamRouteNotStrictlyV2beta2(ctx *translation.Tra
 		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
 		sr.ID = id.GenID(name)
 		sr.ServerPort = part.Match.IngressPort
-		ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
+		ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
 		if err != nil {
 			return err
 		}
@@ -865,7 +880,7 @@ func (t *translator) translateStreamRouteNotStrictlyV2beta3(ctx *translation.Tra
 		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
 		sr.ID = id.GenID(name)
 		sr.ServerPort = part.Match.IngressPort
-		ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
+		ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
 		if err != nil {
 			return err
 		}
@@ -886,7 +901,7 @@ func (t *translator) translateStreamRouteNotStrictlyV2(ctx *translation.Translat
 		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
 		sr.ID = id.GenID(name)
 		sr.ServerPort = part.Match.IngressPort
-		ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal)
+		ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
 		if err != nil {
 			return err
 		}

@@ -12,26 +12,21 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package annotations
+package plugins
 
 import (
 	"net/http"
 	"strconv"
 
+	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-)
-
-const (
-	_httpToHttps      = AnnotationsPrefix + "http-to-https"
-	_httpRedirect     = AnnotationsPrefix + "http-redirect"
-	_httpRedirectCode = AnnotationsPrefix + "http-redirect-code"
 )
 
 type redirect struct{}
 
 // NewRedirectHandler creates a handler to convert
 // annotations about redirect control to APISIX redirect plugin.
-func NewRedirectHandler() Handler {
+func NewRedirectHandler() PluginAnnotationsHandler {
 	return &redirect{}
 }
 
@@ -39,12 +34,12 @@ func (r *redirect) PluginName() string {
 	return "redirect"
 }
 
-func (r *redirect) Handle(e Extractor) (interface{}, error) {
+func (r *redirect) Handle(e annotations.Extractor) (interface{}, error) {
 	var plugin apisixv1.RedirectConfig
-	plugin.HttpToHttps = e.GetBoolAnnotation(_httpToHttps)
-	plugin.URI = e.GetStringAnnotation(_httpRedirect)
+	plugin.HttpToHttps = e.GetBoolAnnotation(annotations.AnnotationsHttpToHttps)
+	plugin.URI = e.GetStringAnnotation(annotations.AnnotationsHttpRedirect)
 	// Transformation fail defaults to 0.
-	plugin.RetCode, _ = strconv.Atoi(e.GetStringAnnotation(_httpRedirectCode))
+	plugin.RetCode, _ = strconv.Atoi(e.GetStringAnnotation(annotations.AnnotationsHttpRedirectCode))
 	// To avoid empty redirect plugin config, adding the check about the redirect.
 	if plugin.HttpToHttps {
 		return &plugin, nil

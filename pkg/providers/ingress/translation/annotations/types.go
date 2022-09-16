@@ -21,7 +21,59 @@ import (
 const (
 	// AnnotationsPrefix is the apisix annotation prefix
 	AnnotationsPrefix = "k8s.apisix.apache.org/"
+
+	// Supported annotations
+	AnnotationsUseRegex         = AnnotationsPrefix + "use-regex"
+	AnnotationsEnableWebSocket  = AnnotationsPrefix + "enable-websocket"
+	AnnotationsPluginConfigName = AnnotationsPrefix + "plugin-config-name"
 )
+
+const (
+	// Supported the annotations of the APISIX plugins
+
+	// cors plugin
+	AnnotationsEnableCors       = AnnotationsPrefix + "enable-cors"
+	AnnotationsCorsAllowOrigin  = AnnotationsPrefix + "cors-allow-origin"
+	AnnotationsCorsAllowHeaders = AnnotationsPrefix + "cors-allow-headers"
+	AnnotationsCorsAllowMethods = AnnotationsPrefix + "cors-allow-methods"
+
+	// csrf plugin
+	AnnotationsEnableCsrf = AnnotationsPrefix + "enable-csrf"
+	AnnotationsCsrfKey    = AnnotationsPrefix + "csrf-key"
+
+	// redirect plugin
+	AnnotationsHttpToHttps      = AnnotationsPrefix + "http-to-https"
+	AnnotationsHttpRedirect     = AnnotationsPrefix + "http-redirect"
+	AnnotationsHttpRedirectCode = AnnotationsPrefix + "http-redirect-code"
+
+	// rewrite plugin
+	AnnotationsRewriteTarget              = AnnotationsPrefix + "rewrite-target"
+	AnnotationsRewriteTargetRegex         = AnnotationsPrefix + "rewrite-target-regex"
+	AnnotationsRewriteTargetRegexTemplate = AnnotationsPrefix + "rewrite-target-regex-template"
+
+	// forward-auth plugin
+	AnnotationsForwardAuthURI             = AnnotationsPrefix + "auth-uri"
+	AnnotationsForwardAuthSSLVerify       = AnnotationsPrefix + "auth-ssl-verify"
+	AnnotationsForwardAuthRequestHeaders  = AnnotationsPrefix + "auth-request-headers"
+	AnnotationsForwardAuthUpstreamHeaders = AnnotationsPrefix + "auth-upstream-headers"
+	AnnotationsForwardAuthClientHeaders   = AnnotationsPrefix + "auth-client-headers"
+
+	// ip-restriction plugin
+	AnnotationsAllowlistSourceRange = AnnotationsPrefix + "allowlist-source-range"
+	AnnotationsBlocklistSourceRange = AnnotationsPrefix + "blocklist-source-range"
+
+	// key-auth plugin and basic-auth plugin
+	// auth-type: keyAuth | basicAuth
+	AnnotationsAuthType = AnnotationsPrefix + "auth-type"
+)
+
+// Handler abstracts the behavior so that the apisix-ingress-controller knows
+type IngressAnnotationsParser interface {
+	// Handle parses the target annotation and converts it to the type-agnostic structure.
+	// The return value might be nil since some features have an explicit switch, users should
+	// judge whether Handle is failed by the second error value.
+	Parse(Extractor) (interface{}, error)
+}
 
 // Extractor encapsulates some auxiliary methods to extract annotations.
 type Extractor interface {
@@ -36,17 +88,6 @@ type Extractor interface {
 	// When value is "true", true will be given, other values will be treated as
 	// false.
 	GetBoolAnnotation(string) bool
-}
-
-// Handler abstracts the behavior so that the apisix-ingress-controller knows
-// how to parse some annotations and convert them to APISIX plugins.
-type Handler interface {
-	// Handle parses the target annotation and converts it to the type-agnostic structure.
-	// The return value might be nil since some features have an explicit switch, users should
-	// judge whether Handle is failed by the second error value.
-	Handle(Extractor) (interface{}, error)
-	// PluginName returns a string which indicates the target plugin name in APISIX.
-	PluginName() string
 }
 
 type extractor struct {

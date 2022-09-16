@@ -52,7 +52,7 @@ func TestNewConfigFromFile(t *testing.T) {
 			APIVersion:     DefaultAPIVersion,
 		},
 		APISIX: APISIXConfig{
-			DefaultClusterName:     "default",
+			DefaultClusterName:     "apisix",
 			DefaultClusterBaseURL:  "http://127.0.0.1:8080/apisix",
 			DefaultClusterAdminKey: "123456",
 		},
@@ -98,6 +98,7 @@ kubernetes:
 apisix:
   default_cluster_base_url: http://127.0.0.1:8080/apisix
   default_cluster_admin_key: "123456"
+  default_cluster_name: "apisix"
 `
 	tmpYAML, err := ioutil.TempFile("/tmp", "config-*.yaml")
 	assert.Nil(t, err, "failed to create temporary yaml configuration file: ", err)
@@ -140,7 +141,7 @@ func TestConfigWithEnvVar(t *testing.T) {
 			APIVersion:     DefaultAPIVersion,
 		},
 		APISIX: APISIXConfig{
-			DefaultClusterName:     "default",
+			DefaultClusterName:     "apisix",
 			DefaultClusterBaseURL:  "http://127.0.0.1:8080/apisix",
 			DefaultClusterAdminKey: "123456",
 		},
@@ -148,12 +149,14 @@ func TestConfigWithEnvVar(t *testing.T) {
 
 	defaultClusterBaseURLEnvName := "DEFAULT_CLUSTER_BASE_URL"
 	defaultClusterAdminKeyEnvName := "DEFAULT_CLUSTER_ADMIN_KEY"
+	defaultClusterNameEnvName := "DEFAULT_CLUSTER_NAME"
 	kubeconfigEnvName := "KUBECONFIG"
 
 	err := os.Setenv(defaultClusterBaseURLEnvName, "http://127.0.0.1:8080/apisix")
 	assert.Nil(t, err, "failed to set env variable: ", err)
 	_ = os.Setenv(defaultClusterAdminKeyEnvName, "123456")
 	_ = os.Setenv(kubeconfigEnvName, "")
+	_ = os.Setenv(defaultClusterNameEnvName, "apisix")
 
 	jsonData := `
 {
@@ -174,7 +177,8 @@ func TestConfigWithEnvVar(t *testing.T) {
     },
     "apisix": {
         "default_cluster_base_url": "{{.DEFAULT_CLUSTER_BASE_URL}}",
-        "default_cluster_admin_key": "{{.DEFAULT_CLUSTER_ADMIN_KEY}}"
+        "default_cluster_admin_key": "{{.DEFAULT_CLUSTER_ADMIN_KEY}}",
+        "default_cluster_name": "{{.DEFAULT_CLUSTER_NAME}}"
     }
 }
 `
@@ -210,6 +214,7 @@ kubernetes:
 apisix:
   default_cluster_base_url: {{.DEFAULT_CLUSTER_BASE_URL}}
   default_cluster_admin_key: "{{.DEFAULT_CLUSTER_ADMIN_KEY}}"
+  default_cluster_name: "{{.DEFAULT_CLUSTER_NAME}}"
 `
 	tmpYAML, err := ioutil.TempFile("/tmp", "config-*.yaml")
 	assert.Nil(t, err, "failed to create temporary yaml configuration file: ", err)

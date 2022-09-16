@@ -18,9 +18,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 const (
@@ -216,19 +219,53 @@ type UpstreamNodes []UpstreamNode
 // and by default empty array will be encoded as '{}'.
 // We have to maintain the compatibility.
 func (n *UpstreamNodes) UnmarshalJSON(p []byte) error {
+	var data []UpstreamNode
 	if p[0] == '{' {
-		if len(p) != 2 {
-			return errors.New("unexpected non-empty object")
+		value := map[string]float64{}
+		if err := json.Unmarshal(p, &value); err != nil {
+			return err
 		}
-		*n = UpstreamNodes{}
+		for k, v := range value {
+			node, err := mapKV2Node(k, v)
+			if err != nil {
+				return err
+			}
+			data = append(data, *node)
+		}
+		*n = data
 		return nil
 	}
-	var data []UpstreamNode
 	if err := json.Unmarshal(p, &data); err != nil {
 		return err
 	}
 	*n = data
 	return nil
+}
+
+func mapKV2Node(key string, val float64) (*UpstreamNode, error) {
+	hp := strings.Split(key, ":")
+	host := hp[0]
+	//  according to APISIX upstream nodes policy, port is required
+	port := "80"
+
+	if len(hp) > 2 {
+		return nil, errors.New("invalid upstream node")
+	} else if len(hp) == 2 {
+		port = hp[1]
+	}
+
+	portInt, err := strconv.Atoi(port)
+	if err != nil {
+		return nil, fmt.Errorf("parse port to int fail: %s", err.Error())
+	}
+
+	node := &UpstreamNode{
+		Host:   host,
+		Port:   portInt,
+		Weight: int(val),
+	}
+
+	return node, nil
 }
 
 // UpstreamNode is the node in upstream
@@ -337,6 +374,7 @@ type StreamRoute struct {
 	SNI        string            `json:"sni,omitempty" yaml:"sni,omitempty"`
 	UpstreamId string            `json:"upstream_id,omitempty" yaml:"upstream_id,omitempty"`
 	Upstream   *Upstream         `json:"upstream,omitempty" yaml:"upstream,omitempty"`
+	Plugins    Plugins           `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 // GlobalRule represents the global_rule object in APISIX.
@@ -365,8 +403,8 @@ type PluginConfig struct {
 // UpstreamServiceRelation Upstream association object
 // +k8s:deepcopy-gen=true
 type UpstreamServiceRelation struct {
-	ServiceName  string `json:"service_name" yaml:"service_name"`
-	UpstreamName string `json:"upstream_name,omitempty" yaml:"upstream_name,omitempty"`
+	ServiceName   string              `json:"service_name" yaml:"service_name"`
+	UpstreamNames map[string]struct{} `json:"upstream_name,omitempty" yaml:"upstream_name,omitempty"`
 }
 
 // NewDefaultUpstream returns an empty Upstream with default values.
@@ -430,19 +468,23 @@ func NewDefaultPluginConfig() *PluginConfig {
 	}
 }
 
-// ComposeUpstreamName uses namespace, name, subset (optional) and port info to compose
+// ComposeUpstreamName uses namespace, name, subset (optional), port, resolveGranularity info to compose
 // the upstream name.
-func ComposeUpstreamName(namespace, name, subset string, port int32) string {
+// the resolveGranularity is not composited in the upstream name when it is endpoint.
+func ComposeUpstreamName(namespace, name, subset string, port int32, resolveGranularity string) string {
 	pstr := strconv.Itoa(int(port))
 	// FIXME Use sync.Pool to reuse this buffer if the upstream
 	// name composing code path is hot.
 	var p []byte
-	if subset == "" {
-		p = make([]byte, 0, len(namespace)+len(name)+len(pstr)+2)
-	} else {
-		p = make([]byte, 0, len(namespace)+len(name)+len(subset)+len(pstr)+3)
+	plen := len(namespace) + len(name) + len(pstr) + 2
+	if subset != "" {
+		plen = plen + len(subset) + 1
+	}
+	if resolveGranularity == types.ResolveGranularity.Service {
+		plen = plen + len(resolveGranularity) + 1
 	}
 
+	p = make([]byte, 0, plen)
 	buf := bytes.NewBuffer(p)
 	buf.WriteString(namespace)
 	buf.WriteByte('_')
@@ -453,6 +495,10 @@ func ComposeUpstreamName(namespace, name, subset string, port int32) string {
 		buf.WriteByte('_')
 	}
 	buf.WriteString(pstr)
+	if resolveGranularity == types.ResolveGranularity.Service {
+		buf.WriteByte('_')
+		buf.WriteString(resolveGranularity)
+	}
 
 	return buf.String()
 }

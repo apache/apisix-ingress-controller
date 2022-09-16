@@ -19,6 +19,8 @@
 name: k8s-timer-ci
 
 on:
+  repository_dispatch:
+    default_branch: master
   schedule:
     - cron: '0 1 * * 1'
 

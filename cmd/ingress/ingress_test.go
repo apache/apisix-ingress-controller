@@ -170,6 +170,8 @@ func TestRotateLog(t *testing.T) {
 	cmd.SetArgs([]string{
 		"--log-rotate-output-path", "./testlog/test.log",
 		"--log-rotate-max-size", "1",
+		"--log-level", "debug",
+		"--log-output", "./testlog/test.log",
 		"--http-listen", listen,
 		"--enable-profiling",
 		"--kubeconfig", "/foo/bar/baz",
@@ -185,6 +187,12 @@ func TestRotateLog(t *testing.T) {
 		close(stopCh)
 	}()
 
+	fws := &fakeWriteSyncer{}
+	logger, err := log.NewLogger(log.WithLogLevel("debug"), log.WithWriteSyncer(fws))
+	assert.Nil(t, err)
+	defer logger.Close()
+	log.DefaultLogger = logger
+
 	// fill logs with data until the size > 1m
 	line := ""
 	for i := 0; i < 256; i++ {
@@ -192,7 +200,7 @@ func TestRotateLog(t *testing.T) {
 	}
 
 	for i := 0; i < 4096; i++ {
-		log.Info(line)
+		log.Debug(line)
 	}
 
 	time.Sleep(5 * time.Second)
@@ -206,5 +214,4 @@ func TestRotateLog(t *testing.T) {
 	}
 
 	assert.Equal(t, true, len(files) >= 2)
-
 }
