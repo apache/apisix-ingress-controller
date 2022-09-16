@@ -29,4 +29,6 @@ Users are encouraged to add themselves to this page, [issue](https://github.com/
 1. <a href="https://www.aispeech.com/" rel="nofollow">AISpeech 思必驰</a>
 1. <a href="https://cloud.tencent.com/" rel="nofollow">Tencent Cloud 腾讯云</a>
 1. <a href="https://www.upyun.com/" rel="nofollow">UPYUN 又拍云</a>
-1. <a href="https://www.kubegems.io/" rel="nofollow">KubeGems </a>
+1. <a href="https://www.kubegems.io/" rel="nofollow">KubeGems</a>
+1. <a href="https://www.igetcool.com/" rel="nofollow">少年得到</a>
+1. <a href="https://www.niimbot.com/" rel="nofollow">NIIMBOT 武汉精臣智慧标识科技有限公司</a>
