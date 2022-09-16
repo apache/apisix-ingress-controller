@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
@@ -159,6 +160,8 @@ RU+QPRECgYB6XW24EI5+w3STbpnc6VoTS+sy9I9abTJPYo9LpCJwfMYc9Tg9Cx2K
 			assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
 			assert.Equal(ginkgo.GinkgoT(), tls[0].Snis[0], host, "tls host is error")
 			assert.Equal(ginkgo.GinkgoT(), tls[0].Labels["managed-by"], "apisix-ingress-controller")
+			assert.Equal(ginkgo.GinkgoT(), tls[0].Labels[translation.MetaSecretNamespace], s.Namespace())
+			assert.Equal(ginkgo.GinkgoT(), tls[0].Labels[translation.MetaSecretName], secretName)
 		})
 		ginkgo.It("delete a SSL from ApisixTls ", func() {
 			secretName := "test-apisix-tls"
