@@ -58,8 +58,6 @@ type ListerInformer struct {
 
 	ApisixUpstreamLister   kube.ApisixUpstreamLister
 	ApisixUpstreamInformer cache.SharedIndexInformer
-	ApisixTlsLister        kube.ApisixTlsLister
-	ApisixTlsInformer      cache.SharedIndexInformer
 }
 
 func (c *ListerInformer) Run(ctx context.Context) {
@@ -79,9 +77,6 @@ func (c *ListerInformer) Run(ctx context.Context) {
 	})
 	e.Add(func() {
 		c.ApisixUpstreamInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.ApisixTlsInformer.Run(ctx.Done())
 	})
 
 	e.Wait()

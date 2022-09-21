@@ -12,35 +12,33 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package annotations
+package plugins
 
 import (
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-
+	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func TestCorsHandler(t *testing.T) {
-	annotations := map[string]string{
-		_enableCors:       "true",
-		_corsAllowHeaders: "abc,def",
-		_corsAllowOrigin:  "https://a.com",
-		_corsAllowMethods: "GET,HEAD",
+type csrf struct{}
+
+// NewCSRFHandler creates a handler to convert annotations about
+// CSRF to APISIX csrf plugin.
+func NewCSRFHandler() PluginAnnotationsHandler {
+	return &csrf{}
+}
+
+func (c *csrf) PluginName() string {
+	return "csrf"
+}
+
+func (c *csrf) Handle(e annotations.Extractor) (interface{}, error) {
+	if !e.GetBoolAnnotation(annotations.AnnotationsEnableCsrf) {
+		return nil, nil
 	}
-	p := NewCorsHandler()
-	out, err := p.Handle(NewExtractor(annotations))
-	assert.Nil(t, err, "checking given error")
-	config := out.(*apisixv1.CorsConfig)
-	assert.Equal(t, "abc,def", config.AllowHeaders)
-	assert.Equal(t, "https://a.com", config.AllowOrigins)
-	assert.Equal(t, "GET,HEAD", config.AllowMethods)
-
-	assert.Equal(t, "cors", p.PluginName())
-
-	annotations[_enableCors] = "false"
-	out, err = p.Handle(NewExtractor(annotations))
-	assert.Nil(t, err, "checking given error")
-	assert.Nil(t, out, "checking given output")
+	var plugin apisixv1.CSRFConfig
+	plugin.Key = e.GetStringAnnotation(annotations.AnnotationsCsrfKey)
+	if plugin.Key != "" {
+		return &plugin, nil
+	}
+	return nil, nil
 }

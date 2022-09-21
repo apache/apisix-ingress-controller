@@ -19,9 +19,12 @@
 name: spell-checker
 on:
   push:
-    branches: [ master ]
+    branches:
+      - master
   pull_request:
-    branches: [ master ]
+    branches:
+      - master
+      - v1.5.0
     type: [review_requested, ready_for_review]
 jobs:
   misspell:

@@ -153,10 +153,13 @@ type PluginConfig interface {
 }
 
 type UpstreamServiceRelation interface {
+	// Get relation based on namespace+"_"+service.name
 	Get(context.Context, string) (*v1.UpstreamServiceRelation, error)
 	List(context.Context) ([]*v1.UpstreamServiceRelation, error)
-	Delete(context.Context, *v1.UpstreamServiceRelation) error
-	Create(context.Context, *v1.UpstreamServiceRelation) error
+	// Delete relation based on namespace+"_"+service.name
+	Delete(context.Context, string) error
+	// Build relation based on upstream.name
+	Create(context.Context, string) error
 }
 
 type apisix struct {

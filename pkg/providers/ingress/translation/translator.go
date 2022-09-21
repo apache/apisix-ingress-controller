@@ -34,14 +34,12 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	kubev2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	kubev2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -66,6 +64,8 @@ type IngressTranslator interface {
 	// TranslateOldIngress get route objects from cache
 	// Build upstream and plugin_config through route
 	TranslateOldIngress(kube.Ingress) (*translation.TranslateContext, error)
+	// TranslateSSLV2 translate networkingv1.IngressTLS to APISIX SSL
+	TranslateIngressTLS(namespace, ingName, secretName string, hosts []string) (*apisixv1.Ssl, error)
 }
 
 func NewIngressTranslator(opts *TranslatorOptions,
@@ -77,6 +77,30 @@ func NewIngressTranslator(opts *TranslatorOptions,
 	}
 
 	return t
+}
+
+func (t *translator) TranslateIngressTLS(namespace, ingName, secretName string, hosts []string) (*apisixv1.Ssl, error) {
+	apisixTls := kubev2.ApisixTls{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ApisixTls",
+			APIVersion: "apisix.apache.org/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%v-%v", ingName, "tls"),
+			Namespace: namespace,
+		},
+		Spec: &kubev2.ApisixTlsSpec{
+			Secret: kubev2.ApisixSecret{
+				Name:      secretName,
+				Namespace: namespace,
+			},
+		},
+	}
+	for _, host := range hosts {
+		apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2.HostType(host))
+	}
+
+	return t.ApisixTranslator.TranslateSSLV2(&apisixTls)
 }
 
 func (t *translator) TranslateIngress(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error) {
@@ -102,33 +126,11 @@ const (
 
 func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bool) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
-	plugins := t.TranslateAnnotations(ing.Annotations)
-	annoExtractor := annotations.NewExtractor(ing.Annotations)
-	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
-	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
-	pluginConfigName := annoExtractor.GetStringAnnotation(annotations.AnnotationsPrefix + "plugin-config-name")
+	ingress := t.TranslateAnnotations(ing.Annotations)
 
 	// add https
 	for _, tls := range ing.Spec.TLS {
-		apisixTls := kubev2.ApisixTls{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "ApisixTls",
-				APIVersion: "apisix.apache.org/v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
-				Namespace: ing.Namespace,
-			},
-			Spec: &kubev2.ApisixTlsSpec{},
-		}
-		for _, host := range tls.Hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2.HostType(host))
-		}
-		apisixTls.Spec.Secret = kubev2.ApisixSecret{
-			Name:      tls.SecretName,
-			Namespace: ing.Namespace,
-		}
-		ssl, err := t.ApisixTranslator.TranslateSSLV2(&apisixTls)
+		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
 		if err != nil {
 			log.Errorw("failed to translate ingress tls to apisix tls",
 				zap.Error(err),
@@ -179,7 +181,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 						prefix += "/*"
 					}
 					uris = append(uris, prefix)
-				} else if *pathRule.PathType == networkingv1.PathTypeImplementationSpecific && useRegex {
+				} else if *pathRule.PathType == networkingv1.PathTypeImplementationSpecific && ingress.UseRegex {
 					nginxVars = append(nginxVars, kubev2.ApisixRouteHTTPMatchExpr{
 						Subject: kubev2.ApisixRouteHTTPMatchExprSubject{
 							Scope: apisixconst.ScopePath,
@@ -195,7 +197,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
-			route.EnableWebsocket = enableWebsocket
+			route.EnableWebsocket = ingress.EnableWebSocket
 			if len(nginxVars) > 0 {
 				routeVars, err := t.ApisixTranslator.TranslateRouteMatchExprs(nginxVars)
 				if err != nil {
@@ -204,12 +206,12 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 				route.Vars = routeVars
 				route.Priority = _regexPriority
 			}
-			if len(plugins) > 0 {
-				route.Plugins = *(plugins.DeepCopy())
+			if len(ingress.Plugins) > 0 {
+				route.Plugins = *(ingress.Plugins.DeepCopy())
 			}
 
-			if pluginConfigName != "" {
-				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, pluginConfigName))
+			if ingress.PluginConfigName != "" {
+				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, ingress.PluginConfigName))
 			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
@@ -222,33 +224,11 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 
 func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, skipVerify bool) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
-	plugins := t.TranslateAnnotations(ing.Annotations)
-	annoExtractor := annotations.NewExtractor(ing.Annotations)
-	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
-	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
-	pluginConfigName := annoExtractor.GetStringAnnotation(annotations.AnnotationsPrefix + "plugin-config-name")
+	ingress := t.TranslateAnnotations(ing.Annotations)
 
 	// add https
 	for _, tls := range ing.Spec.TLS {
-		apisixTls := kubev2beta3.ApisixTls{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "ApisixTls",
-				APIVersion: "apisix.apache.org/v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
-				Namespace: ing.Namespace,
-			},
-			Spec: &kubev2beta3.ApisixTlsSpec{},
-		}
-		for _, host := range tls.Hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2beta3.HostType(host))
-		}
-		apisixTls.Spec.Secret = kubev2beta3.ApisixSecret{
-			Name:      tls.SecretName,
-			Namespace: ing.Namespace,
-		}
-		ssl, err := t.ApisixTranslator.TranslateSSLV2Beta3(&apisixTls)
+		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
 		if err != nil {
 			log.Errorw("failed to translate ingress tls to apisix tls",
 				zap.Error(err),
@@ -299,7 +279,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 						prefix += "/*"
 					}
 					uris = append(uris, prefix)
-				} else if *pathRule.PathType == networkingv1beta1.PathTypeImplementationSpecific && useRegex {
+				} else if *pathRule.PathType == networkingv1beta1.PathTypeImplementationSpecific && ingress.UseRegex {
 					nginxVars = append(nginxVars, kubev2.ApisixRouteHTTPMatchExpr{
 						Subject: kubev2.ApisixRouteHTTPMatchExprSubject{
 							Scope: apisixconst.ScopePath,
@@ -315,7 +295,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
-			route.EnableWebsocket = enableWebsocket
+			route.EnableWebsocket = ingress.EnableWebSocket
 			if len(nginxVars) > 0 {
 				routeVars, err := t.ApisixTranslator.TranslateRouteMatchExprs(nginxVars)
 				if err != nil {
@@ -324,12 +304,12 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 				route.Vars = routeVars
 				route.Priority = _regexPriority
 			}
-			if len(plugins) > 0 {
-				route.Plugins = *(plugins.DeepCopy())
+			if len(ingress.Plugins) > 0 {
+				route.Plugins = *(ingress.Plugins.DeepCopy())
 			}
 
-			if pluginConfigName != "" {
-				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, pluginConfigName))
+			if ingress.PluginConfigName != "" {
+				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, ingress.PluginConfigName))
 			}
 			if ups != nil {
 				route.UpstreamId = ups.ID
@@ -359,7 +339,7 @@ func (t *translator) translateDefaultUpstreamFromIngressV1(namespace string, bac
 		portNumber = backend.Port.Number
 	}
 	ups := apisixv1.NewDefaultUpstream()
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, "", portNumber)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, "", portNumber, types.ResolveGranularity.Endpoint)
 	ups.ID = id.GenID(ups.Name)
 	return ups
 }
@@ -389,18 +369,14 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 	if err != nil {
 		return nil, err
 	}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, "", svcPort)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, "", svcPort, types.ResolveGranularity.Endpoint)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }
 
 func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress, skipVerify bool) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
-	plugins := t.TranslateAnnotations(ing.Annotations)
-	annoExtractor := annotations.NewExtractor(ing.Annotations)
-	useRegex := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "use-regex")
-	enableWebsocket := annoExtractor.GetBoolAnnotation(annotations.AnnotationsPrefix + "enable-websocket")
-	pluginConfigName := annoExtractor.GetStringAnnotation(annotations.AnnotationsPrefix + "plugin-config-name")
+	ingress := t.TranslateAnnotations(ing.Annotations)
 
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
@@ -444,7 +420,7 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 						prefix += "/*"
 					}
 					uris = append(uris, prefix)
-				} else if *pathRule.PathType == extensionsv1beta1.PathTypeImplementationSpecific && useRegex {
+				} else if *pathRule.PathType == extensionsv1beta1.PathTypeImplementationSpecific && ingress.UseRegex {
 					nginxVars = append(nginxVars, kubev2.ApisixRouteHTTPMatchExpr{
 						Subject: kubev2.ApisixRouteHTTPMatchExprSubject{
 							Scope: apisixconst.ScopePath,
@@ -460,7 +436,7 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 			route.ID = id.GenID(route.Name)
 			route.Host = rule.Host
 			route.Uris = uris
-			route.EnableWebsocket = enableWebsocket
+			route.EnableWebsocket = ingress.EnableWebSocket
 			if len(nginxVars) > 0 {
 				routeVars, err := t.ApisixTranslator.TranslateRouteMatchExprs(nginxVars)
 				if err != nil {
@@ -469,12 +445,12 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 				route.Vars = routeVars
 				route.Priority = _regexPriority
 			}
-			if len(plugins) > 0 {
-				route.Plugins = *(plugins.DeepCopy())
+			if len(ingress.Plugins) > 0 {
+				route.Plugins = *(ingress.Plugins.DeepCopy())
 			}
 
-			if pluginConfigName != "" {
-				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, pluginConfigName))
+			if ingress.PluginConfigName != "" {
+				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, ingress.PluginConfigName))
 			}
 
 			if ups != nil {
@@ -504,7 +480,7 @@ func (t *translator) translateDefaultUpstreamFromIngressV1beta1(namespace string
 		portNumber = svcPort.IntVal
 	}
 	ups := apisixv1.NewDefaultUpstream()
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber, types.ResolveGranularity.Endpoint)
 	ups.ID = id.GenID(ups.Name)
 	return ups
 }
@@ -535,7 +511,7 @@ func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcNa
 	if err != nil {
 		return nil, err
 	}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber, types.ResolveGranularity.Endpoint)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }
@@ -557,25 +533,7 @@ func (t *translator) translateOldIngressV1(ing *networkingv1.Ingress) (*translat
 	oldCtx := translation.DefaultEmptyTranslateContext()
 
 	for _, tls := range ing.Spec.TLS {
-		apisixTls := configv2.ApisixTls{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "ApisixTls",
-				APIVersion: "apisix.apache.org/v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
-				Namespace: ing.Namespace,
-			},
-			Spec: &configv2.ApisixTlsSpec{},
-		}
-		for _, host := range tls.Hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, configv2.HostType(host))
-		}
-		apisixTls.Spec.Secret = configv2.ApisixSecret{
-			Name:      tls.SecretName,
-			Namespace: ing.Namespace,
-		}
-		ssl, err := t.ApisixTranslator.TranslateSSLV2(&apisixTls)
+		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
 		if err != nil {
 			log.Debugw("failed to translate ingress tls to apisix tls",
 				zap.Error(err),
@@ -612,25 +570,7 @@ func (t *translator) translateOldIngressV1beta1(ing *networkingv1beta1.Ingress) 
 	oldCtx := translation.DefaultEmptyTranslateContext()
 
 	for _, tls := range ing.Spec.TLS {
-		apisixTls := configv2.ApisixTls{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "ApisixTls",
-				APIVersion: "apisix.apache.org/v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
-				Namespace: ing.Namespace,
-			},
-			Spec: &configv2.ApisixTlsSpec{},
-		}
-		for _, host := range tls.Hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, configv2.HostType(host))
-		}
-		apisixTls.Spec.Secret = configv2.ApisixSecret{
-			Name:      tls.SecretName,
-			Namespace: ing.Namespace,
-		}
-		ssl, err := t.ApisixTranslator.TranslateSSLV2(&apisixTls)
+		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
 		if err != nil {
 			continue
 		}
@@ -663,25 +603,7 @@ func (t *translator) translateOldIngressExtensionsv1beta1(ing *extensionsv1beta1
 	oldCtx := translation.DefaultEmptyTranslateContext()
 
 	for _, tls := range ing.Spec.TLS {
-		apisixTls := configv2.ApisixTls{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "ApisixTls",
-				APIVersion: "apisix.apache.org/v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
-				Namespace: ing.Namespace,
-			},
-			Spec: &configv2.ApisixTlsSpec{},
-		}
-		for _, host := range tls.Hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, configv2.HostType(host))
-		}
-		apisixTls.Spec.Secret = configv2.ApisixSecret{
-			Name:      tls.SecretName,
-			Namespace: ing.Namespace,
-		}
-		ssl, err := t.ApisixTranslator.TranslateSSLV2(&apisixTls)
+		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
 		if err != nil {
 			continue
 		}
