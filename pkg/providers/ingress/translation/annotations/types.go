@@ -110,7 +110,7 @@ func (e *extractor) GetBoolAnnotation(name string) bool {
 	return e.annotations[name] == "true"
 }
 
-// NewExtractor creates an annotations extractor.
+// NewExtractor creates an annotation extractor.
 func NewExtractor(annotations map[string]string) Extractor {
 	return &extractor{
 		annotations: annotations,

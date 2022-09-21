@@ -20,6 +20,7 @@ package ingress
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
@@ -30,6 +31,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 const (
@@ -49,6 +51,8 @@ type Provider interface {
 	providertypes.Provider
 
 	ResourceSync()
+
+	SyncSecretChange(ctx context.Context, ev *types.Event, secret *corev1.Secret, secretMapKey string)
 }
 
 type ingressProvider struct {
@@ -115,4 +119,8 @@ func (p *ingressProvider) ResourceSync() {
 	e.Add(p.ingressController.ResourceSync)
 
 	e.Wait()
+}
+
+func (p *ingressProvider) SyncSecretChange(ctx context.Context, ev *types.Event, secret *corev1.Secret, secretMapKey string) {
+	p.ingressController.SyncSecretChange(ctx, ev, secret, secretMapKey)
 }

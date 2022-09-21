@@ -23,7 +23,7 @@ import (
 	"net"
 	"time"
 
-	apiv1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -57,7 +57,7 @@ func IngressPublishAddresses(ingressPublishService string, ingressStatusAddress 
 	}
 
 	switch svc.Spec.Type {
-	case apiv1.ServiceTypeLoadBalancer:
+	case corev1.ServiceTypeLoadBalancer:
 		if len(svc.Status.LoadBalancer.Ingress) < 1 {
 			return addrs, fmt.Errorf("%s", _gatewayLBNotReadyMessage)
 		}
@@ -80,8 +80,8 @@ func IngressPublishAddresses(ingressPublishService string, ingressStatusAddress 
 }
 
 // IngressLBStatusIPs organizes the available addresses
-func IngressLBStatusIPs(ingressPublishService string, ingressStatusAddress []string, kubeClient kubernetes.Interface) ([]apiv1.LoadBalancerIngress, error) {
-	lbips := []apiv1.LoadBalancerIngress{}
+func IngressLBStatusIPs(ingressPublishService string, ingressStatusAddress []string, kubeClient kubernetes.Interface) ([]corev1.LoadBalancerIngress, error) {
+	lbips := []corev1.LoadBalancerIngress{}
 	var ips []string
 
 	for {
@@ -101,9 +101,9 @@ func IngressLBStatusIPs(ingressPublishService string, ingressStatusAddress []str
 
 	for _, ip := range ips {
 		if net.ParseIP(ip) == nil {
-			lbips = append(lbips, apiv1.LoadBalancerIngress{Hostname: ip})
+			lbips = append(lbips, corev1.LoadBalancerIngress{Hostname: ip})
 		} else {
-			lbips = append(lbips, apiv1.LoadBalancerIngress{IP: ip})
+			lbips = append(lbips, corev1.LoadBalancerIngress{IP: ip})
 		}
 
 	}
