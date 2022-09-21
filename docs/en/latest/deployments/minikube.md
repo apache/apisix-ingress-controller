@@ -1,5 +1,11 @@
 ---
-title: Install Ingress APISIX on Minikube
+title: minikube
+keywords:
+  - APISIX ingress
+  - Apache APISIX
+  - Kubernetes ingress
+  - minikube
+description: Guide to install APISIX ingress controller on minikube.
 ---
 
 <!--
@@ -21,16 +27,16 @@ title: Install Ingress APISIX on Minikube
 #
 -->
 
-This document explains how to install Ingress APISIX on [Minikube](https://minikube.sigs.k8s.io/).
+This guide explains how you can install APISIX ingress on [minikube](https://minikube.sigs.k8s.io/).
 
 ## Prerequisites
 
 * Install [Minikube](https://minikube.sigs.k8s.io/docs/start/).
 * Install [Helm](https://helm.sh/).
 
-## Install APISIX and apisix-ingress-controller
+## Install APISIX and ingress controller
 
-As the data plane of apisix-ingress-controller, [Apache APISIX](http://apisix.apache.org/) can be deployed at the same time using Helm chart.
+The script below installs APISIX and the ingress controller:
 
 ```shell
 helm repo add apisix https://charts.apiseven.com
@@ -45,11 +51,11 @@ helm install apisix apisix/apisix \
 kubectl get service --namespace ingress-apisix
 ```
 
-Five Service resources were created.
+This will create the five resources mentioned below:
 
-* `apisix-gateway`, which processes the real traffic;
-* `apisix-admin`, which acts as the control plane to process all the configuration changes.
-* `apisix-ingress-controller`, which exposes apisix-ingress-controller's metrics.
-* `apisix-etcd` and `apisix-etcd-headless` for etcd service and internal communication.
+* `apisix-gateway`: dataplane the process the traffic.
+* `apisix-admin`: control plane that processes all configuration changes.
+* `apisix-ingress-controller`: ingress controller which exposes APISIX.
+* `apisix-etcd` and `apisix-etcd-headless`: stores configuration and handles internal communication.
 
-Now try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running of Ingress APISIX. As a minimalist example, see [proxy-the-httpbin-service](../practices/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
+You should now be able to use APISIX ingress controller. You can try running this [minimal example](../tutorials/proxy-the-httpbin-service.md) to see if everything is working perfectly.

@@ -35,7 +35,7 @@ should be routed to service `bar`, in the manner of `ApisixRoute`, the configura
 should be:
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: foo-bar-route
@@ -48,15 +48,15 @@ spec:
       paths:
       - "/foo*"
     backends:
-     - serviceName: foo
-       servicePort: 80
+    - serviceName: foo
+      servicePort: 80
   - name: bar
     match:
       paths:
         - "/bar"
     backends:
-      - serviceName: bar
-        servicePort: 80
+    - serviceName: bar
+      servicePort: 80
 ```
 
 There are two path types can be used, `prefix` and `exact`, default is `exact`,
@@ -73,7 +73,7 @@ The `methods` splits traffic according to the HTTP method, the following configu
 with `GET` method to `foo` service (a Kubernetes Service).
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: method-route
@@ -86,15 +86,15 @@ spec:
         methods:
         - GET
       backends:
-        - serviceName: foo
-          servicePort: 80
+      - serviceName: foo
+        servicePort: 80
 ```
 
 The `exprs` allows user to configure match conditions with arbitrary predicates in HTTP, such as queries, HTTP headers, Cookie.
 It's composed by several expressions, which in turn composed by subject, operator and value/set.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: method-route
@@ -111,8 +111,8 @@ spec:
             op: Equal
             value: "2143"
       backends:
-        - serviceName: foo
-          servicePort: 80
+      - serviceName: foo
+        servicePort: 80
 ```
 
 The above configuration configures an extra route match condition, which asks the
@@ -128,7 +128,7 @@ the `ClusterIP` of this service, if that's what you want, just set
 the `resolveGranularity` to `service` (default is `endpoint`).
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: method-route
@@ -141,9 +141,9 @@ spec:
         methods:
           - GET
       backends:
-        - serviceName: foo
-          servicePort: 80
-          resolveGranularity: service
+      - serviceName: foo
+        servicePort: 80
+        resolveGranularity: service
 ```
 
 Weight Based Traffic Split
@@ -155,7 +155,7 @@ will be applied (which actually uses the [traffic-split](http://apisix.apache.or
 You can specify weight for each backend, the default weight is `100`.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: method-route
@@ -174,26 +174,26 @@ spec:
             op: RegexMatch
             value: ".*Chrome.*"
       backends:
-        - serviceName: foo
-          servicePort: 80
-          weight: 100
-        - serviceName: bar
-          servicePort: 81
-          weight: 50
+      - serviceName: foo
+        servicePort: 80
+        weight: 100
+      - serviceName: bar
+        servicePort: 81
+        weight: 50
 ```
 
 The above `ApisixRoute` has one route rule, which contains two backends `foo` and `bar`, the weight ratio is `100:50`,
 which means `2/3` requests (with `GET` method and `User-Agent` matching regex pattern `.*Chrome.*`) will be sent to service `foo` and `1/3` requests
-will be proxied to serivce `bar`.
+will be proxied to service `bar`.
 
 Plugins
 -------
 
-Apache APISIX provides more than 40 [plugins](https://github.com/apache/apisix/tree/master/docs/en/latest/plugins), which can be used
+Apache APISIX provides more than 70 [plugins](https://github.com/apache/apisix/tree/master/docs/en/latest/plugins), which can be used
 in `ApisixRoute`. All configuration items are named same to the one in APISIX.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -206,8 +206,8 @@ spec:
         paths:
           - /*
       backends:
-        - serviceName: foo
-          servicePort: 80
+      - serviceName: foo
+        servicePort: 80
       plugins:
         - name: cors
           enable: true
@@ -223,7 +223,7 @@ Websocket Proxy
 by creating a route with specifying the `websocket` field.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: ws-route
@@ -236,8 +236,8 @@ spec:
         paths:
           - /*
       backends:
-        - serviceName: websocket-server
-          servicePort: 8080
+      - serviceName: websocket-server
+        servicePort: 8080
       websocket: true
 ```
 
@@ -247,7 +247,7 @@ TCP Route
 apisix-ingress-controller supports the port-based tcp route.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: tcp-route
@@ -272,7 +272,7 @@ UDP Route
 apisix-ingress-controller supports the port-based udp route.
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: udp-route

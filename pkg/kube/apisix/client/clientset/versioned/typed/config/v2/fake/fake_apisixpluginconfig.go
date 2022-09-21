@@ -116,7 +116,7 @@ func (c *FakeApisixPluginConfigs) UpdateStatus(ctx context.Context, apisixPlugin
 // Delete takes name of the apisixPluginConfig and deletes it. Returns an error if one occurs.
 func (c *FakeApisixPluginConfigs) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(apisixpluginconfigsResource, c.ns, name), &v2.ApisixPluginConfig{})
+		Invokes(testing.NewDeleteActionWithOptions(apisixpluginconfigsResource, c.ns, name, opts), &v2.ApisixPluginConfig{})
 
 	return err
 }

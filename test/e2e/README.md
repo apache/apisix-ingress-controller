@@ -32,6 +32,8 @@ a e2e test scaffold is prepared to run test cases easily. The source codes are i
 * Create a http server with [kennethreitz/httpbin](https://hub.docker.com/r/kennethreitz/httpbin/) as the upstream.
 
 The above mentioned steps are run before each case starts and all resources will be destroyed after the case finishes.
+Sepecially, if test case failed and e2e-test run in dev mode, the related resources will not be destroyed. This fearure is useful for debugging.
+Also, you can disable this feature by unset `E2E_ENV=dev`.
 
 Plugins
 -------
@@ -55,7 +57,7 @@ Run `make e2e-test-local` to run the e2e test suites in your development environ
 Run `make e2e-test` to run the e2e test suites in an existing cluster, you can specify custom registry by passing REGISTRY(eg docker.io).
 
 Step `1` and `2` can be skipped by passing `E2E_SKIP_BUILD=1` to this directive, also, you can customize the
-running concurrency of e2e test suites by passing `E2E_CONCURRENCY=X` where `X` is the desired number of cases running in parallel.
+running concurrency of e2e test suites by passing `E2E_NODES=X` where `X` is the desired number of cases running in parallel.
 
 You can run specific test cases by passing the environment variable `E2E_FOCUS=suite-<suite name>`, where `<suite name>` can be found under `test/e2e` directory.
 For example, `E2E_FOCUS=suite-plugins* make e2e-test` will only run test cases in `test/e2e/suite-plugins` directory.

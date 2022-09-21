@@ -462,3 +462,48 @@ func TestMemDBCachePluginConfig(t *testing.T) {
 	}
 	assert.Error(t, ErrNotFound, c.DeletePluginConfig(pc4))
 }
+
+func TestMemDBCacheUpstreamServiceRelation(t *testing.T) {
+	c, err := NewMemDBCache()
+	assert.Nil(t, err, "NewMemDBCache")
+
+	us1 := &v1.UpstreamServiceRelation{
+		ServiceName: "1",
+	}
+	assert.Nil(t, c.InsertUpstreamServiceRelation(us1), "inserting upstream_service 1")
+
+	us, err := c.GetUpstreamServiceRelation("1")
+	assert.Nil(t, err)
+	assert.Equal(t, us1, us)
+
+	us2 := &v1.UpstreamServiceRelation{
+		ServiceName: "2",
+	}
+	assert.Nil(t, c.InsertUpstreamServiceRelation(us2), "inserting upstream_service 2")
+
+	us, err = c.GetUpstreamServiceRelation("2")
+	assert.Nil(t, err)
+	assert.Equal(t, us2, us)
+
+	us3 := &v1.UpstreamServiceRelation{
+		ServiceName: "httpbin",
+		UpstreamNames: map[string]struct{}{
+			"upstream": {},
+		},
+	}
+	assert.Nil(t, c.InsertUpstreamServiceRelation(us3), "inserting upstream_service 3")
+
+	us, err = c.GetUpstreamServiceRelation("httpbin")
+	assert.Nil(t, err)
+	assert.Equal(t, us3, us)
+
+	uss, err := c.ListUpstreamServiceRelation()
+	assert.Nil(t, err)
+	assert.Len(t, uss, 3)
+
+	err = c.DeleteUpstreamServiceRelation(us)
+	assert.Nil(t, err)
+	uss, err = c.ListUpstreamServiceRelation()
+	assert.Nil(t, err)
+	assert.Len(t, uss, 2)
+}

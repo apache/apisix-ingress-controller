@@ -19,6 +19,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
@@ -185,6 +187,17 @@ rules:
     - get
     - list
     - watch
+  - apiGroups:
+    - gateway.networking.k8s.io
+    resources:
+    - httproutes
+    - tlsroutes
+    - gateways
+    - gatewayclasses
+    verbs:
+    - get
+    - list
+    - watch
 `
 	_clusterRoleBinding = `
 apiVersion: rbac.authorization.k8s.io/v1
@@ -199,98 +212,6 @@ subjects:
 - kind: ServiceAccount
   name: ingress-apisix-e2e-test-service-account
   namespace: %s
-`
-	_ingressAPISIXDeploymentTemplate = `
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ingress-apisix-controller-deployment-e2e-test
-spec:
-  replicas: %d
-  selector:
-    matchLabels:
-      app: ingress-apisix-controller-deployment-e2e-test
-  strategy:
-    rollingUpdate:
-      maxSurge: 50%%
-      maxUnavailable: 1
-    type: RollingUpdate
-  template:
-    metadata:
-      labels:
-        app: ingress-apisix-controller-deployment-e2e-test
-    spec:
-      terminationGracePeriodSeconds: 0
-      initContainers:
-      - name: wait-apisix-admin
-        image: localhost:5000/busybox:1.28
-        command: ['sh', '-c', "until nc -z apisix-service-e2e-test.%s.svc.cluster.local 9180 ; do echo waiting for apisix-admin; sleep 2; done;"]
-      containers:
-        - livenessProbe:
-            failureThreshold: 3
-            initialDelaySeconds: 5
-            periodSeconds: 2
-            successThreshold: 1
-            tcpSocket:
-              port: 8080
-            timeoutSeconds: 2
-          readinessProbe:
-            failureThreshold: 3
-            initialDelaySeconds: 5
-            periodSeconds: 2
-            successThreshold: 1
-            tcpSocket:
-              port: 8080
-            timeoutSeconds: 2
-          env:
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-          image: "localhost:5000/apache/apisix-ingress-controller:dev"
-          imagePullPolicy: Always
-          name: ingress-apisix-controller-deployment-e2e-test
-          ports:
-            - containerPort: 8080
-              name: "http"
-              protocol: "TCP"
-            - containerPort: 8443
-              name: "https"
-              protocol: "TCP"
-          command:
-            - /ingress-apisix/apisix-ingress-controller
-            - ingress
-            - --log-level
-            - debug
-            - --log-output
-            - stdout
-            - --http-listen
-            - :8080
-            - --https-listen
-            - :8443
-            - --default-apisix-cluster-name
-            - default
-            - --default-apisix-cluster-base-url
-            - http://apisix-service-e2e-test:9180/apisix/admin
-            - --default-apisix-cluster-admin-key
-            - edd1c9f034335f136f87ad84b625c8f1
-            - --namespace-selector
-            - %s
-            - --apisix-route-version
-            - %s
-            - --ingress-status-address
-            - "%s"
-            - --watch-endpointslices
-          %s
-      volumes:
-       - name: webhook-certs
-         secret:
-           secretName: %s
-      serviceAccount: ingress-apisix-e2e-test-service-account
 `
 	_ingressAPISIXAdmissionService = `
 apiVersion: v1
@@ -382,6 +303,109 @@ webhooks:
 `
 )
 
+var _ingressAPISIXDeploymentTemplate = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingress-apisix-controller-deployment-e2e-test
+spec:
+  replicas: %d
+  selector:
+    matchLabels:
+      app: ingress-apisix-controller-deployment-e2e-test
+  strategy:
+    rollingUpdate:
+      maxSurge: 50%%
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: ingress-apisix-controller-deployment-e2e-test
+    spec:
+      terminationGracePeriodSeconds: 0
+      initContainers:
+      - name: wait-apisix-admin
+        image: localhost:5000/busybox:dev
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', "until nc -z apisix-service-e2e-test.%s.svc.cluster.local 9180 ; do echo waiting for apisix-admin; sleep 2; done;"]
+      containers:
+        - livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 2
+            successThreshold: 1
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 2
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 2
+            successThreshold: 1
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 2
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          image: "localhost:5000/apache/apisix-ingress-controller:dev"
+          imagePullPolicy: IfNotPresent
+          name: ingress-apisix-controller-deployment-e2e-test
+          ports:
+            - containerPort: 8080
+              name: "http"
+              protocol: "TCP"
+            - containerPort: 8443
+              name: "https"
+              protocol: "TCP"
+          command:
+            - /ingress-apisix/apisix-ingress-controller
+            - ingress
+            - --log-level
+            - debug
+            - --log-output
+            - stdout
+            - --apisix-resource-sync-interval
+            - %s
+            - --http-listen
+            - :8080
+            - --https-listen
+            - :8443
+            - --default-apisix-cluster-name
+            - default
+            - --default-apisix-cluster-base-url
+            - http://apisix-service-e2e-test:9180/apisix/admin
+            - --default-apisix-cluster-admin-key
+            - edd1c9f034335f136f87ad84b625c8f1
+            - --namespace-selector
+            - %s
+            - --api-version
+            - %s
+            - --ingress-status-address
+            - "%s"
+            - --enable-gateway-api
+            - "true"
+          %s
+      volumes:
+       - name: webhook-certs
+         secret:
+           secretName: %s
+      serviceAccount: ingress-apisix-e2e-test-service-account
+`
+
+func init() {
+	if os.Getenv("E2E_ENV") != "ci" {
+		_ingressAPISIXDeploymentTemplate = strings.Replace(_ingressAPISIXDeploymentTemplate, "imagePullPolicy: IfNotPresent", "imagePullPolicy: Always", -1)
+	}
+}
+
 func (s *Scaffold) newIngressAPISIXController() error {
 	err := k8s.CreateServiceAccountE(s.t, s.kubectlOptions, _serviceAccount)
 	assert.Nil(s.t, err, "create service account")
@@ -404,13 +428,17 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	})
 
 	var ingressAPISIXDeployment string
-	label := fmt.Sprintf("apisix.ingress.watch=%s", s.namespace)
+	label := `""`
+	if labels := s.NamespaceSelectorLabelStrings(); labels != nil && !s.opts.DisableNamespaceSelector {
+		label = labels[0]
+	}
+
 	if s.opts.EnableWebhooks {
-		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace,
-			s.FormatNamespaceLabel(label), s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
+		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.ApisixResourceSyncInterval,
+			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
 	} else {
-		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace,
-			s.FormatNamespaceLabel(label), s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
+		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.ApisixResourceSyncInterval,
+			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
 	}
 
 	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment)
@@ -514,11 +542,14 @@ func (s *Scaffold) GetIngressPodDetails() ([]corev1.Pod, error) {
 // ScaleIngressController scales the number of Ingress Controller pods to desired.
 func (s *Scaffold) ScaleIngressController(desired int) error {
 	var ingressDeployment string
-	label := fmt.Sprintf("apisix.ingress.watch=%s", s.namespace)
+	var label string
+	if labels := s.NamespaceSelectorLabelStrings(); labels != nil {
+		label = labels[0]
+	}
 	if s.opts.EnableWebhooks {
-		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, label, s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
+		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
 	} else {
-		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, label, s.opts.APISIXRouteVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
+		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
 	}
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressDeployment); err != nil {
 		return err

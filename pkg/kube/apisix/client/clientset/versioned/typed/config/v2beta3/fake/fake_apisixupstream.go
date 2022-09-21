@@ -116,7 +116,7 @@ func (c *FakeApisixUpstreams) UpdateStatus(ctx context.Context, apisixUpstream *
 // Delete takes name of the apisixUpstream and deletes it. Returns an error if one occurs.
 func (c *FakeApisixUpstreams) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(apisixupstreamsResource, c.ns, name), &v2beta3.ApisixUpstream{})
+		Invokes(testing.NewDeleteActionWithOptions(apisixupstreamsResource, c.ns, name, opts), &v2beta3.ApisixUpstream{})
 
 	return err
 }

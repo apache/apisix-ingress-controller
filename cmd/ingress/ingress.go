@@ -25,10 +25,12 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
-	controller "github.com/apache/apisix-ingress-controller/pkg/ingress"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	controller "github.com/apache/apisix-ingress-controller/pkg/providers"
 	"github.com/apache/apisix-ingress-controller/pkg/version"
 )
 
@@ -102,10 +104,23 @@ the apisix cluster and others are created`,
 				dief("bad configuration: %s", err)
 			}
 
-			logger, err := log.NewLogger(
-				log.WithLogLevel(cfg.LogLevel),
-				log.WithOutputFile(cfg.LogOutput),
-			)
+			var ws zapcore.WriteSyncer
+
+			options := []log.Option{log.WithLogLevel(cfg.LogLevel), log.WithOutputFile(cfg.LogOutput)}
+
+			if cfg.LogRotateOutputPath != "" {
+				ws = zapcore.AddSync(&lumberjack.Logger{
+					Filename:   cfg.LogRotateOutputPath,
+					MaxSize:    cfg.LogRotationMaxSize,
+					MaxBackups: cfg.LogRotationMaxBackups,
+					MaxAge:     cfg.LogRotationMaxAge,
+				})
+
+				options = append(options, log.WithWriteSyncer(ws))
+			}
+
+			logger, err := log.NewLogger(options...)
+
 			if err != nil {
 				dief("failed to initialize logging: %s", err)
 			}
@@ -143,6 +158,10 @@ the apisix cluster and others are created`,
 	cmd.PersistentFlags().StringVar(&configPath, "config-path", "", "configuration file path for apisix-ingress-controller")
 	cmd.PersistentFlags().StringVar(&cfg.LogLevel, "log-level", "info", "error log level")
 	cmd.PersistentFlags().StringVar(&cfg.LogOutput, "log-output", "stderr", "error log output file")
+	cmd.PersistentFlags().StringVar(&cfg.LogRotateOutputPath, "log-rotate-output-path", "", "rotate log output path")
+	cmd.PersistentFlags().IntVar(&cfg.LogRotationMaxSize, "log-rotate-max-size", 100, "rotate log max size")
+	cmd.PersistentFlags().IntVar(&cfg.LogRotationMaxAge, "log-rotate-max-age", 0, "old rotate log max age to retain")
+	cmd.PersistentFlags().IntVar(&cfg.LogRotationMaxBackups, "log-rotate-max-backups", 0, "old rotate log max numbers to retain")
 	cmd.PersistentFlags().StringVar(&cfg.HTTPListen, "http-listen", ":8080", "the HTTP Server listen address")
 	cmd.PersistentFlags().StringVar(&cfg.HTTPSListen, "https-listen", ":8443", "the HTTPS Server listen address")
 	cmd.PersistentFlags().StringVar(&cfg.IngressPublishService, "ingress-publish-service", "",
@@ -161,16 +180,13 @@ For example, no available LB exists in the bare metal environment.`)
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.IngressClass, "ingress-class", config.IngressClass, "the class of an Ingress object is set using the field IngressClassName in Kubernetes clusters version v1.18.0 or higher or the annotation \"kubernetes.io/ingress.class\" (deprecated)")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ElectionID, "election-id", config.IngressAPISIXLeader, "election id used for campaign the controller leader")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.IngressVersion, "ingress-version", config.IngressNetworkingV1, "the supported ingress api group version, can be \"networking/v1beta1\", \"networking/v1\" (for Kubernetes version v1.19.0 or higher) and \"extensions/v1beta1\"")
-	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ApisixRouteVersion, "apisix-route-version", config.ApisixRouteV2beta3, "the supported apisixroute api group version, can be \"apisix.apache.org/v2beta2\" or \"apisix.apache.org/v2beta3\"")
-	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ApisixPluginConfigVersion, "apisix-plugin-config-version", config.ApisixV2beta3, "the supported ApisixPluginConfig api group version, can be \"apisix.apache.org/v2beta3\" or \"apisix.apache.org/v2\"")
-	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ApisixTlsVersion, "apisix-tls-version", config.ApisixV2beta3, "the supported apisixtls api group version, can be \"apisix.apache.org/v2beta3\" or \"apisix.apache.org/v2\"")
-	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ApisixClusterConfigVersion, "apisix-cluster-config-version", config.ApisixV2beta3, "the supported ApisixClusterConfig api group version, can be \"apisix.apache.org/v2beta3\" or \"apisix.apache.org/v2\"")
-	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ApisixConsumerVersion, "apisix-consumer-version", config.ApisixV2beta3, "the supported ApisixConsumer api group version, can be \"apisix.apache.org/v2beta3\" or \"apisix.apache.org/v2\"")
+	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.APIVersion, "api-version", config.DefaultAPIVersion, config.APIVersionDescribe)
 	cmd.PersistentFlags().BoolVar(&cfg.Kubernetes.WatchEndpointSlices, "watch-endpointslices", false, "whether to watch endpointslices rather than endpoints")
 	cmd.PersistentFlags().BoolVar(&cfg.Kubernetes.EnableGatewayAPI, "enable-gateway-api", false, "whether to enable support for Gateway API")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.DefaultClusterBaseURL, "default-apisix-cluster-base-url", "", "the base URL of admin api / manager api for the default APISIX cluster")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.DefaultClusterAdminKey, "default-apisix-cluster-admin-key", "", "admin key used for the authorization of admin api / manager api for the default APISIX cluster")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.DefaultClusterName, "default-apisix-cluster-name", "default", "name of the default apisix cluster")
+	cmd.PersistentFlags().DurationVar(&cfg.ApisixResourceSyncInterval.Duration, "apisix-resource-sync-interval", 300*time.Second, "interval between syncs in seconds. Default value is 300s.")
 
 	if err := cmd.PersistentFlags().MarkDeprecated("app-namespace", "use namespace-selector instead"); err != nil {
 		dief("failed to mark `app-namespace` as deprecated: %s", err)

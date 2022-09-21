@@ -105,7 +105,7 @@ func (s *Scaffold) CreateApisixRoute(name string, rules []ApisixRouteRule) {
 	route := &apisixRoute{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ApisixRoute",
-			APIVersion: "apisix.apache.org/v1",
+			APIVersion: s.opts.ApisixResourceVersion,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -121,9 +121,11 @@ func (s *Scaffold) CreateApisixRoute(name string, rules []ApisixRouteRule) {
 
 // CreateResourceFromString creates resource from a loaded yaml string.
 func (s *Scaffold) CreateResourceFromString(yaml string) error {
-	err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
-	time.Sleep(5 * time.Second)
-	return err
+	return k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
+}
+
+func (s *Scaffold) DeleteResourceFromString(yaml string) error {
+	return k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
 }
 
 func (s *Scaffold) GetOutputFromString(shell ...string) (string, error) {
@@ -161,14 +163,18 @@ func (s *Scaffold) CreateResourceFromStringWithNamespace(yaml, namespace string)
 		s.kubectlOptions.Namespace = originalNamespace
 	}()
 	s.addFinalizers(func() {
-		originalNamespace := s.kubectlOptions.Namespace
-		s.kubectlOptions.Namespace = namespace
-		defer func() {
-			s.kubectlOptions.Namespace = originalNamespace
-		}()
-		assert.Nil(s.t, k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml))
+		_ = s.DeleteResourceFromStringWithNamespace(yaml, namespace)
 	})
 	return k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
+}
+
+func (s *Scaffold) DeleteResourceFromStringWithNamespace(yaml, namespace string) error {
+	originalNamespace := s.kubectlOptions.Namespace
+	s.kubectlOptions.Namespace = namespace
+	defer func() {
+		s.kubectlOptions.Namespace = originalNamespace
+	}()
+	return k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
 }
 
 func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
@@ -252,12 +258,47 @@ func (s *Scaffold) EnsureNumApisixPluginConfigCreated(desired int) error {
 	return s.ensureNumApisixCRDsCreated(u.String(), desired)
 }
 
-// CreateApisixRouteByApisixAdmin create a route
+// EnsureNumApisixTlsCreated waits until desired number of tls ssl created in
+// APISIX cluster.
+func (s *Scaffold) EnsureNumApisixTlsCreated(desired int) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/ssl",
+	}
+	return s.ensureNumApisixCRDsCreated(u.String(), desired)
+}
+
+// EnsureNumListUpstreamNodesNth waits until desired number of upstreams[n-1].Nodes created in
+// APISIX cluster.
+// The upstreams[n-1].Nodes number is equal to desired.
+func (s *Scaffold) EnsureNumListUpstreamNodesNth(n, desired int) error {
+	condFunc := func() (bool, error) {
+		ups, err := s.ListApisixUpstreams()
+		if err != nil || len(ups) < n || len(ups[n-1].Nodes) != desired {
+			return false, fmt.Errorf("EnsureNumListUpstreamNodes failed")
+		}
+		return true, nil
+	}
+	return wait.Poll(3*time.Second, 35*time.Second, condFunc)
+}
+
+// CreateApisixRouteByApisixAdmin create or update a route
 func (s *Scaffold) CreateApisixRouteByApisixAdmin(routeID string, body []byte) error {
 	u := url.URL{
 		Scheme: "http",
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin/routes/" + routeID,
+	}
+	return s.ensureAdminOperationIsSuccessful(u.String(), "PUT", body)
+}
+
+// CreateApisixRouteByApisixAdmin create or update a consumer
+func (s *Scaffold) CreateApisixConsumerByApisixAdmin(body []byte) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/consumers",
 	}
 	return s.ensureAdminOperationIsSuccessful(u.String(), "PUT", body)
 }
@@ -268,6 +309,16 @@ func (s *Scaffold) DeleteApisixRouteByApisixAdmin(routeID string) error {
 		Scheme: "http",
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin/routes/" + routeID,
+	}
+	return s.ensureAdminOperationIsSuccessful(u.String(), "DELETE", nil)
+}
+
+// DeleteApisixConsumerByApisixAdmin deletes a consumer by its consumer name in APISIX cluster.
+func (s *Scaffold) DeleteApisixConsumerByApisixAdmin(consumerName string) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/consumers/" + consumerName,
 	}
 	return s.ensureAdminOperationIsSuccessful(u.String(), "DELETE", nil)
 }
@@ -477,18 +528,20 @@ func (s *Scaffold) ListApisixPluginConfig() ([]*v1.PluginConfig, error) {
 
 func (s *Scaffold) newAPISIXTunnels() error {
 	var (
-		adminNodePort   int
-		httpNodePort    int
-		httpsNodePort   int
-		tcpNodePort     int
-		udpNodePort     int
-		controlNodePort int
-		adminPort       int
-		httpPort        int
-		httpsPort       int
-		tcpPort         int
-		udpPort         int
-		controlPort     int
+		adminNodePort      int
+		httpNodePort       int
+		httpsNodePort      int
+		tcpNodePort        int
+		tlsOverTcpNodePort int
+		udpNodePort        int
+		controlNodePort    int
+		adminPort          int
+		httpPort           int
+		httpsPort          int
+		tcpPort            int
+		tlsOverTcpPort     int
+		udpPort            int
+		controlPort        int
 	)
 	for _, port := range s.apisixService.Spec.Ports {
 		if port.Name == "http" {
@@ -503,6 +556,9 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		} else if port.Name == "tcp" {
 			tcpNodePort = int(port.NodePort)
 			tcpPort = int(port.Port)
+		} else if port.Name == "tcp-tls" {
+			tlsOverTcpNodePort = int(port.NodePort)
+			tlsOverTcpPort = int(port.Port)
 		} else if port.Name == "udp" {
 			udpNodePort = int(port.NodePort)
 			udpPort = int(port.Port)
@@ -520,6 +576,8 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		httpsNodePort, httpsPort)
 	s.apisixTCPTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
 		tcpNodePort, tcpPort)
+	s.apisixTLSOverTCPTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
+		tlsOverTcpNodePort, tlsOverTcpPort)
 	s.apisixUDPTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
 		udpNodePort, udpPort)
 	s.apisixControlTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
@@ -541,6 +599,10 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		return err
 	}
 	s.addFinalizers(s.apisixTCPTunnel.Close)
+	if err := s.apisixTLSOverTCPTunnel.ForwardPortE(s.t); err != nil {
+		return err
+	}
+	s.addFinalizers(s.apisixTLSOverTCPTunnel.Close)
 	if err := s.apisixUDPTunnel.ForwardPortE(s.t); err != nil {
 		return err
 	}
@@ -557,6 +619,7 @@ func (s *Scaffold) shutdownApisixTunnel() {
 	s.apisixHttpTunnel.Close()
 	s.apisixHttpsTunnel.Close()
 	s.apisixTCPTunnel.Close()
+	s.apisixTLSOverTCPTunnel.Close()
 	s.apisixUDPTunnel.Close()
 	s.apisixControlTunnel.Close()
 }

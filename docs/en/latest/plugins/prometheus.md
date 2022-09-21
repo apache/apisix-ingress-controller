@@ -28,7 +28,7 @@ This guide shows how to monitor Apache APISIX Ingress Controller using Prometheu
 Use CRD file to enable Prometheus in global configurations. The definition file for custom resources is `ApisixClusterConfig`, so the configuration should be:
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixClusterConfig
 metadata:
   name: default

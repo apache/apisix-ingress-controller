@@ -7,28 +7,35 @@
     },
     {
       "type": "category",
-      "label": "Practices",
+      "label": "Installation",
       "items": [
-        "practices/index",
-        "practices/check-crd-status",
-        "practices/mtls",
-        "practices/the-hard-way",
-        "practices/proxy-the-httpbin-service-with-ingress",
-        "practices/proxy-the-httpbin-service"
+        "deployments/minikube",
+        "deployments/kind",
+        "deployments/aws",
+        "deployments/ack",
+        "deployments/gke",
+        "deployments/azure",
+        "deployments/tke",
+        "deployments/kubesphere",
+        "deployments/k3s-rke"
       ]
     },
     {
       "type": "category",
-      "label": "Installation",
+      "label": "Tutorials",
       "items": [
-        "deployments/ack",
-        "deployments/aws",
-        "deployments/azure",
-        "deployments/gke",
-        "deployments/k3s-rke",
-        "deployments/kubesphere",
-        "deployments/minikube",
-        "deployments/tke"
+        "tutorials/index",
+        "tutorials/check-crd-status",
+        "tutorials/mtls",
+        "tutorials/the-hard-way",
+        "tutorials/proxy-the-httpbin-service-with-ingress",
+        "tutorials/proxy-the-httpbin-service",
+        "tutorials/proxy-grpc-service",
+        "tutorials/manage-certificates-with-cert-manager",
+        "tutorials/manage-ingress-certificates-with-cert-manager",
+        "tutorials/enable-authentication-and-restriction",
+        "tutorials/how-to-access-Apache-APISIX-Prometheus-Metrics-on-k8s",
+        "tutorials/how-to-use-go-plugin-runner-in-apisix-ingress"
       ]
     },
     {
@@ -36,10 +43,14 @@
       "label": "References",
       "items": [
         "references/apisix_route_v2beta3",
+        "references/apisix_route_v2",
         "references/apisix_upstream",
-        "references/apisix_tls",
-        "references/apisix_cluster_config",
-        "references/apisix_pluginconfig"
+        "references/apisix_tls_v2",
+        "references/apisix_tls_v2beta3",
+        "references/apisix_cluster_config_v2",
+        "references/apisix_cluster_config_v2beta3",
+        "references/apisix_pluginconfig_v2",
+        "references/apisix_pluginconfig_v2beta3"
       ]
     },
     {
@@ -47,7 +58,10 @@
       "label": "Concepts",
       "items": [
         "concepts/apisix_route",
-        "concepts/apisix_upstream"
+        "concepts/apisix_upstream",
+        "concepts/apisix_tls",
+        "concepts/apisix_cluster_config",
+        "concepts/annotations"
       ]
     },
     {

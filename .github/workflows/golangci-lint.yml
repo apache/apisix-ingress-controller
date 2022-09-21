@@ -25,6 +25,7 @@ on:
   pull_request:
     branches:
       - master
+      - v1.5.0
     type: [review_requested, ready_for_review]
 
 jobs:
@@ -68,10 +69,10 @@ jobs:
       - name: Setup Go Env
         uses: actions/setup-go@v2
         with:
-          go-version: '1.16'
+          go-version: '1.18'
 
       - name: Download golangci-lint
-        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.39.0
+        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.46.2
 
       - name: 🛩️ golangci-lint
         run: $(go env GOPATH)/bin/golangci-lint run --tests=false --timeout 300s ./...

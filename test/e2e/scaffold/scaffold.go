@@ -34,9 +34,10 @@ import (
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
+	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/testing"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -51,14 +52,15 @@ type Options struct {
 	APISIXConfigPath           string
 	IngressAPISIXReplicas      int
 	HTTPBinServicePort         int
-	APISIXRouteVersion         string
-	APISIXTlsVersion           string
-	APISIXConsumerVersion      string
-	APISIXClusterConfigVersion string
 	APISIXAdminAPIKey          string
 	EnableWebhooks             bool
 	APISIXPublishAddress       string
-	disableNamespaceSelector   bool
+	ApisixResourceSyncInterval string
+	ApisixResourceVersion      string
+
+	NamespaceSelectorLabel   map[string]string
+	DisableNamespaceSelector bool
+	DisableNamespaceLabel    bool
 }
 
 type Scaffold struct {
@@ -73,16 +75,38 @@ type Scaffold struct {
 	testBackendService *corev1.Service
 	finializers        []func()
 
-	apisixAdminTunnel   *k8s.Tunnel
-	apisixHttpTunnel    *k8s.Tunnel
-	apisixHttpsTunnel   *k8s.Tunnel
-	apisixTCPTunnel     *k8s.Tunnel
-	apisixUDPTunnel     *k8s.Tunnel
-	apisixControlTunnel *k8s.Tunnel
+	apisixAdminTunnel      *k8s.Tunnel
+	apisixHttpTunnel       *k8s.Tunnel
+	apisixHttpsTunnel      *k8s.Tunnel
+	apisixTCPTunnel        *k8s.Tunnel
+	apisixTLSOverTCPTunnel *k8s.Tunnel
+	apisixUDPTunnel        *k8s.Tunnel
+	apisixControlTunnel    *k8s.Tunnel
 
 	// Used for template rendering.
 	EtcdServiceFQDN string
 }
+
+type apisixResourceVersionInfo struct {
+	V2      string
+	V2beta3 string
+	Default string
+}
+
+var (
+	apisixResourceVersion = &apisixResourceVersionInfo{
+		V2:      config.ApisixV2,
+		V2beta3: config.ApisixV2beta3,
+		Default: config.DefaultAPIVersion,
+	}
+
+	createVersionedApisixResourceMap = map[string]struct{}{
+		"ApisixRoute":        {},
+		"ApisixConsumer":     {},
+		"ApisixPluginConfig": {},
+		"ApisixUpstream":     {},
+	}
+)
 
 // GetKubeconfig returns the kubeconfig file path.
 // Order:
@@ -106,20 +130,23 @@ func GetKubeconfig() string {
 
 // NewScaffold creates an e2e test scaffold.
 func NewScaffold(o *Options) *Scaffold {
-	if o.APISIXRouteVersion == "" {
-		o.APISIXRouteVersion = kube.ApisixRouteV2beta3
-	}
-	if o.APISIXTlsVersion == "" {
-		o.APISIXTlsVersion = config.ApisixV2beta3
-	}
-	if o.APISIXConsumerVersion == "" {
-		o.APISIXConsumerVersion = config.ApisixV2beta3
-	}
-	if o.APISIXClusterConfigVersion == "" {
-		o.APISIXClusterConfigVersion = config.ApisixV2beta3
+	if o.ApisixResourceVersion == "" {
+		o.ApisixResourceVersion = ApisixResourceVersion().Default
 	}
 	if o.APISIXAdminAPIKey == "" {
 		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
+	}
+	if o.ApisixResourceSyncInterval == "" {
+		o.ApisixResourceSyncInterval = "60s"
+	}
+	if o.Kubeconfig == "" {
+		o.Kubeconfig = GetKubeconfig()
+	}
+	if o.APISIXConfigPath == "" {
+		o.APISIXConfigPath = "testdata/apisix-gw-config.yaml"
+	}
+	if o.HTTPBinServicePort == 0 {
+		o.HTTPBinServicePort = 80
 	}
 	defer ginkgo.GinkgoRecover()
 
@@ -127,6 +154,8 @@ func NewScaffold(o *Options) *Scaffold {
 		opts: o,
 		t:    ginkgo.GinkgoT(),
 	}
+	// Disable logging of terratest library.
+	logger.Default = logger.Discard
 
 	ginkgo.BeforeEach(s.beforeEach)
 	ginkgo.AfterEach(s.afterEach)
@@ -135,19 +164,12 @@ func NewScaffold(o *Options) *Scaffold {
 }
 
 // NewDefaultScaffold creates a scaffold with some default options.
+// apisix-version default v2
 func NewDefaultScaffold() *Scaffold {
 	opts := &Options{
-		Name:                       "default",
-		Kubeconfig:                 GetKubeconfig(),
-		APISIXConfigPath:           "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas:      1,
-		HTTPBinServicePort:         80,
-		APISIXRouteVersion:         kube.ApisixRouteV2beta3,
-		APISIXTlsVersion:           config.ApisixV2beta3,
-		APISIXConsumerVersion:      config.ApisixV2beta3,
-		APISIXClusterConfigVersion: config.ApisixV2beta3,
-		EnableWebhooks:             false,
-		APISIXPublishAddress:       "",
+		Name:                  "default",
+		IngressAPISIXReplicas: 1,
+		ApisixResourceVersion: ApisixResourceVersion().Default,
 	}
 	return NewScaffold(opts)
 }
@@ -155,17 +177,19 @@ func NewDefaultScaffold() *Scaffold {
 // NewDefaultV2Scaffold creates a scaffold with some default options.
 func NewDefaultV2Scaffold() *Scaffold {
 	opts := &Options{
-		Name:                       "default",
-		Kubeconfig:                 GetKubeconfig(),
-		APISIXConfigPath:           "testdata/apisix-gw-config.yaml",
-		IngressAPISIXReplicas:      1,
-		HTTPBinServicePort:         80,
-		APISIXRouteVersion:         kube.ApisixRouteV2,
-		APISIXTlsVersion:           config.ApisixV2,
-		APISIXConsumerVersion:      config.ApisixV2,
-		APISIXClusterConfigVersion: config.ApisixV2,
-		EnableWebhooks:             false,
-		APISIXPublishAddress:       "",
+		Name:                  "default",
+		IngressAPISIXReplicas: 1,
+		ApisixResourceVersion: ApisixResourceVersion().V2,
+	}
+	return NewScaffold(opts)
+}
+
+// NewDefaultV2beta3Scaffold creates a scaffold with some default options.
+func NewDefaultV2beta3Scaffold() *Scaffold {
+	opts := &Options{
+		Name:                  "default",
+		IngressAPISIXReplicas: 1,
+		ApisixResourceVersion: ApisixResourceVersion().V2beta3,
 	}
 	return NewScaffold(opts)
 }
@@ -238,6 +262,39 @@ func (s *Scaffold) NewAPISIXClientWithTCPProxy() *httpexpect.Expect {
 			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
 		),
 	})
+}
+
+// NewAPISIXClientWithTLSOverTCP creates a TSL over TCP client
+func (s *Scaffold) NewAPISIXClientWithTLSOverTCP(host string) *httpexpect.Expect {
+	u := url.URL{
+		Scheme: "https",
+		Host:   s.apisixTLSOverTCPTunnel.Endpoint(),
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					// accept any certificate; for testing only!
+					InsecureSkipVerify: true,
+					ServerName:         host,
+				},
+			},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
+		),
+	})
+}
+
+func (s *Scaffold) NewMQTTClient() mqtt.Client {
+	opts := mqtt.NewClientOptions()
+	opts.AddBroker(fmt.Sprintf("tcp://%s", s.apisixTCPTunnel.Endpoint()))
+	client := mqtt.NewClient(opts)
+	return client
 }
 
 func (s *Scaffold) DNSResolver() *net.Resolver {
@@ -325,6 +382,19 @@ func (s *Scaffold) RestartAPISIXDeploy() {
 	assert.NoError(s.t, err, "renew apisix tunnels")
 }
 
+func (s *Scaffold) RestartIngressControllerDeploy() {
+	pods, err := k8s.ListPodsE(s.t, s.kubectlOptions, metav1.ListOptions{
+		LabelSelector: "app=ingress-apisix-controller-deployment-e2e-test",
+	})
+	assert.NoError(s.t, err, "list ingress-controller pod")
+	for _, pod := range pods {
+		err = s.KillPod(pod.Name)
+		assert.NoError(s.t, err, "killing ingress-controller pod")
+	}
+	err = s.WaitAllIngressControllerPodsAvailable()
+	assert.NoError(s.t, err, "waiting for new ingress-controller instance ready")
+}
+
 func (s *Scaffold) beforeEach() {
 	var err error
 	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.opts.Name, time.Now().Nanosecond())
@@ -332,11 +402,19 @@ func (s *Scaffold) beforeEach() {
 		ConfigPath: s.opts.Kubeconfig,
 		Namespace:  s.namespace,
 	}
-
 	s.finializers = nil
-	labels := make(map[string]string)
-	labels["apisix.ingress.watch"] = s.namespace
-	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: s.namespace, Labels: labels})
+
+	label := map[string]string{}
+	if !s.opts.DisableNamespaceLabel {
+		if s.opts.NamespaceSelectorLabel == nil {
+			label["apisix.ingress.watch"] = s.namespace
+			s.opts.NamespaceSelectorLabel = label
+		} else {
+			label = s.opts.NamespaceSelectorLabel
+		}
+	}
+
+	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: s.namespace, Labels: label})
 
 	s.nodes, err = k8s.GetReadyNodesE(s.t, s.kubectlOptions)
 	assert.Nil(s.t, err, "querying ready nodes")
@@ -374,37 +452,45 @@ func (s *Scaffold) beforeEach() {
 	err = s.newIngressAPISIXController()
 	assert.Nil(s.t, err, "initializing ingress apisix controller")
 
-	err = s.WaitAllIngressControllerPodsAvailable()
-	assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
+	if s.opts.IngressAPISIXReplicas != 0 {
+		err = s.WaitAllIngressControllerPodsAvailable()
+		assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
+	}
 }
 
 func (s *Scaffold) afterEach() {
 	defer ginkgo.GinkgoRecover()
 
 	if ginkgo.CurrentSpecReport().Failed() {
-		_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
-		output, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods")
-		if output != "" {
-			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		if os.Getenv("E2E_ENV") == "ci" {
+			// dump and delete related resource
+			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
+			output, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods")
+			if output != "" {
+				_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+			}
+			output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "describe", "pods")
+			if output != "" {
+				_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+			}
+			// Get the logs of apisix
+			output = s.GetDeploymentLogs("apisix-deployment-e2e-test")
+			if output != "" {
+				_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+			}
+			// Get the logs of ingress
+			output = s.GetDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
+			if output != "" {
+				_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+			}
+			err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
+			assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
 		}
-		output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "describe", "pods")
-		if output != "" {
-			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
-		}
-		// Get the logs of apisix
-		output = s.GetDeploymentLogs("apisix-deployment-e2e-test")
-		if output != "" {
-			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
-		}
-		// Get the logs of ingress
-		output = s.GetDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
-		if output != "" {
-			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
-		}
+	} else {
+		// if the test case is successful, just delete namespace
+		err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
+		assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
 	}
-
-	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
-	assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
 
 	for _, f := range s.finializers {
 		runWithRecover(f)
@@ -490,24 +576,21 @@ func (s *Scaffold) FormatRegistry(workloadTemplate string) string {
 	}
 }
 
-// FormatNamespaceLabel set label to be empty if s.opts.disableNamespaceSelector is true.
-func (s *Scaffold) FormatNamespaceLabel(label string) string {
-	if s.opts.disableNamespaceSelector {
-		return "\"\""
-	}
-	return label
-}
-
 var (
-	versionRegex = regexp.MustCompile(`apiVersion: apisix.apache.org/.*?\n`)
+	versionRegex = regexp.MustCompile(`apiVersion: apisix.apache.org/v.*?\n`)
+	kindRegex    = regexp.MustCompile(`kind: (.*?)\n`)
 )
 
 func (s *Scaffold) replaceApiVersion(yml, ver string) string {
 	return versionRegex.ReplaceAllString(yml, "apiVersion: "+ver+"\n")
 }
 
-func (s *Scaffold) DisableNamespaceSelector() {
-	s.opts.disableNamespaceSelector = true
+func (s *Scaffold) getKindValue(yml string) string {
+	subStr := kindRegex.FindStringSubmatch(yml)
+	if len(subStr) < 2 {
+		return ""
+	}
+	return subStr[1]
 }
 
 func waitExponentialBackoff(condFunc func() (bool, error)) error {
@@ -529,6 +612,40 @@ func generateWebhookCert(ns string) error {
 		ginkgo.GinkgoT().Errorf("%s", output)
 		return fmt.Errorf("failed to execute the script: %v", err)
 	}
-
 	return nil
+}
+
+func (s *Scaffold) CreateVersionedApisixResource(yml string) error {
+	kindValue := s.getKindValue(yml)
+	if _, ok := createVersionedApisixResourceMap[kindValue]; ok {
+		resource := s.replaceApiVersion(yml, s.opts.ApisixResourceVersion)
+		return s.CreateResourceFromString(resource)
+	}
+	return fmt.Errorf("the resource %s does not support", kindValue)
+}
+
+func (s *Scaffold) CreateVersionedApisixResourceWithNamespace(yml, namespace string) error {
+	kindValue := s.getKindValue(yml)
+	if _, ok := createVersionedApisixResourceMap[kindValue]; ok {
+		resource := s.replaceApiVersion(yml, s.opts.ApisixResourceVersion)
+		return s.CreateResourceFromStringWithNamespace(resource, namespace)
+
+	}
+	return fmt.Errorf("the resource %s does not support", kindValue)
+}
+
+func ApisixResourceVersion() *apisixResourceVersionInfo {
+	return apisixResourceVersion
+}
+
+func (s *Scaffold) NamespaceSelectorLabelStrings() []string {
+	var labels []string
+	for k, v := range s.opts.NamespaceSelectorLabel {
+		labels = append(labels, fmt.Sprintf("%s=%s", k, v))
+	}
+	return labels
+}
+
+func (s *Scaffold) NamespaceSelectorLabel() map[string]string {
+	return s.opts.NamespaceSelectorLabel
 }

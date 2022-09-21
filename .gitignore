@@ -26,6 +26,9 @@
 # Test binary, build with `go test -c`
 *.test
 
+# Related log files
+*.log
+
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 release

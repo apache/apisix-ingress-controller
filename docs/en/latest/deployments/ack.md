@@ -1,7 +1,12 @@
 ---
-title: Install Ingress APISIX on ACK
+title: ACK (Alibaba Cloud)
+keywords:
+  - APISIX ingress
+  - Apache APISIX
+  - Kubernetes ingress
+  - Alibaba Cloud
+description: Guide to install APISIX ingress controller on Alibaba Cloud Container Service for Kubernetes (ACK).
 ---
-
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -21,17 +26,19 @@ title: Install Ingress APISIX on ACK
 #
 -->
 
-This document explains how to install Ingress APISIX on Alibaba Cloud Container Service for Kubernetes (ACK).
+This document explains how you can install APISIX ingress on [Alibaba Cloud Container Service for Kubernetes (ACK)](https://www.alibabacloud.com/product/kubernetes).
 
 ## Prerequisites
 
-* Create an ACK Service on ali-cloud.
-* Download the kube config for your ACK, follow the [introduction](https://www.alibabacloud.com/help/zh/doc-detail/86378.html).
+Setting up APISIX ingress on ACK requires the following:
+
+* [Create an ACK service](https://www.alibabacloud.com/help/en/container-service-for-kubernetes/latest/create-an-ack-dedicated-cluster).
+* [Add the cluster credentials](https://www.alibabacloud.com/help/en/container-service-for-kubernetes/latest/connect-to-ack-clusters-by-using-kubectl) to your kube config file.
 * Install [Helm](https://helm.sh/).
 
-## Install APISIX and apisix-ingress-controller
+## Install APISIX and ingress controller
 
-As the data plane of apisix-ingress-controller, [Apache APISIX](http://apisix.apache.org/) can be deployed at the same time using Helm chart.
+The script below installs APISIX and the ingress controller:
 
 ```shell
 helm repo add apisix https://charts.apiseven.com
@@ -48,20 +55,35 @@ helm install apisix apisix/apisix \
 kubectl get service --namespace ingress-apisix
 ```
 
-Five Service resources were created.
+:::note
 
-* `apisix-gateway`, which processes the real traffic;
-* `apisix-admin`, which acts as the control plane to process all the configuration changes.
-* `apisix-ingress-controller`, which exposes apisix-ingress-controller's metrics.
-* `apisix-etcd` and `apisix-etcd-headless` for etcd service and internal communication.
+By default, APISIX ingress controller will watch the apiVersion of `networking.k8s.io/v1`.
 
-The gateway service type is set to `LoadBalancer` (See [Access services through SLB](https://www.alibabacloud.com/help/doc-detail/182218.htm) for more details), so that clients can access Apache APISIX through a load balancer. You can find the load balancer ip by running:
+If the target Kubernetes version is under `v1.19`, add the flag `--set ingress-controller.config.kubernetes.ingressVersion=networking/v1beta1`.
+
+Else, if your Kubernetes cluster version is under `v1.16`, set the flag `--set ingress-controller.config.kubernetes.ingressVersion=extensions/v1beta1`.
+
+:::
+
+This will create the five resources mentioned below:
+
+* `apisix-gateway`: dataplane the process the traffic.
+* `apisix-admin`: control plane that processes all configuration changes.
+* `apisix-ingress-controller`: ingress controller which exposes APISIX.
+* `apisix-etcd` and `apisix-etcd-headless`: stores configuration and handles internal communication.
+
+The gateway service type will be set to `LoadBalancer`. See [Use an existing SLB instance to expose an application
+](https://www.alibabacloud.com/help/en/container-service-for-kubernetes/latest/use-an-existing-slb-instance-to-expose-an-application-2) for details on using a load balancer.
+
+You can find the load balancer IP address by running:
 
 ```shell
 kubectl get service apisix-gateway --namespace ingress-apisix -o jsonpath='{.status.loadBalancer.ingress[].ip}'
 ```
 
-`ACK` PV require min_size is `20Gi`,cluster with `flexVolume` component select `alicloud-disk-ssd`,if with `helm values.yml` configure startup `apisix`,[more helm etcd configure](https://hub.kubeapps.com/charts/bitnami/etcd),configure format sample:
+ACK PersistentVolume requires the minimum size of `20Gi` using FlexVolume (select `alicloud-disk-ssd`)
+
+`ACK` PV require min_size is `20Gi`,cluster with `flexVolume` component select `alicloud-disk-ssd`. If you are using Helm, you can use this [etcd configuration file](https://hub.kubeapps.com/charts/bitnami/etcd):
 
 ```yaml
 etcd:
@@ -70,16 +92,32 @@ etcd:
     size: 20Gi
 ```
 
-Try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../practices/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
+You should now be able to use APISIX ingress controller. You can try running this [minimal example](../tutorials/proxy-the-httpbin-service.md) to see if everything is working perfectly.
 
-### Specify The Ingress Version
-
-apisix-ingress-controller will watch apiVersion of `networking.k8s.io/v1` by default. If the target kubernetes version is under `v1.19`, add `--set ingress-controller.config.kubernetes.ingressVersion=networking/v1beta1` or `--set ingress-controller.config.kubernetes.ingressVersion=extensions/v1beta1` if your kubernetes cluster is under `v1.16`
+## Next steps
 
 ### Enable SSL
 
-The ssl config is disabled by default, add `--set gateway.tls.enabled=true` to enable tls support.
+SSL is disabled by default. You can enable it by adding the flag `--set gateway.tls.enabled=true`.
 
-### Change default apikey
+### Change default keys
 
-It's Recommended to change the default key by add `--set ingress-controller.config.apisix.adminKey=ADMIN_KEY_GENERATED_BY_YOURSELF`, `--set admin.credentials.admin=ADMIN_KEY_GENERATED_BY_YOURSELF`, `--set admin.credentials.viewer=VIEWER_KEY_GENERATED_BY_YOURSELF`, notice that `ingress-controller.config.apisix.adminKey` and `admin.credentials.admin` must be the same, and should better not same as `admin.credentials.viewer`.
+It is recommended to change the default keys for security:
+
+```shell
+--set ingress-controller.config.apisix.adminKey=ADMIN_KEY_GENERATED_BY_YOURSELF
+```
+
+```shell
+--set admin.credentials.admin=ADMIN_KEY_GENERATED_BY_YOURSELF
+```
+
+```shell
+--set admin.credentials.viewer=VIEWER_KEY_GENERATED_BY_YOURSELF
+```
+
+:::note
+
+The `ingress-controller.config.apisix.adminKey` and `admin.credentials.admin` must be the same. It is better if these are not same as `admin.credentials.viewer`.
+
+:::

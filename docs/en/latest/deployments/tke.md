@@ -1,7 +1,13 @@
 ---
-title: Install Ingress APISIX on Tencent TKE
+title: TKE (Tencent)
+keywords:
+  - APISIX ingress
+  - Apache APISIX
+  - Kubernetes ingress
+  - Tencent Cloud Container Service
+  - Tencent Kubernetes Engine
+description: Guide to install APISIX ingress controller on Tencent Kubernetes Engine (TKE).
 ---
-
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -21,17 +27,17 @@ title: Install Ingress APISIX on Tencent TKE
 #
 -->
 
-This document explains how to install Ingress APISIX on [Tencent TKE](https://cloud.tencent.com/product/tke).
+This document explains how you can install APISIX ingress on [Tencent TKE](https://cloud.tencent.com/product/tke).
 
 ## Prerequisites
 
-* Create a TKE Service on Tencent Cloud and make sure the API Server is accessible from your workspace.
+* Create a TKE cluster on Tencent Cloud and make sure that the API server is accessible from your device.
 * Install [Helm](https://helm.sh/).
-* Download the kube config for your TKE Console.
+* Update your kube config file with the credentials for your TKE cluster.
 
-## Install APISIX and apisix-ingress-controller
+## Install APISIX and ingress controller
 
-As the data plane of apisix-ingress-controller, [Apache APISIX](http://apisix.apache.org/) can be deployed at the same time using Helm chart.
+The script below installs APISIX and the ingress controller:
 
 ```shell
 helm repo add apisix https://charts.apiseven.com
@@ -47,35 +53,65 @@ helm install apisix apisix/apisix \
 kubectl get service --namespace ingress-apisix
 ```
 
-Please be careful you must configure the `etcd.persistence.size` to multiples of 10Gi (it's a limitation on TKE), otherwise the [PersistentVolumeClaim](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) creation will fail.
+:::info IMPORTANT
 
-Five Service resources were created.
+Make sure to configure the attribute `etcd.persistence.size` in multiples of `10Gi` (limitation of TKE). Otherwise, the [PersistentVolumeClaim](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) creation will fail.
 
-* `apisix-gateway`, which processes the real traffic;
-* `apisix-admin`, which acts as the control plane to process all the configuration changes.
-* `apisix-ingress-controller`, which exposes apisix-ingress-controller's metrics.
-* `apisix-etcd` and `apisix-etcd-headless` for etcd service and internal communication.
+:::
 
-Two Service resources were created, one is `apisix-gateway`, which processes the real traffic; another is `apisix-admin`, which acts as the control plane to process all the configuration changes.
+:::note
 
-The gateway service type is set to `LoadBalancer` (see [TKE Service Management](https://cloud.tencent.com/document/product/457/45487?from=10680) for more details), so that clients can access Apache APISIX through a load balancer. You can find the load balancer ip by running:
+By default, APISIX ingress controller will watch the apiVersion of `networking.k8s.io/v1`.
+
+If the target Kubernetes version is under `v1.19`, add the flag `--set ingress-controller.config.kubernetes.ingressVersion=networking/v1beta1`.
+
+Else, if your Kubernetes cluster version is under `v1.16`, set the flag `--set ingress-controller.config.kubernetes.ingressVersion=extensions/v1beta1`.
+
+:::
+
+This will create the five resources mentioned below:
+
+* `apisix-gateway`: dataplane the process the traffic.
+* `apisix-admin`: control plane that processes all configuration changes.
+* `apisix-ingress-controller`: ingress controller which exposes APISIX.
+* `apisix-etcd` and `apisix-etcd-headless`: stores configuration and handles internal communication.
+
+The gateway service type will be set to `LoadBalancer`. See [TKE service management](https://cloud.tencent.com/document/product/457/45487?from=10680) for more details on setting this up.
+
+You can find the load balancer IP address by running:
 
 ```shell
 kubectl get service apisix-gateway --namespace ingress-apisix -o jsonpath='{.status.loadBalancer.ingress[].ip}'
 ```
 
-Now open your [TKE console](https://console.cloud.tencent.com/tke2/overview), choosing your cluster and clicking the Workloads tag, you'll see all pods of Apache APISIX, etcd and apisix-ingress-controller are ready.
+Now, if you open your [TKE console](https://console.cloud.tencent.com/tke2/overview), choose your cluster and click the workloads tag, you will see all the APISIX. ingress controller, and etcd pods.
 
-Try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running status. As a minimalist example, see [proxy-the-httpbin-service](../practices/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
+You should now be able to use APISIX ingress controller. You can try running this [minimal example](../tutorials/proxy-the-httpbin-service.md) to see if everything is working perfectly.
 
-### Specify The Ingress Version
-
-apisix-ingress-controller will watch apiVersion of `networking.k8s.io/v1` by default. If the target kubernetes version is under `v1.19`, add `--set ingress-controller.config.kubernetes.ingressVersion=networking/v1beta1` or `--set ingress-controller.config.kubernetes.ingressVersion=extensions/v1beta1` if your kubernetes cluster is under `v1.16`
+## Next steps
 
 ### Enable SSL
 
-The ssl config is disabled by default, add `--set gateway.tls.enabled=true` to enable tls support.
+SSL is disabled by default. You can enable it by adding the flag `--set gateway.tls.enabled=true`.
 
-### Change default apikey
+### Change default keys
 
-It's Recommended to change the default key by add `--set ingress-controller.config.apisix.adminKey=ADMIN_KEY_GENERATED_BY_YOURSELF`, `--set admin.credentials.admin=ADMIN_KEY_GENERATED_BY_YOURSELF`, `--set admin.credentials.viewer=VIEWER_KEY_GENERATED_BY_YOURSELF`, notice that `ingress-controller.config.apisix.adminKey` and `admin.credentials.admin` must be the same, and should better not same as `admin.credentials.viewer`.
+It is recommended to change the default keys for security:
+
+```shell
+--set ingress-controller.config.apisix.adminKey=ADMIN_KEY_GENERATED_BY_YOURSELF
+```
+
+```shell
+--set admin.credentials.admin=ADMIN_KEY_GENERATED_BY_YOURSELF
+```
+
+```shell
+--set admin.credentials.viewer=VIEWER_KEY_GENERATED_BY_YOURSELF
+```
+
+:::note
+
+The `ingress-controller.config.apisix.adminKey` and `admin.credentials.admin` must be the same. It is better if these are not same as `admin.credentials.viewer`.
+
+:::

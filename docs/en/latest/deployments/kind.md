@@ -1,7 +1,12 @@
 ---
-title: Install Ingress APISIX on Kind
+title: kind
+keywords:
+  - APISIX ingress
+  - Apache APISIX
+  - Kubernetes ingress
+  - kind
+description: Guide to install APISIX ingress controller on kind.
 ---
-
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -21,7 +26,7 @@ title: Install Ingress APISIX on Kind
 #
 -->
 
-This document explains how to install Ingress APISIX on [kind](https://kind.sigs.k8s.io/).
+This document explains how you can install APISIX ingress locally on [kind](https://kind.sigs.k8s.io/).
 
 ## Prerequisites
 
@@ -29,23 +34,25 @@ This document explains how to install Ingress APISIX on [kind](https://kind.sigs
 * Install [Helm](https://helm.sh/).
 * Install [kubectl](https://kubernetes.io/docs/tasks/tools/).
 
-If you encounter some strange problems, please consider whether it is a version compatibility issue.
+:::tip
 
-The versions of kind(==v0.12.0), kubectl(==v1.23.5) and helm(==v3.8.1) used in this document are confirmed feasible.
+If you encounter issues, check the version you are using. This document uses kind v0.12.0, Helm v3.8.1, and kubectl v1.23.5.
 
-## Create Cluster
+:::
 
-The quickest way to get a taste is to run command as follows and then go to the next section.
+## Create a kind cluster
+
+Ensure you have Docker running and start the kind cluster:
 
 ```shell
 kind create cluster
 ```
 
-You can click this [link](https://kind.sigs.k8s.io/docs/user/ingress/#create-cluster) for more information.
+See [Ingress](https://kind.sigs.k8s.io/docs/user/ingress/#create-cluster) to learn more about setting up ingress on a kind cluster.
 
-## Install APISIX and apisix-ingress-controller
+## Install APISIX and ingress controller
 
-As the data plane of apisix-ingress-controller, [Apache APISIX](http://apisix.apache.org/) can be deployed at the same time using Helm chart.
+The script below installs APISIX and the ingress controller:
 
 ```shell
 helm repo add apisix https://charts.apiseven.com
@@ -60,11 +67,11 @@ helm install apisix apisix/apisix \
 kubectl get service --namespace ingress-apisix
 ```
 
-Five Service resources were created.
+This will create the five resources mentioned below:
 
-* `apisix-gateway`, which processes the real traffic;
-* `apisix-admin`, which acts as the control plane to process all the configuration changes.
-* `apisix-ingress-controller`, which exposes apisix-ingress-controller's metrics.
-* `apisix-etcd` and `apisix-etcd-headless` for etcd service and internal communication.
+* `apisix-gateway`: dataplane the process the traffic.
+* `apisix-admin`: control plane that processes all configuration changes.
+* `apisix-ingress-controller`: ingress controller which exposes APISIX.
+* `apisix-etcd` and `apisix-etcd-headless`: stores configuration and handles internal communication.
 
-Now try to create some [resources](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/concepts) to verify the running of Ingress APISIX. As a minimalist example, see [proxy-the-httpbin-service](../practices/proxy-the-httpbin-service.md) to learn how to apply resources to drive the apisix-ingress-controller.
+You should now be able to use APISIX ingress controller. You can try running this [minimal example](../tutorials/proxy-the-httpbin-service.md) to see if everything is working perfectly.

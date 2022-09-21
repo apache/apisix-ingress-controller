@@ -22,6 +22,7 @@ set -o pipefail
 
 # desired cluster name; default is "apisix"
 KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-apisix}"
+K8S_VERSION=${K8S_VERSION:-v1.21.1@sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6}
 
 if kind get clusters | grep -q ^apisix$ ; then
   echo "cluster already exists, moving on"
@@ -54,13 +55,13 @@ fi
 echo "Registry Host: ${reg_host}"
 
 # create a cluster with the local registry enabled in containerd
-kind_node_image='kindest/node:v1.21.1@sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6'
+kind_node_image="kindest/node:${K8S_VERSION}"
+echo "Kubernetes version: ${kind_node_image}"
 cat <<EOF | kind create cluster --name "${KIND_CLUSTER_NAME}" --image ${kind_node_image} --config=-
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
-- role: worker
 - role: worker
 - role: worker
 containerdConfigPatches:

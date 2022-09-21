@@ -27,6 +27,11 @@ log_output: "stderr" # the output file path of error log, default is stderr, whe
                      # are marshalled in JSON format, which can be parsed by
                      # programs easily.
 
+log_rotate_output_path: ""  # rotate output path, the logs will be written in this file
+log_rotation_max_size: 100  # rotate max size, max size in megabytes of log file before it get rotated. It defaults to 100
+log_rotation_max_age: 0     # rotate max age, max age of old log files to retain
+log_rotation_max_backups: 0 # rotate max backups, max numbers of old log files to retain
+
 cert_file: "/etc/webhook/certs/cert.pem" # the TLS certificate file path.
 key_file: "/etc/webhook/certs/key.pem"   # the TLS key file path.
 
@@ -44,7 +49,7 @@ ingress_status_address: []   # when there is no available information on the Ser
                              # For example, no available LB exists in the bare metal environment.
 enable_profiling: true # enable profiling via web interfaces
                        # host:port/debug/pprof, default is true.
-
+apisix-resource-sync-interval: "300s" # Default interval for synchronizing Kubernetes resources to APISIX
 # Kubernetes related configurations.
 kubernetes:
   kubeconfig: ""                       # the Kubernetes configuration file path, default is
@@ -70,13 +75,14 @@ kubernetes:
                                        # "extensions/v1beta1", default is "networking/v1".
   watch_endpointslices: false          # whether to watch EndpointSlices rather than Endpoints.
 
-  apisix_route_version: "apisix.apache.org/v2beta3"  # the supported apisixroute api group version.
-                                                     # the latest version is "apisix.apache.org/v2beta3".
+  apisix_route_version: "apisix.apache.org/v2"  # the supported apisixroute api group version.
+                                                     # the latest version is "apisix.apache.org/v2".
 
   enable_gateway_api: false            # whether to enable support for Gateway API.
                                        # Note: This feature is currently under development and may not work as expected. 
                                        # It is not recommended to use it in a production environment.
                                        # Before we announce support for it to reach Beta level or GA.
+  api_version: apisix.apache.org/v2    # the default value of API version is "apisix.apache.org/v2", support "apisix.apache.org/v2beta3" and "apisix.apache.org/v2".
 
 # APISIX related configurations.
 apisix:

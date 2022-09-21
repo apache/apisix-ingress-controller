@@ -60,7 +60,7 @@ spec:
       enable: true
 `, adminSvc, adminPort)
 
-			err := s.CreateResourceFromString(ar)
+			err := s.CreateVersionedApisixResource(ar)
 			assert.Nil(ginkgo.GinkgoT(), err, "creating ApisixRouteConfig")
 
 			time.Sleep(3 * time.Second)
@@ -81,6 +81,10 @@ spec:
 		})
 	}
 
-	suites(scaffold.NewDefaultScaffold)
-	suites(scaffold.NewDefaultV2Scaffold)
+	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
+		suites(scaffold.NewDefaultV2beta3Scaffold)
+	})
+	ginkgo.Describe("suite-features: scaffold v2", func() {
+		suites(scaffold.NewDefaultV2Scaffold)
+	})
 })

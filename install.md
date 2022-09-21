@@ -21,13 +21,15 @@
 
 This is an index page about installing Ingress APISIX in several environments. Click the following links on demands.
 
-* [Install Ingress APISIX on Azure AKS](./docs/en/latest/deployments/azure.md)
-* [Install Ingress APISIX on AWS EKS](./docs/en/latest/deployments/aws.md)
 * [Install Ingress APISIX on ACK](./docs/en/latest/deployments/ack.md)
+* [Install Ingress APISIX on AWS EKS](./docs/en/latest/deployments/aws.md)
+* [Install Ingress APISIX on Azure AKS](./docs/en/latest/deployments/azure.md)
 * [Install Ingress APISIX on Google Cloud GKE](./docs/en/latest/deployments/gke.md)
-* [Install Ingress APISIX on Minikube](./docs/en/latest/deployments/minikube.md)
+* [Install Ingress APISIX on KIND](./docs/en/latest/deployments/kind.md)
 * [Install Ingress APISIX on KubeSphere](./docs/en/latest/deployments/kubesphere.md)
 * [Install Ingress APISIX on K3S and RKE](./docs/en/latest/deployments/k3s-rke.md)
+* [Install Ingress APISIX on Minikube](./docs/en/latest/deployments/minikube.md)
+* [Install Ingress APISIX on TKE](./docs/en/latest/deployments/tke.md)
 
 ## Kustomize Support
 
@@ -46,4 +48,4 @@ Then you need to know which parameter need to be tweaked. If APISIX access token
 
 ## Verify Installation
 
-There are a lot of use examples (See [samples](docs/en/latest/practices/index.md) for more details), try to follow the operations there to verify the installation.
+There are a lot of use examples (See [samples](docs/en/latest/tutorials/index.md) for more details), try to follow the operations there to verify the installation.

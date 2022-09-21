@@ -138,6 +138,16 @@ var (
 					},
 				},
 			},
+			"upstream_service": {
+				Name: "upstream_service",
+				Indexes: map[string]*memdb.IndexSchema{
+					"id": {
+						Name:    "id",
+						Unique:  true,
+						Indexer: &memdb.StringFieldIndex{Field: "ServiceName"},
+					},
+				},
+			},
 		},
 	}
 )
