@@ -1,6 +1,6 @@
 module github.com/apache/apisix-ingress-controller/test/e2e
 
-go 1.18
+go 1.19
 
 require (
 	github.com/apache/apisix-ingress-controller v0.0.0-20210105024109-72e53386de5a
