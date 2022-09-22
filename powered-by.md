@@ -32,3 +32,4 @@ Users are encouraged to add themselves to this page, [issue](https://github.com/
 1. <a href="https://www.kubegems.io/" rel="nofollow">KubeGems</a>
 1. <a href="https://www.igetcool.com/" rel="nofollow">少年得到</a>
 1. <a href="https://www.niimbot.com/" rel="nofollow">NIIMBOT 武汉精臣智慧标识科技有限公司</a>
+1. <a href="https://www.xmfunny.com/" rel="nofollow">SoFunny 厦门真有趣</a>
