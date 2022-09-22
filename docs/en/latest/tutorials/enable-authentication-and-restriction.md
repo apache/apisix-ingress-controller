@@ -38,7 +38,7 @@ Also, we can using the `secretRef` field to reference a K8s Secret object so tha
   <summary>Key Auth yaml configure</summary>
 
 ```yaml
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: ${name}
@@ -60,7 +60,7 @@ Also, we can using the `secretRef` field to reference a K8s Secret object so tha
   <summary>Basic Auth yaml configure</summary>
 
 ```yaml
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: ${name}
@@ -87,7 +87,7 @@ This plugin will add `/apisix/plugin/jwt/sign` to sign. You may need to use `pub
   <summary>JWT Auth yaml configure</summary>
 
 ```yaml
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: ${name}
@@ -124,7 +124,7 @@ You may need to use `public-api` plugin to expose it.
   <summary>Wolf RBAC yaml configure</summary>
 
 ```yaml
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: ${name}
@@ -212,7 +212,7 @@ The following is an example. The `keyAuth` is enabled on the specified route to 
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: foo
@@ -228,7 +228,7 @@ EOF
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpserver-route
@@ -282,7 +282,7 @@ EOF
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: foo
@@ -298,7 +298,7 @@ EOF
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpserver-route
@@ -338,7 +338,7 @@ HTTP/1.1 200 OK
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: foo2
@@ -354,7 +354,7 @@ EOF
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: default
@@ -377,7 +377,7 @@ EOF
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -447,7 +447,7 @@ The following is an example. The `consumer-restriction` plugin is enabled on the
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: jack1
@@ -463,7 +463,7 @@ EOF
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixConsumer
 metadata:
   name: jack2
@@ -479,7 +479,7 @@ EOF
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpserver-route
@@ -557,7 +557,7 @@ This example restrict the user `jack2` to only `GET` on the resource.
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpserver-route
@@ -639,7 +639,7 @@ Also, disable the `keyAuth`, you can set the `enable: false` from the `authentic
 
 ```shell
 kubectl apply -f - <<EOF
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: httpserver-route

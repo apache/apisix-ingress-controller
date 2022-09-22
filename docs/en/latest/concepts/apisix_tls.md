@@ -27,7 +27,7 @@ Secret must have two keys `cert` and `key`, which used to store the certificate 
 PEM format respectively.
 
 ```shell
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixTls
 metadata:
   name: sample-tls

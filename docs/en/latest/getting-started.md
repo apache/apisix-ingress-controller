@@ -46,7 +46,7 @@ values={[
 <TabItem value="apisix">
 
 ```yaml title="httpbin-route.yaml"
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpserver-route

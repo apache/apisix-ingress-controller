@@ -34,7 +34,7 @@ Before starting, please make sure that Apache APISIX (version >= 2.13)and APISIX
 If you need to monitor Apache APISIX simultaneously, you can create the following ApisixClusterConfig resource.
 
 ```yaml
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixClusterConfig
 metadata:
   name: default
@@ -49,7 +49,7 @@ spec:
 Let's make a basic routing setup, and please note that further configuration should be done based on your local backend service information. The primary solution concept is to use the `public-api` plugin to protect the routes exposed by *Prometheus*. For a more detailed configuration, you can refer to the [example](https://apisix.apache.org/docs/apisix/plugins/public-api/#example) section of the `public-api` plugin.
 
 ```yaml
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: prometheus-route

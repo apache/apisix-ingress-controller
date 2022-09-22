@@ -46,7 +46,7 @@ In order to let Apache APISIX proxies requests to httpbin, we need to create an 
 
 ```yaml
 # httpbin-route.yaml
-apiVersion: apisix.apache.org/v2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
   name: httpserver-route
