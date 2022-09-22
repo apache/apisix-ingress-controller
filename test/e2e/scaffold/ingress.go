@@ -198,6 +198,13 @@ rules:
     - get
     - list
     - watch
+  - apiGroups:
+    - admissionregistration.k8s.io
+    resources:
+    - validatingwebhookconfigurations
+    verbs:
+    - get
+    - update
 `
 	_clusterRoleBinding = `
 apiVersion: rbac.authorization.k8s.io/v1
@@ -229,77 +236,37 @@ spec:
     app: ingress-apisix-controller-deployment-e2e-test
 `
 	_ingressAPISIXAdmissionWebhook = `
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
-  name: apisix-validation-webhooks-e2e-test
+  namespace: %s
+  name: ingress-apisix-webhook
+  labels:
+    app: ingress-apisix-webhhok
 webhooks:
-  - name: apisixroute-validator-webhook.apisix.apache.org
-    clientConfig:
-      service:
-        name: webhook
-        namespace: %s
-        port: 8443
-        path: "/validation/apisixroutes"
-      caBundle: %s
-    rules:
-      - operations: [ "CREATE", "UPDATE" ]
-        apiGroups: ["apisix.apache.org"]
-        apiVersions: ["*"]
-        resources: ["apisixroutes"]
-    timeoutSeconds: 30
-    failurePolicy: Fail
-  - name: apisixconsumer-validator-webhook.apisix.apache.org
-    clientConfig:
-      service:
-        name: webhook
-        namespace: %s
-        port: 8443
-        path: "/validation/apisixconsumers"
-      caBundle: %s
-    rules:
-      - operations: [ "CREATE", "UPDATE" ]
-        apiGroups: ["apisix.apache.org"]
-        apiVersions: ["*"]
-        resources: ["apisixconsumers"]
-    timeoutSeconds: 30
-    failurePolicy: Fail
-  - name: apisixtls-validator-webhook.apisix.apache.org
-    clientConfig:
-      service:
-        name: webhook
-        namespace: %s
-        port: 8443
-        path: "/validation/apisixtlses"
-      caBundle: %s
-    rules:
-      - operations: [ "CREATE", "UPDATE" ]
-        apiGroups: ["apisix.apache.org"]
-        apiVersions: ["*"]
-        resources: ["apisixtlses"]
-    timeoutSeconds: 30
-    failurePolicy: Fail
-  - name: apisixupstream-validator-webhook.apisix.apache.org
-    clientConfig:
-      service:
-        name: webhook
-        namespace: %s
-        port: 8443
-        path: "/validation/apisixupstreams"
-      caBundle: %s
-    rules:
-      - operations: [ "CREATE", "UPDATE" ]
-        apiGroups: ["apisix.apache.org"]
-        apiVersions: ["*"]
-        resources: ["apisixupstreams"]
-    timeoutSeconds: 30
-    failurePolicy: Fail
-`
-	_webhookCertSecret = "webhook-certs"
-	_volumeMounts      = `volumeMounts:
-           - name: webhook-certs
-             mountPath: /etc/webhook/certs
-             readOnly: true
+- name: apisix.validator.webhook.kubernetes.io
+  admissionReviewVersions: ["v1", "v1beta1"]
+  clientConfig:
+    service:
+      name: webhook
+      namespace: %s
+      port: 8443
+      path: /validation/apisix
+    caBundle: %s
+  rules:
+  - apiGroups: 
+    - "apisix.apache.org"
+    apiVersions:
+    - "*"
+    operations:
+      - CREATE
+      - UPDATE  
+    resources:
+      - apisixroutes
+      - apisixpluginconfigs
+  timeoutSeconds: 30
+  failurePolicy: Fail
+  sideEffects: None
 `
 )
 
@@ -392,7 +359,10 @@ spec:
             - "%s"
             - --enable-gateway-api
             - "true"
-          %s
+          volumeMounts:
+            - name: webhook-certs
+              mountPath: /etc/webhook/certs
+              readOnly: true
       volumes:
        - name: webhook-certs
          secret:
@@ -435,10 +405,10 @@ func (s *Scaffold) newIngressAPISIXController() error {
 
 	if s.opts.EnableWebhooks {
 		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.ApisixResourceSyncInterval,
-			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
+			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "webhook-certs")
 	} else {
 		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.ApisixResourceSyncInterval,
-			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
+			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "")
 	}
 
 	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment)
@@ -450,13 +420,12 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		assert.Nil(s.t, err, "create admission webhook service")
 
 		// get caBundle from the secret
-		secret, err := k8s.GetSecretE(s.t, s.kubectlOptions, _webhookCertSecret)
+		secret, err := k8s.GetSecretE(s.t, s.kubectlOptions, "webhook-certs")
 		assert.Nil(s.t, err, "get webhook secret")
 		cert, ok := secret.Data["cert.pem"]
 		assert.True(s.t, ok, "get cert.pem from the secret")
 		caBundle := base64.StdEncoding.EncodeToString(cert)
-
-		webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, caBundle, s.namespace, caBundle, s.namespace, caBundle, s.namespace, caBundle)
+		webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, s.namespace, caBundle)
 		ginkgo.GinkgoT().Log(webhookReg)
 		err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, webhookReg)
 		assert.Nil(s.t, err, "create webhook registration")
@@ -547,9 +516,9 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 		label = labels[0]
 	}
 	if s.opts.EnableWebhooks {
-		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
+		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "webhook-certs")
 	} else {
-		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
+		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "")
 	}
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressDeployment); err != nil {
 		return err

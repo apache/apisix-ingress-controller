@@ -25,13 +25,17 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-ingress-features: Enable webhooks", func() {
-	suites := func(s *scaffold.Scaffold) {
-		ginkgo.It("should fail to create the ApisixRoute with invalid plugin configuration", func() {
-			// #FIXME: just skip this case and we can enable it on other PR
-			ginkgo.Skip("just skip this case")
-			backendSvc, backendPorts := s.DefaultHTTPBackend()
-			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+	s := scaffold.NewScaffold(&scaffold.Options{
+		Name:                  "webhook",
+		IngressAPISIXReplicas: 1,
+		ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
+		EnableWebhooks:        true,
+	})
+
+	ginkgo.It("should fail to create the ApisixRoute with invalid plugin configuration", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -51,32 +55,13 @@ spec:
    - name: api-breaker
      enable: true
      config:
-       break_response_code: 100 # should in [200, 599]
+       break_response_code: 1000 # should in [200, 599]
 `, backendSvc, backendPorts[0])
 
-			err := s.CreateResourceFromString(ar)
-			assert.Error(ginkgo.GinkgoT(), err, "Failed to create ApisixRoute")
-			assert.Contains(ginkgo.GinkgoT(), err.Error(), "admission webhook")
-			assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
-			assert.Contains(ginkgo.GinkgoT(), err.Error(), "api-breaker plugin's config is invalid")
-			assert.Contains(ginkgo.GinkgoT(), err.Error(), "Must be greater than or equal to 200")
-		})
-	}
-
-	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
-		suites(scaffold.NewScaffold(&scaffold.Options{
-			Name:                  "webhook",
-			IngressAPISIXReplicas: 1,
-			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2beta3,
-			EnableWebhooks:        false,
-		}))
-	})
-	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
-		suites(scaffold.NewScaffold(&scaffold.Options{
-			Name:                  "webhook",
-			IngressAPISIXReplicas: 1,
-			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
-			EnableWebhooks:        false,
-		}))
+		err := s.CreateResourceFromString(ar)
+		assert.Error(ginkgo.GinkgoT(), err, "Failed to create ApisixRoute")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "api-breaker plugin's config is invalid")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "Must be less than or equal to 599")
 	})
 })

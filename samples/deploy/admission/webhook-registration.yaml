@@ -18,25 +18,31 @@
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
-  name: apisix-validations
+  namespace: ingress-apisix
+  name: ingress-apisix-webhook
   labels:
-    app: apisixroute-plugin-validator-webhook
-    kind: validating
+    app: ingress-apisix-webhhok
 webhooks:
-  - name: apisixroute-plugin-validator-webhook
-    clientConfig:
-      service:
-        name: apisix-admission-server
-        namespace: ingress-apisix
-        port: 8443
-        path: "/validation/apisixroutes/plugin"
-      caBundle: ${CA_BUNDLE}
-    rules:
-      - operations: [ "CREATE", "UPDATE" ]
-        apiGroups: ["apisix.apache.org"]
-        apiVersions: ["*"]
-        resources: ["apisixroutes"]
-    timeoutSeconds: 30
-    failurePolicy: Ignore
-    sideEffects: None
-    admissionReviewVersions: ["v1", "v1beta1"]
+- name: apisix.validator.webhook.kubernetes.io
+  admissionReviewVersions: ["v1", "v1beta1"]
+  clientConfig:
+    service:
+      name: webhook
+      namespace: ingress-apisix
+      port: 8443
+      path: /validation/apisix
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNzRENDQVppZ0F3SUJBZ0lVWU9hTGlJbHRncW9TWHROWVlJejRRV1BId3Y4d0RRWUpLb1pJaHZjTkFRRUwKQlFBd0hERWFNQmdHQTFVRUF4TVJUWGtnUlhoaGJYQnNaU0JUYVdkdVpYSXdJQmNOTWpJd09USXhNRFUxTnpBdwpXaGdQTWpFeU1qQTRNamd3TlRVM01EQmFNQ1V4SXpBaEJnTlZCQU1UR25kbFltaHZiMnN1YVc1bmNtVnpjeTFoCmNHbHphWGd1YzNaak1Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRVVYcGtoSXJnTjVOL25VVVoKdGp2UjN3KzVuTVZFK2J3ME9MOXU5Rkl0REhsWE1SdDVCYmt5RGRrb2dkT2xMZFdFbXA0UTltV2l0VkQwNEJWZworUEJEdDZPQnFUQ0JwakFPQmdOVkhROEJBZjhFQkFNQ0JhQXdFd1lEVlIwbEJBd3dDZ1lJS3dZQkJRVUhBd0V3CkRBWURWUjBUQVFIL0JBSXdBREFkQmdOVkhRNEVGZ1FVc29Ibk5sZmZVUlN3VERnNDgyUkxXNzAzT1Y4d0h3WUQKVlIwakJCZ3dGb0FVdGVmT0pMYTF6K1FsR3Y0MHRjd1hndm1jV3Fzd01RWURWUjBSQkNvd0tJSWFkMlZpYUc5dgpheTVwYm1keVpYTnpMV0Z3YVhOcGVDNXpkbU9IQk1BQUFoaUhCQW9BSWdJd0RRWUpLb1pJaHZjTkFRRUxCUUFECmdnRUJBQ3hDVjVxSVlkbnRRRXJCN0ZsZXlFOXgzM0krSmNMZ0RZVUVRZzZxSGNJeU1SWkRndGgxNTRFK3ExWXgKelFFTmZ3UWMrSlZUZnlvZk9BbVllZWliemRHWWdJbDNIWi9qVzJxaThyYk8wbmMxMkRhak82MlNIVUJNS0RubwpoQ28wUWtMWTdiYk9xdG1ORE44YVpvSm5JYXR5VkVIMGVVQkhONW9RMUdVclY2eE15aHljaTJqUGk2UHRaU05rCitCcE9DVGYrM1ZDeUkxaUVmODgxVDlBQjdQN3JXMzloaUpIalZHa2htdngzNzVQaUpHM3ZGQW5qM0l5VlQwWkIKeWZyNWxPaytnUGNxYVlYanBiZnRoR0NTaStiY2FYU2laTURZbWhWd2dTOFVBQXQ1c1RUWDVIbVM0VlZkMzJjNwpqajB6VTZaaG9zSFlVMG14OXpsQTZ4VlpQWXc9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+  rules:
+  - apiGroups: 
+    - "apisix.apache.org"
+    apiVersions:
+    - "*"
+    operations:
+      - CREATE
+      - UPDATE  
+    resources:
+      - apisixroutes
+      - apisixpluginconfigs
+  timeoutSeconds: 30
+  failurePolicy: Fail
+  sideEffects: None
