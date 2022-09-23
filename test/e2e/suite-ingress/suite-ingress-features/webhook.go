@@ -18,7 +18,7 @@ package ingress
 import (
 	"fmt"
 
-	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
@@ -50,7 +50,6 @@ spec:
    backends:
    - serviceName: %s
      servicePort: %d
-     resolveGranularity: service
    plugins:
    - name: api-breaker
      enable: true
@@ -63,5 +62,123 @@ spec:
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "api-breaker plugin's config is invalid")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "Must be less than or equal to 599")
+	})
+
+	ginkgo.It("should fail to update the ApisixRoute with invalid plugin configuration", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /status/*
+   backends:
+   - serviceName: %s
+     servicePort: %d
+   plugins:
+   - name: echo
+     enable: true
+     config:
+       body: "successsful" # should in [200, 599]
+`, backendSvc, backendPorts[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "ApisixRoute should be 1")
+
+		ar = fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /status/*
+   backends:
+   - serviceName: %s
+     servicePort: %d
+   plugins:
+   - name: echo
+     enable: true
+     config:
+       body_info: "failed"
+`, backendSvc, backendPorts[0])
+		err := s.CreateResourceFromString(ar)
+		assert.Error(ginkgo.GinkgoT(), err, "Failed to update ApisixRoute")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "echo plugin's config is invalid")
+	})
+
+	ginkgo.It("should fail to create the ApisixPluginConfig with invalid plugin configuration", func() {
+		apc := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+  name: echo
+spec:
+  plugins:
+  - name: echo
+    enable: true
+    config:
+      body-failed: "failed"
+`
+
+		err := s.CreateResourceFromString(apc)
+		assert.Error(ginkgo.GinkgoT(), err, "Failed to create ApisixRoute")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "echo plugin's config is invalid")
+	})
+
+	ginkgo.It("should fail to update the ApisixPluginConfig with invalid plugin configuration", func() {
+		apc := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+  name: echo
+spec:
+  plugins:
+  - name: echo
+    enable: true
+    config:
+      before_body: "This is the preface"
+      after_body: "This is the epilogue"
+      headers:
+        X-Foo: v1
+        X-Foo2: v2
+  - name: cors
+    enable: true
+`
+		assert.Error(ginkgo.GinkgoT(), s.CreateResourceFromString(apc), "creatint a ApisixPluginConfig")
+		assert.Error(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(1), "ApisixPluginConfig should be 1")
+
+		apc = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+  name: echo
+spec:
+  plugins:
+  - name: echo
+    enable: true
+    config:
+      body-failed: "failed"
+  - name: cors
+    enable: true
+`
+
+		err := s.CreateResourceFromString(apc)
+		assert.Error(ginkgo.GinkgoT(), err, "Failed to create ApisixRoute")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "echo plugin's config is invalid")
 	})
 })
