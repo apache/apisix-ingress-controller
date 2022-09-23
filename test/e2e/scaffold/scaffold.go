@@ -606,9 +606,8 @@ func waitExponentialBackoff(condFunc func() (bool, error)) error {
 
 // generateWebhookCert generates signed certs of webhook and create the corresponding secret by running a script.
 func generateWebhookCert(ns string) error {
-	commandTemplate := `testdata/cert.sh`
-	os.Setenv("namespace", ns)
-	cmd := exec.Command("/bin/sh", commandTemplate, "--namespace", "apisix")
+	commandTemplate := `testdata/webhook-create-signed-cert.sh`
+	cmd := exec.Command("/bin/sh", commandTemplate, "--namespace", ns)
 
 	output, err := cmd.Output()
 	if err != nil {
