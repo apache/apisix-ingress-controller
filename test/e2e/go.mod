@@ -123,4 +123,4 @@ replace github.com/apache/apisix-ingress-controller => ../../
 
 replace github.com/apache/apisix-ingress-controller/test/e2e/testbackend => ./testbackend
 
-replace github.com/gruntwork-io/terratest => github.com/lingsamuel/terratest v0.1.1
+replace github.com/gruntwork-io/terratest => github.com/api7/terratest v1.0.0
