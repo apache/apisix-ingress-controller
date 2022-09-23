@@ -217,7 +217,8 @@ type ApisixRouteStream struct {
 type ApisixRouteStreamMatch struct {
 	// IngressPort represents the port listening on the Ingress proxy server.
 	// It should be pre-defined as APISIX doesn't support dynamic listening.
-	IngressPort int32 `json:"ingressPort" yaml:"ingressPort"`
+	IngressPort int32  `json:"ingressPort" yaml:"ingressPort"`
+	Host        string `json:"host,omitempty" yaml:"host,omitempty"`
 }
 
 // ApisixRouteStreamBackend represents a TCP backend (a Kubernetes Service).
