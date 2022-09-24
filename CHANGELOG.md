@@ -57,7 +57,6 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * Sarasa Kisaragi
 * Xin Rong
 * John Chever
-* Xin Rong
 * cmssczy
 * dependabot[bot]
 * nevercase
@@ -68,7 +67,6 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * Fatpa
 * Hoshea Jiang
 * JasonZhu
-* Xin Rong
 * Yu.Bozhong
 * seven dickens
 * FesonX
