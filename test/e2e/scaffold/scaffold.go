@@ -156,6 +156,8 @@ func NewScaffold(o *Options) *Scaffold {
 	}
 	// Disable logging of terratest library.
 	logger.Default = logger.Discard
+	logger.Global = logger.Discard
+	logger.Terratest = logger.Discard
 
 	ginkgo.BeforeEach(s.beforeEach)
 	ginkgo.AfterEach(s.afterEach)

@@ -5,7 +5,7 @@
 // (the "License"); you may not use this file except in compliance with
 // the License.  You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	apiv1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -265,7 +265,7 @@ func (c *gatewayController) recordStatus(v *gatewayv1alpha2.Gateway, reason stri
 }
 
 // convLBIPToGatewayAddr convert LoadBalancerIngress to GatewayAddress format
-func convLBIPToGatewayAddr(lbips []apiv1.LoadBalancerIngress) []gatewayv1alpha2.GatewayAddress {
+func convLBIPToGatewayAddr(lbips []corev1.LoadBalancerIngress) []gatewayv1alpha2.GatewayAddress {
 	var gas []gatewayv1alpha2.GatewayAddress
 
 	// In the definition, there is also an address type called NamedAddress,
