@@ -6,7 +6,7 @@
 // "License"); you may not use this file except in compliance
 // with the License.  You may obtain a copy of the License at
 //
-//   http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing,
 // software distributed under the License is distributed on an
@@ -14,7 +14,6 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-//
 package translation
 
 import (
@@ -34,9 +33,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	kubev2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	kubev2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixconst "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
@@ -65,6 +62,8 @@ type IngressTranslator interface {
 	// TranslateOldIngress get route objects from cache
 	// Build upstream and plugin_config through route
 	TranslateOldIngress(kube.Ingress) (*translation.TranslateContext, error)
+	// TranslateSSLV2 translate networkingv1.IngressTLS to APISIX SSL
+	TranslateIngressTLS(namespace, ingName, secretName string, hosts []string) (*apisixv1.Ssl, error)
 }
 
 func NewIngressTranslator(opts *TranslatorOptions,
@@ -76,6 +75,30 @@ func NewIngressTranslator(opts *TranslatorOptions,
 	}
 
 	return t
+}
+
+func (t *translator) TranslateIngressTLS(namespace, ingName, secretName string, hosts []string) (*apisixv1.Ssl, error) {
+	apisixTls := kubev2.ApisixTls{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ApisixTls",
+			APIVersion: "apisix.apache.org/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%v-%v", ingName, "tls"),
+			Namespace: namespace,
+		},
+		Spec: &kubev2.ApisixTlsSpec{
+			Secret: kubev2.ApisixSecret{
+				Name:      secretName,
+				Namespace: namespace,
+			},
+		},
+	}
+	for _, host := range hosts {
+		apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2.HostType(host))
+	}
+
+	return t.ApisixTranslator.TranslateSSLV2(&apisixTls)
 }
 
 func (t *translator) TranslateIngress(ing kube.Ingress) (*translation.TranslateContext, error) {
@@ -101,25 +124,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress) (*translation
 
 	// add https
 	for _, tls := range ing.Spec.TLS {
-		apisixTls := kubev2.ApisixTls{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "ApisixTls",
-				APIVersion: "apisix.apache.org/v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
-				Namespace: ing.Namespace,
-			},
-			Spec: &kubev2.ApisixTlsSpec{},
-		}
-		for _, host := range tls.Hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2.HostType(host))
-		}
-		apisixTls.Spec.Secret = kubev2.ApisixSecret{
-			Name:      tls.SecretName,
-			Namespace: ing.Namespace,
-		}
-		ssl, err := t.ApisixTranslator.TranslateSSLV2(&apisixTls)
+		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
 		if err != nil {
 			log.Errorw("failed to translate ingress tls to apisix tls",
 				zap.Error(err),
@@ -219,25 +224,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress) (*t
 
 	// add https
 	for _, tls := range ing.Spec.TLS {
-		apisixTls := kubev2beta3.ApisixTls{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "ApisixTls",
-				APIVersion: "apisix.apache.org/v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
-				Namespace: ing.Namespace,
-			},
-			Spec: &kubev2beta3.ApisixTlsSpec{},
-		}
-		for _, host := range tls.Hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2beta3.HostType(host))
-		}
-		apisixTls.Spec.Secret = kubev2beta3.ApisixSecret{
-			Name:      tls.SecretName,
-			Namespace: ing.Namespace,
-		}
-		ssl, err := t.ApisixTranslator.TranslateSSLV2Beta3(&apisixTls)
+		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
 		if err != nil {
 			log.Errorw("failed to translate ingress tls to apisix tls",
 				zap.Error(err),
@@ -426,25 +413,7 @@ func (t *translator) translateOldIngressV1(ing *networkingv1.Ingress) (*translat
 	oldCtx := translation.DefaultEmptyTranslateContext()
 
 	for _, tls := range ing.Spec.TLS {
-		apisixTls := configv2.ApisixTls{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "ApisixTls",
-				APIVersion: "apisix.apache.org/v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
-				Namespace: ing.Namespace,
-			},
-			Spec: &configv2.ApisixTlsSpec{},
-		}
-		for _, host := range tls.Hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, configv2.HostType(host))
-		}
-		apisixTls.Spec.Secret = configv2.ApisixSecret{
-			Name:      tls.SecretName,
-			Namespace: ing.Namespace,
-		}
-		ssl, err := t.ApisixTranslator.TranslateSSLV2(&apisixTls)
+		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
 		if err != nil {
 			log.Debugw("failed to translate ingress tls to apisix tls",
 				zap.Error(err),
@@ -481,25 +450,7 @@ func (t *translator) translateOldIngressV1beta1(ing *networkingv1beta1.Ingress) 
 	oldCtx := translation.DefaultEmptyTranslateContext()
 
 	for _, tls := range ing.Spec.TLS {
-		apisixTls := configv2.ApisixTls{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "ApisixTls",
-				APIVersion: "apisix.apache.org/v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
-				Namespace: ing.Namespace,
-			},
-			Spec: &configv2.ApisixTlsSpec{},
-		}
-		for _, host := range tls.Hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, configv2.HostType(host))
-		}
-		apisixTls.Spec.Secret = configv2.ApisixSecret{
-			Name:      tls.SecretName,
-			Namespace: ing.Namespace,
-		}
-		ssl, err := t.ApisixTranslator.TranslateSSLV2(&apisixTls)
+		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
 		if err != nil {
 			continue
 		}
@@ -532,25 +483,7 @@ func (t *translator) translateOldIngressExtensionsv1beta1(ing *extensionsv1beta1
 	oldCtx := translation.DefaultEmptyTranslateContext()
 
 	for _, tls := range ing.Spec.TLS {
-		apisixTls := configv2.ApisixTls{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "ApisixTls",
-				APIVersion: "apisix.apache.org/v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%v-%v", ing.Name, "tls"),
-				Namespace: ing.Namespace,
-			},
-			Spec: &configv2.ApisixTlsSpec{},
-		}
-		for _, host := range tls.Hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, configv2.HostType(host))
-		}
-		apisixTls.Spec.Secret = configv2.ApisixSecret{
-			Name:      tls.SecretName,
-			Namespace: ing.Namespace,
-		}
-		ssl, err := t.ApisixTranslator.TranslateSSLV2(&apisixTls)
+		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
 		if err != nil {
 			continue
 		}

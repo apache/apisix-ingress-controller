@@ -59,7 +59,7 @@ func RecorderEventS(recorder record.EventRecorder, object runtime.Object, eventt
 // VerifyGeneration verify generation to decide whether to update status
 func VerifyGeneration(conditions *[]metav1.Condition, newCondition metav1.Condition) bool {
 	existingCondition := meta.FindStatusCondition(*conditions, newCondition.Type)
-	if existingCondition != nil && existingCondition.ObservedGeneration >= newCondition.ObservedGeneration {
+	if existingCondition != nil && existingCondition.ObservedGeneration > newCondition.ObservedGeneration {
 		return false
 	}
 	return true

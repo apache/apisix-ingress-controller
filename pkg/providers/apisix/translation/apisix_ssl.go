@@ -5,7 +5,7 @@
 // (the "License"); you may not use this file except in compliance with
 // the License.  You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -43,7 +43,9 @@ func (t *translator) TranslateSSLV2Beta3(tls *configv2beta3.ApisixTls) (*apisixv
 		Key:    string(key),
 		Status: 1,
 		Labels: map[string]string{
-			"managed-by": "apisix-ingress-controller",
+			translation.MetaSecretNamespace: tls.Spec.Secret.Namespace,
+			translation.MetaSecretName:      tls.Spec.Secret.Name,
+			"managed-by":                    "apisix-ingress-controller",
 		},
 	}
 	if tls.Spec.Client != nil {
@@ -85,7 +87,9 @@ func (t *translator) TranslateSSLV2(tls *configv2.ApisixTls) (*apisixv1.Ssl, err
 		Key:    string(key),
 		Status: 1,
 		Labels: map[string]string{
-			"managed-by": "apisix-ingress-controller",
+			translation.MetaSecretNamespace: tls.Spec.Secret.Namespace,
+			translation.MetaSecretName:      tls.Spec.Secret.Name,
+			"managed-by":                    "apisix-ingress-controller",
 		},
 	}
 	if tls.Spec.Client != nil {
