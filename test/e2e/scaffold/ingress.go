@@ -198,13 +198,6 @@ rules:
     - get
     - list
     - watch
-  - apiGroups:
-    - admissionregistration.k8s.io
-    resources:
-    - validatingwebhookconfigurations
-    verbs:
-    - get
-    - update
 `
 	_clusterRoleBinding = `
 apiVersion: rbac.authorization.k8s.io/v1
@@ -267,6 +260,9 @@ webhooks:
   timeoutSeconds: 30
   failurePolicy: Fail
   sideEffects: None
+  namespaceSelector:
+    matchLabels:
+      %s: %s
 `
 )
 
@@ -425,7 +421,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		cert, ok := secret.Data["cert.pem"]
 		assert.True(s.t, ok, "get cert.pem from the secret")
 		caBundle := base64.StdEncoding.EncodeToString(cert)
-		webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, s.namespace, caBundle)
+		webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, s.namespace, caBundle, "apisix.ingress.watch", s.opts.NamespaceSelectorLabel["apisix.ingress.watch"])
 		ginkgo.GinkgoT().Log(webhookReg)
 		err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, webhookReg)
 		assert.Nil(s.t, err, "create webhook registration")

@@ -83,12 +83,16 @@ func validateApisixRouteV2(ctx context.Context, review *kwhmodel.AdmissionReview
 	}
 
 	for _, h := range ar.Spec.HTTP {
-		for _, p := range h.Plugins {
-			if p.Enable {
-				if v, err := ValidatePlugin(client, p.Name, p.Config); !v {
+		for _, plugin := range h.Plugins {
+			if plugin.Enable {
+				pluginConfig := plugin.Config
+				if pluginConfig == nil {
+					pluginConfig = map[string]interface{}{}
+				}
+				if v, err := ValidatePlugin(client, plugin.Name, pluginConfig); !v {
 					valid = false
 					msgs = append(msgs, err.Error())
-					log.Warnf("failed to validate plugin %s: %s", p.Name, err)
+					log.Warnf("failed to validate plugin %s: %s", plugin.Name, err)
 				}
 			}
 		}
@@ -113,7 +117,11 @@ func validateApisixPluginConfigV2(ctx context.Context, review *kwhmodel.Admissio
 
 	for _, plugin := range apc.Spec.Plugins {
 		if plugin.Enable {
-			if v, err := ValidatePlugin(client, plugin.Name, plugin.Config); !v {
+			pluginConfig := plugin.Config
+			if pluginConfig == nil {
+				pluginConfig = map[string]interface{}{}
+			}
+			if v, err := ValidatePlugin(client, plugin.Name, pluginConfig); !v {
 				valid = false
 				msgs = append(msgs, err.Error())
 				log.Warnf("failed to validate plugin %s: %s", plugin.Name, err)

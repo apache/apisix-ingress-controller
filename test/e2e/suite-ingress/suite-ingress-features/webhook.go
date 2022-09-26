@@ -86,9 +86,9 @@ spec:
    - name: echo
      enable: true
      config:
-       body: "successsful" # should in [200, 599]
+       body: "successsful"
 `, backendSvc, backendPorts[0])
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creating ApisixRoute")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "ApisixRoute should be 1")
 
 		ar = fmt.Sprintf(`
@@ -158,8 +158,8 @@ spec:
   - name: cors
     enable: true
 `
-		assert.Error(ginkgo.GinkgoT(), s.CreateResourceFromString(apc), "creatint a ApisixPluginConfig")
-		assert.Error(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(1), "ApisixPluginConfig should be 1")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apc), "creatint a ApisixPluginConfig")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(1), "ApisixPluginConfig should be 1")
 
 		apc = `
 apiVersion: apisix.apache.org/v2
@@ -175,7 +175,6 @@ spec:
   - name: cors
     enable: true
 `
-
 		err := s.CreateResourceFromString(apc)
 		assert.Error(ginkgo.GinkgoT(), err, "Failed to create ApisixRoute")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")

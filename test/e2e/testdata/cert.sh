@@ -43,7 +43,7 @@ cd ${tmpdir}
 go install github.com/cloudflare/cfssl/cmd/cfssl@latest
 go install github.com/cloudflare/cfssl/cmd/cfssljson@latest
 GOBIN=$(go env GOPATH)/bin
-wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O jq 2>/dev/null && chmod +x jq
+#wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O jq 2>/dev/null && chmod +x jq
 
 PATH=$PATH:$GOBIN:$tmpdir
 
@@ -56,9 +56,12 @@ svc_dns=${service}.${namespace}.svc
 cat <<EOF | cfssl genkey - | cfssljson -bare server
 {
   "hosts": [
+    "${service}",
+    "${service}.${namespace}",
     "${svc_dns}",
-    "192.0.2.24",
-    "10.0.34.2"
+    "${service}.${namespace}.pod",
+    "${service}.${namespace}.svc.cluster.local",
+    "${service}.${namespace}.pod.cluster.local"
   ],
   "CN": "${svc_dns}",
   "key": {
@@ -79,7 +82,7 @@ metadata:
   name: ${csrName}
 spec:
   request: $(cat server.csr | base64 | tr -d '\n')
-  signerName: example.com/serving
+  signerName: kubernetes.io/kubelet-serving
   usages:
   - digital signature
   - key encipherment
