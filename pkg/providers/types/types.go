@@ -57,6 +57,9 @@ type ListerInformer struct {
 
 	ApisixUpstreamLister   kube.ApisixUpstreamLister
 	ApisixUpstreamInformer cache.SharedIndexInformer
+
+	ConfigMapLister   listerscorev1.ConfigMapLister
+	ConfigMapInformer cache.SharedIndexInformer
 }
 
 func (c *ListerInformer) Run(ctx context.Context) {
@@ -70,6 +73,9 @@ func (c *ListerInformer) Run(ctx context.Context) {
 	})
 	e.Add(func() {
 		c.SecretInformer.Run(ctx.Done())
+	})
+	e.Add(func() {
+		c.ConfigMapInformer.Run(ctx.Done())
 	})
 	e.Add(func() {
 		c.PodInformer.Run(ctx.Done())
@@ -109,6 +115,9 @@ func (c *Common) RecordEventS(object runtime.Object, eventtype, reason string, m
 
 // TODO: Move sync utils to apisix.APISIX interface?
 func (c *Common) SyncManifests(ctx context.Context, added, updated, deleted *utils.Manifest) error {
+	if c.APISIX == nil {
+		log.Error("c.APISIX == nil")
+	}
 	return utils.SyncManifests(ctx, c.APISIX, c.Config.APISIX.DefaultClusterName, added, updated, deleted)
 }
 
@@ -123,6 +132,18 @@ func (c *Common) SyncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types.Eve
 		_, err = c.APISIX.Cluster(clusterName).SSL().Update(ctx, ssl)
 	} else {
 		_, err = c.APISIX.Cluster(clusterName).SSL().Create(ctx, ssl)
+	}
+	return err
+}
+
+func (c *Common) SyncPluginMetadata(ctx context.Context, pm *apisixv1.PluginMetadata, event types.EventType) (err error) {
+	clusterName := c.Config.APISIX.DefaultClusterName
+	if event == types.EventDelete {
+		err = c.APISIX.Cluster(clusterName).PluginMetadata().Delete(ctx, pm)
+	} else if event == types.EventUpdate {
+		_, err = c.APISIX.Cluster(clusterName).PluginMetadata().Update(ctx, pm)
+	} else {
+		_, err = c.APISIX.Cluster(clusterName).PluginMetadata().Create(ctx, pm)
 	}
 	return err
 }

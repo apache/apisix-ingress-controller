@@ -244,6 +244,9 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 	secretInformer := kubeFactory.Core().V1().Secrets().Informer()
 	secretLister := kubeFactory.Core().V1().Secrets().Lister()
 
+	configmapInformer := kubeFactory.Core().V1().ConfigMaps().Informer()
+	configmapLister := kubeFactory.Core().V1().ConfigMaps().Lister()
+
 	listerInformer := &providertypes.ListerInformer{
 		EpLister:               epLister,
 		EpInformer:             epInformer,
@@ -255,6 +258,8 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		PodInformer:            podInformer,
 		ApisixUpstreamLister:   apisixUpstreamLister,
 		ApisixUpstreamInformer: apisixUpstreamInformer,
+		ConfigMapInformer:      configmapInformer,
+		ConfigMapLister:        configmapLister,
 	}
 
 	return listerInformer

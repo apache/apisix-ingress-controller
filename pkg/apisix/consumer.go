@@ -155,7 +155,7 @@ func (r *consumerClient) Create(ctx context.Context, obj *v1.Consumer) (*v1.Cons
 
 	url := r.url + "/" + obj.Username
 	log.Debugw("creating consumer", zap.ByteString("body", data), zap.String("url", url))
-	resp, err := r.cluster.createResource(ctx, url, "consumer", bytes.NewReader(data))
+	resp, err := r.cluster.createResource(ctx, url, "consumer", data)
 	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err != nil {
 		log.Errorf("failed to create consumer: %s", err)

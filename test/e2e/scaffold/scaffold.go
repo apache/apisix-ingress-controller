@@ -488,6 +488,11 @@ func (s *Scaffold) afterEach() {
 			err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
 			assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
 		}
+		// Get the logs of ingress
+		output := s.GetDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
+		if output != "" {
+			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		}
 	} else {
 		// if the test case is successful, just delete namespace
 		err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)

@@ -167,11 +167,12 @@ func DiffPluginConfigs(olds, news []*apisixv1.PluginConfig) (added, updated, del
 }
 
 type Manifest struct {
-	Routes        []*apisixv1.Route
-	Upstreams     []*apisixv1.Upstream
-	StreamRoutes  []*apisixv1.StreamRoute
-	SSLs          []*apisixv1.Ssl
-	PluginConfigs []*apisixv1.PluginConfig
+	Routes          []*apisixv1.Route
+	Upstreams       []*apisixv1.Upstream
+	StreamRoutes    []*apisixv1.StreamRoute
+	SSLs            []*apisixv1.Ssl
+	PluginConfigs   []*apisixv1.PluginConfig
+	PluginMetadatas []*apisixv1.PluginMetadata
 }
 
 func (m *Manifest) Diff(om *Manifest) (added, updated, deleted *Manifest) {
@@ -242,6 +243,11 @@ func SyncManifests(ctx context.Context, apisix apisix.APISIX, clusterName string
 				merr = multierror.Append(merr, err)
 			}
 		}
+		for _, pm := range added.PluginMetadatas {
+			if _, err := apisix.Cluster(clusterName).PluginMetadata().Create(ctx, pm); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
 	}
 	if updated != nil {
 		for _, ssl := range updated.SSLs {
@@ -265,7 +271,12 @@ func SyncManifests(ctx context.Context, apisix apisix.APISIX, clusterName string
 			}
 		}
 		for _, sr := range updated.StreamRoutes {
-			if _, err := apisix.Cluster(clusterName).StreamRoute().Create(ctx, sr); err != nil {
+			if _, err := apisix.Cluster(clusterName).StreamRoute().Update(ctx, sr); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
+		for _, pm := range updated.PluginMetadatas {
+			if _, err := apisix.Cluster(clusterName).PluginMetadata().Update(ctx, pm); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
@@ -363,6 +374,11 @@ func SyncManifests(ctx context.Context, apisix apisix.APISIX, clusterName string
 						zap.String("plugin_config_name", pc.Name),
 					)
 				}
+			}
+		}
+		for _, pm := range deleted.PluginMetadatas {
+			if err := apisix.Cluster(clusterName).PluginMetadata().Delete(ctx, pm); err != nil {
+				merr = multierror.Append(merr, err)
 			}
 		}
 	}

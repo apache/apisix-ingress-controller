@@ -157,7 +157,7 @@ func (r *globalRuleClient) Create(ctx context.Context, obj *v1.GlobalRule) (*v1.
 
 	url := r.url + "/" + obj.ID
 	log.Debugw("creating global_rule", zap.ByteString("body", data), zap.String("url", url))
-	resp, err := r.cluster.createResource(ctx, url, "globalRule", bytes.NewReader(data))
+	resp, err := r.cluster.createResource(ctx, url, "globalRule", data)
 	r.cluster.metricsCollector.IncrAPISIXRequest("globalRule")
 	if err != nil {
 		log.Errorf("failed to create global_rule: %s", err)

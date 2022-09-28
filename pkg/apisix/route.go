@@ -158,7 +158,7 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 
 	url := r.url + "/" + obj.ID
 	log.Debugw("creating route", zap.ByteString("body", data), zap.String("url", url))
-	resp, err := r.cluster.createResource(ctx, url, "route", bytes.NewReader(data))
+	resp, err := r.cluster.createResource(ctx, url, "route", data)
 	r.cluster.metricsCollector.IncrAPISIXRequest("route")
 	if err != nil {
 		log.Errorf("failed to create route: %s", err)

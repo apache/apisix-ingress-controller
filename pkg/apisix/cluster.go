@@ -16,6 +16,7 @@
 package apisix
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -104,6 +105,7 @@ type cluster struct {
 	pluginConfig            PluginConfig
 	metricsCollector        metrics.Collector
 	upstreamServiceRelation UpstreamServiceRelation
+	pluginMetadata          PluginMetadata
 }
 
 func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
@@ -146,6 +148,7 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 	c.schema = newSchemaClient(c)
 	c.pluginConfig = newPluginConfigClient(c)
 	c.upstreamServiceRelation = newUpstreamServiceRelation(c)
+	c.pluginMetadata = newPluginMetadataClient(c)
 
 	c.cache, err = cache.NewMemDBCache()
 	if err != nil {
@@ -462,6 +465,10 @@ func (c *cluster) Schema() Schema {
 	return c.schema
 }
 
+func (c *cluster) PluginMetadata() PluginMetadata {
+	return c.pluginMetadata
+}
+
 func (c *cluster) UpstreamServiceRelation() UpstreamServiceRelation {
 	return c.upstreamServiceRelation
 }
@@ -599,8 +606,13 @@ func (c *cluster) listResource(ctx context.Context, url, resource string) (*list
 	return &list, nil
 }
 
-func (c *cluster) createResource(ctx context.Context, url, resource string, body io.Reader) (*createResponse, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
+func (c *cluster) createResource(ctx context.Context, url, resource string, body []byte) (*createResponse, error) {
+	log.Debugw("creating resource",
+		zap.String("name", resource),
+		zap.String("url", url),
+		zap.ByteString("body", body),
+	)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}

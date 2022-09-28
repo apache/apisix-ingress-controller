@@ -148,7 +148,7 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	}
 	url := s.url + "/" + obj.ID
 	log.Debugw("creating ssl", zap.ByteString("body", data), zap.String("url", url))
-	resp, err := s.cluster.createResource(ctx, url, "ssl", bytes.NewReader(data))
+	resp, err := s.cluster.createResource(ctx, url, "ssl", data)
 	s.cluster.metricsCollector.IncrAPISIXRequest("ssl")
 	if err != nil {
 		log.Errorf("failed to create ssl: %s", err)

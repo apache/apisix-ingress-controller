@@ -161,7 +161,7 @@ func (r *streamRouteClient) Create(ctx context.Context, obj *v1.StreamRoute) (*v
 
 	url := r.url + "/" + obj.ID
 	log.Debugw("creating stream_route", zap.ByteString("body", data), zap.String("url", url))
-	resp, err := r.cluster.createResource(ctx, url, "streamRoute", bytes.NewReader(data))
+	resp, err := r.cluster.createResource(ctx, url, "streamRoute", data)
 	r.cluster.metricsCollector.IncrAPISIXRequest("streamRoute")
 	if err != nil {
 		log.Errorf("failed to create stream_route: %s", err)

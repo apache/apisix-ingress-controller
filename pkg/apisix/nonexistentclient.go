@@ -39,6 +39,7 @@ func newNonExistentCluster() *nonExistentCluster {
 			schema:                  &dummySchema{},
 			pluginConfig:            &dummyPluginConfig{},
 			upstreamServiceRelation: &dummyUpstreamServiceRelation{},
+			pluginMetadata:          &dummyPluginMetadata{},
 		},
 	}
 }
@@ -54,6 +55,7 @@ type embedDummyResourceImplementer struct {
 	schema                  Schema
 	pluginConfig            PluginConfig
 	upstreamServiceRelation UpstreamServiceRelation
+	pluginMetadata          PluginMetadata
 }
 
 type dummyRoute struct{}
@@ -258,6 +260,25 @@ func (f *dummyUpstreamServiceRelation) Delete(_ context.Context, _ string) error
 	return ErrClusterNotExist
 }
 
+type dummyPluginMetadata struct {
+}
+
+func (f *dummyPluginMetadata) Get(_ context.Context, _ string) (*v1.PluginMetadata, error) {
+	return nil, ErrClusterNotExist
+}
+func (f *dummyPluginMetadata) Create(_ context.Context, _ *v1.PluginMetadata) (*v1.PluginMetadata, error) {
+	return nil, ErrClusterNotExist
+}
+func (f *dummyPluginMetadata) List(_ context.Context) ([]*v1.PluginMetadata, error) {
+	return nil, ErrClusterNotExist
+}
+func (f *dummyPluginMetadata) Delete(_ context.Context, _ *v1.PluginMetadata) error {
+	return ErrClusterNotExist
+}
+func (f *dummyPluginMetadata) Update(_ context.Context, _ *v1.PluginMetadata) (*v1.PluginMetadata, error) {
+	return nil, ErrClusterNotExist
+}
+
 func (nc *nonExistentCluster) Route() Route {
 	return nc.route
 }
@@ -292,6 +313,9 @@ func (nc *nonExistentCluster) PluginConfig() PluginConfig {
 
 func (nc *nonExistentCluster) Schema() Schema {
 	return nc.schema
+}
+func (nc *nonExistentCluster) PluginMetadata() PluginMetadata {
+	return nc.pluginMetadata
 }
 
 func (nc *nonExistentCluster) UpstreamServiceRelation() UpstreamServiceRelation {

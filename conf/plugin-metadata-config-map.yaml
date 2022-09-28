@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: plugin-metadata-config-map
+data:
+  config.yaml: |
+    - cluster: default
+      plugins:
+      - name : http-logger
+        metadata: 
+          log_format:
+            host: "$host"
+            client_ip: "$remote_addr"
+      - name: kafka-logger
+        metadata:
+          log_format:
+            host: "$host"
+      - name: datadog
+        metadata:
+          host: "DogStatsD.server.domain"
+          port: 8125
+          namespace: "apisix" 
+    - cluster: sddsass
+    - cluster: Xxxxx
