@@ -5,7 +5,7 @@
 // (the "License"); you may not use this file except in compliance with
 // the License.  You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,7 +28,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
-	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type endpointsController struct {
@@ -103,22 +102,12 @@ func (c *endpointsController) sync(ctx context.Context, ev *types.Event) error {
 	if err != nil {
 		return err
 	}
-	if ev.Type == types.EventDelete {
-		clusterName := c.Config.APISIX.DefaultClusterName
-		err = c.APISIX.Cluster(clusterName).UpstreamServiceRelation().Delete(ctx,
-			&v1.UpstreamServiceRelation{
-				ServiceName: ns + "_" + ep.ServiceName(),
-			})
-		if err != nil {
-			return err
-		}
-	}
 	newestEp, err := c.epLister.GetEndpoint(ns, ep.ServiceName())
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
+		if errors.IsNotFound(err) {
+			return c.syncEmptyEndpoint(ctx, ep)
 		}
-		newestEp = ep
+		return err
 	}
 	return c.syncEndpoint(ctx, newestEp)
 }

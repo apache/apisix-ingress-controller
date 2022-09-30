@@ -6,7 +6,7 @@
 // "License"); you may not use this file except in compliance
 // with the License.  You may obtain a copy of the License at
 //
-//   http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing,
 // software distributed under the License is distributed on an
@@ -14,7 +14,6 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-//
 package gateway
 
 import (
@@ -77,6 +76,10 @@ type Provider struct {
 	gatewayTLSRouteController *gatewayTLSRouteController
 	gatewayTLSRouteInformer   cache.SharedIndexInformer
 	gatewayTLSRouteLister     gatewaylistersv1alpha2.TLSRouteLister
+
+	gatewayTCPRouteController *gatewayTCPRouteController
+	gatewayTCPRouteInformer   cache.SharedIndexInformer
+	gatewayTCPRouteLister     gatewaylistersv1alpha2.TCPRouteLister
 }
 
 type ProviderOptions struct {
@@ -135,6 +138,9 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	p.gatewayTLSRouteLister = gatewayFactory.Gateway().V1alpha2().TLSRoutes().Lister()
 	p.gatewayTLSRouteInformer = gatewayFactory.Gateway().V1alpha2().TLSRoutes().Informer()
 
+	p.gatewayTCPRouteLister = gatewayFactory.Gateway().V1alpha2().TCPRoutes().Lister()
+	p.gatewayTCPRouteInformer = gatewayFactory.Gateway().V1alpha2().TCPRoutes().Informer()
+
 	p.gatewayController = newGatewayController(p)
 
 	p.gatewayClassController, err = newGatewayClassController(p)
@@ -143,7 +149,10 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	}
 
 	p.gatewayHTTPRouteController = newGatewayHTTPRouteController(p)
+
 	p.gatewayTLSRouteController = newGatewayTLSRouteController(p)
+
+	p.gatewayTCPRouteController = newGatewayTCPRouteController(p)
 
 	return p, nil
 }
@@ -151,6 +160,7 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 func (p *Provider) Run(ctx context.Context) {
 	e := utils.ParallelExecutor{}
 
+	// Run informer
 	e.Add(func() {
 		p.gatewayInformer.Run(ctx.Done())
 	})
@@ -163,7 +173,11 @@ func (p *Provider) Run(ctx context.Context) {
 	e.Add(func() {
 		p.gatewayTLSRouteInformer.Run(ctx.Done())
 	})
+	e.Add(func() {
+		p.gatewayTCPRouteInformer.Run(ctx.Done())
+	})
 
+	// Run Controller
 	e.Add(func() {
 		p.gatewayController.run(ctx)
 	})
@@ -175,6 +189,9 @@ func (p *Provider) Run(ctx context.Context) {
 	})
 	e.Add(func() {
 		p.gatewayTLSRouteController.run(ctx)
+	})
+	e.Add(func() {
+		p.gatewayTCPRouteController.run(ctx)
 	})
 
 	e.Wait()

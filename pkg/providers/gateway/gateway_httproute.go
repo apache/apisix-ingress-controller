@@ -5,7 +5,7 @@
 // (the "License"); you may not use this file except in compliance with
 // the License.  You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -211,14 +211,63 @@ func (c *gatewayHTTPRouteController) onAdd(obj interface{}) {
 		return
 	}
 	log.Debugw("gateway HTTPRoute add event arrived",
+		zap.String("key", key),
 		zap.Any("object", obj),
 	)
 
-	log.Debugw("add HTTPRoute", zap.String("key", key))
 	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
 	})
 }
-func (c *gatewayHTTPRouteController) onUpdate(oldObj, newObj interface{}) {}
-func (c *gatewayHTTPRouteController) OnDelete(obj interface{})            {}
+
+func (c *gatewayHTTPRouteController) onUpdate(oldObj, newObj interface{}) {
+	oldHTTPRoute := oldObj.(*gatewayv1alpha2.HTTPRoute)
+	newHTTPRoute := newObj.(*gatewayv1alpha2.HTTPRoute)
+	if oldHTTPRoute.ResourceVersion >= newHTTPRoute.ResourceVersion {
+		return
+	}
+	key, err := cache.MetaNamespaceKeyFunc(oldObj)
+	if err != nil {
+		log.Errorw("found gateway HTTPRoute resource with bad meta namespace key",
+			zap.Error(err),
+		)
+		return
+	}
+	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+	log.Debugw("Gateway HTTPRoute update event arrived",
+		zap.String("key", key),
+		zap.Any("old object", oldObj),
+		zap.Any("new object", newObj),
+	)
+
+	c.workqueue.Add(&types.Event{
+		Type:   types.EventUpdate,
+		Object: key,
+	})
+}
+
+func (c *gatewayHTTPRouteController) OnDelete(obj interface{}) {
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Errorw("found Gateway HTTPRoute resource with bad meta namespace key",
+			zap.Error(err),
+		)
+		return
+	}
+	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+	log.Debugw("Gateway HTTPRoute delete event arrived",
+		zap.String("key", key),
+		zap.Any("object", obj),
+	)
+
+	c.workqueue.Add(&types.Event{
+		Type:      types.EventDelete,
+		Object:    key,
+		Tombstone: obj,
+	})
+}

@@ -5,7 +5,7 @@
 // (the "License"); you may not use this file except in compliance with
 // the License.  You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,13 +26,14 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 // translateUpstreamNotStrictly translates Upstream nodes with a loose way, only generate ID and Name for delete Event.
-func (t *translator) translateUpstreamNotStrictly(namespace, svcName, subset string, svcPort int32) (*apisixv1.Upstream, error) {
+func (t *translator) translateUpstreamNotStrictly(namespace, svcName, subset string, svcPort int32, resolveGranularity string) (*apisixv1.Upstream, error) {
 	ups := &apisixv1.Upstream{}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, subset, svcPort)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, subset, svcPort, resolveGranularity)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }
@@ -42,7 +43,7 @@ func (t *translator) translateService(namespace, svcName, subset, svcResolveGran
 	if err != nil {
 		return nil, err
 	}
-	if svcResolveGranularity == "service" {
+	if svcResolveGranularity == types.ResolveGranularity.Service {
 		ups.Nodes = apisixv1.UpstreamNodes{
 			{
 				Host:   svcClusterIP,
@@ -51,7 +52,7 @@ func (t *translator) translateService(namespace, svcName, subset, svcResolveGran
 			},
 		}
 	}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, subset, svcPort)
+	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, subset, svcPort, svcResolveGranularity)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }

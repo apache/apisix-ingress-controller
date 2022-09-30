@@ -25,7 +25,7 @@ This document explains how to get started with developing for Apache APISIX Ingr
 
 ## Prerequisites
 
-* Install [Go 1.13](https://golang.org/dl/) or later, and we use go module to manage the go package dependencies.
+* Install [Go 1.19](https://golang.org/dl/) or later, and we use go module to manage the go package dependencies.
 * Prepare an available Kubernetes cluster in your workstation, we recommend you to use [KIND](https://kind.sigs.k8s.io/).
 * Install Apache APISIX in Kubernetes by [Helm Chart](https://github.com/apache/apisix-helm-chart).
 

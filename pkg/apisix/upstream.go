@@ -5,7 +5,7 @@
 // (the "License"); you may not use this file except in compliance with
 // the License.  You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -139,7 +139,7 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		zap.String("cluster", "default"),
 	)
 
-	if err := u.cluster.upstreamServiceRelation.Create(ctx, &v1.UpstreamServiceRelation{UpstreamName: obj.Name}); err != nil {
+	if err := u.cluster.upstreamServiceRelation.Create(ctx, obj.Name); err != nil {
 		log.Errorf("failed to reflect upstreamService create to cache: %s", err)
 	}
 	if err := u.cluster.HasSynced(ctx); err != nil {
@@ -187,9 +187,6 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 			return err
 		}
 	}
-	if err := u.cluster.upstreamServiceRelation.Delete(ctx, &v1.UpstreamServiceRelation{UpstreamName: obj.Name}); err != nil {
-		log.Errorf("failed to delete upstreamService in cache: %s", err)
-	}
 	url := u.url + "/" + obj.ID
 	if err := u.cluster.deleteResource(ctx, url, "upstream"); err != nil {
 		u.cluster.metricsCollector.IncrAPISIXRequest("upstream")
@@ -207,7 +204,7 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		zap.String("url", u.url),
 	)
 
-	if err := u.cluster.upstreamServiceRelation.Create(ctx, &v1.UpstreamServiceRelation{UpstreamName: obj.Name}); err != nil {
+	if err := u.cluster.upstreamServiceRelation.Create(ctx, obj.Name); err != nil {
 		log.Errorf("failed to reflect upstreamService create to cache: %s", err)
 	}
 	if err := u.cluster.HasSynced(ctx); err != nil {

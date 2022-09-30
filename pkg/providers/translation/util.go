@@ -5,7 +5,7 @@
 // (the "License"); you may not use this file except in compliance with
 // the License.  You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,13 +33,26 @@ var (
 
 // ExtractKeyPair extracts certificate and private key pair from secret
 // Supports APISIX style ("cert" and "key") and Kube style ("tls.crt" and "tls.key)
+// If hasPrivateKey == false, also support extract CA from "ca.crt"
 func ExtractKeyPair(s *v1.Secret, hasPrivateKey bool) ([]byte, []byte, error) {
 	if _, ok := s.Data["cert"]; ok {
 		return extractApisixSecretKeyPair(s, hasPrivateKey)
 	} else if _, ok := s.Data[v1.TLSCertKey]; ok {
 		return extractKubeSecretKeyPair(s, hasPrivateKey)
+	} else if ca, ok := s.Data[v1.ServiceAccountRootCAKey]; ok && !hasPrivateKey {
+		return ca, nil, nil
 	} else {
 		return nil, nil, ErrUnknownSecretFormat
+	}
+}
+
+// ExtractCA extracts certificate from secret
+// Supports Kube style ("ca.crt")
+func ExtractCA(s *v1.Secret) ([]byte, error) {
+	if ca, ok := s.Data[v1.ServiceAccountRootCAKey]; ok {
+		return ca, nil
+	} else {
+		return nil, ErrUnknownSecretFormat
 	}
 }
 

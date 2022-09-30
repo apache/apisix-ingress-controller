@@ -81,6 +81,7 @@ spec:
     protocol: TCP
 `))
 		s.EnsureNumEndpointsReady(ginkgo.GinkgoT(), "mosquito", 1)
+		time.Sleep(30 * time.Second)
 		// setup Apisix Route for mqtt proxy
 		apisixRoute := `
 apiVersion: apisix.apache.org/v2
