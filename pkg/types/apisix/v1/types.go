@@ -402,7 +402,7 @@ type PluginConfig struct {
 
 type PluginMetadata struct {
 	Name     string
-	Metadata map[string]interface{}
+	Metadata map[string]any
 }
 
 // UpstreamServiceRelation Upstream association object

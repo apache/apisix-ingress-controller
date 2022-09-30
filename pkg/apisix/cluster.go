@@ -537,6 +537,11 @@ func (c *cluster) isFunctionDisabled(body string) bool {
 }
 
 func (c *cluster) getResource(ctx context.Context, url, resource string) (*getResponse, error) {
+	log.Debugw("get resource in cluster",
+		zap.String("cluster_name", c.name),
+		zap.String("name", resource),
+		zap.String("url", url),
+	)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -574,6 +579,11 @@ func (c *cluster) getResource(ctx context.Context, url, resource string) (*getRe
 }
 
 func (c *cluster) listResource(ctx context.Context, url, resource string) (*listResponse, error) {
+	log.Debugw("list resource in cluster",
+		zap.String("cluster_name", c.name),
+		zap.String("name", resource),
+		zap.String("url", url),
+	)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -607,7 +617,8 @@ func (c *cluster) listResource(ctx context.Context, url, resource string) (*list
 }
 
 func (c *cluster) createResource(ctx context.Context, url, resource string, body []byte) (*createResponse, error) {
-	log.Debugw("creating resource",
+	log.Debugw("creating resource in cluster",
+		zap.String("cluster_name", c.name),
 		zap.String("name", resource),
 		zap.String("url", url),
 		zap.ByteString("body", body),
@@ -644,8 +655,14 @@ func (c *cluster) createResource(ctx context.Context, url, resource string, body
 	return &cr, nil
 }
 
-func (c *cluster) updateResource(ctx context.Context, url, resource string, body io.Reader) (*updateResponse, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
+func (c *cluster) updateResource(ctx context.Context, url, resource string, body []byte) (*updateResponse, error) {
+	log.Debugw("updating resource in cluster",
+		zap.String("cluster_name", c.name),
+		zap.String("name", resource),
+		zap.String("url", url),
+		zap.ByteString("body", body),
+	)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -677,6 +694,11 @@ func (c *cluster) updateResource(ctx context.Context, url, resource string, body
 }
 
 func (c *cluster) deleteResource(ctx context.Context, url, resource string) error {
+	log.Debugw("deleting resource in cluster",
+		zap.String("cluster_name", c.name),
+		zap.String("name", resource),
+		zap.String("url", url),
+	)
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
 	if err != nil {
 		return err

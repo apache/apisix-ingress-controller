@@ -15,7 +15,6 @@
 package apisix
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 
@@ -214,8 +213,7 @@ func (r *globalRuleClient) Update(ctx context.Context, obj *v1.GlobalRule) (*v1.
 		return nil, err
 	}
 	url := r.url + "/" + obj.ID
-	log.Debugw("updating global_rule", zap.ByteString("body", body), zap.String("url", url))
-	resp, err := r.cluster.updateResource(ctx, url, "globalRule", bytes.NewReader(body))
+	resp, err := r.cluster.updateResource(ctx, url, "globalRule", body)
 	r.cluster.metricsCollector.IncrAPISIXRequest("globalRule")
 	if err != nil {
 		return nil, err

@@ -19,9 +19,7 @@ package translation
 import (
 	"fmt"
 
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"go.uber.org/zap"
-	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/yaml"
 )
 
 type ClusterMetadata []struct {
@@ -49,7 +47,6 @@ func (c *configYAMLParser) Key() string {
 }
 
 func (c *configYAMLParser) Parse(data string) (any, error) {
-	log.Error("configmap data", zap.String("data", data))
 	var clusters ClusterMetadata
 	if err := yaml.Unmarshal([]byte(data), &clusters); err != nil {
 		return nil, fmt.Errorf("unmarshal config.yaml faild, erros: %s", err.Error())

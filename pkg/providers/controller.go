@@ -307,12 +307,13 @@ func (c *Controller) run(ctx context.Context) {
 
 	c.informers = c.initSharedInformers()
 	common := &providertypes.Common{
-		ListerInformer:   c.informers,
-		Config:           c.cfg,
-		APISIX:           c.apisix,
-		KubeClient:       c.kubeClient,
-		MetricsCollector: c.MetricsCollector,
-		Recorder:         c.recorder,
+		ControllerNamespace: c.namespace,
+		ListerInformer:      c.informers,
+		Config:              c.cfg,
+		APISIX:              c.apisix,
+		KubeClient:          c.kubeClient,
+		MetricsCollector:    c.MetricsCollector,
+		Recorder:            c.recorder,
 	}
 
 	c.namespaceProvider, err = namespace.NewWatchingNamespaceProvider(ctx, c.kubeClient, c.cfg)

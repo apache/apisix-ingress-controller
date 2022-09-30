@@ -16,7 +16,6 @@
 package apisix
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 
@@ -204,8 +203,7 @@ func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Debugw("updating ssl", zap.ByteString("body", data), zap.String("url", url))
-	resp, err := s.cluster.updateResource(ctx, url, "ssl", bytes.NewReader(data))
+	resp, err := s.cluster.updateResource(ctx, url, "ssl", data)
 	s.cluster.metricsCollector.IncrAPISIXRequest("ssl")
 	if err != nil {
 		return nil, err

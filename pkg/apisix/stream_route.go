@@ -15,7 +15,6 @@
 package apisix
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 
@@ -217,8 +216,7 @@ func (r *streamRouteClient) Update(ctx context.Context, obj *v1.StreamRoute) (*v
 		return nil, err
 	}
 	url := r.url + "/" + obj.ID
-	log.Debugw("updating stream_route", zap.ByteString("body", body), zap.String("url", url))
-	resp, err := r.cluster.updateResource(ctx, url, "streamRoute", bytes.NewReader(body))
+	resp, err := r.cluster.updateResource(ctx, url, "streamRoute", body)
 	r.cluster.metricsCollector.IncrAPISIXRequest("streamRoute")
 	if err != nil {
 		return nil, err

@@ -19,10 +19,11 @@ package configmap
 import (
 	"context"
 
+	"k8s.io/client-go/tools/cache"
+
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
-	"k8s.io/client-go/tools/cache"
 )
 
 var _ Provider = (*configmapProvider)(nil)
@@ -47,7 +48,7 @@ func NewProvider(common *providertypes.Common) (Provider, error) {
 
 	p.configmapController = newConfigMapController(common)
 
-	p.configmapController.Subscription(p.cfg.PluginMetadataConfigMap)
+	p.configmapController.Subscription(common.ControllerNamespace, p.cfg.PluginMetadataConfigMap)
 
 	return p, nil
 }

@@ -91,6 +91,8 @@ type Common struct {
 	*config.Config
 	*ListerInformer
 
+	ControllerNamespace string
+
 	APISIX           apisix.APISIX
 	KubeClient       *kube.KubeClient
 	MetricsCollector metrics.Collector
@@ -115,10 +117,18 @@ func (c *Common) RecordEventS(object runtime.Object, eventtype, reason string, m
 
 // TODO: Move sync utils to apisix.APISIX interface?
 func (c *Common) SyncManifests(ctx context.Context, added, updated, deleted *utils.Manifest) error {
-	if c.APISIX == nil {
-		log.Error("c.APISIX == nil")
-	}
 	return utils.SyncManifests(ctx, c.APISIX, c.Config.APISIX.DefaultClusterName, added, updated, deleted)
+}
+
+// TODO: suppport multiple cluster
+func (c *Common) SyncClusterManifests(ctx context.Context, clusterName string, added, updated, deleted *utils.Manifest) error {
+	if clusterName != c.Config.APISIX.DefaultClusterName {
+		log.Errorw("cluster does not exist",
+			zap.String("cluster_name", clusterName),
+		)
+		return nil
+	}
+	return utils.SyncManifests(ctx, c.APISIX, clusterName, added, updated, deleted)
 }
 
 func (c *Common) SyncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types.EventType) error {

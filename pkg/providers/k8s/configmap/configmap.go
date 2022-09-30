@@ -32,12 +32,9 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
-// FIXME: Controller should be the Core Part,
-// Provider should act as "EventHandler", register there functions to Controller
-type EventHandler interface {
-	OnAdd()
-	OnUpdate()
-	OnDelete()
+type subscripKey struct {
+	namespace string
+	name      string
 }
 
 type configmapController struct {
@@ -48,7 +45,7 @@ type configmapController struct {
 	configmapInformer cache.SharedIndexInformer
 	configmapLister   v1.ConfigMapLister
 
-	subscriptionList map[string]struct{}
+	subscriptionList map[subscripKey]struct{}
 }
 
 func newConfigMapController(common *providertypes.Common) *configmapController {
@@ -59,7 +56,7 @@ func newConfigMapController(common *providertypes.Common) *configmapController {
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ConfigMap"),
 		workers:   1,
 
-		subscriptionList: map[string]struct{}{},
+		subscriptionList: map[subscripKey]struct{}{},
 
 		Common: common,
 	}
@@ -73,16 +70,22 @@ func newConfigMapController(common *providertypes.Common) *configmapController {
 	return ctl
 }
 
-func (c *configmapController) Subscription(configName string) {
-	c.subscriptionList[configName] = struct{}{}
+func (c *configmapController) Subscription(namespace, configName string) {
+	c.subscriptionList[subscripKey{
+		namespace: namespace,
+		name:      configName,
+	}] = struct{}{}
 }
 
 func (c *configmapController) IsSubscribing(key string) bool {
-	_, name, err := cache.SplitMetaNamespaceKey(key)
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return false
 	}
-	_, ok := c.subscriptionList[name]
+	_, ok := c.subscriptionList[subscripKey{
+		namespace: namespace,
+		name:      name,
+	}]
 	return ok
 }
 
@@ -113,58 +116,108 @@ func (c *configmapController) runWorker(ctx context.Context) {
 
 func (c *configmapController) sync(ctx context.Context, ev *types.Event) error {
 	key := ev.Object.(string)
+	log.Debugw("configmap sync event arrived",
+		zap.String("event_type", ev.Type.String()),
+		zap.Any("key", ev.Object),
+	)
+
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		log.Errorf("invalid resource key: %s", key)
 		return err
 	}
 	cm, err := c.configmapLister.ConfigMaps(namespace).Get(name)
-
-	log.Debugw("configmap sync event arrived",
-		zap.String("event_type", ev.Type.String()),
-		zap.Any("configmap", ev.Object),
-	)
-
-	pluginMetadatas := translation.TranslateConfigMapToPluginMetadatas(cm)
-
-	m := &utils.Manifest{
-		PluginMetadatas: pluginMetadatas,
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			log.Errorw("sync failed, unable to get ConfigMap",
+				zap.String("key", key),
+				zap.Error(err),
+			)
+			return err
+		}
+		if ev.Type != types.EventDelete {
+			log.Warnw("configmap was deleted before it can be delivered",
+				zap.String("key", key),
+			)
+			return nil
+		}
+		cm = ev.Tombstone.(*corev1.ConfigMap)
 	}
 
 	var (
-		added   *utils.Manifest
-		updated *utils.Manifest
-		deleted *utils.Manifest
+		configmap    *translation.ConfigMap
+		oldConfigmap *translation.ConfigMap
 	)
 
-	if ev.Type == types.EventDelete {
-		deleted = m
-	} else if ev.Type == types.EventAdd {
-		added = m
-	} else {
-		oldPluginMetadatas := translation.TranslateConfigMapToPluginMetadatas(ev.OldObject.(*corev1.ConfigMap))
-		om := &utils.Manifest{
-			PluginMetadatas: oldPluginMetadatas,
-		}
-		added, updated, deleted = m.Diff(om)
+	configmap, err = translation.TranslateConfigMap(cm)
+	if err != nil {
+		return err
+	}
+	if ev.Type == types.EventUpdate {
+		oldConfigmap, _ = translation.TranslateConfigMap(ev.OldObject.(*corev1.ConfigMap))
 	}
 
-	return c.SyncManifests(ctx, added, updated, deleted)
+	for clusterName, pluginMetadatas := range configmap.ConfigYaml.Data {
+		m := &utils.Manifest{
+			PluginMetadatas: pluginMetadatas,
+		}
+
+		var (
+			added   *utils.Manifest
+			updated *utils.Manifest
+			deleted *utils.Manifest
+		)
+
+		if ev.Type == types.EventDelete {
+			deleted = m
+		} else if ev.Type == types.EventAdd {
+			added = m
+		} else {
+			if oldConfigmap != nil {
+				oldPluginMetadatas := oldConfigmap.ConfigYaml.Data[clusterName]
+				om := &utils.Manifest{
+					PluginMetadatas: oldPluginMetadatas,
+				}
+				added, updated, deleted = m.Diff(om)
+			}
+		}
+		if err := c.SyncClusterManifests(ctx, clusterName, added, updated, deleted); err != nil {
+			log.Errorw("sync cluster failed", zap.Error(err))
+			return err
+		}
+	}
+	if ev.Type == types.EventUpdate && oldConfigmap != nil {
+		if oldConfigmap == nil {
+			return nil
+		}
+		for clusterName, pluginMetadatas := range oldConfigmap.ConfigYaml.Data {
+			if _, ok := configmap.ConfigYaml.Data[clusterName]; !ok {
+
+				deleted := &utils.Manifest{
+					PluginMetadatas: pluginMetadatas,
+				}
+				if err := c.SyncClusterManifests(ctx, clusterName, nil, nil, deleted); err != nil {
+					log.Errorw("sync cluster failed", zap.Error(err))
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (c *configmapController) handleSyncErr(event *types.Event, err error) {
-	name := event.Object.(string)
+	key := event.Object.(string)
 	if err != nil {
 		if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
 			log.Infow("sync configmap but not found, ignore",
 				zap.String("event_type", event.Type.String()),
-				zap.Any("configmap", event.Object),
+				zap.Any("key", key),
 			)
 			c.workqueue.Forget(event)
 			return
 		}
 		log.Warnw("sync configmap info failed, will retry",
-			zap.String("configmap", name),
+			zap.String("key", key),
 			zap.Error(err),
 		)
 		c.workqueue.AddRateLimited(event)

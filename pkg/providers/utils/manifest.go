@@ -166,6 +166,31 @@ func DiffPluginConfigs(olds, news []*apisixv1.PluginConfig) (added, updated, del
 	return
 }
 
+func DiffPluginMetadatas(olds, news []*apisixv1.PluginMetadata) (added, updated, deleted []*apisixv1.PluginMetadata) {
+	oldMap := make(map[string]*apisixv1.PluginMetadata, len(olds))
+	newMap := make(map[string]*apisixv1.PluginMetadata, len(news))
+	for _, pm := range olds {
+		oldMap[pm.Name] = pm
+	}
+	for _, pm := range news {
+		newMap[pm.Name] = pm
+	}
+
+	for _, pm := range news {
+		if ou, ok := oldMap[pm.Name]; !ok {
+			added = append(added, pm)
+		} else if !reflect.DeepEqual(ou, pm) {
+			updated = append(updated, pm)
+		}
+	}
+	for _, pm := range olds {
+		if _, ok := newMap[pm.Name]; !ok {
+			deleted = append(deleted, pm)
+		}
+	}
+	return
+}
+
 type Manifest struct {
 	Routes          []*apisixv1.Route
 	Upstreams       []*apisixv1.Upstream
@@ -181,33 +206,31 @@ func (m *Manifest) Diff(om *Manifest) (added, updated, deleted *Manifest) {
 	au, uu, du := DiffUpstreams(om.Upstreams, m.Upstreams)
 	asr, usr, dsr := DiffStreamRoutes(om.StreamRoutes, m.StreamRoutes)
 	apc, upc, dpc := DiffPluginConfigs(om.PluginConfigs, m.PluginConfigs)
+	apm, upm, dpm := DiffPluginMetadatas(om.PluginMetadatas, m.PluginMetadatas)
 
-	if ar != nil || au != nil || asr != nil || sa != nil || apc != nil {
-		added = &Manifest{
-			Routes:        ar,
-			Upstreams:     au,
-			StreamRoutes:  asr,
-			SSLs:          sa,
-			PluginConfigs: apc,
-		}
+	added = &Manifest{
+		Routes:          ar,
+		Upstreams:       au,
+		StreamRoutes:    asr,
+		SSLs:            sa,
+		PluginConfigs:   apc,
+		PluginMetadatas: apm,
 	}
-	if ur != nil || uu != nil || usr != nil || su != nil || upc != nil {
-		updated = &Manifest{
-			Routes:        ur,
-			Upstreams:     uu,
-			StreamRoutes:  usr,
-			SSLs:          su,
-			PluginConfigs: upc,
-		}
+	updated = &Manifest{
+		Routes:          ur,
+		Upstreams:       uu,
+		StreamRoutes:    usr,
+		SSLs:            su,
+		PluginConfigs:   upc,
+		PluginMetadatas: upm,
 	}
-	if dr != nil || du != nil || dsr != nil || sd != nil || dpc != nil {
-		deleted = &Manifest{
-			Routes:        dr,
-			Upstreams:     du,
-			StreamRoutes:  dsr,
-			SSLs:          sd,
-			PluginConfigs: dpc,
-		}
+	deleted = &Manifest{
+		Routes:          dr,
+		Upstreams:       du,
+		StreamRoutes:    dsr,
+		SSLs:            sd,
+		PluginConfigs:   dpc,
+		PluginMetadatas: dpm,
 	}
 	return
 }

@@ -16,7 +16,6 @@
 package apisix
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 
@@ -216,8 +215,7 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		return nil, err
 	}
 	url := r.url + "/" + obj.ID
-	log.Debugw("updating route", zap.ByteString("body", body), zap.String("url", url))
-	resp, err := r.cluster.updateResource(ctx, url, "route", bytes.NewReader(body))
+	resp, err := r.cluster.updateResource(ctx, url, "route", body)
 	r.cluster.metricsCollector.IncrAPISIXRequest("route")
 	if err != nil {
 		return nil, err

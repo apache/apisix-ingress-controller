@@ -15,7 +15,6 @@
 package apisix
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 
@@ -106,7 +105,6 @@ func (r *pluginMetadataClient) List(ctx context.Context) ([]*v1.PluginMetadata, 
 func (r *pluginMetadataClient) Create(ctx context.Context, obj *v1.PluginMetadata) (*v1.PluginMetadata, error) {
 	log.Debugw("try to create plugin metadata",
 		zap.String("name", obj.Name),
-		zap.Any("metadata", obj.Metadata),
 		zap.String("cluster", "default"),
 		zap.String("url", r.url),
 	)
@@ -116,6 +114,7 @@ func (r *pluginMetadataClient) Create(ctx context.Context, obj *v1.PluginMetadat
 	}
 	data, err := json.Marshal(obj.Metadata)
 	if err != nil {
+		log.Errorw("json marshal failed", zap.Error(err))
 		return nil, err
 	}
 
@@ -164,12 +163,12 @@ func (r *pluginMetadataClient) Update(ctx context.Context, obj *v1.PluginMetadat
 	if err := r.cluster.HasSynced(ctx); err != nil {
 		return nil, err
 	}
-	body, err := json.Marshal(obj)
+	body, err := json.Marshal(obj.Metadata)
 	if err != nil {
 		return nil, err
 	}
 	url := r.url + "/" + obj.Name
-	resp, err := r.cluster.updateResource(ctx, url, "pluginMetadata", bytes.NewReader(body))
+	resp, err := r.cluster.updateResource(ctx, url, "pluginMetadata", body)
 	r.cluster.metricsCollector.IncrAPISIXRequest("pluginMetadata")
 	if err != nil {
 		return nil, err
