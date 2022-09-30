@@ -17,14 +17,10 @@
 package translation
 
 import (
-	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-
-	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 var _configyaml = `- cluster: default
@@ -80,43 +76,4 @@ func TestConfigYAML(t *testing.T) {
 			},
 		},
 	}, config.PluginMetadata[1])
-	for _, clu := range config.PluginMetadata {
-		for _, metadata := range clu.Plugins {
-			body, err := json.Marshal(metadata.Metadata)
-			if err != nil {
-				fmt.Println(err.Error())
-				continue
-			}
-			fmt.Println(metadata.PluginName, string(body))
-		}
-	}
-	assert.Nil(t, cm)
-}
-
-func TestConfigMap(t *testing.T) {
-	cm := &corev1.ConfigMap{
-		Data: map[string]string{
-			"config.yaml": _configyaml,
-		},
-	}
-	data, err := parseDataOfConfigMap(cm)
-	assert.Nil(t, err)
-	configmap := &ConfigMap{
-		ConfigYaml: ConfigYAML{
-			Data: map[string][]*v1.PluginMetadata{},
-		},
-	}
-
-	for _, cluster := range data.PluginMetadata {
-		var pluginMetadatas []*v1.PluginMetadata
-		for _, plugin := range cluster.Plugins {
-			pluginMetadatas = append(pluginMetadatas, &v1.PluginMetadata{
-				Name:     plugin.PluginName,
-				Metadata: plugin.Metadata,
-			})
-			fmt.Println(plugin.Metadata)
-		}
-		configmap.ConfigYaml.Data[cluster.Cluster] = pluginMetadatas
-	}
-	assert.Nil(t, cm)
 }
