@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -352,6 +353,8 @@ spec:
             - %s
             - --ingress-status-address
             - "%s"
+            - --enable-admission
+            - "%t"
             - --enable-gateway-api
             - "true"
           volumeMounts:
@@ -361,8 +364,15 @@ spec:
       volumes:
        - name: webhook-certs
          secret:
-           secretName: %s
+           secretName: webhook-certs
+           optional: true
       serviceAccount: ingress-apisix-e2e-test-service-account
+`
+
+var VolumeMounts = `volumeMounts:
+           - name: webhook-certs
+             mountPath: /etc/webhook/certs
+             readOnly: true
 `
 
 func init() {
@@ -398,20 +408,24 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		label = labels[0]
 	}
 
-	if s.opts.EnableWebhooks {
-		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.ApisixResourceSyncInterval,
-			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "webhook-certs")
-	} else {
-		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.ApisixResourceSyncInterval,
-			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "")
-	}
+	ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate),
+		s.opts.IngressAPISIXReplicas,
+		s.namespace,
+		s.opts.ApisixResourceSyncInterval,
+		label,
+		s.opts.ApisixResourceVersion,
+		s.opts.APISIXPublishAddress,
+		s.opts.EnableWebhooks,
+	)
 
 	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
 
 	if s.opts.EnableWebhooks {
+		err = generateWebhookCert(s.namespace)
+		assert.Nil(s.t, err, "generate certs and create webhook secret")
 		admissionSvc := fmt.Sprintf(_ingressAPISIXAdmissionService, s.namespace)
-		err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, admissionSvc)
+		err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, admissionSvc)
 		assert.Nil(s.t, err, "create admission webhook service")
 
 		// get caBundle from the secret
@@ -434,7 +448,6 @@ func (s *Scaffold) newIngressAPISIXController() error {
 			assert.Nil(s.t, err, "deleting webhook registration")
 		})
 	}
-
 	return nil
 }
 
@@ -510,16 +523,26 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil {
 		label = labels[0]
 	}
-	if s.opts.EnableWebhooks {
-		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "webhook-certs")
-	} else {
-		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "")
-	}
+	ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.EnableWebhooks)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressDeployment); err != nil {
 		return err
 	}
 	if err := k8s.WaitUntilNumPodsCreatedE(s.t, s.kubectlOptions, s.labelSelector("app=ingress-apisix-controller-deployment-e2e-test"), desired, 5, 5*time.Second); err != nil {
 		return err
+	}
+	return nil
+}
+
+// generateWebhookCert generates signed certs of webhook and create the corresponding secret by running a script.
+func generateWebhookCert(ns string) error {
+	commandTemplate := `testdata/cert.sh`
+	os.Setenv("namespace", ns)
+	cmd := exec.Command("/bin/sh", commandTemplate, "--namespace", ns)
+
+	output, err := cmd.Output()
+	if err != nil {
+		ginkgo.GinkgoT().Errorf("%s", output)
+		return fmt.Errorf("failed to execute the script: %v", err)
 	}
 	return nil
 }

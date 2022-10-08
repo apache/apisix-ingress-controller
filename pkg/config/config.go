@@ -105,6 +105,7 @@ type KubernetesConfig struct {
 	WatchEndpointSlices bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
 	APIVersion          string             `json:"api_version" yaml:"api_version"`
 	EnableGatewayAPI    bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
+	EnableAdmission     bool               `json:"enable_admission" yaml:"enable_admission"`
 }
 
 // APISIXConfig contains all APISIX related config items.

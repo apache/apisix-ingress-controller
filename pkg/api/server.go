@@ -71,29 +71,31 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		httpServer.GET("/debug/pprof/*profile", gin.WrapF(srv.pprofMu.ServeHTTP))
 	}
 
-	cert, err := tls.LoadX509KeyPair(cfg.CertFilePath, cfg.KeyFilePath)
-	if err != nil {
-		log.Warnw("failed to load x509 key pair, will not start admission server",
-			zap.String("Error", err.Error()),
-			zap.String("CertFilePath", cfg.CertFilePath),
-			zap.String("KeyFilePath", cfg.KeyFilePath),
-		)
-	} else {
-		admission := gin.New()
-		admission.Use(gin.Recovery(), gin.Logger())
-		apirouter.MountWebhooks(admission, &apisix.ClusterOptions{
-			Name:             cfg.APISIX.DefaultClusterName,
-			AdminKey:         cfg.APISIX.DefaultClusterAdminKey,
-			BaseURL:          cfg.APISIX.DefaultClusterBaseURL,
-			MetricsCollector: metrics.NewPrometheusCollector(),
-		})
+	if cfg.Kubernetes.EnableAdmission {
+		cert, err := tls.LoadX509KeyPair(cfg.CertFilePath, cfg.KeyFilePath)
+		if err != nil {
+			log.Warnw("failed to load x509 key pair, will not start admission server",
+				zap.String("Error", err.Error()),
+				zap.String("CertFilePath", cfg.CertFilePath),
+				zap.String("KeyFilePath", cfg.KeyFilePath),
+			)
+		} else {
+			admission := gin.New()
+			admission.Use(gin.Recovery(), gin.Logger())
+			apirouter.MountWebhooks(admission, &apisix.ClusterOptions{
+				Name:             cfg.APISIX.DefaultClusterName,
+				AdminKey:         cfg.APISIX.DefaultClusterAdminKey,
+				BaseURL:          cfg.APISIX.DefaultClusterBaseURL,
+				MetricsCollector: metrics.NewPrometheusCollector(),
+			})
 
-		srv.admissionServer = &http.Server{
-			Addr:    cfg.HTTPSListen,
-			Handler: admission,
-			TLSConfig: &tls.Config{
-				Certificates: []tls.Certificate{cert},
-			},
+			srv.admissionServer = &http.Server{
+				Addr:    cfg.HTTPSListen,
+				Handler: admission,
+				TLSConfig: &tls.Config{
+					Certificates: []tls.Certificate{cert},
+				},
+			}
 		}
 	}
 
