@@ -41,6 +41,9 @@ GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM
 E2E_NODES ?= 4
 E2E_FLAKE_ATTEMPTS ?= 0
 E2E_SKIP_BUILD ?= 0
+# E2E_ENV = "dev"	Keep only failure logs
+# E2E_ENV = "ci"	Keep only debug logs
+# E2E_ENV = "debug"	Keep only debug logs and testing environment
 E2E_ENV ?= "dev"
 
 ### build:                Build apisix-ingress-controller

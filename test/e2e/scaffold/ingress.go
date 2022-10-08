@@ -365,14 +365,8 @@ spec:
        - name: webhook-certs
          secret:
            secretName: webhook-certs
-           optional: true
+           optional: %t
       serviceAccount: ingress-apisix-e2e-test-service-account
-`
-
-var VolumeMounts = `volumeMounts:
-           - name: webhook-certs
-             mountPath: /etc/webhook/certs
-             readOnly: true
 `
 
 func init() {
@@ -416,6 +410,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		s.opts.ApisixResourceVersion,
 		s.opts.APISIXPublishAddress,
 		s.opts.EnableWebhooks,
+		!s.opts.EnableWebhooks,
 	)
 
 	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment)
@@ -523,7 +518,16 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil {
 		label = labels[0]
 	}
-	ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.EnableWebhooks)
+	ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate),
+		desired,
+		s.namespace,
+		s.opts.ApisixResourceSyncInterval,
+		label,
+		s.opts.ApisixResourceVersion,
+		s.opts.APISIXPublishAddress,
+		s.opts.EnableWebhooks,
+		!s.opts.EnableWebhooks,
+	)
 	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressDeployment); err != nil {
 		return err
 	}
