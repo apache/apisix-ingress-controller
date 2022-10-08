@@ -457,28 +457,31 @@ func (s *Scaffold) beforeEach() {
 func (s *Scaffold) afterEach() {
 	defer ginkgo.GinkgoRecover()
 
-	if ginkgo.CurrentSpecReport().Failed() && os.Getenv("E2E_ENV") != "dev" {
+	if ginkgo.CurrentSpecReport().Failed() {
 		// dump and delete related resource
-		_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
-		output, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods")
-		if output != "" {
-			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+		env := os.Getenv("E2E_ENV")
+		if env == "ci" || env == "debug" {
+			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
+			output, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods")
+			if output != "" {
+				_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+			}
+			output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "describe", "pods")
+			if output != "" {
+				_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+			}
+			// Get the logs of apisix
+			output = s.GetDeploymentLogs("apisix-deployment-e2e-test")
+			if output != "" {
+				_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+			}
+			// Get the logs of ingress
+			output = s.GetDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
+			if output != "" {
+				_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+			}
 		}
-		output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "describe", "pods")
-		if output != "" {
-			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
-		}
-		// Get the logs of apisix
-		output = s.GetDeploymentLogs("apisix-deployment-e2e-test")
-		if output != "" {
-			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
-		}
-		// Get the logs of ingress
-		output = s.GetDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
-		if output != "" {
-			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
-		}
-		if os.Getenv("E2E_ENV") == "ci" {
+		if env != "debug" {
 			err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
 			assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
 		}
