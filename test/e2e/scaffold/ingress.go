@@ -232,8 +232,7 @@ spec:
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
-  namespace: %s
-  name: ingress-apisix-webhook
+  name: ingress-apisix-webhook-%s
   labels:
     app: ingress-apisix-webhhok
 webhooks:

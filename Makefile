@@ -130,7 +130,7 @@ e2e-test: ginkgo-check pack-images e2e-wolf-rbac
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
-		&& E2E_ENV=$(E2E_ENV) ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_NODES) --focus=webhook --flake-attempts=$(E2E_FLAKE_ATTEMPTS)
+		&& E2E_ENV=$(E2E_ENV) ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_NODES) --focus=$(E2E_FOCUS) --flake-attempts=$(E2E_FLAKE_ATTEMPTS)
 
 ### e2e-test-local:       Run e2e test cases (kind is required)
 .PHONY: e2e-test-local
