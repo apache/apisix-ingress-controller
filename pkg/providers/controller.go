@@ -5,7 +5,7 @@
 // (the "License"); you may not use this file except in compliance with
 // the License.  You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -223,15 +223,12 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 
 	var (
 		apisixUpstreamInformer cache.SharedIndexInformer
-		apisixTlsInformer      cache.SharedIndexInformer
 	)
 	switch c.cfg.Kubernetes.APIVersion {
 	case config.ApisixV2beta3:
 		apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
-		apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
 	case config.ApisixV2:
 		apisixUpstreamInformer = apisixFactory.Apisix().V2().ApisixUpstreams().Informer()
-		apisixTlsInformer = apisixFactory.Apisix().V2().ApisixTlses().Informer()
 	default:
 		panic(fmt.Errorf("unsupported API version %v", c.cfg.Kubernetes.APIVersion))
 	}
@@ -239,10 +236,6 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 	apisixUpstreamLister := kube.NewApisixUpstreamLister(
 		apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		apisixFactory.Apisix().V2().ApisixUpstreams().Lister(),
-	)
-	apisixTlsLister := kube.NewApisixTlsLister(
-		apisixFactory.Apisix().V2beta3().ApisixTlses().Lister(),
-		apisixFactory.Apisix().V2().ApisixTlses().Lister(),
 	)
 
 	podInformer := kubeFactory.Core().V1().Pods().Informer()
@@ -262,8 +255,6 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		PodInformer:            podInformer,
 		ApisixUpstreamLister:   apisixUpstreamLister,
 		ApisixUpstreamInformer: apisixUpstreamInformer,
-		ApisixTlsLister:        apisixTlsLister,
-		ApisixTlsInformer:      apisixTlsInformer,
 	}
 
 	return listerInformer
@@ -347,13 +338,13 @@ func (c *Controller) run(ctx context.Context) {
 		return
 	}
 
-	c.kubeProvider, err = k8s.NewProvider(common, c.translator, c.namespaceProvider, c.apisixProvider)
+	c.ingressProvider, err = ingressprovider.NewProvider(common, c.namespaceProvider, c.translator, c.apisixTranslator)
 	if err != nil {
 		ctx.Done()
 		return
 	}
 
-	c.ingressProvider, err = ingressprovider.NewProvider(common, c.namespaceProvider, c.translator, c.apisixTranslator)
+	c.kubeProvider, err = k8s.NewProvider(common, c.translator, c.namespaceProvider, c.apisixProvider, c.ingressProvider)
 	if err != nil {
 		ctx.Done()
 		return

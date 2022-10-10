@@ -6,7 +6,7 @@
 // "License"); you may not use this file except in compliance
 // with the License.  You may obtain a copy of the License at
 //
-//   http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing,
 // software distributed under the License is distributed on an
@@ -14,14 +14,13 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-//
 package apisix
 
 import (
 	"context"
 	"fmt"
-	"sync"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
@@ -31,6 +30,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 const (
@@ -52,7 +52,7 @@ type Provider interface {
 	Init(ctx context.Context) error
 	ResourceSync()
 
-	GetSslFromSecretKey(string) *sync.Map
+	SyncSecretChange(ctx context.Context, ev *types.Event, secret *corev1.Secret, secretMapKey string)
 }
 
 type apisixProvider struct {
@@ -72,6 +72,7 @@ type apisixProvider struct {
 	apisixClusterConfigInformer cache.SharedIndexInformer
 	apisixConsumerInformer      cache.SharedIndexInformer
 	apisixPluginConfigInformer  cache.SharedIndexInformer
+	apisixTlsInformer           cache.SharedIndexInformer
 }
 
 func NewProvider(common *providertypes.Common, namespaceProvider namespace.WatchingNamespaceProvider,
@@ -99,12 +100,14 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 	switch c.Config.Kubernetes.APIVersion {
 	case config.ApisixV2beta3:
 		p.apisixRouteInformer = apisixFactory.Apisix().V2beta3().ApisixRoutes().Informer()
+		p.apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
 		p.apisixClusterConfigInformer = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Informer()
 		p.apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
 		p.apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
 
 	case config.ApisixV2:
 		p.apisixRouteInformer = apisixFactory.Apisix().V2().ApisixRoutes().Informer()
+		p.apisixTlsInformer = apisixFactory.Apisix().V2().ApisixTlses().Informer()
 		p.apisixClusterConfigInformer = apisixFactory.Apisix().V2().ApisixClusterConfigs().Informer()
 		p.apisixConsumerInformer = apisixFactory.Apisix().V2().ApisixConsumers().Informer()
 		p.apisixPluginConfigInformer = apisixFactory.Apisix().V2().ApisixPluginConfigs().Informer()
@@ -116,6 +119,10 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 		apisixFactory.Apisix().V2beta2().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2().ApisixRoutes().Lister(),
+	)
+	apisixTlsLister := kube.NewApisixTlsLister(
+		apisixFactory.Apisix().V2beta3().ApisixTlses().Lister(),
+		apisixFactory.Apisix().V2().ApisixTlses().Lister(),
 	)
 	apisixClusterConfigLister := kube.NewApisixClusterConfigLister(
 		apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister(),
@@ -132,7 +139,7 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 
 	p.apisixUpstreamController = newApisixUpstreamController(c)
 	p.apisixRouteController = newApisixRouteController(c, p.apisixRouteInformer, apisixRouteLister)
-	p.apisixTlsController = newApisixTlsController(c)
+	p.apisixTlsController = newApisixTlsController(c, p.apisixTlsInformer, apisixTlsLister)
 	p.apisixClusterConfigController = newApisixClusterConfigController(c, p.apisixClusterConfigInformer, apisixClusterConfigLister)
 	p.apisixConsumerController = newApisixConsumerController(c, p.apisixConsumerInformer, apisixConsumerLister)
 	p.apisixPluginConfigController = newApisixPluginConfigController(c, p.apisixPluginConfigInformer, apisixPluginConfigLister)
@@ -145,6 +152,9 @@ func (p *apisixProvider) Run(ctx context.Context) {
 
 	e.Add(func() {
 		p.apisixRouteInformer.Run(ctx.Done())
+	})
+	e.Add(func() {
+		p.apisixTlsInformer.Run(ctx.Done())
 	})
 	e.Add(func() {
 		p.apisixClusterConfigInformer.Run(ctx.Done())
@@ -191,12 +201,6 @@ func (p *apisixProvider) ResourceSync() {
 	e.Wait()
 }
 
-func (p *apisixProvider) GetSslFromSecretKey(secretMapKey string) *sync.Map {
-	ssls, ok := p.apisixTlsController.secretSSLMap.Load(secretMapKey)
-	if !ok {
-		// This secret is not concerned.
-		return nil
-	}
-	sslMap := ssls.(*sync.Map)
-	return sslMap
+func (p *apisixProvider) SyncSecretChange(ctx context.Context, ev *types.Event, secret *corev1.Secret, secretMapKey string) {
+	p.apisixTlsController.SyncSecretChange(ctx, ev, secret, secretMapKey)
 }
