@@ -36,13 +36,13 @@ var _ = ginkgo.Describe("suite-gateway: UDP Route", func() {
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: UDPRoute
 metadata:
-    name: %s
+    name: "udp-route-test"
 spec:
     rules:
     - backendRefs:
-    - name: %s
+      - name: %s
         port: %d
-`, "udp-route-test", dnsSvc.Name, dnsSvc.Spec.Ports[0].Port)
+`, dnsSvc.Name, dnsSvc.Spec.Ports[0].Port)
 		err := s.CreateResourceFromString(route)
 		assert.Nil(ginkgo.GinkgoT(), err, "create UDPRoute failed")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixStreamRoutesCreated(1), "Checking number of streamroute")
