@@ -25,6 +25,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
@@ -73,6 +74,8 @@ type apisixProvider struct {
 	apisixConsumerInformer      cache.SharedIndexInformer
 	apisixPluginConfigInformer  cache.SharedIndexInformer
 	apisixTlsInformer           cache.SharedIndexInformer
+
+	apisixSharedInformerFactory externalversions.SharedInformerFactory
 }
 
 func NewProvider(common *providertypes.Common, namespaceProvider namespace.WatchingNamespaceProvider,
@@ -84,6 +87,7 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 	}
 
 	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
+	p.apisixSharedInformerFactory = apisixFactory
 
 	p.apisixTranslator = apisixtranslation.NewApisixTranslator(&apisixtranslation.TranslatorOptions{
 		Apisix:        common.APISIX,
