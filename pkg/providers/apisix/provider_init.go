@@ -48,6 +48,9 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 		pluginConfigMapA6 = make(map[string]string)
 	)
 
+	p.apisixSharedInformerFactory.Start(ctx.Done())
+	p.apisixSharedInformerFactory.WaitForCacheSync(ctx.Done())
+
 	namespaces := p.namespaceProvider.WatchingNamespaces()
 
 	for _, key := range namespaces {
