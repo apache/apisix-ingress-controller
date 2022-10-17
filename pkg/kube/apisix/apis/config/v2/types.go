@@ -26,6 +26,7 @@ import (
 )
 
 // +genclient
+// +k8s:deepcopy-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 // ApisixRoute is used to define the route rules and upstreams for Apache APISIX.
@@ -36,17 +37,20 @@ type ApisixRoute struct {
 	Status            ApisixStatus    `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixStatus is the status report for Apisix ingress Resources
 type ApisixStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixRouteSpec is the spec definition for ApisixRouteSpec.
 type ApisixRouteSpec struct {
 	HTTP   []ApisixRouteHTTP   `json:"http,omitempty" yaml:"http,omitempty"`
 	Stream []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 // UpstreamTimeout is settings for the read, send and connect to the upstream.
 type UpstreamTimeout struct {
 	Connect metav1.Duration `json:"connect,omitempty" yaml:"connect,omitempty"`
@@ -54,6 +58,7 @@ type UpstreamTimeout struct {
 	Read    metav1.Duration `json:"read,omitempty" yaml:"read,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixRouteHTTP represents a single route in for HTTP traffic.
 type ApisixRouteHTTP struct {
 	// The rule name, cannot be empty.
@@ -77,6 +82,7 @@ type ApisixRouteHTTP struct {
 	Authentication   ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixRouteHTTPBackend represents an HTTP backend (a Kubernetes Service).
 type ApisixRouteHTTPBackend struct {
 	// The name (short) of the service, note cross namespace is forbidden,
@@ -96,6 +102,7 @@ type ApisixRouteHTTPBackend struct {
 	Subset string `json:"subset,omitempty" yaml:"subset,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixRouteUpstreamReference contains a ApisixUpstream CRD reference
 type ApisixRouteUpstreamReference struct {
 	Name string `json:"name,omitempty" yaml:"name"`
@@ -103,6 +110,7 @@ type ApisixRouteUpstreamReference struct {
 	Weight *int `json:"weight,omitempty" yaml:"weight"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixRouteHTTPMatch represents the match condition for hitting this route.
 type ApisixRouteHTTPMatch struct {
 	// URI path predicates, at least one path should be
@@ -133,6 +141,7 @@ type ApisixRouteHTTPMatch struct {
 	NginxVars []ApisixRouteHTTPMatchExpr `json:"exprs,omitempty" yaml:"exprs,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixRouteHTTPMatchExpr represents a binary route match expression .
 type ApisixRouteHTTPMatchExpr struct {
 	// Subject is the expression subject, it can
@@ -151,6 +160,7 @@ type ApisixRouteHTTPMatchExpr struct {
 	Value *string `json:"value" yaml:"value"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixRouteHTTPMatchExprSubject describes the route match expression subject.
 type ApisixRouteHTTPMatchExprSubject struct {
 	// The subject scope, can be:
@@ -162,6 +172,7 @@ type ApisixRouteHTTPMatchExprSubject struct {
 	Name string `json:"name" yaml:"name"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixRoutePlugin represents an APISIX plugin.
 type ApisixRoutePlugin struct {
 	// The plugin name.
@@ -172,32 +183,10 @@ type ApisixRoutePlugin struct {
 	Config ApisixRoutePluginConfig `json:"config" yaml:"config"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixRoutePluginConfig is the configuration for
 // any plugins.
 type ApisixRoutePluginConfig map[string]interface{}
-
-// ApisixRouteAuthentication is the authentication-related
-// configuration in ApisixRoute.
-type ApisixRouteAuthentication struct {
-	Enable  bool                             `json:"enable" yaml:"enable"`
-	Type    string                           `json:"type" yaml:"type"`
-	KeyAuth ApisixRouteAuthenticationKeyAuth `json:"keyAuth,omitempty" yaml:"keyAuth,omitempty"`
-	JwtAuth ApisixRouteAuthenticationJwtAuth `json:"jwtAuth,omitempty" yaml:"jwtAuth,omitempty"`
-}
-
-// ApisixRouteAuthenticationKeyAuth is the keyAuth-related
-// configuration in ApisixRouteAuthentication.
-type ApisixRouteAuthenticationKeyAuth struct {
-	Header string `json:"header,omitempty" yaml:"header,omitempty"`
-}
-
-// ApisixRouteAuthenticationJwtAuth is the jwt auth related
-// configuration in ApisixRouteAuthentication.
-type ApisixRouteAuthenticationJwtAuth struct {
-	Header string `json:"header,omitempty" yaml:"header,omitempty"`
-	Query  string `json:"query,omitempty" yaml:"query,omitempty"`
-	Cookie string `json:"cookie,omitempty" yaml:"cookie,omitempty"`
-}
 
 func (p ApisixRoutePluginConfig) DeepCopyInto(out *ApisixRoutePluginConfig) {
 	b, _ := json.Marshal(&p)
@@ -213,6 +202,33 @@ func (p *ApisixRoutePluginConfig) DeepCopy() *ApisixRoutePluginConfig {
 	return out
 }
 
+// +k8s:deepcopy-gen=true
+// ApisixRouteAuthentication is the authentication-related
+// configuration in ApisixRoute.
+type ApisixRouteAuthentication struct {
+	Enable  bool                             `json:"enable" yaml:"enable"`
+	Type    string                           `json:"type" yaml:"type"`
+	KeyAuth ApisixRouteAuthenticationKeyAuth `json:"keyAuth,omitempty" yaml:"keyAuth,omitempty"`
+	JwtAuth ApisixRouteAuthenticationJwtAuth `json:"jwtAuth,omitempty" yaml:"jwtAuth,omitempty"`
+}
+
+// +k8s:deepcopy-gen=true
+// ApisixRouteAuthenticationKeyAuth is the keyAuth-related
+// configuration in ApisixRouteAuthentication.
+type ApisixRouteAuthenticationKeyAuth struct {
+	Header string `json:"header,omitempty" yaml:"header,omitempty"`
+}
+
+// +k8s:deepcopy-gen=true
+// ApisixRouteAuthenticationJwtAuth is the jwt auth related
+// configuration in ApisixRouteAuthentication.
+type ApisixRouteAuthenticationJwtAuth struct {
+	Header string `json:"header,omitempty" yaml:"header,omitempty"`
+	Query  string `json:"query,omitempty" yaml:"query,omitempty"`
+	Cookie string `json:"cookie,omitempty" yaml:"cookie,omitempty"`
+}
+
+// +k8s:deepcopy-gen=true
 // ApisixRouteStream is the configuration for level 4 route
 type ApisixRouteStream struct {
 	// The rule name, cannot be empty.
@@ -223,6 +239,7 @@ type ApisixRouteStream struct {
 	Plugins  []ApisixRoutePlugin      `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixRouteStreamMatch represents the match conditions of stream route.
 type ApisixRouteStreamMatch struct {
 	// IngressPort represents the port listening on the Ingress proxy server.
@@ -230,6 +247,7 @@ type ApisixRouteStreamMatch struct {
 	IngressPort int32 `json:"ingressPort" yaml:"ingressPort"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixRouteStreamBackend represents a TCP backend (a Kubernetes Service).
 type ApisixRouteStreamBackend struct {
 	// The name (short) of the service, note cross namespace is forbidden,
@@ -247,8 +265,8 @@ type ApisixRouteStreamBackend struct {
 	Subset string `json:"subset,omitempty" yaml:"subset,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // ApisixRouteList contains a list of ApisixRoute.
 type ApisixRouteList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
@@ -258,9 +276,9 @@ type ApisixRouteList struct {
 
 // +genclient
 // +genclient:nonNamespaced
+// +k8s:deepcopy-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
-
 // ApisixClusterConfig is the Schema for the ApisixClusterConfig resource.
 // An ApisixClusterConfig is used to identify an APISIX cluster, it's a
 // ClusterScoped resource so the name is unique.
@@ -274,6 +292,7 @@ type ApisixClusterConfig struct {
 	Status ApisixStatus            `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixClusterConfigSpec defines the desired state of ApisixClusterConfigSpec.
 type ApisixClusterConfigSpec struct {
 	// Monitoring categories all monitoring related features.
@@ -284,6 +303,7 @@ type ApisixClusterConfigSpec struct {
 	Admin *ApisixClusterAdminConfig `json:"admin" yaml:"admin"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixClusterMonitoringConfig categories all monitoring related features.
 type ApisixClusterMonitoringConfig struct {
 	// Prometheus is the config for using Prometheus in APISIX Cluster.
@@ -294,12 +314,14 @@ type ApisixClusterMonitoringConfig struct {
 	Skywalking ApisixClusterSkywalkingConfig `json:"skywalking" yaml:"skywalking"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixClusterPrometheusConfig is the config for using Prometheus in APISIX Cluster.
 type ApisixClusterPrometheusConfig struct {
 	// Enable means whether enable Prometheus or not.
 	Enable bool `json:"enable" yaml:"enable"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixClusterSkywalkingConfig is the config for using Skywalking in APISIX Cluster.
 type ApisixClusterSkywalkingConfig struct {
 	// Enable means whether enable Skywalking or not.
@@ -319,8 +341,8 @@ type ApisixClusterAdminConfig struct {
 	ClientTimeout types.TimeDuration `json:"clientTimeout" yaml:"clientTimeout"`
 }
 
+// +k8s:deepcopy-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // ApisixClusterConfigList contains a list of ApisixClusterConfig.
 type ApisixClusterConfigList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
@@ -329,10 +351,10 @@ type ApisixClusterConfigList struct {
 	Items []ApisixClusterConfig `json:"items" yaml:"items"`
 }
 
+// +k8s:deepcopy-gen=true
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
-
 // ApisixConsumer is the Schema for the ApisixConsumer resource.
 // An ApisixConsumer is used to identify a consumer.
 type ApisixConsumer struct {
@@ -342,11 +364,13 @@ type ApisixConsumer struct {
 	Status            ApisixStatus       `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixConsumerSpec defines the desired state of ApisixConsumer.
 type ApisixConsumerSpec struct {
 	AuthParameter ApisixConsumerAuthParameter `json:"authParameter" yaml:"authParameter"`
 }
 
+// +k8s:deepcopy-gen=true
 type ApisixConsumerAuthParameter struct {
 	BasicAuth *ApisixConsumerBasicAuth `json:"basicAuth,omitempty" yaml:"basicAuth"`
 	KeyAuth   *ApisixConsumerKeyAuth   `json:"keyAuth,omitempty" yaml:"keyAuth"`
@@ -355,35 +379,41 @@ type ApisixConsumerAuthParameter struct {
 	HMACAuth  *ApisixConsumerHMACAuth  `json:"hmacAuth,omitempty" yaml:"hmacAuth"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixConsumerBasicAuth defines the configuration for basic auth.
 type ApisixConsumerBasicAuth struct {
 	SecretRef *corev1.LocalObjectReference  `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
 	Value     *ApisixConsumerBasicAuthValue `json:"value,omitempty" yaml:"value,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixConsumerBasicAuthValue defines the in-place username and password configuration for basic auth.
 type ApisixConsumerBasicAuthValue struct {
 	Username string `json:"username" yaml:"username"`
 	Password string `json:"password" yaml:"password"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixConsumerKeyAuth defines the configuration for the key auth.
 type ApisixConsumerKeyAuth struct {
 	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
 	Value     *ApisixConsumerKeyAuthValue  `json:"value,omitempty" yaml:"value,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixConsumerKeyAuthValue defines the in-place configuration for basic auth.
 type ApisixConsumerKeyAuthValue struct {
 	Key string `json:"key" yaml:"key"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixConsumerWolfRBAC defines the configuration for the wolf-rbac auth.
 type ApisixConsumerWolfRBAC struct {
 	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
 	Value     *ApisixConsumerWolfRBACValue `json:"value,omitempty" yaml:"value,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 // ApisixConsumerWolfRBAC defines the in-place server and appid and header_prefix configuration for wolf-rbac auth.
 type ApisixConsumerWolfRBACValue struct {
 	Server       string `json:"server,omitempty" yaml:"server,omitempty"`
@@ -428,7 +458,6 @@ type ApisixConsumerHMACAuthValue struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // ApisixConsumerList contains a list of ApisixConsumer.
 type ApisixConsumerList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
@@ -498,12 +527,13 @@ type ApisixUpstreamConfig struct {
 	Subsets []ApisixUpstreamSubset `json:"subsets,omitempty" yaml:"subsets,omitempty"`
 }
 
+// ApisixUpstreamExternalType is the external service type
 type ApisixUpstreamExternalType string
 
 const (
 	// ExternalTypeDomain type is a domain
 	ExternalTypeDomain ApisixUpstreamExternalType = "domain"
-	// ExternalTypeDomain type is a K8s ExternalName service
+	// ExternalTypeService type is a K8s ExternalName service
 	ExternalTypeService ApisixUpstreamExternalType = "service"
 )
 
