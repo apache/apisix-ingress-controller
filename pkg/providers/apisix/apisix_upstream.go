@@ -279,10 +279,13 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 		}
 	case config.ApisixV2:
 		au := multiVersioned.V2()
+		if au.Spec == nil {
+			return nil
+		}
 
 		if len(au.Spec.ExternalNodes) != 0 {
 			var newUps *apisixv1.Upstream
-			if au.Spec != nil && ev.Type != types.EventDelete {
+			if ev.Type != types.EventDelete {
 				cfg := &au.Spec.ApisixUpstreamConfig
 				newUps, err = c.translator.TranslateUpstreamConfigV2(cfg)
 				if err != nil {
@@ -305,7 +308,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 		}
 
 		var portLevelSettings map[int32]configv2.ApisixUpstreamConfig
-		if au.Spec != nil && len(au.Spec.PortLevelSettings) > 0 {
+		if len(au.Spec.PortLevelSettings) > 0 {
 			portLevelSettings = make(map[int32]configv2.ApisixUpstreamConfig, len(au.Spec.PortLevelSettings))
 			for _, port := range au.Spec.PortLevelSettings {
 				portLevelSettings[port.Port] = port.ApisixUpstreamConfig
@@ -322,7 +325,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 
 		var subsets []configv2.ApisixUpstreamSubset
 		subsets = append(subsets, configv2.ApisixUpstreamSubset{})
-		if au.Spec != nil && len(au.Spec.Subsets) > 0 {
+		if len(au.Spec.Subsets) > 0 {
 			subsets = append(subsets, au.Spec.Subsets...)
 		}
 		clusterName := c.Config.APISIX.DefaultClusterName
@@ -341,7 +344,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 						return err
 					}
 					var newUps *apisixv1.Upstream
-					if au.Spec != nil && ev.Type != types.EventDelete {
+					if ev.Type != types.EventDelete {
 						cfg, ok := portLevelSettings[port.Port]
 						if !ok {
 							cfg = au.Spec.ApisixUpstreamConfig
