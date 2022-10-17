@@ -195,6 +195,7 @@ rules:
     - tcproutes
     - gateways
     - gatewayclasses
+    - udproutes
     verbs:
     - get
     - list

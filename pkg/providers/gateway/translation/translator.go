@@ -40,6 +40,8 @@ type Translator interface {
 	TranslateGatewayTLSRouteV1Alpha2(tlsRoute *gatewayv1alpha2.TLSRoute) (*translation.TranslateContext, error)
 	// TranslateGatewayTCPRouteV1Alpha2 translates Gateway API TCPRoute to APISIX resources
 	TranslateGatewayTCPRouteV1Alpha2(*gatewayv1alpha2.TCPRoute) (*translation.TranslateContext, error)
+	// TranslateGatewayUDPRouteV1Alpha2 translates Gateway API UDPRoute to APISIX resources
+	TranslateGatewayUDPRouteV1Alpha2(udpRoute *gatewayv1alpha2.UDPRoute) (*translation.TranslateContext, error)
 }
 
 // NewTranslator initializes a APISIX CRD resources Translator.
