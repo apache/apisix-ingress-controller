@@ -28,7 +28,6 @@ description: Guide to using ApisixRoute custom Kubernetes resource.
 
 `ApisixRoute` is a Kubernetes CRD object that provides a spec to route traffic to services with APISIX. It is much more capable and easy to use compared to the default [Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) resource.
 
-
 See [reference](/docs/ingress-controller/next/references/apisix_route_v2/) for the full API documentation.
 
 ## Path-based routing
@@ -204,7 +203,7 @@ spec:
 
 ## Websocket proxy
 
-You can route requests to [WebSocket](https://en.wikipedia.org/wiki/WebSocket#:~:text=WebSocket%20is%20a%20computer%20communications,WebSocket%20is%20distinct%20from%20HTTP.) services by setting the `websocket` attribute to `true` as shown below: 
+You can route requests to [WebSocket](https://en.wikipedia.org/wiki/WebSocket#:~:text=WebSocket%20is%20a%20computer%20communications,WebSocket%20is%20distinct%20from%20HTTP.) services by setting the `websocket` attribute to `true` as shown below:
 
 ```yaml
 apiVersion: apisix.apache.org/v2
