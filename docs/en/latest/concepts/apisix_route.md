@@ -28,7 +28,7 @@ description: Guide to using ApisixRoute custom Kubernetes resource.
 
 `ApisixRoute` is a Kubernetes CRD object that provides a spec to route traffic to services with APISIX. It is much more capable and easy to use compared to the default [Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) resource.
 
-See [reference](/docs/ingress-controller/next/references/apisix_route_v2/) for the full API documentation.
+See [reference](https://apisix.apache.org/docs/ingress-controller/references/apisix_route_v2/) for the full API documentation.
 
 ## Path-based routing
 
@@ -176,9 +176,9 @@ spec:
 
 ## Plugins
 
-APISIX's [70+ Plugins](/docs/apisix/plugins/batch-requests/) can be used with APISIX Ingress. These Plugins have the same name as in the APISIX documentation.
+APISIX's [70+ Plugins](https://apisix.apache.org/docs/apisix/plugins/batch-requests/) can be used with APISIX Ingress. These Plugins have the same name as in the APISIX documentation.
 
-The example below configures [cors](/docs/apisix/plugins/cors/) Plugin for the route:
+The example below configures [cors](https://apisix.apache.org/docs/apisix/plugins/cors/) Plugin for the route:
 
 ```yaml
 apiVersion: apisix.apache.org/v2
