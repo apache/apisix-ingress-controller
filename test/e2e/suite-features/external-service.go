@@ -484,7 +484,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "get httpbin service")
 			ip := svc.Spec.ClusterIP
 
-			upName := apisixv1.ComposeUpstreamName(s.Namespace(), "httpbin-temp", "", 80)
+			upName := apisixv1.ComposeUpstreamName(s.Namespace(), "httpbin-temp", "", 80, "service")
 			upID := id.GenID(upName)
 
 			// -- validation --
