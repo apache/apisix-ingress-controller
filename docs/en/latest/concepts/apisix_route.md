@@ -176,7 +176,7 @@ spec:
 
 ## Plugins
 
-APISIX's [70+ Plugins](https://apisix.apache.org/docs/apisix/plugins/batch-requests/) can be used with APISIX Ingress. These Plugins have the same name as in the APISIX documentation.
+APISIX's [80+ Plugins](https://apisix.apache.org/docs/apisix/plugins/batch-requests/) can be used with APISIX Ingress. These Plugins have the same name as in the APISIX documentation.
 
 The example below configures [cors](https://apisix.apache.org/docs/apisix/plugins/cors/) Plugin for the route:
 
