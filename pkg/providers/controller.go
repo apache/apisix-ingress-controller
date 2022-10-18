@@ -213,7 +213,7 @@ election:
 	}
 }
 
-func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
+func (c *Controller) initSharedInformers(ctx context.Context) *providertypes.ListerInformer {
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
 	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
 
@@ -256,6 +256,14 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		ApisixUpstreamLister:   apisixUpstreamLister,
 		ApisixUpstreamInformer: apisixUpstreamInformer,
 	}
+
+	//wait for all informer has synecd
+	cache.WaitForCacheSync(ctx.Done(),
+		listerInformer.EpInformer.HasSynced,
+		listerInformer.SvcInformer.HasSynced,
+		listerInformer.SecretInformer.HasSynced,
+		listerInformer.PodInformer.HasSynced,
+		listerInformer.ApisixUpstreamInformer.HasSynced)
 
 	return listerInformer
 }
@@ -300,7 +308,7 @@ func (c *Controller) run(ctx context.Context) {
 
 	// Creation Phase
 
-	c.informers = c.initSharedInformers()
+	c.informers = c.initSharedInformers(ctx)
 	common := &providertypes.Common{
 		ListerInformer:   c.informers,
 		Config:           c.cfg,
