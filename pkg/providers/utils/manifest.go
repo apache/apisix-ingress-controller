@@ -175,6 +175,9 @@ type Manifest struct {
 }
 
 func (m *Manifest) Diff(om *Manifest) (added, updated, deleted *Manifest) {
+	if om == nil {
+		return m, nil, nil
+	}
 	sa, su, sd := DiffSSL(om.SSLs, m.SSLs)
 	ar, ur, dr := DiffRoutes(om.Routes, m.Routes)
 	au, uu, du := DiffUpstreams(om.Upstreams, m.Upstreams)

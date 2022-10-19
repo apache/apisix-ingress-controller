@@ -441,9 +441,8 @@ func mockTranslatorV2(t *testing.T) (*translator, <-chan struct{}) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	informersFactory.Start(stopCh)
-	apisixInformersFactory.Start(stopCh)
-
 	informersFactory.WaitForCacheSync(stopCh)
+	apisixInformersFactory.Start(stopCh)
 	apisixInformersFactory.WaitForCacheSync(stopCh)
 
 	return tr, processCh
@@ -584,7 +583,7 @@ func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
 }
 
 func TestTranslateApisixRouteV2WithEmptyPluginConfigName(t *testing.T) {
-	tr, processCh := mockTranslatorV2beta3(t)
+	tr, processCh := mockTranslatorV2(t)
 	<-processCh
 	<-processCh
 	<-processCh

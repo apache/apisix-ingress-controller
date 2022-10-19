@@ -233,8 +233,8 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Errorw("failed to get ApisixRoute",
-				zap.String("version", obj.GroupVersion),
 				zap.String("key", obj.Key),
+				zap.String("version", obj.GroupVersion),
 				zap.Error(err),
 			)
 			return err
@@ -296,7 +296,6 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		m       *utils.Manifest
 		om      *utils.Manifest
 	)
-
 	if tctx != nil {
 		m = &utils.Manifest{
 			Routes:        tctx.Routes,
@@ -305,7 +304,6 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			PluginConfigs: tctx.PluginConfigs,
 		}
 	}
-
 	if expireTctx != nil {
 		om = &utils.Manifest{
 			Routes:        expireTctx.Routes,
@@ -314,7 +312,6 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			PluginConfigs: expireTctx.PluginConfigs,
 		}
 	}
-
 	if ev.Type == types.EventDelete {
 		deleted = om
 	} else if ev.Type == types.EventAdd {

@@ -21,14 +21,6 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-// translateUpstreamNotStrictly translates Upstream nodes with a loose way, only generate ID and Name for delete Event.
-func (t *translator) translateUpstreamNotStrictly(namespace, svcName, subset string, svcPort int32, resolveGranularity string) (*apisixv1.Upstream, error) {
-	ups := &apisixv1.Upstream{}
-	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, subset, svcPort, resolveGranularity)
-	ups.ID = id.GenID(ups.Name)
-	return ups, nil
-}
-
 func (t *translator) translateService(namespace, svcName, subset, svcResolveGranularity, svcClusterIP string, svcPort int32) (*apisixv1.Upstream, error) {
 	ups, err := t.TranslateService(namespace, svcName, subset, svcPort)
 	if err != nil {
