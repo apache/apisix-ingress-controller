@@ -19,6 +19,8 @@ package features
 
 import (
 	"fmt"
+	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 	"net/http"
 	"reflect"
 	"time"
@@ -104,7 +106,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 	}
 
-	PhaseCreateApisixUpstream := func(s *scaffold.Scaffold, name, nodeType, nodeName string) {
+	PhaseCreateApisixUpstream := func(s *scaffold.Scaffold, name string, nodeType v2.ApisixUpstreamExternalType, nodeName string) {
 		au := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
@@ -258,7 +260,7 @@ spec:
 	ginkgo.Describe("basic function: ", func() {
 		ginkgo.It("should be able to access third-party service", func() {
 			// -- Data preparation --
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", "domain", "httpbin.org")
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbin.org")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
 
 			// -- validation --
@@ -267,7 +269,7 @@ spec:
 		})
 		ginkgo.It("should be able to access third-party service with plugins", func() {
 			// -- Data preparation --
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", "domain", "httpbun.org")
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbun.org")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
 
 			// -- Expect failed --
@@ -284,7 +286,7 @@ spec:
 		ginkgo.It("should be able to access external domain ExternalName service", func() {
 			// -- Data preparation --
 			PhaseCreateExternalService(s, "ext-httpbin", "httpbin.org")
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", "service", "ext-httpbin")
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeService, "ext-httpbin")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
 
 			// -- validation --
@@ -298,7 +300,7 @@ spec:
 			// We are only testing the functionality of the external service and do not care which namespace the service is in.
 			// The namespace of the external service should be watched.
 			PhaseCreateExternalService(s, "ext-httpbin", fqdn)
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", "service", "ext-httpbin")
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeService, "ext-httpbin")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
 
 			// -- validation --
@@ -307,8 +309,8 @@ spec:
 		})
 	})
 	ginkgo.Describe("complex usage: ", func() {
-		PhaseCreateApisixUpstreamWithMultipleExternalNodes := func(s *scaffold.Scaffold, name,
-			nodeTypeA, nodeNameA, nodeTypeB, nodeNameB string) {
+		PhaseCreateApisixUpstreamWithMultipleExternalNodes := func(s *scaffold.Scaffold, name string,
+			nodeTypeA v2.ApisixUpstreamExternalType, nodeNameA string, nodeTypeB v2.ApisixUpstreamExternalType, nodeNameB string) {
 			au := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
@@ -459,7 +461,7 @@ spec:
 		ginkgo.It("should be able to access multiple external services", func() {
 			// -- Data preparation --
 			PhaseCreateApisixUpstreamWithMultipleExternalNodes(s, "httpbin-upstream",
-				"domain", "httpbin.org", "domain", "httpbun.org")
+				v2.ExternalTypeDomain, "httpbin.org", v2.ExternalTypeDomain, "httpbun.org")
 			PhaseCreateApisixRouteWithHostRewrite(s, "httpbin-route", "httpbin-upstream", "httpbun.org")
 
 			// -- validation --
@@ -477,14 +479,14 @@ spec:
 		ginkgo.It("should be able to use backends and upstreams together", func() {
 			// -- Data preparation --
 			PhaseCreateHttpbin(s, "httpbin-temp")
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", "domain", "httpbun.org")
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbun.org")
 			PhaseCreateApisixRouteWithHostRewriteAndBackend(s, "httpbin-route", "httpbin-upstream", "httpbun.org", "httpbin-temp", 80)
 
 			svc, err := s.GetServiceByName("httpbin-temp")
 			assert.Nil(ginkgo.GinkgoT(), err, "get httpbin service")
 			ip := svc.Spec.ClusterIP
 
-			upName := apisixv1.ComposeUpstreamName(s.Namespace(), "httpbin-temp", "", 80, "service")
+			upName := apisixv1.ComposeUpstreamName(s.Namespace(), "httpbin-temp", "", 80, types.ResolveGranularity.Service)
 			upID := id.GenID(upName)
 
 			// -- validation --
@@ -507,7 +509,7 @@ spec:
 			PhaseValidateNoUpstreams(s)
 
 			// -- Data Update --
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", "domain", "httpbin.org")
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbin.org")
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, "httpbin.org", 80, translation.DefaultWeight)
@@ -516,7 +518,7 @@ spec:
 		ginkgo.It("should be able to create the ExternalName service later", func() {
 			// -- Data preparation --
 			fqdn := PhaseCreateHttpbin(s, "httpbin-temp")
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", "service", "ext-httpbin")
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeService, "ext-httpbin")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
 			PhaseValidateNoUpstreams(s)
 
@@ -531,12 +533,12 @@ spec:
 			// -- Data preparation --
 			fqdn := PhaseCreateHttpbin(s, "httpbin-temp")
 			PhaseCreateExternalService(s, "ext-httpbin", fqdn)
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", "service", "doesnt-exist")
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeService, "doesnt-exist")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
 			PhaseValidateNoUpstreams(s)
 
 			// -- Data update --
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", "service", "ext-httpbin")
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeService, "ext-httpbin")
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, fqdn, 80, translation.DefaultWeight)
@@ -545,7 +547,7 @@ spec:
 		ginkgo.It("should be able to update the ExternalName service later", func() {
 			// -- Data preparation --
 			PhaseCreateExternalService(s, "ext-httpbin", "unknown.org")
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", "service", "ext-httpbin")
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeService, "ext-httpbin")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
 			PhaseValidateFirstUpstream(s, 1, "unknown.org", 80, translation.DefaultWeight)
 
@@ -560,7 +562,7 @@ spec:
 	ginkgo.Describe("delete function: ", func() {
 		ginkgo.It("should be able to delete resources", func() {
 			// -- Data preparation --
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", "domain", "httpbin.org")
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbin.org")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
 
 			// -- validation --
