@@ -55,8 +55,19 @@ type ListerInformer struct {
 	PodLister   listerscorev1.PodLister
 	PodInformer cache.SharedIndexInformer
 
-	ApisixUpstreamLister   kube.ApisixUpstreamLister
-	ApisixUpstreamInformer cache.SharedIndexInformer
+	ApisixUpstreamInformer      cache.SharedIndexInformer
+	ApisixRouteInformer         cache.SharedIndexInformer
+	ApisixPluginConfigInformer  cache.SharedIndexInformer
+	ApisixConsumerInformer      cache.SharedIndexInformer
+	ApisixTlsInformer           cache.SharedIndexInformer
+	ApisixClusterConfigInformer cache.SharedIndexInformer
+
+	ApisixRouteLister         kube.ApisixRouteLister
+	ApisixUpstreamLister      kube.ApisixUpstreamLister
+	ApisixPluginConfigLister  kube.ApisixPluginConfigLister
+	ApisixConsumerLister      kube.ApisixConsumerLister
+	ApisixTlsLister           kube.ApisixTlsLister
+	ApisixClusterConfigLister kube.ApisixClusterConfigLister
 }
 
 func (c *ListerInformer) Run(ctx context.Context) {

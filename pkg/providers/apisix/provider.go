@@ -116,23 +116,28 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 	}
 
 	apisixRouteLister := kube.NewApisixRouteLister(
+		c.Config.Kubernetes.APIVersion,
 		apisixFactory.Apisix().V2beta2().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2().ApisixRoutes().Lister(),
 	)
 	apisixTlsLister := kube.NewApisixTlsLister(
+		// add GroupVersion
 		apisixFactory.Apisix().V2beta3().ApisixTlses().Lister(),
 		apisixFactory.Apisix().V2().ApisixTlses().Lister(),
 	)
 	apisixClusterConfigLister := kube.NewApisixClusterConfigLister(
+		// add GroupVersion
 		apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister(),
 		apisixFactory.Apisix().V2().ApisixClusterConfigs().Lister(),
 	)
 	apisixConsumerLister := kube.NewApisixConsumerLister(
+		// add GroupVersion
 		apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister(),
 		apisixFactory.Apisix().V2().ApisixConsumers().Lister(),
 	)
 	apisixPluginConfigLister := kube.NewApisixPluginConfigLister(
+		// add GroupVersion
 		apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
 		apisixFactory.Apisix().V2().ApisixPluginConfigs().Lister(),
 	)

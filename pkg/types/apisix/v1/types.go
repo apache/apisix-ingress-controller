@@ -169,8 +169,33 @@ func (s *StringOrSlice) UnmarshalJSON(p []byte) error {
 
 type Plugins map[string]interface{}
 
+func (n *Plugins) UnmarshalJSON(p []byte) error {
+	fmt.Println("plugins UnmarshalJSON")
+	var plugins map[string]any
+	var pluginsRaw map[string]*json.RawMessage
+
+	if err := json.Unmarshal(p, &pluginsRaw); err != nil {
+		return err
+	}
+	if err := json.Unmarshal(p, &plugins); err != nil {
+		return err
+	}
+	if v, ok := pluginsRaw["traffic-split"]; ok {
+		traffic := &TrafficSplitConfig{}
+		if err := json.Unmarshal(*v, traffic); err != nil {
+			fmt.Println(err.Error())
+
+		}
+		plugins["traffic-split"] = traffic
+		fmt.Println(*traffic)
+	}
+	*n = plugins
+	return nil
+}
+
 func (p *Plugins) DeepCopyInto(out *Plugins) {
 	b, _ := json.Marshal(&p)
+
 	_ = json.Unmarshal(b, out)
 }
 

@@ -16,7 +16,6 @@ package apisix
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -29,7 +28,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
@@ -39,7 +37,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type apisixRouteController struct {
@@ -227,23 +224,12 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		return err
 	}
 	var (
-		ar   kube.ApisixRoute
-		tctx *translation.TranslateContext
+		ar         kube.ApisixRoute
+		expireAr   kube.ApisixRoute
+		tctx       *translation.TranslateContext
+		expireTctx *translation.TranslateContext
 	)
-	switch obj.GroupVersion {
-	case config.ApisixV2beta2:
-		ar, err = c.apisixRouteLister.V2beta2(namespace, name)
-	case config.ApisixV2beta3:
-		ar, err = c.apisixRouteLister.V2beta3(namespace, name)
-	case config.ApisixV2:
-		ar, err = c.apisixRouteLister.V2(namespace, name)
-	default:
-		log.Errorw("unknown ApisixRoute version",
-			zap.String("version", obj.GroupVersion),
-			zap.String("key", obj.Key),
-		)
-		return fmt.Errorf("unknown ApisixRoute version %v", obj.GroupVersion)
-	}
+	ar, err = c.apisixRouteLister.ApisixRoute(namespace, name)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Errorw("failed to get ApisixRoute",
@@ -275,143 +261,74 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			)
 			return nil
 		}
-		ar = ev.Tombstone.(kube.ApisixRoute)
+		expireAr = ev.Tombstone.(kube.ApisixRoute)
+	} else if ev.Type == types.EventUpdate {
+		expireAr = obj.OldObject
 	}
 
-	switch obj.GroupVersion {
-	case config.ApisixV2beta2:
-		if ev.Type != types.EventDelete {
-			tctx, err = c.translator.TranslateRouteV2beta2(ar.V2beta2())
-		} else {
-			tctx, err = c.translator.TranslateRouteV2beta2NotStrictly(ar.V2beta2())
-		}
+	if ar != nil {
+		tctx, err = c.translator.TranslateRoute(ar)
 		if err != nil {
-			log.Errorw("failed to translate ApisixRoute v2beta2",
+			log.Errorw("failed to translate ApisixRoute",
+				zap.String("group_version", ar.GroupVersion()),
 				zap.Error(err),
 				zap.Any("object", ar),
 			)
 			return err
 		}
-	case config.ApisixV2beta3:
-		if ev.Type != types.EventDelete {
-			if err = c.checkPluginNameIfNotEmptyV2beta3(ctx, ar.V2beta3()); err == nil {
-				tctx, err = c.translator.TranslateRouteV2beta3(ar.V2beta3())
-			}
-		} else {
-			tctx, err = c.translator.TranslateRouteV2beta3NotStrictly(ar.V2beta3())
-		}
-		if err != nil {
-			log.Errorw("failed to translate ApisixRoute v2beta3",
-				zap.Error(err),
-				zap.Any("object", ar),
-			)
-			return err
-		}
-	case config.ApisixV2:
-		if ev.Type != types.EventDelete {
-			if err = c.checkPluginNameIfNotEmptyV2(ctx, ar.V2()); err == nil {
-				tctx, err = c.translator.TranslateRouteV2(ar.V2())
-			}
-		} else {
-			tctx, err = c.translator.TranslateRouteV2NotStrictly(ar.V2())
-		}
-		if err != nil {
-			log.Errorw("failed to translate ApisixRoute v2",
-				zap.Error(err),
-				zap.Any("object", ar),
-			)
-			return err
-		}
-	default:
-		log.Errorw("unknown ApisixRoute version",
-			zap.String("version", obj.GroupVersion),
-			zap.String("key", obj.Key),
-		)
-		return fmt.Errorf("unknown ApisixRoute version %v", obj.GroupVersion)
 	}
-
-	log.Debugw("translated ApisixRoute",
-		zap.Any("routes", tctx.Routes),
-		zap.Any("upstreams", tctx.Upstreams),
-		zap.Any("apisix_route", ar),
-		zap.Any("pluginConfigs", tctx.PluginConfigs),
-	)
-
-	m := &utils.Manifest{
-		Routes:        tctx.Routes,
-		Upstreams:     tctx.Upstreams,
-		StreamRoutes:  tctx.StreamRoutes,
-		PluginConfigs: tctx.PluginConfigs,
+	if expireAr != nil {
+		expireTctx, err = c.translator.TranslateExpireRoute(expireAr)
+		if err != nil {
+			log.Errorw("failed to translate expire ApisixRoute",
+				zap.String("group_version", ar.GroupVersion()),
+				zap.Error(err),
+				zap.Any("object", ar),
+			)
+			// Do not care about expired objects that failed to convert
+		}
 	}
 
 	var (
 		added   *utils.Manifest
 		updated *utils.Manifest
 		deleted *utils.Manifest
+		m       *utils.Manifest
+		om      *utils.Manifest
 	)
 
+	if tctx != nil {
+		m = &utils.Manifest{
+			Routes:        tctx.Routes,
+			Upstreams:     tctx.Upstreams,
+			StreamRoutes:  tctx.StreamRoutes,
+			PluginConfigs: tctx.PluginConfigs,
+		}
+	}
+
+	if expireTctx != nil {
+		om = &utils.Manifest{
+			Routes:        expireTctx.Routes,
+			Upstreams:     expireTctx.Upstreams,
+			StreamRoutes:  expireTctx.StreamRoutes,
+			PluginConfigs: expireTctx.PluginConfigs,
+		}
+	}
+
 	if ev.Type == types.EventDelete {
-		deleted = m
+		deleted = om
 	} else if ev.Type == types.EventAdd {
 		added = m
 	} else {
-		oldCtx, _ := c.translator.TranslateOldRoute(obj.OldObject)
-		om := &utils.Manifest{
-			Routes:        oldCtx.Routes,
-			Upstreams:     oldCtx.Upstreams,
-			StreamRoutes:  oldCtx.StreamRoutes,
-			PluginConfigs: oldCtx.PluginConfigs,
-		}
 		added, updated, deleted = m.Diff(om)
 	}
-
+	log.Debugw("sync apisix_route to cluster",
+		zap.String("event_type", ev.Type.String()),
+		zap.Any("add", added),
+		zap.Any("update", updated),
+		zap.Any("delete", deleted),
+	)
 	return c.SyncManifests(ctx, added, updated, deleted)
-}
-
-func (c *apisixRouteController) checkPluginNameIfNotEmptyV2beta3(ctx context.Context, in *v2beta3.ApisixRoute) error {
-	for _, v := range in.Spec.HTTP {
-		if v.PluginConfigName != "" {
-			_, err := c.APISIX.Cluster(c.Config.APISIX.DefaultClusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName))
-			if err != nil {
-				if err == apisixcache.ErrNotFound {
-					log.Errorw("checkPluginNameIfNotEmptyV2beta3 error: plugin_config not found",
-						zap.String("name", apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName)),
-						zap.Any("obj", in),
-						zap.Error(err))
-				} else {
-					log.Errorw("checkPluginNameIfNotEmptyV2beta3 PluginConfig get failed",
-						zap.String("name", apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName)),
-						zap.Any("obj", in),
-						zap.Error(err))
-				}
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (c *apisixRouteController) checkPluginNameIfNotEmptyV2(ctx context.Context, in *v2.ApisixRoute) error {
-	for _, v := range in.Spec.HTTP {
-		if v.PluginConfigName != "" {
-			_, err := c.APISIX.Cluster(c.Config.APISIX.DefaultClusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName))
-			if err != nil {
-				if err == apisixcache.ErrNotFound {
-					log.Errorw("checkPluginNameIfNotEmptyV2 error: plugin_config not found",
-						zap.String("name", apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName)),
-						zap.Any("obj", in),
-						zap.Error(err))
-				} else {
-					log.Errorw("checkPluginNameIfNotEmptyV2 PluginConfig get failed",
-						zap.String("name", apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName)),
-						zap.Any("obj", in),
-						zap.Error(err))
-				}
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) {

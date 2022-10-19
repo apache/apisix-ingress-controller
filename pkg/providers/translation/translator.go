@@ -68,11 +68,12 @@ type Translator interface {
 type TranslatorOptions struct {
 	APIVersion string
 
-	EndpointLister       kube.EndpointLister
-	ServiceLister        listerscorev1.ServiceLister
-	SecretLister         listerscorev1.SecretLister
-	PodLister            listerscorev1.PodLister
-	ApisixUpstreamLister kube.ApisixUpstreamLister
+	EndpointLister           kube.EndpointLister
+	ServiceLister            listerscorev1.ServiceLister
+	SecretLister             listerscorev1.SecretLister
+	PodLister                listerscorev1.PodLister
+	ApisixUpstreamLister     kube.ApisixUpstreamLister
+	ApisixPluginConfigLister kube.ApisixPluginConfigLister
 
 	PodProvider pod.Provider
 }

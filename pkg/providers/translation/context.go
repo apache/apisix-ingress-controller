@@ -45,15 +45,15 @@ func (tc *TranslateContext) AddStreamRoute(sr *apisix.StreamRoute) {
 }
 
 func (tc *TranslateContext) AddUpstream(u *apisix.Upstream) {
-	if _, ok := tc.UpstreamMap[u.Name]; ok {
+	if _, ok := tc.UpstreamMap[u.ID]; ok {
 		return
 	}
-	tc.UpstreamMap[u.Name] = struct{}{}
+	tc.UpstreamMap[u.ID] = struct{}{}
 	tc.Upstreams = append(tc.Upstreams, u)
 }
 
-func (tc *TranslateContext) CheckUpstreamExist(name string) (ok bool) {
-	_, ok = tc.UpstreamMap[name]
+func (tc *TranslateContext) CheckUpstreamExist(id string) (ok bool) {
+	_, ok = tc.UpstreamMap[id]
 	return
 }
 

@@ -16,6 +16,7 @@ package kube
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
@@ -36,6 +37,11 @@ type ApisixRouteLister interface {
 	// V2 gets the ApisixRoute in apisix.apache.org/v2.
 	V2(string, string) (ApisixRoute, error)
 	// V2beta3Lister gets the v2beta3 lister
+
+	GroupVersion() string
+
+	ApisixRoute(string, string) (ApisixRoute, error)
+
 	V2beta3Lister() listersv2beta3.ApisixRouteLister
 	// V2Lister gets the v2 lister
 	V2Lister() listersv2.ApisixRouteLister
@@ -128,6 +134,7 @@ type apisixRouteLister struct {
 	v2beta2Lister listersv2beta2.ApisixRouteLister
 	v2beta3Lister listersv2beta3.ApisixRouteLister
 	v2Lister      listersv2.ApisixRouteLister
+	groupVersion  string
 }
 
 func (l *apisixRouteLister) V2beta2(namespace, name string) (ApisixRoute, error) {
@@ -151,6 +158,7 @@ func (l *apisixRouteLister) V2beta3(namespace, name string) (ApisixRoute, error)
 		v2beta3:      ar,
 	}, nil
 }
+
 func (l *apisixRouteLister) V2(namespace, name string) (ApisixRoute, error) {
 	ar, err := l.v2Lister.ApisixRoutes(namespace).Get(name)
 	if err != nil {
@@ -160,6 +168,35 @@ func (l *apisixRouteLister) V2(namespace, name string) (ApisixRoute, error) {
 		groupVersion: config.ApisixV2,
 		v2:           ar,
 	}, nil
+}
+
+func (l *apisixRouteLister) GroupVersion() string {
+	return l.groupVersion
+}
+
+func (l *apisixRouteLister) ApisixRoute(namespace, name string) (ApisixRoute, error) {
+	switch l.groupVersion {
+	case config.ApisixV2:
+		ar, err := l.v2Lister.ApisixRoutes(namespace).Get(name)
+		if err != nil {
+			return nil, err
+		}
+		return &apisixRoute{
+			groupVersion: config.ApisixV2,
+			v2:           ar,
+		}, nil
+	case config.ApisixV2beta3:
+		ar, err := l.v2beta3Lister.ApisixRoutes(namespace).Get(name)
+		if err != nil {
+			return nil, err
+		}
+		return &apisixRoute{
+			groupVersion: config.ApisixV2beta3,
+			v2beta3:      ar,
+		}, nil
+	default:
+		return nil, fmt.Errorf("invalid ApisixRoute version: %s", l.groupVersion)
+	}
 }
 
 // MustNewApisixRoute creates a kube.ApisixRoute object according to the
@@ -211,10 +248,11 @@ func NewApisixRoute(obj interface{}) (ApisixRoute, error) {
 	}
 }
 
-func NewApisixRouteLister(v2beta2 listersv2beta2.ApisixRouteLister, v2beta3 listersv2beta3.ApisixRouteLister, v2 listersv2.ApisixRouteLister) ApisixRouteLister {
+func NewApisixRouteLister(groupVersion string, v2beta2 listersv2beta2.ApisixRouteLister, v2beta3 listersv2beta3.ApisixRouteLister, v2 listersv2.ApisixRouteLister) ApisixRouteLister {
 	return &apisixRouteLister{
 		v2beta2Lister: v2beta2,
 		v2beta3Lister: v2beta3,
 		v2Lister:      v2,
+		groupVersion:  groupVersion,
 	}
 }

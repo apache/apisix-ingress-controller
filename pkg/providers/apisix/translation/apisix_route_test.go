@@ -243,22 +243,40 @@ func mockTranslatorV2beta3(t *testing.T) (*translator, <-chan struct{}) {
 		},
 	}
 
+	pluginconfig := &configv2beta3.ApisixPluginConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-PluginConfigName-1",
+			Namespace: "test",
+		},
+		Spec: configv2beta3.ApisixPluginConfigSpec{
+			Plugins: []configv2beta3.ApisixRouteHTTPPlugin{},
+		},
+	}
+
 	client := fake.NewSimpleClientset()
 	informersFactory := informers.NewSharedInformerFactory(client, 0)
-	svcInformer := informersFactory.Core().V1().Services().Informer()
+	svcInformer := informersFactory.Core().V1().Services()
 	svcLister := informersFactory.Core().V1().Services().Lister()
 	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := fakeapisix.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
+	apisixPluginConfigInformer := apisixInformersFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
 
 	_, err := client.CoreV1().Endpoints("test").Create(context.Background(), endpoints, metav1.CreateOptions{})
 	assert.Nil(t, err)
 	_, err = client.CoreV1().Services("test").Create(context.Background(), svc, metav1.CreateOptions{})
 	assert.Nil(t, err)
 
+	_, err = apisixClient.ApisixV2beta3().ApisixPluginConfigs("test").Create(context.Background(), pluginconfig, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
 	tr := &translator{
 		&TranslatorOptions{
 			ServiceLister: svcLister,
+			ApisixPluginConfigLister: kube.NewApisixPluginConfigLister(
+				apisixInformersFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+				apisixInformersFactory.Apisix().V2().ApisixPluginConfigs().Lister(),
+			),
 		},
 		translation.NewTranslator(&translation.TranslatorOptions{
 			ServiceLister:  svcLister,
@@ -267,12 +285,13 @@ func mockTranslatorV2beta3(t *testing.T) (*translator, <-chan struct{}) {
 				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 			),
+
 			APIVersion: config.ApisixV2beta3,
 		}),
 	}
 
-	processCh := make(chan struct{}, 2)
-	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	processCh := make(chan struct{}, 3)
+	svcInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			processCh <- struct{}{}
 		},
@@ -283,17 +302,156 @@ func mockTranslatorV2beta3(t *testing.T) (*translator, <-chan struct{}) {
 		},
 	})
 
+	apisixPluginConfigInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+
 	stopCh := make(chan struct{})
 	defer close(stopCh)
-	go svcInformer.Run(stopCh)
-	go epInformer.Run(stopCh)
-	cache.WaitForCacheSync(stopCh, svcInformer.HasSynced)
+	informersFactory.Start(stopCh)
+	apisixInformersFactory.Start(stopCh)
+
+	informersFactory.WaitForCacheSync(stopCh)
+	apisixInformersFactory.WaitForCacheSync(stopCh)
+
+	return tr, processCh
+}
+
+func mockTranslatorV2(t *testing.T) (*translator, <-chan struct{}) {
+	svc := &corev1.Service{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "svc",
+			Namespace: "test",
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name: "port1",
+					Port: 80,
+					TargetPort: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: 9080,
+					},
+				},
+				{
+					Name: "port2",
+					Port: 443,
+					TargetPort: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: 9443,
+					},
+				},
+			},
+		},
+	}
+	endpoints := &corev1.Endpoints{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "svc",
+			Namespace: "test",
+		},
+		Subsets: []corev1.EndpointSubset{
+			{
+				Ports: []corev1.EndpointPort{
+					{
+						Name: "port1",
+						Port: 9080,
+					},
+					{
+						Name: "port2",
+						Port: 9443,
+					},
+				},
+				Addresses: []corev1.EndpointAddress{
+					{IP: "192.168.1.1"},
+					{IP: "192.168.1.2"},
+				},
+			},
+		},
+	}
+
+	pluginconfig := &configv2.ApisixPluginConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-PluginConfigName-1",
+			Namespace: "test",
+		},
+		Spec: configv2.ApisixPluginConfigSpec{
+			Plugins: []configv2.ApisixRoutePlugin{},
+		},
+	}
+
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	svcInformer := informersFactory.Core().V1().Services()
+	svcLister := informersFactory.Core().V1().Services().Lister()
+	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
+	apisixClient := fakeapisix.NewSimpleClientset()
+	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
+	apisixPluginConfigInformer := apisixInformersFactory.Apisix().V2().ApisixPluginConfigs().Informer()
+
+	_, err := client.CoreV1().Endpoints("test").Create(context.Background(), endpoints, metav1.CreateOptions{})
+	assert.Nil(t, err)
+	_, err = client.CoreV1().Services("test").Create(context.Background(), svc, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	_, err = apisixClient.ApisixV2().ApisixPluginConfigs("test").Create(context.Background(), pluginconfig, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	tr := &translator{
+		&TranslatorOptions{
+			ServiceLister: svcLister,
+			ApisixPluginConfigLister: kube.NewApisixPluginConfigLister(
+				apisixInformersFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+				apisixInformersFactory.Apisix().V2().ApisixPluginConfigs().Lister(),
+			),
+		},
+		translation.NewTranslator(&translation.TranslatorOptions{
+			ServiceLister:  svcLister,
+			EndpointLister: epLister,
+			ApisixUpstreamLister: kube.NewApisixUpstreamLister(
+				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
+				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
+			),
+
+			APIVersion: config.ApisixV2,
+		}),
+	}
+
+	processCh := make(chan struct{}, 3)
+	svcInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+	epInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+
+	apisixPluginConfigInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	informersFactory.Start(stopCh)
+	apisixInformersFactory.Start(stopCh)
+
+	informersFactory.WaitForCacheSync(stopCh)
+	apisixInformersFactory.WaitForCacheSync(stopCh)
 
 	return tr, processCh
 }
 
 func TestTranslateApisixRouteV2beta3WithDuplicatedName(t *testing.T) {
 	tr, processCh := mockTranslatorV2beta3(t)
+	<-processCh
 	<-processCh
 	<-processCh
 
@@ -347,6 +505,7 @@ func TestTranslateApisixRouteV2beta3WithDuplicatedName(t *testing.T) {
 
 func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
 	tr, processCh := mockTranslatorV2beta3(t)
+	<-processCh
 	<-processCh
 	<-processCh
 
@@ -417,6 +576,91 @@ func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
 	expectedPluginId := id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, ar.Spec.HTTP[1].PluginConfigName))
 	assert.Equal(t, expectedPluginId, res.Routes[1].PluginConfigId)
 	assert.Equal(t, "", res.Routes[2].PluginConfigId)
+
+	ar.Spec.HTTP[0].PluginConfigName = "PluginConfigName-2"
+	res, err = tr.TranslateRouteV2beta3(ar)
+	assert.Nil(t, res)
+	assert.Error(t, err)
+}
+
+func TestTranslateApisixRouteV2WithEmptyPluginConfigName(t *testing.T) {
+	tr, processCh := mockTranslatorV2beta3(t)
+	<-processCh
+	<-processCh
+	<-processCh
+
+	ar := &configv2.ApisixRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ar",
+			Namespace: "test",
+		},
+		Spec: configv2.ApisixRouteSpec{
+			HTTP: []configv2.ApisixRouteHTTP{
+				{
+					Name: "rule1",
+					Match: configv2.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Backends: []configv2.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc",
+							ServicePort: intstr.IntOrString{
+								IntVal: 80,
+							},
+						},
+					},
+				},
+				{
+					Name: "rule2",
+					Match: configv2.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Backends: []configv2.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc",
+							ServicePort: intstr.IntOrString{
+								IntVal: 80,
+							},
+						},
+					},
+					PluginConfigName: "test-PluginConfigName-1",
+				},
+				{
+					Name: "rule3",
+					Match: configv2.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Backends: []configv2.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc",
+							ServicePort: intstr.IntOrString{
+								IntVal: 80,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	res, err := tr.TranslateRouteV2(ar)
+	assert.NoError(t, err)
+	assert.Len(t, res.PluginConfigs, 0)
+	assert.Len(t, res.Routes, 3)
+	assert.Equal(t, "", res.Routes[0].PluginConfigId)
+	expectedPluginId := id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, ar.Spec.HTTP[1].PluginConfigName))
+	assert.Equal(t, expectedPluginId, res.Routes[1].PluginConfigId)
+	assert.Equal(t, "", res.Routes[2].PluginConfigId)
+
+	ar.Spec.HTTP[0].PluginConfigName = "PluginConfigName-2"
+	res, err = tr.TranslateRouteV2(ar)
+	assert.Nil(t, res)
+	assert.Error(t, err)
 }
 
 func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {

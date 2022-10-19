@@ -32,8 +32,9 @@ type TranslatorOptions struct {
 	Apisix      apisix.APISIX
 	ClusterName string
 
-	ServiceLister listerscorev1.ServiceLister
-	SecretLister  listerscorev1.SecretLister
+	ServiceLister            listerscorev1.ServiceLister
+	SecretLister             listerscorev1.SecretLister
+	ApisixPluginConfigLister kube.ApisixPluginConfigLister
 }
 
 type translator struct {
@@ -64,7 +65,6 @@ type ApisixTranslator interface {
 	TranslateRouteV2NotStrictly(*configv2.ApisixRoute) (*translation.TranslateContext, error)
 	// TranslateOldRoute get route and stream_route objects from cache
 	// Build upstream and plugin_config through route and stream_route
-	TranslateOldRoute(kube.ApisixRoute) (*translation.TranslateContext, error)
 	// TranslateSSLV2Beta3 translates the configv2beta3.ApisixTls object into the APISIX SSL resource.
 	TranslateSSLV2Beta3(*configv2beta3.ApisixTls) (*apisixv1.Ssl, error)
 	// TranslateSSLV2 translates the configv2.ApisixTls object into the APISIX SSL resource.
@@ -95,6 +95,10 @@ type ApisixTranslator interface {
 	TranslatePluginConfigV2NotStrictly(*configv2.ApisixPluginConfig) (*translation.TranslateContext, error)
 
 	TranslateRouteMatchExprs(nginxVars []configv2.ApisixRouteHTTPMatchExpr) ([][]apisixv1.StringOrSlice, error)
+
+	TranslateExpireRoute(kube.ApisixRoute) (*translation.TranslateContext, error)
+
+	TranslateRoute(kube.ApisixRoute) (*translation.TranslateContext, error)
 }
 
 func NewApisixTranslator(opts *TranslatorOptions, t translation.Translator) ApisixTranslator {
