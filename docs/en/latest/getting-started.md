@@ -49,10 +49,10 @@ values={[
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
-  name: httpserver-route
+  name: httpbin-route
 spec:
   http:
-    - name: rule1
+    - name: route-1
       match:
         hosts:
           - local.httpbin.org
@@ -71,7 +71,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: httpserver-ingress
+  name: httpbin-route
 spec:
   ingressClassName: apisix
   rules:
