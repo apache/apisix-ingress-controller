@@ -258,6 +258,8 @@ func (c *Controller) initSharedInformers(ctx context.Context) *providertypes.Lis
 	}
 
 	//wait for all informer has synecd
+	apisixFactory.Start(ctx.Done())
+	kubeFactory.Start(ctx.Done())
 	cache.WaitForCacheSync(ctx.Done(),
 		listerInformer.EpInformer.HasSynced,
 		listerInformer.SvcInformer.HasSynced,
