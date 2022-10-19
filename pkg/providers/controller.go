@@ -217,44 +217,99 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
 	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
 
-	epLister, epInformer := kube.NewEndpointListerAndInformer(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
-	svcInformer := kubeFactory.Core().V1().Services().Informer()
-	svcLister := kubeFactory.Core().V1().Services().Lister()
-
 	var (
-		apisixUpstreamInformer cache.SharedIndexInformer
+		apisixUpstreamInformer      cache.SharedIndexInformer
+		apisixRouteInformer         cache.SharedIndexInformer
+		apisixPluginConfigInformer  cache.SharedIndexInformer
+		apisixConsumerInformer      cache.SharedIndexInformer
+		apisixTlsInformer           cache.SharedIndexInformer
+		apisixClusterConfigInformer cache.SharedIndexInformer
 	)
 	switch c.cfg.Kubernetes.APIVersion {
 	case config.ApisixV2beta3:
+		apisixRouteInformer = apisixFactory.Apisix().V2beta3().ApisixRoutes().Informer()
+		apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
+		apisixClusterConfigInformer = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Informer()
+		apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
+		apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
 		apisixUpstreamInformer = apisixFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
 	case config.ApisixV2:
+		apisixRouteInformer = apisixFactory.Apisix().V2().ApisixRoutes().Informer()
+		apisixTlsInformer = apisixFactory.Apisix().V2().ApisixTlses().Informer()
+		apisixClusterConfigInformer = apisixFactory.Apisix().V2().ApisixClusterConfigs().Informer()
+		apisixConsumerInformer = apisixFactory.Apisix().V2().ApisixConsumers().Informer()
+		apisixPluginConfigInformer = apisixFactory.Apisix().V2().ApisixPluginConfigs().Informer()
 		apisixUpstreamInformer = apisixFactory.Apisix().V2().ApisixUpstreams().Informer()
 	default:
 		panic(fmt.Errorf("unsupported API version %v", c.cfg.Kubernetes.APIVersion))
 	}
 
+	apisixRouteLister := kube.NewApisixRouteLister(
+		c.cfg.Kubernetes.APIVersion,
+		apisixFactory.Apisix().V2beta2().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
+		apisixFactory.Apisix().V2().ApisixRoutes().Lister(),
+	)
+	apisixTlsLister := kube.NewApisixTlsLister(
+		// add GroupVersion
+		apisixFactory.Apisix().V2beta3().ApisixTlses().Lister(),
+		apisixFactory.Apisix().V2().ApisixTlses().Lister(),
+	)
+	apisixClusterConfigLister := kube.NewApisixClusterConfigLister(
+		// add GroupVersion
+		apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister(),
+		apisixFactory.Apisix().V2().ApisixClusterConfigs().Lister(),
+	)
+	apisixConsumerLister := kube.NewApisixConsumerLister(
+		// add GroupVersion
+		apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister(),
+		apisixFactory.Apisix().V2().ApisixConsumers().Lister(),
+	)
+	apisixPluginConfigLister := kube.NewApisixPluginConfigLister(
+		// add GroupVersion
+		apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
+		apisixFactory.Apisix().V2().ApisixPluginConfigs().Lister(),
+	)
 	apisixUpstreamLister := kube.NewApisixUpstreamLister(
 		apisixFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		apisixFactory.Apisix().V2().ApisixUpstreams().Lister(),
 	)
 
+	epLister, epInformer := kube.NewEndpointListerAndInformer(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
 	podInformer := kubeFactory.Core().V1().Pods().Informer()
-	podLister := kubeFactory.Core().V1().Pods().Lister()
-
+	svcInformer := kubeFactory.Core().V1().Services().Informer()
 	secretInformer := kubeFactory.Core().V1().Secrets().Informer()
+
+	svcLister := kubeFactory.Core().V1().Services().Lister()
+	podLister := kubeFactory.Core().V1().Pods().Lister()
 	secretLister := kubeFactory.Core().V1().Secrets().Lister()
 
 	listerInformer := &providertypes.ListerInformer{
-		EpLister:               epLister,
-		EpInformer:             epInformer,
-		SvcLister:              svcLister,
-		SvcInformer:            svcInformer,
-		SecretLister:           secretLister,
-		SecretInformer:         secretInformer,
-		PodLister:              podLister,
-		PodInformer:            podInformer,
-		ApisixUpstreamLister:   apisixUpstreamLister,
-		ApisixUpstreamInformer: apisixUpstreamInformer,
+		ApisixFactory: apisixFactory,
+		KubeFactory:   kubeFactory,
+
+		EpLister:       epLister,
+		EpInformer:     epInformer,
+		SvcLister:      svcLister,
+		SvcInformer:    svcInformer,
+		SecretLister:   secretLister,
+		SecretInformer: secretInformer,
+		PodLister:      podLister,
+		PodInformer:    podInformer,
+
+		ApisixUpstreamLister:      apisixUpstreamLister,
+		ApisixRouteLister:         apisixRouteLister,
+		ApisixConsumerLister:      apisixConsumerLister,
+		ApisixTlsLister:           apisixTlsLister,
+		ApisixPluginConfigLister:  apisixPluginConfigLister,
+		ApisixClusterConfigLister: apisixClusterConfigLister,
+
+		ApisixUpstreamInformer:      apisixUpstreamInformer,
+		ApisixPluginConfigInformer:  apisixPluginConfigInformer,
+		ApisixRouteInformer:         apisixRouteInformer,
+		ApisixClusterConfigInformer: apisixClusterConfigInformer,
+		ApisixConsumerInformer:      apisixConsumerInformer,
+		ApisixTlsInformer:           apisixTlsInformer,
 	}
 
 	return listerInformer
