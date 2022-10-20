@@ -90,7 +90,7 @@ spec:
 </TabItem>
 </Tabs>
 
-APISIX ingress controller defines the CRDs [ApisixRoute](./concepts/apisix_route.md), [ApisixUpstream](./concepts/apisix_upstream.md), [ApisixTlx](concepts/apisix_tls.md), and [ApisixClusterConfig](concepts/apisix_cluster_config.md).
+APISIX ingress controller defines the CRDs [ApisixRoute](./concepts/apisix_route.md), [ApisixUpstream](./concepts/apisix_upstream.md), [ApisixTls](concepts/apisix_tls.md), and [ApisixClusterConfig](concepts/apisix_cluster_config.md).
 
 APISIX also supports [service discovery](https://apisix.apache.org/docs/apisix/next/discovery/kubernetes/) through [Kubernetes service](https://kubernetes.io/docs/concepts/services-networking/service/) abstraction.
 
