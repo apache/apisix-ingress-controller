@@ -67,14 +67,17 @@ type ApisixRouteHTTP struct {
 	// Backends represents potential backends to proxy after the route
 	// rule matched. When number of backends are more than one, traffic-split
 	// plugin in APISIX will be used to split traffic based on the backend weight.
-	Backends         []ApisixRouteHTTPBackend  `json:"backends,omitempty" yaml:"backends,omitempty"`
+	Backends []ApisixRouteHTTPBackend `json:"backends,omitempty" yaml:"backends,omitempty"`
+	// Upstreams refer to ApisixUpstream CRD
+	Upstreams []ApisixRouteUpstreamReference `json:"upstreams,omitempty" yaml:"upstreams,omitempty"`
+
 	Websocket        bool                      `json:"websocket" yaml:"websocket"`
 	PluginConfigName string                    `json:"plugin_config_name,omitempty" yaml:"plugin_config_name,omitempty"`
 	Plugins          []ApisixRoutePlugin       `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 	Authentication   ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
-// ApisixRouteHTTPBackend represents a HTTP backend (a Kuberentes Service).
+// ApisixRouteHTTPBackend represents an HTTP backend (a Kubernetes Service).
 type ApisixRouteHTTPBackend struct {
 	// The name (short) of the service, note cross namespace is forbidden,
 	// so be sure the ApisixRoute and Service are in the same namespace.
@@ -91,6 +94,13 @@ type ApisixRouteHTTPBackend struct {
 	// Subset specifies a subset for the target Service. The subset should be pre-defined
 	// in ApisixUpstream about this service.
 	Subset string `json:"subset,omitempty" yaml:"subset,omitempty"`
+}
+
+// ApisixRouteUpstreamReference contains a ApisixUpstream CRD reference
+type ApisixRouteUpstreamReference struct {
+	Name string `json:"name,omitempty" yaml:"name"`
+	// +optional
+	Weight *int `json:"weight,omitempty" yaml:"weight"`
 }
 
 // ApisixRouteHTTPMatch represents the match condition for hitting this route.
@@ -166,6 +176,20 @@ type ApisixRoutePlugin struct {
 // any plugins.
 type ApisixRoutePluginConfig map[string]interface{}
 
+func (p ApisixRoutePluginConfig) DeepCopyInto(out *ApisixRoutePluginConfig) {
+	b, _ := json.Marshal(&p)
+	_ = json.Unmarshal(b, out)
+}
+
+func (p *ApisixRoutePluginConfig) DeepCopy() *ApisixRoutePluginConfig {
+	if p == nil {
+		return nil
+	}
+	out := new(ApisixRoutePluginConfig)
+	p.DeepCopyInto(out)
+	return out
+}
+
 // ApisixRouteAuthentication is the authentication-related
 // configuration in ApisixRoute.
 type ApisixRouteAuthentication struct {
@@ -187,20 +211,6 @@ type ApisixRouteAuthenticationJwtAuth struct {
 	Header string `json:"header,omitempty" yaml:"header,omitempty"`
 	Query  string `json:"query,omitempty" yaml:"query,omitempty"`
 	Cookie string `json:"cookie,omitempty" yaml:"cookie,omitempty"`
-}
-
-func (p ApisixRoutePluginConfig) DeepCopyInto(out *ApisixRoutePluginConfig) {
-	b, _ := json.Marshal(&p)
-	_ = json.Unmarshal(b, out)
-}
-
-func (p *ApisixRoutePluginConfig) DeepCopy() *ApisixRoutePluginConfig {
-	if p == nil {
-		return nil
-	}
-	out := new(ApisixRoutePluginConfig)
-	p.DeepCopyInto(out)
-	return out
 }
 
 // ApisixRouteStream is the configuration for level 4 route
@@ -238,7 +248,6 @@ type ApisixRouteStreamBackend struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // ApisixRouteList contains a list of ApisixRoute.
 type ApisixRouteList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
@@ -250,7 +259,6 @@ type ApisixRouteList struct {
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
-
 // ApisixClusterConfig is the Schema for the ApisixClusterConfig resource.
 // An ApisixClusterConfig is used to identify an APISIX cluster, it's a
 // ClusterScoped resource so the name is unique.
@@ -310,7 +318,6 @@ type ApisixClusterAdminConfig struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // ApisixClusterConfigList contains a list of ApisixClusterConfig.
 type ApisixClusterConfigList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
@@ -322,7 +329,6 @@ type ApisixClusterConfigList struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
-
 // ApisixConsumer is the Schema for the ApisixConsumer resource.
 // An ApisixConsumer is used to identify a consumer.
 type ApisixConsumer struct {
@@ -418,7 +424,6 @@ type ApisixConsumerHMACAuthValue struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // ApisixConsumerList contains a list of ApisixConsumer.
 type ApisixConsumerList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
@@ -443,13 +448,18 @@ type ApisixUpstream struct {
 
 // ApisixUpstreamSpec describes the specification of ApisixUpstream.
 type ApisixUpstreamSpec struct {
+	// ExternalNodes contains external nodes the Upstream should use
+	// If this field is set, the upstream will use these nodes directly without any further resolves
+	// +optional
+	ExternalNodes []ApisixUpstreamExternalNode `json:"externalNodes,omitempty" yaml:"externalNodes,omitempty"`
+
 	ApisixUpstreamConfig `json:",inline" yaml:",inline"`
 
 	PortLevelSettings []PortLevelSettings `json:"portLevelSettings,omitempty" yaml:"portLevelSettings,omitempty"`
 }
 
 // ApisixUpstreamConfig contains rich features on APISIX Upstream, for instance
-// load balancer, health check and etc.
+// load balancer, health check, etc.
 type ApisixUpstreamConfig struct {
 	// LoadBalancer represents the load balancer configuration for Kubernetes Service.
 	// The default strategy is round robin.
@@ -481,6 +491,27 @@ type ApisixUpstreamConfig struct {
 	// service versions.
 	// +optional
 	Subsets []ApisixUpstreamSubset `json:"subsets,omitempty" yaml:"subsets,omitempty"`
+}
+
+// ApisixUpstreamExternalType is the external service type
+type ApisixUpstreamExternalType string
+
+const (
+	// ExternalTypeDomain type is a domain
+	// +k8s:deepcopy-gen=false
+	ExternalTypeDomain ApisixUpstreamExternalType = "Domain"
+
+	// ExternalTypeService type is a K8s ExternalName service
+	// +k8s:deepcopy-gen=false
+	ExternalTypeService ApisixUpstreamExternalType = "Service"
+)
+
+// ApisixUpstreamExternalNode is the external node conf
+type ApisixUpstreamExternalNode struct {
+	Name string                     `json:"name,omitempty" yaml:"name"`
+	Type ApisixUpstreamExternalType `json:"type,omitempty" yaml:"type"`
+	// +optional
+	Weight *int `json:"weight,omitempty" yaml:"weight"`
 }
 
 // ApisixUpstreamSubset defines a single endpoints group of one Service.

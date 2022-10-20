@@ -24,6 +24,7 @@ func TruncateString(s string, max int) string {
 }
 
 // Difference returns elements only in a
+// Duplicated elements are considered as same element
 func Difference(a, b []string) []string {
 	bMap := make(map[string]struct{}, len(b))
 	for _, elem := range b {
@@ -36,4 +37,11 @@ func Difference(a, b []string) []string {
 		}
 	}
 	return onlyInA
+}
+
+func Equal(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	return len(Difference(a, b)) == 0 && len(Difference(b, a)) == 0
 }
