@@ -503,7 +503,7 @@ const (
 
 	// ExternalTypeService type is a K8s ExternalName service
 	// +k8s:deepcopy-gen=false
-	ExternalTypeService ApisixUpstreamExternalType = "service"
+	ExternalTypeService ApisixUpstreamExternalType = "Service"
 )
 
 // ApisixUpstreamExternalNode is the external node conf

@@ -512,6 +512,7 @@ func (c *apisixUpstreamController) syncRelationship(ev *types.Event, auKey strin
 		c.externalServiceMap[svc][auKey] = struct{}{}
 	}
 }
+
 func (c *apisixUpstreamController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)

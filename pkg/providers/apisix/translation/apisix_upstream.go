@@ -57,7 +57,7 @@ func (t *translator) translateService(namespace, svcName, subset, svcResolveGran
 	return ups, nil
 }
 
-// TODO: Scheme (http/https)
+// TODO: Support Port field
 func (t *translator) TranslateApisixUpstreamExternalNodes(au *v2.ApisixUpstream) ([]apisixv1.UpstreamNode, error) {
 	var nodes []apisixv1.UpstreamNode
 	for i, node := range au.Spec.ExternalNodes {
@@ -113,6 +113,7 @@ func (t *translator) TranslateApisixUpstreamExternalNodes(au *v2.ApisixUpstream)
 				Weight: weight,
 			}
 
+			// TODO: Support Port field. This is a temporary solution.
 			arr := strings.Split(svc.Spec.ExternalName, ":")
 			if len(arr) == 1 {
 				if strings.HasPrefix(arr[0], "https://") {
@@ -135,8 +136,7 @@ func (t *translator) TranslateApisixUpstreamExternalNodes(au *v2.ApisixUpstream)
 	return nodes, nil
 }
 
-// TODO List:
-// 1. Retry when ApisixUpstream/ExternalName service not found
+// TODO: Retry when ApisixUpstream/ExternalName service not found
 func (t *translator) translateExternalApisixUpstream(namespace, upstream string) (*apisixv1.Upstream, error) {
 	multiVersioned, err := t.ApisixUpstreamLister.V2(namespace, upstream)
 	if err != nil {

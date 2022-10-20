@@ -19,15 +19,15 @@ package features
 
 import (
 	"fmt"
-	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	"github.com/apache/apisix-ingress-controller/pkg/types"
 	"net/http"
 	"reflect"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
+	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"

@@ -97,6 +97,7 @@ type ApisixTranslator interface {
 
 	TranslateRouteMatchExprs(nginxVars []configv2.ApisixRouteHTTPMatchExpr) ([][]apisixv1.StringOrSlice, error)
 
+	// TranslateApisixUpstreamExternalNodes translates an ApisixUpstream with external nodes to APISIX nodes.
 	TranslateApisixUpstreamExternalNodes(au *configv2.ApisixUpstream) ([]apisixv1.UpstreamNode, error)
 }
 
