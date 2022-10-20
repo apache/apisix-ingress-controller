@@ -114,21 +114,7 @@ func (t *translator) TranslateApisixUpstreamExternalNodes(au *v2.ApisixUpstream)
 			}
 
 			// TODO: Support Port field. This is a temporary solution.
-			arr := strings.Split(svc.Spec.ExternalName, ":")
-			if len(arr) == 1 {
-				if strings.HasPrefix(arr[0], "https://") {
-					n.Port = 443
-				} else {
-					n.Port = 80
-				}
-			} else if len(arr) == 2 {
-				port, err := strconv.Atoi(arr[1])
-				if err != nil {
-					return nil, errors.Wrap(err, fmt.Sprintf("failed to parse ApisixUpstream %s/%s port: at ExternalNodes[%v]: %s", au.Namespace, au.Name, i, node.Name))
-				}
-
-				n.Port = port
-			}
+			n.Port = 80
 
 			nodes = append(nodes, n)
 		}
