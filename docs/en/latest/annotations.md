@@ -27,7 +27,7 @@ description: Guide to using additional features of APISIX Ingress with annotatio
 #
 -->
 
-Annotations can be used with the [native Kubernetes ingress resource](https://kubernetes.io/docs/concepts/services-networking/ingress/) to access advanced features in Apache APISIX. Alternatively, you can use [APISIX's CRDs](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_route/) for a better experience.
+Annotations can be used with the [native Kubernetes ingress resource](https://kubernetes.io/docs/concepts/services-networking/ingress/) to access advanced features in Apache APISIX. Alternatively, you can use [APISIX's CRDs](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_route) for a better experience.
 
 This document describes all the available annotations and their uses.
 
@@ -225,7 +225,7 @@ spec:
 
 ## Using ApisixPluginConfig resource
 
-This annotation is used to enable a defined [ApisixPluginConfig](https://apisix.apache.org/docs/ingress-controller/references/apisix_pluginconfig_v2/) resource on a particular route.
+This annotation is used to enable a defined [ApisixPluginConfig](https://apisix.apache.org/docs/ingress-controller/references/apisix_pluginconfig_v2) resource on a particular route.
 
 The value of the annotation should be the name of the created `ApisixPluginConfig` resource.
 
