@@ -1,5 +1,11 @@
 ---
 title: Annotations
+keywords:
+  - APISIX ingress
+  - Apache APISIX
+  - Kubernetes ingress
+  - Annotations
+description: Guide to using additional features of APISIX Ingress with annotations.
 ---
 
 <!--
@@ -21,57 +27,87 @@ title: Annotations
 #
 -->
 
-This document describes all supported annotations and their functions. You can add these annotations in the [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) resources so that advanced features in [Apache APISIX](https://apisix.apache.org) can be combined into [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress) resources.
+Annotations can be used with the [native Kubernetes ingress resource](https://kubernetes.io/docs/concepts/services-networking/ingress/) to access advanced features in Apache APISIX. Alternatively, you can use [APISIX's CRDs](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_route) for a better experience.
 
-> Note all keys and values of annotations are strings, so boolean value like `true` and `false` should be represented as `"true"` and `"false"`.
+This document describes all the available annotations and their uses.
 
-CORS Support
-------------
+:::note
 
-In order to enable [CORS](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing), the annotation `k8s.apisix.apache.org/enable-cors` should be set to `"true"`, also, there are some other annotations to customize the cors behavior.
+Key-value pairs in annotations are strings. So boolean values should be reprsented as `"true"` and `"false"`.
 
-* `k8s.apisix.apache.org/cors-allow-origin`
+:::
 
-This annotation controls which origins will be allowed, multiple origins join together with `,`, for instance: `https://foo.com,http://bar.com:8080`
+## CORS
 
-Default value is `"*"`, which means all origins are allowed.
+You can enable [CORS](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing) by adding the annotation as shown below:
 
-* `k8s.apisix.apache.org/cors-allow-headers`
+```yaml
+metadata:
+  annotations:
+    k8s.apisix.apache.org/enable-cors: "true"
+```
 
-This annotation controls which headers are accepted, multiple headers join together with `,`.
+You can also customize the behaviour with some additional annotations as shown below.
 
-Default is `"*"`, which means all headers are accepted.
+### Allow origins
 
-* `k8s.apisix.apache.org/cors-allow-methods`
+This annotation configures which origins are allowed. Multiple origins can be added in a comma separated form.
 
-This annotation controls which methods are accepted, multiple methods join together with `,`.
+```yaml
+k8s.apisix.apache.org/cors-allow-origin: "https://foo.com,http://bar.com:8080"
+```
 
-Default is `"*"`, which means all HTTP methods are accepted.
+The default value is `"*"` which means all origins are allowed.
 
-Allowlist Source Range
------------------------
+### Allow headers
 
-You can specify the allowed client IP addresses or nets by the annotation `k8s.apisix.apache.org/allowlist-source-range`, multiple IP addresses or nets join together with `,`,
-for instance, `k8s.apisix.apache.org/allowlist-source-range: 10.0.5.0/16,127.0.0.1,192.168.3.98`. Default value is *empty*, which means the sources are not limited.
+This annotation configures which headers are allowed. Multiple headers can be added in a comma separated form.
 
-Blocklist Source Range
-----------------------
+```yaml
+k8s.apisix.apache.org/cors-allow-headers: "Host: https://bar.com:8080"
+```
 
-You can specify the denied client IP addresses or nets by the annotation `k8s.apisix.apache.org/blocklist-source-range`, multiple IP addresses or nets join together with `,`,
-for instance, `k8s.apisix.apache.org/blocklist-source-range: 127.0.0.1,172.17.0.0/16`. Default value is *empty*, which means the sources are not limited.
+The default value is `"*"` which means all headers are allowed.
 
-Rewrite Target
---------------
+### Allow methods
 
-You can rewrite requests by specifying the annotation `k8s.apisix.apache.org/rewrite-target` or `k8s.apisix.apache.org/rewrite-target-regex`.
+This annotation configures which HTTP methods are allowed. Multiple methods can be added in a comma separated form.
 
-The annotation `k8s.apisix.apache.org/rewrite-target` controls where the request will be forwarded to.
+```yaml
+k8s.apisix.apache.org/cors-allow-methods: "GET,POST"
+```
 
-If you want to use regex and match groups, use annotation `k8s.apisix.apache.org/rewrite-target-regex` and `k8s.apisix.apache.org/rewrite-target-regex-template`. The first annotation contains the matching rule (regex), the second one contains the rewrite rule.
+The default value is `"*"` which means all methods are allowed.
 
-Both annotations must be used together, otherwise they will be ignored.
+## Allowlist source range
 
-For example, we have an Ingress matches prefix path `/app`, and we set `k8s.apisix.apache.org/rewrite-target-regex` to `/app/(.*)` and set `k8s.apisix.apache.org/rewrite-target-regex-template` to `/$1`.
+This annotation can be used to specify which client IP addresses or nets are allowed. Multiple IP addresses can also be specified by separating them with commas.
+
+```yaml
+k8s.apisix.apache.org/allowlist-source-range: "10.0.5.0/16,127.0.0.1,192.168.3.98"
+```
+
+The default value is empty which means all IP addresses are allowed.
+
+## Blocklist source range
+
+This annotation can be used to specify which client IP addresses or nets are blocked. Multiple IP addresses can also be specified by separating them with commas.
+
+```yaml
+k8s.apisix.apache.org/blocklist-source-range: "127.0.0.1,172.17.0.0/16"
+```
+
+The default value is empty which means no IP addresses are blocked.
+
+## Rewrite target
+
+These annotations are used to rewrite requests.
+
+The annotation `k8s.apisix.apache.org/rewrite-target` specifies where to forward the request.
+
+If you want to use regex and match groups, use the annotations `k8s.apisix.apache.org/rewrite-target-regex` and `k8s.apisix.apache.org/rewrite-target-regex-template`. The former should contain the matching rule and the latter should contain the rewrite rule. Both these annotations must be used together.
+
+The example below configures the Ingress to forward all requests with `/app` prefix to the backend removing the `/app/` part. So, a request to `/app/ip` will be forwarded to `/ip`.
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -84,31 +120,23 @@ metadata:
   name: ingress-v1
 spec:
   rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /app
-        pathType: Prefix
-        backend:
-          service:
-            name: httpbin
-            port:
-              number: 80
+    - host: httpbin.org
+      http:
+        paths:
+          - path: /app
+            pathType: Prefix
+            backend:
+              service:
+                name: httpbin
+                port:
+                  number: 80
 ```
 
-With this Ingress, any requests with `/app` prefix will be forwarded to backend without the `/app/` part, e.g. request `/app/ip` will be forwarded to `/ip`.
+## HTTP to HTTPS
 
-Redirect
----------
+This annotation is used to redirect HTTP requests to HTTPS with a `301` status code and with the same URI as the original request.
 
-You can use the following annotations to control the redirect behavior.
-
-* `k8s.apisix.apache.org/http-to-https`
-
-If this annotation set to `true` and the request is HTTP, it will be automatically redirected to HTTPS with 301 response code,
-and the URI will keep the same as client request.
-
-For example, the following Ingress, if we set `k8s.apisix.apache.org/http-to-https: "true"`. The client will get a response with 301 status code, and the response header `Location`  will be `https://httpbin.org/sample`.
+The example below will redirect HTTP requests with a `301` status code with a response header `Location:https://httpbin.org/sample`.
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -120,28 +148,23 @@ metadata:
   name: ingress-v1
 spec:
   rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /sample
-        pathType: Exact
-        backend:
-          service:
-            name: httpbin
-            port:
-              number: 80
+    - host: httpbin.org
+      http:
+        paths:
+          - path: /sample
+            pathType: Exact
+            backend:
+              service:
+                name: httpbin
+                port:
+                  number: 80
 ```
 
-Path regular expression
----------
+## Regex paths
 
-You can use the follow annotations to enable path regular expression
+This annotation is can be used to enable regular expressions in path matching.
 
-* `k8s.apisix.apache.org/use-regex`
-  
-If this annotations set to `true` and the `PathType` set to `ImplementationSpecific`, the path will be match as regular expression.
-
-For example, the following Ingress. Request path with `/api/*/action1` will use `service1` and `/api/*/action2` will be use `service2`
+With this annotation set to `"true"` and `PathType` set to `ImplementationSpecific`, the path matching will use regex. The example below configures Ingress to route requests to path `/api/*/action1` to `service1` and `/api/*/action2` to `service2`.
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -153,35 +176,30 @@ metadata:
   name: ingress-v1
 spec:
   rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /api/.*/action1
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: service1
-            port:
-              number: 80
-      - path: /api/.*/action2
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: service2
-            port:
-              number: 80
+    - host: httpbin.org
+      http:
+        paths:
+          - path: /api/.*/action1
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: service1
+                port:
+                  number: 80
+          - path: /api/.*/action2
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: service2
+                port:
+                  number: 80
 ```
 
-Enable websocket
----------
+## Enable websocket
 
-You can use the follow annotations to enable websocket
+This annotation is use to enable websocket connections.
 
-* `k8s.apisix.apache.org/enable-websocket`
-  
-If this annotations set to `true` the route will enable websoket
-
-For example, the following Ingress, if we set `k8s.apisix.apache.org/enable-websocket: "true"`. `/api/*` route will enable websocket
+In the example below, the annotation will enable websocket connections on the route `/api/*`:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -193,30 +211,25 @@ metadata:
   name: ingress-v1
 spec:
   rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /api/*
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: service1
-            port:
-              number: 80
+    - host: httpbin.org
+      http:
+        paths:
+          - path: /api/*
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: service1
+                port:
+                  number: 80
 ```
 
-Use ApisixPluginConfig
----------
+## Using ApisixPluginConfig resource
 
-You can use the following annotations to use the `ApisixPluginConfig`.
+This annotation is used to enable a defined [ApisixPluginConfig](https://apisix.apache.org/docs/ingress-controller/references/apisix_pluginconfig_v2) resource on a particular route.
 
-* `k8s.apisix.apache.org/plugin-config-name`
-  
-If this annotations set to `ApisixPluginConfig.metadata.name` the route will use `ApisixPluginConfig`
+The value of the annotation should be the name of the created `ApisixPluginConfig` resource.
 
-ApisixPluginConfig is a resource under the same Namespace as Ingress
-
-As an example, we attach the annotation `k8s.apisix.apache.org/plugin-config-name: "echo-and-cors-apc` for the following Ingress resource, so that `/api/*` route will enable the [echo](https://apisix.apache.org/docs/apisix/plugins/echo/) and [cors](https://apisix.apache.org/docs/apisix/plugins/cors/) plugins.
+The example below shows how this is configured. The created route `/api/*` will have the [echo](https://apisix.apache.org/docs/apisix/plugins/echo/) and [cors](https://apisix.apache.org/docs/apisix/plugins/cors/) Plugins enabled as has the resource configured through annotations:
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -225,18 +238,17 @@ metadata:
   name: echo-and-cors-apc
 spec:
   plugins:
-  - name: echo
-    enable: true
-    config:
-      before_body: "This is the preface"
-      after_body: "This is the epilogue"
-      headers:
-        X-Foo: v1
-        X-Foo2: v2
-  - name: cors
-    enable: true
+    - name: echo
+      enable: true
+      config:
+        before_body: "This is the preface"
+        after_body: "This is the epilogue"
+        headers:
+          X-Foo: v1
+          X-Foo2: v2
+    - name: cors
+      enable: true
 ---
-
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -246,14 +258,14 @@ metadata:
   name: ingress-v1
 spec:
   rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /api/*
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: service1
-            port:
-              number: 80
+    - host: httpbin.org
+      http:
+        paths:
+          - path: /api/*
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: service1
+                port:
+                  number: 80
 ```
