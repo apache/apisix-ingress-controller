@@ -27,7 +27,7 @@ description: Guide to using ApisixUpstream custom Kubernetes resource.
 
 `ApisixUpstream` is a Kubernetes CRD object that abstracts out a Kubernetes service and makes it richer by adding load balancing, health check, retry, and timeouts. It is designed to have the same name as the Kubernetes service.
 
-See [reference](https://apisix.apache.org/docs/ingress-controller/references/apisix_upstream/) for the full API documentation.
+See [reference](https://apisix.apache.org/docs/ingress-controller/references/apisix_upstream) for the full API documentation.
 
 ## Load balancing
 
