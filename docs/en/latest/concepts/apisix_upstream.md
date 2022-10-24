@@ -1,7 +1,11 @@
 ---
 title: ApisixUpstream
+keywords:
+  - APISIX ingress
+  - Apache APISIX
+  - ApisixUpstream
+description: Guide to using ApisixUpstream custom Kubernetes resource.
 ---
-
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -21,15 +25,13 @@ title: ApisixUpstream
 #
 -->
 
-ApisixUpstream is the decorator of Kubernetes Service. It's designed to have same name with its target Kubernetes Service, it makes the Kubernetes Service richer by adding
-load balancing, health check, retry, timeout parameters and etc.
+`ApisixUpstream` is a Kubernetes CRD object that abstracts out a Kubernetes service and makes it richer by adding load balancing, health check, retry, and timeouts. It is designed to have the same name as the Kubernetes service.
 
-Resort to `ApisixUpstream` and the Kubernetes Service, apisix ingress controller will generates the APISIX Upstream(s).
-To learn more, please check the [Apache APISIX architecture-design docs](https://github.com/apache/apisix/blob/master/docs/en/latest/terminology/upstream.md).
+See [reference](https://apisix.apache.org/docs/ingress-controller/references/apisix_upstream/) for the full API documentation.
 
-### Configuring Load Balancer
+## Load balancing
 
-A proper load balancing algorithm is required to scatter requests reasonably for a Kubernetes Service.
+The example below shows how you can configure load balacing in `ApisixUpstream` object using [ewma](https://linkerd.io/2016/03/16/beyond-round-robin-load-balancing-for-latency/):
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -53,9 +55,7 @@ spec:
     targetPort: 8080
 ```
 
-The above example shows that [ewma](https://linkerd.io/2016/03/16/beyond-round-robin-load-balancing-for-latency/) is used as the load balancer for Service `httpbin`.
-
-Sometimes the session sticky is desired, and you can use the [Consistent Hashing](https://en.wikipedia.org/wiki/Consistent_hashing) load balancing algorithm.
+If you require sticky sessions, algorithms like [consistent hashing](https://en.wikipedia.org/wiki/Consistent_hashing) can be used for load balancing. The example below uses the `User-Agent` header for hashing:
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -69,12 +69,13 @@ spec:
     key: "user-agent"
 ```
 
-With the above settings, Apache APISIX will distributes requests according to the User-Agent header.
+## Health check
 
-### Configuring Health Check
+kubelet provides [probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#:~:text=The%20kubelet%20uses%20readiness%20probes,removed%20from%20Service%20load%20balancers.) for health check. But if more features like passive feedback is required, a powerful health check mechanism is needed.
 
-Although Kubelet already provides [probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#:~:text=The%20kubelet%20uses%20readiness%20probes,removed%20from%20Service%20load%20balancers.) to detect whether pods are healthy, you may still need more powerful health check mechanism,
-like the passive feedback capability.
+The example below shows how you can configure a passive health checker to detect unhealthy endpoints. Once there are three consecutive requests with the unhealthy status codes, the endpoint will be marked as unhealthy and requests will not be forwarded to it until it is healthy again.
+
+The active health checker checks these unhealthy endpoints continuously for healthy status codes. Requests are forwarded to these endpoints again after they are healthy.
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -105,27 +106,17 @@ spec:
           - 206
 ```
 
-The above YAML snippet defines a passive health checker to detect the unhealthy state for
-endpoints, once there are three consecutive requests with bad status code (one of `500`, `502`, `503`, `504`), the endpoint
-will be set to unhealthy and no requests can be routed there until it's healthy again.
+:::note
 
-That's why the active health checker comes in, endpoints might be down for a short while and ready again, the active health checker detects these unhealthy endpoints continuously, and pull them
-up once the healthy conditions are met (three consecutive requests got good status codes, e.g. `200` and `206`).
+The active health check configuration is mandatory if using the `healthCheck` feature in `ApisixUpstream`.
 
-Note the active health checker is somewhat duplicated with the liveness/readiness probes but it's required if the passive feedback mechanism is in use. So once you use the health check feature in ApisixUpstream,
-the active health checker is mandatory.
+:::
 
-### Configuring Retry and Timeout
+## Retries and timeouts
 
-You may want the proxy to retry when requests occur faults like transient network errors
-or service unavailable, by default the retry count is `1`. You can change it by specifying the `retries` field.
+You can configure APISIX to retry requests to tolerate network errors. By default, `retries` is `1`.
 
-The following configuration configures the `retries` to `3`, which indicates there'll be at most `3` requests sent to
-Kubernetes service `httpbin`'s endpoints.
-
-One should bear in mind that passing a request to the next endpoint is only possible
-if nothing has been sent to a client yet. That is, if an error or timeout occurs in the middle
-of the transferring of a response, fixing this is impossible.
+The example below configures `3` retries.
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -136,8 +127,13 @@ spec:
   retries: 3
 ```
 
-The default connect, read and send timeout are `60s`, which might not proper for some applications,
-just change them in the `timeout` field.
+:::note
+
+If an error or timeout occurs while transferring a response to a client, it would not retry.
+
+:::
+
+You can also change the timeouts to fit your applications. The default connect, read, and send timeout is `60s`.
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -151,12 +147,11 @@ spec:
     send: 10s
 ```
 
-The above examples sets the connect, read and timeout to `5s`, `10s`, `10s` respectively.
+## Port-level settings
 
-### Port Level Settings
+A Kubernetes service can expose multiple ports to provide distinct functions (like different protocols). For each of the ports, a different Upstream configuration might be required.
 
-Once in a while a single Kubernetes Service might expose multiple ports which provides distinct functions and different Upstream configurations are required.
-In that case, you can create configurations for individual port.
+In the example below, the `foo` service exposes two ports, one using HTTP and the other gRPC. The Upstream service is configured to use the correct scheme for the respective ports:
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -187,9 +182,3 @@ spec:
     port: 7001
     targetPort: 7001
 ```
-
-The `foo` service exposes two ports, one of them use HTTP protocol and the other uses grpc protocol.
-In the meanwhile, the ApisixUpstream `foo` sets `http` scheme for port `7000` and `grpc` scheme for `7001`
-(all ports are the service port). But both ports shares the load balancer configuration.
-
-`PortLevelSettings` is not mandatory if the service only exposes one port but is useful when multiple ports are defined.
