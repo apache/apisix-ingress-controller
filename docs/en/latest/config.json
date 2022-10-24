@@ -60,12 +60,9 @@
         "concepts/apisix_route",
         "concepts/apisix_upstream",
         "concepts/apisix_tls",
-        "concepts/apisix_cluster_config"
+        "concepts/apisix_cluster_config",
+        "concepts/annotations"
       ]
-    },
-    {
-      "type": "doc",
-      "id": "annotations"
     },
     {
       "type": "doc",
