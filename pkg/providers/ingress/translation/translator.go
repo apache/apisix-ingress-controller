@@ -385,6 +385,18 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 	ctx := translation.DefaultEmptyTranslateContext()
 	ingress := t.TranslateAnnotations(ing.Annotations)
 
+	// add https
+	for _, tls := range ing.Spec.TLS {
+		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
+		if err != nil {
+			log.Errorw("failed to translate ingress tls to apisix tls",
+				zap.Error(err),
+				zap.Any("ingress", ing),
+			)
+			return nil, err
+		}
+		ctx.AddSSL(ssl)
+	}
 	ns := ing.Namespace
 	if ingress.ServiceNamespace != "" {
 		ns = ingress.ServiceNamespace

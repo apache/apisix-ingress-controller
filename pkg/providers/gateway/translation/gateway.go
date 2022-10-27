@@ -27,6 +27,7 @@ import (
 )
 
 const (
+	kindUDPRoute  gatewayv1alpha2.Kind = "UDPRoute"
 	kindTCPRoute  gatewayv1alpha2.Kind = "TCPRoute"
 	kindTLSRoute  gatewayv1alpha2.Kind = "TLSRoute"
 	kindHTTPRoute gatewayv1alpha2.Kind = "HTTPRoute"
@@ -85,7 +86,7 @@ func validateListenerConfigurations(gateway *gatewayv1alpha2.Gateway, idx int, a
 	listener gatewayv1alpha2.Listener) error {
 	// Check protocols and allowedKinds
 	protocol := listener.Protocol
-	if protocol == gatewayv1alpha2.HTTPProtocolType || protocol == gatewayv1alpha2.TCPProtocolType {
+	if protocol == gatewayv1alpha2.HTTPProtocolType || protocol == gatewayv1alpha2.TCPProtocolType || protocol == gatewayv1alpha2.UDPProtocolType {
 		// Non-TLS
 		if listener.TLS != nil {
 			return errors.New("non-empty TLS conf for protocol " + string(protocol))
@@ -98,7 +99,12 @@ func validateListenerConfigurations(gateway *gatewayv1alpha2.Gateway, idx int, a
 			if len(allowedKinds) != 1 || allowedKinds[0].Kind != kindTCPRoute {
 				return errors.New("TCP protocol must allow route type TCPRoute")
 			}
+		} else if protocol == gatewayv1alpha2.UDPProtocolType {
+			if len(allowedKinds) != 1 || allowedKinds[0].Kind != kindUDPRoute {
+				return errors.New("UDP protocol must allow route type UDPRoute")
+			}
 		}
+
 	} else if protocol == gatewayv1alpha2.HTTPSProtocolType || protocol == gatewayv1alpha2.TLSProtocolType {
 		// TLS
 		if listener.TLS == nil {
@@ -173,6 +179,13 @@ func getAllowedKinds(listener gatewayv1alpha2.Listener) ([]gatewayv1alpha2.Route
 			{
 				Group: &group,
 				Kind:  kindTCPRoute,
+			},
+		}
+	case gatewayv1alpha2.UDPProtocolType:
+		expectedKinds = []gatewayv1alpha2.RouteGroupKind{
+			{
+				Group: &group,
+				Kind:  kindUDPRoute,
 			},
 		}
 	default:

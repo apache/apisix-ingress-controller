@@ -80,6 +80,10 @@ type Provider struct {
 	gatewayTCPRouteController *gatewayTCPRouteController
 	gatewayTCPRouteInformer   cache.SharedIndexInformer
 	gatewayTCPRouteLister     gatewaylistersv1alpha2.TCPRouteLister
+
+	gatewayUDPRouteController *gatewayUDPRouteController
+	gatewayUDPRouteInformer   cache.SharedIndexInformer
+	gatewayUDPRouteLister     gatewaylistersv1alpha2.UDPRouteLister
 }
 
 type ProviderOptions struct {
@@ -141,6 +145,9 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	p.gatewayTCPRouteLister = gatewayFactory.Gateway().V1alpha2().TCPRoutes().Lister()
 	p.gatewayTCPRouteInformer = gatewayFactory.Gateway().V1alpha2().TCPRoutes().Informer()
 
+	p.gatewayUDPRouteLister = gatewayFactory.Gateway().V1alpha2().UDPRoutes().Lister()
+	p.gatewayUDPRouteInformer = gatewayFactory.Gateway().V1alpha2().UDPRoutes().Informer()
+
 	p.gatewayController = newGatewayController(p)
 
 	p.gatewayClassController, err = newGatewayClassController(p)
@@ -151,6 +158,7 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	p.gatewayHTTPRouteController = newGatewayHTTPRouteController(p)
 
 	p.gatewayTLSRouteController = newGatewayTLSRouteController(p)
+	p.gatewayUDPRouteController = newGatewayUDPRouteController(p)
 
 	p.gatewayTCPRouteController = newGatewayTCPRouteController(p)
 
@@ -179,6 +187,10 @@ func (p *Provider) Run(ctx context.Context) {
 
 	// Run Controller
 	e.Add(func() {
+		p.gatewayUDPRouteInformer.Run(ctx.Done())
+	})
+
+	e.Add(func() {
 		p.gatewayController.run(ctx)
 	})
 	e.Add(func() {
@@ -192,6 +204,10 @@ func (p *Provider) Run(ctx context.Context) {
 	})
 	e.Add(func() {
 		p.gatewayTCPRouteController.run(ctx)
+	})
+
+	e.Add(func() {
+		p.gatewayUDPRouteController.run(ctx)
 	})
 
 	e.Wait()

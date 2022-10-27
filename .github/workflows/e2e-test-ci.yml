@@ -66,6 +66,7 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     needs: changes
+    if: needs.changes.outputs.go == 'true'
 
     steps:
 

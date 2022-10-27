@@ -32,8 +32,9 @@ type TranslatorOptions struct {
 	Apisix      apisix.APISIX
 	ClusterName string
 
-	ServiceLister listerscorev1.ServiceLister
-	SecretLister  listerscorev1.SecretLister
+	ApisixUpstreamLister kube.ApisixUpstreamLister
+	ServiceLister        listerscorev1.ServiceLister
+	SecretLister         listerscorev1.SecretLister
 }
 
 type translator struct {
@@ -95,6 +96,9 @@ type ApisixTranslator interface {
 	TranslatePluginConfigV2NotStrictly(*configv2.ApisixPluginConfig) (*translation.TranslateContext, error)
 
 	TranslateRouteMatchExprs(nginxVars []configv2.ApisixRouteHTTPMatchExpr) ([][]apisixv1.StringOrSlice, error)
+
+	// TranslateApisixUpstreamExternalNodes translates an ApisixUpstream with external nodes to APISIX nodes.
+	TranslateApisixUpstreamExternalNodes(au *configv2.ApisixUpstream) ([]apisixv1.UpstreamNode, error)
 }
 
 func NewApisixTranslator(opts *TranslatorOptions, t translation.Translator) ApisixTranslator {

@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/gruntwork-io/terratest/modules/k8s"
@@ -34,6 +35,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/testing"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -121,7 +123,16 @@ func (s *Scaffold) CreateApisixRoute(name string, rules []ApisixRouteRule) {
 
 // CreateResourceFromString creates resource from a loaded yaml string.
 func (s *Scaffold) CreateResourceFromString(yaml string) error {
-	return k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
+	err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
+	time.Sleep(5 * time.Second)
+
+	// if the error raised, it may be a &shell.ErrWithCmdOutput, which is useless in debug
+	if err != nil {
+		log.Errorw("create resource failed",
+			zap.Error(err),
+		)
+	}
+	return err
 }
 
 func (s *Scaffold) DeleteResourceFromString(yaml string) error {
