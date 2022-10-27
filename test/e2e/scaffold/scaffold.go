@@ -419,7 +419,6 @@ func (s *Scaffold) beforeEach() {
 	}
 
 	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: s.namespace, Labels: label})
-	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: s.namespace + "-new", Labels: label})
 
 	s.nodes, err = k8s.GetReadyNodesE(s.t, s.kubectlOptions)
 	assert.Nil(s.t, err, "querying ready nodes")
@@ -490,15 +489,11 @@ func (s *Scaffold) afterEach() {
 			}
 			err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
 			assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
-			err = k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace+"-new")
-			assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace+"-new")
 		}
 	} else {
 		// if the test case is successful, just delete namespace
 		err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
 		assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
-		err = k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace+"-new")
-		assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace+"-new")
 	}
 
 	for _, f := range s.finializers {
