@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
@@ -41,6 +42,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/testing"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -638,6 +640,18 @@ func (s *Scaffold) CreateVersionedApisixResourceWithNamespace(yml, namespace str
 
 func ApisixResourceVersion() *apisixResourceVersionInfo {
 	return apisixResourceVersion
+}
+
+func (s *Scaffold) DeleteResource(resourceType, name string) error {
+	err := k8s.RunKubectlE(s.t, s.kubectlOptions, "delete", resourceType, name)
+	if err != nil {
+		log.Errorw("delete resource failed",
+			zap.Error(err),
+			zap.String("resource", resourceType),
+			zap.String("name", name),
+		)
+	}
+	return err
 }
 
 func (s *Scaffold) NamespaceSelectorLabelStrings() []string {

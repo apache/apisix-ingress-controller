@@ -609,7 +609,9 @@ spec:
                   minItems: 1
                   items:
                     type: object
-                    required: ["name", "match", "backends"]
+                    anyOf:
+                      - required: ["name", "match", "backends"]
+                      - required: ["name", "match", "upstreams"]
                     properties:
                       name:
                         type: string
@@ -710,6 +712,17 @@ spec:
                       plugin_config_name:
                         type: string
                         minLength: 1
+                      upstreams:
+                        description: Upstreams refer to ApisixUpstream CRD
+                        type: array
+                        items:
+                          description: ApisixRouteUpstreamReference contains a ApisixUpstream CRD reference
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            weight:
+                              type: integer
                       backends:
                         type: array
                         minItems: 1

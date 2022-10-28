@@ -57,6 +57,10 @@ const (
 	SchemeHTTPS = "https"
 	// SchemeGRPCS represents the GRPCS protocol.
 	SchemeGRPCS = "grpcs"
+	// SchemeTCP represents the TCP protocol.
+	SchemeTCP = "tcp"
+	// SchemeUDP represents the UDP protocol.
+	SchemeUDP = "udp"
 
 	// HealthCheckHTTP represents the HTTP kind health check.
 	HealthCheckHTTP = "http"
@@ -506,6 +510,11 @@ func ComposeUpstreamName(namespace, name, subset string, port int32, resolveGran
 	}
 
 	return buf.String()
+}
+
+// ComposeExternalUpstreamName uses ApisixUpstream namespace, name to compose the upstream name.
+func ComposeExternalUpstreamName(namespace, name string) string {
+	return namespace + "_" + name
 }
 
 // ComposeRouteName uses namespace, name and rule name to compose

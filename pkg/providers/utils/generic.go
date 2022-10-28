@@ -16,32 +16,6 @@
 // under the License.
 package utils
 
-func TruncateString(s string, max int) string {
-	if max > len(s) || max < 0 {
-		return s
-	}
-	return s[:max]
-}
-
-// Difference returns elements only in a
-// Duplicated elements are considered as same element
-func Difference(a, b []string) []string {
-	bMap := make(map[string]struct{}, len(b))
-	for _, elem := range b {
-		bMap[elem] = struct{}{}
-	}
-	var onlyInA []string
-	for _, elem := range a {
-		if _, found := bMap[elem]; !found {
-			onlyInA = append(onlyInA, elem)
-		}
-	}
-	return onlyInA
-}
-
-func Equal(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	return len(Difference(a, b)) == 0 && len(Difference(b, a)) == 0
+func PtrOf[T any](v T) *T {
+	return &v
 }

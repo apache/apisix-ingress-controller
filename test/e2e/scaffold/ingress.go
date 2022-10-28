@@ -192,8 +192,10 @@ rules:
     resources:
     - httproutes
     - tlsroutes
+    - tcproutes
     - gateways
     - gatewayclasses
+    - udproutes
     verbs:
     - get
     - list

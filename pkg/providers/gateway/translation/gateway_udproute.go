@@ -27,35 +27,18 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func (t *translator) TranslateGatewayTLSRouteV1Alpha2(tlsRoute *gatewayv1alpha2.TLSRoute) (*translation.TranslateContext, error) {
+func (t *translator) TranslateGatewayUDPRouteV1Alpha2(udpRoute *gatewayv1alpha2.UDPRoute) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
 
-	// TODO: Handle ParentRefs
+	// TODO: handle UDPRoute.Spec.ParentRef
+	for i, rule := range udpRoute.Spec.Rules {
 
-	var hosts []string
-	for _, hostname := range tlsRoute.Spec.Hostnames {
-		// TODO: calculate intersection of listeners
-		hosts = append(hosts, string(hostname))
-	}
-
-	rules := tlsRoute.Spec.Rules
-
-	for i, rule := range rules {
-		backends := rule.BackendRefs
-		if len(backends) == 0 {
-			continue
-		}
-
-		var ruleUpstreams []*apisixv1.Upstream
-
-		for j, backend := range backends {
-			//TODO: Support filters
-			//filters := backend.Filters
+		for j, backend := range rule.BackendRefs {
+			// Spec validation
 			var kind string
 			if backend.Kind == nil {
 				kind = "service"
@@ -71,11 +54,11 @@ func (t *translator) TranslateGatewayTLSRouteV1Alpha2(tlsRoute *gatewayv1alpha2.
 
 			var ns string
 			if backend.Namespace == nil {
-				ns = tlsRoute.Namespace
+				ns = udpRoute.Namespace
 			} else {
 				ns = string(*backend.Namespace)
 			}
-			//if ns != tlsRoute.Namespace {
+			//if ns != httpRoute.Namespace {
 			// TODO: check gatewayv1alpha2.ReferencePolicy
 			//}
 
@@ -86,47 +69,27 @@ func (t *translator) TranslateGatewayTLSRouteV1Alpha2(tlsRoute *gatewayv1alpha2.
 				continue
 			}
 
+			// create apisix Upstream
+			sr := apisixv1.NewDefaultStreamRoute()
+			name := apisixv1.ComposeStreamRouteName(ns, udpRoute.Name, fmt.Sprintf("%d-%d", i, j))
+			sr.ID = id.GenID(name)
 			ups, err := t.KubeTranslator.TranslateService(ns, string(backend.Name), "", int32(*backend.Port))
 			if err != nil {
 				return nil, errors.Wrap(err, fmt.Sprintf("failed to translate Rules[%v].BackendRefs[%v]", i, j))
 			}
-			name := apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port), types.ResolveGranularity.Endpoint)
-
-			ups.Labels["meta_namespace"] = utils.TruncateString(ns, 64)
-			ups.Labels["meta_backend"] = utils.TruncateString(string(backend.Name), 64)
-			ups.Labels["meta_port"] = fmt.Sprintf("%v", int32(*backend.Port))
-
+			ups.Scheme = apisixv1.SchemeUDP
+			name = apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port), types.ResolveGranularity.Endpoint)
 			ups.ID = id.GenID(name)
-			ctx.AddUpstream(ups)
-			ruleUpstreams = append(ruleUpstreams, ups)
-		}
-		if len(ruleUpstreams) == 0 {
-			log.Warnw(fmt.Sprintf("ignore all-failed backend refs at Rules[%v]", i),
-				zap.Any("BackendRefs", rule.BackendRefs),
-			)
-			continue
-		}
-
-		for _, host := range hosts {
-			route := apisixv1.NewDefaultStreamRoute()
-			name := apisixv1.ComposeRouteName(tlsRoute.Namespace, tlsRoute.Name, fmt.Sprintf("%d-%s", i, host))
-			route.ID = id.GenID(name)
-
-			route.Labels["meta_namespace"] = utils.TruncateString(tlsRoute.Namespace, 64)
-			route.Labels["meta_tlsroute"] = utils.TruncateString(tlsRoute.Name, 64)
-
-			route.SNI = host
-
-			route.UpstreamId = ruleUpstreams[0].ID
-			if len(ruleUpstreams) > 1 {
-				log.Warnw("ignore backends which is not the first one",
-					zap.String("namespace", tlsRoute.Namespace),
-					zap.String("tlsroute", tlsRoute.Name),
-				)
+			sr.UpstreamId = ups.ID
+			ctx.AddStreamRoute(sr)
+			if !ctx.CheckUpstreamExist(ups.Name) {
+				ctx.AddUpstream(ups)
 			}
-			ctx.AddStreamRoute(route)
+
+			//if backend.Weight == nil {
+			// TODO: set Upstream.Nodes roundrobin by BackendRef.Weight
+			//}
 		}
 	}
-
 	return ctx, nil
 }

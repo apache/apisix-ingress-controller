@@ -66,7 +66,7 @@ func (t *translator) translateTrafficSplitPlugin(ctx *translation.TranslateConte
 		})
 	}
 
-	// Finally append the default upstream in the route.
+	// append the default upstream in the route.
 	wups = append(wups, apisixv1.TrafficSplitConfigRuleWeightedUpstream{
 		Weight: defaultBackendWeight,
 	})

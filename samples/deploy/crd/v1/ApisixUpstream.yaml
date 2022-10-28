@@ -413,6 +413,19 @@ spec:
             spec:
               type: object
               properties:
+                externalNodes:
+                  description: ExternalNodes contains external nodes the Upstream should use If this field is set, the upstream will use these nodes directly without any further resolves
+                  type: array
+                  items:
+                    description: ApisixUpstreamExternalNode is the external node conf
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      type:
+                        type: string
+                      weight:
+                        type: integer
                 subsets:
                   type: array
                   items:

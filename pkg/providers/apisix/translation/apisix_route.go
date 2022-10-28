@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"go.uber.org/zap"
@@ -361,21 +362,6 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 			return errors.New("duplicated route rule name")
 		}
 		ruleNameMap[part.Name] = struct{}{}
-		backends := part.Backends
-		// Use the first backend as the default backend in Route,
-		// others will be configured in traffic-split plugin.
-		backend := backends[0]
-		backends = backends[1:]
-
-		svcClusterIP, svcPort, err := t.GetServiceClusterIPAndPort(&backend, ar.Namespace)
-		if err != nil {
-			log.Errorw("failed to get service port in backend",
-				zap.Any("backend", backend),
-				zap.Any("apisix_route", ar),
-				zap.Error(err),
-			)
-			return err
-		}
 
 		var timeout *apisixv1.UpstreamTimeout
 		if part.Timeout != nil {
@@ -425,7 +411,10 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 			}
 		}
 
-		var exprs [][]apisixv1.StringOrSlice
+		var (
+			exprs [][]apisixv1.StringOrSlice
+			err   error
+		)
 		if part.Match.NginxVars != nil {
 			exprs, err = t.TranslateRouteMatchExprs(part.Match.NginxVars)
 			if err != nil {
@@ -445,7 +434,6 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 			return err
 		}
 
-		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, svcPort, backend.ResolveGranularity)
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
@@ -455,36 +443,158 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 		route.Hosts = part.Match.Hosts
 		route.Uris = part.Match.Paths
 		route.Methods = part.Match.Methods
-		route.UpstreamId = id.GenID(upstreamName)
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
 		route.Timeout = timeout
-		if part.PluginConfigName != "" {
-			route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, part.PluginConfigName))
-		}
+		ctx.AddRoute(route)
 
+		// --- translate "Backends" ---
+		backends := part.Backends
 		if len(backends) > 0 {
-			weight := translation.DefaultWeight
-			if backend.Weight != nil {
-				weight = *backend.Weight
-			}
-			plugin, err := t.translateTrafficSplitPlugin(ctx, ar.Namespace, weight, backends)
+			// Use the first backend as the default backend in Route,
+			// others will be configured in traffic-split plugin.
+			backend := backends[0]
+			backends = backends[1:]
+
+			svcClusterIP, svcPort, err := t.GetServiceClusterIPAndPort(&backend, ar.Namespace)
 			if err != nil {
-				log.Errorw("failed to translate traffic-split plugin",
+				log.Errorw("failed to get service port in backend",
+					zap.Any("backend", backend),
+					zap.Any("apisix_route", ar),
 					zap.Error(err),
-					zap.Any("ApisixRoute", ar),
 				)
 				return err
 			}
-			route.Plugins["traffic-split"] = plugin
-		}
-		ctx.AddRoute(route)
-		if !ctx.CheckUpstreamExist(upstreamName) {
-			ups, err := t.translateService(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
-			if err != nil {
-				return err
+
+			upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, svcPort, backend.ResolveGranularity)
+			route.UpstreamId = id.GenID(upstreamName)
+			if part.PluginConfigName != "" {
+				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, part.PluginConfigName))
 			}
-			ctx.AddUpstream(ups)
+
+			if len(backends) > 0 {
+				weight := translation.DefaultWeight
+				if backend.Weight != nil {
+					weight = *backend.Weight
+				}
+				plugin, err := t.translateTrafficSplitPlugin(ctx, ar.Namespace, weight, backends)
+				if err != nil {
+					log.Errorw("failed to translate traffic-split plugin",
+						zap.Error(err),
+						zap.Any("ApisixRoute", ar),
+					)
+					return err
+				}
+				route.Plugins["traffic-split"] = plugin
+			}
+			if !ctx.CheckUpstreamExist(upstreamName) {
+				ups, err := t.translateService(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
+				if err != nil {
+					return err
+				}
+				ctx.AddUpstream(ups)
+			}
+		}
+
+		if len(part.Backends) == 0 && len(part.Upstreams) > 0 {
+			// Only have Upstreams
+			upName := apisixv1.ComposeExternalUpstreamName(ar.Namespace, part.Upstreams[0].Name)
+			route.UpstreamId = id.GenID(upName)
+		}
+		// --- translate Upstreams ---
+		var ups []*apisixv1.Upstream
+		for i, au := range part.Upstreams {
+			up, err := t.translateExternalApisixUpstream(ar.Namespace, au.Name)
+			if err != nil {
+				log.Errorw(fmt.Sprintf("failed to translate ApisixUpstream at Upstream[%v]", i),
+					zap.Error(err),
+					zap.String("apisix_upstream", ar.Namespace+"/"+au.Name),
+				)
+				continue
+			}
+			if au.Weight != nil {
+				up.Labels["meta_weight"] = strconv.Itoa(*au.Weight)
+			} else {
+				up.Labels["meta_weight"] = strconv.Itoa(translation.DefaultWeight)
+			}
+			ups = append(ups, up)
+		}
+
+		if len(ups) == 0 {
+			continue
+		}
+
+		var wups []apisixv1.TrafficSplitConfigRuleWeightedUpstream
+		if len(part.Backends) == 0 {
+			if len(ups) > 1 {
+				for i, up := range ups {
+					weight, err := strconv.Atoi(up.Labels["meta_weight"])
+					if err != nil {
+						// shouldn't happen
+						log.Errorw(fmt.Sprintf("failed to parse translated upstream weight at %v", i),
+							zap.Error(err),
+							zap.String("meta_weight", up.Labels["meta_weight"]),
+						)
+						continue
+					}
+					if i == 0 {
+						// set as default
+						wups = append(wups, apisixv1.TrafficSplitConfigRuleWeightedUpstream{
+							Weight: weight,
+						})
+					} else {
+						wups = append(wups, apisixv1.TrafficSplitConfigRuleWeightedUpstream{
+							UpstreamID: ups[i].ID,
+							Weight:     weight,
+						})
+					}
+				}
+			}
+		} else {
+			// Mixed backends and upstreams
+			if cfg, ok := route.Plugins["traffic-split"]; ok {
+				if tsCfg, ok := cfg.(*apisixv1.TrafficSplitConfig); ok {
+					wups = tsCfg.Rules[0].WeightedUpstreams
+				}
+			}
+			if len(wups) == 0 {
+				// append the default upstream in the route.
+				weight := translation.DefaultWeight
+				if part.Backends[0].Weight != nil {
+					weight = *part.Backends[0].Weight
+				}
+				wups = append(wups, apisixv1.TrafficSplitConfigRuleWeightedUpstream{
+					Weight: weight,
+				})
+			}
+			for i, up := range ups {
+				weight, err := strconv.Atoi(up.Labels["meta_weight"])
+				if err != nil {
+					// shouldn't happen
+					log.Errorw(fmt.Sprintf("failed to parse translated upstream weight at %v", i),
+						zap.Error(err),
+						zap.String("meta_weight", up.Labels["meta_weight"]),
+					)
+					continue
+				}
+				wups = append(wups, apisixv1.TrafficSplitConfigRuleWeightedUpstream{
+					UpstreamID: ups[i].ID,
+					Weight:     weight,
+				})
+			}
+		}
+		if len(wups) > 0 {
+			route.Plugins["traffic-split"] = &apisixv1.TrafficSplitConfig{
+				Rules: []apisixv1.TrafficSplitConfigRule{
+					{
+						WeightedUpstreams: wups,
+					},
+				},
+			}
+		}
+
+		for _, up := range ups {
+			ctx.AddUpstream(up)
 		}
 	}
 	return nil
@@ -675,11 +785,6 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *translation.Trans
 // translateHTTPRouteV2NotStrictly translates http route with a loose way, only generate ID and Name for delete Event.
 func (t *translator) translateHTTPRouteV2NotStrictly(ctx *translation.TranslateContext, ar *configv2.ApisixRoute) error {
 	for _, part := range ar.Spec.HTTP {
-		backends := part.Backends
-		// Use the first backend as the default backend in Route,
-		// others will be configured in traffic-split plugin.
-		backend := backends[0]
-
 		pluginMap := make(apisixv1.Plugins)
 		// add route plugins
 		for _, plugin := range part.Plugins {
@@ -711,7 +816,6 @@ func (t *translator) translateHTTPRouteV2NotStrictly(ctx *translation.TranslateC
 			}
 		}
 
-		upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
 		route := apisixv1.NewDefaultRoute()
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
@@ -720,12 +824,33 @@ func (t *translator) translateHTTPRouteV2NotStrictly(ctx *translation.TranslateC
 		}
 
 		ctx.AddRoute(route)
-		if !ctx.CheckUpstreamExist(upstreamName) {
-			ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
-			if err != nil {
-				return err
+
+		if len(part.Backends) > 0 {
+			backends := part.Backends
+			// Use the first backend as the default backend in Route,
+			// others will be configured in traffic-split plugin.
+			backend := backends[0]
+
+			upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
+			if !ctx.CheckUpstreamExist(upstreamName) {
+				ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
+				if err != nil {
+					return err
+				}
+				ctx.AddUpstream(ups)
 			}
-			ctx.AddUpstream(ups)
+		}
+		if len(part.Upstreams) > 0 {
+			upstreams := part.Upstreams
+			for _, upstream := range upstreams {
+				upstreamName := apisixv1.ComposeExternalUpstreamName(ar.Namespace, upstream.Name)
+				if !ctx.CheckUpstreamExist(upstreamName) {
+					ups := &apisixv1.Upstream{}
+					ups.Name = upstreamName
+					ups.ID = id.GenID(ups.Name)
+					ctx.AddUpstream(ups)
+				}
+			}
 		}
 	}
 	return nil

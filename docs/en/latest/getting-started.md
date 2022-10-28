@@ -49,10 +49,10 @@ values={[
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
-  name: httpserver-route
+  name: httpbin-route
 spec:
   http:
-    - name: rule1
+    - name: route-1
       match:
         hosts:
           - local.httpbin.org
@@ -71,7 +71,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: httpserver-ingress
+  name: httpbin-route
 spec:
   ingressClassName: apisix
   rules:
@@ -90,7 +90,7 @@ spec:
 </TabItem>
 </Tabs>
 
-APISIX ingress controller defines the CRDs [ApisixRoute](./concepts/apisix_route.md), [ApisixUpstream](./concepts/apisix_upstream.md), [ApisixTlx](concepts/apisix_tls.md), and [ApisixClusterConfig](concepts/apisix_cluster_config.md).
+APISIX ingress controller defines the CRDs [ApisixRoute](./concepts/apisix_route.md), [ApisixUpstream](./concepts/apisix_upstream.md), [ApisixTls](concepts/apisix_tls.md), and [ApisixClusterConfig](concepts/apisix_cluster_config.md).
 
 APISIX also supports [service discovery](https://apisix.apache.org/docs/apisix/next/discovery/kubernetes/) through [Kubernetes service](https://kubernetes.io/docs/concepts/services-networking/service/) abstraction.
 
@@ -122,7 +122,8 @@ The table below shows the compatibility between APISIX ingress controller and th
 
 | APISIX ingress controller | Supported APISIX versions | Recommended APISIX version |
 | ------------------------- | ------------------------- | -------------------------- |
-| `master`                  | `>= 2.7`                  | `2.11`                     |
+| `master`                  | `>= 2.15`                 | `2.15`                     |
+| `1.5.0`                   | `>= 2.7`                  | `2.15`                     |
 | `1.4.0`                   | `>= 2.7`                  | `2.11`                     |
 | `1.3.0`                   | `>= 2.7`                  | `2.10`                     |
 | `1.2.0`                   | `>= 2.7`                  | `2.8`                      |
