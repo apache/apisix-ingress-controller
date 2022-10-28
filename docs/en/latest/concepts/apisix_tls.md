@@ -50,4 +50,4 @@ Make sure that the `hosts` field is accurate. APISIX uses the `host` field to ma
 
 :::
 
-APISIX Ingress will watch the secret resources refered by `ApisixTls` objects and re-translates it to APISIX resources if they are changed.
+APISIX Ingress will watch the secret resources referred by `ApisixTls` objects and re-translates it to APISIX resources if they are changed.
