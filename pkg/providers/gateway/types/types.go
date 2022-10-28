@@ -16,7 +16,17 @@
 // under the License.
 package types
 
-import gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+import (
+	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+)
+
+const (
+	KindTCPRoute  gatewayv1alpha2.Kind = "TCPRoute"
+	KindTLSRoute  gatewayv1alpha2.Kind = "TLSRoute"
+	KindHTTPRoute gatewayv1alpha2.Kind = "HTTPRoute"
+	KindUDPRoute  gatewayv1alpha2.Kind = "UDPRoute"
+)
 
 type ListenerConf struct {
 	// Gateway namespace
@@ -27,8 +37,44 @@ type ListenerConf struct {
 	SectionName string
 	Protocol    gatewayv1alpha2.ProtocolType
 	Port        gatewayv1alpha2.PortNumber
+	Hostname    *gatewayv1alpha2.Hostname
 
 	// namespace selector of AllowedRoutes
 	RouteNamespace *gatewayv1alpha2.RouteNamespaces
 	AllowedKinds   []gatewayv1alpha2.RouteGroupKind
+}
+
+func (c *ListenerConf) IsAllowedKind(r gatewayv1alpha2.RouteGroupKind) bool {
+	if len(c.AllowedKinds) == 0 {
+		return true
+	}
+
+	for _, c := range c.AllowedKinds {
+		if *c.Group == *r.Group && c.Kind == r.Kind {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *ListenerConf) IsHostnameMatch(hostnames []gatewayv1alpha2.Hostname) bool {
+	if c.Hostname == nil || len(hostnames) == 0 {
+		return true
+	}
+	for _, h := range hostnames {
+		if !utils.IsHostnameMatch(string(*c.Hostname), string(h)) {
+			return false
+		}
+	}
+	return true
+}
+
+func (c *ListenerConf) HasHostname() bool {
+	if c.Hostname == nil {
+		return false
+	}
+	if string(*c.Hostname) == "" {
+		return false
+	}
+	return true
 }

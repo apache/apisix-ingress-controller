@@ -45,3 +45,11 @@ func Equal(a, b []string) bool {
 	}
 	return len(Difference(a, b)) == 0 && len(Difference(b, a)) == 0
 }
+
+func ReverseString(s string) string {
+	var reversed string
+	for _, v := range s {
+		reversed = string(v) + reversed
+	}
+	return reversed
+}

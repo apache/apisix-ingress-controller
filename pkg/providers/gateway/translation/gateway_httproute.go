@@ -14,7 +14,7 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package translation
+package gateway_translation
 
 import (
 	"fmt"
@@ -60,8 +60,8 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 		var weightedUpstreams []apisixv1.TrafficSplitConfigRuleWeightedUpstream
 
 		for j, backend := range backends {
-			//TODO: Support filters
-			//filters := backend.Filters
+			// TODO: Support filters
+			// filters := backend.Filters
 			var kind string
 			if backend.Kind == nil {
 				kind = "service"
@@ -167,8 +167,8 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 			ctx.AddRoute(route)
 		}
 
-		//TODO: Support filters
-		//filters := rule.Filters
+		// TODO: Support filters
+		// filters := rule.Filters
 	}
 
 	return ctx, nil

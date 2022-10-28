@@ -122,9 +122,15 @@ func (c *gatewayUDPRouteController) sync(ctx context.Context, ev *types.Event) e
 		}
 		udpRoute = ev.Tombstone.(*gatewayv1alpha2.UDPRoute)
 	}
-
+	err = c.controller.validator.ValidateCommonRouteV1Alpha2(udpRoute)
+	if err != nil {
+		log.Errorw("failed to validate gateway UDPRoute",
+			zap.Error(err),
+			zap.Any("object", udpRoute),
+		)
+		return err
+	}
 	tctx, err := c.controller.translator.TranslateGatewayUDPRouteV1Alpha2(udpRoute)
-
 	if err != nil {
 		log.Errorw("failed to translate gateway UDPRoute",
 			zap.Error(err),

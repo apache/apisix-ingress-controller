@@ -14,7 +14,7 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package translation
+package gateway_translation
 
 import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"

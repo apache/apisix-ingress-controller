@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
@@ -38,11 +39,14 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
 	ProviderName = "GatewayAPI"
 )
+
+var ErrListenerNotExist = fmt.Errorf("ListenerConf not exist")
 
 type Provider struct {
 	name string
@@ -58,8 +62,10 @@ type Provider struct {
 
 	*ProviderOptions
 	gatewayClient gatewayclientset.Interface
+	runtimeClient runtimeclient.Client
 
 	translator gatewaytranslation.Translator
+	validator  Validator
 
 	gatewayController *gatewayController
 	gatewayInformer   cache.SharedIndexInformer
@@ -111,6 +117,10 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	if err != nil {
 		return nil, err
 	}
+	rClient, err := runtimeclient.New(opts.RestConfig, runtimeclient.Options{Scheme: scheme.Scheme})
+	if err != nil {
+		return nil, err
+	}
 
 	p := &Provider{
 		name: ProviderName,
@@ -122,6 +132,7 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 
 		ProviderOptions: opts,
 		gatewayClient:   gatewayKubeClient,
+		runtimeClient:   rClient,
 
 		translator: gatewaytranslation.NewTranslator(&gatewaytranslation.TranslatorOptions{
 			KubeTranslator: opts.KubeTranslator,
@@ -149,6 +160,7 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	p.gatewayUDPRouteInformer = gatewayFactory.Gateway().V1alpha2().UDPRoutes().Informer()
 
 	p.gatewayController = newGatewayController(p)
+	p.validator = *newValidator(p)
 
 	p.gatewayClassController, err = newGatewayClassController(p)
 	if err != nil {
@@ -274,6 +286,30 @@ func (p *Provider) RemoveListeners(ns, name string) error {
 }
 
 func (p *Provider) FindListener(ns, name, sectionName string) (*types.ListenerConf, error) {
+	p.listenersLock.Lock()
+	defer p.listenersLock.Unlock()
 
+	key := ns + "/" + name
+	listeners, exist := p.listeners[key]
+	if !exist {
+		return nil, ErrListenerNotExist
+	}
+	for _, listener := range listeners {
+		if listener.SectionName == sectionName {
+			return listener, nil
+		}
+	}
 	return nil, nil
+}
+
+func (p *Provider) QueryListeners(ns, name string) (map[string]*types.ListenerConf, error) {
+	p.listenersLock.Lock()
+	defer p.listenersLock.Unlock()
+
+	key := ns + "/" + name
+	listeners, exist := p.listeners[key]
+	if !exist {
+		return nil, ErrListenerNotExist
+	}
+	return listeners, nil
 }
