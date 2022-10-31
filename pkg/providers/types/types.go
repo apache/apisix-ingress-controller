@@ -153,7 +153,7 @@ func (c *Common) SyncPluginMetadata(ctx context.Context, pm *apisixv1.PluginMeta
 	} else if event == types.EventUpdate {
 		_, err = c.APISIX.Cluster(clusterName).PluginMetadata().Update(ctx, pm)
 	} else {
-		_, err = c.APISIX.Cluster(clusterName).PluginMetadata().Create(ctx, pm)
+		_, err = c.APISIX.Cluster(clusterName).PluginMetadata().Update(ctx, pm)
 	}
 	return err
 }

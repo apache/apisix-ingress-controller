@@ -102,38 +102,6 @@ func (r *pluginMetadataClient) List(ctx context.Context) ([]*v1.PluginMetadata, 
 	return items, nil
 }
 
-func (r *pluginMetadataClient) Create(ctx context.Context, obj *v1.PluginMetadata) (*v1.PluginMetadata, error) {
-	log.Debugw("try to create plugin metadata",
-		zap.String("name", obj.Name),
-		zap.String("cluster", "default"),
-		zap.String("url", r.url),
-	)
-
-	if err := r.cluster.HasSynced(ctx); err != nil {
-		return nil, err
-	}
-	data, err := json.Marshal(obj.Metadata)
-	if err != nil {
-		log.Errorw("json marshal failed", zap.Error(err))
-		return nil, err
-	}
-
-	url := r.url + "/" + obj.Name
-	log.Debugw("creating pluginMetadata", zap.ByteString("body", data), zap.String("url", url))
-	resp, err := r.cluster.createResource(ctx, url, "pluginMetadata", data)
-	r.cluster.metricsCollector.IncrAPISIXRequest("pluginMetadataClient")
-	if err != nil {
-		log.Errorf("failed to create pluginMetadata: %s", err)
-		return nil, err
-	}
-
-	pluginMetadata, err := resp.Item.pluginMetadata()
-	if err != nil {
-		return nil, err
-	}
-	return pluginMetadata, nil
-}
-
 func (r *pluginMetadataClient) Delete(ctx context.Context, obj *v1.PluginMetadata) error {
 	log.Debugw("try to delete pluginMetadata",
 		zap.String("name", obj.Name),

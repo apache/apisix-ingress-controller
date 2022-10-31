@@ -31,7 +31,7 @@ var _ = ginkgo.Describe("suite-chore: admin-api sdk", func() {
 		client, err := s.ClusterClient()
 		assert.Nil(ginkgo.GinkgoT(), err)
 
-		//create plugin metadata
+		//update plugin metadata
 		datadog := &v1.PluginMetadata{
 			Name: "datadog",
 			Metadata: map[string]interface{}{
@@ -45,7 +45,7 @@ var _ = ginkgo.Describe("suite-chore: admin-api sdk", func() {
 			},
 		}
 
-		client.PluginMetadata().Create(context.Background(), datadog)
+		client.PluginMetadata().Update(context.Background(), datadog)
 
 		pluginMetadatas, err := client.PluginMetadata().List(context.Background())
 		assert.Nil(ginkgo.GinkgoT(), err)

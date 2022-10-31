@@ -267,7 +267,7 @@ func SyncManifests(ctx context.Context, apisix apisix.APISIX, clusterName string
 			}
 		}
 		for _, pm := range added.PluginMetadatas {
-			if _, err := apisix.Cluster(clusterName).PluginMetadata().Create(ctx, pm); err != nil {
+			if _, err := apisix.Cluster(clusterName).PluginMetadata().Update(ctx, pm); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}

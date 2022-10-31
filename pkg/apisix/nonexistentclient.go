@@ -266,9 +266,7 @@ type dummyPluginMetadata struct {
 func (f *dummyPluginMetadata) Get(_ context.Context, _ string) (*v1.PluginMetadata, error) {
 	return nil, ErrClusterNotExist
 }
-func (f *dummyPluginMetadata) Create(_ context.Context, _ *v1.PluginMetadata) (*v1.PluginMetadata, error) {
-	return nil, ErrClusterNotExist
-}
+
 func (f *dummyPluginMetadata) List(_ context.Context) ([]*v1.PluginMetadata, error) {
 	return nil, ErrClusterNotExist
 }

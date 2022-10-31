@@ -157,7 +157,6 @@ type PluginConfig interface {
 type PluginMetadata interface {
 	Get(context.Context, string) (*v1.PluginMetadata, error)
 	List(context.Context) ([]*v1.PluginMetadata, error)
-	Create(context.Context, *v1.PluginMetadata) (*v1.PluginMetadata, error)
 	Delete(context.Context, *v1.PluginMetadata) error
 	Update(context.Context, *v1.PluginMetadata) (*v1.PluginMetadata, error)
 }
