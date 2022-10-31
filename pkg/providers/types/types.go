@@ -57,6 +57,9 @@ type ListerInformer struct {
 
 	ApisixUpstreamLister   kube.ApisixUpstreamLister
 	ApisixUpstreamInformer cache.SharedIndexInformer
+
+	ConfigMapLister   listerscorev1.ConfigMapLister
+	ConfigMapInformer cache.SharedIndexInformer
 }
 
 func (c *ListerInformer) Run(ctx context.Context) {
@@ -72,6 +75,9 @@ func (c *ListerInformer) Run(ctx context.Context) {
 		c.SecretInformer.Run(ctx.Done())
 	})
 	e.Add(func() {
+		c.ConfigMapInformer.Run(ctx.Done())
+	})
+	e.Add(func() {
 		c.PodInformer.Run(ctx.Done())
 	})
 	e.Add(func() {
@@ -84,6 +90,8 @@ func (c *ListerInformer) Run(ctx context.Context) {
 type Common struct {
 	*config.Config
 	*ListerInformer
+
+	ControllerNamespace string
 
 	APISIX           apisix.APISIX
 	KubeClient       *kube.KubeClient
@@ -112,6 +120,17 @@ func (c *Common) SyncManifests(ctx context.Context, added, updated, deleted *uti
 	return utils.SyncManifests(ctx, c.APISIX, c.Config.APISIX.DefaultClusterName, added, updated, deleted)
 }
 
+// TODO: suppport multiple cluster
+func (c *Common) SyncClusterManifests(ctx context.Context, clusterName string, added, updated, deleted *utils.Manifest) error {
+	if clusterName != c.Config.APISIX.DefaultClusterName {
+		log.Errorw("cluster does not exist",
+			zap.String("cluster_name", clusterName),
+		)
+		return nil
+	}
+	return utils.SyncManifests(ctx, c.APISIX, clusterName, added, updated, deleted)
+}
+
 func (c *Common) SyncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types.EventType) error {
 	var (
 		err error
@@ -123,6 +142,18 @@ func (c *Common) SyncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types.Eve
 		_, err = c.APISIX.Cluster(clusterName).SSL().Update(ctx, ssl)
 	} else {
 		_, err = c.APISIX.Cluster(clusterName).SSL().Create(ctx, ssl)
+	}
+	return err
+}
+
+func (c *Common) SyncPluginMetadata(ctx context.Context, pm *apisixv1.PluginMetadata, event types.EventType) (err error) {
+	clusterName := c.Config.APISIX.DefaultClusterName
+	if event == types.EventDelete {
+		err = c.APISIX.Cluster(clusterName).PluginMetadata().Delete(ctx, pm)
+	} else if event == types.EventUpdate {
+		_, err = c.APISIX.Cluster(clusterName).PluginMetadata().Update(ctx, pm)
+	} else {
+		_, err = c.APISIX.Cluster(clusterName).PluginMetadata().Update(ctx, pm)
 	}
 	return err
 }

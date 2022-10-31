@@ -244,6 +244,9 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 	secretInformer := kubeFactory.Core().V1().Secrets().Informer()
 	secretLister := kubeFactory.Core().V1().Secrets().Lister()
 
+	configmapInformer := kubeFactory.Core().V1().ConfigMaps().Informer()
+	configmapLister := kubeFactory.Core().V1().ConfigMaps().Lister()
+
 	listerInformer := &providertypes.ListerInformer{
 		EpLister:               epLister,
 		EpInformer:             epInformer,
@@ -255,6 +258,8 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		PodInformer:            podInformer,
 		ApisixUpstreamLister:   apisixUpstreamLister,
 		ApisixUpstreamInformer: apisixUpstreamInformer,
+		ConfigMapInformer:      configmapInformer,
+		ConfigMapLister:        configmapLister,
 	}
 
 	return listerInformer
@@ -302,12 +307,13 @@ func (c *Controller) run(ctx context.Context) {
 
 	c.informers = c.initSharedInformers()
 	common := &providertypes.Common{
-		ListerInformer:   c.informers,
-		Config:           c.cfg,
-		APISIX:           c.apisix,
-		KubeClient:       c.kubeClient,
-		MetricsCollector: c.MetricsCollector,
-		Recorder:         c.recorder,
+		ControllerNamespace: c.namespace,
+		ListerInformer:      c.informers,
+		Config:              c.cfg,
+		APISIX:              c.apisix,
+		KubeClient:          c.kubeClient,
+		MetricsCollector:    c.MetricsCollector,
+		Recorder:            c.recorder,
 	}
 
 	c.namespaceProvider, err = namespace.NewWatchingNamespaceProvider(ctx, c.kubeClient, c.cfg)

@@ -314,6 +314,15 @@ func (s *Scaffold) CreateApisixConsumerByApisixAdmin(body []byte) error {
 	return s.ensureAdminOperationIsSuccessful(u.String(), "PUT", body)
 }
 
+func (s *Scaffold) CreateApisixPluginMetadataByApisixAdmin(pluginName string, body []byte) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/plugin_metadata/" + pluginName,
+	}
+	return s.ensureAdminOperationIsSuccessful(u.String(), "PUT", body)
+}
+
 // DeleteApisixRouteByApisixAdmin deletes a route by its route name in APISIX cluster.
 func (s *Scaffold) DeleteApisixRouteByApisixAdmin(routeID string) error {
 	u := url.URL{
@@ -447,6 +456,48 @@ func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
 		return nil, err
 	}
 	return cli.Cluster("").Route().List(context.TODO())
+}
+
+func (s *Scaffold) ListPluginMetadatas() ([]*v1.PluginMetadata, error) {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin",
+	}
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cli.Cluster("").PluginMetadata().List(context.TODO())
+}
+
+func (s *Scaffold) ClusterClient() (apisix.Cluster, error) {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin",
+	}
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cli.Cluster(""), nil
 }
 
 // ListApisixConsumers list all consumers from APISIX.

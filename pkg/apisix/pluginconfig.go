@@ -16,7 +16,6 @@
 package apisix
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 
@@ -158,7 +157,7 @@ func (pc *pluginConfigClient) Create(ctx context.Context, obj *v1.PluginConfig) 
 
 	url := pc.url + "/" + obj.ID
 	log.Debugw("creating pluginConfig", zap.ByteString("body", data), zap.String("url", url))
-	resp, err := pc.cluster.createResource(ctx, url, "pluginConfig", bytes.NewReader(data))
+	resp, err := pc.cluster.createResource(ctx, url, "pluginConfig", data)
 	pc.cluster.metricsCollector.IncrAPISIXRequest("pluginConfig")
 	if err != nil {
 		log.Errorf("failed to create pluginConfig: %s", err)
@@ -218,8 +217,7 @@ func (pc *pluginConfigClient) Update(ctx context.Context, obj *v1.PluginConfig) 
 		return nil, err
 	}
 	url := pc.url + "/" + obj.ID
-	log.Debugw("updating pluginConfig", zap.ByteString("body", body), zap.String("url", url))
-	resp, err := pc.cluster.updateResource(ctx, url, "pluginConfig", bytes.NewReader(body))
+	resp, err := pc.cluster.updateResource(ctx, url, "pluginConfig", body)
 	pc.cluster.metricsCollector.IncrAPISIXRequest("pluginConfig")
 	if err != nil {
 		return nil, err

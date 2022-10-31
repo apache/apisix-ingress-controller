@@ -15,7 +15,6 @@
 package apisix
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 
@@ -153,7 +152,7 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	url := u.url + "/" + obj.ID
 	log.Debugw("creating upstream", zap.ByteString("body", body), zap.String("url", url))
 
-	resp, err := u.cluster.createResource(ctx, url, "upstream", bytes.NewReader(body))
+	resp, err := u.cluster.createResource(ctx, url, "upstream", body)
 	u.cluster.metricsCollector.IncrAPISIXRequest("upstream")
 	if err != nil {
 		log.Errorf("failed to create upstream: %s", err)
@@ -217,8 +216,7 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	}
 
 	url := u.url + "/" + obj.ID
-	log.Debugw("updating upstream", zap.ByteString("body", body), zap.String("url", url))
-	resp, err := u.cluster.updateResource(ctx, url, "upstream", bytes.NewReader(body))
+	resp, err := u.cluster.updateResource(ctx, url, "upstream", body)
 	u.cluster.metricsCollector.IncrAPISIXRequest("upstream")
 	if err != nil {
 		return nil, err
