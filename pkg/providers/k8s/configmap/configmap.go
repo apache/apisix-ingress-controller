@@ -70,7 +70,7 @@ func newConfigMapController(common *providertypes.Common) *configmapController {
 	return ctl
 }
 
-func (c *configmapController) Subscription(namespace, configName string) {
+func (c *configmapController) Subscribe(namespace, configName string) {
 	c.subscriptionList[subscripKey{
 		namespace: namespace,
 		name:      configName,

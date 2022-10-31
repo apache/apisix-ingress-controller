@@ -48,7 +48,7 @@ func NewProvider(common *providertypes.Common) (Provider, error) {
 
 	p.configmapController = newConfigMapController(common)
 
-	p.configmapController.Subscription(common.ControllerNamespace, p.cfg.PluginMetadataConfigMap)
+	p.configmapController.Subscribe(common.ControllerNamespace, p.cfg.PluginMetadataConfigMap)
 
 	return p, nil
 }
