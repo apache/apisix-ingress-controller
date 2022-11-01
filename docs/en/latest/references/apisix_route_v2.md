@@ -26,7 +26,7 @@ description: Reference for ApisixRoute/v2 custom Kubernetes resource.
 #
 -->
 
-See [concepts](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_route/) to learn more about how to use the ApisixRoute resource.
+See [concepts](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_route) to learn more about how to use the ApisixRoute resource.
 
 ## Spec
 
