@@ -139,6 +139,10 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 		}
 		ctx.AddSSL(ssl)
 	}
+	ns := ing.Namespace
+	if ingress.ServiceNamespace != "" {
+		ns = ingress.ServiceNamespace
+	}
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
 			var (
@@ -147,9 +151,9 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 			)
 			if pathRule.Backend.Service != nil {
 				if skipVerify {
-					ups = t.translateDefaultUpstreamFromIngressV1(ing.Namespace, pathRule.Backend.Service)
+					ups = t.translateDefaultUpstreamFromIngressV1(ns, pathRule.Backend.Service)
 				} else {
-					ups, err = t.translateUpstreamFromIngressV1(ing.Namespace, pathRule.Backend.Service)
+					ups, err = t.translateUpstreamFromIngressV1(ns, pathRule.Backend.Service)
 					if err != nil {
 						log.Errorw("failed to translate ingress backend to upstream",
 							zap.Error(err),
@@ -237,6 +241,10 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 		}
 		ctx.AddSSL(ssl)
 	}
+	ns := ing.Namespace
+	if ingress.ServiceNamespace != "" {
+		ns = ingress.ServiceNamespace
+	}
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
 			var (
@@ -245,9 +253,9 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 			)
 			if pathRule.Backend.ServiceName != "" {
 				if skipVerify {
-					ups = t.translateDefaultUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
+					ups = t.translateDefaultUpstreamFromIngressV1beta1(ns, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
 				} else {
-					ups, err = t.translateUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
+					ups, err = t.translateUpstreamFromIngressV1beta1(ns, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
 					if err != nil {
 						log.Errorw("failed to translate ingress backend to upstream",
 							zap.Error(err),
@@ -389,6 +397,10 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 		}
 		ctx.AddSSL(ssl)
 	}
+	ns := ing.Namespace
+	if ingress.ServiceNamespace != "" {
+		ns = ingress.ServiceNamespace
+	}
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
 			var (
@@ -398,9 +410,9 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 			if pathRule.Backend.ServiceName != "" {
 				// Structure here is same to ingress.extensions/v1beta1, so just use this method.
 				if skipVerify {
-					ups = t.translateDefaultUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
+					ups = t.translateDefaultUpstreamFromIngressV1beta1(ns, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
 				} else {
-					ups, err = t.translateUpstreamFromIngressV1beta1(ing.Namespace, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
+					ups, err = t.translateUpstreamFromIngressV1beta1(ns, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
 					if err != nil {
 						log.Errorw("failed to translate ingress backend to upstream",
 							zap.Error(err),

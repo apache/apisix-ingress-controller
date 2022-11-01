@@ -23,6 +23,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/pluginconfig"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/plugins"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/regex"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/servicenamespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/websocket"
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -33,6 +34,7 @@ type Ingress struct {
 	UseRegex         bool
 	EnableWebSocket  bool
 	PluginConfigName string
+	ServiceNamespace string
 }
 
 var (
@@ -41,6 +43,7 @@ var (
 		"UseRegex":         regex.NewParser(),
 		"EnableWebSocket":  websocket.NewParser(),
 		"PluginConfigName": pluginconfig.NewParser(),
+		"ServiceNamespace": servicenamespace.NewParser(),
 	}
 )
 
