@@ -1,5 +1,10 @@
 ---
-title: ApisixRoute/v2 Reference
+title: ApisixRoute/v2
+keywords:
+  - APISIX ingress
+  - Apache APISIX
+  - ApisixRoute
+description: Reference for ApisixRoute/v2 custom Kubernetes resource.
 ---
 
 <!--
@@ -21,83 +26,85 @@ title: ApisixRoute/v2 Reference
 #
 -->
 
+See [concepts](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_route/) to learn more about how to use the ApisixRoute resource.
+
 ## Spec
 
-Meaning of each field in the spec of ApisixRoute are followed, the top level fields (`apiVersion`, `kind` and `metadata`) are same as other Kubernetes Resources.
+See the [definition](https://github.com/apache/apisix-ingress-controller/blob/master/samples/deploy/crd/v1/ApisixRoute.yaml) on GitHub.
 
-| Field                                | Type               | Description                                                                                                                                                                                                                       |
-|--------------------------------------|--------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| http                                 | array              | ApisixRoute's HTTP route rules.                                                                                                                                                                                                   |
-| http[].name                          | string (required)  | The route rule name.                                                                                                                                                                                                              |
-| http[].priority                      | integer            | The route priority, it's used to determine which route will be hitted when multile routes contains the same URI. Large number means higher priority.                                                                              |
-| http[].timeout                       | object             | Sets the timeout for connecting to, and sending and receiving messages between the Ingress and Service. This will overwrite the timeout value configured in your ApisixUpstream.                                                  |
-| http[].timeout.connect               | string             | Time duration in the form "72h3m0.5s"                                                                                                                                                                                             |
-| http[].timeout.send                  | string             | Time duration in the form "72h3m0.5s"                                                                                                                                                                                             |
-| http[].timeout.read                  | string             | Time duration in the form "72h3m0.5s"                                                                                                                                                                                             |
-| http[].match                         | object             | Route match conditions.                                                                                                                                                                                                           |
-| http[].match.paths                   | array              | A series of URI that should be matched (oneof) to use this route rule.                                                                                                                                                            |
-| http[].match.hosts                   | array              | A series of hosts that should be matched (oneof) to use this route rule.                                                                                                                                                          |
-| http[].match.methods                 | array              | A series of HTTP methods(`GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, `OPTIONS`, `CONNECT`, `TRACE`) that should be matched (oneof) to use this route rule.                                                                   |
-| http[].match.remoteAddrs             | array              | A series of IP address (CIDR format) that should be matched (oneof) to use this route rule.                                                                                                                                       |
-| http[].match.exprs                   | array              | A series expressions that the results should be matched (oneof) to use this route rule.                                                                                                                                           |
-| http[].match.exprs[].subject         | object             | Expression subject.                                                                                                                                                                                                               |
-| http[].match.exprs[].subject.scope   | string             | Specify where to find the subject, values can be `Header`, `Query`, `Cookie` and `Path`.                                                                                                                                          |
-| http[].match.exprs[].subject.name    | string             | Specify subject name, when scope is `Path`, this field can be absent.                                                                                                                                                             |
-| http[].match.exprs[].op              | string             | Expression operator, see [Expression Operators](#expression-operators) for the detail of enumerations.                                                                                                                            |
-| http[].match.exprs[].value           | string             | Expected expression result, it's exclusive with `http[].match.exprs[].set`.                                                                                                                                                       |
-| http[].match.exprs[].set             | array              | Expected expression result set, only used when the operator is `In` or `NotIn`, it's exclusive with `http[].match.exprs[].value`.                                                                                                 |
-| http[].websocket                     | boolean            | Whether enable websocket proxy.                                                                                                                                                                                                   |
-| http[].plugin_config_name            | string             | Using exist `PluginConfig` for `ApisixRoute`.                                                                                                                                                                                     |
-| http[].backends                      | object             | The backend services. When the number of backends more than one, weight based traffic split policy will be applied to shifting traffic between these backends.                                                                    |
-| http[].backends[].serviceName        | string             | The backend service name, note the service and ApisixRoute should be created in the same namespace. Cross namespace referencing is not allowed.                                                                                   |
-| http[].backends[].servicePort        | integer or string  | The backend service port, can be the port number or the name defined in the service object.                                                                                                                                       |
-| http[].backends[].resolveGranularity | string             | See [Service Resolve Granularity](#service-resolve-granularity) for the details.                                                                                                                                                  |
-| http[].backends[].weight             | int                | The backend weight, which is critical when shifting traffic between multiple backends, default is `100`. Weight is ignored when there is only one backend.                                                                        |
-| http[].backends[].subset             | string             | Subset specifies a subset for the target Service. The subset should be pre-definedin ApisixUpstream about this service.                                                                                                           |
-| http[].plugins                       | array              | A series of APISIX plugins that will be executed once this route rule is matched                                                                                                                                                  |
-| http[].plugins[].name                | string             | The plugin name, see [docs](http://apisix.apache.org/docs/apisix/getting-started) for learning the available plugins.                                                                                                             |
-| http[].plugins[].enable              | boolean            | Whether the plugin would be used                                                                                                                                                                                                  |
-| http[].plugins[].config              | object             | The configuration of the plugin that must have the same fields as in APISIX.                                                                                                                                                      |
-| http[].authentication                | object             | A series of APISIX authentication plugins.                                                                                                                                                                                        |
-| http[].authentication.enable         | boolean            | Whether the plugin would be used.                                                                                                                                                                                                 |
-| http[].authentication.type           | string             | Plugin type, one of "basicAuth" "keyAuth"                                                                                                                                                                                         |
-| http[].authentication.keyAuth        | object             | Unique key for a Consumer.                                                                                                                                                                                                        |
-| http[].authentication.keyAuth.header | string             | The header to get the key from.                                                                                                                                                                                                   |
-| stream                               | array              | ApisixRoutes' stream route rules, which contains TCP or UDP rules.                                                                                                                                                                |
-| stream[].protocol                    | string (required)  | The protocol of rule. Support `TCP` or `UDP`                                                                                                                                                                                      |
-| stream[].name                        | string (required)  | The Route rule name.                                                                                                                                                                                                              |
-| stream[].match                       | object (required)  | The Route match conditions.                                                                                                                                                                                                       |
-| stream[].match.ingressPort           | integer (required) | the Ingress proxy server listening port, note since APISIX doesn't support dynamic listening, this port should be defined in [apisix configuration](https://github.com/apache/apisix/blob/master/conf/config-default.yaml#L101).  |
-| stream[].backend                     | object             | The backend service. Deprecated: use http[].backends instead.                                                                                                                                                                     |
-| stream[].backend.serviceName         | string             | The backend service name, note the service and ApisixRoute should be created in the same namespace. Cross namespace referencing is not allowed.                                                                                   |
-| stream[].backend.servicePort         | integer or string  | The backend service port, can be the port number or the name defined in the service object.                                                                                                                                       |
-| stream[].backend.resolveGranularity  | string             | See [Service Resolve Granularity](#service-resolve-granularity) for the details.                                                                                                                                                  |
-| stream[].backend.subset              | string             | Subset specifies a subset for the target Service. The subset should be pre-definedin ApisixUpstream about this service.                                                                                                           |
-| stream[].plugins                     | array              | A series of APISIX plugins that will be executed once this route rule is matched                                                                                                                                                  |
-| stream[].plugins[].name              | string             | The plugin name, see [docs](http://apisix.apache.org/docs/apisix/getting-started) for learning the available plugins.                                                                                                             |
-| stream[].plugins[].enable            | boolean            | Whether the plugin would be used                                                                                                                                                                                                  |
-| stream[].plugins[].config            | object             | The configuration of the plugin that must have the same fields as in APISIX.                                                                                                                                                      |
+The table below describes each of the attributes in the spec. The fields `apiVersion`, `kind`, and `metadata` are similar to other Kubernetes resources and are excluded below.
 
-## Expression Operators
+| Attribute                            | Type               | Description                                                                                                                                                                               |
+| ------------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| http                                 | array              | HTTP Route rules.                                                                                                                                                                         |
+| http[].name                          | string (required)  | Route rule name.                                                                                                                                                                          |
+| http[].priority                      | integer            | Route priority. Used to determined which Route to use when multiple routes contain the same URI. Large number means higher priority.                                                      |
+| http[].timeout                       | object             | Timeouts for connecting, sending, and receiving messages between Ingress and the service. This will overwrite the value configured in `ApisixUpstream` resource.                          |
+| http[].timeout.connect               | string             | Connect timeout in the form "72h3m0.5s".                                                                                                                                                  |
+| http[].timeout.send                  | string             | Send timeout in the form "72h3m0.5s".                                                                                                                                                     |
+| http[].timeout.read                  | string             | Read timeout in the form "72h3m0.5s".                                                                                                                                                     |
+| http[].match                         | object             | Conditions to match a request with the Route.                                                                                                                                             |
+| http[].match.paths                   | array              | List of URIs to match the Route with. The Route will be used if any one of the URIs is matched.                                                                                           |
+| http[].match.hosts                   | array              | List of hosts to match the Route with. The Route will be used if any one of the hosts is matched.                                                                                         |
+| http[].match.methods                 | array              | List of HTTP methods (`GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, `OPTIONS`, `CONNECT`, `TRACE`) to match the Route with. The Route will be used if any one of the hosts is matched. |
+| http[].match.remoteAddrs             | array              | List of IP addresses (CIDR format) to match the Route with. The Route will be used if any one of the IP address is matched.                                                               |
+| http[].match.exprs                   | array              | List of expressions to match the Route with. The Route will be used if any one of the expression is matched.                                                                              |
+| http[].match.exprs[].subject         | object             | Subject for the expression.                                                                                                                                                               |
+| http[].match.exprs[].subject.scope   | string             | Scope of the subject. Can be one of `Header`, `Query`, `Cookie`, or `Path`.                                                                                                               |
+| http[].match.exprs[].subject.name    | string             | Subject name. Can be empty when the scope is `Path`.                                                                                                                                      |
+| http[].match.exprs[].op              | string             | Operator for the expression. See [Expression operators](#expression-operators) for more details.                                                                                          |
+| http[].match.exprs[].value           | string             | Value to compare the subject with. Can use either this or `http[].match.exprs[].set`.                                                                                                     |
+| http[].match.exprs[].set             | array              | Set to compare the subject with. Only used when the operator is `In` or `NotIn`. Can use either this or `http[].match.exprs[].value`.                                                     |
+| http[].websocket                     | boolean            | When set to `true``enables websocket proxy.                                                                                                                                               |
+| http[].plugin_config_name            | string             | Existing Plugin Config name to use in the Route.                                                                                                                                          |
+| http[].backends                      | object             | List of backend services. If there are more than one, a weight based traffic split policy would be applied.                                                                               |
+| http[].backends[].serviceName        | string             | Name of the backend service. The service and the `ApisixRoute` resource should be created in the same namespace.                                                                          |
+| http[].backends[].servicePort        | integer or string  | Port number or the name defined in the service object of the backend.                                                                                                                     |
+| http[].backends[].resolveGranularity | string             | See [Service resolution granularity](#service-resolution-granularity) for details.                                                                                                        |
+| http[].backends[].weight             | int                | Weight with which to split traffic to the backend. Defaults to `100` and is ignored when there is only one backend.                                                                       |
+| http[].backends[].subset             | string             | Subset for the target service. Should be pre-defined in the `ApisixUpstream` resource.                                                                                                    |
+| http[].plugins                       | array              | [APISIX Plugins](https://apisix.apache.org/docs/apisix/plugins/batch-requests/) to be executed if the Route is matched.                                                                   |
+| http[].plugins[].name                | string             | Name of the Plugin. See [Plugin hub](https://apisix.apache.org/plugins/) for a list of available Plugins.                                                                                 |
+| http[].plugins[].enable              | boolean            | When set to `true`, the Plugin is enabled on the Route.                                                                                                                                   |
+| http[].plugins[].config              | object             | Configuration of the Plugin. Should have the same fields as in [APISIX docs](https://apisix.apache.org/docs/apisix/plugins/batch-requests/).                                              |
+| http[].authentication                | object             | List of APISIX authentication Plugins.                                                                                                                                                    |
+| http[].authentication.enable         | boolean            | When set to `true`, the authentication Plugin is enabled on the Route.                                                                                                                    |
+| http[].authentication.type           | string             | Type of authentication. Set to one of `basicAuth` or `keyAuth`.                                                                                                                           |
+| http[].authentication.keyAuth        | object             | Unique key for a [Consumer](https://apisix.apache.org/docs/apisix/terminology/consumer/).                                                                                                 |
+| http[].authentication.keyAuth.header | string             | Header to get the key from.                                                                                                                                                               |
+| stream                               | array              | Stream route rules. Contains TCP or UDP rules.                                                                                                                                            |
+| stream[].protocol                    | string (required)  | The protocol of rule. Support `TCP` or `UDP`                                                                                                                                              |
+| stream[].name                        | string (required)  | Name of the rule.                                                                                                                                                                         |
+| stream[].match                       | object (required)  | Conditions to match the request with the Route.                                                                                                                                           |
+| stream[].match.ingressPort           | integer (required) | Listening port in the Ingress proxy server. This port should be defined in the [APISIX configuration](https://github.com/apache/apisix/blob/master/conf/config-default.yaml#L101).        |
+| stream[].backend                     | object             | Backend service (deprecated). Use `http[].backends` instead.                                                                                                                              |
+| stream[].backend.serviceName         | string             | Name of the backend service (depricated). The service and the `ApisixRoute` resource should be created in the same namespace.                                                             |
+| stream[].backend.servicePort         | integer or string  | Port number or the name defined in the service object of the backend (depricated).                                                                                                        |
+| stream[].backend.resolveGranularity  | string             | See [Service resolution granularity](#service-resolution-granularity) for details (depricated).                                                                                           |
+| stream[].backend.subset              | string             | Subset for the target service (depricated). Should be pre-defined in the `ApisixUpstream` resource.                                                                                       |
 
-| Operator                     | Meaning                                                                                |
-|------------------------------|----------------------------------------------------------------------------------------|
-| Equal                        | The result of `subject` should be equal to the `value`                                 |
-| NotEqual                     | The result of `subject` should not be equal to `value`                                 |
-| GreaterThan                  | The result of `subject` should be a number and it must larger then `value`.            |
-| LessThan                     | The result of `subject` should be a number and it must less than `value`.              |
-| In                           | The result of `subject` should be inside the `set`.                                    |
-| NotIn                        | The result of `subject` should not be inside the `set`.                                |
-| RegexMatch                   | The result of `subject` should be matched by the `value` (a PCRE regex pattern).       |
-| RegexNotMatch                | The result of `subject` should not be matched by the `value` (a PCRE regex pattern).   |
-| RegexMatchCaseInsensitive    | Similar with `RegexMatch` but the match process is case insensitive                    |
-| RegexNotMatchCaseInsensitive | Similar with `RegexNotMatchCaseInsensitive` but the match process is case insensitive. |
+## Expression operators
 
-## Service Resolve Granularity
+The following operators can be used in match expressions:
 
-The service resolve granularity determines whether the [Serivce ClusterIP](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types) or its endpoints should be filled in the target upstream of APISIX.
+| Operator                     | Description                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------------- |
+| Equal                        | Result of the `subject` should be equal to the `value`.                         |
+| NotEqual                     | Result of the `subject` should not be equal to the `value`.                     |
+| GreaterThan                  | Result of the `subject` should be a number and must be larger than the `value`. |
+| LessThan                     | Result of the `subject` should be a number and must be less than the `value`.   |
+| In                           | Result of the `subject` should be a part of the `set`.                          |
+| NotIn                        | Result of the `subject` should be a part of the `set`.                          |
+| RegexMatch                   | Result of the `subject` should match the PCRE regex pattern of the `value`.     |
+| RegexNotMatch                | Result of the `subject` should not match the PCRE regex pattern of the `value`. |
+| RegexMatchCaseInsensitive    | Similar to `RegexMatch` but case insensitive.                                   |
+| RegexNotMatchCaseInsensitive | Similar to `RegexNotMatch` but case insensitive.                                |
 
-| Granularity | Meaning                                                                                                                                                                        |
-|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| endpoint    | Filled upstream nodes by Pods' IP. ApisixUpstream healthCheck is only effective on this case.                                                                                  |
-| service     | Filled upstream nodes by Service ClusterIP, in such a case, loadbalacing are implemented by [kube-proxy](https://kubernetes.io/docs/concepts/overview/components/#kube-proxy). |
+## Service resolution granularity
+
+By default, the service referenced will be watched to update its endpoint list in APISIX. To just use the `ClusterIP` of the service, you can set the `resolveGranularity` attribute to `service` (defaults to `endpoint`):
+
+| Granularity | Description                                                                                                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| endpoint    | Upstream nodes are pods' IP adresses.                                                                                                                      |
+| service     | Upstream nodes are service cluster IP. Load balancing is implemented by [kube-proxy](https://kubernetes.io/docs/concepts/overview/components/#kube-proxy). |
