@@ -18,6 +18,7 @@ package api
 import (
 	"context"
 	"crypto/tls"
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -81,9 +82,10 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		admission := gin.New()
 		admission.Use(gin.Recovery(), gin.Logger())
 		apirouter.MountWebhooks(admission, &apisix.ClusterOptions{
-			Name:     cfg.APISIX.DefaultClusterName,
-			AdminKey: cfg.APISIX.DefaultClusterAdminKey,
-			BaseURL:  cfg.APISIX.DefaultClusterBaseURL,
+			Name:             cfg.APISIX.DefaultClusterName,
+			AdminKey:         cfg.APISIX.DefaultClusterAdminKey,
+			BaseURL:          cfg.APISIX.DefaultClusterBaseURL,
+			MetricsCollector: metrics.NewPrometheusCollector(),
 		})
 
 		srv.admissionServer = &http.Server{
