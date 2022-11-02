@@ -32,6 +32,77 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
+func (t *translator) generatePluginsFromHTTPRouteFilter(filters []gatewayv1alpha2.HTTPRouteFilter) apisixv1.Plugins {
+	plugins := apisixv1.Plugins{}
+	for _, filter := range filters {
+		switch filter.Type {
+		case gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier:
+			t.fillPluginsFromHTTPRequestHeaderFilter(plugins, filter.RequestHeaderModifier)
+		case gatewayv1alpha2.HTTPRouteFilterRequestRedirect:
+			t.fillPluginsFromHTTPRequestRedirectFilter(plugins, filter.RequestRedirect)
+		case gatewayv1alpha2.HTTPRouteFilterRequestMirror:
+			// to do
+		}
+	}
+	return plugins
+}
+
+func (t *translator) fillPluginsFromHTTPRequestHeaderFilter(plugins apisixv1.Plugins, reqHeaderModifier *gatewayv1alpha2.HTTPRequestHeaderFilter) {
+	if reqHeaderModifier == nil {
+		return
+	}
+	headers := map[string]any{}
+	for _, header := range reqHeaderModifier.Add {
+		headers[string(header.Name)] = header.Value
+	}
+	for _, header := range reqHeaderModifier.Set {
+		headers[string(header.Name)] = header.Value
+	}
+	for _, header := range reqHeaderModifier.Remove {
+		headers[header] = ""
+	}
+	// fill roxy-rewrite plugin
+	plugins["proxy-rewrite"] = map[string]any{
+		"headers": headers,
+	}
+}
+
+func (t *translator) fillPluginsFromHTTPRequestRedirectFilter(plugins apisixv1.Plugins, reqRedirect *gatewayv1alpha2.HTTPRequestRedirectFilter) {
+	if reqRedirect == nil {
+		return
+	}
+
+	var (
+		code *int
+		uri  string
+	)
+
+	if reqRedirect.StatusCode != nil {
+		code = reqRedirect.StatusCode
+	}
+
+	hostname := "$host"
+	if reqRedirect.Hostname != nil {
+		hostname = string(*reqRedirect.Hostname)
+	}
+
+	scheme := "$scheme"
+	if reqRedirect.Scheme != nil {
+		scheme = *reqRedirect.Scheme
+	}
+
+	if reqRedirect.Port != nil {
+		uri = fmt.Sprintf("%s://%s:%d$request_uri", scheme, hostname, int(*reqRedirect.Port))
+	} else {
+		uri = fmt.Sprintf("%s://%s$request_uri", scheme, hostname)
+	}
+	redirect := map[string]any{
+		"ret_code": code,
+		"uri":      uri,
+	}
+	plugins["redirect"] = redirect
+}
+
 func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha2.HTTPRoute) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
 
@@ -140,6 +211,7 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 				},
 			}
 		}
+		plugins := t.generatePluginsFromHTTPRouteFilter(rule.Filters)
 
 		for j, match := range matches {
 			route, err := t.translateGatewayHTTPRouteMatch(&match)
@@ -150,6 +222,7 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 			name := apisixv1.ComposeRouteName(httpRoute.Namespace, httpRoute.Name, fmt.Sprintf("%d-%d", i, j))
 			route.ID = id.GenID(name)
 			route.Hosts = hosts
+			route.Plugins = plugins
 
 			// Bind Upstream
 			if len(ruleUpstreams) == 1 {
