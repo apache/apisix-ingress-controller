@@ -52,6 +52,7 @@ func (t *translator) generatePluginFromHTTPRequestHeaderFilter(plugins apisixv1.
 		return
 	}
 	headers := map[string]any{}
+	// TODO: The current apisix plugin does not conform to the specification.
 	for _, header := range reqHeaderModifier.Add {
 		headers[string(header.Name)] = header.Value
 	}
