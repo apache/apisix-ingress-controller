@@ -45,7 +45,6 @@ func TestNewConfigFromFile(t *testing.T) {
 		Kubernetes: KubernetesConfig{
 			ResyncInterval: types.TimeDuration{Duration: time.Hour},
 			Kubeconfig:     "/path/to/foo/baz",
-			AppNamespaces:  []string{""},
 			ElectionID:     "my-election-id",
 			IngressClass:   IngressClass,
 			IngressVersion: IngressNetworkingV1,
@@ -134,7 +133,6 @@ func TestConfigWithEnvVar(t *testing.T) {
 		Kubernetes: KubernetesConfig{
 			ResyncInterval: types.TimeDuration{Duration: time.Hour},
 			Kubeconfig:     "",
-			AppNamespaces:  []string{""},
 			ElectionID:     "my-election-id",
 			IngressClass:   IngressClass,
 			IngressVersion: IngressNetworkingV1,
