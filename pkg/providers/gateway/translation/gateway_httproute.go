@@ -37,9 +37,9 @@ func (t *translator) generatePluginsFromHTTPRouteFilter(filters []gatewayv1alpha
 	for _, filter := range filters {
 		switch filter.Type {
 		case gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier:
-			t.fillPluginsFromHTTPRequestHeaderFilter(plugins, filter.RequestHeaderModifier)
+			t.generatePluginFromHTTPRequestHeaderFilter(plugins, filter.RequestHeaderModifier)
 		case gatewayv1alpha2.HTTPRouteFilterRequestRedirect:
-			t.fillPluginsFromHTTPRequestRedirectFilter(plugins, filter.RequestRedirect)
+			t.generatePluginFromHTTPRequestRedirectFilter(plugins, filter.RequestRedirect)
 		case gatewayv1alpha2.HTTPRouteFilterRequestMirror:
 			// to do
 		}
@@ -47,7 +47,7 @@ func (t *translator) generatePluginsFromHTTPRouteFilter(filters []gatewayv1alpha
 	return plugins
 }
 
-func (t *translator) fillPluginsFromHTTPRequestHeaderFilter(plugins apisixv1.Plugins, reqHeaderModifier *gatewayv1alpha2.HTTPRequestHeaderFilter) {
+func (t *translator) generatePluginFromHTTPRequestHeaderFilter(plugins apisixv1.Plugins, reqHeaderModifier *gatewayv1alpha2.HTTPRequestHeaderFilter) {
 	if reqHeaderModifier == nil {
 		return
 	}
@@ -61,25 +61,18 @@ func (t *translator) fillPluginsFromHTTPRequestHeaderFilter(plugins apisixv1.Plu
 	for _, header := range reqHeaderModifier.Remove {
 		headers[header] = ""
 	}
-	// fill roxy-rewrite plugin
-	plugins["proxy-rewrite"] = map[string]any{
-		"headers": headers,
+
+	plugins["proxy-rewrite"] = apisixv1.RewriteConfig{
+		Headers: headers,
 	}
 }
 
-func (t *translator) fillPluginsFromHTTPRequestRedirectFilter(plugins apisixv1.Plugins, reqRedirect *gatewayv1alpha2.HTTPRequestRedirectFilter) {
+func (t *translator) generatePluginFromHTTPRequestRedirectFilter(plugins apisixv1.Plugins, reqRedirect *gatewayv1alpha2.HTTPRequestRedirectFilter) {
 	if reqRedirect == nil {
 		return
 	}
 
-	var (
-		code *int
-		uri  string
-	)
-
-	if reqRedirect.StatusCode != nil {
-		code = reqRedirect.StatusCode
-	}
+	var uri string
 
 	hostname := "$host"
 	if reqRedirect.Hostname != nil {
@@ -96,11 +89,11 @@ func (t *translator) fillPluginsFromHTTPRequestRedirectFilter(plugins apisixv1.P
 	} else {
 		uri = fmt.Sprintf("%s://%s$request_uri", scheme, hostname)
 	}
-	redirect := map[string]any{
-		"ret_code": code,
-		"uri":      uri,
+
+	plugins["redirect"] = apisixv1.RedirectConfig{
+		RetCode: reqRedirect.StatusCode,
+		URI:     uri,
 	}
-	plugins["redirect"] = redirect
 }
 
 func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha2.HTTPRoute) (*translation.TranslateContext, error) {

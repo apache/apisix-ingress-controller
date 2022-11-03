@@ -121,8 +121,9 @@ type WolfRBACConsumerConfig struct {
 // RewriteConfig is the rule config for proxy-rewrite plugin.
 // +k8s:deepcopy-gen=true
 type RewriteConfig struct {
-	RewriteTarget      string   `json:"uri,omitempty"`
-	RewriteTargetRegex []string `json:"regex_uri,omitempty"`
+	RewriteTarget      string         `json:"uri,omitempty"`
+	RewriteTargetRegex []string       `json:"regex_uri,omitempty"`
+	Headers            map[string]any `json:"headers,omitempty"`
 }
 
 // RedirectConfig is the rule config for redirect plugin.
@@ -130,7 +131,7 @@ type RewriteConfig struct {
 type RedirectConfig struct {
 	HttpToHttps bool   `json:"http_to_https,omitempty"`
 	URI         string `json:"uri,omitempty"`
-	RetCode     int    `json:"ret_code,omitempty"`
+	RetCode     *int   `json:"ret_code,omitempty"`
 }
 
 // ForwardAuthConfig is the rule config for forward-auth plugin.
