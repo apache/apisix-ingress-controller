@@ -75,6 +75,11 @@ func (t *translator) generatePluginFromHTTPRequestRedirectFilter(plugins apisixv
 
 	var uri string
 
+	code := 302
+	if reqRedirect.StatusCode != nil {
+		code = *reqRedirect.StatusCode
+	}
+
 	hostname := "$host"
 	if reqRedirect.Hostname != nil {
 		hostname = string(*reqRedirect.Hostname)
@@ -92,7 +97,7 @@ func (t *translator) generatePluginFromHTTPRequestRedirectFilter(plugins apisixv
 	}
 
 	plugins["redirect"] = apisixv1.RedirectConfig{
-		RetCode: reqRedirect.StatusCode,
+		RetCode: code,
 		URI:     uri,
 	}
 }

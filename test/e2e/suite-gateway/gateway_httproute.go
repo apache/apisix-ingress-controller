@@ -342,6 +342,7 @@ spec:
     - type: RequestRedirect
       requestRedirect:
         hostname: httpbin.org
+        statusCode: 301
     backendRefs:
     - name: %s
       port: %d
@@ -354,7 +355,7 @@ spec:
 		_ = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.com").
 			Expect().
-			Status(http.StatusFound).
+			Status(http.StatusMovedPermanently).
 			Header("Location").Equal("http://httpbin.org/ip")
 	})
 })

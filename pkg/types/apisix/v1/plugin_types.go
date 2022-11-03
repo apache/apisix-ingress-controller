@@ -133,7 +133,7 @@ type RewriteConfig struct {
 type RedirectConfig struct {
 	HttpToHttps bool   `json:"http_to_https,omitempty"`
 	URI         string `json:"uri,omitempty"`
-	RetCode     *int   `json:"ret_code,omitempty"`
+	RetCode     int    `json:"ret_code,omitempty"`
 }
 
 // ForwardAuthConfig is the rule config for forward-auth plugin.

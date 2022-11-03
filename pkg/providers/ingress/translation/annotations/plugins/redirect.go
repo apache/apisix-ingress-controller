@@ -39,16 +39,15 @@ func (r *redirect) Handle(e annotations.Extractor) (interface{}, error) {
 	plugin.HttpToHttps = e.GetBoolAnnotation(annotations.AnnotationsHttpToHttps)
 	plugin.URI = e.GetStringAnnotation(annotations.AnnotationsHttpRedirect)
 	// Transformation fail defaults to 0.
-	code, _ := strconv.Atoi(e.GetStringAnnotation(annotations.AnnotationsHttpRedirectCode))
-	plugin.RetCode = &code
+	plugin.RetCode, _ = strconv.Atoi(e.GetStringAnnotation(annotations.AnnotationsHttpRedirectCode))
 	// To avoid empty redirect plugin config, adding the check about the redirect.
 	if plugin.HttpToHttps {
 		return &plugin, nil
 	}
 	if plugin.URI != "" {
 		// Default is http.StatusMovedPermanently, the allowed value is between http.StatusMultipleChoices and http.StatusPermanentRedirect.
-		if *plugin.RetCode < http.StatusMovedPermanently || *plugin.RetCode > http.StatusPermanentRedirect {
-			*plugin.RetCode = http.StatusMovedPermanently
+		if plugin.RetCode < http.StatusMovedPermanently || plugin.RetCode > http.StatusPermanentRedirect {
+			plugin.RetCode = http.StatusMovedPermanently
 		}
 		return &plugin, nil
 	}
