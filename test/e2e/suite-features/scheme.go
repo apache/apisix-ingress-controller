@@ -139,7 +139,7 @@ spec:
 `))
 
 			assert.NoError(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
  name: grpcs-route

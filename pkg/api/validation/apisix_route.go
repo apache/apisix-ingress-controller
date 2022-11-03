@@ -29,7 +29,6 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
@@ -53,20 +52,6 @@ var ApisixRouteValidator = kwhvalidating.ValidatorFunc(
 		var spec interface{}
 
 		switch ar := object.(type) {
-		case *v2beta2.ApisixRoute:
-			spec = ar.Spec
-
-			// validate plugins
-			for _, h := range ar.Spec.HTTP {
-				for _, p := range h.Plugins {
-					// only check plugins that are enabled.
-					if p.Enable {
-						plugins = append(plugins, apisixRoutePlugin{
-							p.Name, p.Config,
-						})
-					}
-				}
-			}
 		case *v2beta3.ApisixRoute:
 			spec = ar.Spec
 
