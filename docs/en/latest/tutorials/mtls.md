@@ -107,7 +107,7 @@ In APISIX Ingress Controller, we use [ApisixTls](../concepts/apisix_tls.md) reso
 
 ApisixTls requires a secret which field `cert` and `key` contains the certificate and private key.
 
-A secret yaml containing the certificate mentioned above [is here](./mtls/server-secret.yaml). In this guide, we use this as an example.
+A secret yaml containing the certificate mentioned above [is here](https://github.com/apache/apisix-ingress-controller/blob/v1.5.0/docs/en/latest/tutorials/mtls/mtls.yaml). In this guide, we use this as an example.
 
 ```bash
 kubectl apply -f ./mtls/server-secret.yaml -n default
