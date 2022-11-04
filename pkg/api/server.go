@@ -18,7 +18,6 @@ package api
 import (
 	"context"
 	"crypto/tls"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -31,6 +30,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
