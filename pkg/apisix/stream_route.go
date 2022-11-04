@@ -148,6 +148,7 @@ func (r *streamRouteClient) Create(ctx context.Context, obj *v1.StreamRoute) (*v
 		zap.Int32("server_port", obj.ServerPort),
 		zap.String("cluster", "default"),
 		zap.String("url", r.url),
+		zap.String("sni", obj.SNI),
 	)
 
 	if err := r.cluster.HasSynced(ctx); err != nil {

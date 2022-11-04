@@ -549,6 +549,8 @@ spec:
                       match:
                         type: object
                         properties:
+                          host:
+                            type: string
                           ingressPort:
                             type: integer
                             minimum: 1

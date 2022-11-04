@@ -767,6 +767,7 @@ func (t *translator) translateStreamRouteV2(ctx *translation.TranslateContext, a
 		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
 		sr.ID = id.GenID(name)
 		sr.ServerPort = part.Match.IngressPort
+		sr.SNI = part.Match.Host
 		ups, err := t.translateService(ar.Namespace, backend.ServiceName, backend.Subset, backend.ResolveGranularity, svcClusterIP, svcPort)
 		if err != nil {
 			return err
@@ -811,6 +812,7 @@ func (t *translator) translateStreamRouteNotStrictlyV2(ctx *translation.Translat
 		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
 		sr.ID = id.GenID(name)
 		sr.ServerPort = part.Match.IngressPort
+		sr.SNI = part.Match.Host
 		ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
 		if err != nil {
 			return err
