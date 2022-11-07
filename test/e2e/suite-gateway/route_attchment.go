@@ -78,7 +78,7 @@ spec:
 `, s.Namespace(), gatewayName, gatewayClassName)
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(gatewayClass), "creating GatewayClass")
-		time.Sleep(time.Second * 2)
+		time.Sleep(time.Second * 5)
 		_, _ = fmt.Fprintf(ginkgo.GinkgoWriter, "create gateway at %s", time.Now())
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(gateway), "creating Gateway")
 	})
