@@ -30,6 +30,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
@@ -81,9 +82,10 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		admission := gin.New()
 		admission.Use(gin.Recovery(), gin.Logger())
 		apirouter.MountWebhooks(admission, &apisix.ClusterOptions{
-			Name:     cfg.APISIX.DefaultClusterName,
-			AdminKey: cfg.APISIX.DefaultClusterAdminKey,
-			BaseURL:  cfg.APISIX.DefaultClusterBaseURL,
+			Name:             cfg.APISIX.DefaultClusterName,
+			AdminKey:         cfg.APISIX.DefaultClusterAdminKey,
+			BaseURL:          cfg.APISIX.DefaultClusterBaseURL,
+			MetricsCollector: metrics.NewPrometheusCollector(),
 		})
 
 		srv.admissionServer = &http.Server{
