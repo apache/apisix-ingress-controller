@@ -22,8 +22,6 @@ REGISTRY ?="localhost:5000"
 IMAGE_TAG ?= dev
 ENABLE_PROXY ?= true
 
-GATEWAY_API_VERSION=v0.5.1
-
 GITSHA ?= "no-git-module"
 ifneq ("$(wildcard .git)", "")
 	GITSHA = $(shell git rev-parse --short=7 HEAD)
@@ -153,16 +151,6 @@ install:
 uninstall:
 	kubectl delete -k $(PWD)/samples/deploy/crd
 
-### install:				Install Gateway API CRDs into the K8s cluster.
-.PHONY: install-gateway-api
-install-gateway-api:
-	kubectl apply -f $(PWD)/samples/deploy/gateway-api/$(GATEWAY_API_VERSION)
-
-### uninstall-gateway-api:	Uninstall Gateway API CRDs from the K8s cluster.
-.PHONY: uninstall-gateway-api
-uninstall-gateway-api:
-	kubectl delete -f $(PWD)/samples/deploy/gateway-api/$(GATEWAY_API_VERSION)
-
 ### kind-up:              Launch a Kubernetes cluster with a image registry by Kind.
 .PHONY: kind-up
 kind-up:
@@ -278,3 +266,24 @@ kind-load-images:
             $(REGISTRY)/test-backend:dev \
             $(REGISTRY)/jmalloc/echo-server:dev \
             $(REGISTRY)/busybox:dev
+
+
+GATEWAY_API_PACKAGE ?= sigs.k8s.io/gateway-api
+GATEWAY_API_VERSION ?= v0.5.1
+GATEWAY_API_CRDS_LOCAL_PATH = $(shell go env GOPATH)/pkg/mod/$(GATEWAY_API_PACKAGE)@$(GATEWAY_API_VERSION)/config/crd
+
+.PHONY: go-mod-download-gateway-api
+go-mod-download-gateway-api:
+	@go mod download $(GATEWAY_API_PACKAGE)
+
+### install:				Install Gateway API CRDs into the K8s cluster.
+.PHONY: install-gateway-api
+install-gateway-api: go-mod-download-gateway-api
+	kubectl apply -k $(GATEWAY_API_CRDS_LOCAL_PATH)
+	kubectl apply -k $(GATEWAY_API_CRDS_LOCAL_PATH)/experimental
+
+### uninstall-gateway-api:	Uninstall Gateway API CRDs from the K8s cluster.
+.PHONY: uninstall-gateway-api
+uninstall-gateway-api: go-mod-download-gateway-api
+	kubectl delete -k $(GATEWAY_API_CRDS_LOCAL_PATH)
+	kubectl delete -k $(GATEWAY_API_CRDS_LOCAL_PATH)/experimental
