@@ -348,6 +348,7 @@ func (in *RewriteConfig) DeepCopyInto(out *RewriteConfig) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	in.Headers.DeepCopyInto(&out.Headers)
 	return
 }
 

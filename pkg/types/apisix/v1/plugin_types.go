@@ -14,6 +14,8 @@
 // limitations under the License.
 package v1
 
+import "encoding/json"
+
 // TrafficSplitConfig is the config of traffic-split plugin.
 // +k8s:deepcopy-gen=true
 type TrafficSplitConfig struct {
@@ -123,6 +125,7 @@ type WolfRBACConsumerConfig struct {
 type RewriteConfig struct {
 	RewriteTarget      string   `json:"uri,omitempty"`
 	RewriteTargetRegex []string `json:"regex_uri,omitempty"`
+	Headers            Headers  `json:"headers,omitempty"`
 }
 
 // RedirectConfig is the rule config for redirect plugin.
@@ -151,4 +154,20 @@ type BasicAuthConfig struct {
 // KeyAuthConfig is the rule config for key-auth plugin.
 // +k8s:deepcopy-gen=true
 type KeyAuthConfig struct {
+}
+
+type Headers map[string]any
+
+func (p *Headers) DeepCopyInto(out *Headers) {
+	b, _ := json.Marshal(&p)
+	_ = json.Unmarshal(b, out)
+}
+
+func (p *Headers) DeepCopy() *Headers {
+	if p == nil {
+		return nil
+	}
+	out := new(Headers)
+	p.DeepCopyInto(out)
+	return out
 }
