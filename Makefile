@@ -22,6 +22,8 @@ REGISTRY ?="localhost:5000"
 IMAGE_TAG ?= dev
 ENABLE_PROXY ?= true
 
+GATEWAY_API_VERSION=v0.5.1
+
 GITSHA ?= "no-git-module"
 ifneq ("$(wildcard .git)", "")
 	GITSHA = $(shell git rev-parse --short=7 HEAD)
@@ -124,9 +126,7 @@ unit-test:
 
 ### e2e-test:             Run e2e test cases (in existing clusters directly)
 .PHONY: e2e-test
-e2e-test: ginkgo-check pack-images e2e-wolf-rbac
-	kubectl apply -k $(PWD)/samples/deploy/crd
-	kubectl apply -f $(PWD)/samples/deploy/gateway-api
+e2e-test: ginkgo-check pack-images e2e-wolf-rbac install install-gateway-api
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
@@ -142,6 +142,26 @@ ifeq ("$(wildcard $(GINKGO))", "")
 	@echo "ERROR: Need to install ginkgo first, run: go get -u github.com/onsi/ginkgo/v2/ginkgo@v2.1.4 or go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo@v2.1.4"
 	exit 1
 endif
+
+### install:				Install CRDs into the K8s cluster.
+.PHONY: install
+install:
+	kubectl apply -k $(PWD)/samples/deploy/crd
+
+### uninstall:				Uninstall CRDs from the K8s cluster.
+.PHONY: uninstall
+uninstall:
+	kubectl delete -k $(PWD)/samples/deploy/crd
+
+### install:				Install Gateway API CRDs into the K8s cluster.
+.PHONY: install-gateway-api
+install-gateway-api:
+	kubectl apply -f $(PWD)/samples/deploy/gateway-api/$(GATEWAY_API_VERSION)
+
+### uninstall-gateway-api:	Uninstall Gateway API CRDs from the K8s cluster.
+.PHONY: uninstall-gateway-api
+uninstall-gateway-api:
+	kubectl delete -f $(PWD)/samples/deploy/gateway-api/$(GATEWAY_API_VERSION)
 
 ### kind-up:              Launch a Kubernetes cluster with a image registry by Kind.
 .PHONY: kind-up
