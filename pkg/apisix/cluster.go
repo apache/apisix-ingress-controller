@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -397,25 +398,31 @@ func (c *cluster) syncSchemaOnce(ctx context.Context) error {
 		log.Errorf("failed to list plugin names in APISIX: %s", err)
 		return err
 	}
+	wg := &sync.WaitGroup{}
+	wg.Add(len(pluginList))
 	for _, p := range pluginList {
-		ps, err := c.schema.GetPluginSchema(ctx, p)
-		if err != nil {
-			log.Warnw("failed to get plugin schema",
-				zap.String("plugin", p),
-				zap.String("error", err.Error()),
-			)
-			continue
-		}
+		go func(plugin string) {
+			defer wg.Done()
+			ps, err := c.schema.GetPluginSchema(ctx, plugin)
+			if err != nil {
+				log.Warnw("failed to get plugin schema",
+					zap.String("plugin", plugin),
+					zap.String("error", err.Error()),
+				)
+				return
+			}
 
-		if err := c.cache.InsertSchema(ps); err != nil {
-			log.Warnw("failed to insert schema to cache",
-				zap.String("plugin", p),
-				zap.String("cluster", c.name),
-				zap.String("error", err.Error()),
-			)
-			continue
-		}
+			if err := c.cache.InsertSchema(ps); err != nil {
+				log.Warnw("failed to insert schema to cache",
+					zap.String("plugin", plugin),
+					zap.String("cluster", c.name),
+					zap.String("error", err.Error()),
+				)
+			}
+
+		}(p)
 	}
+	wg.Wait()
 	c.metricsCollector.IncrSyncOperation("schema", "success")
 	return nil
 }
