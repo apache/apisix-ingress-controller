@@ -268,8 +268,10 @@ kind-load-images:
             $(REGISTRY)/busybox:dev
 
 
-GATEWAY_API_PACKAGE ?= sigs.k8s.io/gateway-api@v0.5.1
-GATEWAY_API_CRDS_MOD_PATH = $(shell go env GOPATH)/pkg/mod/$(GATEWAY_API_PACKAGE)/config/crd
+GATEWAY_API_VERSION ?= v0.5.1
+GATEWAY_API_PACKAGE ?= sigs.k8s.io/gateway-api@$(GATEWAY_API_VERSION)
+GATEWAY_API_CRDS_GO_MOD_PATH = $(shell go env GOPATH)/pkg/mod/$(GATEWAY_API_PACKAGE)/config/crd
+GATEWAY_API_CRDS_LOCAL_PATH = $(PWD)/samples/deploy/gateway-api/$(GATEWAY_API_VERSION)
 
 .PHONY: go-mod-download-gateway-api
 go-mod-download-gateway-api:
@@ -278,11 +280,21 @@ go-mod-download-gateway-api:
 ### install:				Install Gateway API CRDs into the K8s cluster.
 .PHONY: install-gateway-api
 install-gateway-api: go-mod-download-gateway-api
-	kubectl apply -k $(GATEWAY_API_CRDS_MOD_PATH)
-	kubectl apply -k $(GATEWAY_API_CRDS_MOD_PATH)/experimental
+	kubectl apply -k $(GATEWAY_API_CRDS_GO_MOD_PATH)
+	kubectl apply -k $(GATEWAY_API_CRDS_GO_MOD_PATH)/experimental
 
 ### uninstall-gateway-api:	Uninstall Gateway API CRDs from the K8s cluster.
 .PHONY: uninstall-gateway-api
-uninstall-gateway-api: go-mod-download-gateway-api
-	kubectl delete -k $(GATEWAY_API_CRDS_MOD_PATH)
-	kubectl delete -k $(GATEWAY_API_CRDS_MOD_PATH)/experimental
+uninstall-gateway-api:
+	kubectl delete -k $(GATEWAY_API_CRDS_GO_MOD_PATH)
+	kubectl delete -k $(GATEWAY_API_CRDS_GO_MOD_PATH)/experimental
+
+### install:				Use local yaml install Gateway API CRDs into the K8s cluster.
+.PHONY: install-gateway-api-local
+install-gateway-api-local:
+	kubectl apply -f $(GATEWAY_API_CRDS_LOCAL_PATH)
+
+### uninstall-gateway-api:	Use local yaml uninstall Gateway API CRDs from the K8s cluster.
+.PHONY: uninstall-gateway-api-local
+uninstall-gateway-api-local:
+	kubectl delete -f $(GATEWAY_API_CRDS_LOCAL_PATH)
