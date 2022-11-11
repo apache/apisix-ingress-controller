@@ -17,6 +17,7 @@
 default: help
 
 VERSION ?= 1.5.0
+TARGET_APISIX_VERSION ?= "3.0.0-centos" # "2.15.0-alpine"
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 REGISTRY ?="localhost:5000"
 IMAGE_TAG ?= dev
@@ -78,8 +79,8 @@ pack-images: build-images push-images
 .PHONY: build-images
 build-images: build-image
 ifeq ($(E2E_SKIP_BUILD), 0)
-	docker pull apache/apisix:2.15.0-alpine
-	docker tag apache/apisix:2.15.0-alpine $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
+	docker pull apache/apisix:$(TARGET_APISIX_VERSION)
+	docker tag apache/apisix:$(TARGET_APISIX_VERSION) $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
 
 	docker pull bitnami/etcd:3.4.14-debian-10-r0
 	docker tag bitnami/etcd:3.4.14-debian-10-r0 $(REGISTRY)/bitnami/etcd:$(IMAGE_TAG)

@@ -35,6 +35,12 @@ type listResponse struct {
 	Node  node        `json:"node"`
 }
 
+// listResponseV3 is the v3 version unified LIST response mapping of APISIX.
+type listResponseV3 struct {
+	Total IntOrString `json:"total"`
+	List  items       `json:"list"`
+}
+
 // IntOrString processing number and string types, after json deserialization will output int
 type IntOrString struct {
 	IntValue int `json:"int_value"`
@@ -131,7 +137,7 @@ func (i *item) upstream() (*v1.Upstream, error) {
 		return nil, err
 	}
 
-	// This is a work around scheme to avoid APISIX's
+	// This is a workaround scheme to avoid APISIX's
 	// health check schema about the health checker intervals.
 	if ups.Checks != nil && ups.Checks.Active != nil {
 		if ups.Checks.Active.Healthy.Interval == 0 {

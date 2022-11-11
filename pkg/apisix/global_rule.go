@@ -86,12 +86,12 @@ func (r *globalRuleClient) Get(ctx context.Context, name string) (*v1.GlobalRule
 		return nil, err
 	}
 
-	globalRule, err = resp.Item.globalRule()
+	globalRule, err = resp.globalRule()
 	if err != nil {
 		log.Errorw("failed to convert global_rule item",
 			zap.String("url", r.url),
-			zap.String("global_rule_key", resp.Item.Key),
-			zap.String("global_rule_value", string(resp.Item.Value)),
+			zap.String("global_rule_key", resp.Key),
+			zap.String("global_rule_value", string(resp.Value)),
 			zap.Error(err),
 		)
 		return nil, err
@@ -119,7 +119,7 @@ func (r *globalRuleClient) List(ctx context.Context) ([]*v1.GlobalRule, error) {
 	}
 
 	var items []*v1.GlobalRule
-	for i, item := range globalRuleItems.Node.Items {
+	for i, item := range globalRuleItems {
 		globalRule, err := item.globalRule()
 		if err != nil {
 			log.Errorw("failed to convert global_rule item",

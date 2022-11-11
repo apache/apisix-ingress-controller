@@ -91,12 +91,12 @@ func (r *streamRouteClient) Get(ctx context.Context, name string) (*v1.StreamRou
 		return nil, err
 	}
 
-	streamRoute, err = resp.Item.streamRoute()
+	streamRoute, err = resp.streamRoute()
 	if err != nil {
 		log.Errorw("failed to convert stream_route item",
 			zap.String("url", r.url),
-			zap.String("stream_route_key", resp.Item.Key),
-			zap.String("stream_route_value", string(resp.Item.Value)),
+			zap.String("stream_route_key", resp.Key),
+			zap.String("stream_route_value", string(resp.Value)),
 			zap.Error(err),
 		)
 		return nil, err
@@ -124,7 +124,7 @@ func (r *streamRouteClient) List(ctx context.Context) ([]*v1.StreamRoute, error)
 	}
 
 	var items []*v1.StreamRoute
-	for i, item := range streamRouteItems.Node.Items {
+	for i, item := range streamRouteItems {
 		streamRoute, err := item.streamRoute()
 		if err != nil {
 			log.Errorw("failed to convert stream_route item",

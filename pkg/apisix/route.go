@@ -87,12 +87,12 @@ func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
 		return nil, err
 	}
 
-	route, err = resp.Item.route()
+	route, err = resp.route()
 	if err != nil {
 		log.Errorw("failed to convert route item",
 			zap.String("url", r.url),
-			zap.String("route_key", resp.Item.Key),
-			zap.String("route_value", string(resp.Item.Value)),
+			zap.String("route_key", resp.Key),
+			zap.String("route_value", string(resp.Value)),
 			zap.Error(err),
 		)
 		return nil, err
@@ -120,7 +120,7 @@ func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 	}
 
 	var items []*v1.Route
-	for i, item := range routeItems.Node.Items {
+	for i, item := range routeItems {
 		route, err := item.route()
 		if err != nil {
 			log.Errorw("failed to convert route item",
