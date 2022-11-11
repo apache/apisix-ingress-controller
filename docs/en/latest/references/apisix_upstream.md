@@ -33,7 +33,7 @@ title: ApisixUpstream Reference
 | timeout.connect | time duration in the form "72h3m0.5s" | The connect timeout. |
 | timeout.read | time duration in the form "72h3m0.5s" | The read timeout. |
 | timeout.send | time duration in the form "72h3m0.5s" | The send timeout. |
-| healthCheck | object | The health check parameters, see [Health Check](https://github.com/apache/apisix/blob/master/docs/en/latest/health-check.md) for more details. |
+| healthCheck | object | The health check parameters, see [Health Check](https://github.com/apache/apisix/blob/master/docs/en/latest/tutorials/health-check.md) for more details. |
 | healthCheck.active | object | active health check configuration, which is a mandatory field. |
 | healthCheck.active.type | string | health check type, can be `http`, `https` and `tcp`, default is `http`. |
 | healthCheck.active.timeout | time duration in the form "72h3m0.5s" | the timeout settings for the probe, default is `1s`. |
