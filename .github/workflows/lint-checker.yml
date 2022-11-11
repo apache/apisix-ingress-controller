@@ -90,7 +90,7 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: '12.x'
-      - run: npm install -g markdownlint-cli@0.25.0
+      - run: npm install -g markdownlint-cli@0.32.2
       - run: markdownlint '**/*.md' --ignore node_modules --ignore CHANGELOG.md
   markdown-link-check:
     needs: changes
