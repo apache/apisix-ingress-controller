@@ -16,7 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-name: e2e-test-ci
+name: e2e-test-ci (v2)
 
 on:
   schedule: '0 0 * * *'
