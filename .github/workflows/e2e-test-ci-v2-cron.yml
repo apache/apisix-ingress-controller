@@ -21,7 +21,7 @@ name: e2e-test-ci
 on:
   schedule: '0 0 * * *'
   pull_request:
-    types: [ labeled ]
+    types: [ labeled, review_requested, ready_for_review ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -29,7 +29,7 @@ concurrency:
 
 jobs:
   changes:
-    if: ${{ github.event.label.name == 'area/test/apiv2' || github.event.schedule == '0 0 * * *' }}
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'area/test/apiv2') || github.event.schedule == '0 0 * * *' }}
     runs-on: ubuntu-latest
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
