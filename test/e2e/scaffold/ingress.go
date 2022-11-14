@@ -415,11 +415,11 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	assert.Nil(s.t, err, "create service account")
 
 	cr := fmt.Sprintf(_clusterRole, s.namespace)
-	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, cr)
+	err = s.CreateResourceFromString(cr)
 	assert.Nil(s.t, err, "create cluster role")
 
 	crb := fmt.Sprintf(_clusterRoleBinding, s.namespace, s.namespace, s.namespace)
-	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, crb)
+	err = s.CreateResourceFromString(crb)
 	assert.Nil(s.t, err, "create cluster role binding")
 
 	s.addFinalizers(func() {
@@ -445,12 +445,12 @@ func (s *Scaffold) newIngressAPISIXController() error {
 			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
 	}
 
-	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment)
+	err = s.CreateResourceFromString(ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
 
 	if s.opts.EnableWebhooks {
 		admissionSvc := fmt.Sprintf(_ingressAPISIXAdmissionService, s.namespace)
-		err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, admissionSvc)
+		err := s.CreateResourceFromString(admissionSvc)
 		assert.Nil(s.t, err, "create admission webhook service")
 
 		// get caBundle from the secret
@@ -462,7 +462,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 
 		webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, caBundle, s.namespace, caBundle, s.namespace, caBundle, s.namespace, caBundle)
 		ginkgo.GinkgoT().Log(webhookReg)
-		err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, webhookReg)
+		err = s.CreateResourceFromString(webhookReg)
 		assert.Nil(s.t, err, "create webhook registration")
 
 		s.addFinalizers(func() {
@@ -551,11 +551,11 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 		label = labels[0]
 	}
 	if s.opts.EnableWebhooks {
-		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
+		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
 	} else {
-		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
+		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
 	}
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressDeployment); err != nil {
+	if err := s.CreateResourceFromString(ingressDeployment); err != nil {
 		return err
 	}
 	if err := k8s.WaitUntilNumPodsCreatedE(s.t, s.kubectlOptions, s.labelSelector("app=ingress-apisix-controller-deployment-e2e-test"), desired, 5, 5*time.Second); err != nil {

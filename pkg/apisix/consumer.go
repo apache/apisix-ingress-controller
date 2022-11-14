@@ -161,7 +161,7 @@ func (r *consumerClient) Create(ctx context.Context, obj *v1.Consumer) (*v1.Cons
 		return nil, err
 	}
 
-	consumer, err := resp.Item.consumer()
+	consumer, err := resp.consumer()
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +216,7 @@ func (r *consumerClient) Update(ctx context.Context, obj *v1.Consumer) (*v1.Cons
 	if err != nil {
 		return nil, err
 	}
-	consumer, err := resp.Item.consumer()
+	consumer, err := resp.consumer()
 	if err != nil {
 		return nil, err
 	}

@@ -90,10 +90,10 @@ spec:
 
 func (s *Scaffold) newHTTPBIN() (*corev1.Service, error) {
 	httpbinDeployment := fmt.Sprintf(s.FormatRegistry(_httpbinDeploymentTemplate), 1)
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, httpbinDeployment); err != nil {
+	if err := s.CreateResourceFromString(httpbinDeployment); err != nil {
 		return nil, err
 	}
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, _httpService); err != nil {
+	if err := s.CreateResourceFromString(_httpService); err != nil {
 		return nil, err
 	}
 	svc, err := k8s.GetServiceE(s.t, s.kubectlOptions, "httpbin-service-e2e-test")
@@ -115,7 +115,7 @@ func (s *Scaffold) NewHTTPBINWithNamespace(namespace string) (*corev1.Service, e
 // ScaleHTTPBIN scales the number of HTTPBIN pods to desired.
 func (s *Scaffold) ScaleHTTPBIN(desired int) error {
 	httpbinDeployment := fmt.Sprintf(s.FormatRegistry(_httpbinDeploymentTemplate), desired)
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, httpbinDeployment); err != nil {
+	if err := s.CreateResourceFromString(httpbinDeployment); err != nil {
 		return err
 	}
 	if err := k8s.WaitUntilNumPodsCreatedE(s.t, s.kubectlOptions, s.labelSelector("app=httpbin-deployment-e2e-test"), desired, 5, 5*time.Second); err != nil {

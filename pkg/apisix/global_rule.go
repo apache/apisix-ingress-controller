@@ -163,7 +163,7 @@ func (r *globalRuleClient) Create(ctx context.Context, obj *v1.GlobalRule) (*v1.
 		return nil, err
 	}
 
-	globalRules, err := resp.Item.globalRule()
+	globalRules, err := resp.globalRule()
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func (r *globalRuleClient) Update(ctx context.Context, obj *v1.GlobalRule) (*v1.
 	if err != nil {
 		return nil, err
 	}
-	globalRule, err := resp.Item.globalRule()
+	globalRule, err := resp.globalRule()
 	if err != nil {
 		return nil, err
 	}

@@ -158,7 +158,7 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 		log.Errorf("failed to create upstream: %s", err)
 		return nil, err
 	}
-	ups, err := resp.Item.upstream()
+	ups, err := resp.upstream()
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	if err != nil {
 		return nil, err
 	}
-	ups, err := resp.Item.upstream()
+	ups, err := resp.upstream()
 	if err != nil {
 		return nil, err
 	}

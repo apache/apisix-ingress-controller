@@ -168,7 +168,7 @@ func (r *streamRouteClient) Create(ctx context.Context, obj *v1.StreamRoute) (*v
 		return nil, err
 	}
 
-	streamRoute, err := resp.Item.streamRoute()
+	streamRoute, err := resp.streamRoute()
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +222,7 @@ func (r *streamRouteClient) Update(ctx context.Context, obj *v1.StreamRoute) (*v
 	if err != nil {
 		return nil, err
 	}
-	streamRoute, err := resp.Item.streamRoute()
+	streamRoute, err := resp.streamRoute()
 	if err != nil {
 		return nil, err
 	}

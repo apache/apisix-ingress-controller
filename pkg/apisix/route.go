@@ -164,7 +164,7 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		return nil, err
 	}
 
-	route, err := resp.Item.route()
+	route, err := resp.route()
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	if err != nil {
 		return nil, err
 	}
-	route, err := resp.Item.route()
+	route, err := resp.route()
 	if err != nil {
 		return nil, err
 	}

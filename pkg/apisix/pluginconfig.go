@@ -164,7 +164,7 @@ func (pc *pluginConfigClient) Create(ctx context.Context, obj *v1.PluginConfig) 
 		return nil, err
 	}
 
-	pluginConfig, err := resp.Item.pluginConfig()
+	pluginConfig, err := resp.pluginConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +222,7 @@ func (pc *pluginConfigClient) Update(ctx context.Context, obj *v1.PluginConfig) 
 	if err != nil {
 		return nil, err
 	}
-	pluginConfig, err := resp.Item.pluginConfig()
+	pluginConfig, err := resp.pluginConfig()
 	if err != nil {
 		return nil, err
 	}

@@ -161,7 +161,7 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 		return nil, err
 	}
 
-	ssl, err := resp.Item.ssl()
+	ssl, err := resp.ssl()
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +215,7 @@ func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
-	ssl, err := resp.Item.ssl()
+	ssl, err := resp.ssl()
 	if err != nil {
 		return nil, err
 	}

@@ -642,7 +642,7 @@ func (c *cluster) listResource(ctx context.Context, url, resource string) (items
 	return list.Node.Items, nil
 }
 
-func (c *cluster) createResource(ctx context.Context, url, resource string, body []byte) (*createResponse, error) {
+func (c *cluster) createResource(ctx context.Context, url, resource string, body []byte) (*item, error) {
 	log.Debugw("creating resource in cluster",
 		zap.String("cluster_name", c.name),
 		zap.String("name", resource),
@@ -673,15 +673,25 @@ func (c *cluster) createResource(ctx context.Context, url, resource string, body
 		return nil, err
 	}
 
+	if c.adminVersion == "v3" {
+		var cr createResponseV3
+
+		dec := json.NewDecoder(resp.Body)
+		if err := dec.Decode(&cr); err != nil {
+			return nil, err
+		}
+
+		return &cr.item, nil
+	}
 	var cr createResponse
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&cr); err != nil {
 		return nil, err
 	}
-	return &cr, nil
+	return &cr.Item, nil
 }
 
-func (c *cluster) updateResource(ctx context.Context, url, resource string, body []byte) (*updateResponse, error) {
+func (c *cluster) updateResource(ctx context.Context, url, resource string, body []byte) (*item, error) {
 	log.Debugw("updating resource in cluster",
 		zap.String("cluster_name", c.name),
 		zap.String("name", resource),
@@ -711,12 +721,22 @@ func (c *cluster) updateResource(ctx context.Context, url, resource string, body
 		err = multierr.Append(err, fmt.Errorf("error message: %s", body))
 		return nil, err
 	}
+	if c.adminVersion == "v3" {
+		var ur updateResponseV3
+
+		dec := json.NewDecoder(resp.Body)
+		if err := dec.Decode(&ur); err != nil {
+			return nil, err
+		}
+
+		return &ur.item, nil
+	}
 	var ur updateResponse
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&ur); err != nil {
 		return nil, err
 	}
-	return &ur, nil
+	return &ur.Item, nil
 }
 
 func (c *cluster) deleteResource(ctx context.Context, url, resource string) error {

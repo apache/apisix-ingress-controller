@@ -176,7 +176,7 @@ func (s *Scaffold) CreateResourceFromStringWithNamespace(yaml, namespace string)
 	s.addFinalizers(func() {
 		_ = s.DeleteResourceFromStringWithNamespace(yaml, namespace)
 	})
-	return k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
+	return s.CreateResourceFromString(yaml)
 }
 
 func (s *Scaffold) DeleteResourceFromStringWithNamespace(yaml, namespace string) error {
@@ -287,6 +287,9 @@ func (s *Scaffold) EnsureNumApisixTlsCreated(desired int) error {
 		Scheme: "http",
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin/ssl",
+	}
+	if s.opts.APISIXAdminAPIVersion == "v3" {
+		u.Path = "/apisix/admin/ssls"
 	}
 	return s.ensureNumApisixCRDsCreated(u.String(), desired)
 }

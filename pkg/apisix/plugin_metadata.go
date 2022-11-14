@@ -141,7 +141,7 @@ func (r *pluginMetadataClient) Update(ctx context.Context, obj *v1.PluginMetadat
 	if err != nil {
 		return nil, err
 	}
-	pluginMetadata, err := resp.Item.pluginMetadata()
+	pluginMetadata, err := resp.pluginMetadata()
 	if err != nil {
 		return nil, err
 	}

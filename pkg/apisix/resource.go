@@ -61,7 +61,13 @@ type createResponse struct {
 	Item   item   `json:"node"`
 }
 
+type createResponseV3 struct {
+	item
+}
+
 type updateResponse = createResponse
+
+type updateResponseV3 = createResponseV3
 
 type node struct {
 	Key   string `json:"key"`
