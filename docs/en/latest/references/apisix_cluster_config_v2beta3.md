@@ -25,7 +25,7 @@ description: Reference for ApisixClusterConfig/v2beta3 custom Kubernetes resourc
 #
 -->
 
-See [concepts](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_cluster_config/) to learn more about how to use the ApisixClusterConfig resource.
+See [concepts](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_cluster_config) to learn more about how to use the ApisixClusterConfig resource.
 
 ## Spec
 
