@@ -124,9 +124,7 @@ unit-test:
 
 ### e2e-test:             Run e2e test cases (in existing clusters directly)
 .PHONY: e2e-test
-e2e-test: ginkgo-check pack-images e2e-wolf-rbac
-	kubectl apply -k $(PWD)/samples/deploy/crd
-	kubectl apply -f $(PWD)/samples/deploy/gateway-api
+e2e-test: ginkgo-check pack-images e2e-wolf-rbac install install-gateway-api
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
@@ -142,6 +140,16 @@ ifeq ("$(wildcard $(GINKGO))", "")
 	@echo "ERROR: Need to install ginkgo first, run: go get -u github.com/onsi/ginkgo/v2/ginkgo@v2.1.4 or go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo@v2.1.4"
 	exit 1
 endif
+
+### install:				Install CRDs into the K8s cluster.
+.PHONY: install
+install:
+	kubectl apply -k $(PWD)/samples/deploy/crd
+
+### uninstall:				Uninstall CRDs from the K8s cluster.
+.PHONY: uninstall
+uninstall:
+	kubectl delete -k $(PWD)/samples/deploy/crd
 
 ### kind-up:              Launch a Kubernetes cluster with a image registry by Kind.
 .PHONY: kind-up
@@ -258,3 +266,30 @@ kind-load-images:
             $(REGISTRY)/test-backend:dev \
             $(REGISTRY)/jmalloc/echo-server:dev \
             $(REGISTRY)/busybox:dev
+
+
+GATEWAY_API_VERSION ?= v0.5.1
+GATEWAY_API_PACKAGE ?= sigs.k8s.io/gateway-api@$(GATEWAY_API_VERSION)
+GATEWAY_API_CRDS_GO_MOD_PATH = $(shell go env GOPATH)/pkg/mod/$(GATEWAY_API_PACKAGE)
+GATEWAY_API_CRDS_LOCAL_PATH = $(PWD)/samples/deploy/gateway-api/$(GATEWAY_API_VERSION)
+
+.PHONY: go-mod-download-gateway-api
+go-mod-download-gateway-api:
+	@go mod download $(GATEWAY_API_PACKAGE)
+
+### install:				Install Gateway API into the K8s cluster from go mod.
+.PHONY: install-gateway-api
+install-gateway-api: go-mod-download-gateway-api
+	kubectl apply -k $(GATEWAY_API_CRDS_GO_MOD_PATH)/config/crd
+	kubectl apply -k $(GATEWAY_API_CRDS_GO_MOD_PATH)/config/crd/experimental
+	kubectl apply -f $(GATEWAY_API_CRDS_GO_MOD_PATH)/config/webhook
+
+### install:				Install Gateway API into the K8s cluster from repo.
+.PHONY: install-gateway-api-local
+install-gateway-api-local:
+	kubectl apply -f $(GATEWAY_API_CRDS_LOCAL_PATH)
+
+### uninstall-gateway-api:	Uninstall Gateway API from the K8s cluster.
+.PHONY: uninstall-gateway-api
+uninstall-gateway-api:
+	kubectl delete -f $(GATEWAY_API_CRDS_LOCAL_PATH)
