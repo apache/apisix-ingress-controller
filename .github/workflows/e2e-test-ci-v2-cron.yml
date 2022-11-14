@@ -29,7 +29,7 @@ concurrency:
 
 jobs:
   changes:
-    if: ${{ github.event.label.name == 'area/test/apiv2' }}
+    if: ${{ github.event.label.name == 'area/test/apiv2' || github.event.schedule == '0 0 * * *' }}
     runs-on: ubuntu-latest
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
