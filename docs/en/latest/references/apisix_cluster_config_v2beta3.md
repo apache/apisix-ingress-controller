@@ -1,7 +1,11 @@
 ---
-title: ApisixClusterConfig/v2beta3 Reference
+title: ApisixClusterConfig/v2beta3
+keywords:
+  - APISIX ingress
+  - Apache APISIX
+  - ApisixClusterConfig
+description: Reference for ApisixClusterConfig/v2beta3 custom Kubernetes resource.
 ---
-
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -21,18 +25,20 @@ title: ApisixClusterConfig/v2beta3 Reference
 #
 -->
 
+See [concepts](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_cluster_config/) to learn more about how to use the ApisixClusterConfig resource.
+
 ## Spec
 
-Spec describes the desired state of an ApisixClusterConfig object.
+See the [definition](https://github.com/apache/apisix-ingress-controller/blob/master/samples/deploy/crd/v1/ApisixClusterConfig.yaml) on GitHub.
 
-|     Field     |  Type    |     Description       |
-|---------------|----------|-----------------------|
-| monitoring | object | Monitoring settings. |
-| monitoring.prometheus | object | Prometheus settings. |
-| monitoring.prometheus.enable | boolean | Whether to enable Prometheus or not. |
-| monitoring.skywalking | object | Skywalking settings. |
-| monitoring.skywalking.enable | boolean | Whether to enable Skywalking or not. |
-| monitoring.skywalking.sampleRatio | number | The sample ratio for spans, value should be in `[0, 1]`.|
-| admin | object | Administrative settings. |
-| admin.baseURL | string | the base url for APISIX cluster. |
-| admin.AdminKey | string | admin key used for authentication with APISIX cluster. |
+| Attribute                         | Type    | Description                                    |
+|-----------------------------------|---------|------------------------------------------------|
+| monitoring                        | object  | Monitoring configurations.                     |
+| monitoring.prometheus             | object  | Prometheus configurations.                     |
+| monitoring.prometheus.enable      | boolean | When set to `true`, enables Prometheus.        |
+| monitoring.skywalking             | object  | Apache SkyWalking configurations.              |
+| monitoring.skywalking.enable      | boolean | When set to `true`, enables SkyWalking.        |
+| monitoring.skywalking.sampleRatio | number  | Sample ratio for spans. Should be in `[0, 1]`. |
+| admin                             | object  | Admin configurations.                          |
+| admin.baseURL                     | string  | Base URL of the APISIX cluster.                |
+| admin.AdminKey                    | string  | Admin key to authenticate with APISIX cluster. |

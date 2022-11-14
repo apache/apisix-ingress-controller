@@ -1,7 +1,11 @@
 ---
-title: ApisixTls/v2 Reference
+title: ApisixTls/v2
+keywords:
+  - APISIX ingress
+  - Apache APISIX
+  - ApisixTls
+description: Reference for ApisixTls/v2 custom Kubernetes resource.
 ---
-
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -21,14 +25,20 @@ title: ApisixTls/v2 Reference
 #
 -->
 
-|     Field                     |  Type    | Description                                                                                                   |
-|-------------------------------|----------|---------------------------------------------------------------------------------------------------------------|
-| hosts                         | array    | The domain list to identify which hosts (matched with SNI) can use the TLS certificate stored in the Secret.  |
-| secret                        | object   | The definition of the related Secret object with current ApisixTls object.                                    |
-| secret.name                   | string   | The name of the related Secret object with current ApisixTls object.                                          |
-| secret.namespace              | string   | The namespace of the related Secret object with current ApisixTls object.                                     |
-| client                        | object   | The configuration of the certificate provided by the client.                                                  |
-| client.caSecret               | object   | The definition of the related Secret object with the certificate provided by the client.                      |
-| client.caSecret.name          | string   | The name of the related Secret object with the certificate provided by the client.                            |
-| client.caSecret.namespace     | string   | The namespace of the related Secret object with the certificate provided by the client.                       |
-| client.depth                  | int      | The max certificate of chain length.                                                                          |
+See [concepts](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_tls) to learn more about how to use the ApisixTls resource.
+
+## Spec
+
+See the [definition](https://github.com/apache/apisix-ingress-controller/blob/master/samples/deploy/crd/v1/ApisixTls.yaml) on GitHub.
+
+| Attribute                 | Type   | Description                                                                             |
+|---------------------------|--------|-----------------------------------------------------------------------------------------|
+| hosts                     | array  | List of hosts (with matched SNI) that can use the TLS certificate stored in the Secret. |
+| secret                    | object | Definition of the Secret related to the current `ApisixTls` object.                     |
+| secret.name               | string | Name of the Secret related to the current `ApisixTls` object.                           |
+| secret.namespace          | string | Namespace of the Secret related to the current `ApisixTls` object.                      |
+| client                    | object | Configuration for the certificate provided by the client.                               |
+| client.caSecret           | object | Definition of the Secret related to the certificate.                                    |
+| client.caSecret.name      | string | Name of the Secret related to the certificate provided by the client.                   |
+| client.caSecret.namespace | string | Namespace of the Secret related to the certificate.                                     |
+| client.depth              | int    | The maximum length of the certificate chain.                                            |
