@@ -16,7 +16,7 @@
 // under the License.
 package types
 
-import gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+import gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 type ListenerConf struct {
 	// Gateway namespace
@@ -25,10 +25,10 @@ type ListenerConf struct {
 	Name string
 
 	SectionName string
-	Protocol    gatewayv1alpha2.ProtocolType
-	Port        gatewayv1alpha2.PortNumber
+	Protocol    gatewayv1beta1.ProtocolType
+	Port        gatewayv1beta1.PortNumber
 
 	// namespace selector of AllowedRoutes
-	RouteNamespace *gatewayv1alpha2.RouteNamespaces
-	AllowedKinds   []gatewayv1alpha2.RouteGroupKind
+	RouteNamespace *gatewayv1beta1.RouteNamespaces
+	AllowedKinds   []gatewayv1beta1.RouteGroupKind
 }
