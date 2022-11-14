@@ -17,7 +17,16 @@
 default: help
 
 VERSION ?= 1.5.0
-TARGET_APISIX_VERSION ?= "3.0.0-centos" # "2.15.0-alpine"
+
+# 2.15 image: "2.15.0-alpine"
+TARGET_APISIX_VERSION ?= "3.0.0-centos"
+APISIX_ADMIN_API_VERSION ?= "v3"
+ifneq ($(APISIX_ADMIN_API_VERSION), "v3")
+ifeq ($(TARGET_APISIX_VERSION), "3.0.0-centos")
+	TARGET_APISIX_VERSION = "2.15.0-alpine"
+endif
+endif
+
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 REGISTRY ?="localhost:5000"
 IMAGE_TAG ?= dev
