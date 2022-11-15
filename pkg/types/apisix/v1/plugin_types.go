@@ -156,6 +156,12 @@ type BasicAuthConfig struct {
 type KeyAuthConfig struct {
 }
 
+// RequestMirror is the rule config for proxy-mirror plugin.
+// +k8s:deepcopy-gen=true
+type RequestMirror struct {
+	Host string `json:"host"`
+}
+
 type Headers map[string]any
 
 func (p *Headers) DeepCopyInto(out *Headers) {

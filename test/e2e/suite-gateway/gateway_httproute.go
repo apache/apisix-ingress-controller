@@ -358,4 +358,79 @@ spec:
 			Status(http.StatusMovedPermanently).
 			Header("Location").Equal("http://httpbin.org/ip")
 	})
+
+	ginkgo.It("HTTPRoute with RequestMirror", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+
+		echo := `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echo
+spec:
+  selector:
+    matchLabels:
+      app: echo
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: echo
+    spec:
+      containers:
+      - name: echo
+        image: localhost:5000/jmalloc/echo-server:dev
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo-service
+spec:
+  selector:
+    app: echo
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+`
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(echo), "creating echo server")
+
+		httproute := fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: HTTPRoute
+metadata:
+  name: http-route
+spec:
+  hostnames: ["httpbin.org"]
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /headers
+    filters:
+    - type: RequestMirror
+      requestMirror:
+        backendRef:
+          name: echo-service
+          port: 80
+    backendRefs:
+    - name: %s
+      port: %d
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httproute), "creating HTTPRoute")
+		time.Sleep(time.Second * 6)
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
+
+		_ = s.NewAPISIXClient().GET("/headers").
+			WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(http.StatusOK)
+
+		echoLogs := s.GetDeploymentLogs("echo")
+		assert.Contains(ginkgo.GinkgoT(), echoLogs, "GET /headers")
+	})
 })
