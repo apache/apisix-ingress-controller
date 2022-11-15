@@ -34,7 +34,7 @@ var _ = ginkgo.Describe("suite-gateway: HTTPRoute", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		time.Sleep(time.Second * 15)
 		route := fmt.Sprintf(`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
   name: basic-http-route
@@ -69,7 +69,7 @@ spec:
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		time.Sleep(time.Second * 15)
 		route := fmt.Sprintf(`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
   name: basic-http-route
@@ -107,7 +107,7 @@ spec:
 	ginkgo.It("Basic HTTPRoute with 1 Hosts 1 Rule 2 Match 1 BackendRef", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		route := fmt.Sprintf(`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
   name: basic-http-route
@@ -148,7 +148,7 @@ spec:
 	ginkgo.It("Update HTTPRoute", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		route := fmt.Sprintf(`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
   name: basic-http-route
@@ -169,7 +169,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
 		route = fmt.Sprintf(`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
   name: basic-http-route
@@ -202,7 +202,7 @@ spec:
 	ginkgo.It("Delete HTTPRoute", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		route := fmt.Sprintf(`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
   name: basic-http-route
@@ -243,7 +243,7 @@ var _ = ginkgo.Describe("suite-gateway: HTTPRoute with filter", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		time.Sleep(time.Second * 15)
 		httproute := fmt.Sprintf(`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
   name: http-route
@@ -295,7 +295,7 @@ spec:
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		httproute := fmt.Sprintf(`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
   name: http-route
@@ -327,7 +327,7 @@ spec:
 			Header("Location").Equal("https://httpbin.org:9443/headers")
 
 		httproute2 := fmt.Sprintf(`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
   name: http-route2
@@ -399,7 +399,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(echo), "creating echo server")
 
 		httproute := fmt.Sprintf(`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
   name: http-route
