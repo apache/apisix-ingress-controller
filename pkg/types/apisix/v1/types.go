@@ -197,6 +197,11 @@ type Upstream struct {
 	Retries *int                 `json:"retries,omitempty" yaml:"retries,omitempty"`
 	Timeout *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	TLS     *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
+
+	// for Service Discovery
+	ServiceName   string            `json:"service_name,omitempty" yaml:"service_name,omitempty"`
+	DiscoveryType string            `json:"discovery_type,omitempty" yaml:"discovery_type,omitempty"`
+	DiscoveryArgs map[string]string `json:"discovery_args,omitempty" yaml:"discovery_args,omitempty"`
 }
 
 // ClientTLS is tls cert and key use in mTLS
