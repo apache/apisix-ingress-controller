@@ -142,11 +142,11 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 	case config.ApisixV2beta3:
 		au := multiVersioned.V2beta3()
 
-		var portLevelSettings map[int32]*configv2beta3.ApisixUpstreamConfig
+		var portLevelSettings map[int32]configv2beta3.ApisixUpstreamConfig
 		if au.Spec != nil && len(au.Spec.PortLevelSettings) > 0 {
-			portLevelSettings = make(map[int32]*configv2beta3.ApisixUpstreamConfig, len(au.Spec.PortLevelSettings))
+			portLevelSettings = make(map[int32]configv2beta3.ApisixUpstreamConfig, len(au.Spec.PortLevelSettings))
 			for _, port := range au.Spec.PortLevelSettings {
-				portLevelSettings[port.Port] = &port.ApisixUpstreamConfig
+				portLevelSettings[port.Port] = port.ApisixUpstreamConfig
 			}
 		}
 
@@ -182,10 +182,10 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 				if au.Spec != nil && ev.Type != types.EventDelete {
 					cfg, ok := portLevelSettings[port.Port]
 					if !ok {
-						cfg = &au.Spec.ApisixUpstreamConfig
+						cfg = au.Spec.ApisixUpstreamConfig
 					}
 					// FIXME Same ApisixUpstreamConfig might be translated multiple times.
-					newUps, err = c.controller.translator.TranslateUpstreamConfigV2beta3(cfg)
+					newUps, err = c.controller.translator.TranslateUpstreamConfigV2beta3(&cfg)
 					if err != nil {
 						log.Errorw("found malformed ApisixUpstream",
 							zap.Any("object", au),
@@ -226,11 +226,11 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 	case config.ApisixV2:
 		au := multiVersioned.V2()
 
-		var portLevelSettings map[int32]*configv2.ApisixUpstreamConfig
+		var portLevelSettings map[int32]configv2.ApisixUpstreamConfig
 		if au.Spec != nil && len(au.Spec.PortLevelSettings) > 0 {
-			portLevelSettings = make(map[int32]*configv2.ApisixUpstreamConfig, len(au.Spec.PortLevelSettings))
+			portLevelSettings = make(map[int32]configv2.ApisixUpstreamConfig, len(au.Spec.PortLevelSettings))
 			for _, port := range au.Spec.PortLevelSettings {
-				portLevelSettings[port.Port] = &port.ApisixUpstreamConfig
+				portLevelSettings[port.Port] = port.ApisixUpstreamConfig
 			}
 		}
 
@@ -266,10 +266,10 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 				if au.Spec != nil && ev.Type != types.EventDelete {
 					cfg, ok := portLevelSettings[port.Port]
 					if !ok {
-						cfg = &au.Spec.ApisixUpstreamConfig
+						cfg = au.Spec.ApisixUpstreamConfig
 					}
 					// FIXME Same ApisixUpstreamConfig might be translated multiple times.
-					newUps, err = c.controller.translator.TranslateUpstreamConfigV2(cfg)
+					newUps, err = c.controller.translator.TranslateUpstreamConfigV2(&cfg)
 					if err != nil {
 						log.Errorw("found malformed ApisixUpstream",
 							zap.Any("object", au),
