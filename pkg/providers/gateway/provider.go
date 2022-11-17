@@ -286,8 +286,8 @@ func (p *Provider) RemoveListeners(ns, name string) error {
 }
 
 func (p *Provider) FindListener(ns, name, sectionName string) (*types.ListenerConf, error) {
-	p.listenersLock.Lock()
-	defer p.listenersLock.Unlock()
+	p.listenersLock.RLock()
+	defer p.listenersLock.RUnlock()
 
 	key := ns + "/" + name
 	listeners, exist := p.listeners[key]
@@ -303,8 +303,8 @@ func (p *Provider) FindListener(ns, name, sectionName string) (*types.ListenerCo
 }
 
 func (p *Provider) QueryListeners(ns, name string) (map[string]*types.ListenerConf, error) {
-	p.listenersLock.Lock()
-	defer p.listenersLock.Unlock()
+	p.listenersLock.RLock()
+	defer p.listenersLock.RUnlock()
 
 	key := ns + "/" + name
 	listeners, exist := p.listeners[key]

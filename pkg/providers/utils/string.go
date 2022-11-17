@@ -47,9 +47,10 @@ func Equal(a, b []string) bool {
 }
 
 func ReverseString(s string) string {
-	var reversed string
-	for _, v := range s {
-		reversed = string(v) + reversed
+	buf := make([]byte, len(s))
+	for i, b := range []byte(s) {
+		idx := len(s) - 1 - i
+		buf[idx] = b
 	}
-	return reversed
+	return string(buf)
 }
