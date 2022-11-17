@@ -420,6 +420,7 @@ spec:
                                         - "Header"
                                         - "Path"
                                         - "Query"
+                                        - "Variable"
                                     name:
                                       type: string
                                       minLength: 1
@@ -431,7 +432,9 @@ spec:
                                     - Equal
                                     - NotEqual
                                     - GreaterThan
+                                    - GreaterThanEqual
                                     - LessThan
+                                    - LessThanEqual
                                     - In
                                     - NotIn
                                     - RegexMatch

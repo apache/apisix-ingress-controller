@@ -489,6 +489,8 @@ func (t *translator) TranslateRouteMatchExprs(nginxVars []configv2.ApisixRouteHT
 			subj = "cookie_" + expr.Subject.Name
 		case _const.ScopePath:
 			subj = "uri"
+		case _const.ScopeVariable:
+			subj = expr.Subject.Name
 		default:
 			return nil, errors.New("bad subject name")
 		}
@@ -504,20 +506,14 @@ func (t *translator) TranslateRouteMatchExprs(nginxVars []configv2.ApisixRouteHT
 			op = "=="
 		case _const.OpGreaterThan:
 			op = ">"
-		// TODO Implement "<=", ">=" operators after the
-		// lua-resty-expr supports it. See
-		// https://github.com/api7/lua-resty-expr/issues/28
-		// for details.
-		//case configv2alpha1.OpGreaterThanEqual:
-		//	invert = true
-		//	op = "<"
+		case _const.OpGreaterThanEqual:
+			op = ">="
 		case _const.OpIn:
 			op = "in"
 		case _const.OpLessThan:
 			op = "<"
-		//case configv2alpha1.OpLessThanEqual:
-		//	invert = true
-		//	op = ">"
+		case _const.OpLessThanEqual:
+			op = "<="
 		case _const.OpNotEqual:
 			op = "~="
 		case _const.OpNotIn:
