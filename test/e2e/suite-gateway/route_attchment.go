@@ -58,13 +58,13 @@ spec:
         from: Same
   - protocol: HTTP
     port: 80
-    name: crocss-namespace-route
+    name: cross-namespace-route
     allowedRoutes:
       namespaces:
         from: Selector
         selector:
           matchLabels:
-            crocss-ns-access: "true"
+            cross-ns-access: "true"
   - protocol: TCP
     port: 80
     name: tcp-route-only
@@ -79,7 +79,6 @@ spec:
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(gatewayClass), "creating GatewayClass")
 		time.Sleep(time.Second * 5)
-		_, _ = fmt.Fprintf(ginkgo.GinkgoWriter, "create gateway at %s", time.Now())
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(gateway), "creating Gateway")
 	})
 
@@ -94,6 +93,7 @@ spec:
 `, crossName)
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(crossNamespace), "createing no label namespace")
+		time.Sleep(time.Second * 5)
 		defer func() {
 			s.DeleteResourceFromString(crossNamespace)
 		}()
@@ -130,14 +130,14 @@ kind: Namespace
 metadata:
   name: %s
   labels:
-    crocss-ns-access: "true"
+    cross-ns-access: "true"
     apisix.ingress.watch: %s
 `, crossName, s.Namespace())
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(crossNamespace), "createing crocss namespace")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(crossNamespace), "createing cross namespace")
 		// setup http bin service
 		httpService, err := s.NewHTTPBINWithNamespace(crossName)
-		assert.Nil(ginkgo.GinkgoT(), err, "create crocss namespace httpbin")
-		assert.Nil(ginkgo.GinkgoT(), s.WaitAllHTTPBINPodsAvailable(), "wait crocss namespace httpbin")
+		assert.Nil(ginkgo.GinkgoT(), err, "create cross namespace httpbin")
+		assert.Nil(ginkgo.GinkgoT(), s.WaitAllHTTPBINPodsAvailable(), "wait cross namespace httpbin")
 		defer func() {
 			s.DeleteResourceFromString(crossNamespace)
 		}()
@@ -152,7 +152,7 @@ spec:
   parentRefs:
   - name: %s
     namespace: %s
-    sectionName: crocss-namespace-route
+    sectionName: cross-namespace-route
   rules:
   - matches:
     - path:
