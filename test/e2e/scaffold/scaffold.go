@@ -147,7 +147,7 @@ func NewScaffold(o *Options) *Scaffold {
 	}
 	if o.APISIXAdminAPIVersion == "" {
 		adminVersion := os.Getenv("APISIX_ADMIN_API_VERSION")
-		if adminVersion != "v3" {
+		if adminVersion == "v3" {
 			o.APISIXAdminAPIVersion = "v3"
 		} else {
 			// fallback to v2
