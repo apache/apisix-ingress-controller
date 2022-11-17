@@ -85,7 +85,8 @@ func (t *translator) generatePluginFromHTTPRequestMirrorFilter(namespace string,
 	if reqMirror.BackendRef.Namespace != nil {
 		ns = string(*reqMirror.BackendRef.Namespace)
 	}
-	// To do: Need to support https
+	// TODO 1: Need to support https.
+	// TODO 2: https://github.com/apache/apisix/issues/8351 APISIX 3.0 support {service.namespace} and {service.namespace.svc}, but APISIX <= 2.15 version is not supported.
 	host := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d", reqMirror.BackendRef.Name, ns, port)
 
 	plugins["proxy-mirror"] = apisixv1.RequestMirror{
