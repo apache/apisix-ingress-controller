@@ -72,16 +72,22 @@ spec:
 
 ### Step 3: Collect the Metrics
 
+
+apisix-gae 将
+
+```sh
+kubectl port-forward service/apisix-gateway 9080:80 -n ingress-apisix
+```
+
 Now you can then get the indicator parameters by requesting command access.
 
 ```sh
-kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9091/headers -H 'Host: test.prometheus.org'
+curl http://127.0.0.1:9080/apisix/prometheus/metrics -H 'Host: test.prometheus.org'
 ```
 
 Then you will get the metrics you want.
 
 ```bash
-chever@cloud-native-01:~/api7/cloud_native/tasks/doc_prometheus$ kubectl exec -it -n ingress-apisix apisix-7d6b8577b6-rqhq9 -- curl http://127.0.0.1:9091/apisix/prometheus/metrics
 Defaulted container "apisix" out of: apisix, wait-etcd (init)
 # HELP apisix_bandwidth Total bandwidth in bytes consumed per service in APISIX
 # TYPE apisix_bandwidth counter
