@@ -113,13 +113,13 @@ jobs:
             localhost:5000/test-backend:dev \
             localhost:5000/jmalloc/echo-server:dev \
             localhost:5000/busybox:dev \
-            | pigz > docker.tar.gz
+            | pigz > docker-v2.tar.gz
 
       - name: cache
         uses: actions/upload-artifact@v3 # v3.1.0
         with:
-          name: docker.tar.gz
-          path: docker.tar.gz
+          name: docker-v2.tar.gz
+          path: docker-v2.tar.gz
 
   prepare:
     needs: changes
@@ -170,7 +170,7 @@ jobs:
       - name: cache
         uses: actions/download-artifact@v2 # v2
         with:
-          name: docker.tar.gz
+          name: docker-v2.tar.gz
 
       - name: Create K8s cluster
         shell: bash
@@ -181,7 +181,7 @@ jobs:
       - name: Load images from cache
         run: |
           echo "loading docker images..."
-          pigz -dc docker.tar.gz | docker load
+          pigz -dc docker-v2.tar.gz | docker load
           make push-images
 
       - name: Run E2E test suite
