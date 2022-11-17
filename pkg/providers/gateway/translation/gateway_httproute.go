@@ -32,7 +32,7 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func (t *translator) generatePluginsFromHTTPRouteFilter(filters []gatewayv1beta1.HTTPRouteFilter) apisixv1.Plugins {
+func (t *translator) generatePluginsFromHTTPRouteFilter(namespace string, filters []gatewayv1beta1.HTTPRouteFilter) apisixv1.Plugins {
 	plugins := apisixv1.Plugins{}
 	for _, filter := range filters {
 		switch filter.Type {
@@ -41,7 +41,9 @@ func (t *translator) generatePluginsFromHTTPRouteFilter(filters []gatewayv1beta1
 		case gatewayv1beta1.HTTPRouteFilterRequestRedirect:
 			t.generatePluginFromHTTPRequestRedirectFilter(plugins, filter.RequestRedirect)
 		case gatewayv1beta1.HTTPRouteFilterRequestMirror:
-			// to do
+			t.generatePluginFromHTTPRequestMirrorFilter(namespace, plugins, filter.RequestMirror)
+		case gatewayv1beta1.HTTPRouteFilterURLRewrite:
+			// TODO: It is not yet supported by v1beta1 CRDs.
 		}
 	}
 	return plugins
@@ -65,6 +67,30 @@ func (t *translator) generatePluginFromHTTPRequestHeaderFilter(plugins apisixv1.
 
 	plugins["proxy-rewrite"] = apisixv1.RewriteConfig{
 		Headers: headers,
+	}
+}
+
+func (t *translator) generatePluginFromHTTPRequestMirrorFilter(namespace string, plugins apisixv1.Plugins, reqMirror *gatewayv1beta1.HTTPRequestMirrorFilter) {
+	if reqMirror == nil {
+		return
+	}
+
+	var (
+		port int    = 80
+		ns   string = namespace
+	)
+	if reqMirror.BackendRef.Port != nil {
+		port = int(*reqMirror.BackendRef.Port)
+	}
+	if reqMirror.BackendRef.Namespace != nil {
+		ns = string(*reqMirror.BackendRef.Namespace)
+	}
+	// TODO 1: Need to support https.
+	// TODO 2: https://github.com/apache/apisix/issues/8351 APISIX 3.0 support {service.namespace} and {service.namespace.svc}, but APISIX <= 2.15 version is not supported.
+	host := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d", reqMirror.BackendRef.Name, ns, port)
+
+	plugins["proxy-mirror"] = apisixv1.RequestMirror{
+		Host: host,
 	}
 }
 
@@ -210,7 +236,7 @@ func (t *translator) TranslateGatewayHTTPRouteV1beta1(httpRoute *gatewayv1beta1.
 				},
 			}
 		}
-		plugins := t.generatePluginsFromHTTPRouteFilter(rule.Filters)
+		plugins := t.generatePluginsFromHTTPRouteFilter(httpRoute.Namespace, rule.Filters)
 
 		for j, match := range matches {
 			route, err := t.translateGatewayHTTPRouteMatch(&match)
