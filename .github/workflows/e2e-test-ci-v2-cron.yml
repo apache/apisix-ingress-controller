@@ -96,6 +96,7 @@ jobs:
 
       - name: Build images
         env:
+          APISIX_ADMIN_API_VERSION: "v2"
           TAG: dev
           ARCH: amd64
           REGISTRY: localhost:5000
