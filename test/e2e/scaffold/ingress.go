@@ -208,6 +208,7 @@ rules:
     verbs:
     - get
     - update
+    - list
 `
 	_clusterRoleBinding = `
 apiVersion: rbac.authorization.k8s.io/v1

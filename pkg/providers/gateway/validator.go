@@ -98,7 +98,7 @@ func parseToCommentRoute(route any) (*commonRoute, error) {
 			Kind:  types.KindUDPRoute,
 		}
 	default:
-		return nil, fmt.Errorf("validator unsupported Route")
+		return nil, fmt.Errorf("validator unsupported Route %T", r)
 	}
 	return r, nil
 }

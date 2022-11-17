@@ -37,41 +37,34 @@ func IsHostnameMatch(listener, route string) bool {
 	lLength := len(lLabels)
 	rLength := len(rLabels)
 
-	// helper function
-	isLastLabel := func(labels *[]string, idx int) bool {
-		if labels == &lLabels {
-			return idx == lLength-1
-		}
-		if labels == &rLabels {
-			return idx == rLength-1
-		}
-		return false
-	}
-
 	// reverse matching, hostname seq like ["moc", "xisipa", "ssergni"]
-	for i := 0; i < lLength || i < rLength; i++ {
-		if isLastLabel(&lLabels, i) {
+	for i, j := 0, 0; i < lLength && j < rLength; i, j = i+1, j+1 {
+		if i == (lLength - 1) {
+			// wildcard prefix matched
 			if lLabels[i] == "*" {
-				// wildcard prefix matched
 				break
 			}
-			if !isLastLabel(&rLabels, i) {
-				// "ingress.apisix.com" "apisix.com" mismatched.
-				return false
-			}
-		}
-		if isLastLabel(&rLabels, i) {
-			if rLabels[i] == "*" {
-				break
-			}
-			if !isLastLabel(&lLabels, i) {
+
+			// "ingress.apisix.com" "apisix.com" mismatched.
+			if j != (rLength - 1) {
 				return false
 			}
 		}
 
-		if lLabels[i] != rLabels[i] {
+		if j == (rLength - 1) {
+			if rLabels[j] == "*" {
+				break
+			}
+
+			if i != (lLength - 1) {
+				return false
+			}
+		}
+
+		if lLabels[i] != rLabels[j] {
 			return false
 		}
 	}
+
 	return true
 }
