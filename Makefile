@@ -17,6 +17,16 @@
 default: help
 
 VERSION ?= 1.5.0
+
+# 2.15 image: "2.15.0-alpine"
+TARGET_APISIX_VERSION ?= "3.0.0-centos"
+APISIX_ADMIN_API_VERSION ?= "v3"
+ifneq ($(APISIX_ADMIN_API_VERSION), "v3")
+ifeq ($(TARGET_APISIX_VERSION), "3.0.0-centos")
+	TARGET_APISIX_VERSION = "2.15.0-alpine"
+endif
+endif
+
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 REGISTRY_PORT ?= "5000"
 REGISTRY ?="localhost:$(REGISTRY_PORT)"
@@ -79,8 +89,8 @@ pack-images: build-images push-images
 .PHONY: build-images
 build-images: build-image
 ifeq ($(E2E_SKIP_BUILD), 0)
-	docker pull apache/apisix:2.15.0-alpine
-	docker tag apache/apisix:2.15.0-alpine $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
+	docker pull apache/apisix:$(TARGET_APISIX_VERSION)
+	docker tag apache/apisix:$(TARGET_APISIX_VERSION) $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
 
 	docker pull bitnami/etcd:3.4.14-debian-10-r0
 	docker tag bitnami/etcd:3.4.14-debian-10-r0 $(REGISTRY)/bitnami/etcd:$(IMAGE_TAG)
@@ -129,7 +139,7 @@ e2e-test: ginkgo-check pack-images e2e-wolf-rbac install install-gateway-api
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
-		&& E2E_ENV=$(E2E_ENV) ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_NODES) --focus=$(E2E_FOCUS) --flake-attempts=$(E2E_FLAKE_ATTEMPTS)
+		&& APISIX_ADMIN_API_VERSION=$(APISIX_ADMIN_API_VERSION) E2E_ENV=$(E2E_ENV) ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_NODES) --focus=$(E2E_FOCUS) --flake-attempts=$(E2E_FLAKE_ATTEMPTS)
 
 ### e2e-test-local:       Run e2e test cases (kind is required)
 .PHONY: e2e-test-local

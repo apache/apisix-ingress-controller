@@ -85,7 +85,7 @@ func (s *Scaffold) NewSecret(name, cert, key string) error {
 	certBase64 := base64.StdEncoding.EncodeToString([]byte(cert))
 	keyBase64 := base64.StdEncoding.EncodeToString([]byte(key))
 	secret := fmt.Sprintf(_secretTemplate, name, certBase64, keyBase64)
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, secret); err != nil {
+	if err := s.CreateResourceFromString(secret); err != nil {
 		return err
 	}
 	return nil
@@ -96,7 +96,7 @@ func (s *Scaffold) NewKubeTlsSecret(name, cert, key string) error {
 	certBase64 := base64.StdEncoding.EncodeToString([]byte(cert))
 	keyBase64 := base64.StdEncoding.EncodeToString([]byte(key))
 	secret := fmt.Sprintf(_kubeTlsSecretTemplate, name, certBase64, keyBase64)
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, secret); err != nil {
+	if err := s.CreateResourceFromString(secret); err != nil {
 		return err
 	}
 	return nil
@@ -106,7 +106,7 @@ func (s *Scaffold) NewKubeTlsSecret(name, cert, key string) error {
 func (s *Scaffold) NewClientCASecret(name, cert, key string) error {
 	certBase64 := base64.StdEncoding.EncodeToString([]byte(cert))
 	secret := fmt.Sprintf(_clientCASecretTemplate, name, certBase64)
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, secret); err != nil {
+	if err := s.CreateResourceFromString(secret); err != nil {
 		return err
 	}
 	return nil
@@ -115,7 +115,7 @@ func (s *Scaffold) NewClientCASecret(name, cert, key string) error {
 // NewApisixTls new a ApisixTls CRD
 func (s *Scaffold) NewApisixTls(name, host, secretName string) error {
 	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.ApisixResourceVersion, name, host, secretName, s.kubectlOptions.Namespace)
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, tls); err != nil {
+	if err := s.CreateResourceFromString(tls); err != nil {
 		return err
 	}
 	return nil
@@ -124,7 +124,7 @@ func (s *Scaffold) NewApisixTls(name, host, secretName string) error {
 // NewApisixTlsWithClientCA new a ApisixTls CRD
 func (s *Scaffold) NewApisixTlsWithClientCA(name, host, secretName, clientCASecret string) error {
 	tls := fmt.Sprintf(_api6tlsWithClientCATemplate, s.opts.ApisixResourceVersion, name, host, secretName, s.kubectlOptions.Namespace, clientCASecret, s.kubectlOptions.Namespace)
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, tls); err != nil {
+	if err := s.CreateResourceFromString(tls); err != nil {
 		return err
 	}
 	return nil

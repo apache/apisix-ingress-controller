@@ -51,6 +51,7 @@ import (
 type Options struct {
 	Name                       string
 	Kubeconfig                 string
+	APISIXAdminAPIVersion      string
 	APISIXConfigPath           string
 	IngressAPISIXReplicas      int
 	HTTPBinServicePort         int
@@ -75,7 +76,7 @@ type Scaffold struct {
 	apisixService      *corev1.Service
 	httpbinService     *corev1.Service
 	testBackendService *corev1.Service
-	finializers        []func()
+	finalizers         []func()
 
 	apisixAdminTunnel      *k8s.Tunnel
 	apisixHttpTunnel       *k8s.Tunnel
@@ -144,8 +145,22 @@ func NewScaffold(o *Options) *Scaffold {
 	if o.Kubeconfig == "" {
 		o.Kubeconfig = GetKubeconfig()
 	}
+	if o.APISIXAdminAPIVersion == "" {
+		adminVersion := os.Getenv("APISIX_ADMIN_API_VERSION")
+		log.Errorw("admin api version")
+		if adminVersion == "v3" {
+			o.APISIXAdminAPIVersion = "v3"
+		} else {
+			// fallback to v2
+			o.APISIXAdminAPIVersion = "v2"
+		}
+	}
 	if o.APISIXConfigPath == "" {
-		o.APISIXConfigPath = "testdata/apisix-gw-config.yaml"
+		if o.APISIXAdminAPIVersion == "v3" {
+			o.APISIXConfigPath = "testdata/apisix-gw-config-v3.yaml"
+		} else {
+			o.APISIXConfigPath = "testdata/apisix-gw-config.yaml"
+		}
 	}
 	if o.HTTPBinServicePort == 0 {
 		o.HTTPBinServicePort = 80
@@ -406,7 +421,7 @@ func (s *Scaffold) beforeEach() {
 		ConfigPath: s.opts.Kubeconfig,
 		Namespace:  s.namespace,
 	}
-	s.finializers = nil
+	s.finalizers = nil
 
 	label := map[string]string{}
 	if !s.opts.DisableNamespaceLabel {
@@ -496,7 +511,7 @@ func (s *Scaffold) afterEach() {
 		assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
 	}
 
-	for _, f := range s.finializers {
+	for _, f := range s.finalizers {
 		runWithRecover(f)
 	}
 
@@ -553,7 +568,7 @@ func (s *Scaffold) GetDeploymentLogs(name string) string {
 }
 
 func (s *Scaffold) addFinalizers(f func()) {
-	s.finializers = append(s.finializers, f)
+	s.finalizers = append(s.finalizers, f)
 }
 
 func (s *Scaffold) renderConfig(path string) (string, error) {

@@ -1,0 +1,198 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+name: e2e-test-ci (v2)
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  pull_request:
+    branches:
+      - master
+      - v1.5.0
+    types: [ labeled, opened, synchronize, reopened, review_requested, ready_for_review ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-v2
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    if: ${{ (!github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'area/test/apiv2')) || github.event.schedule == '0 0 * * *' }}
+    runs-on: ubuntu-latest
+    outputs:
+      docs: ${{ steps.filter.outputs.docs }}
+      go: ${{ steps.filter.outputs.go }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - uses: ./.github/actions/paths-filter
+        id: filter
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          filters: |
+            docs:
+              - 'docs/**/*'
+              - '*.md'
+            go:
+              - '*.go'
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Makefile'
+              - 'Dockerfile'
+              - 'test/e2e/**/*'
+              - 'conf/**'
+              - 'utils/**'
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v3 # v3.0.2
+
+      - name: Setup Go Env
+        id: go
+        uses: actions/setup-go@v3 # v3.2.0
+        with:
+          go-version: '1.19'
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2 #v2.0.0
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2 # v2.0.0
+        with:
+          version: latest
+
+      - name: Prepare Host
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv kind /usr/local/bin
+
+      - name: Build images
+        env:
+          APISIX_ADMIN_API_VERSION: "v2"
+          TAG: dev
+          ARCH: amd64
+          REGISTRY: localhost:5000
+          ENABLE_PROXY: "false"
+        run: |
+          echo "building images..."
+          make clean-image build-images
+
+          echo "creating images cache..."
+          docker save \
+            localhost:5000/apache/apisix:dev \
+            localhost:5000/bitnami/etcd:dev \
+            localhost:5000/apache/apisix-ingress-controller:dev \
+            localhost:5000/kennethreitz/httpbin:dev \
+            localhost:5000/test-backend:dev \
+            localhost:5000/jmalloc/echo-server:dev \
+            localhost:5000/busybox:dev \
+            | pigz > docker-v2.tar.gz
+
+      - name: cache
+        uses: actions/upload-artifact@v3 # v3.1.0
+        with:
+          name: docker-v2.tar.gz
+          path: docker-v2.tar.gz
+
+  prepare:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Check e2e test cases' naming
+        run: make e2e-names-check
+
+      - name: List test suites and set the matrix
+        id: set-matrix
+        run: |
+          SUITES=($(find test/e2e -type d -iname 'suite-*' | grep -E -o '(\w|\-)*' | grep -v 'test' | grep -v 'e2e' | sort | uniq -u))
+          echo $SUITES
+          echo "::set-output name=matrix::$(jq --compact-output --null-input '$ARGS.positional' --args "${SUITES[@]}")"
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
+  e2e-test:
+    needs: 
+      - changes
+      - prepare
+      - build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # If false, GitHub will not cancels all in-progress jobs in the matrix if any matrix job fails.
+      matrix:
+        suite: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Setup Go Env
+        uses: actions/setup-go@v3
+        with:
+          go-version: "1.19"
+
+      - name: Install ginkgo
+        run: |
+          go install github.com/onsi/ginkgo/v2/ginkgo@v2.2.0
+          sudo cp ~/go/bin/ginkgo /usr/local/bin
+
+      - name: cache
+        uses: actions/download-artifact@v2 # v2
+        with:
+          name: docker-v2.tar.gz
+
+      - name: Create K8s cluster
+        shell: bash
+        run: |
+          make kind-up
+          kubectl wait --for=condition=Ready nodes --all
+
+      - name: Load images from cache
+        run: |
+          echo "loading docker images..."
+          pigz -dc docker-v2.tar.gz | docker load
+          make push-images
+
+      - name: Run E2E test suite
+        shell: bash
+        env:
+          APISIX_ADMIN_API_VERSION: "v2"
+          E2E_FOCUS: "${{ matrix.suite }}"
+          ENABLE_PROXY: "false"
+          E2E_SKIP_BUILD: "1"
+          E2E_FLAKE_ATTEMPTS: "2"
+          E2E_ENV: "ci"
+        run: |
+          make e2e-test

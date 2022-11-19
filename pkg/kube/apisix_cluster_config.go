@@ -51,7 +51,7 @@ type ApisixClusterConfig interface {
 	// V2 returns the ApisixClusterConfig in apisix.apache.org/v2, the real
 	// ApisixClusterConfig must be in this group version, otherwise will panic.
 	V2() *configv2.ApisixClusterConfig
-	// ResourceVersion returns the the resource version field inside
+	// ResourceVersion returns the resource version field inside
 	// the real ApisixClusterConfig.
 	ResourceVersion() string
 }
