@@ -653,6 +653,10 @@ func (s *Scaffold) CreateVersionedApisixResourceWithNamespace(yml, namespace str
 	return fmt.Errorf("the resource %s does not support", kindValue)
 }
 
+func (s *Scaffold) ApisixResourceVersion() string {
+	return s.opts.ApisixResourceVersion
+}
+
 func ApisixResourceVersion() *apisixResourceVersionInfo {
 	return apisixResourceVersion
 }

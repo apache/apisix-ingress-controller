@@ -49,4 +49,6 @@ const (
 	ScopePath = "Path"
 	// ScopeCookie means the route match expression subject is in cookie.
 	ScopeCookie = "Cookie"
+	// ScopeVariable means the route match expression subject is in variable.
+	ScopeVariable = "Variable"
 )
