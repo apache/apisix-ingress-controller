@@ -99,6 +99,26 @@ k8s.apisix.apache.org/blocklist-source-range: "127.0.0.1,172.17.0.0/16"
 
 The default value is empty which means no IP addresses are blocked.
 
+## Allow http method
+
+This annotation can be used to specify which http method are allowed. Multiple methods can also be specified by separating them with commas.
+
+```yaml
+k8s.apisix.apache.org/http-allow-method: "GET,POST"
+```
+
+The default value is empty which means all methods are allowed.
+
+## Block http method
+
+This annotation can be used to specify which http method are blocked. Multiple methods can also be specified by separating them with commas.
+
+```yaml
+k8s.apisix.apache.org/http-block-method: "PUT,DELETE"
+```
+
+The default value is empty which means no methods are blocked.
+
 ## Rewrite target
 
 These annotations are used to rewrite requests.
