@@ -38,18 +38,41 @@ func (h HttpMethod) Handle(e annotations.Extractor) (interface{}, error) {
 	blockMethods := e.GetStringsAnnotation(annotations.AnnotationsHttpBlockMethod)
 
 	plugin.StatusCode = 405
+	var methodExpr = []apisixv1.Expr{}
 
 	if len(allowMethods) > 0 {
-		plugin.LuaRestyExpr = []interface{}{
-			[]interface{}{
-				"request_method", "!", "in", allowMethods,
+		//plugin.LuaRestyExpr = []interface{}{
+		//	[]interface{}{
+		//		"request_method", "!", "in", allowMethods,
+		//	},
+		//}
+		for _, method := range allowMethods {
+			methodExpr = append(methodExpr, apisixv1.Expr{StringVal: method})
+		}
+
+		plugin.LuaRestyExpr = []apisixv1.Expr{
+			{
+				ArrayVal: []apisixv1.Expr{
+					{StringVal: "request_method"},
+					{StringVal: "!"},
+					{StringVal: "in"},
+					{ArrayVal: methodExpr},
+				},
 			},
 		}
 
 	} else if len(blockMethods) > 0 {
-		plugin.LuaRestyExpr = []interface{}{
-			[]interface{}{
-				"request_method", "in", blockMethods,
+		for _, method := range blockMethods {
+			methodExpr = append(methodExpr, apisixv1.Expr{StringVal: method})
+		}
+
+		plugin.LuaRestyExpr = []apisixv1.Expr{
+			{
+				ArrayVal: []apisixv1.Expr{
+					{StringVal: "request_method"},
+					{StringVal: "in"},
+					{ArrayVal: methodExpr},
+				},
 			},
 		}
 

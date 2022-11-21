@@ -36,9 +36,17 @@ func TestAnnotationsHttpAllowMethod(t *testing.T) {
 	config := out.(*apisixv1.ResponseRewriteConfig)
 
 	assert.Equal(t, 405, config.StatusCode)
-	assert.Equal(t, []interface{}{[]interface{}{
-		"request_method", "!", "in", []string{"GET", "POST"},
-	}}, config.LuaRestyExpr)
+	assert.Equal(t, []apisixv1.Expr{
+		{ArrayVal: []apisixv1.Expr{
+			{StringVal: "request_method"},
+			{StringVal: "!"},
+			{StringVal: "in"},
+			{ArrayVal: []apisixv1.Expr{
+				{StringVal: "GET"},
+				{StringVal: "POST"},
+			}},
+		}},
+	}, config.LuaRestyExpr)
 }
 
 // annotations:
@@ -54,9 +62,16 @@ func TestAnnotationsHttpBlockMethod(t *testing.T) {
 	config := out.(*apisixv1.ResponseRewriteConfig)
 
 	assert.Equal(t, 405, config.StatusCode)
-	assert.Equal(t, []interface{}{[]interface{}{
-		"request_method", "in", []string{"GET", "PUT"},
-	}}, config.LuaRestyExpr)
+	assert.Equal(t, []apisixv1.Expr{
+		{ArrayVal: []apisixv1.Expr{
+			{StringVal: "request_method"},
+			{StringVal: "in"},
+			{ArrayVal: []apisixv1.Expr{
+				{StringVal: "GET"},
+				{StringVal: "PUT"},
+			}},
+		}},
+	}, config.LuaRestyExpr)
 }
 
 // annotations:
@@ -76,7 +91,14 @@ func TestAnnotationsHttpBothMethod(t *testing.T) {
 	config := out.(*apisixv1.ResponseRewriteConfig)
 
 	assert.Equal(t, 405, config.StatusCode)
-	assert.Equal(t, []interface{}{[]interface{}{
-		"request_method", "!", "in", []string{"GET"},
-	}}, config.LuaRestyExpr)
+	assert.Equal(t, []apisixv1.Expr{
+		{ArrayVal: []apisixv1.Expr{
+			{StringVal: "request_method"},
+			{StringVal: "!"},
+			{StringVal: "in"},
+			{ArrayVal: []apisixv1.Expr{
+				{StringVal: "GET"},
+			}},
+		}},
+	}, config.LuaRestyExpr)
 }

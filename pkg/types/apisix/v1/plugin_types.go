@@ -14,7 +14,10 @@
 // limitations under the License.
 package v1
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // TrafficSplitConfig is the config of traffic-split plugin.
 // +k8s:deepcopy-gen=true
@@ -135,7 +138,7 @@ type ResponseRewriteConfig struct {
 	Body         string              `json:"body,omitempty"`
 	BodyBase64   bool                `json:"body_base64,omitempty"`
 	Headers      Headers             `json:"headers,omitempty"`
-	LuaRestyExpr []interface{}       `json:"vars,omitempty"`
+	LuaRestyExpr []Expr              `json:"vars,omitempty"`
 	Filters      []map[string]string `json:"filters,omitempty"`
 }
 
@@ -187,4 +190,47 @@ func (p *Headers) DeepCopy() *Headers {
 	out := new(Headers)
 	p.DeepCopyInto(out)
 	return out
+}
+
+// +k8s:deepcopy-gen=true
+type Expr struct {
+	StringVal string
+	ArrayVal  []Expr
+}
+
+func (e *Expr) MarshalJSON() ([]byte, error) {
+	if e.StringVal != "" {
+		return json.Marshal(e.StringVal)
+	} else {
+		return json.Marshal(e.ArrayVal)
+	}
+}
+
+func (expr *Expr) UnmarshalJSON(buf []byte) error {
+	var tmp interface{}
+	if err := json.Unmarshal(buf, &tmp); err != nil {
+		return err
+	}
+	stringVal, stringOk := tmp.(string)
+	if stringOk {
+		expr.StringVal = stringVal
+	} else if anyArray, arrayOk := tmp.([]interface{}); arrayOk {
+		var arrayVal []Expr
+		for _, val := range anyArray {
+			t, e := json.Marshal(val)
+			if e != nil {
+				return e
+			}
+			var tmpExpr = new(Expr)
+			e = json.Unmarshal(t, tmpExpr)
+			if e != nil {
+				return e
+			}
+			arrayVal = append(arrayVal, *tmpExpr)
+		}
+		expr.ArrayVal = arrayVal
+	} else {
+		return fmt.Errorf("unmarshal error")
+	}
+	return nil
 }
