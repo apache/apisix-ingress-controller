@@ -128,6 +128,17 @@ type RewriteConfig struct {
 	Headers            Headers  `json:"headers,omitempty"`
 }
 
+// ResponseRewriteConfig is the rule config for response-rewrite plugin.
+// +k8s:deepcopy-gen=true
+type ResponseRewriteConfig struct {
+	StatusCode   int                 `json:"status_code,omitempty"`
+	Body         string              `json:"body,omitempty"`
+	BodyBase64   bool                `json:"body_base64,omitempty"`
+	Headers      Headers             `json:"headers,omitempty"`
+	LuaRestyExpr []interface{}       `json:"vars,omitempty"`
+	Filters      []map[string]string `json:"filters,omitempty"`
+}
+
 // RedirectConfig is the rule config for redirect plugin.
 // +k8s:deepcopy-gen=true
 type RedirectConfig struct {
