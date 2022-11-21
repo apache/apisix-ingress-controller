@@ -62,6 +62,10 @@ const (
 	AnnotationsAllowlistSourceRange = AnnotationsPrefix + "allowlist-source-range"
 	AnnotationsBlocklistSourceRange = AnnotationsPrefix + "blocklist-source-range"
 
+	// http-method plugin
+	AnnotationsHttpAllowMethod = AnnotationsPrefix + "http-allow-method"
+	AnnotationsHttpBlockMethod = AnnotationsPrefix + "http-block-method"
+
 	// key-auth plugin and basic-auth plugin
 	// auth-type: keyAuth | basicAuth
 	AnnotationsAuthType = AnnotationsPrefix + "auth-type"
