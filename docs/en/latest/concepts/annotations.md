@@ -110,6 +110,7 @@ k8s.apisix.apache.org/http-allow-method: "GET,POST"
 The default value is empty which means all methods are allowed.
 
 ## Block http method
+> `http-block-method` would be ignored while `http-allow-method` is also set.
 
 This annotation can be used to specify which http method are blocked. Multiple methods can also be specified by separating them with commas.
 
