@@ -921,11 +921,6 @@ func (t *translator) translateOldRouteV2(ar *configv2.ApisixRoute) (*TranslateCo
 			ups.ID = r.UpstreamId
 			oldCtx.AddUpstream(ups)
 		}
-		if r.PluginConfigId != "" {
-			pc := apisixv1.NewDefaultPluginConfig()
-			pc.ID = r.PluginConfigId
-			oldCtx.AddPluginConfig(pc)
-		}
 		oldCtx.AddRoute(r)
 	}
 	return oldCtx, nil
@@ -957,11 +952,6 @@ func (t *translator) translateOldRouteV2beta3(ar *configv2beta3.ApisixRoute) (*T
 			ups := apisixv1.NewDefaultUpstream()
 			ups.ID = r.UpstreamId
 			oldCtx.AddUpstream(ups)
-		}
-		if r.PluginConfigId != "" {
-			pc := apisixv1.NewDefaultPluginConfig()
-			pc.ID = r.PluginConfigId
-			oldCtx.AddPluginConfig(pc)
 		}
 		oldCtx.AddRoute(r)
 	}
