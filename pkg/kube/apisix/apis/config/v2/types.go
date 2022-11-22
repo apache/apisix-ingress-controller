@@ -610,8 +610,8 @@ type PassiveHealthCheckUnhealthy struct {
 // Discovery defines Service discovery related configuration.
 type Discovery struct {
 	ServiceName string            `json:"serviceName" yaml:"serviceName"`
-	Type        string            `json: "type" yaml:"type"`
-	Args        map[string]string `json: "args,omitempty" yaml:"args,omitempty"`
+	Type        string            `json:"type" yaml:"type"`
+	Args        map[string]string `json:"args,omitempty" yaml:"args,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

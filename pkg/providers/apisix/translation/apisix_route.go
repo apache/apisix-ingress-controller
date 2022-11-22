@@ -360,7 +360,7 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 			}
 		}
 
-		if len(part.Backends) == 0 && len(part.Upstreams) > 0 {
+		if len(backends) == 0 && len(part.Upstreams) > 0 {
 			// Only have Upstreams
 			upName := apisixv1.ComposeExternalUpstreamName(ar.Namespace, part.Upstreams[0].Name)
 			route.UpstreamId = id.GenID(upName)
@@ -389,7 +389,7 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 		}
 
 		var wups []apisixv1.TrafficSplitConfigRuleWeightedUpstream
-		if len(part.Backends) == 0 {
+		if len(backends) == 0 {
 			if len(ups) > 1 {
 				for i, up := range ups {
 					weight, err := strconv.Atoi(up.Labels["meta_weight"])

@@ -311,9 +311,8 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 			}
 			// updateUpstream for real
 			upsName := apisixv1.ComposeExternalUpstreamName(au.Namespace, au.Name)
-			c.updateUpstream(ctx, upsName, &au.Spec.ApisixUpstreamConfig)
+			return c.updateUpstream(ctx, upsName, &au.Spec.ApisixUpstreamConfig)
 
-			return nil
 		}
 
 		var portLevelSettings map[int32]configv2.ApisixUpstreamConfig
