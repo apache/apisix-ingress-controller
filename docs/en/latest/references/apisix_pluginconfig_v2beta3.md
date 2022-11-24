@@ -1,7 +1,11 @@
 ---
-title: ApisixPluginConfig/v2beta3 Reference
+title: ApisixPluginConfig/v2beta3
+keywords:
+  - APISIX ingress
+  - Apache APISIX
+  - ApisixPluginConfig
+description: Reference for ApisixPluginConfig/v2beta3 custom Kubernetes resource.
 ---
-
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -23,11 +27,11 @@ title: ApisixPluginConfig/v2beta3 Reference
 
 ## Spec
 
-Spec describes the desired state of an ApisixPluginConfig object.
+See the [definition](https://github.com/apache/apisix-ingress-controller/blob/master/samples/deploy/crd/v1/ApisixPluginConfig.yaml) on GitHub.
 
-|     Field     |  Type    |                    Description                     |
-|---------------|----------|----------------------------------------------------|
-| plugins         | array    | A series of custom plugins that will be executed once this route rule is matched |
-| plugins[].name | string | The plugin name, see [docs](http://apisix.apache.org/docs/apisix/getting-started) for learning the available plugins. |
-| plugins[].enable | boolean | Whether the plugin would be used |
-| plugins[].config | object | The configuration of the plugin that must have the same fields as in APISIX. |
+| Field            | Type    | Description                                                                                                                                    |
+|------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| plugins          | array   | Plugins that will be executed on the Route.                                                                                                    |
+| plugins[].name   | string  | Name of the Plugin. See [Plugin hub](https://apisix.apache.org/plugins/) for a list of available Plugins.                                      |
+| plugins[].enable | boolean | When set to `true`, enables the Plugin.                                                                                                        |
+| plugins[].config | object  | Configuration of the Plugin. Must have the same fields as in the [Plugin docs](https://apisix.apache.org/docs/apisix/plugins/batch-requests/). |

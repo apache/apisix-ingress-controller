@@ -25,10 +25,12 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned"
-	gatewayexternalversions "sigs.k8s.io/gateway-api/pkg/client/informers/gateway/externalversions"
-	gatewaylistersv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/gateway/apis/v1alpha2"
+	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
+	gatewayexternalversions "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions"
+	gatewaylistersv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2"
+
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewaylistersv1beta1 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
@@ -58,7 +60,7 @@ type Provider struct {
 	listenersLock sync.RWMutex
 	// meta key ("ns/name") of Gateway -> section name -> ListenerConf
 	listeners     map[string]map[string]*types.ListenerConf
-	portListeners map[gatewayv1alpha2.PortNumber]*types.ListenerConf
+	portListeners map[gatewayv1beta1.PortNumber]*types.ListenerConf
 
 	*ProviderOptions
 	gatewayClient gatewayclientset.Interface
@@ -69,15 +71,15 @@ type Provider struct {
 
 	gatewayController *gatewayController
 	gatewayInformer   cache.SharedIndexInformer
-	gatewayLister     gatewaylistersv1alpha2.GatewayLister
+	gatewayLister     gatewaylistersv1beta1.GatewayLister
 
 	gatewayClassController *gatewayClassController
 	gatewayClassInformer   cache.SharedIndexInformer
-	gatewayClassLister     gatewaylistersv1alpha2.GatewayClassLister
+	gatewayClassLister     gatewaylistersv1beta1.GatewayClassLister
 
 	gatewayHTTPRouteController *gatewayHTTPRouteController
 	gatewayHTTPRouteInformer   cache.SharedIndexInformer
-	gatewayHTTPRouteLister     gatewaylistersv1alpha2.HTTPRouteLister
+	gatewayHTTPRouteLister     gatewaylistersv1beta1.HTTPRouteLister
 
 	gatewayTLSRouteController *gatewayTLSRouteController
 	gatewayTLSRouteInformer   cache.SharedIndexInformer
@@ -128,7 +130,7 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 		gatewayClasses: make(map[string]struct{}),
 
 		listeners:     make(map[string]map[string]*types.ListenerConf),
-		portListeners: make(map[gatewayv1alpha2.PortNumber]*types.ListenerConf),
+		portListeners: make(map[gatewayv1beta1.PortNumber]*types.ListenerConf),
 
 		ProviderOptions: opts,
 		gatewayClient:   gatewayKubeClient,
@@ -141,14 +143,14 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 
 	gatewayFactory := gatewayexternalversions.NewSharedInformerFactory(p.gatewayClient, p.Cfg.Kubernetes.ResyncInterval.Duration)
 
-	p.gatewayLister = gatewayFactory.Gateway().V1alpha2().Gateways().Lister()
-	p.gatewayInformer = gatewayFactory.Gateway().V1alpha2().Gateways().Informer()
+	p.gatewayLister = gatewayFactory.Gateway().V1beta1().Gateways().Lister()
+	p.gatewayInformer = gatewayFactory.Gateway().V1beta1().Gateways().Informer()
 
-	p.gatewayClassLister = gatewayFactory.Gateway().V1alpha2().GatewayClasses().Lister()
-	p.gatewayClassInformer = gatewayFactory.Gateway().V1alpha2().GatewayClasses().Informer()
+	p.gatewayClassLister = gatewayFactory.Gateway().V1beta1().GatewayClasses().Lister()
+	p.gatewayClassInformer = gatewayFactory.Gateway().V1beta1().GatewayClasses().Informer()
 
-	p.gatewayHTTPRouteLister = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Lister()
-	p.gatewayHTTPRouteInformer = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Informer()
+	p.gatewayHTTPRouteLister = gatewayFactory.Gateway().V1beta1().HTTPRoutes().Lister()
+	p.gatewayHTTPRouteInformer = gatewayFactory.Gateway().V1beta1().HTTPRoutes().Informer()
 
 	p.gatewayTLSRouteLister = gatewayFactory.Gateway().V1alpha2().TLSRoutes().Lister()
 	p.gatewayTLSRouteInformer = gatewayFactory.Gateway().V1alpha2().TLSRoutes().Informer()

@@ -25,7 +25,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress-resource: ApisixRoute stream Testing with v2beta2", func() {
+var _ = ginkgo.Describe("suite-ingress-resource: ApisixRoute stream Testing", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("stream tcp proxy", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -148,5 +148,70 @@ spec:
 	})
 	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
+	})
+})
+
+var _ = ginkgo.Describe("suite-ingress-resource: ApisixRoute stream Testing SNI with v2", func() {
+	s := scaffold.NewDefaultV2Scaffold()
+
+	ginkgo.It("stream route with sni when set host", func() {
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		apisixRoute := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin-tcp-route
+spec:
+  stream:
+  - name: rule1
+    protocol: TCP
+    match:
+      ingressPort: 9100
+      host: a.test.com
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
+
+		err := s.EnsureNumApisixStreamRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		sr, err := s.ListApisixStreamRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), sr, 1)
+		assert.Equal(ginkgo.GinkgoT(), sr[0].ServerPort, int32(9100))
+		assert.Equal(ginkgo.GinkgoT(), sr[0].SNI, "a.test.com")
+	})
+
+	ginkgo.It("no sni in stream route when not set host", func() {
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		apisixRoute := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin-tcp-route
+spec:
+  stream:
+  - name: rule1
+    protocol: TCP
+    match:
+      ingressPort: 9100
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
+
+		err := s.EnsureNumApisixStreamRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		sr, err := s.ListApisixStreamRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), sr, 1)
+		assert.Equal(ginkgo.GinkgoT(), sr[0].ServerPort, int32(9100))
+		assert.Equal(ginkgo.GinkgoT(), sr[0].SNI, "")
 	})
 })

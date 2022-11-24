@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 type Validator struct {
@@ -41,10 +42,10 @@ func newValidator(p *Provider) *Validator {
 
 type commonRoute struct {
 	routeNamespace string
-	parentRefs     []gatewayv1alpha2.ParentRef
-	routeProtocol  gatewayv1alpha2.ProtocolType
-	routeHostnames []gatewayv1alpha2.Hostname
-	routeGroupKind gatewayv1alpha2.RouteGroupKind
+	parentRefs     []gatewayv1beta1.ParentReference
+	routeProtocol  gatewayv1beta1.ProtocolType
+	routeHostnames []gatewayv1beta1.Hostname
+	routeGroupKind gatewayv1beta1.RouteGroupKind
 }
 
 func (r *commonRoute) hasParentRefs() bool {
@@ -52,48 +53,71 @@ func (r *commonRoute) hasParentRefs() bool {
 }
 
 func (r *commonRoute) isHTTPProtocol() bool {
-	return r.routeProtocol == gatewayv1alpha2.HTTPProtocolType
+	return r.routeProtocol == gatewayv1beta1.HTTPProtocolType
 }
 
 func (r *commonRoute) isHTTPSProtocol() bool {
-	return r.routeProtocol == gatewayv1alpha2.HTTPSProtocolType
+	return r.routeProtocol == gatewayv1beta1.HTTPSProtocolType
+}
+
+func ConvertParentRefsToV1beta1(parentRefs []gatewayv1alpha2.ParentReference) []gatewayv1beta1.ParentReference {
+	v1beta1ParentRefs := make([]gatewayv1beta1.ParentReference, len(parentRefs))
+	for i, p := range parentRefs {
+		v1beta1ParentRefs[i] = gatewayv1beta1.ParentReference{
+			Group:       (*gatewayv1beta1.Group)(p.Group),
+			Kind:        (*gatewayv1beta1.Kind)(p.Kind),
+			Namespace:   (*gatewayv1beta1.Namespace)(p.Namespace),
+			Name:        (gatewayv1beta1.ObjectName)(p.Name),
+			SectionName: (*gatewayv1beta1.SectionName)(p.SectionName),
+			Port:        (*gatewayv1beta1.PortNumber)(p.Port),
+		}
+	}
+	return v1beta1ParentRefs
+}
+
+func ConvertHostnamesToV1beta1(hostnames []gatewayv1alpha2.Hostname) []gatewayv1beta1.Hostname {
+	v1beta1Hostnames := make([]gatewayv1beta1.Hostname, len(hostnames))
+	for i, h := range hostnames {
+		v1beta1Hostnames[i] = (gatewayv1beta1.Hostname)(h)
+	}
+	return v1beta1Hostnames
 }
 
 func parseToCommentRoute(route any) (*commonRoute, error) {
 	r := new(commonRoute)
-	group := gatewayv1alpha2.Group(gatewayv1alpha2.GroupName)
+	group := gatewayv1beta1.Group(gatewayv1beta1.GroupName)
 	switch route := route.(type) {
-	case *gatewayv1alpha2.HTTPRoute:
+	case *gatewayv1beta1.HTTPRoute:
 		r.routeNamespace = route.Namespace
 		r.parentRefs = route.Spec.ParentRefs
-		r.routeProtocol = gatewayv1alpha2.HTTPProtocolType
+		r.routeProtocol = gatewayv1beta1.HTTPProtocolType
 		r.routeHostnames = route.Spec.Hostnames
-		r.routeGroupKind = gatewayv1alpha2.RouteGroupKind{
+		r.routeGroupKind = gatewayv1beta1.RouteGroupKind{
 			Group: &group,
 			Kind:  types.KindHTTPRoute,
 		}
 	case *gatewayv1alpha2.TLSRoute:
 		r.routeNamespace = route.Namespace
-		r.parentRefs = route.Spec.ParentRefs
-		r.routeProtocol = gatewayv1alpha2.HTTPSProtocolType
-		r.routeHostnames = route.Spec.Hostnames
-		r.routeGroupKind = gatewayv1alpha2.RouteGroupKind{
+		r.parentRefs = ConvertParentRefsToV1beta1(route.Spec.ParentRefs)
+		r.routeProtocol = gatewayv1beta1.HTTPSProtocolType
+		r.routeHostnames = ConvertHostnamesToV1beta1(route.Spec.Hostnames)
+		r.routeGroupKind = gatewayv1beta1.RouteGroupKind{
 			Group: &group,
 			Kind:  types.KindTLSRoute,
 		}
 	case *gatewayv1alpha2.TCPRoute:
 		r.routeNamespace = route.Namespace
-		r.parentRefs = route.Spec.ParentRefs
-		r.routeProtocol = gatewayv1alpha2.TCPProtocolType
-		r.routeGroupKind = gatewayv1alpha2.RouteGroupKind{
+		r.parentRefs = ConvertParentRefsToV1beta1(route.Spec.ParentRefs)
+		r.routeProtocol = gatewayv1beta1.TCPProtocolType
+		r.routeGroupKind = gatewayv1beta1.RouteGroupKind{
 			Group: &group,
 			Kind:  types.KindTCPRoute,
 		}
 	case *gatewayv1alpha2.UDPRoute:
 		r.routeNamespace = route.Namespace
-		r.parentRefs = route.Spec.ParentRefs
-		r.routeProtocol = gatewayv1alpha2.UDPProtocolType
-		r.routeGroupKind = gatewayv1alpha2.RouteGroupKind{
+		r.parentRefs = ConvertParentRefsToV1beta1(route.Spec.ParentRefs)
+		r.routeProtocol = gatewayv1beta1.UDPProtocolType
+		r.routeGroupKind = gatewayv1beta1.RouteGroupKind{
 			Group: &group,
 			Kind:  types.KindUDPRoute,
 		}
@@ -103,7 +127,7 @@ func parseToCommentRoute(route any) (*commonRoute, error) {
 	return r, nil
 }
 
-func (v *Validator) getListenersConf(r *commonRoute, parentRef gatewayv1alpha2.ParentRef) ([]*types.ListenerConf, error) {
+func (v *Validator) getListenersConf(r *commonRoute, parentRef gatewayv1beta1.ParentReference) ([]*types.ListenerConf, error) {
 	var name, kind, namespace, sectionName string
 	name = string(parentRef.Name)
 	if parentRef.Kind != nil {
@@ -152,7 +176,7 @@ func (v *Validator) getListenersConf(r *commonRoute, parentRef gatewayv1alpha2.P
 	return listeners, nil
 }
 
-func (v *Validator) validateParentRefV1Alpha2(r *commonRoute) ([]*types.ListenerConf, error) {
+func (v *Validator) validateParentRef(r *commonRoute) ([]*types.ListenerConf, error) {
 	var matchedListeners []*types.ListenerConf
 	for _, parentRef := range r.parentRefs {
 		listeners, err := v.getListenersConf(r, parentRef)
@@ -180,11 +204,11 @@ func (v *Validator) validateParentRefV1Alpha2(r *commonRoute) ([]*types.Listener
 
 			// match listener by AllowRoute.Namespaces
 			switch *listenerConf.RouteNamespace.From {
-			case gatewayv1alpha2.NamespacesFromSame:
+			case gatewayv1beta1.NamespacesFromSame:
 				if r.routeNamespace != listenerConf.Namespace {
 					continue
 				}
-			case gatewayv1alpha2.NamespacesFromSelector:
+			case gatewayv1beta1.NamespacesFromSelector:
 				// get listener namespace with selector labeled namespace
 				selector, err := metav1.LabelSelectorAsSelector(listenerConf.RouteNamespace.Selector)
 				if err != nil {
@@ -231,16 +255,16 @@ func (v *Validator) validateParentRefV1Alpha2(r *commonRoute) ([]*types.Listener
 	return matchedListeners, nil
 }
 
-// ValidateCommonRouteV1Alpha2 only checks CommonRoute and ParentRef logic.
-// route support HTTPRoute TLSRoute UDPRoute TLSRoute for now.
-func (v *Validator) ValidateCommonRouteV1Alpha2(route any) error {
+// ValidateCommonRoute only checks CommonRoute and ParentRef.
+// route argument support HTTPRoute TLSRoute UDPRoute TLSRoute for now.
+func (v *Validator) ValidateCommonRoute(route any) error {
 	r, err := parseToCommentRoute(route)
 	if err != nil {
 		return err
 	}
 
 	if r.hasParentRefs() {
-		_, err = v.validateParentRefV1Alpha2(r)
+		_, err = v.validateParentRef(r)
 		if err != nil {
 			return err
 		}

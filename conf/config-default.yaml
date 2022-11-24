@@ -57,9 +57,6 @@ kubernetes:
   resync_interval: "6h"                # how long should apisix-ingress-controller
                                        # re-synchronizes with Kubernetes, default is 6h,
                                        # and the minimal resync interval is 30s.
-  app_namespaces: ["*"]                # namespace list that controller will watch for resources,
-                                       # by default all namespaces (represented by "*") are watched.
-                                       # The `app_namespace` is deprecated, using `namespace_selector` instead since version 1.4.0
   namespace_selector: [""]             # namespace_selector represent basis for selecting managed namespaces.
                                        # the field is support since version 1.4.0
                                        # For example, "apisix.ingress=watching", so ingress will watching the namespaces which labels "apisix.ingress=watching"
@@ -84,6 +81,7 @@ kubernetes:
                                        # Before we announce support for it to reach Beta level or GA.
   api_version: apisix.apache.org/v2    # the default value of API version is "apisix.apache.org/v2", support "apisix.apache.org/v2beta3" and "apisix.apache.org/v2".
 
+  plugin_metadata_cm: plugin-metadata-config-map
 # APISIX related configurations.
 apisix:
   default_cluster_base_url: "http://127.0.0.1:9080/apisix/admin" # The base url of admin api / manager api

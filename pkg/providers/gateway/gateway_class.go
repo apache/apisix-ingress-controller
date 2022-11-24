@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"sigs.k8s.io/gateway-api/apis/v1alpha2"
+	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
@@ -80,11 +80,11 @@ func (c *gatewayClassController) init() error {
 	return nil
 }
 
-func (c *gatewayClassController) markAsUpdated(gatewayClass *v1alpha2.GatewayClass) error {
+func (c *gatewayClassController) markAsUpdated(gatewayClass *v1beta1.GatewayClass) error {
 	gc := gatewayClass.DeepCopy()
 
 	condition := metav1.Condition{
-		Type:               string(v1alpha2.GatewayClassConditionStatusAccepted),
+		Type:               string(v1beta1.GatewayClassConditionStatusAccepted),
 		Status:             metav1.ConditionTrue,
 		Reason:             "Updated",
 		Message:            fmt.Sprintf("Updated by apisix-ingress-controller, sync at %v", time.Now()),
@@ -112,7 +112,7 @@ func (c *gatewayClassController) markAsUpdated(gatewayClass *v1alpha2.GatewayCla
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err := c.controller.gatewayClient.GatewayV1alpha2().GatewayClasses().UpdateStatus(ctx, gc, metav1.UpdateOptions{})
+	_, err := c.controller.gatewayClient.GatewayV1beta1().GatewayClasses().UpdateStatus(ctx, gc, metav1.UpdateOptions{})
 	if err != nil {
 		log.Errorw("failed to update GatewayClass status",
 			zap.Error(err),
@@ -166,7 +166,7 @@ func (c *gatewayClassController) sync(ctx context.Context, ev *types.Event) erro
 			return c.markAsUpdated(gatewayClass)
 		}
 	} else if ev.Type == types.EventDelete {
-		c.controller.RemoveGatewayClass(ev.Tombstone.(*v1alpha2.GatewayClass).Name)
+		c.controller.RemoveGatewayClass(ev.Tombstone.(*v1beta1.GatewayClass).Name)
 	}
 
 	return nil
@@ -227,7 +227,7 @@ func (c *gatewayClassController) onDelete(obj interface{}) {
 		return
 	}
 
-	gatewayClass, ok := obj.(*v1alpha2.GatewayClass)
+	gatewayClass, ok := obj.(*v1beta1.GatewayClass)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
@@ -237,7 +237,7 @@ func (c *gatewayClassController) onDelete(obj interface{}) {
 			)
 			return
 		}
-		gatewayClass = tombstone.Obj.(*v1alpha2.GatewayClass)
+		gatewayClass = tombstone.Obj.(*v1beta1.GatewayClass)
 	}
 
 	c.workqueue.Add(&types.Event{

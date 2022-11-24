@@ -31,7 +31,7 @@ var _ = ginkgo.Describe("suite-chore: Chaos Testing", func() {
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(0), "checking number of upstreams")
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			route1 := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route1
@@ -51,7 +51,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "checking number of routes")
 			s.RestartAPISIXDeploy()
 			route2 := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta2
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route2

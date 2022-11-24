@@ -18,6 +18,7 @@ package translation
 
 import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/providers/gateway/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
@@ -32,10 +33,10 @@ type translator struct {
 }
 
 type Translator interface {
-	// TranslateGatewayV1Alpha2 translates Gateway to internal configurations
-	TranslateGatewayV1Alpha2(gateway *gatewayv1alpha2.Gateway) (map[string]*types.ListenerConf, error)
-	// TranslateGatewayHTTPRouteV1Alpha2 translates Gateway API HTTPRoute to APISIX resources
-	TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha2.HTTPRoute) (*translation.TranslateContext, error)
+	// TranslateGatewayV1beta1 translates Gateway to internal configurations
+	TranslateGatewayV1beta1(gateway *gatewayv1beta1.Gateway) (map[string]*types.ListenerConf, error)
+	// TranslateGatewayHTTPRouteV1beta1 translates Gateway API HTTPRoute to APISIX resources
+	TranslateGatewayHTTPRouteV1beta1(httpRoute *gatewayv1beta1.HTTPRoute) (*translation.TranslateContext, error)
 	// TranslateGatewayTLSRouteV1Alpha2 translates Gateway API TLSRoute to APISIX resources
 	TranslateGatewayTLSRouteV1Alpha2(tlsRoute *gatewayv1alpha2.TLSRoute) (*translation.TranslateContext, error)
 	// TranslateGatewayTCPRouteV1Alpha2 translates Gateway API TCPRoute to APISIX resources

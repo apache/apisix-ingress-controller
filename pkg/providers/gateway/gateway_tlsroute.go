@@ -139,7 +139,7 @@ func (c *gatewayTLSRouteController) sync(ctx context.Context, ev *types.Event) e
 		}
 		tlsRoute = ev.Tombstone.(*gatewayv1alpha2.TLSRoute)
 	}
-	err = c.controller.validator.ValidateCommonRouteV1Alpha2(tlsRoute)
+	err = c.controller.validator.ValidateCommonRoute(tlsRoute)
 	if err != nil {
 		log.Errorw("failed to validate gateway HTTPRoute",
 			zap.Error(err),

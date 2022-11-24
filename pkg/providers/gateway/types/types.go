@@ -18,14 +18,14 @@ package types
 
 import (
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 const (
-	KindTCPRoute  gatewayv1alpha2.Kind = "TCPRoute"
-	KindTLSRoute  gatewayv1alpha2.Kind = "TLSRoute"
-	KindHTTPRoute gatewayv1alpha2.Kind = "HTTPRoute"
-	KindUDPRoute  gatewayv1alpha2.Kind = "UDPRoute"
+	KindTCPRoute  gatewayv1beta1.Kind = "TCPRoute"
+	KindTLSRoute  gatewayv1beta1.Kind = "TLSRoute"
+	KindHTTPRoute gatewayv1beta1.Kind = "HTTPRoute"
+	KindUDPRoute  gatewayv1beta1.Kind = "UDPRoute"
 )
 
 type ListenerConf struct {
@@ -35,16 +35,16 @@ type ListenerConf struct {
 	Name string
 
 	SectionName string
-	Protocol    gatewayv1alpha2.ProtocolType
-	Port        gatewayv1alpha2.PortNumber
-	Hostname    *gatewayv1alpha2.Hostname
+	Protocol    gatewayv1beta1.ProtocolType
+	Port        gatewayv1beta1.PortNumber
+	Hostname    *gatewayv1beta1.Hostname
 
 	// namespace selector of AllowedRoutes
-	RouteNamespace *gatewayv1alpha2.RouteNamespaces
-	AllowedKinds   []gatewayv1alpha2.RouteGroupKind
+	RouteNamespace *gatewayv1beta1.RouteNamespaces
+	AllowedKinds   []gatewayv1beta1.RouteGroupKind
 }
 
-func (c *ListenerConf) IsAllowedKind(r gatewayv1alpha2.RouteGroupKind) bool {
+func (c *ListenerConf) IsAllowedKind(r gatewayv1beta1.RouteGroupKind) bool {
 	if len(c.AllowedKinds) == 0 {
 		return true
 	}
@@ -57,7 +57,7 @@ func (c *ListenerConf) IsAllowedKind(r gatewayv1alpha2.RouteGroupKind) bool {
 	return false
 }
 
-func (c *ListenerConf) IsHostnameMatch(hostnames []gatewayv1alpha2.Hostname) bool {
+func (c *ListenerConf) IsHostnameMatch(hostnames []gatewayv1beta1.Hostname) bool {
 	if c.Hostname == nil || len(hostnames) == 0 {
 		return true
 	}

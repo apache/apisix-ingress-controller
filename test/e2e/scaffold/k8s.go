@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/gruntwork-io/terratest/modules/k8s"
@@ -35,7 +34,6 @@ import (
 	"github.com/gruntwork-io/terratest/modules/testing"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -128,9 +126,7 @@ func (s *Scaffold) CreateResourceFromString(yaml string) error {
 
 	// if the error raised, it may be a &shell.ErrWithCmdOutput, which is useless in debug
 	if err != nil {
-		log.Errorw("create resource failed",
-			zap.Error(err),
-		)
+		err = fmt.Errorf(err.Error())
 	}
 	return err
 }
@@ -314,6 +310,15 @@ func (s *Scaffold) CreateApisixConsumerByApisixAdmin(body []byte) error {
 	return s.ensureAdminOperationIsSuccessful(u.String(), "PUT", body)
 }
 
+func (s *Scaffold) CreateApisixPluginMetadataByApisixAdmin(pluginName string, body []byte) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/plugin_metadata/" + pluginName,
+	}
+	return s.ensureAdminOperationIsSuccessful(u.String(), "PUT", body)
+}
+
 // DeleteApisixRouteByApisixAdmin deletes a route by its route name in APISIX cluster.
 func (s *Scaffold) DeleteApisixRouteByApisixAdmin(routeID string) error {
 	u := url.URL{
@@ -447,6 +452,48 @@ func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
 		return nil, err
 	}
 	return cli.Cluster("").Route().List(context.TODO())
+}
+
+func (s *Scaffold) ListPluginMetadatas() ([]*v1.PluginMetadata, error) {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin",
+	}
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cli.Cluster("").PluginMetadata().List(context.TODO())
+}
+
+func (s *Scaffold) ClusterClient() (apisix.Cluster, error) {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin",
+	}
+	cli, err := apisix.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	err = cli.AddCluster(context.Background(), &apisix.ClusterOptions{
+		BaseURL:          u.String(),
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		MetricsCollector: metrics.NewPrometheusCollector(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cli.Cluster(""), nil
 }
 
 // ListApisixConsumers list all consumers from APISIX.

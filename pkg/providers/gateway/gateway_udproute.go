@@ -122,7 +122,7 @@ func (c *gatewayUDPRouteController) sync(ctx context.Context, ev *types.Event) e
 		}
 		udpRoute = ev.Tombstone.(*gatewayv1alpha2.UDPRoute)
 	}
-	err = c.controller.validator.ValidateCommonRouteV1Alpha2(udpRoute)
+	err = c.controller.validator.ValidateCommonRoute(udpRoute)
 	if err != nil {
 		log.Errorw("failed to validate gateway UDPRoute",
 			zap.Error(err),

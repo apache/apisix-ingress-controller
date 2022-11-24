@@ -25,6 +25,86 @@ Observability (monitoring functionality) has always played an essential role in 
 
 *Prometheus* is a leading open-source project focused on metrics and alerting that has changed the way the world does monitoring and observability. For more information, see *Prometheus*'s official [website](https://prometheus.io/).
 
+## Before you begin
+
+In the APISIX Ingress environment, ensure that the `public-api` and `prometheus` plugins are enabled and the [prometheus pluginAttrs](https://apisix.apache.org/docs/apisix/plugins/prometheus/#specifying-metrics) are configured. Please refer to the following install example:
+
+```sh
+helm repo add apisix https://charts.apiseven.com
+helm repo update
+helm install apisix apisix/apisix -f values.yaml --create-namespace -n ingress-apisix
+```
+
+<details>
+  <summary>values.yaml</summary>
+
+```yaml
+gateway:
+  type: NodePort
+
+ingress-controller:
+  enabled: true
+  config:
+    apisix:
+      serviceNamespace: ingress-apisix
+
+pluginAttrs:
+  prometheus:
+    enable_export_server: false
+
+plugins:
+  - api-breaker
+  - authz-keycloak
+  - basic-auth
+  - batch-requests
+  - consumer-restriction
+  - cors
+  - echo
+  - fault-injection
+  - file-logger
+  - grpc-transcode
+  - hmac-auth
+  - http-logger
+  - ip-restriction
+  - ua-restriction
+  - jwt-auth
+  - kafka-logger
+  - key-auth
+  - limit-conn
+  - limit-count
+  - limit-req
+  - node-status
+  - openid-connect
+  - authz-casbin
+  - proxy-cache
+  - proxy-mirror
+  - proxy-rewrite
+  - redirect
+  - referer-restriction
+  - request-id
+  - request-validation
+  - response-rewrite
+  - serverless-post-function
+  - serverless-pre-function
+  - sls-logger
+  - syslog
+  - tcp-logger
+  - udp-logger
+  - uri-blocker
+  - wolf-rbac
+  - zipkin
+  - traffic-split
+  - gzip
+  - real-ip
+  - ext-plugin-pre-req
+  - ext-plugin-post-req
+  - prometheus # enable prometheus
+  - public-api # enable public-api
+
+```
+
+</details>
+
 ## Begin to access Apache APISIX Prometheus Metrics
 
 Before starting, please make sure that Apache APISIX (version >= 2.13)and APISIX Ingress controller are installed and working correctly. APISIX uses the `prometheus` plugin to expose metrics and integrate with prometheus but uses the `public-api` plugin to enhance its security after version 2.13. For more information, see the `public-api` plugin's official [document](https://apisix.apache.org/docs/apisix/plugins/public-api/).
@@ -33,7 +113,12 @@ Before starting, please make sure that Apache APISIX (version >= 2.13)and APISIX
 
 If you need to monitor Apache APISIX simultaneously, you can create the following ApisixClusterConfig resource.
 
+```sh
+kubectl apply -f default.yaml
+```
+
 ```yaml
+# default.yaml
 apiVersion: apisix.apache.org/v2
 kind: ApisixClusterConfig
 metadata:
@@ -48,7 +133,12 @@ spec:
 
 Let's make a basic routing setup, and please note that further configuration should be done based on your local backend service information. The primary solution concept is to use the `public-api` plugin to protect the routes exposed by *Prometheus*. For a more detailed configuration, you can refer to the [example](https://apisix.apache.org/docs/apisix/plugins/public-api/#example) section of the `public-api` plugin.
 
+```bash
+kubectl apply -f prometheus-route.yaml -n ingress-apisix
+```
+
 ```yaml
+# prometheus-route.yaml
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
@@ -62,7 +152,7 @@ spec:
       paths:
       - /apisix/prometheus/metrics
     backends:
-    ## Please notice that there must be your actual "serviceName" and "servicePort"
+    ## Please notice that there must be your actual "serviceName" and "servicePort", and must be in the same namespace.
     - serviceName: apisix-admin
       servicePort: 9180
     plugins:
@@ -72,16 +162,22 @@ spec:
 
 ### Step 3: Collect the Metrics
 
+Use port forwarding to access service `apisix-gateway` in a cluster.
+
+```sh
+# Forward to 127.0.0.1:9080
+kubectl port-forward service/apisix-gateway 9080:80 -n ingress-apisix
+```
+
 Now you can then get the indicator parameters by requesting command access.
 
 ```sh
-kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9091/headers -H 'Host: test.prometheus.org'
+curl http://127.0.0.1:9080/apisix/prometheus/metrics -H 'Host: test.prometheus.org'
 ```
 
 Then you will get the metrics you want.
 
 ```bash
-chever@cloud-native-01:~/api7/cloud_native/tasks/doc_prometheus$ kubectl exec -it -n ingress-apisix apisix-7d6b8577b6-rqhq9 -- curl http://127.0.0.1:9091/apisix/prometheus/metrics
 Defaulted container "apisix" out of: apisix, wait-etcd (init)
 # HELP apisix_bandwidth Total bandwidth in bytes consumed per service in APISIX
 # TYPE apisix_bandwidth counter

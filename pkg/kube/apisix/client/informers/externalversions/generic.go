@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	v2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	v2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
@@ -66,10 +65,6 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2().ApisixTlses().Informer()}, nil
 	case v2.SchemeGroupVersion.WithResource("apisixupstreams"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2().ApisixUpstreams().Informer()}, nil
-
-		// Group=apisix.apache.org, Version=v2beta2
-	case v2beta2.SchemeGroupVersion.WithResource("apisixroutes"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2beta2().ApisixRoutes().Informer()}, nil
 
 		// Group=apisix.apache.org, Version=v2beta3
 	case v2beta3.SchemeGroupVersion.WithResource("apisixclusterconfigs"):

@@ -120,7 +120,6 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 	}
 
 	apisixRouteLister := kube.NewApisixRouteLister(
-		apisixFactory.Apisix().V2beta2().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
 		apisixFactory.Apisix().V2().ApisixRoutes().Lister(),
 	)

@@ -22,7 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -32,15 +32,111 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha2.HTTPRoute) (*translation.TranslateContext, error) {
+func (t *translator) generatePluginsFromHTTPRouteFilter(namespace string, filters []gatewayv1beta1.HTTPRouteFilter) apisixv1.Plugins {
+	plugins := apisixv1.Plugins{}
+	for _, filter := range filters {
+		switch filter.Type {
+		case gatewayv1beta1.HTTPRouteFilterRequestHeaderModifier:
+			t.generatePluginFromHTTPRequestHeaderFilter(plugins, filter.RequestHeaderModifier)
+		case gatewayv1beta1.HTTPRouteFilterRequestRedirect:
+			t.generatePluginFromHTTPRequestRedirectFilter(plugins, filter.RequestRedirect)
+		case gatewayv1beta1.HTTPRouteFilterRequestMirror:
+			t.generatePluginFromHTTPRequestMirrorFilter(namespace, plugins, filter.RequestMirror)
+		case gatewayv1beta1.HTTPRouteFilterURLRewrite:
+			// TODO: It is not yet supported by v1beta1 CRDs.
+		}
+	}
+	return plugins
+}
+
+func (t *translator) generatePluginFromHTTPRequestHeaderFilter(plugins apisixv1.Plugins, reqHeaderModifier *gatewayv1beta1.HTTPRequestHeaderFilter) {
+	if reqHeaderModifier == nil {
+		return
+	}
+	headers := map[string]any{}
+	// TODO: The current apisix plugin does not conform to the specification.
+	for _, header := range reqHeaderModifier.Add {
+		headers[string(header.Name)] = header.Value
+	}
+	for _, header := range reqHeaderModifier.Set {
+		headers[string(header.Name)] = header.Value
+	}
+	for _, header := range reqHeaderModifier.Remove {
+		headers[header] = ""
+	}
+
+	plugins["proxy-rewrite"] = apisixv1.RewriteConfig{
+		Headers: headers,
+	}
+}
+
+func (t *translator) generatePluginFromHTTPRequestMirrorFilter(namespace string, plugins apisixv1.Plugins, reqMirror *gatewayv1beta1.HTTPRequestMirrorFilter) {
+	if reqMirror == nil {
+		return
+	}
+
+	var (
+		port int    = 80
+		ns   string = namespace
+	)
+	if reqMirror.BackendRef.Port != nil {
+		port = int(*reqMirror.BackendRef.Port)
+	}
+	if reqMirror.BackendRef.Namespace != nil {
+		ns = string(*reqMirror.BackendRef.Namespace)
+	}
+	// TODO 1: Need to support https.
+	// TODO 2: https://github.com/apache/apisix/issues/8351 APISIX 3.0 support {service.namespace} and {service.namespace.svc}, but APISIX <= 2.15 version is not supported.
+	host := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d", reqMirror.BackendRef.Name, ns, port)
+
+	plugins["proxy-mirror"] = apisixv1.RequestMirror{
+		Host: host,
+	}
+}
+
+func (t *translator) generatePluginFromHTTPRequestRedirectFilter(plugins apisixv1.Plugins, reqRedirect *gatewayv1beta1.HTTPRequestRedirectFilter) {
+	if reqRedirect == nil {
+		return
+	}
+
+	var uri string
+
+	code := 302
+	if reqRedirect.StatusCode != nil {
+		code = *reqRedirect.StatusCode
+	}
+
+	hostname := "$host"
+	if reqRedirect.Hostname != nil {
+		hostname = string(*reqRedirect.Hostname)
+	}
+
+	scheme := "$scheme"
+	if reqRedirect.Scheme != nil {
+		scheme = *reqRedirect.Scheme
+	}
+
+	if reqRedirect.Port != nil {
+		uri = fmt.Sprintf("%s://%s:%d$request_uri", scheme, hostname, int(*reqRedirect.Port))
+	} else {
+		uri = fmt.Sprintf("%s://%s$request_uri", scheme, hostname)
+	}
+
+	plugins["redirect"] = apisixv1.RedirectConfig{
+		RetCode: code,
+		URI:     uri,
+	}
+}
+
+func (t *translator) TranslateGatewayHTTPRouteV1beta1(httpRoute *gatewayv1beta1.HTTPRoute) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
 
 	var hosts []string
 	for _, hostname := range httpRoute.Spec.Hostnames {
 		hosts = append(hosts, string(hostname))
 
-		// TODO: See the document of gatewayv1alpha2.Listener.Hostname
-		_ = gatewayv1alpha2.Listener{}.Hostname
+		// TODO: See the document of gatewayv1beta1.Listener.Hostname
+		_ = gatewayv1beta1.Listener{}.Hostname
 		// For HTTPRoute and TLSRoute resources, there is an interaction with the
 		// `spec.hostnames` array. When both listener and route specify hostnames,
 		// there MUST be an intersection between the values for a Route to be
@@ -82,7 +178,7 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 				ns = string(*backend.Namespace)
 			}
 			//if ns != httpRoute.Namespace {
-			// TODO: check gatewayv1alpha2.ReferencePolicy
+			// TODO: check gatewayv1beta1.ReferencePolicy
 			//}
 
 			if backend.Port == nil {
@@ -129,17 +225,18 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 
 		matches := rule.Matches
 		if len(matches) == 0 {
-			defaultType := gatewayv1alpha2.PathMatchPathPrefix
+			defaultType := gatewayv1beta1.PathMatchPathPrefix
 			defaultValue := "/"
-			matches = []gatewayv1alpha2.HTTPRouteMatch{
+			matches = []gatewayv1beta1.HTTPRouteMatch{
 				{
-					Path: &gatewayv1alpha2.HTTPPathMatch{
+					Path: &gatewayv1beta1.HTTPPathMatch{
 						Type:  &defaultType,
 						Value: &defaultValue,
 					},
 				},
 			}
 		}
+		plugins := t.generatePluginsFromHTTPRouteFilter(httpRoute.Namespace, rule.Filters)
 
 		for j, match := range matches {
 			route, err := t.translateGatewayHTTPRouteMatch(&match)
@@ -150,6 +247,7 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 			name := apisixv1.ComposeRouteName(httpRoute.Namespace, httpRoute.Name, fmt.Sprintf("%d-%d", i, j))
 			route.ID = id.GenID(name)
 			route.Hosts = hosts
+			route.Plugins = plugins
 
 			// Bind Upstream
 			if len(ruleUpstreams) == 1 {
@@ -174,16 +272,16 @@ func (t *translator) TranslateGatewayHTTPRouteV1Alpha2(httpRoute *gatewayv1alpha
 	return ctx, nil
 }
 
-func (t *translator) translateGatewayHTTPRouteMatch(match *gatewayv1alpha2.HTTPRouteMatch) (*apisixv1.Route, error) {
+func (t *translator) translateGatewayHTTPRouteMatch(match *gatewayv1beta1.HTTPRouteMatch) (*apisixv1.Route, error) {
 	route := apisixv1.NewDefaultRoute()
 
 	if match.Path != nil {
 		switch *match.Path.Type {
-		case gatewayv1alpha2.PathMatchExact:
+		case gatewayv1beta1.PathMatchExact:
 			route.Uri = *match.Path.Value
-		case gatewayv1alpha2.PathMatchPathPrefix:
+		case gatewayv1beta1.PathMatchPathPrefix:
 			route.Uri = *match.Path.Value + "*"
-		case gatewayv1alpha2.PathMatchRegularExpression:
+		case gatewayv1beta1.PathMatchRegularExpression:
 			var this []apisixv1.StringOrSlice
 			this = append(this, apisixv1.StringOrSlice{
 				StrVal: "uri",
@@ -212,11 +310,11 @@ func (t *translator) translateGatewayHTTPRouteMatch(match *gatewayv1alpha2.HTTPR
 			})
 
 			switch *header.Type {
-			case gatewayv1alpha2.HeaderMatchExact:
+			case gatewayv1beta1.HeaderMatchExact:
 				this = append(this, apisixv1.StringOrSlice{
 					StrVal: "==",
 				})
-			case gatewayv1alpha2.HeaderMatchRegularExpression:
+			case gatewayv1beta1.HeaderMatchRegularExpression:
 				this = append(this, apisixv1.StringOrSlice{
 					StrVal: "~~",
 				})
@@ -240,11 +338,11 @@ func (t *translator) translateGatewayHTTPRouteMatch(match *gatewayv1alpha2.HTTPR
 			})
 
 			switch *query.Type {
-			case gatewayv1alpha2.QueryParamMatchExact:
+			case gatewayv1beta1.QueryParamMatchExact:
 				this = append(this, apisixv1.StringOrSlice{
 					StrVal: "==",
 				})
-			case gatewayv1alpha2.QueryParamMatchRegularExpression:
+			case gatewayv1beta1.QueryParamMatchRegularExpression:
 				this = append(this, apisixv1.StringOrSlice{
 					StrVal: "~~",
 				})

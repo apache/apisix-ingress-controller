@@ -26,7 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
@@ -121,7 +121,7 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 			)
 			return nil
 		}
-		gateway = ev.Tombstone.(*gatewayv1alpha2.Gateway)
+		gateway = ev.Tombstone.(*gatewayv1beta1.Gateway)
 
 		err = c.controller.RemoveListeners(gateway.Namespace, gateway.Name)
 		if err != nil {
@@ -131,7 +131,7 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 		gatewayClassName := string(gateway.Spec.GatewayClassName)
 		if c.controller.HasGatewayClass(gatewayClassName) {
 			// TODO: handle listeners
-			listeners, err := c.controller.translator.TranslateGatewayV1Alpha2(gateway)
+			listeners, err := c.controller.translator.TranslateGatewayV1beta1(gateway)
 			if err != nil {
 				return err
 			}
@@ -157,7 +157,7 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 	// At present, we choose to directly update `GatewayStatus.Addresses`
 	// to indicate that we have picked the Gateway resource.
 
-	c.recordStatus(gateway, string(gatewayv1alpha2.ListenerReasonReady), metav1.ConditionTrue, gateway.Generation)
+	c.recordStatus(gateway, string(gatewayv1beta1.ListenerReasonReady), metav1.ConditionTrue, gateway.Generation)
 	return nil
 }
 
@@ -219,7 +219,7 @@ func (c *gatewayController) OnDelete(obj interface{}) {
 		return
 	}
 
-	gateway, ok := obj.(*gatewayv1alpha2.Gateway)
+	gateway, ok := obj.(*gatewayv1beta1.Gateway)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
@@ -229,7 +229,7 @@ func (c *gatewayController) OnDelete(obj interface{}) {
 			)
 			return
 		}
-		gateway = tombstone.Obj.(*gatewayv1alpha2.Gateway)
+		gateway = tombstone.Obj.(*gatewayv1beta1.Gateway)
 	}
 
 	c.workqueue.Add(&types.Event{
@@ -240,11 +240,11 @@ func (c *gatewayController) OnDelete(obj interface{}) {
 }
 
 // recordStatus record resources status
-func (c *gatewayController) recordStatus(v *gatewayv1alpha2.Gateway, reason string, status metav1.ConditionStatus, generation int64) {
+func (c *gatewayController) recordStatus(v *gatewayv1beta1.Gateway, reason string, status metav1.ConditionStatus, generation int64) {
 	v = v.DeepCopy()
 
 	gatewayCondition := metav1.Condition{
-		Type:               string(gatewayv1alpha2.ListenerConditionReady),
+		Type:               string(gatewayv1beta1.ListenerConditionReady),
 		Reason:             reason,
 		Status:             status,
 		Message:            "Gateway's status has been successfully updated",
@@ -266,7 +266,7 @@ func (c *gatewayController) recordStatus(v *gatewayv1alpha2.Gateway, reason stri
 	}
 
 	v.Status.Addresses = convLBIPToGatewayAddr(lbips)
-	if _, errRecord := c.controller.gatewayClient.GatewayV1alpha2().Gateways(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+	if _, errRecord := c.controller.gatewayClient.GatewayV1beta1().Gateways(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 		log.Errorw("failed to record status change for Gateway resource",
 			zap.Error(errRecord),
 			zap.String("name", v.Name),
@@ -276,24 +276,24 @@ func (c *gatewayController) recordStatus(v *gatewayv1alpha2.Gateway, reason stri
 }
 
 // convLBIPToGatewayAddr convert LoadBalancerIngress to GatewayAddress format
-func convLBIPToGatewayAddr(lbips []corev1.LoadBalancerIngress) []gatewayv1alpha2.GatewayAddress {
-	var gas []gatewayv1alpha2.GatewayAddress
+func convLBIPToGatewayAddr(lbips []corev1.LoadBalancerIngress) []gatewayv1beta1.GatewayAddress {
+	var gas []gatewayv1beta1.GatewayAddress
 
 	// In the definition, there is also an address type called NamedAddress,
 	// which we currently do not implement
-	HostnameAddressType := gatewayv1alpha2.HostnameAddressType
-	IPAddressType := gatewayv1alpha2.IPAddressType
+	HostnameAddressType := gatewayv1beta1.HostnameAddressType
+	IPAddressType := gatewayv1beta1.IPAddressType
 
 	for _, lbip := range lbips {
 		if v := lbip.Hostname; v != "" {
-			gas = append(gas, gatewayv1alpha2.GatewayAddress{
+			gas = append(gas, gatewayv1beta1.GatewayAddress{
 				Type:  &HostnameAddressType,
 				Value: v,
 			})
 		}
 
 		if v := lbip.IP; v != "" {
-			gas = append(gas, gatewayv1alpha2.GatewayAddress{
+			gas = append(gas, gatewayv1beta1.GatewayAddress{
 				Type:  &IPAddressType,
 				Value: v,
 			})

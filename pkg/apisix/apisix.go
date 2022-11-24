@@ -63,6 +63,8 @@ type Cluster interface {
 	PluginConfig() PluginConfig
 	// Schema returns a Schema interface that can fetch schema of APISIX objects.
 	Schema() Schema
+
+	PluginMetadata() PluginMetadata
 	// UpstreamServiceRelation returns a UpstreamServiceRelation interface that can fetch UpstreamServiceRelation of APISIX objects.
 	UpstreamServiceRelation() UpstreamServiceRelation
 }
@@ -150,6 +152,13 @@ type PluginConfig interface {
 	Create(context.Context, *v1.PluginConfig) (*v1.PluginConfig, error)
 	Delete(context.Context, *v1.PluginConfig) error
 	Update(context.Context, *v1.PluginConfig) (*v1.PluginConfig, error)
+}
+
+type PluginMetadata interface {
+	Get(context.Context, string) (*v1.PluginMetadata, error)
+	List(context.Context) ([]*v1.PluginMetadata, error)
+	Delete(context.Context, *v1.PluginMetadata) error
+	Update(context.Context, *v1.PluginMetadata) (*v1.PluginMetadata, error)
 }
 
 type UpstreamServiceRelation interface {

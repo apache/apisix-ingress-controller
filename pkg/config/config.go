@@ -26,15 +26,12 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v2"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 const (
-	// NamespaceAll represents all namespaces.
-	NamespaceAll = "*"
 	// IngressAPISIXLeader is the default election id for the controller
 	// leader election.
 	IngressAPISIXLeader = "ingress-apisix-leader"
@@ -51,8 +48,6 @@ const (
 	// WARNING: ingress.extensions/v1beta1 is deprecated in v1.14+, and will be unavilable
 	// in v1.22.
 	IngressExtensionsV1beta1 = "extensions/v1beta1"
-	// ApisixV2beta2 represents apisix.apache.org/v2beta2
-	ApisixV2beta2 = "apisix.apache.org/v2beta2"
 	// ApisixV2beta3 represents apisix.apache.org/v2beta3
 	ApisixV2beta3 = "apisix.apache.org/v2beta3"
 	// ApisixV2 represents apisix.apache.org/v2
@@ -91,13 +86,13 @@ type Config struct {
 	Kubernetes                 KubernetesConfig   `json:"kubernetes" yaml:"kubernetes"`
 	APISIX                     APISIXConfig       `json:"apisix" yaml:"apisix"`
 	ApisixResourceSyncInterval types.TimeDuration `json:"apisix-resource-sync-interval" yaml:"apisix-resource-sync-interval"`
+	PluginMetadataConfigMap    string             `json:"plugin_metadata_cm" yaml:"plugin_metadata_cm"`
 }
 
 // KubernetesConfig contains all Kubernetes related config items.
 type KubernetesConfig struct {
 	Kubeconfig          string             `json:"kubeconfig" yaml:"kubeconfig"`
 	ResyncInterval      types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
-	AppNamespaces       []string           `json:"app_namespaces" yaml:"app_namespaces"`
 	NamespaceSelector   []string           `json:"namespace_selector" yaml:"namespace_selector"`
 	ElectionID          string             `json:"election_id" yaml:"election_id"`
 	IngressClass        string             `json:"ingress_class" yaml:"ingress_class"`
@@ -139,7 +134,6 @@ func NewDefaultConfig() *Config {
 		Kubernetes: KubernetesConfig{
 			Kubeconfig:          "", // Use in-cluster configurations.
 			ResyncInterval:      types.TimeDuration{Duration: 6 * time.Hour},
-			AppNamespaces:       []string{v1.NamespaceAll},
 			ElectionID:          IngressAPISIXLeader,
 			IngressClass:        IngressClass,
 			IngressVersion:      IngressNetworkingV1,
@@ -206,27 +200,11 @@ func (cfg *Config) Validate() error {
 	default:
 		return errors.New("unsupported ingress version")
 	}
-	cfg.Kubernetes.AppNamespaces = purifyAppNamespaces(cfg.Kubernetes.AppNamespaces)
 	ok, err := cfg.verifyNamespaceSelector()
 	if !ok {
 		return err
 	}
 	return nil
-}
-
-func purifyAppNamespaces(namespaces []string) []string {
-	exists := make(map[string]struct{})
-	var ultimate []string
-	for _, ns := range namespaces {
-		if ns == NamespaceAll {
-			return []string{v1.NamespaceAll}
-		}
-		if _, ok := exists[ns]; !ok {
-			ultimate = append(ultimate, ns)
-			exists[ns] = struct{}{}
-		}
-	}
-	return ultimate
 }
 
 func (cfg *Config) verifyNamespaceSelector() (bool, error) {

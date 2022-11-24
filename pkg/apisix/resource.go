@@ -174,6 +174,17 @@ func (i *item) consumer() (*v1.Consumer, error) {
 	return &consumer, nil
 }
 
+func (i *item) pluginMetadata() (*v1.PluginMetadata, error) {
+	log.Debugf("got pluginMetadata: %s", string(i.Value))
+	var pluginMetadata v1.PluginMetadata
+	if err := json.Unmarshal(i.Value, &pluginMetadata.Metadata); err != nil {
+		return nil, err
+	}
+	keys := strings.Split(i.Key, "/")
+	pluginMetadata.Name = keys[len(keys)-1]
+	return &pluginMetadata, nil
+}
+
 // pluginConfig decodes item.Value and converts it to v1.PluginConfig.
 func (i *item) pluginConfig() (*v1.PluginConfig, error) {
 	log.Debugf("got pluginConfig: %s", string(i.Value))

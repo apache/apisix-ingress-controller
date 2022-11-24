@@ -404,6 +404,11 @@ type PluginConfig struct {
 	Plugins  Plugins `json:"plugins" yaml:"plugins"`
 }
 
+type PluginMetadata struct {
+	Name     string
+	Metadata map[string]any
+}
+
 // UpstreamServiceRelation Upstream association object
 // +k8s:deepcopy-gen=true
 type UpstreamServiceRelation struct {

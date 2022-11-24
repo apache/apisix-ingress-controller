@@ -33,7 +33,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
@@ -306,8 +305,6 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		tctx *translation.TranslateContext
 	)
 	switch obj.GroupVersion {
-	case config.ApisixV2beta2:
-		ar, err = c.apisixRouteLister.V2beta2(namespace, name)
 	case config.ApisixV2beta3:
 		ar, err = c.apisixRouteLister.V2beta3(namespace, name)
 	case config.ApisixV2:
@@ -355,19 +352,6 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	}
 
 	switch obj.GroupVersion {
-	case config.ApisixV2beta2:
-		if ev.Type != types.EventDelete {
-			tctx, err = c.translator.TranslateRouteV2beta2(ar.V2beta2())
-		} else {
-			tctx, err = c.translator.TranslateRouteV2beta2NotStrictly(ar.V2beta2())
-		}
-		if err != nil {
-			log.Errorw("failed to translate ApisixRoute v2beta2",
-				zap.Error(err),
-				zap.Any("object", ar),
-			)
-			return err
-		}
 	case config.ApisixV2beta3:
 		if ev.Type != types.EventDelete {
 			if err = c.checkPluginNameIfNotEmptyV2beta3(ctx, ar.V2beta3()); err == nil {
@@ -509,8 +493,6 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	}
 	var ar kube.ApisixRoute
 	switch event.GroupVersion {
-	case config.ApisixV2beta2:
-		ar, errLocal = c.apisixRouteLister.V2beta2(namespace, name)
 	case config.ApisixV2beta3:
 		ar, errLocal = c.apisixRouteLister.V2beta3(namespace, name)
 	case config.ApisixV2:
@@ -525,9 +507,6 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 		if ev.Type != types.EventDelete {
 			if errLocal == nil {
 				switch ar.GroupVersion() {
-				case config.ApisixV2beta2:
-					c.RecordEvent(ar.V2beta2(), v1.EventTypeNormal, utils.ResourceSynced, nil)
-					c.recordStatus(ar.V2beta2(), utils.ResourceSynced, nil, metav1.ConditionTrue, ar.V2beta2().GetGeneration())
 				case config.ApisixV2beta3:
 					c.RecordEvent(ar.V2beta3(), v1.EventTypeNormal, utils.ResourceSynced, nil)
 					c.recordStatus(ar.V2beta3(), utils.ResourceSynced, nil, metav1.ConditionTrue, ar.V2beta3().GetGeneration())
@@ -553,9 +532,6 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	)
 	if errLocal == nil {
 		switch ar.GroupVersion() {
-		case config.ApisixV2beta2:
-			c.RecordEvent(ar.V2beta2(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
-			c.recordStatus(ar.V2beta2(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta2().GetGeneration())
 		case config.ApisixV2beta3:
 			c.RecordEvent(ar.V2beta3(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
 			c.recordStatus(ar.V2beta3(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta3().GetGeneration())
@@ -904,23 +880,6 @@ func (c *apisixRouteController) recordStatus(at interface{}, reason string, err 
 	}
 
 	switch v := at.(type) {
-	case *configv2beta2.ApisixRoute:
-		// set to status
-		if v.Status.Conditions == nil {
-			conditions := make([]metav1.Condition, 0)
-			v.Status.Conditions = conditions
-		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
-			meta.SetStatusCondition(&v.Status.Conditions, condition)
-			if _, errRecord := apisixClient.ApisixV2beta2().ApisixRoutes(v.Namespace).
-				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-				log.Errorw("failed to record status change for ApisixRoute",
-					zap.Error(errRecord),
-					zap.String("name", v.Name),
-					zap.String("namespace", v.Namespace),
-				)
-			}
-		}
 	case *v2beta3.ApisixRoute:
 		// set to status
 		if v.Status.Conditions == nil {

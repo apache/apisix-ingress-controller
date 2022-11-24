@@ -24,6 +24,7 @@ import (
 
 	apisixprovider "github.com/apache/apisix-ingress-controller/pkg/providers/apisix"
 	ingressprovider "github.com/apache/apisix-ingress-controller/pkg/providers/ingress"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/configmap"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/endpoint"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
@@ -40,6 +41,7 @@ type Provider interface {
 type k8sProvider struct {
 	secretController *secretController
 	endpoint         endpoint.Provider
+	configmap        configmap.Provider
 
 	secretInformer cache.SharedIndexInformer
 }
@@ -60,6 +62,11 @@ func NewProvider(common *providertypes.Common, translator translation.Translator
 
 	provider.secretController = newSecretController(common, namespaceProvider, apisixProvider, ingressProvider)
 
+	provider.configmap, err = configmap.NewProvider(common)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed, to init configmap provider")
+	}
+
 	return provider, nil
 }
 
@@ -67,14 +74,14 @@ func (p *k8sProvider) Run(ctx context.Context) {
 	e := utils.ParallelExecutor{}
 
 	e.Add(func() {
-		p.secretInformer.Run(ctx.Done())
-	})
-
-	e.Add(func() {
 		p.secretController.run(ctx)
 	})
 	e.Add(func() {
 		p.endpoint.Run(ctx)
+	})
+
+	e.Add(func() {
+		p.configmap.Run(ctx)
 	})
 
 	e.Wait()

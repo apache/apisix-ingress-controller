@@ -94,7 +94,7 @@ func (c *gatewayTCPRouteController) sync(ctx context.Context, ev *types.Event) e
 		}
 		tcpRoute = ev.Tombstone.(*gatewayv1alpha2.TCPRoute)
 	}
-	err = c.controller.validator.ValidateCommonRouteV1Alpha2(tcpRoute)
+	err = c.controller.validator.ValidateCommonRoute(tcpRoute)
 	if err != nil {
 		log.Errorw("failed to validate gateway TCPRoute",
 			zap.Error(err),
