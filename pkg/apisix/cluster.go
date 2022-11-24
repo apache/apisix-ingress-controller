@@ -75,16 +75,18 @@ var (
 
 // ClusterOptions contains parameters to customize APISIX client.
 type ClusterOptions struct {
-	Name     string
-	AdminKey string
-	BaseURL  string
-	Timeout  time.Duration
+	AdminAPIVersion string
+	Name            string
+	AdminKey        string
+	BaseURL         string
+	Timeout         time.Duration
 	// SyncInterval is the interval to sync schema.
 	SyncInterval     types.TimeDuration
 	MetricsCollector metrics.Collector
 }
 
 type cluster struct {
+	adminVersion            string
 	name                    string
 	baseURL                 string
 	baseURLHost             string
@@ -125,11 +127,17 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 		return nil, err
 	}
 
+	// if the version is not v3, then fallback to v2
+	adminVersion := o.AdminAPIVersion
+	if adminVersion != "v3" {
+		adminVersion = "v2"
+	}
 	c := &cluster{
-		name:        o.Name,
-		baseURL:     o.BaseURL,
-		baseURLHost: u.Host,
-		adminKey:    o.AdminKey,
+		adminVersion: adminVersion,
+		name:         o.Name,
+		baseURL:      o.BaseURL,
+		baseURLHost:  u.Host,
+		adminKey:     o.AdminKey,
 		cli: &http.Client{
 			Timeout:   o.Timeout,
 			Transport: _defaultTransport,
@@ -536,7 +544,7 @@ func (c *cluster) isFunctionDisabled(body string) bool {
 	return strings.Contains(body, "is disabled")
 }
 
-func (c *cluster) getResource(ctx context.Context, url, resource string) (*getResponse, error) {
+func (c *cluster) getResource(ctx context.Context, url, resource string) (*item, error) {
 	log.Debugw("get resource in cluster",
 		zap.String("cluster_name", c.name),
 		zap.String("name", resource),
@@ -569,16 +577,25 @@ func (c *cluster) getResource(ctx context.Context, url, resource string) (*getRe
 		return nil, err
 	}
 
+	if c.adminVersion == "v3" {
+		var res item
+
+		dec := json.NewDecoder(resp.Body)
+		if err := dec.Decode(&res); err != nil {
+			return nil, err
+		}
+		return &res, nil
+	}
 	var res getResponse
 
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return &res.Item, nil
 }
 
-func (c *cluster) listResource(ctx context.Context, url, resource string) (*listResponse, error) {
+func (c *cluster) listResource(ctx context.Context, url, resource string) (items, error) {
 	log.Debugw("list resource in cluster",
 		zap.String("cluster_name", c.name),
 		zap.String("name", resource),
@@ -607,16 +624,25 @@ func (c *cluster) listResource(ctx context.Context, url, resource string) (*list
 		return nil, err
 	}
 
+	if c.adminVersion == "v3" {
+		var list listResponseV3
+
+		dec := json.NewDecoder(resp.Body)
+		if err := dec.Decode(&list); err != nil {
+			return nil, err
+		}
+		return list.List, nil
+	}
 	var list listResponse
 
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&list); err != nil {
 		return nil, err
 	}
-	return &list, nil
+	return list.Node.Items, nil
 }
 
-func (c *cluster) createResource(ctx context.Context, url, resource string, body []byte) (*createResponse, error) {
+func (c *cluster) createResource(ctx context.Context, url, resource string, body []byte) (*item, error) {
 	log.Debugw("creating resource in cluster",
 		zap.String("cluster_name", c.name),
 		zap.String("name", resource),
@@ -647,15 +673,25 @@ func (c *cluster) createResource(ctx context.Context, url, resource string, body
 		return nil, err
 	}
 
+	if c.adminVersion == "v3" {
+		var cr createResponseV3
+
+		dec := json.NewDecoder(resp.Body)
+		if err := dec.Decode(&cr); err != nil {
+			return nil, err
+		}
+
+		return &cr.item, nil
+	}
 	var cr createResponse
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&cr); err != nil {
 		return nil, err
 	}
-	return &cr, nil
+	return &cr.Item, nil
 }
 
-func (c *cluster) updateResource(ctx context.Context, url, resource string, body []byte) (*updateResponse, error) {
+func (c *cluster) updateResource(ctx context.Context, url, resource string, body []byte) (*item, error) {
 	log.Debugw("updating resource in cluster",
 		zap.String("cluster_name", c.name),
 		zap.String("name", resource),
@@ -685,12 +721,22 @@ func (c *cluster) updateResource(ctx context.Context, url, resource string, body
 		err = multierr.Append(err, fmt.Errorf("error message: %s", body))
 		return nil, err
 	}
+	if c.adminVersion == "v3" {
+		var ur updateResponseV3
+
+		dec := json.NewDecoder(resp.Body)
+		if err := dec.Decode(&ur); err != nil {
+			return nil, err
+		}
+
+		return &ur.item, nil
+	}
 	var ur updateResponse
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&ur); err != nil {
 		return nil, err
 	}
-	return &ur, nil
+	return &ur.Item, nil
 }
 
 func (c *cluster) deleteResource(ctx context.Context, url, resource string) error {

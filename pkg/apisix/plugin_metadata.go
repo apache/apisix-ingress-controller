@@ -57,12 +57,12 @@ func (r *pluginMetadataClient) Get(ctx context.Context, name string) (*v1.Plugin
 		return nil, err
 	}
 
-	pluginMetadata, err := resp.Item.pluginMetadata()
+	pluginMetadata, err := resp.pluginMetadata()
 	if err != nil {
 		log.Errorw("failed to convert pluginMetadata item",
 			zap.String("url", r.url),
-			zap.String("pluginMetadata_key", resp.Item.Key),
-			zap.String("pluginMetadata_value", string(resp.Item.Value)),
+			zap.String("pluginMetadata_key", resp.Key),
+			zap.String("pluginMetadata_value", string(resp.Value)),
 			zap.Error(err),
 		)
 		return nil, err
@@ -83,7 +83,7 @@ func (r *pluginMetadataClient) List(ctx context.Context) ([]*v1.PluginMetadata, 
 	}
 
 	var items []*v1.PluginMetadata
-	for i, item := range pluginMetadataItems.Node.Items {
+	for i, item := range pluginMetadataItems {
 		pluginMetadata, err := item.pluginMetadata()
 		if err != nil {
 			log.Errorw("failed to convert pluginMetadata item",
@@ -141,7 +141,7 @@ func (r *pluginMetadataClient) Update(ctx context.Context, obj *v1.PluginMetadat
 	if err != nil {
 		return nil, err
 	}
-	pluginMetadata, err := resp.Item.pluginMetadata()
+	pluginMetadata, err := resp.pluginMetadata()
 	if err != nil {
 		return nil, err
 	}

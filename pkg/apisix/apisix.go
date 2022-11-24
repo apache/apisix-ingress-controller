@@ -49,7 +49,7 @@ type Cluster interface {
 	StreamRoute() StreamRoute
 	// GlobalRule returns a GlobalRule interface that can operate GlobalRule resources.
 	GlobalRule() GlobalRule
-	// String exposes the client information in human readable format.
+	// String exposes the client information in human-readable format.
 	String() string
 	// HasSynced checks whether all resources in APISIX cluster is synced to cache.
 	HasSynced(context.Context) error
@@ -172,14 +172,16 @@ type UpstreamServiceRelation interface {
 }
 
 type apisix struct {
+	adminVersion       string
 	mu                 sync.RWMutex
 	nonExistentCluster Cluster
 	clusters           map[string]Cluster
 }
 
 // NewClient creates an APISIX client to perform resources change pushing.
-func NewClient() (APISIX, error) {
+func NewClient(version string) (APISIX, error) {
 	cli := &apisix{
+		adminVersion:       version,
 		nonExistentCluster: newNonExistentCluster(),
 		clusters:           make(map[string]Cluster),
 	}
@@ -216,6 +218,9 @@ func (c *apisix) AddCluster(ctx context.Context, co *ClusterOptions) error {
 	if ok {
 		return ErrDuplicatedCluster
 	}
+	if co.AdminAPIVersion == "" {
+		co.AdminAPIVersion = c.adminVersion
+	}
 	cluster, err := newCluster(ctx, co)
 	if err != nil {
 		return err
@@ -231,6 +236,9 @@ func (c *apisix) UpdateCluster(ctx context.Context, co *ClusterOptions) error {
 		return ErrClusterNotExist
 	}
 
+	if co.AdminAPIVersion == "" {
+		co.AdminAPIVersion = c.adminVersion
+	}
 	cluster, err := newCluster(ctx, co)
 	if err != nil {
 		return err

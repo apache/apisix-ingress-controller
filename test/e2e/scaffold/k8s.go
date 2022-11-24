@@ -44,6 +44,10 @@ type counter struct {
 	Count intOrDescOneString `json:"count"`
 }
 
+type counterV3 struct {
+	Total intOrDescOneString `json:"total"`
+}
+
 // intOrDescOneString will decrease 1 if incoming value is string formatted number
 type intOrDescOneString struct {
 	Value int `json:"value"`
@@ -172,7 +176,7 @@ func (s *Scaffold) CreateResourceFromStringWithNamespace(yaml, namespace string)
 	s.addFinalizers(func() {
 		_ = s.DeleteResourceFromStringWithNamespace(yaml, namespace)
 	})
-	return k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
+	return s.CreateResourceFromString(yaml)
 }
 
 func (s *Scaffold) DeleteResourceFromStringWithNamespace(yaml, namespace string) error {
@@ -202,16 +206,27 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 			ginkgo.GinkgoT().Logf("got status code %d from APISIX", resp.StatusCode)
 			return false, nil
 		}
-		var c counter
+		var count int
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return false, err
 		}
-		err = json.Unmarshal(b, &c)
-		if err != nil {
-			return false, err
+
+		if s.opts.APISIXAdminAPIVersion == "v3" {
+			var c counterV3
+			err = json.Unmarshal(b, &c)
+			if err != nil {
+				return false, err
+			}
+			count = c.Total.Value
+		} else {
+			var c counter
+			err = json.Unmarshal(b, &c)
+			if err != nil {
+				return false, err
+			}
+			count = c.Count.Value
 		}
-		count := c.Count.Value
 		if count != desired {
 			ginkgo.GinkgoT().Logf("mismatched number of items, expected %d but found %d", desired, count)
 			return false, nil
@@ -272,6 +287,9 @@ func (s *Scaffold) EnsureNumApisixTlsCreated(desired int) error {
 		Scheme: "http",
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin/ssl",
+	}
+	if s.opts.APISIXAdminAPIVersion == "v3" {
+		u.Path = "/apisix/admin/ssls"
 	}
 	return s.ensureNumApisixCRDsCreated(u.String(), desired)
 }
@@ -388,6 +406,10 @@ func (s *Scaffold) GetServerInfo() (map[string]interface{}, error) {
 	return ret, nil
 }
 
+func (s *Scaffold) NewAPISIX() (apisix.APISIX, error) {
+	return apisix.NewClient(s.opts.APISIXAdminAPIVersion)
+}
+
 // ListApisixUpstreams list all upstreams from APISIX
 func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 	u := url.URL{
@@ -395,7 +417,7 @@ func (s *Scaffold) ListApisixUpstreams() ([]*v1.Upstream, error) {
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin",
 	}
-	cli, err := apisix.NewClient()
+	cli, err := s.NewAPISIX()
 	if err != nil {
 		return nil, err
 	}
@@ -417,7 +439,7 @@ func (s *Scaffold) ListApisixGlobalRules() ([]*v1.GlobalRule, error) {
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin",
 	}
-	cli, err := apisix.NewClient()
+	cli, err := s.NewAPISIX()
 	if err != nil {
 		return nil, err
 	}
@@ -439,7 +461,7 @@ func (s *Scaffold) ListApisixRoutes() ([]*v1.Route, error) {
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin",
 	}
-	cli, err := apisix.NewClient()
+	cli, err := s.NewAPISIX()
 	if err != nil {
 		return nil, err
 	}
@@ -460,7 +482,7 @@ func (s *Scaffold) ListPluginMetadatas() ([]*v1.PluginMetadata, error) {
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin",
 	}
-	cli, err := apisix.NewClient()
+	cli, err := s.NewAPISIX()
 	if err != nil {
 		return nil, err
 	}
@@ -481,7 +503,7 @@ func (s *Scaffold) ClusterClient() (apisix.Cluster, error) {
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin",
 	}
-	cli, err := apisix.NewClient()
+	cli, err := s.NewAPISIX()
 	if err != nil {
 		return nil, err
 	}
@@ -503,7 +525,7 @@ func (s *Scaffold) ListApisixConsumers() ([]*v1.Consumer, error) {
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "apisix/admin",
 	}
-	cli, err := apisix.NewClient()
+	cli, err := s.NewAPISIX()
 	if err != nil {
 		return nil, err
 	}
@@ -525,7 +547,7 @@ func (s *Scaffold) ListApisixStreamRoutes() ([]*v1.StreamRoute, error) {
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin",
 	}
-	cli, err := apisix.NewClient()
+	cli, err := s.NewAPISIX()
 	if err != nil {
 		return nil, err
 	}
@@ -547,7 +569,7 @@ func (s *Scaffold) ListApisixSsl() ([]*v1.Ssl, error) {
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin",
 	}
-	cli, err := apisix.NewClient()
+	cli, err := s.NewAPISIX()
 	if err != nil {
 		return nil, err
 	}
@@ -569,7 +591,7 @@ func (s *Scaffold) ListApisixPluginConfig() ([]*v1.PluginConfig, error) {
 		Host:   s.apisixAdminTunnel.Endpoint(),
 		Path:   "/apisix/admin",
 	}
-	cli, err := apisix.NewClient()
+	cli, err := s.NewAPISIX()
 	if err != nil {
 		return nil, err
 	}
