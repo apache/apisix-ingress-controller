@@ -20,6 +20,7 @@ package features
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -76,11 +77,11 @@ spec:
 		assert.Len(ginkgo.GinkgoT(), ups, 0, "upstream count")
 	}
 
-	//PhaseValidateNoRoutes := func(s *scaffold.Scaffold) {
-	//routes, err := s.ListApisixRoutes()
-	//assert.Nil(ginkgo.GinkgoT(), err)
-	//assert.Len(ginkgo.GinkgoT(), routes, 0, "route count")
-	//}
+	PhaseValidateNoRoutes := func(s *scaffold.Scaffold) {
+		routes, err := s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), routes, 0, "route count")
+	}
 
 	PhaseValidateFirstUpstream := func(s *scaffold.Scaffold, length int, serviceName, discoveryType string) string {
 		ups, err := s.ListApisixUpstreams()
@@ -249,6 +250,28 @@ spec:
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, fqdn, "dns")
 			PhaseValidateRouteAccess(s, upstreamId)
+		})
+	})
+
+	ginkgo.Describe("delete function: ", func() {
+		ginkgo.It("should be able to delete resources", func() {
+			// -- Data preparation --
+			fqdn := PhaseCreateHttpbin(s, "httpbin-temp")
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", "dns", "httpbin-temp")
+			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
+
+			// -- validation --
+			upstreamId := PhaseValidateFirstUpstream(s, 1, fqdn, "dns")
+			PhaseValidateRouteAccess(s, upstreamId)
+
+			// -- delete --
+			assert.Nil(ginkgo.GinkgoT(), s.DeleteResource("ar", "httpbin-route"), "delete route")
+			assert.Nil(ginkgo.GinkgoT(), s.DeleteResource("au", "httpbin-upstream"), "delete upstream")
+			time.Sleep(time.Second * 15)
+
+			// -- validate --
+			PhaseValidateNoRoutes(s)
+			PhaseValidateNoUpstreams(s)
 		})
 	})
 

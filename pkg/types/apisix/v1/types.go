@@ -192,7 +192,7 @@ type Upstream struct {
 	HashOn  string               `json:"hash_on,omitempty" yaml:"hash_on,omitempty"`
 	Key     string               `json:"key,omitempty" yaml:"key,omitempty"`
 	Checks  *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
-	Nodes   UpstreamNodes        `json:"nodes,omitempty" yaml:"nodes,omitempty"`
+	Nodes   UpstreamNodes        `json:"nodes" yaml:"nodes"`
 	Scheme  string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
 	Retries *int                 `json:"retries,omitempty" yaml:"retries,omitempty"`
 	Timeout *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
@@ -249,6 +249,83 @@ func (n *UpstreamNodes) UnmarshalJSON(p []byte) error {
 	}
 	*n = data
 	return nil
+}
+
+// MarshalJSON is used to implement custom json.MarshalJSON
+func (up Upstream) MarshalJSON() ([]byte, error) {
+
+	if up.DiscoveryType != "" {
+		return json.Marshal(&struct {
+			Metadata `json:",inline" yaml:",inline"`
+
+			Type   string               `json:"type,omitempty" yaml:"type,omitempty"`
+			HashOn string               `json:"hash_on,omitempty" yaml:"hash_on,omitempty"`
+			Key    string               `json:"key,omitempty" yaml:"key,omitempty"`
+			Checks *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
+			//Nodes   UpstreamNodes        `json:"nodes" yaml:"nodes"`
+			Scheme  string           `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+			Retries *int             `json:"retries,omitempty" yaml:"retries,omitempty"`
+			Timeout *UpstreamTimeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+			TLS     *ClientTLS       `json:"tls,omitempty" yaml:"tls,omitempty"`
+
+			// for Service Discovery
+			ServiceName   string            `json:"service_name,omitempty" yaml:"service_name,omitempty"`
+			DiscoveryType string            `json:"discovery_type,omitempty" yaml:"discovery_type,omitempty"`
+			DiscoveryArgs map[string]string `json:"discovery_args,omitempty" yaml:"discovery_args,omitempty"`
+		}{
+			Metadata: up.Metadata,
+
+			Type:   up.Type,
+			HashOn: up.HashOn,
+			Key:    up.Key,
+			Checks: up.Checks,
+			//Nodes:   up.Nodes,
+			Scheme:  up.Scheme,
+			Retries: up.Retries,
+			Timeout: up.Timeout,
+			TLS:     up.TLS,
+
+			ServiceName:   up.ServiceName,
+			DiscoveryType: up.DiscoveryType,
+			DiscoveryArgs: up.DiscoveryArgs,
+		})
+	} else {
+		return json.Marshal(&struct {
+			Metadata `json:",inline" yaml:",inline"`
+
+			Type    string               `json:"type,omitempty" yaml:"type,omitempty"`
+			HashOn  string               `json:"hash_on,omitempty" yaml:"hash_on,omitempty"`
+			Key     string               `json:"key,omitempty" yaml:"key,omitempty"`
+			Checks  *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
+			Nodes   UpstreamNodes        `json:"nodes" yaml:"nodes"`
+			Scheme  string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+			Retries *int                 `json:"retries,omitempty" yaml:"retries,omitempty"`
+			Timeout *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+			TLS     *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
+
+			// for Service Discovery
+			//ServiceName   string            `json:"service_name,omitempty" yaml:"service_name,omitempty"`
+			//DiscoveryType string            `json:"discovery_type,omitempty" yaml:"discovery_type,omitempty"`
+			//DiscoveryArgs map[string]string `json:"discovery_args,omitempty" yaml:"discovery_args,omitempty"`
+		}{
+			Metadata: up.Metadata,
+
+			Type:    up.Type,
+			HashOn:  up.HashOn,
+			Key:     up.Key,
+			Checks:  up.Checks,
+			Nodes:   up.Nodes,
+			Scheme:  up.Scheme,
+			Retries: up.Retries,
+			Timeout: up.Timeout,
+			TLS:     up.TLS,
+
+			//ServiceName:   up.ServiceName,
+			//DiscoveryType: up.DiscoveryType,
+			//DiscoveryArgs: up.DiscoveryArgs,
+		})
+	}
+
 }
 
 func mapKV2Node(key string, val float64) (*UpstreamNode, error) {

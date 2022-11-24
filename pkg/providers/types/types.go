@@ -194,6 +194,10 @@ func (c *Common) SyncUpstreamNodesChangeToCluster(ctx context.Context, cluster a
 		}
 	}
 
+	// Since APISIX's Upstream can support two modes:
+	// * Nodes
+	// * Service discovery
+	// When this logic is executed, the Nodes pattern is used.
 	upstream.Nodes = nodes
 
 	log.Debugw("upstream binds new nodes",
