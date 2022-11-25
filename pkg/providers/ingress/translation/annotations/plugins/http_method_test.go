@@ -26,10 +26,10 @@ import (
 
 // annotations:
 //
-//	k8s.apisix.apache.org/allow-http-method: GET,POST
+//	k8s.apisix.apache.org/allow-http-methods: GET,POST
 func TestAnnotationsHttpAllowMethod(t *testing.T) {
 	anno := map[string]string{
-		annotations.AnnotationsHttpAllowMethod: "GET,POST",
+		annotations.AnnotationsHttpAllowMethods: "GET,POST",
 	}
 	p := NewHttpMethodHandler()
 	out, err := p.Handle(annotations.NewExtractor(anno))
@@ -47,10 +47,10 @@ func TestAnnotationsHttpAllowMethod(t *testing.T) {
 
 // annotations:
 //
-//	k8s.apisix.apache.org/block-http-method: GET,PUT
+//	k8s.apisix.apache.org/block-http-methods: GET,PUT
 func TestAnnotationsHttpBlockMethod(t *testing.T) {
 	anno := map[string]string{
-		annotations.AnnotationsHttpBlockMethod: "GET,PUT",
+		annotations.AnnotationsHttpBlockMethods: "GET,PUT",
 	}
 	p := NewHttpMethodHandler()
 	out, err := p.Handle(annotations.NewExtractor(anno))
@@ -68,14 +68,14 @@ func TestAnnotationsHttpBlockMethod(t *testing.T) {
 
 // annotations:
 //
-//	k8s.apisix.apache.org/allow-http-method: GET
-//	k8s.apisix.apache.org/block-http-method: POST,PUT
+//	k8s.apisix.apache.org/allow-http-methods: GET
+//	k8s.apisix.apache.org/block-http-methods: POST,PUT
 //
 // Only allow methods would be accepted, block methods would be ignored.
 func TestAnnotationsHttpBothMethod(t *testing.T) {
 	anno := map[string]string{
-		annotations.AnnotationsHttpAllowMethod: "GET",
-		annotations.AnnotationsHttpBlockMethod: "POST,PUT",
+		annotations.AnnotationsHttpAllowMethods: "GET",
+		annotations.AnnotationsHttpBlockMethods: "POST,PUT",
 	}
 	p := NewHttpMethodHandler()
 	out, err := p.Handle(annotations.NewExtractor(anno))

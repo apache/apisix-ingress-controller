@@ -35,8 +35,8 @@ func (h HttpMethod) PluginName() string {
 func (h HttpMethod) Handle(e annotations.Extractor) (interface{}, error) {
 	var plugin apisixv1.ResponseRewriteConfig
 
-	allowMethods := e.GetStringsAnnotation(annotations.AnnotationsHttpAllowMethod)
-	blockMethods := e.GetStringsAnnotation(annotations.AnnotationsHttpBlockMethod)
+	allowMethods := e.GetStringsAnnotation(annotations.AnnotationsHttpAllowMethods)
+	blockMethods := e.GetStringsAnnotation(annotations.AnnotationsHttpBlockMethods)
 
 	plugin.StatusCode = 405
 
