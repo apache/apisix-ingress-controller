@@ -492,6 +492,10 @@ type ApisixUpstreamConfig struct {
 	// service versions.
 	// +optional
 	Subsets []ApisixUpstreamSubset `json:"subsets,omitempty" yaml:"subsets,omitempty"`
+
+	// Discovery is used to configure service discovery for upstream.
+	// +optional
+	Discovery *Discovery `json:"discovery,omitempty" yaml:"discovery,omitempty"`
 }
 
 // ApisixUpstreamExternalType is the external service type
@@ -601,6 +605,13 @@ type PassiveHealthCheckUnhealthy struct {
 	HTTPFailures int   `json:"httpFailures,omitempty" yaml:"http_failures,omitempty"`
 	TCPFailures  int   `json:"tcpFailures,omitempty" yaml:"tcpFailures,omitempty"`
 	Timeouts     int   `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+}
+
+// Discovery defines Service discovery related configuration.
+type Discovery struct {
+	ServiceName string            `json:"serviceName" yaml:"serviceName"`
+	Type        string            `json:"type" yaml:"type"`
+	Args        map[string]string `json:"args,omitempty" yaml:"args,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

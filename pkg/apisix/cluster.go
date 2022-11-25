@@ -714,6 +714,10 @@ func (c *cluster) updateResource(ctx context.Context, url, resource string, body
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		body := readBody(resp.Body, url)
+		log.Debugw("update response",
+			zap.Int("status code %d", resp.StatusCode),
+			zap.String("body %s", body),
+		)
 		if c.isFunctionDisabled(body) {
 			return nil, ErrFunctionDisabled
 		}
