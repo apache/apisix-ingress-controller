@@ -15,6 +15,7 @@
 package plugins
 
 import (
+	"github.com/incubator4/go-resty-expr/expr"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,16 +37,11 @@ func TestAnnotationsHttpAllowMethod(t *testing.T) {
 	config := out.(*apisixv1.ResponseRewriteConfig)
 
 	assert.Equal(t, 405, config.StatusCode)
-	assert.Equal(t, []apisixv1.Expr{
-		{ArrayVal: []apisixv1.Expr{
-			{StringVal: "request_method"},
-			{StringVal: "!"},
-			{StringVal: "in"},
-			{ArrayVal: []apisixv1.Expr{
-				{StringVal: "GET"},
-				{StringVal: "POST"},
-			}},
-		}},
+	assert.Equal(t, []expr.Expr{
+		expr.StringExpr("request_method").Not().In(expr.ArrayExpr(
+			expr.StringExpr("GET"),
+			expr.StringExpr("POST"),
+		)),
 	}, config.LuaRestyExpr)
 }
 
@@ -62,15 +58,11 @@ func TestAnnotationsHttpBlockMethod(t *testing.T) {
 	config := out.(*apisixv1.ResponseRewriteConfig)
 
 	assert.Equal(t, 405, config.StatusCode)
-	assert.Equal(t, []apisixv1.Expr{
-		{ArrayVal: []apisixv1.Expr{
-			{StringVal: "request_method"},
-			{StringVal: "in"},
-			{ArrayVal: []apisixv1.Expr{
-				{StringVal: "GET"},
-				{StringVal: "PUT"},
-			}},
-		}},
+	assert.Equal(t, []expr.Expr{
+		expr.StringExpr("request_method").In(expr.ArrayExpr(
+			expr.StringExpr("GET"),
+			expr.StringExpr("PUT"),
+		)),
 	}, config.LuaRestyExpr)
 }
 
@@ -91,14 +83,9 @@ func TestAnnotationsHttpBothMethod(t *testing.T) {
 	config := out.(*apisixv1.ResponseRewriteConfig)
 
 	assert.Equal(t, 405, config.StatusCode)
-	assert.Equal(t, []apisixv1.Expr{
-		{ArrayVal: []apisixv1.Expr{
-			{StringVal: "request_method"},
-			{StringVal: "!"},
-			{StringVal: "in"},
-			{ArrayVal: []apisixv1.Expr{
-				{StringVal: "GET"},
-			}},
-		}},
+	assert.Equal(t, []expr.Expr{
+		expr.StringExpr("request_method").Not().In(expr.ArrayExpr(
+			expr.StringExpr("GET"),
+		)),
 	}, config.LuaRestyExpr)
 }

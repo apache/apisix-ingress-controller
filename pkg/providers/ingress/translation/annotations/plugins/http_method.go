@@ -17,6 +17,7 @@ package plugins
 import (
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/incubator4/go-resty-expr/expr"
 )
 
 type HttpMethod struct{}
@@ -38,42 +39,19 @@ func (h HttpMethod) Handle(e annotations.Extractor) (interface{}, error) {
 	blockMethods := e.GetStringsAnnotation(annotations.AnnotationsHttpBlockMethod)
 
 	plugin.StatusCode = 405
-	var methodExpr = []apisixv1.Expr{}
 
 	if len(allowMethods) > 0 {
-		//plugin.LuaRestyExpr = []interface{}{
-		//	[]interface{}{
-		//		"request_method", "!", "in", allowMethods,
-		//	},
-		//}
-		for _, method := range allowMethods {
-			methodExpr = append(methodExpr, apisixv1.Expr{StringVal: method})
-		}
-
-		plugin.LuaRestyExpr = []apisixv1.Expr{
-			{
-				ArrayVal: []apisixv1.Expr{
-					{StringVal: "request_method"},
-					{StringVal: "!"},
-					{StringVal: "in"},
-					{ArrayVal: methodExpr},
-				},
-			},
+		plugin.LuaRestyExpr = []expr.Expr{
+			expr.StringExpr("request_method").Not().In(
+				expr.ArrayExpr(expr.ExprArrayFromStrings(allowMethods)...),
+			),
 		}
 
 	} else if len(blockMethods) > 0 {
-		for _, method := range blockMethods {
-			methodExpr = append(methodExpr, apisixv1.Expr{StringVal: method})
-		}
-
-		plugin.LuaRestyExpr = []apisixv1.Expr{
-			{
-				ArrayVal: []apisixv1.Expr{
-					{StringVal: "request_method"},
-					{StringVal: "in"},
-					{ArrayVal: methodExpr},
-				},
-			},
+		plugin.LuaRestyExpr = []expr.Expr{
+			expr.StringExpr("request_method").In(
+				expr.ArrayExpr(expr.ExprArrayFromStrings(blockMethods)...),
+			),
 		}
 
 	} else {
