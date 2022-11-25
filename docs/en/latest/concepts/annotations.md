@@ -99,19 +99,22 @@ k8s.apisix.apache.org/blocklist-source-range: "127.0.0.1,172.17.0.0/16"
 
 The default value is empty which means no IP addresses are blocked.
 
-## Allow http method
+## Customized http methods
+
+> `http-allow-methods` and `http-block-methods` are mutually exclusive.
+> If they're both set, only `http-allow-methods` works
+
+### Allow http methods
 
 This annotation can be used to specify which http method are allowed. Multiple methods can also be specified by separating them with commas.
 
 ```yaml
-k8s.apisix.apache.org/http-allow-method: "GET,POST"
+k8s.apisix.apache.org/http-allow-methods: "GET,POST"
 ```
 
 The default value is empty which means all methods are allowed.
 
-## Block http method
-
-> `http-block-method` would be ignored while `http-allow-method` is also set.
+### Block http methods
 
 This annotation can be used to specify which http method are blocked. Multiple methods can also be specified by separating them with commas.
 
