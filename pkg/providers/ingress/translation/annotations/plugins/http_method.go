@@ -18,6 +18,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/incubator4/go-resty-expr/expr"
+	"net/http"
 )
 
 type HttpMethod struct{}
@@ -38,7 +39,7 @@ func (h HttpMethod) Handle(e annotations.Extractor) (interface{}, error) {
 	allowMethods := e.GetStringsAnnotation(annotations.AnnotationsHttpAllowMethods)
 	blockMethods := e.GetStringsAnnotation(annotations.AnnotationsHttpBlockMethods)
 
-	plugin.StatusCode = 405
+	plugin.StatusCode = http.StatusMethodNotAllowed
 
 	if len(allowMethods) > 0 {
 		plugin.LuaRestyExpr = []expr.Expr{

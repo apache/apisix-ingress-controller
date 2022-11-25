@@ -16,6 +16,7 @@ package plugins
 
 import (
 	"github.com/incubator4/go-resty-expr/expr"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,7 +37,7 @@ func TestAnnotationsHttpAllowMethod(t *testing.T) {
 	assert.Nil(t, err, "checking given error")
 	config := out.(*apisixv1.ResponseRewriteConfig)
 
-	assert.Equal(t, 405, config.StatusCode)
+	assert.Equal(t, http.StatusMethodNotAllowed, config.StatusCode)
 	assert.Equal(t, []expr.Expr{
 		expr.StringExpr("request_method").Not().In(expr.ArrayExpr(
 			expr.StringExpr("GET"),
@@ -82,7 +83,7 @@ func TestAnnotationsHttpBothMethod(t *testing.T) {
 	assert.Nil(t, err, "checking given error")
 	config := out.(*apisixv1.ResponseRewriteConfig)
 
-	assert.Equal(t, 405, config.StatusCode)
+	assert.Equal(t, http.StatusMethodNotAllowed, config.StatusCode)
 	assert.Equal(t, []expr.Expr{
 		expr.StringExpr("request_method").Not().In(expr.ArrayExpr(
 			expr.StringExpr("GET"),
