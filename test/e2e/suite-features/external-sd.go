@@ -20,6 +20,7 @@ package features
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -203,7 +204,14 @@ spec:
 		Name:                  "default",
 		IngressAPISIXReplicas: 1,
 		ApisixResourceVersion: config.ApisixV2,
-		APISIXConfigPath:      "testdata/apisix-gw-config-with-sd.yaml",
+	}
+
+	adminVersion := os.Getenv("APISIX_ADMIN_API_VERSION")
+	if adminVersion == "v3" {
+		opts.APISIXConfigPath = "testdata/apisix-gw-config-v3-with-sd.yaml"
+	} else {
+		// fallback to v2
+		opts.APISIXConfigPath = "testdata/apisix-gw-config-with-sd.yaml"
 	}
 
 	s := scaffold.NewScaffold(opts)
