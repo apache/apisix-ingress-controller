@@ -19,6 +19,7 @@
 
 # Table of Contents
 
+- [1.5.1](#151)
 - [1.5.0](#150)
 - [1.5.0-rc1](#150-rc1)
 - [1.4.1](#141)
@@ -33,6 +34,38 @@
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 1.5.1
+
+Welcome to the 1.5.1 release of apisix-ingress-controller!
+
+This is a Patch version release.
+
+Please try out the release binaries and report any issues at
+https://github.com/apache/apisix-ingress-controller/issues.
+
+### Contributors
+
+* Jintao Zhang
+* Young
+
+### Changes
+<details><summary>5 commits</summary>
+<p>
+
+* [`93930b7`](https://github.com/apache/apisix-ingress-controller/commit/93930b7b2e2c3cb465d303194abb40c66405ed6a) bug: failed to reflect pluginConfig delete to cache(#1439) (#1470)
+* [`97e417b`](https://github.com/apache/apisix-ingress-controller/commit/97e417b8d9c66df655c0e9a6d0c7f9ebbce63757) fix: cluster.metricsCollector invoked before assign when MountWebhooks (#1428) (#1469)
+* [`a288408`](https://github.com/apache/apisix-ingress-controller/commit/a288408ef71b7e7c456ba7e178013eefba8ee21c) cherry-pick #1331: fix: Using different protocols at the same time in ApisixUpstream (#1464)
+* [`dd5acd3`](https://github.com/apache/apisix-ingress-controller/commit/dd5acd3b94321a54552e6f50c80cd61e6a97960d) docs: fix `server-secret.yaml` link in `mtls.md` (#1434)
+* [`21f39e9`](https://github.com/apache/apisix-ingress-controller/commit/21f39e966dedb0765a9848302f8cb713aa461cfe) fix: handle v2 ApisixPluginConfig status (#1409)
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
+Previous release can be found at [1.5.0](https://github.com/apache/apisix-ingress-controller/releases/tag/1.5.0)
 
 # 1.5.0
 
