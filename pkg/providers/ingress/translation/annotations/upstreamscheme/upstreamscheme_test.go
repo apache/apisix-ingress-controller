@@ -15,35 +15,24 @@
 package upstreamscheme
 
 import (
-	"fmt"
+	"testing"
 
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
+	"github.com/stretchr/testify/assert"
 )
 
-type upstreamscheme struct{}
-
-func NewParser() annotations.IngressAnnotationsParser {
-	return &upstreamscheme{}
-}
-
-// string in slice
-func inSchemes(a string) bool {
-	list := []string{"http", "https", "grpc", "grpcs"}
-
-	for _, b := range list {
-		if b == a {
-			return true
-		}
+func TestIPRestrictionHandler(t *testing.T) {
+	anno := map[string]string{
+		annotations.AnnotationsUpstreamScheme: "grpcs",
 	}
-	return false
-}
+	u := NewParser()
 
-func (w *upstreamscheme) Parse(e annotations.Extractor) (interface{}, error) {
-	scheme := e.GetStringAnnotation(annotations.AnnotationsUpstreamScheme)
+	out, err := u.Parse(annotations.NewExtractor(anno))
+	assert.Nil(t, err, "checking given error")
+	assert.Equal(t, "grpcs", out)
 
-	if inSchemes(scheme) {
-		return scheme, nil
-	}
-
-	return nil, fmt.Errorf("scheme %s is not supported, Only { http, https, grpc, grpcs } are supported", scheme)
+	anno[annotations.AnnotationsUpstreamScheme] = "nothing"
+	out, err = u.Parse(annotations.NewExtractor(anno))
+	assert.NotNil(t, err, "checking given error")
+	assert.Nil(t, out, "checking given output")
 }
