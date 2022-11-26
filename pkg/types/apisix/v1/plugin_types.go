@@ -16,6 +16,7 @@ package v1
 
 import (
 	"encoding/json"
+
 	"github.com/incubator4/go-resty-expr/expr"
 )
 

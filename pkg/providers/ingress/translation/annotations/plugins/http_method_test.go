@@ -15,7 +15,6 @@
 package plugins
 
 import (
-	"github.com/incubator4/go-resty-expr/expr"
 	"net/http"
 	"testing"
 
@@ -23,6 +22,8 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+
+	"github.com/incubator4/go-resty-expr/expr"
 )
 
 // annotations:
