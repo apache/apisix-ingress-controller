@@ -55,8 +55,14 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusMethodNotAllowed)
+		respGet := s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect()
+		respGet.Status(http.StatusMethodNotAllowed)
+
+		respPost := s.NewAPISIXClient().POST("/post").WithHeader("Host", "httpbin.org").Expect()
+		respPost.Status(http.StatusOK)
+
+		respPut := s.NewAPISIXClient().PUT("/put").WithHeader("Host", "httpbin.org").Expect()
+		respPut.Status(http.StatusOK)
 	})
 
 	ginkgo.It("enable in ingress networking/v1beta1", func() {
@@ -84,8 +90,14 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusMethodNotAllowed)
+		respGet := s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect()
+		respGet.Status(http.StatusMethodNotAllowed)
+
+		respPost := s.NewAPISIXClient().POST("/post").WithHeader("Host", "httpbin.org").Expect()
+		respPost.Status(http.StatusOK)
+
+		respPut := s.NewAPISIXClient().PUT("/put").WithHeader("Host", "httpbin.org").Expect()
+		respPut.Status(http.StatusOK)
 	})
 
 	ginkgo.It("enable in ingress extensions/v1beta1", func() {
@@ -113,8 +125,14 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusMethodNotAllowed)
+		respGet := s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect()
+		respGet.Status(http.StatusMethodNotAllowed)
+
+		respPost := s.NewAPISIXClient().POST("/post").WithHeader("Host", "httpbin.org").Expect()
+		respPost.Status(http.StatusOK)
+
+		respPut := s.NewAPISIXClient().PUT("/put").WithHeader("Host", "httpbin.org").Expect()
+		respPut.Status(http.StatusOK)
 	})
 })
 
@@ -148,8 +166,14 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusMethodNotAllowed)
+		respGet := s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect()
+		respGet.Status(http.StatusOK)
+
+		respPost := s.NewAPISIXClient().POST("/post").WithHeader("Host", "httpbin.org").Expect()
+		respPost.Status(http.StatusMethodNotAllowed)
+
+		respPut := s.NewAPISIXClient().PUT("/put").WithHeader("Host", "httpbin.org").Expect()
+		respPut.Status(http.StatusMethodNotAllowed)
 	})
 
 	ginkgo.It("enable in ingress networking/v1beta1", func() {
@@ -177,8 +201,14 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusMethodNotAllowed)
+		respGet := s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect()
+		respGet.Status(http.StatusOK)
+
+		respPost := s.NewAPISIXClient().POST("/post").WithHeader("Host", "httpbin.org").Expect()
+		respPost.Status(http.StatusMethodNotAllowed)
+
+		respPut := s.NewAPISIXClient().PUT("/put").WithHeader("Host", "httpbin.org").Expect()
+		respPut.Status(http.StatusMethodNotAllowed)
 	})
 
 	ginkgo.It("enable in ingress extensions/v1beta1", func() {
@@ -206,7 +236,13 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusMethodNotAllowed)
+		respGet := s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect()
+		respGet.Status(http.StatusOK)
+
+		respPost := s.NewAPISIXClient().POST("/post").WithHeader("Host", "httpbin.org").Expect()
+		respPost.Status(http.StatusMethodNotAllowed)
+
+		respPut := s.NewAPISIXClient().PUT("/put").WithHeader("Host", "httpbin.org").Expect()
+		respPut.Status(http.StatusMethodNotAllowed)
 	})
 })
