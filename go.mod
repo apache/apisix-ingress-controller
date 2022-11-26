@@ -19,11 +19,12 @@ require (
 	golang.org/x/net v0.0.0-20220725212005-46097bf591d3
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.25.3
-	k8s.io/apimachinery v0.25.3
-	k8s.io/client-go v0.25.3
-	k8s.io/code-generator v0.25.3
-	sigs.k8s.io/gateway-api v0.4.0
+	k8s.io/api v0.25.4
+	k8s.io/apimachinery v0.25.4
+	k8s.io/client-go v0.25.4
+	k8s.io/code-generator v0.25.4
+	sigs.k8s.io/gateway-api v0.5.1
+	sigs.k8s.io/yaml v1.3.0
 )
 
 require (
@@ -87,5 +88,4 @@ require (
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
-	sigs.k8s.io/yaml v1.3.0 // indirect
 )

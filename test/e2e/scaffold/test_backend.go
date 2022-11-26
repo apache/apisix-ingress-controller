@@ -170,10 +170,10 @@ spec:
 
 func (s *Scaffold) newTestBackend() (*corev1.Service, error) {
 	backendDeployment := fmt.Sprintf(s.FormatRegistry(_testBackendDeploymentTemplate), 1)
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, backendDeployment); err != nil {
+	if err := s.CreateResourceFromString(backendDeployment); err != nil {
 		return nil, err
 	}
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, _testBackendService); err != nil {
+	if err := s.CreateResourceFromString(_testBackendService); err != nil {
 		return nil, err
 	}
 	svc, err := k8s.GetServiceE(s.t, s.kubectlOptions, "test-backend-service-e2e-test")
@@ -185,10 +185,10 @@ func (s *Scaffold) newTestBackend() (*corev1.Service, error) {
 
 // NewCoreDNSService creates a new UDP backend for testing.
 func (s *Scaffold) NewCoreDNSService() *corev1.Service {
-	err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, _udpDeployment)
+	err := s.CreateResourceFromString(_udpDeployment)
 	assert.Nil(ginkgo.GinkgoT(), err, "failed to create CoreDNS deployment")
 
-	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, _udpService)
+	err = s.CreateResourceFromString(_udpService)
 	assert.Nil(ginkgo.GinkgoT(), err, "failed to create CoreDNS service")
 
 	s.EnsureNumEndpointsReady(ginkgo.GinkgoT(), "coredns", 1)

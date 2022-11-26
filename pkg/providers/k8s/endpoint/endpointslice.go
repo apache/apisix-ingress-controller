@@ -239,7 +239,7 @@ func (c *endpointSliceController) onDelete(obj interface{}) {
 		// controller.
 		return
 	}
-	log.Debugw("endpoints delete event arrived",
+	log.Debugw("endpointSlice delete event arrived",
 		zap.Any("object-key", key),
 	)
 	c.workqueue.Add(&types.Event{

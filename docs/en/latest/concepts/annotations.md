@@ -114,11 +114,11 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/rewrite-target-regex: "/app/(.*)"
     k8s.apisix.apache.org/rewrite-target-regex-template: "/$1"
   name: ingress-v1
 spec:
+  ingressClassName: apisix
   rules:
     - host: httpbin.org
       http:
@@ -143,10 +143,10 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/http-to-https: "true"
   name: ingress-v1
 spec:
+  ingressClassName: apisix
   rules:
     - host: httpbin.org
       http:
@@ -171,10 +171,10 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/use-regex: "true"
   name: ingress-v1
 spec:
+  ingressClassName: apisix
   rules:
     - host: httpbin.org
       http:
@@ -206,10 +206,10 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/enable-websocket: "true"
   name: ingress-v1
 spec:
+  ingressClassName: apisix
   rules:
     - host: httpbin.org
       http:
@@ -253,10 +253,10 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/plugin-config-name: "echo-and-cors-apc"
   name: ingress-v1
 spec:
+  ingressClassName: apisix
   rules:
     - host: httpbin.org
       http:

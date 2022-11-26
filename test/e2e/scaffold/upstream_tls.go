@@ -17,8 +17,6 @@ package scaffold
 
 import (
 	"fmt"
-
-	"github.com/gruntwork-io/terratest/modules/k8s"
 )
 
 var (
@@ -38,7 +36,7 @@ spec:
 // NewApisixUpstreamsWithMTLS new a ApisixUpstreams CRD
 func (s *Scaffold) NewApisixUpstreamsWithMTLS(name, scheme, secretName string) error {
 	tls := fmt.Sprintf(_apisixUpstreamsWithMTLSTemplate, name, scheme, secretName, s.Namespace())
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, tls); err != nil {
+	if err := s.CreateResourceFromString(tls); err != nil {
 		return err
 	}
 	return nil

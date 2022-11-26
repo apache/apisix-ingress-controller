@@ -87,12 +87,12 @@ func (pc *pluginConfigClient) Get(ctx context.Context, name string) (*v1.PluginC
 		return nil, err
 	}
 
-	pluginConfig, err = resp.Item.pluginConfig()
+	pluginConfig, err = resp.pluginConfig()
 	if err != nil {
 		log.Errorw("failed to convert pluginConfig item",
 			zap.String("url", pc.url),
-			zap.String("pluginConfig_key", resp.Item.Key),
-			zap.String("pluginConfig_value", string(resp.Item.Value)),
+			zap.String("pluginConfig_key", resp.Key),
+			zap.String("pluginConfig_value", string(resp.Value)),
 			zap.Error(err),
 		)
 		return nil, err
@@ -120,7 +120,7 @@ func (pc *pluginConfigClient) List(ctx context.Context) ([]*v1.PluginConfig, err
 	}
 
 	var items []*v1.PluginConfig
-	for i, item := range pluginConfigItems.Node.Items {
+	for i, item := range pluginConfigItems {
 		pluginConfig, err := item.pluginConfig()
 		if err != nil {
 			log.Errorw("failed to convert pluginConfig item",
@@ -164,7 +164,7 @@ func (pc *pluginConfigClient) Create(ctx context.Context, obj *v1.PluginConfig) 
 		return nil, err
 	}
 
-	pluginConfig, err := resp.Item.pluginConfig()
+	pluginConfig, err := resp.pluginConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +222,7 @@ func (pc *pluginConfigClient) Update(ctx context.Context, obj *v1.PluginConfig) 
 	if err != nil {
 		return nil, err
 	}
-	pluginConfig, err := resp.Item.pluginConfig()
+	pluginConfig, err := resp.pluginConfig()
 	if err != nil {
 		return nil, err
 	}

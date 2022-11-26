@@ -39,7 +39,7 @@ spec:
 // NewApisixClusterConfig creates an ApisixClusterConfig CRD
 func (s *Scaffold) NewApisixClusterConfig(name string, enable bool) error {
 	cc := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.ApisixResourceVersion, name, enable)
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, cc); err != nil {
+	if err := s.CreateResourceFromString(cc); err != nil {
 		return err
 	}
 	time.Sleep(5 * time.Second)

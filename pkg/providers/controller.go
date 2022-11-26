@@ -94,7 +94,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	if podNamespace == "" {
 		podNamespace = "default"
 	}
-	client, err := apisix.NewClient()
+	client, err := apisix.NewClient(cfg.APISIX.AdminAPIVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -279,6 +279,7 @@ func (c *Controller) run(ctx context.Context) {
 	defer c.leaderContextCancelFunc()
 
 	clusterOpts := &apisix.ClusterOptions{
+		AdminAPIVersion:  c.cfg.APISIX.AdminAPIVersion,
 		Name:             c.cfg.APISIX.DefaultClusterName,
 		AdminKey:         c.cfg.APISIX.DefaultClusterAdminKey,
 		BaseURL:          c.cfg.APISIX.DefaultClusterBaseURL,
