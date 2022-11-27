@@ -162,7 +162,7 @@ spec:
       port: %d
 `, crossName, gatewayName, s.Namespace(), httpService.Name, httpService.Spec.Ports[0].Port)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(httpRoute, crossName), "createing cross-namespace http route")
-		time.Sleep(time.Second * 3)
+		time.Sleep(time.Second * 5)
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
 	})
 
