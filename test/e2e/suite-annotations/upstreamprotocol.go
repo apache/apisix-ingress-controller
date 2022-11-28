@@ -59,6 +59,41 @@ spec:
 	})
 })
 
+var _ = ginkgo.Describe("suite-annotations-error: annotations.networking/v1 upstream scheme error", func() {
+	s := scaffold.NewDefaultScaffold()
+	ginkgo.It("sanity", func() {
+		ing := `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/upstream-scheme: nothing
+  name: ingress-v1
+spec:
+  rules:
+  - host: e2e.apisix.local
+    http:
+      paths:
+      - path: /helloworld.Greeter/SayHello
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: test-backend-service-e2e-test
+            port:
+              number: 50053
+`
+		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		time.Sleep(2 * time.Second)
+		ups, err := s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), ups, 1)
+		assert.Equal(ginkgo.GinkgoT(), ups[0].Scheme, "http")
+	})
+})
+
 var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1beta1 upstream scheme", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("sanity", func() {
