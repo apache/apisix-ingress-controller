@@ -43,8 +43,8 @@ spec:
   - host: httpbin.org
     http:
       paths:
-      - path: /ip
-        pathType: Exact
+      - path: /*
+        pathType: Prefix
         backend:
           service:
             name: %s
@@ -80,8 +80,8 @@ spec:
   - host: httpbin.org
     http:
       paths:
-      - path: /ip
-        pathType: Exact
+      - path: /*
+        pathType: Prefix
         backend:
           serviceName: %s
           servicePort: %d
@@ -115,8 +115,8 @@ spec:
   - host: httpbin.org
     http:
       paths:
-      - path: /ip
-        pathType: Exact
+      - path: /*
+        pathType: Prefix
         backend:
           serviceName: %s
           servicePort: %d
@@ -154,8 +154,8 @@ spec:
   - host: httpbin.org
     http:
       paths:
-      - path: /ip
-        pathType: Exact
+      - path: /*
+        pathType: Prefix
         backend:
           service:
             name: %s
@@ -191,8 +191,8 @@ spec:
   - host: httpbin.org
     http:
       paths:
-      - path: /ip
-        pathType: Exact
+      - path: /*
+        pathType: Prefix
         backend:
           serviceName: %s
           servicePort: %d
@@ -226,8 +226,8 @@ spec:
   - host: httpbin.org
     http:
       paths:
-      - path: /ip
-        pathType: Exact
+      - path: /*
+        pathType: Prefix
         backend:
           serviceName: %s
           servicePort: %d
