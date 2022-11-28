@@ -35,7 +35,7 @@ var schemeMap map[string]int = map[string]int{
 }
 
 func (w *upstreamscheme) Parse(e annotations.Extractor) (interface{}, error) {
-	scheme := e.GetStringAnnotation(annotations.AnnotationsUpstreamScheme)
+	scheme := strings.ToLower(e.GetStringAnnotation(annotations.AnnotationsUpstreamScheme))
 	_, ok := schemeMap[scheme]
 	if ok {
 		return scheme, nil

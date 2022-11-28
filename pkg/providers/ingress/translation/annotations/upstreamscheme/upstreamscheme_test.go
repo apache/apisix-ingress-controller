@@ -31,6 +31,11 @@ func TestIPRestrictionHandler(t *testing.T) {
 	assert.Nil(t, err, "checking given error")
 	assert.Equal(t, "grpcs", out)
 
+	anno[annotations.AnnotationsUpstreamScheme] = "gRPC"
+	out, err = u.Parse(annotations.NewExtractor(anno))
+	assert.Nil(t, err, "checking given error")
+	assert.Equal(t, "grpc", out)
+
 	anno[annotations.AnnotationsUpstreamScheme] = "nothing"
 	out, err = u.Parse(annotations.NewExtractor(anno))
 	assert.NotNil(t, err, "checking given error")
