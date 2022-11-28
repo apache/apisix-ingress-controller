@@ -16,6 +16,7 @@ package upstreamscheme
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 )
@@ -26,24 +27,24 @@ func NewParser() annotations.IngressAnnotationsParser {
 	return &upstreamscheme{}
 }
 
-// string in slice
-func inSchemes(a string) bool {
-	list := []string{"http", "https", "grpc", "grpcs"}
-
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
+var schemeMap map[string]int = map[string]int{
+	"http":  1,
+	"https": 2,
+	"grpc":  3,
+	"grpcs": 4,
 }
 
 func (w *upstreamscheme) Parse(e annotations.Extractor) (interface{}, error) {
 	scheme := e.GetStringAnnotation(annotations.AnnotationsUpstreamScheme)
-
-	if inSchemes(scheme) {
+	_, ok := schemeMap[scheme]
+	if ok {
 		return scheme, nil
 	}
 
-	return nil, fmt.Errorf("scheme %s is not supported, Only { http, https, grpc, grpcs } are supported", scheme)
+	keys := make([]string, 0, len(schemeMap))
+	for key := range schemeMap {
+		keys = append(keys, key)
+	}
+
+	return nil, fmt.Errorf("scheme %s is not supported, Only { %s } are supported", scheme, strings.Join(keys, ", "))
 }
