@@ -30,7 +30,10 @@ Note: Before upgrading APISIX Ingress, you need to update the corresponding CRD 
 1. Update Helm repo
 
 Before upgrading, you need to update the helm repo to ensure that the resources in the repo are up to date.
+
+```sh
 helm repo update
+```
 
 2. Upgrade CRDs
 
