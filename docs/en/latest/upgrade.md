@@ -42,7 +42,8 @@ When the CRD exists, Helm Chart will not automatically update the CRD when upgra
 helm show crds apisix/apisix-ingress-controller | kubectl apply -f -
 ```
 
-> If the Helm version does not support it, you need to obtain it from the apisix-helm-chart repository.
+> If the Helm version does not support it, you need to obtain it from the [apisix-helm-chart](https://github.com/apache/apisix-helm-chart) repository.
+> Directory: `charts/apisix-ingress-controller/crds/customresourcedefinitions.yaml`
 >
 > ```sh
 > kubectl apply -f  https://raw.githubusercontent.com/apache/apisix-helm-chart/apisix-0.11.1/charts/apisix-ingress-controller/crds/customresourcedefinitions.yaml
@@ -64,7 +65,7 @@ helm upgrade apisix apisix/apisix \
 
 It is recommended not to upgrade across major versions.
 
-### 1.4 -> 1.5 -> 1.6
+#### 1.4 -> 1.5 -> 1.6
 
 Compatible with upgrades without changing any resources.
 
