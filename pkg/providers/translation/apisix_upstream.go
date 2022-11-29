@@ -59,6 +59,9 @@ func (t *translator) TranslateUpstreamConfigV2(au *configv2.ApisixUpstreamConfig
 	if err := t.translateClientTLSV2(au.TLSSecret, ups); err != nil {
 		return nil, err
 	}
+	if err := t.translateUpstreamDiscovery(au.Discovery, ups); err != nil {
+		return nil, err
+	}
 	return ups, nil
 }
 
@@ -422,6 +425,17 @@ func (t *translator) translateUpstreamRetriesAndTimeoutV2(retries *int, timeout 
 		Send:    sendTimeout,
 		Read:    readTimeout,
 	}
+	return nil
+}
+
+func (t *translator) translateUpstreamDiscovery(discovery *configv2.Discovery, ups *apisixv1.Upstream) error {
+	if discovery == nil {
+		return nil
+	}
+	ups.ServiceName = discovery.ServiceName
+	ups.DiscoveryType = discovery.Type
+	ups.DiscoveryArgs = discovery.Args
+
 	return nil
 }
 

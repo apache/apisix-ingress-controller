@@ -647,6 +647,13 @@ func (in *Upstream) DeepCopyInto(out *Upstream) {
 		*out = new(ClientTLS)
 		**out = **in
 	}
+	if in.DiscoveryArgs != nil {
+		in, out := &in.DiscoveryArgs, &out.DiscoveryArgs
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 

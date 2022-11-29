@@ -283,7 +283,8 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 			return nil
 		}
 
-		if len(au.Spec.ExternalNodes) != 0 {
+		// We will prioritize ExternalNodes and Discovery.
+		if len(au.Spec.ExternalNodes) != 0 || au.Spec.Discovery != nil {
 			var newUps *apisixv1.Upstream
 			if ev.Type != types.EventDelete {
 				cfg := &au.Spec.ApisixUpstreamConfig
@@ -299,12 +300,19 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 				}
 			}
 
-			err := c.updateExternalNodes(ctx, au, nil, newUps)
-			if err != nil {
-				return err
+			if len(au.Spec.ExternalNodes) != 0 {
+				return c.updateExternalNodes(ctx, au, nil, newUps, au.Namespace, au.Name)
 			}
 
-			return nil
+			// for service discovery related configuration
+			if au.Spec.Discovery.ServiceName == "" || au.Spec.Discovery.Type == "" {
+				log.Error("If you setup Discovery for ApisixUpstream, you need to specify the ServiceName and Type fields.")
+				return fmt.Errorf("No ServiceName or Type fields found")
+			}
+			// updateUpstream for real
+			upsName := apisixv1.ComposeExternalUpstreamName(au.Namespace, au.Name)
+			return c.updateUpstream(ctx, upsName, &au.Spec.ApisixUpstreamConfig)
+
 		}
 
 		var portLevelSettings map[int32]configv2.ApisixUpstreamConfig
@@ -328,69 +336,27 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 		if len(au.Spec.Subsets) > 0 {
 			subsets = append(subsets, au.Spec.Subsets...)
 		}
-		clusterName := c.Config.APISIX.DefaultClusterName
 		for _, port := range svc.Spec.Ports {
 			for _, subset := range subsets {
-				// TODO: multiple cluster
-				update := func(upsName string) error {
-					ups, err := c.APISIX.Cluster(clusterName).Upstream().Get(ctx, upsName)
-					if err != nil {
-						if err == apisixcache.ErrNotFound {
-							return nil
-						}
-						log.Errorf("failed to get upstream %s: %s", upsName, err)
-						c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-						c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
-						return err
+				var cfg configv2.ApisixUpstreamConfig
+				if ev.Type != types.EventDelete {
+					var ok bool
+					cfg, ok = portLevelSettings[port.Port]
+					if !ok {
+						cfg = au.Spec.ApisixUpstreamConfig
 					}
-					var newUps *apisixv1.Upstream
-					if ev.Type != types.EventDelete {
-						cfg, ok := portLevelSettings[port.Port]
-						if !ok {
-							cfg = au.Spec.ApisixUpstreamConfig
-						}
-						// FIXME Same ApisixUpstreamConfig might be translated multiple times.
-						newUps, err = c.translator.TranslateUpstreamConfigV2(&cfg)
-						if err != nil {
-							log.Errorw("ApisixUpstream conversion cannot be completed, or the format is incorrect",
-								zap.Any("object", au),
-								zap.Error(err),
-							)
-							c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-							c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
-							return err
-						}
-					} else {
-						newUps = apisixv1.NewDefaultUpstream()
-					}
-
-					newUps.Metadata = ups.Metadata
-					newUps.Nodes = ups.Nodes
-					log.Debugw("updating upstream since ApisixUpstream changed",
-						zap.String("event", ev.Type.String()),
-						zap.Any("upstream", newUps),
-						zap.Any("ApisixUpstream", au),
-					)
-					if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, newUps); err != nil {
-						log.Errorw("failed to update upstream",
-							zap.Error(err),
-							zap.Any("upstream", newUps),
-							zap.Any("ApisixUpstream", au),
-							zap.String("cluster", clusterName),
-						)
-						c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-						c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
-						return err
-					}
-					return nil
 				}
 
-				err := update(apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Endpoint))
+				err := c.updateUpstream(ctx, apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Endpoint), &cfg)
 				if err != nil {
+					c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+					c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 					return err
 				}
-				err = update(apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Service))
+				err = c.updateUpstream(ctx, apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Service), &cfg)
 				if err != nil {
+					c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+					c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 					return err
 				}
 			}
@@ -404,13 +370,56 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 	return err
 }
 
-func (c *apisixUpstreamController) updateExternalNodes(ctx context.Context, au *configv2.ApisixUpstream, old *configv2.ApisixUpstream, newUps *apisixv1.Upstream) error {
+func (c *apisixUpstreamController) updateUpstream(ctx context.Context, upsName string, cfg *configv2.ApisixUpstreamConfig) error {
+	// TODO: multi cluster
+	clusterName := c.Config.APISIX.DefaultClusterName
+
+	ups, err := c.APISIX.Cluster(clusterName).Upstream().Get(ctx, upsName)
+	if err != nil {
+		if err == apisixcache.ErrNotFound {
+			return nil
+		}
+		log.Errorf("failed to get upstream %s: %s", upsName, err)
+		return err
+	}
+	var newUps *apisixv1.Upstream
+	if cfg != nil {
+		newUps, err = c.translator.TranslateUpstreamConfigV2(cfg)
+		if err != nil {
+			log.Errorw("ApisixUpstream conversion cannot be completed, or the format is incorrect",
+				zap.String("ApisixUpstream name", upsName),
+				zap.Error(err),
+			)
+			return err
+		}
+	} else {
+		newUps = apisixv1.NewDefaultUpstream()
+	}
+
+	newUps.Metadata = ups.Metadata
+	newUps.Nodes = ups.Nodes
+	log.Debugw("updating upstream since ApisixUpstream changed",
+		zap.Any("upstream", newUps),
+		zap.String("ApisixUpstream name", upsName),
+	)
+	if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, newUps); err != nil {
+		log.Errorw("failed to update upstream",
+			zap.Error(err),
+			zap.Any("upstream", newUps),
+			zap.String("ApisixUpstream name", upsName),
+			zap.String("cluster", clusterName),
+		)
+		return err
+	}
+	return nil
+}
+
+func (c *apisixUpstreamController) updateExternalNodes(ctx context.Context, au *configv2.ApisixUpstream, old *configv2.ApisixUpstream, newUps *apisixv1.Upstream, ns, name string) error {
 	clusterName := c.Config.APISIX.DefaultClusterName
 
 	// TODO: if old is not nil, diff the external nodes change first
 
-	upsName := apisixv1.ComposeExternalUpstreamName(au.Namespace, au.Name)
-
+	upsName := apisixv1.ComposeExternalUpstreamName(ns, name)
 	ups, err := c.APISIX.Cluster(clusterName).Upstream().Get(ctx, upsName)
 	if err != nil {
 		if err != apisixcache.ErrNotFound {
@@ -786,7 +795,7 @@ func (c *apisixUpstreamController) handleSvcChange(ctx context.Context, key stri
 		if err != nil {
 			return err
 		}
-		err = c.updateExternalNodes(ctx, au.V2(), nil, nil)
+		err = c.updateExternalNodes(ctx, au.V2(), nil, nil, ns, name)
 		if err != nil {
 			return err
 		}
