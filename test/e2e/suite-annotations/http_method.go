@@ -36,7 +36,7 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/allow-http-methods: POST,PUT
+    k8s.apisix.apache.org/http-allow-methods: POST,PUT
   name: ingress-v1
 spec:
   rules:
@@ -73,7 +73,7 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/allow-http-methods: POST,PUT
+    k8s.apisix.apache.org/http-allow-methods: POST,PUT
   name: ingress-v1beta1
 spec:
   rules:
@@ -108,7 +108,7 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/allow-http-methods: POST,PUT
+    k8s.apisix.apache.org/http-allow-methods: POST,PUT
   name: ingress-extensions-v1beta1
 spec:
   rules:
@@ -147,7 +147,7 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/allow-http-methods: GET
+    k8s.apisix.apache.org/http-block-methods: GET
   name: ingress-v1
 spec:
   rules:
@@ -184,7 +184,7 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/allow-http-methods: GET
+    k8s.apisix.apache.org/http-block-methods: GET
   name: ingress-v1beta1
 spec:
   rules:
@@ -219,7 +219,7 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/allow-http-methods: GET
+    k8s.apisix.apache.org/http-block-methods: GET
   name: ingress-extensions-v1beta1
 spec:
   rules:
@@ -237,12 +237,12 @@ spec:
 		time.Sleep(5 * time.Second)
 
 		respGet := s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect()
-		respGet.Status(http.StatusOK)
+		respGet.Status(http.StatusMethodNotAllowed)
 
 		respPost := s.NewAPISIXClient().POST("/post").WithHeader("Host", "httpbin.org").Expect()
-		respPost.Status(http.StatusMethodNotAllowed)
+		respPost.Status(http.StatusOK)
 
 		respPut := s.NewAPISIXClient().PUT("/put").WithHeader("Host", "httpbin.org").Expect()
-		respPut.Status(http.StatusMethodNotAllowed)
+		respPut.Status(http.StatusOK)
 	})
 })
