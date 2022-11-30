@@ -46,7 +46,7 @@ helm show crds apisix/apisix-ingress-controller | kubectl apply -f -
 ```
 
 > If the Helm version does not support it, you need to obtain it from the [apisix-helm-chart](https://github.com/apache/apisix-helm-chart) repository.
-> Directory: `charts/apisix-ingress-controller/crds/customresourcedefinitions.yaml`
+> CRDs directory: `charts/apisix-ingress-controller/crds/customresourcedefinitions.yaml`
 >
 > ```sh
 > kubectl apply -f  https://raw.githubusercontent.com/apache/apisix-helm-chart/apisix-0.11.1/charts/apisix-ingress-controller/crds/customresourcedefinitions.yaml
@@ -54,7 +54,7 @@ helm show crds apisix/apisix-ingress-controller | kubectl apply -f -
 
 3. UpgradeAPISIX Ingress
 
-Just as an example, the specific configuration needs to be modified by yourself.
+Just as an example, the specific configuration needs to be modified by yourself. If you want to upgrade to a specific chart version, please add this flag `--version x.x.x`.
 
 ```sh
 helm upgrade apisix apisix/apisix \
@@ -68,27 +68,55 @@ helm upgrade apisix apisix/apisix \
 
 It is recommended not to upgrade across major versions.
 
-#### 1.4 -> 1.5 -> 1.6
+### Compatible upgrade
 
-Compatible with upgrades without changing any resources.
+Compatible upgrades can be made without changing any resources.
 
-#### 1.3 -> 1.4
+#### ***1.5 to 1.6***
+
+```sh
+helm upgrade apisix apisix/apisix *** # omit some configuration
+```
+
+#### ***1.4 to 1.5***
+
+The chart version corresponding to chart version 1.5:
+
+* `apisix-0.11.3`
+* `apisix-ingress-controller-0.10.1`
+
+```sh
+helm upgrade apisix apisix/apisix --version 0.11.3 ***  # omit some configuration
+```
+
+### Incompatible upgrade
+
+#### ***1.3 to 1.4***
+
+The chart version corresponding to chart version 1.4:
+
+* `apisix-0.10.2`
+* `apisix-ingress-controller-0.9.3`
+
+```sh
+helm upgrade apisix apisix/apisix --version 0.10.2 ***  # omit some configuration
+```
 
 Incompatible upgrade, need to change resources.
-ApisixRoute object(http[].backend) has been removed in V2beta3 and needs to be converted to array(http[].backends). It is recommended not to upgrade across major versions.
+ApisixRoute `object(http[].backend)` has been removed in V2beta3 and needs to be converted to `array(http[].backends)`. It is recommended not to upgrade across major versions.
 
 ## Version change
 
-### 1.6.0
+### ***1.6.0***
 
 - No breaking changes in this release.
 
-### 1.5.0
+### ***1.5.0***
 
 - CRD has been upgraded to the V2 version, and V2beta3 has been marked as deprecated.
-- app_namespace e is deprecated, you can use namespace_selector instead.
+- `app_namespace` is deprecated, you can use `namespace_selector` instead.
 
-### 1.4.0
+### ***1.4.0***
 
 - CRD unified upgrade to V2beta3, delete resource v2alpha1 and v1 versions
 
