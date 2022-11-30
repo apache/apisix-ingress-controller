@@ -73,7 +73,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 
 	cert, err := tls.LoadX509KeyPair(cfg.CertFilePath, cfg.KeyFilePath)
 	if err != nil {
-		log.Warnw("failed to load x509 key pair, will not start admission server",
+		log.Warnw("failed to load x509 key pair, will not start admission server.",
 			zap.String("Error", err.Error()),
 			zap.String("CertFilePath", cfg.CertFilePath),
 			zap.String("KeyFilePath", cfg.KeyFilePath),
