@@ -35,7 +35,7 @@ jobs:
       go: ${{ steps.filter.outputs.go }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
 
@@ -65,7 +65,7 @@ jobs:
       (needs.changes.outputs.go == 'true')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup Go Env
         uses: actions/setup-go@v3
         with:
@@ -86,7 +86,7 @@ jobs:
     name: 🍇 Markdown
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: 🚀 Use Node.js
         uses: actions/setup-node@v1
         with:
@@ -100,7 +100,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Check Markdown links
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - uses: ./.github/actions/markdown-link-check
