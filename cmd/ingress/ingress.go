@@ -130,9 +130,10 @@ the apisix cluster and others are created`,
 			log.Info("version:\n", version.Long())
 
 			// We should make sure that the cfg that's logged out is sanitized.
-			logCfg := cfg
-			logCfg.APISIX.DefaultClusterAdminKey = "******"
-			data, err := json.MarshalIndent(logCfg, "", "  ")
+			cfgCopy := new(config.Config)
+			*cfgCopy = *cfg
+			cfgCopy.APISIX.DefaultClusterAdminKey = "******"
+			data, err := json.MarshalIndent(cfgCopy, "", "  ")
 			if err != nil {
 				dief("failed to marshal configuration: %s", err)
 			}
