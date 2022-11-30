@@ -58,6 +58,7 @@ jobs:
               - 'test/e2e/**/*'
               - 'conf/**'
               - 'utils/**'
+              - ".github/**"
   golangci:
     name: lint
     needs: changes

@@ -57,6 +57,7 @@ jobs:
               - 'test/e2e/**/*'
               - 'conf/**'
               - 'utils/**'
+              - ".github/**"
   run-test:
     needs: changes
     if: |
