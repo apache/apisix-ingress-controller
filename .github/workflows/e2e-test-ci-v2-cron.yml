@@ -139,7 +139,7 @@ jobs:
         run: |
           SUITES=($(find test/e2e -type d -iname 'suite-*' | grep -E -o '(\w|\-)*' | grep -v 'test' | grep -v 'e2e' | sort | uniq -u))
           echo $SUITES
-          echo "name=matrix::$(jq --compact-output --null-input '$ARGS.positional' --args "${SUITES[@]}")" >> $GITHUB_OUTPUT
+          echo "::set-output name=matrix::$(jq --compact-output --null-input '$ARGS.positional' --args "${SUITES[@]}")"
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
