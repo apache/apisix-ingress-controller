@@ -129,9 +129,13 @@ the apisix cluster and others are created`,
 
 			log.Info("version:\n", version.Long())
 
-			data, err := json.MarshalIndent(cfg, "", "\t")
+			// We should make sure that the cfg that's logged out is sanitized.
+			cfgCopy := new(config.Config)
+			*cfgCopy = *cfg
+			cfgCopy.APISIX.DefaultClusterAdminKey = "******"
+			data, err := json.MarshalIndent(cfgCopy, "", "  ")
 			if err != nil {
-				dief("failed to show configuration: %s", string(data))
+				dief("failed to marshal configuration: %s", err)
 			}
 			log.Info("use configuration\n", string(data))
 
@@ -165,7 +169,7 @@ the apisix cluster and others are created`,
 	cmd.PersistentFlags().StringVar(&cfg.HTTPListen, "http-listen", ":8080", "the HTTP Server listen address")
 	cmd.PersistentFlags().StringVar(&cfg.HTTPSListen, "https-listen", ":8443", "the HTTPS Server listen address")
 	cmd.PersistentFlags().StringVar(&cfg.IngressPublishService, "ingress-publish-service", "",
-		`the controller will use the Endpoint of this Service to update the status information of the Ingress resource. 
+		`the controller will use the Endpoint of this Service to update the status information of the Ingress resource.
 The format is "namespace/svc-name" to solve the situation that the data plane and the controller are not deployed in the same namespace.`)
 	cmd.PersistentFlags().StringSliceVar(&cfg.IngressStatusAddress, "ingress-status-address", []string{},
 		`when there is no available information on the Service used for publishing on the data plane,
