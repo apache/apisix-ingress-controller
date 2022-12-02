@@ -61,7 +61,7 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 			// ApisixRoute
 			switch p.common.Config.Kubernetes.APIVersion {
 			case config.ApisixV2beta3:
-				retRoutes, err := p.apisixSharedInformerFactory.Apisix().V2beta3().ApisixRoutes().Lister().ApisixRoutes(ns).List(labels.Nothing())
+				retRoutes, err := p.apisixSharedInformerFactory.Apisix().V2beta3().ApisixRoutes().Lister().ApisixRoutes(ns).List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
@@ -96,7 +96,7 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 					}
 				}
 			case config.ApisixV2:
-				retRoutes, err := p.apisixSharedInformerFactory.Apisix().V2().ApisixRoutes().Lister().ApisixRoutes(ns).List(labels.Nothing())
+				retRoutes, err := p.apisixSharedInformerFactory.Apisix().V2().ApisixRoutes().Lister().ApisixRoutes(ns).List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
@@ -141,7 +141,7 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 			switch p.common.Config.Kubernetes.APIVersion {
 			case config.ApisixV2beta3:
 				// ApisixConsumer
-				retConsumer, err := p.apisixSharedInformerFactory.Apisix().V2beta3().ApisixConsumers().Lister().ApisixConsumers(ns).List(labels.Nothing())
+				retConsumer, err := p.apisixSharedInformerFactory.Apisix().V2beta3().ApisixConsumers().Lister().ApisixConsumers(ns).List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
@@ -157,7 +157,7 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 					}
 				}
 				// ApisixTls
-				retSSL, err := p.apisixSharedInformerFactory.Apisix().V2beta3().ApisixTlses().Lister().ApisixTlses(ns).List(labels.Nothing())
+				retSSL, err := p.apisixSharedInformerFactory.Apisix().V2beta3().ApisixTlses().Lister().ApisixTlses(ns).List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
@@ -174,7 +174,7 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 				}
 			case config.ApisixV2:
 				// ApisixConsumer
-				retConsumer, err := p.apisixSharedInformerFactory.Apisix().V2().ApisixConsumers().Lister().ApisixConsumers(ns).List(labels.Nothing())
+				retConsumer, err := p.apisixSharedInformerFactory.Apisix().V2().ApisixConsumers().Lister().ApisixConsumers(ns).List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
@@ -190,7 +190,7 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 					}
 				}
 				// ApisixTls
-				retSSL, err := p.apisixSharedInformerFactory.Apisix().V2().ApisixTlses().Lister().ApisixTlses(ns).List(labels.Nothing())
+				retSSL, err := p.apisixSharedInformerFactory.Apisix().V2().ApisixTlses().Lister().ApisixTlses(ns).List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
