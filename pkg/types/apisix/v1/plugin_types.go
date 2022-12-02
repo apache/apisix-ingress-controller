@@ -14,7 +14,11 @@
 // limitations under the License.
 package v1
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/incubator4/go-resty-expr/expr"
+)
 
 // TrafficSplitConfig is the config of traffic-split plugin.
 // +k8s:deepcopy-gen=true
@@ -126,6 +130,17 @@ type RewriteConfig struct {
 	RewriteTarget      string   `json:"uri,omitempty"`
 	RewriteTargetRegex []string `json:"regex_uri,omitempty"`
 	Headers            Headers  `json:"headers,omitempty"`
+}
+
+// ResponseRewriteConfig is the rule config for response-rewrite plugin.
+// +k8s:deepcopy-gen=true
+type ResponseRewriteConfig struct {
+	StatusCode   int                 `json:"status_code,omitempty"`
+	Body         string              `json:"body,omitempty"`
+	BodyBase64   bool                `json:"body_base64,omitempty"`
+	Headers      Headers             `json:"headers,omitempty"`
+	LuaRestyExpr []expr.Expr         `json:"vars,omitempty"`
+	Filters      []map[string]string `json:"filters,omitempty"`
 }
 
 // RedirectConfig is the rule config for redirect plugin.
