@@ -19,7 +19,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -58,7 +57,7 @@ func hello(w http.ResponseWriter, req *http.Request) {
 }
 
 func newDefaultCACertPool() *x509.CertPool {
-	caCert, err := ioutil.ReadFile("tls/ca.pem")
+	caCert, err := os.ReadFile("tls/ca.pem")
 	if err != nil {
 		log.Fatalf("failed to load ca cert: %v", err)
 	}
