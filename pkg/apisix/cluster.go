@@ -804,7 +804,7 @@ func readBody(r io.ReadCloser, url string) string {
 			log.Warnw("failed to close body", zap.String("url", url), zap.Error(err))
 		}
 	}()
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	if err != nil {
 		log.Warnw("failed to read body", zap.String("url", url), zap.Error(err))
 		return ""
