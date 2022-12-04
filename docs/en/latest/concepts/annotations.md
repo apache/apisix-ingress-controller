@@ -270,7 +270,7 @@ spec:
                   number: 80
 ```
 
-## Upstram scheme
+## Upstream scheme
 
 The scheme used when communicating with the Upstream. this value can be one of 'http', 'https', 'grpc', 'grpcs'. Defaults to 'http'.
 
