@@ -51,6 +51,12 @@ const (
 	AnnotationsRewriteTargetRegex         = AnnotationsPrefix + "rewrite-target-regex"
 	AnnotationsRewriteTargetRegexTemplate = AnnotationsPrefix + "rewrite-target-regex-template"
 
+	// response-rewrite plugin
+	AnnotationsEnableResponseRewrite     = AnnotationsPrefix + "enable-response-rewrite"
+	AnnotationsResponseRewriteStatusCode = AnnotationsPrefix + "response-rewrite-status-code"
+	AnnotationsResponseRewriteBody       = AnnotationsPrefix + "response-rewrite-body"
+	AnnotationsResponseRewriteBodyBase64 = AnnotationsPrefix + "response-rewrite-body-base64"
+
 	// forward-auth plugin
 	AnnotationsForwardAuthURI             = AnnotationsPrefix + "auth-uri"
 	AnnotationsForwardAuthSSLVerify       = AnnotationsPrefix + "auth-ssl-verify"
