@@ -42,6 +42,11 @@ func (t *translator) TranslatePluginConfigV2beta3(config *configv2beta3.ApisixPl
 						zap.Any("new", plugin.Config),
 					)
 				}
+				if sec, err := t.SecretLister.Secrets(config.Namespace).Get(plugin.SecretConfig); err == nil {
+					for key, value := range sec.Data {
+						plugin.Config[key] = string(value)
+					}
+				}
 				pluginMap[plugin.Name] = plugin.Config
 			} else {
 				pluginMap[plugin.Name] = make(map[string]interface{})
@@ -81,6 +86,11 @@ func (t *translator) TranslatePluginConfigV2(config *configv2.ApisixPluginConfig
 						zap.Any("old", t),
 						zap.Any("new", plugin.Config),
 					)
+				}
+				if sec, err := t.SecretLister.Secrets(config.Namespace).Get(plugin.SecretConfig); err == nil {
+					for key, value := range sec.Data {
+						plugin.Config[key] = string(value)
+					}
 				}
 				pluginMap[plugin.Name] = plugin.Config
 			} else {

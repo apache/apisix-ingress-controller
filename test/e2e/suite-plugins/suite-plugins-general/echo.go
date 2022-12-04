@@ -75,6 +75,62 @@ spec:
 			resp.Body().Contains("This is the epilogue")
 		})
 
+		ginkgo.It("suite-plugins-general: echo plugin with secretConfig", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			secret := `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: echo
+data:
+  before_body: IlRoaXMgaXMgdGhlIHByZWZhY2Ui
+  after_body: IlRoaXMgaXMgdGhlIGVwaWxvZ3VlIg==
+`
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating echo secret for ApisixRoute")
+			ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: echo
+     enable: true
+     config:
+       headers:
+         X-Foo: v1
+         X-Foo2: v2
+     secretConfig: echo
+       
+`, backendSvc, backendPorts[0])
+
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+			resp.Status(http.StatusOK)
+			resp.Header("X-Foo").Equal("v1")
+			resp.Header("X-Foo2").Equal("v2")
+			resp.Body().Contains("This is the preface")
+			resp.Body().Contains("origin")
+			resp.Body().Contains("This is the epilogue")
+		})
+
 		ginkgo.It("replace body", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`

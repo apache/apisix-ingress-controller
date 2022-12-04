@@ -130,6 +130,11 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *translation.TranslateContext
 				continue
 			}
 			if plugin.Config != nil {
+				if sec, err := t.SecretLister.Secrets(ar.Namespace).Get(plugin.SecretConfig); err == nil {
+					for key, value := range sec.Data {
+						plugin.Config[key] = string(value)
+					}
+				}
 				pluginMap[plugin.Name] = plugin.Config
 			} else {
 				pluginMap[plugin.Name] = make(map[string]interface{})
@@ -251,6 +256,11 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 				continue
 			}
 			if plugin.Config != nil {
+				if sec, err := t.SecretLister.Secrets(ar.Namespace).Get(plugin.SecretConfig); err == nil {
+					for key, value := range sec.Data {
+						plugin.Config[key] = string(value)
+					}
+				}
 				pluginMap[plugin.Name] = plugin.Config
 			} else {
 				pluginMap[plugin.Name] = make(map[string]interface{})
@@ -753,6 +763,11 @@ func (t *translator) translateStreamRouteV2(ctx *translation.TranslateContext, a
 				continue
 			}
 			if plugin.Config != nil {
+				if sec, err := t.SecretLister.Secrets(ar.Namespace).Get(plugin.SecretConfig); err == nil {
+					for key, value := range sec.Data {
+						plugin.Config[key] = string(value)
+					}
+				}
 				pluginMap[plugin.Name] = plugin.Config
 			} else {
 				pluginMap[plugin.Name] = make(map[string]interface{})
