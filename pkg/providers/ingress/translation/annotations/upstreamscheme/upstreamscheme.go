@@ -27,11 +27,11 @@ func NewParser() annotations.IngressAnnotationsParser {
 	return &upstreamscheme{}
 }
 
-var schemeMap map[string]int = map[string]int{
-	"http":  1,
-	"https": 2,
-	"grpc":  3,
-	"grpcs": 4,
+var schemeMap map[string]struct{} = map[string]struct{}{
+	"http":  {},
+	"https": {},
+	"grpc":  {},
+	"grpcs": {},
 }
 
 func (w *upstreamscheme) Parse(e annotations.Extractor) (interface{}, error) {
