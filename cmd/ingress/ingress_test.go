@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"strings"
@@ -207,7 +206,7 @@ func TestRotateLog(t *testing.T) {
 	assert.Nil(t, syscall.Kill(os.Getpid(), syscall.SIGINT))
 	<-stopCh
 
-	files, err := ioutil.ReadDir("./testlog")
+	files, err := os.ReadDir("./testlog")
 
 	if err != nil {
 		t.Fatalf("Unable to read log dir: %v", err)
