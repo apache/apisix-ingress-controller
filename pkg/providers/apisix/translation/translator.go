@@ -47,15 +47,15 @@ type ApisixTranslator interface {
 	// TranslateRouteV2beta3 translates the configv2beta3.ApisixRoute object into several Route,
 	// Upstream and PluginConfig resources.
 	TranslateRouteV2beta3(*configv2beta3.ApisixRoute) (*translation.TranslateContext, error)
-	// TranslateRouteV2beta3NotStrictly translates the configv2beta3.ApisixRoute object into several Route,
+	// GenerateRouteV2beta3DeleteMark translates the configv2beta3.ApisixRoute object into several Route,
 	// Upstream and PluginConfig resources not strictly, only used for delete event.
-	TranslateRouteV2beta3NotStrictly(*configv2beta3.ApisixRoute) (*translation.TranslateContext, error)
+	GenerateRouteV2beta3DeleteMark(*configv2beta3.ApisixRoute) (*translation.TranslateContext, error)
 	// TranslateRouteV2 translates the configv2.ApisixRoute object into several Route,
 	// Upstream and PluginConfig resources.
 	TranslateRouteV2(*configv2.ApisixRoute) (*translation.TranslateContext, error)
-	// TranslateRouteV2NotStrictly translates the configv2.ApisixRoute object into several Route,
+	// GenerateRouteV2DeleteMark translates the configv2.ApisixRoute object into several Route,
 	// Upstream and PluginConfig resources not strictly, only used for delete event.
-	TranslateRouteV2NotStrictly(*configv2.ApisixRoute) (*translation.TranslateContext, error)
+	GenerateRouteV2DeleteMark(*configv2.ApisixRoute) (*translation.TranslateContext, error)
 	// TranslateOldRoute get route and stream_route objects from cache
 	// Build upstream and plugin_config through route and stream_route
 	TranslateOldRoute(kube.ApisixRoute) (*translation.TranslateContext, error)
@@ -78,15 +78,15 @@ type ApisixTranslator interface {
 	// TranslatePluginConfigV2beta3 translates the configv2.ApisixPluginConfig object into several PluginConfig
 	// resources.
 	TranslatePluginConfigV2beta3(*configv2beta3.ApisixPluginConfig) (*translation.TranslateContext, error)
-	// TranslatePluginConfigV2beta3NotStrictly translates the configv2beta3.ApisixPluginConfig object into several PluginConfig
+	// GeneratePluginConfigV2beta3DeleteMark translates the configv2beta3.ApisixPluginConfig object into several PluginConfig
 	// resources not strictly, only used for delete event.
-	TranslatePluginConfigV2beta3NotStrictly(*configv2beta3.ApisixPluginConfig) (*translation.TranslateContext, error)
+	GeneratePluginConfigV2beta3DeleteMark(*configv2beta3.ApisixPluginConfig) (*translation.TranslateContext, error)
 	// TranslatePluginConfigV2 translates the configv2.ApisixPluginConfig object into several PluginConfig
 	// resources.
 	TranslatePluginConfigV2(*configv2.ApisixPluginConfig) (*translation.TranslateContext, error)
-	// TranslatePluginConfigV2NotStrictly translates the configv2.ApisixPluginConfig object into several PluginConfig
+	// GeneratePluginConfigV2DeleteMark translates the configv2.ApisixPluginConfig object into several PluginConfig
 	// resources not strictly, only used for delete event.
-	TranslatePluginConfigV2NotStrictly(*configv2.ApisixPluginConfig) (*translation.TranslateContext, error)
+	GeneratePluginConfigV2DeleteMark(*configv2.ApisixPluginConfig) (*translation.TranslateContext, error)
 
 	TranslateRouteMatchExprs(nginxVars []configv2.ApisixRouteHTTPMatchExpr) ([][]apisixv1.StringOrSlice, error)
 

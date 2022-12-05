@@ -153,7 +153,7 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 		if ev.Type != types.EventDelete {
 			tctx, err = c.translator.TranslatePluginConfigV2beta3(apc.V2beta3())
 		} else {
-			tctx, err = c.translator.TranslatePluginConfigV2beta3NotStrictly(apc.V2beta3())
+			tctx, err = c.translator.GeneratePluginConfigV2beta3DeleteMark(apc.V2beta3())
 		}
 		if err != nil {
 			log.Errorw("failed to translate ApisixPluginConfig v2beta3",
@@ -166,7 +166,7 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 		if ev.Type != types.EventDelete {
 			tctx, err = c.translator.TranslatePluginConfigV2(apc.V2())
 		} else {
-			tctx, err = c.translator.TranslatePluginConfigV2NotStrictly(apc.V2())
+			tctx, err = c.translator.GeneratePluginConfigV2DeleteMark(apc.V2())
 		}
 		if err != nil {
 			log.Errorw("failed to translate ApisixPluginConfig v2",
