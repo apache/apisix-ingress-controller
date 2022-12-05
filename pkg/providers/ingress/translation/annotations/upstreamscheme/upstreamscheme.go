@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type upstreamscheme struct{}
@@ -27,22 +28,15 @@ func NewParser() annotations.IngressAnnotationsParser {
 	return &upstreamscheme{}
 }
 
-var schemeMap map[string]struct{} = map[string]struct{}{
-	"http":  {},
-	"https": {},
-	"grpc":  {},
-	"grpcs": {},
-}
-
 func (w *upstreamscheme) Parse(e annotations.Extractor) (interface{}, error) {
 	scheme := strings.ToLower(e.GetStringAnnotation(annotations.AnnotationsUpstreamScheme))
-	_, ok := schemeMap[scheme]
+	_, ok := apisixv1.IngressSchemeMap[scheme]
 	if ok {
 		return scheme, nil
 	}
 
-	keys := make([]string, 0, len(schemeMap))
-	for key := range schemeMap {
+	keys := make([]string, 0, len(apisixv1.IngressSchemeMap))
+	for key := range apisixv1.IngressSchemeMap {
 		keys = append(keys, key)
 	}
 
