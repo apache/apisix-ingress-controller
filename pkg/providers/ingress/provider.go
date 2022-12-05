@@ -59,7 +59,10 @@ type ingressProvider struct {
 
 	ingressController *ingressController
 
-	ingressInformer cache.SharedIndexInformer
+	ingressInformer  cache.SharedIndexInformer
+	serviceInformer  cache.SharedIndexInformer
+	endpointInformer cache.SharedIndexInformer
+	secretInformer   cache.SharedIndexInformer
 }
 
 func NewProvider(common *providertypes.Common, namespaceProvider namespace.WatchingNamespaceProvider,
@@ -77,6 +80,11 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 	default:
 		p.ingressInformer = kubeFactory.Extensions().V1beta1().Ingresses().Informer()
 	}
+
+	p.endpointInformer = common.EpInformer
+	p.serviceInformer = common.SvcInformer
+	p.secretInformer = common.SecretInformer
+
 	ingressLister := kube.NewIngressLister(
 		kubeFactory.Networking().V1().Ingresses().Lister(),
 		kubeFactory.Networking().V1beta1().Ingresses().Lister(),
@@ -93,7 +101,7 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 		}, translator, apisixTranslator),
 	}
 
-	p.ingressController = newIngressController(c, ingressLister, p.ingressInformer)
+	p.ingressController = newIngressController(c, ingressLister, p.ingressInformer, p.secretInformer, p.endpointInformer, p.serviceInformer)
 
 	return p, nil
 }

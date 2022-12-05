@@ -53,6 +53,10 @@ type ingressController struct {
 	ingressLister   kube.IngressLister
 	ingressInformer cache.SharedIndexInformer
 
+	secretInformer   cache.SharedIndexInformer
+	endpointInformer cache.SharedIndexInformer
+	serviceInformer  cache.SharedIndexInformer
+
 	// secretSSLMap stores reference from K8s secret to Ingress
 	// type: Map<SecretKey, Map<IngressVersionKey, SSL in APISIX>>
 	// SecretKey -> IngressVersionKey -> []string
@@ -61,7 +65,7 @@ type ingressController struct {
 	secretSSLMap *sync.Map
 }
 
-func newIngressController(common *ingressCommon, ingressLister kube.IngressLister, ingressInformer cache.SharedIndexInformer) *ingressController {
+func newIngressController(common *ingressCommon, ingressLister kube.IngressLister, ingressInformer, secretInformer, endpointInformer, serviceInformer cache.SharedIndexInformer) *ingressController {
 	c := &ingressController{
 		ingressCommon: common,
 
@@ -70,6 +74,10 @@ func newIngressController(common *ingressCommon, ingressLister kube.IngressListe
 
 		ingressLister:   ingressLister,
 		ingressInformer: ingressInformer,
+
+		secretInformer:   secretInformer,
+		endpointInformer: endpointInformer,
+		serviceInformer:  serviceInformer,
 
 		secretSSLMap: new(sync.Map),
 	}
@@ -87,7 +95,11 @@ func (c *ingressController) run(ctx context.Context) {
 	defer log.Infof("ingress controller exited")
 	defer c.workqueue.ShutDown()
 
-	if !cache.WaitForCacheSync(ctx.Done(), c.ingressInformer.HasSynced) {
+	if !cache.WaitForCacheSync(ctx.Done(),
+		c.ingressInformer.HasSynced,
+		c.secretInformer.HasSynced,
+		c.serviceInformer.HasSynced,
+		c.endpointInformer.HasSynced) {
 		log.Errorf("cache sync failed")
 		return
 	}
