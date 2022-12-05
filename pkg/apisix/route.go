@@ -16,7 +16,6 @@
 package apisix
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 
@@ -88,12 +87,12 @@ func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
 		return nil, err
 	}
 
-	route, err = resp.Item.route()
+	route, err = resp.route()
 	if err != nil {
 		log.Errorw("failed to convert route item",
 			zap.String("url", r.url),
-			zap.String("route_key", resp.Item.Key),
-			zap.String("route_value", string(resp.Item.Value)),
+			zap.String("route_key", resp.Key),
+			zap.String("route_value", string(resp.Value)),
 			zap.Error(err),
 		)
 		return nil, err
@@ -121,7 +120,7 @@ func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 	}
 
 	var items []*v1.Route
-	for i, item := range routeItems.Node.Items {
+	for i, item := range routeItems {
 		route, err := item.route()
 		if err != nil {
 			log.Errorw("failed to convert route item",
@@ -158,14 +157,14 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 
 	url := r.url + "/" + obj.ID
 	log.Debugw("creating route", zap.ByteString("body", data), zap.String("url", url))
-	resp, err := r.cluster.createResource(ctx, url, "route", bytes.NewReader(data))
+	resp, err := r.cluster.createResource(ctx, url, "route", data)
 	r.cluster.metricsCollector.IncrAPISIXRequest("route")
 	if err != nil {
 		log.Errorf("failed to create route: %s", err)
 		return nil, err
 	}
 
-	route, err := resp.Item.route()
+	route, err := resp.route()
 	if err != nil {
 		return nil, err
 	}
@@ -216,13 +215,12 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		return nil, err
 	}
 	url := r.url + "/" + obj.ID
-	log.Debugw("updating route", zap.ByteString("body", body), zap.String("url", url))
-	resp, err := r.cluster.updateResource(ctx, url, "route", bytes.NewReader(body))
+	resp, err := r.cluster.updateResource(ctx, url, "route", body)
 	r.cluster.metricsCollector.IncrAPISIXRequest("route")
 	if err != nil {
 		return nil, err
 	}
-	route, err := resp.Item.route()
+	route, err := resp.route()
 	if err != nil {
 		return nil, err
 	}

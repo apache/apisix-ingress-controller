@@ -94,7 +94,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	if podNamespace == "" {
 		podNamespace = "default"
 	}
-	client, err := apisix.NewClient()
+	client, err := apisix.NewClient(cfg.APISIX.AdminAPIVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -244,6 +244,9 @@ func (c *Controller) initSharedInformers(ctx context.Context) *providertypes.Lis
 	secretInformer := kubeFactory.Core().V1().Secrets().Informer()
 	secretLister := kubeFactory.Core().V1().Secrets().Lister()
 
+	configmapInformer := kubeFactory.Core().V1().ConfigMaps().Informer()
+	configmapLister := kubeFactory.Core().V1().ConfigMaps().Lister()
+
 	listerInformer := &providertypes.ListerInformer{
 		EpLister:               epLister,
 		EpInformer:             epInformer,
@@ -255,6 +258,8 @@ func (c *Controller) initSharedInformers(ctx context.Context) *providertypes.Lis
 		PodInformer:            podInformer,
 		ApisixUpstreamLister:   apisixUpstreamLister,
 		ApisixUpstreamInformer: apisixUpstreamInformer,
+		ConfigMapInformer:      configmapInformer,
+		ConfigMapLister:        configmapLister,
 	}
 
 	//wait for all informer has synecd
@@ -284,6 +289,7 @@ func (c *Controller) run(ctx context.Context) {
 	defer c.leaderContextCancelFunc()
 
 	clusterOpts := &apisix.ClusterOptions{
+		AdminAPIVersion:  c.cfg.APISIX.AdminAPIVersion,
 		Name:             c.cfg.APISIX.DefaultClusterName,
 		AdminKey:         c.cfg.APISIX.DefaultClusterAdminKey,
 		BaseURL:          c.cfg.APISIX.DefaultClusterBaseURL,
@@ -312,12 +318,13 @@ func (c *Controller) run(ctx context.Context) {
 
 	c.informers = c.initSharedInformers(ctx)
 	common := &providertypes.Common{
-		ListerInformer:   c.informers,
-		Config:           c.cfg,
-		APISIX:           c.apisix,
-		KubeClient:       c.kubeClient,
-		MetricsCollector: c.MetricsCollector,
-		Recorder:         c.recorder,
+		ControllerNamespace: c.namespace,
+		ListerInformer:      c.informers,
+		Config:              c.cfg,
+		APISIX:              c.apisix,
+		KubeClient:          c.kubeClient,
+		MetricsCollector:    c.MetricsCollector,
+		Recorder:            c.recorder,
 	}
 
 	c.namespaceProvider, err = namespace.NewWatchingNamespaceProvider(ctx, c.kubeClient, c.cfg)

@@ -166,12 +166,38 @@ func DiffPluginConfigs(olds, news []*apisixv1.PluginConfig) (added, updated, del
 	return
 }
 
+func DiffPluginMetadatas(olds, news []*apisixv1.PluginMetadata) (added, updated, deleted []*apisixv1.PluginMetadata) {
+	oldMap := make(map[string]*apisixv1.PluginMetadata, len(olds))
+	newMap := make(map[string]*apisixv1.PluginMetadata, len(news))
+	for _, pm := range olds {
+		oldMap[pm.Name] = pm
+	}
+	for _, pm := range news {
+		newMap[pm.Name] = pm
+	}
+
+	for _, pm := range news {
+		if ou, ok := oldMap[pm.Name]; !ok {
+			added = append(added, pm)
+		} else if !reflect.DeepEqual(ou, pm) {
+			updated = append(updated, pm)
+		}
+	}
+	for _, pm := range olds {
+		if _, ok := newMap[pm.Name]; !ok {
+			deleted = append(deleted, pm)
+		}
+	}
+	return
+}
+
 type Manifest struct {
-	Routes        []*apisixv1.Route
-	Upstreams     []*apisixv1.Upstream
-	StreamRoutes  []*apisixv1.StreamRoute
-	SSLs          []*apisixv1.Ssl
-	PluginConfigs []*apisixv1.PluginConfig
+	Routes          []*apisixv1.Route
+	Upstreams       []*apisixv1.Upstream
+	StreamRoutes    []*apisixv1.StreamRoute
+	SSLs            []*apisixv1.Ssl
+	PluginConfigs   []*apisixv1.PluginConfig
+	PluginMetadatas []*apisixv1.PluginMetadata
 }
 
 func (m *Manifest) Diff(om *Manifest) (added, updated, deleted *Manifest) {
@@ -180,33 +206,31 @@ func (m *Manifest) Diff(om *Manifest) (added, updated, deleted *Manifest) {
 	au, uu, du := DiffUpstreams(om.Upstreams, m.Upstreams)
 	asr, usr, dsr := DiffStreamRoutes(om.StreamRoutes, m.StreamRoutes)
 	apc, upc, dpc := DiffPluginConfigs(om.PluginConfigs, m.PluginConfigs)
+	apm, upm, dpm := DiffPluginMetadatas(om.PluginMetadatas, m.PluginMetadatas)
 
-	if ar != nil || au != nil || asr != nil || sa != nil || apc != nil {
-		added = &Manifest{
-			Routes:        ar,
-			Upstreams:     au,
-			StreamRoutes:  asr,
-			SSLs:          sa,
-			PluginConfigs: apc,
-		}
+	added = &Manifest{
+		Routes:          ar,
+		Upstreams:       au,
+		StreamRoutes:    asr,
+		SSLs:            sa,
+		PluginConfigs:   apc,
+		PluginMetadatas: apm,
 	}
-	if ur != nil || uu != nil || usr != nil || su != nil || upc != nil {
-		updated = &Manifest{
-			Routes:        ur,
-			Upstreams:     uu,
-			StreamRoutes:  usr,
-			SSLs:          su,
-			PluginConfigs: upc,
-		}
+	updated = &Manifest{
+		Routes:          ur,
+		Upstreams:       uu,
+		StreamRoutes:    usr,
+		SSLs:            su,
+		PluginConfigs:   upc,
+		PluginMetadatas: upm,
 	}
-	if dr != nil || du != nil || dsr != nil || sd != nil || dpc != nil {
-		deleted = &Manifest{
-			Routes:        dr,
-			Upstreams:     du,
-			StreamRoutes:  dsr,
-			SSLs:          sd,
-			PluginConfigs: dpc,
-		}
+	deleted = &Manifest{
+		Routes:          dr,
+		Upstreams:       du,
+		StreamRoutes:    dsr,
+		SSLs:            sd,
+		PluginConfigs:   dpc,
+		PluginMetadatas: dpm,
 	}
 	return
 }
@@ -242,6 +266,11 @@ func SyncManifests(ctx context.Context, apisix apisix.APISIX, clusterName string
 				merr = multierror.Append(merr, err)
 			}
 		}
+		for _, pm := range added.PluginMetadatas {
+			if _, err := apisix.Cluster(clusterName).PluginMetadata().Update(ctx, pm); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
 	}
 	if updated != nil {
 		for _, ssl := range updated.SSLs {
@@ -265,7 +294,12 @@ func SyncManifests(ctx context.Context, apisix apisix.APISIX, clusterName string
 			}
 		}
 		for _, sr := range updated.StreamRoutes {
-			if _, err := apisix.Cluster(clusterName).StreamRoute().Create(ctx, sr); err != nil {
+			if _, err := apisix.Cluster(clusterName).StreamRoute().Update(ctx, sr); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
+		for _, pm := range updated.PluginMetadatas {
+			if _, err := apisix.Cluster(clusterName).PluginMetadata().Update(ctx, pm); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
@@ -363,6 +397,11 @@ func SyncManifests(ctx context.Context, apisix apisix.APISIX, clusterName string
 						zap.String("plugin_config_name", pc.Name),
 					)
 				}
+			}
+		}
+		for _, pm := range deleted.PluginMetadatas {
+			if err := apisix.Cluster(clusterName).PluginMetadata().Delete(ctx, pm); err != nil {
+				merr = multierror.Append(merr, err)
 			}
 		}
 	}

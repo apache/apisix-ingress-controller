@@ -62,9 +62,16 @@ const (
 	AnnotationsAllowlistSourceRange = AnnotationsPrefix + "allowlist-source-range"
 	AnnotationsBlocklistSourceRange = AnnotationsPrefix + "blocklist-source-range"
 
+	// http-method plugin
+	AnnotationsHttpAllowMethods = AnnotationsPrefix + "http-allow-methods"
+	AnnotationsHttpBlockMethods = AnnotationsPrefix + "http-block-methods"
+
 	// key-auth plugin and basic-auth plugin
 	// auth-type: keyAuth | basicAuth
 	AnnotationsAuthType = AnnotationsPrefix + "auth-type"
+
+	// support backend service cross namespace
+	AnnotationsSvcNamespace = AnnotationsPrefix + "svc-namespace"
 )
 
 // Handler abstracts the behavior so that the apisix-ingress-controller knows

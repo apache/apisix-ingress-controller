@@ -72,3 +72,12 @@ func TestAnnotationsUseRegex(t *testing.T) {
 	ingress := (&translator{}).TranslateAnnotations(anno)
 	assert.Equal(t, true, ingress.UseRegex)
 }
+
+func TestAnnotationsServiceNamespace(t *testing.T) {
+	anno := map[string]string{
+		annotations.AnnotationsSvcNamespace: "mynamespace",
+	}
+
+	ingress := (&translator{}).TranslateAnnotations(anno)
+	assert.Equal(t, "mynamespace", ingress.ServiceNamespace)
+}

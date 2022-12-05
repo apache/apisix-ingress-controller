@@ -35,7 +35,7 @@ jobs:
       go: ${{ steps.filter.outputs.go }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
 
@@ -57,6 +57,7 @@ jobs:
               - 'test/e2e/**/*'
               - 'conf/**'
               - 'utils/**'
+              - ".github/**"
 
   run-test:
     needs: changes
@@ -64,7 +65,7 @@ jobs:
       (needs.changes.outputs.go == 'true')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup Go Env
         uses: actions/setup-go@v3
         with:
@@ -85,12 +86,12 @@ jobs:
     name: 🍇 Markdown
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: 🚀 Use Node.js
         uses: actions/setup-node@v1
         with:
           node-version: '12.x'
-      - run: npm install -g markdownlint-cli@0.25.0
+      - run: npm install -g markdownlint-cli@0.32.2
       - run: markdownlint '**/*.md' --ignore node_modules --ignore CHANGELOG.md
   markdown-link-check:
     needs: changes
@@ -99,7 +100,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Check Markdown links
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - uses: ./.github/actions/markdown-link-check

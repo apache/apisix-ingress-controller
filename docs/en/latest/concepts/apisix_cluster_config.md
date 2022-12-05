@@ -1,5 +1,10 @@
 ---
 title: ApisixClusterConfig
+keywords:
+  - APISIX ingress
+  - Apache APISIX
+  - ApisixClusterConfig
+description: Guide to using ApisixClusterConfig custom Kubernetes resource.
 ---
 
 <!--
@@ -21,18 +26,13 @@ title: ApisixClusterConfig
 #
 -->
 
-`ApisixClusterConfig` is a CRD resource which used to describe an APISIX cluster, currently it's not a required
-resource but its existence can enrich an APISIX cluster, for instance, enabling cluster-wide monitoring, rate limiting and so on.
+`ApisixClusterConfig` is a Kubernetes CRD resource that can be used to describe an APISIX cluster and manage it.
 
-monitoring features like collecting [Prometheus](https://prometheus.io/) metrics
-and [skywalking](https://skywalking.apache.org/) spans
+## Monitoring
 
-Monitoring
-----------
+By default, monitoring is not enabled in an APISIX cluster. You can enable it by creating an `ApisixClusterConfig` resource.
 
-By default, monitoring are not enabled for the APISIX cluster, this is not favorable
-if you'd like to learn the real running status of your cluster. In such a case, you
-could create a `ApisixClusterConfig` to enable these features explicitly.
+The example below enabled [Prometheus](http://apisix.apache.org/docs/apisix/plugins/prometheus) and [SkyWalking](http://apisix.apache.org/docs/apisix/plugins/skywalking) for the "default" APISIX cluster (in [multi-cluster deployments](#multi-cluster-management)).
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -48,14 +48,11 @@ spec:
       sampleRatio: 0.5
 ```
 
-The above example enables both the Prometheus and Skywalking for the APISIX cluster which name is "default".
-Please see [Prometheus in APISIX](http://apisix.apache.org/docs/apisix/plugins/prometheus) and [Skywalking in APISIX](http://apisix.apache.org/docs/apisix/plugins/skywalking) for the details.
+## Admin configuration
 
-Admin Config
-------------
+Instead of changing the deployment or pod definition files, you can use the `ApisixClusterConfig` resource to change the admin configurations.
 
-The default APISIX cluster is configured through command line options like `--default-apisix-cluster-xxx`. They are constant in apisix-ingress-controller's lifecycle, you have to change the definition
-of Deployment or Pod template. Now with the help of `ApisixClusterConfig`, you can change some administrative fields on it.
+The example below configures the base URL and admin key for the APISIX cluster "default":
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -68,14 +65,14 @@ spec:
     adminKey: "123456"
 ```
 
-The above `ApisixClusterConfig` sets the base url and admin key for the APISIX cluster `"default"`. Once this
-resource is processed, resources like Route, Upstream and others will be pushed to the new address with the new admin key (for authentication).
+Once configured, other resources (Route, Upstream, etc) will be forwarded to the new address with the new admin key.
 
-Multiple Clusters Management
-----------------------------
+## Multi-cluster management
 
-`ApisixClusterConfig` is also designed for supporting multiple clusters management, but currently this function IS NOT ENABLED YET.
-Only the `ApisixClusterConfig` with the same named configured in `--default-apisix-cluster-name` option will be handled by apisix-ingress-controller, other instances will be neglected.
+The `ApisixClusterConfig` resource can also be used to manage multiple APISIX clusters. This function is **not enabled currently** and it can only manage the cluster configured through `--default-apisix-cluster-name` attribute.
 
-The current delete event for `ApisixClusterConfig` doesn't mean the apisix-ingress-controller will lose the view of the corresponding APISIX cluster but
-resetting all the features on it, so the running of APISIX cluster is not influenced by this event.
+:::note
+
+Deleting an `ApisixClusterConfig` resource will only reset the configurations of an APISIX cluster and will not affect its running.
+
+:::

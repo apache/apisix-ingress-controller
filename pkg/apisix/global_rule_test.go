@@ -18,7 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -83,7 +83,7 @@ func (srv *fakeAPISIXGlobalRuleSrv) ServeHTTP(w http.ResponseWriter, r *http.Req
 	if r.Method == http.MethodPut {
 		paths := strings.Split(r.URL.Path, "/")
 		key := fmt.Sprintf("/apisix/admin/global_rules/%s", paths[len(paths)-1])
-		data, _ := ioutil.ReadAll(r.Body)
+		data, _ := io.ReadAll(r.Body)
 		srv.globalRule[key] = data
 		w.WriteHeader(http.StatusCreated)
 		resp := fakeCreateResp{
@@ -106,7 +106,7 @@ func (srv *fakeAPISIXGlobalRuleSrv) ServeHTTP(w http.ResponseWriter, r *http.Req
 			return
 		}
 
-		data, _ := ioutil.ReadAll(r.Body)
+		data, _ := io.ReadAll(r.Body)
 		srv.globalRule[id] = data
 
 		w.WriteHeader(http.StatusOK)

@@ -20,7 +20,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -34,6 +33,7 @@ import (
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
@@ -41,6 +41,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/testing"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -49,6 +50,7 @@ import (
 type Options struct {
 	Name                       string
 	Kubeconfig                 string
+	APISIXAdminAPIVersion      string
 	APISIXConfigPath           string
 	IngressAPISIXReplicas      int
 	HTTPBinServicePort         int
@@ -73,7 +75,7 @@ type Scaffold struct {
 	apisixService      *corev1.Service
 	httpbinService     *corev1.Service
 	testBackendService *corev1.Service
-	finializers        []func()
+	finalizers         []func()
 
 	apisixAdminTunnel      *k8s.Tunnel
 	apisixHttpTunnel       *k8s.Tunnel
@@ -142,8 +144,22 @@ func NewScaffold(o *Options) *Scaffold {
 	if o.Kubeconfig == "" {
 		o.Kubeconfig = GetKubeconfig()
 	}
+	if o.APISIXAdminAPIVersion == "" {
+		adminVersion := os.Getenv("APISIX_ADMIN_API_VERSION")
+		log.Errorw("admin api version")
+		if adminVersion == "v3" {
+			o.APISIXAdminAPIVersion = "v3"
+		} else {
+			// fallback to v2
+			o.APISIXAdminAPIVersion = "v2"
+		}
+	}
 	if o.APISIXConfigPath == "" {
-		o.APISIXConfigPath = "testdata/apisix-gw-config.yaml"
+		if o.APISIXAdminAPIVersion == "v3" {
+			o.APISIXConfigPath = "testdata/apisix-gw-config-v3.yaml"
+		} else {
+			o.APISIXConfigPath = "testdata/apisix-gw-config.yaml"
+		}
 	}
 	if o.HTTPBinServicePort == 0 {
 		o.HTTPBinServicePort = 80
@@ -404,7 +420,7 @@ func (s *Scaffold) beforeEach() {
 		ConfigPath: s.opts.Kubeconfig,
 		Namespace:  s.namespace,
 	}
-	s.finializers = nil
+	s.finalizers = nil
 
 	label := map[string]string{}
 	if !s.opts.DisableNamespaceLabel {
@@ -494,7 +510,7 @@ func (s *Scaffold) afterEach() {
 		assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
 	}
 
-	for _, f := range s.finializers {
+	for _, f := range s.finalizers {
 		runWithRecover(f)
 	}
 
@@ -551,11 +567,11 @@ func (s *Scaffold) GetDeploymentLogs(name string) string {
 }
 
 func (s *Scaffold) addFinalizers(f func()) {
-	s.finializers = append(s.finializers, f)
+	s.finalizers = append(s.finalizers, f)
 }
 
 func (s *Scaffold) renderConfig(path string) (string, error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
 	}
@@ -636,8 +652,24 @@ func (s *Scaffold) CreateVersionedApisixResourceWithNamespace(yml, namespace str
 	return fmt.Errorf("the resource %s does not support", kindValue)
 }
 
+func (s *Scaffold) ApisixResourceVersion() string {
+	return s.opts.ApisixResourceVersion
+}
+
 func ApisixResourceVersion() *apisixResourceVersionInfo {
 	return apisixResourceVersion
+}
+
+func (s *Scaffold) DeleteResource(resourceType, name string) error {
+	err := k8s.RunKubectlE(s.t, s.kubectlOptions, "delete", resourceType, name)
+	if err != nil {
+		log.Errorw("delete resource failed",
+			zap.Error(err),
+			zap.String("resource", resourceType),
+			zap.String("name", name),
+		)
+	}
+	return err
 }
 
 func (s *Scaffold) NamespaceSelectorLabelStrings() []string {

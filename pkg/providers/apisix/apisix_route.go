@@ -33,7 +33,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
@@ -44,28 +43,43 @@ import (
 
 type apisixRouteController struct {
 	*apisixCommon
-	workqueue workqueue.RateLimitingInterface
-	workers   int
+	workqueue        workqueue.RateLimitingInterface
+	relatedWorkqueue workqueue.RateLimitingInterface
+	workers          int
 
-	svcInformer         cache.SharedIndexInformer
-	apisixRouteLister   kube.ApisixRouteLister
-	apisixRouteInformer cache.SharedIndexInformer
+	svcInformer            cache.SharedIndexInformer
+	apisixRouteLister      kube.ApisixRouteLister
+	apisixRouteInformer    cache.SharedIndexInformer
+	apisixUpstreamInformer cache.SharedIndexInformer
 
 	svcLock sync.RWMutex
-	svcMap  map[string]map[string]struct{}
+	// service key -> apisix route key
+	svcMap map[string]map[string]struct{}
+
+	apisixUpstreamLock sync.RWMutex
+	// apisix upstream key -> apisix route key
+	apisixUpstreamMap map[string]map[string]struct{}
+}
+
+type routeEvent struct {
+	Key  string
+	Type string
 }
 
 func newApisixRouteController(common *apisixCommon, apisixRouteInformer cache.SharedIndexInformer, apisixRouteLister kube.ApisixRouteLister) *apisixRouteController {
 	c := &apisixRouteController{
-		apisixCommon: common,
-		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),
-		workers:      1,
+		apisixCommon:     common,
+		workqueue:        workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),
+		relatedWorkqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRouteRelated"),
+		workers:          1,
 
-		svcInformer:         common.SvcInformer,
-		apisixRouteLister:   apisixRouteLister,
-		apisixRouteInformer: apisixRouteInformer,
+		svcInformer:            common.SvcInformer,
+		apisixRouteLister:      apisixRouteLister,
+		apisixRouteInformer:    apisixRouteInformer,
+		apisixUpstreamInformer: common.ApisixUpstreamInformer,
 
-		svcMap: make(map[string]map[string]struct{}),
+		svcMap:            make(map[string]map[string]struct{}),
+		apisixUpstreamMap: make(map[string]map[string]struct{}),
 	}
 
 	c.apisixRouteInformer.AddEventHandler(
@@ -80,6 +94,12 @@ func newApisixRouteController(common *apisixCommon, apisixRouteInformer cache.Sh
 			AddFunc: c.onSvcAdd,
 		},
 	)
+	c.ApisixUpstreamInformer.AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    c.onApisixUpstreamAdd,
+			UpdateFunc: c.onApisixUpstreamUpdate,
+		},
+	)
 
 	return c
 }
@@ -88,6 +108,7 @@ func (c *apisixRouteController) run(ctx context.Context) {
 	log.Info("ApisixRoute controller started")
 	defer log.Info("ApisixRoute controller exited")
 	defer c.workqueue.ShutDown()
+	defer c.relatedWorkqueue.ShutDown()
 
 	ok := cache.WaitForCacheSync(ctx.Done(), c.apisixRouteInformer.HasSynced, c.svcInformer.HasSynced)
 	if !ok {
@@ -97,6 +118,7 @@ func (c *apisixRouteController) run(ctx context.Context) {
 
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
+		go c.runRelatedWorker(ctx)
 	}
 	<-ctx.Done()
 }
@@ -113,20 +135,40 @@ func (c *apisixRouteController) runWorker(ctx context.Context) {
 			err := c.sync(ctx, val)
 			c.workqueue.Done(obj)
 			c.handleSyncErr(obj, err)
-		case string:
-			err := c.handleSvcAdd(val)
-			c.workqueue.Done(obj)
-			c.handleSvcErr(val, err)
 		}
 	}
 }
 
-func (c *apisixRouteController) syncServiceRelationship(ev *types.Event, name string, ar kube.ApisixRoute) {
+func (c *apisixRouteController) runRelatedWorker(ctx context.Context) {
+	for {
+		obj, quit := c.relatedWorkqueue.Get()
+		if quit {
+			return
+		}
+
+		ev := obj.(*routeEvent)
+		switch ev.Type {
+		case "service":
+			err := c.handleSvcAdd(ev.Key)
+			c.workqueue.Done(obj)
+			c.handleSvcErr(ev, err)
+		case "ApisixUpstream":
+			err := c.handleApisixUpstreamChange(ev.Key)
+			c.workqueue.Done(obj)
+			c.handleApisixUpstreamErr(ev, err)
+		}
+	}
+}
+
+func (c *apisixRouteController) syncRelationship(ev *types.Event, routeKey string, ar kube.ApisixRoute) {
 	obj := ev.Object.(kube.ApisixRouteEvent)
 
 	var (
 		oldBackends []string
 		newBackends []string
+
+		oldUpstreams []string
+		newUpstreams []string
 	)
 	switch obj.GroupVersion {
 	case config.ApisixV2beta3:
@@ -182,12 +224,19 @@ func (c *apisixRouteController) syncServiceRelationship(ev *types.Event, name st
 				for _, backend := range rule.Backends {
 					oldBackends = append(oldBackends, old.Namespace+"/"+backend.ServiceName)
 				}
+
+				for _, upstream := range rule.Upstreams {
+					oldUpstreams = append(oldUpstreams, old.Namespace+"/"+upstream.Name)
+				}
 			}
 		}
 		if newObj != nil {
 			for _, rule := range newObj.Spec.HTTP {
 				for _, backend := range rule.Backends {
 					newBackends = append(newBackends, newObj.Namespace+"/"+backend.ServiceName)
+				}
+				for _, upstream := range rule.Upstreams {
+					newUpstreams = append(newUpstreams, newObj.Namespace+"/"+upstream.Name)
 				}
 			}
 		}
@@ -203,19 +252,44 @@ func (c *apisixRouteController) syncServiceRelationship(ev *types.Event, name st
 	// The last event processed MAY not be the logical last event, so it may override the logical previous event
 	// We have a periodic full-sync, which reduce this problem, but it doesn't solve it completely.
 
-	c.svcLock.Lock()
-	defer c.svcLock.Unlock()
 	toDelete := utils.Difference(oldBackends, newBackends)
 	toAdd := utils.Difference(newBackends, oldBackends)
+	c.syncServiceRelationChanges(routeKey, toAdd, toDelete)
+
+	toDelete = utils.Difference(oldUpstreams, newUpstreams)
+	toAdd = utils.Difference(newUpstreams, oldUpstreams)
+	c.syncApisixUpstreamRelationChanges(routeKey, toAdd, toDelete)
+}
+
+func (c *apisixRouteController) syncServiceRelationChanges(routeKey string, toAdd, toDelete []string) {
+	c.svcLock.Lock()
+	defer c.svcLock.Unlock()
+
 	for _, svc := range toDelete {
-		delete(c.svcMap[svc], name)
+		delete(c.svcMap[svc], routeKey)
 	}
 
 	for _, svc := range toAdd {
 		if _, ok := c.svcMap[svc]; !ok {
 			c.svcMap[svc] = make(map[string]struct{})
 		}
-		c.svcMap[svc][name] = struct{}{}
+		c.svcMap[svc][routeKey] = struct{}{}
+	}
+}
+
+func (c *apisixRouteController) syncApisixUpstreamRelationChanges(routeKey string, toAdd, toDelete []string) {
+	c.apisixUpstreamLock.Lock()
+	defer c.apisixUpstreamLock.Unlock()
+
+	for _, au := range toDelete {
+		delete(c.apisixUpstreamMap[au], routeKey)
+	}
+
+	for _, au := range toAdd {
+		if _, ok := c.apisixUpstreamMap[au]; !ok {
+			c.apisixUpstreamMap[au] = make(map[string]struct{})
+		}
+		c.apisixUpstreamMap[au][routeKey] = struct{}{}
 	}
 }
 
@@ -231,8 +305,6 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		tctx *translation.TranslateContext
 	)
 	switch obj.GroupVersion {
-	case config.ApisixV2beta2:
-		ar, err = c.apisixRouteLister.V2beta2(namespace, name)
 	case config.ApisixV2beta3:
 		ar, err = c.apisixRouteLister.V2beta3(namespace, name)
 	case config.ApisixV2:
@@ -263,7 +335,8 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		}
 	}
 
-	c.syncServiceRelationship(ev, name, ar)
+	// sync before translation
+	c.syncRelationship(ev, obj.Key, ar)
 
 	if ev.Type == types.EventDelete {
 		if ar != nil {
@@ -279,19 +352,6 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	}
 
 	switch obj.GroupVersion {
-	case config.ApisixV2beta2:
-		if ev.Type != types.EventDelete {
-			tctx, err = c.translator.TranslateRouteV2beta2(ar.V2beta2())
-		} else {
-			tctx, err = c.translator.TranslateRouteV2beta2NotStrictly(ar.V2beta2())
-		}
-		if err != nil {
-			log.Errorw("failed to translate ApisixRoute v2beta2",
-				zap.Error(err),
-				zap.Any("object", ar),
-			)
-			return err
-		}
 	case config.ApisixV2beta3:
 		if ev.Type != types.EventDelete {
 			if err = c.checkPluginNameIfNotEmptyV2beta3(ctx, ar.V2beta3()); err == nil {
@@ -433,8 +493,6 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	}
 	var ar kube.ApisixRoute
 	switch event.GroupVersion {
-	case config.ApisixV2beta2:
-		ar, errLocal = c.apisixRouteLister.V2beta2(namespace, name)
 	case config.ApisixV2beta3:
 		ar, errLocal = c.apisixRouteLister.V2beta3(namespace, name)
 	case config.ApisixV2:
@@ -449,9 +507,6 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 		if ev.Type != types.EventDelete {
 			if errLocal == nil {
 				switch ar.GroupVersion() {
-				case config.ApisixV2beta2:
-					c.RecordEvent(ar.V2beta2(), v1.EventTypeNormal, utils.ResourceSynced, nil)
-					c.recordStatus(ar.V2beta2(), utils.ResourceSynced, nil, metav1.ConditionTrue, ar.V2beta2().GetGeneration())
 				case config.ApisixV2beta3:
 					c.RecordEvent(ar.V2beta3(), v1.EventTypeNormal, utils.ResourceSynced, nil)
 					c.recordStatus(ar.V2beta3(), utils.ResourceSynced, nil, metav1.ConditionTrue, ar.V2beta3().GetGeneration())
@@ -477,9 +532,6 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	)
 	if errLocal == nil {
 		switch ar.GroupVersion() {
-		case config.ApisixV2beta2:
-			c.RecordEvent(ar.V2beta2(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
-			c.recordStatus(ar.V2beta2(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta2().GetGeneration())
 		case config.ApisixV2beta3:
 			c.RecordEvent(ar.V2beta3(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
 			c.recordStatus(ar.V2beta3(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta3().GetGeneration())
@@ -592,9 +644,12 @@ func (c *apisixRouteController) ResourceSync() {
 	objs := c.apisixRouteInformer.GetIndexer().List()
 
 	c.svcLock.Lock()
+	c.apisixUpstreamLock.Lock()
 	defer c.svcLock.Unlock()
+	defer c.apisixUpstreamLock.Unlock()
 
 	c.svcMap = make(map[string]map[string]struct{})
+	c.apisixUpstreamMap = make(map[string]map[string]struct{})
 
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
@@ -616,7 +671,7 @@ func (c *apisixRouteController) ResourceSync() {
 			},
 		})
 
-		ns, name, err := cache.SplitMetaNamespaceKey(key)
+		ns, _, err := cache.SplitMetaNamespaceKey(key)
 		if err != nil {
 			log.Errorw("split ApisixRoute meta key failed",
 				zap.Error(err),
@@ -625,7 +680,10 @@ func (c *apisixRouteController) ResourceSync() {
 			continue
 		}
 
-		var backends []string
+		var (
+			backends  []string
+			upstreams []string
+		)
 		switch ar.GroupVersion() {
 		case config.ApisixV2beta3:
 			for _, rule := range ar.V2beta3().Spec.HTTP {
@@ -638,6 +696,9 @@ func (c *apisixRouteController) ResourceSync() {
 				for _, backend := range rule.Backends {
 					backends = append(backends, ns+"/"+backend.ServiceName)
 				}
+				for _, upstream := range rule.Upstreams {
+					upstreams = append(upstreams, ns+"/"+upstream.Name)
+				}
 			}
 		default:
 			log.Errorw("unknown ApisixRoute version",
@@ -649,7 +710,13 @@ func (c *apisixRouteController) ResourceSync() {
 			if _, ok := c.svcMap[svcKey]; !ok {
 				c.svcMap[svcKey] = make(map[string]struct{})
 			}
-			c.svcMap[svcKey][name] = struct{}{}
+			c.svcMap[svcKey][key] = struct{}{}
+		}
+		for _, upstreamKey := range upstreams {
+			if _, ok := c.apisixUpstreamMap[upstreamKey]; !ok {
+				c.apisixUpstreamMap[upstreamKey] = make(map[string]struct{})
+			}
+			c.apisixUpstreamMap[upstreamKey][key] = struct{}{}
 		}
 	}
 }
@@ -662,7 +729,7 @@ func (c *apisixRouteController) onSvcAdd(obj interface{}) {
 	if err != nil {
 		log.Errorw("found Service with bad meta key",
 			zap.Error(err),
-			zap.String("key", key),
+			zap.Any("obj", obj),
 		)
 		return
 	}
@@ -670,29 +737,24 @@ func (c *apisixRouteController) onSvcAdd(obj interface{}) {
 		return
 	}
 
-	c.workqueue.Add(key)
+	c.relatedWorkqueue.Add(&routeEvent{
+		Key:  key,
+		Type: "service",
+	})
 }
 
 func (c *apisixRouteController) handleSvcAdd(key string) error {
-	ns, _, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		log.Errorw("failed to split Service meta key",
-			zap.Error(err),
-			zap.String("key", key),
-		)
-		return nil
-	}
-
+	log.Debugw("handle svc add", zap.String("key", key))
 	c.svcLock.RLock()
 	routes, ok := c.svcMap[key]
 	c.svcLock.RUnlock()
 
 	if ok {
-		for route := range routes {
+		for routeKey := range routes {
 			c.workqueue.Add(&types.Event{
 				Type: types.EventAdd,
 				Object: kube.ApisixRouteEvent{
-					Key:          ns + "/" + route,
+					Key:          routeKey,
 					GroupVersion: c.Kubernetes.APIVersion,
 				},
 			})
@@ -701,18 +763,100 @@ func (c *apisixRouteController) handleSvcAdd(key string) error {
 	return nil
 }
 
-func (c *apisixRouteController) handleSvcErr(key string, errOrigin error) {
+func (c *apisixRouteController) handleSvcErr(ev *routeEvent, errOrigin error) {
 	if errOrigin == nil {
-		c.workqueue.Forget(key)
+		c.workqueue.Forget(ev)
 
 		return
 	}
 
 	log.Warnw("sync Service failed, will retry",
-		zap.Any("key", key),
+		zap.Any("key", ev.Key),
 		zap.Error(errOrigin),
 	)
-	c.workqueue.AddRateLimited(key)
+	c.relatedWorkqueue.AddRateLimited(ev)
+}
+
+func (c *apisixRouteController) onApisixUpstreamAdd(obj interface{}) {
+	log.Debugw("ApisixUpstream add event arrived",
+		zap.Any("object", obj),
+	)
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Errorw("found Service with bad meta key",
+			zap.Error(err),
+			zap.Any("obj", obj),
+		)
+		return
+	}
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+
+	c.relatedWorkqueue.Add(&routeEvent{
+		Key:  key,
+		Type: "ApisixUpstream",
+	})
+}
+
+func (c *apisixRouteController) onApisixUpstreamUpdate(oldObj, newObj interface{}) {
+	log.Debugw("ApisixUpstream add event arrived",
+		zap.Any("object", newObj),
+	)
+
+	key, err := cache.MetaNamespaceKeyFunc(newObj)
+	if err != nil {
+		log.Errorf("found ApisixUpstream resource with bad meta namespace key: %s", err)
+		return
+	}
+	if err != nil {
+		log.Errorw("found Service with bad meta key",
+			zap.Error(err),
+			zap.Any("obj", newObj),
+		)
+		return
+	}
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+
+	c.relatedWorkqueue.Add(&routeEvent{
+		Key:  key,
+		Type: "ApisixUpstream",
+	})
+}
+
+func (c *apisixRouteController) handleApisixUpstreamChange(key string) error {
+	c.svcLock.RLock()
+	routes, ok := c.apisixUpstreamMap[key]
+	c.svcLock.RUnlock()
+
+	if ok {
+		for routeKey := range routes {
+			c.workqueue.Add(&types.Event{
+				Type: types.EventAdd,
+				Object: kube.ApisixRouteEvent{
+					Key:          routeKey,
+					GroupVersion: c.Kubernetes.APIVersion,
+				},
+			})
+		}
+	}
+	return nil
+}
+
+func (c *apisixRouteController) handleApisixUpstreamErr(ev *routeEvent, errOrigin error) {
+	if errOrigin == nil {
+		c.workqueue.Forget(ev)
+
+		return
+	}
+
+	log.Warnw("sync ApisixUpstream add event failed, will retry",
+		zap.Any("key", ev.Key),
+		zap.Error(errOrigin),
+	)
+	c.workqueue.AddRateLimited(ev)
 }
 
 // recordStatus record resources status
@@ -736,23 +880,6 @@ func (c *apisixRouteController) recordStatus(at interface{}, reason string, err 
 	}
 
 	switch v := at.(type) {
-	case *configv2beta2.ApisixRoute:
-		// set to status
-		if v.Status.Conditions == nil {
-			conditions := make([]metav1.Condition, 0)
-			v.Status.Conditions = conditions
-		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
-			meta.SetStatusCondition(&v.Status.Conditions, condition)
-			if _, errRecord := apisixClient.ApisixV2beta2().ApisixRoutes(v.Namespace).
-				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-				log.Errorw("failed to record status change for ApisixRoute",
-					zap.Error(errRecord),
-					zap.String("name", v.Name),
-					zap.String("namespace", v.Namespace),
-				)
-			}
-		}
 	case *v2beta3.ApisixRoute:
 		// set to status
 		if v.Status.Conditions == nil {
@@ -791,4 +918,26 @@ func (c *apisixRouteController) recordStatus(at interface{}, reason string, err 
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
 	}
+}
+
+func (c *apisixRouteController) NotifyServiceAdd(key string) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+
+	c.relatedWorkqueue.Add(&routeEvent{
+		Key:  key,
+		Type: "service",
+	})
+}
+
+func (c *apisixRouteController) NotifyApisixUpstreamChange(key string) {
+	if !c.namespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+
+	c.relatedWorkqueue.Add(&routeEvent{
+		Key:  key,
+		Type: "ApisixUpstream",
+	})
 }

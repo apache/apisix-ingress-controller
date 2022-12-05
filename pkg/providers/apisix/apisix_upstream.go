@@ -17,6 +17,7 @@ package apisix
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -43,25 +44,38 @@ import (
 type apisixUpstreamController struct {
 	*apisixCommon
 
-	workqueue workqueue.RateLimitingInterface
-	workers   int
+	workqueue    workqueue.RateLimitingInterface
+	svcWorkqueue workqueue.RateLimitingInterface
+	workers      int
 
 	svcInformer            cache.SharedIndexInformer
 	svcLister              listerscorev1.ServiceLister
 	apisixUpstreamInformer cache.SharedIndexInformer
 	apisixUpstreamLister   kube.ApisixUpstreamLister
+
+	externalSvcLock sync.RWMutex
+	// external name service name -> apisix upstream name
+	externalServiceMap map[string]map[string]struct{}
+
+	// ApisixRouteController don't know how service change affect ApisixUpstream
+	// So we need to notify it here
+	notifyApisixUpstreamChange func(string)
 }
 
-func newApisixUpstreamController(common *apisixCommon) *apisixUpstreamController {
+func newApisixUpstreamController(common *apisixCommon, notifyApisixUpstreamChange func(string)) *apisixUpstreamController {
 	c := &apisixUpstreamController{
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixUpstream"),
+		svcWorkqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixUpstreamService"),
 		workers:      1,
 
 		svcInformer:            common.SvcInformer,
 		svcLister:              common.SvcLister,
 		apisixUpstreamLister:   common.ApisixUpstreamLister,
 		apisixUpstreamInformer: common.ApisixUpstreamInformer,
+
+		externalServiceMap:         make(map[string]map[string]struct{}),
+		notifyApisixUpstreamChange: notifyApisixUpstreamChange,
 	}
 
 	c.apisixUpstreamInformer.AddEventHandler(
@@ -71,6 +85,13 @@ func newApisixUpstreamController(common *apisixCommon) *apisixUpstreamController
 			DeleteFunc: c.onDelete,
 		},
 	)
+	c.svcInformer.AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    c.onSvcAdd,
+			UpdateFunc: c.onSvcUpdate,
+			DeleteFunc: c.onSvcDelete,
+		},
+	)
 	return c
 }
 
@@ -78,6 +99,7 @@ func (c *apisixUpstreamController) run(ctx context.Context) {
 	log.Info("ApisixUpstream controller started")
 	defer log.Info("ApisixUpstream controller exited")
 	defer c.workqueue.ShutDown()
+	defer c.svcWorkqueue.ShutDown()
 
 	if ok := cache.WaitForCacheSync(ctx.Done(), c.apisixUpstreamInformer.HasSynced, c.svcInformer.HasSynced); !ok {
 		log.Error("cache sync failed")
@@ -85,6 +107,7 @@ func (c *apisixUpstreamController) run(ctx context.Context) {
 	}
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
+		go c.runSvcWorker(ctx)
 	}
 
 	<-ctx.Done()
@@ -99,6 +122,19 @@ func (c *apisixUpstreamController) runWorker(ctx context.Context) {
 		err := c.sync(ctx, obj.(*types.Event))
 		c.workqueue.Done(obj)
 		c.handleSyncErr(obj, err)
+	}
+}
+
+func (c *apisixUpstreamController) runSvcWorker(ctx context.Context) {
+	for {
+		obj, quit := c.svcWorkqueue.Get()
+		if quit {
+			return
+		}
+		key := obj.(string)
+		err := c.handleSvcChange(ctx, key)
+		c.svcWorkqueue.Done(obj)
+		c.handleSvcErr(key, err)
 	}
 }
 
@@ -153,6 +189,8 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 		}
 		multiVersioned = ev.Tombstone.(kube.ApisixUpstream)
 	}
+
+	c.syncRelationship(ev, key, multiVersioned)
 
 	switch event.GroupVersion {
 	case config.ApisixV2beta3:
@@ -241,9 +279,44 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 		}
 	case config.ApisixV2:
 		au := multiVersioned.V2()
+		if au.Spec == nil {
+			return nil
+		}
+
+		// We will prioritize ExternalNodes and Discovery.
+		if len(au.Spec.ExternalNodes) != 0 || au.Spec.Discovery != nil {
+			var newUps *apisixv1.Upstream
+			if ev.Type != types.EventDelete {
+				cfg := &au.Spec.ApisixUpstreamConfig
+				newUps, err = c.translator.TranslateUpstreamConfigV2(cfg)
+				if err != nil {
+					log.Errorw("failed to translate upstream config",
+						zap.Any("object", au),
+						zap.Error(err),
+					)
+					c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+					c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+					return err
+				}
+			}
+
+			if len(au.Spec.ExternalNodes) != 0 {
+				return c.updateExternalNodes(ctx, au, nil, newUps, au.Namespace, au.Name)
+			}
+
+			// for service discovery related configuration
+			if au.Spec.Discovery.ServiceName == "" || au.Spec.Discovery.Type == "" {
+				log.Error("If you setup Discovery for ApisixUpstream, you need to specify the ServiceName and Type fields.")
+				return fmt.Errorf("No ServiceName or Type fields found")
+			}
+			// updateUpstream for real
+			upsName := apisixv1.ComposeExternalUpstreamName(au.Namespace, au.Name)
+			return c.updateUpstream(ctx, upsName, &au.Spec.ApisixUpstreamConfig)
+
+		}
 
 		var portLevelSettings map[int32]configv2.ApisixUpstreamConfig
-		if au.Spec != nil && len(au.Spec.PortLevelSettings) > 0 {
+		if len(au.Spec.PortLevelSettings) > 0 {
 			portLevelSettings = make(map[int32]configv2.ApisixUpstreamConfig, len(au.Spec.PortLevelSettings))
 			for _, port := range au.Spec.PortLevelSettings {
 				portLevelSettings[port.Port] = port.ApisixUpstreamConfig
@@ -260,72 +333,30 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 
 		var subsets []configv2.ApisixUpstreamSubset
 		subsets = append(subsets, configv2.ApisixUpstreamSubset{})
-		if au.Spec != nil && len(au.Spec.Subsets) > 0 {
+		if len(au.Spec.Subsets) > 0 {
 			subsets = append(subsets, au.Spec.Subsets...)
 		}
-		clusterName := c.Config.APISIX.DefaultClusterName
 		for _, port := range svc.Spec.Ports {
 			for _, subset := range subsets {
-				// TODO: multiple cluster
-				update := func(upsName string) error {
-					ups, err := c.APISIX.Cluster(clusterName).Upstream().Get(ctx, upsName)
-					if err != nil {
-						if err == apisixcache.ErrNotFound {
-							return nil
-						}
-						log.Errorf("failed to get upstream %s: %s", upsName, err)
-						c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-						c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
-						return err
+				var cfg configv2.ApisixUpstreamConfig
+				if ev.Type != types.EventDelete {
+					var ok bool
+					cfg, ok = portLevelSettings[port.Port]
+					if !ok {
+						cfg = au.Spec.ApisixUpstreamConfig
 					}
-					var newUps *apisixv1.Upstream
-					if au.Spec != nil && ev.Type != types.EventDelete {
-						cfg, ok := portLevelSettings[port.Port]
-						if !ok {
-							cfg = au.Spec.ApisixUpstreamConfig
-						}
-						// FIXME Same ApisixUpstreamConfig might be translated multiple times.
-						newUps, err = c.translator.TranslateUpstreamConfigV2(&cfg)
-						if err != nil {
-							log.Errorw("ApisixUpstream conversion cannot be completed, or the format is incorrect",
-								zap.Any("object", au),
-								zap.Error(err),
-							)
-							c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-							c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
-							return err
-						}
-					} else {
-						newUps = apisixv1.NewDefaultUpstream()
-					}
-
-					newUps.Metadata = ups.Metadata
-					newUps.Nodes = ups.Nodes
-					log.Debugw("updating upstream since ApisixUpstream changed",
-						zap.String("event", ev.Type.String()),
-						zap.Any("upstream", newUps),
-						zap.Any("ApisixUpstream", au),
-					)
-					if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, newUps); err != nil {
-						log.Errorw("failed to update upstream",
-							zap.Error(err),
-							zap.Any("upstream", newUps),
-							zap.Any("ApisixUpstream", au),
-							zap.String("cluster", clusterName),
-						)
-						c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-						c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
-						return err
-					}
-					return nil
 				}
 
-				err := update(apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Endpoint))
+				err := c.updateUpstream(ctx, apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Endpoint), &cfg)
 				if err != nil {
+					c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+					c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 					return err
 				}
-				err = update(apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Service))
+				err = c.updateUpstream(ctx, apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Service), &cfg)
 				if err != nil {
+					c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+					c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 					return err
 				}
 			}
@@ -337,6 +368,158 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 	}
 
 	return err
+}
+
+func (c *apisixUpstreamController) updateUpstream(ctx context.Context, upsName string, cfg *configv2.ApisixUpstreamConfig) error {
+	// TODO: multi cluster
+	clusterName := c.Config.APISIX.DefaultClusterName
+
+	ups, err := c.APISIX.Cluster(clusterName).Upstream().Get(ctx, upsName)
+	if err != nil {
+		if err == apisixcache.ErrNotFound {
+			return nil
+		}
+		log.Errorf("failed to get upstream %s: %s", upsName, err)
+		return err
+	}
+	var newUps *apisixv1.Upstream
+	if cfg != nil {
+		newUps, err = c.translator.TranslateUpstreamConfigV2(cfg)
+		if err != nil {
+			log.Errorw("ApisixUpstream conversion cannot be completed, or the format is incorrect",
+				zap.String("ApisixUpstream name", upsName),
+				zap.Error(err),
+			)
+			return err
+		}
+	} else {
+		newUps = apisixv1.NewDefaultUpstream()
+	}
+
+	newUps.Metadata = ups.Metadata
+	newUps.Nodes = ups.Nodes
+	log.Debugw("updating upstream since ApisixUpstream changed",
+		zap.Any("upstream", newUps),
+		zap.String("ApisixUpstream name", upsName),
+	)
+	if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, newUps); err != nil {
+		log.Errorw("failed to update upstream",
+			zap.Error(err),
+			zap.Any("upstream", newUps),
+			zap.String("ApisixUpstream name", upsName),
+			zap.String("cluster", clusterName),
+		)
+		return err
+	}
+	return nil
+}
+
+func (c *apisixUpstreamController) updateExternalNodes(ctx context.Context, au *configv2.ApisixUpstream, old *configv2.ApisixUpstream, newUps *apisixv1.Upstream, ns, name string) error {
+	clusterName := c.Config.APISIX.DefaultClusterName
+
+	// TODO: if old is not nil, diff the external nodes change first
+
+	upsName := apisixv1.ComposeExternalUpstreamName(ns, name)
+	ups, err := c.APISIX.Cluster(clusterName).Upstream().Get(ctx, upsName)
+	if err != nil {
+		if err != apisixcache.ErrNotFound {
+			log.Errorf("failed to get upstream %s: %s", upsName, err)
+			c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+			return err
+		}
+		// Do nothing if not found
+	} else {
+		nodes, err := c.translator.TranslateApisixUpstreamExternalNodes(au)
+		if err != nil {
+			log.Errorf("failed to translate upstream external nodes %s: %s", upsName, err)
+			c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+			return err
+		}
+		if newUps != nil {
+			newUps.Metadata = ups.Metadata
+			ups = newUps
+		}
+
+		ups.Nodes = nodes
+		if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, ups); err != nil {
+			log.Errorw("failed to update external nodes upstream",
+				zap.Error(err),
+				zap.Any("upstream", ups),
+				zap.Any("ApisixUpstream", au),
+				zap.String("cluster", clusterName),
+			)
+			c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *apisixUpstreamController) syncRelationship(ev *types.Event, auKey string, au kube.ApisixUpstream) {
+	obj := ev.Object.(kube.ApisixUpstreamEvent)
+
+	if obj.GroupVersion != config.ApisixV2 {
+		return
+	}
+
+	var (
+		old    *configv2.ApisixUpstream
+		newObj *configv2.ApisixUpstream
+	)
+
+	if ev.Type == types.EventUpdate {
+		old = obj.OldObject.V2()
+	} else if ev.Type == types.EventDelete {
+		old = ev.Tombstone.(kube.ApisixUpstream).V2()
+	}
+
+	if ev.Type != types.EventDelete {
+		newObj = au.V2()
+	}
+
+	var (
+		//oldExternalDomains  []string
+		//newExternalDomains  []string
+		oldExternalServices []string
+		newExternalServices []string
+	)
+	if old != nil {
+		for _, node := range old.Spec.ExternalNodes {
+			if node.Type == configv2.ExternalTypeDomain {
+				//oldExternalDomains = append(oldExternalDomains, node.Name)
+			} else if node.Type == configv2.ExternalTypeService {
+				oldExternalServices = append(oldExternalServices, old.Namespace+"/"+node.Name)
+			}
+		}
+	}
+	if newObj != nil {
+		for _, node := range newObj.Spec.ExternalNodes {
+			if node.Type == configv2.ExternalTypeDomain {
+				//newExternalDomains = append(newExternalDomains, node.Name)
+			} else if node.Type == configv2.ExternalTypeService {
+				newExternalServices = append(newExternalServices, newObj.Namespace+"/"+node.Name)
+			}
+		}
+	}
+
+	c.externalSvcLock.Lock()
+	defer c.externalSvcLock.Unlock()
+
+	toDelete := utils.Difference(oldExternalServices, newExternalServices)
+	toAdd := utils.Difference(newExternalServices, oldExternalServices)
+	for _, svc := range toDelete {
+		delete(c.externalServiceMap[svc], auKey)
+	}
+
+	for _, svc := range toAdd {
+		if _, ok := c.externalServiceMap[svc]; !ok {
+			c.externalServiceMap[svc] = make(map[string]struct{})
+		}
+		c.externalServiceMap[svc][auKey] = struct{}{}
+	}
 }
 
 func (c *apisixUpstreamController) handleSyncErr(obj interface{}, err error) {
@@ -492,6 +675,146 @@ func (c *apisixUpstreamController) ResourceSync() {
 			},
 		})
 	}
+}
+
+func (c *apisixUpstreamController) onSvcAdd(obj interface{}) {
+	svc, ok := obj.(*corev1.Service)
+	if !ok {
+		log.Errorw("got service add event, but it is not a Service",
+			zap.Any("obj", obj),
+		)
+	}
+
+	log.Debugw("Service add event arrived",
+		zap.Any("object", obj),
+	)
+
+	if svc.Spec.Type != corev1.ServiceTypeExternalName {
+		return
+	}
+
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Errorw("found Service with bad meta key",
+			zap.Error(err),
+			zap.Any("obj", obj),
+		)
+		return
+	}
+	c.svcWorkqueue.Add(key)
+}
+
+func (c *apisixUpstreamController) onSvcUpdate(old, new interface{}) {
+	oldSvc, ok := old.(*corev1.Service)
+	if !ok {
+		log.Errorw("got service update event, but old one is not a Service",
+			zap.Any("old", old),
+		)
+	}
+	newSvc, ok := new.(*corev1.Service)
+	if !ok {
+		log.Errorw("got service update event, but new one is not a Service",
+			zap.Any("new", new),
+		)
+	}
+
+	if newSvc.Spec.Type != corev1.ServiceTypeExternalName {
+		return
+	}
+
+	if newSvc.Spec.ExternalName != oldSvc.Spec.ExternalName {
+		key, err := cache.MetaNamespaceKeyFunc(newSvc)
+		if err != nil {
+			log.Errorw("found Service with bad meta key",
+				zap.Error(err),
+				zap.Any("obj", newSvc),
+			)
+			return
+		}
+		c.svcWorkqueue.Add(key)
+	}
+}
+
+func (c *apisixUpstreamController) onSvcDelete(obj interface{}) {
+	svc, ok := obj.(*corev1.Service)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			return
+		}
+		svc, ok = tombstone.Obj.(*corev1.Service)
+		if !ok {
+			log.Errorw("got service delete event, but it is not a Service",
+				zap.Any("obj", obj),
+			)
+			return
+		}
+	}
+	if svc.Spec.Type != corev1.ServiceTypeExternalName {
+		return
+	}
+
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Errorw("found Service with bad meta key",
+			zap.Error(err),
+			zap.Any("obj", obj),
+		)
+		return
+	}
+	c.svcWorkqueue.Add(key)
+}
+
+func (c *apisixUpstreamController) handleSvcChange(ctx context.Context, key string) error {
+	var toUpdateUpstreams []string
+
+	c.externalSvcLock.RLock()
+	if ups, ok := c.externalServiceMap[key]; ok {
+		for upKey := range ups {
+			toUpdateUpstreams = append(toUpdateUpstreams, upKey)
+		}
+	}
+	c.externalSvcLock.RUnlock()
+
+	//log.Debugw("handleSvcChange",
+	//	zap.Any("service map", c.externalServiceMap),
+	//	zap.Strings("affectedUpstreams", toUpdateUpstreams),
+	//)
+
+	for _, upKey := range toUpdateUpstreams {
+		log.Debugw("Service change event trigger ApisixUpstream sync",
+			zap.Any("service", key),
+			zap.Any("ApisixUpstream", upKey),
+		)
+		c.notifyApisixUpstreamChange(upKey)
+		ns, name, err := cache.SplitMetaNamespaceKey(upKey)
+		if err != nil {
+			return err
+		}
+		au, err := c.apisixUpstreamLister.V2(ns, name)
+		if err != nil {
+			return err
+		}
+		err = c.updateExternalNodes(ctx, au.V2(), nil, nil, ns, name)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *apisixUpstreamController) handleSvcErr(key string, errOrigin error) {
+	if errOrigin == nil {
+		c.workqueue.Forget(key)
+		return
+	}
+
+	log.Warnw("sync Service failed, will retry",
+		zap.Any("key", key),
+		zap.Error(errOrigin),
+	)
+	c.svcWorkqueue.AddRateLimited(key)
 }
 
 // recordStatus record resources status

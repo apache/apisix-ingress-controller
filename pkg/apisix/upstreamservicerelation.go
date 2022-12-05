@@ -75,8 +75,12 @@ func (u *upstreamService) Delete(ctx context.Context, serviceName string) error 
 			continue
 		}
 		ups.Nodes = make(v1.UpstreamNodes, 0)
+		log.Debugw("try to update upstream in cluster",
+			zap.Any("upstream", ups),
+		)
 		_, err = u.cluster.upstream.Update(ctx, ups)
 		if err != nil {
+			log.Error(err)
 			continue
 		}
 	}

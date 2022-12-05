@@ -16,12 +16,12 @@
 package apisix
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -74,16 +74,18 @@ var (
 
 // ClusterOptions contains parameters to customize APISIX client.
 type ClusterOptions struct {
-	Name     string
-	AdminKey string
-	BaseURL  string
-	Timeout  time.Duration
+	AdminAPIVersion string
+	Name            string
+	AdminKey        string
+	BaseURL         string
+	Timeout         time.Duration
 	// SyncInterval is the interval to sync schema.
 	SyncInterval     types.TimeDuration
 	MetricsCollector metrics.Collector
 }
 
 type cluster struct {
+	adminVersion            string
 	name                    string
 	baseURL                 string
 	baseURLHost             string
@@ -104,6 +106,7 @@ type cluster struct {
 	pluginConfig            PluginConfig
 	metricsCollector        metrics.Collector
 	upstreamServiceRelation UpstreamServiceRelation
+	pluginMetadata          PluginMetadata
 }
 
 func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
@@ -123,11 +126,17 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 		return nil, err
 	}
 
+	// if the version is not v3, then fallback to v2
+	adminVersion := o.AdminAPIVersion
+	if adminVersion != "v3" {
+		adminVersion = "v2"
+	}
 	c := &cluster{
-		name:        o.Name,
-		baseURL:     o.BaseURL,
-		baseURLHost: u.Host,
-		adminKey:    o.AdminKey,
+		adminVersion: adminVersion,
+		name:         o.Name,
+		baseURL:      o.BaseURL,
+		baseURLHost:  u.Host,
+		adminKey:     o.AdminKey,
 		cli: &http.Client{
 			Timeout:   o.Timeout,
 			Transport: _defaultTransport,
@@ -146,6 +155,7 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 	c.schema = newSchemaClient(c)
 	c.pluginConfig = newPluginConfigClient(c)
 	c.upstreamServiceRelation = newUpstreamServiceRelation(c)
+	c.pluginMetadata = newPluginMetadataClient(c)
 
 	c.cache, err = cache.NewMemDBCache()
 	if err != nil {
@@ -462,6 +472,10 @@ func (c *cluster) Schema() Schema {
 	return c.schema
 }
 
+func (c *cluster) PluginMetadata() PluginMetadata {
+	return c.pluginMetadata
+}
+
 func (c *cluster) UpstreamServiceRelation() UpstreamServiceRelation {
 	return c.upstreamServiceRelation
 }
@@ -529,7 +543,12 @@ func (c *cluster) isFunctionDisabled(body string) bool {
 	return strings.Contains(body, "is disabled")
 }
 
-func (c *cluster) getResource(ctx context.Context, url, resource string) (*getResponse, error) {
+func (c *cluster) getResource(ctx context.Context, url, resource string) (*item, error) {
+	log.Debugw("get resource in cluster",
+		zap.String("cluster_name", c.name),
+		zap.String("name", resource),
+		zap.String("url", url),
+	)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -557,16 +576,30 @@ func (c *cluster) getResource(ctx context.Context, url, resource string) (*getRe
 		return nil, err
 	}
 
+	if c.adminVersion == "v3" {
+		var res item
+
+		dec := json.NewDecoder(resp.Body)
+		if err := dec.Decode(&res); err != nil {
+			return nil, err
+		}
+		return &res, nil
+	}
 	var res getResponse
 
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return &res.Item, nil
 }
 
-func (c *cluster) listResource(ctx context.Context, url, resource string) (*listResponse, error) {
+func (c *cluster) listResource(ctx context.Context, url, resource string) (items, error) {
+	log.Debugw("list resource in cluster",
+		zap.String("cluster_name", c.name),
+		zap.String("name", resource),
+		zap.String("url", url),
+	)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -590,17 +623,32 @@ func (c *cluster) listResource(ctx context.Context, url, resource string) (*list
 		return nil, err
 	}
 
+	if c.adminVersion == "v3" {
+		var list listResponseV3
+
+		dec := json.NewDecoder(resp.Body)
+		if err := dec.Decode(&list); err != nil {
+			return nil, err
+		}
+		return list.List, nil
+	}
 	var list listResponse
 
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&list); err != nil {
 		return nil, err
 	}
-	return &list, nil
+	return list.Node.Items, nil
 }
 
-func (c *cluster) createResource(ctx context.Context, url, resource string, body io.Reader) (*createResponse, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
+func (c *cluster) createResource(ctx context.Context, url, resource string, body []byte) (*item, error) {
+	log.Debugw("creating resource in cluster",
+		zap.String("cluster_name", c.name),
+		zap.String("name", resource),
+		zap.String("url", url),
+		zap.ByteString("body", body),
+	)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -624,16 +672,32 @@ func (c *cluster) createResource(ctx context.Context, url, resource string, body
 		return nil, err
 	}
 
+	if c.adminVersion == "v3" {
+		var cr createResponseV3
+
+		dec := json.NewDecoder(resp.Body)
+		if err := dec.Decode(&cr); err != nil {
+			return nil, err
+		}
+
+		return &cr.item, nil
+	}
 	var cr createResponse
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&cr); err != nil {
 		return nil, err
 	}
-	return &cr, nil
+	return &cr.Item, nil
 }
 
-func (c *cluster) updateResource(ctx context.Context, url, resource string, body io.Reader) (*updateResponse, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
+func (c *cluster) updateResource(ctx context.Context, url, resource string, body []byte) (*item, error) {
+	log.Debugw("updating resource in cluster",
+		zap.String("cluster_name", c.name),
+		zap.String("name", resource),
+		zap.String("url", url),
+		zap.ByteString("body", body),
+	)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -649,6 +713,10 @@ func (c *cluster) updateResource(ctx context.Context, url, resource string, body
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		body := readBody(resp.Body, url)
+		log.Debugw("update response",
+			zap.Int("status code %d", resp.StatusCode),
+			zap.String("body %s", body),
+		)
 		if c.isFunctionDisabled(body) {
 			return nil, ErrFunctionDisabled
 		}
@@ -656,15 +724,30 @@ func (c *cluster) updateResource(ctx context.Context, url, resource string, body
 		err = multierr.Append(err, fmt.Errorf("error message: %s", body))
 		return nil, err
 	}
+	if c.adminVersion == "v3" {
+		var ur updateResponseV3
+
+		dec := json.NewDecoder(resp.Body)
+		if err := dec.Decode(&ur); err != nil {
+			return nil, err
+		}
+
+		return &ur.item, nil
+	}
 	var ur updateResponse
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&ur); err != nil {
 		return nil, err
 	}
-	return &ur, nil
+	return &ur.Item, nil
 }
 
 func (c *cluster) deleteResource(ctx context.Context, url, resource string) error {
+	log.Debugw("deleting resource in cluster",
+		zap.String("cluster_name", c.name),
+		zap.String("name", resource),
+		zap.String("url", url),
+	)
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
 	if err != nil {
 		return err
@@ -696,7 +779,7 @@ func (c *cluster) deleteResource(ctx context.Context, url, resource string) erro
 
 // drainBody reads whole data until EOF from r, then close it.
 func drainBody(r io.ReadCloser, url string) {
-	_, err := io.Copy(ioutil.Discard, r)
+	_, err := io.Copy(io.Discard, r)
 	if err != nil {
 		if err.Error() != _errReadOnClosedResBody.Error() {
 			log.Warnw("failed to drain body (read)",
@@ -720,7 +803,7 @@ func readBody(r io.ReadCloser, url string) string {
 			log.Warnw("failed to close body", zap.String("url", url), zap.Error(err))
 		}
 	}()
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	if err != nil {
 		log.Warnw("failed to read body", zap.String("url", url), zap.Error(err))
 		return ""

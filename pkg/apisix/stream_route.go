@@ -15,7 +15,6 @@
 package apisix
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 
@@ -92,12 +91,12 @@ func (r *streamRouteClient) Get(ctx context.Context, name string) (*v1.StreamRou
 		return nil, err
 	}
 
-	streamRoute, err = resp.Item.streamRoute()
+	streamRoute, err = resp.streamRoute()
 	if err != nil {
 		log.Errorw("failed to convert stream_route item",
 			zap.String("url", r.url),
-			zap.String("stream_route_key", resp.Item.Key),
-			zap.String("stream_route_value", string(resp.Item.Value)),
+			zap.String("stream_route_key", resp.Key),
+			zap.String("stream_route_value", string(resp.Value)),
 			zap.Error(err),
 		)
 		return nil, err
@@ -125,7 +124,7 @@ func (r *streamRouteClient) List(ctx context.Context) ([]*v1.StreamRoute, error)
 	}
 
 	var items []*v1.StreamRoute
-	for i, item := range streamRouteItems.Node.Items {
+	for i, item := range streamRouteItems {
 		streamRoute, err := item.streamRoute()
 		if err != nil {
 			log.Errorw("failed to convert stream_route item",
@@ -149,6 +148,7 @@ func (r *streamRouteClient) Create(ctx context.Context, obj *v1.StreamRoute) (*v
 		zap.Int32("server_port", obj.ServerPort),
 		zap.String("cluster", "default"),
 		zap.String("url", r.url),
+		zap.String("sni", obj.SNI),
 	)
 
 	if err := r.cluster.HasSynced(ctx); err != nil {
@@ -161,14 +161,14 @@ func (r *streamRouteClient) Create(ctx context.Context, obj *v1.StreamRoute) (*v
 
 	url := r.url + "/" + obj.ID
 	log.Debugw("creating stream_route", zap.ByteString("body", data), zap.String("url", url))
-	resp, err := r.cluster.createResource(ctx, url, "streamRoute", bytes.NewReader(data))
+	resp, err := r.cluster.createResource(ctx, url, "streamRoute", data)
 	r.cluster.metricsCollector.IncrAPISIXRequest("streamRoute")
 	if err != nil {
 		log.Errorf("failed to create stream_route: %s", err)
 		return nil, err
 	}
 
-	streamRoute, err := resp.Item.streamRoute()
+	streamRoute, err := resp.streamRoute()
 	if err != nil {
 		return nil, err
 	}
@@ -217,13 +217,12 @@ func (r *streamRouteClient) Update(ctx context.Context, obj *v1.StreamRoute) (*v
 		return nil, err
 	}
 	url := r.url + "/" + obj.ID
-	log.Debugw("updating stream_route", zap.ByteString("body", body), zap.String("url", url))
-	resp, err := r.cluster.updateResource(ctx, url, "streamRoute", bytes.NewReader(body))
+	resp, err := r.cluster.updateResource(ctx, url, "streamRoute", body)
 	r.cluster.metricsCollector.IncrAPISIXRequest("streamRoute")
 	if err != nil {
 		return nil, err
 	}
-	streamRoute, err := resp.Item.streamRoute()
+	streamRoute, err := resp.streamRoute()
 	if err != nil {
 		return nil, err
 	}

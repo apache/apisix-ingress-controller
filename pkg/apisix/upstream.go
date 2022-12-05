@@ -15,7 +15,6 @@
 package apisix
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 
@@ -83,11 +82,11 @@ func (u *upstreamClient) Get(ctx context.Context, name string) (*v1.Upstream, er
 		return nil, err
 	}
 
-	ups, err = resp.Item.upstream()
+	ups, err = resp.upstream()
 	if err != nil {
 		log.Errorw("failed to convert upstream item",
 			zap.String("url", u.url),
-			zap.String("ssl_key", resp.Item.Key),
+			zap.String("ssl_key", resp.Key),
 			zap.Error(err),
 		)
 		return nil, err
@@ -116,7 +115,7 @@ func (u *upstreamClient) List(ctx context.Context) ([]*v1.Upstream, error) {
 	}
 
 	var items []*v1.Upstream
-	for i, item := range upsItems.Node.Items {
+	for i, item := range upsItems {
 		ups, err := item.upstream()
 		if err != nil {
 			log.Errorw("failed to convert upstream item",
@@ -153,13 +152,13 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	url := u.url + "/" + obj.ID
 	log.Debugw("creating upstream", zap.ByteString("body", body), zap.String("url", url))
 
-	resp, err := u.cluster.createResource(ctx, url, "upstream", bytes.NewReader(body))
+	resp, err := u.cluster.createResource(ctx, url, "upstream", body)
 	u.cluster.metricsCollector.IncrAPISIXRequest("upstream")
 	if err != nil {
 		log.Errorf("failed to create upstream: %s", err)
 		return nil, err
 	}
-	ups, err := resp.Item.upstream()
+	ups, err := resp.upstream()
 	if err != nil {
 		return nil, err
 	}
@@ -217,13 +216,12 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	}
 
 	url := u.url + "/" + obj.ID
-	log.Debugw("updating upstream", zap.ByteString("body", body), zap.String("url", url))
-	resp, err := u.cluster.updateResource(ctx, url, "upstream", bytes.NewReader(body))
+	resp, err := u.cluster.updateResource(ctx, url, "upstream", body)
 	u.cluster.metricsCollector.IncrAPISIXRequest("upstream")
 	if err != nil {
 		return nil, err
 	}
-	ups, err := resp.Item.upstream()
+	ups, err := resp.upstream()
 	if err != nil {
 		return nil, err
 	}

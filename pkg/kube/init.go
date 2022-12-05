@@ -17,8 +17,8 @@ package kube
 import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned"
-	gatewayexternalversions "sigs.k8s.io/gateway-api/pkg/client/informers/gateway/externalversions"
+	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
+	gatewayexternalversions "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
