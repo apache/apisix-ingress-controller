@@ -155,10 +155,8 @@ spec:
       - path: /ip
         pathType: Exact
         backend:
-          service:
-            name: %s
-            port:
-              number: %d
+          serviceName: %s
+          servicePort: %d
 `, backendSvc, backendPort[0])
 		err := s.CreateResourceFromString(ing)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
@@ -190,10 +188,8 @@ spec:
       - path: /ip
         pathType: Exact
         backend:
-          service:
-            name: %s
-            port:
-              number: %d
+          serviceName: %s
+          servicePort: %d
 `, backendSvc, backendPort[0])
 		err := s.CreateResourceFromString(ing)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
@@ -225,10 +221,8 @@ spec:
       - path: /ip
         pathType: Exact
         backend:
-          service:
-            name: %s
-            port:
-              number: %d
+          serviceName: %s
+          servicePort: %d
 `, backendSvc, backendPort[0])
 		err := s.CreateResourceFromString(ing)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
@@ -260,10 +254,8 @@ spec:
       - path: /ip
         pathType: Exact
         backend:
-          service:
-            name: %s
-            port:
-              number: %d
+          serviceName: %s
+          servicePort: %d
 `, backendSvc, backendPort[0])
 		err := s.CreateResourceFromString(ing)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
@@ -295,10 +287,8 @@ spec:
       - path: /ip
         pathType: Exact
         backend:
-          service:
-            name: %s
-            port:
-              number: %d
+          serviceName: %s
+          servicePort: %d
 `, backendSvc, backendPort[0])
 		err := s.CreateResourceFromString(ing)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
@@ -330,10 +320,8 @@ spec:
       - path: /ip
         pathType: Exact
         backend:
-          service:
-            name: %s
-            port:
-              number: %d
+          serviceName: %s
+          servicePort: %d
 `, backendSvc, backendPort[0])
 		err := s.CreateResourceFromString(ing)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
