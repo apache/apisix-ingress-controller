@@ -30,13 +30,13 @@ func NewParser() annotations.IngressAnnotationsParser {
 
 func (w *upstreamscheme) Parse(e annotations.Extractor) (interface{}, error) {
 	scheme := strings.ToLower(e.GetStringAnnotation(annotations.AnnotationsUpstreamScheme))
-	_, ok := apisixv1.IngressSchemeMap[scheme]
+	_, ok := apisixv1.ValidSchemes[scheme]
 	if ok {
 		return scheme, nil
 	}
 
-	keys := make([]string, 0, len(apisixv1.IngressSchemeMap))
-	for key := range apisixv1.IngressSchemeMap {
+	keys := make([]string, 0, len(apisixv1.ValidSchemes))
+	for key := range apisixv1.ValidSchemes {
 		keys = append(keys, key)
 	}
 
