@@ -81,7 +81,7 @@ const (
 	DefaultUpstreamTimeout = 60
 )
 
-var IngressSchemeMap map[string]struct{} = map[string]struct{}{
+var ValidSchemes map[string]struct{} = map[string]struct{}{
 	SchemeHTTP:  {},
 	SchemeHTTPS: {},
 	SchemeGRPC:  {},
