@@ -18,7 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -83,7 +83,7 @@ func (srv *fakeAPISIXConsumerSrv) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	if r.Method == http.MethodPut {
 		paths := strings.Split(r.URL.Path, "/")
 		key := fmt.Sprintf("/apisix/admin/consumers/%s", paths[len(paths)-1])
-		data, _ := ioutil.ReadAll(r.Body)
+		data, _ := io.ReadAll(r.Body)
 		srv.consumer[key] = data
 		w.WriteHeader(http.StatusCreated)
 		resp := fakeCreateResp{
@@ -106,7 +106,7 @@ func (srv *fakeAPISIXConsumerSrv) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			return
 		}
 
-		data, _ := ioutil.ReadAll(r.Body)
+		data, _ := io.ReadAll(r.Body)
 		srv.consumer[id] = data
 
 		w.WriteHeader(http.StatusOK)

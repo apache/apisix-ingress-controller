@@ -174,7 +174,7 @@ metadata:
 spec:
   selector:
     app: foo
-  portLevelSettings:
+  ports:
   - name: http
     port: 7000
     targetPort: 7000

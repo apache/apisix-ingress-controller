@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -780,7 +779,7 @@ func (c *cluster) deleteResource(ctx context.Context, url, resource string) erro
 
 // drainBody reads whole data until EOF from r, then close it.
 func drainBody(r io.ReadCloser, url string) {
-	_, err := io.Copy(ioutil.Discard, r)
+	_, err := io.Copy(io.Discard, r)
 	if err != nil {
 		if err.Error() != _errReadOnClosedResBody.Error() {
 			log.Warnw("failed to drain body (read)",
@@ -804,7 +803,7 @@ func readBody(r io.ReadCloser, url string) string {
 			log.Warnw("failed to close body", zap.String("url", url), zap.Error(err))
 		}
 	}()
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	if err != nil {
 		log.Warnw("failed to read body", zap.String("url", url), zap.Error(err))
 		return ""

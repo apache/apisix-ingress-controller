@@ -15,7 +15,6 @@
 package api
 
 import (
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -79,11 +78,11 @@ bKS1uxKukPFp6zxFwR7YZIiwo3tGkcudpHdTNurNMQiSTN97LTo8KL8y
 )
 
 func generateCertFiles() (certFileName string, keyFileName string) {
-	certFile, _ := ioutil.TempFile("", "cert.*.pem")
+	certFile, _ := os.CreateTemp("", "cert.*.pem")
 	certFileName = certFile.Name()
 	_, _ = certFile.Write([]byte(_tlsCert))
 
-	keyFile, _ := ioutil.TempFile("", "key.*.pem")
+	keyFile, _ := os.CreateTemp("", "key.*.pem")
 	keyFileName = keyFile.Name()
 	_, _ = keyFile.Write([]byte(_tlsKey))
 	return

@@ -16,7 +16,6 @@ package config
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -60,7 +59,7 @@ func TestNewConfigFromFile(t *testing.T) {
 	jsonData, err := json.Marshal(cfg)
 	assert.Nil(t, err, "failed to marshal config to json: %s", err)
 
-	tmpJSON, err := ioutil.TempFile("/tmp", "config-*.json")
+	tmpJSON, err := os.CreateTemp("/tmp", "config-*.json")
 	assert.Nil(t, err, "failed to create temporary json configuration file: ", err)
 	defer os.Remove(tmpJSON.Name())
 
@@ -99,7 +98,7 @@ apisix:
   default_cluster_admin_key: "123456"
   default_cluster_name: "apisix"
 `
-	tmpYAML, err := ioutil.TempFile("/tmp", "config-*.yaml")
+	tmpYAML, err := os.CreateTemp("/tmp", "config-*.yaml")
 	assert.Nil(t, err, "failed to create temporary yaml configuration file: ", err)
 	defer os.Remove(tmpYAML.Name())
 
@@ -180,7 +179,7 @@ func TestConfigWithEnvVar(t *testing.T) {
     }
 }
 `
-	tmpJSON, err := ioutil.TempFile("/tmp", "config-*.json")
+	tmpJSON, err := os.CreateTemp("/tmp", "config-*.json")
 	assert.Nil(t, err, "failed to create temporary json configuration file: ", err)
 	defer os.Remove(tmpJSON.Name())
 
@@ -214,7 +213,7 @@ apisix:
   default_cluster_admin_key: "{{.DEFAULT_CLUSTER_ADMIN_KEY}}"
   default_cluster_name: "{{.DEFAULT_CLUSTER_NAME}}"
 `
-	tmpYAML, err := ioutil.TempFile("/tmp", "config-*.yaml")
+	tmpYAML, err := os.CreateTemp("/tmp", "config-*.yaml")
 	assert.Nil(t, err, "failed to create temporary yaml configuration file: ", err)
 	defer os.Remove(tmpYAML.Name())
 
@@ -242,7 +241,7 @@ func TestConfigDefaultValue(t *testing.T) {
 apisix:
   default_cluster_base_url: http://127.0.0.1:8080/apisix
 `
-	tmpYAML, err := ioutil.TempFile("/tmp", "config-*.yaml")
+	tmpYAML, err := os.CreateTemp("/tmp", "config-*.yaml")
 	assert.Nil(t, err, "failed to create temporary yaml configuration file: ", err)
 	defer os.Remove(tmpYAML.Name())
 
@@ -263,7 +262,7 @@ apisix:
 
 func TestConfigInvalidation(t *testing.T) {
 	yamlData := ``
-	tmpYAML, err := ioutil.TempFile("/tmp", "config-*.yaml")
+	tmpYAML, err := os.CreateTemp("/tmp", "config-*.yaml")
 	assert.Nil(t, err, "failed to create temporary yaml configuration file: ", err)
 	defer os.Remove(tmpYAML.Name())
 
@@ -283,7 +282,7 @@ kubernetes:
 apisix:
   default_cluster_base_url: http://127.0.0.1:1234/apisix
 `
-	tmpYAML, err = ioutil.TempFile("/tmp", "config-*.yaml")
+	tmpYAML, err = os.CreateTemp("/tmp", "config-*.yaml")
 	assert.Nil(t, err, "failed to create temporary yaml configuration file: ", err)
 	defer os.Remove(tmpYAML.Name())
 
