@@ -29,7 +29,7 @@ func TestResponseRewriteHandler(t *testing.T) {
 		annotations.AnnotationsResponseRewriteBody:       "bar_body",
 		annotations.AnnotationsResponseRewriteBodyBase64: "false",
 	}
-	p := NewResponseRewriteFHandler()
+	p := NewResponseRewriteHandler()
 	out, err := p.Handle(annotations.NewExtractor(anno))
 	assert.Nil(t, err, "checking given error")
 	config := out.(*apisixv1.ResponseRewriteConfig)

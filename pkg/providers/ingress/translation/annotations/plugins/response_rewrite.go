@@ -15,16 +15,17 @@
 package plugins
 
 import (
+	"strconv"
+
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-	"strconv"
 )
 
 type responseRewrite struct{}
 
-// NewResponseRewriteFHandler creates a handler to convert annotations about
+// NewResponseRewriteHandler creates a handler to convert annotations about
 // ResponseRewrite to APISIX response-rewrite plugin.
-func NewResponseRewriteFHandler() PluginAnnotationsHandler {
+func NewResponseRewriteHandler() PluginAnnotationsHandler {
 	return &responseRewrite{}
 }
 

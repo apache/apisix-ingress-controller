@@ -41,7 +41,7 @@ metadata:
     k8s.apisix.apache.org/response-rewrite-status-code: "400"
     k8s.apisix.apache.org/response-rewrite-body: "bar-body"
     k8s.apisix.apache.org/response-rewrite-body-base64: "false"
-  name: ingress-v1
+  name: ingress-networking-v1
 spec:
   rules:
   - host: httpbin.org
@@ -76,7 +76,7 @@ metadata:
     k8s.apisix.apache.org/response-rewrite-status-code: "400"
     k8s.apisix.apache.org/response-rewrite-body: "YmFyLWJvZHk="
     k8s.apisix.apache.org/response-rewrite-body-base64: "true"
-  name: ingress-v1
+  name: ingress-networking-v1
 spec:
   rules:
   - host: httpbin.org
@@ -111,7 +111,217 @@ metadata:
     k8s.apisix.apache.org/response-rewrite-status-code: "400"
     k8s.apisix.apache.org/response-rewrite-body: "bar-body"
     k8s.apisix.apache.org/response-rewrite-body-base64: "false"
-  name: ingress-v1
+  name: ingress-networking-v1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, backendSvc, backendPort[0])
+		err := s.CreateResourceFromString(ing)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		time.Sleep(5 * time.Second)
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().NotEqual("bar-body")
+	})
+
+	ginkgo.It("enable in ingress networking/v1beta1", func() {
+		backendSvc, backendPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/enable-response-rewrite: "true"
+    k8s.apisix.apache.org/response-rewrite-status-code: "400"
+    k8s.apisix.apache.org/response-rewrite-body: "bar-body"
+    k8s.apisix.apache.org/response-rewrite-body-base64: "false"
+  name: ingress-networking-v1beta1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, backendSvc, backendPort[0])
+		err := s.CreateResourceFromString(ing)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		time.Sleep(5 * time.Second)
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusBadRequest)
+		resp.Body().Equal("bar-body")
+	})
+
+	ginkgo.It("enable base64 body in ingress networking/v1beta1", func() {
+		backendSvc, backendPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/enable-response-rewrite: "true"
+    k8s.apisix.apache.org/response-rewrite-status-code: "400"
+    k8s.apisix.apache.org/response-rewrite-body: "YmFyLWJvZHk="
+    k8s.apisix.apache.org/response-rewrite-body-base64: "true"
+  name: ingress-networking-v1beta1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, backendSvc, backendPort[0])
+		err := s.CreateResourceFromString(ing)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		time.Sleep(5 * time.Second)
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusBadRequest)
+		resp.Body().Equal("bar-body")
+	})
+
+	ginkgo.It("disable in ingress networking/v1beta1", func() {
+		backendSvc, backendPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/enable-response-rewrite: "false"
+    k8s.apisix.apache.org/response-rewrite-status-code: "400"
+    k8s.apisix.apache.org/response-rewrite-body: "bar-body"
+    k8s.apisix.apache.org/response-rewrite-body-base64: "false"
+  name: ingress-networking-v1beta1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, backendSvc, backendPort[0])
+		err := s.CreateResourceFromString(ing)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		time.Sleep(5 * time.Second)
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().NotEqual("bar-body")
+	})
+
+	ginkgo.It("enable in ingress extensions/v1beta1", func() {
+		backendSvc, backendPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/enable-response-rewrite: "true"
+    k8s.apisix.apache.org/response-rewrite-status-code: "400"
+    k8s.apisix.apache.org/response-rewrite-body: "bar-body"
+    k8s.apisix.apache.org/response-rewrite-body-base64: "false"
+  name: ingress-extensions-v1beta1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, backendSvc, backendPort[0])
+		err := s.CreateResourceFromString(ing)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		time.Sleep(5 * time.Second)
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusBadRequest)
+		resp.Body().Equal("bar-body")
+	})
+
+	ginkgo.It("enable base64 body in ingress extensions/v1beta1", func() {
+		backendSvc, backendPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/enable-response-rewrite: "true"
+    k8s.apisix.apache.org/response-rewrite-status-code: "400"
+    k8s.apisix.apache.org/response-rewrite-body: "YmFyLWJvZHk="
+    k8s.apisix.apache.org/response-rewrite-body-base64: "true"
+  name: ingress-extensions-v1beta1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, backendSvc, backendPort[0])
+		err := s.CreateResourceFromString(ing)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		time.Sleep(5 * time.Second)
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusBadRequest)
+		resp.Body().Equal("bar-body")
+	})
+
+	ginkgo.It("disable in ingress extensions/v1beta1", func() {
+		backendSvc, backendPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/enable-response-rewrite: "false"
+    k8s.apisix.apache.org/response-rewrite-status-code: "400"
+    k8s.apisix.apache.org/response-rewrite-body: "bar-body"
+    k8s.apisix.apache.org/response-rewrite-body-base64: "false"
+  name: ingress-extensions-v1beta1
 spec:
   rules:
   - host: httpbin.org
