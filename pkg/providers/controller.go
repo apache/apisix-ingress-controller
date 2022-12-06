@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -37,6 +38,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	apisixscheme "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/scheme"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	apisixprovider "github.com/apache/apisix-ingress-controller/pkg/providers/apisix"
@@ -85,6 +87,9 @@ type Controller struct {
 	gatewayProvider   *gateway.Provider
 	apisixProvider    apisixprovider.Provider
 	ingressProvider   ingressprovider.Provider
+
+	kubeFactory   informers.SharedInformerFactory
+	apisixFactory externalversions.SharedInformerFactory
 }
 
 // NewController creates an ingress apisix controller object.
@@ -216,6 +221,9 @@ election:
 func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 	kubeFactory := c.kubeClient.NewSharedIndexInformerFactory()
 	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
+
+	c.kubeFactory = kubeFactory
+	c.apisixFactory = apisixFactory
 
 	epLister, epInformer := kube.NewEndpointListerAndInformer(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
 	svcInformer := kubeFactory.Core().V1().Services().Informer()
@@ -386,6 +394,12 @@ func (c *Controller) run(ctx context.Context) {
 	}
 
 	// Run Phase
+
+	c.kubeFactory.Start(ctx.Done())
+	c.apisixFactory.Start(ctx.Done())
+
+	c.kubeFactory.WaitForCacheSync(ctx.Done())
+	c.apisixFactory.WaitForCacheSync(ctx.Done())
 
 	e := utils.ParallelExecutor{}
 
