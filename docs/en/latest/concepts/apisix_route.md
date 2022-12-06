@@ -202,6 +202,7 @@ spec:
 ```
 
 ### Config with secretRef
+
 Plugins are supported to be configured from kubernetes secret with `secretRef`.
 
 The priority is `plugins.secretRef > plugins.config`. That is, the duplicated key in `plugins.config` are replaced by `plugins.secretRef`.
