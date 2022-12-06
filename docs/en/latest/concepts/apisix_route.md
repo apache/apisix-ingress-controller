@@ -208,6 +208,7 @@ Plugins are supported to be configured from kubernetes secret with `secretRef`.
 The priority is `plugins.secretRef > plugins.config`. That is, the duplicated key in `plugins.config` are replaced by `plugins.secretRef`.
 
 Example below configures echo plugin. The final values of `before_body`, `body` and `after_body` are "This is the replaced preface", "my custom body" and "This is the epilogue", respectively.
+
 ```yaml
 apiVersion: v1
 kind: Secret
