@@ -201,6 +201,51 @@ spec:
           enable: true
 ```
 
+### Config with secretRef
+Plugins are supported to be configured from kubernetes secret with `secretRef`.
+
+The priority is `plugins.secretRef > plugins.config`. That is, the duplicated key in `plugins.config` are replaced by `plugins.secretRef`.
+
+Example below configures echo plugin. The final values of `before_body`, `body` and `after_body` are "This is the replaced preface", "my custom body" and "This is the epilogue", respectively.
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: echo
+data:
+  # content is "This is the replaced preface"
+  before_body: IlRoaXMgaXMgdGhlIHJlcGxhY2VkIHByZWZhY2Ui
+  # content is "my custom body"
+  body: Im15IGN1c3RvbSBib2R5Ig==
+---
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  http:
+    - name: rule1
+      match:
+        hosts:
+          - httpbin.org
+        paths:
+          - /ip
+      backends:
+        - serviceName: %s
+          servicePort: %d
+          weight: 10
+      plugins:
+        - name: echo
+          enable: true
+          config:
+            before_body: "This is the preface"
+            after_body: "This is the epilogue"
+            headers:
+              X-Foo: v1
+              X-Foo2: v2
+          secretRef: echo
+```
+
 ## Websocket proxy
 
 You can route requests to [WebSocket](https://en.wikipedia.org/wiki/WebSocket#:~:text=WebSocket%20is%20a%20computer%20communications,WebSocket%20is%20distinct%20from%20HTTP.) services by setting the `websocket` attribute to `true` as shown below:

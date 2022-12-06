@@ -61,8 +61,6 @@ spec:
                       config:
                         type: object
                         x-kubernetes-preserve-unknown-fields: true # we have to enable it since plugin config
-                      secretConfig:
-                        type: string
                   required:
                     - name
                     - enable
@@ -116,7 +114,7 @@ spec:
                       config:
                         type: object
                         x-kubernetes-preserve-unknown-fields: true # we have to enable it since plugin config
-                      secretConfig:
+                      secretRef:
                         type: string
                   required:
                     - name
