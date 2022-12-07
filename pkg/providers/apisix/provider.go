@@ -154,22 +154,6 @@ func (p *apisixProvider) Run(ctx context.Context) {
 	e := utils.ParallelExecutor{}
 
 	e.Add(func() {
-		p.apisixRouteInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		p.apisixTlsInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		p.apisixClusterConfigInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		p.apisixConsumerInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		p.apisixPluginConfigInformer.Run(ctx.Done())
-	})
-
-	e.Add(func() {
 		p.apisixUpstreamController.run(ctx)
 	})
 	e.Add(func() {

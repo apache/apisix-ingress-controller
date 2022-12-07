@@ -43,9 +43,6 @@ type apisixClusterConfigController struct {
 
 	workqueue workqueue.RateLimitingInterface
 	workers   int
-
-	apisixClusterConfigLister   kube.ApisixClusterConfigLister
-	apisixClusterConfigInformer cache.SharedIndexInformer
 }
 
 func newApisixClusterConfigController(common *apisixCommon,
@@ -54,12 +51,8 @@ func newApisixClusterConfigController(common *apisixCommon,
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(time.Second, 60*time.Second, 5), "ApisixClusterConfig"),
 		workers:      1,
-
-		apisixClusterConfigLister:   apisixClusterConfigLister,
-		apisixClusterConfigInformer: apisixClusterConfigInformer,
 	}
-
-	c.apisixClusterConfigInformer.AddEventHandler(
+	c.ApisixClusterConfigInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    c.onAdd,
 			UpdateFunc: c.onUpdate,
@@ -74,10 +67,6 @@ func (c *apisixClusterConfigController) run(ctx context.Context) {
 	defer log.Info("ApisixClusterConfig controller exited")
 	defer c.workqueue.ShutDown()
 
-	if ok := cache.WaitForCacheSync(ctx.Done(), c.apisixClusterConfigInformer.HasSynced); !ok {
-		log.Error("cache sync failed")
-		return
-	}
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
 	}
@@ -108,9 +97,9 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 	var multiVersioned kube.ApisixClusterConfig
 	switch event.GroupVersion {
 	case config.ApisixV2beta3:
-		multiVersioned, err = c.apisixClusterConfigLister.V2beta3(name)
+		multiVersioned, err = c.ApisixClusterConfigLister.V2beta3(name)
 	case config.ApisixV2:
-		multiVersioned, err = c.apisixClusterConfigLister.V2(name)
+		multiVersioned, err = c.ApisixClusterConfigLister.V2(name)
 	default:
 		return fmt.Errorf("unsupported ApisixClusterConfig group version %s", event.GroupVersion)
 	}
@@ -419,7 +408,7 @@ func (c *apisixClusterConfigController) onDelete(obj interface{}) {
 }
 
 func (c *apisixClusterConfigController) ResourceSync() {
-	objs := c.apisixClusterConfigInformer.GetIndexer().List()
+	objs := c.ApisixClusterConfigInformer.GetIndexer().List()
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {

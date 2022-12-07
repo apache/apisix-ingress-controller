@@ -42,9 +42,6 @@ type apisixConsumerController struct {
 
 	workqueue workqueue.RateLimitingInterface
 	workers   int
-
-	apisixConsumerLister   kube.ApisixConsumerLister
-	apisixConsumerInformer cache.SharedIndexInformer
 }
 
 func newApisixConsumerController(common *apisixCommon,
@@ -53,12 +50,9 @@ func newApisixConsumerController(common *apisixCommon,
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixConsumer"),
 		workers:      1,
-
-		apisixConsumerLister:   apisixConsumerLister,
-		apisixConsumerInformer: apisixConsumerInformer,
 	}
 
-	c.apisixConsumerInformer.AddEventHandler(
+	c.ApisixConsumerInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    c.onAdd,
 			UpdateFunc: c.onUpdate,
@@ -71,15 +65,12 @@ func newApisixConsumerController(common *apisixCommon,
 func (c *apisixConsumerController) run(ctx context.Context) {
 	log.Info("ApisixConsumer controller started")
 	defer log.Info("ApisixConsumer controller exited")
-	if ok := cache.WaitForCacheSync(ctx.Done(), c.apisixConsumerInformer.HasSynced); !ok {
-		log.Error("cache sync failed")
-		return
-	}
+	defer c.workqueue.ShutDown()
+
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
 	}
 	<-ctx.Done()
-	c.workqueue.ShutDown()
 }
 
 func (c *apisixConsumerController) runWorker(ctx context.Context) {
@@ -106,9 +97,9 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 	var multiVersioned kube.ApisixConsumer
 	switch event.GroupVersion {
 	case config.ApisixV2beta3:
-		multiVersioned, err = c.apisixConsumerLister.V2beta3(namespace, name)
+		multiVersioned, err = c.ApisixConsumerLister.V2beta3(namespace, name)
 	case config.ApisixV2:
-		multiVersioned, err = c.apisixConsumerLister.V2(namespace, name)
+		multiVersioned, err = c.ApisixConsumerLister.V2(namespace, name)
 	default:
 		return fmt.Errorf("unsupported ApisixConsumer group version %s", event.GroupVersion)
 	}
@@ -334,7 +325,7 @@ func (c *apisixConsumerController) onDelete(obj interface{}) {
 }
 
 func (c *apisixConsumerController) ResourceSync() {
-	objs := c.apisixConsumerInformer.GetIndexer().List()
+	objs := c.ApisixConsumerInformer.GetIndexer().List()
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {

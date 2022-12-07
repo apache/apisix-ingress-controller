@@ -102,10 +102,6 @@ func (p *ingressProvider) Run(ctx context.Context) {
 	e := utils.ParallelExecutor{}
 
 	e.Add(func() {
-		p.ingressInformer.Run(ctx.Done())
-	})
-
-	e.Add(func() {
 		p.ingressController.run(ctx)
 	})
 

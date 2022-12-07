@@ -32,20 +32,14 @@ import (
 // cc https://github.com/apache/apisix-ingress-controller/pull/742#discussion_r757197791
 func (p *apisixProvider) Init(ctx context.Context) error {
 	var (
-		wg                 sync.WaitGroup
-		routeMapK8S        = new(sync.Map)
-		streamRouteMapK8S  = new(sync.Map)
-		upstreamMapK8S     = new(sync.Map)
-		sslMapK8S          = new(sync.Map)
-		consumerMapK8S     = new(sync.Map)
-		pluginConfigMapK8S = new(sync.Map)
+		wg                sync.WaitGroup
+		routeMapK8S       = new(sync.Map)
+		streamRouteMapK8S = new(sync.Map)
+		sslMapK8S         = new(sync.Map)
 
-		routeMapA6        = make(map[string]string)
-		streamRouteMapA6  = make(map[string]string)
-		upstreamMapA6     = make(map[string]string)
-		sslMapA6          = make(map[string]string)
-		consumerMapA6     = make(map[string]string)
-		pluginConfigMapA6 = make(map[string]string)
+		routeMapA6       = make(map[string]string)
+		streamRouteMapA6 = make(map[string]string)
+		sslMapA6         = make(map[string]string)
 	)
 
 	namespaces := p.namespaceProvider.WatchingNamespaces()
@@ -77,17 +71,9 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 							for _, stRoute := range tc.StreamRoutes {
 								streamRouteMapK8S.Store(stRoute.ID, stRoute.ID)
 							}
-							// upstreams
-							for _, upstream := range tc.Upstreams {
-								upstreamMapK8S.Store(upstream.ID, upstream.ID)
-							}
 							// ssl
 							for _, ssl := range tc.SSL {
 								sslMapK8S.Store(ssl.ID, ssl.ID)
-							}
-							// pluginConfigs
-							for _, pluginConfig := range tc.PluginConfigs {
-								pluginConfigMapK8S.Store(pluginConfig.ID, pluginConfig.ID)
 							}
 						}
 					}
@@ -112,17 +98,9 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 							for _, stRoute := range tc.StreamRoutes {
 								streamRouteMapK8S.Store(stRoute.ID, stRoute.ID)
 							}
-							// upstreams
-							for _, upstream := range tc.Upstreams {
-								upstreamMapK8S.Store(upstream.ID, upstream.ID)
-							}
 							// ssl
 							for _, ssl := range tc.SSL {
 								sslMapK8S.Store(ssl.ID, ssl.ID)
-							}
-							// pluginConfigs
-							for _, pluginConfig := range tc.PluginConfigs {
-								pluginConfigMapK8S.Store(pluginConfig.ID, pluginConfig.ID)
 							}
 						}
 					}
@@ -137,22 +115,6 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 
 			switch p.common.Config.Kubernetes.APIVersion {
 			case config.ApisixV2beta3:
-				// ApisixConsumer
-				retConsumer, err := p.common.KubeClient.APISIXClient.ApisixV2beta3().ApisixConsumers(ns).List(ctx, opts)
-				if err != nil {
-					log.Error(err.Error())
-					ctx.Done()
-				} else {
-					for _, con := range retConsumer.Items {
-						consumer, err := p.apisixTranslator.TranslateApisixConsumerV2beta3(&con)
-						if err != nil {
-							log.Error(err.Error())
-							ctx.Done()
-						} else {
-							consumerMapK8S.Store(consumer.Username, consumer.Username)
-						}
-					}
-				}
 				// ApisixTls
 				retSSL, err := p.common.KubeClient.APISIXClient.ApisixV2beta3().ApisixTlses(ns).List(ctx, opts)
 				if err != nil {
@@ -170,22 +132,6 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 					}
 				}
 			case config.ApisixV2:
-				// ApisixConsumer
-				retConsumer, err := p.common.KubeClient.APISIXClient.ApisixV2().ApisixConsumers(ns).List(ctx, opts)
-				if err != nil {
-					log.Error(err.Error())
-					ctx.Done()
-				} else {
-					for _, con := range retConsumer.Items {
-						consumer, err := p.apisixTranslator.TranslateApisixConsumerV2(&con)
-						if err != nil {
-							log.Error(err.Error())
-							ctx.Done()
-						} else {
-							consumerMapK8S.Store(consumer.Username, consumer.Username)
-						}
-					}
-				}
 				// ApisixTls
 				retSSL, err := p.common.KubeClient.APISIXClient.ApisixV2().ApisixTlses(ns).List(ctx, opts)
 				if err != nil {
@@ -218,33 +164,17 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 	if err := p.listStreamRouteCache(ctx, streamRouteMapA6); err != nil {
 		return err
 	}
-	if err := p.listUpstreamCache(ctx, upstreamMapA6); err != nil {
-		return err
-	}
 	if err := p.listSSLCache(ctx, sslMapA6); err != nil {
-		return err
-	}
-	if err := p.listConsumerCache(ctx, consumerMapA6); err != nil {
-		return err
-	}
-	if err := p.listPluginConfigCache(ctx, pluginConfigMapA6); err != nil {
 		return err
 	}
 	// 3.compare
 	routeResult := findRedundant(routeMapA6, routeMapK8S)
 	streamRouteResult := findRedundant(streamRouteMapA6, streamRouteMapK8S)
-	upstreamResult := findRedundant(upstreamMapA6, upstreamMapK8S)
 	sslResult := findRedundant(sslMapA6, sslMapK8S)
-	consumerResult := findRedundant(consumerMapA6, consumerMapK8S)
-	pluginConfigResult := findRedundant(pluginConfigMapA6, pluginConfigMapK8S)
 	// 4.warn
 	warnRedundantResources(routeResult, "route")
 	warnRedundantResources(streamRouteResult, "streamRoute")
-	warnRedundantResources(upstreamResult, "upstream")
 	warnRedundantResources(sslResult, "ssl")
-	warnRedundantResources(consumerResult, "consumer")
-	warnRedundantResources(pluginConfigResult, "pluginConfig")
-
 	return nil
 }
 

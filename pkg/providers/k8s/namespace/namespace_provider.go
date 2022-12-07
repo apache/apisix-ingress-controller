@@ -128,9 +128,6 @@ func (c *watchingProvider) Run(ctx context.Context) {
 
 	e := utils.ParallelExecutor{}
 	e.Add(func() {
-		c.namespaceInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
 		c.controller.run(ctx)
 	})
 

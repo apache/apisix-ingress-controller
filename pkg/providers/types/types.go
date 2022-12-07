@@ -22,6 +22,7 @@ import (
 
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/informers"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -30,6 +31,7 @@ import (
 	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
@@ -43,6 +45,9 @@ type Provider interface {
 }
 
 type ListerInformer struct {
+	KubeFactory   informers.SharedInformerFactory
+	ApisixFactory externalversions.SharedInformerFactory
+
 	EpLister   kube.EndpointLister
 	EpInformer cache.SharedIndexInformer
 
@@ -55,36 +60,53 @@ type ListerInformer struct {
 	PodLister   listerscorev1.PodLister
 	PodInformer cache.SharedIndexInformer
 
-	ApisixUpstreamLister   kube.ApisixUpstreamLister
-	ApisixUpstreamInformer cache.SharedIndexInformer
-
 	ConfigMapLister   listerscorev1.ConfigMapLister
 	ConfigMapInformer cache.SharedIndexInformer
+
+	ApisixUpstreamInformer      cache.SharedIndexInformer
+	ApisixRouteInformer         cache.SharedIndexInformer
+	ApisixPluginConfigInformer  cache.SharedIndexInformer
+	ApisixConsumerInformer      cache.SharedIndexInformer
+	ApisixTlsInformer           cache.SharedIndexInformer
+	ApisixClusterConfigInformer cache.SharedIndexInformer
+
+	ApisixRouteLister         kube.ApisixRouteLister
+	ApisixUpstreamLister      kube.ApisixUpstreamLister
+	ApisixPluginConfigLister  kube.ApisixPluginConfigLister
+	ApisixConsumerLister      kube.ApisixConsumerLister
+	ApisixTlsLister           kube.ApisixTlsLister
+	ApisixClusterConfigLister kube.ApisixClusterConfigLister
 }
 
-func (c *ListerInformer) Run(ctx context.Context) {
+func (c *ListerInformer) StartAndWaitSync(ctx context.Context) {
+
 	e := utils.ParallelExecutor{}
 
 	e.Add(func() {
-		c.EpInformer.Run(ctx.Done())
+		c.KubeFactory.Start(ctx.Done())
+		kube := c.KubeFactory.WaitForCacheSync(ctx.Done())
+
+		for resource, ok := range kube {
+			if !ok {
+				log.Error(resource, "sync failed")
+			}
+		}
 	})
+
 	e.Add(func() {
-		c.SvcInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.SecretInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.ConfigMapInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.PodInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.ApisixUpstreamInformer.Run(ctx.Done())
+		c.ApisixFactory.Start(ctx.Done())
+		crds := c.ApisixFactory.WaitForCacheSync(ctx.Done())
+		for crd, ok := range crds {
+			if !ok {
+				log.Error(crd, "sync failed")
+			}
+		}
 	})
 
 	e.Wait()
+}
+
+func (c *ListerInformer) Run(ctx context.Context) {
 }
 
 type Common struct {
