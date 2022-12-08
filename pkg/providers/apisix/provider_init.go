@@ -221,18 +221,6 @@ func (p *apisixProvider) listStreamRouteCache(ctx context.Context, streamRouteMa
 	return nil
 }
 
-func (p *apisixProvider) listUpstreamCache(ctx context.Context, upstreamMapA6 map[string]string) error {
-	upstreamsInA6, err := p.common.APISIX.Cluster(p.common.Config.APISIX.DefaultClusterName).Upstream().List(ctx)
-	if err != nil {
-		return err
-	} else {
-		for _, ra := range upstreamsInA6 {
-			upstreamMapA6[ra.ID] = ra.ID
-		}
-	}
-	return nil
-}
-
 func (p *apisixProvider) listSSLCache(ctx context.Context, sslMapA6 map[string]string) error {
 	sslInA6, err := p.common.APISIX.Cluster(p.common.Config.APISIX.DefaultClusterName).SSL().List(ctx)
 	if err != nil {
@@ -240,30 +228,6 @@ func (p *apisixProvider) listSSLCache(ctx context.Context, sslMapA6 map[string]s
 	} else {
 		for _, s := range sslInA6 {
 			sslMapA6[s.ID] = s.ID
-		}
-	}
-	return nil
-}
-
-func (p *apisixProvider) listConsumerCache(ctx context.Context, consumerMapA6 map[string]string) error {
-	consumerInA6, err := p.common.APISIX.Cluster(p.common.Config.APISIX.DefaultClusterName).Consumer().List(ctx)
-	if err != nil {
-		return err
-	} else {
-		for _, con := range consumerInA6 {
-			consumerMapA6[con.Username] = con.Username
-		}
-	}
-	return nil
-}
-
-func (p *apisixProvider) listPluginConfigCache(ctx context.Context, pluginConfigMapA6 map[string]string) error {
-	pluginConfigInA6, err := p.common.APISIX.Cluster(p.common.Config.APISIX.DefaultClusterName).PluginConfig().List(ctx)
-	if err != nil {
-		return err
-	} else {
-		for _, ra := range pluginConfigInA6 {
-			pluginConfigMapA6[ra.ID] = ra.ID
 		}
 	}
 	return nil

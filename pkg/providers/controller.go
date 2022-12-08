@@ -240,6 +240,8 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		apisixClusterConfigListerV2 v2.ApisixClusterConfigLister
 		apisixConsumerListerV2      v2.ApisixConsumerLister
 		apisixPluginConfigListerV2  v2.ApisixPluginConfigLister
+
+		ingressInformer cache.SharedIndexInformer
 	)
 
 	switch c.cfg.Kubernetes.APIVersion {
@@ -295,7 +297,24 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 	configmapInformer := kubeFactory.Core().V1().ConfigMaps().Informer()
 	configmapLister := kubeFactory.Core().V1().ConfigMaps().Lister()
 
+	switch c.cfg.Kubernetes.IngressVersion {
+	case config.IngressNetworkingV1:
+		ingressInformer = kubeFactory.Networking().V1().Ingresses().Informer()
+	case config.IngressNetworkingV1beta1:
+		ingressInformer = kubeFactory.Networking().V1beta1().Ingresses().Informer()
+	default:
+		ingressInformer = kubeFactory.Extensions().V1beta1().Ingresses().Informer()
+	}
+	ingressLister := kube.NewIngressLister(
+		kubeFactory.Networking().V1().Ingresses().Lister(),
+		kubeFactory.Networking().V1beta1().Ingresses().Lister(),
+		kubeFactory.Extensions().V1beta1().Ingresses().Lister(),
+	)
+
 	listerInformer := &providertypes.ListerInformer{
+		ApisixFactory: apisixFactory,
+		KubeFactory:   kubeFactory,
+
 		EpLister:          epLister,
 		EpInformer:        epInformer,
 		SvcLister:         svcLister,
@@ -306,6 +325,8 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		PodInformer:       podInformer,
 		ConfigMapInformer: configmapInformer,
 		ConfigMapLister:   configmapLister,
+		IngressInformer:   ingressInformer,
+		IngressLister:     ingressLister,
 
 		ApisixUpstreamLister:      apisixUpstreamLister,
 		ApisixRouteLister:         apisixRouteLister,
