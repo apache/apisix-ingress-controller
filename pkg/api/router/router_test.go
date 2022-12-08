@@ -60,8 +60,7 @@ func TestApisixHealthz(t *testing.T) {
 func TestMetrics(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, r := gin.CreateTestContext(w)
-	req := httptest.NewRequest("GET", "/metrics", nil)
-	c.Request = req
+	c.Request = httptest.NewRequest("GET", "/metrics", nil)
 	mountMetrics(r)
 	metrics(c)
 
@@ -71,8 +70,7 @@ func TestMetrics(t *testing.T) {
 func TestWebhooks(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, r := gin.CreateTestContext(w)
-	req := httptest.NewRequest("POST", "/validation", nil)
-	c.Request = req
+	c.Request = httptest.NewRequest("POST", "/validation", nil)
 	MountWebhooks(r, &apisix.ClusterOptions{})
 
 	assert.Equal(t, http.StatusOK, w.Code)
