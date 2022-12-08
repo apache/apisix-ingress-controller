@@ -27,6 +27,9 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	extensionsv1beta1 "k8s.io/client-go/listers/extensions/v1beta1"
+	networkingv1 "k8s.io/client-go/listers/networking/v1"
+	networkingv1beta1 "k8s.io/client-go/listers/networking/v1beta1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
@@ -220,6 +223,14 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 	apisixFactory := c.kubeClient.NewAPISIXSharedIndexInformerFactory()
 
 	var (
+		ingressInformer cache.SharedIndexInformer
+
+		ingressListerV1                networkingv1.IngressLister
+		ingressListerV1beta1           networkingv1beta1.IngressLister
+		ingressListerExtensionsV1beta1 extensionsv1beta1.IngressLister
+	)
+
+	var (
 		apisixUpstreamInformer      cache.SharedIndexInformer
 		apisixRouteInformer         cache.SharedIndexInformer
 		apisixPluginConfigInformer  cache.SharedIndexInformer
@@ -240,8 +251,6 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		apisixClusterConfigListerV2 v2.ApisixClusterConfigLister
 		apisixConsumerListerV2      v2.ApisixConsumerLister
 		apisixPluginConfigListerV2  v2.ApisixPluginConfigLister
-
-		ingressInformer cache.SharedIndexInformer
 	)
 
 	switch c.cfg.Kubernetes.APIVersion {
@@ -300,16 +309,16 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 	switch c.cfg.Kubernetes.IngressVersion {
 	case config.IngressNetworkingV1:
 		ingressInformer = kubeFactory.Networking().V1().Ingresses().Informer()
+		ingressListerV1 = kubeFactory.Networking().V1().Ingresses().Lister()
 	case config.IngressNetworkingV1beta1:
 		ingressInformer = kubeFactory.Networking().V1beta1().Ingresses().Informer()
+		ingressListerV1beta1 = kubeFactory.Networking().V1beta1().Ingresses().Lister()
 	default:
 		ingressInformer = kubeFactory.Extensions().V1beta1().Ingresses().Informer()
+		ingressListerExtensionsV1beta1 = kubeFactory.Extensions().V1beta1().Ingresses().Lister()
 	}
-	ingressLister := kube.NewIngressLister(
-		kubeFactory.Networking().V1().Ingresses().Lister(),
-		kubeFactory.Networking().V1beta1().Ingresses().Lister(),
-		kubeFactory.Extensions().V1beta1().Ingresses().Lister(),
-	)
+
+	ingressLister := kube.NewIngressLister(ingressListerV1, ingressListerV1beta1, ingressListerExtensionsV1beta1)
 
 	listerInformer := &providertypes.ListerInformer{
 		ApisixFactory: apisixFactory,
