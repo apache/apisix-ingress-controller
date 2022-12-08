@@ -108,13 +108,13 @@ jobs:
 
           echo "creating images cache..."
           docker save \
-            $(REGISTRY)/apisix:dev \
-            $(REGISTRY)/etcd:dev \
-            $(REGISTRY)/apisix-ingress-controller:dev \
-            $(REGISTRY)/httpbin:dev \
-            $(REGISTRY)/test-backend:dev \
-            $(REGISTRY)/echo-server:dev \
-            $(REGISTRY)/busybox:dev \
+            ${REGISTRY}/apisix:dev \
+            ${REGISTRY}/etcd:dev \
+            ${REGISTRY}/apisix-ingress-controller:dev \
+            ${REGISTRY}/httpbin:dev \
+            ${REGISTRY}/test-backend:dev \
+            ${REGISTRY}/echo-server:dev \
+            ${REGISTRY}/busybox:dev \
             | pigz > docker-v2.tar.gz
 
       - name: cache
