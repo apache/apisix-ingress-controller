@@ -44,6 +44,7 @@ var (
 		NewKeyAuthHandler(),
 		NewCSRFHandler(),
 		NewHttpMethodHandler(),
+		NewResponseRewriteHandler(),
 	}
 )
 
