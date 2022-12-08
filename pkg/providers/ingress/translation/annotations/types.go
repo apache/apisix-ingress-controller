@@ -26,6 +26,7 @@ const (
 	AnnotationsUseRegex         = AnnotationsPrefix + "use-regex"
 	AnnotationsEnableWebSocket  = AnnotationsPrefix + "enable-websocket"
 	AnnotationsPluginConfigName = AnnotationsPrefix + "plugin-config-name"
+	AnnotationsUpstreamScheme   = AnnotationsPrefix + "upstream-scheme"
 )
 
 const (

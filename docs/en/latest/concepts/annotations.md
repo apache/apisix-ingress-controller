@@ -294,3 +294,29 @@ spec:
                 port:
                   number: 80
 ```
+
+## Upstream scheme
+
+The scheme used when communicating with the Upstream. this value can be one of 'http', 'https', 'grpc', 'grpcs'. Defaults to 'http'.
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/upstream-scheme: grpcs
+  name: ingress-v1
+spec:
+  rules:
+  - host: e2e.apisix.local
+    http:
+      paths:
+      - path: /helloworld.Greeter/SayHello
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: test-backend-service-e2e-test
+            port:
+              number: 50053
+```
