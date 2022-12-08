@@ -17,13 +17,15 @@
 
 package utils
 
-import "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+import (
+	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+)
 
 var schemeToPortMaps = map[string]int{
-	v1.SchemeHTTP:  80,
-	v1.SchemeHTTPS: 443,
-	v1.SchemeGRPC:  80,
-	v1.SchemeGRPCS: 443,
+	apisixv1.SchemeHTTP:  80,
+	apisixv1.SchemeHTTPS: 443,
+	apisixv1.SchemeGRPC:  80,
+	apisixv1.SchemeGRPCS: 443,
 }
 
 func SchemeToPort(schema string) int {
