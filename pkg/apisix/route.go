@@ -46,7 +46,7 @@ func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
 	log.Debugw("try to look up route",
 		zap.String("name", name),
 		zap.String("url", r.url),
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 	)
 	rid := id.GenID(name)
 	route, err := r.cluster.cache.GetRoute(rid)
@@ -74,13 +74,13 @@ func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
 			log.Warnw("route not found",
 				zap.String("name", name),
 				zap.String("url", url),
-				zap.String("cluster", "default"),
+				zap.String("cluster", r.cluster.name),
 			)
 		} else {
 			log.Errorw("failed to get route from APISIX",
 				zap.String("name", name),
 				zap.String("url", url),
-				zap.String("cluster", "default"),
+				zap.String("cluster", r.cluster.name),
 				zap.Error(err),
 			)
 		}
@@ -109,7 +109,7 @@ func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
 // to APISIX.
 func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 	log.Debugw("try to list routes in APISIX",
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 		zap.String("url", r.url),
 	)
 	routeItems, err := r.cluster.listResource(ctx, r.url, "route")
@@ -143,7 +143,7 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	log.Debugw("try to create route",
 		zap.Strings("hosts", obj.Hosts),
 		zap.String("name", obj.Name),
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 		zap.String("url", r.url),
 	)
 
@@ -179,7 +179,7 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 	log.Debugw("try to delete route",
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 		zap.String("url", r.url),
 	)
 	if err := r.cluster.HasSynced(ctx); err != nil {
@@ -204,7 +204,7 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 	log.Debugw("try to update route",
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 		zap.String("url", r.url),
 	)
 	if err := r.cluster.HasSynced(ctx); err != nil {
