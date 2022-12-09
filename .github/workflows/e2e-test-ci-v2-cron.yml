@@ -34,7 +34,7 @@ concurrency:
 jobs:
   changes:
     if: ${{ (!github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'area/test/apiv2')) || github.event.schedule == '0 0 * * *' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
       go: ${{ steps.filter.outputs.go }}
@@ -65,7 +65,7 @@ jobs:
               - ".github/**"
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: changes
     if: needs.changes.outputs.go == 'true'
 
@@ -126,7 +126,7 @@ jobs:
   prepare:
     needs: changes
     if: needs.changes.outputs.go == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
         with:
@@ -149,7 +149,7 @@ jobs:
       - changes
       - prepare
       - build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false # If false, GitHub will not cancels all in-progress jobs in the matrix if any matrix job fails.
       matrix:
