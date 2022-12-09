@@ -53,7 +53,7 @@ type apisixTlsController struct {
 	secretSSLMap *sync.Map
 }
 
-func newApisixTlsController(common *apisixCommon, apisixTlsInformer cache.SharedIndexInformer, apisixTlsLister kube.ApisixTlsLister) *apisixTlsController {
+func newApisixTlsController(common *apisixCommon) *apisixTlsController {
 	c := &apisixTlsController{
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixTls"),

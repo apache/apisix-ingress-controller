@@ -25,7 +25,6 @@ import (
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
@@ -45,7 +44,7 @@ type WatchingNamespaceProvider interface {
 	WatchingNamespaces() []string
 }
 
-func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cfg *config.Config) (WatchingNamespaceProvider, error) {
+func NewWatchingNamespaceProvider(common *provider.Common, kube *kube.KubeClient, cfg *config.Config) (WatchingNamespaceProvider, error) {
 	c := &watchingProvider{
 		kube: kube,
 		cfg:  cfg,
@@ -65,16 +64,12 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 	for _, selector := range cfg.Kubernetes.NamespaceSelector {
 		labelSlice := strings.Split(selector, "=")
 		if len(labelSlice) != 2 {
-			return nil, fmt.Errorf("Bad namespace-selector format: %s, expected namespace-selector format: xxx=xxx", selector)
+			return nil, fmt.Errorf("bad namespace-selector format: %s, expected namespace-selector format: xxx=xxx", selector)
 		}
 		c.watchingLabels[labelSlice[0]] = labelSlice[1]
 	}
 
-	kubeFactory := kube.NewSharedIndexInformerFactory()
-	c.namespaceInformer = kubeFactory.Core().V1().Namespaces().Informer()
-	c.namespaceLister = kubeFactory.Core().V1().Namespaces().Lister()
-
-	c.controller = newNamespaceController(c)
+	c.controller = newNamespaceController(common, c)
 
 	return c, nil
 }
@@ -85,9 +80,6 @@ type watchingProvider struct {
 
 	watchingNamespaces *sync.Map
 	watchingLabels     types.Labels
-
-	namespaceInformer cache.SharedIndexInformer
-	namespaceLister   listerscorev1.NamespaceLister
 
 	controller *namespaceController
 

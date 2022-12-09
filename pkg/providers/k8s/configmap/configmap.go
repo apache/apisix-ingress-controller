@@ -21,7 +21,6 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -42,16 +41,11 @@ type configmapController struct {
 	workqueue workqueue.RateLimitingInterface
 	workers   int
 
-	configmapInformer cache.SharedIndexInformer
-	configmapLister   v1.ConfigMapLister
-
 	subscriptionList map[subscripKey]struct{}
 }
 
 func newConfigMapController(common *providertypes.Common) *configmapController {
 	ctl := &configmapController{
-		configmapInformer: common.ConfigMapInformer,
-		configmapLister:   common.ConfigMapLister,
 
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ConfigMap"),
 		workers:   1,
@@ -60,7 +54,7 @@ func newConfigMapController(common *providertypes.Common) *configmapController {
 
 		Common: common,
 	}
-	ctl.configmapInformer.AddEventHandler(
+	ctl.ConfigMapInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    ctl.onAdd,
 			UpdateFunc: ctl.onUpdate,
@@ -90,10 +84,6 @@ func (c *configmapController) IsSubscribing(key string) bool {
 }
 
 func (c *configmapController) run(ctx context.Context) {
-	if ok := cache.WaitForCacheSync(ctx.Done(), c.configmapInformer.HasSynced); !ok {
-		log.Error("namespace informers sync failed")
-		return
-	}
 	log.Info("configmap controller started")
 	defer log.Info("configmap controller exited")
 	for i := 0; i < c.workers; i++ {
@@ -126,7 +116,7 @@ func (c *configmapController) sync(ctx context.Context, ev *types.Event) error {
 		log.Errorf("invalid resource key: %s", key)
 		return err
 	}
-	cm, err := c.configmapLister.ConfigMaps(namespace).Get(name)
+	cm, err := c.ConfigMapLister.ConfigMaps(namespace).Get(name)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Errorw("sync failed, unable to get ConfigMap",

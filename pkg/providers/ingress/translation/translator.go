@@ -142,7 +142,9 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 	ns := ing.Namespace
 	if ingress.ServiceNamespace != "" {
 		ns = ingress.ServiceNamespace
+
 	}
+	log.Error("ingress.service ns:", ns)
 	for _, rule := range ing.Spec.Rules {
 		for _, pathRule := range rule.HTTP.Paths {
 			var (

@@ -48,6 +48,9 @@ type ListerInformer struct {
 	KubeFactory   informers.SharedInformerFactory
 	ApisixFactory externalversions.SharedInformerFactory
 
+	NamespaceInformer cache.SharedIndexInformer
+	NamespaceLister   listerscorev1.NamespaceLister
+
 	EpLister   kube.EndpointLister
 	EpInformer cache.SharedIndexInformer
 

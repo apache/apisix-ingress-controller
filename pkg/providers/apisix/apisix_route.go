@@ -61,7 +61,7 @@ type routeEvent struct {
 	Type string
 }
 
-func newApisixRouteController(common *apisixCommon, apisixRouteInformer cache.SharedIndexInformer, apisixRouteLister kube.ApisixRouteLister) *apisixRouteController {
+func newApisixRouteController(common *apisixCommon) *apisixRouteController {
 	c := &apisixRouteController{
 		apisixCommon:     common,
 		workqueue:        workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),

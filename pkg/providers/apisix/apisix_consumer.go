@@ -44,8 +44,7 @@ type apisixConsumerController struct {
 	workers   int
 }
 
-func newApisixConsumerController(common *apisixCommon,
-	apisixConsumerInformer cache.SharedIndexInformer, apisixConsumerLister kube.ApisixConsumerLister) *apisixConsumerController {
+func newApisixConsumerController(common *apisixCommon) *apisixConsumerController {
 	c := &apisixConsumerController{
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixConsumer"),

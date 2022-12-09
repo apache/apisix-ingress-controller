@@ -45,8 +45,7 @@ type apisixPluginConfigController struct {
 	workers   int
 }
 
-func newApisixPluginConfigController(common *apisixCommon,
-	apisixPluginConfigInformer cache.SharedIndexInformer, apisixPluginConfigLister kube.ApisixPluginConfigLister) *apisixPluginConfigController {
+func newApisixPluginConfigController(common *apisixCommon) *apisixPluginConfigController {
 	c := &apisixPluginConfigController{
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixPluginConfig"),

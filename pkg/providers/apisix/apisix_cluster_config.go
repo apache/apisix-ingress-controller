@@ -45,8 +45,7 @@ type apisixClusterConfigController struct {
 	workers   int
 }
 
-func newApisixClusterConfigController(common *apisixCommon,
-	apisixClusterConfigInformer cache.SharedIndexInformer, apisixClusterConfigLister kube.ApisixClusterConfigLister) *apisixClusterConfigController {
+func newApisixClusterConfigController(common *apisixCommon) *apisixClusterConfigController {
 	c := &apisixClusterConfigController{
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(time.Second, 60*time.Second, 5), "ApisixClusterConfig"),

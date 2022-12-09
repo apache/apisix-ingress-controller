@@ -18,13 +18,9 @@ package apisix
 
 import (
 	"context"
-	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/cache"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
@@ -69,12 +65,6 @@ type apisixProvider struct {
 	apisixClusterConfigController *apisixClusterConfigController
 	apisixConsumerController      *apisixConsumerController
 	apisixPluginConfigController  *apisixPluginConfigController
-
-	apisixRouteInformer         cache.SharedIndexInformer
-	apisixClusterConfigInformer cache.SharedIndexInformer
-	apisixConsumerInformer      cache.SharedIndexInformer
-	apisixPluginConfigInformer  cache.SharedIndexInformer
-	apisixTlsInformer           cache.SharedIndexInformer
 }
 
 func NewProvider(common *providertypes.Common, namespaceProvider namespace.WatchingNamespaceProvider,
@@ -85,15 +75,10 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 		namespaceProvider: namespaceProvider,
 	}
 
-	apisixFactory := common.KubeClient.NewAPISIXSharedIndexInformerFactory()
-
 	p.apisixTranslator = apisixtranslation.NewApisixTranslator(&apisixtranslation.TranslatorOptions{
-		Apisix:      common.APISIX,
-		ClusterName: common.Config.APISIX.DefaultClusterName,
-
-		ApisixUpstreamLister: common.ApisixUpstreamLister,
-		ServiceLister:        common.SvcLister,
-		SecretLister:         common.SecretLister,
+		Apisix:         common.APISIX,
+		ClusterName:    common.Config.APISIX.DefaultClusterName,
+		ListerInformer: common.ListerInformer,
 	}, translator)
 	c := &apisixCommon{
 		Common:            common,
@@ -101,51 +86,12 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 		translator:        p.apisixTranslator,
 	}
 
-	switch c.Config.Kubernetes.APIVersion {
-	case config.ApisixV2beta3:
-		p.apisixRouteInformer = apisixFactory.Apisix().V2beta3().ApisixRoutes().Informer()
-		p.apisixTlsInformer = apisixFactory.Apisix().V2beta3().ApisixTlses().Informer()
-		p.apisixClusterConfigInformer = apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Informer()
-		p.apisixConsumerInformer = apisixFactory.Apisix().V2beta3().ApisixConsumers().Informer()
-		p.apisixPluginConfigInformer = apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Informer()
-
-	case config.ApisixV2:
-		p.apisixRouteInformer = apisixFactory.Apisix().V2().ApisixRoutes().Informer()
-		p.apisixTlsInformer = apisixFactory.Apisix().V2().ApisixTlses().Informer()
-		p.apisixClusterConfigInformer = apisixFactory.Apisix().V2().ApisixClusterConfigs().Informer()
-		p.apisixConsumerInformer = apisixFactory.Apisix().V2().ApisixConsumers().Informer()
-		p.apisixPluginConfigInformer = apisixFactory.Apisix().V2().ApisixPluginConfigs().Informer()
-	default:
-		panic(fmt.Errorf("unsupported API version %v", c.Config.Kubernetes.APIVersion))
-	}
-
-	apisixRouteLister := kube.NewApisixRouteLister(
-		apisixFactory.Apisix().V2beta3().ApisixRoutes().Lister(),
-		apisixFactory.Apisix().V2().ApisixRoutes().Lister(),
-	)
-	apisixTlsLister := kube.NewApisixTlsLister(
-		apisixFactory.Apisix().V2beta3().ApisixTlses().Lister(),
-		apisixFactory.Apisix().V2().ApisixTlses().Lister(),
-	)
-	apisixClusterConfigLister := kube.NewApisixClusterConfigLister(
-		apisixFactory.Apisix().V2beta3().ApisixClusterConfigs().Lister(),
-		apisixFactory.Apisix().V2().ApisixClusterConfigs().Lister(),
-	)
-	apisixConsumerLister := kube.NewApisixConsumerLister(
-		apisixFactory.Apisix().V2beta3().ApisixConsumers().Lister(),
-		apisixFactory.Apisix().V2().ApisixConsumers().Lister(),
-	)
-	apisixPluginConfigLister := kube.NewApisixPluginConfigLister(
-		apisixFactory.Apisix().V2beta3().ApisixPluginConfigs().Lister(),
-		apisixFactory.Apisix().V2().ApisixPluginConfigs().Lister(),
-	)
-
 	p.apisixUpstreamController = newApisixUpstreamController(c, p.NotifyApisixUpstreamChange)
-	p.apisixRouteController = newApisixRouteController(c, p.apisixRouteInformer, apisixRouteLister)
-	p.apisixTlsController = newApisixTlsController(c, p.apisixTlsInformer, apisixTlsLister)
-	p.apisixClusterConfigController = newApisixClusterConfigController(c, p.apisixClusterConfigInformer, apisixClusterConfigLister)
-	p.apisixConsumerController = newApisixConsumerController(c, p.apisixConsumerInformer, apisixConsumerLister)
-	p.apisixPluginConfigController = newApisixPluginConfigController(c, p.apisixPluginConfigInformer, apisixPluginConfigLister)
+	p.apisixRouteController = newApisixRouteController(c)
+	p.apisixTlsController = newApisixTlsController(c)
+	p.apisixClusterConfigController = newApisixClusterConfigController(c)
+	p.apisixConsumerController = newApisixConsumerController(c)
+	p.apisixPluginConfigController = newApisixPluginConfigController(c)
 
 	return p, p.apisixTranslator, nil
 }
