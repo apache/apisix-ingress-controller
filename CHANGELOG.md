@@ -65,7 +65,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * lsy
 * mango
 * Fatpa
-* Hoshea Jiang
+* Hoshea Jiang
 * JasonZhu
 * Yu.Bozhong
 * seven dickens
@@ -359,7 +359,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * lsy
 * mango
 * Fatpa
-* Hoshea Jiang
+* Hoshea Jiang
 * JasonZhu
 * Xin Rong
 * Yu.Bozhong
@@ -845,7 +845,7 @@ Please try out the release binaries and report any issues at
 ### Contributors
 
 * kv
-* Hoshea Jiang
+* Hoshea Jiang
 * Jintao Zhang
 * Sarasa Kisaragi
 * Baoyuan
@@ -923,7 +923,7 @@ Please try out the release binaries and report any issues at
 * kv
 * Jintao Zhang
 * Baoyuan
-* Hoshea Jiang
+* Hoshea Jiang
 * chen zhuo
 * okaybase
 * yuanfeng0905
