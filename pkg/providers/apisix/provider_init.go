@@ -16,6 +16,7 @@ package apisix
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"go.uber.org/zap"
@@ -49,7 +50,14 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 	)
 
 	p.apisixSharedInformerFactory.Start(ctx.Done())
-	p.apisixSharedInformerFactory.WaitForCacheSync(ctx.Done())
+	synced := p.apisixSharedInformerFactory.WaitForCacheSync(ctx.Done())
+	for v, ok := range synced {
+		if !ok {
+			err := fmt.Errorf("%s cache failed to sync", v.Name())
+			log.Error(err.Error())
+			return err
+		}
+	}
 
 	namespaces := p.namespaceProvider.WatchingNamespaces()
 
