@@ -239,7 +239,7 @@ update-license:
 ### update-mdlint:        Update markdown files lint rules.
 .PHONY: update-mdlint
 update-mdlint:
-	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' -f --ignore node_modules --ignore vendor
+	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' -f --ignore node_modules --ignore vendor --ignore CHANGELOG.md
 
 ### update-gofmt:         Format all go codes
 .PHONY: update-gofmt

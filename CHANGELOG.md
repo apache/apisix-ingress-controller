@@ -49,7 +49,7 @@ We have added partial support for Gateway API, which is not enabled by default, 
 Ingress resources can now use all APISIX plugin configurations by setting the annotation `k8s.apisix.apache.org/plugin-config-name=xxx`.
 
 Please try out the release binaries and report any issues at
-<https://github.com/apache/apisix-ingress-controller/issues>.
+https://github.com/apache/apisix-ingress-controller/issues.
 
 ### Contributors
 
@@ -65,7 +65,7 @@ Please try out the release binaries and report any issues at
 * lsy
 * mango
 * Fatpa
-* Hoshea Jiang
+* Hoshea Jiang
 * JasonZhu
 * Yu.Bozhong
 * seven dickens
@@ -88,7 +88,6 @@ Please try out the release binaries and report any issues at
 * 罗泽轩
 
 ### Changes
-
 <details><summary>154 commits</summary>
 <p>
 
@@ -246,7 +245,6 @@ Please try out the release binaries and report any issues at
 * [`8364821`](https://github.com/apache/apisix-ingress-controller/commit/83648210fe194fa42f5582e8773969be0a01fa57) fix: consumer name contain "-" (#828)
 * [`ae69cd3`](https://github.com/apache/apisix-ingress-controller/commit/ae69cd3ee42245100b1c559df4518a418f66f6bd) docs: Grafana Dashboard Configuration (#731)
 * [`990971d`](https://github.com/apache/apisix-ingress-controller/commit/990971d4e892b47a6758edb40042c3decde92846) chore: v1.4 release (#819)
-
 </p>
 </details>
 
@@ -345,7 +343,7 @@ We have added partial support for Gateway API, which is not enabled by default, 
 Ingress resources can now use all APISIX plugin configurations by setting the annotation `k8s.apisix.apache.org/plugin-config-name=xxx`.
 
 Please try out the release binaries and report any issues at
-<https://github.com/apache/apisix-ingress-controller/issues>.
+https://github.com/apache/apisix-ingress-controller/issues.
 
 ### Contributors
 
@@ -361,7 +359,7 @@ Please try out the release binaries and report any issues at
 * lsy
 * mango
 * Fatpa
-* Hoshea Jiang
+* Hoshea Jiang
 * JasonZhu
 * Xin Rong
 * Yu.Bozhong
@@ -385,7 +383,6 @@ Please try out the release binaries and report any issues at
 * 罗泽轩
 
 ### Changes
-
 <details><summary>144 commits</summary>
 <p>
 
@@ -533,7 +530,6 @@ Please try out the release binaries and report any issues at
 * [`8364821`](https://github.com/apache/apisix-ingress-controller/commit/83648210fe194fa42f5582e8773969be0a01fa57) fix: consumer name contain "-" (#828)
 * [`ae69cd3`](https://github.com/apache/apisix-ingress-controller/commit/ae69cd3ee42245100b1c559df4518a418f66f6bd) docs: Grafana Dashboard Configuration (#731)
 * [`990971d`](https://github.com/apache/apisix-ingress-controller/commit/990971d4e892b47a6758edb40042c3decde92846) chore: v1.4 release (#819)
-
 </p>
 </details>
 
@@ -646,7 +642,7 @@ In next release(v1.5), custom resource's API version v2 will be GA released. Ple
 * fix: ingress update event handler not filter by watching namespaces [#947](https://github.com/apache/apisix-ingress-controller/pull/)
 
 Please try out the release binaries and report any issues at
-<https://github.com/apache/apisix-ingress-controller/issues>.
+https://github.com/apache/apisix-ingress-controller/issues.
 
 ### Contributors
 
@@ -849,7 +845,7 @@ Please try out the release binaries and report any issues at
 ### Contributors
 
 * kv
-* Hoshea Jiang
+* Hoshea Jiang
 * Jintao Zhang
 * Sarasa Kisaragi
 * Baoyuan
@@ -927,7 +923,7 @@ Please try out the release binaries and report any issues at
 * kv
 * Jintao Zhang
 * Baoyuan
-* Hoshea Jiang
+* Hoshea Jiang
 * chen zhuo
 * okaybase
 * yuanfeng0905
