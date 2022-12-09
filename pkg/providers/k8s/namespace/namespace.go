@@ -26,7 +26,6 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	provider "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
@@ -39,21 +38,18 @@ type EventHandler interface {
 }
 
 type namespaceController struct {
-	*provider.Common
-
 	controller *watchingProvider
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
 }
 
-func newNamespaceController(common *provider.Common, c *watchingProvider) *namespaceController {
+func newNamespaceController(c *watchingProvider) *namespaceController {
 	ctl := &namespaceController{
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "Namespace"),
 		workers:    1,
-		Common:     common,
 	}
-	ctl.NamespaceInformer.AddEventHandler(
+	ctl.controller.namespaceInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    ctl.onAdd,
 			UpdateFunc: ctl.onUpdate,
@@ -64,6 +60,10 @@ func newNamespaceController(common *provider.Common, c *watchingProvider) *names
 }
 
 func (c *namespaceController) run(ctx context.Context) {
+	if ok := cache.WaitForCacheSync(ctx.Done(), c.controller.namespaceInformer.HasSynced); !ok {
+		log.Error("namespace informers sync failed")
+		return
+	}
 	log.Info("namespace controller started")
 	defer log.Info("namespace controller exited")
 	for i := 0; i < c.workers; i++ {

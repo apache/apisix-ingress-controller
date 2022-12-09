@@ -306,9 +306,6 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 	configmapInformer := kubeFactory.Core().V1().ConfigMaps().Informer()
 	configmapLister := kubeFactory.Core().V1().ConfigMaps().Lister()
 
-	namespaceInformer := kubeFactory.Core().V1().Namespaces().Informer()
-	namespaceLister := kubeFactory.Core().V1().Namespaces().Lister()
-
 	switch c.cfg.Kubernetes.IngressVersion {
 	case config.IngressNetworkingV1:
 		ingressInformer = kubeFactory.Networking().V1().Ingresses().Informer()
@@ -339,8 +336,6 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		ConfigMapLister:   configmapLister,
 		IngressInformer:   ingressInformer,
 		IngressLister:     ingressLister,
-		NamespaceInformer: namespaceInformer,
-		NamespaceLister:   namespaceLister,
 
 		ApisixUpstreamLister:      apisixUpstreamLister,
 		ApisixRouteLister:         apisixRouteLister,
@@ -412,7 +407,7 @@ func (c *Controller) run(ctx context.Context) {
 		Recorder:            c.recorder,
 	}
 
-	c.namespaceProvider, err = namespace.NewWatchingNamespaceProvider(common, c.kubeClient, c.cfg)
+	c.namespaceProvider, err = namespace.NewWatchingNamespaceProvider(ctx, c.kubeClient, c.cfg)
 	if err != nil {
 		ctx.Done()
 		return
@@ -469,6 +464,13 @@ func (c *Controller) run(ctx context.Context) {
 		}
 	}
 
+	// Init Phase
+
+	if err = c.namespaceProvider.Init(ctx); err != nil {
+		ctx.Done()
+		return
+	}
+
 	// Wait Resouce sync
 	now := time.Now()
 	log.Error("start sync:", time.Now())
@@ -477,12 +479,6 @@ func (c *Controller) run(ctx context.Context) {
 
 	log.Error("time cost: ", time.Since(now))
 
-	// Init Phase
-
-	if err = c.namespaceProvider.Init(ctx); err != nil {
-		ctx.Done()
-		return
-	}
 	if err = c.apisixProvider.Init(ctx); err != nil {
 		ctx.Done()
 		return

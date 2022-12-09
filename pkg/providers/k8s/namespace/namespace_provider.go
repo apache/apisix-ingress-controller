@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
@@ -44,7 +45,7 @@ type WatchingNamespaceProvider interface {
 	WatchingNamespaces() []string
 }
 
-func NewWatchingNamespaceProvider(common *provider.Common, kube *kube.KubeClient, cfg *config.Config) (WatchingNamespaceProvider, error) {
+func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cfg *config.Config) (WatchingNamespaceProvider, error) {
 	c := &watchingProvider{
 		kube: kube,
 		cfg:  cfg,
@@ -69,7 +70,11 @@ func NewWatchingNamespaceProvider(common *provider.Common, kube *kube.KubeClient
 		c.watchingLabels[labelSlice[0]] = labelSlice[1]
 	}
 
-	c.controller = newNamespaceController(common, c)
+	kubeFactory := kube.NewSharedIndexInformerFactory()
+	c.namespaceInformer = kubeFactory.Core().V1().Namespaces().Informer()
+	c.namespaceLister = kubeFactory.Core().V1().Namespaces().Lister()
+
+	c.controller = newNamespaceController(c)
 
 	return c, nil
 }
@@ -80,6 +85,9 @@ type watchingProvider struct {
 
 	watchingNamespaces *sync.Map
 	watchingLabels     types.Labels
+
+	namespaceInformer cache.SharedIndexInformer
+	namespaceLister   listerscorev1.NamespaceLister
 
 	controller *namespaceController
 
@@ -119,6 +127,9 @@ func (c *watchingProvider) Run(ctx context.Context) {
 	}
 
 	e := utils.ParallelExecutor{}
+	e.Add(func() {
+		c.namespaceInformer.Run(ctx.Done())
+	})
 	e.Add(func() {
 		c.controller.run(ctx)
 	})
