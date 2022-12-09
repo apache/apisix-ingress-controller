@@ -27,7 +27,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations references a service in the same namespace", func() {
+var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations reference service in the same namespace", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("networking/v1", func() {
