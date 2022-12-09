@@ -40,7 +40,7 @@ func (r *pluginMetadataClient) Get(ctx context.Context, name string) (*v1.Plugin
 	log.Debugw("try to look up pluginMetadata",
 		zap.String("name", name),
 		zap.String("url", r.url),
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 	)
 
 	// TODO Add mutex here to avoid dog-pile effect.
@@ -51,7 +51,7 @@ func (r *pluginMetadataClient) Get(ctx context.Context, name string) (*v1.Plugin
 		log.Errorw("failed to get pluginMetadata from APISIX",
 			zap.String("name", name),
 			zap.String("url", url),
-			zap.String("cluster", "default"),
+			zap.String("cluster", r.cluster.name),
 			zap.Error(err),
 		)
 		return nil, err
@@ -72,7 +72,7 @@ func (r *pluginMetadataClient) Get(ctx context.Context, name string) (*v1.Plugin
 
 func (r *pluginMetadataClient) List(ctx context.Context) ([]*v1.PluginMetadata, error) {
 	log.Debugw("try to list pluginMetadatas in APISIX",
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 		zap.String("url", r.url),
 	)
 	pluginMetadataItems, err := r.cluster.listResource(ctx, r.url, "pluginMetadata")
@@ -106,7 +106,7 @@ func (r *pluginMetadataClient) Delete(ctx context.Context, obj *v1.PluginMetadat
 	log.Debugw("try to delete pluginMetadata",
 		zap.String("name", obj.Name),
 		zap.Any("metadata", obj.Metadata),
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 		zap.String("url", r.url),
 	)
 	if err := r.cluster.HasSynced(ctx); err != nil {
@@ -125,7 +125,7 @@ func (r *pluginMetadataClient) Update(ctx context.Context, obj *v1.PluginMetadat
 	log.Debugw("try to update pluginMetadata",
 		zap.String("name", obj.Name),
 		zap.Any("metadata", obj.Metadata),
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 		zap.String("url", r.url),
 	)
 	if err := r.cluster.HasSynced(ctx); err != nil {

@@ -46,7 +46,7 @@ func (pc *pluginConfigClient) Get(ctx context.Context, name string) (*v1.PluginC
 	log.Debugw("try to look up pluginConfig",
 		zap.String("name", name),
 		zap.String("url", pc.url),
-		zap.String("cluster", "default"),
+		zap.String("cluster", pc.cluster.name),
 	)
 	rid := id.GenID(name)
 	pluginConfig, err := pc.cluster.cache.GetPluginConfig(rid)
@@ -74,13 +74,13 @@ func (pc *pluginConfigClient) Get(ctx context.Context, name string) (*v1.PluginC
 			log.Warnw("pluginConfig not found",
 				zap.String("name", name),
 				zap.String("url", url),
-				zap.String("cluster", "default"),
+				zap.String("cluster", pc.cluster.name),
 			)
 		} else {
 			log.Errorw("failed to get pluginConfig from APISIX",
 				zap.String("name", name),
 				zap.String("url", url),
-				zap.String("cluster", "default"),
+				zap.String("cluster", pc.cluster.name),
 				zap.Error(err),
 			)
 		}
@@ -109,7 +109,7 @@ func (pc *pluginConfigClient) Get(ctx context.Context, name string) (*v1.PluginC
 // to APISIX.
 func (pc *pluginConfigClient) List(ctx context.Context) ([]*v1.PluginConfig, error) {
 	log.Debugw("try to list pluginConfig in APISIX",
-		zap.String("cluster", "default"),
+		zap.String("cluster", pc.cluster.name),
 		zap.String("url", pc.url),
 	)
 	pluginConfigItems, err := pc.cluster.listResource(ctx, pc.url, "pluginConfig")
@@ -143,7 +143,7 @@ func (pc *pluginConfigClient) Create(ctx context.Context, obj *v1.PluginConfig) 
 	log.Debugw("try to create pluginConfig",
 		zap.String("name", obj.Name),
 		zap.Any("plugins", obj.Plugins),
-		zap.String("cluster", "default"),
+		zap.String("cluster", pc.cluster.name),
 		zap.String("url", pc.url),
 	)
 
@@ -179,7 +179,7 @@ func (pc *pluginConfigClient) Delete(ctx context.Context, obj *v1.PluginConfig) 
 	log.Debugw("try to delete pluginConfig",
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),
-		zap.String("cluster", "default"),
+		zap.String("cluster", pc.cluster.name),
 		zap.String("url", pc.url),
 	)
 
@@ -206,7 +206,7 @@ func (pc *pluginConfigClient) Update(ctx context.Context, obj *v1.PluginConfig) 
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),
 		zap.Any("plugins", obj.Plugins),
-		zap.String("cluster", "default"),
+		zap.String("cluster", pc.cluster.name),
 		zap.String("url", pc.url),
 	)
 	if err := pc.cluster.HasSynced(ctx); err != nil {
