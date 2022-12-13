@@ -17,22 +17,15 @@
 
 package utils
 
-import (
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-)
+import "regexp"
 
-var schemeToPortMaps = map[string]int{
-	apisixv1.SchemeHTTP:  80,
-	apisixv1.SchemeHTTPS: 443,
-	apisixv1.SchemeGRPC:  80,
-	apisixv1.SchemeGRPCS: 443,
-}
+var hostDef = "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+var hostDefRegex = regexp.MustCompile(hostDef)
 
-// SchemeToPort scheme converts to the default port
-// ref https://github.com/apache/apisix/blob/c5fc10d9355a0c177a7532f01c77745ff0639a7f/apisix/upstream.lua#L167-L172
-func SchemeToPort(schema string) int {
-	if val, ok := schemeToPortMaps[schema]; ok {
-		return val
-	}
-	return 80
+// MatchHostDef checks that host matches host's shcema
+// ref to : https://github.com/apache/apisix/blob/c5fc10d9355a0c177a7532f01c77745ff0639a7f/apisix/schema_def.lua#L40
+// ref to : https://github.com/kubernetes/kubernetes/blob/976a940f4a4e84fe814583848f97b9aafcdb083f/staging/src/k8s.io/apimachinery/pkg/util/validation/validation.go#L205
+// They define regex differently, but k8s's dns is more accurate
+func MatchHostDef(host string) bool {
+	return hostDefRegex.MatchString(host)
 }

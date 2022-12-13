@@ -18,10 +18,10 @@ package chore
 import (
 	"context"
 
-	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
+	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 

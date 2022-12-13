@@ -18,21 +18,23 @@
 package utils
 
 import (
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-var schemeToPortMaps = map[string]int{
-	apisixv1.SchemeHTTP:  80,
-	apisixv1.SchemeHTTPS: 443,
-	apisixv1.SchemeGRPC:  80,
-	apisixv1.SchemeGRPCS: 443,
-}
-
-// SchemeToPort scheme converts to the default port
-// ref https://github.com/apache/apisix/blob/c5fc10d9355a0c177a7532f01c77745ff0639a7f/apisix/upstream.lua#L167-L172
-func SchemeToPort(schema string) int {
-	if val, ok := schemeToPortMaps[schema]; ok {
-		return val
+func TestMatchHostDef(t *testing.T) {
+	tcs := map[string]bool{
+		"163.com":            true,
+		"github.com":         true,
+		"GITHUB.com":         false,
+		"-github.COM":        false,
+		"https://github.com": false,
+		"http://github.com":  false,
 	}
-	return 80
+
+	for k, v := range tcs {
+		ret := MatchHostDef(k)
+		assert.Equal(t, ret, v)
+	}
 }

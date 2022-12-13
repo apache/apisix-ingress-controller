@@ -36,7 +36,7 @@ func TestTranslateApisixUpstreamExternalNodesDomainType(t *testing.T) {
 			Spec: &v2.ApisixUpstreamSpec{
 				ExternalNodes: []v2.ApisixUpstreamExternalNode{{
 					Name:   "domain.foobar.com",
-					Type:   "Domain",
+					Type:   v2.ExternalTypeDomain,
 					Weight: &defaultWeight,
 					Port:   &defaultPort,
 				}},
@@ -50,7 +50,7 @@ func TestTranslateApisixUpstreamExternalNodesDomainType(t *testing.T) {
 			Spec: &v2.ApisixUpstreamSpec{
 				ExternalNodes: []v2.ApisixUpstreamExternalNode{{
 					Name:   "domain.foobar.com",
-					Type:   "Domain",
+					Type:   v2.ExternalTypeDomain,
 					Weight: &defaultWeight,
 					Port:   &specifiedPort,
 				}},
@@ -64,7 +64,7 @@ func TestTranslateApisixUpstreamExternalNodesDomainType(t *testing.T) {
 			Spec: &v2.ApisixUpstreamSpec{
 				ExternalNodes: []v2.ApisixUpstreamExternalNode{{
 					Name:   "domain.foobar.com",
-					Type:   "Domain",
+					Type:   v2.ExternalTypeDomain,
 					Weight: &defaultWeight,
 				}},
 			},
@@ -78,5 +78,50 @@ func TestTranslateApisixUpstreamExternalNodesDomainType(t *testing.T) {
 		result, _ := tr.TranslateApisixUpstreamExternalNodes(k)
 		assert.Equal(t, v, result)
 	}
+}
 
+func TestTranslateApisixUpstreamExternalNodesDomainTypeError(t *testing.T) {
+	tr := &translator{}
+	testCases := []v2.ApisixUpstream{
+		{
+			Spec: &v2.ApisixUpstreamSpec{
+				ExternalNodes: []v2.ApisixUpstreamExternalNode{{
+					Name: "https://domain.foobar.com",
+					Type: v2.ExternalTypeDomain,
+				}},
+			}},
+		{
+			Spec: &v2.ApisixUpstreamSpec{
+				ExternalNodes: []v2.ApisixUpstreamExternalNode{{
+					Name: "grpc://domain.foobar.com",
+					Type: v2.ExternalTypeDomain,
+				}},
+			}},
+		{
+			Spec: &v2.ApisixUpstreamSpec{
+				ExternalNodes: []v2.ApisixUpstreamExternalNode{{
+					Name: "-domain.foobar.com",
+					Type: v2.ExternalTypeDomain,
+				}},
+			}},
+		{
+			Spec: &v2.ApisixUpstreamSpec{
+				ExternalNodes: []v2.ApisixUpstreamExternalNode{{
+					Name: "-123.foobar.com",
+					Type: v2.ExternalTypeDomain,
+				}},
+			}},
+		{
+			Spec: &v2.ApisixUpstreamSpec{
+				ExternalNodes: []v2.ApisixUpstreamExternalNode{{
+					Name: "-123.FOOBAR.com",
+					Type: v2.ExternalTypeDomain,
+				}},
+			}},
+	}
+
+	for _, k := range testCases {
+		_, err := tr.TranslateApisixUpstreamExternalNodes(&k)
+		assert.Error(t, err)
+	}
 }

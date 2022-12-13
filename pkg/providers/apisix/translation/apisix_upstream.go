@@ -12,6 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package translation
 
 import (
@@ -64,6 +65,13 @@ func (t *translator) TranslateApisixUpstreamExternalNodes(au *v2.ApisixUpstream)
 			if node.Weight != nil {
 				weight = *node.Weight
 			}
+
+			if !utils.MatchHostDef(node.Name) {
+				return nil, fmt.Errorf("ApisixUpstream %s/%s ExternalNodes[%v]'s name %s as Domain must match lowercase RFC 1123 subdomain.  "+
+					"a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character",
+					au.Namespace, au.Name, i, node.Name)
+			}
+
 			n := apisixv1.UpstreamNode{
 				Host:   node.Name,
 				Weight: weight,
