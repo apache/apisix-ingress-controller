@@ -34,7 +34,7 @@ concurrency:
 
 jobs:
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
       go: ${{ steps.filter.outputs.go }}
@@ -65,7 +65,7 @@ jobs:
               - ".github/**"
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: changes
     if: needs.changes.outputs.go == 'true'
 
@@ -107,13 +107,13 @@ jobs:
 
           echo "creating images cache..."
           docker save \
-            localhost:5000/apache/apisix:dev \
-            localhost:5000/bitnami/etcd:dev \
-            localhost:5000/apache/apisix-ingress-controller:dev \
-            localhost:5000/kennethreitz/httpbin:dev \
-            localhost:5000/test-backend:dev \
-            localhost:5000/jmalloc/echo-server:dev \
-            localhost:5000/busybox:dev \
+            ${REGISTRY}/apisix:dev \
+            ${REGISTRY}/etcd:dev \
+            ${REGISTRY}/apisix-ingress-controller:dev \
+            ${REGISTRY}/httpbin:dev \
+            ${REGISTRY}/test-backend:dev \
+            ${REGISTRY}/echo-server:dev \
+            ${REGISTRY}/busybox:dev \
             | pigz > docker.tar.gz
 
       - name: cache
@@ -125,7 +125,7 @@ jobs:
   prepare:
     needs: changes
     if: needs.changes.outputs.go == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
         with:
@@ -148,7 +148,7 @@ jobs:
       - changes
       - prepare
       - build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false # If false, GitHub will not cancels all in-progress jobs in the matrix if any matrix job fails.
       matrix:

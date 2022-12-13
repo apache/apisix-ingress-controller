@@ -26,6 +26,7 @@ const (
 	AnnotationsUseRegex         = AnnotationsPrefix + "use-regex"
 	AnnotationsEnableWebSocket  = AnnotationsPrefix + "enable-websocket"
 	AnnotationsPluginConfigName = AnnotationsPrefix + "plugin-config-name"
+	AnnotationsUpstreamScheme   = AnnotationsPrefix + "upstream-scheme"
 )
 
 const (
@@ -50,6 +51,12 @@ const (
 	AnnotationsRewriteTarget              = AnnotationsPrefix + "rewrite-target"
 	AnnotationsRewriteTargetRegex         = AnnotationsPrefix + "rewrite-target-regex"
 	AnnotationsRewriteTargetRegexTemplate = AnnotationsPrefix + "rewrite-target-regex-template"
+
+	// response-rewrite plugin
+	AnnotationsEnableResponseRewrite     = AnnotationsPrefix + "enable-response-rewrite"
+	AnnotationsResponseRewriteStatusCode = AnnotationsPrefix + "response-rewrite-status-code"
+	AnnotationsResponseRewriteBody       = AnnotationsPrefix + "response-rewrite-body"
+	AnnotationsResponseRewriteBodyBase64 = AnnotationsPrefix + "response-rewrite-body-base64"
 
 	// forward-auth plugin
 	AnnotationsForwardAuthURI             = AnnotationsPrefix + "auth-uri"

@@ -170,6 +170,8 @@ type ApisixRoutePlugin struct {
 	Enable bool `json:"enable" yaml:"enable"`
 	// Plugin configuration.
 	Config ApisixRoutePluginConfig `json:"config" yaml:"config"`
+	// Plugin configuration secretRef.
+	SecretRef string `json:"secretRef" yaml:"secretRef"`
 }
 
 // ApisixRoutePluginConfig is the configuration for

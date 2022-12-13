@@ -72,7 +72,7 @@ spec:
             tcpSocket:
               port: 9080
             timeoutSeconds: 2
-          image: "localhost:5000/apache/apisix:dev"
+          image: "localhost:5000/apisix:dev"
           imagePullPolicy: IfNotPresent
           name: apisix-deployment-e2e-test
           ports:

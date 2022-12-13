@@ -162,6 +162,9 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 						return nil, err
 					}
 				}
+				if ingress.UpstreamScheme != "" {
+					ups.Scheme = ingress.UpstreamScheme
+				}
 				ctx.AddUpstream(ups)
 			}
 			uris := []string{pathRule.Path}
@@ -263,6 +266,9 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 						)
 						return nil, err
 					}
+				}
+				if ingress.UpstreamScheme != "" {
+					ups.Scheme = ingress.UpstreamScheme
 				}
 				ctx.AddUpstream(ups)
 			}
@@ -420,6 +426,9 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 						)
 						return nil, err
 					}
+				}
+				if ingress.UpstreamScheme != "" {
+					ups.Scheme = ingress.UpstreamScheme
 				}
 				ctx.AddUpstream(ups)
 			}

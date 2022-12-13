@@ -43,7 +43,7 @@ func (sc schemaClient) getSchema(ctx context.Context, name string) (*v1.Schema, 
 	log.Debugw("try to look up schema",
 		zap.String("name", name),
 		zap.String("url", sc.url),
-		zap.String("cluster", "default"),
+		zap.String("cluster", sc.cluster.name),
 	)
 
 	sid := id.GenID(name)
@@ -69,7 +69,7 @@ func (sc schemaClient) getSchema(ctx context.Context, name string) (*v1.Schema, 
 		log.Errorw("failed to get schema from APISIX",
 			zap.String("name", name),
 			zap.String("url", url),
-			zap.String("cluster", "default"),
+			zap.String("cluster", sc.cluster.name),
 			zap.Error(err),
 		)
 		return nil, err

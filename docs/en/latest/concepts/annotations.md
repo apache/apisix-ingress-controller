@@ -248,6 +248,46 @@ spec:
                   number: 80
 ```
 
+## Response Rewrite
+
+You can enable [Response Rewrite](https://github.com/apache/apisix/blob/master/docs/en/latest/plugins/response-rewrite.md) by adding the annotation as shown below:
+
+```yaml
+metadata:
+  annotations:
+    k8s.apisix.apache.org/enable-response-rewrite: "true"
+```
+
+You can customize the behaviour with some additional annotations as shown below.
+
+### New HTTP status code
+
+This annotation configures the new HTTP status code in the response.
+
+```yaml
+k8s.apisix.apache.org/response-rewrite-status-code: "404"
+```
+
+If unset, falls back to the original status code.
+
+### New body
+
+This annotation configures the new body in the response.
+
+```yaml
+k8s.apisix.apache.org/response-rewrite-body: "bar-body"
+```
+
+### Body Base64
+
+When set, the body of the request will be decoded before writing to the client.
+
+```yaml
+k8s.apisix.apache.org/response-rewrite-body-base64: "true"
+```
+
+The default value is `"false"`.
+
 ## Using ApisixPluginConfig resource
 
 This annotation is used to enable a defined [ApisixPluginConfig](https://apisix.apache.org/docs/ingress-controller/references/apisix_pluginconfig_v2) resource on a particular route.
@@ -293,4 +333,30 @@ spec:
                 name: service1
                 port:
                   number: 80
+```
+
+## Upstream scheme
+
+The scheme used when communicating with the Upstream. this value can be one of 'http', 'https', 'grpc', 'grpcs'. Defaults to 'http'.
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/upstream-scheme: grpcs
+  name: ingress-v1
+spec:
+  rules:
+  - host: e2e.apisix.local
+    http:
+      paths:
+      - path: /helloworld.Greeter/SayHello
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: test-backend-service-e2e-test
+            port:
+              number: 50053
 ```
