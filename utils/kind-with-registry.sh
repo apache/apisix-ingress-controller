@@ -67,7 +67,7 @@ nodes:
 containerdConfigPatches:
 - |-
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:${reg_port}"]
-    endpoint = ["http://${reg_host}:5000"]
+    endpoint = ["http://${reg_host}:${reg_port}"]
 EOF
 
 for node in $(kind get nodes --name "${KIND_CLUSTER_NAME}"); do
