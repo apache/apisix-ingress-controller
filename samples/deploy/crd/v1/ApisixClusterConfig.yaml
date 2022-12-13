@@ -60,6 +60,8 @@ spec:
                       properties:
                         enable:
                           type: boolean
+                        prefer_name:
+                          type: boolean
                     skywalking:
                       type: object
                       properties:
@@ -98,6 +100,8 @@ spec:
                       type: object
                       properties:
                         enable:
+                          type: boolean
+                        prefer_name:
                           type: boolean
                     skywalking:
                       type: object
