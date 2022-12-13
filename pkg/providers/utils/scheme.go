@@ -29,7 +29,7 @@ var schemeToPortMaps = map[string]int{
 }
 
 // SchemeToPort scheme converts to the default port
-// ref https://github.com/apache/apisix/blob/master/apisix/upstream.lua#L167-L172
+// ref https://github.com/apache/apisix/blob/c5fc10d9355a0c177a7532f01c77745ff0639a7f/apisix/upstream.lua#L167-L172
 func SchemeToPort(schema string) int {
 	if val, ok := schemeToPortMaps[schema]; ok {
 		return val
