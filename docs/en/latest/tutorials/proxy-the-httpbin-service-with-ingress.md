@@ -32,7 +32,7 @@ This tutorial will walk you through on how you can configure APISIX Ingress with
 Before you move on, make sure you:
 
 1. Have access to a Kubernetes cluster. This tutorial uses [minikube](https://github.com/kubernetes/minikube).
-2. Install APISIX Ingress. See the [Installation](https://apisix.apache.org/docs/ingress-controller/next/deployments/minikube/) section.
+2. Install APISIX Ingress. See the [Installation](https://apisix.apache.org/docs/ingress-controller/next/deployments/minikube) section.
 
 ## Deploy httpbin
 
