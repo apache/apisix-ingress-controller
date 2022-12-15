@@ -16,8 +16,17 @@
 package ingress
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
+	"math/big"
+	"net/http"
+	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -214,4 +223,82 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), sr[0].ServerPort, int32(9100))
 		assert.Equal(ginkgo.GinkgoT(), sr[0].SNI, "")
 	})
+
+	ginkgo.It("stream tcp proxy with SNI", func() {
+		// create secrets
+		host := "a.test.com"
+		secret := "server-secret"
+		serverCert, serverKey := generateCert(ginkgo.GinkgoT(), []string{host})
+		err := s.NewSecret(secret, serverCert.String(), serverKey.String())
+		assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
+
+		// create ApisixTls resource
+		err = s.NewApisixTls("tls-server", host, secret)
+		assert.Nil(ginkgo.GinkgoT(), err, "create ApisixTls error")
+
+		// check ssl in APISIX
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixTlsCreated(1))
+
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		apisixRoute := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin-tcp-route
+spec:
+  stream:
+  - name: rule1
+    protocol: TCP
+    match:
+      ingressPort: 9100
+      host: %s
+    backend:
+      serviceName: %s
+      servicePort: %d
+`, host, backendSvc, backendSvcPort[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
+
+		err = s.EnsureNumApisixStreamRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		client := s.NewAPISIXClientWithTLSOverTCP(host)
+		client.GET("/ip").WithHost(host).Expect().Status(http.StatusOK)
+	})
 })
+
+func generateCert(t ginkgo.GinkgoTInterface, dnsNames []string) (certPemBytes, privPemBytes bytes.Buffer) {
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	pub := priv.Public()
+
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	assert.NoError(t, err)
+
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{"Acme Co"},
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().Add(time.Hour),
+
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		BasicConstraintsValid: true,
+
+		DNSNames: dnsNames,
+	}
+
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, priv)
+	assert.NoError(t, err)
+	err = pem.Encode(&certPemBytes, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	assert.NoError(t, err)
+
+	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
+	assert.NoError(t, err)
+	err = pem.Encode(&privPemBytes, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes})
+	assert.NoError(t, err)
+
+	return
+}
