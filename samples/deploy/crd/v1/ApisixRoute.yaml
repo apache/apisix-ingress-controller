@@ -344,7 +344,7 @@ spec:
                 - required: ["http"]
                 - required: ["stream"]
               properties:
-                ingressClassName:
+                ingressClass:
                   type: string
                 http:
                   type: array
