@@ -89,6 +89,7 @@ kind: ApisixRoute
 metadata:
   name: mqtt-route
 spec:
+  ingressClass: apisix
   stream:
   - name: rule1
     protocol: TCP

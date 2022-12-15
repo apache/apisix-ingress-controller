@@ -162,6 +162,7 @@ kind: ApisixRoute
 metadata:
   name: httpbin-tcp-route
 spec:
+  ingressClass: apisix
   stream:
   - name: rule1
     protocol: TCP
