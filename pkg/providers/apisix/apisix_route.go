@@ -12,6 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package apisix
 
 import (
@@ -550,6 +551,24 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	c.MetricsCollector.IncrSyncOperation("route", "failure")
 }
 
+func (c *apisixRouteController) isApisixRouteEffective(ar kube.ApisixRoute) bool {
+	var class string
+
+	// TODO: maybe v2beta3 should be supported ?
+	if ar.GroupVersion() == config.ApisixV2 {
+		class = ar.V2().Spec.IngressClass
+	} else {
+		// Compatible with legacy versions
+		return true
+	}
+
+	if c.Kubernetes.IngressClass == "*" || c.Kubernetes.IngressClass == class {
+		return true
+	}
+
+	return false
+}
+
 func (c *apisixRouteController) onAdd(obj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
@@ -565,6 +584,14 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 	)
 
 	ar := kube.MustNewApisixRoute(obj)
+
+	if !c.isApisixRouteEffective(ar) {
+		log.Debugw("ignore noneffective ApisixRoute add event",
+			zap.Any("object", obj),
+		)
+		return
+	}
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.ApisixRouteEvent{
@@ -595,6 +622,15 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 		zap.Any("new object", oldObj),
 		zap.Any("old object", newObj),
 	)
+
+	if !c.isApisixRouteEffective(curr) {
+		log.Debugw("ignore noneffective ApisixRoute update event arrived",
+			zap.Any("new object", curr),
+			zap.Any("old object", prev),
+		)
+		return
+	}
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventUpdate,
 		Object: kube.ApisixRouteEvent{
@@ -628,6 +664,14 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 		zap.String("key", key),
 		zap.Any("final state", ar),
 	)
+
+	if !c.isApisixRouteEffective(ar) {
+		log.Debugw("ignore noneffective ApisixRoute delete event arrived",
+			zap.Any("final state", ar),
+		)
+		return
+	}
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixRouteEvent{

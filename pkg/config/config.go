@@ -12,6 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package config
 
 import (
@@ -37,6 +38,7 @@ const (
 	// IngressClass is the default ingress class name, used for Ingress
 	// object's IngressClassName field in Kubernetes clusters version v1.18.0
 	// or higher, or the annotation "kubernetes.io/ingress.class" (deprecated).
+	// A wildcard '*' listen all ApisixRoutes or Ingress
 	IngressClass = "apisix"
 
 	// IngressNetworkingV1 represents ingress.networking/v1

@@ -12,6 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package ingress
 
 import (
@@ -427,6 +428,9 @@ func (c *ingressController) OnDelete(obj interface{}) {
 }
 
 func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
+	if c.Kubernetes.IngressClass == "*" {
+		return true
+	}
 	var (
 		ic  *string
 		ica string

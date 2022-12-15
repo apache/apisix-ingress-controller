@@ -344,6 +344,8 @@ spec:
                 - required: ["http"]
                 - required: ["stream"]
               properties:
+                ingressClassName:
+                  type: string
                 http:
                   type: array
                   minItems: 1

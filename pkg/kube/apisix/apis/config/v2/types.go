@@ -12,6 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package v2
 
 import (
@@ -43,8 +44,9 @@ type ApisixStatus struct {
 
 // ApisixRouteSpec is the spec definition for ApisixRouteSpec.
 type ApisixRouteSpec struct {
-	HTTP   []ApisixRouteHTTP   `json:"http,omitempty" yaml:"http,omitempty"`
-	Stream []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
+	IngressClass string              `json:"ingressClass,omitempty" yaml:"ingressClass,omitempty"`
+	HTTP         []ApisixRouteHTTP   `json:"http,omitempty" yaml:"http,omitempty"`
+	Stream       []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
 }
 
 // UpstreamTimeout is settings for the read, send and connect to the upstream.
