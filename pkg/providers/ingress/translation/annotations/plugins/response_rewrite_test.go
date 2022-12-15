@@ -17,9 +17,10 @@ package plugins
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestResponseRewriteHandler(t *testing.T) {
