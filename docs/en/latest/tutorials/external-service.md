@@ -191,7 +191,7 @@ spec:
 
 Once the configurations is synced, try to access it with the following command.
 
-The only argument taht changes is the header we pass.
+The only argument that changes is the header we pass.
 
 ```bash
 kubectl exec -it -n apisix APISIX_POD_NAME -- curl -i -H "Host: ext.httpbin.org" http://127.0.0.1:9080/get
