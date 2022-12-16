@@ -84,7 +84,7 @@ type ListerInformer struct {
 	ApisixClusterConfigLister kube.ApisixClusterConfigLister
 }
 
-func (c *ListerInformer) StartAndWaitSync(ctx context.Context) bool {
+func (c *ListerInformer) StartAndWaitForCacheSync(ctx context.Context) bool {
 	succ := true
 	e := utils.ParallelExecutor{}
 
