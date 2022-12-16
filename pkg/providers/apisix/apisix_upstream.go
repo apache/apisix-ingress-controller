@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -48,11 +47,6 @@ type apisixUpstreamController struct {
 	svcWorkqueue workqueue.RateLimitingInterface
 	workers      int
 
-	svcInformer            cache.SharedIndexInformer
-	svcLister              listerscorev1.ServiceLister
-	apisixUpstreamInformer cache.SharedIndexInformer
-	apisixUpstreamLister   kube.ApisixUpstreamLister
-
 	externalSvcLock sync.RWMutex
 	// external name service name -> apisix upstream name
 	externalServiceMap map[string]map[string]struct{}
@@ -69,23 +63,18 @@ func newApisixUpstreamController(common *apisixCommon, notifyApisixUpstreamChang
 		svcWorkqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixUpstreamService"),
 		workers:      1,
 
-		svcInformer:            common.SvcInformer,
-		svcLister:              common.SvcLister,
-		apisixUpstreamLister:   common.ApisixUpstreamLister,
-		apisixUpstreamInformer: common.ApisixUpstreamInformer,
-
 		externalServiceMap:         make(map[string]map[string]struct{}),
 		notifyApisixUpstreamChange: notifyApisixUpstreamChange,
 	}
 
-	c.apisixUpstreamInformer.AddEventHandler(
+	c.ApisixUpstreamInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    c.onAdd,
 			UpdateFunc: c.onUpdate,
 			DeleteFunc: c.onDelete,
 		},
 	)
-	c.svcInformer.AddEventHandler(
+	c.SvcInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    c.onSvcAdd,
 			UpdateFunc: c.onSvcUpdate,
@@ -101,10 +90,6 @@ func (c *apisixUpstreamController) run(ctx context.Context) {
 	defer c.workqueue.ShutDown()
 	defer c.svcWorkqueue.ShutDown()
 
-	if ok := cache.WaitForCacheSync(ctx.Done(), c.apisixUpstreamInformer.HasSynced, c.svcInformer.HasSynced); !ok {
-		log.Error("cache sync failed")
-		return
-	}
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
 		go c.runSvcWorker(ctx)
@@ -154,9 +139,9 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 	var multiVersioned kube.ApisixUpstream
 	switch event.GroupVersion {
 	case config.ApisixV2beta3:
-		multiVersioned, err = c.apisixUpstreamLister.V2beta3(namespace, name)
+		multiVersioned, err = c.ApisixUpstreamLister.V2beta3(namespace, name)
 	case config.ApisixV2:
-		multiVersioned, err = c.apisixUpstreamLister.V2(namespace, name)
+		multiVersioned, err = c.ApisixUpstreamLister.V2(namespace, name)
 	default:
 		return fmt.Errorf("unsupported ApisixUpstream group version %s", event.GroupVersion)
 	}
@@ -204,7 +189,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 			}
 		}
 
-		svc, err := c.svcLister.Services(namespace).Get(name)
+		svc, err := c.SvcLister.Services(namespace).Get(name)
 		if err != nil {
 			log.Errorf("failed to get service %s: %s", key, err)
 			c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
@@ -323,7 +308,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 			}
 		}
 
-		svc, err := c.svcLister.Services(namespace).Get(name)
+		svc, err := c.SvcLister.Services(namespace).Get(name)
 		if err != nil {
 			log.Errorf("failed to get service %s: %s", key, err)
 			c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
@@ -652,7 +637,7 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 }
 
 func (c *apisixUpstreamController) ResourceSync() {
-	objs := c.apisixUpstreamInformer.GetIndexer().List()
+	objs := c.ApisixUpstreamInformer.GetIndexer().List()
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
@@ -791,7 +776,7 @@ func (c *apisixUpstreamController) handleSvcChange(ctx context.Context, key stri
 		if err != nil {
 			return err
 		}
-		au, err := c.apisixUpstreamLister.V2(ns, name)
+		au, err := c.ApisixUpstreamLister.V2(ns, name)
 		if err != nil {
 			return err
 		}

@@ -43,23 +43,16 @@ type apisixPluginConfigController struct {
 
 	workqueue workqueue.RateLimitingInterface
 	workers   int
-
-	apisixPluginConfigLister   kube.ApisixPluginConfigLister
-	apisixPluginConfigInformer cache.SharedIndexInformer
 }
 
-func newApisixPluginConfigController(common *apisixCommon,
-	apisixPluginConfigInformer cache.SharedIndexInformer, apisixPluginConfigLister kube.ApisixPluginConfigLister) *apisixPluginConfigController {
+func newApisixPluginConfigController(common *apisixCommon) *apisixPluginConfigController {
 	c := &apisixPluginConfigController{
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixPluginConfig"),
 		workers:      1,
-
-		apisixPluginConfigLister:   apisixPluginConfigLister,
-		apisixPluginConfigInformer: apisixPluginConfigInformer,
 	}
 
-	c.apisixPluginConfigInformer.AddEventHandler(
+	c.ApisixPluginConfigInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    c.onAdd,
 			UpdateFunc: c.onUpdate,
@@ -73,12 +66,6 @@ func (c *apisixPluginConfigController) run(ctx context.Context) {
 	log.Info("ApisixPluginConfig controller started")
 	defer log.Info("ApisixPluginConfig controller exited")
 	defer c.workqueue.ShutDown()
-
-	ok := cache.WaitForCacheSync(ctx.Done(), c.apisixPluginConfigInformer.HasSynced)
-	if !ok {
-		log.Error("cache sync failed")
-		return
-	}
 
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
@@ -111,9 +98,9 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 	)
 	switch obj.GroupVersion {
 	case config.ApisixV2beta3:
-		apc, err = c.apisixPluginConfigLister.V2beta3(namespace, name)
+		apc, err = c.ApisixPluginConfigLister.V2beta3(namespace, name)
 	case config.ApisixV2:
-		apc, err = c.apisixPluginConfigLister.V2(namespace, name)
+		apc, err = c.ApisixPluginConfigLister.V2(namespace, name)
 	default:
 		return fmt.Errorf("unsupported ApisixPluginConfig group version %s", obj.GroupVersion)
 	}
@@ -242,9 +229,9 @@ func (c *apisixPluginConfigController) handleSyncErr(obj interface{}, errOrigin 
 	var apc kube.ApisixPluginConfig
 	switch event.GroupVersion {
 	case config.ApisixV2beta3:
-		apc, errLocal = c.apisixPluginConfigLister.V2beta3(namespace, name)
+		apc, errLocal = c.ApisixPluginConfigLister.V2beta3(namespace, name)
 	case config.ApisixV2:
-		apc, errLocal = c.apisixPluginConfigLister.V2(namespace, name)
+		apc, errLocal = c.ApisixPluginConfigLister.V2(namespace, name)
 	default:
 		errLocal = fmt.Errorf("unsupported ApisixPluginConfig group version %s", event.GroupVersion)
 	}
@@ -382,7 +369,7 @@ func (c *apisixPluginConfigController) onDelete(obj interface{}) {
 }
 
 func (c *apisixPluginConfigController) ResourceSync() {
-	objs := c.apisixPluginConfigInformer.GetIndexer().List()
+	objs := c.ApisixPluginConfigInformer.GetIndexer().List()
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
