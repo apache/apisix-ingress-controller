@@ -113,7 +113,7 @@ kubectl exec -it -n apisix APISIX_POD_NAME -- curl -i -H "Host: local.httpbin.or
 
 If everything works, you will see the result like this:
 
-```
+```text
 HTTP/1.1 200 OK
 Content-Type: application/json
 Content-Length: 321
@@ -199,7 +199,7 @@ kubectl exec -it -n apisix APISIX_POD_NAME -- curl -i -H "Host: ext.httpbin.org"
 
 The output should be like:
 
-```
+```text
 HTTP/1.1 200 OK
 Content-Type: application/json
 Content-Length: 234
