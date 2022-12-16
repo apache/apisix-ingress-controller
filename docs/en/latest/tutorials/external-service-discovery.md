@@ -23,7 +23,7 @@ title: Using External Services Discovery In ApisixUpstream
 
 In this tutorial, we will introduce how to configure external services discovery in the ApisixUpstream resources.
 
-APISIX already supports various service discovery components, such as DNS, consul, nacos, etc. 
+APISIX already supports various service discovery components, such as DNS, consul, nacos, etc.
 Please see [Integration service discovery registry](https://apisix.apache.org/docs/apisix/discovery/) for details.
 
 ## Prerequisites
