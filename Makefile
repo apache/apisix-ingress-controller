@@ -16,7 +16,7 @@
 #
 default: help
 
-VERSION ?= 1.5.1
+VERSION ?= 1.6.0
 
 # 2.15 image: "2.15.0-alpine"
 TARGET_APISIX_VERSION ?= "3.0.0-centos"
