@@ -472,7 +472,7 @@ func (c *Controller) run(ctx context.Context) {
 	}
 
 	// Wait Resouce sync
-	if ok := c.informers.StartAndWaitSync(ctx); !ok {
+	if ok := c.informers.StartAndWaitForCacheSync(ctx); !ok {
 		ctx.Done()
 		return
 	}
