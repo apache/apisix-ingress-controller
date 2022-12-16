@@ -42,3 +42,7 @@ apisix-ingress-controller
 .actions/openwhisk-utilities
 
 .generated
+
+# go work
+go.work
+go.work.sum
