@@ -33,12 +33,12 @@ spec:
   monitoring:
     prometheus:
       enable: %v
-	  prefer_name: %v
+      prefer_name: %v
 `
 )
 
 // NewApisixClusterConfig creates an ApisixClusterConfig CRD
-func (s *Scaffold) NewApisixClusterConfig(name string, enable, enablePreferName bool) error {
+func (s *Scaffold) NewApisixClusterConfig(name string, enable bool, enablePreferName bool) error {
 	cc := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.ApisixResourceVersion, name, enable, enablePreferName)
 	if err := s.CreateResourceFromString(cc); err != nil {
 		return err
@@ -48,7 +48,7 @@ func (s *Scaffold) NewApisixClusterConfig(name string, enable, enablePreferName 
 }
 
 // DeleteApisixClusterConfig removes an ApisixClusterConfig CRD
-func (s *Scaffold) DeleteApisixClusterConfig(name string, enable, enablePreferName bool) error {
+func (s *Scaffold) DeleteApisixClusterConfig(name string, enable bool, enablePreferName bool) error {
 	cc := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.ApisixResourceVersion, name, enable, enablePreferName)
 	if err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, cc); err != nil {
 		return err
