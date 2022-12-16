@@ -19,8 +19,6 @@ package configmap
 import (
 	"context"
 
-	"k8s.io/client-go/tools/cache"
-
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
@@ -33,17 +31,13 @@ type Provider interface {
 }
 
 type configmapProvider struct {
-	cfg *config.Config
-
-	configmapInformer   cache.SharedIndexInformer
+	cfg                 *config.Config
 	configmapController *configmapController
 }
 
 func NewProvider(common *providertypes.Common) (Provider, error) {
 	p := &configmapProvider{
 		cfg: common.Config,
-
-		configmapInformer: common.ConfigMapInformer,
 	}
 
 	p.configmapController = newConfigMapController(common)
