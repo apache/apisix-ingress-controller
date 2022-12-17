@@ -109,6 +109,9 @@ func (t *translator) TranslateGatewayTLSRouteV1Alpha2(tlsRoute *gatewayv1alpha2.
 
 		for _, host := range hosts {
 			route := apisixv1.NewDefaultStreamRoute()
+			for k, v := range tlsRoute.ObjectMeta.Labels {
+				route.Labels[k] = v
+			}
 			name := apisixv1.ComposeRouteName(tlsRoute.Namespace, tlsRoute.Name, fmt.Sprintf("%d-%s", i, host))
 			route.ID = id.GenID(name)
 

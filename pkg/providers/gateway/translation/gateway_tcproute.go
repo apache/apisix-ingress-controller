@@ -38,6 +38,9 @@ func (t *translator) TranslateGatewayTCPRouteV1Alpha2(tcpRoute *gatewayv1alpha2.
 				ns = tcpRoute.Namespace
 			}
 			sr := apisixv1.NewDefaultStreamRoute()
+			for k, v := range tcpRoute.ObjectMeta.Labels {
+				sr.Labels[k] = v
+			}
 			name := apisixv1.ComposeStreamRouteName(tcpRoute.Namespace, tcpRoute.Name, fmt.Sprintf("%d-%s", i, string(backend.Name)))
 			sr.ID = id.GenID(name)
 			ups, err := t.KubeTranslator.TranslateService(ns, string(backend.Name), "", int32(*backend.Port))

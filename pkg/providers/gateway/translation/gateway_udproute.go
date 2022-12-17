@@ -71,6 +71,9 @@ func (t *translator) TranslateGatewayUDPRouteV1Alpha2(udpRoute *gatewayv1alpha2.
 
 			// create apisix Upstream
 			sr := apisixv1.NewDefaultStreamRoute()
+			for k, v := range udpRoute.ObjectMeta.Labels {
+				sr.Labels[k] = v
+			}
 			name := apisixv1.ComposeStreamRouteName(ns, udpRoute.Name, fmt.Sprintf("%d-%d", i, j))
 			sr.ID = id.GenID(name)
 			ups, err := t.KubeTranslator.TranslateService(ns, string(backend.Name), "", int32(*backend.Port))
