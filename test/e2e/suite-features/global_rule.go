@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
-	"github.com/apache/apisix-ingress-controller/pkg/log"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
@@ -75,7 +74,6 @@ spec:
 			assert.Equal(ginkgo.GinkgoT(), ok, true)
 
 			resp := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").Expect()
-			log.Error(resp)
 			resp.Status(http.StatusOK)
 			resp.Body().Contains("# HELP apisix_etcd_modify_indexes Etcd modify index for APISIX keys")
 			resp.Body().Contains("# HELP apisix_etcd_reachable Config server etcd reachable from APISIX, 0 is unreachable")
