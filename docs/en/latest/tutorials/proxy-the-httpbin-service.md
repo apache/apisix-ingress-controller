@@ -1,7 +1,7 @@
 ---
 title: Configuring Ingress with APISIX CRDs
 keywords:
-  - APISIX ingress
+  - APISIX Ingress
   - Apache APISIX
   - Kubernetes Ingress
   - APISIX CRDs
