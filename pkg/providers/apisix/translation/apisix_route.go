@@ -325,6 +325,7 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
 		route.Timeout = timeout
+		route.FilterFunc = part.Match.FilterFunc
 		ctx.AddRoute(route)
 
 		// --- translate "Backends" ---

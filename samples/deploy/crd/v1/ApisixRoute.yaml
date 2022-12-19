@@ -450,6 +450,8 @@ spec:
                               oneOf:
                                 - required: ["subject", "op", "value"]
                                 - required: ["subject", "op", "set"]
+                          filler_func:
+                            type: string
                       websocket:
                         type: boolean
                       plugin_config_name:
