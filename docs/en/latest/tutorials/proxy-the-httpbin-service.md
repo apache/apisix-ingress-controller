@@ -27,7 +27,7 @@ description: A tutorial on configuring Ingress using APISIX Custom Resource Defi
 #
 -->
 
-This tutorial walks through configuring APISIX Ingress with [APISIX Custom Resource Definitions (CRDs)](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_route/).
+This tutorial walks through configuring APISIX Ingress with [APISIX Custom Resource Definitions (CRDs)](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_route).
 
 ## Prerequisites
 
@@ -49,7 +49,7 @@ kubectl expose pod httpbin --port 80
 
 ## Configuring Ingress
 
-We can configure the Ingress using an [ApisixRoute](https://apisix.apache.org/docs/ingress-controller/references/apisix_route_v2/) resource. The example below configures APISIX to route requests to the httpbin service:
+We can configure the Ingress using an [ApisixRoute](https://apisix.apache.org/docs/ingress-controller/references/apisix_route_v2) resource. The example below configures APISIX to route requests to the httpbin service:
 
 ```yaml title="httpbin-ingress.yaml"
 apiVersion: apisix.apache.org/v2
