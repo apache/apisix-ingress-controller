@@ -793,7 +793,7 @@ func (t *translator) translateStreamRouteV2(ctx *translation.TranslateContext, a
 		for k, v := range ar.ObjectMeta.Labels {
 			sr.Labels[k] = v
 		}
-		
+
 		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
 		sr.ID = id.GenID(name)
 		sr.ServerPort = part.Match.IngressPort
