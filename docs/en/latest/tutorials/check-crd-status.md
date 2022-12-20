@@ -27,7 +27,7 @@ description: A guide to check the synchronization status of APISIX CRDs.
 #
 -->
 
-APISIX CRDs are applied to a Kubernetes cluster using the `kubectl apply command`. Behind the scenes, Kubernetes verifies the configuration using the [Open API V3 schema](https://swagger.io/specification/) and its validation webhooks (if any).
+APISIX CRDs are applied to a Kubernetes cluster using the `kubectl apply` command. Behind the scenes, Kubernetes verifies the configuration using the [Open API V3 schema](https://swagger.io/specification/) and its validation webhooks (if any).
 
 But this does not mean that the configuration is synchronized and validated by APISIX. APISIX will convert the declared configuration to APISIX specific resources and verify it. If the verification fails, the Ingress controller will log an error message and will retry until the desired state is successfully synchronized to APISIX.
 
