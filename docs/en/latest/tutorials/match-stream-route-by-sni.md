@@ -30,7 +30,7 @@ This guide walks through how to use the ApisixTls and ApisixRoute to route TLS-e
 
 - an available Kubernetes cluster.
 - an available APISIX and APISIX Ingress Controller installation.
- 
+
 First of all, when installing APISIX, we need to enable TLS for the TCP address for APISIX in the Helm Chart, assume that enable tls on TCP port 6379.
 
 ```yaml
@@ -120,7 +120,7 @@ spec:
 
 ## Create the certificates
 
-When using SNI with TLS, a valid certificate is required for each domain or hostname that you want to use with SNI. 
+When using SNI with TLS, a valid certificate is required for each domain or hostname that you want to use with SNI.
 This is because SNI allows multiple hostnames to be served from the same IP address and port, and the certificate is used to verify the identity of the server and establish an encrypted connection with the client.
 
 Use OpenSSL to generate the certificate file and the key file for 2 Redis services.
@@ -165,6 +165,7 @@ spec:
     name: redis-2-secret
     namespace: default
 ```
+
 ## Create ApisixRoute match the stream route with SNI
 
 Define the route for proxying two Redis services traffic through APISIX. Specify the `spec.stream.match.host` field to match the stream route with SNI.
@@ -202,7 +203,7 @@ Let's verify the configuration. In order to access APISIX locally, we can use `k
 kubectl port-forward -n ingress-apisix svc/apisix-gateway 6379:6379
 ```
 
-Now, connect to 2 Redis services, and set a key named `server`, with different values to distinguish 2 Redis services. 
+Now, connect to 2 Redis services, and set a key named `server`, with different values to distinguish 2 Redis services.
 
 ```bash
 # connect to the redis-1 server
