@@ -23,6 +23,7 @@ import (
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
@@ -310,6 +311,13 @@ spec:
 				eq := reflect.DeepEqual(route.Metadata.Labels, labels)
 				assert.True(ginkgo.GinkgoT(), eq)
 			}
+			// cleanup
+			for _, route := range routes {
+				_ = s.DeleteApisixRouteByApisixAdmin(id.GenID(route.Name))
+			}
+			// confirm deletion
+			routes, _ = s.ListApisixRoutes()
+			assert.Len(ginkgo.GinkgoT(), routes, 0)
 		})
 	}
 
