@@ -17,9 +17,8 @@ package upstreamscheme
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIPRestrictionHandler(t *testing.T) {
