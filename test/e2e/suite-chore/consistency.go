@@ -323,9 +323,9 @@ spec:
 
 	ginkgo.Describe("suite-chore: scaffold v2", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
-			Name:                       "sync",
-			IngressAPISIXReplicas:      1,
-			ApisixResourceVersion:      scaffold.ApisixResourceVersion().V2,
+			Name:                  "sync",
+			IngressAPISIXReplicas: 1,
+			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
 		}))
 	})
 })
