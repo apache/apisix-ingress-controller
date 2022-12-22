@@ -275,7 +275,7 @@ var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the Ingress
 	})
 })
 
-var _ = ginkgo.Describe("suite-ingress-features: apisix labels sync", func() {
+var _ = ginkgo.Describe("suite-chore: apisix labels sync", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.JustBeforeEach(func() {
 			labels := map[string]string{"key": "value", "foo": "bar"}
