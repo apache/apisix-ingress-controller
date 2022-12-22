@@ -313,7 +313,7 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
+	ginkgo.Describe("suite-chore: scaffold v2", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                       "sync",
 			IngressAPISIXReplicas:      1,
