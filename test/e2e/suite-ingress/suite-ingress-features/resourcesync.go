@@ -365,7 +365,6 @@ spec:
 			Name:                       "sync",
 			IngressAPISIXReplicas:      1,
 			ApisixResourceVersion:      scaffold.ApisixResourceVersion().V2,
-			ApisixResourceSyncInterval: "100s",
 		}))
 	})
 })
