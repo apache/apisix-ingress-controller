@@ -31,7 +31,7 @@ This guide walks through how to use the ApisixTls and ApisixRoute to route TLS-e
 - an available Kubernetes cluster.
 - an available APISIX and APISIX Ingress Controller installation.
 
-First of all, when installing APISIX, we need to enable TLS for the TCP address for APISIX in the Helm Chart, assume that enable tls on TCP port 6379.
+First of all, when installing APISIX, we need to enable TLS for the TCP address for APISIX in the Helm Chart, assume that TLS is enabled on TCP port 6379.
 
 ```yaml
 gateway:
@@ -166,7 +166,7 @@ spec:
     namespace: default
 ```
 
-## Create ApisixRoute match the stream route with SNI
+## Create ApisixRoute that matches the stream route with SNI
 
 Define the route for proxying two Redis services traffic through APISIX. Specify the `spec.stream.match.host` field to match the stream route with SNI.
 
