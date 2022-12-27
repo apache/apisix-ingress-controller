@@ -143,7 +143,7 @@ func NewDefaultConfig() *Config {
 			EnableGatewayAPI:    false,
 		},
 		APISIX: APISIXConfig{
-			AdminAPIVersion:    "v3",
+			AdminAPIVersion:    "v2",
 			DefaultClusterName: "default",
 		},
 	}
