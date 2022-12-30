@@ -472,11 +472,15 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 			log.Errorw("failed to get APISIX gateway external IPs",
 				zap.Error(err),
 			)
-
+			return
+		}
+		for _, lb := range lbips {
+			v.Status.LoadBalancer.Ingress = append(v.Status.LoadBalancer.Ingress, networkingv1.IngressLoadBalancerIngress{
+				Hostname: lb.Hostname,
+				IP:       lb.IP,
+			})
 		}
 
-		v.ObjectMeta.Generation = generation
-		v.Status.LoadBalancer.Ingress = lbips
 		if _, errRecord := client.NetworkingV1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 			log.Errorw("failed to record status change for IngressV1",
 				zap.Error(errRecord),
@@ -492,11 +496,15 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 			log.Errorw("failed to get APISIX gateway external IPs",
 				zap.Error(err),
 			)
-
+			return
 		}
 
-		v.ObjectMeta.Generation = generation
-		v.Status.LoadBalancer.Ingress = lbips
+		for _, lb := range lbips {
+			v.Status.LoadBalancer.Ingress = append(v.Status.LoadBalancer.Ingress, networkingv1beta1.IngressLoadBalancerIngress{
+				Hostname: lb.Hostname,
+				IP:       lb.IP,
+			})
+		}
 		if _, errRecord := client.NetworkingV1beta1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 			log.Errorw("failed to record status change for IngressV1",
 				zap.Error(errRecord),
@@ -511,11 +519,15 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 			log.Errorw("failed to get APISIX gateway external IPs",
 				zap.Error(err),
 			)
-
+			return
 		}
 
-		v.ObjectMeta.Generation = generation
-		v.Status.LoadBalancer.Ingress = lbips
+		for _, lb := range lbips {
+			v.Status.LoadBalancer.Ingress = append(v.Status.LoadBalancer.Ingress, extensionsv1beta1.IngressLoadBalancerIngress{
+				Hostname: lb.Hostname,
+				IP:       lb.IP,
+			})
+		}
 		if _, errRecord := client.ExtensionsV1beta1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 			log.Errorw("failed to record status change for IngressV1",
 				zap.Error(errRecord),

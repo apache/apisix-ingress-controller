@@ -49,7 +49,7 @@ func (t *translator) generatePluginsFromHTTPRouteFilter(namespace string, filter
 	return plugins
 }
 
-func (t *translator) generatePluginFromHTTPRequestHeaderFilter(plugins apisixv1.Plugins, reqHeaderModifier *gatewayv1beta1.HTTPRequestHeaderFilter) {
+func (t *translator) generatePluginFromHTTPRequestHeaderFilter(plugins apisixv1.Plugins, reqHeaderModifier *gatewayv1beta1.HTTPHeaderFilter) {
 	if reqHeaderModifier == nil {
 		return
 	}

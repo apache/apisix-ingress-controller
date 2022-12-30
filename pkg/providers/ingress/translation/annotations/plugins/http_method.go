@@ -17,10 +17,10 @@ package plugins
 import (
 	"net/http"
 
+	"github.com/incubator4/go-resty-expr/expr"
+
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-
-	"github.com/incubator4/go-resty-expr/expr"
 )
 
 type HttpMethod struct{}
