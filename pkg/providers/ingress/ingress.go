@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -62,11 +63,19 @@ func newIngressController(common *ingressCommon) *ingressController {
 	c := &ingressController{
 		ingressCommon: common,
 
-		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ingress"),
-		workers:   1,
+		workqueue: workqueue.NewNamedRateLimitingQueue(
+			workqueue.NewMaxOfRateLimiter(
+				&workqueue.BucketRateLimiter{
+					Limiter: rate.NewLimiter(rate.Limit(5), 20),
+				},
+				workqueue.NewItemExponentialFailureRateLimiter(2*time.Second, 500*time.Second),
+			),
+			"ingress"),
+		workers: 1,
 
 		secretSSLMap: new(sync.Map),
 	}
+	log.Error("workqueue --> limit(5), 20")
 
 	c.IngressInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.onAdd,
@@ -284,7 +293,7 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 			zap.Error(errLocal),
 		)
 	}
-	c.workqueue.AddRateLimited(obj)
+	c.workqueue.Forget(obj)
 	c.MetricsCollector.IncrSyncOperation("ingress", "failure")
 }
 
@@ -472,11 +481,15 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 			log.Errorw("failed to get APISIX gateway external IPs",
 				zap.Error(err),
 			)
-
+			return
+		}
+		for _, lb := range lbips {
+			v.Status.LoadBalancer.Ingress = append(v.Status.LoadBalancer.Ingress, networkingv1.IngressLoadBalancerIngress{
+				Hostname: lb.Hostname,
+				IP:       lb.IP,
+			})
 		}
 
-		v.ObjectMeta.Generation = generation
-		v.Status.LoadBalancer.Ingress = lbips
 		if _, errRecord := client.NetworkingV1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 			log.Errorw("failed to record status change for IngressV1",
 				zap.Error(errRecord),
@@ -492,11 +505,15 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 			log.Errorw("failed to get APISIX gateway external IPs",
 				zap.Error(err),
 			)
-
+			return
 		}
 
-		v.ObjectMeta.Generation = generation
-		v.Status.LoadBalancer.Ingress = lbips
+		for _, lb := range lbips {
+			v.Status.LoadBalancer.Ingress = append(v.Status.LoadBalancer.Ingress, networkingv1beta1.IngressLoadBalancerIngress{
+				Hostname: lb.Hostname,
+				IP:       lb.IP,
+			})
+		}
 		if _, errRecord := client.NetworkingV1beta1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 			log.Errorw("failed to record status change for IngressV1",
 				zap.Error(errRecord),
@@ -511,11 +528,15 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 			log.Errorw("failed to get APISIX gateway external IPs",
 				zap.Error(err),
 			)
-
+			return
 		}
 
-		v.ObjectMeta.Generation = generation
-		v.Status.LoadBalancer.Ingress = lbips
+		for _, lb := range lbips {
+			v.Status.LoadBalancer.Ingress = append(v.Status.LoadBalancer.Ingress, extensionsv1beta1.IngressLoadBalancerIngress{
+				Hostname: lb.Hostname,
+				IP:       lb.IP,
+			})
+		}
 		if _, errRecord := client.ExtensionsV1beta1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 			log.Errorw("failed to record status change for IngressV1",
 				zap.Error(errRecord),
