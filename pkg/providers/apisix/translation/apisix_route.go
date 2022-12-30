@@ -47,13 +47,13 @@ func (t *translator) TranslateRouteV2beta3(ar *configv2beta3.ApisixRoute) (*tran
 	return ctx, nil
 }
 
-func (t *translator) TranslateRouteV2beta3NotStrictly(ar *configv2beta3.ApisixRoute) (*translation.TranslateContext, error) {
+func (t *translator) GenerateRouteV2beta3DeleteMark(ar *configv2beta3.ApisixRoute) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
 
-	if err := t.translateHTTPRouteV2beta3NotStrictly(ctx, ar); err != nil {
+	if err := t.generateHTTPRouteV2beta3DeleteMark(ctx, ar); err != nil {
 		return nil, err
 	}
-	if err := t.translateStreamRouteNotStrictlyV2beta3(ctx, ar); err != nil {
+	if err := t.generateStreamRouteDeleteMarkV2beta3(ctx, ar); err != nil {
 		return nil, err
 	}
 	return ctx, nil
@@ -71,13 +71,13 @@ func (t *translator) TranslateRouteV2(ar *configv2.ApisixRoute) (*translation.Tr
 	return ctx, nil
 }
 
-func (t *translator) TranslateRouteV2NotStrictly(ar *configv2.ApisixRoute) (*translation.TranslateContext, error) {
+func (t *translator) GenerateRouteV2DeleteMark(ar *configv2.ApisixRoute) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
 
-	if err := t.translateHTTPRouteV2NotStrictly(ctx, ar); err != nil {
+	if err := t.generateHTTPRouteV2DeleteMark(ctx, ar); err != nil {
 		return nil, err
 	}
-	if err := t.translateStreamRouteNotStrictlyV2(ctx, ar); err != nil {
+	if err := t.generateStreamRouteDeleteMarkV2(ctx, ar); err != nil {
 		return nil, err
 	}
 	return ctx, nil
@@ -579,8 +579,8 @@ func (t *translator) TranslateRouteMatchExprs(nginxVars []configv2.ApisixRouteHT
 	return vars, nil
 }
 
-// translateHTTPRouteV2beta3NotStrictly translates http route with a loose way, only generate ID and Name for delete Event.
-func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *translation.TranslateContext, ar *configv2beta3.ApisixRoute) error {
+// generateHTTPRouteV2beta3DeleteMark translates http route with a loose way, only generate ID and Name for delete Event.
+func (t *translator) generateHTTPRouteV2beta3DeleteMark(ctx *translation.TranslateContext, ar *configv2beta3.ApisixRoute) error {
 	for _, part := range ar.Spec.HTTP {
 		backends := part.Backends
 		// Use the first backend as the default backend in Route,
@@ -628,7 +628,7 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *translation.Trans
 
 		ctx.AddRoute(route)
 		if !ctx.CheckUpstreamExist(upstreamName) {
-			ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
+			ups, err := t.generateUpstreamDeleteMark(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
 			if err != nil {
 				return err
 			}
@@ -638,8 +638,8 @@ func (t *translator) translateHTTPRouteV2beta3NotStrictly(ctx *translation.Trans
 	return nil
 }
 
-// translateHTTPRouteV2NotStrictly translates http route with a loose way, only generate ID and Name for delete Event.
-func (t *translator) translateHTTPRouteV2NotStrictly(ctx *translation.TranslateContext, ar *configv2.ApisixRoute) error {
+// generateHTTPRouteV2DeleteMark translates http route with a loose way, only generate ID and Name for delete Event.
+func (t *translator) generateHTTPRouteV2DeleteMark(ctx *translation.TranslateContext, ar *configv2.ApisixRoute) error {
 	for _, part := range ar.Spec.HTTP {
 		pluginMap := make(apisixv1.Plugins)
 		// add route plugins
@@ -689,7 +689,7 @@ func (t *translator) translateHTTPRouteV2NotStrictly(ctx *translation.TranslateC
 
 			upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
 			if !ctx.CheckUpstreamExist(upstreamName) {
-				ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
+				ups, err := t.generateUpstreamDeleteMark(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
 				if err != nil {
 					return err
 				}
@@ -813,15 +813,15 @@ func (t *translator) translateStreamRouteV2(ctx *translation.TranslateContext, a
 	return nil
 }
 
-// translateStreamRouteNotStrictlyV2beta3 translates tcp route with a loose way, only generate ID and Name for delete Event.
-func (t *translator) translateStreamRouteNotStrictlyV2beta3(ctx *translation.TranslateContext, ar *configv2beta3.ApisixRoute) error {
+// generateStreamRouteDeleteMarkV2beta3 translates tcp route with a loose way, only generate ID and Name for delete Event.
+func (t *translator) generateStreamRouteDeleteMarkV2beta3(ctx *translation.TranslateContext, ar *configv2beta3.ApisixRoute) error {
 	for _, part := range ar.Spec.Stream {
 		backend := &part.Backend
 		sr := apisixv1.NewDefaultStreamRoute()
 		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
 		sr.ID = id.GenID(name)
 		sr.ServerPort = part.Match.IngressPort
-		ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
+		ups, err := t.generateUpstreamDeleteMark(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
 		if err != nil {
 			return err
 		}
@@ -834,8 +834,8 @@ func (t *translator) translateStreamRouteNotStrictlyV2beta3(ctx *translation.Tra
 	return nil
 }
 
-// translateStreamRouteNotStrictlyV2 translates tcp route with a loose way, only generate ID and Name for delete Event.
-func (t *translator) translateStreamRouteNotStrictlyV2(ctx *translation.TranslateContext, ar *configv2.ApisixRoute) error {
+// generateStreamRouteDeleteMarkV2 translates tcp route with a loose way, only generate ID and Name for delete Event.
+func (t *translator) generateStreamRouteDeleteMarkV2(ctx *translation.TranslateContext, ar *configv2.ApisixRoute) error {
 	for _, part := range ar.Spec.Stream {
 		backend := &part.Backend
 		sr := apisixv1.NewDefaultStreamRoute()
@@ -843,7 +843,7 @@ func (t *translator) translateStreamRouteNotStrictlyV2(ctx *translation.Translat
 		sr.ID = id.GenID(name)
 		sr.ServerPort = part.Match.IngressPort
 		sr.SNI = part.Match.Host
-		ups, err := t.translateUpstreamNotStrictly(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
+		ups, err := t.generateUpstreamDeleteMark(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort.IntVal, backend.ResolveGranularity)
 		if err != nil {
 			return err
 		}

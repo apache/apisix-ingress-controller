@@ -342,7 +342,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 				tctx, err = c.translator.TranslateRouteV2beta3(ar.V2beta3())
 			}
 		} else {
-			tctx, err = c.translator.TranslateRouteV2beta3NotStrictly(ar.V2beta3())
+			tctx, err = c.translator.GenerateRouteV2beta3DeleteMark(ar.V2beta3())
 		}
 		if err != nil {
 			log.Errorw("failed to translate ApisixRoute v2beta3",
@@ -357,7 +357,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 				tctx, err = c.translator.TranslateRouteV2(ar.V2())
 			}
 		} else {
-			tctx, err = c.translator.TranslateRouteV2NotStrictly(ar.V2())
+			tctx, err = c.translator.GenerateRouteV2DeleteMark(ar.V2())
 		}
 		if err != nil {
 			log.Errorw("failed to translate ApisixRoute v2",
