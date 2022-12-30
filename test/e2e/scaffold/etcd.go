@@ -65,7 +65,7 @@ spec:
             tcpSocket:
               port: 2379
             timeoutSeconds: 2
-          image: "localhost:5000/bitnami/etcd:dev"
+          image: "localhost:5000/etcd:dev"
           imagePullPolicy: IfNotPresent
           name: etcd-deployment-e2e-test
           ports:

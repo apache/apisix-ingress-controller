@@ -82,6 +82,21 @@ func (t *translator) TranslatePluginConfigV2(config *configv2.ApisixPluginConfig
 						zap.Any("new", plugin.Config),
 					)
 				}
+				if plugin.SecretRef != "" {
+					sec, err := t.SecretLister.Secrets(config.Namespace).Get(plugin.SecretRef)
+					if err != nil {
+						log.Errorw("The config secretRef is invalid",
+							zap.Any("plugin", plugin.Name),
+							zap.String("secretRef", plugin.SecretRef))
+						break
+					}
+					log.Debugw("Add new items, then override items with the same plugin key",
+						zap.Any("plugin", plugin.Name),
+						zap.String("secretRef", plugin.SecretRef))
+					for key, value := range sec.Data {
+						plugin.Config[key] = string(value)
+					}
+				}
 				pluginMap[plugin.Name] = plugin.Config
 			} else {
 				pluginMap[plugin.Name] = make(map[string]interface{})

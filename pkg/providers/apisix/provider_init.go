@@ -19,7 +19,7 @@ import (
 	"sync"
 
 	"go.uber.org/zap"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -49,22 +49,22 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 	)
 
 	namespaces := p.namespaceProvider.WatchingNamespaces()
+
 	for _, key := range namespaces {
 		log.Debugf("start to watch namespace: %s", key)
 		wg.Add(1)
 		go func(ns string) {
 			defer wg.Done()
 			// ApisixRoute
-			opts := v1.ListOptions{}
 			switch p.common.Config.Kubernetes.APIVersion {
 			case config.ApisixV2beta3:
-				retRoutes, err := p.common.KubeClient.APISIXClient.ApisixV2beta3().ApisixRoutes(ns).List(ctx, opts)
+				retRoutes, err := p.common.ApisixRouteLister.V2beta3Lister().List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
 				} else {
-					for _, r := range retRoutes.Items {
-						tc, err := p.apisixTranslator.GenerateRouteV2beta3DeleteMark(&r)
+					for _, r := range retRoutes {
+						tc, err := p.apisixTranslator.GenerateRouteV2beta3DeleteMark(r)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -93,13 +93,13 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 					}
 				}
 			case config.ApisixV2:
-				retRoutes, err := p.common.KubeClient.APISIXClient.ApisixV2().ApisixRoutes(ns).List(ctx, opts)
+				retRoutes, err := p.common.ApisixRouteLister.V2Lister().List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
 				} else {
-					for _, r := range retRoutes.Items {
-						tc, err := p.apisixTranslator.GenerateRouteV2DeleteMark(&r)
+					for _, r := range retRoutes {
+						tc, err := p.apisixTranslator.GenerateRouteV2DeleteMark(r)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -138,13 +138,13 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 			switch p.common.Config.Kubernetes.APIVersion {
 			case config.ApisixV2beta3:
 				// ApisixConsumer
-				retConsumer, err := p.common.KubeClient.APISIXClient.ApisixV2beta3().ApisixConsumers(ns).List(ctx, opts)
+				retConsumer, err := p.common.ApisixFactory.Apisix().V2beta3().ApisixConsumers().Lister().List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
 				} else {
-					for _, con := range retConsumer.Items {
-						consumer, err := p.apisixTranslator.TranslateApisixConsumerV2beta3(&con)
+					for _, con := range retConsumer {
+						consumer, err := p.apisixTranslator.TranslateApisixConsumerV2beta3(con)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -154,13 +154,13 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 					}
 				}
 				// ApisixTls
-				retSSL, err := p.common.KubeClient.APISIXClient.ApisixV2beta3().ApisixTlses(ns).List(ctx, opts)
+				retSSL, err := p.common.ApisixFactory.Apisix().V2beta3().ApisixTlses().Lister().ApisixTlses(ns).List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
 				} else {
-					for _, s := range retSSL.Items {
-						ssl, err := p.apisixTranslator.TranslateSSLV2Beta3(&s)
+					for _, s := range retSSL {
+						ssl, err := p.apisixTranslator.TranslateSSLV2Beta3(s)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -171,13 +171,13 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 				}
 			case config.ApisixV2:
 				// ApisixConsumer
-				retConsumer, err := p.common.KubeClient.APISIXClient.ApisixV2().ApisixConsumers(ns).List(ctx, opts)
+				retConsumer, err := p.common.ApisixFactory.Apisix().V2().ApisixConsumers().Lister().ApisixConsumers(ns).List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
 				} else {
-					for _, con := range retConsumer.Items {
-						consumer, err := p.apisixTranslator.TranslateApisixConsumerV2(&con)
+					for _, con := range retConsumer {
+						consumer, err := p.apisixTranslator.TranslateApisixConsumerV2(con)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -187,13 +187,13 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 					}
 				}
 				// ApisixTls
-				retSSL, err := p.common.KubeClient.APISIXClient.ApisixV2().ApisixTlses(ns).List(ctx, opts)
+				retSSL, err := p.common.ApisixFactory.Apisix().V2().ApisixTlses().Lister().ApisixTlses(ns).List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
 				} else {
-					for _, s := range retSSL.Items {
-						ssl, err := p.apisixTranslator.TranslateSSLV2(&s)
+					for _, s := range retSSL {
+						ssl, err := p.apisixTranslator.TranslateSSLV2(s)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()

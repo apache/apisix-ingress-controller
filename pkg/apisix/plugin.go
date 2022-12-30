@@ -38,7 +38,7 @@ func newPluginClient(c *cluster) Plugin {
 // List returns the names of all plugins.
 func (p *pluginClient) List(ctx context.Context) ([]string, error) {
 	log.Debugw("try to list plugins' names in APISIX",
-		zap.String("cluster", "default"),
+		zap.String("cluster", p.cluster.name),
 		zap.String("url", p.url),
 	)
 	pluginList, err := p.cluster.getList(ctx, p.url+"?all=true", "plugin")

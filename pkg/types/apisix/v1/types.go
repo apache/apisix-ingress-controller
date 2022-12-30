@@ -81,6 +81,13 @@ const (
 	DefaultUpstreamTimeout = 60
 )
 
+var ValidSchemes map[string]struct{} = map[string]struct{}{
+	SchemeHTTP:  {},
+	SchemeHTTPS: {},
+	SchemeGRPC:  {},
+	SchemeGRPCS: {},
+}
+
 // Metadata contains all meta information about resources.
 // +k8s:deepcopy-gen=true
 type Metadata struct {

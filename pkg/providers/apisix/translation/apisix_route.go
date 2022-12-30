@@ -251,6 +251,21 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 				continue
 			}
 			if plugin.Config != nil {
+				if plugin.SecretRef != "" {
+					sec, err := t.SecretLister.Secrets(ar.Namespace).Get(plugin.SecretRef)
+					if err != nil {
+						log.Errorw("The config secretRef is invalid",
+							zap.Any("plugin", plugin.Name),
+							zap.String("secretRef", plugin.SecretRef))
+						break
+					}
+					log.Debugw("Add new items, then override items with the same plugin key",
+						zap.Any("plugin", plugin.Name),
+						zap.String("secretRef", plugin.SecretRef))
+					for key, value := range sec.Data {
+						plugin.Config[key] = string(value)
+					}
+				}
 				pluginMap[plugin.Name] = plugin.Config
 			} else {
 				pluginMap[plugin.Name] = make(map[string]interface{})
@@ -310,6 +325,10 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
 		route.Timeout = timeout
+		for k, v := range ar.ObjectMeta.Labels {
+			route.Metadata.Labels[k] = v
+		}
+
 		ctx.AddRoute(route)
 
 		// --- translate "Backends" ---
@@ -753,6 +772,21 @@ func (t *translator) translateStreamRouteV2(ctx *translation.TranslateContext, a
 				continue
 			}
 			if plugin.Config != nil {
+				if plugin.SecretRef != "" {
+					sec, err := t.SecretLister.Secrets(ar.Namespace).Get(plugin.SecretRef)
+					if err != nil {
+						log.Errorw("The config secretRef is invalid",
+							zap.Any("plugin", plugin.Name),
+							zap.String("secretRef", plugin.SecretRef))
+						break
+					}
+					log.Debugw("Add new items, then override items with the same plugin key",
+						zap.Any("plugin", plugin.Name),
+						zap.String("secretRef", plugin.SecretRef))
+					for key, value := range sec.Data {
+						plugin.Config[key] = string(value)
+					}
+				}
 				pluginMap[plugin.Name] = plugin.Config
 			} else {
 				pluginMap[plugin.Name] = make(map[string]interface{})
