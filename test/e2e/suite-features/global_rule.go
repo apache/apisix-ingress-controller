@@ -79,6 +79,8 @@ spec:
 			resp.Body().Contains("# HELP apisix_etcd_reachable Config server etcd reachable from APISIX, 0 is unreachable")
 			resp.Body().Contains("# HELP apisix_node_info Info of APISIX node")
 
+			time.Sleep(3 * time.Second)
+
 			resp1 := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").Expect()
 			resp1.Status(http.StatusOK)
 			resp1.Body().Contains("public-api")
