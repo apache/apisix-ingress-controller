@@ -275,6 +275,53 @@ var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the Ingress
 	})
 })
 
+var _ = ginkgo.Describe("suite-chore: apisix route labels sync", func() {
+	suites := func(s *scaffold.Scaffold) {
+		ginkgo.JustBeforeEach(func() {
+			labels := map[string]string{"key": "value", "foo": "bar"}
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+ labels:
+   key: value
+   foo: bar
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+`, backendSvc, backendPorts[0])
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
+
+			routes, _ := s.ListApisixRoutes()
+			assert.Len(ginkgo.GinkgoT(), routes, 1)
+			// check if labels exists
+			for _, route := range routes {
+				eq := reflect.DeepEqual(route.Metadata.Labels, labels)
+				assert.True(ginkgo.GinkgoT(), eq)
+			}
+		})
+	}
+
+	ginkgo.Describe("suite-chore: scaffold v2", func() {
+		suites(scaffold.NewScaffold(&scaffold.Options{
+			Name:                  "sync",
+			IngressAPISIXReplicas: 1,
+			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
+		}))
+	})
+})
+
 var _ = ginkgo.Describe("suite-chore: apisix upstream labels sync", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.JustBeforeEach(func() {

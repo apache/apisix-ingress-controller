@@ -53,6 +53,22 @@ helm install apisix apisix/apisix \
 kubectl get service --namespace ingress-apisix
 ```
 
+:::tip
+
+By default AWS provisions a [Classic LoadBalancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/introduction.html). If you want to use a [Network LoadBalancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html) you can set the annotation, `service.beta.kubernetes.io/aws-load-balancer-type: nlb`. The install command would now be:
+
+```shell
+helm install apisix apisix/apisix \
+  --set gateway.type=LoadBalancer \
+  --set ingress-controller.enabled=true \
+  --namespace ingress-apisix \
+  --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix \
+  --set gateway.tls.enabled=true \
+  --set gateway.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"=nlb
+```
+
+:::
+
 :::note
 
 By default, APISIX ingress controller will watch the apiVersion of `networking.k8s.io/v1`.

@@ -9,7 +9,7 @@ require (
 	github.com/gavv/httpexpect/v2 v2.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/gruntwork-io/terratest v0.40.22
-	github.com/onsi/ginkgo/v2 v2.6.0
+	github.com/onsi/ginkgo/v2 v2.6.1
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.24.0
 	k8s.io/api v0.26.0

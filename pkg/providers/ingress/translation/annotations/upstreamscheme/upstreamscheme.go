@@ -30,6 +30,9 @@ func NewParser() annotations.IngressAnnotationsParser {
 
 func (w *upstreamscheme) Parse(e annotations.Extractor) (interface{}, error) {
 	scheme := strings.ToLower(e.GetStringAnnotation(annotations.AnnotationsUpstreamScheme))
+	if scheme == "" {
+		return nil, nil
+	}
 	_, ok := apisixv1.ValidSchemes[scheme]
 	if ok {
 		return scheme, nil
