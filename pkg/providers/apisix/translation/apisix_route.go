@@ -325,6 +325,10 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
 		route.Timeout = timeout
+		for k, v := range ar.ObjectMeta.Labels {
+			route.Metadata.Labels[k] = v
+		}
+
 		ctx.AddRoute(route)
 
 		// --- translate "Backends" ---
