@@ -50,6 +50,7 @@ func TestNewConfigFromFile(t *testing.T) {
 			APIVersion:     DefaultAPIVersion,
 		},
 		APISIX: APISIXConfig{
+			AdminAPIVersion:        "v2",
 			DefaultClusterName:     "apisix",
 			DefaultClusterBaseURL:  "http://127.0.0.1:8080/apisix",
 			DefaultClusterAdminKey: "123456",
@@ -94,6 +95,7 @@ kubernetes:
   ingress_version: networking/v1
   api_version: apisix.apache.org/v2
 apisix:
+  admin_api_version: v2
   default_cluster_base_url: http://127.0.0.1:8080/apisix
   default_cluster_admin_key: "123456"
   default_cluster_name: "apisix"
@@ -138,6 +140,7 @@ func TestConfigWithEnvVar(t *testing.T) {
 			APIVersion:     DefaultAPIVersion,
 		},
 		APISIX: APISIXConfig{
+			AdminAPIVersion:        "v2",
 			DefaultClusterName:     "apisix",
 			DefaultClusterBaseURL:  "http://127.0.0.1:8080/apisix",
 			DefaultClusterAdminKey: "123456",
@@ -173,6 +176,7 @@ func TestConfigWithEnvVar(t *testing.T) {
         "ingress_version": "networking/v1"
     },
     "apisix": {
+        "admin_api_version": "v2",
         "default_cluster_base_url": "{{.DEFAULT_CLUSTER_BASE_URL}}",
         "default_cluster_admin_key": "{{.DEFAULT_CLUSTER_ADMIN_KEY}}",
         "default_cluster_name": "{{.DEFAULT_CLUSTER_NAME}}"
@@ -209,6 +213,7 @@ kubernetes:
   ingress_class: apisix
   ingress_version: networking/v1
 apisix:
+  admin_api_version: v2
   default_cluster_base_url: {{.DEFAULT_CLUSTER_BASE_URL}}
   default_cluster_admin_key: "{{.DEFAULT_CLUSTER_ADMIN_KEY}}"
   default_cluster_name: "{{.DEFAULT_CLUSTER_NAME}}"

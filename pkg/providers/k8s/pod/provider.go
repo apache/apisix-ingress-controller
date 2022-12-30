@@ -59,10 +59,6 @@ func (p *podProvider) Run(ctx context.Context) {
 	e := utils.ParallelExecutor{}
 
 	e.Add(func() {
-		p.podInformer.Run(ctx.Done())
-	})
-
-	e.Add(func() {
 		p.podController.run(ctx)
 	})
 

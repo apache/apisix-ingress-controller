@@ -16,7 +16,7 @@
 #
 default: help
 
-VERSION ?= 1.5.0
+VERSION ?= 1.6.0
 
 # 2.15 image: "2.15.0-alpine"
 TARGET_APISIX_VERSION ?= "3.0.0-centos"
@@ -239,7 +239,7 @@ update-license:
 ### update-mdlint:        Update markdown files lint rules.
 .PHONY: update-mdlint
 update-mdlint:
-	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' -f --ignore node_modules --ignore vendor
+	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' -f --ignore node_modules --ignore vendor --ignore CHANGELOG.md
 
 ### update-gofmt:         Format all go codes
 .PHONY: update-gofmt

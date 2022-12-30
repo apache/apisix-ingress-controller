@@ -1300,6 +1300,11 @@ func (in *ApisixUpstreamExternalNode) DeepCopyInto(out *ApisixUpstreamExternalNo
 		*out = new(int)
 		**out = **in
 	}
+	if in.Port != nil {
+		in, out := &in.Port, &out.Port
+		*out = new(int)
+		**out = **in
+	}
 	return
 }
 

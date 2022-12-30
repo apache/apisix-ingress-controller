@@ -437,6 +437,8 @@ spec:
                         type: string
                       weight:
                         type: integer
+                      port:
+                        type: integer
                 subsets:
                   type: array
                   items:

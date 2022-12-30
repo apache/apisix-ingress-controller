@@ -1,7 +1,13 @@
 ---
-title: How to quickly check the synchronization status of CRD
+title: Checking the synchronization status of the CRDs
+keywords:
+  - APISIX Ingress
+  - Apache APISIX
+  - Kubernetes Ingress
+  - APISIX CRDs
+  - Synchronization
+description: A guide to check the synchronization status of APISIX CRDs.
 ---
-
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -21,28 +27,17 @@ title: How to quickly check the synchronization status of CRD
 #
 -->
 
-When using the Apache APISIX Ingress Controller declarative configuration, often use the `kubectl apply` command. Only if the configuration was verified by its [Open API V3 Schema definition](https://swagger.io/specification/) and its validation webhooks (if any), can the configuration be accepted by Kubernetes.
+APISIX CRDs are applied to a Kubernetes cluster using the `kubectl apply` command. Behind the scenes, Kubernetes verifies the configuration using the [Open API V3 schema](https://swagger.io/specification/) and its validation webhooks (if any).
 
-When the Apache APISIX Ingress Controller watches the resource change, the logic unit of the Apache APISIX Ingress Controller has just started to work.
-In various operations of the Apache APISIX Ingress Controller, object conversion and more verification will be performed.
-When the verification fails, the Apache APISIX Ingress Controller will log an error message and will continue to retry until the declared state is successfully synchronized to APISIX.
+But this does not mean that the configuration is synchronized and validated by APISIX. APISIX will convert the declared configuration to APISIX specific resources and verify it. If the verification fails, the Ingress controller will log an error message and will retry until the desired state is successfully synchronized to APISIX.
 
-Therefore, after the declarative configuration is accepted by Kubernetes, it does not mean that the configuration is synchronized to APISIX.
+This guide will show how you can check the synchronization status of the CRDs.
 
-In this practice, we will show how to check the status of CRD.
+## Example with ApisixRoute
 
-## Prerequisites
+This example uses [ApisixRoute](https://apisix.apache.org/docs/ingress-controller/references/apisix_route_v2) resources. But, this applies for other APISIX CRDs like [ApisixUpstream](https://apisix.apache.org/docs/ingress-controller/references/apisix_upstream), [ApisixTls](https://apisix.apache.org/docs/ingress-controller/references/apisix_tls_v2), and [ApisixClusterConfig](https://apisix.apache.org/docs/ingress-controller/references/apisix_cluster_config_v2).
 
-- an available Kubernetes cluster (version >= 1.14)
-- an available Apache APISIX (version >= 2.6) and Apache APISIX Ingress Controller (version >= 0.6.0) installation
-
-## Take ApisixRoute resource as an example
-
-### deploy and check ApisixRoute resource
-
-1. first deploy an ApisixRoute resource
-
-e.g.
+We can deploy a sample ApisixRoute resource:
 
 ```yaml
 kubectl apply -f - <<EOF
@@ -64,37 +59,33 @@ spec:
   EOF
 ```
 
-2. After apply the ApisixRoute resource, now check the status of CRD
+Once this resource is applied, you can check its synchronization status with its name as shown below:
 
 ```shell
-kubectl describe ar -n test httpbin-route
+kubectl describe ar httpbin-route
 ```
 
-Then, will see the status of `httpbin-route` resource.
+This will give the status as shown below:
 
-```yaml
+```yaml title="output"
 ...
 Status:
   Conditions:
-    Last Transition time:  2021-06-06T09:50:22Z
-    Message:               Sync Successfully
-    Reason:                ResourceSynced
-    Status:                True
-    Type:                  ReousrceReady
-...
+    Message:              Sync Successfully
+    Observed Generation:  1
+    Reason:               ResourcesSynced
+    Status:               True
+    Type:                 ResourcesAvailable
+Events:
+  Type    Reason           Age                From           Message
+  ----    ------           ----               ----           -------
+  Normal  ResourcesSynced  50s (x2 over 50s)  ApisixIngress  ApisixIngress synced successfully
 ```
 
-### Also supports checking the status of other resources
+## Troubleshooting
 
-`ApisixUpstream`
-`ApisixTls`
-`ApisixClusterConfig`
-`ApisixConsumer`
+If you are not able to see the status, please check if you are using:
 
-## Frequent Questions
-
-If can not see the Status information, please check the following points:
-
-1. The version of Apache APISIX Ingress Controller needs to be >= 1.0.
-2. Use the latest CRD definition file, refer to [here](https://github.com/apache/apisix-ingress-controller/tree/master/samples/deploy/crd/v1).
-3. Use the latest RBAC configuration, refer to [here](https://github.com/apache/apisix-ingress-controller/tree/master/samples/deploy/rbac).
+1. An APISIX Ingress controller version `>=1.0`.
+2. The [latest CRD definition file](https://github.com/apache/apisix-ingress-controller/tree/master/samples/deploy/crd/v1).
+3. The latest [RBAC configuration](https://github.com/apache/apisix-ingress-controller/tree/master/samples/deploy/rbac).

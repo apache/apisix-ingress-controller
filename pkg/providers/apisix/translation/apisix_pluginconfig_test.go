@@ -68,7 +68,7 @@ func TestTranslatePluginConfigV2beta3(t *testing.T) {
 	assert.Len(t, ctx.PluginConfigs[0].Plugins, 2)
 }
 
-func TestTranslatePluginConfigV2beta3NotStrictly(t *testing.T) {
+func TestGeneratePluginConfigV2beta3DeleteMark(t *testing.T) {
 	apc := &configv2beta3.ApisixPluginConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "apc",
@@ -107,7 +107,7 @@ func TestTranslatePluginConfigV2beta3NotStrictly(t *testing.T) {
 		},
 	}
 	trans := &translator{}
-	ctx, err := trans.TranslatePluginConfigV2beta3NotStrictly(apc)
+	ctx, err := trans.GeneratePluginConfigV2beta3DeleteMark(apc)
 	assert.NoError(t, err)
 	assert.Len(t, ctx.PluginConfigs, 1)
 	assert.Len(t, ctx.PluginConfigs[0].Plugins, 0)
