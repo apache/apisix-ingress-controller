@@ -50,13 +50,6 @@ type ingressController struct {
 	workqueue workqueue.RateLimitingInterface
 	workers   int
 
-	ingressLister   kube.IngressLister
-	ingressInformer cache.SharedIndexInformer
-
-	secretInformer   cache.SharedIndexInformer
-	endpointInformer cache.SharedIndexInformer
-	serviceInformer  cache.SharedIndexInformer
-
 	// secretSSLMap stores reference from K8s secret to Ingress
 	// type: Map<SecretKey, Map<IngressVersionKey, SSL in APISIX>>
 	// SecretKey -> IngressVersionKey -> []string
@@ -65,24 +58,17 @@ type ingressController struct {
 	secretSSLMap *sync.Map
 }
 
-func newIngressController(common *ingressCommon, ingressLister kube.IngressLister, ingressInformer, secretInformer, endpointInformer, serviceInformer cache.SharedIndexInformer) *ingressController {
+func newIngressController(common *ingressCommon) *ingressController {
 	c := &ingressController{
 		ingressCommon: common,
 
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ingress"),
 		workers:   1,
 
-		ingressLister:   ingressLister,
-		ingressInformer: ingressInformer,
-
-		secretInformer:   secretInformer,
-		endpointInformer: endpointInformer,
-		serviceInformer:  serviceInformer,
-
 		secretSSLMap: new(sync.Map),
 	}
 
-	c.ingressInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	c.IngressInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.onAdd,
 		UpdateFunc: c.onUpdate,
 		DeleteFunc: c.OnDelete,
@@ -95,14 +81,6 @@ func (c *ingressController) run(ctx context.Context) {
 	defer log.Infof("ingress controller exited")
 	defer c.workqueue.ShutDown()
 
-	if !cache.WaitForCacheSync(ctx.Done(),
-		c.ingressInformer.HasSynced,
-		c.secretInformer.HasSynced,
-		c.serviceInformer.HasSynced,
-		c.endpointInformer.HasSynced) {
-		log.Errorf("cache sync failed")
-		return
-	}
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
 	}
@@ -132,11 +110,11 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 	var ing kube.Ingress
 	switch ingEv.GroupVersion {
 	case kube.IngressV1:
-		ing, err = c.ingressLister.V1(namespace, name)
+		ing, err = c.IngressLister.V1(namespace, name)
 	case kube.IngressV1beta1:
-		ing, err = c.ingressLister.V1beta1(namespace, name)
+		ing, err = c.IngressLister.V1beta1(namespace, name)
 	case kube.IngressExtensionsV1beta1:
-		ing, err = c.ingressLister.ExtensionsV1beta1(namespace, name)
+		ing, err = c.IngressLister.ExtensionsV1beta1(namespace, name)
 	default:
 		err = fmt.Errorf("unsupported group version %s, one of (%s/%s/%s) is expected", ingEv.GroupVersion,
 			kube.IngressV1, kube.IngressV1beta1, kube.IngressExtensionsV1beta1)
@@ -258,11 +236,11 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 	var ing kube.Ingress
 	switch event.GroupVersion {
 	case kube.IngressV1:
-		ing, errLocal = c.ingressLister.V1(namespace, name)
+		ing, errLocal = c.IngressLister.V1(namespace, name)
 	case kube.IngressV1beta1:
-		ing, errLocal = c.ingressLister.V1beta1(namespace, name)
+		ing, errLocal = c.IngressLister.V1beta1(namespace, name)
 	case kube.IngressExtensionsV1beta1:
-		ing, errLocal = c.ingressLister.ExtensionsV1beta1(namespace, name)
+		ing, errLocal = c.IngressLister.ExtensionsV1beta1(namespace, name)
 	}
 
 	if err == nil {
@@ -453,7 +431,7 @@ func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 }
 
 func (c *ingressController) ResourceSync() {
-	objs := c.ingressInformer.GetIndexer().List()
+	objs := c.IngressInformer.GetIndexer().List()
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
@@ -614,13 +592,13 @@ func (c *ingressController) syncSSLs(ctx context.Context, evType types.EventType
 	)
 	switch ingressVersion {
 	case kube.IngressV1:
-		ing, err = c.ingressLister.V1(ingressNamespace, ingressName)
+		ing, err = c.IngressLister.V1(ingressNamespace, ingressName)
 		obj = ing.V1()
 	case kube.IngressV1beta1:
-		ing, err = c.ingressLister.V1(ingressNamespace, ingressName)
+		ing, err = c.IngressLister.V1(ingressNamespace, ingressName)
 		obj = ing.V1beta1()
 	case kube.IngressExtensionsV1beta1:
-		ing, err = c.ingressLister.V1(ingressNamespace, ingressName)
+		ing, err = c.IngressLister.V1(ingressNamespace, ingressName)
 		obj = ing.ExtensionsV1beta1()
 	}
 	if err != nil {

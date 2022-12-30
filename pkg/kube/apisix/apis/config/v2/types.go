@@ -519,6 +519,9 @@ type ApisixUpstreamExternalNode struct {
 	Type ApisixUpstreamExternalType `json:"type,omitempty" yaml:"type"`
 	// +optional
 	Weight *int `json:"weight,omitempty" yaml:"weight"`
+	// Port defines the port of the external node
+	// +optional
+	Port *int `json:"port,omitempty" yaml:"port"`
 }
 
 // ApisixUpstreamSubset defines a single endpoints group of one Service.
