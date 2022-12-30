@@ -16,8 +16,8 @@
 package ingress
 
 import (
-	"io/ioutil"
 	"net/http"
+	"os"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -29,11 +29,11 @@ import (
 var _ = ginkgo.Describe("suite-ingress-resource: ApisixUpstreams mTLS test", func() {
 	clientSecret := `client-secret`
 
-	f, err := ioutil.ReadFile("testbackend/tls/client.pem")
+	f, err := os.ReadFile("testbackend/tls/client.pem")
 	assert.NoError(ginkgo.GinkgoT(), err, "read client cert")
 	clientCert := string(f)
 
-	f, err = ioutil.ReadFile("testbackend/tls/client.key")
+	f, err = os.ReadFile("testbackend/tls/client.key")
 	assert.NoError(ginkgo.GinkgoT(), err, "read client key")
 	clientKey := string(f)
 
@@ -77,11 +77,11 @@ spec:
 		ginkgo.It("create ApisixUpstreams with grpc mTLS", func() {
 			// create grpc secret for apisix grpc route
 			grpcSecret := `grpc-secret`
-			f, err := ioutil.ReadFile("testbackend/tls/server.pem")
+			f, err := os.ReadFile("testbackend/tls/server.pem")
 			assert.NoError(ginkgo.GinkgoT(), err, "read server cert")
 			serverCert := string(f)
 
-			f, err = ioutil.ReadFile("testbackend/tls/server.key")
+			f, err = os.ReadFile("testbackend/tls/server.key")
 			assert.NoError(ginkgo.GinkgoT(), err, "read server key")
 			serverKey := string(f)
 
@@ -117,7 +117,7 @@ spec:
 
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 
-			ca, err := ioutil.ReadFile("testbackend/tls/ca.pem")
+			ca, err := os.ReadFile("testbackend/tls/ca.pem")
 			assert.NoError(ginkgo.GinkgoT(), err, "read ca cert")
 			assert.NoError(ginkgo.GinkgoT(), client.RequestHello(s.GetAPISIXHTTPSEndpoint(), ca), "request apisix using grpc protocol")
 		})

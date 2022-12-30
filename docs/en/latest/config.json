@@ -35,7 +35,9 @@
         "tutorials/manage-ingress-certificates-with-cert-manager",
         "tutorials/enable-authentication-and-restriction",
         "tutorials/how-to-access-Apache-APISIX-Prometheus-Metrics-on-k8s",
-        "tutorials/how-to-use-go-plugin-runner-in-apisix-ingress"
+        "tutorials/how-to-use-go-plugin-runner-in-apisix-ingress",
+        "tutorials/external-service",
+        "tutorials/external-service-discovery"
       ]
     },
     {

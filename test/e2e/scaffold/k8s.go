@@ -19,7 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -207,7 +207,7 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 			return false, nil
 		}
 		var count int
-		b, err := ioutil.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return false, err
 		}

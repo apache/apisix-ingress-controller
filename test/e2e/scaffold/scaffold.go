@@ -20,7 +20,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -147,12 +146,10 @@ func NewScaffold(o *Options) *Scaffold {
 	}
 	if o.APISIXAdminAPIVersion == "" {
 		adminVersion := os.Getenv("APISIX_ADMIN_API_VERSION")
-		log.Errorw("admin api version")
-		if adminVersion == "v3" {
-			o.APISIXAdminAPIVersion = "v3"
+		if adminVersion != "" {
+			o.APISIXAdminAPIVersion = adminVersion
 		} else {
-			// fallback to v2
-			o.APISIXAdminAPIVersion = "v2"
+			o.APISIXAdminAPIVersion = "v3"
 		}
 	}
 	if o.APISIXConfigPath == "" {
@@ -572,7 +569,7 @@ func (s *Scaffold) addFinalizers(f func()) {
 }
 
 func (s *Scaffold) renderConfig(path string) (string, error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
 	}

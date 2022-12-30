@@ -26,6 +26,7 @@ const (
 	AnnotationsUseRegex         = AnnotationsPrefix + "use-regex"
 	AnnotationsEnableWebSocket  = AnnotationsPrefix + "enable-websocket"
 	AnnotationsPluginConfigName = AnnotationsPrefix + "plugin-config-name"
+	AnnotationsUpstreamScheme   = AnnotationsPrefix + "upstream-scheme"
 )
 
 const (
@@ -51,6 +52,12 @@ const (
 	AnnotationsRewriteTargetRegex         = AnnotationsPrefix + "rewrite-target-regex"
 	AnnotationsRewriteTargetRegexTemplate = AnnotationsPrefix + "rewrite-target-regex-template"
 
+	// response-rewrite plugin
+	AnnotationsEnableResponseRewrite     = AnnotationsPrefix + "enable-response-rewrite"
+	AnnotationsResponseRewriteStatusCode = AnnotationsPrefix + "response-rewrite-status-code"
+	AnnotationsResponseRewriteBody       = AnnotationsPrefix + "response-rewrite-body"
+	AnnotationsResponseRewriteBodyBase64 = AnnotationsPrefix + "response-rewrite-body-base64"
+
 	// forward-auth plugin
 	AnnotationsForwardAuthURI             = AnnotationsPrefix + "auth-uri"
 	AnnotationsForwardAuthSSLVerify       = AnnotationsPrefix + "auth-ssl-verify"
@@ -61,6 +68,10 @@ const (
 	// ip-restriction plugin
 	AnnotationsAllowlistSourceRange = AnnotationsPrefix + "allowlist-source-range"
 	AnnotationsBlocklistSourceRange = AnnotationsPrefix + "blocklist-source-range"
+
+	// http-method plugin
+	AnnotationsHttpAllowMethods = AnnotationsPrefix + "http-allow-methods"
+	AnnotationsHttpBlockMethods = AnnotationsPrefix + "http-block-methods"
 
 	// key-auth plugin and basic-auth plugin
 	// auth-type: keyAuth | basicAuth

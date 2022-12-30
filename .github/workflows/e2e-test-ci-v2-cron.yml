@@ -24,7 +24,7 @@ on:
   pull_request:
     branches:
       - master
-      - v1.5.0
+      - v1.6.0
     types: [ labeled, opened, synchronize, reopened, review_requested, ready_for_review ]
 
 concurrency:
@@ -34,13 +34,13 @@ concurrency:
 jobs:
   changes:
     if: ${{ (!github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'area/test/apiv2')) || github.event.schedule == '0 0 * * *' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
       go: ${{ steps.filter.outputs.go }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
 
@@ -62,9 +62,10 @@ jobs:
               - 'test/e2e/**/*'
               - 'conf/**'
               - 'utils/**'
+              - ".github/**"
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: changes
     if: needs.changes.outputs.go == 'true'
 
@@ -107,13 +108,13 @@ jobs:
 
           echo "creating images cache..."
           docker save \
-            localhost:5000/apache/apisix:dev \
-            localhost:5000/bitnami/etcd:dev \
-            localhost:5000/apache/apisix-ingress-controller:dev \
-            localhost:5000/kennethreitz/httpbin:dev \
-            localhost:5000/test-backend:dev \
-            localhost:5000/jmalloc/echo-server:dev \
-            localhost:5000/busybox:dev \
+            ${REGISTRY}/apisix:dev \
+            ${REGISTRY}/etcd:dev \
+            ${REGISTRY}/apisix-ingress-controller:dev \
+            ${REGISTRY}/httpbin:dev \
+            ${REGISTRY}/test-backend:dev \
+            ${REGISTRY}/echo-server:dev \
+            ${REGISTRY}/busybox:dev \
             | pigz > docker-v2.tar.gz
 
       - name: cache
@@ -125,9 +126,9 @@ jobs:
   prepare:
     needs: changes
     if: needs.changes.outputs.go == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
 
@@ -139,7 +140,7 @@ jobs:
         run: |
           SUITES=($(find test/e2e -type d -iname 'suite-*' | grep -E -o '(\w|\-)*' | grep -v 'test' | grep -v 'e2e' | sort | uniq -u))
           echo $SUITES
-          echo "::set-output name=matrix::$(jq --compact-output --null-input '$ARGS.positional' --args "${SUITES[@]}")"
+          echo "matrix=$(jq --compact-output --null-input '$ARGS.positional' --args "${SUITES[@]}")" >> $GITHUB_OUTPUT
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
@@ -148,14 +149,14 @@ jobs:
       - changes
       - prepare
       - build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false # If false, GitHub will not cancels all in-progress jobs in the matrix if any matrix job fails.
       matrix:
         suite: ${{ fromJson(needs.prepare.outputs.matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Setup Go Env
@@ -169,7 +170,7 @@ jobs:
           sudo cp ~/go/bin/ginkgo /usr/local/bin
 
       - name: cache
-        uses: actions/download-artifact@v2 # v2
+        uses: actions/download-artifact@v3 # v3
         with:
           name: docker-v2.tar.gz
 

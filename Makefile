@@ -16,7 +16,7 @@
 #
 default: help
 
-VERSION ?= 1.5.0
+VERSION ?= 1.6.0
 
 # 2.15 image: "2.15.0-alpine"
 TARGET_APISIX_VERSION ?= "3.0.0-centos"
@@ -65,21 +65,21 @@ build:
 ### clean-image:          clean apisix-ingress-controller image
 .PHONY: clean-image
 clean-image: ## Removes local image
-	echo "removing old image $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)"
-	docker rmi -f $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG) || true
+	echo "removing old image $(REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)"
+	docker rmi -f $(REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG) || true
 
 ### build-image:          Build apisix-ingress-controller image
 .PHONY: build-image
 build-image:
 ifeq ($(E2E_SKIP_BUILD), 0)
 	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
-	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)
 endif
 
 ### pack-image:   Build and push Ingress image used in e2e test suites to kind or custom registry.
 .PHONY: pack-image
 pack-image: build-image
-	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+	docker push $(REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)
 
 ### pack-images:          Build and push images used in e2e test suites to kind or custom registry.
 .PHONY: pack-images
@@ -90,21 +90,21 @@ pack-images: build-images push-images
 build-images: build-image
 ifeq ($(E2E_SKIP_BUILD), 0)
 	docker pull apache/apisix:$(TARGET_APISIX_VERSION)
-	docker tag apache/apisix:$(TARGET_APISIX_VERSION) $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
+	docker tag apache/apisix:$(TARGET_APISIX_VERSION) $(REGISTRY)/apisix:$(IMAGE_TAG)
 
 	docker pull bitnami/etcd:3.4.14-debian-10-r0
-	docker tag bitnami/etcd:3.4.14-debian-10-r0 $(REGISTRY)/bitnami/etcd:$(IMAGE_TAG)
+	docker tag bitnami/etcd:3.4.14-debian-10-r0 $(REGISTRY)/etcd:$(IMAGE_TAG)
 
 	docker pull kennethreitz/httpbin
-	docker tag kennethreitz/httpbin $(REGISTRY)/kennethreitz/httpbin:$(IMAGE_TAG)
+	docker tag kennethreitz/httpbin $(REGISTRY)/httpbin:$(IMAGE_TAG)
 
 	docker build -t test-backend:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) ./test/e2e/testbackend
 	docker tag test-backend:$(IMAGE_TAG) $(REGISTRY)/test-backend:$(IMAGE_TAG)
 
-	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
+	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)
 
 	docker pull jmalloc/echo-server:latest
-	docker tag  jmalloc/echo-server:latest $(REGISTRY)/jmalloc/echo-server:$(IMAGE_TAG)
+	docker tag  jmalloc/echo-server:latest $(REGISTRY)/echo-server:$(IMAGE_TAG)
 
 	docker pull busybox:1.28
 	docker tag  busybox:1.28 $(REGISTRY)/busybox:$(IMAGE_TAG)
@@ -114,12 +114,12 @@ endif
 .PHONY: push-images
 push-images:
 ifeq ($(E2E_SKIP_BUILD), 0)
-	docker push $(REGISTRY)/apache/apisix:$(IMAGE_TAG)
-	docker push $(REGISTRY)/bitnami/etcd:$(IMAGE_TAG)
-	docker push $(REGISTRY)/kennethreitz/httpbin:$(IMAGE_TAG)
+	docker push $(REGISTRY)/apisix:$(IMAGE_TAG)
+	docker push $(REGISTRY)/etcd:$(IMAGE_TAG)
+	docker push $(REGISTRY)/httpbin:$(IMAGE_TAG)
 	docker push $(REGISTRY)/test-backend:$(IMAGE_TAG)
-	docker push $(REGISTRY)/apache/apisix-ingress-controller:$(IMAGE_TAG)
-	docker push $(REGISTRY)/jmalloc/echo-server:$(IMAGE_TAG)
+	docker push $(REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)
+	docker push $(REGISTRY)/echo-server:$(IMAGE_TAG)
 	docker push $(REGISTRY)/busybox:$(IMAGE_TAG)
 endif
 
@@ -239,7 +239,7 @@ update-license:
 ### update-mdlint:        Update markdown files lint rules.
 .PHONY: update-mdlint
 update-mdlint:
-	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' -f --ignore node_modules --ignore vendor
+	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' -f --ignore node_modules --ignore vendor --ignore CHANGELOG.md
 
 ### update-gofmt:         Format all go codes
 .PHONY: update-gofmt
@@ -270,12 +270,12 @@ endif
 .PHONY: kind-load-images
 kind-load-images:
 	kind load docker-image --name=apisix \
-			$(REGISTRY)/apache/apisix:dev \
-            $(REGISTRY)/bitnami/etcd:dev \
-            $(REGISTRY)/apache/apisix-ingress-controller:dev \
-            $(REGISTRY)/kennethreitz/httpbin:dev \
+			$(REGISTRY)/apisix:dev \
+            $(REGISTRY)/etcd:dev \
+            $(REGISTRY)/apisix-ingress-controller:dev \
+            $(REGISTRY)/httpbin:dev \
             $(REGISTRY)/test-backend:dev \
-            $(REGISTRY)/jmalloc/echo-server:dev \
+            $(REGISTRY)/echo-server:dev \
             $(REGISTRY)/busybox:dev
 
 

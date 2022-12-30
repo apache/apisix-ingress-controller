@@ -379,7 +379,7 @@ spec:
     spec:
       containers:
       - name: echo
-        image: localhost:5000/jmalloc/echo-server:dev
+        image: localhost:5000/echo-server:dev
         ports:
         - containerPort: 8080
 ---

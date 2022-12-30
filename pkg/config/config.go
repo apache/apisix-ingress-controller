@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"text/template"
@@ -143,6 +142,10 @@ func NewDefaultConfig() *Config {
 			WatchEndpointSlices: false,
 			EnableGatewayAPI:    false,
 		},
+		APISIX: APISIXConfig{
+			AdminAPIVersion:    "v2",
+			DefaultClusterName: "default",
+		},
 	}
 }
 
@@ -151,7 +154,7 @@ func NewDefaultConfig() *Config {
 // distinguished according to the file suffix.
 func NewConfigFromFile(filename string) (*Config, error) {
 	cfg := NewDefaultConfig()
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}

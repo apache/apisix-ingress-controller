@@ -366,7 +366,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-          image: "localhost:5000/apache/apisix-ingress-controller:dev"
+          image: "localhost:5000/apisix-ingress-controller:dev"
           imagePullPolicy: IfNotPresent
           name: ingress-apisix-controller-deployment-e2e-test
           ports:

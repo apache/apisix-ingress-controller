@@ -120,12 +120,29 @@ for us to fix.
 
 ## User stories
 
+- [How Does Zoom Use APISIX Ingress in Its Continuous Delivery Pipeline? - API7.ai](https://api7.ai/blog/zoom-uses-apisix-ingress)
+- [Copernicus Reference System Software](https://github.com/COPRS/infrastructure/wiki/Networking-trade-off)
+- [From Traefik to APISIX, Horizon Robotics's Exploration in Ingress Controller - API7.ai](https://api7.ai/blog/why-horizon-robotics-migrated-from-traefik-to-apche-apisix)
+- [Why Jiakaobaodian Chooses APISIX Ingress Controller - API7.ai](https://api7.ai/blog/why-jiakaobaodian-chooses-apisix-ingress-controller)
+- [Why AISpeech Chooses Apache APISIX Instead of NGINX as k8s Ingress Controller - API7.ai](https://api7.ai/blog/why-aispeech-chooses-apache-apisix-instead-of-nginx-as-k8s-ingress-controller)
+- [Tencent Cloud: Why choose Apache APISIX to implement the k8s ingress controller?(Chinese)](https://cloud.tencent.com/developer/article/1592281)
 - [aispeech: Why we create a new k8s ingress controller?(Chinese)](https://mp.weixin.qq.com/s/bmm2ibk2V7-XYneLo9XAPQ)
-- [Tencent Cloud: Why choose Apache APISIX to implement the k8s ingress controller?(Chinese)](https://www.upyun.com/opentalk/448.html)
 
 If you are willing to share with us some scenarios and use cases when you use APISIX Ingress,
 please reply to the [issue](https://github.com/apache/apisix-ingress-controller/issues/501),
 or submit PR to update [Powered-BY](./powered-by.md) file
+
+## Who Uses APISIX Ingress?
+
+A wide variety of companies and organizations use APISIX Ingress for research, production and commercial product, below are some of them:
+
+- AISpeech
+- European Copernicus Reference System
+- Jiakaobaodian(驾考宝典)
+- Horizon Robotics(地平线)
+- Tencent Cloud
+- UPYUN
+- Zoom
 
 ## Milestone
 
@@ -133,5 +150,5 @@ or submit PR to update [Powered-BY](./powered-by.md) file
 
 ## Terminology
 
-* Ingress APISIX: the whole service that contains the proxy ([Apache APISIX](https://apisix.apache.org)) and ingress controller (apisix ingress controller).
+* APISIX Ingress: the whole service that contains the proxy ([Apache APISIX](https://apisix.apache.org)) and ingress controller (apisix-ingress-controller).
 * apisix-ingress-controller: the ingress controller component.

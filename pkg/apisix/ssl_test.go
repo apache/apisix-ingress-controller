@@ -19,7 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -84,7 +84,7 @@ func (srv *fakeAPISIXSSLSrv) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPut {
 		paths := strings.Split(r.URL.Path, "/")
 		key := fmt.Sprintf("/apisix/ssl/%s", paths[len(paths)-1])
-		data, _ := ioutil.ReadAll(r.Body)
+		data, _ := io.ReadAll(r.Body)
 		srv.ssl[key] = data
 		w.WriteHeader(http.StatusCreated)
 		resp := fakeCreateResp{
@@ -107,7 +107,7 @@ func (srv *fakeAPISIXSSLSrv) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		data, _ := ioutil.ReadAll(r.Body)
+		data, _ := io.ReadAll(r.Body)
 		srv.ssl[id] = data
 
 		w.WriteHeader(http.StatusOK)
