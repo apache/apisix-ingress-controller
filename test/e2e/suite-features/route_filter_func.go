@@ -54,16 +54,22 @@ spec:
 			err = s.EnsureNumApisixRoutesCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
 
-			resp := s.NewAPISIXClient().GET("/ip").Expect()
-			resp.Status(http.StatusNotFound)
-			resp.Body().Contains("404 Route Not Found")
+			_ = s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusNotFound).
+				Body().
+				Contains("404 Route Not Found")
 
 			type MyJSON struct {
 				Foo string `json:"foo"`
 			}
 
-			resp2 := s.NewAPISIXClient().GET("/ip").WithJSON(MyJSON{Foo: "bar"}).Expect()
-			resp2.Status(http.StatusOK)
+			_ = s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				WithJSON(MyJSON{Foo: "bar"}).
+				Expect().
+				Status(http.StatusOK)
 		})
 	}
 
