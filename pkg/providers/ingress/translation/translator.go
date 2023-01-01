@@ -59,7 +59,7 @@ type IngressTranslator interface {
 	// TranslateIngress composes a couple of APISIX Routes and upstreams according
 	// to the given Ingress resource.
 	// For old objects, you cannot use TranslateIngress to build. Because it needs to parse the latest service, which will cause data inconsistency.
-	TranslateIngress(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error)
+	TranslateIngress(ing kube.Ingress, eventType types.EventType, args ...bool) (*translation.TranslateContext, error)
 	// TranslateOldIngress get route objects from cache
 	// Build upstream and plugin_config through route
 	TranslateOldIngress(kube.Ingress) (*translation.TranslateContext, error)
@@ -102,18 +102,18 @@ func (t *translator) TranslateIngressTLS(namespace, ingName, secretName string, 
 	return t.ApisixTranslator.TranslateSSLV2(&apisixTls)
 }
 
-func (t *translator) TranslateIngress(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error) {
+func (t *translator) TranslateIngress(ing kube.Ingress, eventType types.EventType, args ...bool) (*translation.TranslateContext, error) {
 	var skipVerify = false
 	if len(args) != 0 {
 		skipVerify = args[0]
 	}
 	switch ing.GroupVersion() {
 	case kube.IngressV1:
-		return t.translateIngressV1(ing.V1(), skipVerify)
+		return t.translateIngressV1(ing.V1(), skipVerify, eventType)
 	case kube.IngressV1beta1:
-		return t.translateIngressV1beta1(ing.V1beta1(), skipVerify)
+		return t.translateIngressV1beta1(ing.V1beta1(), skipVerify, eventType)
 	case kube.IngressExtensionsV1beta1:
-		return t.translateIngressExtensionsV1beta1(ing.ExtensionsV1beta1(), skipVerify)
+		return t.translateIngressExtensionsV1beta1(ing.ExtensionsV1beta1(), skipVerify, eventType)
 	default:
 		return nil, fmt.Errorf("translator: source group version not supported: %s", ing.GroupVersion())
 	}
@@ -123,7 +123,7 @@ const (
 	_regexPriority = 100
 )
 
-func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bool) (*translation.TranslateContext, error) {
+func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bool, eventType types.EventType) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
 	ingress := t.TranslateAnnotations(ing.Annotations)
 
@@ -153,7 +153,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 				if skipVerify {
 					ups = t.translateDefaultUpstreamFromIngressV1(ns, pathRule.Backend.Service)
 				} else {
-					ups, err = t.translateUpstreamFromIngressV1(ns, pathRule.Backend.Service)
+					ups, err = t.translateUpstreamFromIngressV1(ns, pathRule.Backend.Service, eventType)
 					if err != nil {
 						log.Errorw("failed to translate ingress backend to upstream",
 							zap.Error(err),
@@ -228,7 +228,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 	return ctx, nil
 }
 
-func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, skipVerify bool) (*translation.TranslateContext, error) {
+func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, skipVerify bool, eventType types.EventType) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
 	ingress := t.TranslateAnnotations(ing.Annotations)
 
@@ -258,7 +258,7 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 				if skipVerify {
 					ups = t.translateDefaultUpstreamFromIngressV1beta1(ns, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
 				} else {
-					ups, err = t.translateUpstreamFromIngressV1beta1(ns, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
+					ups, err = t.translateUpstreamFromIngressV1beta1(ns, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort, eventType)
 					if err != nil {
 						log.Errorw("failed to translate ingress backend to upstream",
 							zap.Error(err),
@@ -356,7 +356,7 @@ func (t *translator) translateDefaultUpstreamFromIngressV1(namespace string, bac
 	ups.ID = id.GenID(ups.Name)
 	return ups
 }
-func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *networkingv1.IngressServiceBackend) (*apisixv1.Upstream, error) {
+func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *networkingv1.IngressServiceBackend, eventType types.EventType) (*apisixv1.Upstream, error) {
 	var svcPort int32
 	if backend.Port.Name != "" {
 		svc, err := t.ServiceLister.Services(namespace).Get(backend.Name)
@@ -380,14 +380,18 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 	}
 	ups, err := t.TranslateService(namespace, backend.Name, "", svcPort)
 	if err != nil {
-		return nil, err
+		if eventType == types.EventDelete {
+			ups = apisixv1.NewDefaultUpstream()
+		} else {
+			return nil, err
+		}
 	}
 	ups.Name = apisixv1.ComposeUpstreamName(namespace, backend.Name, "", svcPort, types.ResolveGranularity.Endpoint)
 	ups.ID = id.GenID(ups.Name)
 	return ups, nil
 }
 
-func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress, skipVerify bool) (*translation.TranslateContext, error) {
+func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress, skipVerify bool, eventType types.EventType) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
 	ingress := t.TranslateAnnotations(ing.Annotations)
 
@@ -418,7 +422,8 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 				if skipVerify {
 					ups = t.translateDefaultUpstreamFromIngressV1beta1(ns, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
 				} else {
-					ups, err = t.translateUpstreamFromIngressV1beta1(ns, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
+					// todo
+					ups, err = t.translateUpstreamFromIngressV1beta1(ns, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort, eventType)
 					if err != nil {
 						log.Errorw("failed to translate ingress backend to upstream",
 							zap.Error(err),
@@ -517,7 +522,7 @@ func (t *translator) translateDefaultUpstreamFromIngressV1beta1(namespace string
 	return ups
 }
 
-func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcName string, svcPort intstr.IntOrString) (*apisixv1.Upstream, error) {
+func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcName string, svcPort intstr.IntOrString, eventType types.EventType) (*apisixv1.Upstream, error) {
 	var portNumber int32
 	if svcPort.Type == intstr.String {
 		svc, err := t.ServiceLister.Services(namespace).Get(svcName)
@@ -541,7 +546,11 @@ func (t *translator) translateUpstreamFromIngressV1beta1(namespace string, svcNa
 	}
 	ups, err := t.TranslateService(namespace, svcName, "", portNumber)
 	if err != nil {
-		return nil, err
+		if eventType == types.EventDelete {
+			ups = apisixv1.NewDefaultUpstream()
+		} else {
+			return nil, err
+		}
 	}
 	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, "", portNumber, types.ResolveGranularity.Endpoint)
 	ups.ID = id.GenID(ups.Name)
