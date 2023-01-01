@@ -64,7 +64,7 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 					ctx.Done()
 				} else {
 					for _, r := range retRoutes {
-						tc, err := p.apisixTranslator.TranslateRouteV2beta3NotStrictly(r)
+						tc, err := p.apisixTranslator.GenerateRouteV2beta3DeleteMark(r)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -99,7 +99,7 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 					ctx.Done()
 				} else {
 					for _, r := range retRoutes {
-						tc, err := p.apisixTranslator.TranslateRouteV2NotStrictly(r)
+						tc, err := p.apisixTranslator.GenerateRouteV2DeleteMark(r)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()

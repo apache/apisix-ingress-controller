@@ -419,7 +419,7 @@ func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
 	assert.Equal(t, "", res.Routes[2].PluginConfigId)
 }
 
-func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {
+func TestGenerateApisixRouteV2beta3DeleteMark(t *testing.T) {
 	tr := &translator{
 		&TranslatorOptions{},
 		translation.NewTranslator(nil),
@@ -478,7 +478,7 @@ func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {
 		},
 	}
 
-	tx, err := tr.TranslateRouteV2beta3NotStrictly(ar)
+	tx, err := tr.GenerateRouteV2beta3DeleteMark(ar)
 	fmt.Println(tx)
 	assert.NoError(t, err, "translateRoute not strictly should be no error")
 	assert.Equal(t, 2, len(tx.Routes), "There should be 2 routes")

@@ -56,7 +56,7 @@ func (t *translator) TranslatePluginConfigV2beta3(config *configv2beta3.ApisixPl
 	return ctx, nil
 }
 
-func (t *translator) TranslatePluginConfigV2beta3NotStrictly(config *configv2beta3.ApisixPluginConfig) (*translation.TranslateContext, error) {
+func (t *translator) GeneratePluginConfigV2beta3DeleteMark(config *configv2beta3.ApisixPluginConfig) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
 	pc := apisixv1.NewDefaultPluginConfig()
 	pc.Name = apisixv1.ComposePluginConfigName(config.Namespace, config.Name)
@@ -111,7 +111,7 @@ func (t *translator) TranslatePluginConfigV2(config *configv2.ApisixPluginConfig
 	return ctx, nil
 }
 
-func (t *translator) TranslatePluginConfigV2NotStrictly(config *configv2.ApisixPluginConfig) (*translation.TranslateContext, error) {
+func (t *translator) GeneratePluginConfigV2DeleteMark(config *configv2.ApisixPluginConfig) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
 	pc := apisixv1.NewDefaultPluginConfig()
 	pc.Name = apisixv1.ComposePluginConfigName(config.Namespace, config.Name)
