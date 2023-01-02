@@ -38,7 +38,7 @@ func GinLogger(logger *Logger) gin.HandlerFunc {
 			logger.Errorf("path: %s, status: %d, method: %s, query: %s, ip: %s, user-agent: %s, errors: %s, cost: %s",
 				path, c.Writer.Status(), c.Request.Method, query, c.ClientIP(), c.Request.UserAgent(), c.Errors.ByType(gin.ErrorTypePrivate).String(), cost)
 		} else {
-			logger.Infof("path: %s, status: %d, method: %s, query: %s, ip: %s, user-agent: %s, errors: %s, cost: %s",
+			logger.Debugf("path: %s, status: %d, method: %s, query: %s, ip: %s, user-agent: %s, errors: %s, cost: %s",
 				path, c.Writer.Status(), c.Request.Method, query, c.ClientIP(), c.Request.UserAgent(), c.Errors.ByType(gin.ErrorTypePrivate).String(), cost)
 		}
 	}
