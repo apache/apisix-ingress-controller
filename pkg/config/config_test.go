@@ -46,7 +46,7 @@ func TestNewConfigFromFile(t *testing.T) {
 			ResyncInterval: types.TimeDuration{Duration: time.Hour},
 			Kubeconfig:     "/path/to/foo/baz",
 			ElectionID:     "my-election-id",
-			InstanceID: InstanceID,
+			InstanceID:     InstanceID,
 			IngressClass:   IngressClass,
 			IngressVersion: IngressNetworkingV1,
 			APIVersion:     DefaultAPIVersion,
