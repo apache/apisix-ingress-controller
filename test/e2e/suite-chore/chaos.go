@@ -36,7 +36,6 @@ kind: ApisixRoute
 metadata:
   name: httpbin-route1
 spec:
-  ingressClass: apisix
   http:
   - name: route1
     match:
@@ -57,7 +56,6 @@ kind: ApisixRoute
 metadata:
   name: httpbin-route2
 spec:
-  ingressClass: apisix
   http:
   - name: route2
     match:

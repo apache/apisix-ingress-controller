@@ -428,9 +428,6 @@ func (c *ingressController) OnDelete(obj interface{}) {
 }
 
 func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
-	if c.Kubernetes.IngressClass == "*" {
-		return true
-	}
 	var (
 		ic  *string
 		ica string

@@ -562,7 +562,7 @@ func (c *apisixRouteController) isApisixRouteEffective(ar kube.ApisixRoute) bool
 		return true
 	}
 
-	if c.Kubernetes.IngressClass == "*" || c.Kubernetes.IngressClass == class {
+	if c.Kubernetes.InstanceID == "*" || c.Kubernetes.InstanceID == class {
 		return true
 	}
 

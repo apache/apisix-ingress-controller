@@ -56,7 +56,6 @@ kind: ApisixRoute
 metadata:
   name: %s
 spec:
-  ingressClass: apisix
   http:
   - name: rule1
     match:
@@ -83,7 +82,6 @@ kind: ApisixRoute
 metadata:
   name: %s
 spec:
-  ingressClass: apisix
   http:
   - name: rule1
     match:
@@ -335,7 +333,6 @@ kind: ApisixRoute
 metadata:
   name: %s
 spec:
-  ingressClass: apisix
   http:
   - name: rule1
     match:

@@ -38,8 +38,11 @@ const (
 	// IngressClass is the default ingress class name, used for Ingress
 	// object's IngressClassName field in Kubernetes clusters version v1.18.0
 	// or higher, or the annotation "kubernetes.io/ingress.class" (deprecated).
-	// A wildcard '*' listen all ApisixRoutes or Ingress
 	IngressClass = "apisix"
+
+	// InstanceID is the default instance id, used for APISIX Route
+	// object's IngressClass field. A wildcard '*' listen all ApisixRoutes
+	InstanceID = "*"
 
 	// IngressNetworkingV1 represents ingress.networking/v1
 	IngressNetworkingV1 = "networking/v1"
@@ -101,6 +104,7 @@ type KubernetesConfig struct {
 	WatchEndpointSlices bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
 	APIVersion          string             `json:"api_version" yaml:"api_version"`
 	EnableGatewayAPI    bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
+	InstanceID          string             `json:"instance_id" yaml:"instance_id"`
 }
 
 // APISIXConfig contains all APISIX related config items.
@@ -140,6 +144,7 @@ func NewDefaultConfig() *Config {
 			ElectionID:          IngressAPISIXLeader,
 			IngressClass:        IngressClass,
 			IngressVersion:      IngressNetworkingV1,
+			InstanceID:          InstanceID,
 			APIVersion:          DefaultAPIVersion,
 			WatchEndpointSlices: false,
 			EnableGatewayAPI:    false,

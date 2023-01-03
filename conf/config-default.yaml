@@ -68,6 +68,7 @@ kubernetes:
                                        # IngressClassName in Kubernetes clusters version v1.18.0
                                        # or higher or the annotation "kubernetes.io/ingress.class"
                                        # (deprecated).
+  instance_id: "*"                     # Indicates which apisix route objects the controller should operate on
   ingress_version: "networking/v1"     # the supported ingress api group version, can be "networking/v1beta1"
                                        # , "networking/v1" (for Kubernetes version v1.19.0 or higher), and
                                        # "extensions/v1beta1", default is "networking/v1".

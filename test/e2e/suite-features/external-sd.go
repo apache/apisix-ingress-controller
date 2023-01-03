@@ -23,10 +23,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
@@ -39,7 +39,6 @@ kind: ApisixRoute
 metadata:
   name: %s
 spec:
-  ingressClass: apisix
   http:
   - name: rule1
     match:

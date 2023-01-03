@@ -201,7 +201,6 @@ kind: ApisixRoute
 metadata:
  name: httpbin-route
 spec:
- ingressClass: apisix
  http:
  - name: rule1
    match:
@@ -330,7 +329,6 @@ kind: ApisixRoute
 metadata:
  name: httpbin-route
 spec:
- ingressClass: apisix
  http:
  - name: rule1
    match:
@@ -836,7 +834,6 @@ kind: ApisixRoute
 metadata:
  name: httpbin-route
 spec:
- ingressClass: apisix
  http:
  - name: rule1
    match:
@@ -888,7 +885,6 @@ kind: ApisixRoute
 metadata:
  name: httpbin-route
 spec:
- ingressClass: apisix
  http:
  - name: rule1
    match:
@@ -937,7 +933,6 @@ kind: ApisixRoute
 metadata:
  name: httpbin-route
 spec:
- ingressClass: apisix
  http:
  - name: rule1
    match:
