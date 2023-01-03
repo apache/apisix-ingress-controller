@@ -12,6 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package config
 
 import (
@@ -45,6 +46,7 @@ func TestNewConfigFromFile(t *testing.T) {
 			ResyncInterval: types.TimeDuration{Duration: time.Hour},
 			Kubeconfig:     "/path/to/foo/baz",
 			ElectionID:     "my-election-id",
+			InstanceID: InstanceID,
 			IngressClass:   IngressClass,
 			IngressVersion: IngressNetworkingV1,
 			APIVersion:     DefaultAPIVersion,
@@ -93,6 +95,7 @@ kubernetes:
   ingress_class: apisix
   ingress_version: networking/v1
   api_version: apisix.apache.org/v2
+  instance_id: "*"
 apisix:
   default_cluster_base_url: http://127.0.0.1:8080/apisix
   default_cluster_admin_key: "123456"
