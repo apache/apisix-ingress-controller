@@ -42,7 +42,7 @@ func TestIsApisixRouteEffective(t *testing.T) {
 				Common: &providertypes.Common{
 					Config: &config.Config{
 						Kubernetes: config.KubernetesConfig{
-							IngressClass: "barfoo",
+							InstanceID: "barfoo",
 						},
 					},
 				},
@@ -58,7 +58,7 @@ func TestIsApisixRouteEffective(t *testing.T) {
 					Common: &providertypes.Common{
 						Config: &config.Config{
 							Kubernetes: config.KubernetesConfig{
-								IngressClass: "barfoo",
+								InstanceID: "barfoo",
 							},
 						},
 					},
@@ -74,13 +74,29 @@ func TestIsApisixRouteEffective(t *testing.T) {
 					Common: &providertypes.Common{
 						Config: &config.Config{
 							Kubernetes: config.KubernetesConfig{
-								IngressClass: "*",
+								InstanceID: "*",
 							},
 						},
 					},
 				},
 			},
 			ar:     genApisixRoute(&configv2.ApisixRoute{Spec: configv2.ApisixRouteSpec{IngressClass: "foobar"}}),
+			result: true,
+		},
+		{
+			ac: &apisixRouteController{
+
+				apisixCommon: &apisixCommon{
+					Common: &providertypes.Common{
+						Config: &config.Config{
+							Kubernetes: config.KubernetesConfig{
+								InstanceID: "*",
+							},
+						},
+					},
+				},
+			},
+			ar:     genApisixRoute(&configv2.ApisixRoute{}),
 			result: true,
 		},
 		{
