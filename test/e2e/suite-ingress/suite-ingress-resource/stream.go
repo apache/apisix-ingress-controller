@@ -250,7 +250,7 @@ spec:
   - name: rule1
     protocol: TCP
     match:
-      ingressPort: 9100
+      ingressPort: 9110
       host: %s
     backend:
       serviceName: %s
