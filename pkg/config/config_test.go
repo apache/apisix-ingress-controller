@@ -137,6 +137,7 @@ func TestConfigWithEnvVar(t *testing.T) {
 			Kubeconfig:     "",
 			ElectionID:     "my-election-id",
 			IngressClass:   IngressClass,
+			InstanceID:     InstanceID,
 			IngressVersion: IngressNetworkingV1,
 			APIVersion:     DefaultAPIVersion,
 		},
@@ -173,6 +174,7 @@ func TestConfigWithEnvVar(t *testing.T) {
         "resync_interval": "1h0m0s",
         "election_id": "my-election-id",
         "ingress_class": "apisix",
+        "instance_id": "*",
         "ingress_version": "networking/v1"
     },
     "apisix": {
@@ -210,6 +212,7 @@ kubernetes:
   kubeconfig: "{{.KUBECONFIG}}"
   election_id: my-election-id
   ingress_class: apisix
+  instance_id: "*"
   ingress_version: networking/v1
 apisix:
   default_cluster_base_url: {{.DEFAULT_CLUSTER_BASE_URL}}
