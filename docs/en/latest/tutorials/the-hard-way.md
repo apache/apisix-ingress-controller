@@ -271,7 +271,7 @@ Please make sure `etcd.host` matches the headless service we created at first. I
 
 In this config, we defined an access key with the `admin` name under the `apisix.admin_key` section. This key is our API key, will be used to control APISIX later. This key is the default API key for APISIX, and it should be changed in production environments.
 
-Save this as `config.yaml`, then run `kubectl -n apisix create cm apisix-conf --from-file ./config.yaml` to create configmap. Later we will mount this configmap into APISIX deployment.
+Save this as `config.yaml`, then run `kubectl -n apisix create -f config.yaml` to create configmap. Later we will mount this configmap into APISIX deployment.
 
 ```yaml
 apiVersion: apps/v1
