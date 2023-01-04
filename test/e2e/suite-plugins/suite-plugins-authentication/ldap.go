@@ -87,10 +87,10 @@ spec:
     authentication:
       enable: true
       type: ldapAuth
-      config: 	
+      ldapAuth: 	
         ldap_uri: %s
   		base_dn: "dc=ldap,dc=example,dc=org"
-		use_tls: false
+        use_tls: false
   		uid: "uid"	
 `, backendSvc, backendPorts[0], ldapSvr)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "Creating ApisixRoute with ldapAuth")
