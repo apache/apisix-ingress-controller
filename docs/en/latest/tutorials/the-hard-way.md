@@ -295,7 +295,7 @@ The key used in the example above is the default key and should be changed in pr
 We can now create a ConfigMap from this configuration file. To do this, run:
 
 ```shell
-kubectl -n apisix create cm apisix-conf --from-file ./config.yaml
+kubectl -n apisix apply -f ./apisix-config.yaml
 ```
 
 We can mount this ConfigMap to the APISIX deployment.
