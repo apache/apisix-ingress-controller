@@ -520,3 +520,47 @@ func (t *translator) translateConsumerHMACAuthPluginV2(consumerNamespace string,
 		MaxReqBody:          maxReqBody,
 	}, nil
 }
+
+func (t *translator) translateConsumerLDAPAuthPluginV2beta3(consumerNamespace string, cfg *configv2beta3.ApisixConsumerLDAPAuth) (*apisixv1.LDAPAuthConsumerConfig, error) {
+	if cfg.Value != nil {
+		return &apisixv1.LDAPAuthConsumerConfig{
+			UserDN: cfg.Value.UserDN,
+		}, nil
+	}
+
+	sec, err := t.SecretLister.Secrets(consumerNamespace).Get(cfg.SecretRef.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	userDNRaw, ok := sec.Data["user_dn"]
+	if !ok || len(userDNRaw) == 0 {
+		return nil, _errKeyNotFoundOrInvalid
+	}
+
+	return &apisixv1.LDAPAuthConsumerConfig{
+		UserDN: string(userDNRaw),
+	}, nil
+}
+
+func (t *translator) translateConsumerLDAPAuthPluginV2(consumerNamespace string, cfg *configv2.ApisixConsumerLDAPAuth) (*apisixv1.LDAPAuthConsumerConfig, error) {
+	if cfg.Value != nil {
+		return &apisixv1.LDAPAuthConsumerConfig{
+			UserDN: cfg.Value.UserDN,
+		}, nil
+	}
+
+	sec, err := t.SecretLister.Secrets(consumerNamespace).Get(cfg.SecretRef.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	userDNRaw, ok := sec.Data["user_dn"]
+	if !ok || len(userDNRaw) == 0 {
+		return nil, _errKeyNotFoundOrInvalid
+	}
+
+	return &apisixv1.LDAPAuthConsumerConfig{
+		UserDN: string(userDNRaw),
+	}, nil
+}

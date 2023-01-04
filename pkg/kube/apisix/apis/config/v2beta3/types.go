@@ -170,10 +170,11 @@ type ApisixRouteHTTPPluginConfig map[string]interface{}
 // ApisixRouteAuthentication is the authentication-related
 // configuration in ApisixRoute.
 type ApisixRouteAuthentication struct {
-	Enable  bool                             `json:"enable" yaml:"enable"`
-	Type    string                           `json:"type" yaml:"type"`
-	KeyAuth ApisixRouteAuthenticationKeyAuth `json:"keyAuth,omitempty" yaml:"keyAuth,omitempty"`
-	JwtAuth ApisixRouteAuthenticationJwtAuth `json:"jwtAuth,omitempty" yaml:"jwtAuth,omitempty"`
+	Enable   bool                              `json:"enable" yaml:"enable"`
+	Type     string                            `json:"type" yaml:"type"`
+	KeyAuth  ApisixRouteAuthenticationKeyAuth  `json:"keyAuth,omitempty" yaml:"keyAuth,omitempty"`
+	JwtAuth  ApisixRouteAuthenticationJwtAuth  `json:"jwtAuth,omitempty" yaml:"jwtAuth,omitempty"`
+	LDAPAuth ApisixRouteAuthenticationLDAPAuth `json:"ldapAuth,omitempty" yaml:"ldapAuth,omitempty"`
 }
 
 // ApisixRouteAuthenticationKeyAuth is the keyAuth-related
@@ -188,6 +189,15 @@ type ApisixRouteAuthenticationJwtAuth struct {
 	Header string `json:"header,omitempty" yaml:"header,omitempty"`
 	Query  string `json:"query,omitempty" yaml:"query,omitempty"`
 	Cookie string `json:"cookie,omitempty" yaml:"cookie,omitempty"`
+}
+
+// ApisixRouteAuthenticationLDAPAuth is the ldapAuth-related
+// configuration in ApisixRouteAuthentication.
+type ApisixRouteAuthenticationLDAPAuth struct {
+	BaseDN  string `json:"base_dn,omitempty" yaml:"base_dn,omitempty"`
+	LDAPURI string `json:"ldap_uri,omitempty" yaml:"ldap_uri,omitempty"`
+	UseTLS  bool   `json:"use_tls,omitempty" yaml:"use_tls,omitempty"`
+	UID     string `json:"uid,omitempty" yaml:"uid,omitempty"`
 }
 
 func (p ApisixRouteHTTPPluginConfig) DeepCopyInto(out *ApisixRouteHTTPPluginConfig) {
@@ -343,6 +353,7 @@ type ApisixConsumerAuthParameter struct {
 	WolfRBAC  *ApisixConsumerWolfRBAC  `json:"wolfRBAC,omitempty" yaml:"wolfRBAC"`
 	JwtAuth   *ApisixConsumerJwtAuth   `json:"jwtAuth,omitempty" yaml:"jwtAuth"`
 	HMACAuth  *ApisixConsumerHMACAuth  `json:"hmacAuth,omitempty" yaml:"hmacAuth"`
+	LDAPAuth  *ApisixConsumerLDAPAuth  `json:"ldapAuth,omitempty" yaml:"ldapAuth"`
 }
 
 // ApisixConsumerBasicAuth defines the configuration for basic auth.
@@ -415,6 +426,17 @@ type ApisixConsumerHMACAuthValue struct {
 	EncodeURIParams     bool     `json:"encode_uri_params,omitempty" yaml:"encode_uri_params,omitempty"`
 	ValidateRequestBody bool     `json:"validate_request_body,omitempty" yaml:"validate_request_body,omitempty"`
 	MaxReqBody          int64    `json:"max_req_body,omitempty" yaml:"max_req_body,omitempty"`
+}
+
+// ApisixConsumerLDAPAuth defines the configuration for the ldap auth.
+type ApisixConsumerLDAPAuth struct {
+	SecretRef *corev1.LocalObjectReference `json:"secretRef" yaml:"secret"`
+	Value     *ApisixConsumerLDAPAuthValue `json:"value,omitempty" yaml:"value,omitempty"`
+}
+
+// ApisixConsumerLDAPAuthValue defines the in-place configuration for ldap auth.
+type ApisixConsumerLDAPAuthValue struct {
+	UserDN string `json:"user_dn" yaml:"user_dn"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

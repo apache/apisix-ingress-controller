@@ -52,6 +52,7 @@ spec:
                     - required: ["wolfRBAC"]
                     - required: ["jwtAuth"]
                     - required: ["hmacAuth"]
+                    - required: ["ldapAuth"]
                   properties:
                     basicAuth:
                       type: object
@@ -190,6 +191,27 @@ spec:
                           required:
                             - access_key
                             - secret_key
+                        secretRef:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                              minLength: 1
+                          required:
+                            - name
+                    ldapAuth:
+                      type: object
+                      oneOf:
+                        - required: ["value"]
+                        - required: ["secretRef"]
+                      properties:
+                        value:
+                          type: object
+                          properties:
+                            user_dn:
+                              type: string
+                          required:
+                            - user_dn
                         secretRef:
                           type: object
                           properties:
