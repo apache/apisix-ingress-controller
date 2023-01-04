@@ -107,7 +107,9 @@ In APISIX Ingress Controller, we use [ApisixTls](../concepts/apisix_tls.md) reso
 
 ApisixTls requires a secret which field `cert` and `key` contains the certificate and private key.
 
-A secret yaml containing the certificate mentioned above [is here](https://github.com/apache/apisix-ingress-controller/blob/master/docs/en/latest/tutorials/mtls/server-secret.yaml). In this guide, we use this as an example.
+The keys and certificates used in the examples [are here](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/tutorials/mtls).
+
+In this guide, we use this as an example.
 
 ```bash
 kubectl apply -f ./mtls/server-secret.yaml -n default
@@ -156,6 +158,8 @@ Now, we configured SSL successfully.
 
 Like `server-secret`, we will create a `client-ca-secret` to store the CA that verify the certificate client presents.
 
+The keys and certificates used in the examples [are here](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/tutorials/mtls).
+
 ```bash
 kubectl apply -f ./mtls/client-ca-secret.yaml -n default
 ```
@@ -201,6 +205,8 @@ From APISIX access log, we could find logs like this:
 That means our mutual authentication has been enabled successfully.
 
 Now, we need to transfer our client cert to the APISIX container to verify the mTLS functionality.
+
+The keys and certificates used in the examples [are here](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/tutorials/mtls).
 
 ```bash
 # Transfer client certificate
