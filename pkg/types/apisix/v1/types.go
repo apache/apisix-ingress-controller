@@ -566,6 +566,13 @@ func NewDefaultPluginConfig() *PluginConfig {
 	}
 }
 
+// NewDefaultGlobalRule returns an empty PluginConfig with default values.
+func NewDefaultGlobalRule() *GlobalRule {
+	return &GlobalRule{
+		Plugins: make(Plugins),
+	}
+}
+
 // ComposeUpstreamName uses namespace, name, subset (optional), port, resolveGranularity info to compose
 // the upstream name.
 // the resolveGranularity is not composited in the upstream name when it is endpoint.
@@ -656,8 +663,23 @@ func ComposeConsumerName(namespace, name string) string {
 }
 
 // ComposePluginConfigName uses namespace, name to compose
-// the route name.
+// the plugin_config name.
 func ComposePluginConfigName(namespace, name string) string {
+	// FIXME Use sync.Pool to reuse this buffer if the upstream
+	// name composing code path is hot.
+	p := make([]byte, 0, len(namespace)+len(name)+1)
+	buf := bytes.NewBuffer(p)
+
+	buf.WriteString(namespace)
+	buf.WriteByte('_')
+	buf.WriteString(name)
+
+	return buf.String()
+}
+
+// ComposeGlobalRuleName uses namespace, name to compose
+// the global_rule name.
+func ComposeGlobalRuleName(namespace, name string) string {
 	// FIXME Use sync.Pool to reuse this buffer if the upstream
 	// name composing code path is hot.
 	p := make([]byte, 0, len(namespace)+len(name)+1)

@@ -92,6 +92,8 @@ type ApisixTranslator interface {
 
 	// TranslateApisixUpstreamExternalNodes translates an ApisixUpstream with external nodes to APISIX nodes.
 	TranslateApisixUpstreamExternalNodes(au *configv2.ApisixUpstream) ([]apisixv1.UpstreamNode, error)
+
+	TranslateGlobalRule(kube.ApisixGlobalRule) (*translation.TranslateContext, error)
 }
 
 func NewApisixTranslator(opts *TranslatorOptions, t translation.Translator) ApisixTranslator {

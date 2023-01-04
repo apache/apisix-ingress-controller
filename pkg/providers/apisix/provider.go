@@ -65,6 +65,7 @@ type apisixProvider struct {
 	apisixClusterConfigController *apisixClusterConfigController
 	apisixConsumerController      *apisixConsumerController
 	apisixPluginConfigController  *apisixPluginConfigController
+	apisixGlobalRuleController    *apisixGlobalRuleController
 }
 
 func NewProvider(common *providertypes.Common, namespaceProvider namespace.WatchingNamespaceProvider,
@@ -94,6 +95,7 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 	p.apisixClusterConfigController = newApisixClusterConfigController(c)
 	p.apisixConsumerController = newApisixConsumerController(c)
 	p.apisixPluginConfigController = newApisixPluginConfigController(c)
+	p.apisixGlobalRuleController = newApisixGlobalRuleController(c)
 
 	return p, p.apisixTranslator, nil
 }
@@ -118,6 +120,9 @@ func (p *apisixProvider) Run(ctx context.Context) {
 	})
 	e.Add(func() {
 		p.apisixPluginConfigController.run(ctx)
+	})
+	e.Add(func() {
+		p.apisixGlobalRuleController.run(ctx)
 	})
 
 	e.Wait()
