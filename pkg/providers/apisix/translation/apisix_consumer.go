@@ -57,6 +57,12 @@ func (t *translator) TranslateApisixConsumerV2beta3(ac *configv2beta3.ApisixCons
 			return nil, fmt.Errorf("invaild hmac auth config: %s", err)
 		}
 		plugins["hmac-auth"] = cfg
+	} else if ac.Spec.AuthParameter.OpenIDConnect != nil {
+		cfg, err := t.translateConsumerOpenIDConnectPluginV2beta3(ac.Namespace, ac.Spec.AuthParameter.OpenIDConnect)
+		if err != nil {
+			return nil, fmt.Errorf("invaild openid connect config: %s", err)
+		}
+		plugins["openid-connect"] = cfg
 	}
 
 	consumer := apisixv1.NewDefaultConsumer()

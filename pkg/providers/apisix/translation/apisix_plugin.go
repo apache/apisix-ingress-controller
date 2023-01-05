@@ -15,8 +15,11 @@
 package translation
 
 import (
+	"encoding/json"
 	"errors"
 	"strconv"
+
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
@@ -37,6 +40,22 @@ var (
 	_hmacAuthEncodeURIParamsDefaultValue     = true
 	_hmacAuthValidateRequestBodyDefaultValue = false
 	_hmacAuthMaxReqBodyDefaultValue          = int64(524288)
+
+	_openidConnectScopeDefaultValue                            = "openid"
+	_openidConnectRealmDefaultValue                            = "apisix"
+	_openidConnectBearerOnlyDefaultValue                       = false
+	_openidConnectLogoutPathDefaultValue                       = "/logout"
+	_openidConnectRedirectURIDefaultValue                      = "ngx.var.request_uri"
+	_openidConnectTimeoutDefaultValue                          = int64(3)
+	_openidConnectSslVerifyDefaultValue                        = false
+	_openidConnectIntrospectionEndpointAuthMethodDefaultValue  = "client_secret_basic"
+	_openidConnectUseJwksDefaultValue                          = false
+	_openidConnectUsePkceDefaultValue                          = false
+	_openidConnectSetAccessTokenHeaderDefaultValue             = true
+	_openidConnectAccessTokenInAuthorizationHeaderDefaultValue = false
+	_openidConnectSetIDTokenHeaderDefaultValue                 = true
+	_openidConnectSetUserInfoHeaderDefaultValue                = true
+	_openidConnectSetRefreshTokenHeaderDefaultValue            = false
 )
 
 func (t *translator) translateTrafficSplitPlugin(ctx *translation.TranslateContext, ns string, defaultBackendWeight int,
@@ -521,10 +540,37 @@ func (t *translator) translateConsumerHMACAuthPluginV2(consumerNamespace string,
 	}, nil
 }
 
-
 func (t *translator) translateConsumerOpenIDConnectPluginV2(consumerNamespace string, cfg *configv2.ApisixConsumerOpenIDConnect) (*apisixv1.OpenIDConnectConsumerConfig, error) {
 	if cfg.Value != nil {
-		return &apisixv1.OpenIDConnectConsumerConfig{}, nil
+		openIDConnectConfig := &apisixv1.OpenIDConnectConsumerConfig{
+			ClientID:                         cfg.Value.ClientID,
+			ClientSecret:                     cfg.Value.ClientSecret,
+			Discovery:                        cfg.Value.Discovery,
+			Scope:                            cfg.Value.Scope,
+			Realm:                            cfg.Value.Realm,
+			BearerOnly:                       cfg.Value.BearerOnly,
+			LogoutPath:                       cfg.Value.LogoutPath,
+			PostLogoutRedirectURI:            cfg.Value.PostLogoutRedirectURI,
+			RedirectURI:                      cfg.Value.RedirectURI,
+			Timeout:                          cfg.Value.Timeout,
+			SslVerify:                        cfg.Value.SslVerify,
+			IntrospectionEndpoint:            cfg.Value.IntrospectionEndpoint,
+			IntrospectionEndpointAuthMethod:  cfg.Value.IntrospectionEndpointAuthMethod,
+			TokenEndpointAuthMethod:          cfg.Value.TokenEndpointAuthMethod,
+			PublicKey:                        cfg.Value.PublicKey,
+			UseJwks:                          cfg.Value.UseJwks,
+			UsePkce:                          cfg.Value.UsePkce,
+			TokenSigningAlgValuesExpected:    cfg.Value.TokenSigningAlgValuesExpected,
+			SetAccessTokenHeader:             cfg.Value.SetAccessTokenHeader,
+			AccessTokeninAuthorizationHeader: cfg.Value.AccessTokeninAuthorizationHeader,
+			SetIdTokenHeader:                 cfg.Value.SetIdTokenHeader,
+			SetUserinfoHeader:                cfg.Value.SetUserinfoHeader,
+			SetRefreshTokenHeader:            cfg.Value.SetRefreshTokenHeader,
+		}
+		if cfg.Value.Session != nil {
+			openIDConnectConfig.Session = &apisixv1.OpenIDConnectSession{Secret: cfg.Value.Session.Secret}
+		}
+		return openIDConnectConfig, nil
 	}
 
 	sec, err := t.SecretLister.Secrets(consumerNamespace).Get(cfg.SecretRef.Name)
@@ -532,94 +578,250 @@ func (t *translator) translateConsumerOpenIDConnectPluginV2(consumerNamespace st
 		return nil, err
 	}
 
-	accessKeyRaw, ok := sec.Data["access_key"]
-	if !ok || len(accessKeyRaw) == 0 {
+	clientID, ok := sec.Data["client_id"]
+	if !ok || len(clientID) == 0 {
 		return nil, _errKeyNotFoundOrInvalid
 	}
 
-	secretKeyRaw, ok := sec.Data["secret_key"]
-	if !ok || len(secretKeyRaw) == 0 {
+	clientSecret, ok := sec.Data["client_secret"]
+	if !ok || len(clientSecret) == 0 {
 		return nil, _errKeyNotFoundOrInvalid
 	}
 
-	algorithmRaw, ok := sec.Data["algorithm"]
-	var algorithm string
+	discovery, ok := sec.Data["discovery"]
+	if !ok || len(discovery) == 0 {
+		return nil, _errKeyNotFoundOrInvalid
+	}
+
+	scopeRaw, ok := sec.Data["scope"]
+	var scope string
 	if !ok {
-		algorithm = _hmacAuthAlgorithmDefaultValue
+		scope = _openidConnectScopeDefaultValue
 	} else {
-		algorithm = string(algorithmRaw)
+		scope = string(scopeRaw)
 	}
 
-	clockSkewRaw := sec.Data["clock_skew"]
-	clockSkew, _ := strconv.ParseInt(string(clockSkewRaw), 10, 64)
-	if clockSkew < 0 {
-		clockSkew = _hmacAuthClockSkewDefaultValue
-	}
-
-	var signedHeaders []string
-	signedHeadersRaw := sec.Data["signed_headers"]
-	for _, b := range signedHeadersRaw {
-		signedHeaders = append(signedHeaders, string(b))
-	}
-
-	var keepHeader bool
-	keepHeaderRaw, ok := sec.Data["keep_headers"]
+	realmRaw, ok := sec.Data["realm"]
+	var realm string
 	if !ok {
-		keepHeader = _hmacAuthKeepHeadersDefaultValue
+		realm = _openidConnectRealmDefaultValue
 	} else {
-		if string(keepHeaderRaw) == "true" {
-			keepHeader = true
+		realm = string(realmRaw)
+	}
+
+	var bearerOnly bool
+	bearerOnlyRaw, ok := sec.Data["bearer_only"]
+	if !ok {
+		bearerOnly = _openidConnectBearerOnlyDefaultValue
+	} else {
+		if string(bearerOnlyRaw) == "true" {
+			bearerOnly = true
 		} else {
-			keepHeader = false
+			bearerOnly = false
 		}
 	}
 
-	var encodeURIParams bool
-	encodeURIParamsRaw, ok := sec.Data["encode_uri_params"]
+	logoutPathRaw, ok := sec.Data["logout_path"]
+	var logoutPath string
 	if !ok {
-		encodeURIParams = _hmacAuthEncodeURIParamsDefaultValue
+		logoutPath = _openidConnectLogoutPathDefaultValue
 	} else {
-		if string(encodeURIParamsRaw) == "true" {
-			encodeURIParams = true
+		logoutPath = string(logoutPathRaw)
+	}
+
+	postLogoutRedirectURIRaw := sec.Data["post_logout_redirect_uri"]
+
+	redirectURIRaw, ok := sec.Data["redirect_uri"]
+	var redirectURI string
+	if !ok {
+		redirectURI = _openidConnectRedirectURIDefaultValue
+	} else {
+		redirectURI = string(redirectURIRaw)
+	}
+
+	timeoutRaw := sec.Data["timeout"]
+	timeout, _ := strconv.ParseInt(string(timeoutRaw), 10, 64)
+	if timeout < 0 {
+		timeout = _openidConnectTimeoutDefaultValue
+	}
+
+	var sslVerify bool
+	sslVerifyRaw, ok := sec.Data["ssl_verify"]
+	if !ok {
+		sslVerify = _openidConnectSslVerifyDefaultValue
+	} else {
+		if string(sslVerifyRaw) == "true" {
+			sslVerify = true
 		} else {
-			encodeURIParams = false
+			sslVerify = false
 		}
 	}
 
-	var validateRequestBody bool
-	validateRequestBodyRaw, ok := sec.Data["validate_request_body"]
+	introspectionEndpointRaw := sec.Data["introspection_endpoint"]
+
+	introspectionEndpointAuthMethodRaw, ok := sec.Data["introspection_endpoint_auth_method"]
+	var introspectionEndpointAuthMethod string
 	if !ok {
-		validateRequestBody = _hmacAuthValidateRequestBodyDefaultValue
+		introspectionEndpointAuthMethod = _openidConnectIntrospectionEndpointAuthMethodDefaultValue
 	} else {
-		if string(validateRequestBodyRaw) == "true" {
-			validateRequestBody = true
+		introspectionEndpointAuthMethod = string(introspectionEndpointAuthMethodRaw)
+	}
+
+	tokenEndpointAuthMethodRaw := sec.Data["token_endpoint_auth_method"]
+	publicKeyRaw := sec.Data["public_key"]
+
+	var useJwks bool
+	useJwksRaw, ok := sec.Data["use_jwks"]
+	if !ok {
+		useJwks = _openidConnectUseJwksDefaultValue
+	} else {
+		if string(useJwksRaw) == "true" {
+			useJwks = true
 		} else {
-			validateRequestBody = false
+			useJwks = false
 		}
 	}
 
-	maxReqBodyRaw := sec.Data["max_req_body"]
-	maxReqBody, _ := strconv.ParseInt(string(maxReqBodyRaw), 10, 64)
-	if maxReqBody < 0 {
-		maxReqBody = _hmacAuthMaxReqBodyDefaultValue
+	var usePkce bool
+	usePkceRaw, ok := sec.Data["use_pkce"]
+	if !ok {
+		usePkce = _openidConnectUsePkceDefaultValue
+	} else {
+		if string(usePkceRaw) == "true" {
+			usePkce = true
+		} else {
+			usePkce = false
+		}
 	}
 
-	return &apisixv1.HMACAuthConsumerConfig{
-		AccessKey:           string(accessKeyRaw),
-		SecretKey:           string(secretKeyRaw),
-		Algorithm:           algorithm,
-		ClockSkew:           clockSkew,
-		SignedHeaders:       signedHeaders,
-		KeepHeaders:         keepHeader,
-		EncodeURIParams:     encodeURIParams,
-		ValidateRequestBody: validateRequestBody,
-		MaxReqBody:          maxReqBody,
+	tokenSigningAlgValuesExpectedRaw := sec.Data["token_signing_alg_values_expected"]
+
+	var setAccessTokenHeader bool
+	setAccessTokenHeaderRaw, ok := sec.Data["set_access_token_header"]
+	if !ok {
+		setAccessTokenHeader = _openidConnectSetAccessTokenHeaderDefaultValue
+	} else {
+		if string(setAccessTokenHeaderRaw) == "true" {
+			setAccessTokenHeader = true
+		} else {
+			setAccessTokenHeader = false
+		}
+	}
+
+	var accessTokenInAuthorizationHeader bool
+	accessTokenInAuthorizationHeaderRaw, ok := sec.Data["access_token_in_authorization_header"]
+	if !ok {
+		accessTokenInAuthorizationHeader = _openidConnectAccessTokenInAuthorizationHeaderDefaultValue
+	} else {
+		if string(accessTokenInAuthorizationHeaderRaw) == "true" {
+			accessTokenInAuthorizationHeader = true
+		} else {
+			accessTokenInAuthorizationHeader = false
+		}
+	}
+
+	var setIDTokenHeader bool
+	setIDTokenHeaderRaw, ok := sec.Data["set_id_token_header"]
+	if !ok {
+		setIDTokenHeader = _openidConnectSetIDTokenHeaderDefaultValue
+	} else {
+		if string(setIDTokenHeaderRaw) == "true" {
+			setIDTokenHeader = true
+		} else {
+			setIDTokenHeader = false
+		}
+	}
+
+	var setUserinfoHeader bool
+	setUserinfoHeaderRaw, ok := sec.Data["set_userinfo_header"]
+	if !ok {
+		setUserinfoHeader = _openidConnectSetUserInfoHeaderDefaultValue
+	} else {
+		if string(setUserinfoHeaderRaw) == "true" {
+			setUserinfoHeader = true
+		} else {
+			setUserinfoHeader = false
+		}
+	}
+
+	var setRefreshTokenHeader bool
+	setRefreshTokenHeaderRaw, ok := sec.Data["set_refresh_token_header"]
+	if !ok {
+		setRefreshTokenHeader = _openidConnectSetRefreshTokenHeaderDefaultValue
+	} else {
+		if string(setRefreshTokenHeaderRaw) == "true" {
+			setRefreshTokenHeader = true
+		} else {
+			setRefreshTokenHeader = false
+		}
+	}
+
+	var session *apisixv1.OpenIDConnectSession
+	if sessionRaw, ok := sec.Data["session"]; ok {
+		if err = json.Unmarshal(sessionRaw, session); err != nil {
+			log.Error("json.Unmarshal(sessionRaw, session) got error: %v", err)
+		}
+	}
+
+	return &apisixv1.OpenIDConnectConsumerConfig{
+		ClientID:                         string(clientID),
+		ClientSecret:                     string(clientSecret),
+		Discovery:                        string(discovery),
+		Scope:                            scope,
+		Realm:                            realm,
+		BearerOnly:                       bearerOnly,
+		LogoutPath:                       logoutPath,
+		PostLogoutRedirectURI:            string(postLogoutRedirectURIRaw),
+		RedirectURI:                      redirectURI,
+		Timeout:                          timeout,
+		SslVerify:                        sslVerify,
+		IntrospectionEndpoint:            string(introspectionEndpointRaw),
+		IntrospectionEndpointAuthMethod:  introspectionEndpointAuthMethod,
+		TokenEndpointAuthMethod:          string(tokenEndpointAuthMethodRaw),
+		PublicKey:                        string(publicKeyRaw),
+		UseJwks:                          useJwks,
+		UsePkce:                          usePkce,
+		TokenSigningAlgValuesExpected:    string(tokenSigningAlgValuesExpectedRaw),
+		SetAccessTokenHeader:             setAccessTokenHeader,
+		AccessTokeninAuthorizationHeader: accessTokenInAuthorizationHeader,
+		SetIdTokenHeader:                 setIDTokenHeader,
+		SetUserinfoHeader:                setUserinfoHeader,
+		SetRefreshTokenHeader:            setRefreshTokenHeader,
+		Session:                          session,
 	}, nil
 }
 
 func (t *translator) translateConsumerOpenIDConnectPluginV2beta3(consumerNamespace string, cfg *configv2beta3.ApisixConsumerOpenIDConnect) (*apisixv1.OpenIDConnectConsumerConfig, error) {
 	if cfg.Value != nil {
-		return &apisixv1.OpenIDConnectConsumerConfig{}, nil
+		openIDConnectConfig := &apisixv1.OpenIDConnectConsumerConfig{
+			ClientID:                         cfg.Value.ClientID,
+			ClientSecret:                     cfg.Value.ClientSecret,
+			Discovery:                        cfg.Value.Discovery,
+			Scope:                            cfg.Value.Scope,
+			Realm:                            cfg.Value.Realm,
+			BearerOnly:                       cfg.Value.BearerOnly,
+			LogoutPath:                       cfg.Value.LogoutPath,
+			PostLogoutRedirectURI:            cfg.Value.PostLogoutRedirectURI,
+			RedirectURI:                      cfg.Value.RedirectURI,
+			Timeout:                          cfg.Value.Timeout,
+			SslVerify:                        cfg.Value.SslVerify,
+			IntrospectionEndpoint:            cfg.Value.IntrospectionEndpoint,
+			IntrospectionEndpointAuthMethod:  cfg.Value.IntrospectionEndpointAuthMethod,
+			TokenEndpointAuthMethod:          cfg.Value.TokenEndpointAuthMethod,
+			PublicKey:                        cfg.Value.PublicKey,
+			UseJwks:                          cfg.Value.UseJwks,
+			UsePkce:                          cfg.Value.UsePkce,
+			TokenSigningAlgValuesExpected:    cfg.Value.TokenSigningAlgValuesExpected,
+			SetAccessTokenHeader:             cfg.Value.SetAccessTokenHeader,
+			AccessTokeninAuthorizationHeader: cfg.Value.AccessTokeninAuthorizationHeader,
+			SetIdTokenHeader:                 cfg.Value.SetIdTokenHeader,
+			SetUserinfoHeader:                cfg.Value.SetUserinfoHeader,
+			SetRefreshTokenHeader:            cfg.Value.SetRefreshTokenHeader,
+		}
+		if cfg.Value.Session != nil {
+			openIDConnectConfig.Session = &apisixv1.OpenIDConnectSession{Secret: cfg.Value.Session.Secret}
+		}
+		return openIDConnectConfig, nil
 	}
 
 	sec, err := t.SecretLister.Secrets(consumerNamespace).Get(cfg.SecretRef.Name)
@@ -627,77 +829,215 @@ func (t *translator) translateConsumerOpenIDConnectPluginV2beta3(consumerNamespa
 		return nil, err
 	}
 
-	accessKeyRaw, ok := sec.Data["access_key"]
-	if !ok || len(accessKeyRaw) == 0 {
+	clientID, ok := sec.Data["client_id"]
+	if !ok || len(clientID) == 0 {
 		return nil, _errKeyNotFoundOrInvalid
 	}
 
-	secretKeyRaw, ok := sec.Data["secret_key"]
-	if !ok || len(secretKeyRaw) == 0 {
+	clientSecret, ok := sec.Data["client_secret"]
+	if !ok || len(clientSecret) == 0 {
 		return nil, _errKeyNotFoundOrInvalid
 	}
 
-	algorithmRaw, ok := sec.Data["algorithm"]
-	var algorithm string
+	discovery, ok := sec.Data["discovery"]
+	if !ok || len(discovery) == 0 {
+		return nil, _errKeyNotFoundOrInvalid
+	}
+
+	scopeRaw, ok := sec.Data["scope"]
+	var scope string
 	if !ok {
-		algorithm = _hmacAuthAlgorithmDefaultValue
+		scope = _openidConnectScopeDefaultValue
 	} else {
-		algorithm = string(algorithmRaw)
+		scope = string(scopeRaw)
 	}
 
-	clockSkewRaw := sec.Data["clock_skew"]
-	clockSkew, _ := strconv.ParseInt(string(clockSkewRaw), 10, 64)
-	if clockSkew < 0 {
-		clockSkew = _hmacAuthClockSkewDefaultValue
-	}
-
-	var signedHeaders []string
-	signedHeadersRaw := sec.Data["signed_headers"]
-	for _, b := range signedHeadersRaw {
-		signedHeaders = append(signedHeaders, string(b))
-	}
-
-	var keepHeader bool
-	keepHeaderRaw, ok := sec.Data["keep_headers"]
+	realmRaw, ok := sec.Data["realm"]
+	var realm string
 	if !ok {
-		keepHeader = _hmacAuthKeepHeadersDefaultValue
+		realm = _openidConnectRealmDefaultValue
 	} else {
-		if string(keepHeaderRaw) == "true" {
-			keepHeader = true
+		realm = string(realmRaw)
+	}
+
+	var bearerOnly bool
+	bearerOnlyRaw, ok := sec.Data["bearer_only"]
+	if !ok {
+		bearerOnly = _openidConnectBearerOnlyDefaultValue
+	} else {
+		if string(bearerOnlyRaw) == "true" {
+			bearerOnly = true
 		} else {
-			keepHeader = false
+			bearerOnly = false
 		}
 	}
 
-	var encodeURIParams bool
-	encodeURIParamsRaw, ok := sec.Data["encode_uri_params"]
+	logoutPathRaw, ok := sec.Data["logout_path"]
+	var logoutPath string
 	if !ok {
-		encodeURIParams = _hmacAuthEncodeURIParamsDefaultValue
+		logoutPath = _openidConnectLogoutPathDefaultValue
 	} else {
-		if string(encodeURIParamsRaw) == "true" {
-			encodeURIParams = true
+		logoutPath = string(logoutPathRaw)
+	}
+
+	postLogoutRedirectURIRaw := sec.Data["post_logout_redirect_uri"]
+
+	redirectURIRaw, ok := sec.Data["redirect_uri"]
+	var redirectURI string
+	if !ok {
+		redirectURI = _openidConnectRedirectURIDefaultValue
+	} else {
+		redirectURI = string(redirectURIRaw)
+	}
+
+	timeoutRaw := sec.Data["timeout"]
+	timeout, _ := strconv.ParseInt(string(timeoutRaw), 10, 64)
+	if timeout < 0 {
+		timeout = _openidConnectTimeoutDefaultValue
+	}
+
+	var sslVerify bool
+	sslVerifyRaw, ok := sec.Data["ssl_verify"]
+	if !ok {
+		sslVerify = _openidConnectSslVerifyDefaultValue
+	} else {
+		if string(sslVerifyRaw) == "true" {
+			sslVerify = true
 		} else {
-			encodeURIParams = false
+			sslVerify = false
 		}
 	}
 
-	var validateRequestBody bool
-	validateRequestBodyRaw, ok := sec.Data["validate_request_body"]
+	introspectionEndpointRaw := sec.Data["introspection_endpoint"]
+
+	introspectionEndpointAuthMethodRaw, ok := sec.Data["introspection_endpoint_auth_method"]
+	var introspectionEndpointAuthMethod string
 	if !ok {
-		validateRequestBody = _hmacAuthValidateRequestBodyDefaultValue
+		introspectionEndpointAuthMethod = _openidConnectIntrospectionEndpointAuthMethodDefaultValue
 	} else {
-		if string(validateRequestBodyRaw) == "true" {
-			validateRequestBody = true
+		introspectionEndpointAuthMethod = string(introspectionEndpointAuthMethodRaw)
+	}
+
+	tokenEndpointAuthMethodRaw := sec.Data["token_endpoint_auth_method"]
+	publicKeyRaw := sec.Data["public_key"]
+
+	var useJwks bool
+	useJwksRaw, ok := sec.Data["use_jwks"]
+	if !ok {
+		useJwks = _openidConnectUseJwksDefaultValue
+	} else {
+		if string(useJwksRaw) == "true" {
+			useJwks = true
 		} else {
-			validateRequestBody = false
+			useJwks = false
 		}
 	}
 
-	maxReqBodyRaw := sec.Data["max_req_body"]
-	maxReqBody, _ := strconv.ParseInt(string(maxReqBodyRaw), 10, 64)
-	if maxReqBody < 0 {
-		maxReqBody = _hmacAuthMaxReqBodyDefaultValue
+	var usePkce bool
+	usePkceRaw, ok := sec.Data["use_pkce"]
+	if !ok {
+		usePkce = _openidConnectUsePkceDefaultValue
+	} else {
+		if string(usePkceRaw) == "true" {
+			usePkce = true
+		} else {
+			usePkce = false
+		}
 	}
 
-	return &apisixv1.OpenIDConnectConsumerConfig{}, nil
+	tokenSigningAlgValuesExpectedRaw := sec.Data["token_signing_alg_values_expected"]
+
+	var setAccessTokenHeader bool
+	setAccessTokenHeaderRaw, ok := sec.Data["set_access_token_header"]
+	if !ok {
+		setAccessTokenHeader = _openidConnectSetAccessTokenHeaderDefaultValue
+	} else {
+		if string(setAccessTokenHeaderRaw) == "true" {
+			setAccessTokenHeader = true
+		} else {
+			setAccessTokenHeader = false
+		}
+	}
+
+	var accessTokenInAuthorizationHeader bool
+	accessTokenInAuthorizationHeaderRaw, ok := sec.Data["access_token_in_authorization_header"]
+	if !ok {
+		accessTokenInAuthorizationHeader = _openidConnectAccessTokenInAuthorizationHeaderDefaultValue
+	} else {
+		if string(accessTokenInAuthorizationHeaderRaw) == "true" {
+			accessTokenInAuthorizationHeader = true
+		} else {
+			accessTokenInAuthorizationHeader = false
+		}
+	}
+
+	var setIDTokenHeader bool
+	setIDTokenHeaderRaw, ok := sec.Data["set_id_token_header"]
+	if !ok {
+		setIDTokenHeader = _openidConnectSetIDTokenHeaderDefaultValue
+	} else {
+		if string(setIDTokenHeaderRaw) == "true" {
+			setIDTokenHeader = true
+		} else {
+			setIDTokenHeader = false
+		}
+	}
+
+	var setUserinfoHeader bool
+	setUserinfoHeaderRaw, ok := sec.Data["set_userinfo_header"]
+	if !ok {
+		setUserinfoHeader = _openidConnectSetUserInfoHeaderDefaultValue
+	} else {
+		if string(setUserinfoHeaderRaw) == "true" {
+			setUserinfoHeader = true
+		} else {
+			setUserinfoHeader = false
+		}
+	}
+
+	var setRefreshTokenHeader bool
+	setRefreshTokenHeaderRaw, ok := sec.Data["set_refresh_token_header"]
+	if !ok {
+		setRefreshTokenHeader = _openidConnectSetRefreshTokenHeaderDefaultValue
+	} else {
+		if string(setRefreshTokenHeaderRaw) == "true" {
+			setRefreshTokenHeader = true
+		} else {
+			setRefreshTokenHeader = false
+		}
+	}
+
+	var session *apisixv1.OpenIDConnectSession
+	if sessionRaw, ok := sec.Data["session"]; ok {
+		if err = json.Unmarshal(sessionRaw, session); err != nil {
+			log.Error("json.Unmarshal(sessionRaw, session) got error: %v", err)
+		}
+	}
+
+	return &apisixv1.OpenIDConnectConsumerConfig{
+		ClientID:                         string(clientID),
+		ClientSecret:                     string(clientSecret),
+		Discovery:                        string(discovery),
+		Scope:                            scope,
+		Realm:                            realm,
+		BearerOnly:                       bearerOnly,
+		LogoutPath:                       logoutPath,
+		PostLogoutRedirectURI:            string(postLogoutRedirectURIRaw),
+		RedirectURI:                      redirectURI,
+		Timeout:                          timeout,
+		SslVerify:                        sslVerify,
+		IntrospectionEndpoint:            string(introspectionEndpointRaw),
+		IntrospectionEndpointAuthMethod:  introspectionEndpointAuthMethod,
+		TokenEndpointAuthMethod:          string(tokenEndpointAuthMethodRaw),
+		PublicKey:                        string(publicKeyRaw),
+		UseJwks:                          useJwks,
+		UsePkce:                          usePkce,
+		TokenSigningAlgValuesExpected:    string(tokenSigningAlgValuesExpectedRaw),
+		SetAccessTokenHeader:             setAccessTokenHeader,
+		AccessTokeninAuthorizationHeader: accessTokenInAuthorizationHeader,
+		SetIdTokenHeader:                 setIDTokenHeader,
+		SetUserinfoHeader:                setUserinfoHeader,
+		SetRefreshTokenHeader:            setRefreshTokenHeader,
+		Session:                          session,
+	}, nil
 }
