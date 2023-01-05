@@ -51,7 +51,7 @@ spec:
   authParameter:
     ldapAuth:
       value:
-        user_dn: "cn=jack,dc=ldap,dc=example,dc=org"
+        user_dn: "cn=jack,ou=users,dc=ldap,dc=example,dc=org"
 `
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "creating ldapAuth ApisixConsumer")
 
@@ -63,7 +63,7 @@ spec:
 			assert.Len(ginkgo.GinkgoT(), grs, 1)
 			assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
 			ldapAuth, _ := grs[0].Plugins["ldap-auth"].(map[string]interface{})
-			assert.Equal(ginkgo.GinkgoT(), ldapAuth["user_dn"], "cn=jack,dc=ldap,dc=example,dc=org")
+			assert.Equal(ginkgo.GinkgoT(), ldapAuth["user_dn"], "cn=jack,ou=users,dc=ldap,dc=example,dc=org")
 
 			ldapSvr, err := getLDAPServerURL()
 			assert.Nil(ginkgo.GinkgoT(), err, "check ldap server")
@@ -89,9 +89,9 @@ spec:
       type: ldapAuth
       ldapAuth: 	
         ldap_uri: %s
-  		base_dn: "dc=ldap,dc=example,dc=org"
+  		base_dn: "ou=users,dc=ldap,dc=example,dc=org"
         use_tls: false
-  		uid: "uid"	
+  		uid: "cn"	
 `, backendSvc, backendPorts[0], ldapSvr)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "Creating ApisixRoute with ldapAuth")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2), "Checking number of routes")
@@ -128,7 +128,7 @@ kind: Secret
 metadata:
   name: ldap
 data:
-  user_dn: Y249amFjayxkYz1sZGFwLGRjPWV4YW1wbGUsZGM9b3Jn
+  user_dn: Y249amFjayxvdT11c2VycyxkYz1sZGFwLGRjPWV4YW1wbGUsZGM9b3Jn
 `
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating ldapAuth secret for ApisixConsumer")
 
@@ -153,7 +153,7 @@ spec:
 			assert.Len(ginkgo.GinkgoT(), grs, 1)
 			assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
 			ldapAuth, _ := grs[0].Plugins["ldap-auth"].(map[string]interface{})
-			assert.Equal(ginkgo.GinkgoT(), ldapAuth["user_dn"], "cn=jack,dc=ldap,dc=example,dc=org")
+			assert.Equal(ginkgo.GinkgoT(), ldapAuth["user_dn"], "cn=jack,ou=users,dc=ldap,dc=example,dc=org")
 
 			ldapSvr, err := getLDAPServerURL()
 			assert.Nil(ginkgo.GinkgoT(), err, "check ldap server")
@@ -177,11 +177,11 @@ spec:
     authentication:
       enable: true
       type: ldapAuth
-      config: 	
+      ldapAuth: 	
         ldap_uri: %s
-  		base_dn: "dc=ldap,dc=example,dc=org"
+  		base_dn: "ou=users,dc=ldap,dc=example,dc=org"
 		use_tls: false
-  		uid: "uid"	
+  		uid: "cn"	
 `, backendSvc, backendPorts[0], ldapSvr)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar), "Creating ApisixRoute with ldapAuth")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2), "Checking number of routes")
