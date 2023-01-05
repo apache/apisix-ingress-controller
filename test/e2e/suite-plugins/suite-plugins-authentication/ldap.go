@@ -87,11 +87,11 @@ spec:
     authentication:
       enable: true
       type: ldapAuth
-      ldapAuth: 	
+      ldapAuth: 
         ldap_uri: %s
-  		base_dn: "ou=users,dc=ldap,dc=example,dc=org"
+        base_dn: "ou=users,dc=ldap,dc=example,dc=org"
         use_tls: false
-  		uid: "cn"	
+        uid: "cn"
 `, backendSvc, backendPorts[0], ldapSvr)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "Creating ApisixRoute with ldapAuth")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2), "Checking number of routes")
@@ -177,11 +177,11 @@ spec:
     authentication:
       enable: true
       type: ldapAuth
-      ldapAuth: 	
+      ldapAuth: 
         ldap_uri: %s
-  		base_dn: "ou=users,dc=ldap,dc=example,dc=org"
-		use_tls: false
-  		uid: "cn"	
+        base_dn: "ou=users,dc=ldap,dc=example,dc=org"
+        use_tls: false
+        uid: "cn"
 `, backendSvc, backendPorts[0], ldapSvr)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar), "Creating ApisixRoute with ldapAuth")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2), "Checking number of routes")
