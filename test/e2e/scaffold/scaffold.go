@@ -325,6 +325,13 @@ func (s *Scaffold) DNSResolver() *net.Resolver {
 	}
 }
 
+func (s *Scaffold) DialTLSOverTcp(serverName string) (*tls.Conn, error) {
+	return tls.Dial("tcp", s.apisixTLSOverTCPTunnel.Endpoint(), &tls.Config{
+		InsecureSkipVerify: true,
+		ServerName:         serverName,
+	})
+}
+
 func (s *Scaffold) UpdateNamespace(ns string) {
 	s.kubectlOptions.Namespace = ns
 }
