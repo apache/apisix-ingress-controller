@@ -29,7 +29,7 @@ PKG_NAME="github.com/apache/apisix-ingress-controller"
 # Make sure no pollution
 rm -rf "$GENERATED_ROOT"
 
-bash "${SCRIPT_ROOT}"/generate-groups.sh "deepcopy,client,informer,lister" \
+bash "${SCRIPT_ROOT}"/generate-groups.sh "all" \
   ${PKG_NAME}/pkg/kube/apisix/client ${PKG_NAME}/pkg/kube/apisix/apis \
   config:v2,v2beta3 ${PKG_NAME} \
   --output-base "$GENERATED_ROOT" \

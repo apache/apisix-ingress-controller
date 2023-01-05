@@ -759,18 +759,18 @@ type ApisixPluginConfigList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 
-// ApisixPluginConfig is the Schema for the ApisixPluginConfig resource.
-// An ApisixPluginConfig is used to support a group of plugin configs
+// ApisixGlobalRule is the Schema for the ApisixGlobalRule resource.
+// An ApisixGlobalRule is used to support a group of plugin configs
 type ApisixGlobalRule struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata" yaml:"metadata"`
 
-	// Spec defines the desired state of ApisixPluginConfigSpec.
+	// Spec defines the desired state of ApisixGlobalRuleSpec.
 	Spec   ApisixGlobalRuleSpec `json:"spec" yaml:"spec"`
 	Status ApisixStatus         `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
-// ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
+// ApisixGlobalRuleSpec defines the desired state of ApisixGlobalRuleSpec.
 type ApisixGlobalRuleSpec struct {
 	// Plugins contains a list of ApisixRoutePlugin
 	// +required

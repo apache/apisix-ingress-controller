@@ -126,10 +126,13 @@ func (c *apisixGlobalRuleController) sync(ctx context.Context, ev *types.Event) 
 	}
 
 	tctx, err := c.translator.TranslateGlobalRule(agr)
-
-	log.Debugw("translated ApisixGlobalRule",
-		zap.Any("globalrules", tctx.GlobalRules),
-	)
+	if err != nil {
+		log.Errorw("failed to translate ApisixRoute v2",
+			zap.Error(err),
+			zap.Any("object", agr),
+		)
+		return err
+	}
 
 	m := &utils.Manifest{
 		GlobalRules: tctx.GlobalRules,
@@ -154,15 +157,19 @@ func (c *apisixGlobalRuleController) sync(ctx context.Context, ev *types.Event) 
 				zap.Error(err),
 				zap.Any("ApisixGlobalRule", agr),
 			)
-			return err
+		} else {
+			om := &utils.Manifest{
+				GlobalRules: oldCtx.GlobalRules,
+			}
+			added, updated, deleted = m.Diff(om)
 		}
-
-		om := &utils.Manifest{
-			GlobalRules: oldCtx.GlobalRules,
-		}
-		added, updated, deleted = m.Diff(om)
 	}
-
+	log.Debugw("sync ApisixGlaobalRule to cluster",
+		zap.String("event_type", ev.Type.String()),
+		zap.Any("add", added),
+		zap.Any("update", updated),
+		zap.Any("delete", deleted),
+	)
 	return c.SyncManifests(ctx, added, updated, deleted)
 }
 
@@ -180,23 +187,23 @@ func (c *apisixGlobalRuleController) handleSyncErr(obj interface{}, errOrigin er
 	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
 	if errLocal != nil {
 		log.Errorf("invalid resource key: %s", event.Key)
-		c.MetricsCollector.IncrSyncOperation("PluginConfig", "failure")
+		c.MetricsCollector.IncrSyncOperation("GlobalRule", "failure")
 		return
 	}
-	var apc kube.ApisixGlobalRule
+	var agr kube.ApisixGlobalRule
 	switch event.GroupVersion {
 	case config.ApisixV2:
-		apc, errLocal = c.ApisixGlobalRuleLister.V2(namespace, name)
+		agr, errLocal = c.ApisixGlobalRuleLister.V2(namespace, name)
 	default:
 		errLocal = fmt.Errorf("unsupported ApisixGlobalRule group version %s", event.GroupVersion)
 	}
 	if errOrigin == nil {
 		if ev.Type != types.EventDelete {
 			if errLocal == nil {
-				switch apc.GroupVersion() {
+				switch agr.GroupVersion() {
 				case config.ApisixV2:
-					c.RecordEvent(apc.V2(), v1.EventTypeNormal, utils.ResourceSynced, nil)
-					c.recordStatus(apc.V2(), utils.ResourceSynced, nil, metav1.ConditionTrue, apc.V2().GetGeneration())
+					c.RecordEvent(agr.V2(), v1.EventTypeNormal, utils.ResourceSynced, nil)
+					c.recordStatus(agr.V2(), utils.ResourceSynced, nil, metav1.ConditionTrue, agr.GetGeneration())
 				}
 			} else {
 				log.Errorw("failed list ApisixGlobalRule",
@@ -207,7 +214,7 @@ func (c *apisixGlobalRuleController) handleSyncErr(obj interface{}, errOrigin er
 			}
 		}
 		c.workqueue.Forget(obj)
-		c.MetricsCollector.IncrSyncOperation("PluginConfig", "success")
+		c.MetricsCollector.IncrSyncOperation("GlobalRule", "success")
 		return
 	}
 	log.Warnw("sync ApisixGlobalRule failed, will retry",
@@ -215,10 +222,10 @@ func (c *apisixGlobalRuleController) handleSyncErr(obj interface{}, errOrigin er
 		zap.Error(errOrigin),
 	)
 	if errLocal == nil {
-		switch apc.GroupVersion() {
+		switch agr.GroupVersion() {
 		case config.ApisixV2:
-			c.RecordEvent(apc.V2(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
-			c.recordStatus(apc.V2(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, apc.V2().GetGeneration())
+			c.RecordEvent(agr.V2(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
+			c.recordStatus(agr.V2(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, agr.GetGeneration())
 		}
 	} else {
 		log.Errorw("failed list ApisixGlobalRule",
@@ -228,7 +235,7 @@ func (c *apisixGlobalRuleController) handleSyncErr(obj interface{}, errOrigin er
 		)
 	}
 	c.workqueue.AddRateLimited(obj)
-	c.MetricsCollector.IncrSyncOperation("PluginConfig", "failure")
+	c.MetricsCollector.IncrSyncOperation("GlobalRule", "failure")
 }
 
 func (c *apisixGlobalRuleController) onAdd(obj interface{}) {
@@ -243,16 +250,16 @@ func (c *apisixGlobalRuleController) onAdd(obj interface{}) {
 	log.Debugw("ApisixGlobalRule add event arrived",
 		zap.Any("object", obj))
 
-	apc := kube.MustNewApisixGlobalRule(obj)
+	agr := kube.MustNewApisixGlobalRule(obj)
 	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.ApisixGlobalRuleEvent{
 			Key:          key,
-			GroupVersion: apc.GroupVersion(),
+			GroupVersion: agr.GroupVersion(),
 		},
 	})
 
-	c.MetricsCollector.IncrEvents("PluginConfig", "add")
+	c.MetricsCollector.IncrEvents("GlobalRule", "add")
 }
 
 func (c *apisixGlobalRuleController) onUpdate(oldObj, newObj interface{}) {
@@ -286,32 +293,32 @@ func (c *apisixGlobalRuleController) onUpdate(oldObj, newObj interface{}) {
 }
 
 func (c *apisixGlobalRuleController) onDelete(obj interface{}) {
-	apc, err := kube.NewApisixGlobalRule(obj)
+	agr, err := kube.NewApisixGlobalRule(obj)
 	if err != nil {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			return
 		}
-		apc = kube.MustNewApisixGlobalRule(tombstone)
+		agr = kube.MustNewApisixGlobalRule(tombstone)
 	}
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		log.Errorf("found ApisixGlobalRule resource with bad meta namesapce key: %s", err)
+		log.Errorf("found ApisixGlobalRule resource with bad meta namesagre key: %s", err)
 		return
 	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixGlobalRule delete event arrived",
-		zap.Any("final state", apc),
+		zap.Any("final state", agr),
 	)
 	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixGlobalRuleEvent{
 			Key:          key,
-			GroupVersion: apc.GroupVersion(),
+			GroupVersion: agr.GroupVersion(),
 		},
-		Tombstone: apc,
+		Tombstone: agr,
 	})
 
 	c.MetricsCollector.IncrEvents("GlobalRule", "delete")
@@ -328,12 +335,12 @@ func (c *apisixGlobalRuleController) ResourceSync() {
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
-		apc := kube.MustNewApisixGlobalRule(obj)
+		agr := kube.MustNewApisixGlobalRule(obj)
 		c.workqueue.Add(&types.Event{
 			Type: types.EventAdd,
 			Object: kube.ApisixGlobalRuleEvent{
 				Key:          key,
-				GroupVersion: apc.GroupVersion(),
+				GroupVersion: agr.GroupVersion(),
 			},
 		})
 	}
@@ -366,7 +373,6 @@ func (c *apisixGlobalRuleController) recordStatus(at interface{}, reason string,
 			conditions := make([]metav1.Condition, 0)
 			v.Status.Conditions = conditions
 		}
-		//
 		if utils.VerifyGeneration(&v.Status.Conditions, condition) && !meta.IsStatusConditionPresentAndEqual(v.Status.Conditions, condition.Type, condition.Status) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := apisixClient.ApisixV2().ApisixGlobalRules(v.Namespace).

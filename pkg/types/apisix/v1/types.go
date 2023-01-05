@@ -473,8 +473,8 @@ type StreamRoute struct {
 // GlobalRule represents the global_rule object in APISIX.
 // +k8s:deepcopy-gen=true
 type GlobalRule struct {
-	ID      string  `json:"id,omitempty" yaml:"id,omitempty"`
-	Plugins Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	ID      string  `json:"id" yaml:"id"`
+	Plugins Plugins `json:"plugins" yaml:"plugins"`
 }
 
 // Consumer represents the consumer object in APISIX.

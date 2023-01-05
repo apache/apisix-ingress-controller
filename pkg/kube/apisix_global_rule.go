@@ -125,6 +125,7 @@ func MustNewApisixGlobalRule(obj interface{}) ApisixGlobalRule {
 		return &apisixGlobalRule{
 			groupVersion: config.ApisixV2,
 			v2:           agr,
+			Object:       agr.GetObjectMeta(),
 		}
 	default:
 		panic("invalid ApisixGlobalRule type")
