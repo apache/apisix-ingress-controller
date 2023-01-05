@@ -149,6 +149,30 @@ func TestTranslateApisixConsumerV2beta3(t *testing.T) {
 	assert.Equal(t, "foo", cfg5.AccessKey)
 	assert.Equal(t, "bar", cfg5.SecretKey)
 
+	ac = &configv2beta3.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "jack",
+			Namespace: "qa",
+		},
+		Spec: configv2beta3.ApisixConsumerSpec{
+			AuthParameter: configv2beta3.ApisixConsumerAuthParameter{
+				OpenIDConnect: &configv2beta3.ApisixConsumerOpenIDConnect{
+					Value: &configv2beta3.ApisixConsumerOpenIDConnectValue{
+						ClientID:     "abc",
+						ClientSecret: "belle",
+						Discovery:    "je",
+					},
+				},
+			},
+		},
+	}
+	consumer, err = (&translator{}).TranslateApisixConsumerV2beta3(ac)
+	assert.Nil(t, err)
+	assert.Len(t, consumer.Plugins, 1)
+	cfg6 := consumer.Plugins["openid-connect"].(*apisixv1.OpenIDConnectConsumerConfig)
+	assert.Equal(t, "abc", cfg6.ClientID)
+	assert.Equal(t, "belle", cfg6.ClientSecret)
+
 	// No test test cases for secret references as we already test them
 	// in plugin_test.go.
 }
@@ -276,6 +300,29 @@ func TestTranslateApisixConsumerV2(t *testing.T) {
 	cfg5 := consumer.Plugins["hmac-auth"].(*apisixv1.HMACAuthConsumerConfig)
 	assert.Equal(t, "foo", cfg5.AccessKey)
 	assert.Equal(t, "bar", cfg5.SecretKey)
+
+	ac = &configv2.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "jack",
+			Namespace: "qa",
+		},
+		Spec: configv2.ApisixConsumerSpec{
+			AuthParameter: configv2.ApisixConsumerAuthParameter{
+				OpenIDConnect: &configv2.ApisixConsumerOpenIDConnect{
+					Value: &configv2.ApisixConsumerOpenIDConnectValue{
+						ClientID:     "abc",
+						ClientSecret: "belle",
+						Discovery:    "ds",
+					}},
+			},
+		},
+	}
+	consumer, err = (&translator{}).TranslateApisixConsumerV2(ac)
+	assert.Nil(t, err)
+	assert.Len(t, consumer.Plugins, 1)
+	cfg6 := consumer.Plugins["openid-connect"].(*apisixv1.OpenIDConnectConsumerConfig)
+	assert.Equal(t, "abc", cfg6.ClientID)
+	assert.Equal(t, "belle", cfg6.ClientSecret)
 
 	// No test test cases for secret references as we already test them
 	// in plugin_test.go.

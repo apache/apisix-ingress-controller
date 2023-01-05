@@ -19,10 +19,9 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -567,6 +566,31 @@ func (t *translator) translateConsumerOpenIDConnectPluginV2(consumerNamespace st
 			SetUserinfoHeader:                cfg.Value.SetUserinfoHeader,
 			SetRefreshTokenHeader:            cfg.Value.SetRefreshTokenHeader,
 		}
+
+		if cfg.Value.Scope == "" {
+			openIDConnectConfig.Scope = _openidConnectScopeDefaultValue
+		}
+
+		if cfg.Value.Realm == "" {
+			openIDConnectConfig.Realm = _openidConnectRealmDefaultValue
+		}
+
+		if cfg.Value.LogoutPath == "" {
+			openIDConnectConfig.LogoutPath = _openidConnectLogoutPathDefaultValue
+		}
+
+		if cfg.Value.RedirectURI == "" {
+			openIDConnectConfig.RedirectURI = _openidConnectRedirectURIDefaultValue
+		}
+
+		if cfg.Value.Timeout <= int64(0) {
+			openIDConnectConfig.Timeout = _openidConnectTimeoutDefaultValue
+		}
+
+		if cfg.Value.IntrospectionEndpointAuthMethod == "" {
+			openIDConnectConfig.IntrospectionEndpointAuthMethod = _openidConnectIntrospectionEndpointAuthMethodDefaultValue
+		}
+
 		if cfg.Value.Session != nil {
 			openIDConnectConfig.Session = &apisixv1.OpenIDConnectSession{Secret: cfg.Value.Session.Secret}
 		}
@@ -641,7 +665,7 @@ func (t *translator) translateConsumerOpenIDConnectPluginV2(consumerNamespace st
 
 	timeoutRaw := sec.Data["timeout"]
 	timeout, _ := strconv.ParseInt(string(timeoutRaw), 10, 64)
-	if timeout < 0 {
+	if timeout <= int64(0) {
 		timeout = _openidConnectTimeoutDefaultValue
 	}
 
@@ -759,7 +783,7 @@ func (t *translator) translateConsumerOpenIDConnectPluginV2(consumerNamespace st
 	var session *apisixv1.OpenIDConnectSession
 	if sessionRaw, ok := sec.Data["session"]; ok {
 		if err = json.Unmarshal(sessionRaw, session); err != nil {
-			log.Error("json.Unmarshal(sessionRaw, session) got error: %v", err)
+			log.Errorf("json.Unmarshal(sessionRaw, session) got error: %v", err)
 		}
 	}
 
@@ -818,6 +842,31 @@ func (t *translator) translateConsumerOpenIDConnectPluginV2beta3(consumerNamespa
 			SetUserinfoHeader:                cfg.Value.SetUserinfoHeader,
 			SetRefreshTokenHeader:            cfg.Value.SetRefreshTokenHeader,
 		}
+
+		if cfg.Value.Scope == "" {
+			openIDConnectConfig.Scope = _openidConnectScopeDefaultValue
+		}
+
+		if cfg.Value.Realm == "" {
+			openIDConnectConfig.Realm = _openidConnectRealmDefaultValue
+		}
+
+		if cfg.Value.LogoutPath == "" {
+			openIDConnectConfig.LogoutPath = _openidConnectLogoutPathDefaultValue
+		}
+
+		if cfg.Value.RedirectURI == "" {
+			openIDConnectConfig.RedirectURI = _openidConnectRedirectURIDefaultValue
+		}
+
+		if cfg.Value.Timeout <= int64(0) {
+			openIDConnectConfig.Timeout = _openidConnectTimeoutDefaultValue
+		}
+
+		if cfg.Value.IntrospectionEndpointAuthMethod == "" {
+			openIDConnectConfig.IntrospectionEndpointAuthMethod = _openidConnectIntrospectionEndpointAuthMethodDefaultValue
+		}
+
 		if cfg.Value.Session != nil {
 			openIDConnectConfig.Session = &apisixv1.OpenIDConnectSession{Secret: cfg.Value.Session.Secret}
 		}
@@ -892,7 +941,7 @@ func (t *translator) translateConsumerOpenIDConnectPluginV2beta3(consumerNamespa
 
 	timeoutRaw := sec.Data["timeout"]
 	timeout, _ := strconv.ParseInt(string(timeoutRaw), 10, 64)
-	if timeout < 0 {
+	if timeout <= int64(0) {
 		timeout = _openidConnectTimeoutDefaultValue
 	}
 
@@ -1010,7 +1059,7 @@ func (t *translator) translateConsumerOpenIDConnectPluginV2beta3(consumerNamespa
 	var session *apisixv1.OpenIDConnectSession
 	if sessionRaw, ok := sec.Data["session"]; ok {
 		if err = json.Unmarshal(sessionRaw, session); err != nil {
-			log.Error("json.Unmarshal(sessionRaw, session) got error: %v", err)
+			log.Errorf("json.Unmarshal(sessionRaw, session) got error: %v", err)
 		}
 	}
 

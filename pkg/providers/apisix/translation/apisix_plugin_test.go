@@ -1039,3 +1039,87 @@ func TestTranslateConsumerHMACAuthPluginWithSecretRef(t *testing.T) {
 	close(processCh)
 	close(stopCh)
 }
+
+func TestTranslateConsumerOpenIDConnectPluginWithInPlaceValue(t *testing.T) {
+	openidConnect := &configv2beta3.ApisixConsumerOpenIDConnect{
+		Value: &configv2beta3.ApisixConsumerOpenIDConnectValue{
+			ClientID:     "foo",
+			ClientSecret: "foo-secret",
+			Discovery:    "dis",
+		},
+	}
+
+	cfg, err := (&translator{}).translateConsumerOpenIDConnectPluginV2beta3("default", openidConnect)
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", cfg.ClientID)
+	assert.Equal(t, "foo-secret", cfg.ClientSecret)
+	assert.Equal(t, int64(3), cfg.Timeout)
+	assert.Equal(t, false, cfg.BearerOnly)
+}
+
+func TestTranslateConsumerOpenIDConnectPluginWithSecretRef(t *testing.T) {
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "fatpa-openid-connect",
+		},
+		Data: map[string][]byte{
+			"client_id":     []byte("foo"),
+			"client_secret": []byte("foo-secret"),
+			"discovery":     []byte("dis"),
+		},
+	}
+
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	secretInformer := informersFactory.Core().V1().Secrets().Informer()
+	secretLister := informersFactory.Core().V1().Secrets().Lister()
+	processCh := make(chan struct{})
+	stopCh := make(chan struct{})
+	secretInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(_ interface{}) {
+			processCh <- struct{}{}
+		},
+		UpdateFunc: func(_, _ interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+	go secretInformer.Run(stopCh)
+
+	tr := &translator{&TranslatorOptions{
+		SecretLister: secretLister,
+	}, translation.NewTranslator(nil)}
+
+	_, err := client.CoreV1().Secrets("default").Create(context.Background(), sec, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	<-processCh
+
+	openidConnect := &configv2beta3.ApisixConsumerOpenIDConnect{
+		SecretRef: &corev1.LocalObjectReference{Name: "fatpa-openid-connect"}}
+	cfg, err := tr.translateConsumerOpenIDConnectPluginV2beta3("default", openidConnect)
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", cfg.ClientID)
+	assert.Equal(t, "foo-secret", cfg.ClientSecret)
+	assert.Equal(t, "dis", cfg.Discovery)
+
+	delete(sec.Data, "client_id")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerOpenIDConnectPluginV2beta3("default", openidConnect)
+	assert.Nil(t, cfg)
+	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
+
+	delete(sec.Data, "client_secret")
+	_, err = client.CoreV1().Secrets("default").Update(context.Background(), sec, metav1.UpdateOptions{})
+	assert.Nil(t, err)
+	<-processCh
+
+	cfg, err = tr.translateConsumerOpenIDConnectPluginV2beta3("default", openidConnect)
+	assert.Nil(t, cfg)
+	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
+
+	close(processCh)
+	close(stopCh)
+}

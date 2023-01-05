@@ -113,7 +113,6 @@ type HMACAuthConsumerConfig struct {
 // OpenIDConnectConsumerConfig is the rule config for openid-connect plugin
 // used in Consumer object.
 // +k8s:deepcopy-gen=true
-// ApisixConsumerOpenIDConnectValue defines the in-place configuration for openid connect.
 type OpenIDConnectConsumerConfig struct {
 	ClientID                         string                `json:"client_id" yaml:"client_id"`
 	ClientSecret                     string                `json:"secret_key" yaml:"secret_key"`
