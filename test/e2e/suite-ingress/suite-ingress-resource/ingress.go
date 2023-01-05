@@ -793,41 +793,39 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("suite-ingress-resource: delete svc before delete ing", func() {
+var _ = ginkgo.Describe("suite-ingress-resource: svc delete", func() {
 	s := scaffold.NewDefaultScaffold()
-
-	ginkgo.It("upstream nodes should be reset to empty when Service/Endpoints was deleted", func() {
+	ginkgo.It("svc delete before ing delete", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: httpbin
-  namespace: demo
+  name: httpbin-route
 spec:
   ingressClassName: apisix
   rules:
-  - host: httpbin.org
+  - host: httpbin.com
     http:
       paths:
-      - backend:
+      - path: /ip
+        pathType: Exact
+        backend:
           service:
             name: %s
             port:
               number: %d
-        path: /headers
-        pathType: Prefix
 `, backendSvc, backendSvcPort[0])
-		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ing))
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
-		s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumListUpstreamNodesNth(1, 1))
 
 		// Now delete the backend httpbin service resource.
 		assert.Nil(ginkgo.GinkgoT(), s.DeleteHTTPBINService())
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumListUpstreamNodesNth(1, 0))
-		s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusServiceUnavailable)
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusServiceUnavailable)
 
 		assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromString(ing))
-		s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)
+
 	})
 })
