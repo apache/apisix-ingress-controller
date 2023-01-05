@@ -520,3 +520,184 @@ func (t *translator) translateConsumerHMACAuthPluginV2(consumerNamespace string,
 		MaxReqBody:          maxReqBody,
 	}, nil
 }
+
+
+func (t *translator) translateConsumerOpenIDConnectPluginV2(consumerNamespace string, cfg *configv2.ApisixConsumerOpenIDConnect) (*apisixv1.OpenIDConnectConsumerConfig, error) {
+	if cfg.Value != nil {
+		return &apisixv1.OpenIDConnectConsumerConfig{}, nil
+	}
+
+	sec, err := t.SecretLister.Secrets(consumerNamespace).Get(cfg.SecretRef.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	accessKeyRaw, ok := sec.Data["access_key"]
+	if !ok || len(accessKeyRaw) == 0 {
+		return nil, _errKeyNotFoundOrInvalid
+	}
+
+	secretKeyRaw, ok := sec.Data["secret_key"]
+	if !ok || len(secretKeyRaw) == 0 {
+		return nil, _errKeyNotFoundOrInvalid
+	}
+
+	algorithmRaw, ok := sec.Data["algorithm"]
+	var algorithm string
+	if !ok {
+		algorithm = _hmacAuthAlgorithmDefaultValue
+	} else {
+		algorithm = string(algorithmRaw)
+	}
+
+	clockSkewRaw := sec.Data["clock_skew"]
+	clockSkew, _ := strconv.ParseInt(string(clockSkewRaw), 10, 64)
+	if clockSkew < 0 {
+		clockSkew = _hmacAuthClockSkewDefaultValue
+	}
+
+	var signedHeaders []string
+	signedHeadersRaw := sec.Data["signed_headers"]
+	for _, b := range signedHeadersRaw {
+		signedHeaders = append(signedHeaders, string(b))
+	}
+
+	var keepHeader bool
+	keepHeaderRaw, ok := sec.Data["keep_headers"]
+	if !ok {
+		keepHeader = _hmacAuthKeepHeadersDefaultValue
+	} else {
+		if string(keepHeaderRaw) == "true" {
+			keepHeader = true
+		} else {
+			keepHeader = false
+		}
+	}
+
+	var encodeURIParams bool
+	encodeURIParamsRaw, ok := sec.Data["encode_uri_params"]
+	if !ok {
+		encodeURIParams = _hmacAuthEncodeURIParamsDefaultValue
+	} else {
+		if string(encodeURIParamsRaw) == "true" {
+			encodeURIParams = true
+		} else {
+			encodeURIParams = false
+		}
+	}
+
+	var validateRequestBody bool
+	validateRequestBodyRaw, ok := sec.Data["validate_request_body"]
+	if !ok {
+		validateRequestBody = _hmacAuthValidateRequestBodyDefaultValue
+	} else {
+		if string(validateRequestBodyRaw) == "true" {
+			validateRequestBody = true
+		} else {
+			validateRequestBody = false
+		}
+	}
+
+	maxReqBodyRaw := sec.Data["max_req_body"]
+	maxReqBody, _ := strconv.ParseInt(string(maxReqBodyRaw), 10, 64)
+	if maxReqBody < 0 {
+		maxReqBody = _hmacAuthMaxReqBodyDefaultValue
+	}
+
+	return &apisixv1.HMACAuthConsumerConfig{
+		AccessKey:           string(accessKeyRaw),
+		SecretKey:           string(secretKeyRaw),
+		Algorithm:           algorithm,
+		ClockSkew:           clockSkew,
+		SignedHeaders:       signedHeaders,
+		KeepHeaders:         keepHeader,
+		EncodeURIParams:     encodeURIParams,
+		ValidateRequestBody: validateRequestBody,
+		MaxReqBody:          maxReqBody,
+	}, nil
+}
+
+func (t *translator) translateConsumerOpenIDConnectPluginV2beta3(consumerNamespace string, cfg *configv2beta3.ApisixConsumerOpenIDConnect) (*apisixv1.OpenIDConnectConsumerConfig, error) {
+	if cfg.Value != nil {
+		return &apisixv1.OpenIDConnectConsumerConfig{}, nil
+	}
+
+	sec, err := t.SecretLister.Secrets(consumerNamespace).Get(cfg.SecretRef.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	accessKeyRaw, ok := sec.Data["access_key"]
+	if !ok || len(accessKeyRaw) == 0 {
+		return nil, _errKeyNotFoundOrInvalid
+	}
+
+	secretKeyRaw, ok := sec.Data["secret_key"]
+	if !ok || len(secretKeyRaw) == 0 {
+		return nil, _errKeyNotFoundOrInvalid
+	}
+
+	algorithmRaw, ok := sec.Data["algorithm"]
+	var algorithm string
+	if !ok {
+		algorithm = _hmacAuthAlgorithmDefaultValue
+	} else {
+		algorithm = string(algorithmRaw)
+	}
+
+	clockSkewRaw := sec.Data["clock_skew"]
+	clockSkew, _ := strconv.ParseInt(string(clockSkewRaw), 10, 64)
+	if clockSkew < 0 {
+		clockSkew = _hmacAuthClockSkewDefaultValue
+	}
+
+	var signedHeaders []string
+	signedHeadersRaw := sec.Data["signed_headers"]
+	for _, b := range signedHeadersRaw {
+		signedHeaders = append(signedHeaders, string(b))
+	}
+
+	var keepHeader bool
+	keepHeaderRaw, ok := sec.Data["keep_headers"]
+	if !ok {
+		keepHeader = _hmacAuthKeepHeadersDefaultValue
+	} else {
+		if string(keepHeaderRaw) == "true" {
+			keepHeader = true
+		} else {
+			keepHeader = false
+		}
+	}
+
+	var encodeURIParams bool
+	encodeURIParamsRaw, ok := sec.Data["encode_uri_params"]
+	if !ok {
+		encodeURIParams = _hmacAuthEncodeURIParamsDefaultValue
+	} else {
+		if string(encodeURIParamsRaw) == "true" {
+			encodeURIParams = true
+		} else {
+			encodeURIParams = false
+		}
+	}
+
+	var validateRequestBody bool
+	validateRequestBodyRaw, ok := sec.Data["validate_request_body"]
+	if !ok {
+		validateRequestBody = _hmacAuthValidateRequestBodyDefaultValue
+	} else {
+		if string(validateRequestBodyRaw) == "true" {
+			validateRequestBody = true
+		} else {
+			validateRequestBody = false
+		}
+	}
+
+	maxReqBodyRaw := sec.Data["max_req_body"]
+	maxReqBody, _ := strconv.ParseInt(string(maxReqBodyRaw), 10, 64)
+	if maxReqBody < 0 {
+		maxReqBody = _hmacAuthMaxReqBodyDefaultValue
+	}
+
+	return &apisixv1.OpenIDConnectConsumerConfig{}, nil
+}
