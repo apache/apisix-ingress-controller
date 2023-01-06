@@ -150,9 +150,9 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *translation.TranslateContext
 			case "hmacAuth":
 				pluginMap["hmac-auth"] = make(map[string]interface{})
 			case "ldapAuth":
-				pluginMap["ldap-auth"] = make(map[string]interface{})
+				pluginMap["ldap-auth"] = part.Authentication.LDAPAuth
 			default:
-				pluginMap["basic-auth"] = part.Authentication.LDAPAuth
+				pluginMap["basic-auth"] = make(map[string]interface{})
 			}
 		}
 
