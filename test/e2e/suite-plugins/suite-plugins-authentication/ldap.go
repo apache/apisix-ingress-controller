@@ -38,7 +38,7 @@ var _ = ginkgo.Describe("suite-plugins-authentication: ApisixConsumer with ldap"
 			if len(ip) == 0 {
 				return "", fmt.Errorf("ldap-server start failed")
 			}
-			return fmt.Sprintf("ldap://%s:1389", string(ip)), nil
+			return fmt.Sprintf("%s:1389", string(ip)), nil
 		}
 
 		ginkgo.It("ApisixRoute with ldapAuth consumer", func() {
@@ -94,8 +94,8 @@ spec:
         uid: "cn"
 `, backendSvc, backendPorts[0], ldapSvr)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "Creating ApisixRoute with ldapAuth")
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2), "Checking number of routes")
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(2), "Checking number of upstreams")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
 			msg401CourseMissing := s.NewAPISIXClient().GET("/ip").
 				WithHeader("Host", "httpbin.org").
@@ -112,7 +112,7 @@ spec:
 				Status(http.StatusUnauthorized).
 				Body().
 				Raw()
-			assert.Contains(ginkgo.GinkgoT(), msg401CouseInvalid, "Invalid authorization in request")
+			assert.Contains(ginkgo.GinkgoT(), msg401CouseInvalid, "Invalid user authorization")
 
 			_ = s.NewAPISIXClient().GET("/ip").
 				WithHeader("Host", "httpbin.org").
@@ -184,8 +184,8 @@ spec:
         uid: "cn"
 `, backendSvc, backendPorts[0], ldapSvr)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar), "Creating ApisixRoute with ldapAuth")
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2), "Checking number of routes")
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(2), "Checking number of upstreams")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
 			msg401CouseMissing := s.NewAPISIXClient().GET("/ip").
 				WithHeader("Host", "httpbin.org").
@@ -202,7 +202,7 @@ spec:
 				Status(http.StatusUnauthorized).
 				Body().
 				Raw()
-			assert.Contains(ginkgo.GinkgoT(), msg401CourseInvalid, "Invalid authorization in request")
+			assert.Contains(ginkgo.GinkgoT(), msg401CourseInvalid, "Invalid user authorization")
 
 			_ = s.NewAPISIXClient().GET("/ip").
 				WithHeader("Host", "httpbin.org").
