@@ -135,7 +135,7 @@ unit-test:
 
 ### e2e-test:             Run e2e test cases (in existing clusters directly)
 .PHONY: e2e-test
-e2e-test: ginkgo-check pack-images e2e-wolf-rbac install install-gateway-api
+e2e-test: ginkgo-check pack-images e2e-wolf-rbac e2e-openid-connect install install-gateway-api
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
@@ -264,6 +264,17 @@ ifneq ("$(E2E_FOCUS)", "")
 	echo $(E2E_FOCUS) | grep -E 'suite-plugins-authentication|consumer|wolf' || exit 0 \
 	&& chmod +x ./test/e2e/testdata/wolf-rbac/cmd.sh \
 	&& ./test/e2e/testdata/wolf-rbac/cmd.sh start
+endif
+
+.PHONY: e2e-openid-connect
+e2e-openid-connect:
+ifeq ("$(E2E_FOCUS)", "")
+	chmod +x ./test/e2e/testdata/openid-connect/cmd.sh && ./test/e2e/testdata/openid-connect/cmd.sh start
+endif
+ifneq ("$(E2E_FOCUS)", "")
+	echo $(E2E_FOCUS) | grep -E 'suite-plugins-authentication|consumer|openid-connect' || exit 0 \
+	&& chmod +x ./test/e2e/testdata/openid-connect/cmd.sh \
+	&& ./test/e2e/testdata/openid-connect/cmd.sh start
 endif
 
 ### kind-load-images:	  Load the images to the kind cluster
