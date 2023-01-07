@@ -82,7 +82,7 @@ spec:
 
 			time.Sleep(3 * time.Second)
 
-			if s.ApisixResourceVersion() == config.ApisixV2 {
+			if s.ApisixResourceVersion() != config.ApisixV2beta3 {
 				resp1 := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").Expect()
 				resp1.Status(http.StatusOK)
 				resp1.Body().Contains("public-api")
