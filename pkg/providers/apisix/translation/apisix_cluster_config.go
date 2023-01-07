@@ -37,9 +37,7 @@ func (t *translator) TranslateClusterConfigV2beta3(acc *configv2beta3.ApisixClus
 
 	if acc.Spec.Monitoring != nil {
 		if acc.Spec.Monitoring.Prometheus.Enable {
-			globalRule.Plugins["prometheus"] = &prometheusPluginConfig{
-				PreferName: acc.Spec.Monitoring.Prometheus.PreferName,
-			}
+			globalRule.Plugins["prometheus"] = &prometheusPluginConfig{}
 		}
 		if acc.Spec.Monitoring.Skywalking.Enable {
 			globalRule.Plugins["skywalking"] = &skywalkingPluginConfig{

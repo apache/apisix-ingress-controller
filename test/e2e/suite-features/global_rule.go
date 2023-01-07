@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -81,9 +82,11 @@ spec:
 
 			time.Sleep(3 * time.Second)
 
-			resp1 := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").Expect()
-			resp1.Status(http.StatusOK)
-			resp1.Body().Contains("public-api")
+			if s.ApisixResourceVersion() == config.ApisixV2 {
+				resp1 := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").Expect()
+				resp1.Status(http.StatusOK)
+				resp1.Body().Contains("public-api")
+			}
 		})
 	}
 

@@ -36,8 +36,7 @@ func TestTranslateClusterConfig(t *testing.T) {
 		Spec: configv2beta3.ApisixClusterConfigSpec{
 			Monitoring: &configv2beta3.ApisixClusterMonitoringConfig{
 				Prometheus: configv2beta3.ApisixClusterPrometheusConfig{
-					Enable:     true,
-					PreferName: true,
+					Enable: true,
 				},
 				Skywalking: configv2beta3.ApisixClusterSkywalkingConfig{
 					Enable:      true,
@@ -50,7 +49,7 @@ func TestTranslateClusterConfig(t *testing.T) {
 	assert.Nil(t, err, "translating ApisixClusterConfig")
 	assert.Equal(t, gr.ID, id.GenID("qa-apisix"), "checking global_rule id")
 	assert.Len(t, gr.Plugins, 2)
-	assert.Equal(t, gr.Plugins["prometheus"], &prometheusPluginConfig{PreferName: true})
+	assert.Equal(t, gr.Plugins["prometheus"], &prometheusPluginConfig{})
 	assert.Equal(t, gr.Plugins["skywalking"], &skywalkingPluginConfig{SampleRatio: 0.5})
 }
 
