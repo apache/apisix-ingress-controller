@@ -21,15 +21,13 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-plugins-open: ApisixConsumer with openIDConnect", func() {
+var _ = ginkgo.Describe("suite-plugins-authentication: ApisixConsumer with openIDConnect", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
 		getOpenIDConnectServerURL := func() (string, error) {
@@ -68,11 +66,7 @@ var _ = ginkgo.Describe("suite-plugins-open: ApisixConsumer with openIDConnect",
 
 		ginkgo.It("ApisixRoute with openIDConnect consumer", func() {
 			keycloakSvr, err := getOpenIDConnectServerURL()
-			if err != nil {
-				log.Errorf("---> getOpenIDConnectServerURL error: %v", err)
-				keycloakSvr = "http://127.0.0.1:8222"
-			}
-			//assert.Nil(ginkgo.GinkgoT(), err, "checking keycloak-server")
+			assert.Nil(ginkgo.GinkgoT(), err, "checking keycloak-server")
 			clientsSecret, err := getSecret()
 			assert.Nil(ginkgo.GinkgoT(), err, "checking openid connect client secret")
 			accessToken, err := getAccessToken()
@@ -91,7 +85,7 @@ spec:
 		discovery: %s/realms/apisix-realm/.well-known/openid-configuration
 		realm: apisix-realm
 		bearer_only: true
-		introspection_endpoint: %s/auth/realms/apisix-realm/protocol/openid-connect/token/introspect
+		introspection_endpoint: %s/realms/apisix-realm/protocol/openid-connect/token/introspect
 `, clientsSecret, keycloakSvr, keycloakSvr)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "creating openIDConnect ApisixConsumer")
 
@@ -105,7 +99,7 @@ spec:
 			openidConnect, _ := grs[0].Plugins["openid-connect"].(map[string]interface{})
 			assert.Equal(ginkgo.GinkgoT(), "apisix", openidConnect["client_id"])
 			assert.Equal(ginkgo.GinkgoT(), clientsSecret, openidConnect["client_secret"])
-			//assert.Equal(ginkgo.GinkgoT(), "http://127.0.0.1:8222/realms/apisix-realm/.well-known/openid-configuration", openidConnect["discovery"])
+			//assert.Equal(ginkgo.GinkgoT(), "http://127.0.0.1:8222/apisix-realm/.well-known/openid-configuration", openidConnect["discovery"])
 			assert.Equal(ginkgo.GinkgoT(), int64(3), openidConnect["timeout"])
 
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
@@ -170,11 +164,7 @@ spec:
 
 		ginkgo.It("ApisixRoute with openid connect consumer using secret", func() {
 			keycloakSvr, err := getOpenIDConnectServerURL()
-			if err != nil {
-				log.Errorf("---> getOpenIDConnectServerURL error: %v", err)
-				keycloakSvr = "http://127.0.0.1:8222"
-			}
-			//assert.Nil(ginkgo.GinkgoT(), err, "checking keycloak-server")
+			assert.Nil(ginkgo.GinkgoT(), err, "checking keycloak-server")
 			clientsSecret, err := getSecret()
 			assert.Nil(ginkgo.GinkgoT(), err, "checking openid connect client secret")
 			accessToken, err := getAccessToken()
@@ -194,7 +184,7 @@ spec:
 		
 		`, base64.StdEncoding.EncodeToString([]byte(clientsSecret)),
 				base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s/realms/apisix-realm/.well-known/openid-configuration", keycloakSvr))),
-				base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s/auth/realms/apisix-realm/protocol/openid-connect/token/introspect", keycloakSvr))))
+				base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s/realms/apisix-realm/protocol/openid-connect/token/introspect", keycloakSvr))))
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating opennid-connect secret for ApisixConsumer")
 
 			ac := `
@@ -284,10 +274,10 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-plugins-open: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-plugins-authentication: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultV2beta3Scaffold)
 	})
-	ginkgo.Describe("suite-plugins-open: scaffold v2", func() {
+	ginkgo.Describe("suite-plugins-authentication: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })
