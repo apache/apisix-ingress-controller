@@ -15,30 +15,26 @@
 # limitations under the License.
 #
 
-version: '3.7'
-
+version: '3'
 services:
-  postgres:
-    image: postgres:12.2
+  postgresql:
     container_name: postgres
+    image: docker.io/bitnami/postgresql:11
     environment:
-      POSTGRES_DB: keycloak
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: password
+      - ALLOW_EMPTY_PASSWORD=yes
+      - POSTGRESQL_USERNAME=bn_keycloak
+      - POSTGRESQL_DATABASE=bitnami_keycloak
+    volumes:
+      - 'postgresql_data:/bitnami/postgresql'
 
   keycloak:
-    image: jboss/keycloak:9.0.2
     container_name: keycloak
-    environment:
-      DB_VENDOR: POSTGRES
-      DB_ADDR: postgres
-      DB_DATABASE: keycloak
-      DB_USER: keycloak
-      DB_PASSWORD: password
-      KEYCLOAK_USER: admin
-      KEYCLOAK_PASSWORD: password
-      PROXY_ADDRESS_FORWARDING: "true"
-    ports:
-      - 8222:8080
+    image: docker.io/bitnami/keycloak:20
     depends_on:
-      - postgres
+      - postgresql
+    ports:
+      - "8222:8080"
+
+volumes:
+  postgresql_data:
+    driver: local

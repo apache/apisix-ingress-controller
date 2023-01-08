@@ -28,20 +28,20 @@ elif [ "$OPTION" = "start" ]; then
 
     sleep 6
 
-    ACCESS_TOKEN=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "username=admin" -d "password=password" -d "grant_type=password" -d 'client_id=admin-cli' "http://127.0.0.1:8222/auth/realms/master/protocol/openid-connect/token"|jq -r '.access_token')
+    ACCESS_TOKEN=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "username=user" -d "password=bitnami" -d "grant_type=password" -d 'client_id=admin-cli' "http://127.0.0.1:8222/realms/master/protocol/openid-connect/token"|jq -r '.access_token')
 
     # update access token lifespan
-    curl --location --request PUT 'http://127.0.0.1:8222/auth/admin/realms/master' \
+    curl --location --request PUT 'http://127.0.0.1:8222/admin/realms/master' \
     --header "Authorization: Bearer $ACCESS_TOKEN" \
     --header 'Content-Type: application/json' \
     --data '{
        "accessTokenLifespan": 604800
     }'
 
-    ACCESS_TOKEN=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "username=admin" -d "password=password" -d "grant_type=password" -d 'client_id=admin-cli' "http://127.0.0.1:8222/auth/realms/master/protocol/openid-connect/token"|jq -r '.access_token')
+    ACCESS_TOKEN=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "username=user" -d "password=bitnami" -d "grant_type=password" -d 'client_id=admin-cli' "http://127.0.0.1:8222/realms/master/protocol/openid-connect/token"|jq -r '.access_token')
 
     # create realm apisix
-    curl --location --request POST 'http://127.0.0.1:8222/auth/admin/realms' \
+    curl --location --request POST 'http://127.0.0.1:8222/admin/realms' \
     --header "Authorization: Bearer $ACCESS_TOKEN" \
     --header 'Content-Type: application/json' \
     --data '{
@@ -56,7 +56,7 @@ elif [ "$OPTION" = "start" ]; then
     }'
 
     # create client apisix
-    curl --location --request POST 'http://127.0.0.1:8222/auth/admin/realms/apisix-realm/clients' \
+    curl --location --request POST 'http://127.0.0.1:8222/admin/realms/apisix-realm/clients' \
     --header "Authorization: Bearer $ACCESS_TOKEN" \
     --header 'Content-Type: application/json' \
     --data '{
@@ -68,14 +68,14 @@ elif [ "$OPTION" = "start" ]; then
 elif [ "$OPTION" = "stop" ]; then
     docker-compose -f 'docker-compose.yaml'  -p 'openid-connect' down
 elif [ "$OPTION" = "secret" ]; then
-    IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' keycloak)
-    ACCESS_TOKEN=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "username=admin" -d "password=password" -d "grant_type=password" -d 'client_id=admin-cli' "http://$IP:8222/auth/realms/master/protocol/openid-connect/token"|jq -r '.access_token')
-    CLIENT_ID=$(curl --location --request GET "http://$IP:8222/auth/admin/realms/apisix-realm/clients?clientId=apisix" --header 'clientId: example' --header "Authorization: Bearer $ACCESS_TOKEN"|jq -r '.[0]|.id')
-    SECRET=$(curl --location --request GET "http://$IP:8222/auth/admin/realms/apisix-realm/clients/$CLIENT_ID/client-secret" --header "Authorization: Bearer $ACCESS_TOKEN"|jq -r '.value')
+    IP="127.0.0.1"
+    ACCESS_TOKEN=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "username=user" -d "password=bitnami" -d "grant_type=password" -d 'client_id=admin-cli' "http://$IP:8222/realms/master/protocol/openid-connect/token"|jq -r '.access_token')
+    CLIENT_ID=$(curl --location --request GET "http://$IP:8222/admin/realms/apisix-realm/clients?clientId=apisix" --header 'clientId: apisix' --header "Authorization: Bearer $ACCESS_TOKEN"|jq -r '.[0]|.id')
+    SECRET=$(curl --location --request GET "http://$IP:8222/admin/realms/apisix-realm/clients/$CLIENT_ID/client-secret" --header "Authorization: Bearer $ACCESS_TOKEN"|jq -r '.value')
     echo "$SECRET"
 elif [ "$OPTION" = "access_token" ]; then
-    IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' keycloak)
-    ACCESS_TOKEN=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "username=admin" -d "password=password" -d "grant_type=password" -d 'client_id=admin-cli' "http://$IP:8222/auth/realms/master/protocol/openid-connect/token"|jq -r '.access_token')
+    IP="127.0.0.1"
+    ACCESS_TOKEN=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "username=user" -d "password=bitnami" -d "grant_type=password" -d 'client_id=admin-cli' "http://$IP:8222/realms/master/protocol/openid-connect/token"|jq -r '.access_token')
     echo "$ACCESS_TOKEN"
 else
     echo "argument is one of [ip, start, stop, secret, access_token]"
