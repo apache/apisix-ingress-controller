@@ -21,9 +21,30 @@ title: Upgrade Guide
 #
 -->
 
+## Version change
+
+### ***1.6.0***
+
+The APISIX 3.x.x has adjusted the admin-api, in order to be compatible with this version, you need to pay attention to the configuration item `adminAPIVersion`, please refer [1.5 to 1.6](#15-to-16).
+
+### ***1.5.0***
+
+- CRD has been upgraded to the V2 version, and V2beta3 has been marked as deprecated.
+- `app_namespace` is deprecated, you can use `namespace_selector` instead.
+
+### ***1.4.0***
+
+- CRD unified upgrade to V2beta3, delete resource v2alpha1 and v1 versions
+
 ## Upgrade using Helm chart
 
-Note: Before upgrading APISIX Ingress, you need to update the corresponding CRD resource first, k8s will automatically replace it with the default CRD resource version, incompatible items will be discarded, and its configuration needs to be updated to the current version.
+Before upgrading APISIX Ingress, you need to update the corresponding CRD resource first, k8s will automatically replace it with the default CRD resource version, incompatible items will be discarded, and its configuration needs to be updated to the current version.
+
+:::note
+
+It is recommended not to upgrade across versions.
+
+:::
 
 ### Operating Step
 
@@ -49,7 +70,7 @@ helm show crds apisix/apisix-ingress-controller | kubectl apply -f -
 > CRDs directory: `charts/apisix-ingress-controller/crds/customresourcedefinitions.yaml`
 >
 > ```sh
-> kubectl apply -f  https://raw.githubusercontent.com/apache/apisix-helm-chart/apisix-0.11.1/charts/apisix-ingress-controller/crds/customresourcedefinitions.yaml
+> kubectl apply -f  https://raw.githubusercontent.com/apache/apisix-helm-chart/apisix-0.12.3/charts/apisix-ingress-controller/crds/customresourcedefinitions.yaml
 > ```
 
 3. UpgradeAPISIX Ingress
@@ -64,23 +85,34 @@ helm upgrade apisix apisix/apisix \
   --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
 ```
 
-### Precautions
-
-It is recommended not to upgrade across major versions.
-
 ### Compatible upgrade
 
 Compatible upgrades can be made without changing any resources.
 
 #### ***1.5 to 1.6***
 
+During install or upgrade, you need to configure [adminAPIVersion](https://github.com/apache/apisix-helm-chart/blob/apisix-0.12.3/charts/apisix-ingress-controller/values.yaml#L134) according to the version of APISIX:
+
+|  version |  config |  value |
+| ---| ---| --- |
+| APISIX >= 3.0.0 | adminAPIVersion | v3 |
+| APISIX <= 2.15.x |  adminAPIVersion | v2 |
+
+The chart version corresponding to `apisix-ingress-controller:1.6`
+
+* `apisix-0.12.3`
+* `apisix-ingress-controller-0.11.3`
+
 ```sh
-helm upgrade apisix apisix/apisix *** # omit some configuration
+helm upgrade apisix apisix/apisix \
+  --version 0.12.3 \
+  --set ingress-controller.config.apisix.adminAPIVersion=v3 \ # APISIX 3.0.0
+  ***  # omit some configuration
 ```
 
 #### ***1.4 to 1.5***
 
-The chart version corresponding to chart version 1.5:
+The chart version corresponding to `apisix-ingress-controller:1.5`:
 
 * `apisix-0.11.3`
 * `apisix-ingress-controller-0.10.1`
@@ -93,7 +125,7 @@ helm upgrade apisix apisix/apisix --version 0.11.3 ***  # omit some configuratio
 
 #### ***1.3 to 1.4***
 
-The chart version corresponding to chart version 1.4:
+The chart version corresponding to `apisix-ingress-controller:1.4`:
 
 * `apisix-0.10.2`
 * `apisix-ingress-controller-0.9.3`
@@ -104,21 +136,6 @@ helm upgrade apisix apisix/apisix --version 0.10.2 ***  # omit some configuratio
 
 Incompatible upgrade, need to change resources.
 ApisixRoute `object(http[].backend)` has been removed in V2beta3 and needs to be converted to `array(http[].backends)`. It is recommended not to upgrade across major versions.
-
-## Version change
-
-### ***1.6.0***
-
-- No breaking changes in this release.
-
-### ***1.5.0***
-
-- CRD has been upgraded to the V2 version, and V2beta3 has been marked as deprecated.
-- `app_namespace` is deprecated, you can use `namespace_selector` instead.
-
-### ***1.4.0***
-
-- CRD unified upgrade to V2beta3, delete resource v2alpha1 and v1 versions
 
 ## Validate Compatibility
 
