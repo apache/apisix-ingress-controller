@@ -434,6 +434,9 @@ func (c *apisixClusterConfigController) ResourceSync() {
 
 // recordStatus record resources status
 func (c *apisixClusterConfigController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
+	if c.DisableStatus {
+		return
+	}
 	// build condition
 	message := utils.CommonSuccessMessage
 	if err != nil {
@@ -475,7 +478,7 @@ func (c *apisixClusterConfigController) recordStatus(at interface{}, reason stri
 			conditions := make([]metav1.Condition, 0)
 			v.Status.Conditions = conditions
 		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+		if utils.VerifyConditions(&v.Status.Conditions, condition) && !meta.IsStatusConditionPresentAndEqual(v.Status.Conditions, condition.Type, condition.Status) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := apisixClient.ApisixV2().ApisixClusterConfigs().
 				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {

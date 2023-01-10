@@ -17,14 +17,13 @@
 package utils
 
 import (
-	"context"
 	"fmt"
 	"net"
+	"sort"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -35,7 +34,7 @@ const (
 )
 
 // IngressPublishAddresses get addressed used to expose Ingress
-func IngressPublishAddresses(ingressPublishService string, ingressStatusAddress []string, kubeClient kubernetes.Interface) ([]string, error) {
+func IngressPublishAddresses(ingressPublishService string, ingressStatusAddress []string, svcLister listerscorev1.ServiceLister) ([]string, error) {
 	addrs := []string{}
 
 	// if ingressStatusAddress is specified, it will be used first
@@ -50,7 +49,7 @@ func IngressPublishAddresses(ingressPublishService string, ingressStatusAddress 
 		return nil, err
 	}
 
-	svc, err := kubeClient.CoreV1().Services(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	svc, err := svcLister.Services(namespace).Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -79,13 +78,13 @@ func IngressPublishAddresses(ingressPublishService string, ingressStatusAddress 
 }
 
 // IngressLBStatusIPs organizes the available addresses
-func IngressLBStatusIPs(ingressPublishService string, ingressStatusAddress []string, kubeClient kubernetes.Interface) ([]corev1.LoadBalancerIngress, error) {
+func IngressLBStatusIPs(ingressPublishService string, ingressStatusAddress []string, svcLister listerscorev1.ServiceLister) ([]corev1.LoadBalancerIngress, error) {
 	lbips := []corev1.LoadBalancerIngress{}
 	var ips []string
 
 	for {
 		var err error
-		ips, err = IngressPublishAddresses(ingressPublishService, ingressStatusAddress, kubeClient)
+		ips, err = IngressPublishAddresses(ingressPublishService, ingressStatusAddress, svcLister)
 		if err != nil {
 			if err.Error() == _gatewayLBNotReadyMessage {
 				log.Warnf("%s. Provided service: %s", _gatewayLBNotReadyMessage, ingressPublishService)
@@ -108,4 +107,39 @@ func IngressLBStatusIPs(ingressPublishService string, ingressStatusAddress []str
 	}
 
 	return lbips, nil
+}
+
+func CompareLoadBalancerIngressEqual(lb1 []corev1.LoadBalancerIngress, lb2 []corev1.LoadBalancerIngress) bool {
+	if len(lb1) != len(lb2) {
+		return false
+	}
+	addrs := []string{}
+	addrs2 := []string{}
+	for _, lb := range lb1 {
+		if lb.IP != "" {
+			addrs = append(addrs, lb.IP)
+		}
+		if lb.Hostname != "" {
+			addrs = append(addrs, lb.Hostname)
+		}
+	}
+	for _, lb := range lb2 {
+		if lb.IP != "" {
+			addrs2 = append(addrs2, lb.IP)
+		}
+		if lb.Hostname != "" {
+			addrs2 = append(addrs2, lb.Hostname)
+		}
+	}
+	if len(addrs) != len(addrs2) {
+		return false
+	}
+	sort.Strings(addrs)
+	sort.Strings(addrs2)
+	for i := 0; i < len(addrs); i++ {
+		if addrs[i] != addrs2[i] {
+			return false
+		}
+	}
+	return true
 }

@@ -457,6 +457,7 @@ func (c *Controller) run(ctx context.Context) {
 			KubeClient:        c.kubeClient.Client,
 			MetricsCollector:  c.MetricsCollector,
 			NamespaceProvider: c.namespaceProvider,
+			ListerInformer:    common.ListerInformer,
 		})
 		if err != nil {
 			ctx.Done()

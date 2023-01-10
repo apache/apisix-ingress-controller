@@ -50,6 +50,9 @@ ingress_status_address: []   # when there is no available information on the Ser
 enable_profiling: true # enable profiling via web interfaces
                        # host:port/debug/pprof, default is true.
 apisix-resource-sync-interval: "300s" # Default interval for synchronizing Kubernetes resources to APISIX
+
+disable_status: false # In the case of a large number of resources and the status of resources is not concerned
+                    # you can consider disabling status to speed up the synchronization cycle of resources.
 # Kubernetes related configurations.
 kubernetes:
   kubeconfig: ""                       # the Kubernetes configuration file path, default is
@@ -86,7 +89,7 @@ kubernetes:
 apisix:
   admin_api_version: v3  # the APISIX admin API version. can be "v2" or "v3"
 
-  default_cluster_base_url: "http://127.0.0.1:9080/apisix/admin" # The base url of admin api / manager api
+  default_cluster_base_url: "http://127.0.0.1:9180/apisix/admin" # The base url of admin api / manager api
                                                                  # of the default APISIX cluster
 
   default_cluster_admin_key: "" # the admin key used for the authentication of admin api / manager api in the

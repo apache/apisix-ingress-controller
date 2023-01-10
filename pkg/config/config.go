@@ -86,6 +86,7 @@ type Config struct {
 	APISIX                     APISIXConfig       `json:"apisix" yaml:"apisix"`
 	ApisixResourceSyncInterval types.TimeDuration `json:"apisix-resource-sync-interval" yaml:"apisix-resource-sync-interval"`
 	PluginMetadataConfigMap    string             `json:"plugin_metadata_cm" yaml:"plugin_metadata_cm"`
+	DisableStatus              bool               `json:"disable_status" yaml:"disable_status"`
 }
 
 // KubernetesConfig contains all Kubernetes related config items.
