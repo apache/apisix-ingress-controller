@@ -325,6 +325,9 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
 		route.Timeout = timeout
+		if part.PluginConfigName != "" {
+			route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, part.PluginConfigName))
+		}
 		for k, v := range ar.ObjectMeta.Labels {
 			route.Metadata.Labels[k] = v
 		}
@@ -351,9 +354,6 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 
 			upstreamName := apisixv1.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, svcPort, backend.ResolveGranularity)
 			route.UpstreamId = id.GenID(upstreamName)
-			if part.PluginConfigName != "" {
-				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, part.PluginConfigName))
-			}
 
 			if len(backends) > 0 {
 				weight := translation.DefaultWeight

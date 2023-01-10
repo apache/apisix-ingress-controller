@@ -539,5 +539,68 @@ spec:
 	})
 	ginkgo.Describe("suite-plugins-other: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
+
+		s := scaffold.NewDefaultV2Scaffold()
+		ginkgo.It("applies plugin config for route with upstream", func() {
+			apc := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+ name: httpbin-plugins
+spec:
+ plugins:
+ - name: proxy-rewrite
+   enable: true
+   config:
+     regex_uri:
+     - ^/httpbin/(.*)
+     - /$1			
+`)
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
+
+			au := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+ name: httpbin-upstream
+spec:
+ externalNodes:
+ - type: Domain
+   name: httpbin.org
+`)
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(au))
+
+			ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: httpbin-route-rule
+   match:
+    hosts:
+    - httpbin.org
+    paths:
+    - /httpbin/*
+    methods:
+    - GET
+   upstreams:
+   - name: httpbin-upstream
+   plugin_config_name: httpbin-plugins
+`)
+
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixPluginConfigCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+			resp := s.NewAPISIXClient().GET("/httpbin/ip").WithHeader("Host", "httpbin.org").Expect()
+			resp.Status(http.StatusOK)
+		})
 	})
 })
