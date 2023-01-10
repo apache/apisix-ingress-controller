@@ -38,7 +38,12 @@ kubectl create ns ingress-apisix
 You could install APISIX and APISIX ingress controller by running:
 
 ```bash
-helm install apisix apisix/apisix -n ingress-apisix --set gateway.type=NodePort --set ingress-controller.enabled=true --set gateway.tls.enabled=true --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
+helm install apisix apisix/apisix -n ingress-apisix \
+  --set gateway.type=NodePort \
+  --set ingress-controller.enabled=true \
+  --set gateway.tls.enabled=true \
+  --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix \
+  --set ingress-controller.config.apisix.adminAPIVersion=v3
 ```
 
 Check that all related components have been installed successfully, including ETCD cluster / APISIX / apisix-ingress-controller.

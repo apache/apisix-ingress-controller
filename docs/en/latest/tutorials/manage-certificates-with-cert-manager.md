@@ -35,7 +35,12 @@ In this guide, we assume that your APISIX is installed with `ssl` enabled, which
 For example, you could install APISIX and APISIX ingress controller by running:
 
 ```bash
-helm install apisix apisix/apisix --set gateway.type=NodePort --set ingress-controller.enabled=true --set gateway.tls.enabled=true --set ingress-controller.config.apisix.serviceNamespace=default
+helm install apisix apisix/apisix \
+  --set gateway.type=NodePort \
+  --set ingress-controller.enabled=true \
+  --set gateway.tls.enabled=true \
+  --set ingress-controller.config.apisix.serviceNamespace=default \
+  --set ingress-controller.config.apisix.adminAPIVersion=v3
 ```
 
 Assume that the SSL port is `9443`.

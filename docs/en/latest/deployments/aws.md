@@ -44,12 +44,13 @@ The script below installs APISIX and the ingress controller:
 helm repo add apisix https://charts.apiseven.com
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update
-kubectl create ns ingress-apisix
 helm install apisix apisix/apisix \
   --set gateway.type=LoadBalancer \
   --set ingress-controller.enabled=true \
+  --create-namespace \
   --namespace ingress-apisix \
-  --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
+  --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix \
+  --set ingress-controller.config.apisix.adminAPIVersion=v3
 kubectl get service --namespace ingress-apisix
 ```
 
@@ -61,8 +62,10 @@ By default AWS provisions a [Classic LoadBalancer](https://docs.aws.amazon.com/e
 helm install apisix apisix/apisix \
   --set gateway.type=LoadBalancer \
   --set ingress-controller.enabled=true \
+  --create-namespace \
   --namespace ingress-apisix \
   --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix \
+  --set ingress-controller.config.apisix.adminAPIVersion=v3 \
   --set gateway.tls.enabled=true \
   --set gateway.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"=nlb
 ```
