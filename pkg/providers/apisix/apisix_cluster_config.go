@@ -478,7 +478,7 @@ func (c *apisixClusterConfigController) recordStatus(at interface{}, reason stri
 			conditions := make([]metav1.Condition, 0)
 			v.Status.Conditions = conditions
 		}
-		if utils.VerifyConditions(&v.Status.Conditions, condition) && !meta.IsStatusConditionPresentAndEqual(v.Status.Conditions, condition.Type, condition.Status) {
+		if utils.VerifyConditions(&v.Status.Conditions, condition) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := apisixClient.ApisixV2().ApisixClusterConfigs().
 				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
