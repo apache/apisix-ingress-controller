@@ -477,9 +477,8 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 			)
 
 		}
-		log.Error("ingress update status ...")
+
 		if !utils.CompareLoadBalancerIngressEqual(v.Status.LoadBalancer.Ingress, lbips) {
-			log.Error("ingress update status successed")
 			v.Status.LoadBalancer.Ingress = lbips
 			if _, errRecord := client.NetworkingV1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 				log.Errorw("failed to record status change for IngressV1",
