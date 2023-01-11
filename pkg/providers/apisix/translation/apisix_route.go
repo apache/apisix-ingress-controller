@@ -330,7 +330,7 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 		if part.PluginConfigName != "" {
 			route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, part.PluginConfigName))
 		}
-    
+
 		for k, v := range ar.ObjectMeta.Labels {
 			route.Metadata.Labels[k] = v
 		}
