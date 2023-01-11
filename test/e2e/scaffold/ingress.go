@@ -396,8 +396,7 @@ spec:
             - "%s"
             - --enable-gateway-api
             - "true"
-            - --disable-status
-            - "%s"
+            %s
           %s
       volumes:
        - name: webhook-certs
@@ -439,12 +438,17 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		label = labels[0]
 	}
 
+	disableStatusStr := ""
+	if s.opts.DisableStatus {
+		disableStatusStr = "- --disable-status"
+	}
+
 	if s.opts.EnableWebhooks {
 		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval,
-			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.DisableStatus, _volumeMounts, _webhookCertSecret)
+			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, disableStatusStr, _volumeMounts, _webhookCertSecret)
 	} else {
 		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval,
-			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.DisableStatus, "", _webhookCertSecret)
+			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, disableStatusStr, "", _webhookCertSecret)
 	}
 
 	err = s.CreateResourceFromString(ingressAPISIXDeployment)

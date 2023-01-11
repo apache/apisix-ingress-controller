@@ -29,7 +29,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 	"text/template"
 	"time"
 
@@ -89,8 +88,6 @@ type Scaffold struct {
 
 	// Used for template rendering.
 	EtcdServiceFQDN string
-
-	mutex sync.Mutex
 }
 
 type apisixResourceVersionInfo struct {
