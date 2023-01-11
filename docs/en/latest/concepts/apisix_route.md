@@ -178,6 +178,12 @@ spec:
 
 APISIX's [80+ Plugins](https://apisix.apache.org/docs/apisix/plugins/batch-requests/) can be used with APISIX Ingress. These Plugins have the same name as in the APISIX documentation.
 
+:::note
+
+If the Plugin is not enabled in APISIX by default, you can enable it by adding it to the `plugins` attribute in your `values.yaml` file while installing APISIX and Ingress controller via Helm.
+
+:::
+
 The example below configures [cors](https://apisix.apache.org/docs/apisix/plugins/cors/) Plugin for the route:
 
 ```yaml
