@@ -180,7 +180,7 @@ APISIX's [80+ Plugins](https://apisix.apache.org/docs/apisix/plugins/batch-reque
 
 :::note
 
-If the Plugin is not enabled in APISIX by default, you can enable it by adding it to the `plugins` attribute in your `values.yaml` file while installing APISIX and Ingress controller via Helm.
+If the Plugin is not enabled in APISIX by default, you can enable it by adding it to the `plugins` attribute in your `values.yaml` file while installing APISIX and Ingress controller via Helm. Alternatively, you can directly modify your APISIX configuration file (`conf/config.yaml`) to enable/disable Plugins.
 
 :::
 
