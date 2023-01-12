@@ -19,19 +19,23 @@ version: '3'
 services:
   postgresql:
     container_name: postgres
-    image: docker.io/bitnami/postgresql:11
+    image: postgres:11-bullseye
     environment:
-      - ALLOW_EMPTY_PASSWORD=yes
-      - POSTGRESQL_USERNAME=bn_keycloak
-      - POSTGRESQL_DATABASE=bitnami_keycloak
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
       - 'postgresql_data:/bitnami/postgresql'
-
   keycloak:
     container_name: keycloak
-    image: docker.io/bitnami/keycloak:20
+    image: quay.io/keycloak/keycloak:20.0.2
     depends_on:
       - postgresql
+    environment:
+      - DB_VENDOR=h2
+      - SSL_REQUIRED=none
+      - KEYCLOAK_ADMIN=user
+      - KEYCLOAK_ADMIN_PASSWORD=bitnami
+    command: start-dev
     ports:
       - "8222:8080"
 
