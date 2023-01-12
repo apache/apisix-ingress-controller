@@ -229,7 +229,6 @@ spec:
                               - "jwtAuth"
                               - "wolfRBAC"
                               - "hmacAuth"
-                              - "ldapAuth"
                           keyAuth:
                             type: object
                             properties:
@@ -243,17 +242,6 @@ spec:
                               query:
                                 type: string
                               cookie:
-                                type: string
-                          ldapAuth:
-                            type: object
-                            properties:
-                              base_dn:
-                                type: string
-                              ldap_uri:
-                                type: string
-                              use_tls:
-                                type: boolean
-                              uid:
                                 type: string
                         required:
                           - enable

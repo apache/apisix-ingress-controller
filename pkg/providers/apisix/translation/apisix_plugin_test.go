@@ -1041,12 +1041,12 @@ func TestTranslateConsumerHMACAuthPluginWithSecretRef(t *testing.T) {
 }
 
 func TestTranslateConsumerLDAPAuthPluginWithInPlaceValue(t *testing.T) {
-	ldapAuth := &configv2beta3.ApisixConsumerLDAPAuth{
-		Value: &configv2beta3.ApisixConsumerLDAPAuthValue{
+	ldapAuth := &configv2.ApisixConsumerLDAPAuth{
+		Value: &configv2.ApisixConsumerLDAPAuthValue{
 			UserDN: "cn=user01,ou=users,dc=example,dc=org",
 		},
 	}
-	cfg, err := (&translator{}).translateConsumerLDAPAuthPluginV2beta3("default", ldapAuth)
+	cfg, err := (&translator{}).translateConsumerLDAPAuthPluginV2("default", ldapAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "cn=user01,ou=users,dc=example,dc=org", cfg.UserDN)
 }
@@ -1087,10 +1087,10 @@ func TestTranslateConsumerLDAPAuthPluginWithSecretRef(t *testing.T) {
 
 	<-processCh
 
-	ldapAuth := &configv2beta3.ApisixConsumerLDAPAuth{
+	ldapAuth := &configv2.ApisixConsumerLDAPAuth{
 		SecretRef: &corev1.LocalObjectReference{Name: "fatpa-ldap-auth"},
 	}
-	cfg, err := tr.translateConsumerLDAPAuthPluginV2beta3("default", ldapAuth)
+	cfg, err := tr.translateConsumerLDAPAuthPluginV2("default", ldapAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "cn=user01,ou=users,dc=example,dc=org", cfg.UserDN)
 }

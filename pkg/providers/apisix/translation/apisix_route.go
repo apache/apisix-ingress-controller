@@ -149,8 +149,6 @@ func (t *translator) translateHTTPRouteV2beta3(ctx *translation.TranslateContext
 				pluginMap["jwt-auth"] = part.Authentication.JwtAuth
 			case "hmacAuth":
 				pluginMap["hmac-auth"] = make(map[string]interface{})
-			case "ldapAuth":
-				pluginMap["ldap-auth"] = part.Authentication.LDAPAuth
 			default:
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			}
@@ -617,8 +615,6 @@ func (t *translator) generateHTTPRouteV2beta3DeleteMark(ctx *translation.Transla
 				pluginMap["jwt-auth"] = part.Authentication.JwtAuth
 			case "hmacAuth":
 				pluginMap["hmac-auth"] = make(map[string]interface{})
-			case "ldapAuth":
-				pluginMap["ldap-auth"] = part.Authentication.LDAPAuth
 			default:
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			}
