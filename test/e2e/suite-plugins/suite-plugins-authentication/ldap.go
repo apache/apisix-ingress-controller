@@ -43,7 +43,7 @@ var _ = ginkgo.Describe("suite-plugins-authentication: ApisixConsumer with ldap"
 
 		ginkgo.It("ApisixRoute with ldapAuth consumer", func() {
 			ac := `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
   name: jack
@@ -69,7 +69,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "check ldap server")
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -133,7 +133,7 @@ data:
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating ldapAuth secret for ApisixConsumer")
 
 			ac := `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
   name: jack
@@ -159,7 +159,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "check ldap server")
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
