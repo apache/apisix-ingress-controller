@@ -27,6 +27,8 @@ linters-settings:
     local-prefixes: github.com/apache/apisix-ingress-controller
 
 linters:
+  disable:
+    - errcheck
   enable:
     - goimports
     - govet

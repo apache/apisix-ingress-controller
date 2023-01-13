@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -254,7 +253,7 @@ func (c *gatewayController) recordStatus(v *gatewayv1beta1.Gateway, reason strin
 		)
 	}
 
-	v.Status.Addresses = convLBIPToGatewayAddr(lbips)
+	v.Status.Addresses = utils.CoreV1ToGatewayV1beta1Addr(lbips)
 	if _, errRecord := c.controller.gatewayClient.GatewayV1beta1().Gateways(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 		log.Errorw("failed to record status change for Gateway resource",
 			zap.Error(errRecord),
@@ -262,32 +261,4 @@ func (c *gatewayController) recordStatus(v *gatewayv1beta1.Gateway, reason strin
 			zap.String("namespace", v.Namespace),
 		)
 	}
-}
-
-// convLBIPToGatewayAddr convert LoadBalancerIngress to GatewayAddress format
-func convLBIPToGatewayAddr(lbips []corev1.LoadBalancerIngress) []gatewayv1beta1.GatewayAddress {
-	var gas []gatewayv1beta1.GatewayAddress
-
-	// In the definition, there is also an address type called NamedAddress,
-	// which we currently do not implement
-	HostnameAddressType := gatewayv1beta1.HostnameAddressType
-	IPAddressType := gatewayv1beta1.IPAddressType
-
-	for _, lbip := range lbips {
-		if v := lbip.Hostname; v != "" {
-			gas = append(gas, gatewayv1beta1.GatewayAddress{
-				Type:  &HostnameAddressType,
-				Value: v,
-			})
-		}
-
-		if v := lbip.IP; v != "" {
-			gas = append(gas, gatewayv1beta1.GatewayAddress{
-				Type:  &IPAddressType,
-				Value: v,
-			})
-		}
-	}
-
-	return gas
 }
