@@ -23,9 +23,13 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
+	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
@@ -108,4 +112,66 @@ func IngressLBStatusIPs(ingressPublishService string, ingressStatusAddress []str
 	}
 
 	return lbips, nil
+}
+
+// CoreV1ToNetworkV1LB convert []corev1.LoadBalancerIngress to []networkingv1.IngressLoadBalancerIngress
+func CoreV1ToNetworkV1LB(lbips []corev1.LoadBalancerIngress) []networkingv1.IngressLoadBalancerIngress {
+	t := make([]networkingv1.IngressLoadBalancerIngress, 0, len(lbips))
+	for _, lbip := range lbips {
+		t = append(t, networkingv1.IngressLoadBalancerIngress{
+			Hostname: lbip.Hostname,
+			IP:       lbip.IP,
+		})
+	}
+	return t
+}
+
+// CoreV1ToNetworkV1beta1LB convert []corev1.LoadBalancerIngress to []networkingv1beta1.IngressLoadBalancerIngress
+func CoreV1ToNetworkV1beta1LB(lbips []corev1.LoadBalancerIngress) []networkingv1beta1.IngressLoadBalancerIngress {
+	t := make([]networkingv1beta1.IngressLoadBalancerIngress, 0, len(lbips))
+	for _, lbip := range lbips {
+		t = append(t, networkingv1beta1.IngressLoadBalancerIngress{
+			Hostname: lbip.Hostname,
+			IP:       lbip.IP,
+		})
+	}
+	return t
+}
+
+// CoreV1ToExtensionsV1beta1LB convert []corev1.LoadBalancerIngress to []extensionsv1beta1.IngressLoadBalancerIngress
+func CoreV1ToExtensionsV1beta1LB(lbips []corev1.LoadBalancerIngress) []extensionsv1beta1.IngressLoadBalancerIngress {
+	t := make([]extensionsv1beta1.IngressLoadBalancerIngress, 0, len(lbips))
+	for _, lbip := range lbips {
+		t = append(t, extensionsv1beta1.IngressLoadBalancerIngress{
+			Hostname: lbip.Hostname,
+			IP:       lbip.IP,
+		})
+	}
+	return t
+}
+
+func CoreV1ToGatewayV1beta1Addr(lbips []corev1.LoadBalancerIngress) []gatewayv1beta1.GatewayAddress {
+	t := make([]gatewayv1beta1.GatewayAddress, 0, len(lbips))
+
+	// In the definition, there is also an address type called NamedAddress,
+	// which we currently do not implement
+	HostnameAddressType := gatewayv1beta1.HostnameAddressType
+	IPAddressType := gatewayv1beta1.IPAddressType
+
+	for _, lbip := range lbips {
+		if v := lbip.Hostname; v != "" {
+			t = append(t, gatewayv1beta1.GatewayAddress{
+				Type:  &HostnameAddressType,
+				Value: v,
+			})
+		}
+
+		if v := lbip.IP; v != "" {
+			t = append(t, gatewayv1beta1.GatewayAddress{
+				Type:  &IPAddressType,
+				Value: v,
+			})
+		}
+	}
+	return t
 }
