@@ -115,7 +115,7 @@ type HMACAuthConsumerConfig struct {
 // +k8s:deepcopy-gen=true
 type OpenIDConnectConsumerConfig struct {
 	ClientID                         string                `json:"client_id" yaml:"client_id"`
-	ClientSecret                     string                `json:"secret_key" yaml:"secret_key"`
+	ClientSecret                     string                `json:"client_secret" yaml:"client_secret"`
 	Discovery                        string                `json:"discovery" yaml:"discovery"`
 	Scope                            string                `json:"scope,omitempty" yaml:"scope,omitempty"`
 	Realm                            string                `json:"realm,omitempty" yaml:"realm,omitempty"`

@@ -27,7 +27,7 @@ services:
       - 'postgresql_data:/bitnami/postgresql'
   keycloak:
     container_name: keycloak
-    image: quay.io/keycloak/keycloak:20.0.2
+    image: quay.io/keycloak/keycloak:20.0
     depends_on:
       - postgresql
     environment:

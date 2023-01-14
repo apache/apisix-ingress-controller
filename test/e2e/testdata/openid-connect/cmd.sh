@@ -26,10 +26,9 @@ if  [ "$OPTION" = "ip" ]; then
 elif [ "$OPTION" = "start" ]; then
     docker-compose -f 'docker-compose.yaml'  -p 'openid-connect' up -d
 
-    sleep 6
+    sleep 60
 
     ACCESS_TOKEN=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "username=user" -d "password=bitnami" -d "grant_type=password" -d 'client_id=admin-cli' "http://127.0.0.1:8222/realms/master/protocol/openid-connect/token"|jq -r '.access_token')
-
     # update access token lifespan
     curl --location --request PUT 'http://127.0.0.1:8222/admin/realms/master' \
     --header "Authorization: Bearer $ACCESS_TOKEN" \

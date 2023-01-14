@@ -52,6 +52,7 @@ spec:
                     - required: ["wolfRBAC"]
                     - required: ["jwtAuth"]
                     - required: ["hmacAuth"]
+                    - required: ["openidConnect"]
                   properties:
                     basicAuth:
                       type: object
@@ -198,6 +199,78 @@ spec:
                               minLength: 1
                           required:
                             - name
+                    openidConnect:
+                      type: object
+                      oneOf:
+                        - required: [ "value" ]
+                        - required: [ "secretRef" ]
+                      properties:
+                        value:
+                          type: object
+                          properties:
+                            client_id:
+                              type: string
+                            client_secret:
+                              type: string
+                            discovery:
+                              type: string
+                            scope:
+                              type: string
+                            realm:
+                              type: string
+                            bearer_only:
+                              type: boolean
+                            logout_path:
+                              type: string
+                            post_logout_redirect_uri:
+                              type: string
+                            redirect_uri:
+                              type: string
+                            timeout:
+                              type: integer
+                            ssl_verify:
+                              type: boolean
+                            introspection_endpoint:
+                              type: string
+                            introspection_endpoint_auth_method:
+                              type: string
+                            token_endpoint_auth_method:
+                              type: string
+                            public_key:
+                              type: string
+                            use_jwks:
+                              type: boolean
+                            use_pkce:
+                              type: boolean
+                            token_signing_alg_values_expected:
+                              type: string
+                            set_access_token_header:
+                              type: boolean
+                            access_token_in_authorization_header:
+                              type: boolean
+                            set_id_token_header:
+                              type: boolean
+                            set_userinfo_header:
+                              type: boolean
+                            set_refresh_token_header:
+                              type: boolean
+                            session:
+                              type: object
+                              properties:
+                                secret:
+                                  type: string
+                          required:
+                            - client_id
+                            - client_secret
+                            - discovery
+                        secretRef:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                              minLength: 1
+                          required:
+                              - name
     - name: v2
       served: true
       storage: true
@@ -220,6 +293,7 @@ spec:
                     - required: ["wolfRBAC"]
                     - required: ["jwtAuth"]
                     - required: ["hmacAuth"]
+                    - required: ["openidConnect"]
                   properties:
                     basicAuth:
                       type: object
@@ -358,6 +432,78 @@ spec:
                           required:
                             - access_key
                             - secret_key
+                        secretRef:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                              minLength: 1
+                          required:
+                            - name
+                    openidConnect:
+                      type: object
+                      oneOf:
+                        - required: [ "value" ]
+                        - required: [ "secretRef" ]
+                      properties:
+                        value:
+                          type: object
+                          properties:
+                            client_id:
+                              type: string
+                            client_secret:
+                              type: string
+                            discovery:
+                              type: string
+                            scope:
+                              type: string
+                            realm:
+                              type: string
+                            bearer_only:
+                              type: boolean
+                            logout_path:
+                              type: string
+                            post_logout_redirect_uri:
+                              type: string
+                            redirect_uri:
+                              type: string
+                            timeout:
+                              type: integer
+                            ssl_verify:
+                              type: boolean
+                            introspection_endpoint:
+                              type: string
+                            introspection_endpoint_auth_method:
+                              type: string
+                            token_endpoint_auth_method:
+                              type: string
+                            public_key:
+                              type: string
+                            use_jwks:
+                              type: boolean
+                            use_pkce:
+                              type: boolean
+                            token_signing_alg_values_expected:
+                              type: string
+                            set_access_token_header:
+                              type: boolean
+                            access_token_in_authorization_header:
+                              type: boolean
+                            set_id_token_header:
+                              type: boolean
+                            set_userinfo_header:
+                              type: boolean
+                            set_refresh_token_header:
+                              type: boolean
+                            session:
+                              type: object
+                              properties:
+                                secret:
+                                  type: string
+                          required:
+                            - client_id
+                            - client_secret
+                            - discovery
                         secretRef:
                           type: object
                           properties:
