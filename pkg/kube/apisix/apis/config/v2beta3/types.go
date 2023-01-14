@@ -338,12 +338,11 @@ type ApisixConsumerSpec struct {
 }
 
 type ApisixConsumerAuthParameter struct {
-	BasicAuth     *ApisixConsumerBasicAuth     `json:"basicAuth,omitempty" yaml:"basicAuth"`
-	KeyAuth       *ApisixConsumerKeyAuth       `json:"keyAuth,omitempty" yaml:"keyAuth"`
-	WolfRBAC      *ApisixConsumerWolfRBAC      `json:"wolfRBAC,omitempty" yaml:"wolfRBAC"`
-	JwtAuth       *ApisixConsumerJwtAuth       `json:"jwtAuth,omitempty" yaml:"jwtAuth"`
-	HMACAuth      *ApisixConsumerHMACAuth      `json:"hmacAuth,omitempty" yaml:"hmacAuth"`
-	OpenIDConnect *ApisixConsumerOpenIDConnect `json:"openidConnect,omitempty" yaml:"openidConnect"`
+	BasicAuth *ApisixConsumerBasicAuth `json:"basicAuth,omitempty" yaml:"basicAuth"`
+	KeyAuth   *ApisixConsumerKeyAuth   `json:"keyAuth,omitempty" yaml:"keyAuth"`
+	WolfRBAC  *ApisixConsumerWolfRBAC  `json:"wolfRBAC,omitempty" yaml:"wolfRBAC"`
+	JwtAuth   *ApisixConsumerJwtAuth   `json:"jwtAuth,omitempty" yaml:"jwtAuth"`
+	HMACAuth  *ApisixConsumerHMACAuth  `json:"hmacAuth,omitempty" yaml:"hmacAuth"`
 }
 
 // ApisixConsumerBasicAuth defines the configuration for basic auth.
@@ -416,45 +415,6 @@ type ApisixConsumerHMACAuthValue struct {
 	EncodeURIParams     bool     `json:"encode_uri_params,omitempty" yaml:"encode_uri_params,omitempty"`
 	ValidateRequestBody bool     `json:"validate_request_body,omitempty" yaml:"validate_request_body,omitempty"`
 	MaxReqBody          int64    `json:"max_req_body,omitempty" yaml:"max_req_body,omitempty"`
-}
-
-// ApisixConsumerOpenIDConnect defines the configuration for the openid connect.
-type ApisixConsumerOpenIDConnect struct {
-	SecretRef *corev1.LocalObjectReference      `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
-	Value     *ApisixConsumerOpenIDConnectValue `json:"value,omitempty" yaml:"value,omitempty"`
-}
-
-// ApisixConsumerOpenIDConnectValue defines the in-place configuration for openid connect.
-type ApisixConsumerOpenIDConnectValue struct {
-	ClientID                         string                              `json:"client_id" yaml:"client_id"`
-	ClientSecret                     string                              `json:"client_secret" yaml:"client_secret"`
-	Discovery                        string                              `json:"discovery" yaml:"discovery"`
-	Scope                            string                              `json:"scope,omitempty" yaml:"scope,omitempty"`
-	Realm                            string                              `json:"realm,omitempty" yaml:"realm,omitempty"`
-	BearerOnly                       bool                                `json:"bearer_only,omitempty" yaml:"bearer_only,omitempty"`
-	LogoutPath                       string                              `json:"logout_path,omitempty" yaml:"logout_path,omitempty"`
-	PostLogoutRedirectURI            string                              `json:"post_logout_redirect_uri,omitempty" yaml:"post_logout_redirect_uri,omitempty"`
-	RedirectURI                      string                              `json:"redirect_uri,omitempty" yaml:"redirect_uri,omitempty"`
-	Timeout                          int64                               `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-	SslVerify                        bool                                `json:"ssl_verify,omitempty" yaml:"ssl_verify,omitempty"`
-	IntrospectionEndpoint            string                              `json:"introspection_endpoint,omitempty" yaml:"introspection_endpoint,omitempty"`
-	IntrospectionEndpointAuthMethod  string                              `json:"introspection_endpoint_auth_method,omitempty" yaml:"introspection_endpoint_auth_method,omitempty"`
-	TokenEndpointAuthMethod          string                              `json:"token_endpoint_auth_method,omitempty" yaml:"token_endpoint_auth_method,omitempty"`
-	PublicKey                        string                              `json:"public_key,omitempty" yaml:"public_key,omitempty"`
-	UseJwks                          bool                                `json:"use_jwks,omitempty" yaml:"use_jwks,omitempty"`
-	UsePkce                          bool                                `json:"use_pkce,omitempty" yaml:"use_pkce,omitempty"`
-	TokenSigningAlgValuesExpected    string                              `json:"token_signing_alg_values_expected,omitempty" yaml:"token_signing_alg_values_expected,omitempty"`
-	SetAccessTokenHeader             bool                                `json:"set_access_token_header,omitempty" yaml:"set_access_token_header,omitempty"`
-	AccessTokeninAuthorizationHeader bool                                `json:"access_token_in_authorization_header,omitempty" yaml:"access_token_in_authorization_header,omitempty"`
-	SetIdTokenHeader                 bool                                `json:"set_id_token_header,omitempty" yaml:"set_id_token_header,omitempty"`
-	SetUserinfoHeader                bool                                `json:"set_userinfo_header,omitempty" yaml:"set_userinfo_header,omitempty"`
-	SetRefreshTokenHeader            bool                                `json:"set_refresh_token_header,omitempty" yaml:"set_refresh_token_header,omitempty"`
-	Session                          *ApisixConsumerOpenIDConnectSession `json:"session,omitempty" yaml:"session,omitempty"`
-}
-
-// ApisixConsumerOpenIDConnectSession defines the in-place configuration for openid connect.
-type ApisixConsumerOpenIDConnectSession struct {
-	Secret string `json:"secret" yaml:"secret"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
