@@ -615,8 +615,6 @@ func (t *translator) generateHTTPRouteV2beta3DeleteMark(ctx *translation.Transla
 				pluginMap["jwt-auth"] = part.Authentication.JwtAuth
 			case "hmacAuth":
 				pluginMap["hmac-auth"] = make(map[string]interface{})
-			case "openid-connect":
-				pluginMap["openid-connect"] = make(map[string]interface{})
 			default:
 				pluginMap["basic-auth"] = make(map[string]interface{})
 			}
