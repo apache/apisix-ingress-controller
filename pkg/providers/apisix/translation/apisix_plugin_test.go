@@ -1040,23 +1040,6 @@ func TestTranslateConsumerHMACAuthPluginWithSecretRef(t *testing.T) {
 	close(stopCh)
 }
 
-func TestTranslateConsumerOpenIDConnectPluginWithInPlaceValue(t *testing.T) {
-	openidConnect := &configv2beta3.ApisixConsumerOpenIDConnect{
-		Value: &configv2beta3.ApisixConsumerOpenIDConnectValue{
-			ClientID:     "foo",
-			ClientSecret: "foo-secret",
-			Discovery:    "dis",
-		},
-	}
-
-	cfg, err := (&translator{}).translateConsumerOpenIDConnectPluginV2beta3("default", openidConnect)
-	assert.Nil(t, err)
-	assert.Equal(t, "foo", cfg.ClientID)
-	assert.Equal(t, "foo-secret", cfg.ClientSecret)
-	assert.Equal(t, int64(3), cfg.Timeout)
-	assert.Equal(t, false, cfg.BearerOnly)
-}
-
 func TestTranslateConsumerOpenIDConnectPluginWithSecretRef(t *testing.T) {
 	sec := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1094,9 +1077,9 @@ func TestTranslateConsumerOpenIDConnectPluginWithSecretRef(t *testing.T) {
 
 	<-processCh
 
-	openidConnect := &configv2beta3.ApisixConsumerOpenIDConnect{
+	openidConnect := &configv2.ApisixConsumerOpenIDConnect{
 		SecretRef: &corev1.LocalObjectReference{Name: "fatpa-openid-connect"}}
-	cfg, err := tr.translateConsumerOpenIDConnectPluginV2beta3("default", openidConnect)
+	cfg, err := tr.translateConsumerOpenIDConnectPluginV2("default", openidConnect)
 	assert.Nil(t, err)
 	assert.Equal(t, "foo", cfg.ClientID)
 	assert.Equal(t, "foo-secret", cfg.ClientSecret)
@@ -1107,7 +1090,7 @@ func TestTranslateConsumerOpenIDConnectPluginWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerOpenIDConnectPluginV2beta3("default", openidConnect)
+	cfg, err = tr.translateConsumerOpenIDConnectPluginV2("default", openidConnect)
 	assert.Nil(t, cfg)
 	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
 
@@ -1116,7 +1099,7 @@ func TestTranslateConsumerOpenIDConnectPluginWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerOpenIDConnectPluginV2beta3("default", openidConnect)
+	cfg, err = tr.translateConsumerOpenIDConnectPluginV2("default", openidConnect)
 	assert.Nil(t, cfg)
 	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
 
