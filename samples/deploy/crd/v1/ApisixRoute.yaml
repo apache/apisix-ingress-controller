@@ -229,7 +229,6 @@ spec:
                               - "jwtAuth"
                               - "wolfRBAC"
                               - "hmacAuth"
-                              - "openidConnect"
                           keyAuth:
                             type: object
                             properties:
