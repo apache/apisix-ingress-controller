@@ -52,7 +52,6 @@ spec:
                     - required: ["wolfRBAC"]
                     - required: ["jwtAuth"]
                     - required: ["hmacAuth"]
-                    - required: ["openidConnect"]
                   properties:
                     basicAuth:
                       type: object
