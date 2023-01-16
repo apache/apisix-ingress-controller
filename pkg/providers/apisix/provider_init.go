@@ -16,7 +16,6 @@ package apisix
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"go.uber.org/zap"
@@ -49,16 +48,6 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 		pluginConfigMapA6 = make(map[string]string)
 	)
 
-	p.apisixSharedInformerFactory.Start(ctx.Done())
-	synced := p.apisixSharedInformerFactory.WaitForCacheSync(ctx.Done())
-	for v, ok := range synced {
-		if !ok {
-			err := fmt.Errorf("%s cache failed to sync", v.Name())
-			log.Error(err.Error())
-			return err
-		}
-	}
-
 	namespaces := p.namespaceProvider.WatchingNamespaces()
 
 	for _, key := range namespaces {
@@ -69,13 +58,13 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 			// ApisixRoute
 			switch p.common.Config.Kubernetes.APIVersion {
 			case config.ApisixV2beta3:
-				retRoutes, err := p.apisixSharedInformerFactory.Apisix().V2beta3().ApisixRoutes().Lister().ApisixRoutes(ns).List(labels.Everything())
+				retRoutes, err := p.common.ApisixRouteLister.V2beta3Lister().List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
 				} else {
 					for _, r := range retRoutes {
-						tc, err := p.apisixTranslator.TranslateRouteV2beta3NotStrictly(r)
+						tc, err := p.apisixTranslator.GenerateRouteV2beta3DeleteMark(r)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -104,13 +93,13 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 					}
 				}
 			case config.ApisixV2:
-				retRoutes, err := p.apisixSharedInformerFactory.Apisix().V2().ApisixRoutes().Lister().ApisixRoutes(ns).List(labels.Everything())
+				retRoutes, err := p.common.ApisixRouteLister.V2Lister().List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
 				} else {
 					for _, r := range retRoutes {
-						tc, err := p.apisixTranslator.TranslateRouteV2NotStrictly(r)
+						tc, err := p.apisixTranslator.GenerateRouteV2DeleteMark(r)
 						if err != nil {
 							log.Error(err.Error())
 							ctx.Done()
@@ -149,7 +138,7 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 			switch p.common.Config.Kubernetes.APIVersion {
 			case config.ApisixV2beta3:
 				// ApisixConsumer
-				retConsumer, err := p.apisixSharedInformerFactory.Apisix().V2beta3().ApisixConsumers().Lister().ApisixConsumers(ns).List(labels.Everything())
+				retConsumer, err := p.common.ApisixFactory.Apisix().V2beta3().ApisixConsumers().Lister().List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
@@ -165,7 +154,7 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 					}
 				}
 				// ApisixTls
-				retSSL, err := p.apisixSharedInformerFactory.Apisix().V2beta3().ApisixTlses().Lister().ApisixTlses(ns).List(labels.Everything())
+				retSSL, err := p.common.ApisixFactory.Apisix().V2beta3().ApisixTlses().Lister().ApisixTlses(ns).List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
@@ -182,7 +171,7 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 				}
 			case config.ApisixV2:
 				// ApisixConsumer
-				retConsumer, err := p.apisixSharedInformerFactory.Apisix().V2().ApisixConsumers().Lister().ApisixConsumers(ns).List(labels.Everything())
+				retConsumer, err := p.common.ApisixFactory.Apisix().V2().ApisixConsumers().Lister().ApisixConsumers(ns).List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()
@@ -198,7 +187,7 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 					}
 				}
 				// ApisixTls
-				retSSL, err := p.apisixSharedInformerFactory.Apisix().V2().ApisixTlses().Lister().ApisixTlses(ns).List(labels.Everything())
+				retSSL, err := p.common.ApisixFactory.Apisix().V2().ApisixTlses().Lister().ApisixTlses(ns).List(labels.Everything())
 				if err != nil {
 					log.Error(err.Error())
 					ctx.Done()

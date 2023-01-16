@@ -142,6 +142,10 @@ func NewDefaultConfig() *Config {
 			WatchEndpointSlices: false,
 			EnableGatewayAPI:    false,
 		},
+		APISIX: APISIXConfig{
+			AdminAPIVersion:    "v2",
+			DefaultClusterName: "default",
+		},
 	}
 }
 

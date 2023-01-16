@@ -16,13 +16,13 @@
 #
 default: help
 
-VERSION ?= 1.5.0
+VERSION ?= 1.6.0
 
 # 2.15 image: "2.15.0-alpine"
-TARGET_APISIX_VERSION ?= "3.0.0-centos"
+TARGET_APISIX_VERSION ?= "3.1.0-centos"
 APISIX_ADMIN_API_VERSION ?= "v3"
 ifneq ($(APISIX_ADMIN_API_VERSION), "v3")
-ifeq ($(TARGET_APISIX_VERSION), "3.0.0-centos")
+ifeq ($(TARGET_APISIX_VERSION), "3.1.0-centos")
 	TARGET_APISIX_VERSION = "2.15.0-alpine"
 endif
 endif
@@ -194,7 +194,7 @@ release-src:
 	--exclude $(RELEASE_SRC).tgz \
 	.
 
-	gpg --batch --yes --armor --detach-sig $(RELEASE_SRC).tgz
+	gpg -u zhangjintao@apache.org --batch --yes --armor --detach-sig $(RELEASE_SRC).tgz
 	shasum -a 512 $(RELEASE_SRC).tgz > $(RELEASE_SRC).tgz.sha512
 
 	mkdir -p release
@@ -239,7 +239,7 @@ update-license:
 ### update-mdlint:        Update markdown files lint rules.
 .PHONY: update-mdlint
 update-mdlint:
-	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' -f --ignore node_modules --ignore vendor
+	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' -f --ignore node_modules --ignore vendor --ignore CHANGELOG.md
 
 ### update-gofmt:         Format all go codes
 .PHONY: update-gofmt

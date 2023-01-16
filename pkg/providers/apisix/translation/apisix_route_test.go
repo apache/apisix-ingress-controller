@@ -419,7 +419,7 @@ func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
 	assert.Equal(t, "", res.Routes[2].PluginConfigId)
 }
 
-func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {
+func TestGenerateApisixRouteV2beta3DeleteMark(t *testing.T) {
 	tr := &translator{
 		&TranslatorOptions{},
 		translation.NewTranslator(nil),
@@ -478,7 +478,7 @@ func TestTranslateApisixRouteV2beta3NotStrictly(t *testing.T) {
 		},
 	}
 
-	tx, err := tr.TranslateRouteV2beta3NotStrictly(ar)
+	tx, err := tr.GenerateRouteV2beta3DeleteMark(ar)
 	fmt.Println(tx)
 	assert.NoError(t, err, "translateRoute not strictly should be no error")
 	assert.Equal(t, 2, len(tx.Routes), "There should be 2 routes")
@@ -740,4 +740,43 @@ func TestTranslateApisixRouteV2WithUpstream(t *testing.T) {
 		Timeout: nil,
 		TLS:     nil,
 	}, ups)
+}
+
+func TestTranslateApisixRouteV2WithUpstreamNoBackendsAndPluginConfigName(t *testing.T) {
+	tr, processCh := mockTranslatorV2(t)
+	<-processCh
+	<-processCh
+
+	ar := &configv2.ApisixRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ar",
+			Namespace: "test",
+		},
+		Spec: configv2.ApisixRouteSpec{
+			HTTP: []configv2.ApisixRouteHTTP{
+				{
+					Name: "rule1",
+					Match: configv2.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Upstreams: []configv2.ApisixRouteUpstreamReference{
+						{
+							Name:   "au",
+							Weight: ptrOf(1),
+						},
+					},
+					PluginConfigName: "test-PluginConfigName-1",
+				},
+			},
+		},
+	}
+
+	tctx, err := tr.TranslateRouteV2(ar)
+	assert.NoError(t, err)
+	assert.Len(t, tctx.PluginConfigs, 0)
+	assert.Len(t, tctx.Routes, 1)
+	expectedPluginId := id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, ar.Spec.HTTP[0].PluginConfigName))
+	assert.Equal(t, expectedPluginId, tctx.Routes[0].PluginConfigId)
 }
