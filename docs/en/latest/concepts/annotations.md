@@ -360,3 +360,32 @@ spec:
             port:
               number: 50053
 ```
+
+## Cross namespace reference service
+
+The value of the annotation should be the namespace of the service.
+
+In the example configuration below, the Ingress resource in the default namespace references the httpbin service from the test namespace:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    k8s.apisix.apache.org/svc-namespace: test
+  name: ingress-v1-svc
+  namespace: default
+spec:
+  ingressClassName: apisix
+  rules:
+    - host: httpbin.org
+      http:
+        paths:
+          - path: /ip
+            pathType: Exact
+            backend:
+              service:
+                name: httpbin
+                port:
+                  number: 80
+```
