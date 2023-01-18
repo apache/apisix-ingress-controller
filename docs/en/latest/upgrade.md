@@ -25,7 +25,7 @@ title: Upgrade Guide
 
 ### ***1.6.0***
 
-The APISIX 3.x.x has adjusted the admin-api, in order to be compatible with this version, you need to pay attention to the configuration item `adminAPIVersion`, please refer [1.5 to 1.6](#15-to-16).
+The APISIX 3.x.x has adjusted the admin-api, in order to make APISIX Ingress compatible with these changes, You need to select the corresponding chart version, please refer [1.5 to 1.6](#15-to-16).
 
 ### ***1.5.0***
 
@@ -73,9 +73,9 @@ helm show crds apisix/apisix-ingress-controller | kubectl apply -f -
 > kubectl apply -f  https://raw.githubusercontent.com/apache/apisix-helm-chart/apisix-0.12.3/charts/apisix-ingress-controller/crds/customresourcedefinitions.yaml
 > ```
 
-3. UpgradeAPISIX Ingress
+3. Upgrade APISIX Ingress
 
-Just as an example, the specific configuration needs to be modified by yourself. If you want to upgrade to a specific chart version, please add this flag `--version x.x.x`.
+Just as an example, the specific configuration needs to be modified by yourself. If you want to upgrade to a specific chart version, please add this flag `--version x.x.x`, Please refer [compatible-upgrade](#compatible-upgrade) or [incompatible-upgrade](#incompatible-upgrade).
 
 ```sh
 helm upgrade apisix apisix/apisix \
@@ -91,23 +91,17 @@ Compatible upgrades can be made without changing any resources.
 
 #### ***1.5 to 1.6***
 
-During install or upgrade, you need to configure [adminAPIVersion](https://github.com/apache/apisix-helm-chart/blob/apisix-0.12.3/charts/apisix-ingress-controller/values.yaml#L134) according to the version of APISIX:
+[Relevant version information and compatibility of apisix-helm-chart](https://github.com/apache/apisix-helm-chart#compatibility-matrix).
 
-|  version |  config |  value |
-| ---| ---| --- |
-| APISIX >= 3.0.0 | adminAPIVersion | v3 |
-| APISIX <= 2.15.x |  adminAPIVersion | v2 |
+You need to select the corresponding chart version according to the APISIX version to install or upgrade. As shown in the following table:
 
-The chart version corresponding to `apisix-ingress-controller:1.6`
-
-* `apisix-0.12.3`
-* `apisix-ingress-controller-0.11.3`
+|Chart version| APISIX version |
+|--| ---|
+|apisix-1.1.0| >= 3.0.0 |
+|apisix-0.13.0| <= 2.15.x |
 
 ```sh
-helm upgrade apisix apisix/apisix \
-  --version 0.12.3 \
-  --set ingress-controller.config.apisix.adminAPIVersion=v3 \ # APISIX 3.0.0
-  ***  # omit some configuration
+helm upgrade apisix apisix/apisix --version 1.1.0 ***  # omit some configuration
 ```
 
 #### ***1.4 to 1.5***
