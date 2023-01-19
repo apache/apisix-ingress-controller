@@ -39,8 +39,9 @@ The examples below show how these differ. Both the examples configure a Route in
 groupId="resources"
 defaultValue="apisix"
 values={[
-{label: 'APISIX Ingress custom resource', value: 'apisix'},
-{label: 'Kubernetes ingress resource', value: 'kubernetes'},
+{label: 'APISIX Ingress CRD', value: 'apisix'},
+{label: 'Kubernetes Ingress API', value: 'ingress'},
+{label: 'Kubernetes Gateway API', value: 'gateway'},
 ]}>
 
 <TabItem value="apisix">
@@ -65,7 +66,7 @@ spec:
 
 </TabItem>
 
-<TabItem value="kubernetes">
+<TabItem value="ingress">
 
 ```yaml title="httpbin-route.yaml"
 apiVersion: networking.k8s.io/v1
@@ -85,6 +86,28 @@ spec:
                   number: 80
             path: /
             pathType: Prefix
+```
+
+</TabItem>
+
+<TabItem value="gateway">
+
+```yaml title="httpbin-route.yaml"
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: HTTPRoute
+metadata:
+  name: httpbin-route
+spec:
+  hostnames:
+  - local.httpbin.org
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: httpbin
+      port: 80
 ```
 
 </TabItem>
