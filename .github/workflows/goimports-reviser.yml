@@ -73,5 +73,5 @@ jobs:
         working-directory: ./
         run: |
           make update-gofmt
-          echo "Please make update-gofmt before creating a PR"
+          echo "*** Please make update-gofmt before creating a PR ***"
           git diff --quiet -- . || (git diff | cat && false)
