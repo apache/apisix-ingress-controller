@@ -83,5 +83,5 @@ The v2 version tests will be run periodically.
 
 You can set the environment variable `APISIX_ADMIN_API_VERSION` to `v3` to run v3 version tests, any other value will be v2 version.
 
-The APISIX image tag will be automatically selected from `3.0.0-centos` and `2.15.0-alpine` based on the admin API version.
+The APISIX image tag will be automatically selected from `3.1.0-centos` and `2.15.0-alpine` based on the admin API version.
 If you want to use a specific APISIX version, please set the environment variable `TARGET_APISIX_VERSION`.

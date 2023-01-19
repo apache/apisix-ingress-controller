@@ -477,9 +477,9 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 			)
 
 		}
-
-		if !utils.CompareLoadBalancerIngressEqual(v.Status.LoadBalancer.Ingress, lbips) {
-			v.Status.LoadBalancer.Ingress = lbips
+		ingressLB := utils.CoreV1ToNetworkV1LB(lbips)
+		if !utils.CompareNetworkingV1LBEqual(v.Status.LoadBalancer.Ingress, ingressLB) {
+			v.Status.LoadBalancer.Ingress = ingressLB
 			if _, errRecord := client.NetworkingV1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 				log.Errorw("failed to record status change for IngressV1",
 					zap.Error(errRecord),
@@ -498,8 +498,9 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 			)
 		}
 
-		if !utils.CompareLoadBalancerIngressEqual(v.Status.LoadBalancer.Ingress, lbips) {
-			v.Status.LoadBalancer.Ingress = lbips
+		ingressLB := utils.CoreV1ToNetworkV1beta1LB(lbips)
+		if !utils.CompareNetworkingV1beta1LBEqual(v.Status.LoadBalancer.Ingress, ingressLB) {
+			v.Status.LoadBalancer.Ingress = ingressLB
 			if _, errRecord := client.NetworkingV1beta1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 				log.Errorw("failed to record status change for IngressV1beta1",
 					zap.Error(errRecord),
@@ -518,8 +519,9 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 
 		}
 
-		if !utils.CompareLoadBalancerIngressEqual(v.Status.LoadBalancer.Ingress, lbips) {
-			v.Status.LoadBalancer.Ingress = lbips
+		ingressLB := utils.CoreV1ToExtensionsV1beta1LB(lbips)
+		if !utils.CompareExtensionsV1beta1LBEqual(v.Status.LoadBalancer.Ingress, ingressLB) {
+			v.Status.LoadBalancer.Ingress = ingressLB
 			if _, errRecord := client.ExtensionsV1beta1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 				log.Errorw("failed to record status change for IngressExtensionsv1beta1",
 					zap.Error(errRecord),

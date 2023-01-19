@@ -122,7 +122,8 @@ The table below shows the compatibility between APISIX ingress controller and th
 
 | APISIX ingress controller | Supported APISIX versions | Recommended APISIX version |
 | ------------------------- | ------------------------- | -------------------------- |
-| `master`                  | `>= 2.15`                 | `2.15`                     |
+| `master`                  | `>= 2.15`, `>=3.0`        | `3.1`                      |
+| `1.6.0`                   | `>= 2.15`, `>=3.0`        | `2.15`, `3.0`              |
 | `1.5.0`                   | `>= 2.7`                  | `2.15`                     |
 | `1.4.0`                   | `>= 2.7`                  | `2.11`                     |
 | `1.3.0`                   | `>= 2.7`                  | `2.10`                     |

@@ -20,28 +20,30 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
+	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 )
 
-func TestCompareLoadBalancerIngressEqual(t *testing.T) {
-	lb1 := []corev1.LoadBalancerIngress{
+func TestCompareNetworkingV1LBEqual(t *testing.T) {
+	lb1 := []networkingv1.IngressLoadBalancerIngress{
 		{
 			IP: "0.0.0.0",
 		},
 	}
-	lb2 := []corev1.LoadBalancerIngress{
+	lb2 := []networkingv1.IngressLoadBalancerIngress{
 		{
 			IP: "0.0.0.0",
 		},
 	}
-	assert.Equal(t, true, CompareLoadBalancerIngressEqual(lb1, lb2))
+	assert.Equal(t, true, CompareNetworkingV1LBEqual(lb1, lb2))
 
-	lb1 = []corev1.LoadBalancerIngress{
+	lb1 = []networkingv1.IngressLoadBalancerIngress{
 		{
 			IP: "0.0.0.0",
 		},
 	}
-	lb2 = []corev1.LoadBalancerIngress{
+	lb2 = []networkingv1.IngressLoadBalancerIngress{
 		{
 			IP: "0.0.0.0",
 		},
@@ -49,9 +51,9 @@ func TestCompareLoadBalancerIngressEqual(t *testing.T) {
 			Hostname: "test.com",
 		},
 	}
-	assert.Equal(t, false, CompareLoadBalancerIngressEqual(lb1, lb2))
+	assert.Equal(t, false, CompareNetworkingV1LBEqual(lb1, lb2))
 
-	lb1 = []corev1.LoadBalancerIngress{
+	lb1 = []networkingv1.IngressLoadBalancerIngress{
 		{
 			IP: "127.0.0.1",
 		},
@@ -59,17 +61,17 @@ func TestCompareLoadBalancerIngressEqual(t *testing.T) {
 			IP: "0.0.0.0",
 		},
 	}
-	lb2 = []corev1.LoadBalancerIngress{
-		{
-			IP: "127.0.0.1",
-		},
+	lb2 = []networkingv1.IngressLoadBalancerIngress{
 		{
 			IP: "0.0.0.0",
 		},
+		{
+			IP: "127.0.0.1",
+		},
 	}
-	assert.Equal(t, true, CompareLoadBalancerIngressEqual(lb1, lb2))
+	assert.Equal(t, true, CompareNetworkingV1LBEqual(lb1, lb2))
 
-	lb1 = []corev1.LoadBalancerIngress{
+	lb1 = []networkingv1.IngressLoadBalancerIngress{
 		{
 			IP: "127.0.0.1",
 		},
@@ -77,7 +79,7 @@ func TestCompareLoadBalancerIngressEqual(t *testing.T) {
 			IP: "1.1.1.1",
 		},
 	}
-	lb2 = []corev1.LoadBalancerIngress{
+	lb2 = []networkingv1.IngressLoadBalancerIngress{
 		{
 			IP: "127.0.0.1",
 		},
@@ -85,9 +87,9 @@ func TestCompareLoadBalancerIngressEqual(t *testing.T) {
 			IP: "0.0.0.0",
 		},
 	}
-	assert.Equal(t, false, CompareLoadBalancerIngressEqual(lb1, lb2))
+	assert.Equal(t, false, CompareNetworkingV1LBEqual(lb1, lb2))
 
-	lb1 = []corev1.LoadBalancerIngress{
+	lb1 = []networkingv1.IngressLoadBalancerIngress{
 		{
 			Hostname: "test.com",
 		},
@@ -98,7 +100,7 @@ func TestCompareLoadBalancerIngressEqual(t *testing.T) {
 			IP: "0.0.0.0",
 		},
 	}
-	lb2 = []corev1.LoadBalancerIngress{
+	lb2 = []networkingv1.IngressLoadBalancerIngress{
 		{
 			IP: "0.0.0.0",
 		},
@@ -109,5 +111,147 @@ func TestCompareLoadBalancerIngressEqual(t *testing.T) {
 			Hostname: "test.com",
 		},
 	}
-	assert.Equal(t, true, CompareLoadBalancerIngressEqual(lb1, lb2))
+	assert.Equal(t, true, CompareNetworkingV1LBEqual(lb1, lb2))
+}
+
+func TestCompareNetworkingV1beta1LBEqual(t *testing.T) {
+	lb1 := []networkingv1beta1.IngressLoadBalancerIngress{
+		{
+			IP: "0.0.0.0",
+		},
+	}
+	lb2 := []networkingv1beta1.IngressLoadBalancerIngress{
+		{
+			IP: "0.0.0.0",
+		},
+	}
+	assert.Equal(t, true, CompareNetworkingV1beta1LBEqual(lb1, lb2))
+
+	lb1 = []networkingv1beta1.IngressLoadBalancerIngress{
+		{
+			IP: "0.0.0.0",
+		},
+	}
+	lb2 = []networkingv1beta1.IngressLoadBalancerIngress{
+		{
+			IP: "0.0.0.0",
+		},
+		{
+			Hostname: "test.com",
+		},
+	}
+	assert.Equal(t, false, CompareNetworkingV1beta1LBEqual(lb1, lb2))
+
+	lb1 = []networkingv1beta1.IngressLoadBalancerIngress{
+		{
+			IP: "127.0.0.1",
+		},
+		{
+			IP: "1.1.1.1",
+		},
+	}
+	lb2 = []networkingv1beta1.IngressLoadBalancerIngress{
+		{
+			IP: "127.0.0.1",
+		},
+		{
+			IP: "0.0.0.0",
+		},
+	}
+	assert.Equal(t, false, CompareNetworkingV1beta1LBEqual(lb1, lb2))
+
+	lb1 = []networkingv1beta1.IngressLoadBalancerIngress{
+		{
+			Hostname: "test.com",
+		},
+		{
+			IP: "127.0.0.1",
+		},
+		{
+			IP: "0.0.0.0",
+		},
+	}
+	lb2 = []networkingv1beta1.IngressLoadBalancerIngress{
+		{
+			IP: "0.0.0.0",
+		},
+		{
+			IP: "127.0.0.1",
+		},
+		{
+			Hostname: "test.com",
+		},
+	}
+	assert.Equal(t, true, CompareNetworkingV1beta1LBEqual(lb1, lb2))
+}
+
+func TestCompareExtensionsV1beta1LBEqual(t *testing.T) {
+	lb1 := []extensionsv1beta1.IngressLoadBalancerIngress{
+		{
+			IP: "0.0.0.0",
+		},
+	}
+	lb2 := []extensionsv1beta1.IngressLoadBalancerIngress{
+		{
+			IP: "0.0.0.0",
+		},
+	}
+	assert.Equal(t, true, CompareExtensionsV1beta1LBEqual(lb1, lb2))
+
+	lb1 = []extensionsv1beta1.IngressLoadBalancerIngress{
+		{
+			IP: "0.0.0.0",
+		},
+	}
+	lb2 = []extensionsv1beta1.IngressLoadBalancerIngress{
+		{
+			IP: "0.0.0.0",
+		},
+		{
+			Hostname: "test.com",
+		},
+	}
+	assert.Equal(t, false, CompareExtensionsV1beta1LBEqual(lb1, lb2))
+
+	lb1 = []extensionsv1beta1.IngressLoadBalancerIngress{
+		{
+			IP: "127.0.0.1",
+		},
+		{
+			IP: "1.1.1.1",
+		},
+	}
+	lb2 = []extensionsv1beta1.IngressLoadBalancerIngress{
+		{
+			IP: "127.0.0.1",
+		},
+		{
+			IP: "0.0.0.0",
+		},
+	}
+	assert.Equal(t, false, CompareExtensionsV1beta1LBEqual(lb1, lb2))
+
+	lb1 = []extensionsv1beta1.IngressLoadBalancerIngress{
+		{
+			Hostname: "test.com",
+		},
+		{
+			IP: "127.0.0.1",
+		},
+		{
+			IP: "0.0.0.0",
+		},
+	}
+	lb2 = []extensionsv1beta1.IngressLoadBalancerIngress{
+		{
+			IP: "0.0.0.0",
+		},
+		{
+			IP: "127.0.0.1",
+		},
+		{
+			Hostname: "test.com",
+		},
+	}
+	assert.Equal(t, true, CompareExtensionsV1beta1LBEqual(lb1, lb2))
 }
