@@ -31,7 +31,7 @@ import TabItem from '@theme/TabItem';
 
 APISIX ingress controller is a [Kubernetes ingress controller](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/) using [Apache APISIX](https://apisix.apache.org) as the high performance reverse proxy.
 
-APISIX ingress controller can be configured using native Kubernetes ingress resources as well as a declarative and easy to use custom resources provided by APISIX. The APISIX ingress controller converts these resources to APISIX configuration.
+APISIX ingress controller can be configured using the native Kubernetes Ingress or Gateway API as well as with the declarative and easy to use custom resources provided by APISIX. The APISIX ingress controller converts these resources to APISIX configuration.
 
 The examples below show how these differ. Both the examples configure a Route in APISIX that routes to an httpbin service as the Upstream.
 
