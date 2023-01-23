@@ -20,8 +20,8 @@ require (
 	golang.org/x/net v0.3.1-0.20221206200815-1e63c2f08a10
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.26.0
-	k8s.io/apimachinery v0.26.0
+	k8s.io/api v0.26.1
+	k8s.io/apimachinery v0.26.1
 	k8s.io/client-go v0.26.0
 	k8s.io/code-generator v0.26.0
 	sigs.k8s.io/gateway-api v0.5.1
