@@ -29,6 +29,7 @@
         "tutorials/mtls",
         "tutorials/the-hard-way",
         "tutorials/proxy-the-httpbin-service-with-ingress",
+        "tutorials/configure-ingress-with-gateway-api",
         "tutorials/proxy-the-httpbin-service",
         "tutorials/proxy-grpc-service",
         "tutorials/manage-certificates-with-cert-manager",
