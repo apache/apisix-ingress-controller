@@ -35,10 +35,7 @@ Also see:
 
 ## Prerequisites
 
-Before you move on, make sure you:
-
-1. Have access to a Kubernetes cluster. This tutorial uses [minikube](https://github.com/kubernetes/minikube).
-2. Install APISIX Ingress. See the [Installation](https://apisix.apache.org/docs/ingress-controller/deployments/minikube) section.
+Before you move on, make sure you have access to a Kubernetes cluster. This tutorial uses [minikube](https://github.com/kubernetes/minikube).
 
 ## Install Gateway API CRDs
 
@@ -46,6 +43,22 @@ Kubernetes does not have the Gateway API CRDs installed out of the box. You can 
 
 ```shell
 kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v0.5.0/standard-install.yaml
+```
+
+## Install APISIX Ingress and Enable Gateway API
+
+You can install APISIX and APISIX Ingress controller with Helm. To enable APISIX Ingress controller to work with the Gateway API, you can set the flag `--set ingress-controller.config.kubernetes.enableGatewayAPI=true` as shown below:
+
+```shell
+helm repo add apisix https://charts.apiseven.com
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+kubectl create ns ingress-apisix
+helm install apisix apisix/apisix --namespace ingress-apisix \
+--set gateway.type=NodePort \
+--set ingress-controller.enabled=true \
+--set ingress-controller.config.apisix.serviceNamespace=ingress-apisix \
+--set ingress-controller.config.kubernetes.enableGatewayAPI=true
 ```
 
 ## Deploy httpbin
