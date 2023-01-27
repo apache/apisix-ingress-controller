@@ -32,7 +32,7 @@ import (
 
 func (t *translator) TranslateService(namespace, name, subset string, port int32) (*apisixv1.Upstream, error) {
 	endpoint, err := t.EndpointLister.GetEndpoint(namespace, name)
-	if err != nil {
+	if err != nil && !k8serrors.IsNotFound(err) {
 		return nil, &TranslateError{
 			Field:  "endpoints",
 			Reason: err.Error(),
@@ -76,10 +76,14 @@ func (t *translator) translateUpstreamV2(ep *kube.Endpoint, namespace, name, sub
 			}
 		}
 	}
+
+	nodes := apisixv1.UpstreamNodes{}
 	// Filter nodes by subset.
-	nodes, err := t.TranslateEndpoint(*ep, port, labels)
-	if err != nil {
-		return nil, err
+	if *ep != nil {
+		nodes, err = t.TranslateEndpoint(*ep, port, labels)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if au == nil || au.V2().Spec == nil {
 		ups.Nodes = nodes
@@ -143,10 +147,15 @@ func (t *translator) translateUpstreamV2beta3(ep *kube.Endpoint, namespace, name
 			}
 		}
 	}
+
+	nodes := apisixv1.UpstreamNodes{}
 	// Filter nodes by subset.
-	nodes, err := t.TranslateEndpoint(*ep, port, labels)
-	if err != nil {
-		return nil, err
+	if *ep != nil {
+		// Filter nodes by subset.
+		nodes, err = t.TranslateEndpoint(*ep, port, labels)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if au == nil || au.V2beta3().Spec == nil {
 		ups.Nodes = nodes
@@ -184,6 +193,9 @@ func (t *translator) TranslateEndpoint(endpoint kube.Endpoint, port int32, label
 			Field:  "service",
 			Reason: err.Error(),
 		}
+	}
+	if k8serrors.IsNotFound(err) {
+		return apisixv1.UpstreamNodes{}, nil
 	}
 
 	var svcPort *corev1.ServicePort
