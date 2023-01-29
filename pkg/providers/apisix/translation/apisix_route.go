@@ -325,9 +325,12 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 		route.EnableWebsocket = part.Websocket
 		route.Plugins = pluginMap
 		route.Timeout = timeout
+		route.FilterFunc = part.Match.FilterFunc
+
 		if part.PluginConfigName != "" {
 			route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, part.PluginConfigName))
 		}
+
 		for k, v := range ar.ObjectMeta.Labels {
 			route.Metadata.Labels[k] = v
 		}
