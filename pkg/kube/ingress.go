@@ -20,6 +20,7 @@ import (
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	listersextensionsv1beta1 "k8s.io/client-go/listers/extensions/v1beta1"
 	listersnetworkingv1 "k8s.io/client-go/listers/networking/v1"
 	listersnetworkingv1beta1 "k8s.io/client-go/listers/networking/v1beta1"
@@ -69,6 +70,8 @@ type Ingress interface {
 	// ResourceVersion returns the the resource version field inside
 	// the real Ingress.
 	ResourceVersion() string
+
+	metav1.Object
 }
 
 // IngressEvents contains the ingress key (namespace/name)
@@ -84,6 +87,7 @@ type ingress struct {
 	v1                *networkingv1.Ingress
 	v1beta1           *networkingv1beta1.Ingress
 	extensionsV1beta1 *extensionsv1beta1.Ingress
+	metav1.Object
 }
 
 func (ing *ingress) V1() *networkingv1.Ingress {
@@ -135,6 +139,7 @@ func (l *ingressLister) V1(namespace, name string) (Ingress, error) {
 	return &ingress{
 		groupVersion: IngressV1,
 		v1:           ing,
+		Object:       &ing.ObjectMeta,
 	}, nil
 }
 
@@ -146,6 +151,7 @@ func (l *ingressLister) V1beta1(namespace, name string) (Ingress, error) {
 	return &ingress{
 		groupVersion: IngressV1beta1,
 		v1beta1:      ing,
+		Object:       &ing.ObjectMeta,
 	}, nil
 }
 
@@ -157,6 +163,7 @@ func (l *ingressLister) ExtensionsV1beta1(namespace, name string) (Ingress, erro
 	return &ingress{
 		groupVersion:      IngressExtensionsV1beta1,
 		extensionsV1beta1: ing,
+		Object:            &ing.ObjectMeta,
 	}, nil
 }
 
@@ -168,16 +175,19 @@ func MustNewIngress(obj interface{}) Ingress {
 		return &ingress{
 			groupVersion: IngressV1,
 			v1:           ing,
+			Object:       &ing.ObjectMeta,
 		}
 	case *networkingv1beta1.Ingress:
 		return &ingress{
 			groupVersion: IngressV1beta1,
 			v1beta1:      ing,
+			Object:       &ing.ObjectMeta,
 		}
 	case *extensionsv1beta1.Ingress:
 		return &ingress{
 			groupVersion:      IngressExtensionsV1beta1,
 			extensionsV1beta1: ing,
+			Object:            &ing.ObjectMeta,
 		}
 	default:
 		panic("invalid ingress type")
@@ -193,16 +203,19 @@ func NewIngress(obj interface{}) (Ingress, error) {
 		return &ingress{
 			groupVersion: IngressV1,
 			v1:           ing,
+			Object:       &ing.ObjectMeta,
 		}, nil
 	case *networkingv1beta1.Ingress:
 		return &ingress{
 			groupVersion: IngressV1beta1,
 			v1beta1:      ing,
+			Object:       &ing.ObjectMeta,
 		}, nil
 	case *extensionsv1beta1.Ingress:
 		return &ingress{
 			groupVersion:      IngressExtensionsV1beta1,
 			extensionsV1beta1: ing,
+			Object:            &ing.ObjectMeta,
 		}, nil
 	default:
 		return nil, errors.New("invalid ingress type")

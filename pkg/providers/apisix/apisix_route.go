@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"gopkg.in/go-playground/pool.v3"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -47,6 +48,8 @@ type apisixRouteController struct {
 	relatedWorkqueue workqueue.RateLimitingInterface
 	workers          int
 
+	pool pool.Pool
+
 	svcLock sync.RWMutex
 	// service key -> apisix route key
 	svcMap map[string]map[string]struct{}
@@ -67,6 +70,8 @@ func newApisixRouteController(common *apisixCommon) *apisixRouteController {
 		workqueue:        workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),
 		relatedWorkqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRouteRelated"),
 		workers:          1,
+
+		pool: pool.NewLimited(2),
 
 		svcMap:            make(map[string]map[string]struct{}),
 		apisixUpstreamMap: make(map[string]map[string]struct{}),
@@ -409,7 +414,20 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		added, updated, deleted = m.Diff(om)
 	}
 
-	return c.SyncManifests(ctx, added, updated, deleted)
+	if err = c.SyncManifests(ctx, added, updated, deleted); err != nil {
+		log.Errorw("failed to sync ingress artifacts",
+			zap.Error(err),
+		)
+		return err
+	}
+	c.pool.Queue(func(wu pool.WorkUnit) (interface{}, error) {
+		if wu.IsCancelled() {
+			return nil, nil
+		}
+		c.UpdateStatus(ar, err)
+		return true, nil
+	})
+	return nil
 }
 
 func (c *apisixRouteController) checkPluginNameIfNotEmptyV2beta3(ctx context.Context, in *v2beta3.ApisixRoute) error {
@@ -458,7 +476,65 @@ func (c *apisixRouteController) checkPluginNameIfNotEmptyV2(ctx context.Context,
 	return nil
 }
 
+func (c *apisixRouteController) UpdateStatus(obj kube.ApisixRoute, statusErr error) {
+	if obj == nil {
+		return
+	}
+	var (
+		ar        kube.ApisixRoute
+		err       error
+		namespace = obj.GetNamespace()
+		name      = obj.GetName()
+	)
+
+	switch obj.GroupVersion() {
+	case config.ApisixV2beta3:
+		ar, err = c.ApisixRouteLister.V2beta3(namespace, name)
+	case config.ApisixV2:
+		ar, err = c.ApisixRouteLister.V2(namespace, name)
+	}
+	if ar.ResourceVersion() > obj.GroupVersion() {
+		return
+	}
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			log.Info("ApisixRoute was deleted before it can be update status",
+				zap.String("namespace", namespace),
+				zap.String("name", name),
+			)
+		} else {
+			log.Errorw("Failed to update status, unable to get ApisixRoute",
+				zap.Error(err),
+				zap.String("name", name),
+				zap.String("namespace", namespace),
+			)
+		}
+		return
+	}
+	var (
+		reason    = utils.ResourceSynced
+		condition = metav1.ConditionTrue
+	)
+	if statusErr != nil {
+		reason = utils.ResourceSyncAborted
+		condition = metav1.ConditionFalse
+	}
+	switch ar.GroupVersion() {
+	case config.ApisixV2beta3:
+		c.RecordEvent(obj.V2beta3(), v1.EventTypeNormal, reason, statusErr)
+		c.recordStatus(obj.V2beta3(), reason, statusErr, condition, ar.GetGeneration())
+	case config.ApisixV2:
+		c.RecordEvent(obj.V2(), v1.EventTypeNormal, reason, statusErr)
+		c.recordStatus(obj.V2(), reason, statusErr, condition, ar.GetGeneration())
+	}
+}
+
 func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) {
+	if errOrigin == nil {
+		c.workqueue.Forget(obj)
+		c.MetricsCollector.IncrSyncOperation("route", "success")
+		return
+	}
 	ev := obj.(*types.Event)
 	event := ev.Object.(kube.ApisixRouteEvent)
 	if k8serrors.IsNotFound(errOrigin) && ev.Type != types.EventDelete {
@@ -466,70 +542,13 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 			zap.String("event_type", ev.Type.String()),
 			zap.String("ApisixRoute", event.Key),
 		)
-		c.workqueue.Forget(event)
-		return
-	}
-	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
-	if errLocal != nil {
-		log.Errorf("invalid resource key: %s", event.Key)
-		c.MetricsCollector.IncrSyncOperation("route", "failure")
-		return
-	}
-	var ar kube.ApisixRoute
-	switch event.GroupVersion {
-	case config.ApisixV2beta3:
-		ar, errLocal = c.ApisixRouteLister.V2beta3(namespace, name)
-	case config.ApisixV2:
-		ar, errLocal = c.ApisixRouteLister.V2(namespace, name)
-	default:
-		log.Errorw("unknown ApisixRoute version",
-			zap.String("version", event.GroupVersion),
-			zap.String("key", event.Key),
-		)
-	}
-	if errOrigin == nil {
-		if ev.Type != types.EventDelete {
-			if errLocal == nil {
-				switch ar.GroupVersion() {
-				case config.ApisixV2beta3:
-					c.RecordEvent(ar.V2beta3(), v1.EventTypeNormal, utils.ResourceSynced, nil)
-					c.recordStatus(ar.V2beta3(), utils.ResourceSynced, nil, metav1.ConditionTrue, ar.V2beta3().GetGeneration())
-				case config.ApisixV2:
-					c.RecordEvent(ar.V2(), v1.EventTypeNormal, utils.ResourceSynced, nil)
-					c.recordStatus(ar.V2(), utils.ResourceSynced, nil, metav1.ConditionTrue, ar.V2().GetGeneration())
-				}
-			} else {
-				log.Errorw("failed list ApisixRoute",
-					zap.Error(errLocal),
-					zap.String("name", name),
-					zap.String("namespace", namespace),
-				)
-			}
-		}
 		c.workqueue.Forget(obj)
-		c.MetricsCollector.IncrSyncOperation("route", "success")
 		return
 	}
 	log.Warnw("sync ApisixRoute failed, will retry",
 		zap.Any("object", obj),
 		zap.Error(errOrigin),
 	)
-	if errLocal == nil {
-		switch ar.GroupVersion() {
-		case config.ApisixV2beta3:
-			c.RecordEvent(ar.V2beta3(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
-			c.recordStatus(ar.V2beta3(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta3().GetGeneration())
-		case config.ApisixV2:
-			c.RecordEvent(ar.V2(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
-			c.recordStatus(ar.V2(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2().GetGeneration())
-		}
-	} else {
-		log.Errorw("failed list ApisixRoute",
-			zap.Error(errLocal),
-			zap.String("name", name),
-			zap.String("namespace", namespace),
-		)
-	}
 	c.workqueue.AddRateLimited(obj)
 	c.MetricsCollector.IncrSyncOperation("route", "failure")
 }

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"gopkg.in/go-playground/pool.v3"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -50,6 +51,8 @@ type ingressController struct {
 	workqueue workqueue.RateLimitingInterface
 	workers   int
 
+	pool pool.Pool
+
 	// secretSSLMap stores reference from K8s secret to Ingress
 	// type: Map<SecretKey, Map<IngressVersionKey, SSL in APISIX>>
 	// SecretKey -> IngressVersionKey -> []string
@@ -64,6 +67,7 @@ func newIngressController(common *ingressCommon) *ingressController {
 
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ingress"),
 		workers:   1,
+		pool:      pool.NewLimited(2),
 
 		secretSSLMap: new(sync.Map),
 	}
@@ -211,10 +215,22 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		)
 		return err
 	}
+	c.pool.Queue(func(wu pool.WorkUnit) (interface{}, error) {
+		if wu.IsCancelled() {
+			return nil, nil
+		}
+		c.UpdateStatus(ing)
+		return true, nil
+	})
 	return nil
 }
 
 func (c *ingressController) handleSyncErr(obj interface{}, err error) {
+	if err == nil {
+		c.workqueue.Forget(obj)
+		c.MetricsCollector.IncrSyncOperation("ingress", "success")
+		return
+	}
 	ev := obj.(*types.Event)
 	event := ev.Object.(kube.IngressEvent)
 	if k8serrors.IsNotFound(err) && ev.Type != types.EventDelete {
@@ -222,70 +238,66 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 			zap.String("event_type", ev.Type.String()),
 			zap.String("ingress", event.Key),
 		)
-		c.workqueue.Forget(event)
-		return
-	}
-	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
-	if errLocal != nil {
-		log.Errorw("invalid resource key",
-			zap.Error(errLocal),
-		)
-		return
-	}
-
-	var ing kube.Ingress
-	switch event.GroupVersion {
-	case kube.IngressV1:
-		ing, errLocal = c.IngressLister.V1(namespace, name)
-	case kube.IngressV1beta1:
-		ing, errLocal = c.IngressLister.V1beta1(namespace, name)
-	case kube.IngressExtensionsV1beta1:
-		ing, errLocal = c.IngressLister.ExtensionsV1beta1(namespace, name)
-	}
-
-	if err == nil {
-		// add status
-		if ev.Type != types.EventDelete {
-			if errLocal == nil {
-				switch ing.GroupVersion() {
-				case kube.IngressV1:
-					c.recordStatus(ing.V1(), utils.ResourceSynced, nil, metav1.ConditionTrue, ing.V1().GetGeneration())
-				case kube.IngressV1beta1:
-					c.recordStatus(ing.V1beta1(), utils.ResourceSynced, nil, metav1.ConditionTrue, ing.V1beta1().GetGeneration())
-				case kube.IngressExtensionsV1beta1:
-					c.recordStatus(ing.ExtensionsV1beta1(), utils.ResourceSynced, nil, metav1.ConditionTrue, ing.ExtensionsV1beta1().GetGeneration())
-				}
-			} else {
-				log.Errorw("failed to list ingress resource",
-					zap.Error(errLocal),
-				)
-			}
-		}
 		c.workqueue.Forget(obj)
-		c.MetricsCollector.IncrSyncOperation("ingress", "success")
 		return
 	}
 	log.Warnw("sync ingress failed, will retry",
 		zap.Any("object", obj),
 		zap.Error(err),
 	)
-
-	if errLocal == nil {
-		switch ing.GroupVersion() {
-		case kube.IngressV1:
-			c.recordStatus(ing.V1(), utils.ResourceSyncAborted, err, metav1.ConditionTrue, ing.V1().GetGeneration())
-		case kube.IngressV1beta1:
-			c.recordStatus(ing.V1beta1(), utils.ResourceSyncAborted, err, metav1.ConditionTrue, ing.V1beta1().GetGeneration())
-		case kube.IngressExtensionsV1beta1:
-			c.recordStatus(ing.ExtensionsV1beta1(), utils.ResourceSyncAborted, err, metav1.ConditionTrue, ing.ExtensionsV1beta1().GetGeneration())
-		}
-	} else {
-		log.Errorw("failed to list ingress resource",
-			zap.Error(errLocal),
-		)
-	}
 	c.workqueue.AddRateLimited(obj)
 	c.MetricsCollector.IncrSyncOperation("ingress", "failure")
+}
+
+func (c *ingressController) UpdateStatus(obj kube.Ingress) {
+	if obj == nil {
+		return
+	}
+	var (
+		namespace = obj.GetNamespace()
+		name      = obj.GetName()
+		ing       kube.Ingress
+		err       error
+	)
+
+	switch obj.GroupVersion() {
+	case kube.IngressV1:
+		ing, err = c.IngressLister.V1(namespace, name)
+	case kube.IngressV1beta1:
+		ing, err = c.IngressLister.V1beta1(namespace, name)
+	case kube.IngressExtensionsV1beta1:
+		ing, err = c.IngressLister.ExtensionsV1beta1(namespace, name)
+	}
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			log.Info("Ingress was deleted before it can be update status",
+				zap.String("namespace", namespace),
+				zap.String("name", name),
+			)
+		} else {
+			log.Errorw("Failed to update status, unable to get Ingress",
+				zap.Error(err),
+				zap.String("name", name),
+				zap.String("namespace", namespace),
+			)
+		}
+		return
+	}
+	if ing.ResourceVersion() > obj.ResourceVersion() {
+		log.Debug("the resource version has expired, ignore",
+			zap.String("namespace", namespace),
+			zap.String("name", name),
+		)
+		return
+	}
+	switch ing.GroupVersion() {
+	case kube.IngressV1:
+		c.recordStatus(obj.V1())
+	case kube.IngressV1beta1:
+		c.recordStatus(obj.V1beta1())
+	case kube.IngressExtensionsV1beta1:
+		c.recordStatus(obj.ExtensionsV1beta1())
+	}
 }
 
 func (c *ingressController) onAdd(obj interface{}) {
@@ -459,7 +471,7 @@ func (c *ingressController) ResourceSync() {
 }
 
 // recordStatus record resources status
-func (c *ingressController) recordStatus(at runtime.Object, reason string, err error, status metav1.ConditionStatus, generation int64) {
+func (c *ingressController) recordStatus(at runtime.Object) {
 	client := c.KubeClient.Client
 
 	at = at.DeepCopyObject()
@@ -475,7 +487,6 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 
 		}
 
-		v.ObjectMeta.Generation = generation
 		v.Status.LoadBalancer.Ingress = utils.CoreV1ToNetworkV1LB(lbips)
 		if _, errRecord := client.NetworkingV1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 			log.Errorw("failed to record status change for IngressV1",
@@ -495,7 +506,6 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 
 		}
 
-		v.ObjectMeta.Generation = generation
 		v.Status.LoadBalancer.Ingress = utils.CoreV1ToNetworkV1beta1LB(lbips)
 		if _, errRecord := client.NetworkingV1beta1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 			log.Errorw("failed to record status change for IngressV1",
@@ -514,7 +524,6 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 
 		}
 
-		v.ObjectMeta.Generation = generation
 		v.Status.LoadBalancer.Ingress = utils.CoreV1ToExtensionsV1beta1LB(lbips)
 		if _, errRecord := client.ExtensionsV1beta1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 			log.Errorw("failed to record status change for IngressV1",
@@ -619,7 +628,7 @@ func (c *ingressController) syncSSLs(ctx context.Context, evType types.EventType
 			runtimeObj := obj.(runtime.Object)
 			c.RecordEventS(runtimeObj, corev1.EventTypeWarning, utils.ResourceSyncAborted,
 				fmt.Sprintf("sync from secret %s changes failed, error: %s", secretKey, err.Error()))
-			c.recordStatus(runtimeObj, utils.ResourceSyncAborted, err, metav1.ConditionFalse, obj.GetGeneration())
+			c.recordStatus(runtimeObj)
 		}(obj)
 		return true
 	}
@@ -640,11 +649,11 @@ func (c *ingressController) syncSSLs(ctx context.Context, evType types.EventType
 			)
 			c.RecordEventS(runtimeObj, corev1.EventTypeWarning, utils.ResourceSyncAborted,
 				fmt.Sprintf("sync from secret %s changes failed, error: %s", secretKey, err.Error()))
-			c.recordStatus(runtimeObj, utils.ResourceSyncAborted, err, metav1.ConditionFalse, obj.GetGeneration())
+			c.recordStatus(runtimeObj)
 		} else {
 			c.RecordEventS(runtimeObj, corev1.EventTypeNormal, utils.ResourceSynced,
 				fmt.Sprintf("sync from secret %s changes", secretKey))
-			c.recordStatus(runtimeObj, utils.ResourceSynced, nil, metav1.ConditionTrue, obj.GetGeneration())
+			c.recordStatus(runtimeObj)
 		}
 	}(ssl, obj)
 	return true

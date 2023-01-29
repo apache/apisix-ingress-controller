@@ -17,6 +17,8 @@ package kube
 import (
 	"errors"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
@@ -58,6 +60,8 @@ type ApisixRoute interface {
 	// ResourceVersion returns the the resource version field inside
 	// the real ApisixRoute.
 	ResourceVersion() string
+
+	metav1.Object
 }
 
 // ApisixRouteEvent contains the ApisixRoute key (namespace/name)
@@ -72,6 +76,7 @@ type apisixRoute struct {
 	groupVersion string
 	v2beta3      *configv2beta3.ApisixRoute
 	v2           *configv2.ApisixRoute
+	metav1.Object
 }
 
 func (l *apisixRouteLister) V2beta3Lister() listersv2beta3.ApisixRouteLister {
@@ -119,6 +124,7 @@ func (l *apisixRouteLister) V2beta3(namespace, name string) (ApisixRoute, error)
 	return &apisixRoute{
 		groupVersion: config.ApisixV2beta3,
 		v2beta3:      ar,
+		Object:       ar.GetObjectMeta(),
 	}, nil
 }
 func (l *apisixRouteLister) V2(namespace, name string) (ApisixRoute, error) {
@@ -129,6 +135,7 @@ func (l *apisixRouteLister) V2(namespace, name string) (ApisixRoute, error) {
 	return &apisixRoute{
 		groupVersion: config.ApisixV2,
 		v2:           ar,
+		Object:       ar.GetObjectMeta(),
 	}, nil
 }
 
@@ -140,11 +147,13 @@ func MustNewApisixRoute(obj interface{}) ApisixRoute {
 		return &apisixRoute{
 			groupVersion: config.ApisixV2beta3,
 			v2beta3:      ar,
+			Object:       ar.GetObjectMeta(),
 		}
 	case *configv2.ApisixRoute:
 		return &apisixRoute{
 			groupVersion: config.ApisixV2,
 			v2:           ar,
+			Object:       ar.GetObjectMeta(),
 		}
 	default:
 		panic("invalid ApisixRoute type")
