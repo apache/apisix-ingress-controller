@@ -365,7 +365,7 @@ spec:
 
 The value of the annotation should be the namespace of the service.
 
-In the example configuration below, the Ingress resource in the default namespace references the httpbin service from the test namespace:
+In the example configuration below, the Ingress resource in the `default` namespace references the httpbin service in the `test` namespace:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
