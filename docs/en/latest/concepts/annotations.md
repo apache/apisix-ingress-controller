@@ -361,9 +361,9 @@ spec:
               number: 50053
 ```
 
-## Cross namespace reference service
+## Cross-namespace reference service
 
-The value of the annotation should be the namespace of the service.
+This annotation can be used to route to services in a different namespace.
 
 In the example configuration below, the Ingress resource in the `default` namespace references the httpbin service in the `test` namespace:
 
