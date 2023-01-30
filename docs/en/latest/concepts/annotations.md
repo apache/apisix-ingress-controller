@@ -361,7 +361,7 @@ spec:
               number: 50053
 ```
 
-## Cross-namespace reference service
+## Cross-namespace references
 
 This annotation can be used to route to services in a different namespace.
 
