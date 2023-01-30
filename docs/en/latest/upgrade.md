@@ -25,7 +25,7 @@ title: Upgrade Guide
 
 ### ***1.6.0***
 
-The APISIX 3.x.x has adjusted the admin-api, in order to make APISIX Ingress compatible with these changes, You need to select the corresponding chart version, please refer [1.5 to 1.6](#15-to-16).
+APISIX 3.x.x has changed the Admin API. To make APISIX Ingress compatible with these changes, you need to select the corresponding chart version. Please refer [1.5 to 1.6](#15-to-16).
 
 ### ***1.5.0***
 
