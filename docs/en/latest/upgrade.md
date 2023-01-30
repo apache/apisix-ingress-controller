@@ -93,7 +93,7 @@ Compatible upgrades can be made without changing any resources.
 
 [Relevant version information and compatibility of apisix-helm-chart](https://github.com/apache/apisix-helm-chart#compatibility-matrix).
 
-You need to select the corresponding chart version according to the APISIX version to install or upgrade. As shown in the following table:
+You need to select the corresponding chart version according to the APISIX version as shown to install or upgrade:
 
 |Chart version| APISIX version |
 |--| ---|
