@@ -124,7 +124,7 @@ func (l *apisixRouteLister) V2beta3(namespace, name string) (ApisixRoute, error)
 	return &apisixRoute{
 		groupVersion: config.ApisixV2beta3,
 		v2beta3:      ar,
-		Object:       ar.GetObjectMeta(),
+		Object:       &ar.ObjectMeta,
 	}, nil
 }
 func (l *apisixRouteLister) V2(namespace, name string) (ApisixRoute, error) {
@@ -135,7 +135,7 @@ func (l *apisixRouteLister) V2(namespace, name string) (ApisixRoute, error) {
 	return &apisixRoute{
 		groupVersion: config.ApisixV2,
 		v2:           ar,
-		Object:       ar.GetObjectMeta(),
+		Object:       &ar.ObjectMeta,
 	}, nil
 }
 
@@ -147,13 +147,13 @@ func MustNewApisixRoute(obj interface{}) ApisixRoute {
 		return &apisixRoute{
 			groupVersion: config.ApisixV2beta3,
 			v2beta3:      ar,
-			Object:       ar.GetObjectMeta(),
+			Object:       &ar.ObjectMeta,
 		}
 	case *configv2.ApisixRoute:
 		return &apisixRoute{
 			groupVersion: config.ApisixV2,
 			v2:           ar,
-			Object:       ar.GetObjectMeta(),
+			Object:       &ar.ObjectMeta,
 		}
 	default:
 		panic("invalid ApisixRoute type")
@@ -169,11 +169,13 @@ func NewApisixRoute(obj interface{}) (ApisixRoute, error) {
 		return &apisixRoute{
 			groupVersion: config.ApisixV2beta3,
 			v2beta3:      ar,
+			Object:       &ar.ObjectMeta,
 		}, nil
 	case *configv2.ApisixRoute:
 		return &apisixRoute{
 			groupVersion: config.ApisixV2,
 			v2:           ar,
+			Object:       &ar.ObjectMeta,
 		}, nil
 	default:
 		return nil, errors.New("invalid ApisixRoute type")
