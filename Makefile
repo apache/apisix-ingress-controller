@@ -279,7 +279,7 @@ kind-load-images:
             $(REGISTRY)/busybox:dev
 
 
-GATEWAY_API_VERSION ?= v0.5.1
+GATEWAY_API_VERSION ?= v0.6.0
 GATEWAY_API_PACKAGE ?= sigs.k8s.io/gateway-api@$(GATEWAY_API_VERSION)
 GATEWAY_API_CRDS_GO_MOD_PATH = $(shell go env GOPATH)/pkg/mod/$(GATEWAY_API_PACKAGE)
 GATEWAY_API_CRDS_LOCAL_PATH = $(PWD)/samples/deploy/gateway-api/$(GATEWAY_API_VERSION)
