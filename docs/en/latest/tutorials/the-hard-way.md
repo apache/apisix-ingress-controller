@@ -322,7 +322,7 @@ spec:
     spec:
       containers:
         - name: apisix
-          image: "apache/apisix:2.15-alpine"
+          image: "apache/apisix:2.15.0-alpine"
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
