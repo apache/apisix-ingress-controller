@@ -53,7 +53,8 @@
         "references/apisix_cluster_config_v2",
         "references/apisix_cluster_config_v2beta3",
         "references/apisix_pluginconfig_v2",
-        "references/apisix_pluginconfig_v2beta3"
+        "references/apisix_pluginconfig_v2beta3",
+        "references/v2"
       ]
     },
     {
