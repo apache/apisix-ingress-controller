@@ -139,7 +139,7 @@ func (l *ingressLister) V1(namespace, name string) (Ingress, error) {
 	return &ingress{
 		groupVersion: IngressV1,
 		v1:           ing,
-		Object:       &ing.ObjectMeta,
+		Object:       ing,
 	}, nil
 }
 
@@ -151,7 +151,7 @@ func (l *ingressLister) V1beta1(namespace, name string) (Ingress, error) {
 	return &ingress{
 		groupVersion: IngressV1beta1,
 		v1beta1:      ing,
-		Object:       &ing.ObjectMeta,
+		Object:       ing,
 	}, nil
 }
 
@@ -163,7 +163,7 @@ func (l *ingressLister) ExtensionsV1beta1(namespace, name string) (Ingress, erro
 	return &ingress{
 		groupVersion:      IngressExtensionsV1beta1,
 		extensionsV1beta1: ing,
-		Object:            &ing.ObjectMeta,
+		Object:            ing,
 	}, nil
 }
 
@@ -175,19 +175,19 @@ func MustNewIngress(obj interface{}) Ingress {
 		return &ingress{
 			groupVersion: IngressV1,
 			v1:           ing,
-			Object:       &ing.ObjectMeta,
+			Object:       ing,
 		}
 	case *networkingv1beta1.Ingress:
 		return &ingress{
 			groupVersion: IngressV1beta1,
 			v1beta1:      ing,
-			Object:       &ing.ObjectMeta,
+			Object:       ing,
 		}
 	case *extensionsv1beta1.Ingress:
 		return &ingress{
 			groupVersion:      IngressExtensionsV1beta1,
 			extensionsV1beta1: ing,
-			Object:            &ing.ObjectMeta,
+			Object:            ing,
 		}
 	default:
 		panic("invalid ingress type")
@@ -203,19 +203,19 @@ func NewIngress(obj interface{}) (Ingress, error) {
 		return &ingress{
 			groupVersion: IngressV1,
 			v1:           ing,
-			Object:       &ing.ObjectMeta,
+			Object:       ing,
 		}, nil
 	case *networkingv1beta1.Ingress:
 		return &ingress{
 			groupVersion: IngressV1beta1,
 			v1beta1:      ing,
-			Object:       &ing.ObjectMeta,
+			Object:       ing,
 		}, nil
 	case *extensionsv1beta1.Ingress:
 		return &ingress{
 			groupVersion:      IngressExtensionsV1beta1,
 			extensionsV1beta1: ing,
-			Object:            &ing.ObjectMeta,
+			Object:            ing,
 		}, nil
 	default:
 		return nil, errors.New("invalid ingress type")

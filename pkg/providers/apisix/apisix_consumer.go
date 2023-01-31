@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"gopkg.in/go-playground/pool.v3"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -42,6 +43,7 @@ type apisixConsumerController struct {
 
 	workqueue workqueue.RateLimitingInterface
 	workers   int
+	pool      pool.Pool
 }
 
 func newApisixConsumerController(common *apisixCommon) *apisixConsumerController {
@@ -49,6 +51,7 @@ func newApisixConsumerController(common *apisixCommon) *apisixConsumerController
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixConsumer"),
 		workers:      1,
+		pool:         pool.NewLimited(2),
 	}
 
 	c.ApisixConsumerInformer.AddEventHandler(
@@ -65,6 +68,7 @@ func (c *apisixConsumerController) run(ctx context.Context) {
 	log.Info("ApisixConsumer controller started")
 	defer log.Info("ApisixConsumer controller exited")
 	defer c.workqueue.ShutDown()
+	defer c.pool.Close()
 
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
@@ -132,6 +136,7 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 		multiVersioned = ev.Tombstone.(kube.ApisixConsumer)
 	}
 
+	var errRecord error
 	switch event.GroupVersion {
 	case config.ApisixV2beta3:
 		ac := multiVersioned.V2beta3()
@@ -142,9 +147,8 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 				zap.Error(err),
 				zap.Any("ApisixConsumer", ac),
 			)
-			c.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-			c.recordStatus(ac, utils.ResourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
-			return err
+			errRecord = err
+			goto updateStatus
 		}
 		log.Debugw("got consumer object from ApisixConsumer",
 			zap.Any("consumer", consumer),
@@ -156,12 +160,9 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 				zap.Error(err),
 				zap.Any("consumer", consumer),
 			)
-			c.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-			c.recordStatus(ac, utils.ResourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
-			return err
+			errRecord = err
+			goto updateStatus
 		}
-
-		c.RecordEvent(ac, corev1.EventTypeNormal, utils.ResourceSynced, nil)
 	case config.ApisixV2:
 		ac := multiVersioned.V2()
 
@@ -171,9 +172,8 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 				zap.Error(err),
 				zap.Any("ApisixConsumer", ac),
 			)
-			c.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-			c.recordStatus(ac, utils.ResourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
-			return err
+			errRecord = err
+			goto updateStatus
 		}
 		log.Debugw("got consumer object from ApisixConsumer",
 			zap.Any("consumer", consumer),
@@ -185,14 +185,19 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 				zap.Error(err),
 				zap.Any("consumer", consumer),
 			)
-			c.RecordEvent(ac, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-			c.recordStatus(ac, utils.ResourceSyncAborted, err, metav1.ConditionFalse, ac.GetGeneration())
-			return err
+			errRecord = err
+			goto updateStatus
 		}
-
-		c.RecordEvent(ac, corev1.EventTypeNormal, utils.ResourceSynced, nil)
 	}
-	return nil
+updateStatus:
+	c.pool.Queue(func(wu pool.WorkUnit) (interface{}, error) {
+		if wu.IsCancelled() {
+			return nil, nil
+		}
+		c.updateStatus(multiVersioned, errRecord)
+		return true, nil
+	})
+	return errRecord
 }
 
 func (c *apisixConsumerController) handleSyncErr(obj interface{}, err error) {
@@ -346,6 +351,56 @@ func (c *apisixConsumerController) ResourceSync() {
 				GroupVersion: ac.GroupVersion(),
 			},
 		})
+	}
+}
+
+func (c *apisixConsumerController) updateStatus(obj kube.ApisixConsumer, statusErr error) {
+	if obj == nil {
+		return
+	}
+	var (
+		ac        kube.ApisixConsumer
+		err       error
+		namespace = obj.GetNamespace()
+		name      = obj.GetName()
+	)
+
+	switch obj.GroupVersion() {
+	case config.ApisixV2beta3:
+		ac, err = c.ApisixConsumerLister.V2beta3(namespace, name)
+	case config.ApisixV2:
+		ac, err = c.ApisixConsumerLister.V2(namespace, name)
+	}
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			log.Warnw("Failed to update status, unable to get ApisixConsumer",
+				zap.Error(err),
+				zap.String("name", name),
+				zap.String("namespace", namespace),
+			)
+		}
+		return
+	}
+	if ac.ResourceVersion() > obj.GroupVersion() {
+		return
+	}
+	var (
+		reason    = utils.ResourceSynced
+		condition = metav1.ConditionTrue
+		eventType = corev1.EventTypeNormal
+	)
+	if statusErr != nil {
+		reason = utils.ResourceSyncAborted
+		condition = metav1.ConditionFalse
+		eventType = corev1.EventTypeWarning
+	}
+	switch obj.GroupVersion() {
+	case config.ApisixV2beta3:
+		c.RecordEvent(obj.V2beta3(), eventType, reason, statusErr)
+		c.recordStatus(obj.V2beta3(), reason, statusErr, condition, ac.GetGeneration())
+	case config.ApisixV2:
+		c.RecordEvent(obj.V2(), eventType, reason, statusErr)
+		c.recordStatus(obj.V2(), reason, statusErr, condition, ac.GetGeneration())
 	}
 }
 

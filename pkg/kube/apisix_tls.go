@@ -22,6 +22,7 @@ import (
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	listersv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2"
 	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ApisixTlsLister is an encapsulation for the lister of ApisixTls,
@@ -54,6 +55,8 @@ type ApisixTls interface {
 	// ResourceVersion returns the the resource version field inside
 	// the real ApisixTls.
 	ResourceVersion() string
+
+	metav1.Object
 }
 
 // ApisixTlsEvent contains the ApisixTls key (namespace/name)
@@ -68,6 +71,8 @@ type apisixTls struct {
 	groupVersion string
 	v2beta3      *configv2beta3.ApisixTls
 	v2           *configv2.ApisixTls
+
+	metav1.Object
 }
 
 func (atls *apisixTls) V2beta3() *configv2beta3.ApisixTls {
@@ -100,13 +105,14 @@ type apisixTlsLister struct {
 }
 
 func (l *apisixTlsLister) V2beta3(namespace, name string) (ApisixTls, error) {
-	ar, err := l.v2beta3Lister.ApisixTlses(namespace).Get(name)
+	at, err := l.v2beta3Lister.ApisixTlses(namespace).Get(name)
 	if err != nil {
 		return nil, err
 	}
 	return &apisixTls{
 		groupVersion: config.ApisixV2beta3,
-		v2beta3:      ar,
+		v2beta3:      at,
+		Object:       at,
 	}, nil
 }
 func (l *apisixTlsLister) V2(namespace, name string) (ApisixTls, error) {
@@ -117,22 +123,25 @@ func (l *apisixTlsLister) V2(namespace, name string) (ApisixTls, error) {
 	return &apisixTls{
 		groupVersion: config.ApisixV2,
 		v2:           ar,
+		Object:       ar,
 	}, nil
 }
 
 // MustNewApisixTls creates a kube.ApisixTls object according to the
 // type of obj.
 func MustNewApisixTls(obj interface{}) ApisixTls {
-	switch ar := obj.(type) {
+	switch at := obj.(type) {
 	case *configv2beta3.ApisixTls:
 		return &apisixTls{
 			groupVersion: config.ApisixV2beta3,
-			v2beta3:      ar,
+			v2beta3:      at,
+			Object:       at,
 		}
 	case *configv2.ApisixTls:
 		return &apisixTls{
 			groupVersion: config.ApisixV2,
-			v2:           ar,
+			v2:           at,
+			Object:       at,
 		}
 	default:
 		panic("invalid ApisixTls type")
@@ -143,19 +152,21 @@ func MustNewApisixTls(obj interface{}) ApisixTls {
 // type of obj. It returns nil and the error reason when the
 // type assertion fails.
 func NewApisixTls(obj interface{}) (ApisixTls, error) {
-	switch ar := obj.(type) {
+	switch at := obj.(type) {
 	case *configv2beta3.ApisixTls:
 		return &apisixTls{
 			groupVersion: config.ApisixV2beta3,
-			v2beta3:      ar,
+			v2beta3:      at,
+			Object:       at,
 		}, nil
 	case *configv2.ApisixTls:
 		return &apisixTls{
 			groupVersion: config.ApisixV2,
-			v2:           ar,
+			v2:           at,
+			Object:       at,
 		}, nil
 	default:
-		return nil, fmt.Errorf("invalid ApisixTls type %T", ar)
+		return nil, fmt.Errorf("invalid ApisixTls type %T", at)
 	}
 }
 

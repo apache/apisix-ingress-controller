@@ -84,6 +84,7 @@ func (c *ingressController) run(ctx context.Context) {
 	log.Info("ingress controller started")
 	defer log.Infof("ingress controller exited")
 	defer c.workqueue.ShutDown()
+	defer c.pool.Close()
 
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
@@ -111,7 +112,10 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		return err
 	}
 
-	var ing kube.Ingress
+	var (
+		ing  kube.Ingress
+		tctx *translation.TranslateContext
+	)
 	switch ingEv.GroupVersion {
 	case kube.IngressV1:
 		ing, err = c.IngressLister.V1(namespace, name)
@@ -146,75 +150,70 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		}
 		ing = ev.Tombstone.(kube.Ingress)
 	}
-
-	tctx, err := c.translator.TranslateIngress(ing)
-	if err != nil {
-		log.Errorw("failed to translate ingress",
-			zap.Error(err),
-			zap.Any("ingress", ing),
-		)
-		return err
-	}
-
-	for _, ssl := range tctx.SSL {
-		ns, ok1 := ssl.Labels[translation.MetaSecretNamespace]
-		sec, ok2 := ssl.Labels[translation.MetaSecretName]
-		if ok1 && ok2 {
-			// We don't support annotation in Ingress
-			// 	_caAnnotation = "nginx.ingress.kubernetes.io/auth-tls-secret"
-			c.storeSecretReference(ns+"/"+sec, ingEv.Key, ev.Type, ssl)
-		}
-	}
-
-	log.Debugw("translated ingress resource to a couple of routes, upstreams and pluginConfigs",
-		zap.Any("ingress", ing),
-		zap.Any("routes", tctx.Routes),
-		zap.Any("upstreams", tctx.Upstreams),
-		zap.Any("ssl", tctx.SSL),
-		zap.Any("pluginConfigs", tctx.PluginConfigs),
-	)
-
-	m := &utils.Manifest{
-		SSLs:          tctx.SSL,
-		Routes:        tctx.Routes,
-		Upstreams:     tctx.Upstreams,
-		PluginConfigs: tctx.PluginConfigs,
-	}
-
-	var (
-		added   *utils.Manifest
-		updated *utils.Manifest
-		deleted *utils.Manifest
-	)
-
-	if ev.Type == types.EventDelete {
-		deleted = m
-	} else if ev.Type == types.EventAdd {
-		added = m
-	} else {
-		oldCtx, err := c.translator.TranslateOldIngress(ingEv.OldObject)
+	{
+		tctx, err = c.translator.TranslateIngress(ing)
 		if err != nil {
 			log.Errorw("failed to translate ingress",
-				zap.String("event", "update"),
 				zap.Error(err),
-				zap.Any("ingress", ingEv.OldObject),
+				zap.Any("ingress", ing),
 			)
-			return err
+			goto updateStatus
 		}
-		om := &utils.Manifest{
-			Routes:        oldCtx.Routes,
-			Upstreams:     oldCtx.Upstreams,
-			SSLs:          oldCtx.SSL,
-			PluginConfigs: oldCtx.PluginConfigs,
+
+		for _, ssl := range tctx.SSL {
+			ns, ok1 := ssl.Labels[translation.MetaSecretNamespace]
+			sec, ok2 := ssl.Labels[translation.MetaSecretName]
+			if ok1 && ok2 {
+				// We don't support annotation in Ingress
+				// 	_caAnnotation = "nginx.ingress.kubernetes.io/auth-tls-secret"
+				c.storeSecretReference(ns+"/"+sec, ingEv.Key, ev.Type, ssl)
+			}
 		}
-		added, updated, deleted = m.Diff(om)
-	}
-	if err := c.SyncManifests(ctx, added, updated, deleted); err != nil {
-		log.Errorw("failed to sync ingress artifacts",
-			zap.Error(err),
+
+		log.Debugw("translated ingress resource to a couple of routes, upstreams and pluginConfigs",
+			zap.Any("ingress", ing),
+			zap.Any("routes", tctx.Routes),
+			zap.Any("upstreams", tctx.Upstreams),
+			zap.Any("ssl", tctx.SSL),
+			zap.Any("pluginConfigs", tctx.PluginConfigs),
 		)
-		return err
 	}
+	{
+		m := &utils.Manifest{
+			SSLs:          tctx.SSL,
+			Routes:        tctx.Routes,
+			Upstreams:     tctx.Upstreams,
+			PluginConfigs: tctx.PluginConfigs,
+		}
+
+		var (
+			added   *utils.Manifest
+			updated *utils.Manifest
+			deleted *utils.Manifest
+		)
+
+		if ev.Type == types.EventDelete {
+			deleted = m
+		} else if ev.Type == types.EventAdd {
+			added = m
+		} else {
+			oldCtx, _ := c.translator.TranslateOldIngress(ingEv.OldObject)
+			om := &utils.Manifest{
+				Routes:        oldCtx.Routes,
+				Upstreams:     oldCtx.Upstreams,
+				SSLs:          oldCtx.SSL,
+				PluginConfigs: oldCtx.PluginConfigs,
+			}
+			added, updated, deleted = m.Diff(om)
+		}
+		if err = c.SyncManifests(ctx, added, updated, deleted); err != nil {
+			log.Errorw("failed to sync Ingress to apisix",
+				zap.Error(err),
+			)
+			goto updateStatus
+		}
+	}
+updateStatus:
 	c.pool.Queue(func(wu pool.WorkUnit) (interface{}, error) {
 		if wu.IsCancelled() {
 			return nil, nil
@@ -222,7 +221,7 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		c.UpdateStatus(ing)
 		return true, nil
 	})
-	return nil
+	return err
 }
 
 func (c *ingressController) handleSyncErr(obj interface{}, err error) {
@@ -269,13 +268,8 @@ func (c *ingressController) UpdateStatus(obj kube.Ingress) {
 		ing, err = c.IngressLister.ExtensionsV1beta1(namespace, name)
 	}
 	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			log.Info("Ingress was deleted before it can be update status",
-				zap.String("namespace", namespace),
-				zap.String("name", name),
-			)
-		} else {
-			log.Errorw("Failed to update status, unable to get Ingress",
+		if !k8serrors.IsNotFound(err) {
+			log.Warnw("failed to update status, unable to get Ingress",
 				zap.Error(err),
 				zap.String("name", name),
 				zap.String("namespace", namespace),
@@ -284,13 +278,9 @@ func (c *ingressController) UpdateStatus(obj kube.Ingress) {
 		return
 	}
 	if ing.ResourceVersion() > obj.ResourceVersion() {
-		log.Debug("the resource version has expired, ignore",
-			zap.String("namespace", namespace),
-			zap.String("name", name),
-		)
 		return
 	}
-	switch ing.GroupVersion() {
+	switch obj.GroupVersion() {
 	case kube.IngressV1:
 		c.recordStatus(obj.V1())
 	case kube.IngressV1beta1:

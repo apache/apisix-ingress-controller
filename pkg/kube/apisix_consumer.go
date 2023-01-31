@@ -22,6 +22,7 @@ import (
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	listersv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2"
 	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ApisixConsumerLister is an encapsulation for the lister of ApisixConsumer,
@@ -54,6 +55,8 @@ type ApisixConsumer interface {
 	// ResourceVersion returns the the resource version field inside
 	// the real ApisixConsumer.
 	ResourceVersion() string
+
+	metav1.Object
 }
 
 // ApisixConsumerEvent contains the ApisixConsumer key (namespace/name)
@@ -68,6 +71,8 @@ type apisixConsumer struct {
 	groupVersion string
 	v2beta3      *configv2beta3.ApisixConsumer
 	v2           *configv2.ApisixConsumer
+
+	metav1.Object
 }
 
 func (ac *apisixConsumer) V2beta3() *configv2beta3.ApisixConsumer {
@@ -108,6 +113,7 @@ func (l *apisixConsumerLister) V2beta3(namespace, name string) (ApisixConsumer, 
 	return &apisixConsumer{
 		groupVersion: config.ApisixV2beta3,
 		v2beta3:      ac,
+		Object:       ac,
 	}, nil
 }
 
@@ -119,6 +125,7 @@ func (l *apisixConsumerLister) V2(namespace, name string) (ApisixConsumer, error
 	return &apisixConsumer{
 		groupVersion: config.ApisixV2,
 		v2:           ac,
+		Object:       ac,
 	}, nil
 }
 
@@ -130,11 +137,13 @@ func MustNewApisixConsumer(obj interface{}) ApisixConsumer {
 		return &apisixConsumer{
 			groupVersion: config.ApisixV2beta3,
 			v2beta3:      ac,
+			Object:       ac,
 		}
 	case *configv2.ApisixConsumer:
 		return &apisixConsumer{
 			groupVersion: config.ApisixV2,
 			v2:           ac,
+			Object:       ac,
 		}
 	default:
 		panic("invalid ApisixConsumer type")
@@ -150,11 +159,13 @@ func NewApisixConsumer(obj interface{}) (ApisixConsumer, error) {
 		return &apisixConsumer{
 			groupVersion: config.ApisixV2beta3,
 			v2beta3:      ac,
+			Object:       ac,
 		}, nil
 	case *configv2.ApisixConsumer:
 		return &apisixConsumer{
 			groupVersion: config.ApisixV2,
 			v2:           ac,
+			Object:       ac,
 		}, nil
 	default:
 		return nil, errors.New("invalid ApisixConsumer type")

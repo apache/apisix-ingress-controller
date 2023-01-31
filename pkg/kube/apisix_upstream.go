@@ -17,6 +17,7 @@ package kube
 import (
 	"errors"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
@@ -58,6 +59,8 @@ type ApisixUpstream interface {
 	// ResourceVersion returns the the resource version field inside
 	// the real ApisixUpstream.
 	ResourceVersion() string
+
+	metav1.Object
 }
 
 // ApisixUpstreamEvent contains the ApisixUpstream key (namespace/name)
@@ -72,6 +75,8 @@ type apisixUpstream struct {
 	groupVersion string
 	v2beta3      *configv2beta3.ApisixUpstream
 	v2           *configv2.ApisixUpstream
+
+	metav1.Object
 }
 
 func (au *apisixUpstream) V2beta3() *configv2beta3.ApisixUpstream {
@@ -111,6 +116,7 @@ func (l *apisixUpstreamLister) V2beta3(namespace, name string) (ApisixUpstream, 
 	return &apisixUpstream{
 		groupVersion: config.ApisixV2beta3,
 		v2beta3:      au,
+		Object:       au,
 	}, nil
 }
 func (l *apisixUpstreamLister) V2(namespace, name string) (ApisixUpstream, error) {
@@ -121,6 +127,7 @@ func (l *apisixUpstreamLister) V2(namespace, name string) (ApisixUpstream, error
 	return &apisixUpstream{
 		groupVersion: config.ApisixV2,
 		v2:           au,
+		Object:       au,
 	}, nil
 }
 
@@ -136,11 +143,13 @@ func MustNewApisixUpstream(obj interface{}) ApisixUpstream {
 		return &apisixUpstream{
 			groupVersion: config.ApisixV2beta3,
 			v2beta3:      au,
+			Object:       au,
 		}
 	case *configv2.ApisixUpstream:
 		return &apisixUpstream{
 			groupVersion: config.ApisixV2,
 			v2:           au,
+			Object:       au,
 		}
 	default:
 		panic("invalid ApisixUpstream type")
@@ -156,11 +165,13 @@ func NewApisixUpstream(obj interface{}) (ApisixUpstream, error) {
 		return &apisixUpstream{
 			groupVersion: config.ApisixV2beta3,
 			v2beta3:      au,
+			Object:       au,
 		}, nil
 	case *configv2.ApisixUpstream:
 		return &apisixUpstream{
 			groupVersion: config.ApisixV2,
 			v2:           au,
+			Object:       au,
 		}, nil
 	default:
 		return nil, errors.New("invalid ApisixUpstream type")

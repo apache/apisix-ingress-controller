@@ -104,6 +104,7 @@ func (c *apisixRouteController) run(ctx context.Context) {
 	defer log.Info("ApisixRoute controller exited")
 	defer c.workqueue.ShutDown()
 	defer c.relatedWorkqueue.ShutDown()
+	defer c.pool.Close()
 
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
@@ -339,95 +340,93 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		}
 		ar = ev.Tombstone.(kube.ApisixRoute)
 	}
-
-	switch obj.GroupVersion {
-	case config.ApisixV2beta3:
-		if ev.Type != types.EventDelete {
-			if err = c.checkPluginNameIfNotEmptyV2beta3(ctx, ar.V2beta3()); err == nil {
-				tctx, err = c.translator.TranslateRouteV2beta3(ar.V2beta3())
+	// translator phase: translate resource, construction data plance context
+	{
+		switch obj.GroupVersion {
+		case config.ApisixV2beta3:
+			if ev.Type != types.EventDelete {
+				if err = c.checkPluginNameIfNotEmptyV2beta3(ctx, ar.V2beta3()); err == nil {
+					tctx, err = c.translator.TranslateRouteV2beta3(ar.V2beta3())
+				}
+			} else {
+				tctx, err = c.translator.GenerateRouteV2beta3DeleteMark(ar.V2beta3())
 			}
-		} else {
-			tctx, err = c.translator.GenerateRouteV2beta3DeleteMark(ar.V2beta3())
-		}
-		if err != nil {
-			log.Errorw("failed to translate ApisixRoute v2beta3",
-				zap.Error(err),
-				zap.Any("object", ar),
-			)
-			return err
-		}
-	case config.ApisixV2:
-		if ev.Type != types.EventDelete {
-			if err = c.checkPluginNameIfNotEmptyV2(ctx, ar.V2()); err == nil {
-				tctx, err = c.translator.TranslateRouteV2(ar.V2())
+			if err != nil {
+				log.Errorw("failed to translate ApisixRoute v2beta3",
+					zap.Error(err),
+					zap.Any("object", ar),
+				)
+				goto updateStatus
 			}
+		case config.ApisixV2:
+			if ev.Type != types.EventDelete {
+				if err = c.checkPluginNameIfNotEmptyV2(ctx, ar.V2()); err == nil {
+					tctx, err = c.translator.TranslateRouteV2(ar.V2())
+				}
+			} else {
+				tctx, err = c.translator.GenerateRouteV2DeleteMark(ar.V2())
+			}
+			if err != nil {
+				log.Errorw("failed to translate ApisixRoute v2",
+					zap.Error(err),
+					zap.Any("object", ar),
+				)
+				goto updateStatus
+			}
+		}
+
+		log.Debugw("translated ApisixRoute",
+			zap.Any("routes", tctx.Routes),
+			zap.Any("upstreams", tctx.Upstreams),
+			zap.Any("apisix_route", ar),
+			zap.Any("pluginConfigs", tctx.PluginConfigs),
+		)
+	}
+	// sync phase: Use context update data palne
+	{
+		m := &utils.Manifest{
+			Routes:        tctx.Routes,
+			Upstreams:     tctx.Upstreams,
+			StreamRoutes:  tctx.StreamRoutes,
+			PluginConfigs: tctx.PluginConfigs,
+		}
+		var (
+			added   *utils.Manifest
+			updated *utils.Manifest
+			deleted *utils.Manifest
+		)
+
+		if ev.Type == types.EventDelete {
+			deleted = m
+		} else if ev.Type == types.EventAdd {
+			added = m
 		} else {
-			tctx, err = c.translator.GenerateRouteV2DeleteMark(ar.V2())
+			oldCtx, _ := c.translator.TranslateOldRoute(obj.OldObject)
+			om := &utils.Manifest{
+				Routes:        oldCtx.Routes,
+				Upstreams:     oldCtx.Upstreams,
+				StreamRoutes:  oldCtx.StreamRoutes,
+				PluginConfigs: oldCtx.PluginConfigs,
+			}
+			added, updated, deleted = m.Diff(om)
 		}
-		if err != nil {
-			log.Errorw("failed to translate ApisixRoute v2",
+
+		if err = c.SyncManifests(ctx, added, updated, deleted); err != nil {
+			log.Errorw("failed to sync ApisixRoute to apisix",
 				zap.Error(err),
-				zap.Any("object", ar),
 			)
-			return err
+			goto updateStatus
 		}
-	default:
-		log.Errorw("unknown ApisixRoute version",
-			zap.String("version", obj.GroupVersion),
-			zap.String("key", obj.Key),
-		)
-		return fmt.Errorf("unknown ApisixRoute version %v", obj.GroupVersion)
 	}
-
-	log.Debugw("translated ApisixRoute",
-		zap.Any("routes", tctx.Routes),
-		zap.Any("upstreams", tctx.Upstreams),
-		zap.Any("apisix_route", ar),
-		zap.Any("pluginConfigs", tctx.PluginConfigs),
-	)
-
-	m := &utils.Manifest{
-		Routes:        tctx.Routes,
-		Upstreams:     tctx.Upstreams,
-		StreamRoutes:  tctx.StreamRoutes,
-		PluginConfigs: tctx.PluginConfigs,
-	}
-
-	var (
-		added   *utils.Manifest
-		updated *utils.Manifest
-		deleted *utils.Manifest
-	)
-
-	if ev.Type == types.EventDelete {
-		deleted = m
-	} else if ev.Type == types.EventAdd {
-		added = m
-	} else {
-		oldCtx, _ := c.translator.TranslateOldRoute(obj.OldObject)
-		om := &utils.Manifest{
-			Routes:        oldCtx.Routes,
-			Upstreams:     oldCtx.Upstreams,
-			StreamRoutes:  oldCtx.StreamRoutes,
-			PluginConfigs: oldCtx.PluginConfigs,
-		}
-		added, updated, deleted = m.Diff(om)
-	}
-
-	if err = c.SyncManifests(ctx, added, updated, deleted); err != nil {
-		log.Errorw("failed to sync ingress artifacts",
-			zap.Error(err),
-		)
-		return err
-	}
+updateStatus:
 	c.pool.Queue(func(wu pool.WorkUnit) (interface{}, error) {
 		if wu.IsCancelled() {
 			return nil, nil
 		}
-		c.UpdateStatus(ar, err)
+		c.updateStatus(ar, err)
 		return true, nil
 	})
-	return nil
+	return err
 }
 
 func (c *apisixRouteController) checkPluginNameIfNotEmptyV2beta3(ctx context.Context, in *v2beta3.ApisixRoute) error {
@@ -476,7 +475,7 @@ func (c *apisixRouteController) checkPluginNameIfNotEmptyV2(ctx context.Context,
 	return nil
 }
 
-func (c *apisixRouteController) UpdateStatus(obj kube.ApisixRoute, statusErr error) {
+func (c *apisixRouteController) updateStatus(obj kube.ApisixRoute, statusErr error) {
 	if obj == nil {
 		return
 	}
@@ -493,17 +492,9 @@ func (c *apisixRouteController) UpdateStatus(obj kube.ApisixRoute, statusErr err
 	case config.ApisixV2:
 		ar, err = c.ApisixRouteLister.V2(namespace, name)
 	}
-	if ar.ResourceVersion() > obj.GroupVersion() {
-		return
-	}
 	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			log.Info("ApisixRoute was deleted before it can be update status",
-				zap.String("namespace", namespace),
-				zap.String("name", name),
-			)
-		} else {
-			log.Errorw("Failed to update status, unable to get ApisixRoute",
+		if !k8serrors.IsNotFound(err) {
+			log.Warnw("failed to update status, unable to get ApisixRoute",
 				zap.Error(err),
 				zap.String("name", name),
 				zap.String("namespace", namespace),
@@ -511,20 +502,25 @@ func (c *apisixRouteController) UpdateStatus(obj kube.ApisixRoute, statusErr err
 		}
 		return
 	}
+	if ar.ResourceVersion() > obj.GroupVersion() {
+		return
+	}
 	var (
 		reason    = utils.ResourceSynced
 		condition = metav1.ConditionTrue
+		eventType = v1.EventTypeNormal
 	)
 	if statusErr != nil {
 		reason = utils.ResourceSyncAborted
 		condition = metav1.ConditionFalse
+		eventType = v1.EventTypeWarning
 	}
-	switch ar.GroupVersion() {
+	switch obj.GroupVersion() {
 	case config.ApisixV2beta3:
-		c.RecordEvent(obj.V2beta3(), v1.EventTypeNormal, reason, statusErr)
+		c.RecordEvent(obj.V2beta3(), eventType, reason, statusErr)
 		c.recordStatus(obj.V2beta3(), reason, statusErr, condition, ar.GetGeneration())
 	case config.ApisixV2:
-		c.RecordEvent(obj.V2(), v1.EventTypeNormal, reason, statusErr)
+		c.RecordEvent(obj.V2(), eventType, reason, statusErr)
 		c.recordStatus(obj.V2(), reason, statusErr, condition, ar.GetGeneration())
 	}
 }
