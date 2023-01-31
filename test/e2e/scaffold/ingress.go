@@ -442,7 +442,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		label = labels[0]
 	}
 	if s.opts.DisableStatus {
-		disableStatusStr = "- --disable-status"
+		disableStatusStr = "- --disable-status-updates"
 	}
 	if s.opts.EnableWebhooks {
 		webhookVolumeMounts = _volumeMounts
@@ -562,7 +562,7 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 		label = labels[0]
 	}
 	if s.opts.DisableStatus {
-		disableStatusStr = "- --disable-status"
+		disableStatusStr = "- --disable-status-updates"
 	}
 	if s.opts.EnableWebhooks {
 		webhookVolumeMounts = _volumeMounts

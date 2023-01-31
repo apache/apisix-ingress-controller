@@ -804,7 +804,7 @@ func (c *apisixUpstreamController) handleSvcErr(key string, errOrigin error) {
 
 // recordStatus record resources status
 func (c *apisixUpstreamController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
-	if c.DisableStatus {
+	if c.Kubernetes.DisableStatusUpdates {
 		return
 	}
 	// build condition

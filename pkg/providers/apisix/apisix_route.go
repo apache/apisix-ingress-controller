@@ -854,7 +854,7 @@ problem here, and incorrect status may be recorded.(It will only be triggered wh
 	}
 */
 func (c *apisixRouteController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
-	if c.DisableStatus {
+	if c.Kubernetes.DisableStatusUpdates {
 		return
 	}
 	// build condition

@@ -460,7 +460,7 @@ func (c *ingressController) ResourceSync() {
 
 // recordStatus record resources status
 func (c *ingressController) recordStatus(at runtime.Object, reason string, err error, status metav1.ConditionStatus, generation int64) {
-	if c.DisableStatus {
+	if c.Kubernetes.DisableStatusUpdates {
 		return
 	}
 	client := c.KubeClient.Client

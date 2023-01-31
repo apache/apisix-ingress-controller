@@ -186,13 +186,13 @@ For example, no available LB exists in the bare metal environment.`)
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.APIVersion, "api-version", config.DefaultAPIVersion, config.APIVersionDescribe)
 	cmd.PersistentFlags().BoolVar(&cfg.Kubernetes.WatchEndpointSlices, "watch-endpointslices", false, "whether to watch endpointslices rather than endpoints")
 	cmd.PersistentFlags().BoolVar(&cfg.Kubernetes.EnableGatewayAPI, "enable-gateway-api", false, "whether to enable support for Gateway API")
+	cmd.PersistentFlags().BoolVar(&cfg.Kubernetes.DisableStatusUpdates, "disable-status-updates", false, "Disable resource status updates")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.AdminAPIVersion, "apisix-admin-api-version", "v2", `the APISIX admin API version. can be "v2" or "v3". Default value is v2.`)
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.DefaultClusterBaseURL, "default-apisix-cluster-base-url", "", "the base URL of admin api / manager api for the default APISIX cluster")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.DefaultClusterAdminKey, "default-apisix-cluster-admin-key", "", "admin key used for the authorization of admin api / manager api for the default APISIX cluster")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.DefaultClusterName, "default-apisix-cluster-name", "default", "name of the default apisix cluster")
 	cmd.PersistentFlags().DurationVar(&cfg.ApisixResourceSyncInterval.Duration, "apisix-resource-sync-interval", 300*time.Second, "interval between syncs in seconds. Default value is 300s.")
 	cmd.PersistentFlags().StringVar(&cfg.PluginMetadataConfigMap, "plugin-metadata-cm", "plugin-metadata-config-map", "ConfigMap name of plugin metadata.")
-	cmd.PersistentFlags().BoolVar(&cfg.DisableStatus, "disable-status", false, "Disable resource status updates")
 
 	return cmd
 }

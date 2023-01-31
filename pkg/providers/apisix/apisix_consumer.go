@@ -351,7 +351,7 @@ func (c *apisixConsumerController) ResourceSync() {
 
 // recordStatus record resources status
 func (c *apisixConsumerController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
-	if c.DisableStatus {
+	if c.Kubernetes.DisableStatusUpdates {
 		return
 	}
 	// build condition

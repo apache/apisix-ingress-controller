@@ -51,8 +51,6 @@ enable_profiling: true # enable profiling via web interfaces
                        # host:port/debug/pprof, default is true.
 apisix-resource-sync-interval: "300s" # Default interval for synchronizing Kubernetes resources to APISIX
 
-disable_status: false # In the case of a large number of resources and the status of resources is not concerned
-                    # you can consider disabling status to speed up the synchronization cycle of resources.
 # Kubernetes related configurations.
 kubernetes:
   kubeconfig: ""                       # the Kubernetes configuration file path, default is
@@ -85,6 +83,9 @@ kubernetes:
   api_version: apisix.apache.org/v2    # the default value of API version is "apisix.apache.org/v2", support "apisix.apache.org/v2beta3" and "apisix.apache.org/v2".
 
   plugin_metadata_cm: plugin-metadata-config-map
+
+  disable_status_updates: false # In the case of a large number of resources and the status of resources is not concerned
+                    # you can consider disabling status to speed up the synchronization cycle of resources.
 # APISIX related configurations.
 apisix:
   admin_api_version: v3  # the APISIX admin API version. can be "v2" or "v3"
