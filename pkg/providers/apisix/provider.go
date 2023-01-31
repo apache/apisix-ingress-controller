@@ -21,6 +21,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
@@ -65,6 +66,7 @@ type apisixProvider struct {
 	apisixClusterConfigController *apisixClusterConfigController
 	apisixConsumerController      *apisixConsumerController
 	apisixPluginConfigController  *apisixPluginConfigController
+	apisixGlobalRuleController    *apisixGlobalRuleController
 }
 
 func NewProvider(common *providertypes.Common, namespaceProvider namespace.WatchingNamespaceProvider,
@@ -94,6 +96,9 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 	p.apisixClusterConfigController = newApisixClusterConfigController(c)
 	p.apisixConsumerController = newApisixConsumerController(c)
 	p.apisixPluginConfigController = newApisixPluginConfigController(c)
+	if p.common.Kubernetes.APIVersion == config.ApisixV2 {
+		p.apisixGlobalRuleController = newApisixGlobalRuleController(c)
+	}
 
 	return p, p.apisixTranslator, nil
 }
@@ -119,6 +124,11 @@ func (p *apisixProvider) Run(ctx context.Context) {
 	e.Add(func() {
 		p.apisixPluginConfigController.run(ctx)
 	})
+	if p.common.Kubernetes.APIVersion == config.ApisixV2 {
+		e.Add(func() {
+			p.apisixGlobalRuleController.run(ctx)
+		})
+	}
 
 	e.Wait()
 }

@@ -758,3 +758,35 @@ type ApisixPluginConfigList struct {
 	metav1.ListMeta `json:"metadata" yaml:"metadata"`
 	Items           []ApisixPluginConfig `json:"items,omitempty" yaml:"items,omitempty"`
 }
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:subresource:status
+
+// ApisixGlobalRule is the Schema for the ApisixGlobalRule resource.
+// An ApisixGlobalRule is used to support a group of plugin configs
+type ApisixGlobalRule struct {
+	metav1.TypeMeta   `json:",inline" yaml:",inline"`
+	metav1.ObjectMeta `json:"metadata" yaml:"metadata"`
+
+	// Spec defines the desired state of ApisixGlobalRuleSpec.
+	Spec   ApisixGlobalRuleSpec `json:"spec" yaml:"spec"`
+	Status ApisixStatus         `json:"status,omitempty" yaml:"status,omitempty"`
+}
+
+// ApisixGlobalRuleSpec defines the desired state of ApisixGlobalRuleSpec.
+type ApisixGlobalRuleSpec struct {
+	// Plugins contains a list of ApisixRoutePlugin
+	// +required
+	Plugins []ApisixRoutePlugin `json:"plugins" yaml:"plugins"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:generate=true
+
+// ApisixGlobalRuleList contains a list of ApisixGlobalRule.
+type ApisixGlobalRuleList struct {
+	metav1.TypeMeta `json:",inline" yaml:",inline"`
+	metav1.ListMeta `json:"metadata" yaml:"metadata"`
+	Items           []ApisixGlobalRule `json:"items,omitempty" yaml:"items,omitempty"`
+}

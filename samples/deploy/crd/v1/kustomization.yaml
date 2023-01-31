@@ -22,3 +22,4 @@ resources:
   - ./ApisixClusterConfig.yaml
   - ./ApisixConsumer.yaml
   - ./ApisixPluginConfig.yaml
+  - ./ApisixGlobalRule.yaml

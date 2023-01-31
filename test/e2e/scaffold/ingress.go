@@ -171,6 +171,8 @@ rules:
       - apisixconsumers/status
       - apisixpluginconfigs
       - apisixpluginconfigs/status
+      - apisixglobalrules
+      - apisixglobalrules/status
     verbs:
       - '*'
   - apiGroups:
