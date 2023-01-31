@@ -134,14 +134,15 @@ func NewDefaultConfig() *Config {
 		EnableProfiling:            true,
 		ApisixResourceSyncInterval: types.TimeDuration{Duration: 300 * time.Second},
 		Kubernetes: KubernetesConfig{
-			Kubeconfig:          "", // Use in-cluster configurations.
-			ResyncInterval:      types.TimeDuration{Duration: 6 * time.Hour},
-			ElectionID:          IngressAPISIXLeader,
-			IngressClass:        IngressClass,
-			IngressVersion:      IngressNetworkingV1,
-			APIVersion:          DefaultAPIVersion,
-			WatchEndpointSlices: false,
-			EnableGatewayAPI:    false,
+			Kubeconfig:           "", // Use in-cluster configurations.
+			ResyncInterval:       types.TimeDuration{Duration: 6 * time.Hour},
+			ElectionID:           IngressAPISIXLeader,
+			IngressClass:         IngressClass,
+			IngressVersion:       IngressNetworkingV1,
+			APIVersion:           DefaultAPIVersion,
+			WatchEndpointSlices:  false,
+			EnableGatewayAPI:     false,
+			DisableStatusUpdates: false,
 		},
 		APISIX: APISIXConfig{
 			AdminAPIVersion:    "v2",

@@ -42,12 +42,13 @@ func TestNewConfigFromFile(t *testing.T) {
 		EnableProfiling:            true,
 		ApisixResourceSyncInterval: types.TimeDuration{Duration: 200 * time.Second},
 		Kubernetes: KubernetesConfig{
-			ResyncInterval: types.TimeDuration{Duration: time.Hour},
-			Kubeconfig:     "/path/to/foo/baz",
-			ElectionID:     "my-election-id",
-			IngressClass:   IngressClass,
-			IngressVersion: IngressNetworkingV1,
-			APIVersion:     DefaultAPIVersion,
+			ResyncInterval:       types.TimeDuration{Duration: time.Hour},
+			Kubeconfig:           "/path/to/foo/baz",
+			ElectionID:           "my-election-id",
+			IngressClass:         IngressClass,
+			IngressVersion:       IngressNetworkingV1,
+			APIVersion:           DefaultAPIVersion,
+			DisableStatusUpdates: true,
 		},
 		APISIX: APISIXConfig{
 			AdminAPIVersion:        "v2",
@@ -94,6 +95,7 @@ kubernetes:
   ingress_class: apisix
   ingress_version: networking/v1
   api_version: apisix.apache.org/v2
+  disable_status_updates: true
 apisix:
   admin_api_version: v2
   default_cluster_base_url: http://127.0.0.1:8080/apisix
@@ -132,12 +134,13 @@ func TestConfigWithEnvVar(t *testing.T) {
 		EnableProfiling:            true,
 		ApisixResourceSyncInterval: types.TimeDuration{Duration: 200 * time.Second},
 		Kubernetes: KubernetesConfig{
-			ResyncInterval: types.TimeDuration{Duration: time.Hour},
-			Kubeconfig:     "",
-			ElectionID:     "my-election-id",
-			IngressClass:   IngressClass,
-			IngressVersion: IngressNetworkingV1,
-			APIVersion:     DefaultAPIVersion,
+			ResyncInterval:       types.TimeDuration{Duration: time.Hour},
+			Kubeconfig:           "",
+			ElectionID:           "my-election-id",
+			IngressClass:         IngressClass,
+			IngressVersion:       IngressNetworkingV1,
+			APIVersion:           DefaultAPIVersion,
+			DisableStatusUpdates: true,
 		},
 		APISIX: APISIXConfig{
 			AdminAPIVersion:        "v2",
@@ -173,7 +176,8 @@ func TestConfigWithEnvVar(t *testing.T) {
         "resync_interval": "1h0m0s",
         "election_id": "my-election-id",
         "ingress_class": "apisix",
-        "ingress_version": "networking/v1"
+        "ingress_version": "networking/v1",
+        "disable_status_updates": true
     },
     "apisix": {
         "admin_api_version": "v2",
@@ -212,6 +216,7 @@ kubernetes:
   election_id: my-election-id
   ingress_class: apisix
   ingress_version: networking/v1
+  disable_status_updates: true
 apisix:
   admin_api_version: v2
   default_cluster_base_url: {{.DEFAULT_CLUSTER_BASE_URL}}
