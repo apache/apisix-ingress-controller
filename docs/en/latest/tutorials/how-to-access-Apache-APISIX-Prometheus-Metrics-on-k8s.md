@@ -114,7 +114,7 @@ helm install apisix apisix/apisix -f values.yaml --create-namespace -n ingress-a
 
 :::tip
 
-APISIX also supports exporting HTTP request-related metrics like http_status, http_latency, and bandwidth. You can enable this by updating your configuration file as shown [here](https://apisix.apache.org/docs/apisix/next/plugins/prometheus/#specifying-metrics). 
+APISIX also supports exporting HTTP request-related metrics like http_status, http_latency, and bandwidth. You can enable this by updating your configuration file as shown [here](https://apisix.apache.org/docs/apisix/next/plugins/prometheus/#specifying-metrics).
 
 :::
 
