@@ -277,6 +277,27 @@ func TestTranslateApisixConsumerV2(t *testing.T) {
 	assert.Equal(t, "foo", cfg5.AccessKey)
 	assert.Equal(t, "bar", cfg5.SecretKey)
 
+	ac = &configv2.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "jack",
+			Namespace: "qa",
+		},
+		Spec: configv2.ApisixConsumerSpec{
+			AuthParameter: configv2.ApisixConsumerAuthParameter{
+				LDAPAuth: &configv2.ApisixConsumerLDAPAuth{
+					Value: &configv2.ApisixConsumerLDAPAuthValue{
+						UserDN: "cn=user01,ou=users,dc=example,dc=org",
+					},
+				},
+			},
+		},
+	}
+	consumer, err = (&translator{}).TranslateApisixConsumerV2(ac)
+	assert.Nil(t, err)
+	assert.Len(t, consumer.Plugins, 1)
+	cfg6 := consumer.Plugins["ldap-auth"].(*apisixv1.LDAPAuthConsumerConfig)
+	assert.Equal(t, "cn=user01,ou=users,dc=example,dc=org", cfg6.UserDN)
+
 	// No test test cases for secret references as we already test them
 	// in plugin_test.go.
 }
