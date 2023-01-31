@@ -1,10 +1,11 @@
 ---
-title: Configuring Ingress with Kubernetes Ingress resource
+title: Configuring Ingress with Kubernetes Gateway API
 keywords:
   - APISIX ingress
   - Apache APISIX
   - Kubernetes Ingress
-description: A tutorial on configuring Ingress using the default Kubernetes Ingress resource.
+  - Kubernetes Gateway API
+description: A tutorial on configuring Ingress using the Kubernetes Gateway API.
 ---
 <!--
 #
@@ -25,19 +26,40 @@ description: A tutorial on configuring Ingress using the default Kubernetes Ingr
 #
 -->
 
-This tutorial will walk you through on how you can configure APISIX Ingress with the [default Kubernetes Ingress resource](https://kubernetes.io/docs/concepts/services-networking/ingress/).
+This tutorial will walk you through on how you can configure APISIX Ingress with the [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/).
 
 Also see:
 
-- [Configuring Ingress with Kubernetes Gateway API](https://apisix.apache.org/docs/ingress-controller/tutorials/configure-ingress-with-gateway-api)
+- [Configuring Ingress with Kubernetes Ingress resource](https://apisix.apache.org/docs/ingress-controller/tutorials/proxy-the-httpbin-service-with-ingress)
 - [Configuring Ingress with APISIX CRDs](https://apisix.apache.org/docs/ingress-controller/tutorials/proxy-the-httpbin-service)
 
 ## Prerequisites
 
-Before you move on, make sure you:
+Before you move on, make sure you have access to a Kubernetes cluster. This tutorial uses [minikube](https://github.com/kubernetes/minikube).
 
-1. Have access to a Kubernetes cluster. This tutorial uses [minikube](https://github.com/kubernetes/minikube).
-2. Install APISIX Ingress. See the [Installation](https://apisix.apache.org/docs/ingress-controller/deployments/minikube) section.
+## Install Gateway API CRDs
+
+Kubernetes does not have the Gateway API CRDs installed out of the box. You can install it manually by running:
+
+```shell
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v0.5.0/standard-install.yaml
+```
+
+## Install APISIX Ingress and Enable Gateway API
+
+You can install APISIX and APISIX Ingress controller with Helm. To enable APISIX Ingress controller to work with the Gateway API, you can set the flag `--set ingress-controller.config.kubernetes.enableGatewayAPI=true` as shown below:
+
+```shell
+helm repo add apisix https://charts.apiseven.com
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+kubectl create ns ingress-apisix
+helm install apisix apisix/apisix --namespace ingress-apisix \
+--set gateway.type=NodePort \
+--set ingress-controller.enabled=true \
+--set ingress-controller.config.apisix.serviceNamespace=ingress-apisix \
+--set ingress-controller.config.kubernetes.enableGatewayAPI=true
+```
 
 ## Deploy httpbin
 
@@ -52,28 +74,24 @@ kubectl expose pod httpbin --port 80
 
 ## Configuring Ingress
 
-We can use the [default Kubernetes Ingress resource](https://kubernetes.io/docs/concepts/services-networking/ingress/#the-ingress-resource) to configure APISIX Ingress. The example below shows a sample configuration that creates a Route to the httpbin service:
+We will use the [HTTPRoute API](https://gateway-api.sigs.k8s.io/api-types/httproute/) to define Ingress. The example below shows a sample configuration that creates a Route to the httpbin service:
 
 ```yaml title="httpbin-ingress.yaml"
-# use v1beta1 if your Kubernetes cluster version is older than v1.19.0
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: HTTPRoute
 metadata:
-  name: httpserver-ingress
+  name: httpbin-route
 spec:
-  # we use APISIX Ingress and it watches Ingress resources with "apisix" ingressClassName
-  ingressClassName: apisix
+  hostnames:
+  - local.httpbin.org
   rules:
-  - host: local.httpbin.org
-    http:
-      paths:
-      - backend:
-          service:
-            name: httpbin
-            port:
-              number: 80
-        path: /
-        pathType: Prefix
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: httpbin
+      port: 80
 ```
 
 This configuration will route all requests with host `local.httpbin.org` to the httpbin service.
