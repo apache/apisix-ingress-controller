@@ -135,7 +135,7 @@ unit-test:
 
 ### e2e-test:             Run e2e test cases (in existing clusters directly)
 .PHONY: e2e-test
-e2e-test: ginkgo-check pack-images e2e-wolf-rbac install install-gateway-api
+e2e-test: ginkgo-check pack-images e2e-wolf-rbac e2e-ldap install install-gateway-api
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
@@ -266,6 +266,17 @@ ifneq ("$(E2E_FOCUS)", "")
 	&& ./test/e2e/testdata/wolf-rbac/cmd.sh start
 endif
 
+.PHONY: e2e-ldap
+e2e-ldap:
+ifeq ("$(E2E_FOCUS)", "")
+	chmod +x ./test/e2e/testdata/ldap/cmd.sh && ./test/e2e/testdata/ldap/cmd.sh start
+endif
+ifneq ("$(E2E_FOCUS)", "")
+	echo $(E2E_FOCUS) | grep -E 'suite-plugins-authentication|consumer|ldap' || exit 0 \
+	&& chmod +x ./test/e2e/testdata/ldap/cmd.sh \
+	&& ./test/e2e/testdata/ldap/cmd.sh start
+endif
+
 ### kind-load-images:	  Load the images to the kind cluster
 .PHONY: kind-load-images
 kind-load-images:
@@ -279,7 +290,7 @@ kind-load-images:
             $(REGISTRY)/busybox:dev
 
 
-GATEWAY_API_VERSION ?= v0.5.1
+GATEWAY_API_VERSION ?= v0.6.0
 GATEWAY_API_PACKAGE ?= sigs.k8s.io/gateway-api@$(GATEWAY_API_VERSION)
 GATEWAY_API_CRDS_GO_MOD_PATH = $(shell go env GOPATH)/pkg/mod/$(GATEWAY_API_PACKAGE)
 GATEWAY_API_CRDS_LOCAL_PATH = $(PWD)/samples/deploy/gateway-api/$(GATEWAY_API_VERSION)

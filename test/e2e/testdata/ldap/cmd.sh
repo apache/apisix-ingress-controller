@@ -1,3 +1,5 @@
+#!/bin/sh
+
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -15,11 +17,20 @@
 # limitations under the License.
 #
 
-resources:
-  - ./ApisixRoute.yaml
-  - ./ApisixUpstream.yaml
-  - ./ApisixTls.yaml
-  - ./ApisixClusterConfig.yaml
-  - ./ApisixConsumer.yaml
-  - ./ApisixPluginConfig.yaml
-  - ./ApisixGlobalRule.yaml
+cd test/e2e/testdata/ldap/
+
+OPTION=$1
+
+if  [ $OPTION = "ip" ]; then
+    echo -n `docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' openldap`
+elif [ $OPTION = "start" ]; then
+    docker-compose -f 'docker-compose.yaml'  -p 'openldap' down
+
+    # start openldap
+    docker-compose -f 'docker-compose.yaml'  -p 'openldap' up -d
+
+elif [ $OPTION = "stop" ]; then
+    docker-compose -f  'docker-compose.yaml'  -p 'openldap' down
+else
+    echo "argument is one of [ip, start, stop]"
+fi

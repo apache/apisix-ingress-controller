@@ -191,6 +191,31 @@ func DiffPluginMetadatas(olds, news []*apisixv1.PluginMetadata) (added, updated,
 	return
 }
 
+func DiffGlobalRules(olds, news []*apisixv1.GlobalRule) (added, updated, deleted []*apisixv1.GlobalRule) {
+	oldMap := make(map[string]*apisixv1.GlobalRule, len(olds))
+	newMap := make(map[string]*apisixv1.GlobalRule, len(news))
+	for _, gr := range olds {
+		oldMap[gr.ID] = gr
+	}
+	for _, gr := range news {
+		newMap[gr.ID] = gr
+	}
+
+	for _, gr := range news {
+		if ou, ok := oldMap[gr.ID]; !ok {
+			added = append(added, gr)
+		} else if !reflect.DeepEqual(ou, gr) {
+			updated = append(updated, gr)
+		}
+	}
+	for _, gr := range olds {
+		if _, ok := newMap[gr.ID]; !ok {
+			deleted = append(deleted, gr)
+		}
+	}
+	return
+}
+
 type Manifest struct {
 	Routes          []*apisixv1.Route
 	Upstreams       []*apisixv1.Upstream
@@ -198,6 +223,7 @@ type Manifest struct {
 	SSLs            []*apisixv1.Ssl
 	PluginConfigs   []*apisixv1.PluginConfig
 	PluginMetadatas []*apisixv1.PluginMetadata
+	GlobalRules     []*apisixv1.GlobalRule
 }
 
 func (m *Manifest) Diff(om *Manifest) (added, updated, deleted *Manifest) {
@@ -207,6 +233,7 @@ func (m *Manifest) Diff(om *Manifest) (added, updated, deleted *Manifest) {
 	asr, usr, dsr := DiffStreamRoutes(om.StreamRoutes, m.StreamRoutes)
 	apc, upc, dpc := DiffPluginConfigs(om.PluginConfigs, m.PluginConfigs)
 	apm, upm, dpm := DiffPluginMetadatas(om.PluginMetadatas, m.PluginMetadatas)
+	agr, ugr, dgr := DiffGlobalRules(om.GlobalRules, m.GlobalRules)
 
 	added = &Manifest{
 		Routes:          ar,
@@ -215,6 +242,7 @@ func (m *Manifest) Diff(om *Manifest) (added, updated, deleted *Manifest) {
 		SSLs:            sa,
 		PluginConfigs:   apc,
 		PluginMetadatas: apm,
+		GlobalRules:     agr,
 	}
 	updated = &Manifest{
 		Routes:          ur,
@@ -223,6 +251,7 @@ func (m *Manifest) Diff(om *Manifest) (added, updated, deleted *Manifest) {
 		SSLs:            su,
 		PluginConfigs:   upc,
 		PluginMetadatas: upm,
+		GlobalRules:     ugr,
 	}
 	deleted = &Manifest{
 		Routes:          dr,
@@ -231,6 +260,7 @@ func (m *Manifest) Diff(om *Manifest) (added, updated, deleted *Manifest) {
 		SSLs:            sd,
 		PluginConfigs:   dpc,
 		PluginMetadatas: dpm,
+		GlobalRules:     dgr,
 	}
 	return
 }
@@ -271,6 +301,11 @@ func SyncManifests(ctx context.Context, apisix apisix.APISIX, clusterName string
 				merr = multierror.Append(merr, err)
 			}
 		}
+		for _, gr := range added.GlobalRules {
+			if _, err := apisix.Cluster(clusterName).GlobalRule().Create(ctx, gr); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
 	}
 	if updated != nil {
 		for _, ssl := range updated.SSLs {
@@ -300,6 +335,11 @@ func SyncManifests(ctx context.Context, apisix apisix.APISIX, clusterName string
 		}
 		for _, pm := range updated.PluginMetadatas {
 			if _, err := apisix.Cluster(clusterName).PluginMetadata().Update(ctx, pm); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
+		for _, gr := range updated.GlobalRules {
+			if _, err := apisix.Cluster(clusterName).GlobalRule().Update(ctx, gr); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
@@ -401,6 +441,11 @@ func SyncManifests(ctx context.Context, apisix apisix.APISIX, clusterName string
 		}
 		for _, pm := range deleted.PluginMetadatas {
 			if err := apisix.Cluster(clusterName).PluginMetadata().Delete(ctx, pm); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
+		for _, gr := range deleted.GlobalRules {
+			if err := apisix.Cluster(clusterName).GlobalRule().Delete(ctx, gr); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}

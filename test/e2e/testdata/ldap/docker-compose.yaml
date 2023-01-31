@@ -15,11 +15,19 @@
 # limitations under the License.
 #
 
-resources:
-  - ./ApisixRoute.yaml
-  - ./ApisixUpstream.yaml
-  - ./ApisixTls.yaml
-  - ./ApisixClusterConfig.yaml
-  - ./ApisixConsumer.yaml
-  - ./ApisixPluginConfig.yaml
-  - ./ApisixGlobalRule.yaml
+version: '3'
+
+services:
+  openldap:
+    container_name: openldap
+    image: docker.io/bitnami/openldap:2.6
+    ports:
+      - '1389:1389'
+    environment:
+      - LDAP_PORT_NUMBER=1389
+      - LDAP_ENABLE_TLS=no
+      - LDAP_ADMIN_USERNAME=admin
+      - LDAP_ADMIN_PASSWORD=admin
+      - LDAP_ROOT=dc=ldap,dc=example,dc=org
+      - LDAP_USERS=jack
+      - LDAP_PASSWORDS=jackPassword

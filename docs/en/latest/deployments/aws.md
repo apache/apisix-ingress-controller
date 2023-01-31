@@ -86,6 +86,22 @@ Else, if your Kubernetes cluster version is under `v1.16`, set the flag `--set i
 
 :::
 
+:::tip
+
+APISIX Ingress also supports (beta) the new [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/).
+
+If the Gateway API CRDs are not installed in your cluster by default, you can install it by running:
+
+```shell
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v0.5.0/standard-install.yaml
+```
+
+You should also enable APISIX Ingress controller to work with the Gateway API. You can do this by adding the flag `--set ingress-controller.config.kubernetes.enableGatewayAPI=true` while installing through Helm.
+
+See [this tutorial](https://apisix.apache.org/docs/ingress-controller/tutorials/configure-ingress-with-gateway-api) for more info.
+
+:::
+
 This will create the five resources mentioned below:
 
 * `apisix-gateway`: dataplane the process the traffic.
