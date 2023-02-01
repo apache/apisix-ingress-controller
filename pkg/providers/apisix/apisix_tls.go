@@ -60,6 +60,7 @@ func newApisixTlsController(common *apisixCommon) *apisixTlsController {
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixTls"),
 		workers:      1,
+		pool:         pool.NewLimited(2),
 
 		secretSSLMap: new(sync.Map),
 	}
