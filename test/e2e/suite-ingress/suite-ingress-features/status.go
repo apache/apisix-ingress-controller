@@ -27,9 +27,9 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress-features: Status subresource Testing", func() {
-	suites := func(s *scaffold.Scaffold) {
-		ginkgo.It("check the status is recorded", func() {
+var _ = ginkgo.FDescribe("suite-ingress-features: Status subresource Testing", func() {
+	routeSuites := func(s *scaffold.Scaffold) {
+		ginkgo.It("check the ApisixRoute status is recorded", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -64,11 +64,43 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold())
+	ginkgo.Describe("suite-ingress-features: ApisixRoute scaffold v2beta3", func() {
+		routeSuites(scaffold.NewDefaultV2beta3Scaffold())
 	})
-	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
-		suites(scaffold.NewDefaultV2Scaffold())
+	ginkgo.Describe("suite-ingress-features: ApisixRoute scaffold v2", func() {
+		routeSuites(scaffold.NewDefaultV2Scaffold())
+	})
+
+	upSuite := func(s *scaffold.Scaffold) {
+		ginkgo.It("check the ApisixUpstream status is recorded", func() {
+			backendSvc, _ := s.DefaultHTTPBackend()
+			apisixUpstream := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixUpstream
+metadata:
+  name: %s
+spec:
+  retries: 2
+`, backendSvc)
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixUpstream))
+
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			// status should be recorded as successful
+			output, err := s.GetOutputFromString("up", backendSvc, "-o", "yaml")
+			assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixUpstream resource")
+			hasType := strings.Contains(output, "type: ResourcesAvailable")
+			assert.True(ginkgo.GinkgoT(), hasType, "Status is recorded")
+			hasMsg := strings.Contains(output, "message: Sync Successfully")
+			assert.True(ginkgo.GinkgoT(), hasMsg, "Status is recorded")
+		})
+	}
+
+	ginkgo.Describe("suite-ingress-features: ApisixUpstream scaffold v2beta3", func() {
+		upSuite(scaffold.NewDefaultV2beta3Scaffold())
+	})
+	ginkgo.Describe("suite-ingress-features: ApisixUpstream scaffold v2", func() {
+		upSuite(scaffold.NewDefaultV2Scaffold())
 	})
 })
 
