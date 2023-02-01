@@ -17,6 +17,7 @@ package ingress
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -277,7 +278,7 @@ func (c *ingressController) UpdateStatus(obj kube.Ingress) {
 		}
 		return
 	}
-	if ing.ResourceVersion() > obj.ResourceVersion() {
+	if ing.ResourceVersion() != obj.ResourceVersion() {
 		return
 	}
 	switch obj.GroupVersion() {
@@ -329,6 +330,26 @@ func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 	curr := kube.MustNewIngress(newObj)
 	if prev.ResourceVersion() >= curr.ResourceVersion() {
 		return
+	}
+	// Updates triggered by status are ignored.
+	if prev.GetGeneration() == curr.GetGeneration() && prev.GetUID() == curr.GetUID() {
+		switch curr.GroupVersion() {
+		case kube.IngressV1:
+			if reflect.DeepEqual(prev.V1().Spec, curr.V1().Spec) &&
+				!reflect.DeepEqual(prev.V1().Status, curr.V1().Status) {
+				return
+			}
+		case kube.IngressV1beta1:
+			if reflect.DeepEqual(prev.V1beta1().Spec, curr.V1beta1().Spec) &&
+				!reflect.DeepEqual(prev.V1beta1().Status, curr.V1beta1().Status) {
+				return
+			}
+		case kube.IngressExtensionsV1beta1:
+			if reflect.DeepEqual(prev.ExtensionsV1beta1().Spec, curr.ExtensionsV1beta1().Spec) &&
+				!reflect.DeepEqual(prev.ExtensionsV1beta1().Status, curr.ExtensionsV1beta1().Status) {
+				return
+			}
+		}
 	}
 
 	key, err := cache.MetaNamespaceKeyFunc(newObj)

@@ -17,6 +17,7 @@ package apisix
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -380,7 +381,7 @@ func (c *apisixUpstreamController) updateStatus(obj kube.ApisixUpstream, statusE
 		}
 		return
 	}
-	if au.ResourceVersion() > obj.GroupVersion() {
+	if au.ResourceVersion() != obj.ResourceVersion() {
 		return
 	}
 	var (
@@ -621,6 +622,15 @@ func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
 	}
 	if prev.ResourceVersion() >= curr.ResourceVersion() {
 		return
+	}
+	// Updates triggered by status are ignored.
+	if prev.GetGeneration() == curr.GetGeneration() && prev.GetUID() == curr.GetUID() {
+		switch curr.GroupVersion() {
+		case config.ApisixV2:
+			if reflect.DeepEqual(prev.V2().Spec, curr.V2().Spec) && !reflect.DeepEqual(prev.V2().Status, curr.V2().Status) {
+				return
+			}
+		}
 	}
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {

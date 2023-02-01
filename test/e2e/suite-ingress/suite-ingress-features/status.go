@@ -27,7 +27,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress-features: Status subresource Testing", func() {
+var _ = ginkgo.Describe("suite-ingress-features: apisix.apache.org/v2beta3 CRDs status subresource Testing", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("check the status is recorded", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -67,8 +67,126 @@ spec:
 	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultV2beta3Scaffold())
 	})
-	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
-		suites(scaffold.NewDefaultV2Scaffold())
+})
+
+var _ = ginkgo.Describe("suite-ingress-features: CRDs status subresource Testing", func() {
+	s := scaffold.NewDefaultScaffold()
+	ginkgo.It("check ApisixRoute status is recorded", func() {
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		apisixRoute := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backends:
+    - serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
+
+		err := s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+		err = s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		time.Sleep(4 * time.Second)
+		// status should be recorded as successful
+		output, err := s.GetOutputFromString("ar", "httpbin-route", "-o", "yaml")
+		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixRoute resource")
+		hasType := strings.Contains(output, "type: ResourcesAvailable")
+		assert.True(ginkgo.GinkgoT(), hasType, "Status is recorded")
+		hasMsg := strings.Contains(output, "message: Sync Successfully")
+		assert.True(ginkgo.GinkgoT(), hasMsg, "Status is recorded")
+
+		apisixRoute = fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    plugins:
+    - name: non-existent
+      enable: true
+    backends:
+    - serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
+
+		time.Sleep(6 * time.Second)
+		// status should be recorded as successful
+		output, err = s.GetOutputFromString("ar", "httpbin-route", "-o", "yaml")
+		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixRoute resource")
+		hasType = strings.Contains(output, "type: ResourceSyncAborted")
+		assert.True(ginkgo.GinkgoT(), hasType, "Status is recorded")
+		hasMsg = strings.Contains(output, "synced failed, with error")
+		assert.True(ginkgo.GinkgoT(), hasMsg, "Status is recorded")
+	})
+
+	ginkgo.It("check ApisixPluginConfig status is recorded", func() {
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		apc := fmt.Sprint(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+ name: test-apc
+spec:
+ plugins:
+ - name: echo
+   enable: true
+   config:
+    body: "my custom body"
+`, backendSvc, backendSvcPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
+
+		time.Sleep(6 * time.Second)
+		// status should be recorded as successfulen
+		output, err := s.GetOutputFromString("au", "test-apc", "-o", "yaml")
+		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixPluginConfig resource")
+		hasType := strings.Contains(output, "type: ResourcesAvailable")
+		assert.True(ginkgo.GinkgoT(), hasType, "Status is recorded")
+		hasMsg := strings.Contains(output, "message: Sync Successfully")
+		assert.True(ginkgo.GinkgoT(), hasMsg, "Status is recorded")
+
+		apc = fmt.Sprint(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+ name: test-apc
+spec:
+ plugins:
+ - name: echo
+   enable: true
+   config:
+    body: "my custom body"
+ - name: non-existent
+   enable: true
+`, backendSvc, backendSvcPort[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
+
+		time.Sleep(6 * time.Second)
+		// status should be recorded as successfulen
+		output, err = s.GetOutputFromString("au", "test-apc", "-o", "yaml")
+		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixPluginConfig resource")
+		hasType = strings.Contains(output, "type: ResourceSyncAborted")
+		assert.True(ginkgo.GinkgoT(), hasType, "Status is recorded")
+		hasMsg = strings.Contains(output, "synced failed, with error")
+		assert.True(ginkgo.GinkgoT(), hasMsg, "Status is recorded")
 	})
 })
 

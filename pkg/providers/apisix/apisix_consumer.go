@@ -17,6 +17,7 @@ package apisix
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"go.uber.org/zap"
@@ -266,6 +267,15 @@ func (c *apisixConsumerController) onUpdate(oldObj, newObj interface{}) {
 	if prev.ResourceVersion() >= curr.ResourceVersion() {
 		return
 	}
+	// Updates triggered by status are ignored.
+	if prev.GetGeneration() == curr.GetGeneration() && prev.GetUID() == curr.GetUID() {
+		switch curr.GroupVersion() {
+		case config.ApisixV2:
+			if reflect.DeepEqual(prev.V2().Spec, curr.V2().Spec) && !reflect.DeepEqual(prev.V2().Status, curr.V2().Status) {
+				return
+			}
+		}
+	}
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
 		log.Errorf("found ApisixConsumer resource with bad meta namespace key: %s", err)
@@ -355,6 +365,7 @@ func (c *apisixConsumerController) ResourceSync() {
 }
 
 func (c *apisixConsumerController) updateStatus(obj kube.ApisixConsumer, statusErr error) {
+	log.Errorw("update status ApisixConsumer")
 	if obj == nil {
 		return
 	}
@@ -381,7 +392,7 @@ func (c *apisixConsumerController) updateStatus(obj kube.ApisixConsumer, statusE
 		}
 		return
 	}
-	if ac.ResourceVersion() > obj.GroupVersion() {
+	if ac.ResourceVersion() != obj.ResourceVersion() {
 		return
 	}
 	var (

@@ -17,6 +17,7 @@ package apisix
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"go.uber.org/zap"
@@ -138,6 +139,7 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 		apc = ev.Tombstone.(kube.ApisixPluginConfig)
 	}
 	// translator phase: translate resource, construction data plance context
+	var errRecord error
 	{
 		switch obj.GroupVersion {
 		case config.ApisixV2beta3:
@@ -151,6 +153,7 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 					zap.Error(err),
 					zap.Any("object", apc),
 				)
+				errRecord = err
 				goto updatestatus
 			}
 		case config.ApisixV2:
@@ -164,6 +167,7 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 					zap.Error(err),
 					zap.Any("object", apc),
 				)
+				errRecord = err
 				goto updatestatus
 			}
 		}
@@ -203,6 +207,7 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 					zap.Error(err),
 					zap.Any("ApisixPluginConfig", apc),
 				)
+				errRecord = err
 				goto updatestatus
 			}
 
@@ -212,10 +217,11 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 			added, updated, deleted = m.Diff(om)
 		}
 
-		if err = c.SyncManifests(ctx, added, updated, deleted); err != nil {
+		if err := c.SyncManifests(ctx, added, updated, deleted); err != nil {
 			log.Errorw("failed to sync ApisixPluginConfig to apisix",
 				zap.Error(err),
 			)
+			errRecord = err
 			goto updatestatus
 		}
 	}
@@ -224,10 +230,10 @@ updatestatus:
 		if wu.IsCancelled() {
 			return nil, nil
 		}
-		c.updateStatus(apc, err)
+		c.updateStatus(apc, errRecord)
 		return true, nil
 	})
-	return err
+	return errRecord
 }
 
 func (c *apisixPluginConfigController) updateStatus(obj kube.ApisixPluginConfig, statusErr error) {
@@ -257,7 +263,7 @@ func (c *apisixPluginConfigController) updateStatus(obj kube.ApisixPluginConfig,
 		}
 		return
 	}
-	if apc.ResourceVersion() > obj.GroupVersion() {
+	if apc.ResourceVersion() != obj.ResourceVersion() {
 		return
 	}
 	var (
@@ -270,84 +276,34 @@ func (c *apisixPluginConfigController) updateStatus(obj kube.ApisixPluginConfig,
 	}
 	switch obj.GroupVersion() {
 	case config.ApisixV2beta3:
-		c.RecordEvent(obj.V2beta3(), v1.EventTypeNormal, reason, statusErr)
-		c.recordStatus(obj.V2beta3(), reason, statusErr, condition, apc.GetGeneration())
+		c.RecordEvent(apc.V2beta3(), v1.EventTypeNormal, reason, statusErr)
+		c.recordStatus(apc.V2beta3(), reason, statusErr, condition, apc.GetGeneration())
 	case config.ApisixV2:
-		c.RecordEvent(obj.V2(), v1.EventTypeNormal, reason, statusErr)
-		c.recordStatus(obj.V2(), reason, statusErr, condition, apc.GetGeneration())
+		c.RecordEvent(apc.V2(), v1.EventTypeNormal, reason, statusErr)
+		c.recordStatus(apc.V2(), reason, statusErr, condition, apc.GetGeneration())
 	}
 }
 
 func (c *apisixPluginConfigController) handleSyncErr(obj interface{}, errOrigin error) {
+	if errOrigin == nil {
+		c.workqueue.Forget(obj)
+		c.MetricsCollector.IncrSyncOperation("PluginConfig", "success")
+		return
+	}
 	ev := obj.(*types.Event)
-	event := ev.Object.(kube.ApisixPluginConfigEvent)
 	if k8serrors.IsNotFound(errOrigin) && ev.Type != types.EventDelete {
 		log.Infow("sync ApisixPluginConfig but not found, ignore",
 			zap.String("event_type", ev.Type.String()),
 			zap.String("ApisixPluginConfig", ev.Object.(kube.ApisixPluginConfigEvent).Key),
 		)
-		c.workqueue.Forget(event)
-		return
-	}
-	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
-	if errLocal != nil {
-		log.Errorf("invalid resource key: %s", event.Key)
-		c.MetricsCollector.IncrSyncOperation("PluginConfig", "failure")
-		return
-	}
-	var apc kube.ApisixPluginConfig
-	switch event.GroupVersion {
-	case config.ApisixV2beta3:
-		apc, errLocal = c.ApisixPluginConfigLister.V2beta3(namespace, name)
-	case config.ApisixV2:
-		apc, errLocal = c.ApisixPluginConfigLister.V2(namespace, name)
-	default:
-		errLocal = fmt.Errorf("unsupported ApisixPluginConfig group version %s", event.GroupVersion)
-	}
-	if errOrigin == nil {
-		if ev.Type != types.EventDelete {
-			if errLocal == nil {
-				switch apc.GroupVersion() {
-				case config.ApisixV2beta3:
-					c.RecordEvent(apc.V2beta3(), v1.EventTypeNormal, utils.ResourceSynced, nil)
-					c.recordStatus(apc.V2beta3(), utils.ResourceSynced, nil, metav1.ConditionTrue, apc.V2beta3().GetGeneration())
-				case config.ApisixV2:
-					c.RecordEvent(apc.V2(), v1.EventTypeNormal, utils.ResourceSynced, nil)
-					c.recordStatus(apc.V2(), utils.ResourceSynced, nil, metav1.ConditionTrue, apc.V2().GetGeneration())
-				}
-			} else {
-				log.Errorw("failed list ApisixPluginConfig",
-					zap.Error(errLocal),
-					zap.String("name", name),
-					zap.String("namespace", namespace),
-				)
-			}
-		}
 		c.workqueue.Forget(obj)
-		c.MetricsCollector.IncrSyncOperation("PluginConfig", "success")
 		return
 	}
 	log.Warnw("sync ApisixPluginConfig failed, will retry",
 		zap.Any("object", obj),
 		zap.Error(errOrigin),
 	)
-	if errLocal == nil {
-		switch apc.GroupVersion() {
-		case config.ApisixV2beta3:
-			c.RecordEvent(apc.V2beta3(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
-			c.recordStatus(apc.V2beta3(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, apc.V2beta3().GetGeneration())
-		case config.ApisixV2:
-			c.RecordEvent(apc.V2(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
-			c.recordStatus(apc.V2(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, apc.V2().GetGeneration())
-		}
-	} else {
-		log.Errorw("failed list ApisixPluginConfig",
-			zap.Error(errLocal),
-			zap.String("name", name),
-			zap.String("namespace", namespace),
-		)
-	}
-	c.workqueue.AddRateLimited(obj)
+	c.workqueue.Forget(obj)
 	c.MetricsCollector.IncrSyncOperation("PluginConfig", "failure")
 }
 
@@ -380,6 +336,15 @@ func (c *apisixPluginConfigController) onUpdate(oldObj, newObj interface{}) {
 	curr := kube.MustNewApisixPluginConfig(newObj)
 	if prev.ResourceVersion() >= curr.ResourceVersion() {
 		return
+	}
+	// Updates triggered by status are ignored.
+	if prev.GetGeneration() == curr.GetGeneration() && prev.GetUID() == curr.GetUID() {
+		switch curr.GroupVersion() {
+		case config.ApisixV2:
+			if reflect.DeepEqual(prev.V2().Spec, curr.V2().Spec) && !reflect.DeepEqual(prev.V2().Status, curr.V2().Status) {
+				return
+			}
+		}
 	}
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
@@ -473,6 +438,7 @@ func (c *apisixPluginConfigController) recordStatus(at interface{}, reason strin
 		Message:            message,
 		ObservedGeneration: generation,
 	}
+	log.Errorw("update status apisixpluginconfig", zap.Any("conditions", condition))
 	apisixClient := c.KubeClient.APISIXClient
 
 	if kubeObj, ok := at.(runtime.Object); ok {
@@ -498,6 +464,10 @@ func (c *apisixPluginConfigController) recordStatus(at interface{}, reason strin
 			}
 		}
 	case *configv2.ApisixPluginConfig:
+		namespace := v.Namespace
+		name := v.Name
+		v, _ = apisixClient.ApisixV2().ApisixPluginConfigs(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+
 		// set to status
 		if v.Status.Conditions == nil {
 			conditions := make([]metav1.Condition, 0)

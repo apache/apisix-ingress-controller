@@ -17,6 +17,7 @@ package apisix
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -254,7 +255,7 @@ func (c *apisixTlsController) updateStatus(obj kube.ApisixTls, statusErr error) 
 		}
 		return
 	}
-	if at.ResourceVersion() > obj.GroupVersion() {
+	if at.ResourceVersion() != obj.ResourceVersion() {
 		return
 	}
 	var (
@@ -349,19 +350,28 @@ func (c *apisixTlsController) onAdd(obj interface{}) {
 	c.MetricsCollector.IncrEvents("TLS", "add")
 }
 
-func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
-	oldTls, err := kube.NewApisixTls(prev)
+func (c *apisixTlsController) onUpdate(oldObj, newObj interface{}) {
+	prev, err := kube.NewApisixTls(oldObj)
 	if err != nil {
 		log.Errorw("found ApisixTls resource with bad type", zap.Error(err))
 		return
 	}
-	newTls, err := kube.NewApisixTls(curr)
+	curr, err := kube.NewApisixTls(newObj)
 	if err != nil {
 		log.Errorw("found ApisixTls resource with bad type", zap.Error(err))
 		return
 	}
-	if oldTls.ResourceVersion() >= newTls.ResourceVersion() {
+	if prev.ResourceVersion() >= curr.ResourceVersion() {
 		return
+	}
+	// Updates triggered by status are ignored.
+	if prev.GetGeneration() == curr.GetGeneration() && prev.GetUID() == curr.GetUID() {
+		switch curr.GroupVersion() {
+		case config.ApisixV2:
+			if reflect.DeepEqual(prev.V2().Spec, curr.V2().Spec) && !reflect.DeepEqual(prev.V2().Status, curr.V2().Status) {
+				return
+			}
+		}
 	}
 	key, err := cache.MetaNamespaceKeyFunc(curr)
 	if err != nil {
@@ -379,8 +389,8 @@ func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
 		Type: types.EventUpdate,
 		Object: kube.ApisixTlsEvent{
 			Key:          key,
-			OldObject:    oldTls,
-			GroupVersion: newTls.GroupVersion(),
+			OldObject:    prev,
+			GroupVersion: curr.GroupVersion(),
 		},
 	})
 

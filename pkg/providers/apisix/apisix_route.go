@@ -17,6 +17,7 @@ package apisix
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -502,7 +503,7 @@ func (c *apisixRouteController) updateStatus(obj kube.ApisixRoute, statusErr err
 		}
 		return
 	}
-	if ar.ResourceVersion() > obj.GroupVersion() {
+	if ar.ResourceVersion() != obj.ResourceVersion() {
 		return
 	}
 	var (
@@ -580,6 +581,15 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 	curr := kube.MustNewApisixRoute(newObj)
 	if prev.ResourceVersion() >= curr.ResourceVersion() {
 		return
+	}
+	// Updates triggered by status are ignored.
+	if prev.GetGeneration() == curr.GetGeneration() && prev.GetUID() == curr.GetUID() {
+		switch curr.GroupVersion() {
+		case config.ApisixV2:
+			if reflect.DeepEqual(prev.V2().Spec, curr.V2().Spec) && !reflect.DeepEqual(prev.V2().Status, curr.V2().Status) {
+				return
+			}
+		}
 	}
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
