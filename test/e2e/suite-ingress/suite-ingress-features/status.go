@@ -27,7 +27,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.FDescribe("suite-ingress-features: Status subresource Testing", func() {
+var _ = ginkgo.Describe("suite-ingress-features: Status subresource Testing", func() {
 	routeSuites := func(s *scaffold.Scaffold) {
 		ginkgo.It("check the ApisixRoute status is recorded", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -84,11 +84,9 @@ spec:
 `, backendSvc)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixUpstream))
 
-			err := s.EnsureNumApisixUpstreamsCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			// status should be recorded as successful
-			output, err := s.GetOutputFromString("up", backendSvc, "-o", "yaml")
-			assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixUpstream resource")
+			output, err := s.GetOutputFromString("au", backendSvc, "-o", "yaml")
+			assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixUpstream resource"+backendSvc)
 			hasType := strings.Contains(output, "type: ResourcesAvailable")
 			assert.True(ginkgo.GinkgoT(), hasType, "Status is recorded")
 			hasMsg := strings.Contains(output, "message: Sync Successfully")
