@@ -140,6 +140,7 @@ apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: prometheus-route
+  namespace: ingress-apisix
 spec:
   http:
   - name: public-api
