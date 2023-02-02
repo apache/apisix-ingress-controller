@@ -36,7 +36,7 @@ This tutorial requires APISIX version > 2.13.
 
 ## Enable the prometheus Plugin
 
-First, you have to enable the [prometheus](https://apisix.apache.org/docs/apisix/plugins/prometheus) Plugin. You can do this by adding to your `values.yaml` file while you install APISIX Ingress via Helm. You can also enable the [public-api](https://apisix.apache.org/docs/apisix/next/plugins/public-api) Plugin to expose these metrics.
+First, you have to enable the [prometheus](https://apisix.apache.org/docs/apisix/plugins/prometheus) Plugin. You can do this by adding to your `values.yaml` file while you install APISIX Ingress via Helm. You can also enable the [public-api](https://apisix.apache.org/docs/apisix/plugins/public-api) Plugin to expose these metrics.
 
 A sample `values.yaml` file is shown below:
 
@@ -114,7 +114,7 @@ helm install apisix apisix/apisix -f values.yaml --create-namespace -n ingress-a
 
 :::tip
 
-APISIX also supports exporting HTTP request-related metrics like http_status, http_latency, and bandwidth. You can enable this by updating your configuration file as shown [here](https://apisix.apache.org/docs/apisix/next/plugins/prometheus/#specifying-metrics).
+APISIX also supports exporting HTTP request-related metrics like http_status, http_latency, and bandwidth. You can enable this by updating your configuration file as shown [here](https://apisix.apache.org/docs/apisix/plugins/prometheus/#specifying-metrics).
 
 :::
 
