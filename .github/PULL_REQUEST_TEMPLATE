@@ -4,10 +4,17 @@
 
 <!-- Please delete options that are not relevant. -->
 
+<!-- Select all the options from below that matches the type your PR best -->
+
 - [ ] Bugfix
 - [ ] New feature provided
 - [ ] Improve performance
 - [ ] Backport patches
+- [ ] Documentation
+- [ ] Refactor
+- [ ] Chore
+- [ ] Tests
+- [ ] CI/CD or e2e tests
 
 ### What this PR does / why we need it:
 <!--- Why is this change required? What problem does it solve? -->
