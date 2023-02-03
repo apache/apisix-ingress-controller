@@ -401,6 +401,24 @@ spec:
                                     maximum: 254
                                   timeout:
                                     type: string
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      "type":
+                        type: string
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      message:
+                        type: string
+                      observedGeneration:
+                        type: integer
     - name: v2
       served: true
       storage: true
@@ -799,3 +817,21 @@ spec:
                                     maximum: 254
                                   timeout:
                                     type: string
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      "type":
+                        type: string
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      message:
+                        type: string
+                      observedGeneration:
+                        type: integer
