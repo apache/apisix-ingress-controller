@@ -14,14 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-FROM golang:1.19 AS build-env
+FROM golang:1.19-alpine3.17 AS builder
 LABEL maintainer="gxthrj@163.com"
 
 ARG ENABLE_PROXY=false
 
-RUN rm -rf /etc/localtime \
-    && ln -s /usr/share/zoneinfo/Hongkong /etc/localtime \
-    && dpkg-reconfigure -f noninteractive tzdata
+RUN apk add --no-cache tzdata \
+    && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo "Asia/Shanghai" > /etc/timezone
 
 WORKDIR /build
 COPY go.* ./
@@ -40,7 +40,7 @@ RUN yum -y install ca-certificates libc6-compat \
     && update-ca-trust \
     && echo "hosts: files dns" > /etc/nsswitch.conf
 
-COPY --from=build-env /build/apisix-ingress-controller .
-COPY --from=build-env /usr/share/zoneinfo/Hongkong /etc/localtime
+COPY --from=builder /build/apisix-ingress-controller .
+COPY --from=builder /usr/share/zoneinfo/Hongkong /etc/localtime
 
 ENTRYPOINT ["/ingress-apisix/apisix-ingress-controller", "ingress", "--config-path", "/ingress-apisix/conf/config.yaml"]
