@@ -1,51 +1,41 @@
-name: "Bug report"
-description: Report a bug to help improve the project.
-title: "bug: "
+name: "Performance issue"
+description: Report a performance issue.
+title: "perf: "
 body:
   - type: markdown
     attributes:
       value: |
         Thank you for taking the time to report this bug!
 
-        _The more information you share, the faster we can identify and fix the bug._
+        _The more information you share, the faster we can identify and fix the issue._
 
         Prior to opening the issue, please make sure that you:
 
         - Use English to communicate.
         - Search the [open issues](https://github.com/apache/apisix-ingress-controller/issues) to avoid duplicating the issue.
-
   - type: textarea
-    id: current-behavior
+    id: issue-faced
     attributes:
-      label: Current Behavior
-      description: Describe the issue you are facing.
+      label: Issue Faced
+      description: Describe the performance issue you are facing.
       placeholder: |
-        What is the issue with the current behavior?
-    validations:
-      required: true
-  - type: textarea
-    id: expected-behavior
-    attributes:
-      label: Expected Behavior
-      description: Describe what you expected to happen.
-      placeholder: |
-        What did you expect to happen instead?
+        When running APISIX Ingress in EKS, I'm experiencing high latency when I make requests to...
     validations:
       required: false
   - type: textarea
-    id: error
+    id: logs
     attributes:
-      label: Error Logs
-      description: Paste the error logs if any. You can change the [log level](https://github.com/apache/apisix/blob/617c325628f33961be67f61f0fa8002afc370e42/docs/en/latest/FAQ.md#how-to-change-the-log-level) to get a verbose error log.
+      label: Logs
+      description: Paste relevant logs if any. You can change the [log level](https://github.com/apache/apisix/blob/617c325628f33961be67f61f0fa8002afc370e42/docs/en/latest/FAQ.md#how-to-change-the-log-level) to get a verbose error log.
     validations:
       required: false
   - type: textarea
     id: steps
     attributes:
       label: Steps to Reproduce
-      description: Share the steps you took so that we can reproduce the issue. Reports without proper steps details will likely be closed.
+      description: Share the steps to reproduce this issue if you have identified it.
       placeholder: |
-        1. Install APISIX Ingress controller with the Helm chart.
+        1. Install APISIX Ingress controller 1.x with the Helm chart.
         2. Create a Route with ApisixRoute resource.
         3. ...
     validations:
