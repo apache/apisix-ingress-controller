@@ -36,7 +36,7 @@ FROM centos:centos7
 LABEL maintainer="gxthrj@163.com"
 
 WORKDIR /ingress-apisix
-RUN yum -y install ca-certificates libc6-compat \
+RUN yum -y install ca-certificates libc6-compat curl \
     && update-ca-trust \
     && echo "hosts: files dns" > /etc/nsswitch.conf
 
