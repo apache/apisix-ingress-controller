@@ -534,6 +534,26 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	c.MetricsCollector.IncrSyncOperation("route", "failure")
 }
 
+func (c *apisixRouteController) isApisixRouteEffective(ar kube.ApisixRoute) bool {
+	var icn string
+
+	switch ar.GroupVersion() {
+	case config.ApisixV2beta3:
+		icn = ar.V2beta3().Spec.IngressClassName
+	case config.ApisixV2:
+		icn = ar.V2().Spec.IngressClassName
+	default:
+		log.Errorf("not support group version: %s", ar.GroupVersion())
+		return false
+	}
+
+	if c.Kubernetes.IngressClass == "*" || c.Kubernetes.IngressClass == icn {
+		return true
+	}
+
+	return false
+}
+
 func (c *apisixRouteController) onAdd(obj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
@@ -549,6 +569,12 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 	)
 
 	ar := kube.MustNewApisixRoute(obj)
+	if !c.isApisixRouteEffective(ar) {
+		log.Debugw("ignore noneffective ApisixRoute add event",
+			zap.Any("object", obj),
+		)
+		return
+	}
 	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.ApisixRouteEvent{
@@ -579,6 +605,13 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 		zap.Any("new object", oldObj),
 		zap.Any("old object", newObj),
 	)
+	if !c.isApisixRouteEffective(curr) {
+		log.Debugw("ignore noneffective ApisixRoute update event arrived",
+			zap.Any("new object", curr),
+			zap.Any("old object", prev),
+		)
+		return
+	}
 	c.workqueue.Add(&types.Event{
 		Type: types.EventUpdate,
 		Object: kube.ApisixRouteEvent{
@@ -612,6 +645,12 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 		zap.String("key", key),
 		zap.Any("final state", ar),
 	)
+	if !c.isApisixRouteEffective(ar) {
+		log.Debugw("ignore noneffective ApisixRoute delete event arrived",
+			zap.Any("final state", ar),
+		)
+		return
+	}
 	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixRouteEvent{
