@@ -64,7 +64,7 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
+	ginkgo.Describe("suite-ingress-features: ApisixRoute scaffold v2beta3", func() {
 		suites(scaffold.NewDefaultV2beta3Scaffold())
 	})
 })
@@ -128,7 +128,27 @@ spec:
 		assert.Contains(ginkgo.GinkgoT(), output, "type: ResourcesAvailable", "status.conditions.type is recorded")
 		assert.Contains(ginkgo.GinkgoT(), output, "reason: ResourceSyncAborted", "status.conditions.reason  is recorded")
 		assert.Contains(ginkgo.GinkgoT(), output, `status: "False"`, "status.conditions.status  is recorded")
+	})
 
+	ginkgo.It("check the ApisixUpstream status is recorded", func() {
+		backendSvc, _ := s.DefaultHTTPBackend()
+		apisixUpstream := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2beta3
+kind: ApisixUpstream
+metadata:
+  name: %s
+spec:
+  retries: 2
+`, backendSvc)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixUpstream))
+
+		// status should be recorded as successful
+		output, err := s.GetOutputFromString("au", backendSvc, "-o", "yaml")
+		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixUpstream resource"+backendSvc)
+		hasType := strings.Contains(output, "type: ResourcesAvailable")
+		assert.True(ginkgo.GinkgoT(), hasType, "Status is recorded")
+		hasMsg := strings.Contains(output, "message: Sync Successfully")
+		assert.True(ginkgo.GinkgoT(), hasMsg, "Status is recorded")
 	})
 
 	ginkgo.It("check ApisixPluginConfig status is recorded", func() {
@@ -256,7 +276,6 @@ wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 	})
 
 	//TODO: ApisixGlobal
-	//TODO: ApisixUpstream CRD missing status definition
 	//TODO: ApisixConsumer  CRD missing status definition
 	//TODO: ApisixClusterConfig CRD missing status definition
 })
