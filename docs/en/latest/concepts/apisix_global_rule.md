@@ -39,7 +39,7 @@ metadata:
   name: global
 spec:
   plugins:
-    name: limit-count
+  - name: limit-count
     enalbed: true 
     config:
       time_window": 60,
