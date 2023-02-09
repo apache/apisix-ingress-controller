@@ -222,9 +222,14 @@ verify-license:
 verify-mdlint:
 	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' --ignore node_modules --ignore CHANGELOG.md
 
+### verify-yamllint:	  Verify yaml files lint rules for `samples/deploy` directory.
+.PHONY: verify-yamllint
+verify-yamllint:
+	docker run --rm -v $(PWD):/yaml peterdavehello/yamllint:1.28.0 yamllint samples/deploy
+
 ### verify-all:           Verify all verify- rules.
 .PHONY: verify-all
-verify-all: verify-codegen verify-license verify-mdlint
+verify-all: verify-codegen verify-license verify-mdlint verify-yamllint
 
 ### update-codegen:       Update the generated codes (clientset, informer, deepcopy, etc).
 .PHONY: update-codegen
