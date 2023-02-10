@@ -497,7 +497,7 @@ spec:
 		_ = s.NewAPISIXClient().GET("/status/504").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusGatewayTimeout)
 		_ = s.NewAPISIXClient().GET("/statusaaa").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound).Body().Contains("404 Route Not Found")
 		// Mismatched host
-		_ = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
+		_ = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "empty.httpbin.org").Expect().Status(http.StatusNotFound)
 	})
 })
 
