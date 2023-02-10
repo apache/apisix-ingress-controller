@@ -792,3 +792,40 @@ spec:
 		_ = s.NewAPISIXClient().GET("/anything/aaa/ok").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
 	})
 })
+
+var _ = ginkgo.Describe("suite-ingress-resource: svc delete", func() {
+	s := scaffold.NewDefaultScaffold()
+	ginkgo.It("svc delete before ing delete", func() {
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: httpbin-route
+spec:
+  ingressClassName: apisix
+  rules:
+  - host: httpbin.com
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, backendSvc, backendSvcPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumListUpstreamNodesNth(1, 1))
+
+		// Now delete the backend httpbin service resource.
+		assert.Nil(ginkgo.GinkgoT(), s.DeleteHTTPBINService())
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumListUpstreamNodesNth(1, 0))
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusServiceUnavailable)
+
+		assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromString(ing))
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)
+
+	})
+})

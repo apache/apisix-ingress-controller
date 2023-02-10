@@ -65,6 +65,9 @@ type IngressTranslator interface {
 	TranslateOldIngress(kube.Ingress) (*translation.TranslateContext, error)
 	// TranslateSSLV2 translate networkingv1.IngressTLS to APISIX SSL
 	TranslateIngressTLS(namespace, ingName, secretName string, hosts []string) (*apisixv1.Ssl, error)
+	// TranslateIngressDeleteEvent composes a couple of APISIX Routes and upstreams according
+	// to the given Ingress resource.
+	TranslateIngressDeleteEvent(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error)
 }
 
 func NewIngressTranslator(opts *TranslatorOptions,
@@ -114,6 +117,19 @@ func (t *translator) TranslateIngress(ing kube.Ingress, args ...bool) (*translat
 		return t.translateIngressV1beta1(ing.V1beta1(), skipVerify)
 	case kube.IngressExtensionsV1beta1:
 		return t.translateIngressExtensionsV1beta1(ing.ExtensionsV1beta1(), skipVerify)
+	default:
+		return nil, fmt.Errorf("translator: source group version not supported: %s", ing.GroupVersion())
+	}
+}
+
+func (t *translator) TranslateIngressDeleteEvent(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error) {
+	switch ing.GroupVersion() {
+	case kube.IngressV1:
+		return t.translateOldIngressV1(ing.V1())
+	case kube.IngressV1beta1:
+		return t.translateOldIngressV1beta1(ing.V1beta1())
+	case kube.IngressExtensionsV1beta1:
+		return t.translateOldIngressExtensionsv1beta1(ing.ExtensionsV1beta1())
 	default:
 		return nil, fmt.Errorf("translator: source group version not supported: %s", ing.GroupVersion())
 	}
