@@ -225,7 +225,7 @@ verify-mdlint:
 ### verify-yamllint:	  Verify yaml files lint rules for `samples/deploy` directory.
 .PHONY: verify-yamllint
 verify-yamllint:
-	docker run --rm -v $(PWD):/yaml peterdavehello/yamllint:1.28.0 yamllint samples/deploy
+	docker run -it --rm -v $(PWD):/yaml peterdavehello/yamllint yamllint samples/deploy
 
 ### verify-all:           Verify all verify- rules.
 .PHONY: verify-all
