@@ -19,13 +19,13 @@ require (
 	go.uber.org/zap v1.24.0
 	gopkg.in/go-playground/pool.v3 v3.1.1
 	golang.org/x/net v0.5.0
-	gopkg.in/natefinch/lumberjack.v2 v2.0.0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
 	k8s.io/client-go v0.26.1
-	sigs.k8s.io/gateway-api v0.6.0
 	k8s.io/code-generator v0.26.1
+	sigs.k8s.io/gateway-api v0.6.0
 	sigs.k8s.io/yaml v1.3.0
 )
 

@@ -461,6 +461,9 @@ func (c *apisixTlsController) ResourceSync() {
 
 // recordStatus record resources status
 func (c *apisixTlsController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
+	if c.Kubernetes.DisableStatusUpdates {
+		return
+	}
 	// build condition
 	message := utils.CommonSuccessMessage
 	if err != nil {
@@ -503,7 +506,7 @@ func (c *apisixTlsController) recordStatus(at interface{}, reason string, err er
 			conditions := make([]metav1.Condition, 0)
 			v.Status.Conditions = conditions
 		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+		if utils.VerifyConditions(&v.Status.Conditions, condition) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := apisixClient.ApisixV2().ApisixTlses(v.Namespace).
 				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {

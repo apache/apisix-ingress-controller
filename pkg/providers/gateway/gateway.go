@@ -246,7 +246,7 @@ func (c *gatewayController) recordStatus(v *gatewayv1beta1.Gateway, reason strin
 		meta.SetStatusCondition(&v.Status.Conditions, gatewayCondition)
 	}
 
-	lbips, err := utils.IngressLBStatusIPs(c.controller.Cfg.IngressPublishService, c.controller.Cfg.IngressStatusAddress, c.controller.KubeClient)
+	lbips, err := utils.IngressLBStatusIPs(c.controller.Cfg.IngressPublishService, c.controller.Cfg.IngressStatusAddress, c.controller.ListerInformer.SvcLister)
 	if err != nil {
 		log.Errorw("failed to get APISIX gateway external IPs",
 			zap.Error(err),

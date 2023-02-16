@@ -868,8 +868,20 @@ func (c *apisixRouteController) handleApisixUpstreamErr(ev *routeEvent, errOrigi
 	c.workqueue.AddRateLimited(ev)
 }
 
-// recordStatus record resources status
+/*
+recordStatus record resources status
+
+TODO: The resouceVersion of the sync phase and the recordStatus phase may be different. There is consistency
+problem here, and incorrect status may be recorded.(It will only be triggered when it is updated multiple times in a short time)
+
+	IsUpdateStatus(currentObject, latestObject) bool {
+		return currentObject.resourceVersion >= latestObject.resourceVersion && !Equal(currentObject.status, latestObject.status)
+	}
+*/
 func (c *apisixRouteController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
+	if c.Kubernetes.DisableStatusUpdates {
+		return
+	}
 	// build condition
 	message := utils.CommonSuccessMessage
 	if err != nil {
@@ -912,7 +924,7 @@ func (c *apisixRouteController) recordStatus(at interface{}, reason string, err 
 			conditions := make([]metav1.Condition, 0)
 			v.Status.Conditions = conditions
 		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+		if utils.VerifyConditions(&v.Status.Conditions, condition) && !meta.IsStatusConditionPresentAndEqual(v.Status.Conditions, condition.Type, condition.Status) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := apisixClient.ApisixV2().ApisixRoutes(v.Namespace).
 				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
