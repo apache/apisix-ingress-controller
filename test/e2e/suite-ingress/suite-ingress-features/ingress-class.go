@@ -51,7 +51,7 @@ spec:
   - name: rule1
     match:
       hosts:
-      - httpbin.com
+      - httpbin.org
       paths:
       - /ip
     backends:
@@ -97,7 +97,7 @@ spec:
   - name: rule1
     match:
       hosts:
-      - httpbin.com
+      - httpbin.org
       paths:
       - /ip
     backends:
