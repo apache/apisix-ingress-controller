@@ -431,6 +431,8 @@ spec:
             spec:
               type: object
               properties:
+                ingressClassName:
+                  type: string
                 discovery:
                   description: Discovery is used to configure service discovery for upstream
                   type: object

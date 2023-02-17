@@ -25,6 +25,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
@@ -67,9 +68,23 @@ func (t *translator) translateUpstreamV2(ep *kube.Endpoint, namespace, name, sub
 			}
 		}
 	}
+	var (
+		subsets           []v2.ApisixUpstreamSubset
+		upsCfg            *v2.ApisixUpstreamConfig
+		portLevelSettings []v2.PortLevelSettings
+	)
+	if au != nil && au.V2().Spec != nil {
+		if au.V2().Spec.IngressClassName != "" && au.V2().Spec.IngressClassName != t.IngressClassName {
+			au = nil
+		} else {
+			subsets = au.V2().Spec.Subsets
+			upsCfg = &au.V2().Spec.ApisixUpstreamConfig
+			portLevelSettings = au.V2().Spec.PortLevelSettings
+		}
+	}
 	var labels types.Labels
 	if subset != "" {
-		for _, ss := range au.V2().Spec.Subsets {
+		for _, ss := range subsets {
 			if ss.Name == subset {
 				labels = ss.Labels
 				break
@@ -86,8 +101,7 @@ func (t *translator) translateUpstreamV2(ep *kube.Endpoint, namespace, name, sub
 		return ups, nil
 	}
 
-	upsCfg := &au.V2().Spec.ApisixUpstreamConfig
-	for _, pls := range au.V2().Spec.PortLevelSettings {
+	for _, pls := range portLevelSettings {
 		if pls.Port == port {
 			upsCfg = &pls.ApisixUpstreamConfig
 			break

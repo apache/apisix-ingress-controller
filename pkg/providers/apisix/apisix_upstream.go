@@ -546,6 +546,9 @@ func (c *apisixUpstreamController) onAdd(obj interface{}) {
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
+	if !c.isEffective(au) {
+		return
+	}
 	log.Debugw("ApisixUpstream add event arrived",
 		zap.Any("object", obj))
 
@@ -580,6 +583,9 @@ func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
 		return
 	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+	if !c.isEffective(curr) {
 		return
 	}
 	log.Debugw("ApisixUpstream update event arrived",
@@ -619,6 +625,9 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 		return
 	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+	if !c.isEffective(au) {
 		return
 	}
 	log.Debugw("ApisixUpstream delete event arrived",
@@ -865,4 +874,23 @@ func (c *apisixUpstreamController) recordStatus(at interface{}, reason string, e
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
 	}
+}
+
+func (c *apisixUpstreamController) isEffective(au kube.ApisixUpstream) bool {
+	var class string
+
+	if au.GroupVersion() == config.ApisixV2 {
+		if au.V2().Spec != nil {
+			class = au.V2().Spec.IngressClassName
+		}
+	} else {
+		// Compatible with legacy versions
+		return true
+	}
+
+	if class == "" || c.Kubernetes.IngressClass == class {
+		return true
+	}
+
+	return false
 }
