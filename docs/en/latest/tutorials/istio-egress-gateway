@@ -189,7 +189,7 @@ spec:
       weight: 100
 ```
 
-In the yaml, `mesh` is the internal gateway of Istio, and `apisix-gress` is the name of the `Gateway` resource we defined.
+In the yaml, `mesh` is the internal gateway of Istio, and `apisix-egress` is the name of the `Gateway` resource we defined.
 
 Now, our configuration in the Istio is complete. Try request again.
 
