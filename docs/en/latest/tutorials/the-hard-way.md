@@ -322,7 +322,7 @@ spec:
     spec:
       containers:
         - name: apisix
-          image: "apache/apisix:2.15-alpine"
+          image: "apache/apisix:2.15.0-alpine"
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -766,7 +766,7 @@ spec:
             - ingress
             - --config-path
             - /ingress-apisix/conf/config.yaml
-          image: "apache/apisix-ingress-controller:1.4.0"
+          image: "apache/apisix-ingress-controller:1.6.0"
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

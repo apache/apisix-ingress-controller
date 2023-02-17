@@ -90,15 +90,16 @@ type Config struct {
 
 // KubernetesConfig contains all Kubernetes related config items.
 type KubernetesConfig struct {
-	Kubeconfig          string             `json:"kubeconfig" yaml:"kubeconfig"`
-	ResyncInterval      types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
-	NamespaceSelector   []string           `json:"namespace_selector" yaml:"namespace_selector"`
-	ElectionID          string             `json:"election_id" yaml:"election_id"`
-	IngressClass        string             `json:"ingress_class" yaml:"ingress_class"`
-	IngressVersion      string             `json:"ingress_version" yaml:"ingress_version"`
-	WatchEndpointSlices bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
-	APIVersion          string             `json:"api_version" yaml:"api_version"`
-	EnableGatewayAPI    bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
+	Kubeconfig           string             `json:"kubeconfig" yaml:"kubeconfig"`
+	ResyncInterval       types.TimeDuration `json:"resync_interval" yaml:"resync_interval"`
+	NamespaceSelector    []string           `json:"namespace_selector" yaml:"namespace_selector"`
+	ElectionID           string             `json:"election_id" yaml:"election_id"`
+	IngressClass         string             `json:"ingress_class" yaml:"ingress_class"`
+	IngressVersion       string             `json:"ingress_version" yaml:"ingress_version"`
+	WatchEndpointSlices  bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
+	APIVersion           string             `json:"api_version" yaml:"api_version"`
+	EnableGatewayAPI     bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
+	DisableStatusUpdates bool               `json:"disable_status_updates" yaml:"disable_status_updates"`
 }
 
 // APISIXConfig contains all APISIX related config items.
@@ -133,14 +134,15 @@ func NewDefaultConfig() *Config {
 		EnableProfiling:            true,
 		ApisixResourceSyncInterval: types.TimeDuration{Duration: 300 * time.Second},
 		Kubernetes: KubernetesConfig{
-			Kubeconfig:          "", // Use in-cluster configurations.
-			ResyncInterval:      types.TimeDuration{Duration: 6 * time.Hour},
-			ElectionID:          IngressAPISIXLeader,
-			IngressClass:        IngressClass,
-			IngressVersion:      IngressNetworkingV1,
-			APIVersion:          DefaultAPIVersion,
-			WatchEndpointSlices: false,
-			EnableGatewayAPI:    false,
+			Kubeconfig:           "", // Use in-cluster configurations.
+			ResyncInterval:       types.TimeDuration{Duration: 6 * time.Hour},
+			ElectionID:           IngressAPISIXLeader,
+			IngressClass:         IngressClass,
+			IngressVersion:       IngressNetworkingV1,
+			APIVersion:           DefaultAPIVersion,
+			WatchEndpointSlices:  false,
+			EnableGatewayAPI:     false,
+			DisableStatusUpdates: false,
 		},
 		APISIX: APISIXConfig{
 			AdminAPIVersion:    "v2",
