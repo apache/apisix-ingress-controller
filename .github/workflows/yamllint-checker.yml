@@ -59,10 +59,3 @@ jobs:
       - run: pip install yamllint==1.29.0
       - name: 🚀 Run yamllint
         run: yamllint samples/deploy  # focus on `samples/deploy` yaml files directory
-
-      # Run GitHub Actions locally (nektos/act)
-      # - name: 🚀 Run yamllint
-      #   run: |
-      #     make verify-yamllint
-
-      
