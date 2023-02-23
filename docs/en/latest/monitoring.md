@@ -73,7 +73,7 @@ If you already have an installation of APISIX and Prometheus, you can manually c
 
 ### Service Monitor and APISIX Service
 
-The magic behind `serviceMonitor.enabled=true` helmc chart option is `ServiceMonitor` resource. It's content is as follows.
+The magic behind `serviceMonitor.enabled=true` helm chart option is `ServiceMonitor` resource. Its content is as follows.
 
 ```yaml
 apiVersion: monitoring.coreos.com/v1
