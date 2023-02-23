@@ -23,7 +23,7 @@ title: Monitoring APISIX with Helm Chart
 
 APISIX has detailed telemetry data. With helm chart, we can easily configure the monitoring system.
 
-This tutorial will show how to acheive it.
+This tutorial will show how to achieve it.
 
 ## Install Prometheus and Grafana
 
@@ -39,7 +39,8 @@ helm repo update
 
 helm install -n monitoring prometheus prometheus-community/kube-prometheus-stack \
   --create-namespace \
-  --set 'prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false'
+  --set 'prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false' \
+  --set ingress-controller.enabled=true
 ```
 
 We set option `prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues` to false to force Prometheus watches all service monitors in cluster for test purpose.
@@ -63,7 +64,7 @@ helm install apisix apisix/apisix --create-namespace --set serviceMonitor.enable
 ## Configure Grafana Dashboard
 
 
-Import APISIX Grafana dashboard via dashboard ID `11719`.
+Import [APISIX Grafana dashboard](https://grafana.com/grafana/dashboards/11719-apache-apisix/) via dashboard ID `11719`.
 
 The dashboard should be able to display some data, including total requests, handled connections, etc. Routing related panels such as bandwidth and latency will show "No data" because we haven't made any requests yet. Make some requests to make these panels work.
 
