@@ -39,8 +39,7 @@ helm repo update
 
 helm install -n monitoring prometheus prometheus-community/kube-prometheus-stack \
   --create-namespace \
-  --set 'prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false' \
-  --set ingress-controller.enabled=true
+  --set 'prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false'
 ```
 
 We set option `prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues` to false to force Prometheus watches all service monitors in cluster for test purpose.
@@ -57,8 +56,9 @@ Install APISIX via helm chart with `serviceMonitor.enabled=true` option:
 helm repo add apisix https://charts.apiseven.com
 helm repo update
 
-helm install apisix apisix/apisix --create-namespace --set serviceMonitor.enabled=true \
-  --namespace apisix
+helm install apisix apisix/apisix --create-namespace --namespace apisix \
+  --set serviceMonitor.enabled=true \
+  --set ingress-controller.enabled=true
 ```
 
 ## Configure Grafana Dashboard
