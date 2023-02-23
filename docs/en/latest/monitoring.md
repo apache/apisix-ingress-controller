@@ -63,14 +63,13 @@ helm install apisix apisix/apisix --create-namespace --set serviceMonitor.enable
 
 ## Configure Grafana Dashboard
 
-
 Import [APISIX Grafana dashboard](https://grafana.com/grafana/dashboards/11719-apache-apisix/) via dashboard ID `11719`.
 
 The dashboard should be able to display some data, including total requests, handled connections, etc. Routing related panels such as bandwidth and latency will show "No data" because we haven't made any requests yet. Make some requests to make these panels work.
 
 ## Manual Configuration and Troubleshooting
 
-If you already have an installation of APISIX and Prometheus, you can manually configure `ServiceMonitor` resource and the service that exposes APISIX metrics.
+If you already have an installation of APISIX and Prometheus Operator, you can manually configure `ServiceMonitor` resource and the service that exposes APISIX metrics.
 
 ### Service Monitor and APISIX Service
 
