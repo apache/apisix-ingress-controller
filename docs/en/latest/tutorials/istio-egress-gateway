@@ -207,7 +207,7 @@ This error indicates that the traffic has been sent to APISIX correctly. However
 
 ### Configure APISIX Ingress
 
-In the Istio configuration, we have successfully directed traffic from the mesh to APISIX, but APISIX does  n't currently have any route.
+In the Istio configuration, we have successfully directed traffic from the mesh to APISIX, but APISIX doesn't currently have any route.
 
 Here, we will use the [external service](https://github.com/apache/apisix-ingress-controller/blob/master/docs/en/latest/tutorials/external-service.md) feature to direct traffic to the external service.
 
@@ -237,7 +237,7 @@ spec:
     name: httpbin.org
 ```
 
-This configuration defines the route to `httpbin.org` for APISIX. Now that we should be able to access the service properly, send the request again to test it.
+This configuration defines the route to `httpbin.org` for APISIX. Now we should be able to access the service properly, send the request again to test it.
 
 ```bash
 kubectl -n test exec -it consumer -- curl httpbin.org/get
