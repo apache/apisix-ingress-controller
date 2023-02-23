@@ -31,7 +31,7 @@ To collect metrics and visualize them, we need to install Prometheus and Grafana
 
 The APISIX helm chart we will deploy later also contains a `ServiceMonitor` resource, so we should ensure the cluster has its CRD installed. Installing Prometheus Operator will apply the required CRD.
 
-Run the following command to install Prometheus and Grafana:
+Run the following command to install Prometheus Operator and Grafana:
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
