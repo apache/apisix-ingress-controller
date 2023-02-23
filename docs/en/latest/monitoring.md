@@ -29,7 +29,7 @@ This tutorial will show how to acheive it.
 
 To collect metrics and visualize them, we need to install Prometheus and Grafana first.
 
-The APISIX helm chart we will deploy later also contains a `ServiceMonitor` resource, so we should ensure the cluster has its CRD installed. Installing Prometheus will apply the required CRD.
+The APISIX helm chart we will deploy later also contains a `ServiceMonitor` resource, so we should ensure the cluster has its CRD installed. Installing Prometheus Operator will apply the required CRD.
 
 Run the following command to install Prometheus and Grafana:
 
