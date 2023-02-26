@@ -33,10 +33,10 @@ rules:
   document-end: disable
   document-start: disable  # default: {level: warning}
   empty-lines: enable
-  empty-values: disable
+  empty-values: enable
   float-values: disable
   hyphens: enable
-  indentation: disable  # default: enable
+  indentation: enable
   key-duplicates: enable
   key-ordering: disable
   line-length: disable  # default: enable

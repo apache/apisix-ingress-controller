@@ -231,6 +231,11 @@ verify-yamllint:
 .PHONY: verify-all
 verify-all: verify-codegen verify-license verify-mdlint verify-yamllint
 
+### update-yamlfmt:       Update yaml files format for `samples/deploy` directory.
+.PHONY: update-yamlfmt
+update-yamlfmt:
+	go install github.com/google/yamlfmt/cmd/yamlfmt@latest && yamlfmt samples/deploy
+
 ### update-codegen:       Update the generated codes (clientset, informer, deepcopy, etc).
 .PHONY: update-codegen
 update-codegen: gen-tools
