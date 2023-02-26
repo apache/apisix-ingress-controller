@@ -59,6 +59,7 @@ type Options struct {
 	APISIXPublishAddress       string
 	ApisixResourceSyncInterval string
 	ApisixResourceVersion      string
+	DisableStatus              bool
 
 	NamespaceSelectorLabel   map[string]string
 	DisableNamespaceSelector bool
