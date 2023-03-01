@@ -31,6 +31,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -99,7 +100,7 @@ func (c *baseEndpointController) syncEndpoint(ctx context.Context, ep kube.Endpo
 		subsets = append(subsets, configv2.ApisixUpstreamSubset{})
 		auKube, err := c.apisixUpstreamLister.V2(namespace, svcName)
 		if auKube != nil && auKube.V2().Spec != nil &&
-			auKube.V2().Spec.IngressClassName != "" && auKube.V2().Spec.IngressClassName != c.Kubernetes.IngressClass {
+			!utils.MatchCRDsIngressClass(auKube.V2().Spec.IngressClassName, c.Kubernetes.IngressClass) {
 			auKube = nil
 		}
 		if err != nil {

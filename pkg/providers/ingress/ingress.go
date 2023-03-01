@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
@@ -430,6 +431,9 @@ func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 		return ica == c.Kubernetes.IngressClass
 	}
 	if ic != nil {
+		if c.Kubernetes.IngressClass == config.IngressClassApisixAndAll {
+			return *ic == config.IngressClass
+		}
 		return *ic == c.Kubernetes.IngressClass
 	}
 	return false

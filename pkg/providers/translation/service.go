@@ -27,6 +27,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -74,7 +75,7 @@ func (t *translator) translateUpstreamV2(ep *kube.Endpoint, namespace, name, sub
 		portLevelSettings []v2.PortLevelSettings
 	)
 	if au != nil && au.V2().Spec != nil {
-		if au.V2().Spec.IngressClassName != "" && au.V2().Spec.IngressClassName != t.IngressClassName {
+		if !utils.MatchCRDsIngressClass(au.V2().Spec.IngressClassName, t.IngressClassName) {
 			au = nil
 		} else {
 			subsets = au.V2().Spec.Subsets

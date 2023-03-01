@@ -877,20 +877,11 @@ func (c *apisixUpstreamController) recordStatus(at interface{}, reason string, e
 }
 
 func (c *apisixUpstreamController) isEffective(au kube.ApisixUpstream) bool {
-	var class string
-
 	if au.GroupVersion() == config.ApisixV2 {
 		if au.V2().Spec != nil {
-			class = au.V2().Spec.IngressClassName
+			return utils.MatchCRDsIngressClass(au.V2().Spec.IngressClassName, c.Kubernetes.IngressClass)
 		}
-	} else {
-		// Compatible with legacy versions
-		return true
 	}
-
-	if class == "" || c.Kubernetes.IngressClass == class {
-		return true
-	}
-
-	return false
+	// Compatible with legacy versions
+	return true
 }
