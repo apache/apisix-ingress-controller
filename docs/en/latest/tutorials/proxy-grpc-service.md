@@ -72,10 +72,9 @@ kubectl run yages -n ingress-apisix --image smirl/yages:0.1.3 --expose --port 90
 
 Use the service that includes `grpcurl` to test gRPC connectivity.
 
-```bash
-kubectl run -it -n ingress-apisix --rm grpcurl --restart=Never --image=quay.io/mhausenblas/gump:0.1 -- sh
-If you don't see a command prompt, try pressing enter.
-/go $ grpcurl --plaintext yages:9000 yages.Echo.Ping
+```shell
+$ kubectl run -it -n ingress-apisix --rm grpcurl --restart=Never --image=alinsran/grpcurl -- \
+  grpcurl --plaintext yages:9000 yages.Echo.Ping
 {
   "text": "pong"
 }
@@ -173,9 +172,8 @@ yages                       ClusterIP   10.96.37.236   <none>        9000/TCP   
 ```
 
 ```bash
-kubectl run -it -n ingress-apisix --rm grpcurl --restart=Never --image=quay.io/mhausenblas/gump:0.1 -- sh
-If you don't see a command prompt, try pressing enter.
-/go $ grpcurl --insecure -servername grpc-proxy apisix-gateway:443 yages.Echo.Ping
+$ kubectl run -it -n ingress-apisix --rm grpcurl --restart=Never --image=alinsran/grpcurl -- \
+  grpcurl --insecure -servername grpc-proxy apisix-gateway:443 yages.Echo.Ping
 {
   "text": "pong"
 }
