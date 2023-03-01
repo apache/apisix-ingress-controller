@@ -23,7 +23,7 @@ title: traffic-split
 
 This guide describes how to use the traffic-split plugin in APISIX Ingress.
 
-The [traffic-split]((<https://apisix.apache.org/docs/apisix/plugins/traffic-split/>)) plugin can be used to dynamically route part of traffic to various upstream services.
+The [traffic-split](https://apisix.apache.org/docs/apisix/plugins/traffic-split) plugin can be used to dynamically route part of traffic to various upstream services.
 
 :::info IMPORTANT
 
