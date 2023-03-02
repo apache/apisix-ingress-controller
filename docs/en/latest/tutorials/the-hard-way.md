@@ -419,7 +419,7 @@ kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/nam
 
 Now, we will create a Route in APISIX to forward traffic to the httpbin service.
 
-The below command will configure APISIX to Route all requests with the prefix `/httpbin` with the Header `Host: httpbin.org`:
+The below command will configure APISIX to route all requests with the Header `Host: httpbin.org`:
 
 ```bash
 kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name) -- curl "http://127.0.0.1:9180/apisix/admin/routes/1" -H "X-API-KEY: edd1c9f034335f136f87ad84b625c8f1" -X PUT -d '
@@ -494,175 +494,19 @@ APISIX Ingress controller supports the Kubernetes Ingress API, Gateway API, and 
 
 First we will create a ServiceAccount and a corresponding ClusterRole to ensure that the Ingress controller has sufficient permissions to access the required resources:
 
-```yaml title="apisix-ingress-sa.yaml"
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: apisix-ingress-controller
-  namespace: apisix
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: apisix-clusterrole
-  namespace: apisix
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - configmaps
-      - endpoints
-      - persistentvolumeclaims
-      - pods
-      - replicationcontrollers
-      - replicationcontrollers/scale
-      - serviceaccounts
-      - services
-      - secrets
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - ""
-    resources:
-      - bindings
-      - events
-      - limitranges
-      - namespaces/status
-      - pods/log
-      - pods/status
-      - replicationcontrollers/status
-      - resourcequotas
-      - resourcequotas/status
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - ""
-    resources:
-      - namespaces
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - apps
-    resources:
-      - controllerrevisions
-      - daemonsets
-      - deployments
-      - deployments/scale
-      - replicasets
-      - replicasets/scale
-      - statefulsets
-      - statefulsets/scale
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - autoscaling
-    resources:
-      - horizontalpodautoscalers
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - batch
-    resources:
-      - cronjobs
-      - jobs
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - extensions
-    resources:
-      - daemonsets
-      - deployments
-      - deployments/scale
-      - ingresses
-      - networkpolicies
-      - replicasets
-      - replicasets/scale
-      - replicationcontrollers/scale
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - policy
-    resources:
-      - poddisruptionbudgets
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - networking.k8s.io
-    resources:
-      - ingresses
-      - networkpolicies
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - metrics.k8s.io
-    resources:
-      - pods
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - apisix.apache.org
-    resources:
-      - apisixroutes
-      - apisixroutes/status
-      - apisixupstreams
-      - apisixupstreams/status
-      - apisixtlses
-      - apisixtlses/status
-      - apisixclusterconfigs
-      - apisixclusterconfigs/status
-      - apisixconsumers
-      - apisixconsumers/status
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - coordination.k8s.io
-    resources:
-      - leases
-    verbs:
-      - '*'
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: apisix-clusterrolebinding
-  namespace: apisix
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: apisix-clusterrole
-subjects:
-  - kind: ServiceAccount
-    name: apisix-ingress-controller
-    namespace: apisix
+```bash
+git clone https://github.com/apache/apisix-ingress-controller.git --depth 1
+cd apisix-ingress-controller/
+kubectl apply -k samples/deploy/rbac/apisix_view_clusterrole.yaml # apply cluster role
+kubectl -n apisix create serviceaccount apisix-ingress-controller # create service account
+# bind cluster role and service account
+kubectl create clusterrolebinding apisix-viewer --clusterrole=apisix-view-clusterrole --serviceaccount=apisix:apisix-ingress-controller
 ```
 
 Once you apply it to your cluster, you have to create the [ApisixRoute](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_route) CRD:
 
 ```bash
-git clone https://github.com/apache/apisix-ingress-controller.git --depth 1
-cd apisix-ingress-controller/
+# Under apisix-ingress-controller git repo
 kubectl apply -k samples/deploy/crd
 ```
 
@@ -683,7 +527,7 @@ data:
       kubeconfig: ""
       resync_interval: "30s"
       namespace_selector:
-      - "apisix.ingress=watching"
+      - ""
       ingress_class: "apisix"
       ingress_version: "networking/v1"
       apisix_route_version: "apisix.apache.org/v2"
@@ -692,7 +536,7 @@ data:
       default_cluster_admin_key: "edd1c9f034335f136f87ad84b625c8f1"
 kind: ConfigMap
 metadata:
-  name: apisix-configmap
+  name: apisix-ingress-conf
   namespace: apisix
   labels:
     app.kubernetes.io/name: ingress-controller
@@ -751,7 +595,7 @@ spec:
       volumes:
         - name: configuration
           configMap:
-            name: apisix-configmap
+            name: apisix-ingress-conf
             items:
               - key: config.yaml
                 path: config.yaml
