@@ -50,8 +50,8 @@ helm install apisix apisix/apisix -n ingress-apisix \
 
 Check that all related components have been installed successfully, including ETCD cluster / APISIX / apisix-ingress-controller.
 
-```bash
-kubectl get pod -n ingress-apisix
+```shell
+$ kubectl get pod -n ingress-apisix
 NAME                                        READY   STATUS    RESTARTS   AGE
 apisix-569f94b7b6-qt5jj                     1/1     Running   0          101m
 apisix-etcd-0                               1/1     Running   0          101m
@@ -73,8 +73,9 @@ kubectl run yages -n ingress-apisix --image smirl/yages:0.1.3 --expose --port 90
 Use the service that includes `grpcurl` to test gRPC connectivity.
 
 ```shell
-$ kubectl run -it -n ingress-apisix --rm grpcurl --restart=Never --image=alinsran/grpcurl -- \
-  grpcurl --plaintext yages:9000 yages.Echo.Ping
+$ kubectl run -it -n ingress-apisix --rm grpcurl --restart=Never --image=fullstorydev/grpcurl:v1.8.7 --command -- \
+  /bin/grpcurl -plaintext yages:9000 yages.Echo.Ping
+# It should output:
 {
   "text": "pong"
 }
@@ -171,9 +172,10 @@ apisix-ingress-controller   ClusterIP   10.96.78.108   <none>        80/TCP     
 yages                       ClusterIP   10.96.37.236   <none>        9000/TCP                     94m
 ```
 
-```bash
-$ kubectl run -it -n ingress-apisix --rm grpcurl --restart=Never --image=alinsran/grpcurl -- \
-  grpcurl --insecure -servername grpc-proxy apisix-gateway:443 yages.Echo.Ping
+```shell
+$ kubectl run -it -n ingress-apisix --rm grpcurl --restart=Never --image=fullstorydev/grpcurl:v1.8.7 --command -- \
+  /bin/grpcurl -insecure -servername grpc-proxy apisix-gateway:443 yages.Echo.Ping
+# It should output:
 {
   "text": "pong"
 }
