@@ -124,7 +124,7 @@ spec:
 
 Thus, we pass the option `prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false` to clear the `serviceMonitorSelector` field. Configure this resource to fit your needs.
 
-For example, if you want to set service monitor selector to `prom=watching`, your helm command will looks like:
+For example, if you want to set service monitor selector to `prom=watching`, your helm command should be:
 
 ```bash
 helm install -n monitoring prometheus prometheus-community/kube-prometheus-stack \
