@@ -25,8 +25,12 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress-features: Testing CRDs IngressClass", func() {
-	s := scaffold.NewDefaultScaffold()
+var _ = ginkgo.Describe("suite-ingress-features: Testing CRDs with IngressClass", func() {
+	s := scaffold.NewScaffold(&scaffold.Options{
+		Name:                  "ingress-class",
+		IngressAPISIXReplicas: 1,
+		IngressClass:          "apisix",
+	})
 	ginkgo.It("ApisiUpstream should be ignored", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		au := fmt.Sprintf(`
