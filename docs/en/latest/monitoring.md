@@ -65,7 +65,7 @@ helm install apisix apisix/apisix --create-namespace --namespace apisix \
 
 Import [APISIX Grafana dashboard](https://grafana.com/grafana/dashboards/11719-apache-apisix/) via dashboard ID `11719`.
 
-The dashboard should be able to display some data, including total requests, handled connections, etc. Routing related panels such as bandwidth and latency will show "No data" because we haven't made any requests yet. Make some requests to make these panels work.
+The dashboard should be able to display some data, including total requests, handled connections, etc. Routing related panels such as bandwidth and latency will show "No data" because we haven't made any requests yet. Create some routes with "prometheus" plugin enabled and make some requests to them to generate some data for these panels.
 
 ## Manual Configuration and Troubleshooting
 
@@ -106,7 +106,7 @@ The helm chart exposes APISIX metrics in the `apisix-gateway` service by default
 
 ### Prometheus Spec
 
-If everything works fine, the `Status/Targets` page of Promethes Web UI will show the APISIX service monitor. If your don't see it, you should make sure Prometheus is watching the `ServiceMonitor` resource we created.
+If everything works fine, the `Status > Targets` page of Promethes Web UI will show the APISIX service monitor. If your don't see it, you should make sure Prometheus is watching the `ServiceMonitor` resource we created.
 
 By default, the `Prometheus` resource created by the helm chart `kube-prometheus-stack` is as follows.
 
@@ -123,3 +123,14 @@ spec:
 ```
 
 Thus, we pass the option `prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false` to clear the `serviceMonitorSelector` field. Configure this resource to fit your needs.
+
+For example, if you want to set service monitor selector to `prom=watching`, your helm command will looks like:
+
+```bash
+helm install -n monitoring prometheus prometheus-community/kube-prometheus-stack \
+  --create-namespace \
+  --set 'prometheus.prometheusSpec.serviceMonitorSelector.matchLabels.prom=watching'
+ ```
+ 
+ Because we set values for `serviceMonitorSelector`, so we don't need to configure `serviceMonitorSelectorNilUsesHelmValues` anymore.
+ 
