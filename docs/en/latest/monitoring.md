@@ -1,5 +1,11 @@
 ---
 title: Monitoring APISIX with Helm Chart
+keywords:
+  - APISIX Ingress Controller
+  - Apache APISIX
+  - Prometheus
+  - Grafana
+description: A tutorial on configuring monitoring services for APISIX.
 ---
 
 <!--
