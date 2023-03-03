@@ -32,7 +32,7 @@ webhooks:
         path: "/validation/apisixroutes/plugin"
       caBundle: ${CA_BUNDLE}
     rules:
-      - operations: [ "CREATE", "UPDATE" ]
+      - operations: ["CREATE", "UPDATE"]
         apiGroups: ["apisix.apache.org"]
         apiVersions: ["*"]
         resources: ["apisixroutes"]

@@ -24,6 +24,6 @@ roleRef:
   kind: ClusterRole
   name: apisix-view-clusterrole
 subjects:
-- kind: ServiceAccount
-  name: apisix-view-serviceaccount
-  namespace: default
+  - kind: ServiceAccount
+    name: apisix-view-serviceaccount
+    namespace: default
