@@ -136,3 +136,69 @@ spec:
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 	})
 })
+
+var _ = ginkgo.Describe("suite-ingress-features: Testing CRDs with IngressClass apisix-and-all", func() {
+	s := scaffold.NewScaffold(&scaffold.Options{
+		Name:                  "ingress-class",
+		IngressAPISIXReplicas: 1,
+		IngressClass:          "apisix-and-all",
+	})
+
+	ginkgo.It("ApisiUpstream should be handled", func() {
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		au := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: %s
+spec:
+  retries: 3
+`, backendSvc)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(au))
+		time.Sleep(6 * time.Second)
+
+		apisixRoute := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /ip
+    backends:
+    - serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apisixRoute))
+		time.Sleep(6 * time.Second)
+
+		ups, err := s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), ups, 1)
+		assert.Equal(ginkgo.GinkgoT(), *ups[0].Retries, 3)
+
+		au = fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: %s
+spec:
+  ingressClassName: apisix
+  retries: 2
+`, backendSvc)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(au))
+		time.Sleep(6 * time.Second)
+
+		ups, err = s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), ups, 1)
+		assert.Equal(ginkgo.GinkgoT(), *ups[0].Retries, 2)
+
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+	})
+})
