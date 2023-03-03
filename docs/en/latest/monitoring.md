@@ -136,7 +136,6 @@ For example, if you want to set service monitor selector to `prom=watching`, you
 helm install -n monitoring prometheus prometheus-community/kube-prometheus-stack \
   --create-namespace \
   --set 'prometheus.prometheusSpec.serviceMonitorSelector.matchLabels.prom=watching'
- ```
- 
- Because we set values for `serviceMonitorSelector`, so we don't need to configure `serviceMonitorSelectorNilUsesHelmValues` anymore.
- 
+```
+
+Because we set values for `serviceMonitorSelector`, so we don't need to configure `serviceMonitorSelectorNilUsesHelmValues` anymore.
