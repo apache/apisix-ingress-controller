@@ -313,6 +313,8 @@ type ApisixClusterMonitoringConfig struct {
 type ApisixClusterPrometheusConfig struct {
 	// Enable means whether enable Prometheus or not.
 	Enable bool `json:"enable" yaml:"enable"`
+	// PreferName means whether prints Route/Service name or ID in Prometheus metric
+	PreferName bool `json:"prefer_name" yaml:"prefer_name"`
 }
 
 // ApisixClusterSkywalkingConfig is the config for using Skywalking in APISIX Cluster.
