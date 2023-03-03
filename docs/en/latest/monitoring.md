@@ -42,13 +42,13 @@ helm install -n monitoring prometheus prometheus-community/kube-prometheus-stack
   --set 'prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false'
 ```
 
-We set option `prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues` to false to force Prometheus watches all service monitors in cluster for test purpose.
+We set option `prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues` to false to force Prometheus to watch all service monitors in the cluster for test purposes.
 
 The default Grafana username and password is `admin` and `prom-operator`.
 
 ## Install APISIX
 
-We should enable service monitor to tell Prometheus collect metrics from APISIX.
+We should enable service monitor to tell Prometheus to collect metrics from APISIX.
 
 Install APISIX via helm chart with `serviceMonitor.enabled=true` option:
 
@@ -65,11 +65,11 @@ helm install apisix apisix/apisix --create-namespace --namespace apisix \
 
 Import [APISIX Grafana dashboard](https://grafana.com/grafana/dashboards/11719-apache-apisix/) via dashboard ID `11719`.
 
-The dashboard should be able to display some data, including total requests, handled connections, etc. Routing related panels such as bandwidth and latency will show "No data" because we haven't made any requests yet. Create some routes with "prometheus" plugin enabled and make some requests to them to generate some data for these panels.
+The dashboard should be able to display some data, including total requests, handled connections, etc. Routing-related panels such as bandwidth and latency will show "No data" because we haven't made any requests yet. Create some routes with the "prometheus" plugin enabled and make some requests to them to generate some data for these panels.
 
 ## Manual Configuration and Troubleshooting
 
-If you already have an installation of APISIX and Prometheus Operator, you can manually configure `ServiceMonitor` resource and the service that exposes APISIX metrics.
+If you already have an installation of APISIX and Prometheus Operator, you can manually configure the `ServiceMonitor` resource and the service that exposes APISIX metrics.
 
 ### Service Monitor and APISIX Service
 
@@ -98,15 +98,15 @@ spec:
     interval: 15s
 ```
 
-The spec uses `namespaceSelector` and `selector` to match the `apisix-gateway` service. The former matches the namespace of APISIX we deployed, and the later matches the exact service `apisix-gateway`.
+The spec uses `namespaceSelector` and `selector` to match the `apisix-gateway` service. The former matches the namespace of APISIX we deployed, and the latter matches the exact service `apisix-gateway`.
 
 The field `endpoints` tells Prometheus where to collect the metrics. Note that the `targetPort` field points to the port of service with the same name. If your service doesn't have a port named `prometheus`, create one.
 
-The helm chart exposes APISIX metrics in the `apisix-gateway` service by default. Change the selector to match your own service if needed.
+The helm chart exposes APISIX metrics in the `apisix-gateway` service by default. Change the selector to match your service if needed.
 
 ### Prometheus Spec
 
-If everything works fine, the `Status > Targets` page of Promethes Web UI will show the APISIX service monitor. If your don't see it, you should make sure Prometheus is watching the `ServiceMonitor` resource we created.
+If everything works fine, the `Status > Targets` page of Prometheus Web UI will show the APISIX service monitor. If you don't see it, you should make sure Prometheus is watching the `ServiceMonitor` resource we created.
 
 By default, the `Prometheus` resource created by the helm chart `kube-prometheus-stack` is as follows.
 
