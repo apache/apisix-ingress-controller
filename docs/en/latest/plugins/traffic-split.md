@@ -32,27 +32,45 @@ If multiple services are declared in ApisixRoute `http[].backends`, it cannot be
 **Correct example:**
 
 ```yaml
-
-backends:
-- serviceName: httpbin1
-  servicePort: 80 
-plugins:
-- name: traffic-split # It works.
-  enable: true
-
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  http:
+    - name: rule1
+      match:
+        paths:
+          - /*
+      backends:
+      - serviceName: httpbin
+        servicePort: 80 
+      plugins:
+      - name: traffic-split # It works.
+        enable: true
 ```
 
 **Invalid examples:**
 
 ```yaml
-backends:
-- serviceName: httpbin1
-  servicePort: 80 
-- serviceName: httpbin2
-  servicePort: 80
-plugins:
-- name: traffic-split # Not working, this plugin is invalid and cannot be used with multiple backend.
-  enable: true
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  http:
+    - name: rule1
+      match:
+        paths:
+          - /*
+      backends:
+      - serviceName: httpbin1
+        servicePort: 80 
+      - serviceName: httpbin2
+        servicePort: 80
+      plugins:
+      - name: traffic-split # Not working, this plugin is invalid and cannot be used with multiple backend.
+        enable: true
 ```
 
 :::
