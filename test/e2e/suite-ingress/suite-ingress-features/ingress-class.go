@@ -200,5 +200,24 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), *ups[0].Retries, 2)
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+
+		au = fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: %s
+spec:
+  ingressClassName: watch
+  retries: 1
+`, backendSvc)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(au))
+		time.Sleep(6 * time.Second)
+
+		ups, err = s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), ups, 1)
+		assert.Equal(ginkgo.GinkgoT(), *ups[0].Retries, 1)
+
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 	})
 })
