@@ -31,7 +31,7 @@ import TabItem from '@theme/TabItem';
 
 APISIX ingress controller is a [Kubernetes ingress controller](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/) using [Apache APISIX](https://apisix.apache.org) as the high performance reverse proxy.
 
-APISIX ingress controller can be configured using native Kubernetes ingress resources as well as a declarative and easy to use custom resources provided by APISIX. The APISIX ingress controller converts these resources to APISIX configuration.
+APISIX ingress controller can be configured using the native Kubernetes Ingress or Gateway API as well as with the declarative and easy to use custom resources provided by APISIX. The APISIX ingress controller converts these resources to APISIX configuration.
 
 The examples below show how these differ. Both the examples configure a Route in APISIX that routes to an httpbin service as the Upstream.
 
@@ -39,8 +39,9 @@ The examples below show how these differ. Both the examples configure a Route in
 groupId="resources"
 defaultValue="apisix"
 values={[
-{label: 'APISIX Ingress custom resource', value: 'apisix'},
-{label: 'Kubernetes ingress resource', value: 'kubernetes'},
+{label: 'APISIX Ingress CRD', value: 'apisix'},
+{label: 'Kubernetes Ingress API', value: 'ingress'},
+{label: 'Kubernetes Gateway API', value: 'gateway'},
 ]}>
 
 <TabItem value="apisix">
@@ -65,7 +66,7 @@ spec:
 
 </TabItem>
 
-<TabItem value="kubernetes">
+<TabItem value="ingress">
 
 ```yaml title="httpbin-route.yaml"
 apiVersion: networking.k8s.io/v1
@@ -85,6 +86,28 @@ spec:
                   number: 80
             path: /
             pathType: Prefix
+```
+
+</TabItem>
+
+<TabItem value="gateway">
+
+```yaml title="httpbin-route.yaml"
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: HTTPRoute
+metadata:
+  name: httpbin-route
+spec:
+  hostnames:
+  - local.httpbin.org
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: httpbin
+      port: 80
 ```
 
 </TabItem>
@@ -122,7 +145,8 @@ The table below shows the compatibility between APISIX ingress controller and th
 
 | APISIX ingress controller | Supported APISIX versions | Recommended APISIX version |
 | ------------------------- | ------------------------- | -------------------------- |
-| `master`                  | `>= 2.15`                 | `2.15`                     |
+| `master`                  | `>= 2.15`, `>=3.0`        | `3.1`                      |
+| `1.6.0`                   | `>= 2.15`, `>=3.0`        | `2.15`, `3.0`              |
 | `1.5.0`                   | `>= 2.7`                  | `2.15`                     |
 | `1.4.0`                   | `>= 2.7`                  | `2.11`                     |
 | `1.3.0`                   | `>= 2.7`                  | `2.10`                     |

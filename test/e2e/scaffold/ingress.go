@@ -171,6 +171,8 @@ rules:
       - apisixconsumers/status
       - apisixpluginconfigs
       - apisixpluginconfigs/status
+      - apisixglobalrules
+      - apisixglobalrules/status
     verbs:
       - '*'
   - apiGroups:
@@ -396,6 +398,9 @@ spec:
             - "%s"
             - --enable-gateway-api
             - "true"
+            - --ingress-class
+            - %s
+            %s
           %s
       volumes:
        - name: webhook-certs
@@ -431,19 +436,24 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		assert.Nil(s.t, err, "deleting ClusterRole")
 	})
 
-	var ingressAPISIXDeployment string
+	var (
+		ingressAPISIXDeployment string
+		disableStatusStr        string
+		webhookVolumeMounts     string
+	)
 	label := `""`
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil && !s.opts.DisableNamespaceSelector {
 		label = labels[0]
 	}
-
-	if s.opts.EnableWebhooks {
-		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval,
-			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
-	} else {
-		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval,
-			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
+	if s.opts.DisableStatus {
+		disableStatusStr = "- --disable-status-updates"
 	}
+	if s.opts.EnableWebhooks {
+		webhookVolumeMounts = _volumeMounts
+	}
+
+	ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval,
+		label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.IngressClass, disableStatusStr, webhookVolumeMounts, _webhookCertSecret)
 
 	err = s.CreateResourceFromString(ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
@@ -545,16 +555,27 @@ func (s *Scaffold) GetIngressPodDetails() ([]corev1.Pod, error) {
 
 // ScaleIngressController scales the number of Ingress Controller pods to desired.
 func (s *Scaffold) ScaleIngressController(desired int) error {
-	var ingressDeployment string
-	var label string
+	var (
+		ingressDeployment   string
+		label               string
+		disableStatusStr    string
+		webhookVolumeMounts string
+	)
+
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil {
 		label = labels[0]
 	}
-	if s.opts.EnableWebhooks {
-		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
-	} else {
-		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
+	if s.opts.DisableStatus {
+		disableStatusStr = "- --disable-status-updates"
 	}
+	if s.opts.EnableWebhooks {
+		webhookVolumeMounts = _volumeMounts
+	}
+
+	ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace,
+		s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress,
+		s.opts.IngressClass, disableStatusStr, webhookVolumeMounts, _webhookCertSecret)
+
 	if err := s.CreateResourceFromString(ingressDeployment); err != nil {
 		return err
 	}

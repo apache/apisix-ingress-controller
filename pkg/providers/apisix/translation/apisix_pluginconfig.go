@@ -104,6 +104,9 @@ func (t *translator) TranslatePluginConfigV2(config *configv2.ApisixPluginConfig
 		}
 	}
 	pc := apisixv1.NewDefaultPluginConfig()
+	for k, v := range config.ObjectMeta.Labels {
+		pc.Metadata.Labels[k] = v
+	}
 	pc.Name = apisixv1.ComposePluginConfigName(config.Namespace, config.Name)
 	pc.ID = id.GenID(pc.Name)
 	pc.Plugins = pluginMap

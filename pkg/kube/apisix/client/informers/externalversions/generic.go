@@ -57,6 +57,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2().ApisixClusterConfigs().Informer()}, nil
 	case v2.SchemeGroupVersion.WithResource("apisixconsumers"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2().ApisixConsumers().Informer()}, nil
+	case v2.SchemeGroupVersion.WithResource("apisixglobalrules"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2().ApisixGlobalRules().Informer()}, nil
 	case v2.SchemeGroupVersion.WithResource("apisixpluginconfigs"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apisix().V2().ApisixPluginConfigs().Informer()}, nil
 	case v2.SchemeGroupVersion.WithResource("apisixroutes"):

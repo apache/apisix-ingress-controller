@@ -38,6 +38,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/providers/gateway/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 )
 
@@ -96,6 +97,7 @@ type ProviderOptions struct {
 	KubeClient        kubernetes.Interface
 	MetricsCollector  metrics.Collector
 	NamespaceProvider namespace.WatchingNamespaceProvider
+	ListerInformer    *providertypes.ListerInformer
 }
 
 func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {

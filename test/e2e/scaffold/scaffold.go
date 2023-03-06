@@ -59,6 +59,8 @@ type Options struct {
 	APISIXPublishAddress       string
 	ApisixResourceSyncInterval string
 	ApisixResourceVersion      string
+	DisableStatus              bool
+	IngressClass               string
 
 	NamespaceSelectorLabel   map[string]string
 	DisableNamespaceSelector bool
@@ -161,6 +163,9 @@ func NewScaffold(o *Options) *Scaffold {
 	}
 	if o.HTTPBinServicePort == 0 {
 		o.HTTPBinServicePort = 80
+	}
+	if o.IngressClass == "" {
+		o.IngressClass = config.IngressClassApisixAndAll
 	}
 	defer ginkgo.GinkgoRecover()
 
@@ -323,6 +328,13 @@ func (s *Scaffold) DNSResolver() *net.Resolver {
 			return d.DialContext(ctx, "udp", s.apisixUDPTunnel.Endpoint())
 		},
 	}
+}
+
+func (s *Scaffold) DialTLSOverTcp(serverName string) (*tls.Conn, error) {
+	return tls.Dial("tcp", s.apisixTLSOverTCPTunnel.Endpoint(), &tls.Config{
+		InsecureSkipVerify: true,
+		ServerName:         serverName,
+	})
 }
 
 func (s *Scaffold) UpdateNamespace(ns string) {

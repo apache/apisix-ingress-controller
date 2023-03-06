@@ -1,0 +1,53 @@
+name: "Performance issue"
+description: Report a performance issue.
+title: "perf: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report this bug!
+
+        _The more information you share, the faster we can identify and fix the issue._
+
+        Prior to opening the issue, please make sure that you:
+
+        - Use English to communicate.
+        - Search the [open issues](https://github.com/apache/apisix-ingress-controller/issues) to avoid duplicating the issue.
+  - type: textarea
+    id: issue-faced
+    attributes:
+      label: Issue Faced
+      description: Describe the performance issue you are facing.
+      placeholder: |
+        When running APISIX Ingress in EKS, I'm experiencing high latency when I make requests to...
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Paste relevant logs if any. You can change the [log level](https://github.com/apache/apisix/blob/617c325628f33961be67f61f0fa8002afc370e42/docs/en/latest/FAQ.md#how-to-change-the-log-level) to get a verbose error log.
+    validations:
+      required: false
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Share the steps to reproduce this issue if you have identified it.
+      placeholder: |
+        1. Install APISIX Ingress controller 1.x with the Helm chart.
+        2. Create a Route with ApisixRoute resource.
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Share your environment details. Reports without proper environment details will likely be closed.
+      value: |
+        - APISIX Ingress controller version (run `apisix-ingress-controller version --long`)
+        - Kubernetes cluster version (run `kubectl version`)
+        - OS version if running APISIX Ingress controller in a bare-metal environment (run `uname -a`)
+    validations:
+      required: true

@@ -75,6 +75,7 @@ type ListerInformer struct {
 	ApisixConsumerInformer      cache.SharedIndexInformer
 	ApisixTlsInformer           cache.SharedIndexInformer
 	ApisixClusterConfigInformer cache.SharedIndexInformer
+	ApisixGlobalRuleInformer    cache.SharedIndexInformer
 
 	ApisixRouteLister         kube.ApisixRouteLister
 	ApisixUpstreamLister      kube.ApisixUpstreamLister
@@ -82,6 +83,7 @@ type ListerInformer struct {
 	ApisixConsumerLister      kube.ApisixConsumerLister
 	ApisixTlsLister           kube.ApisixTlsLister
 	ApisixClusterConfigLister kube.ApisixClusterConfigLister
+	ApisixGlobalRuleLister    kube.ApisixGlobalRuleLister
 }
 
 func (c *ListerInformer) StartAndWaitForCacheSync(ctx context.Context) bool {

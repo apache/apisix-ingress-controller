@@ -741,3 +741,42 @@ func TestTranslateApisixRouteV2WithUpstream(t *testing.T) {
 		TLS:     nil,
 	}, ups)
 }
+
+func TestTranslateApisixRouteV2WithUpstreamNoBackendsAndPluginConfigName(t *testing.T) {
+	tr, processCh := mockTranslatorV2(t)
+	<-processCh
+	<-processCh
+
+	ar := &configv2.ApisixRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ar",
+			Namespace: "test",
+		},
+		Spec: configv2.ApisixRouteSpec{
+			HTTP: []configv2.ApisixRouteHTTP{
+				{
+					Name: "rule1",
+					Match: configv2.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Upstreams: []configv2.ApisixRouteUpstreamReference{
+						{
+							Name:   "au",
+							Weight: ptrOf(1),
+						},
+					},
+					PluginConfigName: "test-PluginConfigName-1",
+				},
+			},
+		},
+	}
+
+	tctx, err := tr.TranslateRouteV2(ar)
+	assert.NoError(t, err)
+	assert.Len(t, tctx.PluginConfigs, 0)
+	assert.Len(t, tctx.Routes, 1)
+	expectedPluginId := id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, ar.Spec.HTTP[0].PluginConfigName))
+	assert.Equal(t, expectedPluginId, tctx.Routes[0].PluginConfigId)
+}
