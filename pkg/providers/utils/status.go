@@ -64,3 +64,19 @@ func VerifyGeneration(conditions *[]metav1.Condition, newCondition metav1.Condit
 	}
 	return true
 }
+
+// VerifyConditions verify conditions to decide whether to update status
+func VerifyConditions(conditions *[]metav1.Condition, newCondition metav1.Condition) bool {
+	existingCondition := meta.FindStatusCondition(*conditions, newCondition.Type)
+	if existingCondition == nil {
+		return true
+	}
+
+	if existingCondition.ObservedGeneration > newCondition.ObservedGeneration {
+		return false
+	}
+	if *existingCondition == newCondition {
+		return false
+	}
+	return true
+}

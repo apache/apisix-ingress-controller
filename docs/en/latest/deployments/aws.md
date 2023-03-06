@@ -44,12 +44,15 @@ The script below installs APISIX and the ingress controller:
 helm repo add apisix https://charts.apiseven.com
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update
-kubectl create ns ingress-apisix
+#  We use Apisix 3.0 in this example. If you're using Apisix v2.x, please set to v2
+ADMIN_API_VERSION=v3
 helm install apisix apisix/apisix \
   --set gateway.type=LoadBalancer \
   --set ingress-controller.enabled=true \
+  --create-namespace \
   --namespace ingress-apisix \
-  --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
+  --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix \
+  --set ingress-controller.config.apisix.adminAPIVersion=$ADMIN_API_VERSION
 kubectl get service --namespace ingress-apisix
 ```
 
@@ -58,11 +61,15 @@ kubectl get service --namespace ingress-apisix
 By default AWS provisions a [Classic LoadBalancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/introduction.html). If you want to use a [Network LoadBalancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html) you can set the annotation, `service.beta.kubernetes.io/aws-load-balancer-type: nlb`. The install command would now be:
 
 ```shell
+#  We use Apisix 3.0 in this example. If you're using Apisix v2.x, please set to v2
+ADMIN_API_VERSION=v3
 helm install apisix apisix/apisix \
   --set gateway.type=LoadBalancer \
   --set ingress-controller.enabled=true \
+  --create-namespace \
   --namespace ingress-apisix \
   --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix \
+  --set ingress-controller.config.apisix.adminAPIVersion=$ADMIN_API_VERSION \
   --set gateway.tls.enabled=true \
   --set gateway.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"=nlb
 ```
@@ -76,6 +83,22 @@ By default, APISIX ingress controller will watch the apiVersion of `networking.k
 If the target Kubernetes version is under `v1.19`, add the flag `--set ingress-controller.config.kubernetes.ingressVersion=networking/v1beta1`.
 
 Else, if your Kubernetes cluster version is under `v1.16`, set the flag `--set ingress-controller.config.kubernetes.ingressVersion=extensions/v1beta1`.
+
+:::
+
+:::tip
+
+APISIX Ingress also supports (beta) the new [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/).
+
+If the Gateway API CRDs are not installed in your cluster by default, you can install it by running:
+
+```shell
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v0.5.0/standard-install.yaml
+```
+
+You should also enable APISIX Ingress controller to work with the Gateway API. You can do this by adding the flag `--set ingress-controller.config.kubernetes.enableGatewayAPI=true` while installing through Helm.
+
+See [this tutorial](https://apisix.apache.org/docs/ingress-controller/tutorials/configure-ingress-with-gateway-api) for more info.
 
 :::
 

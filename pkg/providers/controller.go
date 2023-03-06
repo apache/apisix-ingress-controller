@@ -237,6 +237,7 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		apisixConsumerInformer      cache.SharedIndexInformer
 		apisixTlsInformer           cache.SharedIndexInformer
 		apisixClusterConfigInformer cache.SharedIndexInformer
+		ApisixGlobalRuleInformer    cache.SharedIndexInformer
 
 		apisixRouteListerV2beta3         v2beta3.ApisixRouteLister
 		apisixUpstreamListerV2beta3      v2beta3.ApisixUpstreamLister
@@ -251,6 +252,7 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		apisixClusterConfigListerV2 v2.ApisixClusterConfigLister
 		apisixConsumerListerV2      v2.ApisixConsumerLister
 		apisixPluginConfigListerV2  v2.ApisixPluginConfigLister
+		ApisixGlobalRuleListerV2    v2.ApisixGlobalRuleLister
 	)
 
 	switch c.cfg.Kubernetes.APIVersion {
@@ -275,6 +277,7 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		apisixConsumerInformer = apisixFactory.Apisix().V2().ApisixConsumers().Informer()
 		apisixPluginConfigInformer = apisixFactory.Apisix().V2().ApisixPluginConfigs().Informer()
 		apisixUpstreamInformer = apisixFactory.Apisix().V2().ApisixUpstreams().Informer()
+		ApisixGlobalRuleInformer = apisixFactory.Apisix().V2().ApisixGlobalRules().Informer()
 
 		apisixRouteListerV2 = apisixFactory.Apisix().V2().ApisixRoutes().Lister()
 		apisixUpstreamListerV2 = apisixFactory.Apisix().V2().ApisixUpstreams().Lister()
@@ -282,6 +285,8 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		apisixClusterConfigListerV2 = apisixFactory.Apisix().V2().ApisixClusterConfigs().Lister()
 		apisixConsumerListerV2 = apisixFactory.Apisix().V2().ApisixConsumers().Lister()
 		apisixPluginConfigListerV2 = apisixFactory.Apisix().V2().ApisixPluginConfigs().Lister()
+		ApisixGlobalRuleListerV2 = apisixFactory.Apisix().V2().ApisixGlobalRules().Lister()
+
 	default:
 		panic(fmt.Errorf("unsupported API version %v", c.cfg.Kubernetes.APIVersion))
 	}
@@ -292,6 +297,7 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 	apisixClusterConfigLister := kube.NewApisixClusterConfigLister(apisixClusterConfigListerV2beta3, apisixClusterConfigListerV2)
 	apisixConsumerLister := kube.NewApisixConsumerLister(apisixConsumerListerV2beta3, apisixConsumerListerV2)
 	apisixPluginConfigLister := kube.NewApisixPluginConfigLister(apisixPluginConfigListerV2beta3, apisixPluginConfigListerV2)
+	ApisixGlobalRuleLister := kube.NewApisixGlobalRuleLister(c.cfg.Kubernetes.APIVersion, ApisixGlobalRuleListerV2)
 
 	epLister, epInformer := kube.NewEndpointListerAndInformer(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
 	svcInformer := kubeFactory.Core().V1().Services().Informer()
@@ -343,6 +349,7 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		ApisixTlsLister:           apisixTlsLister,
 		ApisixPluginConfigLister:  apisixPluginConfigLister,
 		ApisixClusterConfigLister: apisixClusterConfigLister,
+		ApisixGlobalRuleLister:    ApisixGlobalRuleLister,
 
 		ApisixUpstreamInformer:      apisixUpstreamInformer,
 		ApisixPluginConfigInformer:  apisixPluginConfigInformer,
@@ -350,6 +357,7 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		ApisixClusterConfigInformer: apisixClusterConfigInformer,
 		ApisixConsumerInformer:      apisixConsumerInformer,
 		ApisixTlsInformer:           apisixTlsInformer,
+		ApisixGlobalRuleInformer:    ApisixGlobalRuleInformer,
 	}
 
 	return listerInformer
@@ -457,6 +465,7 @@ func (c *Controller) run(ctx context.Context) {
 			KubeClient:        c.kubeClient.Client,
 			MetricsCollector:  c.MetricsCollector,
 			NamespaceProvider: c.namespaceProvider,
+			ListerInformer:    common.ListerInformer,
 		})
 		if err != nil {
 			ctx.Done()
@@ -551,9 +560,9 @@ func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.
 			// Finally failed health check, then give up leader.
 			log.Warnf("failed to check health for default cluster: %s, give up leader", err)
 			c.apiServer.HealthState.Lock()
-			defer c.apiServer.HealthState.Unlock()
-
 			c.apiServer.HealthState.Err = err
+			c.apiServer.HealthState.Unlock()
+
 			return
 		}
 		log.Debugf("success check health for default cluster")
@@ -571,6 +580,10 @@ func (c *Controller) syncAllResources() {
 }
 
 func (c *Controller) resourceSyncLoop(ctx context.Context, interval time.Duration) {
+	if interval == 0 {
+		log.Info("apisix-resource-sync-interval set to 0, periodically synchronization disabled.")
+		return
+	}
 	// The interval shall not be less than 60 seconds.
 	if interval < _mininumApisixResourceSyncInterval {
 		log.Warnw("The apisix-resource-sync-interval shall not be less than 60 seconds.",

@@ -100,6 +100,12 @@ func (t *translator) TranslateApisixConsumerV2(ac *configv2.ApisixConsumer) (*ap
 			return nil, fmt.Errorf("invaild hmac auth config: %s", err)
 		}
 		plugins["hmac-auth"] = cfg
+	} else if ac.Spec.AuthParameter.LDAPAuth != nil {
+		cfg, err := t.translateConsumerLDAPAuthPluginV2(ac.Namespace, ac.Spec.AuthParameter.LDAPAuth)
+		if err != nil {
+			return nil, fmt.Errorf("invalid ldap auth config: %s", err)
+		}
+		plugins["ldap-auth"] = cfg
 	}
 
 	consumer := apisixv1.NewDefaultConsumer()

@@ -19,10 +19,10 @@ default: help
 VERSION ?= 1.6.0
 
 # 2.15 image: "2.15.0-alpine"
-TARGET_APISIX_VERSION ?= "3.0.0-centos"
+TARGET_APISIX_VERSION ?= "3.1.0-centos"
 APISIX_ADMIN_API_VERSION ?= "v3"
 ifneq ($(APISIX_ADMIN_API_VERSION), "v3")
-ifeq ($(TARGET_APISIX_VERSION), "3.0.0-centos")
+ifeq ($(TARGET_APISIX_VERSION), "3.1.0-centos")
 	TARGET_APISIX_VERSION = "2.15.0-alpine"
 endif
 endif
@@ -135,7 +135,7 @@ unit-test:
 
 ### e2e-test:             Run e2e test cases (in existing clusters directly)
 .PHONY: e2e-test
-e2e-test: ginkgo-check pack-images e2e-wolf-rbac install install-gateway-api
+e2e-test: ginkgo-check pack-images e2e-wolf-rbac e2e-ldap install install-gateway-api
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
@@ -194,7 +194,7 @@ release-src:
 	--exclude $(RELEASE_SRC).tgz \
 	.
 
-	gpg --batch --yes --armor --detach-sig $(RELEASE_SRC).tgz
+	gpg -u zhangjintao@apache.org --batch --yes --armor --detach-sig $(RELEASE_SRC).tgz
 	shasum -a 512 $(RELEASE_SRC).tgz > $(RELEASE_SRC).tgz.sha512
 
 	mkdir -p release
@@ -222,9 +222,19 @@ verify-license:
 verify-mdlint:
 	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' --ignore node_modules --ignore CHANGELOG.md
 
+### verify-yamllint:	  Verify yaml files lint rules for `samples/deploy` directory.
+.PHONY: verify-yamllint
+verify-yamllint:
+	docker run -it --rm -v $(PWD):/yaml peterdavehello/yamllint yamllint samples/deploy
+
 ### verify-all:           Verify all verify- rules.
 .PHONY: verify-all
-verify-all: verify-codegen verify-license verify-mdlint
+verify-all: verify-codegen verify-license verify-mdlint verify-yamllint
+
+### update-yamlfmt:       Update yaml files format for `samples/deploy` directory.
+.PHONY: update-yamlfmt
+update-yamlfmt:
+	go install github.com/google/yamlfmt/cmd/yamlfmt@latest && yamlfmt samples/deploy
 
 ### update-codegen:       Update the generated codes (clientset, informer, deepcopy, etc).
 .PHONY: update-codegen
@@ -266,6 +276,17 @@ ifneq ("$(E2E_FOCUS)", "")
 	&& ./test/e2e/testdata/wolf-rbac/cmd.sh start
 endif
 
+.PHONY: e2e-ldap
+e2e-ldap:
+ifeq ("$(E2E_FOCUS)", "")
+	chmod +x ./test/e2e/testdata/ldap/cmd.sh && ./test/e2e/testdata/ldap/cmd.sh start
+endif
+ifneq ("$(E2E_FOCUS)", "")
+	echo $(E2E_FOCUS) | grep -E 'suite-plugins-authentication|consumer|ldap' || exit 0 \
+	&& chmod +x ./test/e2e/testdata/ldap/cmd.sh \
+	&& ./test/e2e/testdata/ldap/cmd.sh start
+endif
+
 ### kind-load-images:	  Load the images to the kind cluster
 .PHONY: kind-load-images
 kind-load-images:
@@ -279,7 +300,7 @@ kind-load-images:
             $(REGISTRY)/busybox:dev
 
 
-GATEWAY_API_VERSION ?= v0.5.1
+GATEWAY_API_VERSION ?= v0.6.0
 GATEWAY_API_PACKAGE ?= sigs.k8s.io/gateway-api@$(GATEWAY_API_VERSION)
 GATEWAY_API_CRDS_GO_MOD_PATH = $(shell go env GOPATH)/pkg/mod/$(GATEWAY_API_PACKAGE)
 GATEWAY_API_CRDS_LOCAL_PATH = $(PWD)/samples/deploy/gateway-api/$(GATEWAY_API_VERSION)

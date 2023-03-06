@@ -21,7 +21,9 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-type prometheusPluginConfig struct{}
+type prometheusPluginConfig struct {
+	PreferName bool `json:"prefer_name,omitempty"`
+}
 
 type skywalkingPluginConfig struct {
 	SampleRatio float64 `json:"sample_ratio,omitempty"`
@@ -55,7 +57,9 @@ func (t *translator) TranslateClusterConfigV2(acc *configv2.ApisixClusterConfig)
 
 	if acc.Spec.Monitoring != nil {
 		if acc.Spec.Monitoring.Prometheus.Enable {
-			globalRule.Plugins["prometheus"] = &prometheusPluginConfig{}
+			globalRule.Plugins["prometheus"] = &prometheusPluginConfig{
+				PreferName: acc.Spec.Monitoring.Prometheus.PreferName,
+			}
 		}
 		if acc.Spec.Monitoring.Skywalking.Enable {
 			globalRule.Plugins["skywalking"] = &skywalkingPluginConfig{

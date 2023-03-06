@@ -29,6 +29,11 @@ description: A tutorial on configuring Ingress using APISIX Custom Resource Defi
 
 This tutorial walks through configuring APISIX Ingress with [APISIX Custom Resource Definitions (CRDs)](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_route).
 
+Also see:
+
+- [Configuring Ingress with Kubernetes Gateway API](https://apisix.apache.org/docs/ingress-controller/tutorials/configure-ingress-with-gateway-api)
+- [Configuring Ingress with Kubernetes Ingress resource](https://apisix.apache.org/docs/ingress-controller/tutorials/proxy-the-httpbin-service-with-ingress)
+
 ## Prerequisites
 
 Before you move on, make sure you:

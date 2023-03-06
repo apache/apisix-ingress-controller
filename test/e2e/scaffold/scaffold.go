@@ -59,6 +59,7 @@ type Options struct {
 	APISIXPublishAddress       string
 	ApisixResourceSyncInterval string
 	ApisixResourceVersion      string
+	DisableStatus              bool
 
 	NamespaceSelectorLabel   map[string]string
 	DisableNamespaceSelector bool
@@ -323,6 +324,13 @@ func (s *Scaffold) DNSResolver() *net.Resolver {
 			return d.DialContext(ctx, "udp", s.apisixUDPTunnel.Endpoint())
 		},
 	}
+}
+
+func (s *Scaffold) DialTLSOverTcp(serverName string) (*tls.Conn, error) {
+	return tls.Dial("tcp", s.apisixTLSOverTCPTunnel.Endpoint(), &tls.Config{
+		InsecureSkipVerify: true,
+		ServerName:         serverName,
+	})
 }
 
 func (s *Scaffold) UpdateNamespace(ns string) {

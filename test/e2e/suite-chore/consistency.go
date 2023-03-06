@@ -322,6 +322,47 @@ spec:
 	})
 })
 
+var _ = ginkgo.Describe("suite-chore: apisix plugin config labels sync", func() {
+	suites := func(s *scaffold.Scaffold) {
+		ginkgo.JustBeforeEach(func() {
+			labels := map[string]string{"key": "value", "foo": "bar"}
+			apc := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+ name: my-echo
+ labels:
+   key: value
+   foo: bar
+spec:
+ plugins:
+ - name: echo
+   enable: true
+   config:
+    body: "my-echo"
+`
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apc))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(1), "Checking number of plugin configs")
+
+			pluginConfigs, _ := s.ListApisixPluginConfig()
+			assert.Len(ginkgo.GinkgoT(), pluginConfigs, 1)
+			// check if labels exists
+			for _, pluginConfig := range pluginConfigs {
+				eq := reflect.DeepEqual(pluginConfig.Metadata.Labels, labels)
+				assert.True(ginkgo.GinkgoT(), eq)
+			}
+		})
+	}
+
+	ginkgo.Describe("suite-chore: scaffold v2", func() {
+		suites(scaffold.NewScaffold(&scaffold.Options{
+			Name:                  "sync",
+			IngressAPISIXReplicas: 1,
+			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
+		}))
+	})
+})
+
 var _ = ginkgo.Describe("suite-chore: apisix consumer labels sync", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.JustBeforeEach(func() {

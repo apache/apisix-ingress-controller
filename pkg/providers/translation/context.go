@@ -24,6 +24,7 @@ type TranslateContext struct {
 	UpstreamMap   map[string]struct{}
 	SSL           []*apisix.Ssl
 	PluginConfigs []*apisix.PluginConfig
+	GlobalRules   []*apisix.GlobalRule
 }
 
 func DefaultEmptyTranslateContext() *TranslateContext {
@@ -59,4 +60,8 @@ func (tc *TranslateContext) CheckUpstreamExist(name string) (ok bool) {
 
 func (tc *TranslateContext) AddPluginConfig(pc *apisix.PluginConfig) {
 	tc.PluginConfigs = append(tc.PluginConfigs, pc)
+}
+
+func (tc *TranslateContext) AddGlobalRule(gr *apisix.GlobalRule) {
+	tc.GlobalRules = append(tc.GlobalRules, gr)
 }

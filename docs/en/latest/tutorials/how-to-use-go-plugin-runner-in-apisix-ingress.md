@@ -129,7 +129,19 @@ Load the image into the kind cluster environment to pull the custom local image 
 Then install APISIX using helm with the following command in the directory of Apache APISIX Helm Chart:
 
 ```bash
-helm install apisix apisix/apisix --set gateway.type=NodePort --set apisix.image.repository=custom/apisix --set apisix.image.tag=v0.1 --set extPlugin.enabled=true --set extPlugin.cmd='{"/usr/local/apisix-go-plugin-runner/go-runner", "run"}' --set ingress-controller.enabled=true --set ingress-controller.config.apisix.serviceNamespace=apisix --namespace apisix --create-namespace --set ingress-controller.config.apisix.serviceName=apisix-admin
+#  We use Apisix 3.0 in this example. If you're using Apisix v2.x, please set to v2
+ADMIN_API_VERSION=v3
+helm install apisix apisix/apisix \
+  --set gateway.type=NodePort \
+  --set apisix.image.repository=custom/apisix \
+  --set apisix.image.tag=v0.1 \
+  --set extPlugin.enabled=true \
+  --set extPlugin.cmd='{"/usr/local/apisix-go-plugin-runner/go-runner", "run"}' \
+  --set ingress-controller.enabled=true \
+  --create-namespace \
+  --namespace apisix-admin \
+  --set ingress-controller.config.apisix.serviceName=apisix-admin \
+  --set ingress-controller.config.apisix.adminAPIVersion=$ADMIN_API_VERSION
 ```
 
 ## Create httpbin service and ApisixRoute resources
