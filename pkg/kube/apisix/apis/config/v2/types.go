@@ -479,6 +479,12 @@ type ApisixUpstream struct {
 
 // ApisixUpstreamSpec describes the specification of ApisixUpstream.
 type ApisixUpstreamSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// controller implementations use this field to know whether they should be
+	// serving this ApisixUpstream resource, by a transitive connection
+	// (controller -> IngressClass -> ApisixUpstream resource).
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	// ExternalNodes contains external nodes the Upstream should use
 	// If this field is set, the upstream will use these nodes directly without any further resolves
 	// +optional

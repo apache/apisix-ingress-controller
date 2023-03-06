@@ -398,6 +398,8 @@ spec:
             - "%s"
             - --enable-gateway-api
             - "true"
+            - --ingress-class
+            - %s
             %s
           %s
       volumes:
@@ -451,7 +453,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	}
 
 	ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval,
-		label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, disableStatusStr, webhookVolumeMounts, _webhookCertSecret)
+		label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.IngressClass, disableStatusStr, webhookVolumeMounts, _webhookCertSecret)
 
 	err = s.CreateResourceFromString(ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
@@ -572,7 +574,7 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 
 	ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace,
 		s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress,
-		disableStatusStr, webhookVolumeMounts, _webhookCertSecret)
+		s.opts.IngressClass, disableStatusStr, webhookVolumeMounts, _webhookCertSecret)
 
 	if err := s.CreateResourceFromString(ingressDeployment); err != nil {
 		return err

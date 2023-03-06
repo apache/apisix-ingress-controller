@@ -435,6 +435,7 @@ func (c *Controller) run(ctx context.Context) {
 		PodLister:            c.informers.PodLister,
 		ApisixUpstreamLister: c.informers.ApisixUpstreamLister,
 		PodProvider:          c.podProvider,
+		IngressClassName:     c.cfg.Kubernetes.IngressClass,
 	})
 
 	c.apisixProvider, c.apisixTranslator, err = apisixprovider.NewProvider(common, c.namespaceProvider, c.translator)
