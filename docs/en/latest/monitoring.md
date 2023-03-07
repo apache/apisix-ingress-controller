@@ -63,6 +63,7 @@ helm repo add apisix https://charts.apiseven.com
 helm repo update
 
 helm install apisix apisix/apisix --create-namespace --namespace apisix \
+  --set ingress-controller.config.apisix.serviceNamespace=apisix \
   --set serviceMonitor.enabled=true \
   --set ingress-controller.enabled=true
 ```
