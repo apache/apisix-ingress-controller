@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
@@ -142,8 +143,13 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		}
 		ing = ev.Tombstone.(kube.Ingress)
 	}
+	var tctx *translation.TranslateContext
+	if ev.Type == types.EventDelete {
+		tctx, err = c.translator.TranslateIngressDeleteEvent(ing)
+	} else {
+		tctx, err = c.translator.TranslateIngress(ing)
+	}
 
-	tctx, err := c.translator.TranslateIngress(ing)
 	if err != nil {
 		log.Errorw("failed to translate ingress",
 			zap.Error(err),
@@ -406,8 +412,9 @@ func (c *ingressController) OnDelete(obj interface{}) {
 
 func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 	var (
-		ic  *string
-		ica string
+		ic                 *string
+		ica                string
+		configIngressClass = c.Kubernetes.IngressClass
 	)
 	if ing.GroupVersion() == kube.IngressV1 {
 		ic = ing.V1().Spec.IngressClassName
@@ -419,13 +426,16 @@ func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 		ic = ing.ExtensionsV1beta1().Spec.IngressClassName
 		ica = ing.ExtensionsV1beta1().GetAnnotations()[_ingressKey]
 	}
+	if configIngressClass == config.IngressClassApisixAndAll {
+		configIngressClass = config.IngressClass
+	}
 
 	// kubernetes.io/ingress.class takes the precedence.
 	if ica != "" {
-		return ica == c.Kubernetes.IngressClass
+		return ica == configIngressClass
 	}
 	if ic != nil {
-		return *ic == c.Kubernetes.IngressClass
+		return *ic == configIngressClass
 	}
 	return false
 }
@@ -460,6 +470,9 @@ func (c *ingressController) ResourceSync() {
 
 // recordStatus record resources status
 func (c *ingressController) recordStatus(at runtime.Object, reason string, err error, status metav1.ConditionStatus, generation int64) {
+	if c.Kubernetes.DisableStatusUpdates {
+		return
+	}
 	client := c.KubeClient.Client
 
 	at = at.DeepCopyObject()
@@ -474,15 +487,16 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 			)
 
 		}
-
-		v.ObjectMeta.Generation = generation
-		v.Status.LoadBalancer.Ingress = lbips
-		if _, errRecord := client.NetworkingV1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-			log.Errorw("failed to record status change for IngressV1",
-				zap.Error(errRecord),
-				zap.String("name", v.Name),
-				zap.String("namespace", v.Namespace),
-			)
+		ingressLB := utils.CoreV1ToNetworkV1LB(lbips)
+		if !utils.CompareNetworkingV1LBEqual(v.Status.LoadBalancer.Ingress, ingressLB) {
+			v.Status.LoadBalancer.Ingress = ingressLB
+			if _, errRecord := client.NetworkingV1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for IngressV1",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+					zap.String("namespace", v.Namespace),
+				)
+			}
 		}
 
 	case *networkingv1beta1.Ingress:
@@ -492,17 +506,18 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 			log.Errorw("failed to get APISIX gateway external IPs",
 				zap.Error(err),
 			)
-
 		}
 
-		v.ObjectMeta.Generation = generation
-		v.Status.LoadBalancer.Ingress = lbips
-		if _, errRecord := client.NetworkingV1beta1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-			log.Errorw("failed to record status change for IngressV1",
-				zap.Error(errRecord),
-				zap.String("name", v.Name),
-				zap.String("namespace", v.Namespace),
-			)
+		ingressLB := utils.CoreV1ToNetworkV1beta1LB(lbips)
+		if !utils.CompareNetworkingV1beta1LBEqual(v.Status.LoadBalancer.Ingress, ingressLB) {
+			v.Status.LoadBalancer.Ingress = ingressLB
+			if _, errRecord := client.NetworkingV1beta1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for IngressV1beta1",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+					zap.String("namespace", v.Namespace),
+				)
+			}
 		}
 	case *extensionsv1beta1.Ingress:
 		// set to status
@@ -514,14 +529,16 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 
 		}
 
-		v.ObjectMeta.Generation = generation
-		v.Status.LoadBalancer.Ingress = lbips
-		if _, errRecord := client.ExtensionsV1beta1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-			log.Errorw("failed to record status change for IngressV1",
-				zap.Error(errRecord),
-				zap.String("name", v.Name),
-				zap.String("namespace", v.Namespace),
-			)
+		ingressLB := utils.CoreV1ToExtensionsV1beta1LB(lbips)
+		if !utils.CompareExtensionsV1beta1LBEqual(v.Status.LoadBalancer.Ingress, ingressLB) {
+			v.Status.LoadBalancer.Ingress = ingressLB
+			if _, errRecord := client.ExtensionsV1beta1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+				log.Errorw("failed to record status change for IngressExtensionsv1beta1",
+					zap.Error(errRecord),
+					zap.String("name", v.Name),
+					zap.String("namespace", v.Namespace),
+				)
+			}
 		}
 	default:
 		// This should not be executed
@@ -531,7 +548,7 @@ func (c *ingressController) recordStatus(at runtime.Object, reason string, err e
 
 // ingressLBStatusIPs organizes the available addresses
 func (c *ingressController) ingressLBStatusIPs() ([]corev1.LoadBalancerIngress, error) {
-	return utils.IngressLBStatusIPs(c.IngressPublishService, c.IngressStatusAddress, c.KubeClient.Client)
+	return utils.IngressLBStatusIPs(c.IngressPublishService, c.IngressStatusAddress, c.SvcLister)
 }
 
 func (c *ingressController) storeSecretReference(secretKey string, ingressKey string, evType types.EventType, ssl *v1.Ssl) {

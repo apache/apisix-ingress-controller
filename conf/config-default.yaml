@@ -50,6 +50,7 @@ ingress_status_address: []   # when there is no available information on the Ser
 enable_profiling: true # enable profiling via web interfaces
                        # host:port/debug/pprof, default is true.
 apisix-resource-sync-interval: "300s" # Default interval for synchronizing Kubernetes resources to APISIX
+
 # Kubernetes related configurations.
 kubernetes:
   kubeconfig: ""                       # the Kubernetes configuration file path, default is
@@ -63,7 +64,8 @@ kubernetes:
   election_id: "ingress-apisix-leader" # the election id for the controller leader campaign,
                                        # only the leader will watch and delivery resource changes,
                                        # other instances (as candidates) stand by.
-  ingress_class: "apisix"              # the class of an Ingress object is set using the field
+  ingress_class: "apisix-and-all"      # apisix-and-all is a special value, it handles Ingress resources with ingressClassName=apisix and all CRDs.
+                                       # this field can be used for both Ingress Object and custom resources.
                                        # IngressClassName in Kubernetes clusters version v1.18.0
                                        # or higher or the annotation "kubernetes.io/ingress.class"
                                        # (deprecated).
@@ -82,11 +84,14 @@ kubernetes:
   api_version: apisix.apache.org/v2    # the default value of API version is "apisix.apache.org/v2", support "apisix.apache.org/v2beta3" and "apisix.apache.org/v2".
 
   plugin_metadata_cm: plugin-metadata-config-map
+
+  disable_status_updates: false # In the case of a large number of resources and the status of resources is not concerned
+                    # you can consider disabling status to speed up the synchronization cycle of resources.
 # APISIX related configurations.
 apisix:
   admin_api_version: v3  # the APISIX admin API version. can be "v2" or "v3"
 
-  default_cluster_base_url: "http://127.0.0.1:9080/apisix/admin" # The base url of admin api / manager api
+  default_cluster_base_url: "http://127.0.0.1:9180/apisix/admin" # The base url of admin api / manager api
                                                                  # of the default APISIX cluster
 
   default_cluster_admin_key: "" # the admin key used for the authentication of admin api / manager api in the

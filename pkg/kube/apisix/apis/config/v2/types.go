@@ -131,6 +131,10 @@ type ApisixRouteHTTPMatch struct {
 	//       - "127.0.0.1"
 	//       - "10.0.5.11"
 	NginxVars []ApisixRouteHTTPMatchExpr `json:"exprs,omitempty" yaml:"exprs,omitempty"`
+	// Matches based on a user-defined filtering function.
+	// These functions can accept an input parameter `vars`
+	// which can be used to access the Nginx variables.
+	FilterFunc string `json:"filter_func,omitempty" yaml:"filter_func,omitempty"`
 }
 
 // ApisixRouteHTTPMatchExpr represents a binary route match expression .
@@ -195,10 +199,11 @@ func (p *ApisixRoutePluginConfig) DeepCopy() *ApisixRoutePluginConfig {
 // ApisixRouteAuthentication is the authentication-related
 // configuration in ApisixRoute.
 type ApisixRouteAuthentication struct {
-	Enable  bool                             `json:"enable" yaml:"enable"`
-	Type    string                           `json:"type" yaml:"type"`
-	KeyAuth ApisixRouteAuthenticationKeyAuth `json:"keyAuth,omitempty" yaml:"keyAuth,omitempty"`
-	JwtAuth ApisixRouteAuthenticationJwtAuth `json:"jwtAuth,omitempty" yaml:"jwtAuth,omitempty"`
+	Enable   bool                              `json:"enable" yaml:"enable"`
+	Type     string                            `json:"type" yaml:"type"`
+	KeyAuth  ApisixRouteAuthenticationKeyAuth  `json:"keyAuth,omitempty" yaml:"keyAuth,omitempty"`
+	JwtAuth  ApisixRouteAuthenticationJwtAuth  `json:"jwtAuth,omitempty" yaml:"jwtAuth,omitempty"`
+	LDAPAuth ApisixRouteAuthenticationLDAPAuth `json:"ldapAuth,omitempty" yaml:"ldapAuth,omitempty"`
 }
 
 // ApisixRouteAuthenticationKeyAuth is the keyAuth-related
@@ -213,6 +218,15 @@ type ApisixRouteAuthenticationJwtAuth struct {
 	Header string `json:"header,omitempty" yaml:"header,omitempty"`
 	Query  string `json:"query,omitempty" yaml:"query,omitempty"`
 	Cookie string `json:"cookie,omitempty" yaml:"cookie,omitempty"`
+}
+
+// ApisixRouteAuthenticationLDAPAuth is the LDAP auth related
+// configuration in ApisixRouteAuthentication.
+type ApisixRouteAuthenticationLDAPAuth struct {
+	BaseDN  string `json:"base_dn,omitempty" yaml:"base_dn,omitempty"`
+	LDAPURI string `json:"ldap_uri,omitempty" yaml:"ldap_uri,omitempty"`
+	UseTLS  bool   `json:"use_tls,omitempty" yaml:"use_tls,omitempty"`
+	UID     string `json:"uid,omitempty" yaml:"uid,omitempty"`
 }
 
 // ApisixRouteStream is the configuration for level 4 route
@@ -299,6 +313,8 @@ type ApisixClusterMonitoringConfig struct {
 type ApisixClusterPrometheusConfig struct {
 	// Enable means whether enable Prometheus or not.
 	Enable bool `json:"enable" yaml:"enable"`
+	// PreferName means whether prints Route/Service name or ID in Prometheus metric
+	PreferName bool `json:"prefer_name" yaml:"prefer_name"`
 }
 
 // ApisixClusterSkywalkingConfig is the config for using Skywalking in APISIX Cluster.
@@ -352,6 +368,7 @@ type ApisixConsumerAuthParameter struct {
 	WolfRBAC  *ApisixConsumerWolfRBAC  `json:"wolfRBAC,omitempty" yaml:"wolfRBAC"`
 	JwtAuth   *ApisixConsumerJwtAuth   `json:"jwtAuth,omitempty" yaml:"jwtAuth"`
 	HMACAuth  *ApisixConsumerHMACAuth  `json:"hmacAuth,omitempty" yaml:"hmacAuth"`
+	LDAPAuth  *ApisixConsumerLDAPAuth  `json:"ldapAuth,omitempty" yaml:"ldapAuth"`
 }
 
 // ApisixConsumerBasicAuth defines the configuration for basic auth.
@@ -426,6 +443,17 @@ type ApisixConsumerHMACAuthValue struct {
 	MaxReqBody          int64    `json:"max_req_body,omitempty" yaml:"max_req_body,omitempty"`
 }
 
+// ApisixConsumerLDAPAuth defines the configuration for the ldap auth.
+type ApisixConsumerLDAPAuth struct {
+	SecretRef *corev1.LocalObjectReference `json:"secretRef" yaml:"secret"`
+	Value     *ApisixConsumerLDAPAuthValue `json:"value,omitempty" yaml:"value,omitempty"`
+}
+
+// ApisixConsumerLDAPAuthValue defines the in-place configuration for ldap auth.
+type ApisixConsumerLDAPAuthValue struct {
+	UserDN string `json:"user_dn" yaml:"user_dn"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // ApisixConsumerList contains a list of ApisixConsumer.
 type ApisixConsumerList struct {
@@ -451,6 +479,12 @@ type ApisixUpstream struct {
 
 // ApisixUpstreamSpec describes the specification of ApisixUpstream.
 type ApisixUpstreamSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// controller implementations use this field to know whether they should be
+	// serving this ApisixUpstream resource, by a transitive connection
+	// (controller -> IngressClass -> ApisixUpstream resource).
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	// ExternalNodes contains external nodes the Upstream should use
 	// If this field is set, the upstream will use these nodes directly without any further resolves
 	// +optional
@@ -753,4 +787,36 @@ type ApisixPluginConfigList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
 	metav1.ListMeta `json:"metadata" yaml:"metadata"`
 	Items           []ApisixPluginConfig `json:"items,omitempty" yaml:"items,omitempty"`
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:subresource:status
+
+// ApisixGlobalRule is the Schema for the ApisixGlobalRule resource.
+// An ApisixGlobalRule is used to support a group of plugin configs
+type ApisixGlobalRule struct {
+	metav1.TypeMeta   `json:",inline" yaml:",inline"`
+	metav1.ObjectMeta `json:"metadata" yaml:"metadata"`
+
+	// Spec defines the desired state of ApisixGlobalRuleSpec.
+	Spec   ApisixGlobalRuleSpec `json:"spec" yaml:"spec"`
+	Status ApisixStatus         `json:"status,omitempty" yaml:"status,omitempty"`
+}
+
+// ApisixGlobalRuleSpec defines the desired state of ApisixGlobalRuleSpec.
+type ApisixGlobalRuleSpec struct {
+	// Plugins contains a list of ApisixRoutePlugin
+	// +required
+	Plugins []ApisixRoutePlugin `json:"plugins" yaml:"plugins"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:generate=true
+
+// ApisixGlobalRuleList contains a list of ApisixGlobalRule.
+type ApisixGlobalRuleList struct {
+	metav1.TypeMeta `json:",inline" yaml:",inline"`
+	metav1.ListMeta `json:"metadata" yaml:"metadata"`
+	Items           []ApisixGlobalRule `json:"items,omitempty" yaml:"items,omitempty"`
 }

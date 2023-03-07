@@ -21,6 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 )
 
@@ -49,5 +50,34 @@ func TestTranslateClusterConfig(t *testing.T) {
 	assert.Equal(t, gr.ID, id.GenID("qa-apisix"), "checking global_rule id")
 	assert.Len(t, gr.Plugins, 2)
 	assert.Equal(t, gr.Plugins["prometheus"], &prometheusPluginConfig{})
+	assert.Equal(t, gr.Plugins["skywalking"], &skywalkingPluginConfig{SampleRatio: 0.5})
+}
+
+func TestTranslateClusterConfigV2(t *testing.T) {
+	tr := &translator{}
+
+	acc := &configv2.ApisixClusterConfig{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "qa-apisix",
+		},
+		Spec: configv2.ApisixClusterConfigSpec{
+			Monitoring: &configv2.ApisixClusterMonitoringConfig{
+				Prometheus: configv2.ApisixClusterPrometheusConfig{
+					Enable:     true,
+					PreferName: true,
+				},
+				Skywalking: configv2.ApisixClusterSkywalkingConfig{
+					Enable:      true,
+					SampleRatio: 0.5,
+				},
+			},
+		},
+	}
+	gr, err := tr.TranslateClusterConfigV2(acc)
+	assert.Nil(t, err, "translating ApisixClusterConfigV2")
+	assert.Equal(t, gr.ID, id.GenID("qa-apisix"), "checking global_rule id")
+	assert.Len(t, gr.Plugins, 2)
+	assert.Equal(t, gr.Plugins["prometheus"], &prometheusPluginConfig{PreferName: true})
 	assert.Equal(t, gr.Plugins["skywalking"], &skywalkingPluginConfig{SampleRatio: 0.5})
 }

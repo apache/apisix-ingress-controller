@@ -34,8 +34,7 @@ type Interface interface {
 	ApisixV2beta3() apisixv2beta3.ApisixV2beta3Interface
 }
 
-// Clientset contains the clients for groups. Each group has exactly one
-// version included in a Clientset.
+// Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
 	apisixV2      *apisixv2.ApisixV2Client

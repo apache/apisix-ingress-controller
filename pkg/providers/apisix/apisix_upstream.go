@@ -546,6 +546,9 @@ func (c *apisixUpstreamController) onAdd(obj interface{}) {
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
+	if !c.isEffective(au) {
+		return
+	}
 	log.Debugw("ApisixUpstream add event arrived",
 		zap.Any("object", obj))
 
@@ -580,6 +583,9 @@ func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
 		return
 	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+	if !c.isEffective(curr) {
 		return
 	}
 	log.Debugw("ApisixUpstream update event arrived",
@@ -619,6 +625,9 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 		return
 	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+	if !c.isEffective(au) {
 		return
 	}
 	log.Debugw("ApisixUpstream delete event arrived",
@@ -804,6 +813,9 @@ func (c *apisixUpstreamController) handleSvcErr(key string, errOrigin error) {
 
 // recordStatus record resources status
 func (c *apisixUpstreamController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
+	if c.Kubernetes.DisableStatusUpdates {
+		return
+	}
 	// build condition
 	message := utils.CommonSuccessMessage
 	if err != nil {
@@ -847,7 +859,7 @@ func (c *apisixUpstreamController) recordStatus(at interface{}, reason string, e
 			conditions := make([]metav1.Condition, 0)
 			v.Status.Conditions = conditions
 		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+		if utils.VerifyConditions(&v.Status.Conditions, condition) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := apisixClient.ApisixV2().ApisixUpstreams(v.Namespace).
 				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
@@ -862,4 +874,14 @@ func (c *apisixUpstreamController) recordStatus(at interface{}, reason string, e
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
 	}
+}
+
+func (c *apisixUpstreamController) isEffective(au kube.ApisixUpstream) bool {
+	if au.GroupVersion() == config.ApisixV2 {
+		if au.V2().Spec != nil {
+			return utils.MatchCRDsIngressClass(au.V2().Spec.IngressClassName, c.Kubernetes.IngressClass)
+		}
+	}
+	// Compatible with legacy versions
+	return true
 }

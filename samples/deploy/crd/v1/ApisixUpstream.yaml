@@ -95,7 +95,8 @@ spec:
                     send:
                       type: string
                 tlsSecret:
-                  description: ApisixSecret describes the Kubernetes Secret name and namespace.
+                  description: ApisixSecret describes the Kubernetes Secret name and
+                    namespace.
                   type: object
                   required:
                     - name
@@ -401,6 +402,24 @@ spec:
                                     maximum: 254
                                   timeout:
                                     type: string
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      "type":
+                        type: string
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      message:
+                        type: string
+                      observedGeneration:
+                        type: integer
     - name: v2
       served: true
       storage: true
@@ -413,8 +432,11 @@ spec:
             spec:
               type: object
               properties:
+                ingressClassName:
+                  type: string
                 discovery:
-                  description: Discovery is used to configure service discovery for upstream
+                  description: Discovery is used to configure service discovery for
+                    upstream
                   type: object
                   properties:
                     serviceName:
@@ -425,7 +447,9 @@ spec:
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
                 externalNodes:
-                  description: ExternalNodes contains external nodes the Upstream should use If this field is set, the upstream will use these nodes directly without any further resolves
+                  description: ExternalNodes contains external nodes the Upstream
+                    should use If this field is set, the upstream will use these nodes
+                    directly without any further resolves
                   type: array
                   items:
                     description: ApisixUpstreamExternalNode is the external node conf
@@ -493,7 +517,8 @@ spec:
                     send:
                       type: string
                 tlsSecret:
-                  description: ApisixSecret describes the Kubernetes Secret name and namespace.
+                  description: ApisixSecret describes the Kubernetes Secret name and
+                    namespace.
                   type: object
                   required:
                     - name
@@ -799,3 +824,21 @@ spec:
                                     maximum: 254
                                   timeout:
                                     type: string
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      "type":
+                        type: string
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      message:
+                        type: string
+                      observedGeneration:
+                        type: integer

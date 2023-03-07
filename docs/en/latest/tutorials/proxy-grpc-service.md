@@ -38,13 +38,20 @@ kubectl create ns ingress-apisix
 You could install APISIX and APISIX ingress controller by running:
 
 ```bash
-helm install apisix apisix/apisix -n ingress-apisix --set gateway.type=NodePort --set ingress-controller.enabled=true --set gateway.tls.enabled=true --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
+#  We use Apisix 3.0 in this example. If you're using Apisix v2.x, please set to v2
+ADMIN_API_VERSION=v3
+helm install apisix apisix/apisix -n ingress-apisix \
+  --set gateway.type=NodePort \
+  --set ingress-controller.enabled=true \
+  --set gateway.tls.enabled=true \
+  --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix \
+  --set ingress-controller.config.apisix.adminAPIVersion=$ADMIN_API_VERSION
 ```
 
 Check that all related components have been installed successfully, including ETCD cluster / APISIX / apisix-ingress-controller.
 
-```bash
-kubectl get pod -n ingress-apisix
+```shell
+$ kubectl get pod -n ingress-apisix
 NAME                                        READY   STATUS    RESTARTS   AGE
 apisix-569f94b7b6-qt5jj                     1/1     Running   0          101m
 apisix-etcd-0                               1/1     Running   0          101m
@@ -65,10 +72,10 @@ kubectl run yages -n ingress-apisix --image smirl/yages:0.1.3 --expose --port 90
 
 Use the service that includes `grpcurl` to test gRPC connectivity.
 
-```bash
-kubectl run -it -n ingress-apisix --rm grpcurl --restart=Never --image=quay.io/mhausenblas/gump:0.1 -- sh
-If you don't see a command prompt, try pressing enter.
-/go $ grpcurl --plaintext yages:9000 yages.Echo.Ping
+```shell
+$ kubectl run -it -n ingress-apisix --rm grpcurl --restart=Never --image=fullstorydev/grpcurl:v1.8.7 --command -- \
+  /bin/grpcurl -plaintext yages:9000 yages.Echo.Ping
+# It should output:
 {
   "text": "pong"
 }
@@ -165,10 +172,10 @@ apisix-ingress-controller   ClusterIP   10.96.78.108   <none>        80/TCP     
 yages                       ClusterIP   10.96.37.236   <none>        9000/TCP                     94m
 ```
 
-```bash
-kubectl run -it -n ingress-apisix --rm grpcurl --restart=Never --image=quay.io/mhausenblas/gump:0.1 -- sh
-If you don't see a command prompt, try pressing enter.
-/go $ grpcurl --insecure -servername grpc-proxy apisix-gateway:443 yages.Echo.Ping
+```shell
+$ kubectl run -it -n ingress-apisix --rm grpcurl --restart=Never --image=fullstorydev/grpcurl:v1.8.7 --command -- \
+  /bin/grpcurl -insecure -servername grpc-proxy apisix-gateway:443 yages.Echo.Ping
+# It should output:
 {
   "text": "pong"
 }

@@ -16,9 +16,10 @@ package plugins
 
 import (
 	"fmt"
+	"net/http"
+
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
-	"net/http"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )

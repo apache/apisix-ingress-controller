@@ -27,6 +27,11 @@ description: A tutorial on configuring Ingress using the default Kubernetes Ingr
 
 This tutorial will walk you through on how you can configure APISIX Ingress with the [default Kubernetes Ingress resource](https://kubernetes.io/docs/concepts/services-networking/ingress/).
 
+Also see:
+
+- [Configuring Ingress with Kubernetes Gateway API](https://apisix.apache.org/docs/ingress-controller/tutorials/configure-ingress-with-gateway-api)
+- [Configuring Ingress with APISIX CRDs](https://apisix.apache.org/docs/ingress-controller/tutorials/proxy-the-httpbin-service)
+
 ## Prerequisites
 
 Before you move on, make sure you:
