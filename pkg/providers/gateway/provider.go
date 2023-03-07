@@ -25,13 +25,12 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 	gatewayexternalversions "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions"
 	gatewaylistersv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2"
 	gatewaylistersv1beta1 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
-
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
