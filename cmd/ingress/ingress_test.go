@@ -126,7 +126,7 @@ func TestNewIngressCommandEffectiveLog(t *testing.T) {
 
 	buf := bufio.NewReader(file)
 	f := parseLog(t, buf)
-	assert.Contains(t, f.Message, "apisix ingress controller started")
+	assert.Contains(t, f.Message, "init apisix ingress controller")
 	assert.Equal(t, "info", f.Level)
 
 	f = parseLog(t, buf)
