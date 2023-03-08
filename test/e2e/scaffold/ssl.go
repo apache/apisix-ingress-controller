@@ -115,11 +115,11 @@ func (s *Scaffold) NewClientCASecret(name, cert, key string) error {
 
 // NewApisixTls new a ApisixTls CRD
 func (s *Scaffold) NewApisixTls(name, host, secretName string, ingressClassName ...string) error {
-	ingClassName := ""
+	var ingClassName string
 	if len(ingressClassName) > 0 {
 		ingClassName = "ingressClassName: " + ingressClassName[0]
 	}
-	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.ApisixResourceVersion, ingClassName, name, host, secretName, s.kubectlOptions.Namespace)
+	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.ApisixResourceVersion, name, ingClassName, host, secretName, s.kubectlOptions.Namespace)
 	if err := s.CreateResourceFromString(tls); err != nil {
 		return err
 	}
