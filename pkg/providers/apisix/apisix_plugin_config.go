@@ -288,13 +288,16 @@ func (c *apisixPluginConfigController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixPluginConfig resource with bad meta namespace key: %s", err)
 		return
 	}
+	apc := kube.MustNewApisixPluginConfig(obj)
+	if !c.isEffective(apc) {
+		return
+	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixPluginConfig add event arrived",
 		zap.Any("object", obj))
 
-	apc := kube.MustNewApisixPluginConfig(obj)
 	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.ApisixPluginConfigEvent{
@@ -315,6 +318,9 @@ func (c *apisixPluginConfigController) onUpdate(oldObj, newObj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
 		log.Errorf("found ApisixPluginConfig resource with bad meta namespace key: %s", err)
+		return
+	}
+	if !c.isEffective(curr) {
 		return
 	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
@@ -348,6 +354,9 @@ func (c *apisixPluginConfigController) onDelete(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		log.Errorf("found ApisixPluginConfig resource with bad meta namesapce key: %s", err)
+		return
+	}
+	if !c.isEffective(apc) {
 		return
 	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
@@ -452,4 +461,21 @@ func (c *apisixPluginConfigController) recordStatus(at interface{}, reason strin
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
 	}
+}
+
+func (c *apisixPluginConfigController) isEffective(apc kube.ApisixPluginConfig) bool {
+	if apc.GroupVersion() == config.ApisixV2 {
+		ingClassName := apc.V2().Spec.IngressClassName
+		ok := utils.MatchCRDsIngressClass(ingClassName, c.Kubernetes.IngressClass)
+		if !ok {
+			log.Debugw("IngressClass: ApisixPluginConfig ignored",
+				zap.String("key", apc.V2().Namespace+"/"+apc.V2().Name),
+				zap.String("ingressClass", apc.V2().Spec.IngressClassName),
+			)
+		}
+
+		return ok
+	}
+	// Compatible with legacy versions
+	return true
 }
