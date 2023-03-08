@@ -114,7 +114,7 @@ spec:
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), ups, 1)
-		assert.Equal(ginkgo.GinkgoT(), *ups[0].Retries, 3)
+		assert.Equal(ginkgo.GinkgoT(), 3, *ups[0].Retries)
 
 		au = fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -131,9 +131,102 @@ spec:
 		ups, err = s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), ups, 1)
-		assert.Equal(ginkgo.GinkgoT(), *ups[0].Retries, 2)
+		assert.Equal(ginkgo.GinkgoT(), 2, *ups[0].Retries)
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+	})
+
+	ginkgo.It("ApisixConsumer should be ignored", func() {
+		// create ApisixConsumer resource with ingressClassName: ignore
+		ac := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: jack
+spec:
+  ingressClassName: ignore
+  authParameter:
+    keyAuth:
+      value:
+        key: jack-key
+`
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac))
+		time.Sleep(6 * time.Second)
+		acs, err := s.ListApisixConsumers()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), acs, 0)
+
+		// update ApisixConsumer resource with ingressClassName: ignore2
+		ac = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: jack
+spec:
+  ingressClassName: ignore2
+  authParameter:
+    keyAuth:
+      value:
+        key: jack-key
+`
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac))
+		time.Sleep(6 * time.Second)
+
+		acs, err = s.ListApisixConsumers()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), acs, 0)
+	})
+
+	ginkgo.It("ApisixConsumer should be handled", func() {
+		// create ApisixConsumer resource withoutput ingressClassName
+		ac := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: jack
+spec:
+  authParameter:
+    keyAuth:
+      value:
+        key: jack-key
+`
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac))
+		time.Sleep(6 * time.Second)
+
+		acs, err := s.ListApisixConsumers()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), acs, 1)
+		assert.Contains(ginkgo.GinkgoT(), acs[0].Username, "jack")
+		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "jack-key"}, acs[0].Plugins["key-auth"])
+
+		// delete ApisixConsumer
+		assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromString(ac))
+		time.Sleep(6 * time.Second)
+		acs, err = s.ListApisixConsumers()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), acs, 0)
+
+		// create ApisixConsumer resource with ingressClassName: apisix
+		ac = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: james
+spec:
+  ingressClassName: apisix
+  authParameter:
+    keyAuth:
+      value:
+        key: james-key
+`
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac))
+		time.Sleep(6 * time.Second)
+
+		acs, err = s.ListApisixConsumers()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), acs, 1)
+		assert.Contains(ginkgo.GinkgoT(), acs[0].Username, "james")
+		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "james-key"}, acs[0].Plugins["key-auth"])
 	})
 })
 
@@ -180,7 +273,7 @@ spec:
 		ups, err := s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), ups, 1)
-		assert.Equal(ginkgo.GinkgoT(), *ups[0].Retries, 3)
+		assert.Equal(ginkgo.GinkgoT(), 3, *ups[0].Retries)
 
 		au = fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -197,7 +290,7 @@ spec:
 		ups, err = s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), ups, 1)
-		assert.Equal(ginkgo.GinkgoT(), *ups[0].Retries, 2)
+		assert.Equal(ginkgo.GinkgoT(), 2, *ups[0].Retries)
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 
@@ -216,8 +309,82 @@ spec:
 		ups, err = s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), ups, 1)
-		assert.Equal(ginkgo.GinkgoT(), *ups[0].Retries, 1)
+		assert.Equal(ginkgo.GinkgoT(), 1, *ups[0].Retries)
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+	})
+
+	ginkgo.It("ApisixConsumer should be handled", func() {
+		// create ApisixConsumer resource withoutput ingressClassName
+		ac := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: jack
+spec:
+  authParameter:
+    keyAuth:
+      value:
+        key: jack-key
+`
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac))
+		time.Sleep(6 * time.Second)
+
+		acs, err := s.ListApisixConsumers()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), acs, 1)
+		assert.Contains(ginkgo.GinkgoT(), acs[0].Username, "jack")
+		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "jack-key"}, acs[0].Plugins["key-auth"])
+
+		// delete ApisixConsumer
+		assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromString(ac))
+		time.Sleep(6 * time.Second)
+		acs, err = s.ListApisixConsumers()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), acs, 0)
+
+		// create ApisixConsumer resource with ingressClassName: apisix
+		ac = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: james
+spec:
+  ingressClassName: apisix
+  authParameter:
+    keyAuth:
+      value:
+        key: james-key
+`
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac))
+		time.Sleep(6 * time.Second)
+
+		acs, err = s.ListApisixConsumers()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), acs, 1)
+		assert.Contains(ginkgo.GinkgoT(), acs[0].Username, "james")
+		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "james-key"}, acs[0].Plugins["key-auth"])
+
+		// update ApisixConsumer resource with ingressClassName: watch
+		ac = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: james
+spec:
+  ingressClassName: watch
+  authParameter:
+    keyAuth:
+      value:
+        key: james-password
+`
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac))
+		time.Sleep(6 * time.Second)
+
+		acs, err = s.ListApisixConsumers()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), acs, 1)
+		assert.Contains(ginkgo.GinkgoT(), acs[0].Username, "james")
+		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "james-password"}, acs[0].Plugins["key-auth"])
 	})
 })
