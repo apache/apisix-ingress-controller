@@ -18,37 +18,37 @@
 apiVersion: v1
 data:
   config.yaml: |
-   # log options
-   log_level: "info"    # the error log level, default is info, optional values are:
-                        # debug
-                        # info
-                        # warn
-                        # error
-                        # panic
-                        # fatal
-   log_output: "stderr" # the output file path of error log, default is stderr, when
-                        # the file path is "stderr" or "stdout", logs are marshalled
-                        # plainly, which is more readable for human; otherwise logs
-                        # are marshalled in JSON format, which can be parsed by
-                        # programs easily.
+    # log options
+    log_level: "info"    # the error log level, default is info, optional values are:
+                         # debug
+                         # info
+                         # warn
+                         # error
+                         # panic
+                         # fatal
+    log_output: "stderr" # the output file path of error log, default is stderr, when
+                         # the file path is "stderr" or "stdout", logs are marshalled
+                         # plainly, which is more readable for human; otherwise logs
+                         # are marshalled in JSON format, which can be parsed by
+                         # programs easily.
 
-   http_listen: ":8080"   # the HTTP Server listen address, default is ":8080"
-   enable_profiling: true # enable profiling via web interfaces
-                          # host:port/debug/pprof, default is true.
-   apisix-resource-sync-interval: 300s # Default interval for synchronizing Kubernetes resources to APISIX
-   # Kubernetes related configurations.
-   kubernetes:
-     kubeconfig: ""         # the Kubernetes configuration file path, default is
-                            # "", so the in-cluster configuration will be used.
-     resync_interval: "6h" # how long should apisix-ingress-controller
-                            # re-synchronizes with Kubernetes, default is 6h,
-                            # and the minimal resync interval is 30s.
+    http_listen: ":8080"   # the HTTP Server listen address, default is ":8080"
+    enable_profiling: true # enable profiling via web interfaces
+                           # host:port/debug/pprof, default is true.
+    apisix-resource-sync-interval: 300s # Default interval for synchronizing Kubernetes resources to APISIX
+    # Kubernetes related configurations.
+    kubernetes:
+      kubeconfig: ""         # the Kubernetes configuration file path, default is
+                             # "", so the in-cluster configuration will be used.
+      resync_interval: "6h" # how long should apisix-ingress-controller
+                             # re-synchronizes with Kubernetes, default is 6h,
+                             # and the minimal resync interval is 30s.
 
-   # APISIX related configurations.
-   apisix:
-     base_url: "http://apisix-admin:9180/apisix/admin" # the APISIX admin api / manager api
-                                              # base url, it's required.
-     admin_key: "edd1c9f034335f136f87ad84b625c8f1"
+    # APISIX related configurations.
+    apisix:
+      base_url: "http://apisix-admin:9180/apisix/admin" # the APISIX admin api / manager api
+                                               # base url, it's required.
+      admin_key: "edd1c9f034335f136f87ad84b625c8f1"
 kind: ConfigMap
 metadata:
   name: apisix-ingress-cm

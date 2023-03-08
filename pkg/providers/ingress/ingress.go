@@ -34,6 +34,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
@@ -433,8 +434,9 @@ func (c *ingressController) OnDelete(obj interface{}) {
 
 func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 	var (
-		ic  *string
-		ica string
+		ic                 *string
+		ica                string
+		configIngressClass = c.Kubernetes.IngressClass
 	)
 	if ing.GroupVersion() == kube.IngressV1 {
 		ic = ing.V1().Spec.IngressClassName
@@ -446,13 +448,16 @@ func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 		ic = ing.ExtensionsV1beta1().Spec.IngressClassName
 		ica = ing.ExtensionsV1beta1().GetAnnotations()[_ingressKey]
 	}
+	if configIngressClass == config.IngressClassApisixAndAll {
+		configIngressClass = config.IngressClass
+	}
 
 	// kubernetes.io/ingress.class takes the precedence.
 	if ica != "" {
-		return ica == c.Kubernetes.IngressClass
+		return ica == configIngressClass
 	}
 	if ic != nil {
-		return *ic == c.Kubernetes.IngressClass
+		return *ic == configIngressClass
 	}
 	return false
 }

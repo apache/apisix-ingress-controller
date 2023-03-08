@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -32,10 +33,10 @@ var _ = ginkgo.Describe("suite-features: ApisixClusterConfig", func() {
 
 		ginkgo.It("enable prometheus", func() {
 			adminSvc, adminPort := s.ApisixAdminServiceAndPort()
-			assert.Nil(ginkgo.GinkgoT(), s.NewApisixClusterConfig("default", true), "creating ApisixClusterConfig")
+			assert.Nil(ginkgo.GinkgoT(), s.NewApisixClusterConfig("default", true, true), "creating ApisixClusterConfig")
 
 			defer func() {
-				assert.Nil(ginkgo.GinkgoT(), s.DeleteApisixClusterConfig("default", true))
+				assert.Nil(ginkgo.GinkgoT(), s.DeleteApisixClusterConfig("default", true, true))
 			}()
 
 			// Wait until the ApisixClusterConfig create event was delivered.
@@ -78,6 +79,14 @@ spec:
 			resp.Body().Contains("# HELP apisix_etcd_modify_indexes Etcd modify index for APISIX keys")
 			resp.Body().Contains("# HELP apisix_etcd_reachable Config server etcd reachable from APISIX, 0 is unreachable")
 			resp.Body().Contains("# HELP apisix_node_info Info of APISIX node")
+
+			time.Sleep(3 * time.Second)
+
+			if s.ApisixResourceVersion() != config.ApisixV2beta3 {
+				resp1 := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").Expect()
+				resp1.Status(http.StatusOK)
+				resp1.Body().Contains("public-api")
+			}
 		})
 	}
 

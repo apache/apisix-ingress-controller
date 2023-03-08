@@ -186,8 +186,8 @@ spec:
                               minLength: 1
                             servicePort:
                               anyOf:
-                              - type: integer
-                              - type: string
+                                - type: integer
+                                - type: string
                               x-kubernetes-int-or-string: true
                             resolveGranularity:
                               type: string
@@ -275,8 +275,8 @@ spec:
                             minLength: 1
                           servicePort:
                             anyOf:
-                            - type: integer
-                            - type: string
+                              - type: integer
+                              - type: string
                             x-kubernetes-int-or-string: true
                           resolveGranularity:
                             type: string
@@ -461,7 +461,8 @@ spec:
                         description: Upstreams refer to ApisixUpstream CRD
                         type: array
                         items:
-                          description: ApisixRouteUpstreamReference contains a ApisixUpstream CRD reference
+                          description: ApisixRouteUpstreamReference contains a ApisixUpstream
+                            CRD reference
                           type: object
                           properties:
                             name:
@@ -479,8 +480,8 @@ spec:
                               minLength: 1
                             servicePort:
                               anyOf:
-                              - type: integer
-                              - type: string
+                                - type: integer
+                                - type: string
                               x-kubernetes-int-or-string: true
                             resolveGranularity:
                               type: string
@@ -584,8 +585,8 @@ spec:
                             minLength: 1
                           servicePort:
                             anyOf:
-                            - type: integer
-                            - type: string
+                              - type: integer
+                              - type: string
                             x-kubernetes-int-or-string: true
                           resolveGranularity:
                             type: string
