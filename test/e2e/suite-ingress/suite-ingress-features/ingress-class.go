@@ -340,7 +340,7 @@ spec:
 		tls, err = s.ListApisixSsl()
 		assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
 		assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
-		assert.Equal(ginkgo.GinkgoT(), tls[0].Snis[0], host, "tls host is error")
+		assert.Equal(ginkgo.GinkgoT(), tls[0].Snis[0], host2, "tls host is error")
 
 		// update ApisixTls resource with ingressClassName: watch
 		host3 := "api7.org"
@@ -351,6 +351,6 @@ spec:
 		tls, err = s.ListApisixSsl()
 		assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
 		assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
-		assert.Equal(ginkgo.GinkgoT(), tls[0].Snis[0], host, "tls host is error")
+		assert.Equal(ginkgo.GinkgoT(), tls[0].Snis[0], host3, "tls host is error")
 	})
 })

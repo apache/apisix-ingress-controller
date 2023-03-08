@@ -137,7 +137,7 @@ func (s *Scaffold) NewApisixTlsWithClientCA(name, host, secretName, clientCASecr
 
 // DeleteApisixTls remove ApisixTls CRD
 func (s *Scaffold) DeleteApisixTls(name string, host, secretName string) error {
-	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.ApisixResourceVersion, name, host, secretName, s.kubectlOptions.Namespace)
+	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.ApisixResourceVersion, name, "", host, secretName, s.kubectlOptions.Namespace)
 	if err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, tls); err != nil {
 		return err
 	}
