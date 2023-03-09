@@ -385,10 +385,13 @@ func (c *apisixPluginConfigController) ResourceSync() {
 			log.Errorw("ApisixPluginConfig sync failed, found ApisixPluginConfig resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
+		apc := kube.MustNewApisixPluginConfig(obj)
+		if !c.isEffective(apc) {
+			continue
+		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
-		apc := kube.MustNewApisixPluginConfig(obj)
 		c.workqueue.Add(&types.Event{
 			Type: types.EventAdd,
 			Object: kube.ApisixPluginConfigEvent{
