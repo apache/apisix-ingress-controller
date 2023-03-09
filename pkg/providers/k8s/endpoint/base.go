@@ -31,6 +31,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -98,12 +99,16 @@ func (c *baseEndpointController) syncEndpoint(ctx context.Context, ep kube.Endpo
 		var subsets []configv2.ApisixUpstreamSubset
 		subsets = append(subsets, configv2.ApisixUpstreamSubset{})
 		auKube, err := c.apisixUpstreamLister.V2(namespace, svcName)
+		if auKube != nil && auKube.V2().Spec != nil &&
+			!utils.MatchCRDsIngressClass(auKube.V2().Spec.IngressClassName, c.Kubernetes.IngressClass) {
+			auKube = nil
+		}
 		if err != nil {
 			if !k8serrors.IsNotFound(err) {
 				log.Errorf("failed to get ApisixUpstream %s/%s: %s", namespace, svcName, err)
 				return err
 			}
-		} else if auKube.V2().Spec != nil && len(auKube.V2().Spec.Subsets) > 0 {
+		} else if auKube != nil && auKube.V2().Spec != nil && len(auKube.V2().Spec.Subsets) > 0 {
 			subsets = append(subsets, auKube.V2().Spec.Subsets...)
 		}
 		clusters := c.APISIX.ListClusters()

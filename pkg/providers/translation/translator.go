@@ -66,7 +66,8 @@ type Translator interface {
 // TranslatorOptions contains options to help Translator
 // work well.
 type TranslatorOptions struct {
-	APIVersion string
+	APIVersion       string
+	IngressClassName string
 
 	EndpointLister       kube.EndpointLister
 	ServiceLister        listerscorev1.ServiceLister

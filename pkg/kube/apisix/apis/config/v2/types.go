@@ -314,6 +314,8 @@ type ApisixClusterMonitoringConfig struct {
 type ApisixClusterPrometheusConfig struct {
 	// Enable means whether enable Prometheus or not.
 	Enable bool `json:"enable" yaml:"enable"`
+	// PreferName means whether prints Route/Service name or ID in Prometheus metric
+	PreferName bool `json:"prefer_name" yaml:"prefer_name"`
 }
 
 // ApisixClusterSkywalkingConfig is the config for using Skywalking in APISIX Cluster.
@@ -478,6 +480,12 @@ type ApisixUpstream struct {
 
 // ApisixUpstreamSpec describes the specification of ApisixUpstream.
 type ApisixUpstreamSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// controller implementations use this field to know whether they should be
+	// serving this ApisixUpstream resource, by a transitive connection
+	// (controller -> IngressClass -> ApisixUpstream resource).
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	// ExternalNodes contains external nodes the Upstream should use
 	// If this field is set, the upstream will use these nodes directly without any further resolves
 	// +optional

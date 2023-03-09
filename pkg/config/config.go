@@ -59,6 +59,9 @@ const (
 	// ControllerName is the name of the controller used to identify
 	// the controller of the GatewayClass.
 	ControllerName = "apisix.apache.org/gateway-controller"
+
+	// Process Ingress resources with ingressClass=apisix and all CRDs
+	IngressClassApisixAndAll = "apisix-and-all"
 )
 
 var (
@@ -137,7 +140,7 @@ func NewDefaultConfig() *Config {
 			Kubeconfig:           "", // Use in-cluster configurations.
 			ResyncInterval:       types.TimeDuration{Duration: 6 * time.Hour},
 			ElectionID:           IngressAPISIXLeader,
-			IngressClass:         IngressClass,
+			IngressClass:         IngressClassApisixAndAll,
 			IngressVersion:       IngressNetworkingV1,
 			APIVersion:           DefaultAPIVersion,
 			WatchEndpointSlices:  false,

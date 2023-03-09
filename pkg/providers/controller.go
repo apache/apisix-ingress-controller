@@ -435,6 +435,7 @@ func (c *Controller) run(ctx context.Context) {
 		PodLister:            c.informers.PodLister,
 		ApisixUpstreamLister: c.informers.ApisixUpstreamLister,
 		PodProvider:          c.podProvider,
+		IngressClassName:     c.cfg.Kubernetes.IngressClass,
 	})
 
 	c.apisixProvider, c.apisixTranslator, err = apisixprovider.NewProvider(common, c.namespaceProvider, c.translator)
@@ -560,9 +561,9 @@ func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.
 			// Finally failed health check, then give up leader.
 			log.Warnf("failed to check health for default cluster: %s, give up leader", err)
 			c.apiServer.HealthState.Lock()
-			defer c.apiServer.HealthState.Unlock()
-
 			c.apiServer.HealthState.Err = err
+			c.apiServer.HealthState.Unlock()
+
 			return
 		}
 		log.Debugf("success check health for default cluster")
@@ -580,6 +581,10 @@ func (c *Controller) syncAllResources() {
 }
 
 func (c *Controller) resourceSyncLoop(ctx context.Context, interval time.Duration) {
+	if interval == 0 {
+		log.Info("apisix-resource-sync-interval set to 0, periodically synchronization disabled.")
+		return
+	}
 	// The interval shall not be less than 60 seconds.
 	if interval < _mininumApisixResourceSyncInterval {
 		log.Warnw("The apisix-resource-sync-interval shall not be less than 60 seconds.",

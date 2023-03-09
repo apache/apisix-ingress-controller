@@ -534,7 +534,7 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	c.MetricsCollector.IncrSyncOperation("route", "failure")
 }
 
-func (c *apisixRouteController) isApisixRouteEffective(ar kube.ApisixRoute) bool {
+func (c *apisixRouteController) isEffective(ar kube.ApisixRoute) bool {
 	var icn string
 
 	switch ar.GroupVersion() {
@@ -547,11 +547,8 @@ func (c *apisixRouteController) isApisixRouteEffective(ar kube.ApisixRoute) bool
 		return false
 	}
 
-	if c.Kubernetes.IngressClass == "*" || c.Kubernetes.IngressClass == icn {
-		return true
-	}
+	return utils.MatchCRDsIngressClass(icn, c.Kubernetes.IngressClass)
 
-	return false
 }
 
 func (c *apisixRouteController) onAdd(obj interface{}) {
@@ -569,7 +566,7 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 	)
 
 	ar := kube.MustNewApisixRoute(obj)
-	if !c.isApisixRouteEffective(ar) {
+	if !c.isEffective(ar) {
 		log.Debugw("ignore noneffective ApisixRoute add event",
 			zap.Any("object", obj),
 		)
@@ -605,7 +602,7 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 		zap.Any("new object", oldObj),
 		zap.Any("old object", newObj),
 	)
-	if !c.isApisixRouteEffective(curr) {
+	if !c.isEffective(curr) {
 		log.Debugw("ignore noneffective ApisixRoute update event arrived",
 			zap.Any("new object", curr),
 			zap.Any("old object", prev),
@@ -645,7 +642,7 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 		zap.String("key", key),
 		zap.Any("final state", ar),
 	)
-	if !c.isApisixRouteEffective(ar) {
+	if !c.isEffective(ar) {
 		log.Debugw("ignore noneffective ApisixRoute delete event arrived",
 			zap.Any("final state", ar),
 		)

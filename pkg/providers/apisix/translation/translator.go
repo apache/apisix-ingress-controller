@@ -28,8 +28,9 @@ import (
 )
 
 type TranslatorOptions struct {
-	Apisix      apisix.APISIX
-	ClusterName string
+	Apisix           apisix.APISIX
+	ClusterName      string
+	IngressClassName string
 
 	ApisixUpstreamLister kube.ApisixUpstreamLister
 	ServiceLister        listerscorev1.ServiceLister
