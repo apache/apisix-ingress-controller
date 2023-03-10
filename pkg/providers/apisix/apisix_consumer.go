@@ -346,7 +346,10 @@ func (c *apisixConsumerController) ResourceSync() {
 		ac, err := kube.NewApisixConsumer(obj)
 		if err != nil {
 			log.Errorw("found ApisixConsumer resource with bad type", zap.String("error", err.Error()))
-			return
+			continue
+		}
+		if !c.isEffective(ac) {
+			continue
 		}
 		c.workqueue.Add(&types.Event{
 			Type: types.EventAdd,
