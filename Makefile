@@ -18,12 +18,12 @@ default: help
 
 VERSION ?= 1.6.0
 
-# 2.15 image: "2.15.0-alpine"
-TARGET_APISIX_VERSION ?= "3.1.0-centos"
+
+TARGET_APISIX_VERSION ?= "dev"
 APISIX_ADMIN_API_VERSION ?= "v3"
 ifneq ($(APISIX_ADMIN_API_VERSION), "v3")
-ifeq ($(TARGET_APISIX_VERSION), "3.1.0-centos")
-	TARGET_APISIX_VERSION = "2.15.0-alpine"
+ifeq ($(TARGET_APISIX_VERSION), "dev")
+	TARGET_APISIX_VERSION = "3.1.0-centos"
 endif
 endif
 
