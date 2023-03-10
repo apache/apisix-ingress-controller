@@ -426,10 +426,10 @@ func (c *apisixClusterConfigController) ResourceSync() {
 		acc, err := kube.NewApisixClusterConfig(obj)
 		if err != nil {
 			log.Errorw("found ApisixClusterConfig resource with bad type", zap.String("error", err.Error()))
-			return
+			continue
 		}
 		if !c.isEffective(acc) {
-			return
+			continue
 		}
 		c.workqueue.Add(&types.Event{
 			Type: types.EventAdd,
