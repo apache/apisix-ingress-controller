@@ -56,7 +56,7 @@ func (t *translator) TranslatePluginConfigV2beta3(config *configv2beta3.ApisixPl
 	return ctx, nil
 }
 
-func (t *translator) TranslatePluginConfigV2beta3NotStrictly(config *configv2beta3.ApisixPluginConfig) (*translation.TranslateContext, error) {
+func (t *translator) GeneratePluginConfigV2beta3DeleteMark(config *configv2beta3.ApisixPluginConfig) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
 	pc := apisixv1.NewDefaultPluginConfig()
 	pc.Name = apisixv1.ComposePluginConfigName(config.Namespace, config.Name)
@@ -82,6 +82,21 @@ func (t *translator) TranslatePluginConfigV2(config *configv2.ApisixPluginConfig
 						zap.Any("new", plugin.Config),
 					)
 				}
+				if plugin.SecretRef != "" {
+					sec, err := t.SecretLister.Secrets(config.Namespace).Get(plugin.SecretRef)
+					if err != nil {
+						log.Errorw("The config secretRef is invalid",
+							zap.Any("plugin", plugin.Name),
+							zap.String("secretRef", plugin.SecretRef))
+						break
+					}
+					log.Debugw("Add new items, then override items with the same plugin key",
+						zap.Any("plugin", plugin.Name),
+						zap.String("secretRef", plugin.SecretRef))
+					for key, value := range sec.Data {
+						plugin.Config[key] = string(value)
+					}
+				}
 				pluginMap[plugin.Name] = plugin.Config
 			} else {
 				pluginMap[plugin.Name] = make(map[string]interface{})
@@ -89,6 +104,9 @@ func (t *translator) TranslatePluginConfigV2(config *configv2.ApisixPluginConfig
 		}
 	}
 	pc := apisixv1.NewDefaultPluginConfig()
+	for k, v := range config.ObjectMeta.Labels {
+		pc.Metadata.Labels[k] = v
+	}
 	pc.Name = apisixv1.ComposePluginConfigName(config.Namespace, config.Name)
 	pc.ID = id.GenID(pc.Name)
 	pc.Plugins = pluginMap
@@ -96,7 +114,7 @@ func (t *translator) TranslatePluginConfigV2(config *configv2.ApisixPluginConfig
 	return ctx, nil
 }
 
-func (t *translator) TranslatePluginConfigV2NotStrictly(config *configv2.ApisixPluginConfig) (*translation.TranslateContext, error) {
+func (t *translator) GeneratePluginConfigV2DeleteMark(config *configv2.ApisixPluginConfig) (*translation.TranslateContext, error) {
 	ctx := translation.DefaultEmptyTranslateContext()
 	pc := apisixv1.NewDefaultPluginConfig()
 	pc.Name = apisixv1.ComposePluginConfigName(config.Namespace, config.Name)

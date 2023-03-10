@@ -20,10 +20,7 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/cache"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
 	ingresstranslation "github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
@@ -58,8 +55,6 @@ type ingressProvider struct {
 	name string
 
 	ingressController *ingressController
-
-	ingressInformer cache.SharedIndexInformer
 }
 
 func NewProvider(common *providertypes.Common, namespaceProvider namespace.WatchingNamespaceProvider,
@@ -67,21 +62,6 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 	p := &ingressProvider{
 		name: ProviderName,
 	}
-
-	kubeFactory := common.KubeClient.NewSharedIndexInformerFactory()
-	switch common.Config.Kubernetes.IngressVersion {
-	case config.IngressNetworkingV1:
-		p.ingressInformer = kubeFactory.Networking().V1().Ingresses().Informer()
-	case config.IngressNetworkingV1beta1:
-		p.ingressInformer = kubeFactory.Networking().V1beta1().Ingresses().Informer()
-	default:
-		p.ingressInformer = kubeFactory.Extensions().V1beta1().Ingresses().Informer()
-	}
-	ingressLister := kube.NewIngressLister(
-		kubeFactory.Networking().V1().Ingresses().Lister(),
-		kubeFactory.Networking().V1beta1().Ingresses().Lister(),
-		kubeFactory.Extensions().V1beta1().Ingresses().Lister(),
-	)
 
 	c := &ingressCommon{
 		Common:            common,
@@ -93,17 +73,13 @@ func NewProvider(common *providertypes.Common, namespaceProvider namespace.Watch
 		}, translator, apisixTranslator),
 	}
 
-	p.ingressController = newIngressController(c, ingressLister, p.ingressInformer)
+	p.ingressController = newIngressController(c)
 
 	return p, nil
 }
 
 func (p *ingressProvider) Run(ctx context.Context) {
 	e := utils.ParallelExecutor{}
-
-	e.Add(func() {
-		p.ingressInformer.Run(ctx.Done())
-	})
 
 	e.Add(func() {
 		p.ingressController.run(ctx)

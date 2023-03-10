@@ -47,11 +47,6 @@ type apisixRouteController struct {
 	relatedWorkqueue workqueue.RateLimitingInterface
 	workers          int
 
-	svcInformer            cache.SharedIndexInformer
-	apisixRouteLister      kube.ApisixRouteLister
-	apisixRouteInformer    cache.SharedIndexInformer
-	apisixUpstreamInformer cache.SharedIndexInformer
-
 	svcLock sync.RWMutex
 	// service key -> apisix route key
 	svcMap map[string]map[string]struct{}
@@ -66,30 +61,25 @@ type routeEvent struct {
 	Type string
 }
 
-func newApisixRouteController(common *apisixCommon, apisixRouteInformer cache.SharedIndexInformer, apisixRouteLister kube.ApisixRouteLister) *apisixRouteController {
+func newApisixRouteController(common *apisixCommon) *apisixRouteController {
 	c := &apisixRouteController{
 		apisixCommon:     common,
 		workqueue:        workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),
 		relatedWorkqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRouteRelated"),
 		workers:          1,
 
-		svcInformer:            common.SvcInformer,
-		apisixRouteLister:      apisixRouteLister,
-		apisixRouteInformer:    apisixRouteInformer,
-		apisixUpstreamInformer: common.ApisixUpstreamInformer,
-
 		svcMap:            make(map[string]map[string]struct{}),
 		apisixUpstreamMap: make(map[string]map[string]struct{}),
 	}
 
-	c.apisixRouteInformer.AddEventHandler(
+	c.ApisixRouteInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    c.onAdd,
 			UpdateFunc: c.onUpdate,
 			DeleteFunc: c.onDelete,
 		},
 	)
-	c.svcInformer.AddEventHandler(
+	c.SvcInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: c.onSvcAdd,
 		},
@@ -109,12 +99,6 @@ func (c *apisixRouteController) run(ctx context.Context) {
 	defer log.Info("ApisixRoute controller exited")
 	defer c.workqueue.ShutDown()
 	defer c.relatedWorkqueue.ShutDown()
-
-	ok := cache.WaitForCacheSync(ctx.Done(), c.apisixRouteInformer.HasSynced, c.svcInformer.HasSynced)
-	if !ok {
-		log.Error("cache sync failed")
-		return
-	}
 
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
@@ -306,9 +290,9 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	)
 	switch obj.GroupVersion {
 	case config.ApisixV2beta3:
-		ar, err = c.apisixRouteLister.V2beta3(namespace, name)
+		ar, err = c.ApisixRouteLister.V2beta3(namespace, name)
 	case config.ApisixV2:
-		ar, err = c.apisixRouteLister.V2(namespace, name)
+		ar, err = c.ApisixRouteLister.V2(namespace, name)
 	default:
 		log.Errorw("unknown ApisixRoute version",
 			zap.String("version", obj.GroupVersion),
@@ -358,7 +342,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 				tctx, err = c.translator.TranslateRouteV2beta3(ar.V2beta3())
 			}
 		} else {
-			tctx, err = c.translator.TranslateRouteV2beta3NotStrictly(ar.V2beta3())
+			tctx, err = c.translator.GenerateRouteV2beta3DeleteMark(ar.V2beta3())
 		}
 		if err != nil {
 			log.Errorw("failed to translate ApisixRoute v2beta3",
@@ -373,7 +357,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 				tctx, err = c.translator.TranslateRouteV2(ar.V2())
 			}
 		} else {
-			tctx, err = c.translator.TranslateRouteV2NotStrictly(ar.V2())
+			tctx, err = c.translator.GenerateRouteV2DeleteMark(ar.V2())
 		}
 		if err != nil {
 			log.Errorw("failed to translate ApisixRoute v2",
@@ -494,9 +478,9 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	var ar kube.ApisixRoute
 	switch event.GroupVersion {
 	case config.ApisixV2beta3:
-		ar, errLocal = c.apisixRouteLister.V2beta3(namespace, name)
+		ar, errLocal = c.ApisixRouteLister.V2beta3(namespace, name)
 	case config.ApisixV2:
-		ar, errLocal = c.apisixRouteLister.V2(namespace, name)
+		ar, errLocal = c.ApisixRouteLister.V2(namespace, name)
 	default:
 		log.Errorw("unknown ApisixRoute version",
 			zap.String("version", event.GroupVersion),
@@ -641,7 +625,7 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 }
 
 func (c *apisixRouteController) ResourceSync() {
-	objs := c.apisixRouteInformer.GetIndexer().List()
+	objs := c.ApisixRouteInformer.GetIndexer().List()
 
 	c.svcLock.Lock()
 	c.apisixUpstreamLock.Lock()
@@ -859,8 +843,20 @@ func (c *apisixRouteController) handleApisixUpstreamErr(ev *routeEvent, errOrigi
 	c.workqueue.AddRateLimited(ev)
 }
 
-// recordStatus record resources status
+/*
+recordStatus record resources status
+
+TODO: The resouceVersion of the sync phase and the recordStatus phase may be different. There is consistency
+problem here, and incorrect status may be recorded.(It will only be triggered when it is updated multiple times in a short time)
+
+	IsUpdateStatus(currentObject, latestObject) bool {
+		return currentObject.resourceVersion >= latestObject.resourceVersion && !Equal(currentObject.status, latestObject.status)
+	}
+*/
 func (c *apisixRouteController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
+	if c.Kubernetes.DisableStatusUpdates {
+		return
+	}
 	// build condition
 	message := utils.CommonSuccessMessage
 	if err != nil {
@@ -903,7 +899,7 @@ func (c *apisixRouteController) recordStatus(at interface{}, reason string, err 
 			conditions := make([]metav1.Condition, 0)
 			v.Status.Conditions = conditions
 		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+		if utils.VerifyConditions(&v.Status.Conditions, condition) && !meta.IsStatusConditionPresentAndEqual(v.Status.Conditions, condition.Type, condition.Status) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := apisixClient.ApisixV2().ApisixRoutes(v.Namespace).
 				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {

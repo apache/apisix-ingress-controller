@@ -24,11 +24,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 	gatewayexternalversions "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions"
 	gatewaylistersv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2"
-
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 	gatewaylistersv1beta1 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
@@ -39,6 +38,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/providers/gateway/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 )
 
@@ -97,6 +97,7 @@ type ProviderOptions struct {
 	KubeClient        kubernetes.Interface
 	MetricsCollector  metrics.Collector
 	NamespaceProvider namespace.WatchingNamespaceProvider
+	ListerInformer    *providertypes.ListerInformer
 }
 
 func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {

@@ -1,7 +1,12 @@
 ---
-title: APISIX Ingress Controller the Hard Way
+title: Install APISIX Ingress with Kubernetes manifest files
+keywords:
+  - APISIX Ingress
+  - Apache APISIX
+  - Kubernetes Ingress
+  - Kubernetes manifest
+description: A guide to check the synchronization status of APISIX CRDs.
 ---
-
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -21,26 +26,27 @@ title: APISIX Ingress Controller the Hard Way
 #
 -->
 
-In this tutorial, we will install APISIX and APISIX Ingress Controller in Kubernetes from native yaml.
+This tutorial will walk you through installing APISIX and APISIX Ingress controller with Kubernetes manifest files.
 
 ## Prerequisites
 
-If you don't have a Kubernetes cluster to use, we recommend you to use [kind](https://kind.sigs.k8s.io/docs/user/quick-start/) to create a local Kubernetes cluster.
+Before you move on, make sure you have access to a Kubernetes cluster. This tutorial uses [kind](https://kind.sigs.k8s.io/docs/user/quick-start/) to create the cluster.
+
+Create a namespace `apisix` in your cluster:
 
 ```bash
 kubectl create ns apisix
 ```
 
-In this tutorial, all our operations will be performed at namespace `apisix`.
+## Installing etcd
 
-## ETCD Installation
+For this example, we will deploy a single-node etcd cluster without authentication.
 
-Here, we will deploy a single-node ETCD cluster without authentication inside the Kubernetes cluster.
+This tutorial also assumes that you have a storage provisioner. If you are using kind, it would be created for you automatically. If you don't have a storage provisioner or don't want to use a persistence volume, you could use `emptyDir` as your volume.
 
-In this case, we assume you have a storage provisioner. If you are using KiND, a local path provisioner will be created automatically. If you don't have a storage provisioner or don't want to use persistence volume, you could use an `emptyDir` as volume.
+The yaml file below will install etcd:
 
-```yaml
-# etcd-headless.yaml
+```yaml title="etcd.yaml"
 apiVersion: v1
 kind: Service
 metadata:
@@ -63,7 +69,6 @@ spec:
   selector:
     app.kubernetes.io/name: etcd
 ---
-# etcd.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -129,7 +134,7 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /etcd
-      # If you don't have a storage provisioner or don't want to use persistence volume, you could use an `emptyDir` as follow.
+      # if you don't have a storage provisioner or don't want to use a persistent volume
       # volumes:
       #   - name: data
       #     emptyDir: {}
@@ -144,22 +149,29 @@ spec:
             storage: "8Gi"
 ```
 
-Apply these two yaml files to Kubernetes, wait few seconds, etcd installation should be successful. We could run a health check to ensure that.
+Once you have applied these files, you can wait for some time and run a health check to ensure everything is running:
 
 ```bash
-$ kubectl -n apisix exec -it etcd-0 -- etcdctl endpoint health
+kubectl -n apisix exec -it etcd-0 -- etcdctl endpoint health
+```
+
+```text title="output"
 127.0.0.1:2379 is healthy: successfully committed proposal: took = 1.741883ms
 ```
 
-Please notice that this etcd installation is quite simple and lack of many necessary production features, it should only be used for learning case. If you want to deploy a production-ready etcd, please refer to [bitnami/etcd](https://bitnami.com/stack/etcd/helm).
+:::info IMPORTANT
 
-## APISIX Installation
+This etcd installation is simple and not meant for production scenarios. If you want to deploy a production ready etcd cluster, see [bitnami/etcd](https://bitnami.com/stack/etcd/helm).
 
-Create a config file for our APISIX. We are going to deploy APISIX version 2.5.
+:::
 
-Note that the APISIX ingress controller needs to communicate with the APISIX admin API, so we set `apisix.allow_admin` to `0.0.0.0/0` for test.
+## Installing APISIX
 
-```yaml
+Before deploying APISIX, we will first create a configuration file.
+
+APISIX Ingress controller will need to communicate with the APISIX Admin API, so we need to set `apisix.allow_admin` to `0.0.0.0/0`.
+
+```yaml title="config.yaml"
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -173,25 +185,24 @@ data:
       enable_admin: true
       enable_admin_cors: true
       enable_debug: false
-      enable_dev_mode: false          # Sets nginx worker_processes to 1 if set to true
-      enable_reuseport: true          # Enable nginx SO_REUSEPORT switch if set to true.
+      enable_dev_mode: false          # when set to true, sets Nginx worker_processes to 1
+      enable_reuseport: true          # when set to true, enables nginx SO_REUSEPORT switch
       enable_ipv6: true
-      config_center: etcd             # etcd: use etcd to store the config value
+      config_center: etcd             # use etcd to store configuration
 
-      allow_admin:                  # http://nginx.org/en/docs/http/ngx_http_access_module.html#allow
+      allow_admin:                  # see: http://nginx.org/en/docs/http/ngx_http_access_module.html#allow
         - 0.0.0.0/0
       port_admin: 9180
 
-      # Default token when use API to call for Admin API.
-      # *NOTE*: Highly recommended to modify this value to protect APISIX's Admin API.
-      # Disabling this configuration item means that the Admin API does not
-      # require any authentication.
+      # default token used when calling the Admin API
+      # it is recommended to modify this value in production
+      # when disabled, Admin API won't require any authentication
       admin_key:
-        # admin: can everything for configuration data
+        # admin: full access to configuration data
         - name: "admin"
           key: edd1c9f034335f136f87ad84b625c8f1
           role: admin
-        # viewer: only can view configuration data
+        # viewer: can only view the configuration data
         - name: "viewer"
           key: 4054f7cf07e344346cd3f287985e76a2
           role: viewer
@@ -200,30 +211,30 @@ data:
       dns_resolver_valid: 30
       resolver_timeout: 5
 
-    nginx_config:                     # config for render the template to generate nginx.conf
+    nginx_config:                     # template configuration to generate nginx.conf
       error_log: "/dev/stderr"
-      error_log_level: "warn"         # warn,error
-      worker_rlimit_nofile: 20480     # the number of files a worker process can open, should be larger than worker_connections
+      error_log_level: "warn"         # warn, error
+      worker_rlimit_nofile: 20480     # number of files a worker process can open. Should be larger than worker_connections
       event:
         worker_connections: 10620
       http:
         access_log: "/dev/stdout"
-        keepalive_timeout: 60s         # timeout during which a keep-alive client connection will stay open on the server side.
+        keepalive_timeout: 60s         # timeout for which a keep-alive client connection will stay open on the server side
         client_header_timeout: 60s     # timeout for reading client request header, then 408 (Request Time-out) error is returned to the client
         client_body_timeout: 60s       # timeout for reading client request body, then 408 (Request Time-out) error is returned to the client
-        send_timeout: 10s              # timeout for transmitting a response to the client.then the connection is closed
-        underscores_in_headers: "on"   # default enables the use of underscores in client request header fields
-        real_ip_header: "X-Real-IP"    # http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
-        real_ip_from:                  # http://nginx.org/en/docs/http/ngx_http_realip_module.html#set_real_ip_from
+        send_timeout: 10s              # timeout for transmitting a response to the client, then the connection is closed
+        underscores_in_headers: "on"   # enables the use of underscores in client request header fields
+        real_ip_header: "X-Real-IP"    # see: http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
+        real_ip_from:                  # see: http://nginx.org/en/docs/http/ngx_http_realip_module.html#set_real_ip_from
           - 127.0.0.1
           - 'unix:'
 
     etcd:
       host:
         - "http://etcd-headless.apisix.svc.cluster.local:2379"
-      prefix: "/apisix"     # apisix configurations prefix
-      timeout: 30   # seconds
-    plugins:                          # plugin list
+      prefix: "/apisix"     # APISIX configurations prefix
+      timeout: 30   # in seconds
+    plugins:                          # list of APISIX Plugins
       - api-breaker
       - authz-keycloak
       - basic-auth
@@ -267,13 +278,31 @@ data:
       - mqtt-proxy
 ```
 
-Please make sure `etcd.host` matches the headless service we created at first. In our case, it's `http://etcd-headless.apisix.svc.cluster.local:2379`.
+:::note
 
-In this config, we defined an access key with the `admin` name under the `apisix.admin_key` section. This key is our API key, will be used to control APISIX later. This key is the default API key for APISIX, and it should be changed in production environments.
+Make sure that `etcd.host` matches the headless etcd service we created first. In this case, it is `http://etcd-headless.apisix.svc.cluster.local:2379`.
 
-Save this as `config.yaml`, then run `kubectl -n apisix create cm apisix-conf --from-file ./config.yaml` to create configmap. Later we will mount this configmap into APISIX deployment.
+:::
 
-```yaml
+The Admin API key (`apisix.admin_key` in `config.yaml`) will be used to configure APISIX later.
+
+:::danger
+
+The key used in the example above is the default key and should be changed in production environments.
+
+:::
+
+We can now create a ConfigMap from this configuration file. To do this, run:
+
+```shell
+kubectl -n apisix apply -f ./apisix-config.yaml
+```
+
+We can mount this ConfigMap to the APISIX deployment.
+
+The yaml file below will deploy APISIX:
+
+```yaml title="apisix-dep.yaml"
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -293,7 +322,7 @@ spec:
     spec:
       containers:
         - name: apisix
-          image: "apache/apisix:2.5-alpine"
+          image: "apache/apisix:2.15.0-alpine"
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -331,25 +360,35 @@ spec:
           name: apisix-config
 ```
 
-Now, APISIX should be ready to use. Use `kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name` to list APISIX pod name. Here we assume the pod name is `apisix-7644966c4d-cl4k6`.
+APISIX will be ready in some time. You can check the pod name of APISIX by running:
 
-Let's have a check:
+```shell
+kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name
+```
+
+The examples below use the pod name `apisix-7644966c4d-cl4k6`.
+
+You can check if APISIX is deployed correctly by running:
 
 ```bash
 kubectl -n apisix exec -it apisix-7644966c4d-cl4k6 -- curl http://127.0.0.1:9080
 ```
 
-If you are using Linux or macOS, run the command below in bash:
+If you are on Linux or macOS, you can run the command below instead:
 
 ```bash
 kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name) -- curl http://127.0.0.1:9080
 ```
 
-If APISIX works properly, it should output: `{"error_msg":"404 Route Not Found"}`. Because we haven't defined any route yet.
+APISIX should show a "Route not found" message as we haven't configured it yet:
 
-## HTTPBIN service
+```json
+{"error_msg":"404 Route Not Found"}
+```
 
-Before configuring the APISIX, we need to create a test service. We use [kennethreitz/httpbin](https://hub.docker.com/r/kennethreitz/httpbin/) here. We put this httpbin service in `demo` namespace.
+## Deploying httpbin
+
+We will deploy a sample application to test APISIX. We are using [kennethreitz/httpbin](https://hub.docker.com/r/kennethreitz/httpbin/) and we will deploy it to the `demo` namespace:
 
 ```bash
 kubectl create ns demo
@@ -357,15 +396,13 @@ kubectl -n demo run httpbin --image-pull-policy=IfNotPresent --image kennethreit
 kubectl -n demo expose pod httpbin --port 80
 ```
 
-After the httpbin service started, we should be able to access it inside the APISIX pod via service.
+Once httpbin is running, we can access it in the APISIX pod using the created service:
 
 ```bash
 kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name) -- curl http://httpbin.demo/get
 ```
 
-This should output the request's query parameters, for example:
-
-```json
+```json title="output"
 {
   "args": {},
   "headers": {
@@ -378,15 +415,11 @@ This should output the request's query parameters, for example:
 }
 ```
 
-To read more, please refer to [Getting Started](https://apisix.apache.org/docs/apisix/getting-started).
+## Configuring a Route
 
-## Define Route
+Now, we will create a Route in APISIX to forward traffic to the httpbin service.
 
-Now, we can define the route for proxying HTTPBIN service traffic through APISIX.
-
-Assuming we want to route all traffic which URI has `/httpbin` prefix and the request contains `Host: httpbin.org` header.
-
-Please notice that the admin port is `9180`.
+The below command will configure APISIX to route all requests with the Header `Host: httpbin.org`:
 
 ```bash
 kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name) -- curl "http://127.0.0.1:9180/apisix/admin/routes/1" -H "X-API-KEY: edd1c9f034335f136f87ad84b625c8f1" -X PUT -d '
@@ -402,33 +435,44 @@ kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/nam
 }'
 ```
 
-The output would be like this:
+This will create a Route and will give back a response as shown below:
 
-```json
-{"action":"set","node":{"key":"\/apisix\/routes\/1","value":{"status":1,"create_time":1621408897,"upstream":{"pass_host":"pass","type":"roundrobin","hash_on":"vars","nodes":{"httpbin.demo:80":1},"scheme":"http"},"update_time":1621408897,"priority":0,"host":"httpbin.org","id":"1","uri":"\/*"}}}
+```json title="output"
+{
+   "action":"set",
+   "node":{
+      "key":"\/apisix\/routes\/1",
+      "value":{
+         "status":1,
+         "create_time":1621408897,
+         "upstream":{
+            "pass_host":"pass",
+            "type":"roundrobin",
+            "hash_on":"vars",
+            "nodes":{
+               "httpbin.demo:80":1
+            },
+            "scheme":"http"
+         },
+         "update_time":1621408897,
+         "priority":0,
+         "host":"httpbin.org",
+         "id":"1",
+         "uri":"\/*"
+      }
+   }
+}
 ```
 
-We could check route rules by `GET /apisix/admin/routes`:
-
-```bash
-kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name) -- curl "http://127.0.0.1:9180/apisix/admin/routes/1" -H "X-API-KEY: edd1c9f034335f136f87ad84b625c8f1"
-```
-
-It should output like this:
-
-```json
-{"action":"get","node":{"key":"\/apisix\/routes\/1","value":{"upstream":{"pass_host":"pass","type":"roundrobin","scheme":"http","hash_on":"vars","nodes":{"httpbin.demo:80":1}},"id":"1","create_time":1621408897,"update_time":1621408897,"host":"httpbin.org","priority":0,"status":1,"uri":"\/*"}},"count":"1"}
-```
-
-Now, we can test the routing rule:
+Now we can test the created Route:
 
 ```bash
 kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name) -- curl "http://127.0.0.1:9080/get" -H 'Host: httpbin.org'
 ```
 
-It will output like:
+This will give back a response from httpbin:
 
-```json
+```json title="output"
 {
   "args": {},
   "headers": {
@@ -442,193 +486,35 @@ It will output like:
 }
 ```
 
-## Install APISIX Ingress Controller
+## Installing APISIX Ingress controller
 
-APISIX ingress controller can help you manage your configurations declaratively by using Kubernetes resources. Here we will install version 0.5.0.
+Till now, we manually sent requests to the Admin API to configure APISIX. Installing APISIX Ingress controller will allow you to configure APISIX using Kubernetes resources.
 
-Currently, the APISIX ingress controller supports both official Ingress resource or APISIX's CustomResourceDefinitions, which includes ApisixRoute and ApisixUpstream.
+APISIX Ingress controller supports the Kubernetes Ingress API, Gateway API, and APISIX custom CRDs for configuration.
 
-Before installing the APISIX controller, we need to create a service account and the corresponding ClusterRole to ensure that the APISIX ingress controller has sufficient permissions to access required resources.
-
-Here is an example config from [apisix-helm-chart](https://github.com/apache/apisix-helm-chart):
-
-```yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: apisix-ingress-controller
-  namespace: apisix
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: apisix-clusterrole
-  namespace: apisix
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - configmaps
-      - endpoints
-      - persistentvolumeclaims
-      - pods
-      - replicationcontrollers
-      - replicationcontrollers/scale
-      - serviceaccounts
-      - services
-      - secrets
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - ""
-    resources:
-      - bindings
-      - events
-      - limitranges
-      - namespaces/status
-      - pods/log
-      - pods/status
-      - replicationcontrollers/status
-      - resourcequotas
-      - resourcequotas/status
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - ""
-    resources:
-      - namespaces
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - apps
-    resources:
-      - controllerrevisions
-      - daemonsets
-      - deployments
-      - deployments/scale
-      - replicasets
-      - replicasets/scale
-      - statefulsets
-      - statefulsets/scale
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - autoscaling
-    resources:
-      - horizontalpodautoscalers
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - batch
-    resources:
-      - cronjobs
-      - jobs
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - extensions
-    resources:
-      - daemonsets
-      - deployments
-      - deployments/scale
-      - ingresses
-      - networkpolicies
-      - replicasets
-      - replicasets/scale
-      - replicationcontrollers/scale
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - policy
-    resources:
-      - poddisruptionbudgets
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - networking.k8s.io
-    resources:
-      - ingresses
-      - networkpolicies
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - metrics.k8s.io
-    resources:
-      - pods
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - apisix.apache.org
-    resources:
-      - apisixroutes
-      - apisixroutes/status
-      - apisixupstreams
-      - apisixupstreams/status
-      - apisixtlses
-      - apisixtlses/status
-      - apisixclusterconfigs
-      - apisixclusterconfigs/status
-      - apisixconsumers
-      - apisixconsumers/status
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - coordination.k8s.io
-    resources:
-      - leases
-    verbs:
-      - '*'
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: apisix-clusterrolebinding
-  namespace: apisix
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: apisix-clusterrole
-subjects:
-  - kind: ServiceAccount
-    name: apisix-ingress-controller
-    namespace: apisix
-```
-
-Then, we need to create ApisixRoute CRD:
+First we will create a ServiceAccount and a corresponding ClusterRole to ensure that the Ingress controller has sufficient permissions to access the required resources:
 
 ```bash
 git clone https://github.com/apache/apisix-ingress-controller.git --depth 1
 cd apisix-ingress-controller/
+kubectl apply -k samples/deploy/rbac/apisix_view_clusterrole.yaml # apply cluster role
+kubectl -n apisix create serviceaccount apisix-ingress-controller # create service account
+# bind cluster role and service account
+kubectl create clusterrolebinding apisix-viewer --clusterrole=apisix-view-clusterrole --serviceaccount=apisix:apisix-ingress-controller
+```
+
+Once you apply it to your cluster, you have to create the [ApisixRoute](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_route) CRD:
+
+```bash
+# Under apisix-ingress-controller git repo
 kubectl apply -k samples/deploy/crd
 ```
 
-Please refer to [samples](http://github.com/apache/apisix-ingress-controller/blob/master/samples/deploy/crd) for details.
+See [samples](http://github.com/apache/apisix-ingress-controller/blob/master/samples/deploy/crd) for details.
 
-To make the ingress controller works properly with APISIX, we need to create a config file containing the APISIX admin API URL and API key as below:
+For the Ingress controller to work with APISIX, you need to create a config file containing the APISIX Admin API URL and key. You can do this by creating a ConfigMap:
 
-```yaml
+```yaml title="apisix-config.yaml"
 apiVersion: v1
 data:
   config.yaml: |
@@ -641,7 +527,7 @@ data:
       kubeconfig: ""
       resync_interval: "30s"
       namespace_selector:
-      - "apisix.ingress=watching"
+      - ""
       ingress_class: "apisix"
       ingress_version: "networking/v1"
       apisix_route_version: "apisix.apache.org/v2"
@@ -650,17 +536,17 @@ data:
       default_cluster_admin_key: "edd1c9f034335f136f87ad84b625c8f1"
 kind: ConfigMap
 metadata:
-  name: apisix-configmap
+  name: apisix-ingress-conf
   namespace: apisix
   labels:
     app.kubernetes.io/name: ingress-controller
 ```
 
-If you want to learn all the configuration items, see [conf/config-default.yaml](http://github.com/apache/apisix-ingress-controller/blob/master/conf/config-default.yaml) for details.
+See [conf/config-default.yaml](http://github.com/apache/apisix-ingress-controller/blob/master/conf/config-default.yaml) for a list of all the available configurations.
 
-Because the ingress controller needs to access APISIX admin API, we need to create a service for APISIX.
+Now we will create a Service for the Ingress controller to access the Admin API:
 
-```yaml
+```yaml title="ingress-service.yaml"
 apiVersion: v1
 kind: Service
 metadata:
@@ -679,15 +565,15 @@ spec:
     app.kubernetes.io/name: apisix
 ```
 
-Because currently APISIX ingress controller doesn't 100% compatible with APISIX, we need to delete the previously created route in case of some data structure mismatch.
+We can delete the existing Route in APISIX through the Admin API before we create a new Route. This is to prevent any error due to data structure mismatches which will be fixed in the future:
 
 ```bash
 kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name) -- curl "http://127.0.0.1:9180/apisix/admin/routes/1" -X DELETE -H "X-API-KEY: edd1c9f034335f136f87ad84b625c8f1"
 ```
 
-After these configurations, we could deploy the ingress controller now.
+Now we can create a Deployment to install the Ingress controller in our cluster:
 
-```yaml
+```yaml title="ingress-deployment.yaml"
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -709,7 +595,7 @@ spec:
       volumes:
         - name: configuration
           configMap:
-            name: apisix-configmap
+            name: apisix-ingress-conf
             items:
               - key: config.yaml
                 path: config.yaml
@@ -724,7 +610,7 @@ spec:
             - ingress
             - --config-path
             - /ingress-apisix/conf/config.yaml
-          image: "apache/apisix-ingress-controller:1.4.0"
+          image: "apache/apisix-ingress-controller:1.6.0"
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -745,13 +631,9 @@ spec:
               name: configuration
 ```
 
-In this deployment, we mount the configmap created above as a config file, and tell Kubernetes to use the service account `apisix-ingress-controller`.
+Once the Ingress controller is in the `Running` state, you can create a Route using the ApisixRoute resource:
 
-After the ingress controller status is converted to `Running`, we could create an ApisixRoute resource and observe its behaviors.
-
-Here is an example ApisixRoute:
-
-```yaml
+```yaml title="httpbin-route.yaml"
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
@@ -770,29 +652,17 @@ spec:
         servicePort: 80
 ```
 
-Note that the apiVersion field should match the configmap above. And the serviceName should match the exposed service name, it's `httpbin` here.
+The `apiVersion` field should match the created ConfigMap and the `serviceName` here is the `httpbin` service.
 
-Before create it, let's ensure requests with header `Host: local.http.demo` will returns 404:
+The ApisixRoute should be created in the same namespace as the service. In our example, this is the `demo` namespace.
 
-```bash
-kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name) -- curl "http://127.0.0.1:9080/get" -H 'Host: local.httpbin.org'
-```
-
-It will return:
-
-```json
-{"error_msg":"404 Route Not Found"}
-```
-
-The ApisixRoute should be applied in the same namespace with the target service, in this case is `demo`. After applying it, let's check if it works.
+Now if you send requests to APISIX, it will be routed to the httpbin service:
 
 ```bash
 kubectl -n apisix exec -it $(kubectl get pods -n apisix -l app.kubernetes.io/name=apisix -o name) -- curl "http://127.0.0.1:9080/get" -H "Host: local.httpbin.org"
 ```
 
-It should return:
-
-```json
+```json title="output"
 {
   "args": {},
   "headers": {
@@ -806,4 +676,4 @@ It should return:
 }
 ```
 
-That's all! Enjoy your journey with APISIX and APISIX ingress controller!
+See [Installation](https://apisix.apache.org/docs/ingress-controller/deployments/minikube) for more installation methods.

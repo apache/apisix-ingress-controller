@@ -110,6 +110,13 @@ type HMACAuthConsumerConfig struct {
 	MaxReqBody          int64    `json:"max_req_body,omitempty" yaml:"max_req_body,omitempty"`
 }
 
+// LDAPAuthConsumerConfig is the rule config for ldap-auth plugin
+// used in Consumer object.
+// +k8s:deepcopy-gen=true
+type LDAPAuthConsumerConfig struct {
+	UserDN string `json:"user_dn"`
+}
+
 // BasicAuthRouteConfig is the rule config for basic-auth plugin
 // used in Route object.
 // +k8s:deepcopy-gen=true

@@ -1,5 +1,11 @@
 ---
-title: Proxy the httpbin service
+title: Configuring Ingress with APISIX CRDs
+keywords:
+  - APISIX Ingress
+  - Apache APISIX
+  - Kubernetes Ingress
+  - APISIX CRDs
+description: A tutorial on configuring Ingress using APISIX Custom Resource Definitions (CRDs).
 ---
 
 <!--
@@ -21,31 +27,36 @@ title: Proxy the httpbin service
 #
 -->
 
-This document explains how apisix-ingress-controller guides Apache APISIX routes traffic to httpbin service correctly.
+This tutorial walks through configuring APISIX Ingress with [APISIX Custom Resource Definitions (CRDs)](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_route).
+
+Also see:
+
+- [Configuring Ingress with Kubernetes Gateway API](https://apisix.apache.org/docs/ingress-controller/tutorials/configure-ingress-with-gateway-api)
+- [Configuring Ingress with Kubernetes Ingress resource](https://apisix.apache.org/docs/ingress-controller/tutorials/proxy-the-httpbin-service-with-ingress)
 
 ## Prerequisites
 
-* Prepare an available Kubernetes cluster in your workstation, we recommend you to use [Minikube](https://github.com/kubernetes/minikube).
-* Install Apache APISIX in Kubernetes by [Helm Chart](https://github.com/apache/apisix-helm-chart).
-* Install [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller/blob/master/install.md).
+Before you move on, make sure you:
 
-## Deploy httpbin service
+1. Have access to a Kubernetes cluster. This tutorial uses [minikube](https://github.com/kubernetes/minikube).
+2. Install APISIX Ingress. See the [Installation](https://apisix.apache.org/docs/ingress-controller/deployments/minikube) section.
 
-We use [kennethreitz/httpbin](https://hub.docker.com/r/kennethreitz/httpbin/) as the service image, See its overview page for details.
+## Deploy httpbin
 
-Now, try to deploy it to your Kubernetes cluster:
+We will deploy a sample service, [kennethreitz/httpbin](https://hub.docker.com/r/kennethreitz/httpbin/), for this tutorial.
+
+You can deploy it to your Kubernetes cluster by running:
 
 ```shell
 kubectl run httpbin --image kennethreitz/httpbin --port 80
 kubectl expose pod httpbin --port 80
 ```
 
-## Resource Delivery
+## Configuring Ingress
 
-In order to let Apache APISIX proxies requests to httpbin, we need to create an `ApisixRoute` resource, if you're not familiar with it, see the [reference](https://github.com/apache/apisix-ingress-controller/blob/master/samples/deploy/crd/v1/ApisixRoute.yaml) for the details.
+We can configure the Ingress using an [ApisixRoute](https://apisix.apache.org/docs/ingress-controller/references/apisix_route_v2) resource. The example below configures APISIX to route requests to the httpbin service:
 
-```yaml
-# httpbin-route.yaml
+```yaml title="httpbin-ingress.yaml"
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
@@ -63,36 +74,43 @@ spec:
          servicePort: 80
 ```
 
-The YAML snippet shows a simple `ApisixRoute` configuration, which tells Apache APISIX to route all requests with Host `local.httpbin.org` to the `httpbin` service.
-Now try to create it.
+This configuration will route all requests with host `local.httpbin.org` to the httpbin service.
+
+You can apply it by running:
 
 ```shell
-kubectl apply -f httpbin-route.yaml
+kubectl apply -f httpbin-ingress.yaml
 ```
 
-## Test
+## Test the created Routes
 
-Run curl call in one of Apache APISIX Pods to check whether the resource was delivered to it. Note you should replace the value of `--default-apisix-cluster-admin-key` to the real `admin_key` value in your Apache APISIX cluster.
+If you followed along and used minikube and `NodePort` service to expose APISIX, you can access it through the Node IP of the service `apisix-gateway`. If the Node IP is not reachable directly (if you are on Darwin, Windows, or WSL), you can create a tunnel to access the service on your machine:
 
 ```shell
-kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9180/apisix/admin/routes -H 'X-API-Key: edd1c9f034335f136f87ad84b625c8f1'
+minikube service apisix-gateway --url -n ingress-apisix
 ```
 
-And request to Apache APISIX to verify the route.
+Now, you can send a `GET` request to the created Route and it will be Routed to the httpbin service:
 
 ```shell
-kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9080/headers -H 'Host: local.httpbin.org'
+curl --location --request GET "localhost:57687/get?foo1=bar1&foo2=bar2" -H "Host: local.httpbin.org"
 ```
 
-In case of success, you'll see a JSON string which contains all requests headers carried by `curl` like:
+You will receive a response similar to:
 
-```json
+```json title="output"
 {
+  "args": {
+    "foo1": "bar1", 
+    "foo2": "bar2"
+  }, 
   "headers": {
-    "Accept": "*/*",
-    "Host": "httpbin.org",
-    "User-Agent": "curl/7.64.1",
-    "X-Amzn-Trace-Id": "Root=1-5ffc3273-2928e0844e19c9810d1bbd8a"
-  }
+    "Accept": "*/*", 
+    "Host": "local.httpbin.org", 
+    "User-Agent": "curl/7.84.0", 
+    "X-Forwarded-Host": "local.httpbin.org"
+  }, 
+  "origin": "172.17.0.1", 
+  "url": "http://local.httpbin.org/get?foo1=bar1&foo2=bar2"
 }
 ```

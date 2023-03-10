@@ -1039,3 +1039,58 @@ func TestTranslateConsumerHMACAuthPluginWithSecretRef(t *testing.T) {
 	close(processCh)
 	close(stopCh)
 }
+
+func TestTranslateConsumerLDAPAuthPluginWithInPlaceValue(t *testing.T) {
+	ldapAuth := &configv2.ApisixConsumerLDAPAuth{
+		Value: &configv2.ApisixConsumerLDAPAuthValue{
+			UserDN: "cn=user01,ou=users,dc=example,dc=org",
+		},
+	}
+	cfg, err := (&translator{}).translateConsumerLDAPAuthPluginV2("default", ldapAuth)
+	assert.Nil(t, err)
+	assert.Equal(t, "cn=user01,ou=users,dc=example,dc=org", cfg.UserDN)
+}
+
+func TestTranslateConsumerLDAPAuthPluginWithSecretRef(t *testing.T) {
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "fatpa-ldap-auth",
+		},
+		Data: map[string][]byte{
+			"user_dn": []byte("cn=user01,ou=users,dc=example,dc=org"),
+		},
+	}
+
+	client := fake.NewSimpleClientset()
+	informersFactory := informers.NewSharedInformerFactory(client, 0)
+	secretInformer := informersFactory.Core().V1().Secrets().Informer()
+	secretLister := informersFactory.Core().V1().Secrets().Lister()
+	processCh := make(chan struct{})
+	stopCh := make(chan struct{})
+	secretInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(_ interface{}) {
+			processCh <- struct{}{}
+		},
+		UpdateFunc: func(_, _ interface{}) {
+			processCh <- struct{}{}
+		},
+	})
+
+	go secretInformer.Run(stopCh)
+
+	tr := &translator{&TranslatorOptions{
+		SecretLister: secretLister,
+	}, translation.NewTranslator(nil)}
+
+	_, err := client.CoreV1().Secrets("default").Create(context.Background(), sec, metav1.CreateOptions{})
+	assert.Nil(t, err)
+
+	<-processCh
+
+	ldapAuth := &configv2.ApisixConsumerLDAPAuth{
+		SecretRef: &corev1.LocalObjectReference{Name: "fatpa-ldap-auth"},
+	}
+	cfg, err := tr.translateConsumerLDAPAuthPluginV2("default", ldapAuth)
+	assert.Nil(t, err)
+	assert.Equal(t, "cn=user01,ou=users,dc=example,dc=org", cfg.UserDN)
+}
