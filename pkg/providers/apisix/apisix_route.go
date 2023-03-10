@@ -535,20 +535,11 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 }
 
 func (c *apisixRouteController) isEffective(ar kube.ApisixRoute) bool {
-	var icn string
-
-	switch ar.GroupVersion() {
-	case config.ApisixV2beta3:
-		icn = ar.V2beta3().Spec.IngressClassName
-	case config.ApisixV2:
-		icn = ar.V2().Spec.IngressClassName
-	default:
-		log.Errorf("not support group version: %s", ar.GroupVersion())
-		return false
+	if ar.GroupVersion() == config.ApisixV2 {
+		return utils.MatchCRDsIngressClass(ar.V2().Spec.IngressClassName, c.Kubernetes.IngressClass)
 	}
-
-	return utils.MatchCRDsIngressClass(icn, c.Kubernetes.IngressClass)
-
+	// Compatible with legacy versions
+	return true
 }
 
 func (c *apisixRouteController) onAdd(obj interface{}) {
