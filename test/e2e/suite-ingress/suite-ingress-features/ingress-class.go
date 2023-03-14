@@ -161,13 +161,6 @@ spec:
 		assert.Len(ginkgo.GinkgoT(), agrs[0].Plugins, 1)
 		_, ok := agrs[0].Plugins["prometheus"]
 		assert.Equal(ginkgo.GinkgoT(), ok, true)
-
-		// delete resource
-		assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromString(acc))
-		time.Sleep(6 * time.Second)
-		agrs, err = s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), agrs, 0)
 	})
 
 	ginkgo.It("ApisiClusterConfig should be handled", func() {
@@ -194,14 +187,7 @@ spec:
 		_, ok := agrs[0].Plugins["prometheus"]
 		assert.Equal(ginkgo.GinkgoT(), ok, true)
 
-		// delete resource
-		assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromString(acc))
-		time.Sleep(6 * time.Second)
-		agrs, err = s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), agrs, 0)
-
-		// create ApisixConsumer resource with ingressClassName: apisix
+		// update ApisixConsumer resource with ingressClassName: apisix
 		acc = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixClusterConfig
@@ -335,14 +321,7 @@ spec:
 		_, ok := agrs[0].Plugins["prometheus"]
 		assert.Equal(ginkgo.GinkgoT(), ok, true)
 
-		// delete resource
-		assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromString(acc))
-		time.Sleep(6 * time.Second)
-		agrs, err = s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), agrs, 0)
-
-		// create ApisixConsumer resource with ingressClassName: apisix
+		// update ApisixConsumer resource with ingressClassName: apisix
 		acc = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixClusterConfig

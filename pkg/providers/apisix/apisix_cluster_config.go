@@ -509,7 +509,7 @@ func (c *apisixClusterConfigController) isEffective(agr kube.ApisixClusterConfig
 		ok := utils.MatchCRDsIngressClass(ingClassName, c.Kubernetes.IngressClass)
 		if !ok {
 			log.Debugw("IngressClass: ApisixClusterConfig ignored",
-				zap.String("key", agr.V2().Namespace+"/"+agr.V2().Name),
+				zap.String("key", agr.V2().Name),
 				zap.String("ingressClass", agr.V2().Spec.IngressClassName),
 			)
 		}
