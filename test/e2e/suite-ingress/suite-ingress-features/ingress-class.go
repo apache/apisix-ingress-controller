@@ -31,7 +31,7 @@ var _ = ginkgo.Describe("suite-ingress-features: Testing CRDs with IngressClass"
 		IngressAPISIXReplicas: 1,
 		IngressClass:          "apisix",
 	})
-	ginkgo.It("ApisiUpstream should be ignored", func() {
+	ginkgo.It("ApisixUpstream should be ignored", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		au := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -78,7 +78,7 @@ spec:
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 	})
 
-	ginkgo.It("ApisiUpstream should be handled", func() {
+	ginkgo.It("ApisixUpstream should be handled", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		au := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -134,6 +134,155 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), 2, *ups[0].Retries)
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+	})
+
+	ginkgo.It("ApisixPluginConfig should be ignored", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		apc := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+  name: test-apc-1
+spec:
+  ingressClassName: ignored
+  plugins:
+  - name: echo
+    enable: true
+    config:
+      body: "my custom body"
+`)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
+
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugin_config_name: test-apc-1
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+		// The referenced plugin doesn't exist so the translation expected to be failed
+		err := s.EnsureNumApisixUpstreamsCreated(0)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixPluginConfigCreated(0)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
+		err = s.EnsureNumApisixRoutesCreated(0)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+	})
+
+	ginkgo.It("ApisixPluginConfig should be handled", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		apc := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+  name: test-apc-1
+spec:
+  ingressClassName: apisix
+  plugins:
+  - name: echo
+    enable: true
+    config:
+      body: "my custom body"
+`)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
+
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugin_config_name: test-apc-1
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixPluginConfigCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().IsEqual("my custom body")
+	})
+
+	ginkgo.It("ApisixPluginConfig should be handled without ingressClass", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		apc := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+  name: test-apc-1
+spec:
+  plugins:
+  - name: echo
+    enable: true
+    config:
+      body: "my custom body"
+`)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
+
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugin_config_name: test-apc-1
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixPluginConfigCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().IsEqual("my custom body")
 	})
 
 	ginkgo.It("ApisixConsumer should be ignored", func() {
@@ -237,7 +386,7 @@ var _ = ginkgo.Describe("suite-ingress-features: Testing CRDs with IngressClass 
 		IngressClass:          "apisix-and-all",
 	})
 
-	ginkgo.It("ApisiUpstream should be handled", func() {
+	ginkgo.It("ApisixUpstream should be handled", func() {
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		au := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -312,6 +461,107 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), 1, *ups[0].Retries)
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+	})
+
+	ginkgo.It("ApisixPluginConfig should be handled", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		apc := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+  name: test-apc-1
+spec:
+  ingressClassName: apisix
+  plugins:
+  - name: echo
+    enable: true
+    config:
+      body: "my custom body"
+`)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
+
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugin_config_name: test-apc-1
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixPluginConfigCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().IsEqual("my custom body")
+	})
+
+	ginkgo.It("ApisixPluginConfig should be handled without ingressClass", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		apc := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+  name: test-apc-1
+spec:
+  plugins:
+  - name: echo
+    enable: true
+    config:
+      body: "my custom body"
+`)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
+
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugin_config_name: test-apc-1
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixPluginConfigCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+		resp.Body().IsEqual("my custom body")
 	})
 
 	ginkgo.It("ApisixConsumer should be handled", func() {

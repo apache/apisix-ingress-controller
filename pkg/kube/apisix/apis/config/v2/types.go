@@ -781,6 +781,10 @@ type ApisixPluginConfig struct {
 
 // ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
 type ApisixPluginConfigSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// The controller uses this field to decide whether the resource should be managed or not.
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	// Plugins contains a list of ApisixRoutePlugin
 	// +required
 	Plugins []ApisixRoutePlugin `json:"plugins" yaml:"plugins"`
