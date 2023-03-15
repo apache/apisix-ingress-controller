@@ -31,7 +31,7 @@ import TabItem from '@theme/TabItem';
 
 APISIX ingress controller is a [Kubernetes ingress controller](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/) using [Apache APISIX](https://apisix.apache.org) as the high performance reverse proxy.
 
-APISIX ingress controller can be configured using native Kubernetes ingress resources as well as a declarative and easy to use custom resources provided by APISIX. The APISIX ingress controller converts these resources to APISIX configuration.
+APISIX ingress controller can be configured using the native Kubernetes Ingress or Gateway API as well as with the declarative and easy to use custom resources provided by APISIX. The APISIX ingress controller converts these resources to APISIX configuration.
 
 The examples below show how these differ. Both the examples configure a Route in APISIX that routes to an httpbin service as the Upstream.
 
@@ -39,8 +39,9 @@ The examples below show how these differ. Both the examples configure a Route in
 groupId="resources"
 defaultValue="apisix"
 values={[
-{label: 'APISIX Ingress custom resource', value: 'apisix'},
-{label: 'Kubernetes ingress resource', value: 'kubernetes'},
+{label: 'APISIX Ingress CRD', value: 'apisix'},
+{label: 'Kubernetes Ingress API', value: 'ingress'},
+{label: 'Kubernetes Gateway API', value: 'gateway'},
 ]}>
 
 <TabItem value="apisix">
@@ -49,10 +50,10 @@ values={[
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
-  name: httpserver-route
+  name: httpbin-route
 spec:
   http:
-    - name: rule1
+    - name: route-1
       match:
         hosts:
           - local.httpbin.org
@@ -65,13 +66,13 @@ spec:
 
 </TabItem>
 
-<TabItem value="kubernetes">
+<TabItem value="ingress">
 
 ```yaml title="httpbin-route.yaml"
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: httpserver-ingress
+  name: httpbin-route
 spec:
   ingressClassName: apisix
   rules:
@@ -88,9 +89,31 @@ spec:
 ```
 
 </TabItem>
+
+<TabItem value="gateway">
+
+```yaml title="httpbin-route.yaml"
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: HTTPRoute
+metadata:
+  name: httpbin-route
+spec:
+  hostnames:
+  - local.httpbin.org
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: httpbin
+      port: 80
+```
+
+</TabItem>
 </Tabs>
 
-APISIX ingress controller defines the CRDs [ApisixRoute](./concepts/apisix_route.md), [ApisixUpstream](./concepts/apisix_upstream.md), [ApisixTlx](concepts/apisix_tls.md), and [ApisixClusterConfig](concepts/apisix_cluster_config.md).
+APISIX ingress controller defines the CRDs [ApisixRoute](./concepts/apisix_route.md), [ApisixUpstream](./concepts/apisix_upstream.md), [ApisixTls](concepts/apisix_tls.md), and [ApisixClusterConfig](concepts/apisix_cluster_config.md).
 
 APISIX also supports [service discovery](https://apisix.apache.org/docs/apisix/next/discovery/kubernetes/) through [Kubernetes service](https://kubernetes.io/docs/concepts/services-networking/service/) abstraction.
 
@@ -122,7 +145,9 @@ The table below shows the compatibility between APISIX ingress controller and th
 
 | APISIX ingress controller | Supported APISIX versions | Recommended APISIX version |
 | ------------------------- | ------------------------- | -------------------------- |
-| `master`                  | `>= 2.7`                  | `2.11`                     |
+| `master`                  | `>= 2.15`, `>=3.0`        | `3.1`                      |
+| `1.6.0`                   | `>= 2.15`, `>=3.0`        | `2.15`, `3.0`              |
+| `1.5.0`                   | `>= 2.7`                  | `2.15`                     |
 | `1.4.0`                   | `>= 2.7`                  | `2.11`                     |
 | `1.3.0`                   | `>= 2.7`                  | `2.10`                     |
 | `1.2.0`                   | `>= 2.7`                  | `2.8`                      |

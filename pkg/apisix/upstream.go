@@ -15,7 +15,6 @@
 package apisix
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 
@@ -43,7 +42,7 @@ func (u *upstreamClient) Get(ctx context.Context, name string) (*v1.Upstream, er
 	log.Debugw("try to look up upstream",
 		zap.String("name", name),
 		zap.String("url", u.url),
-		zap.String("cluster", "default"),
+		zap.String("cluster", u.cluster.name),
 	)
 	uid := id.GenID(name)
 	ups, err := u.cluster.cache.GetUpstream(uid)
@@ -70,24 +69,24 @@ func (u *upstreamClient) Get(ctx context.Context, name string) (*v1.Upstream, er
 			log.Warnw("upstream not found",
 				zap.String("name", name),
 				zap.String("url", url),
-				zap.String("cluster", "default"),
+				zap.String("cluster", u.cluster.name),
 			)
 		} else {
 			log.Errorw("failed to get upstream from APISIX",
 				zap.String("name", name),
 				zap.String("url", url),
-				zap.String("cluster", "default"),
+				zap.String("cluster", u.cluster.name),
 				zap.Error(err),
 			)
 		}
 		return nil, err
 	}
 
-	ups, err = resp.Item.upstream()
+	ups, err = resp.upstream()
 	if err != nil {
 		log.Errorw("failed to convert upstream item",
 			zap.String("url", u.url),
-			zap.String("ssl_key", resp.Item.Key),
+			zap.String("ssl_key", resp.Key),
 			zap.Error(err),
 		)
 		return nil, err
@@ -105,7 +104,7 @@ func (u *upstreamClient) Get(ctx context.Context, name string) (*v1.Upstream, er
 func (u *upstreamClient) List(ctx context.Context) ([]*v1.Upstream, error) {
 	log.Debugw("try to list upstreams in APISIX",
 		zap.String("url", u.url),
-		zap.String("cluster", "default"),
+		zap.String("cluster", u.cluster.name),
 	)
 
 	upsItems, err := u.cluster.listResource(ctx, u.url, "upstream")
@@ -116,7 +115,7 @@ func (u *upstreamClient) List(ctx context.Context) ([]*v1.Upstream, error) {
 	}
 
 	var items []*v1.Upstream
-	for i, item := range upsItems.Node.Items {
+	for i, item := range upsItems {
 		ups, err := item.upstream()
 		if err != nil {
 			log.Errorw("failed to convert upstream item",
@@ -136,7 +135,7 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	log.Debugw("try to create upstream",
 		zap.String("name", obj.Name),
 		zap.String("url", u.url),
-		zap.String("cluster", "default"),
+		zap.String("cluster", u.cluster.name),
 	)
 
 	if err := u.cluster.upstreamServiceRelation.Create(ctx, obj.Name); err != nil {
@@ -153,13 +152,13 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	url := u.url + "/" + obj.ID
 	log.Debugw("creating upstream", zap.ByteString("body", body), zap.String("url", url))
 
-	resp, err := u.cluster.createResource(ctx, url, "upstream", bytes.NewReader(body))
+	resp, err := u.cluster.createResource(ctx, url, "upstream", body)
 	u.cluster.metricsCollector.IncrAPISIXRequest("upstream")
 	if err != nil {
 		log.Errorf("failed to create upstream: %s", err)
 		return nil, err
 	}
-	ups, err := resp.Item.upstream()
+	ups, err := resp.upstream()
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +173,7 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 	log.Debugw("try to delete upstream",
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),
-		zap.String("cluster", "default"),
+		zap.String("cluster", u.cluster.name),
 		zap.String("url", u.url),
 	)
 
@@ -200,7 +199,7 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	log.Debugw("try to update upstream",
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),
-		zap.String("cluster", "default"),
+		zap.String("cluster", u.cluster.name),
 		zap.String("url", u.url),
 	)
 
@@ -217,13 +216,12 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upst
 	}
 
 	url := u.url + "/" + obj.ID
-	log.Debugw("updating upstream", zap.ByteString("body", body), zap.String("url", url))
-	resp, err := u.cluster.updateResource(ctx, url, "upstream", bytes.NewReader(body))
+	resp, err := u.cluster.updateResource(ctx, url, "upstream", body)
 	u.cluster.metricsCollector.IncrAPISIXRequest("upstream")
 	if err != nil {
 		return nil, err
 	}
-	ups, err := resp.Item.upstream()
+	ups, err := resp.upstream()
 	if err != nil {
 		return nil, err
 	}

@@ -16,7 +16,6 @@
 package apisix
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 
@@ -47,7 +46,7 @@ func (pc *pluginConfigClient) Get(ctx context.Context, name string) (*v1.PluginC
 	log.Debugw("try to look up pluginConfig",
 		zap.String("name", name),
 		zap.String("url", pc.url),
-		zap.String("cluster", "default"),
+		zap.String("cluster", pc.cluster.name),
 	)
 	rid := id.GenID(name)
 	pluginConfig, err := pc.cluster.cache.GetPluginConfig(rid)
@@ -75,25 +74,25 @@ func (pc *pluginConfigClient) Get(ctx context.Context, name string) (*v1.PluginC
 			log.Warnw("pluginConfig not found",
 				zap.String("name", name),
 				zap.String("url", url),
-				zap.String("cluster", "default"),
+				zap.String("cluster", pc.cluster.name),
 			)
 		} else {
 			log.Errorw("failed to get pluginConfig from APISIX",
 				zap.String("name", name),
 				zap.String("url", url),
-				zap.String("cluster", "default"),
+				zap.String("cluster", pc.cluster.name),
 				zap.Error(err),
 			)
 		}
 		return nil, err
 	}
 
-	pluginConfig, err = resp.Item.pluginConfig()
+	pluginConfig, err = resp.pluginConfig()
 	if err != nil {
 		log.Errorw("failed to convert pluginConfig item",
 			zap.String("url", pc.url),
-			zap.String("pluginConfig_key", resp.Item.Key),
-			zap.String("pluginConfig_value", string(resp.Item.Value)),
+			zap.String("pluginConfig_key", resp.Key),
+			zap.String("pluginConfig_value", string(resp.Value)),
 			zap.Error(err),
 		)
 		return nil, err
@@ -110,7 +109,7 @@ func (pc *pluginConfigClient) Get(ctx context.Context, name string) (*v1.PluginC
 // to APISIX.
 func (pc *pluginConfigClient) List(ctx context.Context) ([]*v1.PluginConfig, error) {
 	log.Debugw("try to list pluginConfig in APISIX",
-		zap.String("cluster", "default"),
+		zap.String("cluster", pc.cluster.name),
 		zap.String("url", pc.url),
 	)
 	pluginConfigItems, err := pc.cluster.listResource(ctx, pc.url, "pluginConfig")
@@ -121,7 +120,7 @@ func (pc *pluginConfigClient) List(ctx context.Context) ([]*v1.PluginConfig, err
 	}
 
 	var items []*v1.PluginConfig
-	for i, item := range pluginConfigItems.Node.Items {
+	for i, item := range pluginConfigItems {
 		pluginConfig, err := item.pluginConfig()
 		if err != nil {
 			log.Errorw("failed to convert pluginConfig item",
@@ -144,7 +143,7 @@ func (pc *pluginConfigClient) Create(ctx context.Context, obj *v1.PluginConfig) 
 	log.Debugw("try to create pluginConfig",
 		zap.String("name", obj.Name),
 		zap.Any("plugins", obj.Plugins),
-		zap.String("cluster", "default"),
+		zap.String("cluster", pc.cluster.name),
 		zap.String("url", pc.url),
 	)
 
@@ -158,14 +157,14 @@ func (pc *pluginConfigClient) Create(ctx context.Context, obj *v1.PluginConfig) 
 
 	url := pc.url + "/" + obj.ID
 	log.Debugw("creating pluginConfig", zap.ByteString("body", data), zap.String("url", url))
-	resp, err := pc.cluster.createResource(ctx, url, "pluginConfig", bytes.NewReader(data))
+	resp, err := pc.cluster.createResource(ctx, url, "pluginConfig", data)
 	pc.cluster.metricsCollector.IncrAPISIXRequest("pluginConfig")
 	if err != nil {
 		log.Errorf("failed to create pluginConfig: %s", err)
 		return nil, err
 	}
 
-	pluginConfig, err := resp.Item.pluginConfig()
+	pluginConfig, err := resp.pluginConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +179,7 @@ func (pc *pluginConfigClient) Delete(ctx context.Context, obj *v1.PluginConfig) 
 	log.Debugw("try to delete pluginConfig",
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),
-		zap.String("cluster", "default"),
+		zap.String("cluster", pc.cluster.name),
 		zap.String("url", pc.url),
 	)
 
@@ -207,7 +206,7 @@ func (pc *pluginConfigClient) Update(ctx context.Context, obj *v1.PluginConfig) 
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),
 		zap.Any("plugins", obj.Plugins),
-		zap.String("cluster", "default"),
+		zap.String("cluster", pc.cluster.name),
 		zap.String("url", pc.url),
 	)
 	if err := pc.cluster.HasSynced(ctx); err != nil {
@@ -218,13 +217,12 @@ func (pc *pluginConfigClient) Update(ctx context.Context, obj *v1.PluginConfig) 
 		return nil, err
 	}
 	url := pc.url + "/" + obj.ID
-	log.Debugw("updating pluginConfig", zap.ByteString("body", body), zap.String("url", url))
-	resp, err := pc.cluster.updateResource(ctx, url, "pluginConfig", bytes.NewReader(body))
+	resp, err := pc.cluster.updateResource(ctx, url, "pluginConfig", body)
 	pc.cluster.metricsCollector.IncrAPISIXRequest("pluginConfig")
 	if err != nil {
 		return nil, err
 	}
-	pluginConfig, err := resp.Item.pluginConfig()
+	pluginConfig, err := resp.pluginConfig()
 	if err != nil {
 		return nil, err
 	}

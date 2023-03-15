@@ -14,25 +14,26 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package gateway_translation
+package translation
 
 import (
 	"errors"
 
 	"go.uber.org/zap"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/gateway/types"
 )
 
 const (
-	kindTCPRoute  gatewayv1alpha2.Kind = "TCPRoute"
-	kindTLSRoute  gatewayv1alpha2.Kind = "TLSRoute"
-	kindHTTPRoute gatewayv1alpha2.Kind = "HTTPRoute"
+	kindUDPRoute  gatewayv1beta1.Kind = "UDPRoute"
+	kindTCPRoute  gatewayv1beta1.Kind = "TCPRoute"
+	kindTLSRoute  gatewayv1beta1.Kind = "TLSRoute"
+	kindHTTPRoute gatewayv1beta1.Kind = "HTTPRoute"
 )
 
-func (t *translator) TranslateGatewayV1Alpha2(gateway *gatewayv1alpha2.Gateway) (map[string]*types.ListenerConf, error) {
+func (t *translator) TranslateGatewayV1beta1(gateway *gatewayv1beta1.Gateway) (map[string]*types.ListenerConf, error) {
 	listeners := make(map[string]*types.ListenerConf)
 
 	for i, listener := range gateway.Spec.Listeners {
@@ -81,31 +82,36 @@ func (t *translator) TranslateGatewayV1Alpha2(gateway *gatewayv1alpha2.Gateway) 
 	return listeners, nil
 }
 
-func validateListenerConfigurations(gateway *gatewayv1alpha2.Gateway, idx int, allowedKinds []gatewayv1alpha2.RouteGroupKind,
-	listener gatewayv1alpha2.Listener) error {
+func validateListenerConfigurations(gateway *gatewayv1beta1.Gateway, idx int, allowedKinds []gatewayv1beta1.RouteGroupKind,
+	listener gatewayv1beta1.Listener) error {
 	// Check protocols and allowedKinds
 	protocol := listener.Protocol
-	if protocol == gatewayv1alpha2.HTTPProtocolType || protocol == gatewayv1alpha2.TCPProtocolType {
+	if protocol == gatewayv1beta1.HTTPProtocolType || protocol == gatewayv1beta1.TCPProtocolType || protocol == gatewayv1beta1.UDPProtocolType {
 		// Non-TLS
 		if listener.TLS != nil {
 			return errors.New("non-empty TLS conf for protocol " + string(protocol))
 		}
-		if protocol == gatewayv1alpha2.HTTPProtocolType {
+		if protocol == gatewayv1beta1.HTTPProtocolType {
 			if len(allowedKinds) != 1 || allowedKinds[0].Kind != kindHTTPRoute {
 				return errors.New("HTTP protocol must allow route type HTTPRoute")
 			}
-		} else if protocol == gatewayv1alpha2.TCPProtocolType {
+		} else if protocol == gatewayv1beta1.TCPProtocolType {
 			if len(allowedKinds) != 1 || allowedKinds[0].Kind != kindTCPRoute {
 				return errors.New("TCP protocol must allow route type TCPRoute")
 			}
+		} else if protocol == gatewayv1beta1.UDPProtocolType {
+			if len(allowedKinds) != 1 || allowedKinds[0].Kind != kindUDPRoute {
+				return errors.New("UDP protocol must allow route type UDPRoute")
+			}
 		}
-	} else if protocol == gatewayv1alpha2.HTTPSProtocolType || protocol == gatewayv1alpha2.TLSProtocolType {
+
+	} else if protocol == gatewayv1beta1.HTTPSProtocolType || protocol == gatewayv1beta1.TLSProtocolType {
 		// TLS
 		if listener.TLS == nil {
 			return errors.New("empty TLS conf for protocol " + string(protocol))
 		}
 
-		if *listener.TLS.Mode == gatewayv1alpha2.TLSModeTerminate {
+		if *listener.TLS.Mode == gatewayv1beta1.TLSModeTerminate {
 			if len(listener.TLS.CertificateRefs) == 0 {
 				return errors.New("TLS mode Terminate requires CertificateRefs")
 			}
@@ -127,14 +133,14 @@ func validateListenerConfigurations(gateway *gatewayv1alpha2.Gateway, idx int, a
 			}
 		}
 
-		if protocol == gatewayv1alpha2.HTTPSProtocolType {
-			if *listener.TLS.Mode != gatewayv1alpha2.TLSModeTerminate {
+		if protocol == gatewayv1beta1.HTTPSProtocolType {
+			if *listener.TLS.Mode != gatewayv1beta1.TLSModeTerminate {
 				return errors.New("TLS mode for HTTPS protocol must be Terminate")
 			}
 			if len(allowedKinds) != 1 || allowedKinds[0].Kind != kindHTTPRoute {
 				return errors.New("HTTP protocol must allow route type HTTPRoute")
 			}
-		} else if protocol == gatewayv1alpha2.TLSProtocolType {
+		} else if protocol == gatewayv1beta1.TLSProtocolType {
 			for _, kind := range allowedKinds {
 				if kind.Kind != kindTLSRoute && kind.Kind != kindTCPRoute {
 					return errors.New("TLS protocol only support route type TLSRoute and TCPRoute")
@@ -146,45 +152,37 @@ func validateListenerConfigurations(gateway *gatewayv1alpha2.Gateway, idx int, a
 	return nil
 }
 
-func getAllowedKinds(listener gatewayv1alpha2.Listener) ([]gatewayv1alpha2.RouteGroupKind, error) {
-	var expectedKinds []gatewayv1alpha2.RouteGroupKind
-	group := gatewayv1alpha2.Group(gatewayv1alpha2.GroupName)
+func getAllowedKinds(listener gatewayv1beta1.Listener) ([]gatewayv1beta1.RouteGroupKind, error) {
+	var expectedKinds []gatewayv1beta1.RouteGroupKind
+	group := gatewayv1beta1.Group(gatewayv1beta1.GroupName)
+
+	var kind gatewayv1beta1.Kind
 	switch listener.Protocol {
-	case gatewayv1alpha2.HTTPProtocolType, gatewayv1alpha2.HTTPSProtocolType:
-		expectedKinds = []gatewayv1alpha2.RouteGroupKind{
-			{
-				Group: &group,
-				Kind:  kindHTTPRoute,
-			},
-		}
-	case gatewayv1alpha2.TLSProtocolType:
-		expectedKinds = []gatewayv1alpha2.RouteGroupKind{
-			{
-				Group: &group,
-				Kind:  kindTLSRoute,
-			},
-			{
-				Group: &group,
-				Kind:  kindTCPRoute,
-			},
-		}
-	case gatewayv1alpha2.TCPProtocolType:
-		expectedKinds = []gatewayv1alpha2.RouteGroupKind{
-			{
-				Group: &group,
-				Kind:  kindTCPRoute,
-			},
-		}
+	case gatewayv1beta1.HTTPProtocolType, gatewayv1beta1.HTTPSProtocolType:
+		kind = kindHTTPRoute
+	case gatewayv1beta1.TLSProtocolType:
+		kind = kindTLSRoute
+	case gatewayv1beta1.TCPProtocolType:
+		kind = kindTCPRoute
+	case gatewayv1beta1.UDPProtocolType:
+		kind = kindUDPRoute
 	default:
 		return nil, errors.New("unknown protocol " + string(listener.Protocol))
+	}
+
+	expectedKinds = []gatewayv1beta1.RouteGroupKind{
+		{
+			Group: &group,
+			Kind:  kind,
+		},
 	}
 
 	if listener.AllowedRoutes == nil || len(listener.AllowedRoutes.Kinds) == 0 {
 		return expectedKinds, nil
 	}
 
-	uniqueAllowedKinds := make(map[gatewayv1alpha2.Kind]struct{})
-	var allowedKinds []gatewayv1alpha2.RouteGroupKind
+	uniqueAllowedKinds := make(map[gatewayv1beta1.Kind]struct{})
+	var allowedKinds []gatewayv1beta1.RouteGroupKind
 
 	for _, kind := range listener.AllowedRoutes.Kinds {
 		expected := false

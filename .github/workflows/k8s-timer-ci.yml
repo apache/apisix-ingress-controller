@@ -26,13 +26,13 @@ on:
 
 jobs:
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
       go: ${{ steps.filter.outputs.go }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
 
@@ -56,7 +56,7 @@ jobs:
               - 'utils/**'
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: changes
 
     steps:
@@ -97,13 +97,13 @@ jobs:
 
           echo "creating images cache..."
           docker save \
-            localhost:5000/apache/apisix:dev \
-            localhost:5000/bitnami/etcd:dev \
-            localhost:5000/apache/apisix-ingress-controller:dev \
-            localhost:5000/kennethreitz/httpbin:dev \
-            localhost:5000/test-backend:dev \
-            localhost:5000/jmalloc/echo-server:dev \
-            localhost:5000/busybox:dev \
+            ${REGISTRY}/apisix:dev \
+            ${REGISTRY}/etcd:dev \
+            ${REGISTRY}/apisix-ingress-controller:dev \
+            ${REGISTRY}/httpbin:dev \
+            ${REGISTRY}/test-backend:dev \
+            ${REGISTRY}/echo-server:dev \
+            ${REGISTRY}/busybox:dev \
             | pigz > docker.tar.gz
 
       - name: cache
@@ -115,9 +115,9 @@ jobs:
   prepare:
     needs: changes
     if: needs.changes.outputs.go == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
 
@@ -129,7 +129,7 @@ jobs:
       - changes
       - prepare
       - build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false # If false, GitHub will not cancels all in-progress jobs in the matrix if any matrix job fails.
       matrix:
@@ -139,7 +139,7 @@ jobs:
           - v1.21.1@sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
 
@@ -154,7 +154,7 @@ jobs:
           sudo cp ~/go/bin/ginkgo /usr/local/bin
 
       - name: cache
-        uses: actions/download-artifact@v2 # v2
+        uses: actions/download-artifact@v3 # v3
         with:
           name: docker.tar.gz
 

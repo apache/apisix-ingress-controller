@@ -1,7 +1,11 @@
 ---
-title: ApisixUpstream Reference
+title: ApisixUpstream
+keywords:
+  - APISIX ingress
+  - Apache APISIX
+  - ApisixUpstream
+description: Reference for ApisixUpstream custom Kubernetes resource.
 ---
-
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -21,51 +25,57 @@ title: ApisixUpstream Reference
 #
 -->
 
-|     Field     |  Type    | Description    |
-|---------------|----------|----------------|
-| scheme        | string   | The protocol used to talk to the Service, can be `http`, `https`, `grpc`, `grpcs` default is `http`.   |
-| loadbalancer  | object   | The load balancing algorithm of this upstream service |
-| loadbalancer.type | string | The load balancing type, can be `roundrobin`, `ewma`, `least_conn`, `chash`, default is `roundrobin`. |
-| loadbalancer.hashOn | string | The hash value source scope, only take effects if the `chash` algorithm is in use. Values can `vars`, `header`, `vars_combinations`, `cookie` and `consumers`, default is `vars`. |
-| loadbalancer.key | string | The hash key, only in valid if the `chash` algorithm is used.
-| retries | int | The retry count. |
-| timeout | object | The timeout settings. |
-| timeout.connect | time duration in the form "72h3m0.5s" | The connect timeout. |
-| timeout.read | time duration in the form "72h3m0.5s" | The read timeout. |
-| timeout.send | time duration in the form "72h3m0.5s" | The send timeout. |
-| healthCheck | object | The health check parameters, see [Health Check](https://github.com/apache/apisix/blob/master/docs/en/latest/health-check.md) for more details. |
-| healthCheck.active | object | active health check configuration, which is a mandatory field. |
-| healthCheck.active.type | string | health check type, can be `http`, `https` and `tcp`, default is `http`. |
-| healthCheck.active.timeout | time duration in the form "72h3m0.5s" | the timeout settings for the probe, default is `1s`. |
-| healthCheck.active.concurrency | int | how many probes can be sent simultaneously, default is `10`. |
-| healthCheck.active.host | string | host header in http probe request, only in valid if the active health check type is `http` or `https`. |
-| healthCheck.active.port | int | target port to receive probes, it's necessary to specify this field if the health check service exposes by different port, note the port value here is the container port, not the service port. |
-| healthCheck.active.httpPath | string | the HTTP URI path in http probe, only in valid if the active health check type is `http` or `https`. |
-| healthCheck.active.strictTLS | boolean | whether to use the strict mode when use TLS, only in valid if the active health check type is `https`, default is `true`. |
-| healthCheck.active.requestHeaders | array of string | Extra HTTP requests carried in the http probe, only in valid if the active health check type is `http` or `https`. |
-| healthCheck.active.healthy | object | The conditions to judge an endpoint is healthy. |
-| healthCheck.active.healthy.successes | int | The number of consecutive requests needed to set an endpoint as healthy, default is `2`. |
-| healthCheck.active.healthy.httpCodes | array of integer | Good status codes list to check whether a probe is successful, only in valid if the active health check type is `http` or `https`, default is `[200, 302]`. |
-| healthCheck.active.healthy.interval | time duration in the form "72h3m0.5s" | The probes sent interval (for healthy endpoints). |
-| healthCheck.active.unhealthy | object | The conditions to judge an endpoint is unhealthy. |
-| healthCheck.active.unhealthy.httpFailures | int | The number of consecutive http requests needed to set an endpoint as unhealthy, only in valid if the active health check type is `http` or `https`, default is `5`. |
-| healthCheck.active.unhealthy.tcpFailures | int | The number of consecutive tcp connections needed to set an endpoint as unhealthy, only in valid if the active health check type is `tcp`, default is `2`. |
-| healthCheck.active.unhealthy.httpCodes | array of integer | Bad status codes list to check whether a probe is failed, only in valid if the active health check type is `http` or `https`, default is `[429, 404, 500, 501, 502, 503, 504, 505]`. |
-| healthCheck.active.unhealthy.interval | time duration in the form "72h3m0.5s" | The probes sent interval (for unhealthy endpoints). |
-| healthCheck.passive | object | passive health check configuration, which is an optional field. |
-| healthCheck.passive.type | string | health check type, can be `http`, `https` and `tcp`, default is `http`. |
-| healthCheck.passive.healthy | object | The conditions to judge an endpoint is healthy. |
-| healthCheck.passive.healthy.successes | int | The number of consecutive requests needed to set an endpoint as healthy, default is `5`. |
-| healthCheck.passive.healthy.httpCodes | array of integer | Good status codes list to check whether a probe is successful, only in valid if the active health check type is `http` or `https`, default is `[200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 305, 306, 307, 308]`. |
-| healthCheck.passive.unhealthy | object | The conditions to judge an endpoint is unhealthy. |
-| healthCheck.passive.unhealthy.httpFailures | int | The number of consecutive http requests needed to set an endpoint as unhealthy, only in valid if the active health check type is `http` or `https`, default is `5`. |
-| healthCheck.passive.unhealthy.tcpFailures | int | The number of consecutive tcp connections needed to set an endpoint as unhealthy, only in valid if the active health check type is `tcp`, default is `2`. |
-| healthCheck.passive.unhealthy.httpCodes | array of integer | Bad status codes list to check whether a probe is failed, only in valid if the active health check type is `http` or `https`, default is `[429, 404, 500, 501, 502, 503, 504, 505]`. |
-| portLevelSettings | array | Settings for each individual port. |
-| portLevelSettings.port | int | The port number defined in the Kubernetes Service, must be a valid port. |
-| portLevelSettings.scheme | string | same as `scheme` but takes higher precedence. |
-| portLevelSettings.loadbalancer | object | same as `loadbalancer` but takes higher precedence. |
-| portLevelSettings.healthCheck | object | same as `healthCheck` but takes higher precedence. |
-| subsets | array | service subset list, use pod labels to organize service endpoints to different groups. |
-| subsets[].name | string | the subset name. |
-| subsets[].labels | object | the subset label map. |
+See [concepts](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_upstream) to learn more about how to use the ApisixUpstream resource.
+
+## Spec
+
+See the [definition](https://github.com/apache/apisix-ingress-controller/blob/master/samples/deploy/crd/v1/ApisixUpstream.yaml) on GitHub.
+
+| Attribute                                  | Type              | Description                                                                                                                                                                                                                      |
+|--------------------------------------------|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| scheme                                     | string            | Scheme/Protocol used to talk to the Upstream service. Can be one of `http`, `https`, `grpc`, `grpcs`. Defaults to `http`.                                                                                                        |
+| loadbalancer                               | object            | Load balancer configuration.                                                                                                                                                                                                     |
+| loadbalancer.type                          | string            | Load balancing algorithm to use. Can be one of `roundrobin`, `ewma`, `least_conn`, or `chash`. Defaults to `roundrobin`.                                                                                                         |
+| loadbalancer.hashOn                        | string            | Value to hash on. Can only be used if the `type` is `chash`. Can be one of `vars`, `header`, `vars_combinations`, `cookie`, and `consumers`. Defaults to `vars`.                                                                 |
+| loadbalancer.key                           | string            | Hash key. Can only be used if the `type` is `chash`.                                                                                                                                                                             |
+| retries                                    | int               | Number of retries while passing the request to the Upstream.                                                                                                                                                                     |
+| timeout                                    | object            | Timeouts for connecting, sending, and receiving messages between Ingress and the service.                                                                                                                                        |
+| timeout.connect                            | string            | Connect timeout in the form "72h3m0.5s".                                                                                                                                                                                         |
+| timeout.read                               | string            | Read timeout in the form "72h3m0.5s".                                                                                                                                                                                            |
+| timeout.send                               | string            | Send timeout in the form "72h3m0.5s".                                                                                                                                                                                            |
+| healthCheck                                | object            | Configures the parameters of the [health check](https://apisix.apache.org/docs/apisix/tutorials/health-check/).                                                                                                                  |
+| healthCheck.active                         | object            | Active health check configuration. Required if configuring health check.                                                                                                                                                         |
+| healthCheck.active.type                    | string            | Health check type. Can be one of `http`, `https`, or `tcp`. Defaults to `http`.                                                                                                                                                  |
+| healthCheck.active.timeout                 | string            | Timeout in the form "72h3m0.5s". Defaults to `1s`.                                                                                                                                                                               |
+| healthCheck.active.concurrency             | int               | Number of probes that can be sent simultaneously. Defaults to `10`.                                                                                                                                                              |
+| healthCheck.active.host                    | string            | Host header in the HTTP probe request. Valid only if the health check type is `http` or `https`.                                                                                                                                 |
+| healthCheck.active.port                    | int               | Target port to receive probes. It is required to specify this attribute if the health check service exposes different ports. Note that the port is the container port and not the service port.                                  |
+| healthCheck.active.httpPath                | string            | URI in the HTTP probe request. Valid only if the health check type is `http` or `https`.                                                                                                                                         |
+| healthCheck.active.strictTLS               | boolean           | When set to `true` enables the strict TLS mode. Valid only if the health check type is `https`. Defaults to `true`.                                                                                                              |
+| healthCheck.active.requestHeaders          | array of strings  | Additional HTTP request headers carried in the HTTP probe. Valid only if the health check type is `http` or `https`.                                                                                                             |
+| healthCheck.active.healthy                 | object            | Conditions to check to see if an endpoint is healthy.                                                                                                                                                                            |
+| healthCheck.active.healthy.successes       | int               | Number of consecutive successful requests before an endpoint is set as healthy. By default set to `2`.                                                                                                                           |
+| healthCheck.active.healthy.httpCodes       | array of integers | Status codes that will indicate an endpoint is healthy. Valid only if the health check type is `http` or `https`. Defaults to `[200, 302]`.                                                                                      |
+| healthCheck.active.healthy.interval        | string            | Send interval for the probes in the form "72h3m0.5s".                                                                                                                                                                            |
+| healthCheck.active.unhealthy               | object            | Conditions to check to see if an endpoint is unhealthy.                                                                                                                                                                          |
+| healthCheck.active.unhealthy.httpFailures  | int               | Number of consecutive unsuccessful HTTP requests before an endpoint is set as unhealthy. Valid only if the health check type is `http` or `https`. By default set to `5`.                                                        |
+| healthCheck.active.unhealthy.tcpFailures   | int               | Number of consecutive unsuccessful TCP requests before an endpoint is set as unhealthy. Valid only if the health check type is `tcp`. By default set to `2`.                                                                     |
+| healthCheck.active.unhealthy.httpCodes     | array of integers | Status codes that will indicate an endpoint is unhealthy. Valid only if the health check type is `http` or `https`. Defaults to `[429, 404, 500, 501, 502, 503, 504, 505]`.                                                      |
+| healthCheck.active.unhealthy.interval      | string            | Send interval for the probes in the form "72h3m0.5s".                                                                                                                                                                            |
+| healthCheck.passive                        | object            | Passive health check configuration.                                                                                                                                                                                              |
+| healthCheck.passive.type                   | string            | Health check type. Can be one of `http`, `https`, or `tcp`. Defaults to `http`.                                                                                                                                                  |
+| healthCheck.passive.healthy                | object            | Conditions to check to see if an endpoint is healthy.                                                                                                                                                                            |
+| healthCheck.passive.healthy.successes      | int               | Number of consecutive successful requests before an endpoint is set as healthy. By default set to `5`.                                                                                                                           |
+| healthCheck.passive.healthy.httpCodes      | array of integers | Status codes that will indicate an endpoint is healthy. Valid only if the health check type is `http` or `https`. Defaults to `[200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 305, 306, 307, 308]`. |
+| healthCheck.passive.unhealthy              | object            | Conditions to check to see if an endpoint is unhealthy.                                                                                                                                                                          |
+| healthCheck.passive.unhealthy.httpFailures | int               | Number of consecutive unsuccessful HTTP requests before an endpoint is set as unhealthy. Valid only if the health check type is `http` or `https`. By default set to `5`.                                                        |
+| healthCheck.passive.unhealthy.tcpFailures  | int               | Number of consecutive unsuccessful TCP requests before an endpoint is set as unhealthy. Valid only if the health check type is `tcp`. By default set to `2`.                                                                     |
+| healthCheck.passive.unhealthy.httpCodes    | array of integers | Status codes that will indicate an endpoint is unhealthy. Valid only if the health check type is `http` or `https`. Defaults to `[429, 404, 500, 501, 502, 503, 504, 505]`.                                                      |
+| portLevelSettings                          | array             | Settings for individual ports.                                                                                                                                                                                                   |
+| portLevelSettings.port                     | int               | Valid port number defined in the Kubernetes service.                                                                                                                                                                             |
+| portLevelSettings.scheme                   | string            | Scheme to use on the specific port. Will override the global `scheme` attribute.                                                                                                                                                 |
+| portLevelSettings.loadbalancer             | object            | Load balancer to use on the specific port. Will override the global `loadbalancer` attribute.                                                                                                                                    |
+| portLevelSettings.healthCheck              | object            | Health check configuration on the specific port. Will override the global `healthCheck` attribute.                                                                                                                               |
+| subsets                                    | array             | List of service subsets. Use pod labels to organize service endpoints to different groups.                                                                                                                                       |
+| subsets[].name                             | string            | Name of the subset.                                                                                                                                                                                                              |
+| subsets[].labels                           | object            | Label map of the subset.                                                                                                                                                                                                         |

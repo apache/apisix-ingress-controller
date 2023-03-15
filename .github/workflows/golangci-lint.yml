@@ -25,7 +25,7 @@ on:
   pull_request:
     branches:
       - master
-      - v1.5.0
+      - v1.6.0
     type: [review_requested, ready_for_review]
 
 jobs:
@@ -36,7 +36,7 @@ jobs:
       go: ${{ steps.filter.outputs.go }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
 
@@ -58,6 +58,7 @@ jobs:
               - 'test/e2e/**/*'
               - 'conf/**'
               - 'utils/**'
+              - ".github/**"
   golangci:
     name: lint
     needs: changes
@@ -65,7 +66,7 @@ jobs:
       (needs.changes.outputs.go == 'true')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup Go Env
         uses: actions/setup-go@v3
         with:

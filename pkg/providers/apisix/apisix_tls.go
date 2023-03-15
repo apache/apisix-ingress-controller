@@ -46,10 +46,6 @@ type apisixTlsController struct {
 	workqueue workqueue.RateLimitingInterface
 	workers   int
 
-	secretInformer    cache.SharedIndexInformer
-	apisixTlsLister   kube.ApisixTlsLister
-	apisixTlsInformer cache.SharedIndexInformer
-
 	// secretSSLMap stores reference from K8s secret to ApisixTls
 	// type: Map<SecretKey, Map<ApisixTlsKey, SSL object in APISIX>>
 	// SecretKey -> ApisixTlsKey -> SSL object in APISIX
@@ -57,20 +53,16 @@ type apisixTlsController struct {
 	secretSSLMap *sync.Map
 }
 
-func newApisixTlsController(common *apisixCommon, apisixTlsInformer cache.SharedIndexInformer, apisixTlsLister kube.ApisixTlsLister) *apisixTlsController {
+func newApisixTlsController(common *apisixCommon) *apisixTlsController {
 	c := &apisixTlsController{
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixTls"),
 		workers:      1,
 
-		secretInformer:    common.SecretInformer,
-		apisixTlsLister:   apisixTlsLister,
-		apisixTlsInformer: apisixTlsInformer,
-
 		secretSSLMap: new(sync.Map),
 	}
 
-	c.apisixTlsInformer.AddEventHandler(
+	c.ApisixTlsInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    c.onAdd,
 			UpdateFunc: c.onUpdate,
@@ -85,10 +77,6 @@ func (c *apisixTlsController) run(ctx context.Context) {
 	defer log.Info("ApisixTls controller exited")
 	defer c.workqueue.ShutDown()
 
-	if ok := cache.WaitForCacheSync(ctx.Done(), c.apisixTlsInformer.HasSynced, c.secretInformer.HasSynced); !ok {
-		log.Errorf("informers sync failed")
-		return
-	}
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
 	}
@@ -120,9 +108,9 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 	var multiVersionedTls kube.ApisixTls
 	switch event.GroupVersion {
 	case config.ApisixV2beta3:
-		multiVersionedTls, err = c.apisixTlsLister.V2beta3(namespace, name)
+		multiVersionedTls, err = c.ApisixTlsLister.V2beta3(namespace, name)
 	case config.ApisixV2:
-		multiVersionedTls, err = c.apisixTlsLister.V2(namespace, name)
+		multiVersionedTls, err = c.ApisixTlsLister.V2(namespace, name)
 	default:
 		return fmt.Errorf("unsupported ApisixTls group version %s", event.GroupVersion)
 	}
@@ -385,7 +373,7 @@ func (c *apisixTlsController) onDelete(obj interface{}) {
 }
 
 func (c *apisixTlsController) ResourceSync() {
-	objs := c.apisixTlsInformer.GetIndexer().List()
+	objs := c.ApisixTlsInformer.GetIndexer().List()
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
@@ -412,6 +400,9 @@ func (c *apisixTlsController) ResourceSync() {
 
 // recordStatus record resources status
 func (c *apisixTlsController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
+	if c.Kubernetes.DisableStatusUpdates {
+		return
+	}
 	// build condition
 	message := utils.CommonSuccessMessage
 	if err != nil {
@@ -454,7 +445,7 @@ func (c *apisixTlsController) recordStatus(at interface{}, reason string, err er
 			conditions := make([]metav1.Condition, 0)
 			v.Status.Conditions = conditions
 		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+		if utils.VerifyConditions(&v.Status.Conditions, condition) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := apisixClient.ApisixV2().ApisixTlses(v.Namespace).
 				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
@@ -501,7 +492,7 @@ func (c *apisixTlsController) syncSSLsAndUpdateStatusV2beta3(ctx context.Context
 			return true
 		}
 
-		multiVersioned, err := c.apisixTlsLister.V2beta3(tlsNamespace, tlsName)
+		multiVersioned, err := c.ApisixTlsLister.V2beta3(tlsNamespace, tlsName)
 		if err != nil {
 			log.Warnw("secret related ApisixTls resource not found, skip",
 				zap.String("ApisixTls", tlsMetaKey),
@@ -588,7 +579,7 @@ func (c *apisixTlsController) syncSSLsAndUpdateStatusV2(ctx context.Context, ev 
 			return true
 		}
 
-		multiVersioned, err := c.apisixTlsLister.V2(tlsNamespace, tlsName)
+		multiVersioned, err := c.ApisixTlsLister.V2(tlsNamespace, tlsName)
 		if err != nil {
 			log.Warnw("secret related ApisixTls resource not found, skip",
 				zap.String("ApisixTls", tlsMetaKey),

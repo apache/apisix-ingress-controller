@@ -27,9 +27,6 @@ func MountWebhooks(r *gin.Engine, co *apisix.ClusterOptions) {
 	// init the schema client, it will be used to query schema of objects.
 	_, _ = validation.GetSchemaClient(co)
 
-	// grouping validation routes
-	validationGroup := r.Group("/validation")
-	{
-		validationGroup.POST("/apisix", validation.NewHandlerFunc("apisix", validation.ApisixValidator))
-	}
+	r.POST("/validate", validation.NewHandlerFunc("apisix", validation.Validator))
+
 }

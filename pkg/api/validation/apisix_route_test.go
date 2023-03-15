@@ -22,7 +22,6 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta2"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	api "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -130,11 +129,6 @@ func Test_validatePlugin(t *testing.T) {
 			}
 
 			gotValid, _ = ValidatePlugin(fakeClient, tt.pluginName, v2beta3.ApisixRouteHTTPPluginConfig(tt.pluginConfig))
-			if gotValid != tt.wantValid {
-				t.Errorf("validatePlugin() gotValid = %v, want %v", gotValid, tt.wantValid)
-			}
-
-			gotValid, _ = ValidatePlugin(fakeClient, tt.pluginName, v2beta2.ApisixRouteHTTPPluginConfig(tt.pluginConfig))
 			if gotValid != tt.wantValid {
 				t.Errorf("validatePlugin() gotValid = %v, want %v", gotValid, tt.wantValid)
 			}

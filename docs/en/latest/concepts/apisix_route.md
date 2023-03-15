@@ -1,5 +1,10 @@
 ---
 title: ApisixRoute
+keywords:
+  - APISIX ingress
+  - Apache APISIX
+  - ApisixRoute
+description: Guide to using ApisixRoute custom Kubernetes resource.
 ---
 
 <!--
@@ -21,18 +26,13 @@ title: ApisixRoute
 #
 -->
 
-`ApisixRoute` is a CRD resource which focus on how to route traffic to
-expected backend, it exposes many features supported by Apache APISIX.
-Compared to [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/),
-functions are implemented in a more native way, with stronger semantics.
+`ApisixRoute` is a Kubernetes CRD object that provides a spec to route traffic to services with APISIX. It is much more capable and easy to use compared to the default [Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) resource.
 
-Path based route rules
-----------------------
+See [reference](https://apisix.apache.org/docs/ingress-controller/references/apisix_route_v2) for the full API documentation.
 
-URI path are always used to split traffic, for instance, requests with host `foo.com` and
-`/foo` prefix should be routed to service `foo` while requests which path is `/bar`
-should be routed to service `bar`, in the manner of `ApisixRoute`, the configuration
-should be:
+## Path-based routing
+
+The example below shows how you can configure Ingress to route traffic to two backend services. Requests with host `foo.com` and `/foo` prefix are routed to the `foo` service and requests with the `/bar` prefix are routed to the `bar` service.
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -46,31 +46,30 @@ spec:
       hosts:
       - foo.com
       paths:
-      - "/foo*"
+      - "/foo/*"
     backends:
     - serviceName: foo
       servicePort: 80
   - name: bar
     match:
       paths:
-        - "/bar"
+        - "/bar/*"
     backends:
     - serviceName: bar
       servicePort: 80
 ```
 
-There are two path types can be used, `prefix` and `exact`, default is `exact`,
-while if `prefix` is desired, just append a `*`, for instance, `/id/*` matches
-all paths with the prefix of `/id/`.
+:::info IMPORTANT
 
-Advanced route features
------------------------
+Paths are matched exactly by default. To match a prefix, use `*`. For example `/id/*` will match all paths with the `/id/` prefix.
 
-Path based route are most common, but if it's not enough, try
-other route features in `ApisixRoute` such as `methods`, `exprs`.
+:::
 
-The `methods` splits traffic according to the HTTP method, the following configurations routes requests
-with `GET` method to `foo` service (a Kubernetes Service).
+## Advanced routing
+
+`ApisixRoute` resource can also be used to configure advanced routing through `methods` and `exprs`.
+
+The `methods` attribute can be used to route traffic based on the HTTP method as shown in the example below. This will route all requests with the `GET` method to the `foo` service.
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -90,8 +89,11 @@ spec:
         servicePort: 80
 ```
 
-The `exprs` allows user to configure match conditions with arbitrary predicates in HTTP, such as queries, HTTP headers, Cookie.
-It's composed by several expressions, which in turn composed by subject, operator and value/set.
+The `exprs` attribute is used to configure conditions to match HTTP queries, headers, and cookies.
+
+It can be composed of several expressions and each of them in-turn is composed of a subject, operator, and a value/set.
+
+The configuration below will route all requests with a query parameter `id` with the value `2143` to the `foo` service:
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -115,17 +117,9 @@ spec:
         servicePort: 80
 ```
 
-The above configuration configures an extra route match condition, which asks the
-query `id` must be equal to `2143`.
+## Service resolution granularity
 
-Service Resolution Granularity
-------------------------------
-
-By default a referenced Service will be watched, so
-it's newest endpoints list can be updated to Apache APISIX.
-apisix-ingress-controller provides another mechanism that just use
-the `ClusterIP` of this service, if that's what you want, just set
-the `resolveGranularity` to `service` (default is `endpoint`).
+By default, the service referenced will be watched to update its endpoint list in APISIX. To just use the `ClusterIP` of the service, you can set the `resolveGranularity` attribute to `service` (defaults to `endpoint`):
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -146,13 +140,11 @@ spec:
         resolveGranularity: service
 ```
 
-Weight Based Traffic Split
---------------------------
+## Weight-based traffic split
 
-There can more than one backend specified in one route rule,
-when multiple backends co-exist there, the traffic split based on weights
-will be applied (which actually uses the [traffic-split](http://apisix.apache.org/docs/apisix/plugins/traffic-split/) plugin in Apache APISIX).
-You can specify weight for each backend, the default weight is `100`.
+You can configure more than one backend services in a route rule and set weights to route traffic between them. This uses the [traffic-split](http://apisix.apache.org/docs/apisix/plugins/traffic-split/) Plugin internally. The default weight is `100`.
+
+The example below shows routing traffic between two services with a weight ratio `100:50`. This means that 2/3 of the requests (with `GET` method and `User-Agent` header matching the regex pattern `.*Chrome.*`) will be routed to the `foo` service and 1/3 of the requests will be routed to the `bar` service:
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -182,15 +174,17 @@ spec:
         weight: 50
 ```
 
-The above `ApisixRoute` has one route rule, which contains two backends `foo` and `bar`, the weight ratio is `100:50`,
-which means `2/3` requests (with `GET` method and `User-Agent` matching regex pattern `.*Chrome.*`) will be sent to service `foo` and `1/3` requests
-will be proxied to service `bar`.
+## Plugins
 
-Plugins
--------
+APISIX's [80+ Plugins](https://apisix.apache.org/docs/apisix/plugins/batch-requests/) can be used with APISIX Ingress. These Plugins have the same name as in the APISIX documentation.
 
-Apache APISIX provides more than 70 [plugins](https://github.com/apache/apisix/tree/master/docs/en/latest/plugins), which can be used
-in `ApisixRoute`. All configuration items are named same to the one in APISIX.
+:::note
+
+If the Plugin is not enabled in APISIX by default, you can enable it by adding it to the `plugins` attribute in your `values.yaml` file while installing APISIX and Ingress controller via Helm. Alternatively, you can directly modify your APISIX configuration file (`conf/config.yaml`) to enable/disable Plugins.
+
+:::
+
+The example below configures [cors](https://apisix.apache.org/docs/apisix/plugins/cors/) Plugin for the route:
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -213,14 +207,56 @@ spec:
           enable: true
 ```
 
-The above configuration enables [Cors](https://github.com/apache/apisix/blob/master/docs/en/latest/plugins/cors.md) plugin for requests
-which host is `local.httpbin.org`.
+### Config with secretRef
 
-Websocket Proxy
----------------
+Plugins are supported to be configured from kubernetes secret with `secretRef`.
 
-[Websocket](https://en.wikipedia.org/wiki/WebSocket#:~:text=WebSocket%20is%20a%20computer%20communications,WebSocket%20is%20distinct%20from%20HTTP.) service can be proxied
-by creating a route with specifying the `websocket` field.
+The priority is `plugins.secretRef > plugins.config`. That is, the duplicated key in `plugins.config` are replaced by `plugins.secretRef`.
+
+Example below configures echo plugin. The final values of `before_body`, `body` and `after_body` are "This is the replaced preface", "my custom body" and "This is the epilogue", respectively.
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: echo
+data:
+  # content is "This is the replaced preface"
+  before_body: IlRoaXMgaXMgdGhlIHJlcGxhY2VkIHByZWZhY2Ui
+  # content is "my custom body"
+  body: Im15IGN1c3RvbSBib2R5Ig==
+---
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  http:
+    - name: rule1
+      match:
+        hosts:
+          - httpbin.org
+        paths:
+          - /ip
+      backends:
+        - serviceName: %s
+          servicePort: %d
+          weight: 10
+      plugins:
+        - name: echo
+          enable: true
+          config:
+            before_body: "This is the preface"
+            after_body: "This is the epilogue"
+            headers:
+              X-Foo: v1
+              X-Foo2: v2
+          secretRef: echo
+```
+
+## Websocket proxy
+
+You can route requests to [WebSocket](https://en.wikipedia.org/wiki/WebSocket#:~:text=WebSocket%20is%20a%20computer%20communications,WebSocket%20is%20distinct%20from%20HTTP.) services by setting the `websocket` attribute to `true` as shown below:
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -241,10 +277,11 @@ spec:
       websocket: true
 ```
 
-TCP Route
----------
+## TCP route
 
-apisix-ingress-controller supports the port-based tcp route.
+You can configure APISIX Ingress to route traffic to TCP servers.
+
+The example below configures APISIX Ingress to route traffic from port `9100` to the service `tcp-server`:
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -262,14 +299,17 @@ spec:
         servicePort: 8080
 ```
 
-The above yaml configuration guides TCP traffic entered to the Ingress proxy server (i.e. [APISIX](https://apisix.apache.org)) port `9100` should be routed to the backend service `tcp-server`.
+:::note
 
-Note since APISIX doesn't support dynamic listening, so here the `9100` port should be pre-defined in APISIX [configuration](https://github.com/apache/apisix/blob/master/conf/config-default.yaml#L101).
+The `ingressPort` (`9100` here) should be pre-defined in the [APISIX configuration](https://github.com/apache/apisix/blob/master/conf/config-default.yaml#L101).
 
-UDP Route
----------
+:::
 
-apisix-ingress-controller supports the port-based udp route.
+## UDP route
+
+You can configure APISIX Ingress to route traffic to UDP servers.
+
+The example below configures APISIX Ingress to route traffic from port `9200` to the service `udp-server`:
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -287,6 +327,8 @@ spec:
         servicePort: 53
 ```
 
-The above yaml configuration guides UDP traffic entered to the Ingress proxy server (i.e. [APISIX](https://apisix.apache.org)) port `9200` should be routed to the backend service `udp-server`.
+:::note
 
-Note since APISIX doesn't support dynamic listening, so here the `9200` port should be pre-defined in APISIX [configuration](https://github.com/apache/apisix/blob/master/conf/config-default.yaml#L105).
+The `ingressPort` (`9200` here) should be pre-defined in the [APISIX configuration](https://github.com/apache/apisix/blob/master/conf/config-default.yaml#L105).
+
+:::

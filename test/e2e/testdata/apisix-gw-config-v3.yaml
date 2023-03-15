@@ -1,0 +1,51 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# PLEASE DO NOT UPDATE THIS FILE!
+# If you want to set the specified configuration value, you can set the new
+# value in the conf/config.yaml file.
+#
+
+deployment:
+  admin:
+    allow_admin:
+      - 127.0.0.0/24
+      - 0.0.0.0/0
+    admin_listen:
+      ip: 0.0.0.0
+      port: 9180
+  etcd:
+    host:
+      - "http://{{ .EtcdServiceFQDN }}:2379"
+    prefix: "/apisix"
+    timeout: 30
+
+apisix:
+  enable_control: true
+  enable_reuseport: true
+
+  stream_proxy:
+    only: false
+    tcp:
+      - 9100
+      - addr: 9110
+        tls: true
+    udp:
+      - 9200
+
+plugin_attr:
+  prometheus:
+    enable_export_server: false

@@ -18,6 +18,8 @@ import (
 	"fmt"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
+	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -118,14 +120,60 @@ spec:
       targetPort: 50053
   type: ClusterIP
 `
+	_udpDeployment = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coredns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coredns
+  template:
+    metadata:
+      labels:
+        app: coredns
+    spec:
+      containers:
+      - name: coredns
+        image: coredns/coredns:1.8.4
+        livenessProbe:
+          tcpSocket:
+            port: 53
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 53
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        ports:    
+        - name: dns
+          containerPort: 53
+          protocol: UDP
+`
+	_udpService = `
+kind: Service
+apiVersion: v1
+metadata:
+  name: coredns
+spec:
+  selector:
+    app: coredns
+  type: ClusterIP
+  ports:
+  - port: 53
+    targetPort: 53
+`
 )
 
 func (s *Scaffold) newTestBackend() (*corev1.Service, error) {
 	backendDeployment := fmt.Sprintf(s.FormatRegistry(_testBackendDeploymentTemplate), 1)
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, backendDeployment); err != nil {
+	if err := s.CreateResourceFromString(backendDeployment); err != nil {
 		return nil, err
 	}
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, _testBackendService); err != nil {
+	if err := s.CreateResourceFromString(_testBackendService); err != nil {
 		return nil, err
 	}
 	svc, err := k8s.GetServiceE(s.t, s.kubectlOptions, "test-backend-service-e2e-test")
@@ -133,4 +181,20 @@ func (s *Scaffold) newTestBackend() (*corev1.Service, error) {
 		return nil, err
 	}
 	return svc, nil
+}
+
+// NewCoreDNSService creates a new UDP backend for testing.
+func (s *Scaffold) NewCoreDNSService() *corev1.Service {
+	err := s.CreateResourceFromString(_udpDeployment)
+	assert.Nil(ginkgo.GinkgoT(), err, "failed to create CoreDNS deployment")
+
+	err = s.CreateResourceFromString(_udpService)
+	assert.Nil(ginkgo.GinkgoT(), err, "failed to create CoreDNS service")
+
+	s.EnsureNumEndpointsReady(ginkgo.GinkgoT(), "coredns", 1)
+
+	svc, err := k8s.GetServiceE(s.t, s.kubectlOptions, "coredns")
+	assert.Nil(ginkgo.GinkgoT(), err, "failed to get CoreDNS service")
+
+	return svc
 }

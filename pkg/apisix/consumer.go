@@ -15,7 +15,6 @@
 package apisix
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 
@@ -45,7 +44,7 @@ func (r *consumerClient) Get(ctx context.Context, name string) (*v1.Consumer, er
 	log.Debugw("try to look up consumer",
 		zap.String("name", name),
 		zap.String("url", r.url),
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 	)
 	consumer, err := r.cluster.cache.GetConsumer(name)
 	if err == nil {
@@ -72,25 +71,25 @@ func (r *consumerClient) Get(ctx context.Context, name string) (*v1.Consumer, er
 			log.Warnw("consumer not found",
 				zap.String("name", name),
 				zap.String("url", url),
-				zap.String("cluster", "default"),
+				zap.String("cluster", r.cluster.name),
 			)
 		} else {
 			log.Errorw("failed to get consumer from APISIX",
 				zap.String("name", name),
 				zap.String("url", url),
-				zap.String("cluster", "default"),
+				zap.String("cluster", r.cluster.name),
 				zap.Error(err),
 			)
 		}
 		return nil, err
 	}
 
-	consumer, err = resp.Item.consumer()
+	consumer, err = resp.consumer()
 	if err != nil {
 		log.Errorw("failed to convert consumer item",
 			zap.String("url", r.url),
-			zap.String("consumer_key", resp.Item.Key),
-			zap.String("consumer_value", string(resp.Item.Value)),
+			zap.String("consumer_key", resp.Key),
+			zap.String("consumer_value", string(resp.Value)),
 			zap.Error(err),
 		)
 		return nil, err
@@ -107,7 +106,7 @@ func (r *consumerClient) Get(ctx context.Context, name string) (*v1.Consumer, er
 // to APISIX.
 func (r *consumerClient) List(ctx context.Context) ([]*v1.Consumer, error) {
 	log.Debugw("try to list consumers in APISIX",
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 		zap.String("url", r.url),
 	)
 	consumerItems, err := r.cluster.listResource(ctx, r.url, "consumer")
@@ -118,7 +117,7 @@ func (r *consumerClient) List(ctx context.Context) ([]*v1.Consumer, error) {
 	}
 
 	var items []*v1.Consumer
-	for i, item := range consumerItems.Node.Items {
+	for i, item := range consumerItems {
 		consumer, err := item.consumer()
 		if err != nil {
 			log.Errorw("failed to convert consumer item",
@@ -141,7 +140,7 @@ func (r *consumerClient) Create(ctx context.Context, obj *v1.Consumer) (*v1.Cons
 	log.Debugw("try to create consumer",
 		zap.String("name", obj.Username),
 		zap.Any("plugins", obj.Plugins),
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 		zap.String("url", r.url),
 	)
 
@@ -155,14 +154,14 @@ func (r *consumerClient) Create(ctx context.Context, obj *v1.Consumer) (*v1.Cons
 
 	url := r.url + "/" + obj.Username
 	log.Debugw("creating consumer", zap.ByteString("body", data), zap.String("url", url))
-	resp, err := r.cluster.createResource(ctx, url, "consumer", bytes.NewReader(data))
+	resp, err := r.cluster.createResource(ctx, url, "consumer", data)
 	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err != nil {
 		log.Errorf("failed to create consumer: %s", err)
 		return nil, err
 	}
 
-	consumer, err := resp.Item.consumer()
+	consumer, err := resp.consumer()
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +175,7 @@ func (r *consumerClient) Create(ctx context.Context, obj *v1.Consumer) (*v1.Cons
 func (r *consumerClient) Delete(ctx context.Context, obj *v1.Consumer) error {
 	log.Debugw("try to delete consumer",
 		zap.String("name", obj.Username),
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 		zap.String("url", r.url),
 	)
 	if err := r.cluster.HasSynced(ctx); err != nil {
@@ -201,7 +200,7 @@ func (r *consumerClient) Update(ctx context.Context, obj *v1.Consumer) (*v1.Cons
 	log.Debugw("try to update consumer",
 		zap.String("name", obj.Username),
 		zap.Any("plugins", obj.Plugins),
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 		zap.String("url", r.url),
 	)
 	if err := r.cluster.HasSynced(ctx); err != nil {
@@ -212,13 +211,12 @@ func (r *consumerClient) Update(ctx context.Context, obj *v1.Consumer) (*v1.Cons
 		return nil, err
 	}
 	url := r.url + "/" + obj.Username
-	log.Debugw("updating username", zap.ByteString("body", body), zap.String("url", url))
-	resp, err := r.cluster.updateResource(ctx, url, "consumer", bytes.NewReader(body))
+	resp, err := r.cluster.updateResource(ctx, url, "consumer", body)
 	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err != nil {
 		return nil, err
 	}
-	consumer, err := resp.Item.consumer()
+	consumer, err := resp.consumer()
 	if err != nil {
 		return nil, err
 	}

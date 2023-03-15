@@ -73,3 +73,15 @@ Because we use `ginkgo --focus` option and the prefix `suite-<suite name>` to sp
 - All top level specs (i.e. `ginkgo.Describe`) under the suite directory should have corresponding `suite-<suite-name>:` prefix.
 
 Run `make names-check` to check the above naming convention.
+
+APISIX Admin API: v2 and v3
+--------------------
+
+Since APISIX has released v3.0, in which the admin API has been changed, we are now using v3.0 admin API as the default API version for e2e tests.
+
+The v2 version tests will be run periodically.
+
+You can set the environment variable `APISIX_ADMIN_API_VERSION` to `v3` to run v3 version tests, any other value will be v2 version.
+
+The APISIX image tag will be automatically selected from `3.1.0-centos` and `2.15.0-alpine` based on the admin API version.
+If you want to use a specific APISIX version, please set the environment variable `TARGET_APISIX_VERSION`.

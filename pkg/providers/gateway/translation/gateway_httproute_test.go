@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package gateway_translation
+package translation
 
 import (
 	"context"
@@ -25,7 +25,7 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
@@ -141,28 +141,28 @@ func TestTranslateGatewayHTTPRouteExactMatch(t *testing.T) {
 	refStr := func(str string) *string {
 		return &str
 	}
-	refKind := func(str gatewayv1alpha2.Kind) *gatewayv1alpha2.Kind {
+	refKind := func(str gatewayv1beta1.Kind) *gatewayv1beta1.Kind {
 		return &str
 	}
-	refNamespace := func(str gatewayv1alpha2.Namespace) *gatewayv1alpha2.Namespace {
+	refNamespace := func(str gatewayv1beta1.Namespace) *gatewayv1beta1.Namespace {
 		return &str
 	}
-	refMethod := func(str gatewayv1alpha2.HTTPMethod) *gatewayv1alpha2.HTTPMethod {
+	refMethod := func(str gatewayv1beta1.HTTPMethod) *gatewayv1beta1.HTTPMethod {
 		return &str
 	}
-	refPathMatchType := func(str gatewayv1alpha2.PathMatchType) *gatewayv1alpha2.PathMatchType {
+	refPathMatchType := func(str gatewayv1beta1.PathMatchType) *gatewayv1beta1.PathMatchType {
 		return &str
 	}
-	refHeaderMatchType := func(str gatewayv1alpha2.HeaderMatchType) *gatewayv1alpha2.HeaderMatchType {
+	refHeaderMatchType := func(str gatewayv1beta1.HeaderMatchType) *gatewayv1beta1.HeaderMatchType {
 		return &str
 	}
-	refQueryParamMatchType := func(str gatewayv1alpha2.QueryParamMatchType) *gatewayv1alpha2.QueryParamMatchType {
+	refQueryParamMatchType := func(str gatewayv1beta1.QueryParamMatchType) *gatewayv1beta1.QueryParamMatchType {
 		return &str
 	}
 	refInt32 := func(i int32) *int32 {
 		return &i
 	}
-	refPortNumber := func(i gatewayv1alpha2.PortNumber) *gatewayv1alpha2.PortNumber {
+	refPortNumber := func(i gatewayv1beta1.PortNumber) *gatewayv1beta1.PortNumber {
 		return &i
 	}
 
@@ -170,52 +170,52 @@ func TestTranslateGatewayHTTPRouteExactMatch(t *testing.T) {
 	<-processCh
 	<-processCh
 
-	httpRoute := &gatewayv1alpha2.HTTPRoute{
+	httpRoute := &gatewayv1beta1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "http_route",
 			Namespace: "test",
 		},
-		Spec: gatewayv1alpha2.HTTPRouteSpec{
-			Hostnames: []gatewayv1alpha2.Hostname{
+		Spec: gatewayv1beta1.HTTPRouteSpec{
+			Hostnames: []gatewayv1beta1.Hostname{
 				"example.com",
 			},
-			Rules: []gatewayv1alpha2.HTTPRouteRule{
+			Rules: []gatewayv1beta1.HTTPRouteRule{
 				{
-					Matches: []gatewayv1alpha2.HTTPRouteMatch{
+					Matches: []gatewayv1beta1.HTTPRouteMatch{
 						{
-							Path: &gatewayv1alpha2.HTTPPathMatch{
-								Type:  refPathMatchType(gatewayv1alpha2.PathMatchPathPrefix),
+							Path: &gatewayv1beta1.HTTPPathMatch{
+								Type:  refPathMatchType(gatewayv1beta1.PathMatchPathPrefix),
 								Value: refStr("/path"),
 							},
-							Headers: []gatewayv1alpha2.HTTPHeaderMatch{
+							Headers: []gatewayv1beta1.HTTPHeaderMatch{
 								{
-									Type:  refHeaderMatchType(gatewayv1alpha2.HeaderMatchExact),
+									Type:  refHeaderMatchType(gatewayv1beta1.HeaderMatchExact),
 									Name:  "REFERER",
 									Value: "api7.com",
 								},
 							},
-							QueryParams: []gatewayv1alpha2.HTTPQueryParamMatch{
+							QueryParams: []gatewayv1beta1.HTTPQueryParamMatch{
 								{
-									Type:  refQueryParamMatchType(gatewayv1alpha2.QueryParamMatchExact),
+									Type:  refQueryParamMatchType(gatewayv1beta1.QueryParamMatchExact),
 									Name:  "user",
 									Value: "api7",
 								},
 								{
-									Type:  refQueryParamMatchType(gatewayv1alpha2.QueryParamMatchExact),
+									Type:  refQueryParamMatchType(gatewayv1beta1.QueryParamMatchExact),
 									Name:  "title",
 									Value: "ingress",
 								},
 							},
-							Method: refMethod(gatewayv1alpha2.HTTPMethodGet),
+							Method: refMethod(gatewayv1beta1.HTTPMethodGet),
 						},
 					},
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{
+					Filters: []gatewayv1beta1.HTTPRouteFilter{
 						// TODO
 					},
-					BackendRefs: []gatewayv1alpha2.HTTPBackendRef{
+					BackendRefs: []gatewayv1beta1.HTTPBackendRef{
 						{
-							BackendRef: gatewayv1alpha2.BackendRef{
-								BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+							BackendRef: gatewayv1beta1.BackendRef{
+								BackendObjectReference: gatewayv1beta1.BackendObjectReference{
 									Kind:      refKind("Service"),
 									Name:      "svc",
 									Namespace: refNamespace("test"),
@@ -223,7 +223,7 @@ func TestTranslateGatewayHTTPRouteExactMatch(t *testing.T) {
 								},
 								Weight: refInt32(100), // TODO
 							},
-							Filters: []gatewayv1alpha2.HTTPRouteFilter{
+							Filters: []gatewayv1beta1.HTTPRouteFilter{
 								// TODO
 							},
 						},
@@ -233,7 +233,7 @@ func TestTranslateGatewayHTTPRouteExactMatch(t *testing.T) {
 		},
 	}
 
-	tctx, err := tr.TranslateGatewayHTTPRouteV1Alpha2(httpRoute)
+	tctx, err := tr.TranslateGatewayHTTPRouteV1beta1(httpRoute)
 	assert.Nil(t, err)
 
 	assert.Equal(t, 1, len(tctx.Routes))
@@ -278,28 +278,28 @@ func TestTranslateGatewayHTTPRouteRegexMatch(t *testing.T) {
 	refStr := func(str string) *string {
 		return &str
 	}
-	refKind := func(str gatewayv1alpha2.Kind) *gatewayv1alpha2.Kind {
+	refKind := func(str gatewayv1beta1.Kind) *gatewayv1beta1.Kind {
 		return &str
 	}
-	refNamespace := func(str gatewayv1alpha2.Namespace) *gatewayv1alpha2.Namespace {
+	refNamespace := func(str gatewayv1beta1.Namespace) *gatewayv1beta1.Namespace {
 		return &str
 	}
-	refMethod := func(str gatewayv1alpha2.HTTPMethod) *gatewayv1alpha2.HTTPMethod {
+	refMethod := func(str gatewayv1beta1.HTTPMethod) *gatewayv1beta1.HTTPMethod {
 		return &str
 	}
-	refPathMatchType := func(str gatewayv1alpha2.PathMatchType) *gatewayv1alpha2.PathMatchType {
+	refPathMatchType := func(str gatewayv1beta1.PathMatchType) *gatewayv1beta1.PathMatchType {
 		return &str
 	}
-	refHeaderMatchType := func(str gatewayv1alpha2.HeaderMatchType) *gatewayv1alpha2.HeaderMatchType {
+	refHeaderMatchType := func(str gatewayv1beta1.HeaderMatchType) *gatewayv1beta1.HeaderMatchType {
 		return &str
 	}
-	refQueryParamMatchType := func(str gatewayv1alpha2.QueryParamMatchType) *gatewayv1alpha2.QueryParamMatchType {
+	refQueryParamMatchType := func(str gatewayv1beta1.QueryParamMatchType) *gatewayv1beta1.QueryParamMatchType {
 		return &str
 	}
 	refInt32 := func(i int32) *int32 {
 		return &i
 	}
-	refPortNumber := func(i gatewayv1alpha2.PortNumber) *gatewayv1alpha2.PortNumber {
+	refPortNumber := func(i gatewayv1beta1.PortNumber) *gatewayv1beta1.PortNumber {
 		return &i
 	}
 
@@ -307,52 +307,52 @@ func TestTranslateGatewayHTTPRouteRegexMatch(t *testing.T) {
 	<-processCh
 	<-processCh
 
-	httpRoute := &gatewayv1alpha2.HTTPRoute{
+	httpRoute := &gatewayv1beta1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "http_route",
 			Namespace: "test",
 		},
-		Spec: gatewayv1alpha2.HTTPRouteSpec{
-			Hostnames: []gatewayv1alpha2.Hostname{
+		Spec: gatewayv1beta1.HTTPRouteSpec{
+			Hostnames: []gatewayv1beta1.Hostname{
 				"example.com",
 			},
-			Rules: []gatewayv1alpha2.HTTPRouteRule{
+			Rules: []gatewayv1beta1.HTTPRouteRule{
 				{
-					Matches: []gatewayv1alpha2.HTTPRouteMatch{
+					Matches: []gatewayv1beta1.HTTPRouteMatch{
 						{
-							Path: &gatewayv1alpha2.HTTPPathMatch{
-								Type:  refPathMatchType(gatewayv1alpha2.PathMatchRegularExpression),
+							Path: &gatewayv1beta1.HTTPPathMatch{
+								Type:  refPathMatchType(gatewayv1beta1.PathMatchRegularExpression),
 								Value: refStr("/path"),
 							},
-							Headers: []gatewayv1alpha2.HTTPHeaderMatch{
+							Headers: []gatewayv1beta1.HTTPHeaderMatch{
 								{
-									Type:  refHeaderMatchType(gatewayv1alpha2.HeaderMatchRegularExpression),
+									Type:  refHeaderMatchType(gatewayv1beta1.HeaderMatchRegularExpression),
 									Name:  "REFERER",
 									Value: "api7.com",
 								},
 							},
-							QueryParams: []gatewayv1alpha2.HTTPQueryParamMatch{
+							QueryParams: []gatewayv1beta1.HTTPQueryParamMatch{
 								{
-									Type:  refQueryParamMatchType(gatewayv1alpha2.QueryParamMatchRegularExpression),
+									Type:  refQueryParamMatchType(gatewayv1beta1.QueryParamMatchRegularExpression),
 									Name:  "user",
 									Value: "api7",
 								},
 								{
-									Type:  refQueryParamMatchType(gatewayv1alpha2.QueryParamMatchRegularExpression),
+									Type:  refQueryParamMatchType(gatewayv1beta1.QueryParamMatchRegularExpression),
 									Name:  "title",
 									Value: "ingress",
 								},
 							},
-							Method: refMethod(gatewayv1alpha2.HTTPMethodGet),
+							Method: refMethod(gatewayv1beta1.HTTPMethodGet),
 						},
 					},
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{
+					Filters: []gatewayv1beta1.HTTPRouteFilter{
 						// TODO
 					},
-					BackendRefs: []gatewayv1alpha2.HTTPBackendRef{
+					BackendRefs: []gatewayv1beta1.HTTPBackendRef{
 						{
-							BackendRef: gatewayv1alpha2.BackendRef{
-								BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+							BackendRef: gatewayv1beta1.BackendRef{
+								BackendObjectReference: gatewayv1beta1.BackendObjectReference{
 									Kind:      refKind("Service"),
 									Name:      "svc",
 									Namespace: refNamespace("test"),
@@ -360,7 +360,7 @@ func TestTranslateGatewayHTTPRouteRegexMatch(t *testing.T) {
 								},
 								Weight: refInt32(100), // TODO
 							},
-							Filters: []gatewayv1alpha2.HTTPRouteFilter{
+							Filters: []gatewayv1beta1.HTTPRouteFilter{
 								// TODO
 							},
 						},
@@ -370,7 +370,7 @@ func TestTranslateGatewayHTTPRouteRegexMatch(t *testing.T) {
 		},
 	}
 
-	tctx, err := tr.TranslateGatewayHTTPRouteV1Alpha2(httpRoute)
+	tctx, err := tr.TranslateGatewayHTTPRouteV1beta1(httpRoute)
 	assert.Nil(t, err)
 
 	assert.Equal(t, 1, len(tctx.Routes))

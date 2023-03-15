@@ -22,6 +22,7 @@ import (
 
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/informers"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -30,6 +31,7 @@ import (
 	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
@@ -43,6 +45,12 @@ type Provider interface {
 }
 
 type ListerInformer struct {
+	KubeFactory   informers.SharedInformerFactory
+	ApisixFactory externalversions.SharedInformerFactory
+
+	NamespaceInformer cache.SharedIndexInformer
+	NamespaceLister   listerscorev1.NamespaceLister
+
 	EpLister   kube.EndpointLister
 	EpInformer cache.SharedIndexInformer
 
@@ -55,35 +63,67 @@ type ListerInformer struct {
 	PodLister   listerscorev1.PodLister
 	PodInformer cache.SharedIndexInformer
 
-	ApisixUpstreamLister   kube.ApisixUpstreamLister
-	ApisixUpstreamInformer cache.SharedIndexInformer
+	ConfigMapLister   listerscorev1.ConfigMapLister
+	ConfigMapInformer cache.SharedIndexInformer
+
+	IngressLister   kube.IngressLister
+	IngressInformer cache.SharedIndexInformer
+
+	ApisixUpstreamInformer      cache.SharedIndexInformer
+	ApisixRouteInformer         cache.SharedIndexInformer
+	ApisixPluginConfigInformer  cache.SharedIndexInformer
+	ApisixConsumerInformer      cache.SharedIndexInformer
+	ApisixTlsInformer           cache.SharedIndexInformer
+	ApisixClusterConfigInformer cache.SharedIndexInformer
+	ApisixGlobalRuleInformer    cache.SharedIndexInformer
+
+	ApisixRouteLister         kube.ApisixRouteLister
+	ApisixUpstreamLister      kube.ApisixUpstreamLister
+	ApisixPluginConfigLister  kube.ApisixPluginConfigLister
+	ApisixConsumerLister      kube.ApisixConsumerLister
+	ApisixTlsLister           kube.ApisixTlsLister
+	ApisixClusterConfigLister kube.ApisixClusterConfigLister
+	ApisixGlobalRuleLister    kube.ApisixGlobalRuleLister
 }
 
-func (c *ListerInformer) Run(ctx context.Context) {
+func (c *ListerInformer) StartAndWaitForCacheSync(ctx context.Context) bool {
+	succ := true
 	e := utils.ParallelExecutor{}
 
 	e.Add(func() {
-		c.EpInformer.Run(ctx.Done())
+		c.KubeFactory.Start(ctx.Done())
+		kube := c.KubeFactory.WaitForCacheSync(ctx.Done())
+
+		for resource, ok := range kube {
+			if !ok {
+				succ = false
+				log.Error(fmt.Sprintf("%s cache failed to sync", resource.Name()))
+				return
+			}
+		}
 	})
+
 	e.Add(func() {
-		c.SvcInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.SecretInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.PodInformer.Run(ctx.Done())
-	})
-	e.Add(func() {
-		c.ApisixUpstreamInformer.Run(ctx.Done())
+		c.ApisixFactory.Start(ctx.Done())
+		crds := c.ApisixFactory.WaitForCacheSync(ctx.Done())
+		for crd, ok := range crds {
+			if !ok {
+				succ = false
+				log.Error(fmt.Sprintf("%s cache failed to sync", crd.Name()))
+				return
+			}
+		}
 	})
 
 	e.Wait()
+	return succ
 }
 
 type Common struct {
 	*config.Config
 	*ListerInformer
+
+	ControllerNamespace string
 
 	APISIX           apisix.APISIX
 	KubeClient       *kube.KubeClient
@@ -112,6 +152,17 @@ func (c *Common) SyncManifests(ctx context.Context, added, updated, deleted *uti
 	return utils.SyncManifests(ctx, c.APISIX, c.Config.APISIX.DefaultClusterName, added, updated, deleted)
 }
 
+// TODO: suppport multiple cluster
+func (c *Common) SyncClusterManifests(ctx context.Context, clusterName string, added, updated, deleted *utils.Manifest) error {
+	if clusterName != c.Config.APISIX.DefaultClusterName {
+		log.Errorw("cluster does not exist",
+			zap.String("cluster_name", clusterName),
+		)
+		return nil
+	}
+	return utils.SyncManifests(ctx, c.APISIX, clusterName, added, updated, deleted)
+}
+
 func (c *Common) SyncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types.EventType) error {
 	var (
 		err error
@@ -123,6 +174,18 @@ func (c *Common) SyncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types.Eve
 		_, err = c.APISIX.Cluster(clusterName).SSL().Update(ctx, ssl)
 	} else {
 		_, err = c.APISIX.Cluster(clusterName).SSL().Create(ctx, ssl)
+	}
+	return err
+}
+
+func (c *Common) SyncPluginMetadata(ctx context.Context, pm *apisixv1.PluginMetadata, event types.EventType) (err error) {
+	clusterName := c.Config.APISIX.DefaultClusterName
+	if event == types.EventDelete {
+		err = c.APISIX.Cluster(clusterName).PluginMetadata().Delete(ctx, pm)
+	} else if event == types.EventUpdate {
+		_, err = c.APISIX.Cluster(clusterName).PluginMetadata().Update(ctx, pm)
+	} else {
+		_, err = c.APISIX.Cluster(clusterName).PluginMetadata().Update(ctx, pm)
 	}
 	return err
 }
@@ -163,6 +226,10 @@ func (c *Common) SyncUpstreamNodesChangeToCluster(ctx context.Context, cluster a
 		}
 	}
 
+	// Since APISIX's Upstream can support two modes:
+	// * Nodes
+	// * Service discovery
+	// When this logic is executed, the Nodes pattern is used.
 	upstream.Nodes = nodes
 
 	log.Debugw("upstream binds new nodes",
