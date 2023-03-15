@@ -16,8 +16,9 @@
 package validation
 
 import (
-	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	"github.com/hashicorp/go-multierror"
+
+	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 )
 
 // ApisixRouteValidator validates ApisixRoute and its plugins.

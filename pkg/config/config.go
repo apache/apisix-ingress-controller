@@ -147,7 +147,7 @@ func NewDefaultConfig() *Config {
 			WatchEndpointSlices:  false,
 			EnableGatewayAPI:     false,
 			DisableStatusUpdates: false,
-			EnableAdmission:      true,
+			EnableAdmission:      false,
 		},
 		APISIX: APISIXConfig{
 			AdminAPIVersion:    "v2",
