@@ -730,6 +730,12 @@ type HostType string
 
 // ApisixTlsSpec is the specification of ApisixSSL.
 type ApisixTlsSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// controller implementations use this field to know whether they should be
+	// serving this ApisixTls resource, by a transitive connection
+	// (controller -> IngressClass -> ApisixTls resource).
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	// +required
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1
