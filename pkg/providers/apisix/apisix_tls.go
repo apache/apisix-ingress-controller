@@ -284,6 +284,9 @@ func (c *apisixTlsController) onAdd(obj interface{}) {
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
+	if !c.isEffective(tls) {
+		return
+	}
 	log.Debugw("ApisixTls add event arrived",
 		zap.Any("object", obj),
 	)
@@ -318,6 +321,9 @@ func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
 		return
 	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+	if !c.isEffective(newTls) {
 		return
 	}
 	log.Debugw("ApisixTls update event arrived",
@@ -355,6 +361,9 @@ func (c *apisixTlsController) onDelete(obj interface{}) {
 		return
 	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+	if !c.isEffective(tls) {
 		return
 	}
 	log.Debugw("ApisixTls delete event arrived",
@@ -654,4 +663,16 @@ func (c *apisixTlsController) syncSSLsAndUpdateStatusV2(ctx context.Context, ev 
 		}(ssl, tls)
 		return true
 	}
+}
+
+func (c *apisixTlsController) isEffective(atls kube.ApisixTls) bool {
+	if atls.GroupVersion() == config.ApisixV2 {
+		var ingClassName string
+		if atls.V2().Spec != nil {
+			ingClassName = atls.V2().Spec.IngressClassName
+		}
+		return utils.MatchCRDsIngressClass(ingClassName, c.Kubernetes.IngressClass)
+	}
+	// Compatible with legacy versions
+	return true
 }
