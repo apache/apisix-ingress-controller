@@ -33,7 +33,6 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
@@ -444,53 +443,41 @@ func (s *Scaffold) beforeEach() {
 
 	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: s.namespace, Labels: label})
 
-	e := utils.ParallelExecutor{}
-
 	s.nodes, err = k8s.GetReadyNodesE(s.t, s.kubectlOptions)
 	assert.Nil(s.t, err, "querying ready nodes")
 
-	e.Add(func() {
-		s.etcdService, err = s.newEtcd()
-		assert.Nil(s.t, err, "initializing etcd")
+	s.etcdService, err = s.newEtcd()
+	assert.Nil(s.t, err, "initializing etcd")
 
-		err = s.waitAllEtcdPodsAvailable()
-		assert.Nil(s.t, err, "waiting for etcd ready")
+	err = s.waitAllEtcdPodsAvailable()
+	assert.Nil(s.t, err, "waiting for etcd ready")
 
-		s.apisixService, err = s.newAPISIX()
-		assert.Nil(s.t, err, "initializing Apache APISIX")
+	s.apisixService, err = s.newAPISIX()
+	assert.Nil(s.t, err, "initializing Apache APISIX")
 
-		err = s.waitAllAPISIXPodsAvailable()
-		assert.Nil(s.t, err, "waiting for apisix ready")
+	err = s.waitAllAPISIXPodsAvailable()
+	assert.Nil(s.t, err, "waiting for apisix ready")
 
-		err = s.newAPISIXTunnels()
-		assert.Nil(s.t, err, "creating apisix tunnels")
-	})
+	err = s.newAPISIXTunnels()
+	assert.Nil(s.t, err, "creating apisix tunnels")
 
-	e.Add(func() {
-		s.httpbinService, err = s.newHTTPBIN()
-		assert.Nil(s.t, err, "initializing httpbin")
+	s.httpbinService, err = s.newHTTPBIN()
+	assert.Nil(s.t, err, "initializing httpbin")
 
-		k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.httpbinService.Name, 3, 2*time.Second)
-	})
+	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.httpbinService.Name, 3, 2*time.Second)
 
-	e.Add(func() {
-		s.testBackendService, err = s.newTestBackend()
-		assert.Nil(s.t, err, "initializing test backend")
+	s.testBackendService, err = s.newTestBackend()
+	assert.Nil(s.t, err, "initializing test backend")
 
-		k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.testBackendService.Name, 3, 2*time.Second)
-	})
+	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.testBackendService.Name, 3, 2*time.Second)
 
-	e.Add(func() {
-		err = s.newIngressAPISIXController()
-		assert.Nil(s.t, err, "initializing ingress apisix controller")
+	err = s.newIngressAPISIXController()
+	assert.Nil(s.t, err, "initializing ingress apisix controller")
 
-		if s.opts.IngressAPISIXReplicas != 0 {
-			err = s.WaitAllIngressControllerPodsAvailable()
-			assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
-		}
-	})
-
-	e.Wait()
+	if s.opts.IngressAPISIXReplicas != 0 {
+		err = s.WaitAllIngressControllerPodsAvailable()
+		assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
+	}
 }
 
 func (s *Scaffold) afterEach() {

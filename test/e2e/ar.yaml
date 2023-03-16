@@ -1,0 +1,45 @@
+
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route1
+ namespace: ingress-apisix-e2e-tests-webhook-251045595
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /status/*
+   backends:
+   - serviceName: httpbin-service-e2e-test
+     servicePort: 80
+   plugins:
+   - name: echo
+     enable: true
+     config:
+       body: "successsful"
+---
+
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route2
+ namespace: ingress-apisix-e2e-tests-webhook-251045595
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /status/*
+   backends:
+   - serviceName: httpbin-service-e2e-test
+     servicePort: 80
+   plugins:
+   - name: api-breaker
+     enable: true
+     config:
+       break_response_code: 1000 # should in [200, 599]
