@@ -532,9 +532,8 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 		disableStatusStr = "- --disable-status-updates"
 	}
 
-	ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace,
-		s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress,
-		s.opts.IngressClass, disableStatusStr)
+	ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval,
+		label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.IngressClass, disableStatusStr, !s.opts.EnableWebhooks)
 
 	if err := s.CreateResourceFromString(ingressDeployment); err != nil {
 		return err
