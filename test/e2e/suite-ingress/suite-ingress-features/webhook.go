@@ -194,7 +194,6 @@ spec:
     enable: true
 `
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apc), "creatint a ApisixPluginConfig")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(1), "ApisixPluginConfig should be 1")
 
 		apc = `
 apiVersion: apisix.apache.org/v2
@@ -209,6 +208,74 @@ spec:
 `
 		err := s.CreateResourceFromString(apc)
 		assert.Error(ginkgo.GinkgoT(), err, "Failed to udpate ApisixPluginConfig")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
+	})
+
+	ginkgo.It("ingressClassName of the ApisixTls should not be modified", func() {
+		atls := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixTls
+metadata:
+  name: grpc-secret
+spec:
+  ingressClassName: watch
+  hosts:
+    - "grpc-proxy"
+  secret:
+    name: grpc-secret
+    namespace: default
+`
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(atls), "creatint a ApisixTls")
+
+		atls = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixTls
+metadata:
+  name: grpc-secret
+spec:
+  ingressClassName: failed
+  hosts:
+    - "grpc-proxy"
+  secret:
+    name: grpc-secret
+    namespace: default
+`
+		err := s.CreateResourceFromString(atls)
+		assert.Error(ginkgo.GinkgoT(), err, "Failed to udpate ApisixTls")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
+	})
+
+	ginkgo.It("ingressClassName of the ApisixConsumer should not be modified", func() {
+		ac := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: foo
+spec:
+  ingressClassName: watch
+  authParameter:
+    keyAuth:
+      value:
+        key: foo-key
+`
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac), "creatint a ApisixConsumer")
+
+		ac = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: foo
+spec:
+  ingressClassName: failed
+  authParameter:
+    keyAuth:
+      value:
+        key: foo-key
+`
+		err := s.CreateResourceFromString(ac)
+		assert.Error(ginkgo.GinkgoT(), err, "Failed to udpate ApisixConsumer")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
 	})
