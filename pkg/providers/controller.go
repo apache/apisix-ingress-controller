@@ -148,6 +148,7 @@ func (c *Controller) Run(stop chan struct{}) error {
 	c.MetricsCollector.ResetLeader(false)
 
 	go func() {
+		log.Info("start api server")
 		if err := c.apiServer.Run(rootCtx.Done()); err != nil {
 			log.Errorf("failed to launch API Server: %s", err)
 		}
@@ -471,7 +472,7 @@ func (c *Controller) run(ctx context.Context) {
 		return
 	}
 
-	// Wait Resouce sync
+	// Wait for resource sync
 	if ok := c.informers.StartAndWaitForCacheSync(ctx); !ok {
 		ctx.Done()
 		return
@@ -484,6 +485,8 @@ func (c *Controller) run(ctx context.Context) {
 	}
 
 	// Run Phase
+
+	log.Info("try to run providers")
 
 	e := utils.ParallelExecutor{}
 
