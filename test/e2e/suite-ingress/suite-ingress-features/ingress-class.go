@@ -337,7 +337,7 @@ spec:
 		resp.Body().IsEqual("my custom body")
 	})
 
-	ginkgo.It("ApisiTls should be handled", func() {
+	ginkgo.It("ApisixTls should be handled", func() {
 		err := s.NewSecret(_secretName, _cert, _key)
 		assert.Nil(ginkgo.GinkgoT(), err, "create secret error")
 		// create ApisixTls resource without ingressClassName
@@ -366,7 +366,7 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), tls[0].Snis[0], host2, "tls host is error")
 	})
 
-	ginkgo.It("ApisiTls should be ignored", func() {
+	ginkgo.It("ApisixTls should be ignored", func() {
 		err := s.NewSecret(_secretName, _cert, _key)
 		assert.Nil(ginkgo.GinkgoT(), err, "create secret error")
 		// create ApisixTls resource with ingressClassName: ignored
@@ -830,7 +830,7 @@ spec:
 		resp.Body().IsEqual("my custom body")
 	})
 
-	ginkgo.It("ApisiTls should be handled", func() {
+	ginkgo.It("ApisixTls should be handled", func() {
 		err := s.NewSecret(_secretName, _cert, _key)
 		assert.Nil(ginkgo.GinkgoT(), err, "create secret error")
 		// create ApisixTls resource without ingressClassName
@@ -942,7 +942,7 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "james-password"}, acs[0].Plugins["key-auth"])
 	})
 
-	ginkgo.It("ApisiClusterConfig should be handled", func() {
+	ginkgo.It("ApisixClusterConfig should be handled", func() {
 		// create ApisixConsumer resource without ingressClassName
 		acc := `
 apiVersion: apisix.apache.org/v2
@@ -1013,5 +1013,70 @@ spec:
 		assert.Len(ginkgo.GinkgoT(), agrs[0].Plugins, 1)
 		_, ok = agrs[0].Plugins["prometheus"]
 		assert.Equal(ginkgo.GinkgoT(), ok, true)
+	})
+
+	ginkgo.It("ApisixRoute should be handled", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: test-ar-1
+spec:
+ http:
+ ingressClassName: apisix
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+	})
+
+	ginkgo.It("ApisixRoute should be handled without ingressClass", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: test-ar-1
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+`, backendSvc, backendPorts[0])
+
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 	})
 })
