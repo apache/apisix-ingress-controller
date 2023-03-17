@@ -136,7 +136,7 @@ func (r *consumerClient) List(ctx context.Context) ([]*v1.Consumer, error) {
 	return items, nil
 }
 
-func (r *consumerClient) Create(ctx context.Context, obj *v1.Consumer) (*v1.Consumer, error) {
+func (r *consumerClient) Create(ctx context.Context, obj *v1.Consumer, shouldCompare bool) (*v1.Consumer, error) {
 	log.Debugw("try to create consumer",
 		zap.String("name", obj.Username),
 		zap.Any("plugins", obj.Plugins),
@@ -196,7 +196,7 @@ func (r *consumerClient) Delete(ctx context.Context, obj *v1.Consumer) error {
 	return nil
 }
 
-func (r *consumerClient) Update(ctx context.Context, obj *v1.Consumer) (*v1.Consumer, error) {
+func (r *consumerClient) Update(ctx context.Context, obj *v1.Consumer, shouldCompare bool) (*v1.Consumer, error) {
 	log.Debugw("try to update consumer",
 		zap.String("name", obj.Username),
 		zap.Any("plugins", obj.Plugins),

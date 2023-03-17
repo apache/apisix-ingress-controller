@@ -18,6 +18,7 @@ package apisix
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 
 	"go.uber.org/zap"
 
@@ -139,7 +140,26 @@ func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 	return items, nil
 }
 
-func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
+func (r *routeClient) Create(ctx context.Context, obj *v1.Route, shouldCompare bool) (*v1.Route, error) {
+	if r.cluster.syncComparison && shouldCompare {
+		cached, err := r.cluster.cache.GetRoute(obj.ID)
+		if err == nil && cached != nil {
+			if reflect.DeepEqual(*cached, *obj) {
+				log.Debugw("sync comparison skipped same resource",
+					zap.Any("obj", obj),
+					zap.Any("cached", cached),
+				)
+
+				return obj, nil
+			} else {
+				log.Debugw("sync comparison continue operation",
+					zap.Any("obj", obj),
+					zap.Any("cached", cached),
+				)
+			}
+		}
+	}
+
 	log.Debugw("try to create route",
 		zap.Strings("hosts", obj.Hosts),
 		zap.String("name", obj.Name),
@@ -200,7 +220,26 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 	return nil
 }
 
-func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
+func (r *routeClient) Update(ctx context.Context, obj *v1.Route, shouldCompare bool) (*v1.Route, error) {
+	if r.cluster.syncComparison && shouldCompare {
+		cached, err := r.cluster.cache.GetRoute(obj.ID)
+		if err == nil && cached != nil {
+			if reflect.DeepEqual(*cached, *obj) {
+				log.Debugw("sync comparison skipped same resource",
+					zap.Any("obj", obj),
+					zap.Any("cached", cached),
+				)
+
+				return obj, nil
+			} else {
+				log.Debugw("sync comparison continue operation",
+					zap.Any("obj", obj),
+					zap.Any("cached", cached),
+				)
+			}
+		}
+	}
+
 	log.Debugw("try to update route",
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),

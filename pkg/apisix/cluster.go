@@ -81,6 +81,7 @@ type ClusterOptions struct {
 	Timeout         time.Duration
 	// SyncInterval is the interval to sync schema.
 	SyncInterval     types.TimeDuration
+	SyncComparison   bool
 	MetricsCollector metrics.Collector
 }
 
@@ -95,6 +96,7 @@ type cluster struct {
 	cache                   cache.Cache
 	cacheSynced             chan struct{}
 	cacheSyncErr            error
+	syncComparison          bool
 	route                   Route
 	upstream                Upstream
 	ssl                     SSL
@@ -143,6 +145,7 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 		},
 		cacheState:       _cacheSyncing, // default state
 		cacheSynced:      make(chan struct{}),
+		syncComparison:   o.SyncComparison,
 		metricsCollector: o.MetricsCollector,
 	}
 	c.route = newRouteClient(c)

@@ -142,7 +142,7 @@ func (r *streamRouteClient) List(ctx context.Context) ([]*v1.StreamRoute, error)
 	return items, nil
 }
 
-func (r *streamRouteClient) Create(ctx context.Context, obj *v1.StreamRoute) (*v1.StreamRoute, error) {
+func (r *streamRouteClient) Create(ctx context.Context, obj *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
 	log.Debugw("try to create stream_route",
 		zap.String("id", obj.ID),
 		zap.Int32("server_port", obj.ServerPort),
@@ -203,7 +203,7 @@ func (r *streamRouteClient) Delete(ctx context.Context, obj *v1.StreamRoute) err
 	return nil
 }
 
-func (r *streamRouteClient) Update(ctx context.Context, obj *v1.StreamRoute) (*v1.StreamRoute, error) {
+func (r *streamRouteClient) Update(ctx context.Context, obj *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
 	log.Debugw("try to update stream_route",
 		zap.String("id", obj.ID),
 		zap.String("cluster", r.cluster.name),

@@ -131,7 +131,7 @@ func (u *upstreamClient) List(ctx context.Context) ([]*v1.Upstream, error) {
 	return items, nil
 }
 
-func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream) (*v1.Upstream, error) {
+func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream, shouldCompare bool) (*v1.Upstream, error) {
 	log.Debugw("try to create upstream",
 		zap.String("name", obj.Name),
 		zap.String("url", u.url),
@@ -195,7 +195,7 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 	return nil
 }
 
-func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream) (*v1.Upstream, error) {
+func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream, shouldCompare bool) (*v1.Upstream, error) {
 	log.Debugw("try to update upstream",
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),

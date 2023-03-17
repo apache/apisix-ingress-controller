@@ -25,6 +25,8 @@ const (
 	EventUpdate
 	// EventDelete means a delete event.
 	EventDelete
+
+	EventSync
 )
 
 func (ev EventType) String() string {

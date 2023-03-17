@@ -662,7 +662,7 @@ func (c *apisixUpstreamController) ResourceSync() {
 			return
 		}
 		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
+			Type: types.EventSync,
 			Object: kube.ApisixUpstreamEvent{
 				Key:          key,
 				GroupVersion: au.GroupVersion(),

@@ -74,9 +74,9 @@ type Cluster interface {
 type Route interface {
 	Get(context.Context, string) (*v1.Route, error)
 	List(context.Context) ([]*v1.Route, error)
-	Create(context.Context, *v1.Route) (*v1.Route, error)
+	Create(context.Context, *v1.Route, bool) (*v1.Route, error)
 	Delete(context.Context, *v1.Route) error
-	Update(context.Context, *v1.Route) (*v1.Route, error)
+	Update(context.Context, *v1.Route, bool) (*v1.Route, error)
 }
 
 // SSL is the specific client interface to take over the create, update,
@@ -84,9 +84,9 @@ type Route interface {
 type SSL interface {
 	Get(context.Context, string) (*v1.Ssl, error)
 	List(context.Context) ([]*v1.Ssl, error)
-	Create(context.Context, *v1.Ssl) (*v1.Ssl, error)
+	Create(context.Context, *v1.Ssl, bool) (*v1.Ssl, error)
 	Delete(context.Context, *v1.Ssl) error
-	Update(context.Context, *v1.Ssl) (*v1.Ssl, error)
+	Update(context.Context, *v1.Ssl, bool) (*v1.Ssl, error)
 }
 
 // Upstream is the specific client interface to take over the create, update,
@@ -94,9 +94,9 @@ type SSL interface {
 type Upstream interface {
 	Get(context.Context, string) (*v1.Upstream, error)
 	List(context.Context) ([]*v1.Upstream, error)
-	Create(context.Context, *v1.Upstream) (*v1.Upstream, error)
+	Create(context.Context, *v1.Upstream, bool) (*v1.Upstream, error)
 	Delete(context.Context, *v1.Upstream) error
-	Update(context.Context, *v1.Upstream) (*v1.Upstream, error)
+	Update(context.Context, *v1.Upstream, bool) (*v1.Upstream, error)
 }
 
 // StreamRoute is the specific client interface to take over the create, update,
@@ -104,9 +104,9 @@ type Upstream interface {
 type StreamRoute interface {
 	Get(context.Context, string) (*v1.StreamRoute, error)
 	List(context.Context) ([]*v1.StreamRoute, error)
-	Create(context.Context, *v1.StreamRoute) (*v1.StreamRoute, error)
+	Create(context.Context, *v1.StreamRoute, bool) (*v1.StreamRoute, error)
 	Delete(context.Context, *v1.StreamRoute) error
-	Update(context.Context, *v1.StreamRoute) (*v1.StreamRoute, error)
+	Update(context.Context, *v1.StreamRoute, bool) (*v1.StreamRoute, error)
 }
 
 // GlobalRule is the specific client interface to take over the create, update,
@@ -114,9 +114,9 @@ type StreamRoute interface {
 type GlobalRule interface {
 	Get(context.Context, string) (*v1.GlobalRule, error)
 	List(context.Context) ([]*v1.GlobalRule, error)
-	Create(context.Context, *v1.GlobalRule) (*v1.GlobalRule, error)
+	Create(context.Context, *v1.GlobalRule, bool) (*v1.GlobalRule, error)
 	Delete(context.Context, *v1.GlobalRule) error
-	Update(context.Context, *v1.GlobalRule) (*v1.GlobalRule, error)
+	Update(context.Context, *v1.GlobalRule, bool) (*v1.GlobalRule, error)
 }
 
 // Consumer is the specific client interface to take over the create, update,
@@ -124,9 +124,9 @@ type GlobalRule interface {
 type Consumer interface {
 	Get(context.Context, string) (*v1.Consumer, error)
 	List(context.Context) ([]*v1.Consumer, error)
-	Create(context.Context, *v1.Consumer) (*v1.Consumer, error)
+	Create(context.Context, *v1.Consumer, bool) (*v1.Consumer, error)
 	Delete(context.Context, *v1.Consumer) error
-	Update(context.Context, *v1.Consumer) (*v1.Consumer, error)
+	Update(context.Context, *v1.Consumer, bool) (*v1.Consumer, error)
 }
 
 // Plugin is the specific client interface to fetch APISIX Plugin resource.
@@ -149,16 +149,16 @@ type Schema interface {
 type PluginConfig interface {
 	Get(context.Context, string) (*v1.PluginConfig, error)
 	List(context.Context) ([]*v1.PluginConfig, error)
-	Create(context.Context, *v1.PluginConfig) (*v1.PluginConfig, error)
+	Create(context.Context, *v1.PluginConfig, bool) (*v1.PluginConfig, error)
 	Delete(context.Context, *v1.PluginConfig) error
-	Update(context.Context, *v1.PluginConfig) (*v1.PluginConfig, error)
+	Update(context.Context, *v1.PluginConfig, bool) (*v1.PluginConfig, error)
 }
 
 type PluginMetadata interface {
 	Get(context.Context, string) (*v1.PluginMetadata, error)
 	List(context.Context) ([]*v1.PluginMetadata, error)
 	Delete(context.Context, *v1.PluginMetadata) error
-	Update(context.Context, *v1.PluginMetadata) (*v1.PluginMetadata, error)
+	Update(context.Context, *v1.PluginMetadata, bool) (*v1.PluginMetadata, error)
 }
 
 type UpstreamServiceRelation interface {

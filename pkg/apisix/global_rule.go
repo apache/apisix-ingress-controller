@@ -138,7 +138,7 @@ func (r *globalRuleClient) List(ctx context.Context) ([]*v1.GlobalRule, error) {
 	return items, nil
 }
 
-func (r *globalRuleClient) Create(ctx context.Context, obj *v1.GlobalRule) (*v1.GlobalRule, error) {
+func (r *globalRuleClient) Create(ctx context.Context, obj *v1.GlobalRule, shouldCompare bool) (*v1.GlobalRule, error) {
 	log.Debugw("try to create global_rule",
 		zap.String("id", obj.ID),
 		zap.Any("plugins", obj.Plugins),
@@ -198,7 +198,7 @@ func (r *globalRuleClient) Delete(ctx context.Context, obj *v1.GlobalRule) error
 	return nil
 }
 
-func (r *globalRuleClient) Update(ctx context.Context, obj *v1.GlobalRule) (*v1.GlobalRule, error) {
+func (r *globalRuleClient) Update(ctx context.Context, obj *v1.GlobalRule, shouldCompare bool) (*v1.GlobalRule, error) {
 	log.Debugw("try to update global_rule",
 		zap.String("id", obj.ID),
 		zap.Any("plugins", obj.Plugins),

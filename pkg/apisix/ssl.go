@@ -139,7 +139,7 @@ func (s *sslClient) List(ctx context.Context) ([]*v1.Ssl, error) {
 	return items, nil
 }
 
-func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
+func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl, shouldCompare bool) (*v1.Ssl, error) {
 	log.Debugw("try to create ssl",
 		zap.String("cluster", s.cluster.name),
 		zap.String("url", s.url),
@@ -196,7 +196,7 @@ func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 	return nil
 }
 
-func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
+func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl, shouldCompare bool) (*v1.Ssl, error) {
 	log.Debugw("try to update ssl",
 		zap.String("id", obj.ID),
 		zap.String("cluster", s.cluster.name),

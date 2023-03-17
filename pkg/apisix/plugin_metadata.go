@@ -121,7 +121,7 @@ func (r *pluginMetadataClient) Delete(ctx context.Context, obj *v1.PluginMetadat
 	return nil
 }
 
-func (r *pluginMetadataClient) Update(ctx context.Context, obj *v1.PluginMetadata) (*v1.PluginMetadata, error) {
+func (r *pluginMetadataClient) Update(ctx context.Context, obj *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error) {
 	log.Debugw("try to update pluginMetadata",
 		zap.String("name", obj.Name),
 		zap.Any("metadata", obj.Metadata),

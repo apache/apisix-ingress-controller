@@ -382,6 +382,7 @@ func (c *Controller) run(ctx context.Context) {
 		AdminKey:         c.cfg.APISIX.DefaultClusterAdminKey,
 		BaseURL:          c.cfg.APISIX.DefaultClusterBaseURL,
 		MetricsCollector: c.MetricsCollector,
+		SyncComparison:   c.cfg.ApisixResourceSyncComparison,
 	}
 	err := c.apisix.AddCluster(ctx, clusterOpts)
 	if err != nil && err != apisix.ErrDuplicatedCluster {
@@ -524,7 +525,7 @@ func (c *Controller) run(ctx context.Context) {
 	}
 
 	e.Add(func() {
-		c.resourceSyncLoop(ctx, c.cfg.ApisixResourceSyncInterval.Duration)
+		c.resourceSyncLoop(ctx, c.cfg.ApisixResourceSyncInterval.Duration, c.cfg.ApisixResourceSyncComparison)
 	})
 	c.MetricsCollector.ResetLeader(true)
 
@@ -580,7 +581,7 @@ func (c *Controller) syncAllResources() {
 	e.Wait()
 }
 
-func (c *Controller) resourceSyncLoop(ctx context.Context, interval time.Duration) {
+func (c *Controller) resourceSyncLoop(ctx context.Context, interval time.Duration, enableComparison bool) {
 	if interval == 0 {
 		log.Info("apisix-resource-sync-interval set to 0, periodically synchronization disabled.")
 		return

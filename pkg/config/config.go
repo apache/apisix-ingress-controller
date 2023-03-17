@@ -72,23 +72,24 @@ var (
 // Config contains all config items which are necessary for
 // apisix-ingress-controller's running.
 type Config struct {
-	CertFilePath               string             `json:"cert_file" yaml:"cert_file"`
-	KeyFilePath                string             `json:"key_file" yaml:"key_file"`
-	LogLevel                   string             `json:"log_level" yaml:"log_level"`
-	LogOutput                  string             `json:"log_output" yaml:"log_output"`
-	LogRotateOutputPath        string             `json:"log_rotate_output_path" yaml:"log_rotate_output_path"`
-	LogRotationMaxSize         int                `json:"log_rotation_max_size" yaml:"log_rotation_max_size"`
-	LogRotationMaxAge          int                `json:"log_rotation_max_age" yaml:"log_rotation_max_age"`
-	LogRotationMaxBackups      int                `json:"log_rotation_max_backups" yaml:"log_rotation_max_backups"`
-	HTTPListen                 string             `json:"http_listen" yaml:"http_listen"`
-	HTTPSListen                string             `json:"https_listen" yaml:"https_listen"`
-	IngressPublishService      string             `json:"ingress_publish_service" yaml:"ingress_publish_service"`
-	IngressStatusAddress       []string           `json:"ingress_status_address" yaml:"ingress_status_address"`
-	EnableProfiling            bool               `json:"enable_profiling" yaml:"enable_profiling"`
-	Kubernetes                 KubernetesConfig   `json:"kubernetes" yaml:"kubernetes"`
-	APISIX                     APISIXConfig       `json:"apisix" yaml:"apisix"`
-	ApisixResourceSyncInterval types.TimeDuration `json:"apisix-resource-sync-interval" yaml:"apisix-resource-sync-interval"`
-	PluginMetadataConfigMap    string             `json:"plugin_metadata_cm" yaml:"plugin_metadata_cm"`
+	CertFilePath                 string             `json:"cert_file" yaml:"cert_file"`
+	KeyFilePath                  string             `json:"key_file" yaml:"key_file"`
+	LogLevel                     string             `json:"log_level" yaml:"log_level"`
+	LogOutput                    string             `json:"log_output" yaml:"log_output"`
+	LogRotateOutputPath          string             `json:"log_rotate_output_path" yaml:"log_rotate_output_path"`
+	LogRotationMaxSize           int                `json:"log_rotation_max_size" yaml:"log_rotation_max_size"`
+	LogRotationMaxAge            int                `json:"log_rotation_max_age" yaml:"log_rotation_max_age"`
+	LogRotationMaxBackups        int                `json:"log_rotation_max_backups" yaml:"log_rotation_max_backups"`
+	HTTPListen                   string             `json:"http_listen" yaml:"http_listen"`
+	HTTPSListen                  string             `json:"https_listen" yaml:"https_listen"`
+	IngressPublishService        string             `json:"ingress_publish_service" yaml:"ingress_publish_service"`
+	IngressStatusAddress         []string           `json:"ingress_status_address" yaml:"ingress_status_address"`
+	EnableProfiling              bool               `json:"enable_profiling" yaml:"enable_profiling"`
+	Kubernetes                   KubernetesConfig   `json:"kubernetes" yaml:"kubernetes"`
+	APISIX                       APISIXConfig       `json:"apisix" yaml:"apisix"`
+	ApisixResourceSyncInterval   types.TimeDuration `json:"apisix-resource-sync-interval" yaml:"apisix-resource-sync-interval"`
+	ApisixResourceSyncComparison bool               `json:"apisix-resource-sync-comparison" yaml:"apisix-resource-sync-comparison"`
+	PluginMetadataConfigMap      string             `json:"plugin_metadata_cm" yaml:"plugin_metadata_cm"`
 }
 
 // KubernetesConfig contains all Kubernetes related config items.

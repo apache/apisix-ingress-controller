@@ -139,7 +139,7 @@ func (pc *pluginConfigClient) List(ctx context.Context) ([]*v1.PluginConfig, err
 	return items, nil
 }
 
-func (pc *pluginConfigClient) Create(ctx context.Context, obj *v1.PluginConfig) (*v1.PluginConfig, error) {
+func (pc *pluginConfigClient) Create(ctx context.Context, obj *v1.PluginConfig, shouldCompare bool) (*v1.PluginConfig, error) {
 	log.Debugw("try to create pluginConfig",
 		zap.String("name", obj.Name),
 		zap.Any("plugins", obj.Plugins),
@@ -201,7 +201,7 @@ func (pc *pluginConfigClient) Delete(ctx context.Context, obj *v1.PluginConfig) 
 	return nil
 }
 
-func (pc *pluginConfigClient) Update(ctx context.Context, obj *v1.PluginConfig) (*v1.PluginConfig, error) {
+func (pc *pluginConfigClient) Update(ctx context.Context, obj *v1.PluginConfig, shouldCompare bool) (*v1.PluginConfig, error) {
 	log.Debugw("try to update pluginConfig",
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),
