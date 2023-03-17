@@ -83,7 +83,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 			admission := gin.New()
 			admission.Use(gin.Recovery(), gin.Logger())
 			apirouter.MountWebhooks(admission, &apisix.ClusterOptions{
-				AdminAPIVersion:  cfg.Kubernetes.APIVersion,
+				AdminAPIVersion:  cfg.APISIX.AdminAPIVersion,
 				Name:             cfg.APISIX.DefaultClusterName,
 				AdminKey:         cfg.APISIX.DefaultClusterAdminKey,
 				BaseURL:          cfg.APISIX.DefaultClusterBaseURL,

@@ -180,4 +180,36 @@ spec:
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "echo plugin's config is invalid")
 	})
+
+	ginkgo.It("ingressClassName of the ApisixPluginConfig should not be modified", func() {
+		apc := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+  name: cors
+spec:
+  ingressClassName: watch
+  plugins:
+  - name: cors
+    enable: true
+`
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apc), "creatint a ApisixPluginConfig")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(1), "ApisixPluginConfig should be 1")
+
+		apc = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+  name: cors
+spec:
+  ingressClassName: failed
+  plugins:
+  - name: cors
+    enable: true
+`
+		err := s.CreateResourceFromString(apc)
+		assert.Error(ginkgo.GinkgoT(), err, "Failed to udpate ApisixPluginConfig")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
+	})
 })
