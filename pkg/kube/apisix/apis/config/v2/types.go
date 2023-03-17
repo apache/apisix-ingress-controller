@@ -291,6 +291,12 @@ type ApisixClusterConfig struct {
 
 // ApisixClusterConfigSpec defines the desired state of ApisixClusterConfigSpec.
 type ApisixClusterConfigSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// controller implementations use this field to know whether they should be
+	// serving this ApisixClusterConfig resource, by a transitive connection
+	// (controller -> IngressClass -> ApisixClusterConfig resource).
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	// Monitoring categories all monitoring related features.
 	// +optional
 	Monitoring *ApisixClusterMonitoringConfig `json:"monitoring" yaml:"monitoring"`
