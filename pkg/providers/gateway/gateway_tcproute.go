@@ -94,6 +94,15 @@ func (c *gatewayTCPRouteController) sync(ctx context.Context, ev *types.Event) e
 		}
 		tcpRoute = ev.Tombstone.(*gatewayv1alpha2.TCPRoute)
 	}
+	err = c.controller.validator.ValidateCommonRoute(tcpRoute)
+	if err != nil {
+		log.Errorw("failed to validate gateway TCPRoute",
+			zap.Error(err),
+			zap.Any("object", tcpRoute),
+		)
+		return err
+	}
+
 	tctx, err := c.controller.translator.TranslateGatewayTCPRouteV1Alpha2(tcpRoute)
 	if err != nil {
 		log.Errorw("failed to translate gateway TCPRoute",

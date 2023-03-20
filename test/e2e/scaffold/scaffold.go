@@ -164,7 +164,13 @@ func NewScaffold(o *Options) *Scaffold {
 		o.HTTPBinServicePort = 80
 	}
 	if o.IngressClass == "" {
-		o.IngressClass = config.IngressClassApisixAndAll
+		// Env acts on ci and will be deleted after the release of 1.17
+		ingClass := os.Getenv("INGRESS_CLASS")
+		if ingClass != "" {
+			o.IngressClass = ingClass
+		} else {
+			o.IngressClass = config.IngressClass
+		}
 	}
 	defer ginkgo.GinkgoRecover()
 
