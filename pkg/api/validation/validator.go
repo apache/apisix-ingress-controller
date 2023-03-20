@@ -61,6 +61,18 @@ var (
 		Version:  v2.GroupVersion.Version,
 		Resource: "apisixtlses",
 	}
+
+	ApisixClusterConfigV2GVR = metav1.GroupVersionResource{
+		Group:    v2.GroupVersion.Group,
+		Version:  v2.GroupVersion.Version,
+		Resource: "apisixclusterconfigs",
+	}
+
+	ApisixUpstreamV2GVR = metav1.GroupVersionResource{
+		Group:    v2.GroupVersion.Group,
+		Version:  v2.GroupVersion.Version,
+		Resource: "apisixupstreams",
+	}
 )
 
 var Validator = kwhvalidating.ValidatorFunc(
@@ -81,6 +93,21 @@ var Validator = kwhvalidating.ValidatorFunc(
 		case ApisixRouteV2GVR:
 			ar := object.(*v2.ApisixRoute)
 			valid, resultErr = ValidateApisixRouteV2(ar)
+		case ApisixUpstreamV2GVR:
+			au := object.(*v2.ApisixUpstream)
+			if au.Spec == nil {
+				valid, msg = false, fmt.Sprintln("Spec cannot be empty")
+				break
+			}
+			if review.Operation == kwhmodel.OperationUpdate {
+				var old v2.ApisixUpstream
+				_, _, err := deserializer.Decode(review.OldObjectRaw, nil, &old)
+				if err != nil {
+					log.Error("Failed to deserialize ApisixUpstream in admisson webhook")
+					break
+				}
+				valid, resultErr = validateIngressClassName(old.Spec.IngressClassName, au.Spec.IngressClassName)
+			}
 		case ApisixPluginConfigV2GVR:
 			apc := object.(*v2.ApisixPluginConfig)
 			if review.Operation == kwhmodel.OperationUpdate {
@@ -108,14 +135,29 @@ var Validator = kwhvalidating.ValidatorFunc(
 			}
 		case ApisixTlsV2GVR:
 			atls := object.(*v2.ApisixTls)
+			if atls.Spec == nil {
+				valid, msg = false, fmt.Sprintln("Spec cannot be empty")
+				break
+			}
 			if review.Operation == kwhmodel.OperationUpdate {
-				var old v2.ApisixConsumer
+				var old v2.ApisixTls
 				_, _, err := deserializer.Decode(review.OldObjectRaw, nil, &old)
 				if err != nil {
-					log.Error("Failed to deserialize ApisixConsumer in admisson webhook")
+					log.Error("Failed to deserialize ApisixTls in admisson webhook")
 					break
 				}
 				valid, resultErr = validateIngressClassName(old.Spec.IngressClassName, atls.Spec.IngressClassName)
+			}
+		case ApisixClusterConfigV2GVR:
+			acc := object.(*v2.ApisixClusterConfig)
+			if review.Operation == kwhmodel.OperationUpdate {
+				var old v2.ApisixClusterConfig
+				_, _, err := deserializer.Decode(review.OldObjectRaw, nil, &old)
+				if err != nil {
+					log.Error("Failed to deserialize ApisixClusterConfig in admisson webhook")
+					break
+				}
+				valid, resultErr = validateIngressClassName(old.Spec.IngressClassName, acc.Spec.IngressClassName)
 			}
 		default:
 			valid = false

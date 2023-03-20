@@ -261,6 +261,9 @@ webhooks:
     resources:
       - apisixroutes
       - apisixpluginconfigs
+      - apisixconsumers
+      - apisixpluginconfigs
+      - apisixclusterconfigs
   timeoutSeconds: 30
   failurePolicy: Fail
   sideEffects: None
