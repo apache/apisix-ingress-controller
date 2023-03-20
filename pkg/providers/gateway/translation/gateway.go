@@ -26,13 +26,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/providers/gateway/types"
 )
 
-const (
-	kindUDPRoute  gatewayv1beta1.Kind = "UDPRoute"
-	kindTCPRoute  gatewayv1beta1.Kind = "TCPRoute"
-	kindTLSRoute  gatewayv1beta1.Kind = "TLSRoute"
-	kindHTTPRoute gatewayv1beta1.Kind = "HTTPRoute"
-)
-
 func (t *translator) TranslateGatewayV1beta1(gateway *gatewayv1beta1.Gateway) (map[string]*types.ListenerConf, error) {
 	listeners := make(map[string]*types.ListenerConf)
 
@@ -68,12 +61,19 @@ func (t *translator) TranslateGatewayV1beta1(gateway *gatewayv1beta1.Gateway) (m
 			SectionName:    string(listener.Name),
 			Protocol:       listener.Protocol,
 			Port:           listener.Port,
+			Hostname:       listener.Hostname,
 			RouteNamespace: nil,
 			AllowedKinds:   allowedKinds,
 		}
 
 		if listener.AllowedRoutes.Namespaces != nil {
 			conf.RouteNamespace = listener.AllowedRoutes.Namespaces
+		} else {
+			// This is restricted to the namespace of this Gateway by default.
+			sameNamespace := gatewayv1beta1.NamespacesFromSame
+			conf.RouteNamespace = &gatewayv1beta1.RouteNamespaces{
+				From: &sameNamespace,
+			}
 		}
 
 		listeners[conf.SectionName] = conf
@@ -92,15 +92,15 @@ func validateListenerConfigurations(gateway *gatewayv1beta1.Gateway, idx int, al
 			return errors.New("non-empty TLS conf for protocol " + string(protocol))
 		}
 		if protocol == gatewayv1beta1.HTTPProtocolType {
-			if len(allowedKinds) != 1 || allowedKinds[0].Kind != kindHTTPRoute {
+			if len(allowedKinds) != 1 || allowedKinds[0].Kind != types.KindHTTPRoute {
 				return errors.New("HTTP protocol must allow route type HTTPRoute")
 			}
 		} else if protocol == gatewayv1beta1.TCPProtocolType {
-			if len(allowedKinds) != 1 || allowedKinds[0].Kind != kindTCPRoute {
+			if len(allowedKinds) != 1 || allowedKinds[0].Kind != types.KindTCPRoute {
 				return errors.New("TCP protocol must allow route type TCPRoute")
 			}
 		} else if protocol == gatewayv1beta1.UDPProtocolType {
-			if len(allowedKinds) != 1 || allowedKinds[0].Kind != kindUDPRoute {
+			if len(allowedKinds) != 1 || allowedKinds[0].Kind != types.KindUDPRoute {
 				return errors.New("UDP protocol must allow route type UDPRoute")
 			}
 		}
@@ -137,12 +137,12 @@ func validateListenerConfigurations(gateway *gatewayv1beta1.Gateway, idx int, al
 			if *listener.TLS.Mode != gatewayv1beta1.TLSModeTerminate {
 				return errors.New("TLS mode for HTTPS protocol must be Terminate")
 			}
-			if len(allowedKinds) != 1 || allowedKinds[0].Kind != kindHTTPRoute {
+			if len(allowedKinds) != 1 || allowedKinds[0].Kind != types.KindHTTPRoute {
 				return errors.New("HTTP protocol must allow route type HTTPRoute")
 			}
 		} else if protocol == gatewayv1beta1.TLSProtocolType {
 			for _, kind := range allowedKinds {
-				if kind.Kind != kindTLSRoute && kind.Kind != kindTCPRoute {
+				if kind.Kind != types.KindTLSRoute && kind.Kind != types.KindTCPRoute {
 					return errors.New("TLS protocol only support route type TLSRoute and TCPRoute")
 				}
 			}
@@ -159,14 +159,17 @@ func getAllowedKinds(listener gatewayv1beta1.Listener) ([]gatewayv1beta1.RouteGr
 	var kind gatewayv1beta1.Kind
 	switch listener.Protocol {
 	case gatewayv1beta1.HTTPProtocolType, gatewayv1beta1.HTTPSProtocolType:
-		kind = kindHTTPRoute
+		kind = types.KindHTTPRoute
 	case gatewayv1beta1.TLSProtocolType:
-		kind = kindTLSRoute
+		kind = types.KindTLSRoute
 	case gatewayv1beta1.TCPProtocolType:
-		kind = kindTCPRoute
+		kind = types.KindTCPRoute
 	case gatewayv1beta1.UDPProtocolType:
-		kind = kindUDPRoute
+		kind = types.KindUDPRoute
 	default:
+		// TODO: If an implementation does not support or recognize this resource type,
+		// it MUST set the “ResolvedRefs” condition to False for this Listener with
+		// the “InvalidRouteKinds” reason.
 		return nil, errors.New("unknown protocol " + string(listener.Protocol))
 	}
 

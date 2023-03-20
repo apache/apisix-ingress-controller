@@ -203,6 +203,15 @@ rules:
     - get
     - list
     - watch
+  - apiGroups:
+    - gateway.networking.k8s.io
+    resources:
+    - gateways/status
+    - gatewayclasses/status
+    verbs:
+    - get
+    - update
+    - list
 `
 	_clusterRoleBinding = `
 apiVersion: rbac.authorization.k8s.io/v1

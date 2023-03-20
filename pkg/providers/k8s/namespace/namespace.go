@@ -136,6 +136,9 @@ func (c *namespaceController) onAdd(obj interface{}) {
 		log.Errorf("found Namespace resource with error: %v", err)
 		return
 	}
+	log.Debugw("namespace add event arrived",
+		zap.Any("namespace", obj),
+	)
 	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
