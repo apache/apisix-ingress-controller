@@ -262,6 +262,7 @@ spec:
 			// -- Data preparation --
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbin.org")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, "httpbin.org", 80, translation.DefaultWeight)
@@ -271,6 +272,7 @@ spec:
 			// -- Data preparation --
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbun.org")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
+			time.Sleep(time.Second * 6)
 
 			// -- Expect failed --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, "httpbun.org", 80, translation.DefaultWeight)
@@ -278,6 +280,7 @@ spec:
 
 			// -- update --
 			PhaseCreateApisixRouteWithHostRewrite(s, "httpbin-route", "httpbin-upstream", "httpbun.org")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			upstreamId = PhaseValidateFirstUpstream(s, 1, "httpbun.org", 80, translation.DefaultWeight)
@@ -288,6 +291,7 @@ spec:
 			PhaseCreateExternalService(s, "ext-httpbin", "httpbin.org")
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeService, "ext-httpbin")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, "httpbin.org", 80, translation.DefaultWeight)
@@ -302,6 +306,7 @@ spec:
 			PhaseCreateExternalService(s, "ext-httpbin", fqdn)
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeService, "ext-httpbin")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, fqdn, 80, translation.DefaultWeight)
@@ -463,6 +468,7 @@ spec:
 			PhaseCreateApisixUpstreamWithMultipleExternalNodes(s, "httpbin-upstream",
 				v2.ExternalTypeDomain, "httpbin.org", v2.ExternalTypeDomain, "httpbun.org")
 			PhaseCreateApisixRouteWithHostRewrite(s, "httpbin-route", "httpbin-upstream", "httpbun.org")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			PhaseValidateMultipleNodes(s, 2, map[string]*validateFactor{
@@ -481,6 +487,7 @@ spec:
 			PhaseCreateHttpbin(s, "httpbin-temp")
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbun.org")
 			PhaseCreateApisixRouteWithHostRewriteAndBackend(s, "httpbin-route", "httpbin-upstream", "httpbun.org", "httpbin-temp", 80)
+			time.Sleep(time.Second * 6)
 
 			svc, err := s.GetServiceByName("httpbin-temp")
 			assert.Nil(ginkgo.GinkgoT(), err, "get httpbin service")
@@ -506,10 +513,12 @@ spec:
 		ginkgo.It("should be able to create the ApisixUpstream later", func() {
 			// -- Data preparation --
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
+			time.Sleep(time.Second * 6)
 			PhaseValidateNoUpstreams(s)
 
 			// -- Data Update --
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbin.org")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, "httpbin.org", 80, translation.DefaultWeight)
@@ -539,6 +548,7 @@ spec:
 
 			// -- Data update --
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeService, "ext-httpbin")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, fqdn, 80, translation.DefaultWeight)
@@ -549,10 +559,12 @@ spec:
 			PhaseCreateExternalService(s, "ext-httpbin", "unknown.org")
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeService, "ext-httpbin")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
+			time.Sleep(time.Second * 6)
 			PhaseValidateFirstUpstream(s, 1, "unknown.org", 80, translation.DefaultWeight)
 
 			// -- Data update --
 			PhaseCreateExternalService(s, "ext-httpbin", "httpbin.org")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, "httpbin.org", 80, translation.DefaultWeight)
@@ -564,6 +576,7 @@ spec:
 			// -- Data preparation --
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbin.org")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, "httpbin.org", 80, translation.DefaultWeight)
@@ -572,7 +585,7 @@ spec:
 			// -- delete --
 			assert.Nil(ginkgo.GinkgoT(), s.DeleteResource("ar", "httpbin-route"), "delete route")
 			assert.Nil(ginkgo.GinkgoT(), s.DeleteResource("au", "httpbin-upstream"), "delete upstream")
-			time.Sleep(time.Second * 15)
+			time.Sleep(time.Second * 6)
 
 			// -- validate --
 			PhaseValidateNoRoutes(s)
