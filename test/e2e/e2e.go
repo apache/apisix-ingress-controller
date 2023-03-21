@@ -17,6 +17,7 @@ package e2e
 import (
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-annotations"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-chore"
+	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-cluster-config"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-features"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-gateway"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-ingress/suite-ingress-features"

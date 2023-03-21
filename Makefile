@@ -49,7 +49,7 @@ VERSYM="github.com/apache/apisix-ingress-controller/pkg/version._buildVersion"
 GITSHASYM="github.com/apache/apisix-ingress-controller/pkg/version._buildGitRevision"
 BUILDOSSYM="github.com/apache/apisix-ingress-controller/pkg/version._buildOS"
 GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH)"
-E2E_NODES ?= 4
+E2E_NODES ?= 2
 E2E_FLAKE_ATTEMPTS ?= 0
 E2E_SKIP_BUILD ?= 0
 E2E_ENV ?= "dev"
