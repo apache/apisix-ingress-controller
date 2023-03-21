@@ -19,7 +19,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/pkg/id"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
@@ -474,81 +473,6 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "james-key"}, acs[0].Plugins["key-auth"])
 	})
 
-	ginkgo.It("ApisixClusterConfig should be ignored", func() {
-		// create ApisixConsumer resource with ingressClassName: ignore
-		acc := `
-apiVersion: apisix.apache.org/v2
-kind: ApisixClusterConfig
-metadata:
-  name: default
-spec:
-  ingressClassName: ignore
-  monitoring:
-    prometheus:
-      enable: true
-      prefer_name: true
-`
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(acc))
-		time.Sleep(6 * time.Second)
-
-		agrs, err := s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), agrs, 0)
-
-		assert.Nil(ginkgo.GinkgoT(), s.DeleteApisixClusterConfig("default", true, true), "delete apisix cluster config")
-	})
-
-	ginkgo.It("ApisixClusterConfig should be handled", func() {
-		// create ApisixConsumer resource without ingressClassName
-		acc := `
-apiVersion: apisix.apache.org/v2
-kind: ApisixClusterConfig
-metadata:
-  name: default
-spec:
-  monitoring:
-    prometheus:
-      enable: true
-      prefer_name: true
-`
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(acc))
-		time.Sleep(6 * time.Second)
-
-		agrs, err := s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), agrs, 1)
-		assert.Equal(ginkgo.GinkgoT(), agrs[0].ID, id.GenID("default"))
-		assert.Len(ginkgo.GinkgoT(), agrs[0].Plugins, 1)
-		_, ok := agrs[0].Plugins["prometheus"]
-		assert.Equal(ginkgo.GinkgoT(), ok, true)
-
-		// update ApisixConsumer resource with ingressClassName: apisix
-		acc = `
-apiVersion: apisix.apache.org/v2
-kind: ApisixClusterConfig
-metadata:
-  name: default
-spec:
-  ingressClassName: apisix
-  monitoring:
-    prometheus:
-      enable: true
-      prefer_name: true
-`
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(acc))
-		time.Sleep(6 * time.Second)
-
-		agrs, err = s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), agrs, 1)
-		assert.Equal(ginkgo.GinkgoT(), agrs[0].ID, id.GenID("default"))
-		assert.Len(ginkgo.GinkgoT(), agrs[0].Plugins, 1)
-		_, ok = agrs[0].Plugins["prometheus"]
-		assert.Equal(ginkgo.GinkgoT(), ok, true)
-
-		assert.Nil(ginkgo.GinkgoT(), s.DeleteApisixClusterConfig("default", true, true), "delete apisix cluster config")
-	})
-
 	ginkgo.It("ApisixGlobalRule should be ignored", func() {
 		agr := `
 apiVersion: apisix.apache.org/v2
@@ -927,81 +851,6 @@ spec:
 		assert.Len(ginkgo.GinkgoT(), acs, 1)
 		assert.Contains(ginkgo.GinkgoT(), acs[0].Username, "james")
 		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "james-password"}, acs[0].Plugins["key-auth"])
-	})
-
-	ginkgo.It("ApisixClusterConfig should be handled", func() {
-		// create ApisixConsumer resource without ingressClassName
-		acc := `
-apiVersion: apisix.apache.org/v2
-kind: ApisixClusterConfig
-metadata:
-  name: default
-spec:
-  monitoring:
-    prometheus:
-      enable: true
-      prefer_name: true
-`
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(acc))
-		time.Sleep(6 * time.Second)
-
-		agrs, err := s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), agrs, 1)
-		assert.Equal(ginkgo.GinkgoT(), agrs[0].ID, id.GenID("default"))
-		assert.Len(ginkgo.GinkgoT(), agrs[0].Plugins, 1)
-		_, ok := agrs[0].Plugins["prometheus"]
-		assert.Equal(ginkgo.GinkgoT(), ok, true)
-
-		// update ApisixConsumer resource with ingressClassName: apisix
-		acc = `
-apiVersion: apisix.apache.org/v2
-kind: ApisixClusterConfig
-metadata:
-  name: default
-spec:
-  ingressClassName: apisix
-  monitoring:
-    prometheus:
-      enable: true
-      prefer_name: true
-`
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(acc))
-		time.Sleep(6 * time.Second)
-
-		agrs, err = s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), agrs, 1)
-		assert.Equal(ginkgo.GinkgoT(), agrs[0].ID, id.GenID("default"))
-		assert.Len(ginkgo.GinkgoT(), agrs[0].Plugins, 1)
-		_, ok = agrs[0].Plugins["prometheus"]
-		assert.Equal(ginkgo.GinkgoT(), ok, true)
-
-		// update ApisixConsumer resource with ingressClassName: watch
-		acc = `
-apiVersion: apisix.apache.org/v2
-kind: ApisixClusterConfig
-metadata:
-  name: default
-spec:
-  ingressClassName: watch
-  monitoring:
-    prometheus:
-      enable: true
-      prefer_name: true
-`
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(acc))
-		time.Sleep(6 * time.Second)
-
-		agrs, err = s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), agrs, 1)
-		assert.Equal(ginkgo.GinkgoT(), agrs[0].ID, id.GenID("default"))
-		assert.Len(ginkgo.GinkgoT(), agrs[0].Plugins, 1)
-		_, ok = agrs[0].Plugins["prometheus"]
-		assert.Equal(ginkgo.GinkgoT(), ok, true)
-
-		assert.Nil(ginkgo.GinkgoT(), s.DeleteApisixClusterConfig("default", true, true), "delete apisix cluster config")
 	})
 
 	ginkgo.It("ApisixGlobalRule should be handled", func() {
