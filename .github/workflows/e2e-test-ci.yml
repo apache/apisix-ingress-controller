@@ -196,5 +196,5 @@ jobs:
           E2E_FLAKE_ATTEMPTS: "2"
           E2E_ENV: "ci"
         run: |
-          echo ${E2E_FOCUS} | grep "suite-cluster" && export E2E_FOCUS=1
+          echo ${E2E_FOCUS} | grep "suite-cluster" && export E2E_NODES=1
           make e2e-test
