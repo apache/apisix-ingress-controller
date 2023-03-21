@@ -494,6 +494,8 @@ spec:
 		agrs, err := s.ListApisixGlobalRules()
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), agrs, 0)
+
+		assert.Nil(ginkgo.GinkgoT(), s.DeleteApisixClusterConfig("default", true, true), "delete apisix cluster config")
 	})
 
 	ginkgo.It("ApisixClusterConfig should be handled", func() {
