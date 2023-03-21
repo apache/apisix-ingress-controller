@@ -439,18 +439,17 @@ func (s *Scaffold) beforeEach() {
 	}
 	s.finalizers = nil
 
-	if !s.opts.DisableNamespaceLabel {
-		if s.opts.NamespaceSelectorLabel != nil {
-			s.label = s.opts.NamespaceSelectorLabel
-		} else {
-			s.label = map[string]string{"apisix.ingress.watch": s.namespace}
-		}
+	if s.opts.NamespaceSelectorLabel != nil {
+		s.label = s.opts.NamespaceSelectorLabel
+	} else {
+		s.label = map[string]string{"apisix.ingress.watch": s.namespace}
 	}
 
-	fmt.Println(s.namespace)
-	fmt.Println(s.kubectlOptions)
-	fmt.Println(s.label)
-	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: s.namespace, Labels: s.label})
+	var nsLabel map[string]string
+	if !s.opts.DisableNamespaceLabel {
+		nsLabel = s.label
+	}
+	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: s.namespace, Labels: nsLabel})
 
 	s.nodes, err = k8s.GetReadyNodesE(s.t, s.kubectlOptions)
 	assert.Nil(s.t, err, "querying ready nodes")
