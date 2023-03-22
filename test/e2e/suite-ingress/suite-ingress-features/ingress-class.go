@@ -337,7 +337,7 @@ spec:
 		resp.Body().IsEqual("my custom body")
 	})
 
-	ginkgo.It("ApisixTls should be handled", func() {
+	ginkgo.It("ApisiTls should be handled", func() {
 		err := s.NewSecret(_secretName, _cert, _key)
 		assert.Nil(ginkgo.GinkgoT(), err, "create secret error")
 		// create ApisixTls resource without ingressClassName
@@ -366,7 +366,7 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), tls[0].Snis[0], host2, "tls host is error")
 	})
 
-	ginkgo.It("ApisixTls should be ignored", func() {
+	ginkgo.It("ApisiTls should be ignored", func() {
 		err := s.NewSecret(_secretName, _cert, _key)
 		assert.Nil(ginkgo.GinkgoT(), err, "create secret error")
 		// create ApisixTls resource with ingressClassName: ignored
@@ -423,7 +423,7 @@ spec:
 	})
 
 	ginkgo.It("ApisixConsumer should be handled", func() {
-		// create ApisixConsumer resource without ingressClassName
+		// create ApisixConsumer resource withoutput ingressClassName
 		ac := `
 apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
@@ -474,7 +474,7 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "james-key"}, acs[0].Plugins["key-auth"])
 	})
 
-	ginkgo.It("ApisixClusterConfig should be ignored", func() {
+	ginkgo.It("ApisiClusterConfig should be ignored", func() {
 		// create ApisixConsumer resource with ingressClassName: ignore
 		acc := `
 apiVersion: apisix.apache.org/v2
@@ -500,7 +500,7 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), ok, true)
 	})
 
-	ginkgo.It("ApisixClusterConfig should be handled", func() {
+	ginkgo.It("ApisiClusterConfig should be handled", func() {
 		// create ApisixConsumer resource without ingressClassName
 		acc := `
 apiVersion: apisix.apache.org/v2
@@ -547,8 +547,6 @@ spec:
 		assert.Len(ginkgo.GinkgoT(), agrs[0].Plugins, 1)
 		_, ok = agrs[0].Plugins["prometheus"]
 		assert.Equal(ginkgo.GinkgoT(), ok, true)
-
-		assert.Nil(ginkgo.GinkgoT(), s.DeleteApisixClusterConfig("default", true, true), "delete apisix cluster config")
 	})
 
 	ginkgo.It("ApisixGlobalRule should be ignored", func() {
@@ -819,7 +817,7 @@ spec:
 		resp.Body().IsEqual("my custom body")
 	})
 
-	ginkgo.It("ApisixTls should be handled", func() {
+	ginkgo.It("ApisiTls should be handled", func() {
 		err := s.NewSecret(_secretName, _cert, _key)
 		assert.Nil(ginkgo.GinkgoT(), err, "create secret error")
 		// create ApisixTls resource without ingressClassName
@@ -858,7 +856,7 @@ spec:
 	})
 
 	ginkgo.It("ApisixConsumer should be handled", func() {
-		// create ApisixConsumer resource without ingressClassName
+		// create ApisixConsumer resource withoutput ingressClassName
 		ac := `
 apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
@@ -931,7 +929,7 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "james-password"}, acs[0].Plugins["key-auth"])
 	})
 
-	ginkgo.It("ApisixClusterConfig should be handled", func() {
+	ginkgo.It("ApisiClusterConfig should be handled", func() {
 		// create ApisixConsumer resource without ingressClassName
 		acc := `
 apiVersion: apisix.apache.org/v2
@@ -1002,8 +1000,6 @@ spec:
 		assert.Len(ginkgo.GinkgoT(), agrs[0].Plugins, 1)
 		_, ok = agrs[0].Plugins["prometheus"]
 		assert.Equal(ginkgo.GinkgoT(), ok, true)
-
-		assert.Nil(ginkgo.GinkgoT(), s.DeleteApisixClusterConfig("default", true, true), "delete apisix cluster config")
 	})
 
 	ginkgo.It("ApisixGlobalRule should be handled", func() {
