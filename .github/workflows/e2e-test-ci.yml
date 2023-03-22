@@ -166,7 +166,7 @@ jobs:
 
       - name: Install ginkgo
         run: |
-          go install github.com/onsi/ginkgo/v2/ginkgo@v2.2.0
+          go install github.com/onsi/ginkgo/v2/ginkgo@v2.9.0
           sudo cp ~/go/bin/ginkgo /usr/local/bin
 
       - name: cache
@@ -196,4 +196,5 @@ jobs:
           E2E_FLAKE_ATTEMPTS: "2"
           E2E_ENV: "ci"
         run: |
+          echo ${E2E_FOCUS} | grep "suite-cluster" && export E2E_NODES=1
           make e2e-test
