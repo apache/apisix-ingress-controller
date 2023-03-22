@@ -244,13 +244,15 @@ func (c *apisixGlobalRuleController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixGlobalRule resource with bad meta namespace key: %s", err)
 		return
 	}
+	agr := kube.MustNewApisixGlobalRule(obj)
+	if !c.isEffective(agr) {
+		return
+	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixGlobalRule add event arrived",
 		zap.Any("object", obj))
-
-	agr := kube.MustNewApisixGlobalRule(obj)
 	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.ApisixGlobalRuleEvent{
@@ -271,6 +273,9 @@ func (c *apisixGlobalRuleController) onUpdate(oldObj, newObj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
 		log.Errorf("found ApisixGlobalRule resource with bad meta namespace key: %s", err)
+		return
+	}
+	if !c.isEffective(curr) {
 		return
 	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
@@ -306,6 +311,9 @@ func (c *apisixGlobalRuleController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixGlobalRule resource with bad meta namesagre key: %s", err)
 		return
 	}
+	if !c.isEffective(agr) {
+		return
+	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
@@ -332,10 +340,13 @@ func (c *apisixGlobalRuleController) ResourceSync() {
 			log.Errorw("ApisixGlobalRule sync failed, found ApisixGlobalRule resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
+		agr := kube.MustNewApisixGlobalRule(obj)
+		if !c.isEffective(agr) {
+			continue
+		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
-		agr := kube.MustNewApisixGlobalRule(obj)
 		c.workqueue.Add(&types.Event{
 			Type: types.EventAdd,
 			Object: kube.ApisixGlobalRuleEvent{
@@ -388,4 +399,21 @@ func (c *apisixGlobalRuleController) recordStatus(at interface{}, reason string,
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
 	}
+}
+
+func (c *apisixGlobalRuleController) isEffective(agr kube.ApisixGlobalRule) bool {
+	if agr.GroupVersion() == config.ApisixV2 {
+		ingClassName := agr.V2().Spec.IngressClassName
+		ok := utils.MatchCRDsIngressClass(ingClassName, c.Kubernetes.IngressClass)
+		if !ok {
+			log.Debugw("IngressClass: ApisixGlobalRule ignored",
+				zap.String("key", agr.V2().Namespace+"/"+agr.V2().Name),
+				zap.String("ingressClass", agr.V2().Spec.IngressClassName),
+			)
+		}
+
+		return ok
+	}
+	// Compatible with legacy versions
+	return true
 }
