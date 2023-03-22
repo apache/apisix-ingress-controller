@@ -194,7 +194,7 @@ For example, no available LB exists in the bare metal environment.`)
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.DefaultClusterBaseURL, "default-apisix-cluster-base-url", "", "the base URL of admin api / manager api for the default APISIX cluster")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.DefaultClusterAdminKey, "default-apisix-cluster-admin-key", "", "admin key used for the authorization of admin api / manager api for the default APISIX cluster")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.DefaultClusterName, "default-apisix-cluster-name", "default", "name of the default apisix cluster")
-	cmd.PersistentFlags().DurationVar(&cfg.ApisixResourceSyncInterval.Duration, "apisix-resource-sync-interval", 300*time.Second, "interval between syncs in seconds. Default value is 300s.")
+	cmd.PersistentFlags().DurationVar(&cfg.ApisixResourceSyncInterval.Duration, "apisix-resource-sync-interval", 1*time.Hour, "interval between syncs in seconds. Default value is 1h. Set to 0 to disable.")
 	cmd.PersistentFlags().BoolVar(&cfg.Kubernetes.EnableAdmission, "enable-admission", false, "can verify crd resources")
 	cmd.PersistentFlags().StringVar(&cfg.PluginMetadataConfigMap, "plugin-metadata-cm", "plugin-metadata-config-map", "ConfigMap name of plugin metadata.")
 
