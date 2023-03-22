@@ -300,6 +300,7 @@ spec:
 		ginkgo.It("should be able to access in-cluster ExternalName service", func() {
 			// -- Data preparation --
 			fqdn := PhaseCreateHttpbin(s, "httpbin-temp")
+			time.Sleep(time.Second * 10)
 
 			// We are only testing the functionality of the external service and do not care which namespace the service is in.
 			// The namespace of the external service should be watched.
@@ -485,6 +486,7 @@ spec:
 		ginkgo.It("should be able to use backends and upstreams together", func() {
 			// -- Data preparation --
 			PhaseCreateHttpbin(s, "httpbin-temp")
+			time.Sleep(time.Second * 10)
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbun.org")
 			PhaseCreateApisixRouteWithHostRewriteAndBackend(s, "httpbin-route", "httpbin-upstream", "httpbun.org", "httpbin-temp", 80)
 			time.Sleep(time.Second * 6)
@@ -527,13 +529,15 @@ spec:
 		ginkgo.It("should be able to create the ExternalName service later", func() {
 			// -- Data preparation --
 			fqdn := PhaseCreateHttpbin(s, "httpbin-temp")
+			time.Sleep(time.Second * 10)
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeService, "ext-httpbin")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
+			time.Sleep(time.Second * 6)
 			PhaseValidateNoUpstreams(s)
 
 			// -- Data update --
 			PhaseCreateExternalService(s, "ext-httpbin", fqdn)
-
+			time.Sleep(time.Second * 6)
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, fqdn, 80, translation.DefaultWeight)
 			PhaseValidateRouteAccess(s, upstreamId)
@@ -541,9 +545,11 @@ spec:
 		ginkgo.It("should be able to update the ApisixUpstream later", func() {
 			// -- Data preparation --
 			fqdn := PhaseCreateHttpbin(s, "httpbin-temp")
+			time.Sleep(time.Second * 10)
 			PhaseCreateExternalService(s, "ext-httpbin", fqdn)
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeService, "doesnt-exist")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
+			time.Sleep(time.Second * 6)
 			PhaseValidateNoUpstreams(s)
 
 			// -- Data update --
