@@ -143,6 +143,9 @@ func (p *apisixProvider) ResourceSync() {
 	e.Add(p.apisixClusterConfigController.ResourceSync)
 	e.Add(p.apisixConsumerController.ResourceSync)
 	e.Add(p.apisixPluginConfigController.ResourceSync)
+	if p.common.Kubernetes.APIVersion == config.ApisixV2 {
+		e.Add(p.apisixGlobalRuleController.ResourceSync)
+	}
 
 	e.Wait()
 }

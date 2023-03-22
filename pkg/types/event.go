@@ -25,9 +25,19 @@ const (
 	EventUpdate
 	// EventDelete means a delete event.
 	EventDelete
-
+	// EventSync triggers by periodic synchronization, should make a comparison before any request to APISIX
+	// The synchronization considered as add event,
+	// so its behavior should be the same as EventAdd in controller
 	EventSync
 )
+
+func (ev EventType) IsAddEvent() bool {
+	return ev == EventAdd || ev == EventSync
+}
+
+func (ev EventType) IsSyncEvent() bool {
+	return ev == EventSync
+}
 
 func (ev EventType) String() string {
 	switch ev {
@@ -36,6 +46,8 @@ func (ev EventType) String() string {
 	case EventUpdate:
 		return "update"
 	case EventDelete:
+		return "delete"
+	case EventSync:
 		return "delete"
 	default:
 		return "unknown"

@@ -340,7 +340,7 @@ func (c *apisixConsumerController) ResourceSync() {
 			return
 		}
 		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
+			Type: types.EventSync,
 			Object: kube.ApisixConsumerEvent{
 				Key:          key,
 				GroupVersion: ac.GroupVersion(),

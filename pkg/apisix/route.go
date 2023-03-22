@@ -18,7 +18,6 @@ package apisix
 import (
 	"context"
 	"encoding/json"
-	"reflect"
 
 	"go.uber.org/zap"
 
@@ -141,23 +140,8 @@ func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 }
 
 func (r *routeClient) Create(ctx context.Context, obj *v1.Route, shouldCompare bool) (*v1.Route, error) {
-	if r.cluster.syncComparison && shouldCompare {
-		cached, err := r.cluster.cache.GetRoute(obj.ID)
-		if err == nil && cached != nil {
-			if reflect.DeepEqual(*cached, *obj) {
-				log.Debugw("sync comparison skipped same resource",
-					zap.Any("obj", obj),
-					zap.Any("cached", cached),
-				)
-
-				return obj, nil
-			} else {
-				log.Debugw("sync comparison continue operation",
-					zap.Any("obj", obj),
-					zap.Any("cached", cached),
-				)
-			}
-		}
+	if v, skip := skipRequest(r.cluster, shouldCompare, obj.ID, obj); skip {
+		return v, nil
 	}
 
 	log.Debugw("try to create route",
@@ -192,6 +176,10 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route, shouldCompare b
 		log.Errorf("failed to reflect route create to cache: %s", err)
 		return nil, err
 	}
+	if err := r.cluster.generatedObjCache.InsertRoute(obj); err != nil {
+		log.Errorf("failed to cache generated route object: %s", err)
+		return nil, err
+	}
 	return route, nil
 }
 
@@ -217,27 +205,18 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 			return err
 		}
 	}
+	if err := r.cluster.generatedObjCache.DeleteRoute(obj); err != nil {
+		log.Errorf("failed to reflect route delete to generated cache: %s", err)
+		if err != cache.ErrNotFound {
+			return err
+		}
+	}
 	return nil
 }
 
 func (r *routeClient) Update(ctx context.Context, obj *v1.Route, shouldCompare bool) (*v1.Route, error) {
-	if r.cluster.syncComparison && shouldCompare {
-		cached, err := r.cluster.cache.GetRoute(obj.ID)
-		if err == nil && cached != nil {
-			if reflect.DeepEqual(*cached, *obj) {
-				log.Debugw("sync comparison skipped same resource",
-					zap.Any("obj", obj),
-					zap.Any("cached", cached),
-				)
-
-				return obj, nil
-			} else {
-				log.Debugw("sync comparison continue operation",
-					zap.Any("obj", obj),
-					zap.Any("cached", cached),
-				)
-			}
-		}
+	if v, skip := skipRequest(r.cluster, shouldCompare, obj.ID, obj); skip {
+		return v, nil
 	}
 
 	log.Debugw("try to update route",
@@ -265,6 +244,10 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route, shouldCompare b
 	}
 	if err := r.cluster.cache.InsertRoute(route); err != nil {
 		log.Errorf("failed to reflect route update to cache: %s", err)
+		return nil, err
+	}
+	if err := r.cluster.generatedObjCache.InsertRoute(obj); err != nil {
+		log.Errorf("failed to cache generated route object: %s", err)
 		return nil, err
 	}
 	return route, nil

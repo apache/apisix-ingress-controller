@@ -189,10 +189,10 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 		)
 
 		// TODO multiple cluster support
-		if ev.Type == types.EventAdd {
-			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Create(ctx, globalRule)
+		if ev.Type.IsSyncEvent() {
+			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Create(ctx, globalRule, ev.Type.IsSyncEvent())
 		} else {
-			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Update(ctx, globalRule)
+			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Update(ctx, globalRule, false)
 		}
 		if err != nil {
 			log.Errorw("failed to reflect global_rule changes to apisix cluster",
@@ -263,10 +263,10 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 		)
 
 		// TODO multiple cluster support
-		if ev.Type == types.EventAdd {
-			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Create(ctx, globalRule)
+		if ev.Type.IsAddEvent() {
+			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Create(ctx, globalRule, ev.Type.IsSyncEvent())
 		} else {
-			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Update(ctx, globalRule)
+			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Update(ctx, globalRule, false)
 		}
 		if err != nil {
 			log.Errorw("failed to reflect global_rule changes to apisix cluster",
@@ -423,7 +423,7 @@ func (c *apisixClusterConfigController) ResourceSync() {
 			return
 		}
 		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
+			Type: types.EventSync,
 			Object: kube.ApisixClusterConfigEvent{
 				Key:          key,
 				GroupVersion: acc.GroupVersion(),

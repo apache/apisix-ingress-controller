@@ -245,7 +245,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 					zap.Any("upstream", newUps),
 					zap.Any("ApisixUpstream", au),
 				)
-				if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, newUps); err != nil {
+				if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, newUps, ev.Type.IsSyncEvent()); err != nil {
 					log.Errorw("failed to update upstream",
 						zap.Error(err),
 						zap.Any("upstream", newUps),
@@ -286,7 +286,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 			}
 
 			if len(au.Spec.ExternalNodes) != 0 {
-				return c.updateExternalNodes(ctx, au, nil, newUps, au.Namespace, au.Name)
+				return c.updateExternalNodes(ctx, au, nil, newUps, au.Namespace, au.Name, ev.Type.IsSyncEvent())
 			}
 
 			// for service discovery related configuration
@@ -296,7 +296,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 			}
 			// updateUpstream for real
 			upsName := apisixv1.ComposeExternalUpstreamName(au.Namespace, au.Name)
-			return c.updateUpstream(ctx, upsName, &au.Spec.ApisixUpstreamConfig)
+			return c.updateUpstream(ctx, upsName, &au.Spec.ApisixUpstreamConfig, ev.Type.IsSyncEvent())
 
 		}
 
@@ -332,13 +332,13 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 					}
 				}
 
-				err := c.updateUpstream(ctx, apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Endpoint), &cfg)
+				err := c.updateUpstream(ctx, apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Endpoint), &cfg, ev.Type.IsSyncEvent())
 				if err != nil {
 					c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 					c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 					return err
 				}
-				err = c.updateUpstream(ctx, apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Service), &cfg)
+				err = c.updateUpstream(ctx, apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Service), &cfg, ev.Type.IsSyncEvent())
 				if err != nil {
 					c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 					c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
@@ -355,7 +355,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 	return err
 }
 
-func (c *apisixUpstreamController) updateUpstream(ctx context.Context, upsName string, cfg *configv2.ApisixUpstreamConfig) error {
+func (c *apisixUpstreamController) updateUpstream(ctx context.Context, upsName string, cfg *configv2.ApisixUpstreamConfig, shouldCompare bool) error {
 	// TODO: multi cluster
 	clusterName := c.Config.APISIX.DefaultClusterName
 
@@ -387,7 +387,7 @@ func (c *apisixUpstreamController) updateUpstream(ctx context.Context, upsName s
 		zap.Any("upstream", newUps),
 		zap.String("ApisixUpstream name", upsName),
 	)
-	if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, newUps); err != nil {
+	if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, newUps, shouldCompare); err != nil {
 		log.Errorw("failed to update upstream",
 			zap.Error(err),
 			zap.Any("upstream", newUps),
@@ -399,7 +399,7 @@ func (c *apisixUpstreamController) updateUpstream(ctx context.Context, upsName s
 	return nil
 }
 
-func (c *apisixUpstreamController) updateExternalNodes(ctx context.Context, au *configv2.ApisixUpstream, old *configv2.ApisixUpstream, newUps *apisixv1.Upstream, ns, name string) error {
+func (c *apisixUpstreamController) updateExternalNodes(ctx context.Context, au *configv2.ApisixUpstream, old *configv2.ApisixUpstream, newUps *apisixv1.Upstream, ns, name string, shouldCompare bool) error {
 	clusterName := c.Config.APISIX.DefaultClusterName
 
 	// TODO: if old is not nil, diff the external nodes change first
@@ -428,7 +428,7 @@ func (c *apisixUpstreamController) updateExternalNodes(ctx context.Context, au *
 		}
 
 		ups.Nodes = nodes
-		if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, ups); err != nil {
+		if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, ups, shouldCompare); err != nil {
 			log.Errorw("failed to update external nodes upstream",
 				zap.Error(err),
 				zap.Any("upstream", ups),
@@ -789,7 +789,7 @@ func (c *apisixUpstreamController) handleSvcChange(ctx context.Context, key stri
 		if err != nil {
 			return err
 		}
-		err = c.updateExternalNodes(ctx, au.V2(), nil, nil, ns, name)
+		err = c.updateExternalNodes(ctx, au.V2(), nil, nil, ns, name, true)
 		if err != nil {
 			return err
 		}

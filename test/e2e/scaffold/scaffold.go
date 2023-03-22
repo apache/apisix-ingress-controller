@@ -134,6 +134,12 @@ func GetKubeconfig() string {
 
 // NewScaffold creates an e2e test scaffold.
 func NewScaffold(o *Options) *Scaffold {
+	if o.Name == "" {
+		o.Name = "default"
+	}
+	if o.IngressAPISIXReplicas <= 0 {
+		o.IngressAPISIXReplicas = 1
+	}
 	if o.ApisixResourceVersion == "" {
 		o.ApisixResourceVersion = ApisixResourceVersion().Default
 	}
@@ -184,22 +190,27 @@ func NewScaffold(o *Options) *Scaffold {
 	return s
 }
 
+// NewV2beta3Scaffold creates a scaffold with some default options.
+func NewV2Scaffold(o *Options) *Scaffold {
+	o.ApisixResourceVersion = ApisixResourceVersion().V2
+	return NewScaffold(o)
+}
+
+// NewV2beta3Scaffold creates a scaffold with some default options.
+func NewV2beta3Scaffold(o *Options) *Scaffold {
+	o.ApisixResourceVersion = ApisixResourceVersion().V2
+	return NewScaffold(o)
+}
+
 // NewDefaultScaffold creates a scaffold with some default options.
 // apisix-version default v2
 func NewDefaultScaffold() *Scaffold {
-	opts := &Options{
-		Name:                  "default",
-		IngressAPISIXReplicas: 1,
-		ApisixResourceVersion: ApisixResourceVersion().Default,
-	}
-	return NewScaffold(opts)
+	return NewScaffold(&Options{})
 }
 
 // NewDefaultV2Scaffold creates a scaffold with some default options.
 func NewDefaultV2Scaffold() *Scaffold {
 	opts := &Options{
-		Name:                  "default",
-		IngressAPISIXReplicas: 1,
 		ApisixResourceVersion: ApisixResourceVersion().V2,
 	}
 	return NewScaffold(opts)
@@ -208,8 +219,6 @@ func NewDefaultV2Scaffold() *Scaffold {
 // NewDefaultV2beta3Scaffold creates a scaffold with some default options.
 func NewDefaultV2beta3Scaffold() *Scaffold {
 	opts := &Options{
-		Name:                  "default",
-		IngressAPISIXReplicas: 1,
 		ApisixResourceVersion: ApisixResourceVersion().V2beta3,
 	}
 	return NewScaffold(opts)

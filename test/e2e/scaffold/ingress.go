@@ -380,6 +380,8 @@ spec:
             - %s
             - --apisix-resource-sync-interval
             - %s
+            - --apisix-resource-sync-comparison
+            - "false"
             - --http-listen
             - :8080
             - --https-listen

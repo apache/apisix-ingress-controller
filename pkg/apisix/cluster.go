@@ -94,6 +94,7 @@ type cluster struct {
 	cli                     *http.Client
 	cacheState              int32
 	cache                   cache.Cache
+	generatedObjCache       cache.Cache
 	cacheSynced             chan struct{}
 	cacheSyncErr            error
 	syncComparison          bool
@@ -161,6 +162,11 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 	c.pluginMetadata = newPluginMetadataClient(c)
 
 	c.cache, err = cache.NewMemDBCache()
+	if o.SyncComparison {
+		c.generatedObjCache, err = cache.NewMemDBCache()
+	} else {
+		c.generatedObjCache, err = cache.NewNoopDBCache()
+	}
 	if err != nil {
 		return nil, err
 	}

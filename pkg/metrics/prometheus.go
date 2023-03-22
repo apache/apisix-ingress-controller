@@ -64,10 +64,17 @@ type collector struct {
 	controllerEvents   *prometheus.CounterVec
 }
 
+var (
+	globalCollector Collector
+)
+
 // NewPrometheusCollector creates the Prometheus metrics collector.
 // It also registers all internal metric collector to prometheus,
 // so do not call this function duplicately.
 func NewPrometheusCollector() Collector {
+	if globalCollector != nil {
+		return globalCollector
+	}
 	podName := os.Getenv("POD_NAME")
 	podNamespace := os.Getenv("POD_NAMESPACE")
 	if podNamespace == "" {
@@ -174,6 +181,7 @@ func NewPrometheusCollector() Collector {
 		collector.controllerEvents,
 	)
 
+	globalCollector = collector
 	return collector
 }
 

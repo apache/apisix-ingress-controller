@@ -132,6 +132,10 @@ func (u *upstreamClient) List(ctx context.Context) ([]*v1.Upstream, error) {
 }
 
 func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream, shouldCompare bool) (*v1.Upstream, error) {
+	if v, skip := skipRequest(u.cluster, shouldCompare, obj.ID, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to create upstream",
 		zap.String("name", obj.Name),
 		zap.String("url", u.url),
@@ -166,6 +170,10 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream, shouldCom
 		log.Errorf("failed to reflect upstream create to cache: %s", err)
 		return nil, err
 	}
+	if err := u.cluster.generatedObjCache.InsertUpstream(obj); err != nil {
+		log.Errorf("failed to reflect generated upstream create to cache: %s", err)
+		return nil, err
+	}
 	return ups, err
 }
 
@@ -180,22 +188,32 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 	if err := u.cluster.HasSynced(ctx); err != nil {
 		return err
 	}
-	if err := u.cluster.cache.DeleteUpstream(obj); err != nil {
-		log.Errorf("failed to reflect upstream delete to cache: %s", err.Error())
-		if err != cache.ErrNotFound {
-			return err
-		}
-	}
 	url := u.url + "/" + obj.ID
 	if err := u.cluster.deleteResource(ctx, url, "upstream"); err != nil {
 		u.cluster.metricsCollector.IncrAPISIXRequest("upstream")
 		return err
 	}
 	u.cluster.metricsCollector.IncrAPISIXRequest("upstream")
+	if err := u.cluster.cache.DeleteUpstream(obj); err != nil {
+		log.Errorf("failed to reflect upstream delete to cache: %s", err.Error())
+		if err != cache.ErrNotFound {
+			return err
+		}
+	}
+	if err := u.cluster.generatedObjCache.DeleteUpstream(obj); err != nil {
+		log.Errorf("failed to reflect upstream delete to generated cache: %s", err.Error())
+		if err != cache.ErrNotFound {
+			return err
+		}
+	}
 	return nil
 }
 
 func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream, shouldCompare bool) (*v1.Upstream, error) {
+	if v, skip := skipRequest(u.cluster, shouldCompare, obj.ID, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to update upstream",
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),
@@ -227,6 +245,10 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream, shouldCom
 	}
 	if err := u.cluster.cache.InsertUpstream(ups); err != nil {
 		log.Errorf("failed to reflect upstream update to cache: %s", err)
+		return nil, err
+	}
+	if err := u.cluster.generatedObjCache.InsertUpstream(obj); err != nil {
+		log.Errorf("failed to reflect generated upstream update to cache: %s", err)
 		return nil, err
 	}
 	return ups, err

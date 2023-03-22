@@ -146,7 +146,7 @@ func (c *apisixGlobalRuleController) sync(ctx context.Context, ev *types.Event) 
 
 	if ev.Type == types.EventDelete {
 		deleted = m
-	} else if ev.Type == types.EventAdd {
+	} else if ev.Type.IsAddEvent() {
 		added = m
 	} else {
 		oldCtx, err := c.translator.TranslateGlobalRule(obj.OldObject)
@@ -164,13 +164,13 @@ func (c *apisixGlobalRuleController) sync(ctx context.Context, ev *types.Event) 
 			added, updated, deleted = m.Diff(om)
 		}
 	}
-	log.Debugw("sync ApisixGlaobalRule to cluster",
+	log.Debugw("sync ApisixGlobalRule to cluster",
 		zap.String("event_type", ev.Type.String()),
 		zap.Any("add", added),
 		zap.Any("update", updated),
 		zap.Any("delete", deleted),
 	)
-	return c.SyncManifests(ctx, added, updated, deleted)
+	return c.SyncManifests(ctx, added, updated, deleted, ev.Type.IsSyncEvent())
 }
 
 func (c *apisixGlobalRuleController) handleSyncErr(obj interface{}, errOrigin error) {
@@ -337,7 +337,7 @@ func (c *apisixGlobalRuleController) ResourceSync() {
 		}
 		agr := kube.MustNewApisixGlobalRule(obj)
 		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
+			Type: types.EventSync,
 			Object: kube.ApisixGlobalRuleEvent{
 				Key:          key,
 				GroupVersion: agr.GroupVersion(),

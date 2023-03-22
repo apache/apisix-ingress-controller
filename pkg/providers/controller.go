@@ -60,7 +60,7 @@ const (
 	// _component is used for event component
 	_component = "ApisixIngress"
 	// minimum interval for ingress sync to APISIX
-	_mininumApisixResourceSyncInterval = 60 * time.Second
+	_minimumApisixResourceSyncInterval = 60 * time.Second
 )
 
 // Controller is the ingress apisix controller object.
@@ -525,7 +525,7 @@ func (c *Controller) run(ctx context.Context) {
 	}
 
 	e.Add(func() {
-		c.resourceSyncLoop(ctx, c.cfg.ApisixResourceSyncInterval.Duration, c.cfg.ApisixResourceSyncComparison)
+		c.resourceSyncLoop(ctx, c.cfg.ApisixResourceSyncInterval.Duration)
 	})
 	c.MetricsCollector.ResetLeader(true)
 
@@ -581,17 +581,17 @@ func (c *Controller) syncAllResources() {
 	e.Wait()
 }
 
-func (c *Controller) resourceSyncLoop(ctx context.Context, interval time.Duration, enableComparison bool) {
+func (c *Controller) resourceSyncLoop(ctx context.Context, interval time.Duration) {
 	if interval == 0 {
 		log.Info("apisix-resource-sync-interval set to 0, periodically synchronization disabled.")
 		return
 	}
 	// The interval shall not be less than 60 seconds.
-	if interval < _mininumApisixResourceSyncInterval {
+	if interval < _minimumApisixResourceSyncInterval {
 		log.Warnw("The apisix-resource-sync-interval shall not be less than 60 seconds.",
 			zap.String("apisix-resource-sync-interval", interval.String()),
 		)
-		interval = _mininumApisixResourceSyncInterval
+		interval = _minimumApisixResourceSyncInterval
 	}
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()

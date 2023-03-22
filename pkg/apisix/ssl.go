@@ -46,6 +46,7 @@ func newSSLClient(c *cluster) SSL {
 	}
 }
 
+// name is namespace_sslname
 func (s *sslClient) Get(ctx context.Context, name string) (*v1.Ssl, error) {
 	log.Debugw("try to look up ssl",
 		zap.String("name", name),
@@ -140,6 +141,10 @@ func (s *sslClient) List(ctx context.Context) ([]*v1.Ssl, error) {
 }
 
 func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl, shouldCompare bool) (*v1.Ssl, error) {
+	if v, skip := skipRequest(s.cluster, shouldCompare, obj.ID, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to create ssl",
 		zap.String("cluster", s.cluster.name),
 		zap.String("url", s.url),
@@ -169,6 +174,10 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl, shouldCompare bool)
 		log.Errorf("failed to reflect ssl create to cache: %s", err)
 		return nil, err
 	}
+	if err := s.cluster.generatedObjCache.InsertSSL(obj); err != nil {
+		log.Errorf("failed to reflect generated ssl create to cache: %s", err)
+		return nil, err
+	}
 	return ssl, nil
 }
 
@@ -193,10 +202,20 @@ func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 			return err
 		}
 	}
+	if err := s.cluster.generatedObjCache.DeleteSSL(obj); err != nil {
+		log.Errorf("failed to reflect ssl delete to generated cache: %s", err)
+		if err != cache.ErrNotFound {
+			return err
+		}
+	}
 	return nil
 }
 
 func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl, shouldCompare bool) (*v1.Ssl, error) {
+	if v, skip := skipRequest(s.cluster, shouldCompare, obj.ID, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to update ssl",
 		zap.String("id", obj.ID),
 		zap.String("cluster", s.cluster.name),
@@ -221,6 +240,10 @@ func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl, shouldCompare bool)
 	}
 	if err := s.cluster.cache.InsertSSL(ssl); err != nil {
 		log.Errorf("failed to reflect ssl update to cache: %s", err)
+		return nil, err
+	}
+	if err := s.cluster.generatedObjCache.InsertSSL(obj); err != nil {
+		log.Errorf("failed to reflect generated ssl update to cache: %s", err)
 		return nil, err
 	}
 	return ssl, nil

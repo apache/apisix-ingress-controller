@@ -389,7 +389,7 @@ func (c *apisixTlsController) ResourceSync() {
 			continue
 		}
 		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
+			Type: types.EventSync,
 			Object: kube.ApisixTlsEvent{
 				Key:          key,
 				GroupVersion: tls.GroupVersion(),

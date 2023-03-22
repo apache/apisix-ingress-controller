@@ -171,7 +171,7 @@ func (c *configmapController) sync(ctx context.Context, ev *types.Event) error {
 				added, updated, deleted = m.Diff(om)
 			}
 		}
-		if err := c.SyncClusterManifests(ctx, clusterName, added, updated, deleted); err != nil {
+		if err := c.SyncClusterManifests(ctx, clusterName, added, updated, deleted, false); err != nil {
 			log.Errorw("sync cluster failed", zap.Error(err))
 			return err
 		}
@@ -186,7 +186,7 @@ func (c *configmapController) sync(ctx context.Context, ev *types.Event) error {
 				deleted := &utils.Manifest{
 					PluginMetadatas: pluginMetadatas,
 				}
-				if err := c.SyncClusterManifests(ctx, clusterName, nil, nil, deleted); err != nil {
+				if err := c.SyncClusterManifests(ctx, clusterName, nil, nil, deleted, false); err != nil {
 					log.Errorw("sync cluster failed", zap.Error(err))
 				}
 			}

@@ -21,7 +21,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
-	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -41,43 +40,42 @@ func newGlobalRuleClient(c *cluster) GlobalRule {
 // Get returns the GlobalRule.
 // FIXME, currently if caller pass a non-existent resource, the Get always passes
 // through cache.
-func (r *globalRuleClient) Get(ctx context.Context, name string) (*v1.GlobalRule, error) {
+func (r *globalRuleClient) Get(ctx context.Context, id string) (*v1.GlobalRule, error) {
 	log.Debugw("try to look up global_rule",
-		zap.String("name", name),
+		zap.String("id", id),
 		zap.String("url", r.url),
 		zap.String("cluster", r.cluster.name),
 	)
-	rid := id.GenID(name)
-	globalRule, err := r.cluster.cache.GetGlobalRule(rid)
+	globalRule, err := r.cluster.cache.GetGlobalRule(id)
 	if err == nil {
 		return globalRule, nil
 	}
 	if err != cache.ErrNotFound {
 		log.Errorw("failed to find global_rule in cache, will try to lookup from APISIX",
-			zap.String("name", name),
+			zap.String("id", id),
 			zap.Error(err),
 		)
 	} else {
 		log.Debugw("failed to find global_rule in cache, will try to lookup from APISIX",
-			zap.String("name", name),
+			zap.String("id", id),
 			zap.Error(err),
 		)
 	}
 
 	// TODO Add mutex here to avoid dog-pile effect.
-	url := r.url + "/" + rid
+	url := r.url + "/" + id
 	resp, err := r.cluster.getResource(ctx, url, "globalRule")
 	r.cluster.metricsCollector.IncrAPISIXRequest("globalRule")
 	if err != nil {
 		if err == cache.ErrNotFound {
 			log.Warnw("global_rule not found",
-				zap.String("name", name),
+				zap.String("id", id),
 				zap.String("url", url),
 				zap.String("cluster", r.cluster.name),
 			)
 		} else {
 			log.Errorw("failed to get global_rule from APISIX",
-				zap.String("name", name),
+				zap.String("id", id),
 				zap.String("url", url),
 				zap.String("cluster", r.cluster.name),
 				zap.Error(err),
@@ -139,6 +137,10 @@ func (r *globalRuleClient) List(ctx context.Context) ([]*v1.GlobalRule, error) {
 }
 
 func (r *globalRuleClient) Create(ctx context.Context, obj *v1.GlobalRule, shouldCompare bool) (*v1.GlobalRule, error) {
+	if v, skip := skipRequest(r.cluster, shouldCompare, obj.ID, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to create global_rule",
 		zap.String("id", obj.ID),
 		zap.Any("plugins", obj.Plugins),
@@ -171,6 +173,10 @@ func (r *globalRuleClient) Create(ctx context.Context, obj *v1.GlobalRule, shoul
 		log.Errorf("failed to reflect global_rules create to cache: %s", err)
 		return nil, err
 	}
+	if err := r.cluster.generatedObjCache.InsertGlobalRule(obj); err != nil {
+		log.Errorf("failed to cache generated global_rule object: %s", err)
+		return nil, err
+	}
 	return globalRules, nil
 }
 
@@ -195,10 +201,20 @@ func (r *globalRuleClient) Delete(ctx context.Context, obj *v1.GlobalRule) error
 			return err
 		}
 	}
+	if err := r.cluster.generatedObjCache.DeleteGlobalRule(obj); err != nil {
+		log.Errorf("failed to reflect global_rule delete to generated cache: %s", err)
+		if err != cache.ErrNotFound {
+			return err
+		}
+	}
 	return nil
 }
 
 func (r *globalRuleClient) Update(ctx context.Context, obj *v1.GlobalRule, shouldCompare bool) (*v1.GlobalRule, error) {
+	if v, skip := skipRequest(r.cluster, shouldCompare, obj.ID, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to update global_rule",
 		zap.String("id", obj.ID),
 		zap.Any("plugins", obj.Plugins),
@@ -224,6 +240,10 @@ func (r *globalRuleClient) Update(ctx context.Context, obj *v1.GlobalRule, shoul
 	}
 	if err := r.cluster.cache.InsertGlobalRule(globalRule); err != nil {
 		log.Errorf("failed to reflect global_rule update to cache: %s", err)
+		return nil, err
+	}
+	if err := r.cluster.generatedObjCache.InsertGlobalRule(obj); err != nil {
+		log.Errorf("failed to cache generated global_rule object: %s", err)
 		return nil, err
 	}
 	return globalRule, nil

@@ -396,7 +396,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 
 	if ev.Type == types.EventDelete {
 		deleted = m
-	} else if ev.Type == types.EventAdd {
+	} else if ev.Type.IsAddEvent() {
 		added = m
 	} else {
 		oldCtx, _ := c.translator.TranslateOldRoute(obj.OldObject)
@@ -409,7 +409,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		added, updated, deleted = m.Diff(om)
 	}
 
-	return c.SyncManifests(ctx, added, updated, deleted)
+	return c.SyncManifests(ctx, added, updated, deleted, ev.Type.IsSyncEvent())
 }
 
 func (c *apisixRouteController) checkPluginNameIfNotEmptyV2beta3(ctx context.Context, in *v2beta3.ApisixRoute) error {
@@ -648,7 +648,7 @@ func (c *apisixRouteController) ResourceSync() {
 		}
 		ar := kube.MustNewApisixRoute(obj)
 		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
+			Type: types.EventSync,
 			Object: kube.ApisixRouteEvent{
 				Key:          key,
 				GroupVersion: ar.GroupVersion(),

@@ -173,7 +173,7 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 		added, updated, deleted = m.Diff(om)
 	}
 
-	return utils.SyncManifests(ctx, c.controller.APISIX, c.controller.APISIXClusterName, added, updated, deleted)
+	return utils.SyncManifests(ctx, c.controller.APISIX, c.controller.APISIXClusterName, added, updated, deleted, false)
 }
 
 func (c *gatewayHTTPRouteController) handleSyncErr(obj interface{}, err error) {

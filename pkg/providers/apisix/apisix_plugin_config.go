@@ -180,7 +180,7 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 
 	if ev.Type == types.EventDelete {
 		deleted = m
-	} else if ev.Type == types.EventAdd {
+	} else if ev.Type.IsAddEvent() {
 		added = m
 	} else {
 		var oldCtx *translation.TranslateContext
@@ -206,7 +206,7 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 		added, updated, deleted = m.Diff(om)
 	}
 
-	return c.SyncManifests(ctx, added, updated, deleted)
+	return c.SyncManifests(ctx, added, updated, deleted, ev.Type.IsSyncEvent())
 }
 
 func (c *apisixPluginConfigController) handleSyncErr(obj interface{}, errOrigin error) {
@@ -381,7 +381,7 @@ func (c *apisixPluginConfigController) ResourceSync() {
 		}
 		apc := kube.MustNewApisixPluginConfig(obj)
 		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
+			Type: types.EventSync,
 			Object: kube.ApisixPluginConfigEvent{
 				Key:          key,
 				GroupVersion: apc.GroupVersion(),

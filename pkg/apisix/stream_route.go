@@ -143,6 +143,10 @@ func (r *streamRouteClient) List(ctx context.Context) ([]*v1.StreamRoute, error)
 }
 
 func (r *streamRouteClient) Create(ctx context.Context, obj *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
+	if v, skip := skipRequest(r.cluster, shouldCompare, obj.ID, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to create stream_route",
 		zap.String("id", obj.ID),
 		zap.Int32("server_port", obj.ServerPort),
@@ -176,6 +180,10 @@ func (r *streamRouteClient) Create(ctx context.Context, obj *v1.StreamRoute, sho
 		log.Errorf("failed to reflect stream_route create to cache: %s", err)
 		return nil, err
 	}
+	if err := r.cluster.generatedObjCache.InsertStreamRoute(obj); err != nil {
+		log.Errorf("failed to reflect generated stream_route create to cache: %s", err)
+		return nil, err
+	}
 	return streamRoute, nil
 }
 
@@ -200,10 +208,20 @@ func (r *streamRouteClient) Delete(ctx context.Context, obj *v1.StreamRoute) err
 			return err
 		}
 	}
+	if err := r.cluster.generatedObjCache.DeleteStreamRoute(obj); err != nil {
+		log.Errorf("failed to reflect stream_route delete to generated cache: %s", err)
+		if err != cache.ErrNotFound {
+			return err
+		}
+	}
 	return nil
 }
 
 func (r *streamRouteClient) Update(ctx context.Context, obj *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
+	if v, skip := skipRequest(r.cluster, shouldCompare, obj.ID, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to update stream_route",
 		zap.String("id", obj.ID),
 		zap.String("cluster", r.cluster.name),
@@ -228,6 +246,10 @@ func (r *streamRouteClient) Update(ctx context.Context, obj *v1.StreamRoute, sho
 	}
 	if err := r.cluster.cache.InsertStreamRoute(streamRoute); err != nil {
 		log.Errorf("failed to reflect stream_route update to cache: %s", err)
+		return nil, err
+	}
+	if err := r.cluster.generatedObjCache.InsertStreamRoute(obj); err != nil {
+		log.Errorf("failed to reflect generated stream_route update to cache: %s", err)
 		return nil, err
 	}
 	return streamRoute, nil

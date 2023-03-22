@@ -137,6 +137,10 @@ func (r *consumerClient) List(ctx context.Context) ([]*v1.Consumer, error) {
 }
 
 func (r *consumerClient) Create(ctx context.Context, obj *v1.Consumer, shouldCompare bool) (*v1.Consumer, error) {
+	if v, skip := skipRequest(r.cluster, shouldCompare, obj.Username, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to create consumer",
 		zap.String("name", obj.Username),
 		zap.Any("plugins", obj.Plugins),
@@ -169,6 +173,10 @@ func (r *consumerClient) Create(ctx context.Context, obj *v1.Consumer, shouldCom
 		log.Errorf("failed to reflect consumer create to cache: %s", err)
 		return nil, err
 	}
+	if err := r.cluster.generatedObjCache.InsertConsumer(obj); err != nil {
+		log.Errorf("failed to cache generated consumer object: %s", err)
+		return nil, err
+	}
 	return consumer, nil
 }
 
@@ -193,10 +201,20 @@ func (r *consumerClient) Delete(ctx context.Context, obj *v1.Consumer) error {
 			return err
 		}
 	}
+	if err := r.cluster.generatedObjCache.DeleteConsumer(obj); err != nil {
+		log.Errorf("failed to reflect consumer delete to generated cache: %s", err)
+		if err != cache.ErrNotFound {
+			return err
+		}
+	}
 	return nil
 }
 
 func (r *consumerClient) Update(ctx context.Context, obj *v1.Consumer, shouldCompare bool) (*v1.Consumer, error) {
+	if v, skip := skipRequest(r.cluster, shouldCompare, obj.Username, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to update consumer",
 		zap.String("name", obj.Username),
 		zap.Any("plugins", obj.Plugins),
@@ -222,6 +240,10 @@ func (r *consumerClient) Update(ctx context.Context, obj *v1.Consumer, shouldCom
 	}
 	if err := r.cluster.cache.InsertConsumer(consumer); err != nil {
 		log.Errorf("failed to reflect consumer update to cache: %s", err)
+		return nil, err
+	}
+	if err := r.cluster.generatedObjCache.InsertConsumer(obj); err != nil {
+		log.Errorf("failed to cache generated consumer object: %s", err)
 		return nil, err
 	}
 	return consumer, nil
