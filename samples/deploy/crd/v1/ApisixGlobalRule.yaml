@@ -48,6 +48,8 @@ spec:
               required:
                 - plugins
               properties:
+                ingressClassName:
+                  type: string
                 plugins:
                   type: array
                   items:
