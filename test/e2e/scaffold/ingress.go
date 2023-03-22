@@ -444,7 +444,8 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		cert, ok := secret.Data["cert.pem"]
 		assert.True(s.t, ok, "get cert.pem from the secret")
 		caBundle := base64.StdEncoding.EncodeToString(cert)
-		webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, s.namespace, caBundle, "apisix.ingress.watch", s.opts.NamespaceSelectorLabel["apisix.ingress.watch"])
+		s.NamespaceSelectorLabel()
+		webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, s.namespace, caBundle, "apisix.ingress.watch", s.namespace)
 		ginkgo.GinkgoT().Log(webhookReg)
 		err = s.CreateResourceFromString(webhookReg)
 		assert.Nil(s.t, err, "create webhook registration")
