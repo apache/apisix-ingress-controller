@@ -493,7 +493,11 @@ spec:
 
 		agrs, err := s.ListApisixGlobalRules()
 		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), agrs, 0)
+		assert.Len(ginkgo.GinkgoT(), agrs, 1)
+		assert.Equal(ginkgo.GinkgoT(), agrs[0].ID, id.GenID("default"))
+		assert.Len(ginkgo.GinkgoT(), agrs[0].Plugins, 1)
+		_, ok := agrs[0].Plugins["prometheus"]
+		assert.Equal(ginkgo.GinkgoT(), ok, true)
 	})
 
 	ginkgo.It("ApisixClusterConfig should be handled", func() {
