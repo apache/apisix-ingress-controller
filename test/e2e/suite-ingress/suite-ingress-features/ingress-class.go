@@ -19,7 +19,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/pkg/id"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
@@ -474,79 +473,86 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "james-key"}, acs[0].Plugins["key-auth"])
 	})
 
-	ginkgo.It("ApisiClusterConfig should be ignored", func() {
-		// create ApisixConsumer resource with ingressClassName: ignore
-		acc := `
+	ginkgo.It("ApisixGlobalRule should be ignored", func() {
+		agr := `
 apiVersion: apisix.apache.org/v2
-kind: ApisixClusterConfig
+kind: ApisixGlobalRule
 metadata:
-  name: default
+  name: test-agr-1
 spec:
   ingressClassName: ignore
-  monitoring:
-    prometheus:
-      enable: true
-      prefer_name: true
+  plugins:
+  - name: echo
+    enable: true
+    config:
+      body: "hello, world!!"
 `
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(acc))
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(agr), "creating ApisixGlobalRule")
 		time.Sleep(6 * time.Second)
 
-		agrs, err := s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), agrs, 1)
-		assert.Equal(ginkgo.GinkgoT(), agrs[0].ID, id.GenID("default"))
-		assert.Len(ginkgo.GinkgoT(), agrs[0].Plugins, 1)
-		_, ok := agrs[0].Plugins["prometheus"]
-		assert.Equal(ginkgo.GinkgoT(), ok, true)
+		grs, err := s.ListApisixGlobalRules()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing global_rules")
+		assert.Len(ginkgo.GinkgoT(), grs, 0)
+
+		s.NewAPISIXClient().GET("/anything").Expect().Body().NotContains("hello, world!!")
+		s.NewAPISIXClient().GET("/hello").Expect().Body().NotContains("hello, world!!")
 	})
 
-	ginkgo.It("ApisiClusterConfig should be handled", func() {
-		// create ApisixConsumer resource without ingressClassName
-		acc := `
+	ginkgo.It("ApisixGlobalRule should be handled", func() {
+		agr := `
 apiVersion: apisix.apache.org/v2
-kind: ApisixClusterConfig
+kind: ApisixGlobalRule
 metadata:
-  name: default
-spec:
-  monitoring:
-    prometheus:
-      enable: true
-      prefer_name: true
-`
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(acc))
-		time.Sleep(6 * time.Second)
-
-		agrs, err := s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), agrs, 1)
-		assert.Equal(ginkgo.GinkgoT(), agrs[0].ID, id.GenID("default"))
-		assert.Len(ginkgo.GinkgoT(), agrs[0].Plugins, 1)
-		_, ok := agrs[0].Plugins["prometheus"]
-		assert.Equal(ginkgo.GinkgoT(), ok, true)
-
-		// update ApisixConsumer resource with ingressClassName: apisix
-		acc = `
-apiVersion: apisix.apache.org/v2
-kind: ApisixClusterConfig
-metadata:
-  name: default
+  name: test-agr-1
 spec:
   ingressClassName: apisix
-  monitoring:
-    prometheus:
-      enable: true
-      prefer_name: true
+  plugins:
+  - name: echo
+    enable: true
+    config:
+      body: "hello, world!!"
 `
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(acc))
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(agr), "creating ApisixGlobalRule")
 		time.Sleep(6 * time.Second)
 
-		agrs, err = s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), agrs, 1)
-		assert.Equal(ginkgo.GinkgoT(), agrs[0].ID, id.GenID("default"))
-		assert.Len(ginkgo.GinkgoT(), agrs[0].Plugins, 1)
-		_, ok = agrs[0].Plugins["prometheus"]
+		grs, err := s.ListApisixGlobalRules()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing global_rules")
+		assert.Len(ginkgo.GinkgoT(), grs, 1)
+		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
+		_, ok := grs[0].Plugins["echo"]
 		assert.Equal(ginkgo.GinkgoT(), ok, true)
+
+		s.NewAPISIXClient().GET("/anything").Expect().Body().Contains("hello, world!!")
+
+		s.NewAPISIXClient().GET("/hello").Expect().Body().Contains("hello, world!!")
+	})
+
+	ginkgo.It("ApisixGlobalRule should be without ingressClass", func() {
+		agr := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixGlobalRule
+metadata:
+  name: test-agr-1
+spec:
+  plugins:
+  - name: echo
+    enable: true
+    config:
+      body: "hello, world!!"
+`
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(agr), "creating ApisixGlobalRule")
+		time.Sleep(6 * time.Second)
+
+		grs, err := s.ListApisixGlobalRules()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing global_rules")
+		assert.Len(ginkgo.GinkgoT(), grs, 1)
+		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
+		_, ok := grs[0].Plugins["echo"]
+		assert.Equal(ginkgo.GinkgoT(), ok, true)
+
+		s.NewAPISIXClient().GET("/anything").Expect().Body().Contains("hello, world!!")
+
+		s.NewAPISIXClient().GET("/hello").Expect().Body().Contains("hello, world!!")
 	})
 })
 
@@ -847,76 +853,60 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "james-password"}, acs[0].Plugins["key-auth"])
 	})
 
-	ginkgo.It("ApisiClusterConfig should be handled", func() {
-		// create ApisixConsumer resource without ingressClassName
-		acc := `
+	ginkgo.It("ApisixGlobalRule should be handled", func() {
+		agr := `
 apiVersion: apisix.apache.org/v2
-kind: ApisixClusterConfig
+kind: ApisixGlobalRule
 metadata:
-  name: default
-spec:
-  monitoring:
-    prometheus:
-      enable: true
-      prefer_name: true
-`
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(acc))
-		time.Sleep(6 * time.Second)
-
-		agrs, err := s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), agrs, 1)
-		assert.Equal(ginkgo.GinkgoT(), agrs[0].ID, id.GenID("default"))
-		assert.Len(ginkgo.GinkgoT(), agrs[0].Plugins, 1)
-		_, ok := agrs[0].Plugins["prometheus"]
-		assert.Equal(ginkgo.GinkgoT(), ok, true)
-
-		// update ApisixConsumer resource with ingressClassName: apisix
-		acc = `
-apiVersion: apisix.apache.org/v2
-kind: ApisixClusterConfig
-metadata:
-  name: default
+  name: test-agr-1
 spec:
   ingressClassName: apisix
-  monitoring:
-    prometheus:
-      enable: true
-      prefer_name: true
+  plugins:
+  - name: echo
+    enable: true
+    config:
+      body: "hello, world!!"
 `
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(acc))
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(agr), "creating ApisixGlobalRule")
 		time.Sleep(6 * time.Second)
 
-		agrs, err = s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), agrs, 1)
-		assert.Equal(ginkgo.GinkgoT(), agrs[0].ID, id.GenID("default"))
-		assert.Len(ginkgo.GinkgoT(), agrs[0].Plugins, 1)
-		_, ok = agrs[0].Plugins["prometheus"]
+		grs, err := s.ListApisixGlobalRules()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing global_rules")
+		assert.Len(ginkgo.GinkgoT(), grs, 1)
+		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
+		_, ok := grs[0].Plugins["echo"]
 		assert.Equal(ginkgo.GinkgoT(), ok, true)
 
-		// update ApisixConsumer resource with ingressClassName: watch
-		acc = `
+		s.NewAPISIXClient().GET("/anything").Expect().Body().Contains("hello, world!!")
+
+		s.NewAPISIXClient().GET("/hello").Expect().Body().Contains("hello, world!!")
+	})
+
+	ginkgo.It("ApisixGlobalRule should be without ingressClass", func() {
+		agr := `
 apiVersion: apisix.apache.org/v2
-kind: ApisixClusterConfig
+kind: ApisixGlobalRule
 metadata:
-  name: default
+  name: test-agr-1
 spec:
-  ingressClassName: watch
-  monitoring:
-    prometheus:
-      enable: true
-      prefer_name: true
+  plugins:
+  - name: echo
+    enable: true
+    config:
+      body: "hello, world!!"
 `
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(acc))
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(agr), "creating ApisixGlobalRule")
 		time.Sleep(6 * time.Second)
 
-		agrs, err = s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), agrs, 1)
-		assert.Equal(ginkgo.GinkgoT(), agrs[0].ID, id.GenID("default"))
-		assert.Len(ginkgo.GinkgoT(), agrs[0].Plugins, 1)
-		_, ok = agrs[0].Plugins["prometheus"]
+		grs, err := s.ListApisixGlobalRules()
+		assert.Nil(ginkgo.GinkgoT(), err, "listing global_rules")
+		assert.Len(ginkgo.GinkgoT(), grs, 1)
+		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
+		_, ok := grs[0].Plugins["echo"]
 		assert.Equal(ginkgo.GinkgoT(), ok, true)
+
+		s.NewAPISIXClient().GET("/anything").Expect().Body().Contains("hello, world!!")
+
+		s.NewAPISIXClient().GET("/hello").Expect().Body().Contains("hello, world!!")
 	})
 })
