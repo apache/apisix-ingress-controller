@@ -27,21 +27,22 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-features: ApisixClusterConfig v2beta3", func() {
-	s := scaffold.NewDefaultV2beta3Scaffold()
+var _ = ginkgo.Describe("suite-features: ApisixClusterConfig", func() {
+	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
+		s := scaffoldFunc()
 
-	ginkgo.It("enable prometheus", func() {
-		adminSvc, adminPort := s.ApisixAdminServiceAndPort()
-		assert.Nil(ginkgo.GinkgoT(), s.NewApisixClusterConfig("default", true, true), "creating ApisixClusterConfig")
+		ginkgo.It("enable prometheus", func() {
+			adminSvc, adminPort := s.ApisixAdminServiceAndPort()
+			assert.Nil(ginkgo.GinkgoT(), s.NewApisixClusterConfig("default", true, true), "creating ApisixClusterConfig")
 
-		defer func() {
-			assert.Nil(ginkgo.GinkgoT(), s.DeleteApisixClusterConfig("default", true, true))
-		}()
+			defer func() {
+				assert.Nil(ginkgo.GinkgoT(), s.DeleteApisixClusterConfig("default", true, true))
+			}()
 
-		// Wait until the ApisixClusterConfig create event was delivered.
-		time.Sleep(3 * time.Second)
+			// Wait until the ApisixClusterConfig create event was delivered.
+			time.Sleep(3 * time.Second)
 
-		ar := fmt.Sprintf(`
+			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
@@ -60,94 +61,40 @@ spec:
       enable: true
 `, adminSvc, adminPort)
 
-		err := s.CreateVersionedApisixResource(ar)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ApisixRouteConfig")
+			err := s.CreateVersionedApisixResource(ar)
+			assert.Nil(ginkgo.GinkgoT(), err, "creating ApisixRouteConfig")
 
-		time.Sleep(3 * time.Second)
+			time.Sleep(3 * time.Second)
 
-		grs, err := s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err, "listing global_rules")
-		assert.Len(ginkgo.GinkgoT(), grs, 1)
-		assert.Equal(ginkgo.GinkgoT(), grs[0].ID, id.GenID("default"))
-		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
-		_, ok := grs[0].Plugins["prometheus"]
-		assert.Equal(ginkgo.GinkgoT(), ok, true)
+			grs, err := s.ListApisixGlobalRules()
+			assert.Nil(ginkgo.GinkgoT(), err, "listing global_rules")
+			assert.Len(ginkgo.GinkgoT(), grs, 1)
+			assert.Equal(ginkgo.GinkgoT(), grs[0].ID, id.GenID("default"))
+			assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
+			_, ok := grs[0].Plugins["prometheus"]
+			assert.Equal(ginkgo.GinkgoT(), ok, true)
 
-		resp := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").Expect()
-		resp.Status(http.StatusOK)
-		resp.Body().Contains("# HELP apisix_etcd_modify_indexes Etcd modify index for APISIX keys")
-		resp.Body().Contains("# HELP apisix_etcd_reachable Config server etcd reachable from APISIX, 0 is unreachable")
-		resp.Body().Contains("# HELP apisix_node_info Info of APISIX node")
+			resp := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").Expect()
+			resp.Status(http.StatusOK)
+			resp.Body().Contains("# HELP apisix_etcd_modify_indexes Etcd modify index for APISIX keys")
+			resp.Body().Contains("# HELP apisix_etcd_reachable Config server etcd reachable from APISIX, 0 is unreachable")
+			resp.Body().Contains("# HELP apisix_node_info Info of APISIX node")
 
-		time.Sleep(3 * time.Second)
+			time.Sleep(3 * time.Second)
 
-		if s.ApisixResourceVersion() != config.ApisixV2beta3 {
-			resp1 := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").Expect()
-			resp1.Status(http.StatusOK)
-			resp1.Body().Contains("public-api")
-		}
+			if s.ApisixResourceVersion() != config.ApisixV2beta3 {
+				resp1 := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").Expect()
+				resp1.Status(http.StatusOK)
+				resp1.Body().Contains("public-api")
+			}
+		})
+	}
+
+	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
+		suites(scaffold.NewDefaultV2beta3Scaffold)
 	})
-})
-
-var _ = ginkgo.Describe("suite-features: ApisixClusterConfig v2", func() {
-	s := scaffold.NewDefaultV2Scaffold()
-
-	ginkgo.It("enable prometheus", func() {
-		adminSvc, adminPort := s.ApisixAdminServiceAndPort()
-		assert.Nil(ginkgo.GinkgoT(), s.NewApisixClusterConfig("default", true, true), "creating ApisixClusterConfig")
-
-		defer func() {
-			assert.Nil(ginkgo.GinkgoT(), s.DeleteApisixClusterConfig("default", true, true))
-		}()
-
-		// Wait until the ApisixClusterConfig create event was delivered.
-		time.Sleep(3 * time.Second)
-
-		ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
-kind: ApisixRoute
-metadata:
-  name: default
-spec:
-  http:
-  - name: public-api
-    match:
-      paths:
-      - /apisix/prometheus/metrics
-    backends:
-    - serviceName: %s
-      servicePort: %d
-    plugins:
-    - name: public-api
-      enable: true
-`, adminSvc, adminPort)
-
-		err := s.CreateVersionedApisixResource(ar)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ApisixRouteConfig")
-
-		time.Sleep(3 * time.Second)
-
-		grs, err := s.ListApisixGlobalRules()
-		assert.Nil(ginkgo.GinkgoT(), err, "listing global_rules")
-		assert.Len(ginkgo.GinkgoT(), grs, 1)
-		assert.Equal(ginkgo.GinkgoT(), grs[0].ID, id.GenID("default"))
-		assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
-		_, ok := grs[0].Plugins["prometheus"]
-		assert.Equal(ginkgo.GinkgoT(), ok, true)
-
-		resp := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").Expect()
-		resp.Status(http.StatusOK)
-		resp.Body().Contains("# HELP apisix_etcd_modify_indexes Etcd modify index for APISIX keys")
-		resp.Body().Contains("# HELP apisix_etcd_reachable Config server etcd reachable from APISIX, 0 is unreachable")
-		resp.Body().Contains("# HELP apisix_node_info Info of APISIX node")
-
-		time.Sleep(3 * time.Second)
-
-		if s.ApisixResourceVersion() != config.ApisixV2beta3 {
-			resp1 := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").Expect()
-			resp1.Status(http.StatusOK)
-			resp1.Body().Contains("public-api")
-		}
+	ginkgo.Describe("suite-features: scaffold v2", func() {
+		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })
 
