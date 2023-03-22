@@ -595,8 +595,8 @@ kind: ApisixRoute
 metadata:
  name: test-ar-1
 spec:
- http:
  ingressClassName: apisix
+ http:
  - name: rule1
    match:
      hosts:
@@ -606,7 +606,6 @@ spec:
    backends:
    - serviceName: %s
      servicePort: %d
-     weight: 10
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
@@ -1014,8 +1013,8 @@ kind: ApisixRoute
 metadata:
  name: test-ar-1
 spec:
- http:
  ingressClassName: apisix
+ http:
  - name: rule1
    match:
      hosts:
@@ -1025,7 +1024,6 @@ spec:
    backends:
    - serviceName: %s
      servicePort: %d
-     weight: 10
 `, backendSvc, backendPorts[0])
 
 		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
