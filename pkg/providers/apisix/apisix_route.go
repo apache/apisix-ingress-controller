@@ -674,6 +674,12 @@ func (c *apisixRouteController) ResourceSync() {
 			continue
 		}
 		ar := kube.MustNewApisixRoute(obj)
+		if !c.isEffective(ar) {
+			log.Debugw("ignore noneffective ApisixRoute sync event arrived",
+				zap.Any("final state", ar),
+			)
+			continue
+		}
 		c.workqueue.Add(&types.Event{
 			Type: types.EventAdd,
 			Object: kube.ApisixRouteEvent{
