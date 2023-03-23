@@ -16,10 +16,20 @@
 package scaffold
 
 import (
+	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/pem"
 	"fmt"
+	"math/big"
+	"time"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -137,4 +147,40 @@ func (s *Scaffold) DeleteApisixTls(name string, host, secretName string) error {
 		return err
 	}
 	return nil
+}
+
+func (s *Scaffold) GenerateCert(t ginkgo.GinkgoTInterface, dnsNames []string) (certPemBytes, privPemBytes bytes.Buffer) {
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	pub := priv.Public()
+
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	assert.NoError(t, err)
+
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{"Acme Co"},
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().Add(time.Hour),
+
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		BasicConstraintsValid: true,
+
+		DNSNames: dnsNames,
+	}
+
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, priv)
+	assert.NoError(t, err)
+	err = pem.Encode(&certPemBytes, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	assert.NoError(t, err)
+
+	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
+	assert.NoError(t, err)
+	err = pem.Encode(&privPemBytes, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes})
+	assert.NoError(t, err)
+
+	return
 }
