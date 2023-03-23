@@ -65,6 +65,7 @@ kind: ApisixTls
 metadata:
   name: %s
 spec:
+  %s
   hosts:
   - %s
   secret:
@@ -123,8 +124,12 @@ func (s *Scaffold) NewClientCASecret(name, cert, key string) error {
 }
 
 // NewApisixTls new a ApisixTls CRD
-func (s *Scaffold) NewApisixTls(name, host, secretName string) error {
-	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.ApisixResourceVersion, name, host, secretName, s.kubectlOptions.Namespace)
+func (s *Scaffold) NewApisixTls(name, host, secretName string, ingressClassName ...string) error {
+	var ingClassName string
+	if len(ingressClassName) > 0 {
+		ingClassName = "ingressClassName: " + ingressClassName[0]
+	}
+	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.ApisixResourceVersion, name, ingClassName, host, secretName, s.kubectlOptions.Namespace)
 	if err := s.CreateResourceFromString(tls); err != nil {
 		return err
 	}
@@ -142,7 +147,7 @@ func (s *Scaffold) NewApisixTlsWithClientCA(name, host, secretName, clientCASecr
 
 // DeleteApisixTls remove ApisixTls CRD
 func (s *Scaffold) DeleteApisixTls(name string, host, secretName string) error {
-	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.ApisixResourceVersion, name, host, secretName, s.kubectlOptions.Namespace)
+	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.ApisixResourceVersion, name, "", host, secretName, s.kubectlOptions.Namespace)
 	if err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, tls); err != nil {
 		return err
 	}

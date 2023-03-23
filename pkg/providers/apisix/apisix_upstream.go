@@ -659,7 +659,10 @@ func (c *apisixUpstreamController) ResourceSync() {
 		au, err := kube.NewApisixUpstream(obj)
 		if err != nil {
 			log.Errorw("ApisixUpstream sync failed, found ApisixUpstream resource with bad type", zap.Error(err))
-			return
+			continue
+		}
+		if !c.isEffective(au) {
+			continue
 		}
 		c.workqueue.Add(&types.Event{
 			Type: types.EventSync,
@@ -878,9 +881,11 @@ func (c *apisixUpstreamController) recordStatus(at interface{}, reason string, e
 
 func (c *apisixUpstreamController) isEffective(au kube.ApisixUpstream) bool {
 	if au.GroupVersion() == config.ApisixV2 {
+		var ingClassName string
 		if au.V2().Spec != nil {
-			return utils.MatchCRDsIngressClass(au.V2().Spec.IngressClassName, c.Kubernetes.IngressClass)
+			ingClassName = au.V2().Spec.IngressClassName
 		}
+		return utils.MatchCRDsIngressClass(ingClassName, c.Kubernetes.IngressClass)
 	}
 	// Compatible with legacy versions
 	return true

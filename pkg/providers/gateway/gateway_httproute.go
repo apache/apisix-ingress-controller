@@ -122,6 +122,14 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 		}
 		httpRoute = ev.Tombstone.(*gatewayv1beta1.HTTPRoute)
 	}
+	err = c.controller.validator.ValidateCommonRoute(httpRoute)
+	if err != nil {
+		log.Errorw("failed to validate gateway HTTPRoute",
+			zap.Error(err),
+			zap.Any("object", httpRoute),
+		)
+		return err
+	}
 
 	tctx, err := c.controller.translator.TranslateGatewayHTTPRouteV1beta1(httpRoute)
 

@@ -158,8 +158,8 @@ func (t *translator) TranslateGatewayHTTPRouteV1beta1(httpRoute *gatewayv1beta1.
 		var weightedUpstreams []apisixv1.TrafficSplitConfigRuleWeightedUpstream
 
 		for j, backend := range backends {
-			//TODO: Support filters
-			//filters := backend.Filters
+			// TODO: Support filters
+			// filters := backend.Filters
 			var kind string
 			if backend.Kind == nil {
 				kind = "service"
@@ -267,8 +267,8 @@ func (t *translator) TranslateGatewayHTTPRouteV1beta1(httpRoute *gatewayv1beta1.
 			ctx.AddRoute(route)
 		}
 
-		//TODO: Support filters
-		//filters := rule.Filters
+		// TODO: Support filters
+		// filters := rule.Filters
 	}
 
 	return ctx, nil

@@ -320,6 +320,9 @@ func (c *apisixClusterConfigController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixClusterConfig resource with bad meta key: %s", err.Error())
 		return
 	}
+	if !c.isEffective(acc) {
+		return
+	}
 	log.Debugw("ApisixClusterConfig add event arrived",
 		zap.String("key", key),
 		zap.Any("object", obj),
@@ -353,6 +356,9 @@ func (c *apisixClusterConfigController) onUpdate(oldObj, newObj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
 		log.Errorf("found ApisixClusterConfig with bad meta key: %s", err)
+		return
+	}
+	if !c.isEffective(curr) {
 		return
 	}
 	log.Debugw("ApisixClusterConfig update event arrived",
@@ -391,6 +397,9 @@ func (c *apisixClusterConfigController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixClusterConfig resource with bad meta key: %s", err)
 		return
 	}
+	if !c.isEffective(acc) {
+		return
+	}
 	log.Debugw("ApisixClusterConfig delete event arrived",
 		zap.Any("final state", acc),
 	)
@@ -414,13 +423,13 @@ func (c *apisixClusterConfigController) ResourceSync() {
 			log.Errorw("ApisixClusterConfig sync failed, found ApisixClusterConfig resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
-		if !c.namespaceProvider.IsWatchingNamespace(key) {
-			continue
-		}
 		acc, err := kube.NewApisixClusterConfig(obj)
 		if err != nil {
 			log.Errorw("found ApisixClusterConfig resource with bad type", zap.String("error", err.Error()))
-			return
+			continue
+		}
+		if !c.isEffective(acc) {
+			continue
 		}
 		c.workqueue.Add(&types.Event{
 			Type: types.EventSync,
@@ -492,4 +501,20 @@ func (c *apisixClusterConfigController) recordStatus(at interface{}, reason stri
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
 	}
+}
+
+func (c *apisixClusterConfigController) isEffective(agr kube.ApisixClusterConfig) bool {
+	if agr.GroupVersion() == config.ApisixV2 {
+		ingClassName := agr.V2().Spec.IngressClassName
+		ok := utils.MatchCRDsIngressClass(ingClassName, c.Kubernetes.IngressClass)
+		if !ok {
+			log.Debugw("IngressClass: ApisixClusterConfig ignored",
+				zap.String("key", agr.V2().Name),
+				zap.String("ingressClass", agr.V2().Spec.IngressClassName),
+			)
+		}
+		return ok
+	}
+	// Compatible with legacy versions
+	return true
 }
