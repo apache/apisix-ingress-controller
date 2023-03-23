@@ -257,3 +257,38 @@ spec:
 		assert.Equal(ginkgo.GinkgoT(), ok, true)
 	})
 })
+
+var _ = ginkgo.Describe("suite-cluster: Enable webhooks to verify IngressClassName", func() {
+	s := scaffold.NewScaffold(&scaffold.Options{
+		Name:                  "webhook",
+		IngressAPISIXReplicas: 1,
+		ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
+		EnableWebhooks:        true,
+	})
+
+	ginkgo.It("ingressClassName of the ApisixClusterConfig should not be modified", func() {
+		apc := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixClusterConfig
+metadata:
+  name: default
+spec:
+  ingressClassName: watch
+`
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(apc, ""), "creatint a ApisixClusterConfig")
+
+		apc = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixClusterConfig
+metadata:
+  name: default
+spec:
+  ingressClassName: failed
+`
+		err := s.CreateResourceFromStringWithNamespace(apc, "")
+		assert.Error(ginkgo.GinkgoT(), err, "Failed to udpate ApisixClusterConfig")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
+	})
+
+})

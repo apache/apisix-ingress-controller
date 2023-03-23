@@ -73,6 +73,12 @@ var (
 		Version:  v2.GroupVersion.Version,
 		Resource: "apisixupstreams",
 	}
+
+	ApisixGlobalRuleV2GVR = metav1.GroupVersionResource{
+		Group:    v2.GroupVersion.Group,
+		Version:  v2.GroupVersion.Version,
+		Resource: "apisixglobalrules",
+	}
 )
 
 var Validator = kwhvalidating.ValidatorFunc(
@@ -92,7 +98,18 @@ var Validator = kwhvalidating.ValidatorFunc(
 		switch *GVR {
 		case ApisixRouteV2GVR:
 			ar := object.(*v2.ApisixRoute)
-			valid, resultErr = ValidateApisixRouteV2(ar)
+			if review.Operation == kwhmodel.OperationUpdate {
+				var old v2.ApisixRoute
+				_, _, err := deserializer.Decode(review.OldObjectRaw, nil, &old)
+				if err != nil {
+					log.Error("Failed to deserialize ApisixRoute in admisson webhook")
+					break
+				}
+				valid, resultErr = validateIngressClassName(old.Spec.IngressClassName, ar.Spec.IngressClassName)
+			}
+			if valid {
+				valid, resultErr = ValidateApisixRouteV2(ar)
+			}
 		case ApisixUpstreamV2GVR:
 			au := object.(*v2.ApisixUpstream)
 			if au.Spec == nil {
@@ -158,6 +175,17 @@ var Validator = kwhvalidating.ValidatorFunc(
 					break
 				}
 				valid, resultErr = validateIngressClassName(old.Spec.IngressClassName, acc.Spec.IngressClassName)
+			}
+		case ApisixGlobalRuleV2GVR:
+			agr := object.(*v2.ApisixGlobalRule)
+			if review.Operation == kwhmodel.OperationUpdate {
+				var old v2.ApisixGlobalRule
+				_, _, err := deserializer.Decode(review.OldObjectRaw, nil, &old)
+				if err != nil {
+					log.Error("Failed to deserialize ApisixGlobalRule in admisson webhook")
+					break
+				}
+				valid, resultErr = validateIngressClassName(old.Spec.IngressClassName, agr.Spec.IngressClassName)
 			}
 		default:
 			valid = false

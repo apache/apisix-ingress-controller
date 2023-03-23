@@ -217,13 +217,13 @@ spec:
 apiVersion: apisix.apache.org/v2
 kind: ApisixTls
 metadata:
-  name: grpc-secret
+  name: non-existent
 spec:
   ingressClassName: watch
   hosts:
-    - "grpc-proxy"
+    - "non-existent"
   secret:
-    name: grpc-secret
+    name: non-existent
     namespace: default
 `
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(atls), "creatint a ApisixTls")
@@ -232,13 +232,13 @@ spec:
 apiVersion: apisix.apache.org/v2
 kind: ApisixTls
 metadata:
-  name: grpc-secret
+  name: non-existent
 spec:
   ingressClassName: failed
   hosts:
-    - "grpc-proxy"
+    - "non-existent"
   secret:
-    name: grpc-secret
+    name: non-existent
     namespace: default
 `
 		err := s.CreateResourceFromString(atls)
@@ -275,6 +275,77 @@ spec:
         key: foo-key
 `
 		err := s.CreateResourceFromString(ac)
+		assert.Error(ginkgo.GinkgoT(), err, "Failed to udpate ApisixConsumer")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
+	})
+
+	ginkgo.It("ingressClassName of the ApisixRoute should not be modified", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+  ingressClassName: watch
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backends:
+    - serviceName: %s
+      servicePort: %d
+`, backendSvc, backendPorts[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ar), "creatint a ApisixRoute")
+
+		ar = fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+  ingressClassName: failed
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.com
+      paths:
+      - /ip
+    backends:
+    - serviceName: %s
+      servicePort: %d
+`, backendSvc, backendPorts[0])
+		err := s.CreateResourceFromString(ar)
+		assert.Error(ginkgo.GinkgoT(), err, "Failed to udpate ApisixConsumer")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
+	})
+
+	ginkgo.It("ingressClassName of the ApisixRoute should not be modified", func() {
+		au := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: au
+spec:
+  ingressClassName: watch
+`
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(au), "creatint a ApisixRoute")
+
+		au = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: au
+spec:
+  ingressClassName: failed
+`
+		err := s.CreateResourceFromString(au)
 		assert.Error(ginkgo.GinkgoT(), err, "Failed to udpate ApisixConsumer")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
