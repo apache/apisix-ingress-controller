@@ -28,25 +28,33 @@ func skipRequest[T ResourceTypes](cluster *cluster, shouldCompare bool, id strin
 			err                error
 		)
 
+		resourceType := ""
 		// type-switch on parametric types is not implemented yet
 		switch (interface{})(obj).(type) {
 		case *v1.Route:
 			cachedGeneratedObj, err = cluster.generatedObjCache.GetRoute(id)
+			resourceType = "route"
 		case *v1.Ssl:
 			cachedGeneratedObj, err = cluster.generatedObjCache.GetSSL(id)
+			resourceType = "ssl"
 		case *v1.Upstream:
 			cachedGeneratedObj, err = cluster.generatedObjCache.GetUpstream(id)
+			resourceType = "upstream"
 		case *v1.StreamRoute:
 			cachedGeneratedObj, err = cluster.generatedObjCache.GetStreamRoute(id)
+			resourceType = "stream_route"
 		case *v1.GlobalRule:
 			cachedGeneratedObj, err = cluster.generatedObjCache.GetGlobalRule(id)
+			resourceType = "global_rule"
 		case *v1.Consumer:
 			cachedGeneratedObj, err = cluster.generatedObjCache.GetConsumer(id)
+			resourceType = "consumer"
 		case *v1.PluginConfig:
 			cachedGeneratedObj, err = cluster.generatedObjCache.GetPluginConfig(id)
+			resourceType = "plugin_config"
 		//case *v1.PluginMetadata:
 		default:
-			log.Errorw("resource comparison failed",
+			log.Errorw("resource comparison aborted",
 				zap.Error(ErrUnknownApisixResourceType),
 				zap.Any("obj", obj),
 			)
@@ -80,6 +88,7 @@ func skipRequest[T ResourceTypes](cluster *cluster, shouldCompare bool, id strin
 				if err2 == nil && cachedServerObj != nil {
 					log.Debugw("sync comparison skipped same resource",
 						zap.String("reason", "equal"),
+						zap.String("resource", resourceType),
 						zap.Any("obj", obj),
 						zap.Any("cached", cachedGeneratedObj),
 					)
@@ -88,6 +97,7 @@ func skipRequest[T ResourceTypes](cluster *cluster, shouldCompare bool, id strin
 				} else {
 					log.Debugw("sync comparison continue operation",
 						zap.String("reason", "failed to get cached server object"),
+						zap.String("resource", resourceType),
 						zap.Error(err2),
 						zap.String("id", id),
 					)
@@ -97,14 +107,16 @@ func skipRequest[T ResourceTypes](cluster *cluster, shouldCompare bool, id strin
 			} else {
 				log.Debugw("sync comparison continue operation",
 					zap.String("reason", "not equal"),
+					zap.String("resource", resourceType),
 					zap.Any("obj", obj),
 					zap.Any("cached", cachedGeneratedObj),
 				)
 			}
 		} else if err == cache.ErrNotFound {
 			log.Debugw("sync comparison continue operation",
-				zap.String("id", id),
 				zap.String("reason", "not in cache"),
+				zap.String("resource", resourceType),
+				zap.String("id", id),
 				zap.Any("obj", obj),
 				zap.Any("cached", cachedGeneratedObj),
 			)
@@ -112,6 +124,7 @@ func skipRequest[T ResourceTypes](cluster *cluster, shouldCompare bool, id strin
 			log.Debugw("sync comparison continue operation",
 				zap.Error(err),
 				zap.String("reason", "failed to get cached generated object"),
+				zap.String("resource", resourceType),
 				zap.String("id", id),
 				zap.Any("obj", obj),
 				zap.Any("cached", cachedGeneratedObj),

@@ -380,8 +380,7 @@ spec:
             - %s
             - --apisix-resource-sync-interval
             - %s
-            - --apisix-resource-sync-comparison
-            - "false"
+            - --apisix-resource-sync-comparison=true
             - --http-listen
             - :8080
             - --https-listen
@@ -398,8 +397,7 @@ spec:
             - %s
             - --ingress-status-address
             - "%s"
-            - --enable-gateway-api
-            - "true"
+            - --enable-gateway-api=true
             - --ingress-class
             - %s
             %s

@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/gruntwork-io/terratest/modules/k8s"
@@ -137,6 +138,20 @@ func (s *Scaffold) CreateResourceFromString(yaml string) error {
 
 func (s *Scaffold) DeleteResourceFromString(yaml string) error {
 	return k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
+}
+
+func (s *Scaffold) Exec(podName, containerName string, shell ...string) (string, error) {
+	cmdArgs := []string{}
+	cmdArgs = append(cmdArgs, "exec")
+	cmdArgs = append(cmdArgs, "-i")
+	cmdArgs = append(cmdArgs, podName)
+	cmdArgs = append(cmdArgs, "-c")
+	cmdArgs = append(cmdArgs, containerName)
+	cmdArgs = append(cmdArgs, "--")
+	cmdArgs = append(cmdArgs, shell...)
+	log.Infof("running command: kubectl -n %v %v", s.kubectlOptions.Namespace, strings.Join(cmdArgs, " "))
+	output, err := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, cmdArgs...)
+	return output, err
 }
 
 func (s *Scaffold) GetOutputFromString(shell ...string) (string, error) {
