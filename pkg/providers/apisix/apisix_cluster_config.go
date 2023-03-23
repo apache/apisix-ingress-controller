@@ -189,7 +189,7 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 		)
 
 		// TODO multiple cluster support
-		if ev.Type.IsSyncEvent() {
+		if ev.Type.IsAddEvent() {
 			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Create(ctx, globalRule, ev.Type.IsSyncEvent())
 		} else {
 			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Update(ctx, globalRule, false)
