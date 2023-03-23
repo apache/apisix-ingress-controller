@@ -48,7 +48,7 @@ func (ev EventType) String() string {
 	case EventDelete:
 		return "delete"
 	case EventSync:
-		return "delete"
+		return "sync"
 	default:
 		return "unknown"
 	}
