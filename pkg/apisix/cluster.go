@@ -162,6 +162,10 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 	c.pluginMetadata = newPluginMetadataClient(c)
 
 	c.cache, err = cache.NewMemDBCache()
+	if err != nil {
+		return nil, err
+	}
+
 	if o.SyncComparison {
 		c.generatedObjCache, err = cache.NewMemDBCache()
 	} else {

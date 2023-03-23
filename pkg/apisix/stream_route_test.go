@@ -165,7 +165,7 @@ func TestStreamRouteClient(t *testing.T) {
 		ServerPort: 8001,
 		UpstreamId: "1",
 		SNI:        "a.test.com",
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "1")
 	assert.Equal(t, obj.SNI, "a.test.com")
@@ -175,7 +175,7 @@ func TestStreamRouteClient(t *testing.T) {
 		ServerPort: 8002,
 		UpstreamId: "1",
 		SNI:        "*.test.com",
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "2")
 	assert.Equal(t, obj.SNI, "*.test.com")
@@ -198,7 +198,7 @@ func TestStreamRouteClient(t *testing.T) {
 	_, err = cli.Update(context.Background(), &v1.StreamRoute{
 		ID:         "2",
 		UpstreamId: "112",
-	})
+	}, false)
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)

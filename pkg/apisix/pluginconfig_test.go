@@ -168,7 +168,7 @@ func TestPluginConfigClient(t *testing.T) {
 		Plugins: map[string]interface{}{
 			"abc": "123",
 		},
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "1")
 
@@ -180,7 +180,7 @@ func TestPluginConfigClient(t *testing.T) {
 		Plugins: map[string]interface{}{
 			"abc2": "123",
 		},
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "2")
 
@@ -209,7 +209,7 @@ func TestPluginConfigClient(t *testing.T) {
 			"key2": "test update PluginConfig",
 		},
 	}
-	_, err = cli.Update(context.Background(), up)
+	_, err = cli.Update(context.Background(), up, false)
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)

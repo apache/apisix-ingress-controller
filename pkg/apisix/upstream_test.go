@@ -181,7 +181,7 @@ func TestUpstreamClient(t *testing.T) {
 		Type:  lbType,
 		Key:   key,
 		Nodes: nodes,
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, "1", obj.ID)
 
@@ -194,7 +194,7 @@ func TestUpstreamClient(t *testing.T) {
 		Type:  lbType,
 		Key:   key,
 		Nodes: nodes,
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, "2", obj.ID)
 
@@ -221,7 +221,7 @@ func TestUpstreamClient(t *testing.T) {
 		Type:  "chash",
 		Key:   key,
 		Nodes: nodes,
-	})
+	}, false)
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)

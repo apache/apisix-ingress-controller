@@ -1,3 +1,20 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 package features
 
 import (
@@ -25,13 +42,17 @@ var _ = ginkgo.Describe("suite-features: sync comparison", func() {
 					"curl", "-s", "localhost:8080/metrics",
 					"|", "grep", "apisix_ingress_controller_apisix_requests",
 					"|", "grep", fmt.Sprintf("'resource=\"%v\"'", res))
+				// TODO: FIXME
+				// The return value is not grep-ed
+
 				// it always raises error "exit status 6", don't know why so ignore the error
 				//if err != nil {
 				//	log.Errorf("failed to get metrics: %v; output: %v", err.Error(), output)
 				//}
 				//assert.Nil(ginkgo.GinkgoT(), err, "get metrics from controller")
+				log.Infof("output: %v", output)
 				assert.True(ginkgo.GinkgoT(), strings.Contains(output, "apisix_ingress_controller_apisix_requests"))
-				assert.True(ginkgo.GinkgoT(), strings.Contains(output, "resource=\"route\""))
+				assert.True(ginkgo.GinkgoT(), strings.Contains(output, fmt.Sprintf("'resource=\"%v\"'", res)))
 				arr := strings.Split(output, " ")
 				if len(arr) == 0 {
 					ginkgo.Fail("unexpected metrics output: "+output, 1)

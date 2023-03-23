@@ -162,13 +162,13 @@ func TestGlobalRuleClient(t *testing.T) {
 	// Create
 	obj, err := cli.Create(context.Background(), &v1.GlobalRule{
 		ID: "1",
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "1")
 
 	obj, err = cli.Create(context.Background(), &v1.GlobalRule{
 		ID: "2",
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "2")
 
@@ -192,7 +192,7 @@ func TestGlobalRuleClient(t *testing.T) {
 		Plugins: map[string]interface{}{
 			"prometheus": struct{}{},
 		},
-	})
+	}, false)
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)
