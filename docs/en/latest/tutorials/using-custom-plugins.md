@@ -34,7 +34,7 @@ kubectl expose pod httpbin --port 80
 
 ## Writing a Custom Plugin
 
-In this tutorial we will focus only on configuring custom Plugins to work with APISIX Ingress. 
+In this tutorial we will focus only on configuring custom Plugins to work with APISIX Ingress.
 
 :::tip
 
@@ -149,7 +149,7 @@ APISIX and APISIX Ingress controller should be ready in some time with the custo
 
 First, let's create a Route without our custom Plugin enabled.
 
-We will create a Route using the [ApisixRoute](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_route/) CRD:
+We will create a Route using the [ApisixRoute](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_route) CRD:
 
 ```yaml {title="route.yaml"}
 apiVersion: apisix.apache.org/v2
