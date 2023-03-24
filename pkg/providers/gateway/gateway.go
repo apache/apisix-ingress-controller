@@ -16,6 +16,7 @@ package gateway
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go.uber.org/zap"
@@ -126,7 +127,8 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 			return err
 		}
 	} else {
-		if c.controller.HasGatewayClass(string(gateway.Spec.GatewayClassName)) {
+		gatewayClassName := string(gateway.Spec.GatewayClassName)
+		if c.controller.HasGatewayClass(gatewayClassName) {
 			// TODO: handle listeners
 			listeners, err := c.controller.translator.TranslateGatewayV1beta1(gateway)
 			if err != nil {
@@ -136,6 +138,15 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 			err = c.controller.AddListeners(gateway.Namespace, gateway.Name, listeners)
 			if err != nil {
 				return err
+			}
+		} else {
+			gatewayClass, err := c.controller.gatewayClassLister.Get(gatewayClassName)
+			if err != nil {
+				return err
+			}
+			if gatewayClass.Spec.ControllerName == GatewayClassName {
+				log.Warn("gatewayClass not synced")
+				return fmt.Errorf("wait gatewayClass %s synced", gatewayClassName)
 			}
 		}
 	}
@@ -193,8 +204,8 @@ func (c *gatewayController) onAdd(obj interface{}) {
 		Object: key,
 	})
 }
-func (c *gatewayController) onUpdate(oldObj, newObj interface{}) {
 
+func (c *gatewayController) onUpdate(oldObj, newObj interface{}) {
 }
 
 func (c *gatewayController) OnDelete(obj interface{}) {

@@ -231,6 +231,8 @@ spec:
                 - hosts
                 - secret
               properties:
+                ingressClassName:
+                  type: string
                 client:
                   description: ApisixMutualTlsClientConfig describes the mutual TLS
                     CA and verify depth
