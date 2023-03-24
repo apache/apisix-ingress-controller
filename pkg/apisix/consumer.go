@@ -63,35 +63,8 @@ func (r *consumerClient) Get(ctx context.Context, name string) (*v1.Consumer, er
 	}
 
 	// TODO Add mutex here to avoid dog-pile effect.
-	url := r.url + "/" + name
-	resp, err := r.cluster.getResource(ctx, url, "consumer")
-	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
+	consumer, err = r.cluster.GetConsumer(ctx, r.url, name)
 	if err != nil {
-		if err == cache.ErrNotFound {
-			log.Warnw("consumer not found",
-				zap.String("name", name),
-				zap.String("url", url),
-				zap.String("cluster", r.cluster.name),
-			)
-		} else {
-			log.Errorw("failed to get consumer from APISIX",
-				zap.String("name", name),
-				zap.String("url", url),
-				zap.String("cluster", r.cluster.name),
-				zap.Error(err),
-			)
-		}
-		return nil, err
-	}
-
-	consumer, err = resp.consumer()
-	if err != nil {
-		log.Errorw("failed to convert consumer item",
-			zap.String("url", r.url),
-			zap.String("consumer_key", resp.Key),
-			zap.String("consumer_value", string(resp.Value)),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -110,7 +83,6 @@ func (r *consumerClient) List(ctx context.Context) ([]*v1.Consumer, error) {
 		zap.String("url", r.url),
 	)
 	consumerItems, err := r.cluster.listResource(ctx, r.url, "consumer")
-	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err != nil {
 		log.Errorf("failed to list consumers: %s", err)
 		return nil, err
@@ -137,7 +109,7 @@ func (r *consumerClient) List(ctx context.Context) ([]*v1.Consumer, error) {
 }
 
 func (r *consumerClient) Create(ctx context.Context, obj *v1.Consumer, shouldCompare bool) (*v1.Consumer, error) {
-	if v, skip := skipRequest(r.cluster, shouldCompare, obj.Username, obj); skip {
+	if v, skip := skipRequest(r.cluster, shouldCompare, r.url, obj.Username, obj); skip {
 		return v, nil
 	}
 
@@ -159,7 +131,6 @@ func (r *consumerClient) Create(ctx context.Context, obj *v1.Consumer, shouldCom
 	url := r.url + "/" + obj.Username
 	log.Debugw("creating consumer", zap.ByteString("body", data), zap.String("url", url))
 	resp, err := r.cluster.createResource(ctx, url, "consumer", data)
-	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err != nil {
 		log.Errorf("failed to create consumer: %s", err)
 		return nil, err
@@ -191,10 +162,8 @@ func (r *consumerClient) Delete(ctx context.Context, obj *v1.Consumer) error {
 	}
 	url := r.url + "/" + obj.Username
 	if err := r.cluster.deleteResource(ctx, url, "consumer"); err != nil {
-		r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 		return err
 	}
-	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err := r.cluster.cache.DeleteConsumer(obj); err != nil {
 		log.Errorf("failed to reflect consumer delete to cache: %s", err)
 		if err != cache.ErrNotFound {
@@ -211,7 +180,7 @@ func (r *consumerClient) Delete(ctx context.Context, obj *v1.Consumer) error {
 }
 
 func (r *consumerClient) Update(ctx context.Context, obj *v1.Consumer, shouldCompare bool) (*v1.Consumer, error) {
-	if v, skip := skipRequest(r.cluster, shouldCompare, obj.Username, obj); skip {
+	if v, skip := skipRequest(r.cluster, shouldCompare, r.url, obj.Username, obj); skip {
 		return v, nil
 	}
 
@@ -230,7 +199,6 @@ func (r *consumerClient) Update(ctx context.Context, obj *v1.Consumer, shouldCom
 	}
 	url := r.url + "/" + obj.Username
 	resp, err := r.cluster.updateResource(ctx, url, "consumer", body)
-	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err != nil {
 		return nil, err
 	}

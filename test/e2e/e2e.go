@@ -15,6 +15,8 @@
 package e2e
 
 import (
+	"os"
+
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-annotations"
@@ -33,11 +35,13 @@ import (
 )
 
 func runE2E() {
-	var err error
-	log.DefaultLogger, err = log.NewLogger(
-		log.WithLogLevel("info"),
-	)
-	if err != nil {
-		panic(err)
+	if os.Getenv("E2E_ENV") != "ci" {
+		var err error
+		log.DefaultLogger, err = log.NewLogger(
+			log.WithLogLevel("info"),
+		)
+		if err != nil {
+			panic(err)
+		}
 	}
 }

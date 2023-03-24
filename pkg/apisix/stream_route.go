@@ -70,35 +70,9 @@ func (r *streamRouteClient) Get(ctx context.Context, name string) (*v1.StreamRou
 		)
 	}
 
-	// TODO Add mutex here to avoid dog-pile effection.
-	url := r.url + "/" + rid
-	resp, err := r.cluster.getResource(ctx, url, "streamRoute")
+	// TODO Add mutex here to avoid dog-pile effect.
+	streamRoute, err = r.cluster.GetStreamRoute(ctx, r.url, rid)
 	if err != nil {
-		if err == cache.ErrNotFound {
-			log.Warnw("stream_route not found",
-				zap.String("name", name),
-				zap.String("url", url),
-				zap.String("cluster", r.cluster.name),
-			)
-		} else {
-			log.Errorw("failed to get stream_route from APISIX",
-				zap.String("name", name),
-				zap.String("url", url),
-				zap.String("cluster", r.cluster.name),
-				zap.Error(err),
-			)
-		}
-		return nil, err
-	}
-
-	streamRoute, err = resp.streamRoute()
-	if err != nil {
-		log.Errorw("failed to convert stream_route item",
-			zap.String("url", r.url),
-			zap.String("stream_route_key", resp.Key),
-			zap.String("stream_route_value", string(resp.Value)),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -117,7 +91,6 @@ func (r *streamRouteClient) List(ctx context.Context) ([]*v1.StreamRoute, error)
 		zap.String("url", r.url),
 	)
 	streamRouteItems, err := r.cluster.listResource(ctx, r.url, "streamRoute")
-	r.cluster.metricsCollector.IncrAPISIXRequest("streamRoute")
 	if err != nil {
 		log.Errorf("failed to list stream_routes: %s", err)
 		return nil, err
@@ -143,7 +116,7 @@ func (r *streamRouteClient) List(ctx context.Context) ([]*v1.StreamRoute, error)
 }
 
 func (r *streamRouteClient) Create(ctx context.Context, obj *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
-	if v, skip := skipRequest(r.cluster, shouldCompare, obj.ID, obj); skip {
+	if v, skip := skipRequest(r.cluster, shouldCompare, r.url, obj.ID, obj); skip {
 		return v, nil
 	}
 
@@ -166,7 +139,6 @@ func (r *streamRouteClient) Create(ctx context.Context, obj *v1.StreamRoute, sho
 	url := r.url + "/" + obj.ID
 	log.Debugw("creating stream_route", zap.ByteString("body", data), zap.String("url", url))
 	resp, err := r.cluster.createResource(ctx, url, "streamRoute", data)
-	r.cluster.metricsCollector.IncrAPISIXRequest("streamRoute")
 	if err != nil {
 		log.Errorf("failed to create stream_route: %s", err)
 		return nil, err
@@ -198,10 +170,8 @@ func (r *streamRouteClient) Delete(ctx context.Context, obj *v1.StreamRoute) err
 	}
 	url := r.url + "/" + obj.ID
 	if err := r.cluster.deleteResource(ctx, url, "streamRoute"); err != nil {
-		r.cluster.metricsCollector.IncrAPISIXRequest("streamRoute")
 		return err
 	}
-	r.cluster.metricsCollector.IncrAPISIXRequest("streamRoute")
 	if err := r.cluster.cache.DeleteStreamRoute(obj); err != nil {
 		log.Errorf("failed to reflect stream_route delete to cache: %s", err)
 		if err != cache.ErrNotFound {
@@ -218,7 +188,7 @@ func (r *streamRouteClient) Delete(ctx context.Context, obj *v1.StreamRoute) err
 }
 
 func (r *streamRouteClient) Update(ctx context.Context, obj *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
-	if v, skip := skipRequest(r.cluster, shouldCompare, obj.ID, obj); skip {
+	if v, skip := skipRequest(r.cluster, shouldCompare, r.url, obj.ID, obj); skip {
 		return v, nil
 	}
 
@@ -236,7 +206,6 @@ func (r *streamRouteClient) Update(ctx context.Context, obj *v1.StreamRoute, sho
 	}
 	url := r.url + "/" + obj.ID
 	resp, err := r.cluster.updateResource(ctx, url, "streamRoute", body)
-	r.cluster.metricsCollector.IncrAPISIXRequest("streamRoute")
 	if err != nil {
 		return nil, err
 	}

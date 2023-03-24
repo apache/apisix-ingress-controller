@@ -22,6 +22,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -138,18 +139,32 @@ func (s *Scaffold) DeleteResourceFromString(yaml string) error {
 	return k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
 }
 
-func (s *Scaffold) Exec(podName, containerName string, shell ...string) (string, error) {
+func (s *Scaffold) Exec(podName, containerName string, args ...string) (string, error) {
 	cmdArgs := []string{}
+
+	if s.kubectlOptions.ContextName != "" {
+		cmdArgs = append(cmdArgs, "--context", s.kubectlOptions.ContextName)
+	}
+	if s.kubectlOptions.ConfigPath != "" {
+		cmdArgs = append(cmdArgs, "--kubeconfig", s.kubectlOptions.ConfigPath)
+	}
+	if s.kubectlOptions.Namespace != "" {
+		cmdArgs = append(cmdArgs, "--namespace", s.kubectlOptions.Namespace)
+	}
+
 	cmdArgs = append(cmdArgs, "exec")
 	cmdArgs = append(cmdArgs, "-i")
 	cmdArgs = append(cmdArgs, podName)
 	cmdArgs = append(cmdArgs, "-c")
 	cmdArgs = append(cmdArgs, containerName)
-	cmdArgs = append(cmdArgs, "--")
-	cmdArgs = append(cmdArgs, shell...)
-	log.Infof("running command: kubectl -n %v %v", s.kubectlOptions.Namespace, strings.Join(cmdArgs, " "))
-	output, err := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, cmdArgs...)
-	return output, err
+	cmdArgs = append(cmdArgs, "--", "sh", "-c")
+	cmdArgs = append(cmdArgs, args...)
+
+	log.Infof("running command: kubectl %v", strings.Join(cmdArgs, " "))
+
+	output, err := exec.Command("kubectl", cmdArgs...).Output()
+
+	return strings.TrimSuffix(string(output), "\n"), err
 }
 
 func (s *Scaffold) GetOutputFromString(shell ...string) (string, error) {

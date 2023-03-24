@@ -19,6 +19,7 @@ package features
 
 import (
 	"fmt"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -39,20 +40,20 @@ var _ = ginkgo.Describe("suite-features: sync comparison", func() {
 				assert.True(ginkgo.GinkgoT(), len(pods) >= 1, "get ingress pod")
 
 				output, err := s.Exec(pods[0].Name, "ingress-apisix-controller-deployment-e2e-test",
-					"curl", "-s", "localhost:8080/metrics",
-					"|", "grep", "apisix_ingress_controller_apisix_requests",
-					"|", "grep", fmt.Sprintf("'resource=\"%v\"'", res))
-				// TODO: FIXME
-				// The return value is not grep-ed
+					fmt.Sprintf("curl -s localhost:8080/metrics | grep apisix_ingress_controller_apisix_requests | grep 'op=\"write\"' | grep 'resource=\"%v\"'", res),
+				)
+				if err != nil {
+					log.Errorf("failed to get metrics: %v, %v; output: %v", err.Error(), string(err.(*exec.ExitError).Stderr), output)
+				} else {
+					log.Infof("output: %v", output)
+				}
+				assert.Nil(ginkgo.GinkgoT(), err, "get metrics from controller")
 
-				// it always raises error "exit status 6", don't know why so ignore the error
-				//if err != nil {
-				//	log.Errorf("failed to get metrics: %v; output: %v", err.Error(), output)
-				//}
-				//assert.Nil(ginkgo.GinkgoT(), err, "get metrics from controller")
-				log.Infof("output: %v", output)
+				// make sure the output is grep-ed
+				assert.False(ginkgo.GinkgoT(), strings.Contains(output, "promhttp_metric_handler_requests_total"))
 				assert.True(ginkgo.GinkgoT(), strings.Contains(output, "apisix_ingress_controller_apisix_requests"))
-				assert.True(ginkgo.GinkgoT(), strings.Contains(output, fmt.Sprintf("'resource=\"%v\"'", res)))
+				assert.True(ginkgo.GinkgoT(), strings.Contains(output, fmt.Sprintf("resource=\"%v\"", res)))
+
 				arr := strings.Split(output, " ")
 				if len(arr) == 0 {
 					ginkgo.Fail("unexpected metrics output: "+output, 1)
@@ -85,15 +86,6 @@ spec:
 			err = s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "checking number of upstreams")
 
-			// ensure resources exist, so ResourceSync will be triggered
-			routes, err := s.ListApisixRoutes()
-			assert.Nil(ginkgo.GinkgoT(), err)
-			assert.True(ginkgo.GinkgoT(), len(routes) > 0)
-
-			ups, err := s.ListApisixUpstreams()
-			assert.Nil(ginkgo.GinkgoT(), err)
-			assert.True(ginkgo.GinkgoT(), len(ups) > 0)
-
 			arStream := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
@@ -112,11 +104,6 @@ spec:
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(arStream), "create ApisixRoute (stream)")
 
-			// ensure resources exist, so ResourceSync will be triggered
-			srs, err := s.ListApisixStreamRoutes()
-			assert.Nil(ginkgo.GinkgoT(), err)
-			assert.True(ginkgo.GinkgoT(), len(srs) > 0)
-
 			hostA := "a.test.com"
 			secretA := "server-secret-a"
 			serverCertA, serverKeyA := s.GenerateCert(ginkgo.GinkgoT(), []string{hostA})
@@ -124,11 +111,6 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret 'a' error")
 			err = s.NewApisixTls("tls-server-a", hostA, secretA)
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixTls 'a' error")
-
-			// ensure resources exist, so ResourceSync will be triggered
-			ssls, err := s.ListApisixSsl()
-			assert.Nil(ginkgo.GinkgoT(), err)
-			assert.True(ginkgo.GinkgoT(), len(ssls) > 0)
 
 			ac := `
 apiVersion: apisix.apache.org/v2beta3
@@ -142,11 +124,6 @@ spec:
         key: foo-key
 `
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "create ApisixConsumer")
-
-			// ensure resources exist, so ResourceSync will be triggered
-			consumers, err := s.ListApisixConsumers()
-			assert.Nil(ginkgo.GinkgoT(), err)
-			assert.True(ginkgo.GinkgoT(), len(consumers) > 0)
 
 			agr := `
 apiVersion: apisix.apache.org/v2
@@ -162,11 +139,6 @@ spec:
 `
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(agr), "create ApisixGlobalRule")
 
-			// ensure resources exist, so ResourceSync will be triggered
-			grs, err := s.ListApisixGlobalRules()
-			assert.Nil(ginkgo.GinkgoT(), err)
-			assert.True(ginkgo.GinkgoT(), len(grs) > 0)
-
 			apc := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixPluginConfig
@@ -180,6 +152,32 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc), "create ApisixPluginConfig")
 
 			// ensure resources exist, so ResourceSync will be triggered
+			time.Sleep(6 * time.Second)
+
+			routes, err := s.ListApisixRoutes()
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.True(ginkgo.GinkgoT(), len(routes) > 0)
+
+			ups, err := s.ListApisixUpstreams()
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.True(ginkgo.GinkgoT(), len(ups) > 0)
+
+			srs, err := s.ListApisixStreamRoutes()
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.True(ginkgo.GinkgoT(), len(srs) > 0)
+
+			ssls, err := s.ListApisixSsl()
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.True(ginkgo.GinkgoT(), len(ssls) > 0)
+
+			consumers, err := s.ListApisixConsumers()
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.True(ginkgo.GinkgoT(), len(consumers) > 0)
+
+			grs, err := s.ListApisixGlobalRules()
+			assert.Nil(ginkgo.GinkgoT(), err)
+			assert.True(ginkgo.GinkgoT(), len(grs) > 0)
+
 			pcs, err := s.ListApisixPluginConfig()
 			assert.Nil(ginkgo.GinkgoT(), err)
 			assert.True(ginkgo.GinkgoT(), len(pcs) > 0)
@@ -194,8 +192,8 @@ spec:
 				countersBeforeWait[resType] = getApisixResourceRequestsCount(resType)
 			}
 
-			log.Infof("before sleep requests count: %v, wait for 3min ...", countersBeforeWait)
-			time.Sleep(time.Minute * 3)
+			log.Infof("before sleep requests count: %v, wait for 130s ...", countersBeforeWait)
+			time.Sleep(time.Second * 130)
 
 			countersAfterWait := map[string]int{}
 			for _, resType := range resTypes {

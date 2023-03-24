@@ -46,7 +46,6 @@ func (r *pluginMetadataClient) Get(ctx context.Context, name string) (*v1.Plugin
 	// TODO Add mutex here to avoid dog-pile effect.
 	url := r.url + "/" + name
 	resp, err := r.cluster.getResource(ctx, url, "pluginMetadata")
-	r.cluster.metricsCollector.IncrAPISIXRequest("pluginMetadata")
 	if err != nil {
 		log.Errorw("failed to get pluginMetadata from APISIX",
 			zap.String("name", name),
@@ -76,7 +75,6 @@ func (r *pluginMetadataClient) List(ctx context.Context) ([]*v1.PluginMetadata, 
 		zap.String("url", r.url),
 	)
 	pluginMetadataItems, err := r.cluster.listResource(ctx, r.url, "pluginMetadata")
-	r.cluster.metricsCollector.IncrAPISIXRequest("pluginMetadata")
 	if err != nil {
 		log.Errorf("failed to list pluginMetadatas: %s", err)
 		return nil, err
@@ -114,10 +112,8 @@ func (r *pluginMetadataClient) Delete(ctx context.Context, obj *v1.PluginMetadat
 	}
 	url := r.url + "/" + obj.Name
 	if err := r.cluster.deleteResource(ctx, url, "pluginMetadata"); err != nil {
-		r.cluster.metricsCollector.IncrAPISIXRequest("pluginMetadata")
 		return err
 	}
-	r.cluster.metricsCollector.IncrAPISIXRequest("pluginMetadata")
 	return nil
 }
 
@@ -137,7 +133,6 @@ func (r *pluginMetadataClient) Update(ctx context.Context, obj *v1.PluginMetadat
 	}
 	url := r.url + "/" + obj.Name
 	resp, err := r.cluster.updateResource(ctx, url, "pluginMetadata", body)
-	r.cluster.metricsCollector.IncrAPISIXRequest("pluginMetadata")
 	if err != nil {
 		return nil, err
 	}

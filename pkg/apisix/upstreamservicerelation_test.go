@@ -144,7 +144,7 @@ func TestUpstreamRelatoinClient(t *testing.T) {
 		Type:  lbType,
 		Key:   key,
 		Nodes: nodes,
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, "1", obj.ID)
 	relations, err := relationCli.List(context.TODO())
@@ -166,7 +166,7 @@ func TestUpstreamRelatoinClient(t *testing.T) {
 		Type:  lbType,
 		Key:   key,
 		Nodes: nodes,
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, "2", obj.ID)
 
