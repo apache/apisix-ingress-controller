@@ -78,6 +78,7 @@ type Scaffold struct {
 	httpbinService     *corev1.Service
 	testBackendService *corev1.Service
 	finalizers         []func()
+	label              map[string]string
 
 	apisixAdminTunnel      *k8s.Tunnel
 	apisixHttpTunnel       *k8s.Tunnel
@@ -165,7 +166,13 @@ func NewScaffold(o *Options) *Scaffold {
 		o.HTTPBinServicePort = 80
 	}
 	if o.IngressClass == "" {
-		o.IngressClass = config.IngressClassApisixAndAll
+		// Env acts on ci and will be deleted after the release of 1.17
+		ingClass := os.Getenv("INGRESS_CLASS")
+		if ingClass != "" {
+			o.IngressClass = ingClass
+		} else {
+			o.IngressClass = config.IngressClass
+		}
 	}
 	defer ginkgo.GinkgoRecover()
 
@@ -432,17 +439,17 @@ func (s *Scaffold) beforeEach() {
 	}
 	s.finalizers = nil
 
-	label := map[string]string{}
-	if !s.opts.DisableNamespaceLabel {
-		if s.opts.NamespaceSelectorLabel == nil {
-			label["apisix.ingress.watch"] = s.namespace
-			s.opts.NamespaceSelectorLabel = label
-		} else {
-			label = s.opts.NamespaceSelectorLabel
-		}
+	if s.opts.NamespaceSelectorLabel != nil {
+		s.label = s.opts.NamespaceSelectorLabel
+	} else {
+		s.label = map[string]string{"apisix.ingress.watch": s.namespace}
 	}
 
-	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: s.namespace, Labels: label})
+	var nsLabel map[string]string
+	if !s.opts.DisableNamespaceLabel {
+		nsLabel = s.label
+	}
+	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: s.namespace, Labels: nsLabel})
 
 	s.nodes, err = k8s.GetReadyNodesE(s.t, s.kubectlOptions)
 	assert.Nil(s.t, err, "querying ready nodes")
@@ -684,12 +691,12 @@ func (s *Scaffold) DeleteResource(resourceType, name string) error {
 
 func (s *Scaffold) NamespaceSelectorLabelStrings() []string {
 	var labels []string
-	for k, v := range s.opts.NamespaceSelectorLabel {
+	for k, v := range s.label {
 		labels = append(labels, fmt.Sprintf("%s=%s", k, v))
 	}
 	return labels
 }
 
 func (s *Scaffold) NamespaceSelectorLabel() map[string]string {
-	return s.opts.NamespaceSelectorLabel
+	return s.label
 }
