@@ -28,12 +28,13 @@ import (
 )
 
 func main() {
-	generateCertificateAndKey("../test/e2e/testbackend/tls/cert1.pem", "../test/e2e/testbackend/tls/key1.pem")
-	generateCertificateAndKey("../test/e2e/testbackend/tls/cert2.pem", "../test/e2e/testbackend/tls/key2.pem")
-	generateCertificateAndKey("../test/e2e/testbackend/tls/cert3.pem", "../test/e2e/testbackend/tls/key3.pem")
-	generateCertificateAndKey("../test/e2e/testbackend/tls/certUpdate1.pem", "../test/e2e/testbackend/tls/keyUpdate1.pem")
-	generateCertificateAndKey("../test/e2e/testbackend/tls/certUpdate2.pem", "../test/e2e/testbackend/tls/keyUpdate2.pem")
-	generateCertificateAndKey("../test/e2e/testbackend/tls/certUpdate3.pem", "../test/e2e/testbackend/tls/keyUpdate3.pem")
+	generateCertificateAndKey("test/e2e/testbackend/tls/cert.pem", "test/e2e/testbackend/tls/key.pem")
+	generateCertificateAndKey("test/e2e/testbackend/tls/cert1.pem", "test/e2e/testbackend/tls/key1.pem")
+	generateCertificateAndKey("test/e2e/testbackend/tls/cert2.pem", "test/e2e/testbackend/tls/key2.pem")
+	generateCertificateAndKey("test/e2e/testbackend/tls/cert3.pem", "test/e2e/testbackend/tls/key3.pem")
+	generateCertificateAndKey("test/e2e/testbackend/tls/certUpdate1.pem", "test/e2e/testbackend/tls/keyUpdate1.pem")
+	generateCertificateAndKey("test/e2e/testbackend/tls/certUpdate2.pem", "test/e2e/testbackend/tls/keyUpdate2.pem")
+	generateCertificateAndKey("test/e2e/testbackend/tls/certUpdate3.pem", "test/e2e/testbackend/tls/keyUpdate3.pem")
 }
 
 func generateCertificateAndKey(certFilename, keyFilename string) {
