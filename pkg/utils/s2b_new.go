@@ -13,22 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package id
+//go:build go1.20
+// +build go1.20
 
-import (
-	"fmt"
-	"hash/crc32"
+package utils
 
-	"github.com/apache/apisix-ingress-controller/pkg/utils"
-)
+import "unsafe"
 
-// GenID generates an ID according to the raw material.
-func GenID(raw string) string {
-	if raw == "" {
-		return ""
-	}
-	p := utils.String2Byte(raw)
-
-	res := crc32.ChecksumIEEE(p)
-	return fmt.Sprintf("%x", res)
+// s2b converts string to a byte slice without memory allocation.
+func String2Byte(s string) []byte {
+	return unsafe.Slice(unsafe.StringData(s), len(s))
 }

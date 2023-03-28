@@ -13,22 +13,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package id
+package utils
 
 import (
-	"fmt"
-	"hash/crc32"
-
-	"github.com/apache/apisix-ingress-controller/pkg/utils"
+	"reflect"
+	"testing"
 )
 
-// GenID generates an ID according to the raw material.
-func GenID(raw string) string {
-	if raw == "" {
-		return ""
+func TestString2Byte(t *testing.T) {
+	type args struct {
+		raw string
 	}
-	p := utils.String2Byte(raw)
-
-	res := crc32.ChecksumIEEE(p)
-	return fmt.Sprintf("%x", res)
+	tests := []struct {
+		name  string
+		args  args
+		wantB []byte
+	}{
+		{
+			name: "test-1",
+			args: args{
+				raw: "a",
+			},
+			wantB: []byte{'a'},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotB := String2Byte(tt.args.raw); !reflect.DeepEqual(gotB, tt.wantB) {
+				t.Errorf("String2byte() = %v, want %v", gotB, tt.wantB)
+			}
+		})
+	}
 }
