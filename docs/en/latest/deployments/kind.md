@@ -30,7 +30,7 @@ This document explains how you can install APISIX ingress locally on [kind](http
 
 ## Prerequisites
 
-* Install [Docker](https://docs.docker.com/engine/install/)
+* Install [Docker](https://docs.docker.com/engine/install/).
 * Install [kind](https://kind.sigs.k8s.io/docs/user/quick-start/).
 * Install [Helm](https://helm.sh/).
 * Install [kubectl](https://kubernetes.io/docs/tasks/tools/).
