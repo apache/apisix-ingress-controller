@@ -9,7 +9,7 @@ description: Guide to using ApisixPluginConfig custom Kubernetes resource.
 
 `ApisixPluginConfig` is a Kubernetes CRD that can be used to extract commonly used Plugins and can be bound directly to multiple Routes.
 
-See [reference](https://apisix.apache.org/docs/ingress-controller/references/apisix_pluginconfig_v2/) for the full API documentation.
+See [reference](https://apisix.apache.org/docs/ingress-controller/references/apisix_pluginconfig_v2) for the full API documentation.
 
 The example below shows how you can configure an `ApisixPluginConfig` resource:
 
