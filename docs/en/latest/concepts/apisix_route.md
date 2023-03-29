@@ -184,28 +184,36 @@ If the Plugin is not enabled in APISIX by default, you can enable it by adding i
 
 :::
 
-The example below configures [cors](https://apisix.apache.org/docs/apisix/plugins/cors/) Plugin for the route:
+The example below configures [limit-count](https://apisix.apache.org/docs/apisix/plugins/limit-count) Plugin for the route:
 
 ```yaml
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
-  name: httpbin-route
+ name: httpbin-route
 spec:
-  http:
-    - name: httpbin
-      match:
-        hosts:
-        - local.httpbin.org
-        paths:
-          - /*
-      backends:
-      - serviceName: foo
-        servicePort: 80
-      plugins:
-        - name: cors
-          enable: true
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: limit-count
+     enable: true
+     config:
+       rejected_code: 503
+       count: 2
+       time_window: 3
+       key: remote_addr
 ```
+
+You can also use the [ApisixPluginConfig](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_plugin_config) CRD to extract and reuse commonly used Plugins and bind them directly to a Route.
 
 ### Config with secretRef
 
