@@ -16,7 +16,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-name: e2e-test-ci (v2)
+
+name: e2e-test-ci (dev)
 
 on:
   schedule:
@@ -28,12 +29,12 @@ on:
     types: [ labeled, opened, synchronize, reopened, review_requested, ready_for_review ]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-v2
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-dev
   cancel-in-progress: true
 
 jobs:
   changes:
-    if: ${{ (!github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'area/test/apiv2')) || github.event.schedule == '0 0 * * *' }}
+    if: ${{ (!github.event.pull_request.draft || github.event.schedule == '0 0 * * *' }}
     runs-on: ubuntu-20.04
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
@@ -104,7 +105,7 @@ jobs:
           ENABLE_PROXY: "false"
         run: |
           echo "building images..."
-          make clean-image build-images
+          TARGET_APISIX_VERSION=dev make clean-image build-images
 
           echo "creating images cache..."
           docker save \
