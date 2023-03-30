@@ -18,6 +18,7 @@ package apisix
 
 import (
 	"context"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -47,7 +48,7 @@ type Provider interface {
 	providertypes.Provider
 
 	Init(ctx context.Context) error
-	ResourceSync()
+	ResourceSync(interval time.Duration)
 	NotifyServiceAdd(key string)
 	NotifyApisixUpstreamChange(key string)
 
@@ -67,6 +68,8 @@ type apisixProvider struct {
 	apisixConsumerController      *apisixConsumerController
 	apisixPluginConfigController  *apisixPluginConfigController
 	apisixGlobalRuleController    *apisixGlobalRuleController
+
+	syncStage int
 }
 
 func NewProvider(common *providertypes.Common, namespaceProvider namespace.WatchingNamespaceProvider,
@@ -134,17 +137,31 @@ func (p *apisixProvider) Run(ctx context.Context) {
 	e.Wait()
 }
 
-func (p *apisixProvider) ResourceSync() {
+func (p *apisixProvider) ResourceSync(interval time.Duration) {
 	e := utils.ParallelExecutor{}
 
-	e.Add(p.apisixUpstreamController.ResourceSync)
-	e.Add(p.apisixRouteController.ResourceSync)
-	e.Add(p.apisixTlsController.ResourceSync)
-	e.Add(p.apisixClusterConfigController.ResourceSync)
-	e.Add(p.apisixConsumerController.ResourceSync)
-	e.Add(p.apisixPluginConfigController.ResourceSync)
+	e.Add(func() {
+		p.apisixUpstreamController.ResourceSync(interval)
+	})
+	e.Add(func() {
+		p.apisixRouteController.ResourceSync(interval)
+	})
+	e.Add(func() {
+		p.apisixTlsController.ResourceSync(interval)
+	})
+	e.Add(func() {
+		p.apisixClusterConfigController.ResourceSync(interval)
+	})
+	e.Add(func() {
+		p.apisixConsumerController.ResourceSync(interval)
+	})
+	e.Add(func() {
+		p.apisixPluginConfigController.ResourceSync(interval)
+	})
 	if p.common.Kubernetes.APIVersion == config.ApisixV2 {
-		e.Add(p.apisixGlobalRuleController.ResourceSync)
+		e.Add(func() {
+			p.apisixGlobalRuleController.ResourceSync(interval)
+		})
 	}
 
 	e.Wait()

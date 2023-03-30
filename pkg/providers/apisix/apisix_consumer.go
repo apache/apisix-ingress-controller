@@ -112,6 +112,10 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 			)
 			return err
 		}
+		if ev.Type == types.EventSync {
+			// ignore not found error in delay sync
+			return nil
+		}
 		if ev.Type != types.EventDelete {
 			log.Warnw("ApisixConsumer was deleted before it can be delivered",
 				zap.String("key", key),
@@ -320,6 +324,7 @@ func (c *apisixConsumerController) onDelete(obj interface{}) {
 	log.Debugw("ApisixConsumer delete event arrived",
 		zap.Any("final state", ac),
 	)
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixConsumerEvent{
@@ -332,9 +337,11 @@ func (c *apisixConsumerController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("consumer", "delete")
 }
 
-func (c *apisixConsumerController) ResourceSync() {
+func (c *apisixConsumerController) ResourceSync(interval time.Duration) {
 	objs := c.ApisixConsumerInformer.GetIndexer().List()
-	for _, obj := range objs {
+	delay := GetSyncDelay(interval, len(objs))
+
+	for i, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
 			log.Errorw("ApisixConsumer sync failed, found ApisixConsumer resource with bad meta namespace key", zap.String("error", err.Error()))
@@ -351,13 +358,20 @@ func (c *apisixConsumerController) ResourceSync() {
 		if !c.isEffective(ac) {
 			continue
 		}
-		c.workqueue.Add(&types.Event{
+		log.Debugw("ResourceSync",
+			zap.String("resource", "ApisixConsumer"),
+			zap.String("key", key),
+			zap.Duration("calc_delay", delay),
+			zap.Int("i", i),
+			zap.Duration("delay", delay*time.Duration(i)),
+		)
+		c.workqueue.AddAfter(&types.Event{
 			Type: types.EventSync,
 			Object: kube.ApisixConsumerEvent{
 				Key:          key,
 				GroupVersion: ac.GroupVersion(),
 			},
-		})
+		}, delay*time.Duration(i))
 	}
 }
 

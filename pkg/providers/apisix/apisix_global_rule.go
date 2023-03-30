@@ -104,6 +104,10 @@ func (c *apisixGlobalRuleController) sync(ctx context.Context, ev *types.Event) 
 			return err
 		}
 
+		if ev.Type == types.EventSync {
+			// ignore not found error in delay sync
+			return nil
+		}
 		if ev.Type != types.EventDelete {
 			log.Warnw("ApisixGlobalRule was deleted before it can be delivered",
 				zap.String("key", obj.Key),
@@ -127,7 +131,7 @@ func (c *apisixGlobalRuleController) sync(ctx context.Context, ev *types.Event) 
 
 	tctx, err := c.translator.TranslateGlobalRule(agr)
 	if err != nil {
-		log.Errorw("failed to translate ApisixRoute v2",
+		log.Errorw("failed to translate ApisixGlobalRule v2",
 			zap.Error(err),
 			zap.Any("object", agr),
 		)
@@ -253,6 +257,7 @@ func (c *apisixGlobalRuleController) onAdd(obj interface{}) {
 	}
 	log.Debugw("ApisixGlobalRule add event arrived",
 		zap.Any("object", obj))
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.ApisixGlobalRuleEvent{
@@ -320,6 +325,7 @@ func (c *apisixGlobalRuleController) onDelete(obj interface{}) {
 	log.Debugw("ApisixGlobalRule delete event arrived",
 		zap.Any("final state", agr),
 	)
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixGlobalRuleEvent{
@@ -332,9 +338,11 @@ func (c *apisixGlobalRuleController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("GlobalRule", "delete")
 }
 
-func (c *apisixGlobalRuleController) ResourceSync() {
+func (c *apisixGlobalRuleController) ResourceSync(interval time.Duration) {
 	objs := c.ApisixGlobalRuleInformer.GetIndexer().List()
-	for _, obj := range objs {
+	delay := GetSyncDelay(interval, len(objs))
+
+	for i, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
 			log.Errorw("ApisixGlobalRule sync failed, found ApisixGlobalRule resource with bad meta namespace key", zap.String("error", err.Error()))
@@ -347,13 +355,20 @@ func (c *apisixGlobalRuleController) ResourceSync() {
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
-		c.workqueue.Add(&types.Event{
+		log.Debugw("ResourceSync",
+			zap.String("resource", "ApisixGlobalRule"),
+			zap.String("key", key),
+			zap.Duration("calc_delay", delay),
+			zap.Int("i", i),
+			zap.Duration("delay", delay*time.Duration(i)),
+		)
+		c.workqueue.AddAfter(&types.Event{
 			Type: types.EventSync,
 			Object: kube.ApisixGlobalRuleEvent{
 				Key:          key,
 				GroupVersion: agr.GroupVersion(),
 			},
-		})
+		}, delay*time.Duration(i))
 	}
 }
 

@@ -155,6 +155,10 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 			)
 			return err
 		}
+		if ev.Type == types.EventSync {
+			// ignore not found error in delay sync
+			return nil
+		}
 		if ev.Type != types.EventDelete {
 			log.Warnw("ApisixUpstream was deleted before it can be delivered",
 				zap.String("key", key),
@@ -633,6 +637,7 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 	log.Debugw("ApisixUpstream delete event arrived",
 		zap.Any("final state", au),
 	)
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixUpstreamEvent{
@@ -645,9 +650,10 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("upstream", "delete")
 }
 
-func (c *apisixUpstreamController) ResourceSync() {
+func (c *apisixUpstreamController) ResourceSync(interval time.Duration) {
 	objs := c.ApisixUpstreamInformer.GetIndexer().List()
-	for _, obj := range objs {
+	delay := GetSyncDelay(interval, len(objs))
+	for i, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
 			log.Errorw("ApisixUpstream sync failed, found ApisixUpstream resource with bad meta namespace key", zap.String("error", err.Error()))
@@ -664,13 +670,20 @@ func (c *apisixUpstreamController) ResourceSync() {
 		if !c.isEffective(au) {
 			continue
 		}
-		c.workqueue.Add(&types.Event{
+		log.Debugw("ResourceSync",
+			zap.String("resource", "ApisixUpstream"),
+			zap.String("key", key),
+			zap.Duration("calc_delay", delay),
+			zap.Int("i", i),
+			zap.Duration("delay", delay*time.Duration(i)),
+		)
+		c.workqueue.AddAfter(&types.Event{
 			Type: types.EventSync,
 			Object: kube.ApisixUpstreamEvent{
 				Key:          key,
 				GroupVersion: au.GroupVersion(),
 			},
-		})
+		}, delay*time.Duration(i))
 	}
 }
 

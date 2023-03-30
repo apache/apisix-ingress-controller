@@ -406,6 +406,8 @@ func (c *Controller) run(ctx context.Context) {
 
 	// Creation Phase
 
+	log.Info("creating controller")
+
 	c.informers = c.initSharedInformers()
 	common := &providertypes.Common{
 		ControllerNamespace: c.namespace,
@@ -478,16 +480,22 @@ func (c *Controller) run(ctx context.Context) {
 
 	// Init Phase
 
+	log.Info("init namespaces")
+
 	if err = c.namespaceProvider.Init(ctx); err != nil {
 		ctx.Done()
 		return
 	}
+
+	log.Info("wait for resource sync")
 
 	// Wait for resource sync
 	if ok := c.informers.StartAndWaitForCacheSync(ctx); !ok {
 		ctx.Done()
 		return
 	}
+
+	log.Info("init providers")
 
 	// Compare resource
 	if err = c.apisixProvider.Init(ctx); err != nil {
@@ -575,11 +583,13 @@ func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.
 	}
 }
 
-func (c *Controller) syncAllResources() {
+func (c *Controller) syncAllResources(interval time.Duration) {
 	e := utils.ParallelExecutor{}
 
 	e.Add(c.ingressProvider.ResourceSync)
-	e.Add(c.apisixProvider.ResourceSync)
+	e.Add(func() {
+		c.apisixProvider.ResourceSync(interval)
+	})
 
 	e.Wait()
 }
@@ -601,7 +611,7 @@ func (c *Controller) resourceSyncLoop(ctx context.Context, interval time.Duratio
 	for {
 		select {
 		case <-ticker.C:
-			c.syncAllResources()
+			c.syncAllResources(interval)
 			continue
 		case <-ctx.Done():
 			return

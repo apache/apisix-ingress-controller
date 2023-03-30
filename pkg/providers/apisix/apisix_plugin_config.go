@@ -114,6 +114,10 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 			return err
 		}
 
+		if ev.Type == types.EventSync {
+			// ignore not found error in delay sync
+			return nil
+		}
 		if ev.Type != types.EventDelete {
 			log.Warnw("ApisixPluginConfig was deleted before it can be delivered",
 				zap.String("key", obj.Key),
@@ -365,6 +369,7 @@ func (c *apisixPluginConfigController) onDelete(obj interface{}) {
 	log.Debugw("ApisixPluginConfig delete event arrived",
 		zap.Any("final state", apc),
 	)
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixPluginConfigEvent{
@@ -377,9 +382,11 @@ func (c *apisixPluginConfigController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("PluginConfig", "delete")
 }
 
-func (c *apisixPluginConfigController) ResourceSync() {
+func (c *apisixPluginConfigController) ResourceSync(interval time.Duration) {
 	objs := c.ApisixPluginConfigInformer.GetIndexer().List()
-	for _, obj := range objs {
+	delay := GetSyncDelay(interval, len(objs))
+
+	for i, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
 			log.Errorw("ApisixPluginConfig sync failed, found ApisixPluginConfig resource with bad meta namespace key", zap.String("error", err.Error()))
@@ -392,13 +399,20 @@ func (c *apisixPluginConfigController) ResourceSync() {
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
-		c.workqueue.Add(&types.Event{
+		log.Debugw("ResourceSync",
+			zap.String("resource", "ApisixPluginConfig"),
+			zap.String("key", key),
+			zap.Duration("calc_delay", delay),
+			zap.Int("i", i),
+			zap.Duration("delay", delay*time.Duration(i)),
+		)
+		c.workqueue.AddAfter(&types.Event{
 			Type: types.EventSync,
 			Object: kube.ApisixPluginConfigEvent{
 				Key:          key,
 				GroupVersion: apc.GroupVersion(),
 			},
-		})
+		}, delay*time.Duration(i))
 	}
 }
 

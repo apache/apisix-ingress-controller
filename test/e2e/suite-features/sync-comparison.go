@@ -33,7 +33,7 @@ import (
 
 var _ = ginkgo.Describe("suite-features: sync comparison", func() {
 	suites := func(s *scaffold.Scaffold) {
-		ginkgo.It("check Route resource request count", func() {
+		ginkgo.It("check resource request count", func() {
 			getApisixResourceRequestsCount := func(res string) int {
 				pods, err := s.GetIngressPodDetails()
 				assert.Nil(ginkgo.GinkgoT(), err, "get ingress pod")

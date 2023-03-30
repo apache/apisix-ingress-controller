@@ -310,6 +310,10 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			return err
 		}
 
+		if ev.Type == types.EventSync {
+			// ignore not found error in delay sync
+			return nil
+		}
 		if ev.Type != types.EventDelete {
 			log.Warnw("ApisixRoute was deleted before it can be delivered",
 				zap.String("key", obj.Key),
@@ -563,6 +567,7 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 		)
 		return
 	}
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.ApisixRouteEvent{
@@ -633,12 +638,14 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 		zap.String("key", key),
 		zap.Any("final state", ar),
 	)
+
 	if !c.isEffective(ar) {
 		log.Debugw("ignore noneffective ApisixRoute delete event arrived",
 			zap.Any("final state", ar),
 		)
 		return
 	}
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixRouteEvent{
@@ -651,8 +658,9 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("route", "delete")
 }
 
-func (c *apisixRouteController) ResourceSync() {
+func (c *apisixRouteController) ResourceSync(interval time.Duration) {
 	objs := c.ApisixRouteInformer.GetIndexer().List()
+	delay := GetSyncDelay(interval, len(objs))
 
 	c.svcLock.Lock()
 	c.apisixUpstreamLock.Lock()
@@ -662,7 +670,7 @@ func (c *apisixRouteController) ResourceSync() {
 	c.svcMap = make(map[string]map[string]struct{})
 	c.apisixUpstreamMap = make(map[string]map[string]struct{})
 
-	for _, obj := range objs {
+	for i, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
 			log.Errorw("ApisixRoute sync failed, found ApisixRoute resource with bad meta namespace key",
@@ -680,13 +688,20 @@ func (c *apisixRouteController) ResourceSync() {
 			)
 			continue
 		}
-		c.workqueue.Add(&types.Event{
+		log.Debugw("ResourceSync",
+			zap.String("resource", "ApisixRoute"),
+			zap.String("key", key),
+			zap.Duration("calc_delay", delay),
+			zap.Int("i", i),
+			zap.Duration("delay", delay*time.Duration(i)),
+		)
+		c.workqueue.AddAfter(&types.Event{
 			Type: types.EventSync,
 			Object: kube.ApisixRouteEvent{
 				Key:          key,
 				GroupVersion: ar.GroupVersion(),
 			},
-		})
+		}, delay*time.Duration(i))
 
 		ns, _, err := cache.SplitMetaNamespaceKey(key)
 		if err != nil {

@@ -124,6 +124,10 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			)
 			return err
 		}
+		if ev.Type == types.EventSync {
+			// ignore not found error in delay sync
+			return nil
+		}
 		if ev.Type != types.EventDelete {
 			log.Warnw("ApisixTls %s was deleted before it can be delivered",
 				zap.String("key", apisixTlsKey),
@@ -294,6 +298,7 @@ func (c *apisixTlsController) onAdd(obj interface{}) {
 	log.Debugw("ApisixTls add event arrived",
 		zap.Any("object", obj),
 	)
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.ApisixTlsEvent{
@@ -334,6 +339,7 @@ func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
 		zap.Any("new object", curr),
 		zap.Any("old object", prev),
 	)
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventUpdate,
 		Object: kube.ApisixTlsEvent{
@@ -385,9 +391,11 @@ func (c *apisixTlsController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("TLS", "delete")
 }
 
-func (c *apisixTlsController) ResourceSync() {
+func (c *apisixTlsController) ResourceSync(interval time.Duration) {
 	objs := c.ApisixTlsInformer.GetIndexer().List()
-	for _, obj := range objs {
+	delay := GetSyncDelay(interval, len(objs))
+
+	for i, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
 			log.Errorw("ApisixTls sync failed, found ApisixTls object with bad namespace/name ignore it", zap.String("error", err.Error()))
@@ -401,13 +409,20 @@ func (c *apisixTlsController) ResourceSync() {
 			log.Errorw("ApisixTls sync failed, found ApisixTls resource with bad type", zap.Error(err))
 			continue
 		}
-		c.workqueue.Add(&types.Event{
+		log.Debugw("ResourceSync",
+			zap.String("resource", "ApisixTls"),
+			zap.String("key", key),
+			zap.Duration("calc_delay", delay),
+			zap.Int("i", i),
+			zap.Duration("delay", delay*time.Duration(i)),
+		)
+		c.workqueue.AddAfter(&types.Event{
 			Type: types.EventSync,
 			Object: kube.ApisixTlsEvent{
 				Key:          key,
 				GroupVersion: tls.GroupVersion(),
 			},
-		})
+		}, delay*time.Duration(i))
 	}
 }
 

@@ -39,44 +39,44 @@ type ResourceTypes interface {
 }
 
 func skipRequest[T ResourceTypes](cluster *cluster, shouldCompare bool, url, id string, obj T) (T, bool) {
-	var generatedObj T
-	resourceType := ""
-
-	// GlobalRule and Consumer has Plugins field which type will mismatch in DeepEqual
-	switch (interface{})(generatedObj).(type) {
-	case *v1.GlobalRule:
-		generatedObj = obj
-		resourceType = "global_rule"
-	case *v1.Consumer:
-		generatedObj = obj
-		resourceType = "consumer"
-	}
-	if generatedObj == nil {
-		generatedObj = obj
-	} else {
-		j, err := json.Marshal(generatedObj)
-		if err != nil {
-			log.Debugw("sync comparison continue operation",
-				zap.String("reason", "failed to marshal object"),
-				zap.Error(err),
-				zap.Any("resource", resourceType),
-				zap.Any("obj", generatedObj),
-			)
-			return nil, false
-		}
-		err = json.Unmarshal(j, &generatedObj)
-		if err != nil {
-			log.Debugw("sync comparison continue operation",
-				zap.String("reason", "failed to unmarshal object"),
-				zap.Error(err),
-				zap.Any("resource", resourceType),
-				zap.Any("json", j),
-			)
-			return nil, false
-		}
-	}
-
 	if cluster.syncComparison && shouldCompare {
+		var generatedObj T
+		resourceType := ""
+
+		// GlobalRule and Consumer has Plugins field which type will mismatch in DeepEqual
+		switch (interface{})(generatedObj).(type) {
+		case *v1.GlobalRule:
+			generatedObj = obj
+			resourceType = "global_rule"
+		case *v1.Consumer:
+			generatedObj = obj
+			resourceType = "consumer"
+		}
+		if generatedObj == nil {
+			generatedObj = obj
+		} else {
+			j, err := json.Marshal(generatedObj)
+			if err != nil {
+				log.Debugw("sync comparison continue operation",
+					zap.String("reason", "failed to marshal object"),
+					zap.Error(err),
+					zap.Any("resource", resourceType),
+					zap.Any("obj", generatedObj),
+				)
+				return nil, false
+			}
+			err = json.Unmarshal(j, &generatedObj)
+			if err != nil {
+				log.Debugw("sync comparison continue operation",
+					zap.String("reason", "failed to unmarshal object"),
+					zap.Error(err),
+					zap.Any("resource", resourceType),
+					zap.Any("json", j),
+				)
+				return nil, false
+			}
+		}
+
 		var (
 			// generated object may be different from server response object,
 			// so we need another cache to store generated objs

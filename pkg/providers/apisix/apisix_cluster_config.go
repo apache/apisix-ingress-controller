@@ -112,6 +112,10 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 			)
 			return err
 		}
+		if ev.Type == types.EventSync {
+			// ignore not found error in delay sync
+			return nil
+		}
 		if ev.Type != types.EventDelete {
 			log.Warnw("ApisixClusterConfig was deleted before it can be delivered",
 				zap.String("key", key),
@@ -403,6 +407,7 @@ func (c *apisixClusterConfigController) onDelete(obj interface{}) {
 	log.Debugw("ApisixClusterConfig delete event arrived",
 		zap.Any("final state", acc),
 	)
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixClusterConfigEvent{
@@ -415,9 +420,11 @@ func (c *apisixClusterConfigController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("clusterConfig", "delete")
 }
 
-func (c *apisixClusterConfigController) ResourceSync() {
+func (c *apisixClusterConfigController) ResourceSync(interval time.Duration) {
 	objs := c.ApisixClusterConfigInformer.GetIndexer().List()
-	for _, obj := range objs {
+	delay := GetSyncDelay(interval, len(objs))
+
+	for i, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
 			log.Errorw("ApisixClusterConfig sync failed, found ApisixClusterConfig resource with bad meta namespace key", zap.String("error", err.Error()))
@@ -431,13 +438,20 @@ func (c *apisixClusterConfigController) ResourceSync() {
 		if !c.isEffective(acc) {
 			continue
 		}
-		c.workqueue.Add(&types.Event{
+		log.Debugw("ResourceSync",
+			zap.String("resource", "ApisixClusterConfig"),
+			zap.String("key", key),
+			zap.Duration("calc_delay", delay),
+			zap.Int("i", i),
+			zap.Duration("delay", delay*time.Duration(i)),
+		)
+		c.workqueue.AddAfter(&types.Event{
 			Type: types.EventSync,
 			Object: kube.ApisixClusterConfigEvent{
 				Key:          key,
 				GroupVersion: acc.GroupVersion(),
 			},
-		})
+		}, delay*time.Duration(i))
 	}
 }
 

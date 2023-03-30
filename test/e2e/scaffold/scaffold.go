@@ -48,19 +48,20 @@ import (
 )
 
 type Options struct {
-	Name                       string
-	Kubeconfig                 string
-	APISIXAdminAPIVersion      string
-	APISIXConfigPath           string
-	IngressAPISIXReplicas      int
-	HTTPBinServicePort         int
-	APISIXAdminAPIKey          string
-	EnableWebhooks             bool
-	APISIXPublishAddress       string
-	ApisixResourceSyncInterval string
-	ApisixResourceVersion      string
-	DisableStatus              bool
-	IngressClass               string
+	Name                         string
+	Kubeconfig                   string
+	APISIXAdminAPIVersion        string
+	APISIXConfigPath             string
+	IngressAPISIXReplicas        int
+	HTTPBinServicePort           int
+	APISIXAdminAPIKey            string
+	EnableWebhooks               bool
+	APISIXPublishAddress         string
+	ApisixResourceSyncInterval   string
+	ApisixResourceSyncComparison string
+	ApisixResourceVersion        string
+	DisableStatus                bool
+	IngressClass                 string
 
 	NamespaceSelectorLabel   map[string]string
 	DisableNamespaceSelector bool
@@ -149,6 +150,9 @@ func NewScaffold(o *Options) *Scaffold {
 	}
 	if o.ApisixResourceSyncInterval == "" {
 		o.ApisixResourceSyncInterval = "60s"
+	}
+	if o.ApisixResourceSyncComparison == "" {
+		o.ApisixResourceSyncComparison = "true"
 	}
 	if o.Kubeconfig == "" {
 		o.Kubeconfig = GetKubeconfig()
