@@ -17,8 +17,6 @@ package translation
 import (
 	"context"
 	"fmt"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
-	"k8s.io/client-go/kubernetes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -35,6 +34,7 @@ import (
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
