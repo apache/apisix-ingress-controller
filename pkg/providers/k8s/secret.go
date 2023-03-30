@@ -61,7 +61,7 @@ func newSecretController(common *providertypes.Common, namespaceProvider namespa
 
 		namespaceProvider: namespaceProvider,
 		apisixProvider:    apisixProvider,
-		ingressProvider:   apisixProvider,
+		ingressProvider:   ingressProvider,
 	}
 
 	c.secretInformer.AddEventHandler(
