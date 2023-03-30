@@ -25,8 +25,6 @@ ifeq ($(APISIX_ADMIN_API_VERSION), "v3")
 	TARGET_APISIX_VERSION ?= "3.2.0-centos"
 else ifeq ($(APISIX_ADMIN_API_VERSION), "v2")
 	TARGET_APISIX_VERSION ?= "2.15.3-centos"
-else ifeq ($(APISIX_ADMIN_API_VERSION), "dev")
-	TARGET_APISIX_VERSION ?= "dev"
 endif
 
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
