@@ -46,22 +46,6 @@ This is a Patch version release.
 
 ## Highlights
 
-### Changes
-<details><summary>8 commits</summary>
-<p>
-
-  * [`07bcc69`](https://github.com/apache/apisix-ingress-controller/commit/07bcc6960deb0e3bc267d819f56810e0dbf20d4c) fix: missing upstream name in gateway-api routes (#1754) (#1756)
-  * [`df04324`](https://github.com/apache/apisix-ingress-controller/commit/df043244cbb937c505d4d9eb38a9f7c74031bd02) fix: panic at empty http spec (#1660) (#1757)
-  * [`247bfed`](https://github.com/apache/apisix-ingress-controller/commit/247bfedd6fcbfe19eabbeb3dfac84ee5831027a4) fix: when secret created later than apisixtls it should be updated (#1715) (#1758)
-  * [`b570843`](https://github.com/apache/apisix-ingress-controller/commit/b5708436aeae389a98fb649db5b8cf6844f2058d) fix: Ingress delete events can be handler after svc be deleted (#1576) (#1755)
-  * [`db20b67`](https://github.com/apache/apisix-ingress-controller/commit/db20b67bb9db02e04456fee3062e487672cf9dff) doc: add svc-namespace description to the annotations (#1605) (#1624)
-  * [`dec4439`](https://github.com/apache/apisix-ingress-controller/commit/dec4439b70829456cdee278d8b83d084f1929fdb) fix: allow passing plugin config name for route with no backends (#1578) (#1594)
-  * [`c4ba664`](https://github.com/apache/apisix-ingress-controller/commit/c4ba664d30e4598be2c9f65b24d178436b79b363) docs: add example link. (#1582)
-  * [`66d9434`](https://github.com/apache/apisix-ingress-controller/commit/66d9434b834e44ccc50c14841086b33179b895fc) docs: Update the-hard-way.md (#1581)
-
-Please try out the release binaries and report any issues at
-https://github.com/apache/apisix-ingress-controller/issues.
-
 ### Contributors
 
 * Sarasa Kisaragi
