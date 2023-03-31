@@ -160,6 +160,9 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 		ns = ingress.ServiceNamespace
 	}
 	for _, rule := range ing.Spec.Rules {
+		if rule.HTTP == nil {
+			continue
+		}
 		for _, pathRule := range rule.HTTP.Paths {
 			var (
 				ups *apisixv1.Upstream
