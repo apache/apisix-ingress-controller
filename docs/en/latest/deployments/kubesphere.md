@@ -50,11 +50,16 @@ helm install apisix apisix/apisix \
   --namespace ingress-apisix \
   --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
 kubectl get service --namespace ingress-apisix
+```
 
-# Due to network reasons, you may have problems when deploying. You can consider using an offline method. Here is an example:
+:::tip
 
-wget https://github.com/apache/apisix-helm-chart/releases/download/apisix-1.3.0/apisix-1.3.0.tgz 
-tar xf apisix-1.3.0.tgz 
+If you have problems deploying APISIX due to network reasons, you can download, copy, and install APISIX as shown below:
+
+```shell
+VERSION=$(curl https://artifacthub.io/api/v1/packages/helm/apisix/apisix | jq -r ".version")
+wget https://github.com/apache/apisix-helm-chart/releases/download/apisix-$VERSION/apisix-$VERSION.tgz 
+tar xf apisix-$VERSION.tgz 
 
 kubectl create ns ingress-apisix
 helm install apisix ./apisix \
