@@ -68,8 +68,6 @@ type apisixProvider struct {
 	apisixConsumerController      *apisixConsumerController
 	apisixPluginConfigController  *apisixPluginConfigController
 	apisixGlobalRuleController    *apisixGlobalRuleController
-
-	syncStage int
 }
 
 func NewProvider(common *providertypes.Common, namespaceProvider namespace.WatchingNamespaceProvider,

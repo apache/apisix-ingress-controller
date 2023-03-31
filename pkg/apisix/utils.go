@@ -127,7 +127,7 @@ func skipRequest[T ResourceTypes](cluster *cluster, shouldCompare bool, url, id 
 					expectedServerObj, err = cluster.cache.GetRoute(id)
 				case *v1.Ssl:
 					expectedServerObj, err = cluster.cache.GetSSL(id)
-					if err == nil && expectedServerObj != nil {
+					if err == nil {
 						expectedServerObj.(*v1.Ssl).Key = ""
 					}
 				case *v1.Upstream:

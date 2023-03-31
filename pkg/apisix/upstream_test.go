@@ -153,6 +153,7 @@ func TestUpstreamClient(t *testing.T) {
 		baseURL:                 u.String(),
 		cli:                     http.DefaultClient,
 		cache:                   &dummyCache{},
+		generatedObjCache:       &dummyCache{},
 		cacheSynced:             closedCh,
 		metricsCollector:        metrics.NewPrometheusCollector(),
 		upstreamServiceRelation: &dummyUpstreamServiceRelation{},

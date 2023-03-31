@@ -152,11 +152,12 @@ func TestStreamRouteClient(t *testing.T) {
 	closedCh := make(chan struct{})
 	close(closedCh)
 	cli := newStreamRouteClient(&cluster{
-		baseURL:          u.String(),
-		cli:              http.DefaultClient,
-		cache:            &dummyCache{},
-		cacheSynced:      closedCh,
-		metricsCollector: metrics.NewPrometheusCollector(),
+		baseURL:           u.String(),
+		cli:               http.DefaultClient,
+		cache:             &dummyCache{},
+		generatedObjCache: &dummyCache{},
+		cacheSynced:       closedCh,
+		metricsCollector:  metrics.NewPrometheusCollector(),
 	})
 
 	// Create
