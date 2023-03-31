@@ -63,7 +63,7 @@ func getApisixResourceRequestsCount(s *scaffold.Scaffold, res string) int {
 
 var _ = ginkgo.Describe("suite-features: sync delay", func() {
 	suites := func(s *scaffold.Scaffold) {
-		ginkgo.FIt("check resource request count", func() {
+		ginkgo.It("check resource request count", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
