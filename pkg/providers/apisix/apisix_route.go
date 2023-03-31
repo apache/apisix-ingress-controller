@@ -534,6 +534,14 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 	c.MetricsCollector.IncrSyncOperation("route", "failure")
 }
 
+func (c *apisixRouteController) isEffective(ar kube.ApisixRoute) bool {
+	if ar.GroupVersion() == config.ApisixV2 {
+		return utils.MatchCRDsIngressClass(ar.V2().Spec.IngressClassName, c.Kubernetes.IngressClass)
+	}
+	// Compatible with legacy versions
+	return true
+}
+
 func (c *apisixRouteController) onAdd(obj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
@@ -549,6 +557,12 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 	)
 
 	ar := kube.MustNewApisixRoute(obj)
+	if !c.isEffective(ar) {
+		log.Debugw("ignore noneffective ApisixRoute add event",
+			zap.Any("object", obj),
+		)
+		return
+	}
 	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.ApisixRouteEvent{
@@ -579,6 +593,13 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 		zap.Any("new object", oldObj),
 		zap.Any("old object", newObj),
 	)
+	if !c.isEffective(curr) {
+		log.Debugw("ignore noneffective ApisixRoute update event arrived",
+			zap.Any("new object", curr),
+			zap.Any("old object", prev),
+		)
+		return
+	}
 	c.workqueue.Add(&types.Event{
 		Type: types.EventUpdate,
 		Object: kube.ApisixRouteEvent{
@@ -612,6 +633,12 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 		zap.String("key", key),
 		zap.Any("final state", ar),
 	)
+	if !c.isEffective(ar) {
+		log.Debugw("ignore noneffective ApisixRoute delete event arrived",
+			zap.Any("final state", ar),
+		)
+		return
+	}
 	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixRouteEvent{
@@ -647,6 +674,12 @@ func (c *apisixRouteController) ResourceSync() {
 			continue
 		}
 		ar := kube.MustNewApisixRoute(obj)
+		if !c.isEffective(ar) {
+			log.Debugw("ignore noneffective ApisixRoute sync event arrived",
+				zap.Any("final state", ar),
+			)
+			continue
+		}
 		c.workqueue.Add(&types.Event{
 			Type: types.EventSync,
 			Object: kube.ApisixRouteEvent{
