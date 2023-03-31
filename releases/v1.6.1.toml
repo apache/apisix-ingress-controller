@@ -1,0 +1,57 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# commit to be tagged for new release
+commit = "HEAD"
+
+# project_name is used to refer to the project in the notes
+project_name = "apisix-ingress-controller"
+
+# github_repo is the github project, only github is currently supported
+github_repo = "apache/apisix-ingress-controller"
+
+# match_deps is a pattern to determine which dependencies should be included
+# as part of this release. The changelog will also include changes for these
+# dependencies based on the change in the dependency's version.
+match_deps = "^github.com/(apache/[a-zA-Z0-9-]+)$"
+
+# previous release of this project for determining changes
+previous = "1.6.0"
+
+# pre_release is whether to include a disclaimer about being a pre-release
+pre_release = false
+
+# preface is the description of the release which precedes the author list
+# and changelog. This description could include highlights as well as any
+# description of changes. Use markdown formatting.
+preface = """\
+ This is a Patch version release.
+
+## Highlights
+
+### Changes
+<details><summary>8 commits</summary>
+<p>
+
+  * [`07bcc69`](https://github.com/apache/apisix-ingress-controller/commit/07bcc6960deb0e3bc267d819f56810e0dbf20d4c) fix: missing upstream name in gateway-api routes (#1754) (#1756)
+  * [`df04324`](https://github.com/apache/apisix-ingress-controller/commit/df043244cbb937c505d4d9eb38a9f7c74031bd02) fix: panic at empty http spec (#1660) (#1757)
+  * [`247bfed`](https://github.com/apache/apisix-ingress-controller/commit/247bfedd6fcbfe19eabbeb3dfac84ee5831027a4) fix: when secret created later than apisixtls it should be updated (#1715) (#1758)
+  * [`b570843`](https://github.com/apache/apisix-ingress-controller/commit/b5708436aeae389a98fb649db5b8cf6844f2058d) fix: Ingress delete events can be handler after svc be deleted (#1576) (#1755)
+  * [`db20b67`](https://github.com/apache/apisix-ingress-controller/commit/db20b67bb9db02e04456fee3062e487672cf9dff) doc: add svc-namespace description to the annotations (#1605) (#1624)
+  * [`dec4439`](https://github.com/apache/apisix-ingress-controller/commit/dec4439b70829456cdee278d8b83d084f1929fdb) fix: allow passing plugin config name for route with no backends (#1578) (#1594)
+  * [`c4ba664`](https://github.com/apache/apisix-ingress-controller/commit/c4ba664d30e4598be2c9f65b24d178436b79b363) docs: add example link. (#1582)
+  * [`66d9434`](https://github.com/apache/apisix-ingress-controller/commit/66d9434b834e44ccc50c14841086b33179b895fc) docs: Update the-hard-way.md (#1581)
+"""

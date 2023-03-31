@@ -30,6 +30,7 @@
       You can use the following command to generate content
 
       ```sh
+      git fetch --tags -- fetch tags from remote
       release-tool -l -d -n -t 1.0.0 releases/v1.0.0.toml
       ```
 
