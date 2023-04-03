@@ -19,9 +19,6 @@ package features
 
 import (
 	"fmt"
-	"os/exec"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -34,36 +31,6 @@ import (
 var _ = ginkgo.Describe("suite-features: sync comparison", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("check resource request count", func() {
-			getApisixResourceRequestsCount := func(res string) int {
-				pods, err := s.GetIngressPodDetails()
-				assert.Nil(ginkgo.GinkgoT(), err, "get ingress pod")
-				assert.True(ginkgo.GinkgoT(), len(pods) >= 1, "get ingress pod")
-
-				output, err := s.Exec(pods[0].Name, "ingress-apisix-controller-deployment-e2e-test",
-					fmt.Sprintf("curl -s localhost:8080/metrics | grep apisix_ingress_controller_apisix_requests | grep 'op=\"write\"' | grep 'resource=\"%v\"'", res),
-				)
-				if err != nil {
-					log.Errorf("failed to get metrics: %v, %v; output: %v", err.Error(), string(err.(*exec.ExitError).Stderr), output)
-				} else {
-					log.Infof("output: %v", output)
-				}
-				assert.Nil(ginkgo.GinkgoT(), err, "get metrics from controller")
-
-				// make sure the output is grep-ed
-				assert.False(ginkgo.GinkgoT(), strings.Contains(output, "promhttp_metric_handler_requests_total"))
-				assert.True(ginkgo.GinkgoT(), strings.Contains(output, "apisix_ingress_controller_apisix_requests"))
-				assert.True(ginkgo.GinkgoT(), strings.Contains(output, fmt.Sprintf("resource=\"%v\"", res)))
-
-				arr := strings.Split(output, " ")
-				if len(arr) == 0 {
-					ginkgo.Fail("unexpected metrics output: "+output, 1)
-					return -1
-				}
-				i, err := strconv.ParseInt(arr[len(arr)-1], 10, 64)
-				assert.Nil(ginkgo.GinkgoT(), err, "parse metrics")
-				return int(i)
-			}
-
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3
@@ -189,7 +156,7 @@ spec:
 
 			countersBeforeWait := map[string]int{}
 			for _, resType := range resTypes {
-				countersBeforeWait[resType] = getApisixResourceRequestsCount(resType)
+				countersBeforeWait[resType] = getApisixResourceRequestsCount(s, resType)
 			}
 
 			log.Infof("before sleep requests count: %v, wait for 130s ...", countersBeforeWait)
@@ -197,7 +164,7 @@ spec:
 
 			countersAfterWait := map[string]int{}
 			for _, resType := range resTypes {
-				countersAfterWait[resType] = getApisixResourceRequestsCount(resType)
+				countersAfterWait[resType] = getApisixResourceRequestsCount(s, resType)
 				if countersAfterWait[resType] != countersBeforeWait[resType] {
 					log.Errorf("request count: %v expect %v but got %v", resType, countersBeforeWait[resType], countersAfterWait[resType])
 				}
