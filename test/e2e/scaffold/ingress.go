@@ -368,7 +368,7 @@ spec:
             - %s
             - --ingress-status-address
             - "%s"
-            - --enable-admission
+            - --enable-admission=%t
             - --enable-gateway-api
             - "true"
             - --ingress-class
@@ -382,7 +382,7 @@ spec:
        - name: webhook-certs
          secret:
            secretName: webhook-certs
-           optional: %t
+           optional: true
       serviceAccount: ingress-apisix-e2e-test-service-account
 `
 
@@ -426,7 +426,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	}
 
 	ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval,
-		label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.IngressClass, disableStatusStr, !s.opts.EnableWebhooks)
+		label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.EnableWebhooks, s.opts.IngressClass, disableStatusStr)
 
 	err = s.CreateResourceFromString(ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
@@ -543,7 +543,7 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 	}
 
 	ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval,
-		label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.IngressClass, disableStatusStr, !s.opts.EnableWebhooks)
+		label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.EnableWebhooks, s.opts.IngressClass, disableStatusStr)
 
 	if err := s.CreateResourceFromString(ingressDeployment); err != nil {
 		return err
@@ -556,7 +556,7 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 
 // generateWebhookCert generates signed certs of webhook and create the corresponding secret by running a script.
 func generateWebhookCert(ns string) error {
-	commandTemplate := `testdata/cert.sh`
+	commandTemplate := `testdata/webhook-create-signed-cert.sh`
 	os.Setenv("namespace", ns)
 	cmd := exec.Command("/bin/sh", commandTemplate, "--namespace", ns)
 
