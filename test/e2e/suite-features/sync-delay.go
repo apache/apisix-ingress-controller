@@ -221,10 +221,13 @@ spec:
 					log.Errorf("request count: %v expect %v but got %v", resType, expected, countersAfterWait[resType])
 				}
 			}
+
+			log.Infof("after sleep requests count: %v, wait for %v mins", countersAfterWait, sleepMins)
+
 			for _, resType := range resTypes {
 				expected := countersBeforeWait[resType] + countersExpectedIncrement[resType]
-				assert.NotEqual(ginkgo.GinkgoT(), countersBeforeWait[resType], countersAfterWait[resType], "request count")
-				assert.GreaterOrEqual(ginkgo.GinkgoT(), expected, countersAfterWait[resType], "request count")
+				assert.NotEqual(ginkgo.GinkgoT(), countersBeforeWait[resType], countersAfterWait[resType], resType+" request count")
+				assert.GreaterOrEqual(ginkgo.GinkgoT(), countersAfterWait[resType], expected, resType+" request count")
 			}
 		})
 
@@ -292,7 +295,7 @@ spec:
 			time.Sleep(time.Second * time.Duration(60*sleepMins+3))
 
 			countersExpectedIncrement := map[string]int{
-				"globalRule": (sleepMins - 1) * 3,
+				"globalRule": (sleepMins)*3 - 2,
 			}
 
 			countersAfterWait := map[string]int{}
@@ -303,10 +306,12 @@ spec:
 					log.Errorf("request count: %v expect %v but got %v", resType, expected, countersAfterWait[resType])
 				}
 			}
+			log.Infof("after sleep requests count: %v, wait for %v mins", countersAfterWait, sleepMins)
+
 			for _, resType := range resTypes {
 				expected := countersBeforeWait[resType] + countersExpectedIncrement[resType]
-				assert.NotEqual(ginkgo.GinkgoT(), countersBeforeWait[resType], countersAfterWait[resType], "request count")
-				assert.GreaterOrEqual(ginkgo.GinkgoT(), expected, countersAfterWait[resType], "request count")
+				assert.NotEqual(ginkgo.GinkgoT(), countersBeforeWait[resType], countersAfterWait[resType], resType+" request count")
+				assert.GreaterOrEqual(ginkgo.GinkgoT(), countersAfterWait[resType], expected, resType+" request count")
 			}
 		})
 	}
