@@ -78,7 +78,7 @@ func (u *upstreamService) Delete(ctx context.Context, serviceName string) error 
 		log.Debugw("try to update upstream in cluster",
 			zap.Any("upstream", ups),
 		)
-		_, err = u.cluster.upstream.Update(ctx, ups)
+		_, err = u.cluster.upstream.Update(ctx, ups, false)
 		if err != nil {
 			log.Error(err)
 			continue

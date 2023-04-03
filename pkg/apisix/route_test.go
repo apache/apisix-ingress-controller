@@ -172,11 +172,12 @@ func TestRouteClient(t *testing.T) {
 	closedCh := make(chan struct{})
 	close(closedCh)
 	cli := newRouteClient(&cluster{
-		baseURL:          u.String(),
-		cli:              http.DefaultClient,
-		cache:            &dummyCache{},
-		cacheSynced:      closedCh,
-		metricsCollector: metrics.NewPrometheusCollector(),
+		baseURL:           u.String(),
+		cli:               http.DefaultClient,
+		cache:             &dummyCache{},
+		generatedObjCache: &dummyCache{},
+		cacheSynced:       closedCh,
+		metricsCollector:  metrics.NewPrometheusCollector(),
 	})
 
 	// Create
@@ -188,7 +189,7 @@ func TestRouteClient(t *testing.T) {
 		Host:       "www.foo.com",
 		Uri:        "/bar",
 		UpstreamId: "1",
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, "1", obj.ID)
 
@@ -200,7 +201,7 @@ func TestRouteClient(t *testing.T) {
 		Host:       "www.foo.com",
 		Uri:        "/bar",
 		UpstreamId: "1",
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, "2", obj.ID)
 
@@ -227,7 +228,7 @@ func TestRouteClient(t *testing.T) {
 		Host:       "www.foo.com",
 		Uri:        "/bar",
 		UpstreamId: "112",
-	})
+	}, false)
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)

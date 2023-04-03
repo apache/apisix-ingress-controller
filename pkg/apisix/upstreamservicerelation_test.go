@@ -34,12 +34,13 @@ func TestUpstreamServiceRelation(t *testing.T) {
 	cache, err := cache.NewMemDBCache()
 	assert.Nil(t, err)
 	cli := newUpstreamServiceRelation(&cluster{
-		baseURL:          u.String(),
-		cli:              http.DefaultClient,
-		cache:            cache,
-		cacheSynced:      closedCh,
-		metricsCollector: metrics.NewPrometheusCollector(),
-		upstream:         &dummyUpstream{},
+		baseURL:           u.String(),
+		cli:               http.DefaultClient,
+		cache:             cache,
+		generatedObjCache: &dummyCache{},
+		cacheSynced:       closedCh,
+		metricsCollector:  metrics.NewPrometheusCollector(),
+		upstream:          &dummyUpstream{},
 	})
 
 	upsName := "default_httpbin_80"
@@ -106,11 +107,12 @@ func TestUpstreamRelatoinClient(t *testing.T) {
 	}
 	closedCh := make(chan struct{})
 	clu := &cluster{
-		baseURL:          u.String(),
-		cli:              http.DefaultClient,
-		cache:            cache,
-		cacheSynced:      closedCh,
-		metricsCollector: metrics.NewPrometheusCollector(),
+		baseURL:           u.String(),
+		cli:               http.DefaultClient,
+		cache:             cache,
+		generatedObjCache: &dummyCache{},
+		cacheSynced:       closedCh,
+		metricsCollector:  metrics.NewPrometheusCollector(),
 	}
 	close(closedCh)
 	relationCli := newUpstreamServiceRelation(clu)
@@ -144,7 +146,7 @@ func TestUpstreamRelatoinClient(t *testing.T) {
 		Type:  lbType,
 		Key:   key,
 		Nodes: nodes,
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, "1", obj.ID)
 	relations, err := relationCli.List(context.TODO())
@@ -166,7 +168,7 @@ func TestUpstreamRelatoinClient(t *testing.T) {
 		Type:  lbType,
 		Key:   key,
 		Nodes: nodes,
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, "2", obj.ID)
 

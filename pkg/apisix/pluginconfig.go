@@ -66,35 +66,8 @@ func (pc *pluginConfigClient) Get(ctx context.Context, name string) (*v1.PluginC
 	}
 
 	// TODO Add mutex here to avoid dog-pile effect.
-	url := pc.url + "/" + rid
-	resp, err := pc.cluster.getResource(ctx, url, "pluginConfig")
-	pc.cluster.metricsCollector.IncrAPISIXRequest("pluginConfig")
+	pluginConfig, err = pc.cluster.GetPluginConfig(ctx, pc.url, rid)
 	if err != nil {
-		if err == cache.ErrNotFound {
-			log.Warnw("pluginConfig not found",
-				zap.String("name", name),
-				zap.String("url", url),
-				zap.String("cluster", pc.cluster.name),
-			)
-		} else {
-			log.Errorw("failed to get pluginConfig from APISIX",
-				zap.String("name", name),
-				zap.String("url", url),
-				zap.String("cluster", pc.cluster.name),
-				zap.Error(err),
-			)
-		}
-		return nil, err
-	}
-
-	pluginConfig, err = resp.pluginConfig()
-	if err != nil {
-		log.Errorw("failed to convert pluginConfig item",
-			zap.String("url", pc.url),
-			zap.String("pluginConfig_key", resp.Key),
-			zap.String("pluginConfig_value", string(resp.Value)),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -113,7 +86,6 @@ func (pc *pluginConfigClient) List(ctx context.Context) ([]*v1.PluginConfig, err
 		zap.String("url", pc.url),
 	)
 	pluginConfigItems, err := pc.cluster.listResource(ctx, pc.url, "pluginConfig")
-	pc.cluster.metricsCollector.IncrAPISIXRequest("pluginConfig")
 	if err != nil {
 		log.Errorf("failed to list pluginConfig: %s", err)
 		return nil, err
@@ -139,7 +111,11 @@ func (pc *pluginConfigClient) List(ctx context.Context) ([]*v1.PluginConfig, err
 	return items, nil
 }
 
-func (pc *pluginConfigClient) Create(ctx context.Context, obj *v1.PluginConfig) (*v1.PluginConfig, error) {
+func (pc *pluginConfigClient) Create(ctx context.Context, obj *v1.PluginConfig, shouldCompare bool) (*v1.PluginConfig, error) {
+	if v, skip := skipRequest(pc.cluster, shouldCompare, pc.url, obj.ID, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to create pluginConfig",
 		zap.String("name", obj.Name),
 		zap.Any("plugins", obj.Plugins),
@@ -158,7 +134,6 @@ func (pc *pluginConfigClient) Create(ctx context.Context, obj *v1.PluginConfig) 
 	url := pc.url + "/" + obj.ID
 	log.Debugw("creating pluginConfig", zap.ByteString("body", data), zap.String("url", url))
 	resp, err := pc.cluster.createResource(ctx, url, "pluginConfig", data)
-	pc.cluster.metricsCollector.IncrAPISIXRequest("pluginConfig")
 	if err != nil {
 		log.Errorf("failed to create pluginConfig: %s", err)
 		return nil, err
@@ -170,6 +145,10 @@ func (pc *pluginConfigClient) Create(ctx context.Context, obj *v1.PluginConfig) 
 	}
 	if err := pc.cluster.cache.InsertPluginConfig(pluginConfig); err != nil {
 		log.Errorf("failed to reflect pluginConfig create to cache: %s", err)
+		return nil, err
+	}
+	if err := pc.cluster.generatedObjCache.InsertPluginConfig(obj); err != nil {
+		log.Errorf("failed to cache generated pluginConfig object: %s", err)
 		return nil, err
 	}
 	return pluginConfig, nil
@@ -186,22 +165,30 @@ func (pc *pluginConfigClient) Delete(ctx context.Context, obj *v1.PluginConfig) 
 	if err := pc.cluster.HasSynced(ctx); err != nil {
 		return err
 	}
+	url := pc.url + "/" + obj.ID
+	if err := pc.cluster.deleteResource(ctx, url, "pluginConfig"); err != nil {
+		return err
+	}
 	if err := pc.cluster.cache.DeletePluginConfig(obj); err != nil {
 		log.Errorf("failed to reflect pluginConfig delete to cache: %s", err)
 		if err != cache.ErrNotFound {
 			return err
 		}
 	}
-	url := pc.url + "/" + obj.ID
-	if err := pc.cluster.deleteResource(ctx, url, "pluginConfig"); err != nil {
-		pc.cluster.metricsCollector.IncrAPISIXRequest("pluginConfig")
-		return err
+	if err := pc.cluster.generatedObjCache.DeletePluginConfig(obj); err != nil {
+		log.Errorf("failed to reflect pluginConfig delete to generated cache: %s", err)
+		if err != cache.ErrNotFound {
+			return err
+		}
 	}
-	pc.cluster.metricsCollector.IncrAPISIXRequest("pluginConfig")
 	return nil
 }
 
-func (pc *pluginConfigClient) Update(ctx context.Context, obj *v1.PluginConfig) (*v1.PluginConfig, error) {
+func (pc *pluginConfigClient) Update(ctx context.Context, obj *v1.PluginConfig, shouldCompare bool) (*v1.PluginConfig, error) {
+	if v, skip := skipRequest(pc.cluster, shouldCompare, pc.url, obj.ID, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to update pluginConfig",
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),
@@ -218,7 +205,6 @@ func (pc *pluginConfigClient) Update(ctx context.Context, obj *v1.PluginConfig) 
 	}
 	url := pc.url + "/" + obj.ID
 	resp, err := pc.cluster.updateResource(ctx, url, "pluginConfig", body)
-	pc.cluster.metricsCollector.IncrAPISIXRequest("pluginConfig")
 	if err != nil {
 		return nil, err
 	}
@@ -228,6 +214,10 @@ func (pc *pluginConfigClient) Update(ctx context.Context, obj *v1.PluginConfig) 
 	}
 	if err := pc.cluster.cache.InsertPluginConfig(pluginConfig); err != nil {
 		log.Errorf("failed to reflect pluginConfig update to cache: %s", err)
+		return nil, err
+	}
+	if err := pc.cluster.generatedObjCache.InsertPluginConfig(obj); err != nil {
+		log.Errorf("failed to cache generated pluginConfig object: %s", err)
 		return nil, err
 	}
 	return pluginConfig, nil
