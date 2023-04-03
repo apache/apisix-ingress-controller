@@ -238,6 +238,9 @@ func (c *apisixConsumerController) onAdd(obj interface{}) {
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
+	if !c.isEffective(ac) {
+		return
+	}
 	log.Debugw("ApisixConsumer add event arrived",
 		zap.Any("object", obj),
 	)
@@ -284,6 +287,9 @@ func (c *apisixConsumerController) onUpdate(oldObj, newObj interface{}) {
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
+	if !c.isEffective(curr) {
+		return
+	}
 	log.Debugw("ApisixConsumer update event arrived",
 		zap.Any("new object", curr),
 		zap.Any("old object", prev),
@@ -323,6 +329,9 @@ func (c *apisixConsumerController) onDelete(obj interface{}) {
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
+	if !c.isEffective(ac) {
+		return
+	}
 	log.Debugw("ApisixConsumer delete event arrived",
 		zap.Any("final state", ac),
 	)
@@ -352,7 +361,10 @@ func (c *apisixConsumerController) ResourceSync() {
 		ac, err := kube.NewApisixConsumer(obj)
 		if err != nil {
 			log.Errorw("found ApisixConsumer resource with bad type", zap.String("error", err.Error()))
-			return
+			continue
+		}
+		if !c.isEffective(ac) {
+			continue
 		}
 		c.workqueue.Add(&types.Event{
 			Type: types.EventAdd,
@@ -477,4 +489,12 @@ func (c *apisixConsumerController) recordStatus(at interface{}, reason string, e
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
 	}
+}
+
+func (c *apisixConsumerController) isEffective(ac kube.ApisixConsumer) bool {
+	if ac.GroupVersion() == config.ApisixV2 {
+		return utils.MatchCRDsIngressClass(ac.V2().Spec.IngressClassName, c.Kubernetes.IngressClass)
+	}
+	// Compatible with legacy versions
+	return true
 }

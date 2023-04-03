@@ -81,6 +81,8 @@ spec:
             spec:
               type: object
               properties:
+                ingressClassName:
+                  type: string
                 admin:
                   type: object
                   required:

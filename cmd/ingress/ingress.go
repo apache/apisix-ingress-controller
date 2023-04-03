@@ -125,7 +125,7 @@ the apisix cluster and others are created`,
 				dief("failed to initialize logging: %s", err)
 			}
 			log.DefaultLogger = logger
-			log.Info("apisix ingress controller started")
+			log.Info("init apisix ingress controller")
 
 			log.Info("version:\n", version.Long())
 
@@ -148,6 +148,9 @@ the apisix cluster and others are created`,
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
+
+				log.Info("start ingress controller")
+
 				if err := ingress.Run(stop); err != nil {
 					dief("failed to run ingress controller: %s", err)
 				}
