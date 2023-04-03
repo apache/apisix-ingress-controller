@@ -52,6 +52,25 @@ helm install apisix apisix/apisix \
 kubectl get service --namespace ingress-apisix
 ```
 
+:::tip
+
+If you have problems deploying APISIX due to network reasons, you can download, copy, and install APISIX as shown below:
+
+```shell
+VERSION=$(curl https://artifacthub.io/api/v1/packages/helm/apisix/apisix | jq -r ".version")
+wget https://github.com/apache/apisix-helm-chart/releases/download/apisix-$VERSION/apisix-$VERSION.tgz 
+tar xf apisix-$VERSION.tgz 
+
+kubectl create ns ingress-apisix
+helm install apisix ./apisix \
+  --set gateway.type=NodePort \
+  --set ingress-controller.enabled=true \
+  --namespace ingress-apisix \
+  --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
+kubectl get service --namespace ingress-apisix
+```
+:::
+
 :::note
 
 By default, APISIX ingress controller will watch the apiVersion of `networking.k8s.io/v1`.
