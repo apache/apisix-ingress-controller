@@ -556,7 +556,7 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 
 // generateWebhookCert generates signed certs of webhook and create the corresponding secret by running a script.
 func generateWebhookCert(ns string) error {
-	commandTemplate := `testdata/webhook-create-signed-cert.sh`
+	commandTemplate := `testdata/webhook-create-cert.sh`
 	os.Setenv("namespace", ns)
 	cmd := exec.Command("/bin/sh", commandTemplate, "--namespace", ns)
 
