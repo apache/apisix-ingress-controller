@@ -136,7 +136,7 @@ func NewDefaultConfig() *Config {
 		CertFilePath:                 "/etc/webhook/certs/cert.pem",
 		KeyFilePath:                  "/etc/webhook/certs/key.pem",
 		EnableProfiling:              true,
-		ApisixResourceSyncInterval:   types.TimeDuration{Duration: 300 * time.Second},
+		ApisixResourceSyncInterval:   types.TimeDuration{Duration: 1 * time.Hour},
 		ApisixResourceSyncComparison: true,
 		Kubernetes: KubernetesConfig{
 			Kubeconfig:           "", // Use in-cluster configurations.
