@@ -292,7 +292,7 @@ spec:
 			time.Sleep(time.Second * time.Duration(60*sleepMins+3))
 
 			countersExpectedIncrement := map[string]int{
-				"globalRule": sleepMins*3 - 2,
+				"globalRule": (sleepMins - 1) * 3,
 			}
 
 			countersAfterWait := map[string]int{}

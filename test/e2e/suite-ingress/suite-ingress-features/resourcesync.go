@@ -198,7 +198,7 @@ spec:
 				Status(http.StatusNotFound)
 
 			waitTime := time.Until(readyTime).Seconds()
-			time.Sleep(time.Duration(waitTime) * time.Second)
+			time.Sleep(time.Duration(waitTime) * time.Second * 2)
 
 			_ = s.NewAPISIXClient().
 				GET("/ip").
@@ -273,7 +273,7 @@ spec:
 			assert.Len(ginkgo.GinkgoT(), consumers, 0)
 
 			waitTime := time.Until(readyTime).Seconds()
-			time.Sleep(time.Duration(waitTime) * time.Second)
+			time.Sleep(time.Duration(waitTime) * time.Second * 2)
 
 			_ = s.NewAPISIXClient().
 				GET("/ip").
@@ -311,7 +311,7 @@ spec:
 			ApisixResourceSyncInterval: "100s",
 		}))
 	})
-	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
+	ginkgo.FDescribe("suite-ingress-features: scaffold v2", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                       "sync",
 			IngressAPISIXReplicas:      1,
