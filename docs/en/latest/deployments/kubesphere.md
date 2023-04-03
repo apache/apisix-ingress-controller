@@ -69,6 +69,7 @@ helm install apisix ./apisix \
   --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix
 kubectl get service --namespace ingress-apisix
 ```
+:::
 
 :::note
 
