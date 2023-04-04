@@ -17,19 +17,19 @@ The example below shows how you can configure an `ApisixPluginConfig` resource:
 apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
- name: echo-and-cors-apc
+  name: echo-and-cors-apc
 spec:
- plugins:
- - name: echo
-   enable: true
-   config:
-    before_body: "This is the prologue"
-    after_body: "This is the epilogue"
-    headers:
-     X-Foo: v1
-     X-Foo2: v2
- - name: cors
-   enable: true
+  plugins:
+  - name: echo
+    enable: true
+    config:
+      before_body: "This is the prologue"
+      after_body: "This is the epilogue"
+      headers:
+       X-Foo: v1
+       X-Foo2: v2
+  - name: cors
+    enable: true
 ```
 
 You can then configure a Route to use the `echo-and-cors-apc` Plugin configuration:
@@ -38,9 +38,9 @@ You can then configure a Route to use the `echo-and-cors-apc` Plugin configurati
 apiVersion: apisix.apache.org/v2beta3
 kind: ApisixRoute
 metadata:
- name: httpbin-route
+  name: httpbin-route
 spec:
- http:
+  http:
   - name: rule1
     match:
       hosts:

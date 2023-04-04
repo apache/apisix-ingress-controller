@@ -190,9 +190,9 @@ The example below configures [limit-count](https://apisix.apache.org/docs/apisix
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
- name: httpbin-route
+  name: httpbin-route
 spec:
- http:
+  http:
  - name: rule1
    match:
      hosts:
