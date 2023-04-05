@@ -101,21 +101,40 @@ openssl verify -CAfile ./ca.pem ./server.pem
 openssl verify -CAfile ./ca.pem ./user.pem
 ```
 
-## Protect the route using SSL
+## Protecting the Route with SSL
 
-In APISIX Ingress Controller, we use [ApisixTls](../concepts/apisix_tls.md) resource to protect our routes.
+In APISIX Ingress Controller, we use the `ApisixTls` resource to protect our routes with SSL. This resource requires a secret containing the certificate and private key.
 
-ApisixTls requires a secret which field `cert` and `key` contains the certificate and private key.
+**What is the Secret?**
 
-The keys and certificates used in the examples [are here](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/tutorials/mtls).
+The `ApisixTls` resource needs a Kubernetes secret that contains the SSL certificate and the private key. The `cert` field of the secret should contain the SSL certificate in PEM format, while the `key` field should contain the private key in PEM format. These values must be base64-encoded before storing them in the Kubernetes secret.
 
-In this guide, we use this as an example.
+Here's how to generate the base64 value of the certificate and private key:
+
+```bash
+base64 -w0 foo.crt # for cert
+base64 -w0 foo.key # for private key
+```
+
+Replace the `foo.crt` and `foo.key` with the actual names of certificate and private key files, respectively.
+
+**Example Keys and Certificates**
+
+The examples we use in this guide are available on [GitHub](https://github.com/apache/apisix-ingress-controller/tree/master/docs/en/latest/tutorials/mtls).
+
+**Creating the Secret**
+
+To create the secret, run the following command:
 
 ```bash
 kubectl apply -f ./mtls/server-secret.yaml -n default
 ```
 
-The secret name is `server-secret`, we created it in the `default` namespace. We will reference this secret in `ApisixTls`.
+This creates a Kubernetes secret with the name `server-secret` in the `default` namespace. We will reference this secret in the `ApisixTls` resource.
+
+**Creating the `ApisixTls` Resource**
+
+Next, create the ApisixTls resource to use the certificate and private key from the secret:
 
 ```yaml
 # tls.yaml
@@ -131,26 +150,29 @@ spec:
     namespace: default
 ```
 
-The `secret` field contains the secret reference.
+The `spec` field contains the details of the `ApisixTls` resource, such as the `hosts` and `secret` fields. In this example, we are specifying that the SSL certificate should be used for the domain `mtls.httpbin.local`.
 
-Please note that the `hosts` field matches our domain `mtls.httpbin.local`.
+Apply this YAML file to create the `ApisixTls` resource:
 
-Apply this yaml, APISIX Ingress Controller will use our certificate to protect the route. Let's test it.
+```bash
+kubectl apply -f tls.yaml -n default
+```
+**Testing the SSL Configuration**
+
+Now since we've configured SSL, we can test it out by sending a request to the protected route. To do this, we'll use the `curl` command.
 
 ```bash
 kubectl -n apisix exec -it <APISIX_POD_NAME> -- curl --resolve 'mtls.httpbin.local:9443:127.0.0.1' "https://mtls.httpbin.local:9443/ip" -k
 ```
 
-Some major changes here:
+Here are some important points to keep in mind:
 
-- Use `--resolve` parameter to resolve our domain.
-  - No `Host` header set explicit.
-- We are using `https` and SSL port `9443`.
-- Parameter `-k` to allow insecure connections when using SSL. Because our self-signed certificate is not trusted.
+- We're using the `--resolve` parameter to resolve our domain name. This tells `curl` to resolve `mtls.httpbin.local:9443 to 127.0.0.1`.
+- We're using the https protocol and the `SSL` port `9443`.
+- We're using the `-k` parameter to allow insecure connections when using `SSL`. Since our self-signed certificate is not trusted by default, we need to allow insecure connections.
+Without the domain mtls.httpbin.local, the request won't succeed.
 
-Without the domain `mtls.httpbin.local`, the request won't succeed.
-
-You can add parameter `-v` to log the handshake process.
+You can add the `-v` parameter to log the handshake process.
 
 Now, we configured SSL successfully.
 
