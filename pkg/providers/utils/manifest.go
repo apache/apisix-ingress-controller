@@ -166,12 +166,64 @@ func DiffPluginConfigs(olds, news []*apisixv1.PluginConfig) (added, updated, del
 	return
 }
 
+func DiffPluginMetadatas(olds, news []*apisixv1.PluginMetadata) (added, updated, deleted []*apisixv1.PluginMetadata) {
+	oldMap := make(map[string]*apisixv1.PluginMetadata, len(olds))
+	newMap := make(map[string]*apisixv1.PluginMetadata, len(news))
+	for _, pm := range olds {
+		oldMap[pm.Name] = pm
+	}
+	for _, pm := range news {
+		newMap[pm.Name] = pm
+	}
+
+	for _, pm := range news {
+		if ou, ok := oldMap[pm.Name]; !ok {
+			added = append(added, pm)
+		} else if !reflect.DeepEqual(ou, pm) {
+			updated = append(updated, pm)
+		}
+	}
+	for _, pm := range olds {
+		if _, ok := newMap[pm.Name]; !ok {
+			deleted = append(deleted, pm)
+		}
+	}
+	return
+}
+
+func DiffGlobalRules(olds, news []*apisixv1.GlobalRule) (added, updated, deleted []*apisixv1.GlobalRule) {
+	oldMap := make(map[string]*apisixv1.GlobalRule, len(olds))
+	newMap := make(map[string]*apisixv1.GlobalRule, len(news))
+	for _, gr := range olds {
+		oldMap[gr.ID] = gr
+	}
+	for _, gr := range news {
+		newMap[gr.ID] = gr
+	}
+
+	for _, gr := range news {
+		if ou, ok := oldMap[gr.ID]; !ok {
+			added = append(added, gr)
+		} else if !reflect.DeepEqual(ou, gr) {
+			updated = append(updated, gr)
+		}
+	}
+	for _, gr := range olds {
+		if _, ok := newMap[gr.ID]; !ok {
+			deleted = append(deleted, gr)
+		}
+	}
+	return
+}
+
 type Manifest struct {
-	Routes        []*apisixv1.Route
-	Upstreams     []*apisixv1.Upstream
-	StreamRoutes  []*apisixv1.StreamRoute
-	SSLs          []*apisixv1.Ssl
-	PluginConfigs []*apisixv1.PluginConfig
+	Routes          []*apisixv1.Route
+	Upstreams       []*apisixv1.Upstream
+	StreamRoutes    []*apisixv1.StreamRoute
+	SSLs            []*apisixv1.Ssl
+	PluginConfigs   []*apisixv1.PluginConfig
+	PluginMetadatas []*apisixv1.PluginMetadata
+	GlobalRules     []*apisixv1.GlobalRule
 }
 
 func (m *Manifest) Diff(om *Manifest) (added, updated, deleted *Manifest) {
@@ -180,92 +232,115 @@ func (m *Manifest) Diff(om *Manifest) (added, updated, deleted *Manifest) {
 	au, uu, du := DiffUpstreams(om.Upstreams, m.Upstreams)
 	asr, usr, dsr := DiffStreamRoutes(om.StreamRoutes, m.StreamRoutes)
 	apc, upc, dpc := DiffPluginConfigs(om.PluginConfigs, m.PluginConfigs)
+	apm, upm, dpm := DiffPluginMetadatas(om.PluginMetadatas, m.PluginMetadatas)
+	agr, ugr, dgr := DiffGlobalRules(om.GlobalRules, m.GlobalRules)
 
-	if ar != nil || au != nil || asr != nil || sa != nil || apc != nil {
-		added = &Manifest{
-			Routes:        ar,
-			Upstreams:     au,
-			StreamRoutes:  asr,
-			SSLs:          sa,
-			PluginConfigs: apc,
-		}
+	added = &Manifest{
+		Routes:          ar,
+		Upstreams:       au,
+		StreamRoutes:    asr,
+		SSLs:            sa,
+		PluginConfigs:   apc,
+		PluginMetadatas: apm,
+		GlobalRules:     agr,
 	}
-	if ur != nil || uu != nil || usr != nil || su != nil || upc != nil {
-		updated = &Manifest{
-			Routes:        ur,
-			Upstreams:     uu,
-			StreamRoutes:  usr,
-			SSLs:          su,
-			PluginConfigs: upc,
-		}
+	updated = &Manifest{
+		Routes:          ur,
+		Upstreams:       uu,
+		StreamRoutes:    usr,
+		SSLs:            su,
+		PluginConfigs:   upc,
+		PluginMetadatas: upm,
+		GlobalRules:     ugr,
 	}
-	if dr != nil || du != nil || dsr != nil || sd != nil || dpc != nil {
-		deleted = &Manifest{
-			Routes:        dr,
-			Upstreams:     du,
-			StreamRoutes:  dsr,
-			SSLs:          sd,
-			PluginConfigs: dpc,
-		}
+	deleted = &Manifest{
+		Routes:          dr,
+		Upstreams:       du,
+		StreamRoutes:    dsr,
+		SSLs:            sd,
+		PluginConfigs:   dpc,
+		PluginMetadatas: dpm,
+		GlobalRules:     dgr,
 	}
 	return
 }
 
 // Due to dependency, delete priority should be last
-func SyncManifests(ctx context.Context, apisix apisix.APISIX, clusterName string, added, updated, deleted *Manifest) error {
+// shouldCompare only affects Create event since periodic synchronization is considered as Add event
+func SyncManifests(ctx context.Context, apisix apisix.APISIX, clusterName string, added, updated, deleted *Manifest, shouldCompare bool) error {
 	var merr *multierror.Error
 
 	if added != nil {
 		// Should create upstreams firstly due to the dependencies.
 		for _, ssl := range added.SSLs {
-			if _, err := apisix.Cluster(clusterName).SSL().Create(ctx, ssl); err != nil {
+			if _, err := apisix.Cluster(clusterName).SSL().Create(ctx, ssl, shouldCompare); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
 		for _, u := range added.Upstreams {
-			if _, err := apisix.Cluster(clusterName).Upstream().Create(ctx, u); err != nil {
+			if _, err := apisix.Cluster(clusterName).Upstream().Create(ctx, u, shouldCompare); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
 		for _, pc := range added.PluginConfigs {
-			if _, err := apisix.Cluster(clusterName).PluginConfig().Create(ctx, pc); err != nil {
+			if _, err := apisix.Cluster(clusterName).PluginConfig().Create(ctx, pc, shouldCompare); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
 		for _, r := range added.Routes {
-			if _, err := apisix.Cluster(clusterName).Route().Create(ctx, r); err != nil {
+			if _, err := apisix.Cluster(clusterName).Route().Create(ctx, r, shouldCompare); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
 		for _, sr := range added.StreamRoutes {
-			if _, err := apisix.Cluster(clusterName).StreamRoute().Create(ctx, sr); err != nil {
+			if _, err := apisix.Cluster(clusterName).StreamRoute().Create(ctx, sr, shouldCompare); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
+		for _, pm := range added.PluginMetadatas {
+			if _, err := apisix.Cluster(clusterName).PluginMetadata().Update(ctx, pm, shouldCompare); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
+		for _, gr := range added.GlobalRules {
+			if _, err := apisix.Cluster(clusterName).GlobalRule().Create(ctx, gr, shouldCompare); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
 	}
 	if updated != nil {
 		for _, ssl := range updated.SSLs {
-			if _, err := apisix.Cluster(clusterName).SSL().Update(ctx, ssl); err != nil {
+			if _, err := apisix.Cluster(clusterName).SSL().Update(ctx, ssl, false); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
 		for _, r := range updated.Upstreams {
-			if _, err := apisix.Cluster(clusterName).Upstream().Update(ctx, r); err != nil {
+			if _, err := apisix.Cluster(clusterName).Upstream().Update(ctx, r, false); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
 		for _, pc := range updated.PluginConfigs {
-			if _, err := apisix.Cluster(clusterName).PluginConfig().Update(ctx, pc); err != nil {
+			if _, err := apisix.Cluster(clusterName).PluginConfig().Update(ctx, pc, false); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
 		for _, r := range updated.Routes {
-			if _, err := apisix.Cluster(clusterName).Route().Update(ctx, r); err != nil {
+			if _, err := apisix.Cluster(clusterName).Route().Update(ctx, r, false); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
 		for _, sr := range updated.StreamRoutes {
-			if _, err := apisix.Cluster(clusterName).StreamRoute().Create(ctx, sr); err != nil {
+			if _, err := apisix.Cluster(clusterName).StreamRoute().Update(ctx, sr, false); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
+		for _, pm := range updated.PluginMetadatas {
+			if _, err := apisix.Cluster(clusterName).PluginMetadata().Update(ctx, pm, false); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
+		for _, gr := range updated.GlobalRules {
+			if _, err := apisix.Cluster(clusterName).GlobalRule().Update(ctx, gr, false); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		}
@@ -363,6 +438,16 @@ func SyncManifests(ctx context.Context, apisix apisix.APISIX, clusterName string
 						zap.String("plugin_config_name", pc.Name),
 					)
 				}
+			}
+		}
+		for _, pm := range deleted.PluginMetadatas {
+			if err := apisix.Cluster(clusterName).PluginMetadata().Delete(ctx, pm); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
+		for _, gr := range deleted.GlobalRules {
+			if err := apisix.Cluster(clusterName).GlobalRule().Delete(ctx, gr); err != nil {
+				merr = multierror.Append(merr, err)
 			}
 		}
 	}

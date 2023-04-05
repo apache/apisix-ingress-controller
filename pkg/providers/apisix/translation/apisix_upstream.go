@@ -12,26 +12,25 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package translation
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-// translateUpstreamNotStrictly translates Upstream nodes with a loose way, only generate ID and Name for delete Event.
-func (t *translator) translateUpstreamNotStrictly(namespace, svcName, subset string, svcPort int32, resolveGranularity string) (*apisixv1.Upstream, error) {
+// generateUpstreamDeleteMark translates Upstream nodes with a loose way, only generate ID and Name for delete Event.
+func (t *translator) generateUpstreamDeleteMark(namespace, svcName, subset string, svcPort int32, resolveGranularity string) (*apisixv1.Upstream, error) {
 	ups := &apisixv1.Upstream{}
 	ups.Name = apisixv1.ComposeUpstreamName(namespace, svcName, subset, svcPort, resolveGranularity)
 	ups.ID = id.GenID(ups.Name)
@@ -57,35 +56,31 @@ func (t *translator) translateService(namespace, svcName, subset, svcResolveGran
 	return ups, nil
 }
 
-// TODO: Support Port field
 func (t *translator) TranslateApisixUpstreamExternalNodes(au *v2.ApisixUpstream) ([]apisixv1.UpstreamNode, error) {
 	var nodes []apisixv1.UpstreamNode
 	for i, node := range au.Spec.ExternalNodes {
 		if node.Type == v2.ExternalTypeDomain {
-			arr := strings.Split(node.Name, ":")
 
 			weight := translation.DefaultWeight
 			if node.Weight != nil {
 				weight = *node.Weight
 			}
+
+			if !utils.MatchHostDef(node.Name) {
+				return nil, fmt.Errorf("ApisixUpstream %s/%s ExternalNodes[%v]'s name %s as Domain must match lowercase RFC 1123 subdomain.  "+
+					"a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character",
+					au.Namespace, au.Name, i, node.Name)
+			}
+
 			n := apisixv1.UpstreamNode{
-				Host:   arr[0],
+				Host:   node.Name,
 				Weight: weight,
 			}
 
-			if len(arr) == 1 {
-				if strings.HasPrefix(arr[0], "https://") {
-					n.Port = 443
-				} else {
-					n.Port = 80
-				}
-			} else if len(arr) == 2 {
-				port, err := strconv.Atoi(arr[1])
-				if err != nil {
-					return nil, errors.Wrap(err, fmt.Sprintf("failed to parse ApisixUpstream %s/%s port: at ExternalNodes[%v]: %s", au.Namespace, au.Name, i, node.Name))
-				}
-
-				n.Port = port
+			if node.Port != nil {
+				n.Port = *node.Port
+			} else {
+				n.Port = utils.SchemeToPort(au.Spec.Scheme)
 			}
 
 			nodes = append(nodes, n)
@@ -113,8 +108,11 @@ func (t *translator) TranslateApisixUpstreamExternalNodes(au *v2.ApisixUpstream)
 				Weight: weight,
 			}
 
-			// TODO: Support Port field. This is a temporary solution.
-			n.Port = 80
+			if node.Port != nil {
+				n.Port = *node.Port
+			} else {
+				n.Port = utils.SchemeToPort(au.Spec.Scheme)
+			}
 
 			nodes = append(nodes, n)
 		}
@@ -134,9 +132,9 @@ func (t *translator) translateExternalApisixUpstream(namespace, upstream string)
 	}
 
 	au := multiVersioned.V2()
-	if len(au.Spec.ExternalNodes) == 0 {
+	if len(au.Spec.ExternalNodes) == 0 && au.Spec.Discovery == nil {
 		// should do further resolve
-		return nil, fmt.Errorf("%s/%s has empty ExternalNodes", namespace, upstream)
+		return nil, fmt.Errorf("%s/%s has empty ExternalNodes or Discovery configuration", namespace, upstream)
 	}
 
 	ups, err := t.TranslateUpstreamConfigV2(&au.Spec.ApisixUpstreamConfig)
@@ -146,12 +144,16 @@ func (t *translator) translateExternalApisixUpstream(namespace, upstream string)
 	ups.Name = apisixv1.ComposeExternalUpstreamName(namespace, upstream)
 	ups.ID = id.GenID(ups.Name)
 
-	externalNodes, err := t.TranslateApisixUpstreamExternalNodes(au)
-	if err != nil {
-		return nil, err
-	}
+	// APISIX does not allow discovery_type and nodes to exist at the same time.
+	// https://github.com/apache/apisix/blob/01b4b49eb2ba642b337f7a1fbe1894a77942910b/apisix/schema_def.lua#L501-L504
+	if len(au.Spec.ExternalNodes) != 0 {
+		externalNodes, err := t.TranslateApisixUpstreamExternalNodes(au)
+		if err != nil {
+			return nil, err
+		}
 
-	ups.Nodes = append(ups.Nodes, externalNodes...)
+		ups.Nodes = append(ups.Nodes, externalNodes...)
+	}
 
 	return ups, nil
 }

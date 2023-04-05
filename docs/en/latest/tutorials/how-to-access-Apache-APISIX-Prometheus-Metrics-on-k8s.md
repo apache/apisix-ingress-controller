@@ -1,7 +1,12 @@
 ---
-title: How to access Apache APISIX Prometheus metrics on Kubernetes
+title: Exporting Prometheus metrics from APISIX
+keywords:
+  - APISIX Ingress
+  - Apache APISIX
+  - Kubernetes Ingress
+  - Prometheus
+description: A tutorial on exporting Prometheus metrics from Apache APISIX Ingress.
 ---
-
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -21,19 +26,101 @@ title: How to access Apache APISIX Prometheus metrics on Kubernetes
 #
 -->
 
-Observability (monitoring functionality) has always played an essential role in system maintenance. A sound monitoring system can help engineers quickly understand the status of services running in production environments and locate problems or give early warning of anomalies when they occur.
+This tutorial explains how you can export APISIX metrics in Prometheus format.
 
-*Prometheus* is a leading open-source project focused on metrics and alerting that has changed the way the world does monitoring and observability. For more information, see *Prometheus*'s official [website](https://prometheus.io/).
+:::note
 
-## Begin to access Apache APISIX Prometheus Metrics
+This tutorial requires APISIX version > 2.13.
 
-Before starting, please make sure that Apache APISIX (version >= 2.13)and APISIX Ingress controller are installed and working correctly. APISIX uses the `prometheus` plugin to expose metrics and integrate with prometheus but uses the `public-api` plugin to enhance its security after version 2.13. For more information, see the `public-api` plugin's official [document](https://apisix.apache.org/docs/apisix/plugins/public-api/).
+:::
 
-### Step 1: Enable Prometheus Plugin
+## Enable the prometheus Plugin
 
-If you need to monitor Apache APISIX simultaneously, you can create the following ApisixClusterConfig resource.
+First, you have to enable the [prometheus](https://apisix.apache.org/docs/apisix/plugins/prometheus) Plugin. You can do this by adding to your `values.yaml` file while you install APISIX Ingress via Helm. You can also enable the [public-api](https://apisix.apache.org/docs/apisix/plugins/public-api) Plugin to expose these metrics.
 
-```yaml
+A sample `values.yaml` file is shown below:
+
+```yaml title="values.yaml"
+gateway:
+  type: NodePort
+
+ingress-controller:
+  enabled: true
+  config:
+    apisix:
+      serviceNamespace: ingress-apisix
+
+pluginAttrs:
+  prometheus:
+    enable_export_server: false
+
+plugins:
+  - api-breaker
+  - authz-keycloak
+  - basic-auth
+  - batch-requests
+  - consumer-restriction
+  - cors
+  - echo
+  - fault-injection
+  - file-logger
+  - grpc-transcode
+  - hmac-auth
+  - http-logger
+  - ip-restriction
+  - ua-restriction
+  - jwt-auth
+  - kafka-logger
+  - key-auth
+  - limit-conn
+  - limit-count
+  - limit-req
+  - node-status
+  - openid-connect
+  - authz-casbin
+  - proxy-cache
+  - proxy-mirror
+  - proxy-rewrite
+  - redirect
+  - referer-restriction
+  - request-id
+  - request-validation
+  - response-rewrite
+  - serverless-post-function
+  - serverless-pre-function
+  - sls-logger
+  - syslog
+  - tcp-logger
+  - udp-logger
+  - uri-blocker
+  - wolf-rbac
+  - zipkin
+  - traffic-split
+  - gzip
+  - real-ip
+  - ext-plugin-pre-req
+  - ext-plugin-post-req
+  - prometheus # enable prometheus Plugin
+  - public-api # enable public-api Plugin
+```
+
+You can install APISIX Ingress with Helm and pass this `values.yaml` file:
+
+```shell
+helm repo add apisix https://charts.apiseven.com
+helm repo update
+helm install apisix apisix/apisix -f values.yaml --create-namespace -n ingress-apisix
+```
+
+:::tip
+
+APISIX also supports exporting HTTP request-related metrics like http_status, http_latency, and bandwidth. You can enable this by updating your configuration file as shown [here](https://apisix.apache.org/docs/apisix/plugins/prometheus/#specifying-metrics).
+
+:::
+
+You should also configure APISIX Ingress with the prometheus Plugin by creating an [ApisixClusterConfig](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_cluster_config) resource as shown:
+
+```yaml title="apisix-config.yaml"
 apiVersion: apisix.apache.org/v2
 kind: ApisixClusterConfig
 metadata:
@@ -44,15 +131,16 @@ spec:
       enable: true
 ```
 
-### Step 2: Enable `public-api` Plugin
+## Expose metrics with the public-api Plugin
 
-Let's make a basic routing setup, and please note that further configuration should be done based on your local backend service information. The primary solution concept is to use the `public-api` plugin to protect the routes exposed by *Prometheus*. For a more detailed configuration, you can refer to the [example](https://apisix.apache.org/docs/apisix/plugins/public-api/#example) section of the `public-api` plugin.
+You can use the `public-api` Plugin to expose the Prometheus metrics exported by APISIX. To do this, you can create a Route and enable the Plugin on it as shown below:
 
-```yaml
+```yaml title="public-api.yaml"
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: prometheus-route
+  namespace: ingress-apisix
 spec:
   http:
   - name: public-api
@@ -62,7 +150,7 @@ spec:
       paths:
       - /apisix/prometheus/metrics
     backends:
-    ## Please notice that there must be your actual "serviceName" and "servicePort"
+    # replace this with your backend service
     - serviceName: apisix-admin
       servicePort: 9180
     plugins:
@@ -70,18 +158,24 @@ spec:
       enable: true
 ```
 
-### Step 3: Collect the Metrics
+This will export the metrics to the `/apisix/prometheus/metrics` path.
 
-Now you can then get the indicator parameters by requesting command access.
+## Check the exported metrics
+
+You can configure Prometheus to pull APISIX's metrics from the `/apisix/prometheus/metrics` path. For testing, we will expose this path and check the exported metrics:
 
 ```sh
-kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9091/headers -H 'Host: test.prometheus.org'
+# forward to 127.0.0.1:9080
+kubectl port-forward service/apisix-gateway 9080:80 -n ingress-apisix
 ```
 
-Then you will get the metrics you want.
+```sh
+curl http://127.0.0.1:9080/apisix/prometheus/metrics -H 'Host: test.prometheus.org'
+```
 
-```bash
-chever@cloud-native-01:~/api7/cloud_native/tasks/doc_prometheus$ kubectl exec -it -n ingress-apisix apisix-7d6b8577b6-rqhq9 -- curl http://127.0.0.1:9091/apisix/prometheus/metrics
+This will show the metrics exported by APISIX:
+
+```bash title="output"
 Defaulted container "apisix" out of: apisix, wait-etcd (init)
 # HELP apisix_bandwidth Total bandwidth in bytes consumed per service in APISIX
 # TYPE apisix_bandwidth counter
@@ -162,9 +256,3 @@ apisix_nginx_metric_errors_total 0
 # TYPE apisix_node_info gauge
 apisix_node_info{hostname="apisix-7d6b8577b6-rqhq9"} 1
 ```
-
-## Conclusion
-
-This article describes how to use the `public-api` plugin to protect *Prometheus* and monitor the Apache APISIX. Currently, only some basic configurations include. We will continue to polish and upgrade, add more metrics and integrate data surface APISIX metrics to improve your monitoring experience.
-
-Of course, we welcome all interested parties to contribute to the [Apache APISIX Ingress Controller project](https://github.com/apache/apisix-ingress-controller) and look forward to working together to make the APISIX Ingress Controller more comprehensive.

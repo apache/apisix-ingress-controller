@@ -18,7 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -83,7 +83,7 @@ func (srv *fakeAPISIXPluginConfigSrv) ServeHTTP(w http.ResponseWriter, r *http.R
 	if r.Method == http.MethodPut {
 		paths := strings.Split(r.URL.Path, "/")
 		key := fmt.Sprintf("/apisix/plugin_configs/%s", paths[len(paths)-1])
-		data, _ := ioutil.ReadAll(r.Body)
+		data, _ := io.ReadAll(r.Body)
 		srv.pluginConfig[key] = data
 		w.WriteHeader(http.StatusCreated)
 		resp := fakeCreateResp{
@@ -106,7 +106,7 @@ func (srv *fakeAPISIXPluginConfigSrv) ServeHTTP(w http.ResponseWriter, r *http.R
 			return
 		}
 
-		data, _ := ioutil.ReadAll(r.Body)
+		data, _ := io.ReadAll(r.Body)
 		srv.pluginConfig[id] = data
 
 		w.WriteHeader(http.StatusOK)
@@ -152,11 +152,12 @@ func TestPluginConfigClient(t *testing.T) {
 	closedCh := make(chan struct{})
 	close(closedCh)
 	cli := newPluginConfigClient(&cluster{
-		baseURL:          u.String(),
-		cli:              http.DefaultClient,
-		cache:            &dummyCache{},
-		cacheSynced:      closedCh,
-		metricsCollector: metrics.NewPrometheusCollector(),
+		baseURL:           u.String(),
+		cli:               http.DefaultClient,
+		cache:             &dummyCache{},
+		generatedObjCache: &dummyCache{},
+		cacheSynced:       closedCh,
+		metricsCollector:  metrics.NewPrometheusCollector(),
 	})
 
 	// Create
@@ -168,7 +169,7 @@ func TestPluginConfigClient(t *testing.T) {
 		Plugins: map[string]interface{}{
 			"abc": "123",
 		},
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "1")
 
@@ -180,7 +181,7 @@ func TestPluginConfigClient(t *testing.T) {
 		Plugins: map[string]interface{}{
 			"abc2": "123",
 		},
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "2")
 
@@ -209,7 +210,7 @@ func TestPluginConfigClient(t *testing.T) {
 			"key2": "test update PluginConfig",
 		},
 	}
-	_, err = cli.Update(context.Background(), up)
+	_, err = cli.Update(context.Background(), up, false)
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)

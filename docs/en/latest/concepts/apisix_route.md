@@ -178,7 +178,13 @@ spec:
 
 APISIX's [80+ Plugins](https://apisix.apache.org/docs/apisix/plugins/batch-requests/) can be used with APISIX Ingress. These Plugins have the same name as in the APISIX documentation.
 
-The example below configures [cors](https://apisix.apache.org/docs/apisix/plugins/cors/) Plugin for the route:
+:::note
+
+If the Plugin is not enabled in APISIX by default, you can enable it by adding it to the `plugins` attribute in your `values.yaml` file while installing APISIX and Ingress controller via Helm. Alternatively, you can directly modify your APISIX configuration file (`conf/config.yaml`) to enable/disable Plugins.
+
+:::
+
+The example below configures [limit-count](https://apisix.apache.org/docs/apisix/plugins/limit-count) Plugin for the route:
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -187,18 +193,73 @@ metadata:
   name: httpbin-route
 spec:
   http:
-    - name: httpbin
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: limit-count
+     enable: true
+     config:
+       rejected_code: 503
+       count: 2
+       time_window: 3
+       key: remote_addr
+```
+
+You can also use the [ApisixPluginConfig](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_plugin_config) CRD to extract and reuse commonly used Plugins and bind them directly to a Route.
+
+### Config with secretRef
+
+Plugins are supported to be configured from kubernetes secret with `secretRef`.
+
+The priority is `plugins.secretRef > plugins.config`. That is, the duplicated key in `plugins.config` are replaced by `plugins.secretRef`.
+
+Example below configures echo plugin. The final values of `before_body`, `body` and `after_body` are "This is the replaced preface", "my custom body" and "This is the epilogue", respectively.
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: echo
+data:
+  # content is "This is the replaced preface"
+  before_body: IlRoaXMgaXMgdGhlIHJlcGxhY2VkIHByZWZhY2Ui
+  # content is "my custom body"
+  body: Im15IGN1c3RvbSBib2R5Ig==
+---
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  http:
+    - name: rule1
       match:
         hosts:
-        - local.httpbin.org
+          - httpbin.org
         paths:
-          - /*
+          - /ip
       backends:
-      - serviceName: foo
-        servicePort: 80
+        - serviceName: %s
+          servicePort: %d
+          weight: 10
       plugins:
-        - name: cors
+        - name: echo
           enable: true
+          config:
+            before_body: "This is the preface"
+            after_body: "This is the epilogue"
+            headers:
+              X-Foo: v1
+              X-Foo2: v2
+          secretRef: echo
 ```
 
 ## Websocket proxy

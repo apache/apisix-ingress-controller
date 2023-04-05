@@ -16,7 +16,6 @@
 package apisix
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 
@@ -47,7 +46,7 @@ func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
 	log.Debugw("try to look up route",
 		zap.String("name", name),
 		zap.String("url", r.url),
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 	)
 	rid := id.GenID(name)
 	route, err := r.cluster.cache.GetRoute(rid)
@@ -66,36 +65,9 @@ func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
 		)
 	}
 
-	// TODO Add mutex here to avoid dog-pile effection.
-	url := r.url + "/" + rid
-	resp, err := r.cluster.getResource(ctx, url, "route")
-	r.cluster.metricsCollector.IncrAPISIXRequest("route")
+	// TODO Add mutex here to avoid dog-pile effect
+	route, err = r.cluster.GetRoute(ctx, r.url, rid)
 	if err != nil {
-		if err == cache.ErrNotFound {
-			log.Warnw("route not found",
-				zap.String("name", name),
-				zap.String("url", url),
-				zap.String("cluster", "default"),
-			)
-		} else {
-			log.Errorw("failed to get route from APISIX",
-				zap.String("name", name),
-				zap.String("url", url),
-				zap.String("cluster", "default"),
-				zap.Error(err),
-			)
-		}
-		return nil, err
-	}
-
-	route, err = resp.Item.route()
-	if err != nil {
-		log.Errorw("failed to convert route item",
-			zap.String("url", r.url),
-			zap.String("route_key", resp.Item.Key),
-			zap.String("route_value", string(resp.Item.Value)),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -110,18 +82,17 @@ func (r *routeClient) Get(ctx context.Context, name string) (*v1.Route, error) {
 // to APISIX.
 func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 	log.Debugw("try to list routes in APISIX",
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 		zap.String("url", r.url),
 	)
 	routeItems, err := r.cluster.listResource(ctx, r.url, "route")
-	r.cluster.metricsCollector.IncrAPISIXRequest("route")
 	if err != nil {
 		log.Errorf("failed to list routes: %s", err)
 		return nil, err
 	}
 
 	var items []*v1.Route
-	for i, item := range routeItems.Node.Items {
+	for i, item := range routeItems {
 		route, err := item.route()
 		if err != nil {
 			log.Errorw("failed to convert route item",
@@ -140,11 +111,15 @@ func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 	return items, nil
 }
 
-func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
+func (r *routeClient) Create(ctx context.Context, obj *v1.Route, shouldCompare bool) (*v1.Route, error) {
+	if v, skip := skipRequest(r.cluster, shouldCompare, r.url, obj.ID, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to create route",
 		zap.Strings("hosts", obj.Hosts),
 		zap.String("name", obj.Name),
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 		zap.String("url", r.url),
 	)
 
@@ -158,19 +133,22 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route) (*v1.Route, err
 
 	url := r.url + "/" + obj.ID
 	log.Debugw("creating route", zap.ByteString("body", data), zap.String("url", url))
-	resp, err := r.cluster.createResource(ctx, url, "route", bytes.NewReader(data))
-	r.cluster.metricsCollector.IncrAPISIXRequest("route")
+	resp, err := r.cluster.createResource(ctx, url, "route", data)
 	if err != nil {
 		log.Errorf("failed to create route: %s", err)
 		return nil, err
 	}
 
-	route, err := resp.Item.route()
+	route, err := resp.route()
 	if err != nil {
 		return nil, err
 	}
 	if err := r.cluster.cache.InsertRoute(route); err != nil {
 		log.Errorf("failed to reflect route create to cache: %s", err)
+		return nil, err
+	}
+	if err := r.cluster.generatedObjCache.InsertRoute(obj); err != nil {
+		log.Errorf("failed to cache generated route object: %s", err)
 		return nil, err
 	}
 	return route, nil
@@ -180,7 +158,7 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 	log.Debugw("try to delete route",
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 		zap.String("url", r.url),
 	)
 	if err := r.cluster.HasSynced(ctx); err != nil {
@@ -188,12 +166,16 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 	}
 	url := r.url + "/" + obj.ID
 	if err := r.cluster.deleteResource(ctx, url, "route"); err != nil {
-		r.cluster.metricsCollector.IncrAPISIXRequest("route")
 		return err
 	}
-	r.cluster.metricsCollector.IncrAPISIXRequest("route")
 	if err := r.cluster.cache.DeleteRoute(obj); err != nil {
 		log.Errorf("failed to reflect route delete to cache: %s", err)
+		if err != cache.ErrNotFound {
+			return err
+		}
+	}
+	if err := r.cluster.generatedObjCache.DeleteRoute(obj); err != nil {
+		log.Errorf("failed to reflect route delete to generated cache: %s", err)
 		if err != cache.ErrNotFound {
 			return err
 		}
@@ -201,11 +183,15 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 	return nil
 }
 
-func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, error) {
+func (r *routeClient) Update(ctx context.Context, obj *v1.Route, shouldCompare bool) (*v1.Route, error) {
+	if v, skip := skipRequest(r.cluster, shouldCompare, r.url, obj.ID, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to update route",
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),
-		zap.String("cluster", "default"),
+		zap.String("cluster", r.cluster.name),
 		zap.String("url", r.url),
 	)
 	if err := r.cluster.HasSynced(ctx); err != nil {
@@ -216,18 +202,20 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route) (*v1.Route, err
 		return nil, err
 	}
 	url := r.url + "/" + obj.ID
-	log.Debugw("updating route", zap.ByteString("body", body), zap.String("url", url))
-	resp, err := r.cluster.updateResource(ctx, url, "route", bytes.NewReader(body))
-	r.cluster.metricsCollector.IncrAPISIXRequest("route")
+	resp, err := r.cluster.updateResource(ctx, url, "route", body)
 	if err != nil {
 		return nil, err
 	}
-	route, err := resp.Item.route()
+	route, err := resp.route()
 	if err != nil {
 		return nil, err
 	}
 	if err := r.cluster.cache.InsertRoute(route); err != nil {
 		log.Errorf("failed to reflect route update to cache: %s", err)
+		return nil, err
+	}
+	if err := r.cluster.generatedObjCache.InsertRoute(obj); err != nil {
+		log.Errorf("failed to cache generated route object: %s", err)
 		return nil, err
 	}
 	return route, nil

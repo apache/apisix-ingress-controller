@@ -46,7 +46,7 @@ func newUpstreamServiceRelation(c *cluster) *upstreamService {
 func (u *upstreamService) Get(ctx context.Context, serviceName string) (*v1.UpstreamServiceRelation, error) {
 	log.Debugw("try to get upstreamService in cache",
 		zap.String("service_name", serviceName),
-		zap.String("cluster", "default"),
+		zap.String("cluster", u.cluster.name),
 	)
 	us, err := u.cluster.cache.GetUpstreamServiceRelation(serviceName)
 	if err != nil && err != cache.ErrNotFound {
@@ -59,7 +59,7 @@ func (u *upstreamService) Get(ctx context.Context, serviceName string) (*v1.Upst
 
 func (u *upstreamService) Delete(ctx context.Context, serviceName string) error {
 	log.Debugw("try to delete upstreamService in cache",
-		zap.String("cluster", "default"),
+		zap.String("cluster", u.cluster.name),
 	)
 	relation, err := u.Get(ctx, serviceName)
 	if err != nil {
@@ -75,8 +75,12 @@ func (u *upstreamService) Delete(ctx context.Context, serviceName string) error 
 			continue
 		}
 		ups.Nodes = make(v1.UpstreamNodes, 0)
-		_, err = u.cluster.upstream.Update(ctx, ups)
+		log.Debugw("try to update upstream in cluster",
+			zap.Any("upstream", ups),
+		)
+		_, err = u.cluster.upstream.Update(ctx, ups, false)
 		if err != nil {
+			log.Error(err)
 			continue
 		}
 	}
@@ -85,7 +89,7 @@ func (u *upstreamService) Delete(ctx context.Context, serviceName string) error 
 
 func (u *upstreamService) Create(ctx context.Context, upstreamName string) error {
 	log.Debugw("try to create upstreamService in cache",
-		zap.String("cluster", "default"),
+		zap.String("cluster", u.cluster.name),
 	)
 
 	args := strings.Split(upstreamName, "_")
@@ -123,7 +127,7 @@ func (u *upstreamService) Create(ctx context.Context, upstreamName string) error
 
 func (u *upstreamService) List(ctx context.Context) ([]*v1.UpstreamServiceRelation, error) {
 	log.Debugw("try to create upstreamService in cache",
-		zap.String("cluster", "default"),
+		zap.String("cluster", u.cluster.name),
 	)
 	usrs, err := u.cluster.cache.ListUpstreamServiceRelation()
 	if err != nil {

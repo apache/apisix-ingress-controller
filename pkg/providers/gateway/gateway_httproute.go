@@ -22,7 +22,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
@@ -120,10 +120,18 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 			)
 			return nil
 		}
-		httpRoute = ev.Tombstone.(*gatewayv1alpha2.HTTPRoute)
+		httpRoute = ev.Tombstone.(*gatewayv1beta1.HTTPRoute)
+	}
+	err = c.controller.validator.ValidateCommonRoute(httpRoute)
+	if err != nil {
+		log.Errorw("failed to validate gateway HTTPRoute",
+			zap.Error(err),
+			zap.Any("object", httpRoute),
+		)
+		return err
 	}
 
-	tctx, err := c.controller.translator.TranslateGatewayHTTPRouteV1Alpha2(httpRoute)
+	tctx, err := c.controller.translator.TranslateGatewayHTTPRouteV1beta1(httpRoute)
 
 	if err != nil {
 		log.Errorw("failed to translate gateway HTTPRoute",
@@ -154,8 +162,8 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 		added = m
 	} else {
 		var oldCtx *translation.TranslateContext
-		oldObj := ev.OldObject.(*gatewayv1alpha2.HTTPRoute)
-		oldCtx, err = c.controller.translator.TranslateGatewayHTTPRouteV1Alpha2(oldObj)
+		oldObj := ev.OldObject.(*gatewayv1beta1.HTTPRoute)
+		oldCtx, err = c.controller.translator.TranslateGatewayHTTPRouteV1beta1(oldObj)
 		if err != nil {
 			log.Errorw("failed to translate old HTTPRoute",
 				zap.String("version", oldObj.APIVersion),
@@ -173,7 +181,7 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 		added, updated, deleted = m.Diff(om)
 	}
 
-	return utils.SyncManifests(ctx, c.controller.APISIX, c.controller.APISIXClusterName, added, updated, deleted)
+	return utils.SyncManifests(ctx, c.controller.APISIX, c.controller.APISIXClusterName, added, updated, deleted, false)
 }
 
 func (c *gatewayHTTPRouteController) handleSyncErr(obj interface{}, err error) {
@@ -222,8 +230,8 @@ func (c *gatewayHTTPRouteController) onAdd(obj interface{}) {
 }
 
 func (c *gatewayHTTPRouteController) onUpdate(oldObj, newObj interface{}) {
-	oldHTTPRoute := oldObj.(*gatewayv1alpha2.HTTPRoute)
-	newHTTPRoute := newObj.(*gatewayv1alpha2.HTTPRoute)
+	oldHTTPRoute := oldObj.(*gatewayv1beta1.HTTPRoute)
+	newHTTPRoute := newObj.(*gatewayv1beta1.HTTPRoute)
 	if oldHTTPRoute.ResourceVersion >= newHTTPRoute.ResourceVersion {
 		return
 	}

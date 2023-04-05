@@ -1,7 +1,11 @@
 ---
-title: Proxy the httpbin service with Ingress
+title: Configuring Ingress with Kubernetes Ingress resource
+keywords:
+  - APISIX ingress
+  - Apache APISIX
+  - Kubernetes Ingress
+description: A tutorial on configuring Ingress using the default Kubernetes Ingress resource.
 ---
-
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -21,41 +25,43 @@ title: Proxy the httpbin service with Ingress
 #
 -->
 
-This document explains how apisix-ingress-controller guides Apache APISIX routes traffic to httpbin service correctly by the [Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/).
+This tutorial will walk you through on how you can configure APISIX Ingress with the [default Kubernetes Ingress resource](https://kubernetes.io/docs/concepts/services-networking/ingress/).
+
+Also see:
+
+- [Configuring Ingress with Kubernetes Gateway API](https://apisix.apache.org/docs/ingress-controller/tutorials/configure-ingress-with-gateway-api)
+- [Configuring Ingress with APISIX CRDs](https://apisix.apache.org/docs/ingress-controller/tutorials/proxy-the-httpbin-service)
 
 ## Prerequisites
 
-* Prepare an available Kubernetes cluster in your workstation, we recommend you to use [Minikube](https://github.com/kubernetes/minikube).
-* Install Apache APISIX in Kubernetes by [Helm Chart](https://github.com/apache/apisix-helm-chart).
-* Install [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller/blob/master/install.md).
+Before you move on, make sure you:
 
-## Deploy httpbin service
+1. Have access to a Kubernetes cluster. This tutorial uses [minikube](https://github.com/kubernetes/minikube).
+2. Install APISIX Ingress. See the [Installation](https://apisix.apache.org/docs/ingress-controller/deployments/minikube) section.
 
-We use [kennethreitz/httpbin](https://hub.docker.com/r/kennethreitz/httpbin/) as the service image, See its overview page for details.
+## Deploy httpbin
 
-Now, try to deploy it to your Kubernetes cluster:
+We will deploy a sample service, [kennethreitz/httpbin](https://hub.docker.com/r/kennethreitz/httpbin/), for this tutorial.
+
+You can deploy it to your Kubernetes cluster by running:
 
 ```shell
 kubectl run httpbin --image kennethreitz/httpbin --port 80
 kubectl expose pod httpbin --port 80
 ```
 
-## Resource Delivery
+## Configuring Ingress
 
-Here we create an Ingress resource.
+We can use the [default Kubernetes Ingress resource](https://kubernetes.io/docs/concepts/services-networking/ingress/#the-ingress-resource) to configure APISIX Ingress. The example below shows a sample configuration that creates a Route to the httpbin service:
 
-```yaml
-# httpbin-ingress.yaml
-# Note use apiVersion is networking.k8s.io/v1, so please make sure your
-# Kubernetes cluster version is v1.19.0 or higher.
+```yaml title="httpbin-ingress.yaml"
+# use v1beta1 if your Kubernetes cluster version is older than v1.19.0
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: httpserver-ingress
 spec:
-  # apisix-ingress-controller is only interested in Ingress
-  # resources with the matched ingressClass name, in our case,
-  # it's apisix.
+  # we use APISIX Ingress and it watches Ingress resources with "apisix" ingressClassName
   ingressClassName: apisix
   rules:
   - host: local.httpbin.org
@@ -68,61 +74,45 @@ spec:
               number: 80
         path: /
         pathType: Prefix
-
-# Use ingress.networking.k8s.io/v1beta1 if your Kubernetes cluster
-# version is older than v1.19.0.
-apiVersion: networking.k8s.io/v1beta1
-kind: Ingress
-metadata:
-  name: httpserver-ingress
-  # Note for ingress.networking.k8s.io/v1beta1,
-  # you have to carry annotation kubernetes.io/ingress.class,
-  # and its value must be matched with the one configured in
-  # apisix-ingress-controller, in our case, it's apisix.
-  annotations:
-    kubernetes.io/ingress.class: apisix
-spec:
-  rules:
-    - host: local.httpbin.org
-      http:
-        paths:
-          - backend:
-              serviceName: httpbin
-              servicePort: 80
-            path: /
-            pathType: Prefix
 ```
 
-The YAML snippet shows a simple Ingress configuration, which tells Apache APISIX to route all requests with Host `local.httpbin.org` to the `httpbin` service.
-Now try to create it.
+This configuration will route all requests with host `local.httpbin.org` to the httpbin service.
+
+You can apply it by running:
 
 ```shell
 kubectl apply -f httpbin-ingress.yaml
 ```
 
-## Test
+## Test the created Routes
 
-Run curl call in one of Apache APISIX Pods to check whether the resource was delivered to it. Note you should replace the value of `--default-apisix-cluster-admin-key` to the real `admin_key` value in your Apache APISIX cluster.
-
-```shell
-kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9180/apisix/admin/routes -H 'X-API-Key: edd1c9f034335f136f87ad84b625c8f1'
-```
-
-And request to Apache APISIX to verify the route.
+If you followed along and used minikube and `NodePort` service to expose APISIX, you can access it through the Node IP of the service `apisix-gateway`. If the Node IP is not reachable directly (if you are on Darwin, Windows, or WSL), you can create a tunnel to access the service on your machine:
 
 ```shell
-kubectl exec -it -n ${namespace of Apache APISIX} ${Pod name of Apache APISIX} -- curl http://127.0.0.1:9080/headers -H 'Host: local.httpbin.org'
+minikube service apisix-gateway --url -n ingress-apisix
 ```
 
-In case of success, you'll see a JSON string which contains all requests headers carried by `curl` like:
+Now, you can send a `GET` request to the created Route and it will be Routed to the httpbin service:
 
-```json
+```shell
+curl --location --request GET "localhost:57687/get?foo1=bar1&foo2=bar2" -H "Host: local.httpbin.org"
+```
+
+You will receive a response similar to:
+
+```json title="output"
 {
+  "args": {
+    "foo1": "bar1", 
+    "foo2": "bar2"
+  }, 
   "headers": {
-    "Accept": "*/*",
-    "Host": "httpbin.org",
-    "User-Agent": "curl/7.64.1",
-    "X-Amzn-Trace-Id": "Root=1-5ffc3273-2928e0844e19c9810d1bbd8a"
-  }
+    "Accept": "*/*", 
+    "Host": "local.httpbin.org", 
+    "User-Agent": "curl/7.84.0", 
+    "X-Forwarded-Host": "local.httpbin.org"
+  }, 
+  "origin": "172.17.0.1", 
+  "url": "http://local.httpbin.org/get?foo1=bar1&foo2=bar2"
 }
 ```

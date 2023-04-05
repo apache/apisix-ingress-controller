@@ -24,6 +24,7 @@ header:
     - 'vendor'
     - 'licenses'
     - '**/*.md'
+    - '**/*.mdx'
     - '**/testdata/**'
     - '**/go.mod'
     - '**/go.sum'

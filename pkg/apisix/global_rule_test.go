@@ -18,7 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -83,7 +83,7 @@ func (srv *fakeAPISIXGlobalRuleSrv) ServeHTTP(w http.ResponseWriter, r *http.Req
 	if r.Method == http.MethodPut {
 		paths := strings.Split(r.URL.Path, "/")
 		key := fmt.Sprintf("/apisix/admin/global_rules/%s", paths[len(paths)-1])
-		data, _ := ioutil.ReadAll(r.Body)
+		data, _ := io.ReadAll(r.Body)
 		srv.globalRule[key] = data
 		w.WriteHeader(http.StatusCreated)
 		resp := fakeCreateResp{
@@ -106,7 +106,7 @@ func (srv *fakeAPISIXGlobalRuleSrv) ServeHTTP(w http.ResponseWriter, r *http.Req
 			return
 		}
 
-		data, _ := ioutil.ReadAll(r.Body)
+		data, _ := io.ReadAll(r.Body)
 		srv.globalRule[id] = data
 
 		w.WriteHeader(http.StatusOK)
@@ -152,23 +152,24 @@ func TestGlobalRuleClient(t *testing.T) {
 	closedCh := make(chan struct{})
 	close(closedCh)
 	cli := newGlobalRuleClient(&cluster{
-		baseURL:          u.String(),
-		cli:              http.DefaultClient,
-		cache:            &dummyCache{},
-		cacheSynced:      closedCh,
-		metricsCollector: metrics.NewPrometheusCollector(),
+		baseURL:           u.String(),
+		cli:               http.DefaultClient,
+		cache:             &dummyCache{},
+		generatedObjCache: &dummyCache{},
+		cacheSynced:       closedCh,
+		metricsCollector:  metrics.NewPrometheusCollector(),
 	})
 
 	// Create
 	obj, err := cli.Create(context.Background(), &v1.GlobalRule{
 		ID: "1",
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "1")
 
 	obj, err = cli.Create(context.Background(), &v1.GlobalRule{
 		ID: "2",
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, obj.ID, "2")
 
@@ -192,7 +193,7 @@ func TestGlobalRuleClient(t *testing.T) {
 		Plugins: map[string]interface{}{
 			"prometheus": struct{}{},
 		},
-	})
+	}, false)
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)

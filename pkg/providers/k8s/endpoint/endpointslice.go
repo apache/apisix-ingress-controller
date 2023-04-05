@@ -163,7 +163,7 @@ func (c *endpointSliceController) onAdd(obj interface{}) {
 	}
 
 	log.Debugw("endpointSlice add event arrived",
-		zap.String("object-key", key),
+		zap.String("key", key),
 	)
 
 	c.workqueue.Add(&types.Event{
@@ -239,8 +239,8 @@ func (c *endpointSliceController) onDelete(obj interface{}) {
 		// controller.
 		return
 	}
-	log.Debugw("endpoints delete event arrived",
-		zap.Any("object-key", key),
+	log.Debugw("endpointSlice delete event arrived",
+		zap.Any("key", key),
 	)
 	c.workqueue.Add(&types.Event{
 		Type:   types.EventDelete,

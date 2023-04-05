@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"strings"
@@ -127,7 +126,7 @@ func TestNewIngressCommandEffectiveLog(t *testing.T) {
 
 	buf := bufio.NewReader(file)
 	f := parseLog(t, buf)
-	assert.Contains(t, f.Message, "apisix ingress controller started")
+	assert.Contains(t, f.Message, "init apisix ingress controller")
 	assert.Equal(t, "info", f.Level)
 
 	f = parseLog(t, buf)
@@ -149,7 +148,7 @@ func TestNewIngressCommandEffectiveLog(t *testing.T) {
 	assert.Equal(t, true, cfg.EnableProfiling)
 	assert.Equal(t, "/foo/bar/baz", cfg.Kubernetes.Kubeconfig)
 	assert.Equal(t, types.TimeDuration{Duration: 24 * time.Hour}, cfg.Kubernetes.ResyncInterval)
-	assert.Equal(t, "0x123", cfg.APISIX.DefaultClusterAdminKey)
+	assert.Equal(t, "******", cfg.APISIX.DefaultClusterAdminKey)
 	assert.Equal(t, "http://apisixgw.default.cluster.local/apisix", cfg.APISIX.DefaultClusterBaseURL)
 }
 
@@ -207,7 +206,7 @@ func TestRotateLog(t *testing.T) {
 	assert.Nil(t, syscall.Kill(os.Getpid(), syscall.SIGINT))
 	<-stopCh
 
-	files, err := ioutil.ReadDir("./testlog")
+	files, err := os.ReadDir("./testlog")
 
 	if err != nil {
 		t.Fatalf("Unable to read log dir: %v", err)

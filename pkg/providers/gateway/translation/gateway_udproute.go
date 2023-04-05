@@ -73,13 +73,15 @@ func (t *translator) TranslateGatewayUDPRouteV1Alpha2(udpRoute *gatewayv1alpha2.
 			sr := apisixv1.NewDefaultStreamRoute()
 			name := apisixv1.ComposeStreamRouteName(ns, udpRoute.Name, fmt.Sprintf("%d-%d", i, j))
 			sr.ID = id.GenID(name)
+
 			ups, err := t.KubeTranslator.TranslateService(ns, string(backend.Name), "", int32(*backend.Port))
 			if err != nil {
 				return nil, errors.Wrap(err, fmt.Sprintf("failed to translate Rules[%v].BackendRefs[%v]", i, j))
 			}
 			ups.Scheme = apisixv1.SchemeUDP
-			name = apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port), types.ResolveGranularity.Endpoint)
-			ups.ID = id.GenID(name)
+			ups.Name = apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port), types.ResolveGranularity.Endpoint)
+			ups.ID = id.GenID(ups.Name)
+
 			sr.UpstreamId = ups.ID
 			ctx.AddStreamRoute(sr)
 			if !ctx.CheckUpstreamExist(ups.Name) {

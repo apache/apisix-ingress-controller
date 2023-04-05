@@ -171,6 +171,8 @@ rules:
       - apisixconsumers/status
       - apisixpluginconfigs
       - apisixpluginconfigs/status
+      - apisixglobalrules
+      - apisixglobalrules/status
     verbs:
       - '*'
   - apiGroups:
@@ -200,6 +202,15 @@ rules:
     - get
     - list
     - watch
+  - apiGroups:
+    - gateway.networking.k8s.io
+    resources:
+    - gateways/status
+    - gatewayclasses/status
+    verbs:
+    - get
+    - update
+    - list
 `
 	_clusterRoleBinding = `
 apiVersion: rbac.authorization.k8s.io/v1
@@ -357,7 +368,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-          image: "localhost:5000/apache/apisix-ingress-controller:dev"
+          image: "localhost:5000/apisix-ingress-controller:dev"
           imagePullPolicy: IfNotPresent
           name: ingress-apisix-controller-deployment-e2e-test
           ports:
@@ -374,8 +385,11 @@ spec:
             - debug
             - --log-output
             - stdout
+            - --apisix-admin-api-version
+            - %s
             - --apisix-resource-sync-interval
             - %s
+            - --apisix-resource-sync-comparison=%s
             - --http-listen
             - :8080
             - --https-listen
@@ -392,8 +406,10 @@ spec:
             - %s
             - --ingress-status-address
             - "%s"
-            - --enable-gateway-api
-            - "true"
+            - --enable-gateway-api=true
+            - --ingress-class
+            - %s
+            %s
           %s
       volumes:
        - name: webhook-certs
@@ -408,16 +424,24 @@ func init() {
 	}
 }
 
+func (s *Scaffold) genIngressDeployment(replicas int, namespace, adminAPIVersion,
+	syncInterval, syncComparison, label, resourceVersion, publishAddr, ingressClass,
+	disableStatus, webhookMounts, webhookCertSecret string) string {
+	return fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), replicas, namespace, adminAPIVersion, syncInterval, syncComparison,
+		label, resourceVersion, publishAddr, ingressClass, disableStatus, webhookMounts, webhookCertSecret)
+
+}
+
 func (s *Scaffold) newIngressAPISIXController() error {
 	err := k8s.CreateServiceAccountE(s.t, s.kubectlOptions, _serviceAccount)
 	assert.Nil(s.t, err, "create service account")
 
 	cr := fmt.Sprintf(_clusterRole, s.namespace)
-	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, cr)
+	err = s.CreateResourceFromString(cr)
 	assert.Nil(s.t, err, "create cluster role")
 
 	crb := fmt.Sprintf(_clusterRoleBinding, s.namespace, s.namespace, s.namespace)
-	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, crb)
+	err = s.CreateResourceFromString(crb)
 	assert.Nil(s.t, err, "create cluster role binding")
 
 	s.addFinalizers(func() {
@@ -429,26 +453,32 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		assert.Nil(s.t, err, "deleting ClusterRole")
 	})
 
-	var ingressAPISIXDeployment string
+	var (
+		ingressAPISIXDeployment string
+		disableStatusStr        string
+		webhookVolumeMounts     string
+	)
 	label := `""`
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil && !s.opts.DisableNamespaceSelector {
 		label = labels[0]
 	}
-
+	if s.opts.DisableStatus {
+		disableStatusStr = "- --disable-status-updates"
+	}
 	if s.opts.EnableWebhooks {
-		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.ApisixResourceSyncInterval,
-			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
-	} else {
-		ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.ApisixResourceSyncInterval,
-			label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
+		webhookVolumeMounts = _volumeMounts
 	}
 
-	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressAPISIXDeployment)
+	ingressAPISIXDeployment = s.genIngressDeployment(s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion,
+		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label,
+		s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.IngressClass, disableStatusStr, webhookVolumeMounts, _webhookCertSecret)
+
+	err = s.CreateResourceFromString(ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
 
 	if s.opts.EnableWebhooks {
 		admissionSvc := fmt.Sprintf(_ingressAPISIXAdmissionService, s.namespace)
-		err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, admissionSvc)
+		err := s.CreateResourceFromString(admissionSvc)
 		assert.Nil(s.t, err, "create admission webhook service")
 
 		// get caBundle from the secret
@@ -460,7 +490,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 
 		webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, caBundle, s.namespace, caBundle, s.namespace, caBundle, s.namespace, caBundle)
 		ginkgo.GinkgoT().Log(webhookReg)
-		err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, webhookReg)
+		err = s.CreateResourceFromString(webhookReg)
 		assert.Nil(s.t, err, "create webhook registration")
 
 		s.addFinalizers(func() {
@@ -543,17 +573,28 @@ func (s *Scaffold) GetIngressPodDetails() ([]corev1.Pod, error) {
 
 // ScaleIngressController scales the number of Ingress Controller pods to desired.
 func (s *Scaffold) ScaleIngressController(desired int) error {
-	var ingressDeployment string
-	var label string
+	var (
+		ingressDeployment   string
+		label               string
+		disableStatusStr    string
+		webhookVolumeMounts string
+	)
+
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil {
 		label = labels[0]
 	}
-	if s.opts.EnableWebhooks {
-		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, _volumeMounts, _webhookCertSecret)
-	} else {
-		ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, "", _webhookCertSecret)
+	if s.opts.DisableStatus {
+		disableStatusStr = "- --disable-status-updates"
 	}
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, ingressDeployment); err != nil {
+	if s.opts.EnableWebhooks {
+		webhookVolumeMounts = _volumeMounts
+	}
+
+	ingressDeployment = s.genIngressDeployment(desired, s.namespace, s.opts.APISIXAdminAPIVersion,
+		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress,
+		s.opts.IngressClass, disableStatusStr, webhookVolumeMounts, _webhookCertSecret)
+
+	if err := s.CreateResourceFromString(ingressDeployment); err != nil {
 		return err
 	}
 	if err := k8s.WaitUntilNumPodsCreatedE(s.t, s.kubectlOptions, s.labelSelector("app=ingress-apisix-controller-deployment-e2e-test"), desired, 5, 5*time.Second); err != nil {

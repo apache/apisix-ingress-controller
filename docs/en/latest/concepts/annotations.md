@@ -99,6 +99,31 @@ k8s.apisix.apache.org/blocklist-source-range: "127.0.0.1,172.17.0.0/16"
 
 The default value is empty which means no IP addresses are blocked.
 
+## Customized http methods
+
+> `http-allow-methods` and `http-block-methods` are mutually exclusive.
+> If they're both set, only `http-allow-methods` works
+
+### Allow http methods
+
+This annotation can be used to specify which http method are allowed. Multiple methods can also be specified by separating them with commas.
+
+```yaml
+k8s.apisix.apache.org/http-allow-methods: "GET,POST"
+```
+
+The default value is empty which means all methods are allowed.
+
+### Block http methods
+
+This annotation can be used to specify which http method are blocked. Multiple methods can also be specified by separating them with commas.
+
+```yaml
+k8s.apisix.apache.org/http-block-method: "PUT,DELETE"
+```
+
+The default value is empty which means no methods are blocked.
+
 ## Rewrite target
 
 These annotations are used to rewrite requests.
@@ -114,11 +139,11 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/rewrite-target-regex: "/app/(.*)"
     k8s.apisix.apache.org/rewrite-target-regex-template: "/$1"
   name: ingress-v1
 spec:
+  ingressClassName: apisix
   rules:
     - host: httpbin.org
       http:
@@ -143,10 +168,10 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/http-to-https: "true"
   name: ingress-v1
 spec:
+  ingressClassName: apisix
   rules:
     - host: httpbin.org
       http:
@@ -171,10 +196,10 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/use-regex: "true"
   name: ingress-v1
 spec:
+  ingressClassName: apisix
   rules:
     - host: httpbin.org
       http:
@@ -206,10 +231,10 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/enable-websocket: "true"
   name: ingress-v1
 spec:
+  ingressClassName: apisix
   rules:
     - host: httpbin.org
       http:
@@ -222,6 +247,46 @@ spec:
                 port:
                   number: 80
 ```
+
+## Response Rewrite
+
+You can enable [Response Rewrite](https://github.com/apache/apisix/blob/master/docs/en/latest/plugins/response-rewrite.md) by adding the annotation as shown below:
+
+```yaml
+metadata:
+  annotations:
+    k8s.apisix.apache.org/enable-response-rewrite: "true"
+```
+
+You can customize the behaviour with some additional annotations as shown below.
+
+### New HTTP status code
+
+This annotation configures the new HTTP status code in the response.
+
+```yaml
+k8s.apisix.apache.org/response-rewrite-status-code: "404"
+```
+
+If unset, falls back to the original status code.
+
+### New body
+
+This annotation configures the new body in the response.
+
+```yaml
+k8s.apisix.apache.org/response-rewrite-body: "bar-body"
+```
+
+### Body Base64
+
+When set, the body of the request will be decoded before writing to the client.
+
+```yaml
+k8s.apisix.apache.org/response-rewrite-body-base64: "true"
+```
+
+The default value is `"false"`.
 
 ## Using ApisixPluginConfig resource
 
@@ -253,10 +318,10 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/plugin-config-name: "echo-and-cors-apc"
   name: ingress-v1
 spec:
+  ingressClassName: apisix
   rules:
     - host: httpbin.org
       http:
@@ -266,6 +331,61 @@ spec:
             backend:
               service:
                 name: service1
+                port:
+                  number: 80
+```
+
+## Upstream scheme
+
+The scheme used when communicating with the Upstream. this value can be one of 'http', 'https', 'grpc', 'grpcs'. Defaults to 'http'.
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/upstream-scheme: grpcs
+  name: ingress-v1
+spec:
+  rules:
+  - host: e2e.apisix.local
+    http:
+      paths:
+      - path: /helloworld.Greeter/SayHello
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: test-backend-service-e2e-test
+            port:
+              number: 50053
+```
+
+## Cross-namespace references
+
+This annotation can be used to route to services in a different namespace.
+
+In the example configuration below, the Ingress resource in the `default` namespace references the httpbin service in the `test` namespace:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    k8s.apisix.apache.org/svc-namespace: test
+  name: ingress-v1-svc
+  namespace: default
+spec:
+  ingressClassName: apisix
+  rules:
+    - host: httpbin.org
+      http:
+        paths:
+          - path: /ip
+            pathType: Exact
+            backend:
+              service:
+                name: httpbin
                 port:
                   number: 80
 ```

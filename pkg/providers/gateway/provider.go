@@ -22,12 +22,15 @@ import (
 	"sync"
 
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned"
-	gatewayexternalversions "sigs.k8s.io/gateway-api/pkg/client/informers/gateway/externalversions"
-	gatewaylistersv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/gateway/apis/v1alpha2"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
+	gatewayexternalversions "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions"
+	gatewaylistersv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2"
+	gatewaylistersv1beta1 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
@@ -37,12 +40,15 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/providers/gateway/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 )
 
 const (
 	ProviderName = "GatewayAPI"
 )
+
+var ErrListenerNotExist = fmt.Errorf("ListenerConf not exist")
 
 type Provider struct {
 	name string
@@ -54,24 +60,26 @@ type Provider struct {
 	listenersLock sync.RWMutex
 	// meta key ("ns/name") of Gateway -> section name -> ListenerConf
 	listeners     map[string]map[string]*types.ListenerConf
-	portListeners map[gatewayv1alpha2.PortNumber]*types.ListenerConf
+	portListeners map[gatewayv1beta1.PortNumber]*types.ListenerConf
 
 	*ProviderOptions
 	gatewayClient gatewayclientset.Interface
+	runtimeClient runtimeclient.Client
 
 	translator gatewaytranslation.Translator
+	validator  Validator
 
 	gatewayController *gatewayController
 	gatewayInformer   cache.SharedIndexInformer
-	gatewayLister     gatewaylistersv1alpha2.GatewayLister
+	gatewayLister     gatewaylistersv1beta1.GatewayLister
 
 	gatewayClassController *gatewayClassController
 	gatewayClassInformer   cache.SharedIndexInformer
-	gatewayClassLister     gatewaylistersv1alpha2.GatewayClassLister
+	gatewayClassLister     gatewaylistersv1beta1.GatewayClassLister
 
 	gatewayHTTPRouteController *gatewayHTTPRouteController
 	gatewayHTTPRouteInformer   cache.SharedIndexInformer
-	gatewayHTTPRouteLister     gatewaylistersv1alpha2.HTTPRouteLister
+	gatewayHTTPRouteLister     gatewaylistersv1beta1.HTTPRouteLister
 
 	gatewayTLSRouteController *gatewayTLSRouteController
 	gatewayTLSRouteInformer   cache.SharedIndexInformer
@@ -95,6 +103,7 @@ type ProviderOptions struct {
 	KubeClient        kubernetes.Interface
 	MetricsCollector  metrics.Collector
 	NamespaceProvider namespace.WatchingNamespaceProvider
+	ListerInformer    *providertypes.ListerInformer
 }
 
 func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
@@ -111,6 +120,10 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	if err != nil {
 		return nil, err
 	}
+	rClient, err := runtimeclient.New(opts.RestConfig, runtimeclient.Options{Scheme: scheme.Scheme})
+	if err != nil {
+		return nil, err
+	}
 
 	p := &Provider{
 		name: ProviderName,
@@ -118,10 +131,11 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 		gatewayClasses: make(map[string]struct{}),
 
 		listeners:     make(map[string]map[string]*types.ListenerConf),
-		portListeners: make(map[gatewayv1alpha2.PortNumber]*types.ListenerConf),
+		portListeners: make(map[gatewayv1beta1.PortNumber]*types.ListenerConf),
 
 		ProviderOptions: opts,
 		gatewayClient:   gatewayKubeClient,
+		runtimeClient:   rClient,
 
 		translator: gatewaytranslation.NewTranslator(&gatewaytranslation.TranslatorOptions{
 			KubeTranslator: opts.KubeTranslator,
@@ -130,14 +144,14 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 
 	gatewayFactory := gatewayexternalversions.NewSharedInformerFactory(p.gatewayClient, p.Cfg.Kubernetes.ResyncInterval.Duration)
 
-	p.gatewayLister = gatewayFactory.Gateway().V1alpha2().Gateways().Lister()
-	p.gatewayInformer = gatewayFactory.Gateway().V1alpha2().Gateways().Informer()
+	p.gatewayLister = gatewayFactory.Gateway().V1beta1().Gateways().Lister()
+	p.gatewayInformer = gatewayFactory.Gateway().V1beta1().Gateways().Informer()
 
-	p.gatewayClassLister = gatewayFactory.Gateway().V1alpha2().GatewayClasses().Lister()
-	p.gatewayClassInformer = gatewayFactory.Gateway().V1alpha2().GatewayClasses().Informer()
+	p.gatewayClassLister = gatewayFactory.Gateway().V1beta1().GatewayClasses().Lister()
+	p.gatewayClassInformer = gatewayFactory.Gateway().V1beta1().GatewayClasses().Informer()
 
-	p.gatewayHTTPRouteLister = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Lister()
-	p.gatewayHTTPRouteInformer = gatewayFactory.Gateway().V1alpha2().HTTPRoutes().Informer()
+	p.gatewayHTTPRouteLister = gatewayFactory.Gateway().V1beta1().HTTPRoutes().Lister()
+	p.gatewayHTTPRouteInformer = gatewayFactory.Gateway().V1beta1().HTTPRoutes().Informer()
 
 	p.gatewayTLSRouteLister = gatewayFactory.Gateway().V1alpha2().TLSRoutes().Lister()
 	p.gatewayTLSRouteInformer = gatewayFactory.Gateway().V1alpha2().TLSRoutes().Informer()
@@ -149,6 +163,7 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	p.gatewayUDPRouteInformer = gatewayFactory.Gateway().V1alpha2().UDPRoutes().Informer()
 
 	p.gatewayController = newGatewayController(p)
+	p.validator = *newValidator(p)
 
 	p.gatewayClassController, err = newGatewayClassController(p)
 	if err != nil {
@@ -274,6 +289,30 @@ func (p *Provider) RemoveListeners(ns, name string) error {
 }
 
 func (p *Provider) FindListener(ns, name, sectionName string) (*types.ListenerConf, error) {
+	p.listenersLock.RLock()
+	defer p.listenersLock.RUnlock()
 
+	key := ns + "/" + name
+	listeners, exist := p.listeners[key]
+	if !exist {
+		return nil, ErrListenerNotExist
+	}
+	for _, listener := range listeners {
+		if listener.SectionName == sectionName {
+			return listener, nil
+		}
+	}
 	return nil, nil
+}
+
+func (p *Provider) QueryListeners(ns, name string) (map[string]*types.ListenerConf, error) {
+	p.listenersLock.RLock()
+	defer p.listenersLock.RUnlock()
+
+	key := ns + "/" + name
+	listeners, exist := p.listeners[key]
+	if !exist {
+		return nil, ErrListenerNotExist
+	}
+	return listeners, nil
 }

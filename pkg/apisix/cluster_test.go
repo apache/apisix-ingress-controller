@@ -26,7 +26,7 @@ import (
 )
 
 func TestAddCluster(t *testing.T) {
-	apisix, err := NewClient()
+	apisix, err := NewClient("v3")
 	assert.Nil(t, err)
 
 	err = apisix.AddCluster(context.Background(), &ClusterOptions{
@@ -57,7 +57,7 @@ func TestAddCluster(t *testing.T) {
 }
 
 func TestNonExistentCluster(t *testing.T) {
-	apisix, err := NewClient()
+	apisix, err := NewClient("v3")
 	assert.Nil(t, err)
 
 	err = apisix.AddCluster(context.Background(), &ClusterOptions{
@@ -68,36 +68,36 @@ func TestNonExistentCluster(t *testing.T) {
 
 	_, err = apisix.Cluster("non-existent-cluster").Route().List(context.Background())
 	assert.Equal(t, ErrClusterNotExist, err)
-	_, err = apisix.Cluster("non-existent-cluster").Route().Create(context.Background(), &v1.Route{})
+	_, err = apisix.Cluster("non-existent-cluster").Route().Create(context.Background(), &v1.Route{}, false)
 	assert.Equal(t, ErrClusterNotExist, err)
-	_, err = apisix.Cluster("non-existent-cluster").Route().Update(context.Background(), &v1.Route{})
+	_, err = apisix.Cluster("non-existent-cluster").Route().Update(context.Background(), &v1.Route{}, false)
 	assert.Equal(t, ErrClusterNotExist, err)
 	err = apisix.Cluster("non-existent-cluster").Route().Delete(context.Background(), &v1.Route{})
 	assert.Equal(t, ErrClusterNotExist, err)
 
 	_, err = apisix.Cluster("non-existent-cluster").Upstream().List(context.Background())
 	assert.Equal(t, ErrClusterNotExist, err)
-	_, err = apisix.Cluster("non-existent-cluster").Upstream().Create(context.Background(), &v1.Upstream{})
+	_, err = apisix.Cluster("non-existent-cluster").Upstream().Create(context.Background(), &v1.Upstream{}, false)
 	assert.Equal(t, ErrClusterNotExist, err)
-	_, err = apisix.Cluster("non-existent-cluster").Upstream().Update(context.Background(), &v1.Upstream{})
+	_, err = apisix.Cluster("non-existent-cluster").Upstream().Update(context.Background(), &v1.Upstream{}, false)
 	assert.Equal(t, ErrClusterNotExist, err)
 	err = apisix.Cluster("non-existent-cluster").Upstream().Delete(context.Background(), &v1.Upstream{})
 	assert.Equal(t, ErrClusterNotExist, err)
 
 	_, err = apisix.Cluster("non-existent-cluster").SSL().List(context.Background())
 	assert.Equal(t, ErrClusterNotExist, err)
-	_, err = apisix.Cluster("non-existent-cluster").SSL().Create(context.Background(), &v1.Ssl{})
+	_, err = apisix.Cluster("non-existent-cluster").SSL().Create(context.Background(), &v1.Ssl{}, false)
 	assert.Equal(t, ErrClusterNotExist, err)
-	_, err = apisix.Cluster("non-existent-cluster").SSL().Update(context.Background(), &v1.Ssl{})
+	_, err = apisix.Cluster("non-existent-cluster").SSL().Update(context.Background(), &v1.Ssl{}, false)
 	assert.Equal(t, ErrClusterNotExist, err)
 	err = apisix.Cluster("non-existent-cluster").SSL().Delete(context.Background(), &v1.Ssl{})
 	assert.Equal(t, ErrClusterNotExist, err)
 
 	_, err = apisix.Cluster("non-existent-cluster").PluginConfig().List(context.Background())
 	assert.Equal(t, ErrClusterNotExist, err)
-	_, err = apisix.Cluster("non-existent-cluster").PluginConfig().Create(context.Background(), &v1.PluginConfig{})
+	_, err = apisix.Cluster("non-existent-cluster").PluginConfig().Create(context.Background(), &v1.PluginConfig{}, false)
 	assert.Equal(t, ErrClusterNotExist, err)
-	_, err = apisix.Cluster("non-existent-cluster").PluginConfig().Update(context.Background(), &v1.PluginConfig{})
+	_, err = apisix.Cluster("non-existent-cluster").PluginConfig().Update(context.Background(), &v1.PluginConfig{}, false)
 	assert.Equal(t, ErrClusterNotExist, err)
 	err = apisix.Cluster("non-existent-cluster").PluginConfig().Delete(context.Background(), &v1.PluginConfig{})
 	assert.Equal(t, ErrClusterNotExist, err)

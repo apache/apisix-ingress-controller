@@ -40,7 +40,7 @@ var (
 // It can query the schema of objects from APISIX.
 func GetSchemaClient(co *apisix.ClusterOptions) (apisix.Schema, error) {
 	once.Do(func() {
-		client, err := apisix.NewClient()
+		client, err := apisix.NewClient(co.AdminAPIVersion)
 		if err != nil {
 			onceErr = err
 			return

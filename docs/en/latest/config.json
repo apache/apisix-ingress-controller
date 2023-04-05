@@ -29,13 +29,17 @@
         "tutorials/mtls",
         "tutorials/the-hard-way",
         "tutorials/proxy-the-httpbin-service-with-ingress",
+        "tutorials/configure-ingress-with-gateway-api",
         "tutorials/proxy-the-httpbin-service",
         "tutorials/proxy-grpc-service",
         "tutorials/manage-certificates-with-cert-manager",
         "tutorials/manage-ingress-certificates-with-cert-manager",
         "tutorials/enable-authentication-and-restriction",
         "tutorials/how-to-access-Apache-APISIX-Prometheus-Metrics-on-k8s",
-        "tutorials/how-to-use-go-plugin-runner-in-apisix-ingress"
+        "tutorials/using-custom-plugins",
+        "tutorials/how-to-use-go-plugin-runner-in-apisix-ingress",
+        "tutorials/external-service",
+        "tutorials/external-service-discovery"
       ]
     },
     {
@@ -50,7 +54,8 @@
         "references/apisix_cluster_config_v2",
         "references/apisix_cluster_config_v2beta3",
         "references/apisix_pluginconfig_v2",
-        "references/apisix_pluginconfig_v2beta3"
+        "references/apisix_pluginconfig_v2beta3",
+        "references/v2"
       ]
     },
     {
@@ -61,6 +66,7 @@
         "concepts/apisix_upstream",
         "concepts/apisix_tls",
         "concepts/apisix_cluster_config",
+        "concepts/apisix_plugin_config",
         "concepts/annotations"
       ]
     },

@@ -43,6 +43,8 @@ var (
 		NewBasicAuthHandler(),
 		NewKeyAuthHandler(),
 		NewCSRFHandler(),
+		NewHttpMethodHandler(),
+		NewResponseRewriteHandler(),
 	}
 )
 

@@ -72,7 +72,7 @@ spec:
             tcpSocket:
               port: 9080
             timeoutSeconds: 2
-          image: "localhost:5000/apache/apisix:dev"
+          image: "localhost:5000/apisix:dev"
           imagePullPolicy: IfNotPresent
           name: apisix-deployment-e2e-test
           ports:
@@ -142,13 +142,13 @@ func (s *Scaffold) newAPISIX() (*corev1.Service, error) {
 	}
 	data = indent(data)
 	configData := fmt.Sprintf(_apisixConfigMap, data)
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, configData); err != nil {
+	if err := s.CreateResourceFromString(configData); err != nil {
 		return nil, err
 	}
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, s.FormatRegistry(_apisixDeployment)); err != nil {
+	if err := s.CreateResourceFromString(s.FormatRegistry(_apisixDeployment)); err != nil {
 		return nil, err
 	}
-	if err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, _apisixService); err != nil {
+	if err := s.CreateResourceFromString(_apisixService); err != nil {
 		return nil, err
 	}
 

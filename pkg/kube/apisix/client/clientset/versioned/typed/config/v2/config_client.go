@@ -29,6 +29,7 @@ type ApisixV2Interface interface {
 	RESTClient() rest.Interface
 	ApisixClusterConfigsGetter
 	ApisixConsumersGetter
+	ApisixGlobalRulesGetter
 	ApisixPluginConfigsGetter
 	ApisixRoutesGetter
 	ApisixTlsesGetter
@@ -46,6 +47,10 @@ func (c *ApisixV2Client) ApisixClusterConfigs() ApisixClusterConfigInterface {
 
 func (c *ApisixV2Client) ApisixConsumers(namespace string) ApisixConsumerInterface {
 	return newApisixConsumers(c, namespace)
+}
+
+func (c *ApisixV2Client) ApisixGlobalRules(namespace string) ApisixGlobalRuleInterface {
+	return newApisixGlobalRules(c, namespace)
 }
 
 func (c *ApisixV2Client) ApisixPluginConfigs(namespace string) ApisixPluginConfigInterface {

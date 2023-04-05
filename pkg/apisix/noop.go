@@ -37,7 +37,7 @@ func (r *noopClient) List(ctx context.Context) ([]*v1.StreamRoute, error) {
 	return nil, nil
 }
 
-func (r *noopClient) Create(ctx context.Context, obj *v1.StreamRoute) (*v1.StreamRoute, error) {
+func (r *noopClient) Create(ctx context.Context, obj *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
 	return nil, nil
 }
 
@@ -45,6 +45,6 @@ func (r *noopClient) Delete(ctx context.Context, obj *v1.StreamRoute) error {
 	return nil
 }
 
-func (r *noopClient) Update(ctx context.Context, obj *v1.StreamRoute) (*v1.StreamRoute, error) {
+func (r *noopClient) Update(ctx context.Context, obj *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
 	return nil, nil
 }

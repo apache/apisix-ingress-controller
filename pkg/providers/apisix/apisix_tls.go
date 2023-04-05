@@ -46,10 +46,6 @@ type apisixTlsController struct {
 	workqueue workqueue.RateLimitingInterface
 	workers   int
 
-	secretInformer    cache.SharedIndexInformer
-	apisixTlsLister   kube.ApisixTlsLister
-	apisixTlsInformer cache.SharedIndexInformer
-
 	// secretSSLMap stores reference from K8s secret to ApisixTls
 	// type: Map<SecretKey, Map<ApisixTlsKey, SSL object in APISIX>>
 	// SecretKey -> ApisixTlsKey -> SSL object in APISIX
@@ -57,20 +53,16 @@ type apisixTlsController struct {
 	secretSSLMap *sync.Map
 }
 
-func newApisixTlsController(common *apisixCommon, apisixTlsInformer cache.SharedIndexInformer, apisixTlsLister kube.ApisixTlsLister) *apisixTlsController {
+func newApisixTlsController(common *apisixCommon) *apisixTlsController {
 	c := &apisixTlsController{
 		apisixCommon: common,
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixTls"),
 		workers:      1,
 
-		secretInformer:    common.SecretInformer,
-		apisixTlsLister:   apisixTlsLister,
-		apisixTlsInformer: apisixTlsInformer,
-
 		secretSSLMap: new(sync.Map),
 	}
 
-	c.apisixTlsInformer.AddEventHandler(
+	c.ApisixTlsInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    c.onAdd,
 			UpdateFunc: c.onUpdate,
@@ -85,10 +77,6 @@ func (c *apisixTlsController) run(ctx context.Context) {
 	defer log.Info("ApisixTls controller exited")
 	defer c.workqueue.ShutDown()
 
-	if ok := cache.WaitForCacheSync(ctx.Done(), c.apisixTlsInformer.HasSynced, c.secretInformer.HasSynced); !ok {
-		log.Errorf("informers sync failed")
-		return
-	}
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
 	}
@@ -120,9 +108,9 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 	var multiVersionedTls kube.ApisixTls
 	switch event.GroupVersion {
 	case config.ApisixV2beta3:
-		multiVersionedTls, err = c.apisixTlsLister.V2beta3(namespace, name)
+		multiVersionedTls, err = c.ApisixTlsLister.V2beta3(namespace, name)
 	case config.ApisixV2:
-		multiVersionedTls, err = c.apisixTlsLister.V2(namespace, name)
+		multiVersionedTls, err = c.ApisixTlsLister.V2(namespace, name)
 	default:
 		return fmt.Errorf("unsupported ApisixTls group version %s", event.GroupVersion)
 	}
@@ -135,6 +123,10 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 				zap.String("version", event.GroupVersion),
 			)
 			return err
+		}
+		if ev.Type == types.EventSync {
+			// ignore not found error in delay sync
+			return nil
 		}
 		if ev.Type != types.EventDelete {
 			log.Warnw("ApisixTls %s was deleted before it can be delivered",
@@ -160,6 +152,17 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 	case config.ApisixV2beta3:
 		tls := multiVersionedTls.V2beta3()
 		ssl, err := c.translator.TranslateSSLV2Beta3(tls)
+
+		// We should cache the relations regardless the translation succeed or not
+		secretKey := tls.Spec.Secret.Namespace + "/" + tls.Spec.Secret.Name
+		c.storeSecretCache(secretKey, apisixTlsKey, ssl, ev.Type)
+		if tls.Spec.Client != nil {
+			caSecretKey := tls.Spec.Client.CASecret.Namespace + "/" + tls.Spec.Client.CASecret.Name
+			if caSecretKey != secretKey {
+				c.storeSecretCache(caSecretKey, apisixTlsKey, ssl, ev.Type)
+			}
+		}
+
 		if err != nil {
 			log.Errorw("failed to translate ApisixTls",
 				zap.Error(err),
@@ -173,15 +176,6 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Any("ssl", ssl),
 			zap.Any("ApisixTls", tls),
 		)
-
-		secretKey := tls.Spec.Secret.Namespace + "/" + tls.Spec.Secret.Name
-		c.storeSecretCache(secretKey, apisixTlsKey, ssl, ev.Type)
-		if tls.Spec.Client != nil {
-			caSecretKey := tls.Spec.Client.CASecret.Namespace + "/" + tls.Spec.Client.CASecret.Name
-			if caSecretKey != secretKey {
-				c.storeSecretCache(caSecretKey, apisixTlsKey, ssl, ev.Type)
-			}
-		}
 
 		if err := c.SyncSSL(ctx, ssl, ev.Type); err != nil {
 			log.Errorw("failed to sync SSL to APISIX",
@@ -198,6 +192,17 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 	case config.ApisixV2:
 		tls := multiVersionedTls.V2()
 		ssl, err := c.translator.TranslateSSLV2(tls)
+
+		// We should cache the relations regardless the translation succeed or not
+		secretKey := tls.Spec.Secret.Namespace + "/" + tls.Spec.Secret.Name
+		c.storeSecretCache(secretKey, apisixTlsKey, ssl, ev.Type)
+		if tls.Spec.Client != nil {
+			caSecretKey := tls.Spec.Client.CASecret.Namespace + "/" + tls.Spec.Client.CASecret.Name
+			if caSecretKey != secretKey {
+				c.storeSecretCache(caSecretKey, apisixTlsKey, ssl, ev.Type)
+			}
+		}
+
 		if err != nil {
 			log.Errorw("failed to translate ApisixTls",
 				zap.Error(err),
@@ -211,15 +216,6 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 			zap.Any("ssl", ssl),
 			zap.Any("ApisixTls", tls),
 		)
-
-		secretKey := tls.Spec.Secret.Namespace + "/" + tls.Spec.Secret.Name
-		c.storeSecretCache(secretKey, apisixTlsKey, ssl, ev.Type)
-		if tls.Spec.Client != nil {
-			caSecretKey := tls.Spec.Client.CASecret.Namespace + "/" + tls.Spec.Client.CASecret.Name
-			if caSecretKey != secretKey {
-				c.storeSecretCache(caSecretKey, apisixTlsKey, ssl, ev.Type)
-			}
-		}
 
 		if err := c.SyncSSL(ctx, ssl, ev.Type); err != nil {
 			log.Errorw("failed to sync SSL to APISIX",
@@ -296,9 +292,13 @@ func (c *apisixTlsController) onAdd(obj interface{}) {
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
+	if !c.isEffective(tls) {
+		return
+	}
 	log.Debugw("ApisixTls add event arrived",
 		zap.Any("object", obj),
 	)
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.ApisixTlsEvent{
@@ -332,10 +332,14 @@ func (c *apisixTlsController) onUpdate(prev, curr interface{}) {
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
+	if !c.isEffective(newTls) {
+		return
+	}
 	log.Debugw("ApisixTls update event arrived",
 		zap.Any("new object", curr),
 		zap.Any("old object", prev),
 	)
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventUpdate,
 		Object: kube.ApisixTlsEvent{
@@ -369,6 +373,9 @@ func (c *apisixTlsController) onDelete(obj interface{}) {
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
+	if !c.isEffective(tls) {
+		return
+	}
 	log.Debugw("ApisixTls delete event arrived",
 		zap.Any("final state", obj),
 	)
@@ -384,9 +391,11 @@ func (c *apisixTlsController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("TLS", "delete")
 }
 
-func (c *apisixTlsController) ResourceSync() {
-	objs := c.apisixTlsInformer.GetIndexer().List()
-	for _, obj := range objs {
+func (c *apisixTlsController) ResourceSync(interval time.Duration) {
+	objs := c.ApisixTlsInformer.GetIndexer().List()
+	delay := GetSyncDelay(interval, len(objs))
+
+	for i, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
 			log.Errorw("ApisixTls sync failed, found ApisixTls object with bad namespace/name ignore it", zap.String("error", err.Error()))
@@ -400,18 +409,28 @@ func (c *apisixTlsController) ResourceSync() {
 			log.Errorw("ApisixTls sync failed, found ApisixTls resource with bad type", zap.Error(err))
 			continue
 		}
-		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
+		log.Debugw("ResourceSync",
+			zap.String("resource", "ApisixTls"),
+			zap.String("key", key),
+			zap.Duration("calc_delay", delay),
+			zap.Int("i", i),
+			zap.Duration("delay", delay*time.Duration(i)),
+		)
+		c.workqueue.AddAfter(&types.Event{
+			Type: types.EventSync,
 			Object: kube.ApisixTlsEvent{
 				Key:          key,
 				GroupVersion: tls.GroupVersion(),
 			},
-		})
+		}, delay*time.Duration(i))
 	}
 }
 
 // recordStatus record resources status
 func (c *apisixTlsController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
+	if c.Kubernetes.DisableStatusUpdates {
+		return
+	}
 	// build condition
 	message := utils.CommonSuccessMessage
 	if err != nil {
@@ -454,7 +473,7 @@ func (c *apisixTlsController) recordStatus(at interface{}, reason string, err er
 			conditions := make([]metav1.Condition, 0)
 			v.Status.Conditions = conditions
 		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+		if utils.VerifyConditions(&v.Status.Conditions, condition) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := apisixClient.ApisixV2().ApisixTlses(v.Namespace).
 				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
@@ -474,15 +493,18 @@ func (c *apisixTlsController) recordStatus(at interface{}, reason string, err er
 func (c *apisixTlsController) SyncSecretChange(ctx context.Context, ev *types.Event, secret *corev1.Secret, secretKey string) {
 	ssls, ok := c.secretSSLMap.Load(secretKey)
 	if !ok {
+		log.Debugw("ApisixTls: sync secret change, not concerned", zap.String("key", secretKey))
 		// This secret is not concerned.
 		return
 	}
 
 	sslMap, ok := ssls.(*sync.Map) // apisix tls key -> SSLs
 	if !ok {
+		log.Debugw("ApisixTls: sync secret change, not such SSls map", zap.String("key", secretKey))
 		return
 	}
 
+	log.Debugw("ApisixTls: sync secret change", zap.String("key", secretKey))
 	switch c.Config.Kubernetes.APIVersion {
 	case config.ApisixV2beta3:
 		sslMap.Range(c.syncSSLsAndUpdateStatusV2beta3(ctx, ev, secret, secretKey))
@@ -501,7 +523,7 @@ func (c *apisixTlsController) syncSSLsAndUpdateStatusV2beta3(ctx context.Context
 			return true
 		}
 
-		multiVersioned, err := c.apisixTlsLister.V2beta3(tlsNamespace, tlsName)
+		multiVersioned, err := c.ApisixTlsLister.V2beta3(tlsNamespace, tlsName)
 		if err != nil {
 			log.Warnw("secret related ApisixTls resource not found, skip",
 				zap.String("ApisixTls", tlsMetaKey),
@@ -588,7 +610,7 @@ func (c *apisixTlsController) syncSSLsAndUpdateStatusV2(ctx context.Context, ev 
 			return true
 		}
 
-		multiVersioned, err := c.apisixTlsLister.V2(tlsNamespace, tlsName)
+		multiVersioned, err := c.ApisixTlsLister.V2(tlsNamespace, tlsName)
 		if err != nil {
 			log.Warnw("secret related ApisixTls resource not found, skip",
 				zap.String("ApisixTls", tlsMetaKey),
@@ -663,4 +685,16 @@ func (c *apisixTlsController) syncSSLsAndUpdateStatusV2(ctx context.Context, ev 
 		}(ssl, tls)
 		return true
 	}
+}
+
+func (c *apisixTlsController) isEffective(atls kube.ApisixTls) bool {
+	if atls.GroupVersion() == config.ApisixV2 {
+		var ingClassName string
+		if atls.V2().Spec != nil {
+			ingClassName = atls.V2().Spec.IngressClassName
+		}
+		return utils.MatchCRDsIngressClass(ingClassName, c.Kubernetes.IngressClass)
+	}
+	// Compatible with legacy versions
+	return true
 }

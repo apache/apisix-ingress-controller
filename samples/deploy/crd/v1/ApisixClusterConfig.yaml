@@ -81,6 +81,8 @@ spec:
             spec:
               type: object
               properties:
+                ingressClassName:
+                  type: string
                 admin:
                   type: object
                   required:
@@ -98,6 +100,8 @@ spec:
                       type: object
                       properties:
                         enable:
+                          type: boolean
+                        prefer_name:
                           type: boolean
                     skywalking:
                       type: object
