@@ -369,9 +369,7 @@ spec:
             - %s
             - --ingress-status-address
             - "%s"
-            - --enable-admission=true
-            - --enable-gateway-api
-            - "true"
+            - --enable-admission=%t
             - --enable-gateway-api=true
             - --ingress-class
             - %s
