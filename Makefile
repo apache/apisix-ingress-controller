@@ -22,6 +22,10 @@ VERSION ?= 1.6.0
 TARGET_APISIX_VERSION ?= "3.1.0-centos"
 APISIX_ADMIN_API_VERSION ?= "v3"
 
+ifeq ($(APISIX_ADMIN_API_VERSION),v2)
+    TARGET_APISIX_VERSION ?= "2.15.3-centos"
+endif
+
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 REGISTRY_PORT ?= "5000"
 REGISTRY ?="localhost:$(REGISTRY_PORT)"
