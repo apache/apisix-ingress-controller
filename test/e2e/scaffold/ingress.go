@@ -352,6 +352,7 @@ spec:
             - %s
             - --apisix-resource-sync-interval
             - %s
+            - --apisix-resource-sync-comparison=%s
             - --http-listen
             - :8080
             - --https-listen
@@ -368,9 +369,10 @@ spec:
             - %s
             - --ingress-status-address
             - "%s"
-            - --enable-admission=%t
+            - --enable-admission=true
             - --enable-gateway-api
             - "true"
+            - --enable-gateway-api=true
             - --ingress-class
             - %s
             %s
@@ -390,6 +392,14 @@ func init() {
 	if os.Getenv("E2E_ENV") != "ci" {
 		_ingressAPISIXDeploymentTemplate = strings.Replace(_ingressAPISIXDeploymentTemplate, "imagePullPolicy: IfNotPresent", "imagePullPolicy: Always", -1)
 	}
+}
+
+func (s *Scaffold) genIngressDeployment(replicas int, namespace, adminAPIVersion,
+	syncInterval, syncComparison, label, resourceVersion, publishAddr string, webhooks bool, ingressClass,
+	disableStatus string) string {
+	return fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), replicas, namespace, adminAPIVersion, syncInterval, syncComparison,
+		label, resourceVersion, publishAddr, webhooks, ingressClass, disableStatus)
+
 }
 
 func (s *Scaffold) newIngressAPISIXController() error {
@@ -428,8 +438,9 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		s.createAdmissionWebhook()
 	}
 
-	ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval,
-		label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.EnableWebhooks, s.opts.IngressClass, disableStatusStr)
+	ingressAPISIXDeployment = s.genIngressDeployment(s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion,
+		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label,
+		s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.EnableWebhooks, s.opts.IngressClass, disableStatusStr)
 
 	err = s.CreateResourceFromString(ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
@@ -546,8 +557,9 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 		disableStatusStr = "- --disable-status-updates"
 	}
 
-	ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval,
-		label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.EnableWebhooks, s.opts.IngressClass, disableStatusStr)
+	ingressDeployment = s.genIngressDeployment(desired, s.namespace, s.opts.APISIXAdminAPIVersion,
+		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress,
+		s.opts.EnableWebhooks, s.opts.IngressClass, disableStatusStr)
 
 	if err := s.CreateResourceFromString(ingressDeployment); err != nil {
 		return err
