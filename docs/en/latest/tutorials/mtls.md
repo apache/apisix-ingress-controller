@@ -157,6 +157,7 @@ Apply this YAML file to create the `ApisixTls` resource:
 ```bash
 kubectl apply -f tls.yaml -n default
 ```
+
 **Testing the SSL Configuration**
 
 Now since we've configured SSL, we can test it out by sending a request to the protected route. To do this, we'll use the `curl` command.
