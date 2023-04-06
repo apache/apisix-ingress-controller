@@ -160,6 +160,10 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 			)
 			return err
 		}
+		if ev.Type == types.EventSync {
+			// ignore not found error in delay sync
+			return nil
+		}
 		if ev.Type != types.EventDelete {
 			log.Warnw("ApisixUpstream was deleted before it can be delivered",
 				zap.String("key", key),
@@ -248,7 +252,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 					zap.Any("upstream", newUps),
 					zap.Any("ApisixUpstream", au),
 				)
-				if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, newUps); err != nil {
+				if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, newUps, ev.Type.IsSyncEvent()); err != nil {
 					log.Errorw("failed to update upstream",
 						zap.Error(err),
 						zap.Any("upstream", newUps),
@@ -283,7 +287,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 			}
 
 			if len(au.Spec.ExternalNodes) != 0 {
-				errRecord = c.updateExternalNodes(ctx, au, nil, newUps, au.Namespace, au.Name)
+				errRecord = c.updateExternalNodes(ctx, au, nil, newUps, au.Namespace, au.Name, ev.Type.IsSyncEvent())
 				goto updateStatus
 			}
 
@@ -295,7 +299,7 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 			}
 			// updateUpstream for real
 			upsName := apisixv1.ComposeExternalUpstreamName(au.Namespace, au.Name)
-			errRecord = c.updateUpstream(ctx, upsName, &au.Spec.ApisixUpstreamConfig)
+			errRecord = c.updateUpstream(ctx, upsName, &au.Spec.ApisixUpstreamConfig, ev.Type.IsSyncEvent())
 			goto updateStatus
 		}
 
@@ -330,12 +334,12 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 					}
 				}
 
-				err := c.updateUpstream(ctx, apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Endpoint), &cfg)
+				err := c.updateUpstream(ctx, apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Endpoint), &cfg, ev.Type.IsSyncEvent())
 				if err != nil {
 					errRecord = err
 					goto updateStatus
 				}
-				err = c.updateUpstream(ctx, apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Service), &cfg)
+				err = c.updateUpstream(ctx, apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Service), &cfg, ev.Type.IsSyncEvent())
 				if err != nil {
 					errRecord = err
 					goto updateStatus
@@ -404,7 +408,7 @@ func (c *apisixUpstreamController) updateStatus(obj kube.ApisixUpstream, statusE
 	}
 }
 
-func (c *apisixUpstreamController) updateUpstream(ctx context.Context, upsName string, cfg *configv2.ApisixUpstreamConfig) error {
+func (c *apisixUpstreamController) updateUpstream(ctx context.Context, upsName string, cfg *configv2.ApisixUpstreamConfig, shouldCompare bool) error {
 	// TODO: multi cluster
 	clusterName := c.Config.APISIX.DefaultClusterName
 
@@ -436,7 +440,7 @@ func (c *apisixUpstreamController) updateUpstream(ctx context.Context, upsName s
 		zap.Any("upstream", newUps),
 		zap.String("ApisixUpstream name", upsName),
 	)
-	if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, newUps); err != nil {
+	if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, newUps, shouldCompare); err != nil {
 		log.Errorw("failed to update upstream",
 			zap.Error(err),
 			zap.Any("upstream", newUps),
@@ -448,7 +452,7 @@ func (c *apisixUpstreamController) updateUpstream(ctx context.Context, upsName s
 	return nil
 }
 
-func (c *apisixUpstreamController) updateExternalNodes(ctx context.Context, au *configv2.ApisixUpstream, old *configv2.ApisixUpstream, newUps *apisixv1.Upstream, ns, name string) error {
+func (c *apisixUpstreamController) updateExternalNodes(ctx context.Context, au *configv2.ApisixUpstream, old *configv2.ApisixUpstream, newUps *apisixv1.Upstream, ns, name string, shouldCompare bool) error {
 	clusterName := c.Config.APISIX.DefaultClusterName
 
 	// TODO: if old is not nil, diff the external nodes change first
@@ -477,7 +481,7 @@ func (c *apisixUpstreamController) updateExternalNodes(ctx context.Context, au *
 		}
 
 		ups.Nodes = nodes
-		if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, ups); err != nil {
+		if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, ups, shouldCompare); err != nil {
 			log.Errorw("failed to update external nodes upstream",
 				zap.Error(err),
 				zap.Any("upstream", ups),
@@ -691,6 +695,7 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 	log.Debugw("ApisixUpstream delete event arrived",
 		zap.Any("final state", au),
 	)
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixUpstreamEvent{
@@ -703,9 +708,10 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("upstream", "delete")
 }
 
-func (c *apisixUpstreamController) ResourceSync() {
+func (c *apisixUpstreamController) ResourceSync(interval time.Duration) {
 	objs := c.ApisixUpstreamInformer.GetIndexer().List()
-	for _, obj := range objs {
+	delay := GetSyncDelay(interval, len(objs))
+	for i, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
 			log.Errorw("ApisixUpstream sync failed, found ApisixUpstream resource with bad meta namespace key", zap.String("error", err.Error()))
@@ -722,13 +728,20 @@ func (c *apisixUpstreamController) ResourceSync() {
 		if !c.isEffective(au) {
 			continue
 		}
-		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
+		log.Debugw("ResourceSync",
+			zap.String("resource", "ApisixUpstream"),
+			zap.String("key", key),
+			zap.Duration("calc_delay", delay),
+			zap.Int("i", i),
+			zap.Duration("delay", delay*time.Duration(i)),
+		)
+		c.workqueue.AddAfter(&types.Event{
+			Type: types.EventSync,
 			Object: kube.ApisixUpstreamEvent{
 				Key:          key,
 				GroupVersion: au.GroupVersion(),
 			},
-		})
+		}, delay*time.Duration(i))
 	}
 }
 
@@ -850,7 +863,7 @@ func (c *apisixUpstreamController) handleSvcChange(ctx context.Context, key stri
 		if err != nil {
 			return err
 		}
-		err = c.updateExternalNodes(ctx, au.V2(), nil, nil, ns, name)
+		err = c.updateExternalNodes(ctx, au.V2(), nil, nil, ns, name, true)
 		if err != nil {
 			return err
 		}

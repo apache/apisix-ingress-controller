@@ -200,7 +200,7 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 
 		if ev.Type == types.EventDelete {
 			deleted = m
-		} else if ev.Type == types.EventAdd {
+		} else if ev.Type.IsAddEvent() {
 			added = m
 		} else {
 			oldCtx, _ := c.translator.TranslateOldIngress(ingEv.OldObject)
@@ -212,7 +212,7 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 			}
 			added, updated, deleted = m.Diff(om)
 		}
-		if err = c.SyncManifests(ctx, added, updated, deleted); err != nil {
+		if err = c.SyncManifests(ctx, added, updated, deleted, ev.Type.IsSyncEvent()); err != nil {
 			log.Errorw("failed to sync Ingress to apisix",
 				zap.Error(err),
 			)
@@ -481,7 +481,7 @@ func (c *ingressController) ResourceSync() {
 			zap.Any("object", obj),
 		)
 		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
+			Type: types.EventSync,
 			Object: kube.IngressEvent{
 				Key:          key,
 				GroupVersion: ing.GroupVersion(),

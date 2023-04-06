@@ -22,11 +22,13 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/gruntwork-io/terratest/modules/k8s"
@@ -135,6 +137,34 @@ func (s *Scaffold) CreateResourceFromString(yaml string) error {
 
 func (s *Scaffold) DeleteResourceFromString(yaml string) error {
 	return k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
+}
+
+func (s *Scaffold) Exec(podName, containerName string, args ...string) (string, error) {
+	cmdArgs := []string{}
+
+	if s.kubectlOptions.ContextName != "" {
+		cmdArgs = append(cmdArgs, "--context", s.kubectlOptions.ContextName)
+	}
+	if s.kubectlOptions.ConfigPath != "" {
+		cmdArgs = append(cmdArgs, "--kubeconfig", s.kubectlOptions.ConfigPath)
+	}
+	if s.kubectlOptions.Namespace != "" {
+		cmdArgs = append(cmdArgs, "--namespace", s.kubectlOptions.Namespace)
+	}
+
+	cmdArgs = append(cmdArgs, "exec")
+	cmdArgs = append(cmdArgs, "-i")
+	cmdArgs = append(cmdArgs, podName)
+	cmdArgs = append(cmdArgs, "-c")
+	cmdArgs = append(cmdArgs, containerName)
+	cmdArgs = append(cmdArgs, "--", "sh", "-c")
+	cmdArgs = append(cmdArgs, args...)
+
+	log.Infof("running command: kubectl %v", strings.Join(cmdArgs, " "))
+
+	output, err := exec.Command("kubectl", cmdArgs...).Output()
+
+	return strings.TrimSuffix(string(output), "\n"), err
 }
 
 func (s *Scaffold) GetOutputFromString(shell ...string) (string, error) {
