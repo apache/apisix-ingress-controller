@@ -375,11 +375,11 @@ spec:
             - %s
             %s
           volumeMounts:
-            - name: webhook-certs
+            - name: admission-webhook
               mountPath: /etc/webhook/certs
               readOnly: true
       volumes:
-       - name: webhook-certs
+       - name: admission-webhook
          secret:
            secretName: webhook-certs
            optional: true
@@ -424,6 +424,9 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	if s.opts.DisableStatus {
 		disableStatusStr = "- --disable-status-updates"
 	}
+	if s.opts.EnableWebhooks {
+		s.createAdmissionWebhook()
+	}
 
 	ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval,
 		label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.EnableWebhooks, s.opts.IngressClass, disableStatusStr)
@@ -431,35 +434,36 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	err = s.CreateResourceFromString(ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
 
-	if s.opts.EnableWebhooks {
-		err = generateWebhookCert(s.namespace)
-		assert.Nil(s.t, err, "generate certs and create webhook secret")
-		admissionSvc := fmt.Sprintf(_ingressAPISIXAdmissionService, s.namespace)
-		err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, admissionSvc)
-		assert.Nil(s.t, err, "create admission webhook service")
-
-		// get caBundle from the secret
-		secret, err := k8s.GetSecretE(s.t, s.kubectlOptions, "webhook-certs")
-		assert.Nil(s.t, err, "get webhook secret")
-		cert, ok := secret.Data["cert.pem"]
-		assert.True(s.t, ok, "get cert.pem from the secret")
-		caBundle := base64.StdEncoding.EncodeToString(cert)
-		s.NamespaceSelectorLabel()
-		webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, s.namespace, caBundle, "apisix.ingress.watch", s.namespace)
-		ginkgo.GinkgoT().Log(webhookReg)
-		err = s.CreateResourceFromString(webhookReg)
-		assert.Nil(s.t, err, "create webhook registration")
-
-		s.addFinalizers(func() {
-			err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, admissionSvc)
-			assert.Nil(s.t, err, "deleting admission service")
-		})
-		s.addFinalizers(func() {
-			err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, webhookReg)
-			assert.Nil(s.t, err, "deleting webhook registration")
-		})
-	}
 	return nil
+}
+
+func (s *Scaffold) createAdmissionWebhook() {
+	err := generateWebhookCert(s.namespace)
+	assert.Nil(s.t, err, "generate certs and create webhook secret")
+	admissionSvc := fmt.Sprintf(_ingressAPISIXAdmissionService, s.namespace)
+	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, admissionSvc)
+	assert.Nil(s.t, err, "create admission webhook service")
+
+	// get caBundle from the secret
+	secret, err := k8s.GetSecretE(s.t, s.kubectlOptions, "webhook-certs")
+	assert.Nil(s.t, err, "get webhook secret")
+	cert, ok := secret.Data["cert.pem"]
+	assert.True(s.t, ok, "get cert.pem from the secret")
+	caBundle := base64.StdEncoding.EncodeToString(cert)
+	s.NamespaceSelectorLabel()
+	webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, s.namespace, caBundle, "apisix.ingress.watch", s.namespace)
+	ginkgo.GinkgoT().Log(webhookReg)
+	err = s.CreateResourceFromString(webhookReg)
+	assert.Nil(s.t, err, "create webhook registration")
+
+	s.addFinalizers(func() {
+		err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, admissionSvc)
+		assert.Nil(s.t, err, "deleting admission service")
+	})
+	s.addFinalizers(func() {
+		err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, webhookReg)
+		assert.Nil(s.t, err, "deleting webhook registration")
+	})
 }
 
 func (s *Scaffold) WaitAllIngressControllerPodsAvailable() error {

@@ -513,6 +513,12 @@ func (s *Scaffold) afterEach() {
 			if output != "" {
 				_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
 			}
+			if s.opts.EnableWebhooks {
+				output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "validatingwebhookconfigurations", "-o", "yaml")
+				if output != "" {
+					_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+				}
+			}
 		}
 		if env != "debug" {
 			err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
