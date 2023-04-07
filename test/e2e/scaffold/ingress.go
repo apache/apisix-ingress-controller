@@ -357,6 +357,7 @@ spec:
             - %s
             - --apisix-resource-sync-interval
             - %s
+            - --apisix-resource-sync-comparison=%s
             - --http-listen
             - :8080
             - --https-listen
@@ -373,21 +374,20 @@ spec:
             - %s
             - --ingress-status-address
             - "%s"
-            - --enable-admission
-            - --enable-gateway-api
-            - "true"
+            - --enable-admission=%t
+            - --enable-gateway-api=true
             - --ingress-class
             - %s
             %s
           volumeMounts:
-            - name: webhook-certs
+            - name: admission-webhook
               mountPath: /etc/webhook/certs
               readOnly: true
       volumes:
-       - name: webhook-certs
+       - name: admission-webhook
          secret:
            secretName: webhook-certs
-           optional: %t
+           optional: true
       serviceAccount: ingress-apisix-e2e-test-service-account
 `
 
@@ -395,6 +395,14 @@ func init() {
 	if os.Getenv("E2E_ENV") != "ci" {
 		_ingressAPISIXDeploymentTemplate = strings.Replace(_ingressAPISIXDeploymentTemplate, "imagePullPolicy: IfNotPresent", "imagePullPolicy: Always", -1)
 	}
+}
+
+func (s *Scaffold) genIngressDeployment(replicas int, namespace, adminAPIVersion,
+	syncInterval, syncComparison, label, resourceVersion, publishAddr string, webhooks bool, ingressClass,
+	disableStatus string) string {
+	return fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), replicas, namespace, adminAPIVersion, syncInterval, syncComparison,
+		label, resourceVersion, publishAddr, webhooks, ingressClass, disableStatus)
+
 }
 
 func (s *Scaffold) newIngressAPISIXController() error {
@@ -429,42 +437,47 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	if s.opts.DisableStatus {
 		disableStatusStr = "- --disable-status-updates"
 	}
+	if s.opts.EnableWebhooks {
+		s.createAdmissionWebhook()
+	}
 
-	ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval,
-		label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.IngressClass, disableStatusStr, !s.opts.EnableWebhooks)
+	ingressAPISIXDeployment = s.genIngressDeployment(s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion,
+		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label,
+		s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.EnableWebhooks, s.opts.IngressClass, disableStatusStr)
 
 	err = s.CreateResourceFromString(ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
 
-	if s.opts.EnableWebhooks {
-		err = generateWebhookCert(s.namespace)
-		assert.Nil(s.t, err, "generate certs and create webhook secret")
-		admissionSvc := fmt.Sprintf(_ingressAPISIXAdmissionService, s.namespace)
-		err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, admissionSvc)
-		assert.Nil(s.t, err, "create admission webhook service")
-
-		// get caBundle from the secret
-		secret, err := k8s.GetSecretE(s.t, s.kubectlOptions, "webhook-certs")
-		assert.Nil(s.t, err, "get webhook secret")
-		cert, ok := secret.Data["cert.pem"]
-		assert.True(s.t, ok, "get cert.pem from the secret")
-		caBundle := base64.StdEncoding.EncodeToString(cert)
-		s.NamespaceSelectorLabel()
-		webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, s.namespace, caBundle, "apisix.ingress.watch", s.namespace)
-		ginkgo.GinkgoT().Log(webhookReg)
-		err = s.CreateResourceFromString(webhookReg)
-		assert.Nil(s.t, err, "create webhook registration")
-
-		s.addFinalizers(func() {
-			err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, admissionSvc)
-			assert.Nil(s.t, err, "deleting admission service")
-		})
-		s.addFinalizers(func() {
-			err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, webhookReg)
-			assert.Nil(s.t, err, "deleting webhook registration")
-		})
-	}
 	return nil
+}
+
+func (s *Scaffold) createAdmissionWebhook() {
+	err := generateWebhookCert(s.namespace)
+	assert.Nil(s.t, err, "generate certs and create webhook secret")
+	admissionSvc := fmt.Sprintf(_ingressAPISIXAdmissionService, s.namespace)
+	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, admissionSvc)
+	assert.Nil(s.t, err, "create admission webhook service")
+
+	// get caBundle from the secret
+	secret, err := k8s.GetSecretE(s.t, s.kubectlOptions, "webhook-certs")
+	assert.Nil(s.t, err, "get webhook secret")
+	cert, ok := secret.Data["cert.pem"]
+	assert.True(s.t, ok, "get cert.pem from the secret")
+	caBundle := base64.StdEncoding.EncodeToString(cert)
+	s.NamespaceSelectorLabel()
+	webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, s.namespace, caBundle, "apisix.ingress.watch", s.namespace)
+	ginkgo.GinkgoT().Log(webhookReg)
+	err = s.CreateResourceFromString(webhookReg)
+	assert.Nil(s.t, err, "create webhook registration")
+
+	s.addFinalizers(func() {
+		err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, admissionSvc)
+		assert.Nil(s.t, err, "deleting admission service")
+	})
+	s.addFinalizers(func() {
+		err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, webhookReg)
+		assert.Nil(s.t, err, "deleting webhook registration")
+	})
 }
 
 func (s *Scaffold) WaitAllIngressControllerPodsAvailable() error {
@@ -547,8 +560,9 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 		disableStatusStr = "- --disable-status-updates"
 	}
 
-	ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval,
-		label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.IngressClass, disableStatusStr, !s.opts.EnableWebhooks)
+	ingressDeployment = s.genIngressDeployment(desired, s.namespace, s.opts.APISIXAdminAPIVersion,
+		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress,
+		s.opts.EnableWebhooks, s.opts.IngressClass, disableStatusStr)
 
 	if err := s.CreateResourceFromString(ingressDeployment); err != nil {
 		return err
@@ -561,7 +575,7 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 
 // generateWebhookCert generates signed certs of webhook and create the corresponding secret by running a script.
 func generateWebhookCert(ns string) error {
-	commandTemplate := `testdata/cert.sh`
+	commandTemplate := `testdata/webhook-create-cert.sh`
 	os.Setenv("namespace", ns)
 	cmd := exec.Command("/bin/sh", commandTemplate, "--namespace", ns)
 

@@ -1,11 +1,11 @@
 ---
-title: kind
+title: OpenShift
 keywords:
   - APISIX ingress
   - Apache APISIX
   - Kubernetes ingress
-  - kind
-description: Guide to install APISIX ingress controller on kind.
+  - OpenShift
+description: Guide to install APISIX ingress controller on OpenShift.
 ---
 <!--
 #
@@ -26,30 +26,24 @@ description: Guide to install APISIX ingress controller on kind.
 #
 -->
 
-This document explains how you can install APISIX ingress locally on [kind](https://kind.sigs.k8s.io/).
+This document explains how you can install APISIX ingress locally on [OpenShift](https://www.redhat.com/en/technologies/cloud-computing/openshift/container-platform).
 
 ## Prerequisites
 
-* Install [Docker](https://docs.docker.com/engine/install/).
-* Install [kind](https://kind.sigs.k8s.io/docs/user/quick-start/).
+Setting up APISIX ingress on OpenShift requires the following:
+
+* [Deploy your OpenShift cluster](https://www.redhat.com/en/technologies/cloud-computing/openshift/deploy-red-hat-openshift)
+* Install [OpenShift CLI (oc)](https://docs.openshift.com/container-platform/4.12/cli_reference/openshift_cli/getting-started-cli.html#installing-openshift-cli)
 * Install [Helm](https://helm.sh/).
 * Install [kubectl](https://kubernetes.io/docs/tasks/tools/).
 
-:::tip
+## Before Start
 
-If you encounter issues, check the version you are using. This document uses kind v0.12.0, Helm v3.8.1, and kubectl v1.23.5.
+You should create a Project to deploy APISIX Ingress controller. e.g. `ingress-apisix`
 
-:::
+Due to the existence of [security context constraints (SCC)](https://docs.openshift.com/container-platform/4.9/authentication/managing-security-context-constraints.html) in OpenShift, you need to create an authorized account for deployment.
 
-## Create a kind cluster
-
-Ensure you have Docker running and start the kind cluster:
-
-```shell
-kind create cluster
-```
-
-See [Ingress](https://kind.sigs.k8s.io/docs/user/ingress/#create-cluster) to learn more about setting up ingress on a kind cluster.
+You can complete the relevant operations through `oc` CLI.
 
 ## Install APISIX and ingress controller
 
@@ -64,6 +58,8 @@ ADMIN_API_VERSION=v3
 helm install apisix apisix/apisix \
   --set gateway.type=NodePort \
   --set ingress-controller.enabled=true \
+  --set etcd.podSecurityContext.enabled=false \
+  --set etcd.containerSecurityContext.enabled=false \
   --create-namespace \
   --namespace ingress-apisix \
   --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix \

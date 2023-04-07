@@ -25,7 +25,7 @@ import (
 // APISIX is the unified client tool to communicate with APISIX.
 type APISIX interface {
 	// Cluster specifies the target cluster to talk.
-	Cluster(string) Cluster
+	Cluster(name string) Cluster
 	// AddCluster adds a new cluster.
 	AddCluster(context.Context, *ClusterOptions) error
 	// UpdateCluster updates an existing cluster.
@@ -33,7 +33,7 @@ type APISIX interface {
 	// ListClusters lists all APISIX clusters.
 	ListClusters() []Cluster
 	// DeleteCluster deletes the target APISIX cluster by its name.
-	DeleteCluster(string)
+	DeleteCluster(name string)
 }
 
 // Cluster defines specific operations that can be applied in an APISIX
@@ -72,103 +72,104 @@ type Cluster interface {
 // Route is the specific client interface to take over the create, update,
 // list and delete for APISIX Route resource.
 type Route interface {
-	Get(context.Context, string) (*v1.Route, error)
-	List(context.Context) ([]*v1.Route, error)
-	Create(context.Context, *v1.Route) (*v1.Route, error)
-	Delete(context.Context, *v1.Route) error
-	Update(context.Context, *v1.Route) (*v1.Route, error)
+	Get(ctx context.Context, name string) (*v1.Route, error)
+	List(ctx context.Context) ([]*v1.Route, error)
+	Create(ctx context.Context, route *v1.Route, shouldCompare bool) (*v1.Route, error)
+	Delete(ctx context.Context, route *v1.Route) error
+	Update(ctx context.Context, route *v1.Route, shouldCompare bool) (*v1.Route, error)
 }
 
 // SSL is the specific client interface to take over the create, update,
 // list and delete for APISIX SSL resource.
 type SSL interface {
-	Get(context.Context, string) (*v1.Ssl, error)
-	List(context.Context) ([]*v1.Ssl, error)
-	Create(context.Context, *v1.Ssl) (*v1.Ssl, error)
-	Delete(context.Context, *v1.Ssl) error
-	Update(context.Context, *v1.Ssl) (*v1.Ssl, error)
+	// name is namespace_sslname
+	Get(ctx context.Context, name string) (*v1.Ssl, error)
+	List(ctx context.Context) ([]*v1.Ssl, error)
+	Create(ctx context.Context, ssl *v1.Ssl, shouldCompare bool) (*v1.Ssl, error)
+	Delete(ctx context.Context, ssl *v1.Ssl) error
+	Update(ctx context.Context, ssl *v1.Ssl, shouldCompare bool) (*v1.Ssl, error)
 }
 
 // Upstream is the specific client interface to take over the create, update,
 // list and delete for APISIX Upstream resource.
 type Upstream interface {
-	Get(context.Context, string) (*v1.Upstream, error)
-	List(context.Context) ([]*v1.Upstream, error)
-	Create(context.Context, *v1.Upstream) (*v1.Upstream, error)
-	Delete(context.Context, *v1.Upstream) error
-	Update(context.Context, *v1.Upstream) (*v1.Upstream, error)
+	Get(ctx context.Context, name string) (*v1.Upstream, error)
+	List(ctx context.Context) ([]*v1.Upstream, error)
+	Create(ctx context.Context, ups *v1.Upstream, shouldCompare bool) (*v1.Upstream, error)
+	Delete(ctx context.Context, ups *v1.Upstream) error
+	Update(ctx context.Context, ups *v1.Upstream, shouldCompare bool) (*v1.Upstream, error)
 }
 
 // StreamRoute is the specific client interface to take over the create, update,
 // list and delete for APISIX Stream Route resource.
 type StreamRoute interface {
-	Get(context.Context, string) (*v1.StreamRoute, error)
-	List(context.Context) ([]*v1.StreamRoute, error)
-	Create(context.Context, *v1.StreamRoute) (*v1.StreamRoute, error)
-	Delete(context.Context, *v1.StreamRoute) error
-	Update(context.Context, *v1.StreamRoute) (*v1.StreamRoute, error)
+	Get(ctx context.Context, name string) (*v1.StreamRoute, error)
+	List(ctx context.Context) ([]*v1.StreamRoute, error)
+	Create(ctx context.Context, route *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error)
+	Delete(ctx context.Context, route *v1.StreamRoute) error
+	Update(ctx context.Context, route *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error)
 }
 
 // GlobalRule is the specific client interface to take over the create, update,
 // list and delete for APISIX Global Rule resource.
 type GlobalRule interface {
-	Get(context.Context, string) (*v1.GlobalRule, error)
-	List(context.Context) ([]*v1.GlobalRule, error)
-	Create(context.Context, *v1.GlobalRule) (*v1.GlobalRule, error)
-	Delete(context.Context, *v1.GlobalRule) error
-	Update(context.Context, *v1.GlobalRule) (*v1.GlobalRule, error)
+	Get(ctx context.Context, id string) (*v1.GlobalRule, error)
+	List(ctx context.Context) ([]*v1.GlobalRule, error)
+	Create(ctx context.Context, rule *v1.GlobalRule, shouldCompare bool) (*v1.GlobalRule, error)
+	Delete(ctx context.Context, rule *v1.GlobalRule) error
+	Update(ctx context.Context, rule *v1.GlobalRule, shouldCompare bool) (*v1.GlobalRule, error)
 }
 
 // Consumer is the specific client interface to take over the create, update,
 // list and delete for APISIX Consumer resource.
 type Consumer interface {
-	Get(context.Context, string) (*v1.Consumer, error)
-	List(context.Context) ([]*v1.Consumer, error)
-	Create(context.Context, *v1.Consumer) (*v1.Consumer, error)
-	Delete(context.Context, *v1.Consumer) error
-	Update(context.Context, *v1.Consumer) (*v1.Consumer, error)
+	Get(ctx context.Context, name string) (*v1.Consumer, error)
+	List(ctx context.Context) ([]*v1.Consumer, error)
+	Create(ctx context.Context, consumer *v1.Consumer, shouldCompare bool) (*v1.Consumer, error)
+	Delete(ctx context.Context, consumer *v1.Consumer) error
+	Update(ctx context.Context, consumer *v1.Consumer, shouldCompare bool) (*v1.Consumer, error)
 }
 
 // Plugin is the specific client interface to fetch APISIX Plugin resource.
 type Plugin interface {
-	List(context.Context) ([]string, error)
+	List(ctx context.Context) ([]string, error)
 }
 
 // Schema is the specific client interface to fetch the schema of APISIX objects.
 type Schema interface {
-	GetPluginSchema(context.Context, string) (*v1.Schema, error)
-	GetRouteSchema(context.Context) (*v1.Schema, error)
-	GetUpstreamSchema(context.Context) (*v1.Schema, error)
-	GetConsumerSchema(context.Context) (*v1.Schema, error)
-	GetSslSchema(context.Context) (*v1.Schema, error)
+	GetPluginSchema(ctx context.Context, pluginName string) (*v1.Schema, error)
+	GetRouteSchema(ctx context.Context) (*v1.Schema, error)
+	GetUpstreamSchema(ctx context.Context) (*v1.Schema, error)
+	GetConsumerSchema(ctx context.Context) (*v1.Schema, error)
+	GetSslSchema(ctx context.Context) (*v1.Schema, error)
 	GetPluginConfigSchema(ctx context.Context) (*v1.Schema, error)
 }
 
 // PluginConfig is the specific client interface to take over the create, update,
 // list and delete for APISIX PluginConfig resource.
 type PluginConfig interface {
-	Get(context.Context, string) (*v1.PluginConfig, error)
-	List(context.Context) ([]*v1.PluginConfig, error)
-	Create(context.Context, *v1.PluginConfig) (*v1.PluginConfig, error)
-	Delete(context.Context, *v1.PluginConfig) error
-	Update(context.Context, *v1.PluginConfig) (*v1.PluginConfig, error)
+	Get(ctx context.Context, name string) (*v1.PluginConfig, error)
+	List(ctx context.Context) ([]*v1.PluginConfig, error)
+	Create(ctx context.Context, plugin *v1.PluginConfig, shouldCompare bool) (*v1.PluginConfig, error)
+	Delete(ctx context.Context, plugin *v1.PluginConfig) error
+	Update(ctx context.Context, plugin *v1.PluginConfig, shouldCompare bool) (*v1.PluginConfig, error)
 }
 
 type PluginMetadata interface {
-	Get(context.Context, string) (*v1.PluginMetadata, error)
-	List(context.Context) ([]*v1.PluginMetadata, error)
-	Delete(context.Context, *v1.PluginMetadata) error
-	Update(context.Context, *v1.PluginMetadata) (*v1.PluginMetadata, error)
+	Get(ctx context.Context, name string) (*v1.PluginMetadata, error)
+	List(ctx context.Context) ([]*v1.PluginMetadata, error)
+	Delete(ctx context.Context, metadata *v1.PluginMetadata) error
+	Update(ctx context.Context, metadata *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error)
 }
 
 type UpstreamServiceRelation interface {
 	// Get relation based on namespace+"_"+service.name
-	Get(context.Context, string) (*v1.UpstreamServiceRelation, error)
-	List(context.Context) ([]*v1.UpstreamServiceRelation, error)
+	Get(ctx context.Context, svcName string) (*v1.UpstreamServiceRelation, error)
+	List(ctx context.Context) ([]*v1.UpstreamServiceRelation, error)
 	// Delete relation based on namespace+"_"+service.name
-	Delete(context.Context, string) error
+	Delete(ctx context.Context, svcName string) error
 	// Build relation based on upstream.name
-	Create(context.Context, string) error
+	Create(ctx context.Context, svcName string) error
 }
 
 type apisix struct {
