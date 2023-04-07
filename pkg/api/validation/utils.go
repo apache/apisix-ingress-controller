@@ -89,13 +89,31 @@ func validateSchema(schemaLoader *gojsonschema.JSONLoader, obj interface{}) (boo
 		return true, nil
 	}
 
-	log.Warn("the given document is not valid. see errors:\n")
 	var resultErr error
-	resultErr = multierror.Append(resultErr, fmt.Errorf("the given document is not valid"))
 	for _, desc := range result.Errors() {
-		resultErr = multierror.Append(resultErr, fmt.Errorf("%s", desc.Description()))
-		log.Warnf("- %s", desc)
+		resultErr = multierror.Append(resultErr, fmt.Errorf("- %s", desc.String()))
+	}
+	return false, resultErr
+}
+
+func ValidatePlugin(client apisix.Schema, pluginName string, pluginConfig interface{}) (valid bool, resultErr error) {
+	valid = true
+
+	pluginSchema, err := client.GetPluginSchema(context.TODO(), pluginName)
+	if err != nil {
+		resultErr = fmt.Errorf("failed to get the schema of plugin %s: %s", pluginName, err)
+		log.Error(resultErr)
+		valid = false
+		return
 	}
 
-	return false, resultErr
+	pluginSchemaLoader := gojsonschema.NewStringLoader(pluginSchema.Content)
+	if _, err := validateSchema(&pluginSchemaLoader, pluginConfig); err != nil {
+		valid = false
+		resultErr = multierror.Append(resultErr, fmt.Errorf("%s plugin's config is invalid", pluginName))
+		resultErr = multierror.Append(resultErr, err)
+		log.Warn(resultErr)
+	}
+
+	return
 }
