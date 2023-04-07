@@ -46,6 +46,7 @@ func newSSLClient(c *cluster) SSL {
 	}
 }
 
+// name is namespace_sslname
 func (s *sslClient) Get(ctx context.Context, name string) (*v1.Ssl, error) {
 	log.Debugw("try to look up ssl",
 		zap.String("name", name),
@@ -69,33 +70,9 @@ func (s *sslClient) Get(ctx context.Context, name string) (*v1.Ssl, error) {
 		)
 	}
 
-	// TODO Add mutex here to avoid dog-pile effection.
-	url := s.url + "/" + sid
-	resp, err := s.cluster.getResource(ctx, url, "ssl")
+	// TODO Add mutex here to avoid dog-pile effect.
+	ssl, err = s.cluster.GetSSL(ctx, s.url, sid)
 	if err != nil {
-		if err == cache.ErrNotFound {
-			log.Warnw("ssl not found",
-				zap.String("name", name),
-				zap.String("url", url),
-				zap.String("cluster", s.cluster.name),
-			)
-		} else {
-			log.Errorw("failed to get ssl from APISIX",
-				zap.String("name", name),
-				zap.String("url", url),
-				zap.String("cluster", s.cluster.name),
-				zap.Error(err),
-			)
-		}
-		return nil, err
-	}
-	ssl, err = resp.ssl()
-	if err != nil {
-		log.Errorw("failed to convert ssl item",
-			zap.String("url", s.url),
-			zap.String("ssl_key", resp.Key),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -115,7 +92,6 @@ func (s *sslClient) List(ctx context.Context) ([]*v1.Ssl, error) {
 	)
 
 	sslItems, err := s.cluster.listResource(ctx, s.url, "ssl")
-	s.cluster.metricsCollector.IncrAPISIXRequest("ssl")
 	if err != nil {
 		log.Errorf("failed to list ssl: %s", err)
 		return nil, err
@@ -139,7 +115,11 @@ func (s *sslClient) List(ctx context.Context) ([]*v1.Ssl, error) {
 	return items, nil
 }
 
-func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
+func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl, shouldCompare bool) (*v1.Ssl, error) {
+	if v, skip := skipRequest(s.cluster, shouldCompare, s.url, obj.ID, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to create ssl",
 		zap.String("cluster", s.cluster.name),
 		zap.String("url", s.url),
@@ -155,7 +135,6 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	url := s.url + "/" + obj.ID
 	log.Debugw("creating ssl", zap.ByteString("body", data), zap.String("url", url))
 	resp, err := s.cluster.createResource(ctx, url, "ssl", data)
-	s.cluster.metricsCollector.IncrAPISIXRequest("ssl")
 	if err != nil {
 		log.Errorf("failed to create ssl: %s", err)
 		return nil, err
@@ -167,6 +146,10 @@ func (s *sslClient) Create(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	}
 	if err := s.cluster.cache.InsertSSL(ssl); err != nil {
 		log.Errorf("failed to reflect ssl create to cache: %s", err)
+		return nil, err
+	}
+	if err := s.cluster.generatedObjCache.InsertSSL(obj); err != nil {
+		log.Errorf("failed to reflect generated ssl create to cache: %s", err)
 		return nil, err
 	}
 	return ssl, nil
@@ -183,12 +166,16 @@ func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 	}
 	url := s.url + "/" + obj.ID
 	if err := s.cluster.deleteResource(ctx, url, "ssl"); err != nil {
-		s.cluster.metricsCollector.IncrAPISIXRequest("ssl")
 		return err
 	}
-	s.cluster.metricsCollector.IncrAPISIXRequest("ssl")
 	if err := s.cluster.cache.DeleteSSL(obj); err != nil {
 		log.Errorf("failed to reflect ssl delete to cache: %s", err)
+		if err != cache.ErrNotFound {
+			return err
+		}
+	}
+	if err := s.cluster.generatedObjCache.DeleteSSL(obj); err != nil {
+		log.Errorf("failed to reflect ssl delete to generated cache: %s", err)
 		if err != cache.ErrNotFound {
 			return err
 		}
@@ -196,7 +183,11 @@ func (s *sslClient) Delete(ctx context.Context, obj *v1.Ssl) error {
 	return nil
 }
 
-func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
+func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl, shouldCompare bool) (*v1.Ssl, error) {
+	if v, skip := skipRequest(s.cluster, shouldCompare, s.url, obj.ID, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to update ssl",
 		zap.String("id", obj.ID),
 		zap.String("cluster", s.cluster.name),
@@ -211,7 +202,6 @@ func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 		return nil, err
 	}
 	resp, err := s.cluster.updateResource(ctx, url, "ssl", data)
-	s.cluster.metricsCollector.IncrAPISIXRequest("ssl")
 	if err != nil {
 		return nil, err
 	}
@@ -221,6 +211,10 @@ func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl) (*v1.Ssl, error) {
 	}
 	if err := s.cluster.cache.InsertSSL(ssl); err != nil {
 		log.Errorf("failed to reflect ssl update to cache: %s", err)
+		return nil, err
+	}
+	if err := s.cluster.generatedObjCache.InsertSSL(obj); err != nil {
+		log.Errorf("failed to reflect generated ssl update to cache: %s", err)
 		return nil, err
 	}
 	return ssl, nil

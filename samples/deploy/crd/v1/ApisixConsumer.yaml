@@ -212,6 +212,8 @@ spec:
               required:
                 - authParameter
               properties:
+                ingressClassName:
+                  type: string
                 authParameter:
                   type: object
                   oneOf:

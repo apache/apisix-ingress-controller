@@ -202,6 +202,15 @@ rules:
     - get
     - list
     - watch
+  - apiGroups:
+    - gateway.networking.k8s.io
+    resources:
+    - gateways/status
+    - gatewayclasses/status
+    verbs:
+    - get
+    - update
+    - list
 `
 	_clusterRoleBinding = `
 apiVersion: rbac.authorization.k8s.io/v1
@@ -380,6 +389,7 @@ spec:
             - %s
             - --apisix-resource-sync-interval
             - %s
+            - --apisix-resource-sync-comparison=%s
             - --http-listen
             - :8080
             - --https-listen
@@ -396,8 +406,9 @@ spec:
             - %s
             - --ingress-status-address
             - "%s"
-            - --enable-gateway-api
-            - "true"
+            - --enable-gateway-api=true
+            - --ingress-class
+            - %s
             %s
           %s
       volumes:
@@ -411,6 +422,14 @@ func init() {
 	if os.Getenv("E2E_ENV") != "ci" {
 		_ingressAPISIXDeploymentTemplate = strings.Replace(_ingressAPISIXDeploymentTemplate, "imagePullPolicy: IfNotPresent", "imagePullPolicy: Always", -1)
 	}
+}
+
+func (s *Scaffold) genIngressDeployment(replicas int, namespace, adminAPIVersion,
+	syncInterval, syncComparison, label, resourceVersion, publishAddr, ingressClass,
+	disableStatus, webhookMounts, webhookCertSecret string) string {
+	return fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), replicas, namespace, adminAPIVersion, syncInterval, syncComparison,
+		label, resourceVersion, publishAddr, ingressClass, disableStatus, webhookMounts, webhookCertSecret)
+
 }
 
 func (s *Scaffold) newIngressAPISIXController() error {
@@ -450,8 +469,9 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		webhookVolumeMounts = _volumeMounts
 	}
 
-	ingressAPISIXDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval,
-		label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, disableStatusStr, webhookVolumeMounts, _webhookCertSecret)
+	ingressAPISIXDeployment = s.genIngressDeployment(s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion,
+		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label,
+		s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.IngressClass, disableStatusStr, webhookVolumeMounts, _webhookCertSecret)
 
 	err = s.CreateResourceFromString(ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
@@ -570,9 +590,9 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 		webhookVolumeMounts = _volumeMounts
 	}
 
-	ingressDeployment = fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), desired, s.namespace,
-		s.opts.APISIXAdminAPIVersion, s.opts.ApisixResourceSyncInterval, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress,
-		disableStatusStr, webhookVolumeMounts, _webhookCertSecret)
+	ingressDeployment = s.genIngressDeployment(desired, s.namespace, s.opts.APISIXAdminAPIVersion,
+		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress,
+		s.opts.IngressClass, disableStatusStr, webhookVolumeMounts, _webhookCertSecret)
 
 	if err := s.CreateResourceFromString(ingressDeployment); err != nil {
 		return err

@@ -158,8 +158,8 @@ func (t *translator) TranslateGatewayHTTPRouteV1beta1(httpRoute *gatewayv1beta1.
 		var weightedUpstreams []apisixv1.TrafficSplitConfigRuleWeightedUpstream
 
 		for j, backend := range backends {
-			//TODO: Support filters
-			//filters := backend.Filters
+			// TODO: Support filters
+			// filters := backend.Filters
 			var kind string
 			if backend.Kind == nil {
 				kind = "service"
@@ -194,7 +194,7 @@ func (t *translator) TranslateGatewayHTTPRouteV1beta1(httpRoute *gatewayv1beta1.
 			if err != nil {
 				return nil, errors.Wrap(err, fmt.Sprintf("failed to translate Rules[%v].BackendRefs[%v]", i, j))
 			}
-			name := apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port), types.ResolveGranularity.Endpoint)
+			ups.Name = apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port), types.ResolveGranularity.Endpoint)
 
 			// APISIX limits max length of label value
 			// https://github.com/apache/apisix/blob/5b95b85faea3094d5e466ee2d39a52f1f805abbb/apisix/schema_def.lua#L85
@@ -202,7 +202,12 @@ func (t *translator) TranslateGatewayHTTPRouteV1beta1(httpRoute *gatewayv1beta1.
 			ups.Labels["meta_backend"] = utils.TruncateString(string(backend.Name), 64)
 			ups.Labels["meta_port"] = fmt.Sprintf("%v", int32(*backend.Port))
 
-			ups.ID = id.GenID(name)
+			ups.ID = id.GenID(ups.Name)
+			log.Debugw("translated HTTPRoute upstream",
+				zap.Int("backendRefs_index", j),
+				zap.String("backendRefs_name", string(backend.Name)),
+				zap.String("name", ups.Name),
+			)
 			ctx.AddUpstream(ups)
 			ruleUpstreams = append(ruleUpstreams, ups)
 
@@ -267,8 +272,8 @@ func (t *translator) TranslateGatewayHTTPRouteV1beta1(httpRoute *gatewayv1beta1.
 			ctx.AddRoute(route)
 		}
 
-		//TODO: Support filters
-		//filters := rule.Filters
+		// TODO: Support filters
+		// filters := rule.Filters
 	}
 
 	return ctx, nil

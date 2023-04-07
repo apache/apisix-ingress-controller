@@ -16,10 +16,20 @@
 package scaffold
 
 import (
+	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/pem"
 	"fmt"
+	"math/big"
+	"time"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -55,6 +65,7 @@ kind: ApisixTls
 metadata:
   name: %s
 spec:
+  %s
   hosts:
   - %s
   secret:
@@ -113,8 +124,12 @@ func (s *Scaffold) NewClientCASecret(name, cert, key string) error {
 }
 
 // NewApisixTls new a ApisixTls CRD
-func (s *Scaffold) NewApisixTls(name, host, secretName string) error {
-	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.ApisixResourceVersion, name, host, secretName, s.kubectlOptions.Namespace)
+func (s *Scaffold) NewApisixTls(name, host, secretName string, ingressClassName ...string) error {
+	var ingClassName string
+	if len(ingressClassName) > 0 {
+		ingClassName = "ingressClassName: " + ingressClassName[0]
+	}
+	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.ApisixResourceVersion, name, ingClassName, host, secretName, s.kubectlOptions.Namespace)
 	if err := s.CreateResourceFromString(tls); err != nil {
 		return err
 	}
@@ -132,9 +147,45 @@ func (s *Scaffold) NewApisixTlsWithClientCA(name, host, secretName, clientCASecr
 
 // DeleteApisixTls remove ApisixTls CRD
 func (s *Scaffold) DeleteApisixTls(name string, host, secretName string) error {
-	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.ApisixResourceVersion, name, host, secretName, s.kubectlOptions.Namespace)
+	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.ApisixResourceVersion, name, "", host, secretName, s.kubectlOptions.Namespace)
 	if err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, tls); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (s *Scaffold) GenerateCert(t ginkgo.GinkgoTInterface, dnsNames []string) (certPemBytes, privPemBytes bytes.Buffer) {
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	pub := priv.Public()
+
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	assert.NoError(t, err)
+
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{"Acme Co"},
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().Add(time.Hour),
+
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		BasicConstraintsValid: true,
+
+		DNSNames: dnsNames,
+	}
+
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, priv)
+	assert.NoError(t, err)
+	err = pem.Encode(&certPemBytes, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	assert.NoError(t, err)
+
+	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
+	assert.NoError(t, err)
+	err = pem.Encode(&privPemBytes, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes})
+	assert.NoError(t, err)
+
+	return
 }

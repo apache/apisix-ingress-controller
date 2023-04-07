@@ -49,7 +49,7 @@ ingress_status_address: []   # when there is no available information on the Ser
                              # For example, no available LB exists in the bare metal environment.
 enable_profiling: true # enable profiling via web interfaces
                        # host:port/debug/pprof, default is true.
-apisix-resource-sync-interval: "300s" # Default interval for synchronizing Kubernetes resources to APISIX
+apisix_resource_sync_interval: "1h" # Default interval for synchronizing Kubernetes resources to APISIX
 
 # Kubernetes related configurations.
 kubernetes:
@@ -64,7 +64,8 @@ kubernetes:
   election_id: "ingress-apisix-leader" # the election id for the controller leader campaign,
                                        # only the leader will watch and delivery resource changes,
                                        # other instances (as candidates) stand by.
-  ingress_class: "apisix"              # the class of an Ingress object is set using the field
+  ingress_class: "apisix-and-all"      # apisix-and-all is a special value, it handles Ingress resources with ingressClassName=apisix and all CRDs.
+                                       # this field can be used for both Ingress Object and custom resources.
                                        # IngressClassName in Kubernetes clusters version v1.18.0
                                        # or higher or the annotation "kubernetes.io/ingress.class"
                                        # (deprecated).

@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
+	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
@@ -190,7 +191,7 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 
 	if ev.Type == types.EventDelete {
 		deleted = m
-	} else if ev.Type == types.EventAdd {
+	} else if ev.Type.IsAddEvent() {
 		added = m
 	} else {
 		oldCtx, err := c.translator.TranslateOldIngress(ingEv.OldObject)
@@ -210,7 +211,7 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		}
 		added, updated, deleted = m.Diff(om)
 	}
-	if err := c.SyncManifests(ctx, added, updated, deleted); err != nil {
+	if err := c.SyncManifests(ctx, added, updated, deleted, ev.Type.IsSyncEvent()); err != nil {
 		log.Errorw("failed to sync ingress artifacts",
 			zap.Error(err),
 		)
@@ -411,8 +412,9 @@ func (c *ingressController) OnDelete(obj interface{}) {
 
 func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 	var (
-		ic  *string
-		ica string
+		ic                 *string
+		ica                string
+		configIngressClass = c.Kubernetes.IngressClass
 	)
 	if ing.GroupVersion() == kube.IngressV1 {
 		ic = ing.V1().Spec.IngressClassName
@@ -424,13 +426,16 @@ func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 		ic = ing.ExtensionsV1beta1().Spec.IngressClassName
 		ica = ing.ExtensionsV1beta1().GetAnnotations()[_ingressKey]
 	}
+	if configIngressClass == config.IngressClassApisixAndAll {
+		configIngressClass = config.IngressClass
+	}
 
 	// kubernetes.io/ingress.class takes the precedence.
 	if ica != "" {
-		return ica == c.Kubernetes.IngressClass
+		return ica == configIngressClass
 	}
 	if ic != nil {
-		return *ic == c.Kubernetes.IngressClass
+		return *ic == configIngressClass
 	}
 	return false
 }
@@ -454,7 +459,7 @@ func (c *ingressController) ResourceSync() {
 			zap.Any("object", obj),
 		)
 		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
+			Type: types.EventSync,
 			Object: kube.IngressEvent{
 				Key:          key,
 				GroupVersion: ing.GroupVersion(),

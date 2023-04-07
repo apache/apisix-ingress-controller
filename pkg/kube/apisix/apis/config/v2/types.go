@@ -43,8 +43,9 @@ type ApisixStatus struct {
 
 // ApisixRouteSpec is the spec definition for ApisixRouteSpec.
 type ApisixRouteSpec struct {
-	HTTP   []ApisixRouteHTTP   `json:"http,omitempty" yaml:"http,omitempty"`
-	Stream []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
+	IngressClassName string              `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
+	HTTP             []ApisixRouteHTTP   `json:"http,omitempty" yaml:"http,omitempty"`
+	Stream           []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
 }
 
 // UpstreamTimeout is settings for the read, send and connect to the upstream.
@@ -291,6 +292,12 @@ type ApisixClusterConfig struct {
 
 // ApisixClusterConfigSpec defines the desired state of ApisixClusterConfigSpec.
 type ApisixClusterConfigSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// controller implementations use this field to know whether they should be
+	// serving this ApisixClusterConfig resource, by a transitive connection
+	// (controller -> IngressClass -> ApisixClusterConfig resource).
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	// Monitoring categories all monitoring related features.
 	// +optional
 	Monitoring *ApisixClusterMonitoringConfig `json:"monitoring" yaml:"monitoring"`
@@ -359,6 +366,13 @@ type ApisixConsumer struct {
 
 // ApisixConsumerSpec defines the desired state of ApisixConsumer.
 type ApisixConsumerSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// controller implementations use this field to know whether they should be
+	// serving this ApisixConsumer resource, by a transitive connection
+	// (controller -> IngressClass -> ApisixConsumer resource).
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
+
 	AuthParameter ApisixConsumerAuthParameter `json:"authParameter" yaml:"authParameter"`
 }
 
@@ -479,6 +493,12 @@ type ApisixUpstream struct {
 
 // ApisixUpstreamSpec describes the specification of ApisixUpstream.
 type ApisixUpstreamSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// controller implementations use this field to know whether they should be
+	// serving this ApisixUpstream resource, by a transitive connection
+	// (controller -> IngressClass -> ApisixUpstream resource).
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	// ExternalNodes contains external nodes the Upstream should use
 	// If this field is set, the upstream will use these nodes directly without any further resolves
 	// +optional
@@ -724,6 +744,12 @@ type HostType string
 
 // ApisixTlsSpec is the specification of ApisixSSL.
 type ApisixTlsSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// controller implementations use this field to know whether they should be
+	// serving this ApisixTls resource, by a transitive connection
+	// (controller -> IngressClass -> ApisixTls resource).
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	// +required
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1
@@ -768,6 +794,10 @@ type ApisixPluginConfig struct {
 
 // ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
 type ApisixPluginConfigSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// The controller uses this field to decide whether the resource should be managed or not.
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	// Plugins contains a list of ApisixRoutePlugin
 	// +required
 	Plugins []ApisixRoutePlugin `json:"plugins" yaml:"plugins"`
@@ -800,6 +830,10 @@ type ApisixGlobalRule struct {
 
 // ApisixGlobalRuleSpec defines the desired state of ApisixGlobalRuleSpec.
 type ApisixGlobalRuleSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// The controller uses this field to decide whether the resource should be managed or not.
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	// Plugins contains a list of ApisixRoutePlugin
 	// +required
 	Plugins []ApisixRoutePlugin `json:"plugins" yaml:"plugins"`

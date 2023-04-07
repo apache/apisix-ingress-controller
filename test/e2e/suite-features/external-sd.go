@@ -224,6 +224,7 @@ spec:
 			// We use it for service discovery
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", "dns", "httpbin-temp")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, fqdn, "dns")
@@ -236,10 +237,12 @@ spec:
 			// -- Data preparation --
 			fqdn := PhaseCreateHttpbin(s, "httpbin-temp")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
-			PhaseValidateNoUpstreams(s)
+			time.Sleep(time.Second * 6)
 
+			PhaseValidateNoUpstreams(s)
 			// -- Data Update --
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", "dns", "httpbin-temp")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, fqdn, "dns")
@@ -249,11 +252,13 @@ spec:
 		ginkgo.It("should be able to create the target service later", func() {
 			// -- Data preparation --
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
+			time.Sleep(time.Second * 6)
 			PhaseValidateNoUpstreams(s)
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", "dns", "httpbin-temp")
 
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", "dns", "httpbin-temp")
 			// -- Data Update --
 			fqdn := PhaseCreateHttpbin(s, "httpbin-temp")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, fqdn, "dns")
@@ -267,6 +272,7 @@ spec:
 			fqdn := PhaseCreateHttpbin(s, "httpbin-temp")
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", "dns", "httpbin-temp")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, fqdn, "dns")
