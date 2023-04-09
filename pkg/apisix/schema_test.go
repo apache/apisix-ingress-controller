@@ -54,7 +54,7 @@ func (srv *fakeAPISIXSchemaSrv) ServeHTTP(w http.ResponseWriter, r *http.Request
 	}
 
 	if r.Method == http.MethodGet {
-		name := strings.Trim(strings.TrimPrefix(r.URL.Path, "/apisix/admin/schema/"), "/")
+		name := strings.TrimPrefix(r.URL.Path, "/apisix/admin/schema/")
 		if len(name) < 1 {
 			w.WriteHeader(http.StatusBadRequest)
 			return
