@@ -122,6 +122,14 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 		}
 		httpRoute = ev.Tombstone.(*gatewayv1beta1.HTTPRoute)
 	}
+	err = c.controller.validator.ValidateCommonRoute(httpRoute)
+	if err != nil {
+		log.Errorw("failed to validate gateway HTTPRoute",
+			zap.Error(err),
+			zap.Any("object", httpRoute),
+		)
+		return err
+	}
 
 	tctx, err := c.controller.translator.TranslateGatewayHTTPRouteV1beta1(httpRoute)
 
@@ -173,7 +181,7 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 		added, updated, deleted = m.Diff(om)
 	}
 
-	return utils.SyncManifests(ctx, c.controller.APISIX, c.controller.APISIXClusterName, added, updated, deleted)
+	return utils.SyncManifests(ctx, c.controller.APISIX, c.controller.APISIXClusterName, added, updated, deleted, false)
 }
 
 func (c *gatewayHTTPRouteController) handleSyncErr(obj interface{}, err error) {

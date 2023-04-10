@@ -114,6 +114,10 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 			return err
 		}
 
+		if ev.Type == types.EventSync {
+			// ignore not found error in delay sync
+			return nil
+		}
 		if ev.Type != types.EventDelete {
 			log.Warnw("ApisixPluginConfig was deleted before it can be delivered",
 				zap.String("key", obj.Key),
@@ -180,7 +184,7 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 
 	if ev.Type == types.EventDelete {
 		deleted = m
-	} else if ev.Type == types.EventAdd {
+	} else if ev.Type.IsAddEvent() {
 		added = m
 	} else {
 		var oldCtx *translation.TranslateContext
@@ -206,7 +210,7 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 		added, updated, deleted = m.Diff(om)
 	}
 
-	return c.SyncManifests(ctx, added, updated, deleted)
+	return c.SyncManifests(ctx, added, updated, deleted, ev.Type.IsSyncEvent())
 }
 
 func (c *apisixPluginConfigController) handleSyncErr(obj interface{}, errOrigin error) {
@@ -288,13 +292,16 @@ func (c *apisixPluginConfigController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixPluginConfig resource with bad meta namespace key: %s", err)
 		return
 	}
+	apc := kube.MustNewApisixPluginConfig(obj)
+	if !c.isEffective(apc) {
+		return
+	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixPluginConfig add event arrived",
 		zap.Any("object", obj))
 
-	apc := kube.MustNewApisixPluginConfig(obj)
 	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.ApisixPluginConfigEvent{
@@ -315,6 +322,9 @@ func (c *apisixPluginConfigController) onUpdate(oldObj, newObj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
 		log.Errorf("found ApisixPluginConfig resource with bad meta namespace key: %s", err)
+		return
+	}
+	if !c.isEffective(curr) {
 		return
 	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
@@ -350,12 +360,16 @@ func (c *apisixPluginConfigController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixPluginConfig resource with bad meta namesapce key: %s", err)
 		return
 	}
+	if !c.isEffective(apc) {
+		return
+	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixPluginConfig delete event arrived",
 		zap.Any("final state", apc),
 	)
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixPluginConfigEvent{
@@ -368,25 +382,37 @@ func (c *apisixPluginConfigController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("PluginConfig", "delete")
 }
 
-func (c *apisixPluginConfigController) ResourceSync() {
+func (c *apisixPluginConfigController) ResourceSync(interval time.Duration) {
 	objs := c.ApisixPluginConfigInformer.GetIndexer().List()
-	for _, obj := range objs {
+	delay := GetSyncDelay(interval, len(objs))
+
+	for i, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
 			log.Errorw("ApisixPluginConfig sync failed, found ApisixPluginConfig resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
+		apc := kube.MustNewApisixPluginConfig(obj)
+		if !c.isEffective(apc) {
+			continue
+		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
-		apc := kube.MustNewApisixPluginConfig(obj)
-		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
+		log.Debugw("ResourceSync",
+			zap.String("resource", "ApisixPluginConfig"),
+			zap.String("key", key),
+			zap.Duration("calc_delay", delay),
+			zap.Int("i", i),
+			zap.Duration("delay", delay*time.Duration(i)),
+		)
+		c.workqueue.AddAfter(&types.Event{
+			Type: types.EventSync,
 			Object: kube.ApisixPluginConfigEvent{
 				Key:          key,
 				GroupVersion: apc.GroupVersion(),
 			},
-		})
+		}, delay*time.Duration(i))
 	}
 }
 
@@ -452,4 +478,21 @@ func (c *apisixPluginConfigController) recordStatus(at interface{}, reason strin
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
 	}
+}
+
+func (c *apisixPluginConfigController) isEffective(apc kube.ApisixPluginConfig) bool {
+	if apc.GroupVersion() == config.ApisixV2 {
+		ingClassName := apc.V2().Spec.IngressClassName
+		ok := utils.MatchCRDsIngressClass(ingClassName, c.Kubernetes.IngressClass)
+		if !ok {
+			log.Debugw("IngressClass: ApisixPluginConfig ignored",
+				zap.String("key", apc.V2().Namespace+"/"+apc.V2().Name),
+				zap.String("ingressClass", apc.V2().Spec.IngressClassName),
+			)
+		}
+
+		return ok
+	}
+	// Compatible with legacy versions
+	return true
 }

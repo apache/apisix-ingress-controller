@@ -18,9 +18,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: apisix-admission-server
+  name: webhook
   labels:
-    app: apisix-admission-server
+    app: webhook
 spec:
   ports:
     - port: 8443

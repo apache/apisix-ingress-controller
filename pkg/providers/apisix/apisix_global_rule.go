@@ -104,6 +104,10 @@ func (c *apisixGlobalRuleController) sync(ctx context.Context, ev *types.Event) 
 			return err
 		}
 
+		if ev.Type == types.EventSync {
+			// ignore not found error in delay sync
+			return nil
+		}
 		if ev.Type != types.EventDelete {
 			log.Warnw("ApisixGlobalRule was deleted before it can be delivered",
 				zap.String("key", obj.Key),
@@ -127,7 +131,7 @@ func (c *apisixGlobalRuleController) sync(ctx context.Context, ev *types.Event) 
 
 	tctx, err := c.translator.TranslateGlobalRule(agr)
 	if err != nil {
-		log.Errorw("failed to translate ApisixRoute v2",
+		log.Errorw("failed to translate ApisixGlobalRule v2",
 			zap.Error(err),
 			zap.Any("object", agr),
 		)
@@ -146,7 +150,7 @@ func (c *apisixGlobalRuleController) sync(ctx context.Context, ev *types.Event) 
 
 	if ev.Type == types.EventDelete {
 		deleted = m
-	} else if ev.Type == types.EventAdd {
+	} else if ev.Type.IsAddEvent() {
 		added = m
 	} else {
 		oldCtx, err := c.translator.TranslateGlobalRule(obj.OldObject)
@@ -164,13 +168,13 @@ func (c *apisixGlobalRuleController) sync(ctx context.Context, ev *types.Event) 
 			added, updated, deleted = m.Diff(om)
 		}
 	}
-	log.Debugw("sync ApisixGlaobalRule to cluster",
+	log.Debugw("sync ApisixGlobalRule to cluster",
 		zap.String("event_type", ev.Type.String()),
 		zap.Any("add", added),
 		zap.Any("update", updated),
 		zap.Any("delete", deleted),
 	)
-	return c.SyncManifests(ctx, added, updated, deleted)
+	return c.SyncManifests(ctx, added, updated, deleted, ev.Type.IsSyncEvent())
 }
 
 func (c *apisixGlobalRuleController) handleSyncErr(obj interface{}, errOrigin error) {
@@ -244,13 +248,16 @@ func (c *apisixGlobalRuleController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixGlobalRule resource with bad meta namespace key: %s", err)
 		return
 	}
+	agr := kube.MustNewApisixGlobalRule(obj)
+	if !c.isEffective(agr) {
+		return
+	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixGlobalRule add event arrived",
 		zap.Any("object", obj))
 
-	agr := kube.MustNewApisixGlobalRule(obj)
 	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.ApisixGlobalRuleEvent{
@@ -271,6 +278,9 @@ func (c *apisixGlobalRuleController) onUpdate(oldObj, newObj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
 		log.Errorf("found ApisixGlobalRule resource with bad meta namespace key: %s", err)
+		return
+	}
+	if !c.isEffective(curr) {
 		return
 	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
@@ -306,12 +316,16 @@ func (c *apisixGlobalRuleController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixGlobalRule resource with bad meta namesagre key: %s", err)
 		return
 	}
+	if !c.isEffective(agr) {
+		return
+	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
 	}
 	log.Debugw("ApisixGlobalRule delete event arrived",
 		zap.Any("final state", agr),
 	)
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixGlobalRuleEvent{
@@ -324,25 +338,37 @@ func (c *apisixGlobalRuleController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("GlobalRule", "delete")
 }
 
-func (c *apisixGlobalRuleController) ResourceSync() {
+func (c *apisixGlobalRuleController) ResourceSync(interval time.Duration) {
 	objs := c.ApisixGlobalRuleInformer.GetIndexer().List()
-	for _, obj := range objs {
+	delay := GetSyncDelay(interval, len(objs))
+
+	for i, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
 			log.Errorw("ApisixGlobalRule sync failed, found ApisixGlobalRule resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
+		agr := kube.MustNewApisixGlobalRule(obj)
+		if !c.isEffective(agr) {
+			continue
+		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
-		agr := kube.MustNewApisixGlobalRule(obj)
-		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
+		log.Debugw("ResourceSync",
+			zap.String("resource", "ApisixGlobalRule"),
+			zap.String("key", key),
+			zap.Duration("calc_delay", delay),
+			zap.Int("i", i),
+			zap.Duration("delay", delay*time.Duration(i)),
+		)
+		c.workqueue.AddAfter(&types.Event{
+			Type: types.EventSync,
 			Object: kube.ApisixGlobalRuleEvent{
 				Key:          key,
 				GroupVersion: agr.GroupVersion(),
 			},
-		})
+		}, delay*time.Duration(i))
 	}
 }
 
@@ -388,4 +414,21 @@ func (c *apisixGlobalRuleController) recordStatus(at interface{}, reason string,
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
 	}
+}
+
+func (c *apisixGlobalRuleController) isEffective(agr kube.ApisixGlobalRule) bool {
+	if agr.GroupVersion() == config.ApisixV2 {
+		ingClassName := agr.V2().Spec.IngressClassName
+		ok := utils.MatchCRDsIngressClass(ingClassName, c.Kubernetes.IngressClass)
+		if !ok {
+			log.Debugw("IngressClass: ApisixGlobalRule ignored",
+				zap.String("key", agr.V2().Namespace+"/"+agr.V2().Name),
+				zap.String("ingressClass", agr.V2().Spec.IngressClassName),
+			)
+		}
+
+		return ok
+	}
+	// Compatible with legacy versions
+	return true
 }
