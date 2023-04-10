@@ -43,11 +43,7 @@ Before you get started make sure you have:
 2. Clone the fork to your workstation.
 3. Run `go mod download` to download the required modules.
 
-:::tip
-
-If you are in China, you can speed up the downloads by setting `GOPROXY` to `https://goproxy.cn`.
-
-:::
+**tip: If you are in China, you can speed up the downloads by setting `GOPROXY` to `https://goproxy.cn`.**
 
 ## Build from source
 
@@ -96,13 +92,9 @@ Currently, we use Kind version `0.11.1` and Kubernetes version `1.21.1` for runn
 make e2e-test-local
 ```
 
-:::note
+***note: End-to-end tests are comprehensive and takes time to run.***
 
-End-to-end tests are comprehensive and takes time to run.
-
-See [focused specs](https://onsi.github.io/ginkgo/#focused-specs) to learn how you can run partial tests.
-
-:::
+**See [focused specs](https://onsi.github.io/ginkgo/#focused-specs) to learn how you can run partial tests.**
 
 To run e2e tests on any changes, you can build a Docker image and push it to a registry that the Kubernetes cluster can access:
 
@@ -135,9 +127,8 @@ cd /path/to/apisix-ingress-controller
     --default-apisix-cluster-admin-key edd1c9f034335f136f87ad84b625c8f1
 ```
 
-:::note
+***note***
 
-1. If you are using minikube, the path to kubeconfig should be `~/.kube/config`.
-2. If you have changed the default Admin API key, you have to pass it in the `--default-apisix-cluster-admin-key` flag. You can remove the flag if you have disabled authentication.
+**1. If you are using minikube, the path to kubeconfig should be `~/.kube/config`.**
 
-:::
+**2. If you have changed the default Admin API key, you have to pass it in the `--default-apisix-cluster-admin-key` flag. You can remove the flag if you have disabled authentication.**
