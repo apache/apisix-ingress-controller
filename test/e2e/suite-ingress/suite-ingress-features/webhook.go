@@ -287,6 +287,37 @@ spec:
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
 	})
 
+	ginkgo.It("ingressClassName of the ApisixGlobalRule should not be modified", func() {
+		agr := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixGlobalRule
+metadata:
+  name: cors
+spec:
+  ingressClassName: watch
+  plugins:
+  - name: cors
+    enable: true
+`
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(agr), "creatint a ApisixPluginConfig")
+
+		agr = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixGlobalRule
+metadata:
+  name: cors
+spec:
+  ingressClassName: failed
+  plugins:
+  - name: cors
+    enable: true
+`
+		err := s.CreateResourceFromString(agr)
+		assert.Error(ginkgo.GinkgoT(), err, "Failed to udpate ApisixPluginConfig")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
+	})
+
 	ginkgo.It("ingressClassName of the ApisixTls should not be modified", func() {
 		atls := `
 apiVersion: apisix.apache.org/v2
@@ -401,7 +432,7 @@ spec:
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
 	})
 
-	ginkgo.It("ingressClassName of the ApisixRoute should not be modified", func() {
+	ginkgo.It("ingressClassName of the ApisixUpstream should not be modified", func() {
 		au := `
 apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
