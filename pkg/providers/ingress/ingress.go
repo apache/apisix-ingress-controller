@@ -609,7 +609,7 @@ func (c *ingressController) SyncSecretChange(ctx context.Context, ev *types.Even
 		ingressVersion := vals[1]
 
 		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
+			Type: types.EventSync,
 			Object: kube.IngressEvent{
 				Key:          ingressKey,
 				GroupVersion: ingressVersion,

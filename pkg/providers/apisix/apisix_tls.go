@@ -504,7 +504,7 @@ func (c *apisixTlsController) SyncSecretChange(ctx context.Context, ev *types.Ev
 		refMap.Range(func(k, v interface{}) bool {
 			tlsMetaKey := k.(string)
 			c.workqueue.Add(&types.Event{
-				Type: types.EventAdd,
+				Type: types.EventSync,
 				Object: kube.ApisixTlsEvent{
 					Key:          tlsMetaKey,
 					GroupVersion: config.ApisixV2beta3,
@@ -516,7 +516,7 @@ func (c *apisixTlsController) SyncSecretChange(ctx context.Context, ev *types.Ev
 		refMap.Range(func(k, v interface{}) bool {
 			tlsMetaKey := k.(string)
 			c.workqueue.Add(&types.Event{
-				Type: types.EventAdd,
+				Type: types.EventSync,
 				Object: kube.ApisixTlsEvent{
 					Key:          tlsMetaKey,
 					GroupVersion: config.ApisixV2,
