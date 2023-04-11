@@ -117,3 +117,10 @@ func ValidatePlugin(client apisix.Schema, pluginName string, pluginConfig interf
 
 	return
 }
+
+func validateIngressClassName(oldIngressClassName, newIngressClass string) (bool, error) {
+	if oldIngressClassName != "" && oldIngressClassName != newIngressClass {
+		return false, fmt.Errorf("The ingressClassName field is not allowed to be modified.")
+	}
+	return true, nil
+}
