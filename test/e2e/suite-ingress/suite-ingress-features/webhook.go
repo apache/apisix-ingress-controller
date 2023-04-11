@@ -284,7 +284,7 @@ spec:
 		err := s.CreateResourceFromString(apc)
 		assert.Error(ginkgo.GinkgoT(), err, "Failed to udpate ApisixPluginConfig")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
-		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "The ingressClassName field is not allowed to be modified.")
 	})
 
 	ginkgo.It("ingressClassName of the ApisixGlobalRule should not be modified", func() {
@@ -315,7 +315,7 @@ spec:
 		err := s.CreateResourceFromString(agr)
 		assert.Error(ginkgo.GinkgoT(), err, "Failed to udpate ApisixPluginConfig")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
-		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "The ingressClassName field is not allowed to be modified.")
 	})
 
 	ginkgo.It("ingressClassName of the ApisixTls should not be modified", func() {
@@ -350,7 +350,7 @@ spec:
 		err := s.CreateResourceFromString(atls)
 		assert.Error(ginkgo.GinkgoT(), err, "Failed to udpate ApisixTls")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
-		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "The ingressClassName field is not allowed to be modified.")
 	})
 
 	ginkgo.It("ingressClassName of the ApisixConsumer should not be modified", func() {
@@ -383,7 +383,7 @@ spec:
 		err := s.CreateResourceFromString(ac)
 		assert.Error(ginkgo.GinkgoT(), err, "Failed to udpate ApisixConsumer")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
-		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "The ingressClassName field is not allowed to be modified.")
 	})
 
 	ginkgo.It("ingressClassName of the ApisixRoute should not be modified", func() {
@@ -429,7 +429,7 @@ spec:
 		err := s.CreateResourceFromString(ar)
 		assert.Error(ginkgo.GinkgoT(), err, "Failed to udpate ApisixConsumer")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
-		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "The ingressClassName field is not allowed to be modified.")
 	})
 
 	ginkgo.It("ingressClassName of the ApisixUpstream should not be modified", func() {
@@ -454,6 +454,6 @@ spec:
 		err := s.CreateResourceFromString(au)
 		assert.Error(ginkgo.GinkgoT(), err, "Failed to udpate ApisixConsumer")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
-		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "The ingressClassName field is not allowed to be modified.")
 	})
 })

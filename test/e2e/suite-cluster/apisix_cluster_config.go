@@ -288,7 +288,7 @@ spec:
 		err := s.CreateResourceFromStringWithNamespace(apc, "")
 		assert.Error(ginkgo.GinkgoT(), err, "Failed to udpate ApisixClusterConfig")
 		assert.Contains(ginkgo.GinkgoT(), err.Error(), "denied the request")
-		assert.Contains(ginkgo.GinkgoT(), err.Error(), "ingressClassName is not allowed to be modified")
+		assert.Contains(ginkgo.GinkgoT(), err.Error(), "The ingressClassName field is not allowed to be modified.")
 	})
 
 })
