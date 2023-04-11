@@ -34,10 +34,8 @@ import (
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
-	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type apisixTlsController struct {
@@ -46,11 +44,11 @@ type apisixTlsController struct {
 	workqueue workqueue.RateLimitingInterface
 	workers   int
 
-	// secretSSLMap stores reference from K8s secret to ApisixTls
-	// type: Map<SecretKey, Map<ApisixTlsKey, SSL object in APISIX>>
-	// SecretKey -> ApisixTlsKey -> SSL object in APISIX
+	// secretRefMap stores reference from K8s secret to ApisixTls
+	// type: Map<SecretKey, Map<ApisixTlsKey, empty struct>>
+	// SecretKey -> ApisixTlsKey -> empty object in APISIX
 	// SecretKey and ApisixTlsKey are kube-style meta key: `namespace/name`
-	secretSSLMap *sync.Map
+	secretRefMap *sync.Map
 }
 
 func newApisixTlsController(common *apisixCommon) *apisixTlsController {
@@ -59,7 +57,7 @@ func newApisixTlsController(common *apisixCommon) *apisixTlsController {
 		workqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixTls"),
 		workers:      1,
 
-		secretSSLMap: new(sync.Map),
+		secretRefMap: new(sync.Map),
 	}
 
 	c.ApisixTlsInformer.AddEventHandler(
@@ -151,18 +149,16 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 	switch event.GroupVersion {
 	case config.ApisixV2beta3:
 		tls := multiVersionedTls.V2beta3()
-		ssl, err := c.translator.TranslateSSLV2Beta3(tls)
-
-		// We should cache the relations regardless the translation succeed or not
 		secretKey := tls.Spec.Secret.Namespace + "/" + tls.Spec.Secret.Name
-		c.storeSecretCache(secretKey, apisixTlsKey, ssl, ev.Type)
+		c.storeSecretCache(secretKey, apisixTlsKey, ev.Type)
 		if tls.Spec.Client != nil {
 			caSecretKey := tls.Spec.Client.CASecret.Namespace + "/" + tls.Spec.Client.CASecret.Name
 			if caSecretKey != secretKey {
-				c.storeSecretCache(caSecretKey, apisixTlsKey, ssl, ev.Type)
+				c.storeSecretCache(caSecretKey, apisixTlsKey, ev.Type)
 			}
 		}
 
+		ssl, err := c.translator.TranslateSSLV2Beta3(tls)
 		if err != nil {
 			log.Errorw("failed to translate ApisixTls",
 				zap.Error(err),
@@ -191,18 +187,16 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 		return err
 	case config.ApisixV2:
 		tls := multiVersionedTls.V2()
-		ssl, err := c.translator.TranslateSSLV2(tls)
-
-		// We should cache the relations regardless the translation succeed or not
 		secretKey := tls.Spec.Secret.Namespace + "/" + tls.Spec.Secret.Name
-		c.storeSecretCache(secretKey, apisixTlsKey, ssl, ev.Type)
+		c.storeSecretCache(secretKey, apisixTlsKey, ev.Type)
 		if tls.Spec.Client != nil {
 			caSecretKey := tls.Spec.Client.CASecret.Namespace + "/" + tls.Spec.Client.CASecret.Name
 			if caSecretKey != secretKey {
-				c.storeSecretCache(caSecretKey, apisixTlsKey, ssl, ev.Type)
+				c.storeSecretCache(caSecretKey, apisixTlsKey, ev.Type)
 			}
 		}
 
+		ssl, err := c.translator.TranslateSSLV2(tls)
 		if err != nil {
 			log.Errorw("failed to translate ApisixTls",
 				zap.Error(err),
@@ -234,21 +228,21 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 	}
 }
 
-func (c *apisixTlsController) storeSecretCache(secretKey string, apisixTlsKey string, ssl *v1.Ssl, evType types.EventType) {
-	if ssls, ok := c.secretSSLMap.Load(secretKey); ok {
-		sslMap := ssls.(*sync.Map)
+func (c *apisixTlsController) storeSecretCache(secretKey string, apisixTlsKey string, evType types.EventType) {
+	if refs, ok := c.secretRefMap.Load(secretKey); ok {
+		refMap := refs.(*sync.Map)
 		switch evType {
 		case types.EventDelete:
-			sslMap.Delete(apisixTlsKey)
-			c.secretSSLMap.Store(secretKey, sslMap)
+			refMap.Delete(apisixTlsKey)
+			c.secretRefMap.Store(secretKey, refMap)
 		default:
-			sslMap.Store(apisixTlsKey, ssl)
-			c.secretSSLMap.Store(secretKey, sslMap)
+			refMap.Store(apisixTlsKey, struct{}{})
+			c.secretRefMap.Store(secretKey, refMap)
 		}
 	} else if evType != types.EventDelete {
-		sslMap := new(sync.Map)
-		sslMap.Store(apisixTlsKey, ssl)
-		c.secretSSLMap.Store(secretKey, sslMap)
+		refMap := new(sync.Map)
+		refMap.Store(apisixTlsKey, struct{}{})
+		c.secretRefMap.Store(secretKey, refMap)
 	}
 }
 
@@ -491,14 +485,14 @@ func (c *apisixTlsController) recordStatus(at interface{}, reason string, err er
 }
 
 func (c *apisixTlsController) SyncSecretChange(ctx context.Context, ev *types.Event, secret *corev1.Secret, secretKey string) {
-	ssls, ok := c.secretSSLMap.Load(secretKey)
+	refs, ok := c.secretRefMap.Load(secretKey)
 	if !ok {
 		log.Debugw("ApisixTls: sync secret change, not concerned", zap.String("key", secretKey))
 		// This secret is not concerned.
 		return
 	}
 
-	sslMap, ok := ssls.(*sync.Map) // apisix tls key -> SSLs
+	refMap, ok := refs.(*sync.Map) // apisix tls key -> empty struct
 	if !ok {
 		log.Debugw("ApisixTls: sync secret change, not such SSls map", zap.String("key", secretKey))
 		return
@@ -507,183 +501,29 @@ func (c *apisixTlsController) SyncSecretChange(ctx context.Context, ev *types.Ev
 	log.Debugw("ApisixTls: sync secret change", zap.String("key", secretKey))
 	switch c.Config.Kubernetes.APIVersion {
 	case config.ApisixV2beta3:
-		sslMap.Range(c.syncSSLsAndUpdateStatusV2beta3(ctx, ev, secret, secretKey))
+		refMap.Range(func(k, v interface{}) bool {
+			tlsMetaKey := k.(string)
+			c.workqueue.Add(&types.Event{
+				Type: types.EventAdd,
+				Object: kube.ApisixTlsEvent{
+					Key:          tlsMetaKey,
+					GroupVersion: config.ApisixV2beta3,
+				},
+			})
+			return true
+		})
 	case config.ApisixV2:
-		sslMap.Range(c.syncSSLsAndUpdateStatusV2(ctx, ev, secret, secretKey))
-	}
-}
-
-func (c *apisixTlsController) syncSSLsAndUpdateStatusV2beta3(ctx context.Context, ev *types.Event, secret *corev1.Secret, secretKey string) func(k, v interface{}) bool {
-	return func(k, v interface{}) bool {
-		ssl := v.(*v1.Ssl)
-		tlsMetaKey := k.(string)
-		tlsNamespace, tlsName, err := cache.SplitMetaNamespaceKey(tlsMetaKey)
-		if err != nil {
-			log.Errorf("invalid cached ApisixTls key: %s", tlsMetaKey)
+		refMap.Range(func(k, v interface{}) bool {
+			tlsMetaKey := k.(string)
+			c.workqueue.Add(&types.Event{
+				Type: types.EventAdd,
+				Object: kube.ApisixTlsEvent{
+					Key:          tlsMetaKey,
+					GroupVersion: config.ApisixV2,
+				},
+			})
 			return true
-		}
-
-		multiVersioned, err := c.ApisixTlsLister.V2beta3(tlsNamespace, tlsName)
-		if err != nil {
-			log.Warnw("secret related ApisixTls resource not found, skip",
-				zap.String("ApisixTls", tlsMetaKey),
-			)
-			return true
-		}
-		tls := multiVersioned.V2beta3()
-
-		// We don't expect a secret to be used as both SSL and mTLS in ApisixTls
-		if tls.Spec.Secret.Namespace == secret.Namespace && tls.Spec.Secret.Name == secret.Name {
-			cert, pkey, err := translation.ExtractKeyPair(secret, true)
-			if err != nil {
-				log.Errorw("secret required by ApisixTls invalid",
-					zap.String("ApisixTls", tlsMetaKey),
-					zap.String("secret", secretKey),
-					zap.Error(err),
-				)
-				go func(tls *configv2beta3.ApisixTls) {
-					c.RecordEventS(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted,
-						fmt.Sprintf("sync from secret %s changes failed, error: %s", secretKey, err.Error()))
-					c.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
-				}(tls)
-				return true
-			}
-			// sync ssl
-			ssl.Cert = string(cert)
-			ssl.Key = string(pkey)
-		} else if tls.Spec.Client != nil &&
-			tls.Spec.Client.CASecret.Namespace == secret.Namespace && tls.Spec.Client.CASecret.Name == secret.Name {
-			ca, _, err := translation.ExtractKeyPair(secret, false)
-			if err != nil {
-				log.Errorw("ca secret required by ApisixTls invalid",
-					zap.String("ApisixTls", tlsMetaKey),
-					zap.String("secret", secretKey),
-					zap.Error(err),
-				)
-				go func(tls *configv2beta3.ApisixTls) {
-					c.RecordEventS(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted,
-						fmt.Sprintf("sync from ca secret %s changes failed, error: %s", secretKey, err.Error()))
-					c.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
-				}(tls)
-				return true
-			}
-			ssl.Client = &v1.MutualTLSClientConfig{
-				CA: string(ca),
-			}
-		} else {
-			log.Warnw("stale secret cache, ApisixTls doesn't requires target secret",
-				zap.String("ApisixTls", tlsMetaKey),
-				zap.String("secret", secretKey),
-			)
-			return true
-		}
-		// Use another goroutine to send requests, to avoid
-		// long time lock occupying.
-		go func(ssl *v1.Ssl, tls *configv2beta3.ApisixTls) {
-			err := c.SyncSSL(ctx, ssl, ev.Type)
-			if err != nil {
-				log.Errorw("failed to sync ssl to APISIX",
-					zap.Error(err),
-					zap.Any("ssl", ssl),
-					zap.Any("secret", secret),
-				)
-				c.RecordEventS(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted,
-					fmt.Sprintf("sync from secret %s changes failed, error: %s", secretKey, err.Error()))
-				c.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
-			} else {
-				c.RecordEventS(tls, corev1.EventTypeNormal, utils.ResourceSynced,
-					fmt.Sprintf("sync from secret %s changes", secretKey))
-				c.recordStatus(tls, utils.ResourceSynced, nil, metav1.ConditionTrue, tls.GetGeneration())
-			}
-		}(ssl, tls)
-		return true
-	}
-}
-
-func (c *apisixTlsController) syncSSLsAndUpdateStatusV2(ctx context.Context, ev *types.Event, secret *corev1.Secret, secretKey string) func(k, v interface{}) bool {
-	return func(k, v interface{}) bool {
-		ssl := v.(*v1.Ssl)
-		tlsMetaKey := k.(string)
-		tlsNamespace, tlsName, err := cache.SplitMetaNamespaceKey(tlsMetaKey)
-		if err != nil {
-			log.Errorf("invalid cached ApisixTls key: %s", tlsMetaKey)
-			return true
-		}
-
-		multiVersioned, err := c.ApisixTlsLister.V2(tlsNamespace, tlsName)
-		if err != nil {
-			log.Warnw("secret related ApisixTls resource not found, skip",
-				zap.String("ApisixTls", tlsMetaKey),
-			)
-			return true
-		}
-		tls := multiVersioned.V2()
-
-		// We don't expect a secret to be used as both SSL and mTLS in ApisixTls
-		if tls.Spec.Secret.Namespace == secret.Namespace && tls.Spec.Secret.Name == secret.Name {
-			cert, pkey, err := translation.ExtractKeyPair(secret, true)
-			if err != nil {
-				log.Errorw("secret required by ApisixTls invalid",
-					zap.String("ApisixTls", tlsMetaKey),
-					zap.String("secret", secretKey),
-					zap.Error(err),
-				)
-				go func(tls *configv2.ApisixTls) {
-					c.RecordEventS(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted,
-						fmt.Sprintf("sync from secret %s changes failed, error: %s", secretKey, err.Error()))
-					c.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
-				}(tls)
-				return true
-			}
-			// sync ssl
-			ssl.Cert = string(cert)
-			ssl.Key = string(pkey)
-		} else if tls.Spec.Client != nil &&
-			tls.Spec.Client.CASecret.Namespace == secret.Namespace && tls.Spec.Client.CASecret.Name == secret.Name {
-			ca, _, err := translation.ExtractKeyPair(secret, false)
-			if err != nil {
-				log.Errorw("ca secret required by ApisixTls invalid",
-					zap.String("ApisixTls", tlsMetaKey),
-					zap.String("secret", secretKey),
-					zap.Error(err),
-				)
-				go func(tls *configv2.ApisixTls) {
-					c.RecordEventS(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted,
-						fmt.Sprintf("sync from ca secret %s changes failed, error: %s", secretKey, err.Error()))
-					c.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
-				}(tls)
-				return true
-			}
-			ssl.Client = &v1.MutualTLSClientConfig{
-				CA: string(ca),
-			}
-		} else {
-			log.Warnw("stale secret cache, ApisixTls doesn't requires target secret",
-				zap.String("ApisixTls", tlsMetaKey),
-				zap.String("secret", secretKey),
-			)
-			return true
-		}
-		// Use another goroutine to send requests, to avoid
-		// long time lock occupying.
-		go func(ssl *v1.Ssl, tls *configv2.ApisixTls) {
-			err := c.SyncSSL(ctx, ssl, ev.Type)
-			if err != nil {
-				log.Errorw("failed to sync ssl to APISIX",
-					zap.Error(err),
-					zap.Any("ssl", ssl),
-					zap.Any("secret", secret),
-				)
-				c.RecordEventS(tls, corev1.EventTypeWarning, utils.ResourceSyncAborted,
-					fmt.Sprintf("sync from secret %s changes failed, error: %s", secretKey, err.Error()))
-				c.recordStatus(tls, utils.ResourceSyncAborted, err, metav1.ConditionFalse, tls.GetGeneration())
-			} else {
-				c.RecordEventS(tls, corev1.EventTypeNormal, utils.ResourceSynced,
-					fmt.Sprintf("sync from secret %s changes", secretKey))
-				c.recordStatus(tls, utils.ResourceSynced, nil, metav1.ConditionTrue, tls.GetGeneration())
-			}
-		}(ssl, tls)
-		return true
+		})
 	}
 }
 
