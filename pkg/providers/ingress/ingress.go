@@ -147,9 +147,6 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		for _, tls := range ing.ExtensionsV1beta1().Spec.TLS {
 			secrets = append(secrets, tls.SecretName)
 		}
-	default:
-		err = fmt.Errorf("unsupported group version %s, one of (%s/%s/%s) is expected", ingEv.GroupVersion,
-			kube.IngressV1, kube.IngressV1beta1, kube.IngressExtensionsV1beta1)
 	}
 
 	for _, secret := range secrets {
