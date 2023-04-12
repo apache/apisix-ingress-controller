@@ -370,3 +370,4 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	DOCKER_BUILDKIT=1 docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(DEV_REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)
 endif
+
