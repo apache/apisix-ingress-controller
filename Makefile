@@ -328,3 +328,25 @@ install-gateway-api-local:
 .PHONY: uninstall-gateway-api
 uninstall-gateway-api:
 	kubectl delete -f $(GATEWAY_API_CRDS_LOCAL_PATH)
+
+### dev-env:			  Launch development environment
+.PHONY: dev-env
+dev-env: dev-kind-up pack-image
+	helm repo add apisix https://charts.apiseven.com
+	helm repo update
+	helm install apisix apisix/apisix \
+		--set gateway.type=NodePort \
+		--set ingress-controller.enabled=true \
+		--namespace ingress-apisix \
+		--create-namespace
+	kubectl set image deployment/apisix-ingress-controller ingress-controller=$(REGISTRY)/apache/apisix-ingress-controller:dev --namespace ingress-apisix
+
+### dev-env-reset:        Reset development environment
+.PHONY: dev-env-reset
+dev-env-reset: kind-reset clean-image
+
+### dev-kind-up:              Create a kind cluster with registry for dev
+.PHONY: dev-kind-up
+dev-kind-up:
+	./utils/kind-with-registry.sh "5001"
+	
