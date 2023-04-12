@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"regexp"
@@ -48,19 +47,20 @@ import (
 )
 
 type Options struct {
-	Name                       string
-	Kubeconfig                 string
-	APISIXAdminAPIVersion      string
-	APISIXConfigPath           string
-	IngressAPISIXReplicas      int
-	HTTPBinServicePort         int
-	APISIXAdminAPIKey          string
-	EnableWebhooks             bool
-	APISIXPublishAddress       string
-	ApisixResourceSyncInterval string
-	ApisixResourceVersion      string
-	DisableStatus              bool
-	IngressClass               string
+	Name                         string
+	Kubeconfig                   string
+	APISIXAdminAPIVersion        string
+	APISIXConfigPath             string
+	IngressAPISIXReplicas        int
+	HTTPBinServicePort           int
+	APISIXAdminAPIKey            string
+	EnableWebhooks               bool
+	APISIXPublishAddress         string
+	ApisixResourceSyncInterval   string
+	ApisixResourceSyncComparison string
+	ApisixResourceVersion        string
+	DisableStatus                bool
+	IngressClass                 string
 
 	NamespaceSelectorLabel   map[string]string
 	DisableNamespaceSelector bool
@@ -135,6 +135,12 @@ func GetKubeconfig() string {
 
 // NewScaffold creates an e2e test scaffold.
 func NewScaffold(o *Options) *Scaffold {
+	if o.Name == "" {
+		o.Name = "default"
+	}
+	if o.IngressAPISIXReplicas <= 0 {
+		o.IngressAPISIXReplicas = 1
+	}
 	if o.ApisixResourceVersion == "" {
 		o.ApisixResourceVersion = ApisixResourceVersion().Default
 	}
@@ -143,6 +149,9 @@ func NewScaffold(o *Options) *Scaffold {
 	}
 	if o.ApisixResourceSyncInterval == "" {
 		o.ApisixResourceSyncInterval = "60s"
+	}
+	if o.ApisixResourceSyncComparison == "" {
+		o.ApisixResourceSyncComparison = "true"
 	}
 	if o.Kubeconfig == "" {
 		o.Kubeconfig = GetKubeconfig()
@@ -191,22 +200,27 @@ func NewScaffold(o *Options) *Scaffold {
 	return s
 }
 
+// NewV2beta3Scaffold creates a scaffold with some default options.
+func NewV2Scaffold(o *Options) *Scaffold {
+	o.ApisixResourceVersion = ApisixResourceVersion().V2
+	return NewScaffold(o)
+}
+
+// NewV2beta3Scaffold creates a scaffold with some default options.
+func NewV2beta3Scaffold(o *Options) *Scaffold {
+	o.ApisixResourceVersion = ApisixResourceVersion().V2
+	return NewScaffold(o)
+}
+
 // NewDefaultScaffold creates a scaffold with some default options.
 // apisix-version default v2
 func NewDefaultScaffold() *Scaffold {
-	opts := &Options{
-		Name:                  "default",
-		IngressAPISIXReplicas: 1,
-		ApisixResourceVersion: ApisixResourceVersion().Default,
-	}
-	return NewScaffold(opts)
+	return NewScaffold(&Options{})
 }
 
 // NewDefaultV2Scaffold creates a scaffold with some default options.
 func NewDefaultV2Scaffold() *Scaffold {
 	opts := &Options{
-		Name:                  "default",
-		IngressAPISIXReplicas: 1,
 		ApisixResourceVersion: ApisixResourceVersion().V2,
 	}
 	return NewScaffold(opts)
@@ -215,8 +229,6 @@ func NewDefaultV2Scaffold() *Scaffold {
 // NewDefaultV2beta3Scaffold creates a scaffold with some default options.
 func NewDefaultV2beta3Scaffold() *Scaffold {
 	opts := &Options{
-		Name:                  "default",
-		IngressAPISIXReplicas: 1,
 		ApisixResourceVersion: ApisixResourceVersion().V2beta3,
 	}
 	return NewScaffold(opts)
@@ -479,11 +491,6 @@ func (s *Scaffold) beforeEach() {
 
 	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.testBackendService.Name, 3, 2*time.Second)
 
-	if s.opts.EnableWebhooks {
-		err := generateWebhookCert(s.namespace)
-		assert.Nil(s.t, err, "generate certs and create webhook secret")
-	}
-
 	err = s.newIngressAPISIXController()
 	assert.Nil(s.t, err, "initializing ingress apisix controller")
 
@@ -497,8 +504,9 @@ func (s *Scaffold) afterEach() {
 	defer ginkgo.GinkgoRecover()
 
 	if ginkgo.CurrentSpecReport().Failed() {
-		if os.Getenv("E2E_ENV") == "ci" {
-			// dump and delete related resource
+		// dump and delete related resource
+		env := os.Getenv("E2E_ENV")
+		if env == "ci" || env == "debug" {
 			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
 			output, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods")
 			if output != "" {
@@ -518,6 +526,14 @@ func (s *Scaffold) afterEach() {
 			if output != "" {
 				_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
 			}
+			if s.opts.EnableWebhooks {
+				output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "validatingwebhookconfigurations", "-o", "yaml")
+				if output != "" {
+					_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+				}
+			}
+		}
+		if env != "debug" {
 			err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
 			assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
 		}
@@ -635,19 +651,6 @@ func waitExponentialBackoff(condFunc func() (bool, error)) error {
 		Steps:    8,
 	}
 	return wait.ExponentialBackoff(backoff, condFunc)
-}
-
-// generateWebhookCert generates signed certs of webhook and create the corresponding secret by running a script.
-func generateWebhookCert(ns string) error {
-	commandTemplate := `testdata/webhook-create-signed-cert.sh`
-	cmd := exec.Command("/bin/sh", commandTemplate, "--namespace", ns)
-
-	output, err := cmd.Output()
-	if err != nil {
-		ginkgo.GinkgoT().Errorf("%s", output)
-		return fmt.Errorf("failed to execute the script: %v", err)
-	}
-	return nil
 }
 
 func (s *Scaffold) CreateVersionedApisixResource(yml string) error {

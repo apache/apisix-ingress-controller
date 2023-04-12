@@ -141,6 +141,9 @@ func (t *translator) translateExternalApisixUpstream(namespace, upstream string)
 	if err != nil {
 		return nil, err
 	}
+	for k, v := range au.ObjectMeta.Labels {
+		ups.Metadata.Labels[k] = v
+	}
 	ups.Name = apisixv1.ComposeExternalUpstreamName(namespace, upstream)
 	ups.ID = id.GenID(ups.Name)
 
