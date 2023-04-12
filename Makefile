@@ -28,8 +28,10 @@ endif
 endif
 
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
-REGISTRY_PORT ?= "8000"
+DEV_REGISTRY_PORT ?= "8000"
+REGISTRY_PORT ?= "5000"
 REGISTRY ?="127.0.0.1:$(REGISTRY_PORT)"
+DEV_REGISTRY ?="127.0.0.1:$(DEV_REGISTRY_PORT)"
 IMAGE_TAG ?= dev
 ENABLE_PROXY ?= true
 
@@ -331,7 +333,7 @@ uninstall-gateway-api:
 
 ### dev-env:			  Launch development environment
 .PHONY: dev-env
-dev-env: dev-kind-up pack-image
+dev-env: dev-kind-up dev-pack-image
 	helm repo add apisix https://charts.apiseven.com
 	helm repo update
 	helm install apisix apisix/apisix \
@@ -339,13 +341,32 @@ dev-env: dev-kind-up pack-image
 		--set ingress-controller.enabled=true \
 		--namespace ingress-apisix \
 		--create-namespace
-	kubectl set image deployment/apisix-ingress-controller ingress-controller=$(REGISTRY)/apache/apisix-ingress-controller:dev --namespace ingress-apisix
+	kubectl set image deployment/apisix-ingress-controller ingress-controller=$(DEV_REGISTRY)/apache/apisix-ingress-controller:dev --namespace ingress-apisix
 
 ### dev-env-reset:        Reset development environment
 .PHONY: dev-env-reset
-dev-env-reset: kind-reset clean-image
+dev-env-reset: kind-reset dev-clean-image
 
 ### dev-kind-up:              Create a kind cluster with registry for dev
 .PHONY: dev-kind-up
 dev-kind-up:
 	./utils/kind-with-registry.sh "8000"
+
+### dev-pack-image:   Build and push Ingress image used in e2e test suites to kind or custom registry.
+.PHONY: dev-pack-image
+dev-pack-image: dev-build-image
+	docker push $(DEV_REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)
+
+### dev-clean-image:          clean apisix-ingress-controller image
+.PHONY: dev-clean-image
+dev-clean-image: ## Removes local image
+	echo "removing old image $(DEV_REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)"
+	docker rmi -f $(DEV_REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG) || true
+
+### dev-build-image:          Build apisix-ingress-controller image
+.PHONY: dev-build-image
+dev-build-image:
+ifeq ($(E2E_SKIP_BUILD), 0)
+	DOCKER_BUILDKIT=1 docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
+	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(DEV_REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)
+endif
