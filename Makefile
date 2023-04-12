@@ -52,6 +52,9 @@ GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM
 E2E_NODES ?= 4
 E2E_FLAKE_ATTEMPTS ?= 0
 E2E_SKIP_BUILD ?= 0
+# E2E_ENV = "dev"	Keep only failure logs
+# E2E_ENV = "ci"	Keep only debug logs
+# E2E_ENV = "debug"	Keep only debug logs and testing environment
 E2E_ENV ?= "dev"
 
 ### build:                Build apisix-ingress-controller
@@ -72,7 +75,7 @@ clean-image: ## Removes local image
 .PHONY: build-image
 build-image:
 ifeq ($(E2E_SKIP_BUILD), 0)
-	docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
+	DOCKER_BUILDKIT=1 docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)
 endif
 

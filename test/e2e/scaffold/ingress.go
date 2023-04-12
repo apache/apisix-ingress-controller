@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -242,77 +243,44 @@ spec:
     app: ingress-apisix-controller-deployment-e2e-test
 `
 	_ingressAPISIXAdmissionWebhook = `
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
-  name: apisix-validation-webhooks-e2e-test
+  name: ingress-apisix-webhook-%s
+  labels:
+    app: ingress-apisix-webhhok
 webhooks:
-  - name: apisixroute-validator-webhook.apisix.apache.org
-    clientConfig:
-      service:
-        name: webhook
-        namespace: %s
-        port: 8443
-        path: "/validation/apisixroutes"
-      caBundle: %s
-    rules:
-      - operations: [ "CREATE", "UPDATE" ]
-        apiGroups: ["apisix.apache.org"]
-        apiVersions: ["*"]
-        resources: ["apisixroutes"]
-    timeoutSeconds: 30
-    failurePolicy: Fail
-  - name: apisixconsumer-validator-webhook.apisix.apache.org
-    clientConfig:
-      service:
-        name: webhook
-        namespace: %s
-        port: 8443
-        path: "/validation/apisixconsumers"
-      caBundle: %s
-    rules:
-      - operations: [ "CREATE", "UPDATE" ]
-        apiGroups: ["apisix.apache.org"]
-        apiVersions: ["*"]
-        resources: ["apisixconsumers"]
-    timeoutSeconds: 30
-    failurePolicy: Fail
-  - name: apisixtls-validator-webhook.apisix.apache.org
-    clientConfig:
-      service:
-        name: webhook
-        namespace: %s
-        port: 8443
-        path: "/validation/apisixtlses"
-      caBundle: %s
-    rules:
-      - operations: [ "CREATE", "UPDATE" ]
-        apiGroups: ["apisix.apache.org"]
-        apiVersions: ["*"]
-        resources: ["apisixtlses"]
-    timeoutSeconds: 30
-    failurePolicy: Fail
-  - name: apisixupstream-validator-webhook.apisix.apache.org
-    clientConfig:
-      service:
-        name: webhook
-        namespace: %s
-        port: 8443
-        path: "/validation/apisixupstreams"
-      caBundle: %s
-    rules:
-      - operations: [ "CREATE", "UPDATE" ]
-        apiGroups: ["apisix.apache.org"]
-        apiVersions: ["*"]
-        resources: ["apisixupstreams"]
-    timeoutSeconds: 30
-    failurePolicy: Fail
-`
-	_webhookCertSecret = "webhook-certs"
-	_volumeMounts      = `volumeMounts:
-           - name: webhook-certs
-             mountPath: /etc/webhook/certs
-             readOnly: true
+- name: apisix.validator.webhook.kubernetes.io
+  admissionReviewVersions: ["v1", "v1beta1"]
+  clientConfig:
+    service:
+      name: webhook
+      namespace: %s
+      port: 8443
+      path: /validate
+    caBundle: %s
+  rules:
+  - apiGroups: 
+    - "apisix.apache.org"
+    apiVersions:
+    - v2
+    operations:
+    - CREATE
+    - UPDATE  
+    resources:
+    - apisixroutes
+    - apisixglobalrules
+    - apisixconsumers
+    - apisixpluginconfigs
+    - apisixclusterconfigs
+    - apisixtlses
+    - apisixupstreams
+  timeoutSeconds: 30
+  failurePolicy: Fail
+  sideEffects: None
+  namespaceSelector:
+    matchLabels:
+      %s: %s
 `
 )
 
@@ -406,15 +374,20 @@ spec:
             - %s
             - --ingress-status-address
             - "%s"
+            - --enable-admission=%t
             - --enable-gateway-api=true
             - --ingress-class
             - %s
             %s
-          %s
+          volumeMounts:
+            - name: admission-webhook
+              mountPath: /etc/webhook/certs
+              readOnly: true
       volumes:
-       - name: webhook-certs
+       - name: admission-webhook
          secret:
-           secretName: %s
+           secretName: webhook-certs
+           optional: true
       serviceAccount: ingress-apisix-e2e-test-service-account
 `
 
@@ -425,10 +398,10 @@ func init() {
 }
 
 func (s *Scaffold) genIngressDeployment(replicas int, namespace, adminAPIVersion,
-	syncInterval, syncComparison, label, resourceVersion, publishAddr, ingressClass,
-	disableStatus, webhookMounts, webhookCertSecret string) string {
+	syncInterval, syncComparison, label, resourceVersion, publishAddr string, webhooks bool, ingressClass,
+	disableStatus string) string {
 	return fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), replicas, namespace, adminAPIVersion, syncInterval, syncComparison,
-		label, resourceVersion, publishAddr, ingressClass, disableStatus, webhookMounts, webhookCertSecret)
+		label, resourceVersion, publishAddr, webhooks, ingressClass, disableStatus)
 
 }
 
@@ -456,7 +429,6 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	var (
 		ingressAPISIXDeployment string
 		disableStatusStr        string
-		webhookVolumeMounts     string
 	)
 	label := `""`
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil && !s.opts.DisableNamespaceSelector {
@@ -466,44 +438,46 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		disableStatusStr = "- --disable-status-updates"
 	}
 	if s.opts.EnableWebhooks {
-		webhookVolumeMounts = _volumeMounts
+		s.createAdmissionWebhook()
 	}
 
 	ingressAPISIXDeployment = s.genIngressDeployment(s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion,
 		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label,
-		s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.IngressClass, disableStatusStr, webhookVolumeMounts, _webhookCertSecret)
+		s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.EnableWebhooks, s.opts.IngressClass, disableStatusStr)
 
 	err = s.CreateResourceFromString(ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
 
-	if s.opts.EnableWebhooks {
-		admissionSvc := fmt.Sprintf(_ingressAPISIXAdmissionService, s.namespace)
-		err := s.CreateResourceFromString(admissionSvc)
-		assert.Nil(s.t, err, "create admission webhook service")
-
-		// get caBundle from the secret
-		secret, err := k8s.GetSecretE(s.t, s.kubectlOptions, _webhookCertSecret)
-		assert.Nil(s.t, err, "get webhook secret")
-		cert, ok := secret.Data["cert.pem"]
-		assert.True(s.t, ok, "get cert.pem from the secret")
-		caBundle := base64.StdEncoding.EncodeToString(cert)
-
-		webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, caBundle, s.namespace, caBundle, s.namespace, caBundle, s.namespace, caBundle)
-		ginkgo.GinkgoT().Log(webhookReg)
-		err = s.CreateResourceFromString(webhookReg)
-		assert.Nil(s.t, err, "create webhook registration")
-
-		s.addFinalizers(func() {
-			err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, admissionSvc)
-			assert.Nil(s.t, err, "deleting admission service")
-		})
-		s.addFinalizers(func() {
-			err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, webhookReg)
-			assert.Nil(s.t, err, "deleting webhook registration")
-		})
-	}
-
 	return nil
+}
+
+func (s *Scaffold) createAdmissionWebhook() {
+	err := generateWebhookCert(s.namespace)
+	assert.Nil(s.t, err, "generate certs and create webhook secret")
+	admissionSvc := fmt.Sprintf(_ingressAPISIXAdmissionService, s.namespace)
+	err = k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, admissionSvc)
+	assert.Nil(s.t, err, "create admission webhook service")
+
+	// get caBundle from the secret
+	secret, err := k8s.GetSecretE(s.t, s.kubectlOptions, "webhook-certs")
+	assert.Nil(s.t, err, "get webhook secret")
+	cert, ok := secret.Data["cert.pem"]
+	assert.True(s.t, ok, "get cert.pem from the secret")
+	caBundle := base64.StdEncoding.EncodeToString(cert)
+	s.NamespaceSelectorLabel()
+	webhookReg := fmt.Sprintf(_ingressAPISIXAdmissionWebhook, s.namespace, s.namespace, caBundle, "apisix.ingress.watch", s.namespace)
+	ginkgo.GinkgoT().Log(webhookReg)
+	err = s.CreateResourceFromString(webhookReg)
+	assert.Nil(s.t, err, "create webhook registration")
+
+	s.addFinalizers(func() {
+		err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, admissionSvc)
+		assert.Nil(s.t, err, "deleting admission service")
+	})
+	s.addFinalizers(func() {
+		err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, webhookReg)
+		assert.Nil(s.t, err, "deleting webhook registration")
+	})
 }
 
 func (s *Scaffold) WaitAllIngressControllerPodsAvailable() error {
@@ -574,10 +548,9 @@ func (s *Scaffold) GetIngressPodDetails() ([]corev1.Pod, error) {
 // ScaleIngressController scales the number of Ingress Controller pods to desired.
 func (s *Scaffold) ScaleIngressController(desired int) error {
 	var (
-		ingressDeployment   string
-		label               string
-		disableStatusStr    string
-		webhookVolumeMounts string
+		ingressDeployment string
+		label             string
+		disableStatusStr  string
 	)
 
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil {
@@ -586,19 +559,30 @@ func (s *Scaffold) ScaleIngressController(desired int) error {
 	if s.opts.DisableStatus {
 		disableStatusStr = "- --disable-status-updates"
 	}
-	if s.opts.EnableWebhooks {
-		webhookVolumeMounts = _volumeMounts
-	}
 
 	ingressDeployment = s.genIngressDeployment(desired, s.namespace, s.opts.APISIXAdminAPIVersion,
 		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress,
-		s.opts.IngressClass, disableStatusStr, webhookVolumeMounts, _webhookCertSecret)
+		s.opts.EnableWebhooks, s.opts.IngressClass, disableStatusStr)
 
 	if err := s.CreateResourceFromString(ingressDeployment); err != nil {
 		return err
 	}
 	if err := k8s.WaitUntilNumPodsCreatedE(s.t, s.kubectlOptions, s.labelSelector("app=ingress-apisix-controller-deployment-e2e-test"), desired, 5, 5*time.Second); err != nil {
 		return err
+	}
+	return nil
+}
+
+// generateWebhookCert generates signed certs of webhook and create the corresponding secret by running a script.
+func generateWebhookCert(ns string) error {
+	commandTemplate := `testdata/webhook-create-cert.sh`
+	os.Setenv("namespace", ns)
+	cmd := exec.Command("/bin/sh", commandTemplate, "--namespace", ns)
+
+	output, err := cmd.Output()
+	if err != nil {
+		ginkgo.GinkgoT().Errorf("%s", output)
+		return fmt.Errorf("failed to execute the script: %v", err)
 	}
 	return nil
 }

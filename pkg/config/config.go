@@ -104,6 +104,7 @@ type KubernetesConfig struct {
 	APIVersion           string             `json:"api_version" yaml:"api_version"`
 	EnableGatewayAPI     bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
 	DisableStatusUpdates bool               `json:"disable_status_updates" yaml:"disable_status_updates"`
+	EnableAdmission      bool               `json:"enable_admission" yaml:"enable_admission"`
 }
 
 // APISIXConfig contains all APISIX related config items.
@@ -148,6 +149,7 @@ func NewDefaultConfig() *Config {
 			WatchEndpointSlices:  false,
 			EnableGatewayAPI:     false,
 			DisableStatusUpdates: false,
+			EnableAdmission:      false,
 		},
 		APISIX: APISIXConfig{
 			AdminAPIVersion:    "v2",

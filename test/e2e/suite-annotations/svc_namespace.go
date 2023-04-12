@@ -27,11 +27,10 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations v2beta3", func() {
+var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations reference service in the same namespace", func() {
+	s := scaffold.NewDefaultScaffold()
 
-	s := scaffold.NewDefaultV2beta3Scaffold()
-
-	ginkgo.It("same namespace in ingress networking/v1", func() {
+	ginkgo.It("networking/v1", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
@@ -39,6 +38,7 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/svc-namespace: "%s"
   name: ingress-v1
 spec:
   rules:
@@ -52,7 +52,7 @@ spec:
             name: %s
             port:
               number: %d
-`, backendSvc, backendPort[0])
+`, s.Namespace(), backendSvc, backendPort[0])
 		err := s.CreateResourceFromString(ing)
 		if err != nil {
 			assert.Fail(ginkgo.GinkgoT(), err.Error(), "creating ingress")
@@ -68,179 +68,16 @@ spec:
 			Body().
 			Raw()
 	})
-})
 
-var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations v2beta3", func() {
-	s := scaffold.NewDefaultV2beta3Scaffold()
-	createNamespace := func(namespace string, watch string) {
-		k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(),
-			&k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()},
-			metav1.ObjectMeta{Name: namespace, Labels: map[string]string{
-				"apisix.ingress.watch": watch,
-			}})
-	}
-
-	deleteNamespace := func(namespace string) {
-		_ = k8s.DeleteNamespaceE(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, namespace)
-	}
-
-	ginkgo.It("different namespace in ingress networking/v1", func() {
-		newNs := fmt.Sprintf("second-svc-namespace-%d", time.Now().Nanosecond())
-		oldNs := s.Namespace()
-		createNamespace(newNs, oldNs)
-		defer deleteNamespace(newNs)
-
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/svc-namespace: %s
-  name: ingress-v1
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /*
-        pathType: Prefix
-        backend:
-          service:
-            name: %s
-            port:
-              number: %d
-`, oldNs, backendSvc, backendPort[0])
-		err := s.CreateResourceFromStringWithNamespace(ing, newNs)
-		if err != nil {
-			assert.Fail(ginkgo.GinkgoT(), err.Error(), "creating ingress")
-		}
-
-		time.Sleep(5 * time.Second)
-
-		_ = s.NewAPISIXClient().
-			POST("/anything").
-			WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(http.StatusOK).
-			Body().
-			Raw()
-	})
-})
-
-var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations v2beta3", func() {
-
-	s := scaffold.NewDefaultV2beta3Scaffold()
-	ginkgo.It("same namespace in ingress networking/v1beta1", func() {
-
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
-apiVersion: networking.k8s.io/v1beta1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/svc-namespace: ""
-  name: ingress-v1beta1
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /*
-        pathType: Prefix
-        backend:
-          serviceName: %s
-          servicePort: %d
-`, backendSvc, backendPort[0])
-
-		err := s.CreateResourceFromString(ing)
-		if err != nil {
-			assert.Fail(ginkgo.GinkgoT(), err.Error(), "creating ingress")
-		}
-
-		time.Sleep(5 * time.Second)
-
-		_ = s.NewAPISIXClient().
-			POST("/anything").
-			WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(http.StatusOK).
-			Body().
-			Raw()
-	})
-})
-var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations v2beta3", func() {
-	s := scaffold.NewDefaultV2beta3Scaffold()
-	createNamespace := func(namespace string, watch string) {
-		k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(),
-			&k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()},
-			metav1.ObjectMeta{Name: namespace, Labels: map[string]string{
-				"apisix.ingress.watch": watch,
-			}})
-	}
-
-	deleteNamespace := func(namespace string) {
-		_ = k8s.DeleteNamespaceE(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, namespace)
-	}
-
-	ginkgo.It("different namespace in ingress networking/v1beta1", func() {
-
-		newNs := fmt.Sprintf("second-svc-namespace-%d", time.Now().Nanosecond())
-		oldNs := s.Namespace()
-		createNamespace(newNs, oldNs)
-		defer deleteNamespace(newNs)
-
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
-apiVersion: networking.k8s.io/v1beta1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/svc-namespace: %s
-  name: ingress-v1beta1
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /*
-        pathType: Prefix
-        backend:
-          serviceName: %s
-          servicePort: %d
-`, oldNs, backendSvc, backendPort[0])
-
-		err := s.CreateResourceFromStringWithNamespace(ing, newNs)
-		if err != nil {
-			assert.Fail(ginkgo.GinkgoT(), err.Error(), "creating ingress")
-		}
-
-		time.Sleep(5 * time.Second)
-
-		_ = s.NewAPISIXClient().
-			POST("/anything").
-			WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(http.StatusOK).
-			Body().
-			Raw()
-	})
-})
-var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations v2beta3", func() {
-	s := scaffold.NewDefaultV2beta3Scaffold()
-
-	ginkgo.It("same namespace in ingress extensions/v1beta1", func() {
-
+	ginkgo.It("extensions/v1beta1", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: apisix	
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/svc-namespace: "%s"	
   name: ingress-extensions-v1beta1
 spec:
   rules:
@@ -252,7 +89,7 @@ spec:
         backend:
           serviceName: %s
           servicePort: %d
-`, backendSvc, backendPort[0])
+`, s.Namespace(), backendSvc, backendPort[0])
 		err := s.CreateResourceFromString(ing)
 		if err != nil {
 			assert.Fail(ginkgo.GinkgoT(), err.Error(), "creating ingress")
@@ -267,10 +104,48 @@ spec:
 			Body().
 			Raw()
 	})
+
+	ginkgo.It("networking/v1beta1", func() {
+		backendSvc, backendPort := s.DefaultHTTPBackend()
+		ing := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/svc-namespace: "%s"
+  name: ingress-v1beta1
+spec:
+  rules:
+  - host: httpbin.org
+    http:
+      paths:
+      - path: /*
+        pathType: Prefix
+        backend:
+          serviceName: %s
+          servicePort: %d
+`, s.Namespace(), backendSvc, backendPort[0])
+
+		err := s.CreateResourceFromString(ing)
+		if err != nil {
+			assert.Fail(ginkgo.GinkgoT(), err.Error(), "creating ingress")
+		}
+
+		time.Sleep(5 * time.Second)
+
+		_ = s.NewAPISIXClient().
+			POST("/anything").
+			WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(http.StatusOK).
+			Body().
+			Raw()
+	})
 })
 
-var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations v2beta3", func() {
-	s := scaffold.NewDefaultV2beta3Scaffold()
+var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations cross-namespace reference service", func() {
+	s := scaffold.NewDefaultScaffold()
 
 	createNamespace := func(namespace string, watch string) {
 		k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(),
@@ -284,7 +159,7 @@ var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations v2beta3", 
 		_ = k8s.DeleteNamespaceE(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, namespace)
 	}
 
-	ginkgo.It("different namespace in ingress extensions/v1beta1", func() {
+	ginkgo.It("extensions/v1beta1", func() {
 
 		newNs := fmt.Sprintf("second-svc-namespace-%d", time.Now().Nanosecond())
 		oldNs := s.Namespace()
@@ -325,167 +200,8 @@ spec:
 			Body().
 			Raw()
 	})
-})
 
-var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations v2", func() {
-
-	s := scaffold.NewDefaultV2Scaffold()
-
-	ginkgo.It("same namespace in ingress networking/v1", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-  name: ingress-v1
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /*
-        pathType: Prefix
-        backend:
-          service:
-            name: %s
-            port:
-              number: %d
-`, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		if err != nil {
-			assert.Fail(ginkgo.GinkgoT(), err.Error(), "creating ingress")
-		}
-
-		time.Sleep(5 * time.Second)
-
-		_ = s.NewAPISIXClient().
-			POST("/anything").
-			WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(http.StatusOK).
-			Body().
-			Raw()
-	})
-})
-
-var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations v2", func() {
-	s := scaffold.NewDefaultV2Scaffold()
-	createNamespace := func(namespace string, watch string) {
-		k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(),
-			&k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()},
-			metav1.ObjectMeta{Name: namespace, Labels: map[string]string{
-				"apisix.ingress.watch": watch,
-			}})
-	}
-
-	deleteNamespace := func(namespace string) {
-		_ = k8s.DeleteNamespaceE(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, namespace)
-	}
-
-	ginkgo.It("different namespace in ingress networking/v1", func() {
-		newNs := fmt.Sprintf("second-svc-namespace-%d", time.Now().Nanosecond())
-		oldNs := s.Namespace()
-		createNamespace(newNs, oldNs)
-		defer deleteNamespace(newNs)
-
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/svc-namespace: %s
-  name: ingress-v1
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /*
-        pathType: Prefix
-        backend:
-          service:
-            name: %s
-            port:
-              number: %d
-`, oldNs, backendSvc, backendPort[0])
-		err := s.CreateResourceFromStringWithNamespace(ing, newNs)
-		if err != nil {
-			assert.Fail(ginkgo.GinkgoT(), err.Error(), "creating ingress")
-		}
-
-		time.Sleep(5 * time.Second)
-
-		_ = s.NewAPISIXClient().
-			POST("/anything").
-			WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(http.StatusOK).
-			Body().
-			Raw()
-	})
-})
-
-var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations v2", func() {
-
-	s := scaffold.NewDefaultV2Scaffold()
-	ginkgo.It("same namespace in ingress networking/v1beta1", func() {
-
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
-apiVersion: networking.k8s.io/v1beta1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/svc-namespace: ""
-  name: ingress-v1beta1
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /*
-        pathType: Prefix
-        backend:
-          serviceName: %s
-          servicePort: %d
-`, backendSvc, backendPort[0])
-
-		err := s.CreateResourceFromString(ing)
-		if err != nil {
-			assert.Fail(ginkgo.GinkgoT(), err.Error(), "creating ingress")
-		}
-
-		time.Sleep(5 * time.Second)
-
-		_ = s.NewAPISIXClient().
-			POST("/anything").
-			WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(http.StatusOK).
-			Body().
-			Raw()
-	})
-})
-var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations v2", func() {
-	s := scaffold.NewDefaultV2Scaffold()
-	createNamespace := func(namespace string, watch string) {
-		k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(),
-			&k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()},
-			metav1.ObjectMeta{Name: namespace, Labels: map[string]string{
-				"apisix.ingress.watch": watch,
-			}})
-	}
-
-	deleteNamespace := func(namespace string) {
-		_ = k8s.DeleteNamespaceE(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, namespace)
-	}
-
-	ginkgo.It("different namespace in ingress networking/v1beta1", func() {
+	ginkgo.It("networking/v1beta1", func() {
 
 		newNs := fmt.Sprintf("second-svc-namespace-%d", time.Now().Nanosecond())
 		oldNs := s.Namespace()
@@ -528,64 +244,8 @@ spec:
 			Body().
 			Raw()
 	})
-})
-var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations v2", func() {
-	s := scaffold.NewDefaultV2Scaffold()
 
-	ginkgo.It("same namespace in ingress extensions/v1beta1", func() {
-
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix	
-  name: ingress-extensions-v1beta1
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /*
-        pathType: Prefix
-        backend:
-          serviceName: %s
-          servicePort: %d
-`, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		if err != nil {
-			assert.Fail(ginkgo.GinkgoT(), err.Error(), "creating ingress")
-		}
-		time.Sleep(5 * time.Second)
-
-		_ = s.NewAPISIXClient().
-			POST("/anything").
-			WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(http.StatusOK).
-			Body().
-			Raw()
-	})
-})
-
-var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations v2", func() {
-	s := scaffold.NewDefaultV2Scaffold()
-
-	createNamespace := func(namespace string, watch string) {
-		k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(),
-			&k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()},
-			metav1.ObjectMeta{Name: namespace, Labels: map[string]string{
-				"apisix.ingress.watch": watch,
-			}})
-	}
-
-	deleteNamespace := func(namespace string) {
-		_ = k8s.DeleteNamespaceE(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, namespace)
-	}
-
-	ginkgo.It("different namespace in ingress extensions/v1beta1", func() {
-
+	ginkgo.It("networking/v1", func() {
 		newNs := fmt.Sprintf("second-svc-namespace-%d", time.Now().Nanosecond())
 		oldNs := s.Namespace()
 		createNamespace(newNs, oldNs)
@@ -593,13 +253,13 @@ var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations v2", func(
 
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/svc-namespace: %s
-  name: ingress-extensions-v1beta1
+  name: ingress-v1
 spec:
   rules:
   - host: httpbin.org
@@ -608,13 +268,16 @@ spec:
       - path: /*
         pathType: Prefix
         backend:
-          serviceName: %s
-          servicePort: %d
+          service:
+            name: %s
+            port:
+              number: %d
 `, oldNs, backendSvc, backendPort[0])
 		err := s.CreateResourceFromStringWithNamespace(ing, newNs)
 		if err != nil {
 			assert.Fail(ginkgo.GinkgoT(), err.Error(), "creating ingress")
 		}
+
 		time.Sleep(5 * time.Second)
 
 		_ = s.NewAPISIXClient().

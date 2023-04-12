@@ -16,25 +16,16 @@
 package validation
 
 import (
-	"github.com/hashicorp/go-multierror"
+	"go.uber.org/zap"
 
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 )
 
-// ApisixRouteValidator validates ApisixRoute and its plugins.
-// When the validation of one plugin fails, it will continue to validate the rest of plugins.
-func ValidateApisixRouteV2(ar *v2.ApisixRoute) (valid bool, resultErr error) {
-	valid, resultErr = ValidateApisixRouteHTTPV2(ar.Spec.HTTP)
-	return
-}
+func ValidateApisixPluginConfigV2(apc *v2.ApisixPluginConfig) (valid bool, resultErr error) {
+	log.Debugw("arrive ApisixPluginConfig validator webhook", zap.Any("object", apc))
 
-func ValidateApisixRouteHTTPV2(httpRouteList []v2.ApisixRouteHTTP) (valid bool, resultErr error) {
-	valid = true
-	for _, http := range httpRouteList {
-		if _, err := ValidateApisixRoutePlugins(http.Plugins); err != nil {
-			valid = false
-			resultErr = multierror.Append(resultErr, err)
-		}
-	}
+	valid, resultErr = ValidateApisixRoutePlugins(apc.Spec.Plugins)
+
 	return
 }
