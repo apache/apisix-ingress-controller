@@ -467,7 +467,7 @@ func (c *apisixPluginConfigController) recordStatus(at interface{}, reason strin
 		Message:            message,
 		ObservedGeneration: generation,
 	}
-	log.Errorw("update status apisixpluginconfig", zap.Any("conditions", condition))
+
 	apisixClient := c.KubeClient.APISIXClient
 
 	if kubeObj, ok := at.(runtime.Object); ok {
@@ -493,10 +493,6 @@ func (c *apisixPluginConfigController) recordStatus(at interface{}, reason strin
 			}
 		}
 	case *configv2.ApisixPluginConfig:
-		namespace := v.Namespace
-		name := v.Name
-		v, _ = apisixClient.ApisixV2().ApisixPluginConfigs(namespace).Get(context.TODO(), name, metav1.GetOptions{})
-
 		// set to status
 		if v.Status.Conditions == nil {
 			conditions := make([]metav1.Condition, 0)

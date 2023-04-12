@@ -117,14 +117,14 @@ func (l *apisixTlsLister) V2beta3(namespace, name string) (ApisixTls, error) {
 	}, nil
 }
 func (l *apisixTlsLister) V2(namespace, name string) (ApisixTls, error) {
-	ar, err := l.v2Lister.ApisixTlses(namespace).Get(name)
+	at, err := l.v2Lister.ApisixTlses(namespace).Get(name)
 	if err != nil {
 		return nil, err
 	}
 	return &apisixTls{
 		groupVersion: config.ApisixV2,
-		v2:           ar,
-		Object:       ar,
+		v2:           at,
+		Object:       at,
 	}, nil
 }
 

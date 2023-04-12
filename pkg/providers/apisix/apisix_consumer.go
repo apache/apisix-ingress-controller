@@ -391,7 +391,6 @@ func (c *apisixConsumerController) ResourceSync(interval time.Duration) {
 }
 
 func (c *apisixConsumerController) updateStatus(obj kube.ApisixConsumer, statusErr error) {
-	log.Errorw("update status ApisixConsumer")
 	if obj == nil {
 		return
 	}
