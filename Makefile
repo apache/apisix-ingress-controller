@@ -28,7 +28,7 @@ endif
 endif
 
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
-REGISTRY_PORT ?= "5000"
+REGISTRY_PORT ?= "8000"
 REGISTRY ?="127.0.0.1:$(REGISTRY_PORT)"
 IMAGE_TAG ?= dev
 ENABLE_PROXY ?= true
@@ -331,7 +331,7 @@ uninstall-gateway-api:
 
 ### dev-env:			  Launch development environment
 .PHONY: dev-env
-dev-env: kind-up pack-image
+dev-env: dev-kind-up pack-image
 	helm repo add apisix https://charts.apiseven.com
 	helm repo update
 	helm install apisix apisix/apisix \
@@ -344,3 +344,8 @@ dev-env: kind-up pack-image
 ### dev-env-reset:        Reset development environment
 .PHONY: dev-env-reset
 dev-env-reset: kind-reset clean-image
+
+### dev-kind-up:              Create a kind cluster with registry for dev
+.PHONY: dev-kind-up
+dev-kind-up:
+	./utils/kind-with-registry.sh "8000"
