@@ -403,7 +403,7 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 
 		if ev.Type == types.EventDelete {
 			deleted = m
-		} else if ev.Type == types.EventAdd {
+		} else if ev.Type.IsAddEvent() {
 			added = m
 		} else {
 			oldCtx, _ := c.translator.TranslateOldRoute(obj.OldObject)

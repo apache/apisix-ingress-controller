@@ -194,7 +194,7 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 
 		if ev.Type == types.EventDelete {
 			deleted = m
-		} else if ev.Type == types.EventAdd {
+		} else if ev.Type.IsAddEvent() {
 			added = m
 		} else {
 			var oldCtx *translation.TranslateContext
