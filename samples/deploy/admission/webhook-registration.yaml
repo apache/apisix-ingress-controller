@@ -36,13 +36,18 @@ webhooks:
       - apiGroups:
           - "apisix.apache.org"
         apiVersions:
-          - "*"
+          - v2
         operations:
           - CREATE
           - UPDATE
         resources:
           - apisixroutes
+          - apisixglobalrules
+          - apisixconsumers
           - apisixpluginconfigs
+          - apisixclusterconfigs
+          - apisixtlses
+          - apisixupstreams
     timeoutSeconds: 30
     failurePolicy: Fail
     sideEffects: None

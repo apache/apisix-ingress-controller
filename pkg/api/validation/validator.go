@@ -24,10 +24,17 @@ import (
 	kwhvalidating "github.com/slok/kubewebhook/v2/pkg/webhook/validating"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+)
+
+var (
+	scheme = runtime.NewScheme()
+	codecs = serializer.NewCodecFactory(scheme)
 )
 
 var (
@@ -42,24 +49,144 @@ var (
 		Version:  v2.GroupVersion.Version,
 		Resource: "apisixpluginconfigs",
 	}
+
+	ApisixConsumerV2GVR = metav1.GroupVersionResource{
+		Group:    v2.GroupVersion.Group,
+		Version:  v2.GroupVersion.Version,
+		Resource: "apisixconsumers",
+	}
+
+	ApisixTlsV2GVR = metav1.GroupVersionResource{
+		Group:    v2.GroupVersion.Group,
+		Version:  v2.GroupVersion.Version,
+		Resource: "apisixtlses",
+	}
+
+	ApisixClusterConfigV2GVR = metav1.GroupVersionResource{
+		Group:    v2.GroupVersion.Group,
+		Version:  v2.GroupVersion.Version,
+		Resource: "apisixclusterconfigs",
+	}
+
+	ApisixUpstreamV2GVR = metav1.GroupVersionResource{
+		Group:    v2.GroupVersion.Group,
+		Version:  v2.GroupVersion.Version,
+		Resource: "apisixupstreams",
+	}
+
+	ApisixGlobalRuleV2GVR = metav1.GroupVersionResource{
+		Group:    v2.GroupVersion.Group,
+		Version:  v2.GroupVersion.Version,
+		Resource: "apisixglobalrules",
+	}
 )
 
 var Validator = kwhvalidating.ValidatorFunc(
 	func(ctx context.Context, review *kwhmodel.AdmissionReview, object metav1.Object) (result *kwhvalidating.ValidatorResult, err error) {
-		GVR := review.RequestGVR
+
 		log.Debugw("arrive validator webhook", zap.Any("object", object))
 
-		var valid bool
-		var resultErr error
-		var msg string
+		var (
+			deserializer = codecs.UniversalDeserializer()
+			GVR          = review.RequestGVR
+			valid        = true
+
+			resultErr error
+			msg       string
+		)
 
 		switch *GVR {
 		case ApisixRouteV2GVR:
 			ar := object.(*v2.ApisixRoute)
-			valid, resultErr = ValidateApisixRouteV2(ar)
+			if review.Operation == kwhmodel.OperationUpdate {
+				var old v2.ApisixRoute
+				_, _, err := deserializer.Decode(review.OldObjectRaw, nil, &old)
+				if err != nil {
+					log.Error("Failed to deserialize ApisixRoute in admisson webhook")
+					break
+				}
+				valid, resultErr = validateIngressClassName(old.Spec.IngressClassName, ar.Spec.IngressClassName)
+			}
+			if valid {
+				valid, resultErr = ValidateApisixRouteV2(ar)
+			}
+		case ApisixUpstreamV2GVR:
+			au := object.(*v2.ApisixUpstream)
+			if au.Spec == nil {
+				valid, msg = false, fmt.Sprintln("Spec cannot be empty")
+				break
+			}
+			if review.Operation == kwhmodel.OperationUpdate {
+				var old v2.ApisixUpstream
+				_, _, err := deserializer.Decode(review.OldObjectRaw, nil, &old)
+				if err != nil {
+					log.Error("Failed to deserialize ApisixUpstream in admisson webhook")
+					break
+				}
+				valid, resultErr = validateIngressClassName(old.Spec.IngressClassName, au.Spec.IngressClassName)
+			}
 		case ApisixPluginConfigV2GVR:
 			apc := object.(*v2.ApisixPluginConfig)
-			valid, resultErr = ValidateApisixPluginConfigV2(apc)
+			if review.Operation == kwhmodel.OperationUpdate {
+				var old v2.ApisixPluginConfig
+				_, _, err := deserializer.Decode(review.OldObjectRaw, nil, &old)
+				if err != nil {
+					log.Error("Failed to deserialize ApisixPluginConfig in admisson webhook")
+					break
+				}
+				valid, resultErr = validateIngressClassName(old.Spec.IngressClassName, apc.Spec.IngressClassName)
+			}
+			if valid {
+				valid, resultErr = ValidateApisixPluginConfigV2(apc)
+			}
+		case ApisixConsumerV2GVR:
+			ac := object.(*v2.ApisixConsumer)
+			if review.Operation == kwhmodel.OperationUpdate {
+				var old v2.ApisixConsumer
+				_, _, err := deserializer.Decode(review.OldObjectRaw, nil, &old)
+				if err != nil {
+					log.Error("Failed to deserialize ApisixConsumer in admisson webhook")
+					break
+				}
+				valid, resultErr = validateIngressClassName(old.Spec.IngressClassName, ac.Spec.IngressClassName)
+			}
+		case ApisixTlsV2GVR:
+			atls := object.(*v2.ApisixTls)
+			if atls.Spec == nil {
+				valid, msg = false, fmt.Sprintln("Spec cannot be empty")
+				break
+			}
+			if review.Operation == kwhmodel.OperationUpdate {
+				var old v2.ApisixTls
+				_, _, err := deserializer.Decode(review.OldObjectRaw, nil, &old)
+				if err != nil {
+					log.Error("Failed to deserialize ApisixTls in admisson webhook")
+					break
+				}
+				valid, resultErr = validateIngressClassName(old.Spec.IngressClassName, atls.Spec.IngressClassName)
+			}
+		case ApisixClusterConfigV2GVR:
+			acc := object.(*v2.ApisixClusterConfig)
+			if review.Operation == kwhmodel.OperationUpdate {
+				var old v2.ApisixClusterConfig
+				_, _, err := deserializer.Decode(review.OldObjectRaw, nil, &old)
+				if err != nil {
+					log.Error("Failed to deserialize ApisixClusterConfig in admisson webhook")
+					break
+				}
+				valid, resultErr = validateIngressClassName(old.Spec.IngressClassName, acc.Spec.IngressClassName)
+			}
+		case ApisixGlobalRuleV2GVR:
+			agr := object.(*v2.ApisixGlobalRule)
+			if review.Operation == kwhmodel.OperationUpdate {
+				var old v2.ApisixGlobalRule
+				_, _, err := deserializer.Decode(review.OldObjectRaw, nil, &old)
+				if err != nil {
+					log.Error("Failed to deserialize ApisixGlobalRule in admisson webhook")
+					break
+				}
+				valid, resultErr = validateIngressClassName(old.Spec.IngressClassName, agr.Spec.IngressClassName)
+			}
 		default:
 			valid = false
 			resultErr = fmt.Errorf("{group: %s, version: %s, Resource: %s} not supported", GVR.Group, GVR.Version, GVR.Resource)
