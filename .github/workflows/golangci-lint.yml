@@ -73,7 +73,7 @@ jobs:
           go-version: '1.20'
 
       - name: Download golangci-lint
-        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.49.0
+        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.52.2
 
       - name: 🛩️ golangci-lint
         run: $(go env GOPATH)/bin/golangci-lint run --tests=false --timeout 300s ./...
