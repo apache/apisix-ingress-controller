@@ -21,7 +21,7 @@ name: e2e-test-ci (dev)
 
 on:
   schedule:
-    - cron: "0 0 * * *"
+    - cron: '0 0 * * *'
   pull_request:
     branches:
       - master
@@ -71,6 +71,7 @@ jobs:
     if: needs.changes.outputs.go == 'true'
 
     steps:
+
       - name: Checkout
         uses: actions/checkout@v3 # v3.0.2
 
@@ -78,7 +79,7 @@ jobs:
         id: go
         uses: actions/setup-go@v3 # v3.2.0
         with:
-          go-version: "1.19"
+          go-version: '1.19'
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2 #v2.0.0
