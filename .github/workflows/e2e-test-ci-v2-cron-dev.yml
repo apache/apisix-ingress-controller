@@ -34,7 +34,7 @@ concurrency:
 
 jobs:
   changes:
-    if: ${{ (!github.event.pull_request.draft || github.event.schedule == '0 0 * * *' }}
+    if: ${{ (!github.event.pull_request.draft || github.event.schedule == '0 0 * * *') }}
     runs-on: ubuntu-20.04
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
@@ -141,7 +141,7 @@ jobs:
         run: |
           SUITES=($(find test/e2e -type d -iname 'suite-*' | grep -E -o '(\w|\-)*' | grep -v 'test' | grep -v 'e2e' | sort | uniq -u))
           echo $SUITES
-          echo "matrix=$(jq --compact-output --null-input '$ARGS.positional' --args "${SUITES[@]}")" >> $GITHUB_OUTPUT
+          echo -n "matrix=$(jq --compact-output --null-input '$ARGS.positional' --args "${SUITES[@]}")" >> $GITHUB_OUTPUT
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
