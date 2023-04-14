@@ -20,6 +20,8 @@
 name: e2e-test-ci (dev)
 
 on:
+  schedule:
+      - cron: '0 0 * * *'
   push:
     branches:
       - master
