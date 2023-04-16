@@ -328,13 +328,7 @@ uninstall-gateway-api:
 ### dev-env:			  Launch development environment
 .PHONY: dev-env
 dev-env: kind-up pack-image
-	helm repo add apisix https://charts.apiseven.com
-	helm repo update
-	helm install apisix apisix/apisix \
-		--set gateway.type=NodePort \
-		--set ingress-controller.enabled=true \
-		--namespace ingress-apisix \
-		--create-namespace
+	./utils/install-apisix-with-helm.sh
 	kubectl set image deployment/apisix-ingress-controller ingress-controller=$(REGISTRY)/apache/apisix-ingress-controller:dev --namespace ingress-apisix
 
 ### dev-env-reset:        Reset development environment
