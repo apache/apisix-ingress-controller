@@ -50,7 +50,7 @@ const (
 
 var (
 	// ErrClusterNotExist means a cluster doesn't exist.
-	ErrClusterNotExist = errors.New("client not exist")
+	ErrClusterNotExist = errors.New("cluster not exist")
 	// ErrDuplicatedCluster means the cluster adding request was
 	// rejected since the cluster was already created.
 	ErrDuplicatedCluster = errors.New("duplicated cluster")
