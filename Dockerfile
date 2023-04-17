@@ -31,7 +31,7 @@ RUN if [ "$ENABLE_PROXY" = "true" ] ; then go env -w GOPROXY=https://goproxy.cn,
     && go mod download
 
 COPY . .
-RUN --mount=type=cache,target=/root/.cache/go-build make build
+RUN make build
 
 FROM centos:centos7
 LABEL maintainer="gxthrj@163.com"

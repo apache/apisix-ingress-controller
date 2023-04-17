@@ -208,6 +208,7 @@ func (c *Common) SyncUpstreamNodesChangeToCluster(ctx context.Context, cluster a
 		zap.String("upstream_name", upsName),
 		zap.Any("nodes", nodes),
 	)
+	return nil
 	upstream, err := cluster.Upstream().Get(ctx, upsName)
 	if err != nil {
 		if err == apisixcache.ErrNotFound {

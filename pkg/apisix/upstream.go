@@ -106,6 +106,14 @@ func (u *upstreamClient) List(ctx context.Context) ([]*v1.Upstream, error) {
 }
 
 func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream, shouldCompare bool) (*v1.Upstream, error) {
+	if u.cluster.adapter != nil {
+		data, err := json.Marshal(obj)
+		if err != nil {
+			return nil, err
+		}
+		u.cluster.CreateResource("upstreams", obj.ID, data)
+		return obj, nil
+	}
 	if v, skip := skipRequest(u.cluster, shouldCompare, u.url, obj.ID, obj); skip {
 		return v, nil
 	}
@@ -151,6 +159,14 @@ func (u *upstreamClient) Create(ctx context.Context, obj *v1.Upstream, shouldCom
 }
 
 func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
+	if u.cluster.adapter != nil {
+		data, err := json.Marshal(obj)
+		if err != nil {
+			return nil
+		}
+		u.cluster.CreateResource("upstreams", obj.ID, data)
+		return nil
+	}
 	log.Debugw("try to delete upstream",
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),
@@ -181,6 +197,14 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 }
 
 func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream, shouldCompare bool) (*v1.Upstream, error) {
+	if u.cluster.adapter != nil {
+		data, err := json.Marshal(obj)
+		if err != nil {
+			return nil, err
+		}
+		u.cluster.CreateResource("upstreams", obj.ID, data)
+		return obj, nil
+	}
 	if v, skip := skipRequest(u.cluster, shouldCompare, u.url, obj.ID, obj); skip {
 		return v, nil
 	}

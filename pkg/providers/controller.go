@@ -384,6 +384,7 @@ func (c *Controller) run(ctx context.Context) {
 		BaseURL:          c.cfg.APISIX.DefaultClusterBaseURL,
 		MetricsCollector: c.MetricsCollector,
 		SyncComparison:   c.cfg.ApisixResourceSyncComparison,
+		EnableEtcdServer: true,
 	}
 	err := c.apisix.AddCluster(ctx, clusterOpts)
 	if err != nil && err != apisix.ErrDuplicatedCluster {

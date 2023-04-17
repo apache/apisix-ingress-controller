@@ -38,6 +38,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	adapter "github.com/api7/etcd-adapter/pkg/adapter"
 )
 
 const (
@@ -84,6 +85,7 @@ type ClusterOptions struct {
 	SyncInterval     types.TimeDuration
 	SyncComparison   bool
 	MetricsCollector metrics.Collector
+	EnableEtcdServer bool
 }
 
 type cluster struct {
@@ -111,6 +113,7 @@ type cluster struct {
 	metricsCollector        metrics.Collector
 	upstreamServiceRelation UpstreamServiceRelation
 	pluginMetadata          PluginMetadata
+	adapter                 adapter.Adapter
 }
 
 func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
@@ -135,6 +138,10 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 	if adminVersion != "v3" {
 		adminVersion = "v2"
 	}
+	var etcdserver adapter.Adapter
+	if o.EnableEtcdServer {
+		etcdserver = adapter.NewEtcdAdapter(nil)
+	}
 	c := &cluster{
 		adminVersion: adminVersion,
 		name:         o.Name,
@@ -149,6 +156,7 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 		cacheSynced:      make(chan struct{}),
 		syncComparison:   o.SyncComparison,
 		metricsCollector: o.MetricsCollector,
+		adapter:          etcdserver,
 	}
 	c.route = newRouteClient(c)
 	c.upstream = newUpstreamClient(c)
@@ -176,58 +184,72 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 		return nil, err
 	}
 
+	if o.EnableEtcdServer {
+		fmt.Println("start etcd server")
+		ln, err := net.Listen("tcp", "0.0.0.0:12379")
+		if err != nil {
+			return nil, err
+		}
+		go c.adapter.Serve(ctx, ln)
+	}
+
 	go c.syncCache(ctx)
-	go c.syncSchema(ctx, o.SyncInterval.Duration)
+	//go c.syncSchema(ctx, o.SyncInterval.Duration)
 
 	return c, nil
 }
 
 func (c *cluster) syncCache(ctx context.Context) {
-	log.Infow("syncing cache", zap.String("cluster", c.name))
-	now := time.Now()
-	defer func() {
-		if c.cacheSyncErr == nil {
-			log.Infow("cache synced",
-				zap.String("cost_time", time.Since(now).String()),
-				zap.String("cluster", c.name),
-			)
-			c.metricsCollector.IncrCacheSyncOperation("success")
-		} else {
-			log.Errorw("failed to sync cache",
-				zap.String("cost_time", time.Since(now).String()),
-				zap.String("cluster", c.name),
-			)
-			c.metricsCollector.IncrCacheSyncOperation("failure")
-		}
-	}()
-
-	backoff := wait.Backoff{
-		Duration: 2 * time.Second,
-		Factor:   1,
-		Steps:    5,
-	}
-	var lastSyncErr error
-	err := wait.ExponentialBackoff(backoff, func() (done bool, err error) {
-		// impossibly return: false, nil
-		// so can safe used
-		done, lastSyncErr = c.syncCacheOnce(ctx)
-		select {
-		case <-ctx.Done():
-			err = context.Canceled
-		default:
-			break
-		}
-		return
-	})
-	if err != nil {
-		// if ErrWaitTimeout then set lastSyncErr
-		c.cacheSyncErr = lastSyncErr
-	}
+	time.Sleep(2 * time.Second)
 	close(c.cacheSynced)
+	return
+	/*
+		log.Infow("syncing cache", zap.String("cluster", c.name))
+		now := time.Now()
+		defer func() {
+			if c.cacheSyncErr == nil {
+				log.Infow("cache synced",
+					zap.String("cost_time", time.Since(now).String()),
+					zap.String("cluster", c.name),
+				)
+				c.metricsCollector.IncrCacheSyncOperation("success")
+			} else {
+				log.Errorw("failed to sync cache",
+					zap.String("cost_time", time.Since(now).String()),
+					zap.String("cluster", c.name),
+				)
+				c.metricsCollector.IncrCacheSyncOperation("failure")
+			}
+		}()
 
-	if !atomic.CompareAndSwapInt32(&c.cacheState, _cacheSyncing, _cacheSynced) {
-		panic("dubious state when sync cache")
-	}
+		backoff := wait.Backoff{
+			Duration: 2 * time.Second,
+			Factor:   1,
+			Steps:    5,
+		}
+		var lastSyncErr error
+		err := wait.ExponentialBackoff(backoff, func() (done bool, err error) {
+			// impossibly return: false, nil
+			// so can safe used
+			done, lastSyncErr = c.syncCacheOnce(ctx)
+			select {
+			case <-ctx.Done():
+				err = context.Canceled
+			default:
+				break
+			}
+			return
+		})
+		if err != nil {
+			// if ErrWaitTimeout then set lastSyncErr
+			c.cacheSyncErr = lastSyncErr
+		}
+		close(c.cacheSynced)
+
+		if !atomic.CompareAndSwapInt32(&c.cacheState, _cacheSyncing, _cacheSynced) {
+			panic("dubious state when sync cache")
+		}
+	*/
 }
 
 func (c *cluster) syncCacheOnce(ctx context.Context) (bool, error) {
@@ -1145,4 +1167,36 @@ func (c *cluster) GetSSL(ctx context.Context, baseUrl, id string) (*v1.Ssl, erro
 		return nil, err
 	}
 	return ssl, nil
+}
+
+func (c *cluster) pushEvent(eventType string, key string, value []byte) {
+	var et types.EventType
+	switch eventType {
+	case "create":
+		et = types.EventAdd
+	case "update":
+		et = types.EventUpdate
+	case "delete":
+		et = types.EventDelete
+	}
+	events := []*adapter.Event{
+		{
+			Type:  adapter.EventType(et),
+			Key:   key,
+			Value: value,
+		},
+	}
+	c.adapter.EventCh() <- events
+}
+
+func (c *cluster) CreateResource(resource string, id string, value []byte) {
+	c.pushEvent("create", "/apisix/"+resource+"/"+id, value)
+}
+
+func (c *cluster) UpdateResource(resource string, id string, value []byte) {
+	c.pushEvent("update", "/apisix/"+resource+"/"+id, value)
+}
+
+func (c *cluster) DeleteResource(resource string, id string, value []byte) {
+	c.pushEvent("delete", "/apisix/"+resource+"/"+id, value)
 }
