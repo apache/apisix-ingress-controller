@@ -9,7 +9,7 @@ require (
 	github.com/imdario/mergo v0.3.15
 	github.com/incubator4/go-resty-expr v0.1.1
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.14.0
+	github.com/prometheus/client_golang v1.15.0
 	github.com/prometheus/client_model v0.3.0
 	github.com/slok/kubewebhook/v2 v2.5.0
 	github.com/spf13/cobra v1.7.0
