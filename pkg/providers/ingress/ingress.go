@@ -130,7 +130,7 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 	}
 
 	if err != nil {
-		if !k8serrors.IsNotFound(err) || (k8serrors.IsNotFound(err) && ev.Type != types.EventDelete) {
+		if !k8serrors.IsNotFound(err) {
 			log.Errorf("failed to get ingress %s (group version: %s): %s", ingEv.Key, ingEv.GroupVersion, err)
 			return err
 		}
@@ -151,13 +151,6 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 			return nil
 		}
 		ing = ev.Tombstone.(kube.Ingress)
-	}
-	if ing == nil {
-		log.Errorw("failed to get ingress",
-			zap.Any("event", ev),
-			zap.Error(err),
-		)
-		return fmt.Errorf("failed to get ingress")
 	}
 
 	var secrets []string
