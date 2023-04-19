@@ -151,7 +151,7 @@ e2e-test-local: kind-up e2e-test
 .PHONY: ginkgo-check
 ginkgo-check:
 ifeq ("$(wildcard $(GINKGO))", "")
-	@echo "ERROR: Need to install ginkgo first, run: go get -u github.com/onsi/ginkgo/v2/ginkgo@v2.9.0 or go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo@v2.9.0"
+	@echo "ERROR: Need to install ginkgo first, run: go get -u github.com/onsi/ginkgo/v2/ginkgo@v2.9.2 or go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo@v2.9.2"
 	exit 1
 endif
 
