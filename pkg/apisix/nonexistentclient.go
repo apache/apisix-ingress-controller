@@ -68,7 +68,7 @@ func (f *dummyRoute) List(_ context.Context) ([]*v1.Route, error) {
 	return nil, ErrClusterNotExist
 }
 
-func (f *dummyRoute) Create(_ context.Context, _ *v1.Route) (*v1.Route, error) {
+func (f *dummyRoute) Create(_ context.Context, _ *v1.Route, shouldCompare bool) (*v1.Route, error) {
 	return nil, ErrClusterNotExist
 }
 
@@ -76,7 +76,7 @@ func (f *dummyRoute) Delete(_ context.Context, _ *v1.Route) error {
 	return ErrClusterNotExist
 }
 
-func (f *dummyRoute) Update(_ context.Context, _ *v1.Route) (*v1.Route, error) {
+func (f *dummyRoute) Update(_ context.Context, _ *v1.Route, shouldCompare bool) (*v1.Route, error) {
 	return nil, ErrClusterNotExist
 }
 
@@ -90,7 +90,7 @@ func (f *dummySSL) List(_ context.Context) ([]*v1.Ssl, error) {
 	return nil, ErrClusterNotExist
 }
 
-func (f *dummySSL) Create(_ context.Context, _ *v1.Ssl) (*v1.Ssl, error) {
+func (f *dummySSL) Create(_ context.Context, _ *v1.Ssl, shouldCompare bool) (*v1.Ssl, error) {
 	return nil, ErrClusterNotExist
 }
 
@@ -98,7 +98,7 @@ func (f *dummySSL) Delete(_ context.Context, _ *v1.Ssl) error {
 	return ErrClusterNotExist
 }
 
-func (f *dummySSL) Update(_ context.Context, _ *v1.Ssl) (*v1.Ssl, error) {
+func (f *dummySSL) Update(_ context.Context, _ *v1.Ssl, shouldCompare bool) (*v1.Ssl, error) {
 	return nil, ErrClusterNotExist
 }
 
@@ -112,7 +112,7 @@ func (f *dummyUpstream) List(_ context.Context) ([]*v1.Upstream, error) {
 	return nil, ErrClusterNotExist
 }
 
-func (f *dummyUpstream) Create(_ context.Context, _ *v1.Upstream) (*v1.Upstream, error) {
+func (f *dummyUpstream) Create(_ context.Context, _ *v1.Upstream, shouldCompare bool) (*v1.Upstream, error) {
 	return nil, ErrClusterNotExist
 }
 
@@ -120,7 +120,7 @@ func (f *dummyUpstream) Delete(_ context.Context, _ *v1.Upstream) error {
 	return ErrClusterNotExist
 }
 
-func (f *dummyUpstream) Update(_ context.Context, _ *v1.Upstream) (*v1.Upstream, error) {
+func (f *dummyUpstream) Update(_ context.Context, _ *v1.Upstream, shouldCompare bool) (*v1.Upstream, error) {
 	return nil, ErrClusterNotExist
 }
 
@@ -134,7 +134,7 @@ func (f *dummyStreamRoute) List(_ context.Context) ([]*v1.StreamRoute, error) {
 	return nil, ErrClusterNotExist
 }
 
-func (f *dummyStreamRoute) Create(_ context.Context, _ *v1.StreamRoute) (*v1.StreamRoute, error) {
+func (f *dummyStreamRoute) Create(_ context.Context, _ *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
 	return nil, ErrClusterNotExist
 }
 
@@ -142,7 +142,7 @@ func (f *dummyStreamRoute) Delete(_ context.Context, _ *v1.StreamRoute) error {
 	return ErrClusterNotExist
 }
 
-func (f *dummyStreamRoute) Update(_ context.Context, _ *v1.StreamRoute) (*v1.StreamRoute, error) {
+func (f *dummyStreamRoute) Update(_ context.Context, _ *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
 	return nil, ErrClusterNotExist
 }
 
@@ -156,7 +156,7 @@ func (f *dummyGlobalRule) List(_ context.Context) ([]*v1.GlobalRule, error) {
 	return nil, ErrClusterNotExist
 }
 
-func (f *dummyGlobalRule) Create(_ context.Context, _ *v1.GlobalRule) (*v1.GlobalRule, error) {
+func (f *dummyGlobalRule) Create(_ context.Context, _ *v1.GlobalRule, shouldCompare bool) (*v1.GlobalRule, error) {
 	return nil, ErrClusterNotExist
 }
 
@@ -164,7 +164,7 @@ func (f *dummyGlobalRule) Delete(_ context.Context, _ *v1.GlobalRule) error {
 	return ErrClusterNotExist
 }
 
-func (f *dummyGlobalRule) Update(_ context.Context, _ *v1.GlobalRule) (*v1.GlobalRule, error) {
+func (f *dummyGlobalRule) Update(_ context.Context, _ *v1.GlobalRule, shouldCompare bool) (*v1.GlobalRule, error) {
 	return nil, ErrClusterNotExist
 }
 
@@ -178,7 +178,7 @@ func (f *dummyConsumer) List(_ context.Context) ([]*v1.Consumer, error) {
 	return nil, ErrClusterNotExist
 }
 
-func (f *dummyConsumer) Create(_ context.Context, _ *v1.Consumer) (*v1.Consumer, error) {
+func (f *dummyConsumer) Create(_ context.Context, _ *v1.Consumer, shouldCompare bool) (*v1.Consumer, error) {
 	return nil, ErrClusterNotExist
 }
 
@@ -186,7 +186,7 @@ func (f *dummyConsumer) Delete(_ context.Context, _ *v1.Consumer) error {
 	return ErrClusterNotExist
 }
 
-func (f *dummyConsumer) Update(_ context.Context, _ *v1.Consumer) (*v1.Consumer, error) {
+func (f *dummyConsumer) Update(_ context.Context, _ *v1.Consumer, shouldCompare bool) (*v1.Consumer, error) {
 	return nil, ErrClusterNotExist
 }
 
@@ -232,7 +232,7 @@ func (f *dummyPluginConfig) List(_ context.Context) ([]*v1.PluginConfig, error) 
 	return nil, ErrClusterNotExist
 }
 
-func (f *dummyPluginConfig) Create(_ context.Context, _ *v1.PluginConfig) (*v1.PluginConfig, error) {
+func (f *dummyPluginConfig) Create(_ context.Context, _ *v1.PluginConfig, shouldCompare bool) (*v1.PluginConfig, error) {
 	return nil, ErrClusterNotExist
 }
 
@@ -240,7 +240,7 @@ func (f *dummyPluginConfig) Delete(_ context.Context, _ *v1.PluginConfig) error 
 	return ErrClusterNotExist
 }
 
-func (f *dummyPluginConfig) Update(_ context.Context, _ *v1.PluginConfig) (*v1.PluginConfig, error) {
+func (f *dummyPluginConfig) Update(_ context.Context, _ *v1.PluginConfig, shouldCompare bool) (*v1.PluginConfig, error) {
 	return nil, ErrClusterNotExist
 }
 
@@ -273,7 +273,7 @@ func (f *dummyPluginMetadata) List(_ context.Context) ([]*v1.PluginMetadata, err
 func (f *dummyPluginMetadata) Delete(_ context.Context, _ *v1.PluginMetadata) error {
 	return ErrClusterNotExist
 }
-func (f *dummyPluginMetadata) Update(_ context.Context, _ *v1.PluginMetadata) (*v1.PluginMetadata, error) {
+func (f *dummyPluginMetadata) Update(_ context.Context, _ *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error) {
 	return nil, ErrClusterNotExist
 }
 

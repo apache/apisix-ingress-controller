@@ -45,7 +45,7 @@ var _ = ginkgo.Describe("suite-chore: admin-api sdk", func() {
 			},
 		}
 
-		client.PluginMetadata().Update(context.Background(), datadog)
+		client.PluginMetadata().Update(context.Background(), datadog, false)
 
 		pluginMetadatas, err := client.PluginMetadata().List(context.Background())
 		assert.Nil(ginkgo.GinkgoT(), err)
@@ -65,7 +65,7 @@ var _ = ginkgo.Describe("suite-chore: admin-api sdk", func() {
 				"namespace": "ingress",
 			},
 		}
-		client.PluginMetadata().Update(context.Background(), updated)
+		client.PluginMetadata().Update(context.Background(), updated, false)
 		pluginMetadatas, err = client.PluginMetadata().List(context.Background())
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), pluginMetadatas, 1)

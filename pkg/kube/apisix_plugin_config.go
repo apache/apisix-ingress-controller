@@ -17,6 +17,8 @@ package kube
 import (
 	"errors"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
@@ -54,6 +56,8 @@ type ApisixPluginConfig interface {
 	// ResourceVersion returns the the resource version field inside
 	// the real ApisixPluginConfig.
 	ResourceVersion() string
+
+	metav1.Object
 }
 
 // ApisixPluginConfigEvent contains the ApisixPluginConfig key (namespace/name)
@@ -68,6 +72,7 @@ type apisixPluginConfig struct {
 	groupVersion string
 	v2beta3      *configv2beta3.ApisixPluginConfig
 	v2           *configv2.ApisixPluginConfig
+	metav1.Object
 }
 
 func (apc *apisixPluginConfig) V2beta3() *configv2beta3.ApisixPluginConfig {
@@ -108,6 +113,7 @@ func (l *apisixPluginConfigLister) V2beta3(namespace, name string) (ApisixPlugin
 	return &apisixPluginConfig{
 		groupVersion: config.ApisixV2beta3,
 		v2beta3:      apc,
+		Object:       apc,
 	}, nil
 }
 
@@ -119,6 +125,7 @@ func (l *apisixPluginConfigLister) V2(namespace, name string) (ApisixPluginConfi
 	return &apisixPluginConfig{
 		groupVersion: config.ApisixV2,
 		v2:           apc,
+		Object:       apc,
 	}, nil
 }
 
@@ -130,11 +137,13 @@ func MustNewApisixPluginConfig(obj interface{}) ApisixPluginConfig {
 		return &apisixPluginConfig{
 			groupVersion: config.ApisixV2beta3,
 			v2beta3:      apc,
+			Object:       apc,
 		}
 	case *configv2.ApisixPluginConfig:
 		return &apisixPluginConfig{
 			groupVersion: config.ApisixV2,
 			v2:           apc,
+			Object:       apc,
 		}
 	default:
 		panic("invalid ApisixPluginConfig type")
@@ -150,11 +159,13 @@ func NewApisixPluginConfig(obj interface{}) (ApisixPluginConfig, error) {
 		return &apisixPluginConfig{
 			groupVersion: config.ApisixV2beta3,
 			v2beta3:      apc,
+			Object:       apc,
 		}, nil
 	case *configv2.ApisixPluginConfig:
 		return &apisixPluginConfig{
 			groupVersion: config.ApisixV2,
 			v2:           apc,
+			Object:       apc,
 		}, nil
 	default:
 		return nil, errors.New("invalid ApisixPluginConfig type")

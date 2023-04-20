@@ -15,6 +15,10 @@
 package e2e
 
 import (
+	"os"
+
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-annotations"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-chore"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-cluster"
@@ -30,4 +34,14 @@ import (
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/suite-plugins/suite-plugins-transformation"
 )
 
-func runE2E() {}
+func runE2E() {
+	if os.Getenv("E2E_ENV") != "ci" {
+		var err error
+		log.DefaultLogger, err = log.NewLogger(
+			log.WithLogLevel("info"),
+		)
+		if err != nil {
+			panic(err)
+		}
+	}
+}

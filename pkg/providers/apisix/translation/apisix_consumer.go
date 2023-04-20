@@ -109,6 +109,9 @@ func (t *translator) TranslateApisixConsumerV2(ac *configv2.ApisixConsumer) (*ap
 	}
 
 	consumer := apisixv1.NewDefaultConsumer()
+	for k, v := range ac.ObjectMeta.Labels {
+		consumer.Labels[k] = v
+	}
 	consumer.Username = apisixv1.ComposeConsumerName(ac.Namespace, ac.Name)
 	consumer.Plugins = plugins
 	return consumer, nil

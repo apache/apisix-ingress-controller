@@ -362,3 +362,82 @@ spec:
 		}))
 	})
 })
+
+var _ = ginkgo.Describe("suite-chore: apisix upstream labels sync", func() {
+	suites := func(s *scaffold.Scaffold) {
+		ginkgo.JustBeforeEach(func() {
+			labels := map[string]string{"key": "value", "foo": "bar"}
+			au := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: foo
+  labels:
+    foo: bar
+	key: value
+spec:
+  timeout:
+    read: 10s
+    send: 10s
+`
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(au))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
+
+			upstreams, _ := s.ListApisixUpstreams()
+			assert.Len(ginkgo.GinkgoT(), upstreams, 1)
+			// check if labels exists
+			for _, route := range upstreams {
+				eq := reflect.DeepEqual(route.Metadata.Labels, labels)
+				assert.True(ginkgo.GinkgoT(), eq)
+			}
+		})
+	}
+
+	ginkgo.Describe("suite-chore: scaffold v2", func() {
+		suites(scaffold.NewScaffold(&scaffold.Options{
+			Name:                  "sync",
+			IngressAPISIXReplicas: 1,
+			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
+		}))
+	})
+})
+
+var _ = ginkgo.Describe("suite-chore: apisix consumer labels sync", func() {
+	suites := func(s *scaffold.Scaffold) {
+		ginkgo.JustBeforeEach(func() {
+			labels := map[string]string{"key": "value", "foo": "bar"}
+			ac := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: foo
+  labels:
+    key: value
+	foo: bar
+spec:
+  authParameter:
+    jwtAuth:
+      secretRef:
+        name: jwt
+`
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixConsumersCreated(1), "Checking number of consumers")
+
+			consumers, _ := s.ListApisixConsumers()
+			assert.Len(ginkgo.GinkgoT(), consumers, 1)
+			// check if labels exists
+			for _, route := range consumers {
+				eq := reflect.DeepEqual(route.Labels, labels)
+				assert.True(ginkgo.GinkgoT(), eq)
+			}
+		})
+	}
+
+	ginkgo.Describe("suite-chore: scaffold v2", func() {
+		suites(scaffold.NewScaffold(&scaffold.Options{
+			Name:                  "sync",
+			IngressAPISIXReplicas: 1,
+			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
+		}))
+	})
+})
