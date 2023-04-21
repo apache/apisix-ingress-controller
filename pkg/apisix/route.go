@@ -112,14 +112,6 @@ func (r *routeClient) List(ctx context.Context) ([]*v1.Route, error) {
 }
 
 func (r *routeClient) Create(ctx context.Context, obj *v1.Route, shouldCompare bool) (*v1.Route, error) {
-	if r.cluster.adapter != nil {
-		data, err := json.Marshal(obj)
-		if err != nil {
-			return nil, err
-		}
-		r.cluster.CreateResource("routes", obj.ID, data)
-		return obj, nil
-	}
 	if v, skip := skipRequest(r.cluster, shouldCompare, r.url, obj.ID, obj); skip {
 		return v, nil
 	}
@@ -243,4 +235,116 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route, shouldCompare b
 		return nil, err
 	}
 	return route, nil
+}
+
+type routeMem struct {
+	url string
+
+	resource string
+	cluster  *cluster
+}
+
+func newRouteMem(c *cluster) Route {
+	return &routeMem{
+		url:      c.baseURL + "/routes",
+		resource: "routes",
+		cluster:  c,
+	}
+}
+
+func (r *routeMem) Get(ctx context.Context, name string) (*v1.Route, error) {
+	log.Debugw("try to look up route",
+		zap.String("name", name),
+		zap.String("url", r.url),
+		zap.String("cluster", r.cluster.name),
+	)
+	rid := id.GenID(name)
+	route, err := r.cluster.cache.GetRoute(rid)
+	if err == nil {
+		return route, nil
+	}
+	if err != cache.ErrNotFound {
+		log.Errorw("failed to find route in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+	} else {
+		log.Debugw("failed to find route in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+	}
+
+	// TODO Add mutex here to avoid dog-pile effect
+	route, err = r.cluster.GetRoute(ctx, r.url, rid)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.cluster.cache.InsertRoute(route); err != nil {
+		log.Errorf("failed to reflect route create to cache: %s", err)
+		return nil, err
+	}
+	return route, nil
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
+func (r *routeMem) List(ctx context.Context) ([]*v1.Route, error) {
+	log.Debugw("try to list resource in APISIX",
+		zap.String("cluster", r.cluster.name),
+		zap.String("url", r.url),
+		zap.String("resource", r.resource),
+	)
+	routeItems, err := r.cluster.listResource(ctx, r.url, r.resource)
+	if err != nil {
+		log.Errorf("failed to list %s: %s", r.resource, err)
+		return nil, err
+	}
+
+	var items []*v1.Route
+	for i, item := range routeItems {
+		route, err := item.route()
+		if err != nil {
+			log.Errorw("failed to convert route item",
+				zap.String("url", r.url),
+				zap.String("route_key", item.Key),
+				zap.String("route_value", string(item.Value)),
+				zap.Error(err),
+			)
+			return nil, err
+		}
+
+		items = append(items, route)
+		log.Debugf("list route #%d, body: %s", i, string(item.Value))
+	}
+
+	return items, nil
+}
+
+func (r *routeMem) Create(ctx context.Context, obj *v1.Route, shouldCompare bool) (*v1.Route, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.CreateResource(r.resource, obj.ID, data)
+	return obj, nil
+}
+
+func (r *routeMem) Delete(ctx context.Context, obj *v1.Route) error {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	r.cluster.DeleteResource(r.resource, obj.ID, data)
+	return nil
+}
+
+func (r *routeMem) Update(ctx context.Context, obj *v1.Route, shouldCompare bool) (*v1.Route, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.UpdateResource(r.resource, obj.ID, data)
+	return obj, nil
 }

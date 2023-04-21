@@ -88,6 +88,12 @@ kubernetes:
   disable_status_updates: false # In the case of a large number of resources and the status of resources is not concerned
                     # you can consider disabling status to speed up the synchronization cycle of resources.
 # APISIX related configurations.
+
+etcdserver:
+  enabled: false  # When enabled, the configuration of apisix will be optional.
+  listen_address: ":12379"
+  prefix: /apisix 
+
 apisix:
   admin_api_version: v3  # the APISIX admin API version. can be "v2" or "v3"
 

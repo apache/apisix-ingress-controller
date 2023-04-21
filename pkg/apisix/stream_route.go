@@ -223,3 +223,115 @@ func (r *streamRouteClient) Update(ctx context.Context, obj *v1.StreamRoute, sho
 	}
 	return streamRoute, nil
 }
+
+type streamRouteMem struct {
+	url string
+
+	resource string
+	cluster  *cluster
+}
+
+func newStreamRouteMem(c *cluster) StreamRoute {
+	return &streamRouteMem{
+		url:      c.baseURL + "/stream_routes",
+		resource: "stream_routes",
+		cluster:  c,
+	}
+}
+
+func (r *streamRouteMem) Get(ctx context.Context, name string) (*v1.StreamRoute, error) {
+	log.Debugw("try to look up route",
+		zap.String("name", name),
+		zap.String("url", r.url),
+		zap.String("cluster", r.cluster.name),
+	)
+	rid := id.GenID(name)
+	route, err := r.cluster.cache.GetStreamRoute(rid)
+	if err == nil {
+		return route, nil
+	}
+	if err != cache.ErrNotFound {
+		log.Errorw("failed to find route in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+	} else {
+		log.Debugw("failed to find route in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+	}
+
+	// TODO Add mutex here to avoid dog-pile effect
+	route, err = r.cluster.GetStreamRoute(ctx, r.url, rid)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.cluster.cache.InsertStreamRoute(route); err != nil {
+		log.Errorf("failed to reflect route create to cache: %s", err)
+		return nil, err
+	}
+	return route, nil
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
+func (r *streamRouteMem) List(ctx context.Context) ([]*v1.StreamRoute, error) {
+	log.Debugw("try to list resource in APISIX",
+		zap.String("cluster", r.cluster.name),
+		zap.String("url", r.url),
+		zap.String("resource", r.resource),
+	)
+	routeItems, err := r.cluster.listResource(ctx, r.url, r.resource)
+	if err != nil {
+		log.Errorf("failed to list %s: %s", r.resource, err)
+		return nil, err
+	}
+
+	var items []*v1.StreamRoute
+	for i, item := range routeItems {
+		route, err := item.streamRoute()
+		if err != nil {
+			log.Errorw("failed to convert route item",
+				zap.String("url", r.url),
+				zap.String("route_key", item.Key),
+				zap.String("route_value", string(item.Value)),
+				zap.Error(err),
+			)
+			return nil, err
+		}
+
+		items = append(items, route)
+		log.Debugf("list route #%d, body: %s", i, string(item.Value))
+	}
+
+	return items, nil
+}
+
+func (r *streamRouteMem) Create(ctx context.Context, obj *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.CreateResource(r.resource, obj.ID, data)
+	return obj, nil
+}
+
+func (r *streamRouteMem) Delete(ctx context.Context, obj *v1.StreamRoute) error {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	r.cluster.DeleteResource(r.resource, obj.ID, data)
+	return nil
+}
+
+func (r *streamRouteMem) Update(ctx context.Context, obj *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.UpdateResource(r.resource, obj.ID, data)
+	return obj, nil
+}

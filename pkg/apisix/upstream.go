@@ -247,3 +247,115 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream, shouldCom
 	}
 	return ups, err
 }
+
+type upstreamMem struct {
+	url string
+
+	resource string
+	cluster  *cluster
+}
+
+func newUpstreamMem(c *cluster) Upstream {
+	return &upstreamMem{
+		url:      c.baseURL + "/upstreams",
+		resource: "upstreams",
+		cluster:  c,
+	}
+}
+
+func (r *upstreamMem) Get(ctx context.Context, name string) (*v1.Upstream, error) {
+	log.Debugw("try to look up upstream",
+		zap.String("name", name),
+		zap.String("url", r.url),
+		zap.String("cluster", r.cluster.name),
+	)
+	rid := id.GenID(name)
+	upstream, err := r.cluster.cache.GetUpstream(rid)
+	if err == nil {
+		return upstream, nil
+	}
+	if err != cache.ErrNotFound {
+		log.Errorw("failed to find upstream in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+	} else {
+		log.Debugw("failed to find upstream in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+	}
+
+	// TODO Add mutex here to avoid dog-pile effect
+	upstream, err = r.cluster.GetUpstream(ctx, r.url, rid)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.cluster.cache.InsertUpstream(upstream); err != nil {
+		log.Errorf("failed to reflect upstream create to cache: %s", err)
+		return nil, err
+	}
+	return upstream, nil
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
+func (r *upstreamMem) List(ctx context.Context) ([]*v1.Upstream, error) {
+	log.Debugw("try to list resource in APISIX",
+		zap.String("cluster", r.cluster.name),
+		zap.String("url", r.url),
+		zap.String("resource", r.resource),
+	)
+	upstreamItems, err := r.cluster.listResource(ctx, r.url, r.resource)
+	if err != nil {
+		log.Errorf("failed to list %s: %s", r.resource, err)
+		return nil, err
+	}
+
+	var items []*v1.Upstream
+	for i, item := range upstreamItems {
+		upstream, err := item.upstream()
+		if err != nil {
+			log.Errorw("failed to convert upstream item",
+				zap.String("url", r.url),
+				zap.String("upstream_key", item.Key),
+				zap.String("upstream_value", string(item.Value)),
+				zap.Error(err),
+			)
+			return nil, err
+		}
+
+		items = append(items, upstream)
+		log.Debugf("list upstream #%d, body: %s", i, string(item.Value))
+	}
+
+	return items, nil
+}
+
+func (r *upstreamMem) Create(ctx context.Context, obj *v1.Upstream, shouldCompare bool) (*v1.Upstream, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.CreateResource(r.resource, obj.ID, data)
+	return obj, nil
+}
+
+func (r *upstreamMem) Delete(ctx context.Context, obj *v1.Upstream) error {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	r.cluster.DeleteResource(r.resource, obj.ID, data)
+	return nil
+}
+
+func (r *upstreamMem) Update(ctx context.Context, obj *v1.Upstream, shouldCompare bool) (*v1.Upstream, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.UpdateResource(r.resource, obj.ID, data)
+	return obj, nil
+}

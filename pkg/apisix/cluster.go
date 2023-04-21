@@ -39,6 +39,8 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	adapter "github.com/api7/etcd-adapter/pkg/adapter"
+
+	api7log "github.com/api7/gopkg/pkg/log"
 )
 
 const (
@@ -86,6 +88,10 @@ type ClusterOptions struct {
 	SyncComparison   bool
 	MetricsCollector metrics.Collector
 	EnableEtcdServer bool
+	Prefix           string
+	ListenAddress    string
+	SchemaSynced     bool
+	CacheSynced      bool
 }
 
 type cluster struct {
@@ -94,6 +100,7 @@ type cluster struct {
 	baseURL                 string
 	baseURLHost             string
 	adminKey                string
+	prefix                  string
 	cli                     *http.Client
 	cacheState              int32
 	cache                   cache.Cache
@@ -114,6 +121,7 @@ type cluster struct {
 	upstreamServiceRelation UpstreamServiceRelation
 	pluginMetadata          PluginMetadata
 	adapter                 adapter.Adapter
+	waitforCacheSync        bool
 }
 
 func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
@@ -138,16 +146,13 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 	if adminVersion != "v3" {
 		adminVersion = "v2"
 	}
-	var etcdserver adapter.Adapter
-	if o.EnableEtcdServer {
-		etcdserver = adapter.NewEtcdAdapter(nil)
-	}
 	c := &cluster{
 		adminVersion: adminVersion,
 		name:         o.Name,
 		baseURL:      o.BaseURL,
 		baseURLHost:  u.Host,
 		adminKey:     o.AdminKey,
+		prefix:       o.Prefix,
 		cli: &http.Client{
 			Timeout:   o.Timeout,
 			Transport: _defaultTransport,
@@ -156,100 +161,120 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 		cacheSynced:      make(chan struct{}),
 		syncComparison:   o.SyncComparison,
 		metricsCollector: o.MetricsCollector,
-		adapter:          etcdserver,
-	}
-	c.route = newRouteClient(c)
-	c.upstream = newUpstreamClient(c)
-	c.ssl = newSSLClient(c)
-	c.streamRoute = newStreamRouteClient(c)
-	c.globalRules = newGlobalRuleClient(c)
-	c.consumer = newConsumerClient(c)
-	c.plugin = newPluginClient(c)
-	c.schema = newSchemaClient(c)
-	c.pluginConfig = newPluginConfigClient(c)
-	c.upstreamServiceRelation = newUpstreamServiceRelation(c)
-	c.pluginMetadata = newPluginMetadataClient(c)
-
-	c.cache, err = cache.NewMemDBCache()
-	if err != nil {
-		return nil, err
-	}
-
-	if o.SyncComparison {
-		c.generatedObjCache, err = cache.NewMemDBCache()
-	} else {
-		c.generatedObjCache, err = cache.NewNoopDBCache()
-	}
-	if err != nil {
-		return nil, err
 	}
 
 	if o.EnableEtcdServer {
+		api7log.DefaultLogger, _ = api7log.NewLogger(
+			api7log.WithSkipFrames(3),
+			api7log.WithLogLevel("info"),
+		)
+		c.adapter = adapter.NewEtcdAdapter(nil)
+		c.route = newRouteMem(c)
+		c.upstream = newUpstreamMem(c)
+		c.ssl = newSSLMem(c)
+		c.streamRoute = newStreamRouteMem(c)
+		c.globalRules = newGlobalRuleMem(c)
+		c.consumer = newConsumerMem(c)
+		c.plugin = newPluginClient(c)
+		c.schema = newSchemaClient(c)
+		c.pluginConfig = newPluginConfigMem(c)
+		c.upstreamServiceRelation = newUpstreamServiceRelation(c)
+		c.pluginMetadata = newPluginMetadataMem(c)
+
+		c.generatedObjCache, _ = cache.NewNoopDBCache()
+		c.cache, _ = cache.NewNoopDBCache()
+
 		fmt.Println("start etcd server")
-		ln, err := net.Listen("tcp", "0.0.0.0:12379")
+		ln, err := net.Listen("tcp", o.ListenAddress)
 		if err != nil {
 			return nil, err
 		}
 		go c.adapter.Serve(ctx, ln)
-	}
+	} else {
+		c.route = newRouteClient(c)
+		c.upstream = newUpstreamClient(c)
+		c.ssl = newSSLClient(c)
+		c.streamRoute = newStreamRouteClient(c)
+		c.globalRules = newGlobalRuleClient(c)
+		c.consumer = newConsumerClient(c)
+		c.plugin = newPluginClient(c)
+		c.schema = newSchemaClient(c)
+		c.pluginConfig = newPluginConfigClient(c)
+		c.upstreamServiceRelation = newUpstreamServiceRelation(c)
+		c.pluginMetadata = newPluginMetadataClient(c)
 
-	go c.syncCache(ctx)
-	//go c.syncSchema(ctx, o.SyncInterval.Duration)
+		c.cache, err = cache.NewMemDBCache()
+		if err != nil {
+			return nil, err
+		}
+
+		if o.SyncComparison {
+			c.generatedObjCache, err = cache.NewMemDBCache()
+		} else {
+			c.generatedObjCache, err = cache.NewNoopDBCache()
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		if o.CacheSynced {
+			c.waitforCacheSync = true
+			go c.syncCache(ctx)
+		}
+		if o.SchemaSynced {
+			go c.syncSchema(ctx, o.SyncInterval.Duration)
+		}
+	}
 
 	return c, nil
 }
 
 func (c *cluster) syncCache(ctx context.Context) {
-	time.Sleep(2 * time.Second)
+	log.Infow("syncing cache", zap.String("cluster", c.name))
+	now := time.Now()
+	defer func() {
+		if c.cacheSyncErr == nil {
+			log.Infow("cache synced",
+				zap.String("cost_time", time.Since(now).String()),
+				zap.String("cluster", c.name),
+			)
+			c.metricsCollector.IncrCacheSyncOperation("success")
+		} else {
+			log.Errorw("failed to sync cache",
+				zap.String("cost_time", time.Since(now).String()),
+				zap.String("cluster", c.name),
+			)
+			c.metricsCollector.IncrCacheSyncOperation("failure")
+		}
+	}()
+
+	backoff := wait.Backoff{
+		Duration: 2 * time.Second,
+		Factor:   1,
+		Steps:    5,
+	}
+	var lastSyncErr error
+	err := wait.ExponentialBackoff(backoff, func() (done bool, err error) {
+		// impossibly return: false, nil
+		// so can safe used
+		done, lastSyncErr = c.syncCacheOnce(ctx)
+		select {
+		case <-ctx.Done():
+			err = context.Canceled
+		default:
+			break
+		}
+		return
+	})
+	if err != nil {
+		// if ErrWaitTimeout then set lastSyncErr
+		c.cacheSyncErr = lastSyncErr
+	}
 	close(c.cacheSynced)
-	return
-	/*
-		log.Infow("syncing cache", zap.String("cluster", c.name))
-		now := time.Now()
-		defer func() {
-			if c.cacheSyncErr == nil {
-				log.Infow("cache synced",
-					zap.String("cost_time", time.Since(now).String()),
-					zap.String("cluster", c.name),
-				)
-				c.metricsCollector.IncrCacheSyncOperation("success")
-			} else {
-				log.Errorw("failed to sync cache",
-					zap.String("cost_time", time.Since(now).String()),
-					zap.String("cluster", c.name),
-				)
-				c.metricsCollector.IncrCacheSyncOperation("failure")
-			}
-		}()
 
-		backoff := wait.Backoff{
-			Duration: 2 * time.Second,
-			Factor:   1,
-			Steps:    5,
-		}
-		var lastSyncErr error
-		err := wait.ExponentialBackoff(backoff, func() (done bool, err error) {
-			// impossibly return: false, nil
-			// so can safe used
-			done, lastSyncErr = c.syncCacheOnce(ctx)
-			select {
-			case <-ctx.Done():
-				err = context.Canceled
-			default:
-				break
-			}
-			return
-		})
-		if err != nil {
-			// if ErrWaitTimeout then set lastSyncErr
-			c.cacheSyncErr = lastSyncErr
-		}
-		close(c.cacheSynced)
-
-		if !atomic.CompareAndSwapInt32(&c.cacheState, _cacheSyncing, _cacheSynced) {
-			panic("dubious state when sync cache")
-		}
-	*/
+	if !atomic.CompareAndSwapInt32(&c.cacheState, _cacheSyncing, _cacheSynced) {
+		panic("dubious state when sync cache")
+	}
 }
 
 func (c *cluster) syncCacheOnce(ctx context.Context) (bool, error) {
@@ -368,6 +393,9 @@ func (c *cluster) String() string {
 
 // HasSynced implements Cluster.HasSynced method.
 func (c *cluster) HasSynced(ctx context.Context) error {
+	if !c.waitforCacheSync {
+		return nil
+	}
 	if c.cacheSyncErr != nil {
 		return c.cacheSyncErr
 	}
@@ -1179,6 +1207,7 @@ func (c *cluster) pushEvent(eventType string, key string, value []byte) {
 	case "delete":
 		et = types.EventDelete
 	}
+	log.Infow("push event to adapter", zap.String("event", eventType), zap.String("key", key), zap.ByteString("value", value))
 	events := []*adapter.Event{
 		{
 			Type:  adapter.EventType(et),
@@ -1190,13 +1219,13 @@ func (c *cluster) pushEvent(eventType string, key string, value []byte) {
 }
 
 func (c *cluster) CreateResource(resource string, id string, value []byte) {
-	c.pushEvent("create", "/apisix/"+resource+"/"+id, value)
+	go c.pushEvent("create", c.prefix+"/"+resource+"/"+id, value)
 }
 
 func (c *cluster) UpdateResource(resource string, id string, value []byte) {
-	c.pushEvent("update", "/apisix/"+resource+"/"+id, value)
+	go c.pushEvent("update", c.prefix+"/"+resource+"/"+id, value)
 }
 
 func (c *cluster) DeleteResource(resource string, id string, value []byte) {
-	c.pushEvent("delete", "/apisix/"+resource+"/"+id, value)
+	go c.pushEvent("delete", c.prefix+"/"+resource+"/"+id, value)
 }

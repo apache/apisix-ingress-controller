@@ -21,6 +21,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -215,4 +216,116 @@ func (r *consumerClient) Update(ctx context.Context, obj *v1.Consumer, shouldCom
 		return nil, err
 	}
 	return consumer, nil
+}
+
+type consumerMem struct {
+	url string
+
+	resource string
+	cluster  *cluster
+}
+
+func newConsumerMem(c *cluster) Consumer {
+	return &consumerMem{
+		url:      c.baseURL + "/consumers",
+		resource: "consumers",
+		cluster:  c,
+	}
+}
+
+func (r *consumerMem) Get(ctx context.Context, name string) (*v1.Consumer, error) {
+	log.Debugw("try to look up consumer",
+		zap.String("name", name),
+		zap.String("url", r.url),
+		zap.String("cluster", r.cluster.name),
+	)
+	rid := id.GenID(name)
+	consumer, err := r.cluster.cache.GetConsumer(rid)
+	if err == nil {
+		return consumer, nil
+	}
+	if err != cache.ErrNotFound {
+		log.Errorw("failed to find consumer in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+	} else {
+		log.Debugw("failed to find consumer in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+	}
+
+	// TODO Add mutex here to avoid dog-pile effect
+	consumer, err = r.cluster.GetConsumer(ctx, r.url, rid)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.cluster.cache.InsertConsumer(consumer); err != nil {
+		log.Errorf("failed to reflect consumer create to cache: %s", err)
+		return nil, err
+	}
+	return consumer, nil
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
+func (r *consumerMem) List(ctx context.Context) ([]*v1.Consumer, error) {
+	log.Debugw("try to list resource in APISIX",
+		zap.String("cluster", r.cluster.name),
+		zap.String("url", r.url),
+		zap.String("resource", r.resource),
+	)
+	consumerItems, err := r.cluster.listResource(ctx, r.url, r.resource)
+	if err != nil {
+		log.Errorf("failed to list %s: %s", r.resource, err)
+		return nil, err
+	}
+
+	var items []*v1.Consumer
+	for i, item := range consumerItems {
+		consumer, err := item.consumer()
+		if err != nil {
+			log.Errorw("failed to convert consumer item",
+				zap.String("url", r.url),
+				zap.String("consumer_key", item.Key),
+				zap.String("consumer_value", string(item.Value)),
+				zap.Error(err),
+			)
+			return nil, err
+		}
+
+		items = append(items, consumer)
+		log.Debugf("list consumer #%d, body: %s", i, string(item.Value))
+	}
+
+	return items, nil
+}
+
+func (r *consumerMem) Create(ctx context.Context, obj *v1.Consumer, shouldCompare bool) (*v1.Consumer, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.CreateResource(r.resource, obj.Username, data)
+	return obj, nil
+}
+
+func (r *consumerMem) Delete(ctx context.Context, obj *v1.Consumer) error {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	r.cluster.DeleteResource(r.resource, obj.Username, data)
+	return nil
+}
+
+func (r *consumerMem) Update(ctx context.Context, obj *v1.Consumer, shouldCompare bool) (*v1.Consumer, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.UpdateResource(r.resource, obj.Username, data)
+	return obj, nil
 }

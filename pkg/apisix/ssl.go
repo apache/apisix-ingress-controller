@@ -219,3 +219,115 @@ func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl, shouldCompare bool)
 	}
 	return ssl, nil
 }
+
+type sslMem struct {
+	url string
+
+	resource string
+	cluster  *cluster
+}
+
+func newSSLMem(c *cluster) SSL {
+	return &sslMem{
+		url:      c.baseURL + "/ssls",
+		resource: "ssls",
+		cluster:  c,
+	}
+}
+
+func (r *sslMem) Get(ctx context.Context, name string) (*v1.Ssl, error) {
+	log.Debugw("try to look up ssl",
+		zap.String("name", name),
+		zap.String("url", r.url),
+		zap.String("cluster", r.cluster.name),
+	)
+	rid := id.GenID(name)
+	ssl, err := r.cluster.cache.GetSSL(rid)
+	if err == nil {
+		return ssl, nil
+	}
+	if err != cache.ErrNotFound {
+		log.Errorw("failed to find ssl in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+	} else {
+		log.Debugw("failed to find ssl in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+	}
+
+	// TODO Add mutex here to avoid dog-pile effect
+	ssl, err = r.cluster.GetSSL(ctx, r.url, rid)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.cluster.cache.InsertSSL(ssl); err != nil {
+		log.Errorf("failed to reflect ssl create to cache: %s", err)
+		return nil, err
+	}
+	return ssl, nil
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
+func (r *sslMem) List(ctx context.Context) ([]*v1.Ssl, error) {
+	log.Debugw("try to list resource in APISIX",
+		zap.String("cluster", r.cluster.name),
+		zap.String("url", r.url),
+		zap.String("resource", r.resource),
+	)
+	sslItems, err := r.cluster.listResource(ctx, r.url, r.resource)
+	if err != nil {
+		log.Errorf("failed to list %s: %s", r.resource, err)
+		return nil, err
+	}
+
+	var items []*v1.Ssl
+	for i, item := range sslItems {
+		ssl, err := item.ssl()
+		if err != nil {
+			log.Errorw("failed to convert ssl item",
+				zap.String("url", r.url),
+				zap.String("ssl_key", item.Key),
+				zap.String("ssl_value", string(item.Value)),
+				zap.Error(err),
+			)
+			return nil, err
+		}
+
+		items = append(items, ssl)
+		log.Debugf("list ssl #%d, body: %s", i, string(item.Value))
+	}
+
+	return items, nil
+}
+
+func (r *sslMem) Create(ctx context.Context, obj *v1.Ssl, shouldCompare bool) (*v1.Ssl, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.CreateResource(r.resource, obj.ID, data)
+	return obj, nil
+}
+
+func (r *sslMem) Delete(ctx context.Context, obj *v1.Ssl) error {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	r.cluster.DeleteResource(r.resource, obj.ID, data)
+	return nil
+}
+
+func (r *sslMem) Update(ctx context.Context, obj *v1.Ssl, shouldCompare bool) (*v1.Ssl, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.UpdateResource(r.resource, obj.ID, data)
+	return obj, nil
+}

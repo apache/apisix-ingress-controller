@@ -61,6 +61,7 @@ type Options struct {
 	ApisixResourceVersion        string
 	DisableStatus                bool
 	IngressClass                 string
+	EnableEtcdServer             bool
 
 	NamespaceSelectorLabel   map[string]string
 	DisableNamespaceSelector bool
@@ -164,6 +165,10 @@ func NewScaffold(o *Options) *Scaffold {
 			o.APISIXAdminAPIVersion = "v3"
 		}
 	}
+	if enabled := os.Getenv("ENABLED_ETCD_SERVER"); enabled == "true" {
+		o.EnableEtcdServer = true
+	}
+
 	if o.APISIXConfigPath == "" {
 		if o.APISIXAdminAPIVersion == "v3" {
 			o.APISIXConfigPath = "testdata/apisix-gw-config-v3.yaml"

@@ -34,6 +34,10 @@ import (
 )
 
 const (
+	IngressControllerServiceName = "apisix-ingress-controller"
+)
+
+var (
 	_serviceAccount = "ingress-apisix-e2e-test-service-account"
 	_clusterRole    = `
 apiVersion: rbac.authorization.k8s.io/v1
@@ -242,6 +246,22 @@ spec:
   selector:
     app: ingress-apisix-controller-deployment-e2e-test
 `
+
+	_ingressAPISIXService = fmt.Sprintf(`
+apiVersion: v1
+kind: Service
+metadata:
+  name: %s
+spec:
+  ports:
+    - name: grpc
+      protocol: TCP
+      port: 12379
+      targetPort: 12379
+  selector:
+    app: ingress-apisix-controller-deployment-e2e-test
+`, IngressControllerServiceName)
+
 	_ingressAPISIXAdmissionWebhook = `
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -284,6 +304,14 @@ webhooks:
 `
 )
 
+var _initContainers = `
+      initContainers:
+      - name: wait-apisix-admin
+        image: localhost:5000/busybox:dev
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', "until nc -z apisix-service-e2e-test 9180 ; do echo waiting for apisix-admin; sleep 2; done;"]
+`
+
 var _ingressAPISIXDeploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
@@ -305,11 +333,7 @@ spec:
         app: ingress-apisix-controller-deployment-e2e-test
     spec:
       terminationGracePeriodSeconds: 0
-      initContainers:
-      - name: wait-apisix-admin
-        image: localhost:5000/busybox:dev
-        imagePullPolicy: IfNotPresent
-        command: ['sh', '-c', "until nc -z apisix-service-e2e-test.%s.svc.cluster.local 9180 ; do echo waiting for apisix-admin; sleep 2; done;"]
+      %s
       containers:
         - livenessProbe:
             failureThreshold: 3
@@ -346,6 +370,9 @@ spec:
             - containerPort: 8443
               name: "https"
               protocol: "TCP"
+            - containerPort: 12379
+              name: "grpc"
+              protocol: "TCP"
           command:
             - /ingress-apisix/apisix-ingress-controller
             - ingress
@@ -378,7 +405,8 @@ spec:
             - --enable-gateway-api=true
             - --ingress-class
             - %s
-            %s
+            - --disable-status-updates=%t
+            - --etcd-server-enabled=%t
           volumeMounts:
             - name: admission-webhook
               mountPath: /etc/webhook/certs
@@ -397,11 +425,15 @@ func init() {
 	}
 }
 
-func (s *Scaffold) genIngressDeployment(replicas int, namespace, adminAPIVersion,
-	syncInterval, syncComparison, label, resourceVersion, publishAddr string, webhooks bool, ingressClass,
-	disableStatus string) string {
-	return fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), replicas, namespace, adminAPIVersion, syncInterval, syncComparison,
-		label, resourceVersion, publishAddr, webhooks, ingressClass, disableStatus)
+func (s *Scaffold) genIngressDeployment(replicas int, adminAPIVersion,
+	syncInterval, syncComparison, label, resourceVersion, publishAddr string, webhooks bool,
+	ingressClass string, disableStatus bool, etcdserverEnalbed bool) string {
+	var initContainers string
+	if !etcdserverEnalbed {
+		initContainers = _initContainers
+	}
+	return s.FormatRegistry(fmt.Sprintf(_ingressAPISIXDeploymentTemplate, replicas, initContainers, adminAPIVersion, syncInterval, syncComparison,
+		label, resourceVersion, publishAddr, webhooks, ingressClass, disableStatus, etcdserverEnalbed))
 
 }
 
@@ -426,24 +458,22 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		assert.Nil(s.t, err, "deleting ClusterRole")
 	})
 
-	var (
-		ingressAPISIXDeployment string
-		disableStatusStr        string
-	)
 	label := `""`
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil && !s.opts.DisableNamespaceSelector {
 		label = labels[0]
-	}
-	if s.opts.DisableStatus {
-		disableStatusStr = "- --disable-status-updates"
 	}
 	if s.opts.EnableWebhooks {
 		s.createAdmissionWebhook()
 	}
 
-	ingressAPISIXDeployment = s.genIngressDeployment(s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion,
-		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label,
-		s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.EnableWebhooks, s.opts.IngressClass, disableStatusStr)
+	if s.opts.EnableEtcdServer {
+		err = s.CreateResourceFromString(_ingressAPISIXService)
+		assert.Nil(s.t, err, "create apisix-ingress-controller service")
+	}
+
+	ingressAPISIXDeployment := s.genIngressDeployment(s.opts.IngressAPISIXReplicas, s.opts.APISIXAdminAPIVersion,
+		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress,
+		s.opts.EnableWebhooks, s.opts.IngressClass, s.opts.DisableStatus, s.opts.EnableEtcdServer)
 
 	err = s.CreateResourceFromString(ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
@@ -547,22 +577,14 @@ func (s *Scaffold) GetIngressPodDetails() ([]corev1.Pod, error) {
 
 // ScaleIngressController scales the number of Ingress Controller pods to desired.
 func (s *Scaffold) ScaleIngressController(desired int) error {
-	var (
-		ingressDeployment string
-		label             string
-		disableStatusStr  string
-	)
-
+	label := `""`
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil {
 		label = labels[0]
 	}
-	if s.opts.DisableStatus {
-		disableStatusStr = "- --disable-status-updates"
-	}
 
-	ingressDeployment = s.genIngressDeployment(desired, s.namespace, s.opts.APISIXAdminAPIVersion,
+	ingressDeployment := s.genIngressDeployment(desired, s.opts.APISIXAdminAPIVersion,
 		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress,
-		s.opts.EnableWebhooks, s.opts.IngressClass, disableStatusStr)
+		s.opts.EnableWebhooks, s.opts.IngressClass, s.opts.DisableStatus, s.opts.EnableEtcdServer)
 
 	if err := s.CreateResourceFromString(ingressDeployment); err != nil {
 		return err

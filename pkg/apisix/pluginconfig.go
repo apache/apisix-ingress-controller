@@ -222,3 +222,115 @@ func (pc *pluginConfigClient) Update(ctx context.Context, obj *v1.PluginConfig, 
 	}
 	return pluginConfig, nil
 }
+
+type pluginConfigMem struct {
+	url string
+
+	resource string
+	cluster  *cluster
+}
+
+func newPluginConfigMem(c *cluster) PluginConfig {
+	return &pluginConfigMem{
+		url:      c.baseURL + "/plugin_configs",
+		resource: "plugin_configs",
+		cluster:  c,
+	}
+}
+
+func (r *pluginConfigMem) Get(ctx context.Context, name string) (*v1.PluginConfig, error) {
+	log.Debugw("try to look up pluginConfig",
+		zap.String("name", name),
+		zap.String("url", r.url),
+		zap.String("cluster", r.cluster.name),
+	)
+	rid := id.GenID(name)
+	pluginConfig, err := r.cluster.cache.GetPluginConfig(rid)
+	if err == nil {
+		return pluginConfig, nil
+	}
+	if err != cache.ErrNotFound {
+		log.Errorw("failed to find pluginConfig in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+	} else {
+		log.Debugw("failed to find pluginConfig in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+	}
+
+	// TODO Add mutex here to avoid dog-pile effect
+	pluginConfig, err = r.cluster.GetPluginConfig(ctx, r.url, rid)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.cluster.cache.InsertPluginConfig(pluginConfig); err != nil {
+		log.Errorf("failed to reflect pluginConfig create to cache: %s", err)
+		return nil, err
+	}
+	return pluginConfig, nil
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
+func (r *pluginConfigMem) List(ctx context.Context) ([]*v1.PluginConfig, error) {
+	log.Debugw("try to list resource in APISIX",
+		zap.String("cluster", r.cluster.name),
+		zap.String("url", r.url),
+		zap.String("resource", r.resource),
+	)
+	pluginConfigItems, err := r.cluster.listResource(ctx, r.url, r.resource)
+	if err != nil {
+		log.Errorf("failed to list %s: %s", r.resource, err)
+		return nil, err
+	}
+
+	var items []*v1.PluginConfig
+	for i, item := range pluginConfigItems {
+		pluginConfig, err := item.pluginConfig()
+		if err != nil {
+			log.Errorw("failed to convert pluginConfig item",
+				zap.String("url", r.url),
+				zap.String("pluginConfig_key", item.Key),
+				zap.String("pluginConfig_value", string(item.Value)),
+				zap.Error(err),
+			)
+			return nil, err
+		}
+
+		items = append(items, pluginConfig)
+		log.Debugf("list pluginConfig #%d, body: %s", i, string(item.Value))
+	}
+
+	return items, nil
+}
+
+func (r *pluginConfigMem) Create(ctx context.Context, obj *v1.PluginConfig, shouldCompare bool) (*v1.PluginConfig, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.CreateResource(r.resource, obj.ID, data)
+	return obj, nil
+}
+
+func (r *pluginConfigMem) Delete(ctx context.Context, obj *v1.PluginConfig) error {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	r.cluster.DeleteResource(r.resource, obj.ID, data)
+	return nil
+}
+
+func (r *pluginConfigMem) Update(ctx context.Context, obj *v1.PluginConfig, shouldCompare bool) (*v1.PluginConfig, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.UpdateResource(r.resource, obj.ID, data)
+	return obj, nil
+}

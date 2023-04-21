@@ -21,6 +21,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -215,4 +216,116 @@ func (r *globalRuleClient) Update(ctx context.Context, obj *v1.GlobalRule, shoul
 		return nil, err
 	}
 	return globalRule, nil
+}
+
+type globalRuleMem struct {
+	url string
+
+	resource string
+	cluster  *cluster
+}
+
+func newGlobalRuleMem(c *cluster) GlobalRule {
+	return &globalRuleMem{
+		url:      c.baseURL + "/global_rules",
+		resource: "global_rules",
+		cluster:  c,
+	}
+}
+
+func (r *globalRuleMem) Get(ctx context.Context, name string) (*v1.GlobalRule, error) {
+	log.Debugw("try to look up globalRule",
+		zap.String("name", name),
+		zap.String("url", r.url),
+		zap.String("cluster", r.cluster.name),
+	)
+	rid := id.GenID(name)
+	globalRule, err := r.cluster.cache.GetGlobalRule(rid)
+	if err == nil {
+		return globalRule, nil
+	}
+	if err != cache.ErrNotFound {
+		log.Errorw("failed to find globalRule in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+	} else {
+		log.Debugw("failed to find globalRule in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+	}
+
+	// TODO Add mutex here to avoid dog-pile effect
+	globalRule, err = r.cluster.GetGlobalRule(ctx, r.url, rid)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.cluster.cache.InsertGlobalRule(globalRule); err != nil {
+		log.Errorf("failed to reflect globalRule create to cache: %s", err)
+		return nil, err
+	}
+	return globalRule, nil
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
+func (r *globalRuleMem) List(ctx context.Context) ([]*v1.GlobalRule, error) {
+	log.Debugw("try to list resource in APISIX",
+		zap.String("cluster", r.cluster.name),
+		zap.String("url", r.url),
+		zap.String("resource", r.resource),
+	)
+	globalRuleItems, err := r.cluster.listResource(ctx, r.url, r.resource)
+	if err != nil {
+		log.Errorf("failed to list %s: %s", r.resource, err)
+		return nil, err
+	}
+
+	var items []*v1.GlobalRule
+	for i, item := range globalRuleItems {
+		globalRule, err := item.globalRule()
+		if err != nil {
+			log.Errorw("failed to convert globalRule item",
+				zap.String("url", r.url),
+				zap.String("globalRule_key", item.Key),
+				zap.String("globalRule_value", string(item.Value)),
+				zap.Error(err),
+			)
+			return nil, err
+		}
+
+		items = append(items, globalRule)
+		log.Debugf("list globalRule #%d, body: %s", i, string(item.Value))
+	}
+
+	return items, nil
+}
+
+func (r *globalRuleMem) Create(ctx context.Context, obj *v1.GlobalRule, shouldCompare bool) (*v1.GlobalRule, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.CreateResource(r.resource, obj.ID, data)
+	return obj, nil
+}
+
+func (r *globalRuleMem) Delete(ctx context.Context, obj *v1.GlobalRule) error {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	r.cluster.DeleteResource(r.resource, obj.ID, data)
+	return nil
+}
+
+func (r *globalRuleMem) Update(ctx context.Context, obj *v1.GlobalRule, shouldCompare bool) (*v1.GlobalRule, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.UpdateResource(r.resource, obj.ID, data)
+	return obj, nil
 }

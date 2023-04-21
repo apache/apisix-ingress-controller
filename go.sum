@@ -38,11 +38,11 @@ github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuy
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d/go.mod h1:rBZYJk541a8SKzHPHnH3zbiI+7dagKZ0cgpgrD7Fyho=
-github.com/alinsran/etcd-adapter v0.2.1 h1:csFGPXokTRy/DL/hLDke4b1dFa5Oxdc53M6WxgP2OsQ=
-github.com/alinsran/etcd-adapter v0.2.1/go.mod h1:jd6+/7G7AtNda5SZ8mFfuK1fJ6/1zuYPsr1/Y6ZqdUU=
 github.com/andreyvit/diff v0.0.0-20170406064948-c7f18ee00883/go.mod h1:rCTlJbsFo29Kk6CurOXKm700vrz8f0KW0JNfpkRJY/8=
 github.com/andybalholm/cascadia v1.0.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
+github.com/api7/etcd-adapter v0.2.0 h1:6xs2KcHEi0roHvaHQjykbXeGZsE5ummUwd8xPnpkPRo=
+github.com/api7/etcd-adapter v0.2.0/go.mod h1:jd6+/7G7AtNda5SZ8mFfuK1fJ6/1zuYPsr1/Y6ZqdUU=
 github.com/api7/gopkg v0.1.2 h1:hldTbb3+iQE4LOxhV6ue/fVabsn9+QKnakOKCUS7Vss=
 github.com/api7/gopkg v0.1.2/go.mod h1:O1Po3/R08p/ZQzYA6IOhvV1qiGlQEc16PBtL+KFewJ4=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
