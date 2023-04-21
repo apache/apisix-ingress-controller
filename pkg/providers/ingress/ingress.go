@@ -349,26 +349,6 @@ func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 	if prev.ResourceVersion() >= curr.ResourceVersion() {
 		return
 	}
-	// Updates triggered by status are ignored.
-	if prev.GetGeneration() == curr.GetGeneration() && prev.GetUID() == curr.GetUID() {
-		switch curr.GroupVersion() {
-		case kube.IngressV1:
-			if reflect.DeepEqual(prev.V1().Spec, curr.V1().Spec) &&
-				!reflect.DeepEqual(prev.V1().Status, curr.V1().Status) {
-				return
-			}
-		case kube.IngressV1beta1:
-			if reflect.DeepEqual(prev.V1beta1().Spec, curr.V1beta1().Spec) &&
-				!reflect.DeepEqual(prev.V1beta1().Status, curr.V1beta1().Status) {
-				return
-			}
-		case kube.IngressExtensionsV1beta1:
-			if reflect.DeepEqual(prev.ExtensionsV1beta1().Spec, curr.ExtensionsV1beta1().Spec) &&
-				!reflect.DeepEqual(prev.ExtensionsV1beta1().Status, curr.ExtensionsV1beta1().Status) {
-				return
-			}
-		}
-	}
 
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
@@ -390,6 +370,23 @@ func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 			zap.Any("old object", newObj),
 		)
 		return
+	}
+	// Updates triggered by status are ignored.
+	if prev.GetGeneration() == curr.GetGeneration() && prev.GetUID() == curr.GetUID() && prev.GroupVersion() == curr.GroupVersion() {
+		switch curr.GroupVersion() {
+		case kube.IngressV1:
+			if reflect.DeepEqual(prev.V1().ObjectMeta, curr.V1().ObjectMeta) {
+				return
+			}
+		case kube.IngressV1beta1:
+			if reflect.DeepEqual(prev.V1beta1().ObjectMeta, curr.V1beta1().ObjectMeta) {
+				return
+			}
+		case kube.IngressExtensionsV1beta1:
+			if reflect.DeepEqual(prev.ExtensionsV1beta1().ObjectMeta, curr.ExtensionsV1beta1().ObjectMeta) {
+				return
+			}
+		}
 	}
 
 	c.workqueue.Add(&types.Event{

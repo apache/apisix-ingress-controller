@@ -344,15 +344,6 @@ func (c *apisixPluginConfigController) onUpdate(oldObj, newObj interface{}) {
 	if prev.ResourceVersion() >= curr.ResourceVersion() {
 		return
 	}
-	// Updates triggered by status are ignored.
-	if prev.GetGeneration() == curr.GetGeneration() && prev.GetUID() == curr.GetUID() {
-		switch curr.GroupVersion() {
-		case config.ApisixV2:
-			if reflect.DeepEqual(prev.V2().Spec, curr.V2().Spec) && !reflect.DeepEqual(prev.V2().Status, curr.V2().Status) {
-				return
-			}
-		}
-	}
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
 		log.Errorf("found ApisixPluginConfig resource with bad meta namespace key: %s", err)
@@ -363,6 +354,15 @@ func (c *apisixPluginConfigController) onUpdate(oldObj, newObj interface{}) {
 	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
+	}
+	// Updates triggered by status are ignored.
+	if prev.GetGeneration() == curr.GetGeneration() && prev.GetUID() == curr.GetUID() && prev.GroupVersion() == curr.GroupVersion() {
+		switch curr.GroupVersion() {
+		case config.ApisixV2:
+			if reflect.DeepEqual(prev.V2().ObjectMeta, curr.V2().ObjectMeta) {
+				return
+			}
+		}
 	}
 	log.Debugw("ApisixPluginConfig update event arrived",
 		zap.Any("new object", curr),

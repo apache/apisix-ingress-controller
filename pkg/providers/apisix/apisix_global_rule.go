@@ -17,6 +17,7 @@ package apisix
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"go.uber.org/zap"
@@ -285,6 +286,14 @@ func (c *apisixGlobalRuleController) onUpdate(oldObj, newObj interface{}) {
 	}
 	if !c.namespaceProvider.IsWatchingNamespace(key) {
 		return
+	}
+	if prev.GetGeneration() == curr.GetGeneration() && prev.GetUID() == curr.GetUID() && prev.GroupVersion() == curr.GroupVersion() {
+		switch curr.GroupVersion() {
+		case config.ApisixV2:
+			if reflect.DeepEqual(prev.V2().ObjectMeta, curr.V2().ObjectMeta) {
+				return
+			}
+		}
 	}
 	log.Debugw("ApisixGlobalRule update event arrived",
 		zap.Any("new object", curr),
