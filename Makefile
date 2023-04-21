@@ -328,3 +328,24 @@ install-gateway-api-local:
 .PHONY: uninstall-gateway-api
 uninstall-gateway-api:
 	kubectl delete -f $(GATEWAY_API_CRDS_LOCAL_PATH)
+
+### dev-env:			  Launch development environment
+.PHONY: dev-env
+dev-env: kind-up pack-image
+	if helm ls -n ingress-apisix | grep -q apisix; then
+		echo "apisix is already installed in the ingress-apisix namespace"
+	else
+		helm repo add apisix https://charts.apiseven.com
+		helm repo add bitnami https://charts.bitnami.com/bitnami
+		helm repo update
+		helm install apisix apisix/apisix \
+			--set gateway.type=NodePort \
+			--set ingress-controller.enabled=true \
+			--namespace ingress-apisix \
+			--create-namespace
+		kubectl set image deployment/apisix-ingress-controller ingress-controller=$(REGISTRY)/apache/apisix-ingress-controller:dev --namespace ingress-apisix
+	fi
+
+### dev-env-reset:        Reset development environment
+.PHONY: dev-env-reset
+dev-env-reset: kind-reset dev-clean-image
