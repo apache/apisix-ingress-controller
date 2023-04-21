@@ -19,6 +19,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -30,7 +31,6 @@ import (
 	"strings"
 	"text/template"
 	"time"
-	"encoding/json"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -502,34 +502,34 @@ func (s *Scaffold) beforeEach() {
 }
 
 func (s *Scaffold) checkControllerRestarted() bool {
-    output, err := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deployment", "ingress-apisix-controller", "-o", "json")
-    if err != nil {
-        ginkgo.Fail(fmt.Sprintf("Error checking controller status: %v", err))
-        return false
-    }
+	output, err := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deployment", "ingress-apisix-controller", "-o", "json")
+	if err != nil {
+		ginkgo.Fail(fmt.Sprintf("Error checking controller status: %v", err))
+		return false
+	}
 
-    var deployment struct {
-        Status struct {
-            Replicas        int `json:"replicas"`
-            ReadyReplicas   int `json:"readyReplicas"`
-            AvailableReplicas int `json:"availableReplicas"`
-            UnavailableReplicas int `json:"unavailableReplicas"`
-        } `json:"status"`
-        Spec struct {
-            Replicas int `json:"replicas"`
-        } `json:"spec"`
-    }
-    if err := json.Unmarshal([]byte(output), &deployment); err != nil {
-        ginkgo.Fail(fmt.Sprintf("Error parsing controller status: %v", err))
-        return false
-    }
+	var deployment struct {
+		Status struct {
+			Replicas            int `json:"replicas"`
+			ReadyReplicas       int `json:"readyReplicas"`
+			AvailableReplicas   int `json:"availableReplicas"`
+			UnavailableReplicas int `json:"unavailableReplicas"`
+		} `json:"status"`
+		Spec struct {
+			Replicas int `json:"replicas"`
+		} `json:"spec"`
+	}
+	if err := json.Unmarshal([]byte(output), &deployment); err != nil {
+		ginkgo.Fail(fmt.Sprintf("Error parsing controller status: %v", err))
+		return false
+	}
 
-    if deployment.Status.Replicas < deployment.Spec.Replicas {
-        ginkgo.Fail("Controller has restarted")
-        return true
-    }
+	if deployment.Status.Replicas < deployment.Spec.Replicas {
+		ginkgo.Fail("Controller has restarted")
+		return true
+	}
 
-    return false
+	return false
 }
 
 func (s *Scaffold) afterEach() {
