@@ -642,7 +642,7 @@ func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
 		return
 	}
 	// Updates triggered by status are ignored.
-	if prev.GetGeneration() == curr.GetGeneration() && prev.GetUID() == curr.GetUID() && prev.GroupVersion() == curr.GroupVersion(){
+	if prev.GetGeneration() == curr.GetGeneration() && prev.GetUID() == curr.GetUID() && prev.GroupVersion() == curr.GroupVersion() {
 		switch curr.GroupVersion() {
 		case config.ApisixV2:
 			if reflect.DeepEqual(prev.V2().ObjectMeta, curr.V2().ObjectMeta) {
