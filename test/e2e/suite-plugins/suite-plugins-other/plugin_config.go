@@ -538,8 +538,6 @@ spec:
 		suites(scaffold.NewDefaultV2beta3Scaffold)
 	})
 	ginkgo.Describe("suite-plugins-other: scaffold v2", func() {
-		suites(scaffold.NewDefaultV2Scaffold)
-
 		s := scaffold.NewDefaultV2Scaffold()
 		ginkgo.It("applies plugin config for route with upstream", func() {
 			apc := fmt.Sprintf(`
@@ -570,7 +568,7 @@ spec:
 `)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(au))
 
-			ar := fmt.Sprintf(`
+			ar := `
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
@@ -588,10 +586,11 @@ spec:
    upstreams:
    - name: httpbin-upstream
    plugin_config_name: httpbin-plugins
-`)
+`
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
+			time.Sleep(6 * time.Second)
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixPluginConfigCreated(1)

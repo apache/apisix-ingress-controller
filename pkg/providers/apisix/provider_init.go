@@ -31,7 +31,6 @@ import (
 // This func is NOT concurrency safe.
 // cc https://github.com/apache/apisix-ingress-controller/pull/742#discussion_r757197791
 func (p *apisixProvider) Init(ctx context.Context) error {
-	return nil
 	var (
 		wg                 sync.WaitGroup
 		routeMapK8S        = new(sync.Map)

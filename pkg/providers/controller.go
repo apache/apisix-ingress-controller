@@ -503,9 +503,11 @@ func (c *Controller) run(ctx context.Context) {
 	log.Info("init providers")
 
 	// Compare resource
-	if err = c.apisixProvider.Init(ctx); err != nil {
-		ctx.Done()
-		return
+	if !c.cfg.EtcdServer.Enabled {
+		if err = c.apisixProvider.Init(ctx); err != nil {
+			ctx.Done()
+			return
+		}
 	}
 
 	// Run Phase

@@ -460,14 +460,11 @@ func (c *apisixUpstreamController) updateExternalNodes(ctx context.Context, au *
 	upsName := apisixv1.ComposeExternalUpstreamName(ns, name)
 	ups, err := c.APISIX.Cluster(clusterName).Upstream().Get(ctx, upsName)
 	if err != nil {
-		if err != apisixcache.ErrNotFound {
-			log.Errorf("failed to get upstream %s: %s", upsName, err)
-			c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-			c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
-			return err
-		}
-		// Do nothing if not found
-	} else {
+		log.Errorf("failed to get upstream %s: %s", upsName, err)
+		c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+		c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+		return err
+	} else if ups != nil {
 		nodes, err := c.translator.TranslateApisixUpstreamExternalNodes(au)
 		if err != nil {
 			log.Errorf("failed to translate upstream external nodes %s: %s", upsName, err)
