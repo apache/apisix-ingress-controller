@@ -255,34 +255,15 @@ func newRouteMem(c *cluster) Route {
 func (r *routeMem) Get(ctx context.Context, name string) (*v1.Route, error) {
 	log.Debugw("try to look up route",
 		zap.String("name", name),
-		zap.String("url", r.url),
 		zap.String("cluster", r.cluster.name),
 	)
 	rid := id.GenID(name)
 	route, err := r.cluster.cache.GetRoute(rid)
-	if err == nil {
-		return route, nil
-	}
-	if err != cache.ErrNotFound {
-		log.Errorw("failed to find route in cache, will try to lookup from APISIX",
+	if err != nil && err != cache.ErrNotFound {
+		log.Errorw("failed to find route in cache",
 			zap.String("name", name),
 			zap.Error(err),
 		)
-	} else {
-		log.Debugw("failed to find route in cache, will try to lookup from APISIX",
-			zap.String("name", name),
-			zap.Error(err),
-		)
-	}
-
-	// TODO Add mutex here to avoid dog-pile effect
-	route, err = r.cluster.GetRoute(ctx, r.url, rid)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := r.cluster.cache.InsertRoute(route); err != nil {
-		log.Errorf("failed to reflect route create to cache: %s", err)
 		return nil, err
 	}
 	return route, nil
@@ -293,33 +274,14 @@ func (r *routeMem) Get(ctx context.Context, name string) (*v1.Route, error) {
 func (r *routeMem) List(ctx context.Context) ([]*v1.Route, error) {
 	log.Debugw("try to list resource in APISIX",
 		zap.String("cluster", r.cluster.name),
-		zap.String("url", r.url),
 		zap.String("resource", r.resource),
 	)
-	routeItems, err := r.cluster.listResource(ctx, r.url, r.resource)
+	routes, err := r.cluster.cache.ListRoutes()
 	if err != nil {
 		log.Errorf("failed to list %s: %s", r.resource, err)
 		return nil, err
 	}
-
-	var items []*v1.Route
-	for i, item := range routeItems {
-		route, err := item.route()
-		if err != nil {
-			log.Errorw("failed to convert route item",
-				zap.String("url", r.url),
-				zap.String("route_key", item.Key),
-				zap.String("route_value", string(item.Value)),
-				zap.Error(err),
-			)
-			return nil, err
-		}
-
-		items = append(items, route)
-		log.Debugf("list route #%d, body: %s", i, string(item.Value))
-	}
-
-	return items, nil
+	return routes, nil
 }
 
 func (r *routeMem) Create(ctx context.Context, obj *v1.Route, shouldCompare bool) (*v1.Route, error) {
@@ -328,6 +290,10 @@ func (r *routeMem) Create(ctx context.Context, obj *v1.Route, shouldCompare bool
 		return nil, err
 	}
 	r.cluster.CreateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertRoute(obj); err != nil {
+		log.Errorf("failed to reflect route create to cache: %s", err)
+		return nil, err
+	}
 	return obj, nil
 }
 
@@ -337,6 +303,10 @@ func (r *routeMem) Delete(ctx context.Context, obj *v1.Route) error {
 		return err
 	}
 	r.cluster.DeleteResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.DeleteRoute(obj); err != nil {
+		log.Errorf("failed to reflect route delete to cache: %s", err)
+		return nil
+	}
 	return nil
 }
 
@@ -346,5 +316,9 @@ func (r *routeMem) Update(ctx context.Context, obj *v1.Route, shouldCompare bool
 		return nil, err
 	}
 	r.cluster.UpdateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertRoute(obj); err != nil {
+		log.Errorf("failed to reflect route update to cache: %s", err)
+		return nil, err
+	}
 	return obj, nil
 }

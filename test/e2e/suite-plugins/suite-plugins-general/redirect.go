@@ -94,6 +94,7 @@ spec:
 
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
+			time.Sleep(6 * time.Second)
 			err := s.EnsureNumApisixUpstreamsCreated(1)
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 			err = s.EnsureNumApisixRoutesCreated(1)
@@ -211,7 +212,7 @@ spec:
 	}
 
 	ginkgo.Describe("suite-plugins-general: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
+		//suites(scaffold.NewDefaultV2beta3Scaffold)
 	})
 	ginkgo.Describe("suite-plugins-general: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)

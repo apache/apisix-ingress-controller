@@ -29,6 +29,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	adapter "github.com/api7/etcd-adapter/pkg/adapter"
+	api7log "github.com/api7/gopkg/pkg/log"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -38,9 +40,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
-	adapter "github.com/api7/etcd-adapter/pkg/adapter"
-
-	api7log "github.com/api7/gopkg/pkg/log"
 )
 
 const (
@@ -182,7 +181,10 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 		c.pluginMetadata = newPluginMetadataMem(c)
 
 		c.generatedObjCache, _ = cache.NewNoopDBCache()
-		c.cache, _ = cache.NewNoopDBCache()
+		c.cache, err = cache.NewMemDBCache()
+		if err != nil {
+			return nil, err
+		}
 
 		fmt.Println("start etcd server")
 		ln, err := net.Listen("tcp", o.ListenAddress)
@@ -1198,6 +1200,7 @@ func (c *cluster) GetSSL(ctx context.Context, baseUrl, id string) (*v1.Ssl, erro
 }
 
 func (c *cluster) pushEvent(eventType string, key string, value []byte) {
+	log.Debugw("push event to adapter", zap.String("event", eventType), zap.String("key", key), zap.ByteString("value", value))
 	var et types.EventType
 	switch eventType {
 	case "create":
@@ -1207,7 +1210,6 @@ func (c *cluster) pushEvent(eventType string, key string, value []byte) {
 	case "delete":
 		et = types.EventDelete
 	}
-	log.Infow("push event to adapter", zap.String("event", eventType), zap.String("key", key), zap.ByteString("value", value))
 	events := []*adapter.Event{
 		{
 			Type:  adapter.EventType(et),
@@ -1219,13 +1221,13 @@ func (c *cluster) pushEvent(eventType string, key string, value []byte) {
 }
 
 func (c *cluster) CreateResource(resource string, id string, value []byte) {
-	go c.pushEvent("create", c.prefix+"/"+resource+"/"+id, value)
+	c.pushEvent("create", c.prefix+"/"+resource+"/"+id, value)
 }
 
 func (c *cluster) UpdateResource(resource string, id string, value []byte) {
-	go c.pushEvent("update", c.prefix+"/"+resource+"/"+id, value)
+	c.pushEvent("update", c.prefix+"/"+resource+"/"+id, value)
 }
 
 func (c *cluster) DeleteResource(resource string, id string, value []byte) {
-	go c.pushEvent("delete", c.prefix+"/"+resource+"/"+id, value)
+	c.pushEvent("delete", c.prefix+"/"+resource+"/"+id, value)
 }

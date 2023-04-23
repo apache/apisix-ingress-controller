@@ -407,15 +407,23 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			added = m
 		} else {
 			oldCtx, _ := c.translator.TranslateOldRoute(obj.OldObject)
-			om := &utils.Manifest{
-				Routes:        oldCtx.Routes,
-				Upstreams:     oldCtx.Upstreams,
-				StreamRoutes:  oldCtx.StreamRoutes,
-				PluginConfigs: oldCtx.PluginConfigs,
+			if oldCtx != nil {
+				om := &utils.Manifest{
+					Routes:        oldCtx.Routes,
+					Upstreams:     oldCtx.Upstreams,
+					StreamRoutes:  oldCtx.StreamRoutes,
+					PluginConfigs: oldCtx.PluginConfigs,
+				}
+				added, updated, deleted = m.Diff(om)
 			}
-			added, updated, deleted = m.Diff(om)
 		}
 
+		log.Debugw("sync ApisixRoute to cluster",
+			zap.String("event_type", ev.Type.String()),
+			zap.Any("add", added),
+			zap.Any("update", updated),
+			zap.Any("delete", deleted),
+		)
 		if err = c.SyncManifests(ctx, added, updated, deleted, ev.Type.IsSyncEvent()); err != nil {
 			log.Errorw("failed to sync ApisixRoute to apisix",
 				zap.Error(err),

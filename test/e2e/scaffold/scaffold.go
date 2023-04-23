@@ -149,7 +149,7 @@ func NewScaffold(o *Options) *Scaffold {
 		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
 	}
 	if o.ApisixResourceSyncInterval == "" {
-		o.ApisixResourceSyncInterval = "60s"
+		o.ApisixResourceSyncInterval = "1h"
 	}
 	if o.ApisixResourceSyncComparison == "" {
 		o.ApisixResourceSyncComparison = "true"
@@ -480,12 +480,6 @@ func (s *Scaffold) beforeEach() {
 	s.apisixService, err = s.newAPISIX()
 	assert.Nil(s.t, err, "initializing Apache APISIX")
 
-	err = s.waitAllAPISIXPodsAvailable()
-	assert.Nil(s.t, err, "waiting for apisix ready")
-
-	err = s.newAPISIXTunnels()
-	assert.Nil(s.t, err, "creating apisix tunnels")
-
 	s.httpbinService, err = s.newHTTPBIN()
 	assert.Nil(s.t, err, "initializing httpbin")
 
@@ -503,6 +497,12 @@ func (s *Scaffold) beforeEach() {
 		err = s.WaitAllIngressControllerPodsAvailable()
 		assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
 	}
+	err = s.waitAllAPISIXPodsAvailable()
+	assert.Nil(s.t, err, "waiting for apisix ready")
+
+	err = s.newAPISIXTunnels()
+	assert.Nil(s.t, err, "creating apisix tunnels")
+
 }
 
 func (s *Scaffold) afterEach() {

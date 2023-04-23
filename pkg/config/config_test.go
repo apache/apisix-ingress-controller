@@ -57,6 +57,11 @@ func TestNewConfigFromFile(t *testing.T) {
 			DefaultClusterBaseURL:  "http://127.0.0.1:8080/apisix",
 			DefaultClusterAdminKey: "123456",
 		},
+		EtcdServer: EtcdServerConfig{
+			Enabled:       false,
+			Prefix:        "/apisix",
+			ListenAddress: ":12379",
+		},
 	}
 
 	jsonData, err := json.Marshal(cfg)
@@ -102,6 +107,10 @@ apisix:
   default_cluster_base_url: http://127.0.0.1:8080/apisix
   default_cluster_admin_key: "123456"
   default_cluster_name: "apisix"
+etcdserver:
+  enabled: false
+  prefix: /apisix
+  listen_address: :12379
 `
 	tmpYAML, err := os.CreateTemp("/tmp", "config-*.yaml")
 	assert.Nil(t, err, "failed to create temporary yaml configuration file: ", err)
@@ -150,6 +159,11 @@ func TestConfigWithEnvVar(t *testing.T) {
 			DefaultClusterBaseURL:  "http://127.0.0.1:8080/apisix",
 			DefaultClusterAdminKey: "123456",
 		},
+		EtcdServer: EtcdServerConfig{
+			Enabled:       false,
+			Prefix:        "/apisix",
+			ListenAddress: ":12379",
+		},
 	}
 
 	defaultClusterBaseURLEnvName := "DEFAULT_CLUSTER_BASE_URL"
@@ -187,7 +201,12 @@ func TestConfigWithEnvVar(t *testing.T) {
         "default_cluster_base_url": "{{.DEFAULT_CLUSTER_BASE_URL}}",
         "default_cluster_admin_key": "{{.DEFAULT_CLUSTER_ADMIN_KEY}}",
         "default_cluster_name": "{{.DEFAULT_CLUSTER_NAME}}"
-    }
+    },
+	"etcdserver": {
+		"enalbed": false,
+		"prefix": "/apisix",
+		"listen_address": ":12379"
+	}
 }
 `
 	tmpJSON, err := os.CreateTemp("/tmp", "config-*.json")

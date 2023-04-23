@@ -159,8 +159,6 @@ func (s *Scaffold) newAPISIX() (*corev1.Service, error) {
 	if err := s.CreateResourceFromString(
 		s.FormatRegistry(deployment),
 	); err != nil {
-		fmt.Println(s.EtcdServiceFQDN)
-		fmt.Println(deployment)
 		return nil, err
 	}
 	if err := s.CreateResourceFromString(_apisixService); err != nil {

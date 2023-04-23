@@ -242,34 +242,15 @@ func newStreamRouteMem(c *cluster) StreamRoute {
 func (r *streamRouteMem) Get(ctx context.Context, name string) (*v1.StreamRoute, error) {
 	log.Debugw("try to look up route",
 		zap.String("name", name),
-		zap.String("url", r.url),
 		zap.String("cluster", r.cluster.name),
 	)
 	rid := id.GenID(name)
 	route, err := r.cluster.cache.GetStreamRoute(rid)
-	if err == nil {
-		return route, nil
-	}
-	if err != cache.ErrNotFound {
+	if err != nil && err != cache.ErrNotFound {
 		log.Errorw("failed to find route in cache, will try to lookup from APISIX",
 			zap.String("name", name),
 			zap.Error(err),
 		)
-	} else {
-		log.Debugw("failed to find route in cache, will try to lookup from APISIX",
-			zap.String("name", name),
-			zap.Error(err),
-		)
-	}
-
-	// TODO Add mutex here to avoid dog-pile effect
-	route, err = r.cluster.GetStreamRoute(ctx, r.url, rid)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := r.cluster.cache.InsertStreamRoute(route); err != nil {
-		log.Errorf("failed to reflect route create to cache: %s", err)
 		return nil, err
 	}
 	return route, nil
@@ -280,33 +261,14 @@ func (r *streamRouteMem) Get(ctx context.Context, name string) (*v1.StreamRoute,
 func (r *streamRouteMem) List(ctx context.Context) ([]*v1.StreamRoute, error) {
 	log.Debugw("try to list resource in APISIX",
 		zap.String("cluster", r.cluster.name),
-		zap.String("url", r.url),
 		zap.String("resource", r.resource),
 	)
-	routeItems, err := r.cluster.listResource(ctx, r.url, r.resource)
+	streamRoutes, err := r.cluster.cache.ListStreamRoutes()
 	if err != nil {
 		log.Errorf("failed to list %s: %s", r.resource, err)
 		return nil, err
 	}
-
-	var items []*v1.StreamRoute
-	for i, item := range routeItems {
-		route, err := item.streamRoute()
-		if err != nil {
-			log.Errorw("failed to convert route item",
-				zap.String("url", r.url),
-				zap.String("route_key", item.Key),
-				zap.String("route_value", string(item.Value)),
-				zap.Error(err),
-			)
-			return nil, err
-		}
-
-		items = append(items, route)
-		log.Debugf("list route #%d, body: %s", i, string(item.Value))
-	}
-
-	return items, nil
+	return streamRoutes, nil
 }
 
 func (r *streamRouteMem) Create(ctx context.Context, obj *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
@@ -315,6 +277,10 @@ func (r *streamRouteMem) Create(ctx context.Context, obj *v1.StreamRoute, should
 		return nil, err
 	}
 	r.cluster.CreateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertStreamRoute(obj); err != nil {
+		log.Errorf("failed to reflect stream_route create to cache: %s", err)
+		return nil, err
+	}
 	return obj, nil
 }
 
@@ -324,6 +290,10 @@ func (r *streamRouteMem) Delete(ctx context.Context, obj *v1.StreamRoute) error 
 		return err
 	}
 	r.cluster.DeleteResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.DeleteStreamRoute(obj); err != nil {
+		log.Errorf("failed to reflect stream_route delete to cache: %s", err)
+		return err
+	}
 	return nil
 }
 
@@ -333,5 +303,9 @@ func (r *streamRouteMem) Update(ctx context.Context, obj *v1.StreamRoute, should
 		return nil, err
 	}
 	r.cluster.UpdateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertStreamRoute(obj); err != nil {
+		log.Errorf("failed to reflect stream_route update to cache: %s", err)
+		return nil, err
+	}
 	return obj, nil
 }

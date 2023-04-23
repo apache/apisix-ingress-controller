@@ -256,7 +256,7 @@ spec:
   ports:
     - name: grpc
       protocol: TCP
-      port: 12379
+      port: 2379
       targetPort: 12379
   selector:
     app: ingress-apisix-controller-deployment-e2e-test

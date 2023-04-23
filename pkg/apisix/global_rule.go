@@ -236,34 +236,15 @@ func newGlobalRuleMem(c *cluster) GlobalRule {
 func (r *globalRuleMem) Get(ctx context.Context, name string) (*v1.GlobalRule, error) {
 	log.Debugw("try to look up globalRule",
 		zap.String("name", name),
-		zap.String("url", r.url),
 		zap.String("cluster", r.cluster.name),
 	)
 	rid := id.GenID(name)
 	globalRule, err := r.cluster.cache.GetGlobalRule(rid)
-	if err == nil {
-		return globalRule, nil
-	}
-	if err != cache.ErrNotFound {
+	if err != nil && err != cache.ErrNotFound {
 		log.Errorw("failed to find globalRule in cache, will try to lookup from APISIX",
 			zap.String("name", name),
 			zap.Error(err),
 		)
-	} else {
-		log.Debugw("failed to find globalRule in cache, will try to lookup from APISIX",
-			zap.String("name", name),
-			zap.Error(err),
-		)
-	}
-
-	// TODO Add mutex here to avoid dog-pile effect
-	globalRule, err = r.cluster.GetGlobalRule(ctx, r.url, rid)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := r.cluster.cache.InsertGlobalRule(globalRule); err != nil {
-		log.Errorf("failed to reflect globalRule create to cache: %s", err)
 		return nil, err
 	}
 	return globalRule, nil
@@ -277,30 +258,12 @@ func (r *globalRuleMem) List(ctx context.Context) ([]*v1.GlobalRule, error) {
 		zap.String("url", r.url),
 		zap.String("resource", r.resource),
 	)
-	globalRuleItems, err := r.cluster.listResource(ctx, r.url, r.resource)
+	globalRules, err := r.cluster.cache.ListGlobalRules()
 	if err != nil {
 		log.Errorf("failed to list %s: %s", r.resource, err)
 		return nil, err
 	}
-
-	var items []*v1.GlobalRule
-	for i, item := range globalRuleItems {
-		globalRule, err := item.globalRule()
-		if err != nil {
-			log.Errorw("failed to convert globalRule item",
-				zap.String("url", r.url),
-				zap.String("globalRule_key", item.Key),
-				zap.String("globalRule_value", string(item.Value)),
-				zap.Error(err),
-			)
-			return nil, err
-		}
-
-		items = append(items, globalRule)
-		log.Debugf("list globalRule #%d, body: %s", i, string(item.Value))
-	}
-
-	return items, nil
+	return globalRules, nil
 }
 
 func (r *globalRuleMem) Create(ctx context.Context, obj *v1.GlobalRule, shouldCompare bool) (*v1.GlobalRule, error) {
@@ -309,6 +272,10 @@ func (r *globalRuleMem) Create(ctx context.Context, obj *v1.GlobalRule, shouldCo
 		return nil, err
 	}
 	r.cluster.CreateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertGlobalRule(obj); err != nil {
+		log.Errorf("failed to reflect global_rule create to cache: %s", err)
+		return nil, err
+	}
 	return obj, nil
 }
 
@@ -318,6 +285,10 @@ func (r *globalRuleMem) Delete(ctx context.Context, obj *v1.GlobalRule) error {
 		return err
 	}
 	r.cluster.DeleteResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.DeleteGlobalRule(obj); err != nil {
+		log.Errorf("failed to reflect global_rule delete to cache: %s", err)
+		return err
+	}
 	return nil
 }
 
@@ -327,5 +298,9 @@ func (r *globalRuleMem) Update(ctx context.Context, obj *v1.GlobalRule, shouldCo
 		return nil, err
 	}
 	r.cluster.UpdateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertGlobalRule(obj); err != nil {
+		log.Errorf("failed to reflect global_rule update to cache: %s", err)
+		return nil, err
+	}
 	return obj, nil
 }

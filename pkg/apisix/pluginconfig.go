@@ -246,30 +246,11 @@ func (r *pluginConfigMem) Get(ctx context.Context, name string) (*v1.PluginConfi
 	)
 	rid := id.GenID(name)
 	pluginConfig, err := r.cluster.cache.GetPluginConfig(rid)
-	if err == nil {
-		return pluginConfig, nil
-	}
-	if err != cache.ErrNotFound {
+	if err != nil && err != cache.ErrNotFound {
 		log.Errorw("failed to find pluginConfig in cache, will try to lookup from APISIX",
 			zap.String("name", name),
 			zap.Error(err),
 		)
-	} else {
-		log.Debugw("failed to find pluginConfig in cache, will try to lookup from APISIX",
-			zap.String("name", name),
-			zap.Error(err),
-		)
-	}
-
-	// TODO Add mutex here to avoid dog-pile effect
-	pluginConfig, err = r.cluster.GetPluginConfig(ctx, r.url, rid)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := r.cluster.cache.InsertPluginConfig(pluginConfig); err != nil {
-		log.Errorf("failed to reflect pluginConfig create to cache: %s", err)
-		return nil, err
 	}
 	return pluginConfig, nil
 }
@@ -279,33 +260,14 @@ func (r *pluginConfigMem) Get(ctx context.Context, name string) (*v1.PluginConfi
 func (r *pluginConfigMem) List(ctx context.Context) ([]*v1.PluginConfig, error) {
 	log.Debugw("try to list resource in APISIX",
 		zap.String("cluster", r.cluster.name),
-		zap.String("url", r.url),
 		zap.String("resource", r.resource),
 	)
-	pluginConfigItems, err := r.cluster.listResource(ctx, r.url, r.resource)
+	pluginConfigItems, err := r.cluster.cache.ListPluginConfigs()
 	if err != nil {
 		log.Errorf("failed to list %s: %s", r.resource, err)
 		return nil, err
 	}
-
-	var items []*v1.PluginConfig
-	for i, item := range pluginConfigItems {
-		pluginConfig, err := item.pluginConfig()
-		if err != nil {
-			log.Errorw("failed to convert pluginConfig item",
-				zap.String("url", r.url),
-				zap.String("pluginConfig_key", item.Key),
-				zap.String("pluginConfig_value", string(item.Value)),
-				zap.Error(err),
-			)
-			return nil, err
-		}
-
-		items = append(items, pluginConfig)
-		log.Debugf("list pluginConfig #%d, body: %s", i, string(item.Value))
-	}
-
-	return items, nil
+	return pluginConfigItems, nil
 }
 
 func (r *pluginConfigMem) Create(ctx context.Context, obj *v1.PluginConfig, shouldCompare bool) (*v1.PluginConfig, error) {
@@ -314,6 +276,10 @@ func (r *pluginConfigMem) Create(ctx context.Context, obj *v1.PluginConfig, shou
 		return nil, err
 	}
 	r.cluster.CreateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertPluginConfig(obj); err != nil {
+		log.Errorf("failed to reflect plugin_config create to cache: %s", err)
+		return nil, err
+	}
 	return obj, nil
 }
 
@@ -323,6 +289,10 @@ func (r *pluginConfigMem) Delete(ctx context.Context, obj *v1.PluginConfig) erro
 		return err
 	}
 	r.cluster.DeleteResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.DeletePluginConfig(obj); err != nil {
+		log.Errorf("failed to reflect plugin_config delete to cache: %s", err)
+		return err
+	}
 	return nil
 }
 
@@ -332,5 +302,9 @@ func (r *pluginConfigMem) Update(ctx context.Context, obj *v1.PluginConfig, shou
 		return nil, err
 	}
 	r.cluster.UpdateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertPluginConfig(obj); err != nil {
+		log.Errorf("failed to reflect plugin_config update to cache: %s", err)
+		return nil, err
+	}
 	return obj, nil
 }
