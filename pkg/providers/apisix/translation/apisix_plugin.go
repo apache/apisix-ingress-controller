@@ -267,13 +267,14 @@ func (t *translator) translateConsumerJwtAuthPluginV2(consumerNamespace string, 
 			cfg.Value.Exp = _jwtAuthExpDefaultValue
 		}
 		return &apisixv1.JwtAuthConsumerConfig{
-			Key:          cfg.Value.Key,
-			Secret:       cfg.Value.Secret,
-			PublicKey:    cfg.Value.PublicKey,
-			PrivateKey:   cfg.Value.PrivateKey,
-			Algorithm:    cfg.Value.Algorithm,
-			Exp:          cfg.Value.Exp,
-			Base64Secret: cfg.Value.Base64Secret,
+			Key:                 cfg.Value.Key,
+			Secret:              cfg.Value.Secret,
+			PublicKey:           cfg.Value.PublicKey,
+			PrivateKey:          cfg.Value.PrivateKey,
+			Algorithm:           cfg.Value.Algorithm,
+			Exp:                 cfg.Value.Exp,
+			Base64Secret:        cfg.Value.Base64Secret,
+			LifetimeGracePeriod: cfg.Value.LifetimeGracePeriod,
 		}, nil
 	}
 
@@ -296,18 +297,22 @@ func (t *translator) translateConsumerJwtAuthPluginV2(consumerNamespace string, 
 	if exp < 1 {
 		exp = _jwtAuthExpDefaultValue
 	}
+	lifetimeGracePeriodRaw := sec.Data["lifetime_grace_period"]
+	lifetimeGracePeriod, _ := strconv.ParseInt(string(lifetimeGracePeriodRaw), 10, 64)
 	secretRaw := sec.Data["secret"]
 	publicKeyRaw := sec.Data["public_key"]
 	privateKeyRaw := sec.Data["private_key"]
 	algorithmRaw := sec.Data["algorithm"]
+
 	return &apisixv1.JwtAuthConsumerConfig{
-		Key:          string(keyRaw),
-		Secret:       string(secretRaw),
-		PublicKey:    string(publicKeyRaw),
-		PrivateKey:   string(privateKeyRaw),
-		Algorithm:    string(algorithmRaw),
-		Exp:          exp,
-		Base64Secret: base64Secret,
+		Key:                 string(keyRaw),
+		Secret:              string(secretRaw),
+		PublicKey:           string(publicKeyRaw),
+		PrivateKey:          string(privateKeyRaw),
+		Algorithm:           string(algorithmRaw),
+		Exp:                 exp,
+		Base64Secret:        base64Secret,
+		LifetimeGracePeriod: lifetimeGracePeriod,
 	}, nil
 }
 
