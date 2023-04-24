@@ -414,11 +414,11 @@ func (c *apisixUpstreamController) updateUpstream(ctx context.Context, upsName s
 
 	ups, err := c.APISIX.Cluster(clusterName).Upstream().Get(ctx, upsName)
 	if err != nil {
-		if err == apisixcache.ErrNotFound {
-			return nil
-		}
 		log.Errorf("failed to get upstream %s: %s", upsName, err)
 		return err
+	}
+	if ups == nil {
+		return nil
 	}
 	var newUps *apisixv1.Upstream
 	if cfg != nil {

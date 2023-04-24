@@ -207,11 +207,11 @@ spec:
 	}
 
 	adminVersion := os.Getenv("APISIX_ADMIN_API_VERSION")
-	if adminVersion == "v3" {
-		opts.APISIXConfigPath = "testdata/apisix-gw-config-v3-with-sd.yaml"
-	} else {
-		// fallback to v2
+	if adminVersion == "v2" {
 		opts.APISIXConfigPath = "testdata/apisix-gw-config-with-sd.yaml"
+	} else {
+		// default admin-api v3
+		opts.APISIXConfigPath = "testdata/apisix-gw-config-v3-with-sd.yaml"
 	}
 
 	s := scaffold.NewScaffold(opts)

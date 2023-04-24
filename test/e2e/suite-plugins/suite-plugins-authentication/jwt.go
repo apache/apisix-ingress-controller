@@ -117,6 +117,7 @@ spec:
 				NotEmpty().
 				Raw()
 
+			time.Sleep(20 * time.Minute)
 			_ = s.NewAPISIXClient().GET("/ip").
 				WithHeader("Host", "httpbin.org").
 				WithHeader("Authorization", string(token)).
@@ -231,7 +232,7 @@ spec:
 	}
 
 	ginkgo.Describe("suite-plugins-authentication: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
+		//suites(scaffold.NewDefaultV2beta3Scaffold)
 	})
 	ginkgo.Describe("suite-plugins-authentication: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)

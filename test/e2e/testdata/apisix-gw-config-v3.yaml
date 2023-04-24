@@ -142,5 +142,5 @@ nginx_config:                     # config for render the template to generate n
                                   # the "user" directive makes sense only if the master process runs with super-user privileges.
                                   # if you're not root user,the default is current user.
   error_log: logs/error.log
-  error_log_level:  info          # warn,error
+  error_log_level:  debug          # warn,error
   worker_processes: 1
