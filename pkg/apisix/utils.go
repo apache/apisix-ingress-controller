@@ -241,3 +241,27 @@ func skipRequest[T ResourceTypes](cluster *cluster, shouldCompare bool, url, id 
 
 	return nil, false
 }
+
+func CompareResourceEqualFromCluster[T ResourceTypes](cluster *cluster, id string, Resource T) bool {
+	var old any
+	switch (interface{})(Resource).(type) {
+	case *v1.Route:
+		old, _ = cluster.cache.GetRoute(id)
+	case *v1.Ssl:
+		old, _ = cluster.cache.GetSSL(id)
+	case *v1.Upstream:
+		old, _ = cluster.cache.GetUpstream(id)
+	case *v1.StreamRoute:
+		old, _ = cluster.cache.GetStreamRoute(id)
+	case *v1.GlobalRule:
+		old, _ = cluster.cache.GetGlobalRule(id)
+	case *v1.Consumer:
+		old, _ = cluster.cache.GetConsumer(id)
+	case *v1.PluginConfig:
+		old, _ = cluster.cache.GetPluginConfig(id)
+	}
+	if old == nil {
+		return false
+	}
+	return reflect.DeepEqual(old, Resource)
+}

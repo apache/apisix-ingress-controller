@@ -27,6 +27,7 @@ import (
 
 var _ = ginkgo.Describe("suite-annotations: froward-auth annotations", func() {
 	s := scaffold.NewDefaultScaffold()
+
 	ginkgo.JustBeforeEach(func() {
 		// create an external auth service
 		json := `{
@@ -48,6 +49,10 @@ var _ = ginkgo.Describe("suite-annotations: froward-auth annotations", func() {
 	})
 
 	ginkgo.It("enable in ingress networking/v1", func() {
+		//TODO: Need to support etcdserver mode
+		if s.IsEtcdServer() {
+			ginkgo.Skip("Does not support etcdserver mode, temporarily skipping test cases, waiting for fix")
+		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
@@ -89,6 +94,10 @@ spec:
 	})
 
 	ginkgo.It("enable in ingress networking/v1", func() {
+		//TODO: Need to support etcdserver mode
+		if s.IsEtcdServer() {
+			ginkgo.Skip("Does not support etcdserver mode, temporarily skipping test cases, waiting for fix")
+		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1

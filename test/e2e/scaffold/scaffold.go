@@ -239,6 +239,11 @@ func NewDefaultV2beta3Scaffold() *Scaffold {
 	return NewScaffold(opts)
 }
 
+// Skip case if  is not supported etcdserver
+func (s *Scaffold) IsEtcdServer() bool {
+	return s.opts.EnableEtcdServer
+}
+
 // KillPod kill the pod which name is podName.
 func (s *Scaffold) KillPod(podName string) error {
 	cli, err := k8s.GetKubernetesClientE(s.t)

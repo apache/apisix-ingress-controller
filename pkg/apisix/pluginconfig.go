@@ -18,6 +18,7 @@ package apisix
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"go.uber.org/zap"
 
@@ -284,6 +285,10 @@ func (r *pluginConfigMem) Create(ctx context.Context, obj *v1.PluginConfig, shou
 }
 
 func (r *pluginConfigMem) Delete(ctx context.Context, obj *v1.PluginConfig) error {
+	if ok, err := r.deleteCheck(ctx, obj); !ok {
+		log.Debug("failed to delete upstream", zap.Error(err))
+		return cache.ErrStillInUse
+	}
 	data, err := json.Marshal(obj)
 	if err != nil {
 		return err
@@ -307,4 +312,18 @@ func (r *pluginConfigMem) Update(ctx context.Context, obj *v1.PluginConfig, shou
 		return nil, err
 	}
 	return obj, nil
+}
+
+// TODO: Maintain a reference count for each object without having to poll each time
+func (u *pluginConfigMem) deleteCheck(ctx context.Context, obj *v1.PluginConfig) (bool, error) {
+	routes, _ := u.cluster.route.List(ctx)
+	if routes == nil {
+		return true, nil
+	}
+	for _, route := range routes {
+		if route.PluginConfigId == obj.ID {
+			return false, fmt.Errorf("can not delete this plugin_config, route.id=%s is still using it now", route.ID)
+		}
+	}
+	return true, nil
 }

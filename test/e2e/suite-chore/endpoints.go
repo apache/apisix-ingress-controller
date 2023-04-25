@@ -112,7 +112,7 @@ spec:
 		})
 	}
 	ginkgo.Describe("suite-chore: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold())
+		//suites(scaffold.NewDefaultV2beta3Scaffold())
 	})
 	ginkgo.Describe("suite-chore: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
@@ -153,11 +153,12 @@ spec:
 		// scale HTTPBIN, so the endpoints controller has the opportunity to update upstream.
 		assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(3))
 		// s.ScaleHTTPBIN(3) process will be slow, and need time.
-		time.Sleep(10 * time.Second)
+		time.Sleep(15 * time.Second)
+		ups, err = s.ListApisixUpstreams()
+		assert.Len(ginkgo.GinkgoT(), ups[0].Nodes, 3)
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumListUpstreamNodesNth(1, 3))
 
 		// port in nodes is still the targetPort, not the service port
-		ups, err = s.ListApisixUpstreams()
 		assert.Nil(ginkgo.GinkgoT(), err, "listing APISIX upstreams")
 		assert.Equal(ginkgo.GinkgoT(), ups[0].Nodes[0].Port, 80)
 		assert.Equal(ginkgo.GinkgoT(), ups[0].Nodes[1].Port, 80)

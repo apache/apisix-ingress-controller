@@ -521,7 +521,7 @@ func (c *apisixUpstreamController) syncRelationship(ev *types.Event, auKey strin
 		oldExternalServices []string
 		newExternalServices []string
 	)
-	if old != nil {
+	if old != nil && old.Spec != nil {
 		for _, node := range old.Spec.ExternalNodes {
 			if node.Type == configv2.ExternalTypeDomain {
 				//oldExternalDomains = append(oldExternalDomains, node.Name)
@@ -530,7 +530,7 @@ func (c *apisixUpstreamController) syncRelationship(ev *types.Event, auKey strin
 			}
 		}
 	}
-	if newObj != nil {
+	if newObj != nil && newObj.Spec != nil {
 		for _, node := range newObj.Spec.ExternalNodes {
 			if node.Type == configv2.ExternalTypeDomain {
 				//newExternalDomains = append(newExternalDomains, node.Name)

@@ -28,7 +28,6 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
@@ -208,23 +207,21 @@ func (c *Common) SyncUpstreamNodesChangeToCluster(ctx context.Context, cluster a
 		zap.String("upstream_name", upsName),
 		zap.Any("nodes", nodes),
 	)
-	return nil
 	upstream, err := cluster.Upstream().Get(ctx, upsName)
 	if err != nil {
-		if err == apisixcache.ErrNotFound {
-			log.Warnw("upstream is not referenced",
-				zap.String("cluster", cluster.String()),
-				zap.String("upstream", upsName),
-			)
-			return nil
-		} else {
-			log.Errorw("failed to get upstream",
-				zap.String("upstream", upsName),
-				zap.String("cluster", cluster.String()),
-				zap.Error(err),
-			)
-			return err
-		}
+		log.Errorw("failed to get upstream",
+			zap.String("upstream", upsName),
+			zap.String("cluster", cluster.String()),
+			zap.Error(err),
+		)
+		return err
+	}
+	if upstream == nil {
+		log.Warnw("upstream is not referenced",
+			zap.String("cluster", cluster.String()),
+			zap.String("upstream", upsName),
+		)
+		return nil
 	}
 
 	// Since APISIX's Upstream can support two modes:

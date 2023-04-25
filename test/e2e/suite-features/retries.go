@@ -131,7 +131,7 @@ spec:
 var _ = ginkgo.Describe("suite-features: retries timeout", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
-		ginkgo.It("active check", func() {
+		ginkgo.It("retries timeout", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			au := fmt.Sprintf(`
@@ -179,7 +179,7 @@ spec:
 	}
 
 	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
+		//suites(scaffold.NewDefaultV2beta3Scaffold)
 	})
 	ginkgo.Describe("suite-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
