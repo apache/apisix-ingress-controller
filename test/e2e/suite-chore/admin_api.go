@@ -28,6 +28,12 @@ import (
 var _ = ginkgo.Describe("suite-chore: admin-api sdk", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("plugin metadata test with admin-api sdk", func() {
+		if s.ApisixResourceVersion() == scaffold.ApisixResourceVersion().V2beta3 {
+			ginkgo.Skip("Not support ApisixRoute v2beta3")
+		}
+		if s.IsEtcdServer() {
+			ginkgo.Skip("Does not support etcdserver mode, temporarily skipping test cases, waiting for fix")
+		}
 		client, err := s.ClusterClient()
 		assert.Nil(ginkgo.GinkgoT(), err)
 

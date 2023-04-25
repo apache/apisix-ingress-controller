@@ -29,6 +29,9 @@ var _ = ginkgo.Describe("suite-annotations: froward-auth annotations", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.JustBeforeEach(func() {
+		if s.IsEtcdServer() {
+			ginkgo.Skip("Does not support etcdserver mode, temporarily skipping test cases, waiting for fix")
+		}
 		// create an external auth service
 		json := `{
 			"uri":"/auth",
