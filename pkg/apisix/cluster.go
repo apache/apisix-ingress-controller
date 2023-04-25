@@ -1229,5 +1229,5 @@ func (c *cluster) UpdateResource(resource string, id string, value []byte) {
 }
 
 func (c *cluster) DeleteResource(resource string, id string, value []byte) {
-	c.pushEvent("delete", c.prefix+"/"+resource+"/"+id, value)
+	c.pushEvent("delete", c.prefix+"/"+resource+"/"+id, []byte{})
 }

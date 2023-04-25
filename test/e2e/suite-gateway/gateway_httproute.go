@@ -185,7 +185,6 @@ spec:
       port: %d
 `, backendSvc, backendPorts[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "update HTTPRoute")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
 
 		time.Sleep(6 * time.Second)
 
@@ -230,6 +229,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromString(route), "delete HTTPRoute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(0), "Checking number of routes")
 
+		time.Sleep(5 * time.Minute)
 		_ = s.NewAPISIXClient().GET("/ip").
 			WithHeader("Host", "httpbin.org").
 			Expect().

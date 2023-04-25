@@ -252,8 +252,9 @@ func (c *gatewayHTTPRouteController) onUpdate(oldObj, newObj interface{}) {
 	)
 
 	c.workqueue.Add(&types.Event{
-		Type:   types.EventUpdate,
-		Object: key,
+		Type:      types.EventUpdate,
+		Object:    key,
+		OldObject: oldHTTPRoute,
 	})
 }
 
