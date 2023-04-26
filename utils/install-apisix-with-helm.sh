@@ -20,6 +20,7 @@ helm list -n ingress-apisix | grep -wq apisix
 if [ $? -ne 0 ]; then
   echo "installing apisix"
   helm repo add apisix https://charts.apiseven.com
+  helm repo add bitnami https://charts.bitnami.com/bitnami
   helm repo update
   helm install apisix apisix/apisix \
     --set gateway.type=NodePort \
