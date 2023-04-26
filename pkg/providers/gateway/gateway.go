@@ -17,6 +17,7 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"go.uber.org/zap"
@@ -206,6 +207,49 @@ func (c *gatewayController) onAdd(obj interface{}) {
 }
 
 func (c *gatewayController) onUpdate(oldObj, newObj interface{}) {
+	oldGateway, ok := oldObj.(*gatewayv1beta1.Gateway)
+	if !ok {
+		log.Errorw("failed to convert old object to gateway",
+			zap.Any("obj", oldObj),
+		)
+		return
+	}
+
+	newGateway, ok := newObj.(*gatewayv1beta1.Gateway)
+	if !ok {
+		log.Errorw("failed to convert new object to gateway",
+			zap.Any("new obj", newObj),
+		)
+		return
+	}
+
+	if reflect.DeepEqual(oldGateway.Spec, newGateway.Spec) {
+		// No need to process if there is no change in spec
+		return
+	}
+
+	key, err := cache.MetaNamespaceKeyFunc(oldObj)
+	if err != nil {
+		log.Errorw("failed to get gateway resource namespace key",
+			zap.Error(err),
+			zap.Any("old obj", oldObj),
+		)
+		return
+	}
+
+	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {
+		return
+	}
+	log.Debugw("gateway update event arrived",
+		zap.String("key", key),
+		zap.Any("old object", oldObj),
+		zap.Any("new object", newObj),
+	)
+
+	c.workqueue.Add(&types.Event{
+		Type:   types.EventUpdate,
+		Object: key,
+	})
 }
 
 func (c *gatewayController) OnDelete(obj interface{}) {
