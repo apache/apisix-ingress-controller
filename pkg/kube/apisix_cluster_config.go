@@ -19,16 +19,12 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	listersv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2"
-	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
 )
 
 // ApisixClusterConfigLister is an encapsulation for the lister of ApisixClusterConfig,
 // it aims at to be compatible with different ApisixClusterConfig versions.
 type ApisixClusterConfigLister interface {
-	// V2beta3 gets the ApisixClusterConfig in apisix.apache.org/v2beta3.
-	V2beta3(string) (ApisixClusterConfig, error)
 	// V2 gets the ApisixClusterConfig in apisix.apache.org/v2.
 	V2(string) (ApisixClusterConfig, error)
 }
@@ -45,9 +41,6 @@ type ApisixClusterConfig interface {
 	// GroupVersion returns the api group version of the
 	// real ApisixClusterConfig.
 	GroupVersion() string
-	// V2beta3 returns the ApisixClusterConfig in apisix.apache.org/v2beta3, the real
-	// ApisixClusterConfig must be in this group version, otherwise will panic.
-	V2beta3() *configv2beta3.ApisixClusterConfig
 	// V2 returns the ApisixClusterConfig in apisix.apache.org/v2, the real
 	// ApisixClusterConfig must be in this group version, otherwise will panic.
 	V2() *configv2.ApisixClusterConfig
@@ -66,15 +59,7 @@ type ApisixClusterConfigEvent struct {
 
 type apisixClusterConfig struct {
 	groupVersion string
-	v2beta3      *configv2beta3.ApisixClusterConfig
 	v2           *configv2.ApisixClusterConfig
-}
-
-func (acc *apisixClusterConfig) V2beta3() *configv2beta3.ApisixClusterConfig {
-	if acc.groupVersion != config.ApisixV2beta3 {
-		panic("not a apisix.apache.org/v2beta3 apisixClusterConfig")
-	}
-	return acc.v2beta3
 }
 
 func (acc *apisixClusterConfig) V2() *configv2.ApisixClusterConfig {
@@ -89,26 +74,11 @@ func (acc *apisixClusterConfig) GroupVersion() string {
 }
 
 func (acc *apisixClusterConfig) ResourceVersion() string {
-	if acc.groupVersion == config.ApisixV2beta3 {
-		return acc.V2beta3().ResourceVersion
-	}
 	return acc.V2().ResourceVersion
 }
 
 type apisixClusterConfigLister struct {
-	v2beta3Lister listersv2beta3.ApisixClusterConfigLister
-	v2Lister      listersv2.ApisixClusterConfigLister
-}
-
-func (l *apisixClusterConfigLister) V2beta3(name string) (ApisixClusterConfig, error) {
-	acc, err := l.v2beta3Lister.Get(name)
-	if err != nil {
-		return nil, err
-	}
-	return &apisixClusterConfig{
-		groupVersion: config.ApisixV2beta3,
-		v2beta3:      acc,
-	}, nil
+	v2Lister listersv2.ApisixClusterConfigLister
 }
 
 func (l *apisixClusterConfigLister) V2(name string) (ApisixClusterConfig, error) {
@@ -126,11 +96,6 @@ func (l *apisixClusterConfigLister) V2(name string) (ApisixClusterConfig, error)
 // type of obj.
 func MustNewApisixClusterConfig(obj interface{}) ApisixClusterConfig {
 	switch acc := obj.(type) {
-	case *configv2beta3.ApisixClusterConfig:
-		return &apisixClusterConfig{
-			groupVersion: config.ApisixV2beta3,
-			v2beta3:      acc,
-		}
 	case *configv2.ApisixClusterConfig:
 		return &apisixClusterConfig{
 			groupVersion: config.ApisixV2,
@@ -146,11 +111,6 @@ func MustNewApisixClusterConfig(obj interface{}) ApisixClusterConfig {
 // type assertion fails.
 func NewApisixClusterConfig(obj interface{}) (ApisixClusterConfig, error) {
 	switch acc := obj.(type) {
-	case *configv2beta3.ApisixClusterConfig:
-		return &apisixClusterConfig{
-			groupVersion: config.ApisixV2beta3,
-			v2beta3:      acc,
-		}, nil
 	case *configv2.ApisixClusterConfig:
 		return &apisixClusterConfig{
 			groupVersion: config.ApisixV2,
@@ -161,9 +121,8 @@ func NewApisixClusterConfig(obj interface{}) (ApisixClusterConfig, error) {
 	}
 }
 
-func NewApisixClusterConfigLister(v2beta3 listersv2beta3.ApisixClusterConfigLister, v2 listersv2.ApisixClusterConfigLister) ApisixClusterConfigLister {
+func NewApisixClusterConfigLister(v2 listersv2.ApisixClusterConfigLister) ApisixClusterConfigLister {
 	return &apisixClusterConfigLister{
-		v2beta3Lister: v2beta3,
-		v2Lister:      v2,
+		v2Lister: v2,
 	}
 }

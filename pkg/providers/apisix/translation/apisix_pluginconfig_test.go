@@ -20,17 +20,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
+	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 )
 
-func TestTranslatePluginConfigV2beta3(t *testing.T) {
-	apc := &configv2beta3.ApisixPluginConfig{
+func TestTranslatePluginConfigV2(t *testing.T) {
+	apc := &configv2.ApisixPluginConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "apc",
 			Namespace: "test-ns",
 		},
-		Spec: configv2beta3.ApisixPluginConfigSpec{
-			Plugins: []configv2beta3.ApisixRouteHTTPPlugin{
+		Spec: configv2.ApisixPluginConfigSpec{
+			Plugins: []configv2.ApisixRouteHTTPPlugin{
 				{
 					Name:   "case1",
 					Enable: true,
@@ -62,20 +62,20 @@ func TestTranslatePluginConfigV2beta3(t *testing.T) {
 		},
 	}
 	trans := &translator{}
-	ctx, err := trans.TranslatePluginConfigV2beta3(apc)
+	ctx, err := trans.TranslatePluginConfigV2(apc)
 	assert.NoError(t, err)
 	assert.Len(t, ctx.PluginConfigs, 1)
 	assert.Len(t, ctx.PluginConfigs[0].Plugins, 2)
 }
 
-func TestGeneratePluginConfigV2beta3DeleteMark(t *testing.T) {
-	apc := &configv2beta3.ApisixPluginConfig{
+func TestGeneratePluginConfigV2DeleteMark(t *testing.T) {
+	apc := &configv2.ApisixPluginConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "apc",
 			Namespace: "test-ns",
 		},
-		Spec: configv2beta3.ApisixPluginConfigSpec{
-			Plugins: []configv2beta3.ApisixRouteHTTPPlugin{
+		Spec: configv2.ApisixPluginConfigSpec{
+			Plugins: []configv2.ApisixRouteHTTPPlugin{
 				{
 					Name:   "case1",
 					Enable: true,
@@ -107,7 +107,7 @@ func TestGeneratePluginConfigV2beta3DeleteMark(t *testing.T) {
 		},
 	}
 	trans := &translator{}
-	ctx, err := trans.GeneratePluginConfigV2beta3DeleteMark(apc)
+	ctx, err := trans.GeneratePluginConfigV2DeleteMark(apc)
 	assert.NoError(t, err)
 	assert.Len(t, ctx.PluginConfigs, 1)
 	assert.Len(t, ctx.PluginConfigs[0].Plugins, 0)
