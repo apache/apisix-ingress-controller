@@ -151,6 +151,7 @@ e2e-test-local: kind-up e2e-test
 ginkgo-check:
 ifeq ("$(wildcard $(GINKGO))", "")
 	@echo "ERROR: Need to install ginkgo first, run: go get -u github.com/onsi/ginkgo/v2/ginkgo@v2.9.2 or go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo@v2.9.2"
+	@echo "Then, you need to add $GOPATH/bin to your PATH, run: export PATH="$(go env GOPATH)/bin:$PATH""
 	exit 1
 endif
 
