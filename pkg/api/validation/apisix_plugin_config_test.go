@@ -82,8 +82,10 @@ func TestValidateApisixRoutePlugins(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := ValidateApisixRoutePlugins(tc.plugins)
-
+			gotValid, err := ValidateApisixRoutePlugins(tc.plugins)
+			if gotValid != tc.expectValid {
+				t.Errorf("ValidateApisixRoutePlugins() gotValid = %v, expect %v", gotValid, tc.expectValid)
+			}
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
