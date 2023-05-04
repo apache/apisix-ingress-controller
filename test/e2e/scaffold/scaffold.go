@@ -517,7 +517,7 @@ func (s *Scaffold) afterEach() {
 	if ginkgo.CurrentSpecReport().Failed() {
 		// dump and delete related resource
 		env := os.Getenv("E2E_ENV")
-		if env == "ci" || env == "debug" {
+		if env == "ci" {
 			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
 			output, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods")
 			if output != "" {

@@ -18,13 +18,12 @@ default: help
 
 VERSION ?= 1.6.0
 
-# 2.15 image: "2.15.0-alpine"
+
 TARGET_APISIX_VERSION ?= "3.1.0-centos"
 APISIX_ADMIN_API_VERSION ?= "v3"
-ifneq ($(APISIX_ADMIN_API_VERSION), "v3")
-ifeq ($(TARGET_APISIX_VERSION), "3.1.0-centos")
-	TARGET_APISIX_VERSION = "2.15.0-alpine"
-endif
+
+ifeq ($(APISIX_ADMIN_API_VERSION),"v2")
+    TARGET_APISIX_VERSION ?= "2.15.3-centos"
 endif
 
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
@@ -151,7 +150,7 @@ e2e-test-local: kind-up e2e-test
 .PHONY: ginkgo-check
 ginkgo-check:
 ifeq ("$(wildcard $(GINKGO))", "")
-	@echo "ERROR: Need to install ginkgo first, run: go get -u github.com/onsi/ginkgo/v2/ginkgo@v2.9.0 or go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo@v2.9.0"
+	@echo "ERROR: Need to install ginkgo first, run: go get -u github.com/onsi/ginkgo/v2/ginkgo@v2.9.2 or go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo@v2.9.2"
 	exit 1
 endif
 

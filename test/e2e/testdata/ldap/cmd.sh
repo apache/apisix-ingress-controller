@@ -20,17 +20,27 @@
 cd test/e2e/testdata/ldap/
 
 OPTION=$1
+COMPOSE_CMD=""
+
+if command -v "docker-compose" > /dev/null 2>&1; then
+    COMPOSE_CMD="docker-compose"
+elif command -v "docker" > /dev/null 2>&1; then
+    COMPOSE_CMD="docker compose"
+else
+    echo "docker-compose or docker compose not found"
+    exit 1
+fi
 
 if  [ $OPTION = "ip" ]; then
     echo -n `docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' openldap`
 elif [ $OPTION = "start" ]; then
-    docker-compose -f 'docker-compose.yaml'  -p 'openldap' down
+    $COMPOSE_CMD -f 'docker-compose.yaml'  -p 'openldap' down
 
     # start openldap
-    docker-compose -f 'docker-compose.yaml'  -p 'openldap' up -d
+    $COMPOSE_CMD -f 'docker-compose.yaml'  -p 'openldap' up -d
 
 elif [ $OPTION = "stop" ]; then
-    docker-compose -f  'docker-compose.yaml'  -p 'openldap' down
+    $COMPOSE_CMD -f  'docker-compose.yaml'  -p 'openldap' down
 else
     echo "argument is one of [ip, start, stop]"
 fi

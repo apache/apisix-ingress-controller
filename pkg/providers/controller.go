@@ -577,16 +577,20 @@ func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.
 
 		err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).HealthCheck(ctx)
 		if err != nil {
-			// Finally failed health check, then give up leader.
-			log.Warnf("failed to check health for default cluster: %s, give up leader", err)
 			c.apiServer.HealthState.Lock()
 			c.apiServer.HealthState.Err = err
 			c.apiServer.HealthState.Unlock()
-
-			return
+			// Finally failed health check, then give up leader.
+			log.Warnf("failed to check health for default cluster: %s, give up leader", err)
+		} else {
+			if c.apiServer.HealthState.Err != nil {
+				c.apiServer.HealthState.Lock()
+				c.apiServer.HealthState.Err = err
+				c.apiServer.HealthState.Unlock()
+			}
+			log.Debugf("success check health for default cluster")
+			c.MetricsCollector.IncrCheckClusterHealth(c.name)
 		}
-		log.Debugf("success check health for default cluster")
-		c.MetricsCollector.IncrCheckClusterHealth(c.name)
 	}
 }
 
