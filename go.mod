@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/api7/etcd-adapter v0.2.0
+	github.com/api7/gopkg v0.1.2
 	github.com/gin-gonic/gin v1.9.0
 	github.com/hashicorp/go-memdb v1.3.4
 	github.com/hashicorp/go-multierror v1.1.1
@@ -32,7 +33,6 @@ require (
 )
 
 require (
-	github.com/api7/gopkg v0.1.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bytedance/sonic v1.8.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
@@ -115,3 +115,5 @@ require (
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
+
+replace github.com/api7/etcd-adapter => github.com/alinsran/etcd-adapter v0.2.3

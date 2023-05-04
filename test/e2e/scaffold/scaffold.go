@@ -166,8 +166,9 @@ func NewScaffold(o *Options) *Scaffold {
 		}
 	}
 	if enabled := os.Getenv("ENABLED_ETCD_SERVER"); enabled == "true" {
-		o.EnableEtcdServer = true
+
 	}
+	o.EnableEtcdServer = true
 
 	if o.APISIXConfigPath == "" {
 		if o.APISIXAdminAPIVersion == "v3" {
