@@ -246,8 +246,9 @@ func (c *gatewayTCPRouteController) onUpdate(oldObj, newObj interface{}) {
 		zap.Any("new object", newObj),
 	)
 	c.workqueue.Add(&types.Event{
-		Type:   types.EventUpdate,
-		Object: key,
+		Type:      types.EventUpdate,
+		Object:    key,
+		OldObject: oldTCPRoute,
 	})
 }
 
