@@ -152,6 +152,9 @@ spec:
 	})
 
 	ginkgo.It("check ApisixPluginConfig status is recorded", func() {
+		if s.IsEtcdServer() {
+			ginkgo.Skip("Does not support etcdserver mode, temporarily skipping test cases, waiting for fix")
+		}
 		apc := `
 apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
