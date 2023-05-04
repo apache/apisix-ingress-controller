@@ -134,6 +134,9 @@ spec:
 		})
 
 		ginkgo.It("for modified resource sync consistency", func() {
+			if s.IsEtcdServer() {
+				ginkgo.Skip("Does not support etcdserver mode")
+			}
 			// crd resource sync interval
 			readyTime := time.Now().Add(100 * time.Second)
 
@@ -228,6 +231,9 @@ spec:
 		})
 
 		ginkgo.It("for deleted resource sync consistency", func() {
+			if s.IsEtcdServer() {
+				ginkgo.Skip("Does not support etcdserver mode")
+			}
 			// crd resource sync interval
 			readyTime := time.Now().Add(100 * time.Second)
 

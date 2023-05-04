@@ -160,6 +160,7 @@ type PluginMetadata interface {
 	List(ctx context.Context) ([]*v1.PluginMetadata, error)
 	Delete(ctx context.Context, metadata *v1.PluginMetadata) error
 	Update(ctx context.Context, metadata *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error)
+	Create(ctx context.Context, metadata *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error)
 }
 
 type UpstreamServiceRelation interface {

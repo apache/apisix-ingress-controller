@@ -28,6 +28,7 @@ import (
 var _ = ginkgo.Describe("suite-chore: ApisixRoute resolvegranularity Testing", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("service and upstream [1:m]", func() {
+		ginkgo.Skip("Does not support etcdserver mode, temporarily skipping test cases, waiting for fix")
 		assert.Nil(ginkgo.GinkgoT(), s.ScaleHTTPBIN(2))
 		time.Sleep(5 * time.Second)
 

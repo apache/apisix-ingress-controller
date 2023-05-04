@@ -19,6 +19,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -858,6 +859,7 @@ spec:
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusServiceUnavailable)
 
 		assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromString(ing))
+		time.Sleep(6 * time.Second)
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)
 
 	})

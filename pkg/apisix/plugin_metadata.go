@@ -143,6 +143,32 @@ func (r *pluginMetadataClient) Update(ctx context.Context, obj *v1.PluginMetadat
 	return pluginMetadata, nil
 }
 
+func (r *pluginMetadataClient) Create(ctx context.Context, obj *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error) {
+	log.Debugw("try to create pluginMetadata",
+		zap.String("name", obj.Name),
+		zap.Any("metadata", obj.Metadata),
+		zap.String("cluster", r.cluster.name),
+		zap.String("url", r.url),
+	)
+	if err := r.cluster.HasSynced(ctx); err != nil {
+		return nil, err
+	}
+	body, err := json.Marshal(obj.Metadata)
+	if err != nil {
+		return nil, err
+	}
+	url := r.url + "/" + obj.Name
+	resp, err := r.cluster.updateResource(ctx, url, "pluginMetadata", body)
+	if err != nil {
+		return nil, err
+	}
+	pluginMetadata, err := resp.pluginMetadata()
+	if err != nil {
+		return nil, err
+	}
+	return pluginMetadata, nil
+}
+
 type pluginMetadataMem struct {
 	url string
 
@@ -226,7 +252,7 @@ func (r *pluginMetadataMem) List(ctx context.Context) ([]*v1.PluginMetadata, err
 }
 
 func (r *pluginMetadataMem) Create(ctx context.Context, obj *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error) {
-	data, err := json.Marshal(obj)
+	data, err := json.Marshal(obj.Metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +261,7 @@ func (r *pluginMetadataMem) Create(ctx context.Context, obj *v1.PluginMetadata, 
 }
 
 func (r *pluginMetadataMem) Delete(ctx context.Context, obj *v1.PluginMetadata) error {
-	data, err := json.Marshal(obj)
+	data, err := json.Marshal(obj.Metadata)
 	if err != nil {
 		return err
 	}
@@ -244,7 +270,7 @@ func (r *pluginMetadataMem) Delete(ctx context.Context, obj *v1.PluginMetadata) 
 }
 
 func (r *pluginMetadataMem) Update(ctx context.Context, obj *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error) {
-	data, err := json.Marshal(obj)
+	data, err := json.Marshal(obj.Metadata)
 	if err != nil {
 		return nil, err
 	}

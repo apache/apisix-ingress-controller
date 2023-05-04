@@ -276,6 +276,9 @@ func (f *dummyPluginMetadata) Delete(_ context.Context, _ *v1.PluginMetadata) er
 func (f *dummyPluginMetadata) Update(_ context.Context, _ *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error) {
 	return nil, ErrClusterNotExist
 }
+func (f *dummyPluginMetadata) Create(_ context.Context, _ *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error) {
+	return nil, ErrClusterNotExist
+}
 
 func (nc *nonExistentCluster) Route() Route {
 	return nc.route
