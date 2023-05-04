@@ -284,7 +284,7 @@ wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 
 		// status should be recorded as successfulen
 		output, err := s.GetOutputFromString("acc", clusterConfigName, "-o", "yaml")
-		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixPluginConfig resource")
+		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixClusterConfig resource")
 		assert.Contains(ginkgo.GinkgoT(), output, "type: ResourcesAvailable", "status.conditions.type is recorded")
 		assert.Contains(ginkgo.GinkgoT(), output, "reason: ResourcesSynced", "status.conditions.reason  is recorded")
 		assert.Contains(ginkgo.GinkgoT(), output, `status: "True"`, "status.conditions.status  is recorded")
