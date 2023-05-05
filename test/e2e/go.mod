@@ -20,7 +20,7 @@ require (
 require (
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
-	github.com/api7/etcd-adapter v0.2.0 // indirect
+	github.com/api7/etcd-adapter v0.2.1 // indirect
 	github.com/api7/gopkg v0.1.2 // indirect
 	github.com/aws/aws-sdk-go v1.40.56 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect

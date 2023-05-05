@@ -45,8 +45,8 @@ github.com/andybalholm/brotli v1.0.4 h1:V7DdXeJtZscaqfNuAdSRuRFzuiKlHSC/Zh3zl9qY
 github.com/andybalholm/brotli v1.0.4/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
 github.com/andybalholm/cascadia v1.0.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
-github.com/api7/etcd-adapter v0.2.0 h1:6xs2KcHEi0roHvaHQjykbXeGZsE5ummUwd8xPnpkPRo=
-github.com/api7/etcd-adapter v0.2.0/go.mod h1:jd6+/7G7AtNda5SZ8mFfuK1fJ6/1zuYPsr1/Y6ZqdUU=
+github.com/api7/etcd-adapter v0.2.1 h1:3HPu8oo0QLFvij2ifcWL7PaSh8RFXFCvd97EMwm89+E=
+github.com/api7/etcd-adapter v0.2.1/go.mod h1:jd6+/7G7AtNda5SZ8mFfuK1fJ6/1zuYPsr1/Y6ZqdUU=
 github.com/api7/gopkg v0.1.2 h1:hldTbb3+iQE4LOxhV6ue/fVabsn9+QKnakOKCUS7Vss=
 github.com/api7/gopkg v0.1.2/go.mod h1:O1Po3/R08p/ZQzYA6IOhvV1qiGlQEc16PBtL+KFewJ4=
 github.com/api7/terratest v1.0.0 h1:Grg0xcvNpSRZa7QzjqfTPR3lfiHk13IdIBUrfUrDmw4=

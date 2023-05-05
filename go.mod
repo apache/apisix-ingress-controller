@@ -1,6 +1,6 @@
 module github.com/apache/apisix-ingress-controller
 
-go 1.20
+go 1.19
 
 require (
 	github.com/api7/etcd-adapter v0.2.1
@@ -115,3 +115,5 @@ require (
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
+
+replace go.etcd.io/etcd => go.etcd.io/etcd v0.0.0-20191023171146-3cf2f69b5738
