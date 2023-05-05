@@ -213,8 +213,9 @@ spec:
 		// default admin-api v3
 		if enabled := os.Getenv("ENABLED_ETCD_SERVER"); enabled == "true" {
 			opts.APISIXConfigPath = "testdata/apisix-gw-config-v3-with-sd-grpc.yaml"
+		} else {
+			opts.APISIXConfigPath = "testdata/apisix-gw-config-v3-with-sd.yaml"
 		}
-		opts.APISIXConfigPath = "testdata/apisix-gw-config-v3-with-sd.yaml"
 	}
 
 	s := scaffold.NewScaffold(opts)
