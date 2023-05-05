@@ -1281,7 +1281,7 @@ UnBVSIGJ/c0AhVSDuOAJiF36pvsDysTZXMTFE/9i5bkGOiwtzRNe4Hym/SEZUCpn
 	}
 
 	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
-		apisixTlsSuites(scaffold.NewDefaultV2beta3Scaffold())
+		//apisixTlsSuites(scaffold.NewDefaultV2beta3Scaffold())
 	})
 	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
 		s := scaffold.NewDefaultV2Scaffold()

@@ -268,11 +268,23 @@ func (r *sslMem) List(ctx context.Context) ([]*v1.Ssl, error) {
 }
 
 func (r *sslMem) Create(ctx context.Context, obj *v1.Ssl, shouldCompare bool) (*v1.Ssl, error) {
+	if ssl, _ := r.cluster.cache.GetSSL(obj.ID); ssl != nil {
+		return r.Update(ctx, obj, shouldCompare)
+	}
+	pkey, err := AesEencryptPrivatekey([]byte(obj.Key), []byte("edd1c9f0985e76a2"))
+	if err != nil {
+		return nil, err
+	}
+	obj.Key = pkey
 	data, err := json.Marshal(obj)
 	if err != nil {
 		return nil, err
 	}
 	r.cluster.CreateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertSSL(obj); err != nil {
+		log.Errorf("failed to reflect ssl create to cache: %s", err)
+		return nil, err
+	}
 	return obj, nil
 }
 
@@ -286,6 +298,11 @@ func (r *sslMem) Delete(ctx context.Context, obj *v1.Ssl) error {
 }
 
 func (r *sslMem) Update(ctx context.Context, obj *v1.Ssl, shouldCompare bool) (*v1.Ssl, error) {
+	pkey, err := AesEencryptPrivatekey([]byte(obj.Key), []byte("edd1c9f0985e76a2"))
+	if err != nil {
+		return nil, err
+	}
+	obj.Key = pkey
 	data, err := json.Marshal(obj)
 	if err != nil {
 		return nil, err

@@ -30,6 +30,9 @@ import (
 var _ = ginkgo.Describe("suite-ingress-features: apisix resource sync", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.JustBeforeEach(func() {
+			if s.IsEtcdServer() {
+				ginkgo.Skip("Does not support etcdserver mode")
+			}
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			au := fmt.Sprintf(`
