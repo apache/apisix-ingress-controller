@@ -134,22 +134,17 @@ func (c *gatewayTCPRouteController) sync(ctx context.Context, ev *types.Event) e
 	} else {
 		var oldCtx *translation.TranslateContext
 		oldObj := ev.OldObject.(*gatewayv1alpha2.TCPRoute)
-		oldCtx, err = c.controller.translator.TranslateGatewayTCPRouteV1Alpha2(oldObj)
-		if err != nil {
-			log.Errorw("failed to translate old TCPRoute",
-				zap.String("version", oldObj.APIVersion),
-				zap.String("event_type", "update"),
-				zap.Any("TCPRoute", oldObj),
-				zap.Error(err),
-			)
-			return err
+		oldCtx, _ = c.controller.translator.TranslateGatewayTCPRouteV1Alpha2(oldObj)
+		if oldCtx != nil {
+			om := &utils.Manifest{
+				StreamRoutes: oldCtx.StreamRoutes,
+				Upstreams:    oldCtx.Upstreams,
+			}
+			added, updated, deleted = m.Diff(om)
+		} else {
+			added = m
 		}
 
-		om := &utils.Manifest{
-			StreamRoutes: oldCtx.StreamRoutes,
-			Upstreams:    oldCtx.Upstreams,
-		}
-		added, updated, deleted = m.Diff(om)
 	}
 
 	return utils.SyncManifests(ctx, c.controller.APISIX, c.controller.APISIXClusterName, added, updated, deleted, false)
