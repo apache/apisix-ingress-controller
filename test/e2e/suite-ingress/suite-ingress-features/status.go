@@ -277,7 +277,7 @@ wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 
 	ginkgo.FIt("check ApisixClusterConfig status is recorded", func() {
 		// create ApisixClusterConfig resource
-		clusterConfigName := "apisix.apache.org/v2"
+		clusterConfigName := "apisix-cluster-config"
 		assert.Nil(ginkgo.GinkgoT(), s.NewApisixClusterConfig("default", true, true), "create cluster config error")
 		time.Sleep(6 * time.Second)
 
