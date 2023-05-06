@@ -138,6 +138,9 @@ spec:
 var _ = ginkgo.Describe("suite-ingress-features: leader election", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("lease check", func() {
+			if s.IsEtcdServer() {
+				ginkgo.Skip("Accessing non leader nodes in etcdserver mode will fail")
+			}
 			pods, err := s.GetIngressPodDetails()
 			assert.Nil(ginkgo.GinkgoT(), err)
 			assert.Len(ginkgo.GinkgoT(), pods, 2)
@@ -150,6 +153,9 @@ var _ = ginkgo.Describe("suite-ingress-features: leader election", func() {
 		})
 
 		ginkgo.It("leader failover", func() {
+			if s.IsEtcdServer() {
+				ginkgo.Skip("Accessing non leader nodes in etcdserver mode will fail")
+			}
 			pods, err := s.GetIngressPodDetails()
 			assert.Nil(ginkgo.GinkgoT(), err)
 			assert.Len(ginkgo.GinkgoT(), pods, 2)
@@ -184,13 +190,6 @@ var _ = ginkgo.Describe("suite-ingress-features: leader election", func() {
 		})
 	}
 
-	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
-		suites(scaffold.NewScaffold(&scaffold.Options{
-			Name:                  "leaderelection",
-			IngressAPISIXReplicas: 2,
-			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2beta3,
-		}))
-	})
 	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                  "leaderelection",

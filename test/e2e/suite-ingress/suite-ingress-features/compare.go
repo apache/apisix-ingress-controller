@@ -28,6 +28,9 @@ var _ = ginkgo.Describe("suite-ingress-features: Testing compare resources", fun
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
 		ginkgo.It("Compare and find out the redundant objects in APISIX, and remove them", func() {
+			if s.IsEtcdServer() {
+				ginkgo.Skip("Does not support etcdserver mode, etcdserver does not support full synchronization")
+			}
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2beta3

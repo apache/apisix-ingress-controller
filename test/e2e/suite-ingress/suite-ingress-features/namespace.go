@@ -160,6 +160,10 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err)
 			assert.Len(ginkgo.GinkgoT(), routes, 0)
 
+			if s.IsEtcdServer() {
+				ginkgo.Skip("Does not support etcdserver mode, etcdserver does not support full synchronization")
+			}
+
 			// restart ingress-controller
 			s.RestartIngressControllerDeploy()
 			time.Sleep(6 * time.Second)
