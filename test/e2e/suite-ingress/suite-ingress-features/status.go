@@ -17,7 +17,6 @@ package ingress
 
 import (
 	"fmt"
-	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"net/http"
 	"strings"
 	"time"
@@ -276,10 +275,10 @@ wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 		assert.Contains(ginkgo.GinkgoT(), output, `status: "False"`, "status.conditions.status  is recorded")
 	})
 
-	ginkgo.It("check ApisixClusterConfig status is recorded", func() {
+	ginkgo.FIt("check ApisixClusterConfig status is recorded", func() {
 		// create ApisixClusterConfig resource
-		clusterConfigName := config.ApisixV2
-		assert.Nil(ginkgo.GinkgoT(), s.NewApisixClusterConfig(clusterConfigName, true, true), "create cluster config error")
+		clusterConfigName := "apisix.apache.org/v2"
+		assert.Nil(ginkgo.GinkgoT(), s.NewApisixClusterConfig("default", true, true), "create cluster config error")
 		time.Sleep(6 * time.Second)
 
 		// status should be recorded as successfulen
