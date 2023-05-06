@@ -275,7 +275,7 @@ wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 		assert.Contains(ginkgo.GinkgoT(), output, `status: "False"`, "status.conditions.status  is recorded")
 	})
 
-	ginkgo.FIt("check ApisixClusterConfig status is recorded", func() {
+	ginkgo.It("check ApisixClusterConfig status is recorded", func() {
 		// create ApisixClusterConfig resource
 		clusterConfigName := "apisix-cluster-config"
 		assert.Nil(ginkgo.GinkgoT(), s.NewApisixClusterConfig("default", true, true), "create cluster config error")
