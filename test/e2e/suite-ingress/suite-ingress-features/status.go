@@ -290,7 +290,19 @@ wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 	})
 	//TODO: ApisixGlobal
 	//TODO: ApisixConsumer  CRD missing status definition
-	//TODO: ApisixClusterConfig CRD missing status definition
+	ginkgo.It("check ApisixConsumer status is recorded", func() {
+		// create ApisixConsumer resource
+		assert.Nil(ginkgo.GinkgoT(), s.ApisixConsumerBasicAuthCreated("test-apisix-consumer", "foo", "bar"), "create consumer error")
+		time.Sleep(6 * time.Second)
+
+		// status should be recorded as successfulen
+		output, err := s.GetOutputFromString("ac", "test-apisix-consumer", "-o", "yaml")
+		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixConsumer resource")
+		assert.Contains(ginkgo.GinkgoT(), output, "type: ResourcesAvailable", "status.conditions.type is recorded")
+		assert.Contains(ginkgo.GinkgoT(), output, "reason: ResourcesSynced", "status.conditions.reason  is recorded")
+		assert.Contains(ginkgo.GinkgoT(), output, `status: "True"`, "status.conditions.status  is recorded")
+		assert.Contains(ginkgo.GinkgoT(), output, "message: Sync Successfully", "status.conditions.message  is recorded")
+	})
 })
 
 var _ = ginkgo.Describe("suite-ingress-features: Ingress LB Status Testing", func() {
