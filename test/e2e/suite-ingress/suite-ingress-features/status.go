@@ -277,12 +277,11 @@ wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 
 	ginkgo.It("check ApisixClusterConfig status is recorded", func() {
 		// create ApisixClusterConfig resource
-		clusterConfigName := "apisix-cluster-config"
 		assert.Nil(ginkgo.GinkgoT(), s.NewApisixClusterConfig("default", true, true), "create cluster config error")
 		time.Sleep(6 * time.Second)
 
 		// status should be recorded as successfulen
-		output, err := s.GetOutputFromString("acc", clusterConfigName, "-o", "yaml")
+		output, err := s.GetOutputFromString("acc", "default", "-o", "yaml")
 		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixClusterConfig resource")
 		assert.Contains(ginkgo.GinkgoT(), output, "type: ResourcesAvailable", "status.conditions.type is recorded")
 		assert.Contains(ginkgo.GinkgoT(), output, "reason: ResourcesSynced", "status.conditions.reason  is recorded")
