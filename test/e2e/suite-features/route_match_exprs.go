@@ -188,10 +188,6 @@ spec:
 		})
 
 		ginkgo.It("operator is GreaterThanEqual", func() {
-			if s.ApisixResourceVersion() == scaffold.ApisixResourceVersion().V2beta3 {
-				ginkgo.Skip("Not support ApisixRoute v2beta3")
-			}
-
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
@@ -316,10 +312,6 @@ spec:
 		})
 
 		ginkgo.It("operator is LessThanEqual", func() {
-			if s.ApisixResourceVersion() == scaffold.ApisixResourceVersion().V2beta3 {
-				ginkgo.Skip("Not support ApisixRoute v2beta3")
-			}
-
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
