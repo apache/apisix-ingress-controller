@@ -327,6 +327,9 @@ spec:
 		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
 
 		assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromStringWithNamespace(route1, namespace1), "deleting ingress")
+
+		time.Sleep(6 * time.Second)
+
 		// un-label
 		_, err = client.CoreV1().Namespaces().Update(
 			context.Background(),
