@@ -143,9 +143,6 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "dns query error")
 		})
 	}
-	ginkgo.Describe("suite-ingress-resource: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold())
-	})
 	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})
