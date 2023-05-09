@@ -30,7 +30,7 @@ func TestTranslatePluginConfigV2(t *testing.T) {
 			Namespace: "test-ns",
 		},
 		Spec: configv2.ApisixPluginConfigSpec{
-			Plugins: []configv2.ApisixRouteHTTPPlugin{
+			Plugins: []configv2.ApisixRoutePlugin{
 				{
 					Name:   "case1",
 					Enable: true,
@@ -75,7 +75,7 @@ func TestGeneratePluginConfigV2DeleteMark(t *testing.T) {
 			Namespace: "test-ns",
 		},
 		Spec: configv2.ApisixPluginConfigSpec{
-			Plugins: []configv2.ApisixRouteHTTPPlugin{
+			Plugins: []configv2.ApisixRoutePlugin{
 				{
 					Name:   "case1",
 					Enable: true,

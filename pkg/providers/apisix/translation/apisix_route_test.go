@@ -342,7 +342,7 @@ func TestGenerateApisixRouteV2DeleteMark(t *testing.T) {
 							},
 						},
 					},
-					Plugins: []configv2.ApisixRouteHTTPPlugin{
+					Plugins: []configv2.ApisixRoutePlugin{
 						{
 							Name:   "plugin-1",
 							Enable: true,

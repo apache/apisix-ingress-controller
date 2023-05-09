@@ -270,6 +270,12 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		panic(fmt.Errorf("unsupported API version %v", c.cfg.Kubernetes.APIVersion))
 	}
 
+	apisixUpstreamLister := kube.NewApisixUpstreamLister(apisixUpstreamListerV2)
+	apisixRouteLister := kube.NewApisixRouteLister(apisixRouteListerV2)
+	apisixTlsLister := kube.NewApisixTlsLister(apisixTlsListerV2)
+	apisixClusterConfigLister := kube.NewApisixClusterConfigLister(apisixClusterConfigListerV2)
+	apisixConsumerLister := kube.NewApisixConsumerLister(apisixConsumerListerV2)
+	apisixPluginConfigLister := kube.NewApisixPluginConfigLister(apisixPluginConfigListerV2)
 	ApisixGlobalRuleLister := kube.NewApisixGlobalRuleLister(c.cfg.Kubernetes.APIVersion, ApisixGlobalRuleListerV2)
 
 	epLister, epInformer := kube.NewEndpointListerAndInformer(kubeFactory, c.cfg.Kubernetes.WatchEndpointSlices)
