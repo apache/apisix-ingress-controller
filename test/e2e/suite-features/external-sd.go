@@ -216,7 +216,7 @@ spec:
 
 	s := scaffold.NewScaffold(opts)
 
-	ginkgo.Describe("basic function: ", func() {
+	ginkgo.Describe("suite-features: basic function: ", func() {
 		ginkgo.It("should be able to access through service discovery", func() {
 			// -- Data preparation --
 			fqdn := PhaseCreateHttpbin(s, "httpbin-temp")
@@ -232,7 +232,7 @@ spec:
 		})
 	})
 
-	ginkgo.Describe("update function: ", func() {
+	ginkgo.Describe("suite-features: update function: ", func() {
 		ginkgo.It("should be able to create the ApisixUpstream later", func() {
 			// -- Data preparation --
 			fqdn := PhaseCreateHttpbin(s, "httpbin-temp")
@@ -266,7 +266,7 @@ spec:
 		})
 	})
 
-	ginkgo.Describe("delete function: ", func() {
+	ginkgo.Describe("suite-features: delete function: ", func() {
 		ginkgo.It("should be able to delete resources", func() {
 			// -- Data preparation --
 			fqdn := PhaseCreateHttpbin(s, "httpbin-temp")
