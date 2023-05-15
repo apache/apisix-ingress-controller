@@ -166,7 +166,7 @@ spec:
 `
 		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 		time.Sleep(6 * time.Second)
-		// status should be recorded as successfulen
+		// status should be recorded as successful
 		output, err := s.GetOutputFromString("apc", "test-apc", "-o", "yaml")
 		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixPluginConfig resource")
 		assert.Contains(ginkgo.GinkgoT(), output, "type: ResourcesAvailable", "status.conditions.type is recorded")
@@ -256,7 +256,7 @@ wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 		host := "api6.com"
 		assert.Nil(ginkgo.GinkgoT(), s.NewApisixTls(tlsName, host, secretName), "create tls error")
 		time.Sleep(6 * time.Second)
-		// status should be recorded as successfulen
+		// status should be recorded as successful
 		output, err := s.GetOutputFromString("atls", tlsName, "-o", "yaml")
 		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixPluginConfig resource")
 		assert.Contains(ginkgo.GinkgoT(), output, "type: ResourcesAvailable", "status.conditions.type is recorded")
@@ -280,7 +280,7 @@ wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 		assert.Nil(ginkgo.GinkgoT(), s.NewApisixClusterConfig("default", true, true), "create cluster config error")
 		time.Sleep(6 * time.Second)
 
-		// status should be recorded as successfulen
+		// status should be recorded as successful
 		output, err := s.GetOutputFromString("acc", "default", "-o", "yaml")
 		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixClusterConfig resource")
 		assert.Contains(ginkgo.GinkgoT(), output, "type: ResourcesAvailable", "status.conditions.type is recorded")
@@ -295,7 +295,7 @@ wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 		assert.Nil(ginkgo.GinkgoT(), s.ApisixConsumerBasicAuthCreated("test-apisix-consumer", "foo", "bar"), "create consumer error")
 		time.Sleep(6 * time.Second)
 
-		// status should be recorded as successfulen
+		// status should be recorded as successful
 		output, err := s.GetOutputFromString("ac", "test-apisix-consumer", "-o", "yaml")
 		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixConsumer resource")
 		assert.Contains(ginkgo.GinkgoT(), output, "type: ResourcesAvailable", "status.conditions.type is recorded")
