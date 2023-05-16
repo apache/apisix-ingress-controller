@@ -142,7 +142,6 @@ e2e-test: ginkgo-check pack-images e2e-wolf-rbac e2e-ldap install install-gatewa
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
-		%% echo $(E2E_FOCUS) | grep 'ingress-features' \
 		&& APISIX_ADMIN_API_VERSION=$(APISIX_ADMIN_API_VERSION) E2E_ENV=$(E2E_ENV) ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_NODES) --focus=$(E2E_FOCUS) --flake-attempts=$(E2E_FLAKE_ATTEMPTS)
 
 ### e2e-test-local:       Run e2e test cases (kind is required)
