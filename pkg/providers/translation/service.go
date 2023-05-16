@@ -42,8 +42,6 @@ func (t *translator) TranslateService(namespace, name, subset string, port int32
 	}
 
 	switch t.APIVersion {
-	case config.ApisixV2beta3:
-		return t.translateUpstreamV2beta3(&endpoint, namespace, name, subset, port)
 	case config.ApisixV2:
 		return t.translateUpstreamV2(&endpoint, namespace, name, subset, port)
 	default:
@@ -109,73 +107,6 @@ func (t *translator) translateUpstreamV2(ep *kube.Endpoint, namespace, name, sub
 		}
 	}
 	ups, err = t.TranslateUpstreamConfigV2(upsCfg)
-	if err != nil {
-		return nil, err
-	}
-	ups.Nodes = nodes
-	return ups, nil
-}
-
-func (t *translator) translateUpstreamV2beta3(ep *kube.Endpoint, namespace, name, subset string, port int32) (*apisixv1.Upstream, error) {
-	au, err := t.ApisixUpstreamLister.V2beta3(namespace, name)
-	ups := apisixv1.NewDefaultUpstream()
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			// If subset in ApisixRoute is not empty but the ApisixUpstream resource not found,
-			// just set an empty node list.
-			if subset != "" {
-				ups.Nodes = apisixv1.UpstreamNodes{}
-				return ups, nil
-			}
-		} else {
-			return nil, &TranslateError{
-				Field:  "ApisixUpstream",
-				Reason: err.Error(),
-			}
-		}
-	}
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			// If subset in ApisixRoute is not empty but the ApisixUpstream resource not found,
-			// just set an empty node list.
-			if subset != "" {
-				ups.Nodes = apisixv1.UpstreamNodes{}
-				return ups, nil
-			}
-		} else {
-			return nil, &TranslateError{
-				Field:  "ApisixUpstream",
-				Reason: err.Error(),
-			}
-		}
-	}
-	var labels types.Labels
-	if subset != "" {
-		for _, ss := range au.V2beta3().Spec.Subsets {
-			if ss.Name == subset {
-				labels = ss.Labels
-				break
-			}
-		}
-	}
-	// Filter nodes by subset.
-	nodes, err := t.TranslateEndpoint(*ep, port, labels)
-	if err != nil {
-		return nil, err
-	}
-	if au == nil || au.V2beta3().Spec == nil {
-		ups.Nodes = nodes
-		return ups, nil
-	}
-
-	upsCfg := &au.V2beta3().Spec.ApisixUpstreamConfig
-	for _, pls := range au.V2beta3().Spec.PortLevelSettings {
-		if pls.Port == port {
-			upsCfg = &pls.ApisixUpstreamConfig
-			break
-		}
-	}
-	ups, err = t.TranslateUpstreamConfigV2beta3(upsCfg)
 	if err != nil {
 		return nil, err
 	}

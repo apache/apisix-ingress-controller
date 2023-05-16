@@ -31,7 +31,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	_const "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
@@ -189,124 +188,21 @@ func TestRouteMatchExpr(t *testing.T) {
 	assert.Equal(t, []string{"foo.com"}, results[9][2].SliceVal)
 }
 
-func mockTranslatorV2beta3(t *testing.T) (*translator, <-chan struct{}) {
-	svc := &corev1.Service{
-		TypeMeta: metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "svc",
-			Namespace: "test",
-		},
-		Spec: corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{
-				{
-					Name: "port1",
-					Port: 80,
-					TargetPort: intstr.IntOrString{
-						Type:   intstr.Int,
-						IntVal: 9080,
-					},
-				},
-				{
-					Name: "port2",
-					Port: 443,
-					TargetPort: intstr.IntOrString{
-						Type:   intstr.Int,
-						IntVal: 9443,
-					},
-				},
-			},
-		},
-	}
-	endpoints := &corev1.Endpoints{
-		TypeMeta: metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "svc",
-			Namespace: "test",
-		},
-		Subsets: []corev1.EndpointSubset{
-			{
-				Ports: []corev1.EndpointPort{
-					{
-						Name: "port1",
-						Port: 9080,
-					},
-					{
-						Name: "port2",
-						Port: 9443,
-					},
-				},
-				Addresses: []corev1.EndpointAddress{
-					{IP: "192.168.1.1"},
-					{IP: "192.168.1.2"},
-				},
-			},
-		},
-	}
-
-	client := fake.NewSimpleClientset()
-	informersFactory := informers.NewSharedInformerFactory(client, 0)
-	svcInformer := informersFactory.Core().V1().Services().Informer()
-	svcLister := informersFactory.Core().V1().Services().Lister()
-	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
-	apisixClient := fakeapisix.NewSimpleClientset()
-	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
-
-	_, err := client.CoreV1().Endpoints("test").Create(context.Background(), endpoints, metav1.CreateOptions{})
-	assert.Nil(t, err)
-	_, err = client.CoreV1().Services("test").Create(context.Background(), svc, metav1.CreateOptions{})
-	assert.Nil(t, err)
-
-	tr := &translator{
-		&TranslatorOptions{
-			ServiceLister: svcLister,
-		},
-		translation.NewTranslator(&translation.TranslatorOptions{
-			ServiceLister:  svcLister,
-			EndpointLister: epLister,
-			ApisixUpstreamLister: kube.NewApisixUpstreamLister(
-				apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
-				apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
-			),
-			APIVersion: config.ApisixV2beta3,
-		}),
-	}
-
-	processCh := make(chan struct{}, 2)
-	svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			processCh <- struct{}{}
-		},
-	})
-	epInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			processCh <- struct{}{}
-		},
-	})
-
-	stopCh := make(chan struct{})
-	defer close(stopCh)
-	go svcInformer.Run(stopCh)
-	go epInformer.Run(stopCh)
-	cache.WaitForCacheSync(stopCh, svcInformer.HasSynced)
-
-	return tr, processCh
-}
-
-func TestTranslateApisixRouteV2beta3WithDuplicatedName(t *testing.T) {
-	tr, processCh := mockTranslatorV2beta3(t)
+func TestTranslateApisixRouteV2WithDuplicatedName(t *testing.T) {
+	tr, processCh := mockTranslatorV2(t)
 	<-processCh
 	<-processCh
 
-	ar := &configv2beta3.ApisixRoute{
+	ar := &configv2.ApisixRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ar",
 			Namespace: "test",
 		},
-		Spec: configv2beta3.ApisixRouteSpec{
-			HTTP: []configv2beta3.ApisixRouteHTTP{
+		Spec: configv2.ApisixRouteSpec{
+			HTTP: []configv2.ApisixRouteHTTP{
 				{
 					Name: "rule1",
-					Match: configv2beta3.ApisixRouteHTTPMatch{
+					Match: configv2.ApisixRouteHTTPMatch{
 						Paths: []string{
 							"/*",
 						},
@@ -322,7 +218,7 @@ func TestTranslateApisixRouteV2beta3WithDuplicatedName(t *testing.T) {
 				},
 				{
 					Name: "rule1",
-					Match: configv2beta3.ApisixRouteHTTPMatch{
+					Match: configv2.ApisixRouteHTTPMatch{
 						Paths: []string{
 							"/*",
 						},
@@ -340,26 +236,26 @@ func TestTranslateApisixRouteV2beta3WithDuplicatedName(t *testing.T) {
 		},
 	}
 
-	_, err := tr.TranslateRouteV2beta3(ar)
+	_, err := tr.TranslateRouteV2(ar)
 	assert.NotNil(t, err)
 	assert.Equal(t, "duplicated route rule name", err.Error())
 }
 
-func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
-	tr, processCh := mockTranslatorV2beta3(t)
+func TestTranslateApisixRouteV2WithEmptyPluginConfigName(t *testing.T) {
+	tr, processCh := mockTranslatorV2(t)
 	<-processCh
 	<-processCh
 
-	ar := &configv2beta3.ApisixRoute{
+	ar := &configv2.ApisixRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ar",
 			Namespace: "test",
 		},
-		Spec: configv2beta3.ApisixRouteSpec{
-			HTTP: []configv2beta3.ApisixRouteHTTP{
+		Spec: configv2.ApisixRouteSpec{
+			HTTP: []configv2.ApisixRouteHTTP{
 				{
 					Name: "rule1",
-					Match: configv2beta3.ApisixRouteHTTPMatch{
+					Match: configv2.ApisixRouteHTTPMatch{
 						Paths: []string{
 							"/*",
 						},
@@ -375,7 +271,7 @@ func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
 				},
 				{
 					Name: "rule2",
-					Match: configv2beta3.ApisixRouteHTTPMatch{
+					Match: configv2.ApisixRouteHTTPMatch{
 						Paths: []string{
 							"/*",
 						},
@@ -392,7 +288,7 @@ func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
 				},
 				{
 					Name: "rule3",
-					Match: configv2beta3.ApisixRouteHTTPMatch{
+					Match: configv2.ApisixRouteHTTPMatch{
 						Paths: []string{
 							"/*",
 						},
@@ -409,7 +305,7 @@ func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
 			},
 		},
 	}
-	res, err := tr.TranslateRouteV2beta3(ar)
+	res, err := tr.TranslateRouteV2(ar)
 	assert.NoError(t, err)
 	assert.Len(t, res.PluginConfigs, 0)
 	assert.Len(t, res.Routes, 3)
@@ -419,21 +315,21 @@ func TestTranslateApisixRouteV2beta3WithEmptyPluginConfigName(t *testing.T) {
 	assert.Equal(t, "", res.Routes[2].PluginConfigId)
 }
 
-func TestGenerateApisixRouteV2beta3DeleteMark(t *testing.T) {
+func TestGenerateApisixRouteV2DeleteMark(t *testing.T) {
 	tr := &translator{
 		&TranslatorOptions{},
 		translation.NewTranslator(nil),
 	}
-	ar := &configv2beta3.ApisixRoute{
+	ar := &configv2.ApisixRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ar",
 			Namespace: "test",
 		},
-		Spec: configv2beta3.ApisixRouteSpec{
-			HTTP: []configv2beta3.ApisixRouteHTTP{
+		Spec: configv2.ApisixRouteSpec{
+			HTTP: []configv2.ApisixRouteHTTP{
 				{
 					Name: "rule1",
-					Match: configv2beta3.ApisixRouteHTTPMatch{
+					Match: configv2.ApisixRouteHTTPMatch{
 						Paths: []string{
 							"/*",
 						},
@@ -446,7 +342,7 @@ func TestGenerateApisixRouteV2beta3DeleteMark(t *testing.T) {
 							},
 						},
 					},
-					Plugins: []configv2beta3.ApisixRouteHTTPPlugin{
+					Plugins: []configv2.ApisixRoutePlugin{
 						{
 							Name:   "plugin-1",
 							Enable: true,
@@ -460,7 +356,7 @@ func TestGenerateApisixRouteV2beta3DeleteMark(t *testing.T) {
 				},
 				{
 					Name: "rule2",
-					Match: configv2beta3.ApisixRouteHTTPMatch{
+					Match: configv2.ApisixRouteHTTPMatch{
 						Paths: []string{
 							"/*",
 						},
@@ -478,7 +374,7 @@ func TestGenerateApisixRouteV2beta3DeleteMark(t *testing.T) {
 		},
 	}
 
-	tx, err := tr.GenerateRouteV2beta3DeleteMark(ar)
+	tx, err := tr.GenerateRouteV2DeleteMark(ar)
 	fmt.Println(tx)
 	assert.NoError(t, err, "translateRoute not strictly should be no error")
 	assert.Equal(t, 2, len(tx.Routes), "There should be 2 routes")
@@ -582,7 +478,6 @@ func mockTranslatorV2(t *testing.T) (*translator, <-chan struct{}) {
 
 	auInformer := apisixInformersFactory.Apisix().V2().ApisixUpstreams().Informer()
 	auLister := kube.NewApisixUpstreamLister(
-		apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 	)
 

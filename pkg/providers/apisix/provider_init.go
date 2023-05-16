@@ -57,41 +57,6 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 			defer wg.Done()
 			// ApisixRoute
 			switch p.common.Config.Kubernetes.APIVersion {
-			case config.ApisixV2beta3:
-				retRoutes, err := p.common.ApisixRouteLister.V2beta3Lister().List(labels.Everything())
-				if err != nil {
-					log.Error(err.Error())
-					ctx.Done()
-				} else {
-					for _, r := range retRoutes {
-						tc, err := p.apisixTranslator.GenerateRouteV2beta3DeleteMark(r)
-						if err != nil {
-							log.Error(err.Error())
-							ctx.Done()
-						} else {
-							// routes
-							for _, route := range tc.Routes {
-								routeMapK8S.Store(route.ID, route.ID)
-							}
-							// streamRoutes
-							for _, stRoute := range tc.StreamRoutes {
-								streamRouteMapK8S.Store(stRoute.ID, stRoute.ID)
-							}
-							// upstreams
-							for _, upstream := range tc.Upstreams {
-								upstreamMapK8S.Store(upstream.ID, upstream.ID)
-							}
-							// ssl
-							for _, ssl := range tc.SSL {
-								sslMapK8S.Store(ssl.ID, ssl.ID)
-							}
-							// pluginConfigs
-							for _, pluginConfig := range tc.PluginConfigs {
-								pluginConfigMapK8S.Store(pluginConfig.ID, pluginConfig.ID)
-							}
-						}
-					}
-				}
 			case config.ApisixV2:
 				retRoutes, err := p.common.ApisixRouteLister.V2Lister().List(labels.Everything())
 				if err != nil {
@@ -136,39 +101,6 @@ func (p *apisixProvider) Init(ctx context.Context) error {
 			// ApisixUpstream and ApisixPluginConfig should be synced with ApisixRoute resource
 
 			switch p.common.Config.Kubernetes.APIVersion {
-			case config.ApisixV2beta3:
-				// ApisixConsumer
-				retConsumer, err := p.common.ApisixFactory.Apisix().V2beta3().ApisixConsumers().Lister().List(labels.Everything())
-				if err != nil {
-					log.Error(err.Error())
-					ctx.Done()
-				} else {
-					for _, con := range retConsumer {
-						consumer, err := p.apisixTranslator.TranslateApisixConsumerV2beta3(con)
-						if err != nil {
-							log.Error(err.Error())
-							ctx.Done()
-						} else {
-							consumerMapK8S.Store(consumer.Username, consumer.Username)
-						}
-					}
-				}
-				// ApisixTls
-				retSSL, err := p.common.ApisixFactory.Apisix().V2beta3().ApisixTlses().Lister().ApisixTlses(ns).List(labels.Everything())
-				if err != nil {
-					log.Error(err.Error())
-					ctx.Done()
-				} else {
-					for _, s := range retSSL {
-						ssl, err := p.apisixTranslator.TranslateSSLV2Beta3(s)
-						if err != nil {
-							log.Error(err.Error())
-							ctx.Done()
-						} else {
-							sslMapK8S.Store(ssl.ID, ssl.ID)
-						}
-					}
-				}
 			case config.ApisixV2:
 				// ApisixConsumer
 				retConsumer, err := p.common.ApisixFactory.Apisix().V2().ApisixConsumers().Lister().ApisixConsumers(ns).List(labels.Everything())

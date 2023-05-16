@@ -19,7 +19,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -27,7 +26,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-cluster: ApisixClusterConfig with v2 and v2beta3 ", func() {
+var _ = ginkgo.Describe("suite-cluster: ApisixClusterConfig v2", func() {
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
 
@@ -82,31 +81,27 @@ spec:
 
 			time.Sleep(3 * time.Second)
 
-			if s.ApisixResourceVersion() != config.ApisixV2beta3 {
-				resp1 := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").Expect()
-				resp1.Status(http.StatusOK)
-				resp1.Body().Contains("public-api")
-			}
+			resp1 := s.NewAPISIXClient().GET("/apisix/prometheus/metrics").Expect()
+			resp1.Status(http.StatusOK)
+			resp1.Body().Contains("public-api")
 		})
 	}
 
-	ginkgo.Describe("suite-cluster: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-cluster: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
 })
 
-var _ = ginkgo.Describe("suite-cluster: Testin ApisixClusterConfig with IngressClass apisix", func() {
+var _ = ginkgo.Describe("suite-cluster: Testing ApisixClusterConfig with IngressClass apisix", func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
 		Name:                  "ingress-class",
 		IngressAPISIXReplicas: 1,
+		ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
 		IngressClass:          "apisix",
 	})
 
 	ginkgo.It("ApisiClusterConfig should be ignored", func() {
-		// create ApisixConsumer resource with ingressClassName: ignore
+		// create ApisixClusterConfig resource with ingressClassName: ignore
 		acc := `
 apiVersion: apisix.apache.org/v2
 kind: ApisixClusterConfig
@@ -128,7 +123,7 @@ spec:
 	})
 
 	ginkgo.It("ApisiClusterConfig should be handled", func() {
-		// create ApisixConsumer resource without ingressClassName
+		// create ApisixClusterConfig resource without ingressClassName
 		acc := `
 apiVersion: apisix.apache.org/v2
 kind: ApisixClusterConfig
@@ -151,7 +146,7 @@ spec:
 		_, ok := agrs[0].Plugins["prometheus"]
 		assert.Equal(ginkgo.GinkgoT(), ok, true)
 
-		// update ApisixConsumer resource with ingressClassName: apisix
+		// update ApisixClusterConfig resource with ingressClassName: apisix
 		acc = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixClusterConfig

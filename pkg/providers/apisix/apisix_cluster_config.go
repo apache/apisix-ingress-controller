@@ -32,7 +32,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
@@ -95,8 +94,6 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 
 	var multiVersioned kube.ApisixClusterConfig
 	switch event.GroupVersion {
-	case config.ApisixV2beta3:
-		multiVersioned, err = c.ApisixClusterConfigLister.V2beta3(name)
 	case config.ApisixV2:
 		multiVersioned, err = c.ApisixClusterConfigLister.V2(name)
 	default:
@@ -136,80 +133,6 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 	}
 
 	switch event.GroupVersion {
-	case config.ApisixV2beta3:
-		acc := multiVersioned.V2beta3()
-		// Currently we don't handle multiple cluster, so only process
-		// the default apisix cluster.
-		if acc.Name != c.Config.APISIX.DefaultClusterName {
-			log.Infow("ignore non-default apisix cluster config",
-				zap.String("default_cluster_name", c.Config.APISIX.DefaultClusterName),
-				zap.Any("ApisixClusterConfig", acc),
-			)
-			return nil
-		}
-		// Cluster delete is dangerous.
-		// TODO handle delete?
-		if ev.Type == types.EventDelete {
-			log.Error("ApisixClusterConfig delete event for default apisix cluster will be ignored")
-			return nil
-		}
-
-		if acc.Spec.Admin != nil {
-			clusterOpts := &apisix.ClusterOptions{
-				Name:     acc.Name,
-				BaseURL:  acc.Spec.Admin.BaseURL,
-				AdminKey: acc.Spec.Admin.AdminKey,
-			}
-			log.Infow("updating cluster",
-				zap.Any("opts", clusterOpts),
-			)
-			// TODO we may first call AddCluster.
-			// Since we already have the default cluster, we just call UpdateCluster.
-			if err := c.APISIX.UpdateCluster(ctx, clusterOpts); err != nil {
-				log.Errorw("failed to update cluster",
-					zap.String("cluster_name", acc.Name),
-					zap.Error(err),
-					zap.Any("opts", clusterOpts),
-				)
-				c.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-				c.recordStatus(acc, utils.ResourceSyncAborted, err, metav1.ConditionFalse, acc.GetGeneration())
-				return err
-			}
-		}
-
-		globalRule, err := c.translator.TranslateClusterConfigV2beta3(acc)
-		if err != nil {
-			log.Errorw("failed to translate ApisixClusterConfig",
-				zap.Error(err),
-				zap.String("key", key),
-				zap.Any("object", acc),
-			)
-			c.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-			c.recordStatus(acc, utils.ResourceSyncAborted, err, metav1.ConditionFalse, acc.GetGeneration())
-			return err
-		}
-		log.Debugw("translated global_rule",
-			zap.Any("object", globalRule),
-		)
-
-		// TODO multiple cluster support
-		if ev.Type.IsAddEvent() {
-			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Create(ctx, globalRule, ev.Type.IsSyncEvent())
-		} else {
-			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Update(ctx, globalRule, false)
-		}
-		if err != nil {
-			log.Errorw("failed to reflect global_rule changes to apisix cluster",
-				zap.Any("global_rule", globalRule),
-				zap.Any("cluster", acc.Name),
-			)
-			c.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-			c.recordStatus(acc, utils.ResourceSyncAborted, err, metav1.ConditionFalse, acc.GetGeneration())
-			return err
-		}
-		c.RecordEvent(acc, corev1.EventTypeNormal, utils.ResourceSynced, nil)
-		c.recordStatus(acc, utils.ResourceSynced, nil, metav1.ConditionTrue, acc.GetGeneration())
-		return nil
 	case config.ApisixV2:
 		acc := multiVersioned.V2()
 		// Currently we don't handle multiple cluster, so only process
@@ -479,22 +402,6 @@ func (c *apisixClusterConfigController) recordStatus(at interface{}, reason stri
 	}
 
 	switch v := at.(type) {
-	case *configv2beta3.ApisixClusterConfig:
-		// set to status
-		if v.Status.Conditions == nil {
-			conditions := make([]metav1.Condition, 0)
-			v.Status.Conditions = conditions
-		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
-			meta.SetStatusCondition(&v.Status.Conditions, condition)
-			if _, errRecord := apisixClient.ApisixV2beta3().ApisixClusterConfigs().
-				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-				log.Errorw("failed to record status change for ApisixClusterConfig",
-					zap.Error(errRecord),
-					zap.String("name", v.Name),
-				)
-			}
-		}
 	case *configv2.ApisixClusterConfig:
 		// set to status
 		if v.Status.Conditions == nil {
