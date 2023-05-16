@@ -22,16 +22,12 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	listersv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2"
-	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
 )
 
 // ApisixUpstreamLister is an encapsulation for the lister of ApisixUpstream,
 // it aims at to be compatible with different ApisixUpstream versions.
 type ApisixUpstreamLister interface {
-	// V2beta3 gets the ApisixUpstream in apisix.apache.org/v2beta3.
-	V2beta3(namespace, name string) (ApisixUpstream, error)
 	// V2 gets the ApisixUpstream in apisix.apache.org/v2.
 	V2(namespace, name string) (ApisixUpstream, error)
 	// ListV2 gets v2.ApisixUpstreams
@@ -45,14 +41,11 @@ type ApisixUpstreamInformer interface {
 }
 
 // ApisixUpstream is an encapsulation for ApisixUpstream resource with different
-// versions, for now, they are apisix.apache.org/v2beta3 and apisix.apache.org/v2
+// versions, for now, they only include apisix.apache.org/v2
 type ApisixUpstream interface {
 	// GroupVersion returns the api group version of the
 	// real ApisixUpstream.
 	GroupVersion() string
-	// V2beta3 returns the ApisixUpstream in apisix.apache.org/v2beta3, the real
-	// ApisixUpstream must be in this group version, otherwise will panic.
-	V2beta3() *configv2beta3.ApisixUpstream
 	// V2 returns the ApisixUpstream in apisix.apache.org/v2, the real
 	// ApisixUpstream must be in this group version, otherwise will panic.
 	V2() *configv2.ApisixUpstream
@@ -73,18 +66,11 @@ type ApisixUpstreamEvent struct {
 
 type apisixUpstream struct {
 	groupVersion string
-	v2beta3      *configv2beta3.ApisixUpstream
 	v2           *configv2.ApisixUpstream
 
 	metav1.Object
 }
 
-func (au *apisixUpstream) V2beta3() *configv2beta3.ApisixUpstream {
-	if au.groupVersion != config.ApisixV2beta3 {
-		panic("not a apisix.apache.org/v2beta3 Upstream")
-	}
-	return au.v2beta3
-}
 func (au *apisixUpstream) V2() *configv2.ApisixUpstream {
 	if au.groupVersion != config.ApisixV2 {
 		panic("not a apisix.apache.org/v2 Upstream")
@@ -97,28 +83,13 @@ func (au *apisixUpstream) GroupVersion() string {
 }
 
 func (au *apisixUpstream) ResourceVersion() string {
-	if au.groupVersion == config.ApisixV2beta3 {
-		return au.V2beta3().ResourceVersion
-	}
 	return au.V2().ResourceVersion
 }
 
 type apisixUpstreamLister struct {
-	v2beta3Lister listersv2beta3.ApisixUpstreamLister
-	v2Lister      listersv2.ApisixUpstreamLister
+	v2Lister listersv2.ApisixUpstreamLister
 }
 
-func (l *apisixUpstreamLister) V2beta3(namespace, name string) (ApisixUpstream, error) {
-	au, err := l.v2beta3Lister.ApisixUpstreams(namespace).Get(name)
-	if err != nil {
-		return nil, err
-	}
-	return &apisixUpstream{
-		groupVersion: config.ApisixV2beta3,
-		v2beta3:      au,
-		Object:       au,
-	}, nil
-}
 func (l *apisixUpstreamLister) V2(namespace, name string) (ApisixUpstream, error) {
 	au, err := l.v2Lister.ApisixUpstreams(namespace).Get(name)
 	if err != nil {
@@ -139,12 +110,6 @@ func (l *apisixUpstreamLister) ListV2(namespace string) ([]*configv2.ApisixUpstr
 // type of obj.
 func MustNewApisixUpstream(obj interface{}) ApisixUpstream {
 	switch au := obj.(type) {
-	case *configv2beta3.ApisixUpstream:
-		return &apisixUpstream{
-			groupVersion: config.ApisixV2beta3,
-			v2beta3:      au,
-			Object:       au,
-		}
 	case *configv2.ApisixUpstream:
 		return &apisixUpstream{
 			groupVersion: config.ApisixV2,
@@ -161,12 +126,6 @@ func MustNewApisixUpstream(obj interface{}) ApisixUpstream {
 // type assertion fails.
 func NewApisixUpstream(obj interface{}) (ApisixUpstream, error) {
 	switch au := obj.(type) {
-	case *configv2beta3.ApisixUpstream:
-		return &apisixUpstream{
-			groupVersion: config.ApisixV2beta3,
-			v2beta3:      au,
-			Object:       au,
-		}, nil
 	case *configv2.ApisixUpstream:
 		return &apisixUpstream{
 			groupVersion: config.ApisixV2,
@@ -178,9 +137,8 @@ func NewApisixUpstream(obj interface{}) (ApisixUpstream, error) {
 	}
 }
 
-func NewApisixUpstreamLister(v2beta3 listersv2beta3.ApisixUpstreamLister, v2 listersv2.ApisixUpstreamLister) ApisixUpstreamLister {
+func NewApisixUpstreamLister(v2 listersv2.ApisixUpstreamLister) ApisixUpstreamLister {
 	return &apisixUpstreamLister{
-		v2beta3Lister: v2beta3,
-		v2Lister:      v2,
+		v2Lister: v2,
 	}
 }

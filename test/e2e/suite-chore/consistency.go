@@ -28,7 +28,7 @@ import (
 
 var (
 	_routeConfig = `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -156,9 +156,6 @@ var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the CRDs re
 		})
 	}
 
-	ginkgo.Describe("suite-chore: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold())
-	})
 	ginkgo.Describe("suite-chore: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})

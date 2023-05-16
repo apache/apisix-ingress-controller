@@ -22,7 +22,6 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	api "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 

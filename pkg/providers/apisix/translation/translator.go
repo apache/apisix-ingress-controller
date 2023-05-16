@@ -22,7 +22,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -45,12 +44,6 @@ type translator struct {
 type ApisixTranslator interface {
 	translation.Translator
 
-	// TranslateRouteV2beta3 translates the configv2beta3.ApisixRoute object into several Route,
-	// Upstream and PluginConfig resources.
-	TranslateRouteV2beta3(*configv2beta3.ApisixRoute) (*translation.TranslateContext, error)
-	// GenerateRouteV2beta3DeleteMark translates the configv2beta3.ApisixRoute object into several Route,
-	// Upstream and PluginConfig resources not strictly, only used for delete event.
-	GenerateRouteV2beta3DeleteMark(*configv2beta3.ApisixRoute) (*translation.TranslateContext, error)
 	// TranslateRouteV2 translates the configv2.ApisixRoute object into several Route,
 	// Upstream and PluginConfig resources.
 	TranslateRouteV2(*configv2.ApisixRoute) (*translation.TranslateContext, error)
@@ -60,28 +53,14 @@ type ApisixTranslator interface {
 	// TranslateOldRoute get route and stream_route objects from cache
 	// Build upstream and plugin_config through route and stream_route
 	TranslateOldRoute(kube.ApisixRoute) (*translation.TranslateContext, error)
-	// TranslateSSLV2Beta3 translates the configv2beta3.ApisixTls object into the APISIX SSL resource.
-	TranslateSSLV2Beta3(*configv2beta3.ApisixTls) (*apisixv1.Ssl, error)
 	// TranslateSSLV2 translates the configv2.ApisixTls object into the APISIX SSL resource.
 	TranslateSSLV2(*configv2.ApisixTls) (*apisixv1.Ssl, error)
-	// TranslateClusterConfig translates the configv2beta3.ApisixClusterConfig object into the APISIX
-	// Global Rule resource.
-	TranslateClusterConfigV2beta3(*configv2beta3.ApisixClusterConfig) (*apisixv1.GlobalRule, error)
 	// TranslateClusterConfigV2 translates the configv2.ApisixClusterConfig object into the APISIX
 	// Global Rule resource.
 	TranslateClusterConfigV2(*configv2.ApisixClusterConfig) (*apisixv1.GlobalRule, error)
-	// TranslateApisixConsumer translates the configv2beta3.APisixConsumer object into the APISIX Consumer
-	// resource.
-	TranslateApisixConsumerV2beta3(*configv2beta3.ApisixConsumer) (*apisixv1.Consumer, error)
-	// TranslateApisixConsumerV2 translates the configv2beta3.APisixConsumer object into the APISIX Consumer
+	// TranslateApisixConsumerV2 translates the configv2.APisixConsumer object into the APISIX Consumer
 	// resource.
 	TranslateApisixConsumerV2(ac *configv2.ApisixConsumer) (*apisixv1.Consumer, error)
-	// TranslatePluginConfigV2beta3 translates the configv2.ApisixPluginConfig object into several PluginConfig
-	// resources.
-	TranslatePluginConfigV2beta3(*configv2beta3.ApisixPluginConfig) (*translation.TranslateContext, error)
-	// GeneratePluginConfigV2beta3DeleteMark translates the configv2beta3.ApisixPluginConfig object into several PluginConfig
-	// resources not strictly, only used for delete event.
-	GeneratePluginConfigV2beta3DeleteMark(*configv2beta3.ApisixPluginConfig) (*translation.TranslateContext, error)
 	// TranslatePluginConfigV2 translates the configv2.ApisixPluginConfig object into several PluginConfig
 	// resources.
 	TranslatePluginConfigV2(*configv2.ApisixPluginConfig) (*translation.TranslateContext, error)

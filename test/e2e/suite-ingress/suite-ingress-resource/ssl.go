@@ -236,9 +236,6 @@ RU+QPRECgYB6XW24EI5+w3STbpnc6VoTS+sy9I9abTJPYo9LpCJwfMYc9Tg9Cx2K
 		})
 	}
 
-	ginkgo.Describe("suite-ingress-resource: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
@@ -481,7 +478,7 @@ jzit3pB5lp13YaVOoUil5Nvrp42M6MgJiVnu4a8s2d4fSoPfBzsKcstIQPU=
 			// create route
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -518,9 +515,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress-resource: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})

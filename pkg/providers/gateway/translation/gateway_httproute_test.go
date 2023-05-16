@@ -126,7 +126,6 @@ func mockHTTPRouteTranslator(t *testing.T) (*translator, <-chan struct{}) {
 				EndpointLister: epLister,
 				ServiceLister:  svcLister,
 				ApisixUpstreamLister: kube.NewApisixUpstreamLister(
-					apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 					apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 				),
 				APIVersion: config.DefaultAPIVersion,
