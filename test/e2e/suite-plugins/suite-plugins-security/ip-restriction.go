@@ -30,7 +30,7 @@ var _ = ginkgo.Describe("suite-plugins-security: ip-restriction plugin", func() 
 		ginkgo.It("ip whitelist", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -69,7 +69,7 @@ spec:
 				Contains("Your IP address is not allowed")
 
 			ar = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -110,7 +110,7 @@ spec:
 		ginkgo.It("ip blacklist", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -149,7 +149,7 @@ spec:
 				Contains("Your IP address is not allowed")
 
 			ar = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -189,7 +189,7 @@ spec:
 		ginkgo.It("disable plugin", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route

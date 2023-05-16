@@ -42,7 +42,7 @@ var _ = ginkgo.Describe("suite-cluster: ApisixClusterConfig v2", func() {
 			time.Sleep(3 * time.Second)
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: default

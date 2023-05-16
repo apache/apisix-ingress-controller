@@ -91,7 +91,7 @@ spec:
 	ginkgo.It("check the ApisixUpstream status is recorded", func() {
 		backendSvc, _ := s.DefaultHTTPBackend()
 		apisixUpstream := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: %s

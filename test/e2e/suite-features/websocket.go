@@ -63,7 +63,7 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			ar := `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
