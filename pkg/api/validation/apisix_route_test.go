@@ -130,14 +130,3 @@ func TestValidateApisixRouteV2(t *testing.T) {
 		})
 	}
 }
-
-func TestValidateApisixRouteHTTPV2(t *testing.T) {
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotValid, _ := ValidatePlugin(fakeClient, tt.pluginName, v2beta3.ApisixRouteHTTPPluginConfig(tt.pluginConfig))
-			if gotValid != tt.wantValid {
-				t.Errorf("validatePlugin() gotValid = %v, want %v", gotValid, tt.wantValid)
-			}
-		})
-	}
-}
