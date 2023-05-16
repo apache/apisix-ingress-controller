@@ -13,22 +13,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package id
+//go:build !go1.20
+// +build !go1.20
+
+package utils
 
 import (
-	"fmt"
-	"hash/crc32"
-
-	"github.com/apache/apisix-ingress-controller/pkg/utils"
+	"reflect"
+	"unsafe"
 )
 
-// GenID generates an ID according to the raw material.
-func GenID(raw string) string {
-	if raw == "" {
-		return ""
-	}
-	p := utils.String2Byte(raw)
+// String2Byte converts a string to a byte slice without memory allocation.
+//
+// Note since Go 1.20, the reflect.StringHeader and reflect.SliceHeader types
+// will be depreciated and not recommended to be used.
+func String2Byte(raw string) (b []byte) {
 
-	res := crc32.ChecksumIEEE(p)
-	return fmt.Sprintf("%x", res)
+	strHeader := (*reflect.StringHeader)(unsafe.Pointer(&raw))
+	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+
+	bHeader.Data = strHeader.Data
+	bHeader.Cap = strHeader.Len
+	bHeader.Len = strHeader.Len
+	return b
 }
