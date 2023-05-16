@@ -27,9 +27,9 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress-features: CRDs status subresource Testing", func() {
+var _ = ginkgo.Describe("suite-cluster: CRDs status subresource Testing", func() {
 	s := scaffold.NewDefaultScaffold()
-	
+
 	ginkgo.It("check ApisixClusterConfig status is recorded", func() {
 		// create ApisixClusterConfig resource
 		assert.Nil(ginkgo.GinkgoT(), s.NewApisixClusterConfig("default", true, true), "create cluster config error")
