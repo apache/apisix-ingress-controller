@@ -21,16 +21,12 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	listersv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2"
-	listersv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
 )
 
 // ApisixConsumerLister is an encapsulation for the lister of ApisixConsumer,
 // it aims at to be compatible with different ApisixConsumer versions.
 type ApisixConsumerLister interface {
-	// V2beta3 gets the ApisixConsumer in apisix.apache.org/v2beta3.
-	V2beta3(string, string) (ApisixConsumer, error)
 	// V2 gets the ApisixConsumer in apisix.apache.org/v2.
 	V2(string, string) (ApisixConsumer, error)
 }
@@ -42,14 +38,11 @@ type ApisixConsumerInformer interface {
 }
 
 // ApisixConsumer is an encapsulation for ApisixConsumer resource with different
-// versions, for now, they are apisix.apache.org/v2beta3 and apisix.apache.org/v2
+// versions, for now, they only includes  apisix.apache.org/v2
 type ApisixConsumer interface {
 	// GroupVersion returns the api group version of the
 	// real ApisixConsumer.
 	GroupVersion() string
-	// V2beta3 returns the ApisixConsumer in apisix.apache.org/v2beta3, the real
-	// ApisixConsumer must be in this group version, otherwise will panic.
-	V2beta3() *configv2beta3.ApisixConsumer
 	// V2 returns the ApisixConsumer in apisix.apache.org/v2, the real
 	// ApisixConsumer must be in this group version, otherwise will panic.
 	V2() *configv2.ApisixConsumer
@@ -70,17 +63,9 @@ type ApisixConsumerEvent struct {
 
 type apisixConsumer struct {
 	groupVersion string
-	v2beta3      *configv2beta3.ApisixConsumer
 	v2           *configv2.ApisixConsumer
 
 	metav1.Object
-}
-
-func (ac *apisixConsumer) V2beta3() *configv2beta3.ApisixConsumer {
-	if ac.groupVersion != config.ApisixV2beta3 {
-		panic("not a apisix.apache.org/v2beta3 Consumer")
-	}
-	return ac.v2beta3
 }
 
 func (ac *apisixConsumer) V2() *configv2.ApisixConsumer {
@@ -95,27 +80,11 @@ func (ac *apisixConsumer) GroupVersion() string {
 }
 
 func (ac *apisixConsumer) ResourceVersion() string {
-	if ac.groupVersion == config.ApisixV2beta3 {
-		return ac.V2beta3().ResourceVersion
-	}
 	return ac.V2().ResourceVersion
 }
 
 type apisixConsumerLister struct {
-	v2beta3Lister listersv2beta3.ApisixConsumerLister
-	v2Lister      listersv2.ApisixConsumerLister
-}
-
-func (l *apisixConsumerLister) V2beta3(namespace, name string) (ApisixConsumer, error) {
-	ac, err := l.v2beta3Lister.ApisixConsumers(namespace).Get(name)
-	if err != nil {
-		return nil, err
-	}
-	return &apisixConsumer{
-		groupVersion: config.ApisixV2beta3,
-		v2beta3:      ac,
-		Object:       ac,
-	}, nil
+	v2Lister listersv2.ApisixConsumerLister
 }
 
 func (l *apisixConsumerLister) V2(namespace, name string) (ApisixConsumer, error) {
@@ -134,12 +103,6 @@ func (l *apisixConsumerLister) V2(namespace, name string) (ApisixConsumer, error
 // type of obj.
 func MustNewApisixConsumer(obj interface{}) ApisixConsumer {
 	switch ac := obj.(type) {
-	case *configv2beta3.ApisixConsumer:
-		return &apisixConsumer{
-			groupVersion: config.ApisixV2beta3,
-			v2beta3:      ac,
-			Object:       ac,
-		}
 	case *configv2.ApisixConsumer:
 		return &apisixConsumer{
 			groupVersion: config.ApisixV2,
@@ -156,12 +119,6 @@ func MustNewApisixConsumer(obj interface{}) ApisixConsumer {
 // type assertion fails.
 func NewApisixConsumer(obj interface{}) (ApisixConsumer, error) {
 	switch ac := obj.(type) {
-	case *configv2beta3.ApisixConsumer:
-		return &apisixConsumer{
-			groupVersion: config.ApisixV2beta3,
-			v2beta3:      ac,
-			Object:       ac,
-		}, nil
 	case *configv2.ApisixConsumer:
 		return &apisixConsumer{
 			groupVersion: config.ApisixV2,
@@ -173,9 +130,8 @@ func NewApisixConsumer(obj interface{}) (ApisixConsumer, error) {
 	}
 }
 
-func NewApisixConsumerLister(v2beta3 listersv2beta3.ApisixConsumerLister, v2 listersv2.ApisixConsumerLister) ApisixConsumerLister {
+func NewApisixConsumerLister(v2 listersv2.ApisixConsumerLister) ApisixConsumerLister {
 	return &apisixConsumerLister{
-		v2beta3Lister: v2beta3,
-		v2Lister:      v2,
+		v2Lister: v2,
 	}
 }

@@ -111,9 +111,6 @@ spec:
 			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusServiceUnavailable)
 		})
 	}
-	ginkgo.Describe("suite-chore: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold())
-	})
 	ginkgo.Describe("suite-chore: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})

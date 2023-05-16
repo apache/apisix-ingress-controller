@@ -26,6 +26,7 @@ import (
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
@@ -580,13 +581,23 @@ func (t *translator) TranslateOldIngress(ing kube.Ingress) (*translation.Transla
 	}
 }
 
+func (t *translator) translateOldIngressTLS(namespace, ingName, secretName string, hosts []string) (*apisixv1.Ssl, error) {
+	ssl, err := t.TranslateIngressTLS(namespace, ingName, secretName, hosts)
+	if err != nil && k8serrors.IsNotFound(err) {
+		return &apisixv1.Ssl{
+			ID: id.GenID(namespace + "_" + fmt.Sprintf("%v-%v", ingName, "tls")),
+		}, nil
+	}
+	return ssl, err
+}
+
 func (t *translator) translateOldIngressV1(ing *networkingv1.Ingress) (*translation.TranslateContext, error) {
 	oldCtx := translation.DefaultEmptyTranslateContext()
 
 	for _, tls := range ing.Spec.TLS {
-		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
+		ssl, err := t.translateOldIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
 		if err != nil {
-			log.Debugw("failed to translate ingress tls to apisix tls",
+			log.Errorw("failed to translate ingress tls to apisix tls",
 				zap.Error(err),
 				zap.Any("ingress", ing),
 			)
@@ -621,8 +632,12 @@ func (t *translator) translateOldIngressV1beta1(ing *networkingv1beta1.Ingress) 
 	oldCtx := translation.DefaultEmptyTranslateContext()
 
 	for _, tls := range ing.Spec.TLS {
-		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
+		ssl, err := t.translateOldIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
 		if err != nil {
+			log.Errorw("failed to translate ingress tls to apisix tls",
+				zap.Error(err),
+				zap.Any("ingress", ing),
+			)
 			continue
 		}
 		oldCtx.AddSSL(ssl)
@@ -654,8 +669,12 @@ func (t *translator) translateOldIngressExtensionsv1beta1(ing *extensionsv1beta1
 	oldCtx := translation.DefaultEmptyTranslateContext()
 
 	for _, tls := range ing.Spec.TLS {
-		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
+		ssl, err := t.translateOldIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
 		if err != nil {
+			log.Errorw("failed to translate ingress tls to apisix tls",
+				zap.Error(err),
+				zap.Any("ingress", ing),
+			)
 			continue
 		}
 		oldCtx.AddSSL(ssl)

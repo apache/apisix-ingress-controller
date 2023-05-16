@@ -94,14 +94,17 @@ func (c *namespaceController) sync(ctx context.Context, ev *types.Event) error {
 
 		// if labels of namespace contains the watchingLabels, the namespace should be set to controller.watchingNamespaces
 		if c.controller.watchingLabels.IsSubsetOf(namespace.Labels) {
+			log.Infow("watching namespace", zap.String("name", namespace.Name))
 			c.controller.watchingNamespaces.Store(namespace.Name, struct{}{})
 		} else {
+			log.Infow("un-watching namespace", zap.String("name", namespace.Name))
 			c.controller.watchingNamespaces.Delete(namespace.Name)
 		}
 
 	} else { // type == types.EventDelete
 		namespace := ev.Tombstone.(*corev1.Namespace)
 		if _, ok := c.controller.watchingNamespaces.Load(namespace.Name); ok {
+			log.Infow("un-watching namespace", zap.String("name", namespace.Name))
 			c.controller.watchingNamespaces.Delete(namespace.Name)
 		}
 		// do nothing, if the namespace did not in controller.watchingNamespaces

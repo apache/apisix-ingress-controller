@@ -303,14 +303,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
-		suites(scaffold.NewScaffold(&scaffold.Options{
-			Name:                       "sync",
-			IngressAPISIXReplicas:      1,
-			ApisixResourceVersion:      scaffold.ApisixResourceVersion().V2beta3,
-			ApisixResourceSyncInterval: "100s",
-		}))
-	})
 	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                       "sync",

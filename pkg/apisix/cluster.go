@@ -50,7 +50,7 @@ const (
 
 var (
 	// ErrClusterNotExist means a cluster doesn't exist.
-	ErrClusterNotExist = errors.New("client not exist")
+	ErrClusterNotExist = errors.New("cluster not exist")
 	// ErrDuplicatedCluster means the cluster adding request was
 	// rejected since the cluster was already created.
 	ErrDuplicatedCluster = errors.New("duplicated cluster")
@@ -506,33 +506,22 @@ func (c *cluster) UpstreamServiceRelation() UpstreamServiceRelation {
 
 // HealthCheck implements Cluster.HealthCheck method.
 func (c *cluster) HealthCheck(ctx context.Context) (err error) {
-	if c.cacheSyncErr != nil {
-		err = c.cacheSyncErr
-		return
-	}
-	if atomic.LoadInt32(&c.cacheState) == _cacheSyncing {
-		return
-	}
-
 	// Retry three times in a row, and exit if all of them fail.
 	backoff := wait.Backoff{
 		Duration: 5 * time.Second,
 		Factor:   1,
 		Steps:    3,
 	}
-	var lastCheckErr error
+
 	err = wait.ExponentialBackoffWithContext(ctx, backoff, func() (done bool, _ error) {
-		if lastCheckErr = c.healthCheck(ctx); lastCheckErr != nil {
+		if lastCheckErr := c.healthCheck(ctx); lastCheckErr != nil {
 			log.Warnf("failed to check health for cluster %s: %s, will retry", c.name, lastCheckErr)
 			return
 		}
 		done = true
 		return
 	})
-	if err != nil {
-		// if ErrWaitTimeout then set lastSyncErr
-		c.cacheSyncErr = lastCheckErr
-	}
+
 	return err
 }
 
@@ -543,12 +532,16 @@ func (c *cluster) healthCheck(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	if er := conn.Close(); er != nil {
-		log.Warnw("failed to close tcp probe connection",
-			zap.Error(err),
-			zap.String("cluster", c.name),
-		)
-	}
+	defer func(conn net.Conn) {
+		err := conn.Close()
+		if err != nil {
+			log.Warnw("failed to close tcp probe connection",
+				zap.Error(err),
+				zap.String("cluster", c.name),
+			)
+		}
+	}(conn)
+
 	return
 }
 
