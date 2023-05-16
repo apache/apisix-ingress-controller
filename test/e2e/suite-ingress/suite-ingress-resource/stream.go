@@ -30,7 +30,7 @@ var _ = ginkgo.Describe("suite-ingress-resource: ApisixRoute stream Testing", fu
 		ginkgo.It("stream tcp proxy", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-tcp-route
@@ -113,7 +113,7 @@ spec:
 			s.EnsureNumEndpointsReady(ginkgo.GinkgoT(), "coredns", 1)
 
 			apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-udp-route

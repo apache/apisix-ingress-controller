@@ -30,7 +30,7 @@ var _ = ginkgo.Describe("suite-features: traffic split", func() {
 		ginkgo.It("sanity", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -60,7 +60,7 @@ spec:
 			resp.Body().Contains("404 Route Not Found")
 
 			ar = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route

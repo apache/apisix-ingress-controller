@@ -30,7 +30,7 @@ var _ = ginkgo.Describe("suite-plugins-security: csrf plugin", func() {
 		ginkgo.It("prevent csrf", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -90,7 +90,7 @@ spec:
 		ginkgo.It("disable plugin", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
