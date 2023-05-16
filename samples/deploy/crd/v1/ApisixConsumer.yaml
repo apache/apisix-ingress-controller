@@ -406,8 +406,8 @@ spec:
                             name:
                               type: string
                               minLength: 1
-                          required: 
-                            - name   
+                          required:
+                            - name
             status:
               type: object
               properties:
