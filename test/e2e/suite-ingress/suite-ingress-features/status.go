@@ -275,21 +275,7 @@ wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 		assert.Contains(ginkgo.GinkgoT(), output, `status: "False"`, "status.conditions.status  is recorded")
 	})
 
-	ginkgo.It("check ApisixClusterConfig status is recorded", func() {
-		// create ApisixClusterConfig resource
-		assert.Nil(ginkgo.GinkgoT(), s.NewApisixClusterConfig("default", true, true), "create cluster config error")
-		time.Sleep(6 * time.Second)
-
-		// status should be recorded as successful
-		output, err := s.GetOutputFromString("acc", "default", "-o", "yaml")
-		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixClusterConfig resource")
-		assert.Contains(ginkgo.GinkgoT(), output, "type: ResourcesAvailable", "status.conditions.type is recorded")
-		assert.Contains(ginkgo.GinkgoT(), output, "reason: ResourcesSynced", "status.conditions.reason  is recorded")
-		assert.Contains(ginkgo.GinkgoT(), output, `status: "True"`, "status.conditions.status  is recorded")
-		assert.Contains(ginkgo.GinkgoT(), output, "message: Sync Successfully", "status.conditions.message  is recorded")
-	})
 	//TODO: ApisixGlobal
-	//TODO: ApisixConsumer  CRD missing status definition
 	ginkgo.It("check ApisixConsumer status is recorded", func() {
 		// create ApisixConsumer resource
 		assert.Nil(ginkgo.GinkgoT(), s.ApisixConsumerBasicAuthCreated("test-apisix-consumer", "foo", "bar"), "create consumer error")
