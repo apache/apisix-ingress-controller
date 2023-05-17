@@ -15,9 +15,6 @@
 package cluster
 
 import (
-	"fmt"
-	"net/http"
-	"strings"
 	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
