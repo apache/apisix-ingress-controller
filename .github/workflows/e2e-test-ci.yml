@@ -197,5 +197,5 @@ jobs:
           E2E_ENV: "ci"
         run: |
           echo ${E2E_FOCUS} | grep "suite-cluster" && export E2E_NODES=1
-          echo $ENV
+          echo $E2E_NODES
           make e2e-test
