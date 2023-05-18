@@ -505,6 +505,18 @@ func (c *cluster) UpstreamServiceRelation() UpstreamServiceRelation {
 }
 
 // HealthCheck implements Cluster.HealthCheck method.
+//
+// It checks the health of an APISIX cluster by performing a TCP socket probe
+// against the baseURLHost. It will retry up to 3 times with exponential backoff
+// before returning an error.
+//
+// Parameters:
+//
+//	ctx: The context for the health check.
+//
+// Returns:
+//
+//	err: Any error encountered while performing the health check.
 func (c *cluster) HealthCheck(ctx context.Context) (err error) {
 	// Retry three times in a row, and exit if all of them fail.
 	backoff := wait.Backoff{
@@ -513,7 +525,7 @@ func (c *cluster) HealthCheck(ctx context.Context) (err error) {
 		Steps:    3,
 	}
 
-	err = wait.ExponentialBackoffWithContext(ctx, backoff, func() (done bool, _ error) {
+	err = wait.ExponentialBackoffWithContext(ctx, backoff, func(ctx context.Context) (done bool, _ error) {
 		if lastCheckErr := c.healthCheck(ctx); lastCheckErr != nil {
 			log.Warnf("failed to check health for cluster %s: %s, will retry", c.name, lastCheckErr)
 			return
