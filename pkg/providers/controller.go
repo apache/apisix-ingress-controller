@@ -292,15 +292,12 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 	configmapLister := kubeFactory.Core().V1().ConfigMaps().Lister()
 
 	switch c.cfg.Kubernetes.IngressVersion {
-	case config.IngressNetworkingV1:
-		ingressInformer = kubeFactory.Networking().V1().Ingresses().Informer()
-		ingressListerV1 = kubeFactory.Networking().V1().Ingresses().Lister()
 	case config.IngressNetworkingV1beta1:
 		ingressInformer = kubeFactory.Networking().V1beta1().Ingresses().Informer()
 		ingressListerV1beta1 = kubeFactory.Networking().V1beta1().Ingresses().Lister()
 	default:
-		ingressInformer = kubeFactory.Extensions().V1beta1().Ingresses().Informer()
-		ingressListerExtensionsV1beta1 = kubeFactory.Extensions().V1beta1().Ingresses().Lister()
+		ingressInformer = kubeFactory.Networking().V1().Ingresses().Informer()
+		ingressListerV1 = kubeFactory.Networking().V1().Ingresses().Lister()
 	}
 
 	ingressLister := kube.NewIngressLister(ingressListerV1, ingressListerV1beta1, ingressListerExtensionsV1beta1)
