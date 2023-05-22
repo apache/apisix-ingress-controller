@@ -31,7 +31,7 @@ var _ = ginkgo.Describe("suite-plugins-other: ApisixPluginConfig", func() {
 		ginkgo.It("add crd from definition", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			apc := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
  name: echo-and-cors-apc
@@ -56,7 +56,7 @@ spec:
 			time.Sleep(time.Second * 3)
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -102,7 +102,7 @@ spec:
 		ginkgo.It("ApisixPluginConfig replace body", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			apc := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
  name: test-apc-1
@@ -116,7 +116,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -152,7 +152,7 @@ spec:
 		ginkgo.It("disable plugin", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			apc := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
  name: test-apc-1
@@ -166,7 +166,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -204,7 +204,7 @@ spec:
 		ginkgo.It("enable plugin and then delete it", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			apc := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
  name: test-apc-1
@@ -218,7 +218,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -251,7 +251,7 @@ spec:
 			resp.Body().Equal("my custom body")
 
 			apc = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
  name: test-apc-1
@@ -280,7 +280,7 @@ spec:
 		ginkgo.It("empty config", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			apc := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
  name: test-apc-1
@@ -291,7 +291,7 @@ spec:
 `)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -331,7 +331,7 @@ spec:
 		ginkgo.It("finer granularity config", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			apc := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
   name: test-apc-1
@@ -349,7 +349,7 @@ spec:
 `)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -405,7 +405,7 @@ spec:
 		ginkgo.It("disable plugin", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			apc := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
   name: test-apc-1
@@ -416,7 +416,7 @@ spec:
 `)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -457,7 +457,7 @@ spec:
 		ginkgo.It("enable plugin and then delete it", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			apc := `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
   name: test-apc-1
@@ -468,7 +468,7 @@ spec:
 `
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apc))
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -506,7 +506,7 @@ spec:
 			resp.Body().Contains("origin")
 
 			apc = `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
   name: test-apc-1
@@ -534,9 +534,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-plugins-other: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-plugins-other: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 

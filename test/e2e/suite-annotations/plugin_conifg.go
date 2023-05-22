@@ -28,7 +28,7 @@ import (
 
 func _createAPC(s *scaffold.Scaffold) {
 	apc := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
   name: echo-and-cors-apc

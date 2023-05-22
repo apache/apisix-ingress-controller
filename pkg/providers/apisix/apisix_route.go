@@ -35,7 +35,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
@@ -162,37 +161,6 @@ func (c *apisixRouteController) syncRelationship(ev *types.Event, routeKey strin
 		newUpstreams []string
 	)
 	switch obj.GroupVersion {
-	case config.ApisixV2beta3:
-		var (
-			old    *v2beta3.ApisixRoute
-			newObj *v2beta3.ApisixRoute
-		)
-
-		if ev.Type == types.EventUpdate {
-			old = obj.OldObject.V2beta3()
-		} else if ev.Type == types.EventDelete {
-			old = ev.Tombstone.(kube.ApisixRoute).V2beta3()
-		}
-
-		if ev.Type != types.EventDelete {
-			newObj = ar.V2beta3()
-		}
-
-		// calculate diff, so we don't need to care about the event order
-		if old != nil {
-			for _, rule := range old.Spec.HTTP {
-				for _, backend := range rule.Backends {
-					oldBackends = append(oldBackends, old.Namespace+"/"+backend.ServiceName)
-				}
-			}
-		}
-		if newObj != nil {
-			for _, rule := range newObj.Spec.HTTP {
-				for _, backend := range rule.Backends {
-					newBackends = append(newBackends, newObj.Namespace+"/"+backend.ServiceName)
-				}
-			}
-		}
 	case config.ApisixV2:
 		var (
 			old    *v2.ApisixRoute
@@ -296,8 +264,6 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		tctx *translation.TranslateContext
 	)
 	switch obj.GroupVersion {
-	case config.ApisixV2beta3:
-		ar, err = c.ApisixRouteLister.V2beta3(namespace, name)
 	case config.ApisixV2:
 		ar, err = c.ApisixRouteLister.V2(namespace, name)
 	default:
@@ -348,21 +314,6 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 	// translator phase: translate resource, construction data plance context
 	{
 		switch obj.GroupVersion {
-		case config.ApisixV2beta3:
-			if ev.Type != types.EventDelete {
-				if err = c.checkPluginNameIfNotEmptyV2beta3(ctx, ar.V2beta3()); err == nil {
-					tctx, err = c.translator.TranslateRouteV2beta3(ar.V2beta3())
-				}
-			} else {
-				tctx, err = c.translator.GenerateRouteV2beta3DeleteMark(ar.V2beta3())
-			}
-			if err != nil {
-				log.Errorw("failed to translate ApisixRoute v2beta3",
-					zap.Error(err),
-					zap.Any("object", ar),
-				)
-				goto updateStatus
-			}
 		case config.ApisixV2:
 			if ev.Type != types.EventDelete {
 				if err = c.checkPluginNameIfNotEmptyV2(ctx, ar.V2()); err == nil {
@@ -434,29 +385,6 @@ updateStatus:
 	return err
 }
 
-func (c *apisixRouteController) checkPluginNameIfNotEmptyV2beta3(ctx context.Context, in *v2beta3.ApisixRoute) error {
-	for _, v := range in.Spec.HTTP {
-		if v.PluginConfigName != "" {
-			_, err := c.APISIX.Cluster(c.Config.APISIX.DefaultClusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName))
-			if err != nil {
-				if err == apisixcache.ErrNotFound {
-					log.Errorw("checkPluginNameIfNotEmptyV2beta3 error: plugin_config not found",
-						zap.String("name", apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName)),
-						zap.Any("obj", in),
-						zap.Error(err))
-				} else {
-					log.Errorw("checkPluginNameIfNotEmptyV2beta3 PluginConfig get failed",
-						zap.String("name", apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName)),
-						zap.Any("obj", in),
-						zap.Error(err))
-				}
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 func (c *apisixRouteController) checkPluginNameIfNotEmptyV2(ctx context.Context, in *v2.ApisixRoute) error {
 	for _, v := range in.Spec.HTTP {
 		if v.PluginConfigName != "" {
@@ -492,8 +420,6 @@ func (c *apisixRouteController) updateStatus(obj kube.ApisixRoute, statusErr err
 	)
 
 	switch obj.GroupVersion() {
-	case config.ApisixV2beta3:
-		ar, err = c.ApisixRouteLister.V2beta3(namespace, name)
 	case config.ApisixV2:
 		ar, err = c.ApisixRouteLister.V2(namespace, name)
 	}
@@ -521,9 +447,6 @@ func (c *apisixRouteController) updateStatus(obj kube.ApisixRoute, statusErr err
 		eventType = v1.EventTypeWarning
 	}
 	switch obj.GroupVersion() {
-	case config.ApisixV2beta3:
-		c.RecordEvent(obj.V2beta3(), eventType, reason, statusErr)
-		c.recordStatus(obj.V2beta3(), reason, statusErr, condition, ar.GetGeneration())
 	case config.ApisixV2:
 		c.RecordEvent(obj.V2(), eventType, reason, statusErr)
 		c.recordStatus(obj.V2(), reason, statusErr, condition, ar.GetGeneration())
@@ -742,12 +665,6 @@ func (c *apisixRouteController) ResourceSync(interval time.Duration) {
 			upstreams []string
 		)
 		switch ar.GroupVersion() {
-		case config.ApisixV2beta3:
-			for _, rule := range ar.V2beta3().Spec.HTTP {
-				for _, backend := range rule.Backends {
-					backends = append(backends, ns+"/"+backend.ServiceName)
-				}
-			}
 		case config.ApisixV2:
 			for _, rule := range ar.V2().Spec.HTTP {
 				for _, backend := range rule.Backends {
@@ -949,23 +866,6 @@ func (c *apisixRouteController) recordStatus(at interface{}, reason string, err 
 	}
 
 	switch v := at.(type) {
-	case *v2beta3.ApisixRoute:
-		// set to status
-		if v.Status.Conditions == nil {
-			conditions := make([]metav1.Condition, 0)
-			v.Status.Conditions = conditions
-		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
-			meta.SetStatusCondition(&v.Status.Conditions, condition)
-			if _, errRecord := apisixClient.ApisixV2beta3().ApisixRoutes(v.Namespace).
-				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-				log.Errorw("failed to record status change for ApisixRoute",
-					zap.Error(errRecord),
-					zap.String("name", v.Name),
-					zap.String("namespace", v.Namespace),
-				)
-			}
-		}
 	case *v2.ApisixRoute:
 		// set to status
 		if v.Status.Conditions == nil {

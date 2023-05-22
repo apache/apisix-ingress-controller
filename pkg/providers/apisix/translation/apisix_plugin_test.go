@@ -30,7 +30,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixfake "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
 	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
@@ -44,9 +43,8 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := apisixfake.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
-	auInformer := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+	auInformer := apisixInformersFactory.Apisix().V2().ApisixUpstreams().Informer()
 	auLister := kube.NewApisixUpstreamLister(
-		apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 	)
 
@@ -153,7 +151,7 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 		},
 	}
 
-	ar1 := &configv2beta3.ApisixRoute{
+	ar1 := &configv2.ApisixRoute{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ApisixRoute",
 			APIVersion: "apisix.apache.org/v2alpha1",
@@ -162,11 +160,11 @@ func TestTranslateTrafficSplitPlugin(t *testing.T) {
 			Name:      "ar1",
 			Namespace: "test",
 		},
-		Spec: configv2beta3.ApisixRouteSpec{
-			HTTP: []configv2beta3.ApisixRouteHTTP{
+		Spec: configv2.ApisixRouteSpec{
+			HTTP: []configv2.ApisixRouteHTTP{
 				{
 					Name: "r1",
-					Match: configv2beta3.ApisixRouteHTTPMatch{
+					Match: configv2.ApisixRouteHTTPMatch{
 						Paths: []string{"/*"},
 						Hosts: []string{"test.com"},
 					},
@@ -221,9 +219,8 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := apisixfake.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
-	auInformer := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+	auInformer := apisixInformersFactory.Apisix().V2().ApisixUpstreams().Informer()
 	auLister := kube.NewApisixUpstreamLister(
-		apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 	)
 
@@ -330,7 +327,7 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 		},
 	}
 
-	ar1 := &configv2beta3.ApisixRoute{
+	ar1 := &configv2.ApisixRoute{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ApisixRoute",
 			APIVersion: "apisix.apache.org/v2alpha1",
@@ -339,11 +336,11 @@ func TestTranslateTrafficSplitPluginWithSameUpstreams(t *testing.T) {
 			Name:      "ar1",
 			Namespace: "test",
 		},
-		Spec: configv2beta3.ApisixRouteSpec{
-			HTTP: []configv2beta3.ApisixRouteHTTP{
+		Spec: configv2.ApisixRouteSpec{
+			HTTP: []configv2.ApisixRouteHTTP{
 				{
 					Name: "r1",
-					Match: configv2beta3.ApisixRouteHTTPMatch{
+					Match: configv2.ApisixRouteHTTPMatch{
 						Paths: []string{"/*"},
 						Hosts: []string{"test.com"},
 					},
@@ -393,9 +390,8 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 	epLister, epInformer := kube.NewEndpointListerAndInformer(informersFactory, false)
 	apisixClient := apisixfake.NewSimpleClientset()
 	apisixInformersFactory := apisixinformers.NewSharedInformerFactory(apisixClient, 0)
-	auInformer := apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Informer()
+	auInformer := apisixInformersFactory.Apisix().V2().ApisixUpstreams().Informer()
 	auLister := kube.NewApisixUpstreamLister(
-		apisixInformersFactory.Apisix().V2beta3().ApisixUpstreams().Lister(),
 		apisixInformersFactory.Apisix().V2().ApisixUpstreams().Lister(),
 	)
 
@@ -502,7 +498,7 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 		},
 	}
 
-	ar1 := configv2beta3.ApisixRoute{
+	ar1 := configv2.ApisixRoute{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ApisixRoute",
 			APIVersion: "apisix.apache.org/v2alpha1",
@@ -511,11 +507,11 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 			Name:      "ar1",
 			Namespace: "test",
 		},
-		Spec: configv2beta3.ApisixRouteSpec{
-			HTTP: []configv2beta3.ApisixRouteHTTP{
+		Spec: configv2.ApisixRouteSpec{
+			HTTP: []configv2.ApisixRouteHTTP{
 				{
 					Name: "r1",
-					Match: configv2beta3.ApisixRouteHTTPMatch{
+					Match: configv2.ApisixRouteHTTPMatch{
 						Paths: []string{"/*"},
 						Hosts: []string{"test.com"},
 					},
@@ -558,10 +554,10 @@ func TestTranslateTrafficSplitPluginBadCases(t *testing.T) {
 }
 
 func TestTranslateConsumerKeyAuthPluginWithInPlaceValue(t *testing.T) {
-	keyAuth := &configv2beta3.ApisixConsumerKeyAuth{
-		Value: &configv2beta3.ApisixConsumerKeyAuthValue{Key: "abc"},
+	keyAuth := &configv2.ApisixConsumerKeyAuth{
+		Value: &configv2.ApisixConsumerKeyAuthValue{Key: "abc"},
 	}
-	cfg, err := (&translator{}).translateConsumerKeyAuthPluginV2beta3("default", keyAuth)
+	cfg, err := (&translator{}).translateConsumerKeyAuthPluginV2("default", keyAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "abc", cfg.Key)
 }
@@ -600,14 +596,14 @@ func TestTranslateConsumerKeyAuthWithSecretRef(t *testing.T) {
 
 	<-processCh
 
-	keyAuth := &configv2beta3.ApisixConsumerKeyAuth{
+	keyAuth := &configv2.ApisixConsumerKeyAuth{
 		SecretRef: &corev1.LocalObjectReference{Name: "abc-key-auth"},
 	}
-	cfg, err := tr.translateConsumerKeyAuthPluginV2beta3("default", keyAuth)
+	cfg, err := tr.translateConsumerKeyAuthPluginV2("default", keyAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "abc", cfg.Key)
 
-	cfg, err = tr.translateConsumerKeyAuthPluginV2beta3("default2", keyAuth)
+	cfg, err = tr.translateConsumerKeyAuthPluginV2("default2", keyAuth)
 	assert.Nil(t, cfg)
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "not found")
@@ -617,7 +613,7 @@ func TestTranslateConsumerKeyAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerKeyAuthPluginV2beta3("default", keyAuth)
+	cfg, err = tr.translateConsumerKeyAuthPluginV2("default", keyAuth)
 	assert.Nil(t, cfg)
 	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
 
@@ -626,13 +622,13 @@ func TestTranslateConsumerKeyAuthWithSecretRef(t *testing.T) {
 }
 
 func TestTranslateConsumerBasicAuthPluginWithInPlaceValue(t *testing.T) {
-	basicAuth := &configv2beta3.ApisixConsumerBasicAuth{
-		Value: &configv2beta3.ApisixConsumerBasicAuthValue{
+	basicAuth := &configv2.ApisixConsumerBasicAuth{
+		Value: &configv2.ApisixConsumerBasicAuthValue{
 			Username: "jack",
 			Password: "jacknice",
 		},
 	}
-	cfg, err := (&translator{}).translateConsumerBasicAuthPluginV2beta3("default", basicAuth)
+	cfg, err := (&translator{}).translateConsumerBasicAuthPluginV2("default", basicAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "jack", cfg.Username)
 	assert.Equal(t, "jacknice", cfg.Password)
@@ -673,15 +669,15 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 
 	<-processCh
 
-	basicAuth := &configv2beta3.ApisixConsumerBasicAuth{
+	basicAuth := &configv2.ApisixConsumerBasicAuth{
 		SecretRef: &corev1.LocalObjectReference{Name: "jack-basic-auth"},
 	}
-	cfg, err := tr.translateConsumerBasicAuthPluginV2beta3("default", basicAuth)
+	cfg, err := tr.translateConsumerBasicAuthPluginV2("default", basicAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "jack", cfg.Username)
 	assert.Equal(t, "jacknice", cfg.Password)
 
-	cfg, err = tr.translateConsumerBasicAuthPluginV2beta3("default2", basicAuth)
+	cfg, err = tr.translateConsumerBasicAuthPluginV2("default2", basicAuth)
 	assert.Nil(t, cfg)
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "not found")
@@ -691,7 +687,7 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerBasicAuthPluginV2beta3("default", basicAuth)
+	cfg, err = tr.translateConsumerBasicAuthPluginV2("default", basicAuth)
 	assert.Nil(t, cfg)
 	assert.Equal(t, _errPasswordNotFoundOrInvalid, err)
 
@@ -700,7 +696,7 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerBasicAuthPluginV2beta3("default", basicAuth)
+	cfg, err = tr.translateConsumerBasicAuthPluginV2("default", basicAuth)
 	assert.Nil(t, cfg)
 	assert.Equal(t, _errUsernameNotFoundOrInvalid, err)
 
@@ -709,8 +705,8 @@ func TestTranslateConsumerBasicAuthWithSecretRef(t *testing.T) {
 }
 
 func TestTranslateConsumerJwtAuthPluginWithInPlaceValue(t *testing.T) {
-	jwtAuth := &configv2beta3.ApisixConsumerJwtAuth{
-		Value: &configv2beta3.ApisixConsumerJwtAuthValue{
+	jwtAuth := &configv2.ApisixConsumerJwtAuth{
+		Value: &configv2.ApisixConsumerJwtAuthValue{
 			Key:          "foo",
 			Secret:       "foo-secret",
 			PublicKey:    "public",
@@ -720,7 +716,7 @@ func TestTranslateConsumerJwtAuthPluginWithInPlaceValue(t *testing.T) {
 			Base64Secret: true,
 		},
 	}
-	cfg, err := (&translator{}).translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
+	cfg, err := (&translator{}).translateConsumerJwtAuthPluginV2("default", jwtAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "foo", cfg.Key)
 	assert.Equal(t, "foo-secret", cfg.Secret)
@@ -731,16 +727,16 @@ func TestTranslateConsumerJwtAuthPluginWithInPlaceValue(t *testing.T) {
 	assert.Equal(t, true, cfg.Base64Secret)
 
 	jwtAuth.Value.Exp = int64(-1)
-	cfg, err = (&translator{}).translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
+	cfg, err = (&translator{}).translateConsumerJwtAuthPluginV2("default", jwtAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(_jwtAuthExpDefaultValue), cfg.Exp)
 
-	jwtAuth2 := &configv2beta3.ApisixConsumerJwtAuth{
-		Value: &configv2beta3.ApisixConsumerJwtAuthValue{
+	jwtAuth2 := &configv2.ApisixConsumerJwtAuth{
+		Value: &configv2.ApisixConsumerJwtAuthValue{
 			Key: "foo2",
 		},
 	}
-	cfg, err = (&translator{}).translateConsumerJwtAuthPluginV2beta3("default", jwtAuth2)
+	cfg, err = (&translator{}).translateConsumerJwtAuthPluginV2("default", jwtAuth2)
 	assert.Nil(t, err)
 	assert.Equal(t, "foo2", cfg.Key)
 }
@@ -785,10 +781,10 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 
 	<-processCh
 
-	jwtAuth := &configv2beta3.ApisixConsumerJwtAuth{
+	jwtAuth := &configv2.ApisixConsumerJwtAuth{
 		SecretRef: &corev1.LocalObjectReference{Name: "jack-jwt-auth"},
 	}
-	cfg, err := tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
+	cfg, err := tr.translateConsumerJwtAuthPluginV2("default", jwtAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "foo", cfg.Key)
 	assert.Equal(t, "foo-secret", cfg.Secret)
@@ -798,7 +794,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Equal(t, int64(1000), cfg.Exp)
 	assert.Equal(t, true, cfg.Base64Secret)
 
-	cfg, err = tr.translateConsumerJwtAuthPluginV2beta3("default2", jwtAuth)
+	cfg, err = tr.translateConsumerJwtAuthPluginV2("default2", jwtAuth)
 	assert.Nil(t, cfg)
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "not found")
@@ -808,7 +804,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	_, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
+	_, err = tr.translateConsumerJwtAuthPluginV2("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "public")
@@ -816,7 +812,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	_, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
+	_, err = tr.translateConsumerJwtAuthPluginV2("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "private")
@@ -824,7 +820,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	_, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
+	_, err = tr.translateConsumerJwtAuthPluginV2("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "algorithm")
@@ -832,7 +828,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	_, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
+	_, err = tr.translateConsumerJwtAuthPluginV2("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "exp")
@@ -840,7 +836,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	_, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
+	_, err = tr.translateConsumerJwtAuthPluginV2("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "base64_secret")
@@ -848,7 +844,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	_, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
+	_, err = tr.translateConsumerJwtAuthPluginV2("default", jwtAuth)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "key")
@@ -856,7 +852,7 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerJwtAuthPluginV2beta3("default", jwtAuth)
+	cfg, err = tr.translateConsumerJwtAuthPluginV2("default", jwtAuth)
 	assert.Nil(t, cfg)
 	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
 
@@ -865,13 +861,13 @@ func TestTranslateConsumerJwtAuthWithSecretRef(t *testing.T) {
 }
 
 func TestTranslateConsumerWolfRBACPluginWithInPlaceValue(t *testing.T) {
-	wolfRBAC := &configv2beta3.ApisixConsumerWolfRBAC{
-		Value: &configv2beta3.ApisixConsumerWolfRBACValue{
+	wolfRBAC := &configv2.ApisixConsumerWolfRBAC{
+		Value: &configv2.ApisixConsumerWolfRBACValue{
 			Server: "https://httpbin.org",
 			Appid:  "test-app",
 		},
 	}
-	cfg, err := (&translator{}).translateConsumerWolfRBACPluginV2beta3("default", wolfRBAC)
+	cfg, err := (&translator{}).translateConsumerWolfRBACPluginV2("default", wolfRBAC)
 	assert.Nil(t, err)
 	assert.Equal(t, "https://httpbin.org", cfg.Server)
 	assert.Equal(t, "test-app", cfg.Appid)
@@ -913,16 +909,16 @@ func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
 
 	<-processCh
 
-	wolfRBAC := &configv2beta3.ApisixConsumerWolfRBAC{
+	wolfRBAC := &configv2.ApisixConsumerWolfRBAC{
 		SecretRef: &corev1.LocalObjectReference{Name: "jack-wolf-rbac"},
 	}
-	cfg, err := tr.translateConsumerWolfRBACPluginV2beta3("default", wolfRBAC)
+	cfg, err := tr.translateConsumerWolfRBACPluginV2("default", wolfRBAC)
 	assert.Nil(t, err)
 	assert.Equal(t, "http://127.0.0.1:12180", cfg.Server)
 	assert.Equal(t, "test-app", cfg.Appid)
 	assert.Equal(t, "X-", cfg.HeaderPrefix)
 
-	cfg, err = tr.translateConsumerWolfRBACPluginV2beta3("default2", wolfRBAC)
+	cfg, err = tr.translateConsumerWolfRBACPluginV2("default2", wolfRBAC)
 	assert.Nil(t, cfg)
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "not found")
@@ -932,7 +928,7 @@ func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	_, err = tr.translateConsumerWolfRBACPluginV2beta3("default", wolfRBAC)
+	_, err = tr.translateConsumerWolfRBACPluginV2("default", wolfRBAC)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "appid")
@@ -940,7 +936,7 @@ func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	_, err = tr.translateConsumerWolfRBACPluginV2beta3("default", wolfRBAC)
+	_, err = tr.translateConsumerWolfRBACPluginV2("default", wolfRBAC)
 	assert.Nil(t, err)
 
 	delete(sec.Data, "header_prefix")
@@ -948,7 +944,7 @@ func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	_, err = tr.translateConsumerWolfRBACPluginV2beta3("default", wolfRBAC)
+	_, err = tr.translateConsumerWolfRBACPluginV2("default", wolfRBAC)
 	assert.Nil(t, err)
 
 	close(processCh)
@@ -956,15 +952,15 @@ func TestTranslateConsumerWolfRBACWithSecretRef(t *testing.T) {
 }
 
 func TestTranslateConsumerHMACAuthPluginWithInPlaceValue(t *testing.T) {
-	hmacAuth := &configv2beta3.ApisixConsumerHMACAuth{
-		Value: &configv2beta3.ApisixConsumerHMACAuthValue{
+	hmacAuth := &configv2.ApisixConsumerHMACAuth{
+		Value: &configv2.ApisixConsumerHMACAuthValue{
 			AccessKey:     "foo",
 			SecretKey:     "foo-secret",
 			ClockSkew:     0,
 			SignedHeaders: []string{"User-Agent"},
 		},
 	}
-	cfg, err := (&translator{}).translateConsumerHMACAuthPluginV2beta3("default", hmacAuth)
+	cfg, err := (&translator{}).translateConsumerHMACAuthPluginV2("default", hmacAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "foo", cfg.AccessKey)
 	assert.Equal(t, "foo-secret", cfg.SecretKey)
@@ -1009,10 +1005,10 @@ func TestTranslateConsumerHMACAuthPluginWithSecretRef(t *testing.T) {
 
 	<-processCh
 
-	hmacAuth := &configv2beta3.ApisixConsumerHMACAuth{
+	hmacAuth := &configv2.ApisixConsumerHMACAuth{
 		SecretRef: &corev1.LocalObjectReference{Name: "fatpa-hmac-auth"},
 	}
-	cfg, err := tr.translateConsumerHMACAuthPluginV2beta3("default", hmacAuth)
+	cfg, err := tr.translateConsumerHMACAuthPluginV2("default", hmacAuth)
 	assert.Nil(t, err)
 	assert.Equal(t, "foo", cfg.AccessKey)
 	assert.Equal(t, "foo-secret", cfg.SecretKey)
@@ -1023,7 +1019,7 @@ func TestTranslateConsumerHMACAuthPluginWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerHMACAuthPluginV2beta3("default", hmacAuth)
+	cfg, err = tr.translateConsumerHMACAuthPluginV2("default", hmacAuth)
 	assert.Nil(t, cfg)
 	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
 
@@ -1032,7 +1028,7 @@ func TestTranslateConsumerHMACAuthPluginWithSecretRef(t *testing.T) {
 	assert.Nil(t, err)
 	<-processCh
 
-	cfg, err = tr.translateConsumerHMACAuthPluginV2beta3("default", hmacAuth)
+	cfg, err = tr.translateConsumerHMACAuthPluginV2("default", hmacAuth)
 	assert.Nil(t, cfg)
 	assert.Equal(t, _errKeyNotFoundOrInvalid, err)
 
