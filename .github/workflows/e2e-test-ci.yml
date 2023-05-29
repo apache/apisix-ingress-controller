@@ -26,7 +26,7 @@ on:
     branches:
       - master
       - v1.6.0
-    type: [review_requested, ready_for_review]
+    types: [review_requested, ready_for_review]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -196,7 +196,5 @@ jobs:
           E2E_FLAKE_ATTEMPTS: "2"
           E2E_ENV: "ci"
         run: |
-          echo "E2E_FOCUS=$E2E_FOCUS"
           echo ${E2E_FOCUS} | grep "suite-cluster" && export E2E_NODES=1
-          echo "E2E_NODES=$E2E_NODES"
           make e2e-test
