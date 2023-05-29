@@ -24,7 +24,6 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
@@ -138,18 +137,6 @@ func lessNetworkingV1beta1LB(addrs []networkingv1beta1.IngressLoadBalancerIngres
 	}
 }
 
-func lessExtensionsV1beta1LB(addrs []extensionsv1beta1.IngressLoadBalancerIngress) func(int, int) bool {
-	return func(a, b int) bool {
-		switch strings.Compare(addrs[a].Hostname, addrs[b].Hostname) {
-		case -1:
-			return true
-		case 1:
-			return false
-		}
-		return addrs[a].IP < addrs[b].IP
-	}
-}
-
 func CompareNetworkingV1LBEqual(lb1 []networkingv1.IngressLoadBalancerIngress, lb2 []networkingv1.IngressLoadBalancerIngress) bool {
 	if len(lb1) != len(lb2) {
 		return false
@@ -186,24 +173,6 @@ func CompareNetworkingV1beta1LBEqual(lb1 []networkingv1beta1.IngressLoadBalancer
 	return true
 }
 
-func CompareExtensionsV1beta1LBEqual(lb1 []extensionsv1beta1.IngressLoadBalancerIngress, lb2 []extensionsv1beta1.IngressLoadBalancerIngress) bool {
-	if len(lb1) != len(lb2) {
-		return false
-	}
-	sort.SliceStable(lb1, lessExtensionsV1beta1LB(lb1))
-	sort.SliceStable(lb2, lessExtensionsV1beta1LB(lb2))
-	size := len(lb1)
-	for i := 0; i < size; i++ {
-		if lb1[i].IP != lb2[i].IP {
-			return false
-		}
-		if lb1[i].Hostname != lb2[i].Hostname {
-			return false
-		}
-	}
-	return true
-}
-
 // CoreV1ToNetworkV1LB convert []corev1.LoadBalancerIngress to []networkingv1.IngressLoadBalancerIngress
 func CoreV1ToNetworkV1LB(lbips []corev1.LoadBalancerIngress) []networkingv1.IngressLoadBalancerIngress {
 	t := make([]networkingv1.IngressLoadBalancerIngress, 0, len(lbips))
@@ -228,20 +197,8 @@ func CoreV1ToNetworkV1beta1LB(lbips []corev1.LoadBalancerIngress) []networkingv1
 	return t
 }
 
-// CoreV1ToExtensionsV1beta1LB convert []corev1.LoadBalancerIngress to []extensionsv1beta1.IngressLoadBalancerIngress
-func CoreV1ToExtensionsV1beta1LB(lbips []corev1.LoadBalancerIngress) []extensionsv1beta1.IngressLoadBalancerIngress {
-	t := make([]extensionsv1beta1.IngressLoadBalancerIngress, 0, len(lbips))
-	for _, lbip := range lbips {
-		t = append(t, extensionsv1beta1.IngressLoadBalancerIngress{
-			Hostname: lbip.Hostname,
-			IP:       lbip.IP,
-		})
-	}
-	return t
-}
-
-func CoreV1ToGatewayV1beta1Addr(lbips []corev1.LoadBalancerIngress) []gatewayv1beta1.GatewayAddress {
-	t := make([]gatewayv1beta1.GatewayAddress, 0, len(lbips))
+func CoreV1ToGatewayV1beta1Addr(lbips []corev1.LoadBalancerIngress) []gatewayv1beta1.GatewayStatusAddress {
+	t := make([]gatewayv1beta1.GatewayStatusAddress, 0, len(lbips))
 
 	// In the definition, there is also an address type called NamedAddress,
 	// which we currently do not implement
@@ -250,14 +207,14 @@ func CoreV1ToGatewayV1beta1Addr(lbips []corev1.LoadBalancerIngress) []gatewayv1b
 
 	for _, lbip := range lbips {
 		if v := lbip.Hostname; v != "" {
-			t = append(t, gatewayv1beta1.GatewayAddress{
+			t = append(t, gatewayv1beta1.GatewayStatusAddress{
 				Type:  &HostnameAddressType,
 				Value: v,
 			})
 		}
 
 		if v := lbip.IP; v != "" {
-			t = append(t, gatewayv1beta1.GatewayAddress{
+			t = append(t, gatewayv1beta1.GatewayStatusAddress{
 				Type:  &IPAddressType,
 				Value: v,
 			})

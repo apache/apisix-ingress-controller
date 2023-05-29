@@ -188,6 +188,9 @@ spec:
 	})
 
 	ginkgo.It("ApisixPluginConfig should be ignored", func() {
+		if s.IsEtcdServer() {
+			ginkgo.Skip("etcdserver does not support schema validation yet, waiting for fix")
+		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		apc := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2

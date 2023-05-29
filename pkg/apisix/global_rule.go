@@ -21,6 +21,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -215,4 +216,91 @@ func (r *globalRuleClient) Update(ctx context.Context, obj *v1.GlobalRule, shoul
 		return nil, err
 	}
 	return globalRule, nil
+}
+
+type globalRuleMem struct {
+	url string
+
+	resource string
+	cluster  *cluster
+}
+
+func newGlobalRuleMem(c *cluster) GlobalRule {
+	return &globalRuleMem{
+		url:      c.baseURL + "/global_rules",
+		resource: "global_rules",
+		cluster:  c,
+	}
+}
+
+func (r *globalRuleMem) Get(ctx context.Context, name string) (*v1.GlobalRule, error) {
+	log.Debugw("try to look up globalRule",
+		zap.String("name", name),
+		zap.String("cluster", r.cluster.name),
+	)
+	rid := id.GenID(name)
+	globalRule, err := r.cluster.cache.GetGlobalRule(rid)
+	if err != nil {
+		log.Errorw("failed to find globalRule in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+	return globalRule, nil
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
+func (r *globalRuleMem) List(ctx context.Context) ([]*v1.GlobalRule, error) {
+	log.Debugw("try to list resource in APISIX",
+		zap.String("cluster", r.cluster.name),
+		zap.String("url", r.url),
+		zap.String("resource", r.resource),
+	)
+	globalRules, err := r.cluster.cache.ListGlobalRules()
+	if err != nil {
+		log.Errorf("failed to list %s: %s", r.resource, err)
+		return nil, err
+	}
+	return globalRules, nil
+}
+
+func (r *globalRuleMem) Create(ctx context.Context, obj *v1.GlobalRule, shouldCompare bool) (*v1.GlobalRule, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.CreateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertGlobalRule(obj); err != nil {
+		log.Errorf("failed to reflect global_rule create to cache: %s", err)
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (r *globalRuleMem) Delete(ctx context.Context, obj *v1.GlobalRule) error {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	r.cluster.DeleteResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.DeleteGlobalRule(obj); err != nil {
+		log.Errorf("failed to reflect global_rule delete to cache: %s", err)
+		return err
+	}
+	return nil
+}
+
+func (r *globalRuleMem) Update(ctx context.Context, obj *v1.GlobalRule, shouldCompare bool) (*v1.GlobalRule, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.UpdateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertGlobalRule(obj); err != nil {
+		log.Errorf("failed to reflect global_rule update to cache: %s", err)
+		return nil, err
+	}
+	return obj, nil
 }

@@ -162,7 +162,6 @@ spec:
 
 			// restart ingress-controller
 			s.RestartIngressControllerDeploy()
-			time.Sleep(6 * time.Second)
 			assert.Nil(ginkgo.GinkgoT(), err)
 			assert.Len(ginkgo.GinkgoT(), routes, 0)
 
@@ -251,16 +250,11 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route, namespace), "creating second ingress")
 
 			// restart ingress-controller
-			pods, err := s.GetIngressPodDetails()
-			assert.Nil(ginkgo.GinkgoT(), err)
-			assert.Len(ginkgo.GinkgoT(), pods, 1)
-			ginkgo.GinkgoT().Logf("restart apisix-ingress-controller pod %s", pods[0].Name)
-			assert.Nil(ginkgo.GinkgoT(), s.KillPod(pods[0].Name))
-			time.Sleep(6 * time.Second)
+			s.RestartIngressControllerDeploy()
 
 			body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "local.httpbin.org.host.only.734212").Expect().Status(http.StatusOK).Body().Raw()
 			var placeholder ip
-			err = json.Unmarshal([]byte(body), &placeholder)
+			err := json.Unmarshal([]byte(body), &placeholder)
 			assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling IP")
 			assert.NotEqual(ginkgo.GinkgoT(), ip{}, placeholder)
 			body = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "second-httpbin-service-namespace.httpbin.com").Expect().Status(http.StatusOK).Body().Raw()

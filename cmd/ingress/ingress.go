@@ -80,13 +80,6 @@ For Kubernetes cluster version older than v1.19.0, you should always set the --i
       --kubeconfig /path/to/kubeconfig \
       --ingress-version networking/v1beta1
 
-If your Kubernetes cluster version is prior to v1.14+, only ingress.extensions/v1beta1 can be used.
-
-    apisix-ingress-controller ingress \
-      --default-apisix-cluster-base-url http://apisix-service:9180/apisix/admin \
-      --kubeconfig /path/to/kubeconfig \
-      --ingress-version extensions/v1beta1
-
 If you run apisix-ingress-controller outside the Kubernetes cluster, --kubeconfig option (or kubeconfig item in configuration file) should be specified explicitly,
 or if you run it inside cluster, leave it alone and in-cluster configuration will be discovered and used.
 
@@ -198,6 +191,9 @@ For example, no available LB exists in the bare metal environment.`)
 	cmd.PersistentFlags().DurationVar(&cfg.ApisixResourceSyncInterval.Duration, "apisix-resource-sync-interval", 1*time.Hour, "interval of periodic sync in seconds. Default value is 1h. Set to 0 to disable. Min is 60s.")
 	cmd.PersistentFlags().BoolVar(&cfg.ApisixResourceSyncComparison, "apisix-resource-sync-comparison", true, "enable comparison in periodic sync")
 	cmd.PersistentFlags().StringVar(&cfg.PluginMetadataConfigMap, "plugin-metadata-cm", "plugin-metadata-config-map", "ConfigMap name of plugin metadata.")
+	cmd.PersistentFlags().BoolVar(&cfg.EtcdServer.Enabled, "etcd-server-enabled", false, "enable etcd server")
+	cmd.PersistentFlags().StringVar(&cfg.EtcdServer.ListenAddress, "etcd-server-listen-address", ":12379", "etcd server listen address")
+	cmd.PersistentFlags().StringVar(&cfg.EtcdServer.Prefix, "etcd-server-prefix", "/apisix", "etcd server prefix")
 
 	return cmd
 }

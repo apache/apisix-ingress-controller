@@ -33,7 +33,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
@@ -100,8 +99,6 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 
 	var multiVersioned kube.ApisixConsumer
 	switch event.GroupVersion {
-	case config.ApisixV2beta3:
-		multiVersioned, err = c.ApisixConsumerLister.V2beta3(namespace, name)
 	case config.ApisixV2:
 		multiVersioned, err = c.ApisixConsumerLister.V2(namespace, name)
 	default:
@@ -143,31 +140,6 @@ func (c *apisixConsumerController) sync(ctx context.Context, ev *types.Event) er
 
 	var errRecord error
 	switch event.GroupVersion {
-	case config.ApisixV2beta3:
-		ac := multiVersioned.V2beta3()
-
-		consumer, err := c.translator.TranslateApisixConsumerV2beta3(ac)
-		if err != nil {
-			log.Errorw("failed to translate ApisixConsumer",
-				zap.Error(err),
-				zap.Any("ApisixConsumer", ac),
-			)
-			errRecord = err
-			goto updateStatus
-		}
-		log.Debugw("got consumer object from ApisixConsumer",
-			zap.Any("consumer", consumer),
-			zap.Any("ApisixConsumer", ac),
-		)
-
-		if err := c.SyncConsumer(ctx, consumer, ev.Type); err != nil {
-			log.Errorw("failed to sync Consumer to APISIX",
-				zap.Error(err),
-				zap.Any("consumer", consumer),
-			)
-			errRecord = err
-			goto updateStatus
-		}
 	case config.ApisixV2:
 		ac := multiVersioned.V2()
 
@@ -391,7 +363,7 @@ func (c *apisixConsumerController) ResourceSync(interval time.Duration) {
 }
 
 func (c *apisixConsumerController) updateStatus(obj kube.ApisixConsumer, statusErr error) {
-	if obj == nil {
+	if obj == nil || c.Kubernetes.DisableStatusUpdates || !c.Elector.IsLeader() {
 		return
 	}
 	var (
@@ -402,8 +374,6 @@ func (c *apisixConsumerController) updateStatus(obj kube.ApisixConsumer, statusE
 	)
 
 	switch obj.GroupVersion() {
-	case config.ApisixV2beta3:
-		ac, err = c.ApisixConsumerLister.V2beta3(namespace, name)
 	case config.ApisixV2:
 		ac, err = c.ApisixConsumerLister.V2(namespace, name)
 	}
@@ -431,9 +401,6 @@ func (c *apisixConsumerController) updateStatus(obj kube.ApisixConsumer, statusE
 		eventType = corev1.EventTypeWarning
 	}
 	switch obj.GroupVersion() {
-	case config.ApisixV2beta3:
-		c.RecordEvent(obj.V2beta3(), eventType, reason, statusErr)
-		c.recordStatus(obj.V2beta3(), reason, statusErr, condition, ac.GetGeneration())
 	case config.ApisixV2:
 		c.RecordEvent(obj.V2(), eventType, reason, statusErr)
 		c.recordStatus(obj.V2(), reason, statusErr, condition, ac.GetGeneration())
@@ -464,23 +431,6 @@ func (c *apisixConsumerController) recordStatus(at interface{}, reason string, e
 	}
 
 	switch v := at.(type) {
-	case *configv2beta3.ApisixConsumer:
-		// set to status
-		if v.Status.Conditions == nil {
-			conditions := make([]metav1.Condition, 0)
-			v.Status.Conditions = conditions
-		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
-			meta.SetStatusCondition(&v.Status.Conditions, condition)
-			if _, errRecord := apisixClient.ApisixV2beta3().ApisixConsumers(v.Namespace).
-				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-				log.Errorw("failed to record status change for ApisixConsumer",
-					zap.Error(errRecord),
-					zap.String("name", v.Name),
-					zap.String("namespace", v.Namespace),
-				)
-			}
-		}
 	case *configv2.ApisixConsumer:
 		// set to status
 		if v.Status.Conditions == nil {

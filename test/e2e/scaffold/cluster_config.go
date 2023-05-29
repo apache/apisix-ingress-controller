@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 )
 
@@ -50,12 +49,7 @@ spec:
 
 // NewApisixClusterConfig creates an ApisixClusterConfig CRD
 func (s *Scaffold) NewApisixClusterConfig(name string, enable bool, enablePreferName bool) error {
-	var cc string
-	if s.opts.ApisixResourceVersion == config.ApisixV2beta3 {
-		cc = fmt.Sprintf(_apisixClusterConfigV2beta3Template, s.opts.ApisixResourceVersion, name, enable)
-	} else {
-		cc = fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.ApisixResourceVersion, name, enable, enablePreferName)
-	}
+	cc := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.ApisixResourceVersion, name, enable, enablePreferName)
 	if err := s.CreateResourceFromString(cc); err != nil {
 		return err
 	}
@@ -68,12 +62,7 @@ func (s *Scaffold) NewApisixClusterConfig(name string, enable bool, enablePrefer
 
 // DeleteApisixClusterConfig removes an ApisixClusterConfig CRD
 func (s *Scaffold) DeleteApisixClusterConfig(name string, enable bool, enablePreferName bool) error {
-	var cc string
-	if s.opts.ApisixResourceVersion == config.ApisixV2beta3 {
-		cc = fmt.Sprintf(_apisixClusterConfigV2beta3Template, s.opts.ApisixResourceVersion, name, enable)
-	} else {
-		cc = fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.ApisixResourceVersion, name, enable, enablePreferName)
-	}
+	cc := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.ApisixResourceVersion, name, enable, enablePreferName)
 	if err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, cc); err != nil {
 		return err
 	}

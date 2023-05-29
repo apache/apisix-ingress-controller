@@ -33,7 +33,7 @@ var _ = ginkgo.Describe("suite-features: service subset", func() {
 			assert.Nil(ginkgo.GinkgoT(), s.WaitAllHTTPBINPodsAvailable(), "waiting for all httpbin pods ready")
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -67,7 +67,7 @@ spec:
 		ginkgo.It("subset with bad labels", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -82,7 +82,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 			time.Sleep(1 * time.Second)
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -119,7 +119,7 @@ spec:
 
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -133,7 +133,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 			time.Sleep(1 * time.Second)
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -166,9 +166,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})

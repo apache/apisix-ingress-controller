@@ -31,7 +31,7 @@ var _ = ginkgo.Describe("suite-plugins-authentication: ApisixConsumer with hmacA
 
 		ginkgo.It("ApisixRoute with hmacAuth consumer", func() {
 			ac := `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
   name: hmacvalue
@@ -42,7 +42,6 @@ spec:
         access_key: papa
         secret_key: fatpa
         algorithm: "hmac-sha256"
-        clock_skew: 0
 `
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "creating hmacAuth ApisixConsumer")
 
@@ -57,11 +56,10 @@ spec:
 			assert.Equal(ginkgo.GinkgoT(), "papa", hmacAuth["access_key"])
 			assert.Equal(ginkgo.GinkgoT(), "fatpa", hmacAuth["secret_key"])
 			assert.Equal(ginkgo.GinkgoT(), "hmac-sha256", hmacAuth["algorithm"])
-			assert.Equal(ginkgo.GinkgoT(), float64(0), hmacAuth["clock_skew"])
 
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -135,12 +133,11 @@ data:
   access_key: cGFwYQ==
   secret_key: ZmF0cGE=
   algorithm: aG1hYy1zaGEyNTY=
-  clock_skew: MA==
 `
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating hmac secret for ApisixConsumer")
 
 			ac := `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
   name: hmacvalue
@@ -163,11 +160,10 @@ spec:
 			assert.Equal(ginkgo.GinkgoT(), "papa", hmacAuth["access_key"])
 			assert.Equal(ginkgo.GinkgoT(), "fatpa", hmacAuth["secret_key"])
 			assert.Equal(ginkgo.GinkgoT(), "hmac-sha256", hmacAuth["algorithm"])
-			assert.Equal(ginkgo.GinkgoT(), float64(0), hmacAuth["clock_skew"])
 
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -232,9 +228,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-plugins-authentication: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-plugins-authentication: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})

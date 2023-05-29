@@ -33,7 +33,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
@@ -101,8 +100,6 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 		tctx *translation.TranslateContext
 	)
 	switch obj.GroupVersion {
-	case config.ApisixV2beta3:
-		apc, err = c.ApisixPluginConfigLister.V2beta3(namespace, name)
 	case config.ApisixV2:
 		apc, err = c.ApisixPluginConfigLister.V2(namespace, name)
 	default:
@@ -146,20 +143,6 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 	var errRecord error
 	{
 		switch obj.GroupVersion {
-		case config.ApisixV2beta3:
-			if ev.Type != types.EventDelete {
-				tctx, err = c.translator.TranslatePluginConfigV2beta3(apc.V2beta3())
-			} else {
-				tctx, err = c.translator.GeneratePluginConfigV2beta3DeleteMark(apc.V2beta3())
-			}
-			if err != nil {
-				log.Errorw("failed to translate ApisixPluginConfig v2beta3",
-					zap.Error(err),
-					zap.Any("object", apc),
-				)
-				errRecord = err
-				goto updatestatus
-			}
 		case config.ApisixV2:
 			if ev.Type != types.EventDelete {
 				tctx, err = c.translator.TranslatePluginConfigV2(apc.V2())
@@ -199,8 +182,6 @@ func (c *apisixPluginConfigController) sync(ctx context.Context, ev *types.Event
 		} else {
 			var oldCtx *translation.TranslateContext
 			switch obj.GroupVersion {
-			case config.ApisixV2beta3:
-				oldCtx, err = c.translator.TranslatePluginConfigV2beta3(obj.OldObject.V2beta3())
 			case config.ApisixV2:
 				oldCtx, err = c.translator.TranslatePluginConfigV2(obj.OldObject.V2())
 			}
@@ -241,7 +222,7 @@ updatestatus:
 }
 
 func (c *apisixPluginConfigController) updateStatus(obj kube.ApisixPluginConfig, statusErr error) {
-	if obj == nil {
+	if obj == nil || c.Kubernetes.DisableStatusUpdates || !c.Elector.IsLeader() {
 		return
 	}
 	var (
@@ -252,8 +233,6 @@ func (c *apisixPluginConfigController) updateStatus(obj kube.ApisixPluginConfig,
 	)
 
 	switch obj.GroupVersion() {
-	case config.ApisixV2beta3:
-		apc, err = c.ApisixPluginConfigLister.V2beta3(namespace, name)
 	case config.ApisixV2:
 		apc, err = c.ApisixPluginConfigLister.V2(namespace, name)
 	}
@@ -279,9 +258,6 @@ func (c *apisixPluginConfigController) updateStatus(obj kube.ApisixPluginConfig,
 		condition = metav1.ConditionFalse
 	}
 	switch obj.GroupVersion() {
-	case config.ApisixV2beta3:
-		c.RecordEvent(apc.V2beta3(), v1.EventTypeNormal, reason, statusErr)
-		c.recordStatus(apc.V2beta3(), reason, statusErr, condition, apc.GetGeneration())
 	case config.ApisixV2:
 		c.RecordEvent(apc.V2(), v1.EventTypeNormal, reason, statusErr)
 		c.recordStatus(apc.V2(), reason, statusErr, condition, apc.GetGeneration())
@@ -475,23 +451,6 @@ func (c *apisixPluginConfigController) recordStatus(at interface{}, reason strin
 	}
 
 	switch v := at.(type) {
-	case *configv2beta3.ApisixPluginConfig:
-		// set to status
-		if v.Status.Conditions == nil {
-			conditions := make([]metav1.Condition, 0)
-			v.Status.Conditions = conditions
-		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
-			meta.SetStatusCondition(&v.Status.Conditions, condition)
-			if _, errRecord := apisixClient.ApisixV2beta3().ApisixPluginConfigs(v.Namespace).
-				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-				log.Errorw("failed to record status change for ApisixPluginConfig",
-					zap.Error(errRecord),
-					zap.String("name", v.Name),
-					zap.String("namespace", v.Namespace),
-				)
-			}
-		}
 	case *configv2.ApisixPluginConfig:
 		// set to status
 		if v.Status.Conditions == nil {

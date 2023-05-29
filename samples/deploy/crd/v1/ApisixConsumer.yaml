@@ -121,10 +121,16 @@ spec:
                               type: string
                             algorithm:
                               type: string
+                              default: HS256
                             exp:
                               type: integer
+                              default: 86400
                             base64_secret:
                               type: boolean
+                              default: false
+                            lifetime_grace_period:
+                              type: integer
+                              default: 0
                           required:
                             - key
                         secretRef:
@@ -306,14 +312,18 @@ spec:
                               type: string
                             public_key:
                               type: string
-                            private_key:
-                              type: string
                             algorithm:
                               type: string
+                              default: HS256
                             exp:
                               type: integer
+                              default: 86400
                             base64_secret:
                               type: boolean
+                              default: false
+                            lifetime_grace_period:
+                              type: integer
+                              default: 0
                           required:
                             - key
                         secretRef:

@@ -33,7 +33,7 @@ This document walks through how you can set up your development environment to c
 
 Before you get started make sure you have:
 
-1. Installed [Go 1.19](https://golang.org/dl/) or later
+1. Installed [Go 1.20](https://golang.org/dl/) or later
 2. A Kubernetes cluster available. We recommend using [kind](https://kind.sigs.k8s.io/).
 3. Installed APISIX in Kubernetes using [Helm](https://github.com/apache/apisix-helm-chart).
 

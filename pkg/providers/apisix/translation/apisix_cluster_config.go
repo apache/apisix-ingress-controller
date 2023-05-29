@@ -17,7 +17,6 @@ package translation
 import (
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -27,26 +26,6 @@ type prometheusPluginConfig struct {
 
 type skywalkingPluginConfig struct {
 	SampleRatio float64 `json:"sample_ratio,omitempty"`
-}
-
-func (t *translator) TranslateClusterConfigV2beta3(acc *configv2beta3.ApisixClusterConfig) (*apisixv1.GlobalRule, error) {
-	globalRule := &apisixv1.GlobalRule{
-		ID:      id.GenID(acc.Name),
-		Plugins: make(apisixv1.Plugins),
-	}
-
-	if acc.Spec.Monitoring != nil {
-		if acc.Spec.Monitoring.Prometheus.Enable {
-			globalRule.Plugins["prometheus"] = &prometheusPluginConfig{}
-		}
-		if acc.Spec.Monitoring.Skywalking.Enable {
-			globalRule.Plugins["skywalking"] = &skywalkingPluginConfig{
-				SampleRatio: acc.Spec.Monitoring.Skywalking.SampleRatio,
-			}
-		}
-	}
-
-	return globalRule, nil
 }
 
 func (t *translator) TranslateClusterConfigV2(acc *configv2.ApisixClusterConfig) (*apisixv1.GlobalRule, error) {

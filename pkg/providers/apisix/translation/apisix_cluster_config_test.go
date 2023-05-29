@@ -22,36 +22,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 )
-
-func TestTranslateClusterConfig(t *testing.T) {
-	tr := &translator{}
-
-	acc := &configv2beta3.ApisixClusterConfig{
-		TypeMeta: metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "qa-apisix",
-		},
-		Spec: configv2beta3.ApisixClusterConfigSpec{
-			Monitoring: &configv2beta3.ApisixClusterMonitoringConfig{
-				Prometheus: configv2beta3.ApisixClusterPrometheusConfig{
-					Enable: true,
-				},
-				Skywalking: configv2beta3.ApisixClusterSkywalkingConfig{
-					Enable:      true,
-					SampleRatio: 0.5,
-				},
-			},
-		},
-	}
-	gr, err := tr.TranslateClusterConfigV2beta3(acc)
-	assert.Nil(t, err, "translating ApisixClusterConfig")
-	assert.Equal(t, gr.ID, id.GenID("qa-apisix"), "checking global_rule id")
-	assert.Len(t, gr.Plugins, 2)
-	assert.Equal(t, gr.Plugins["prometheus"], &prometheusPluginConfig{})
-	assert.Equal(t, gr.Plugins["skywalking"], &skywalkingPluginConfig{SampleRatio: 0.5})
-}
 
 func TestTranslateClusterConfigV2(t *testing.T) {
 	tr := &translator{}

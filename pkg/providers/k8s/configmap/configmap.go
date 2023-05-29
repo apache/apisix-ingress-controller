@@ -171,6 +171,12 @@ func (c *configmapController) sync(ctx context.Context, ev *types.Event) error {
 				added, updated, deleted = m.Diff(om)
 			}
 		}
+		log.Debugw("sync ApisixGlobalRule to cluster",
+			zap.String("event_type", ev.Type.String()),
+			zap.Any("add", added),
+			zap.Any("update", updated),
+			zap.Any("delete", deleted),
+		)
 		if err := c.SyncClusterManifests(ctx, clusterName, added, updated, deleted, false); err != nil {
 			log.Errorw("sync cluster failed", zap.Error(err))
 			return err
@@ -186,6 +192,10 @@ func (c *configmapController) sync(ctx context.Context, ev *types.Event) error {
 				deleted := &utils.Manifest{
 					PluginMetadatas: pluginMetadatas,
 				}
+				log.Debugw("sync configmap to cluster",
+					zap.String("event_type", ev.Type.String()),
+					zap.Any("delete", deleted),
+				)
 				if err := c.SyncClusterManifests(ctx, clusterName, nil, nil, deleted, false); err != nil {
 					log.Errorw("sync cluster failed", zap.Error(err))
 				}
@@ -225,6 +235,10 @@ func (c *configmapController) onAdd(obj interface{}) {
 	if !c.IsSubscribing(key) {
 		return
 	}
+	log.Debugw("configmap add event arrived",
+		zap.String("key", key),
+		zap.Any("object", obj),
+	)
 	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,
 		Object: key,
@@ -245,6 +259,10 @@ func (c *configmapController) onUpdate(pre, cur interface{}) {
 	if !c.IsSubscribing(key) {
 		return
 	}
+	log.Debugw("configmap update event arrived",
+		zap.String("key", key),
+		zap.Any("object", new),
+	)
 	c.workqueue.Add(&types.Event{
 		Type:      types.EventUpdate,
 		Object:    key,
@@ -261,6 +279,10 @@ func (c *configmapController) onDelete(obj interface{}) {
 	if !c.IsSubscribing(key) {
 		return
 	}
+	log.Debugw("configmap delete event arrived",
+		zap.String("key", key),
+		zap.Any("object", obj),
+	)
 	c.workqueue.Add(&types.Event{
 		Type:      types.EventDelete,
 		Object:    key,

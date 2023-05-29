@@ -34,7 +34,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
@@ -109,8 +108,6 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 
 	var multiVersionedTls kube.ApisixTls
 	switch event.GroupVersion {
-	case config.ApisixV2beta3:
-		multiVersionedTls, err = c.ApisixTlsLister.V2beta3(namespace, name)
 	case config.ApisixV2:
 		multiVersionedTls, err = c.ApisixTlsLister.V2(namespace, name)
 	default:
@@ -152,39 +149,6 @@ func (c *apisixTlsController) sync(ctx context.Context, ev *types.Event) error {
 
 	var errRecord error
 	switch event.GroupVersion {
-	case config.ApisixV2beta3:
-		tls := multiVersionedTls.V2beta3()
-		secretKey := tls.Spec.Secret.Namespace + "/" + tls.Spec.Secret.Name
-		c.storeSecretCache(secretKey, apisixTlsKey, ev.Type)
-		if tls.Spec.Client != nil {
-			caSecretKey := tls.Spec.Client.CASecret.Namespace + "/" + tls.Spec.Client.CASecret.Name
-			if caSecretKey != secretKey {
-				c.storeSecretCache(caSecretKey, apisixTlsKey, ev.Type)
-			}
-		}
-
-		ssl, err := c.translator.TranslateSSLV2Beta3(tls)
-		if err != nil {
-			log.Errorw("failed to translate ApisixTls",
-				zap.Error(err),
-				zap.Any("ApisixTls", tls),
-			)
-			errRecord = err
-			goto updateStatus
-		}
-		log.Debugw("got SSL object from ApisixTls",
-			zap.Any("ssl", ssl),
-			zap.Any("ApisixTls", tls),
-		)
-
-		if err := c.SyncSSL(ctx, ssl, ev.Type); err != nil {
-			log.Errorw("failed to sync SSL to APISIX",
-				zap.Error(err),
-				zap.Any("ssl", ssl),
-			)
-			errRecord = err
-			goto updateStatus
-		}
 	case config.ApisixV2:
 		tls := multiVersionedTls.V2()
 		secretKey := tls.Spec.Secret.Namespace + "/" + tls.Spec.Secret.Name
@@ -231,7 +195,7 @@ updateStatus:
 }
 
 func (c *apisixTlsController) updateStatus(obj kube.ApisixTls, statusErr error) {
-	if obj == nil {
+	if obj == nil || c.Kubernetes.DisableStatusUpdates || !c.Elector.IsLeader() {
 		return
 	}
 	var (
@@ -242,8 +206,6 @@ func (c *apisixTlsController) updateStatus(obj kube.ApisixTls, statusErr error) 
 	)
 
 	switch obj.GroupVersion() {
-	case config.ApisixV2beta3:
-		at, err = c.ApisixTlsLister.V2beta3(namespace, name)
 	case config.ApisixV2:
 		at, err = c.ApisixTlsLister.V2(namespace, name)
 	}
@@ -271,9 +233,6 @@ func (c *apisixTlsController) updateStatus(obj kube.ApisixTls, statusErr error) 
 		eventType = corev1.EventTypeWarning
 	}
 	switch obj.GroupVersion() {
-	case config.ApisixV2beta3:
-		c.RecordEvent(obj.V2beta3(), eventType, reason, statusErr)
-		c.recordStatus(obj.V2beta3(), reason, statusErr, condition, at.GetGeneration())
 	case config.ApisixV2:
 		c.RecordEvent(obj.V2(), eventType, reason, statusErr)
 		c.recordStatus(obj.V2(), reason, statusErr, condition, at.GetGeneration())
@@ -505,23 +464,6 @@ func (c *apisixTlsController) recordStatus(at interface{}, reason string, err er
 	}
 
 	switch v := at.(type) {
-	case *configv2beta3.ApisixTls:
-		// set to status
-		if v.Status.Conditions == nil {
-			conditions := make([]metav1.Condition, 0)
-			v.Status.Conditions = conditions
-		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
-			meta.SetStatusCondition(&v.Status.Conditions, condition)
-			if _, errRecord := apisixClient.ApisixV2beta3().ApisixTlses(v.Namespace).
-				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-				log.Errorw("failed to record status change for ApisixTls",
-					zap.Error(errRecord),
-					zap.String("name", v.Name),
-					zap.String("namespace", v.Namespace),
-				)
-			}
-		}
 	case *configv2.ApisixTls:
 		// set to status
 		if v.Status.Conditions == nil {
@@ -561,18 +503,6 @@ func (c *apisixTlsController) SyncSecretChange(ctx context.Context, ev *types.Ev
 
 	log.Debugw("ApisixTls: sync secret change", zap.String("key", secretKey))
 	switch c.Config.Kubernetes.APIVersion {
-	case config.ApisixV2beta3:
-		refMap.Range(func(k, v interface{}) bool {
-			tlsMetaKey := k.(string)
-			c.workqueue.Add(&types.Event{
-				Type: types.EventSync,
-				Object: kube.ApisixTlsEvent{
-					Key:          tlsMetaKey,
-					GroupVersion: config.ApisixV2beta3,
-				},
-			})
-			return true
-		})
 	case config.ApisixV2:
 		refMap.Range(func(k, v interface{}) bool {
 			tlsMetaKey := k.(string)

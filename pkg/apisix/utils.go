@@ -18,7 +18,11 @@
 package apisix
 
 import (
+	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"reflect"
@@ -240,4 +244,77 @@ func skipRequest[T ResourceTypes](cluster *cluster, shouldCompare bool, url, id 
 	}
 
 	return nil, false
+}
+
+func CompareResourceEqualFromCluster[T ResourceTypes](cluster *cluster, id string, Resource T) bool {
+	var old any
+	switch (interface{})(Resource).(type) {
+	case *v1.Route:
+		old, _ = cluster.cache.GetRoute(id)
+	case *v1.Ssl:
+		old, _ = cluster.cache.GetSSL(id)
+	case *v1.Upstream:
+		old, _ = cluster.cache.GetUpstream(id)
+	case *v1.StreamRoute:
+		old, _ = cluster.cache.GetStreamRoute(id)
+	case *v1.GlobalRule:
+		old, _ = cluster.cache.GetGlobalRule(id)
+	case *v1.Consumer:
+		old, _ = cluster.cache.GetConsumer(id)
+	case *v1.PluginConfig:
+		old, _ = cluster.cache.GetPluginConfig(id)
+	}
+	if old == nil {
+		return false
+	}
+	return reflect.DeepEqual(old, Resource)
+}
+
+func PKCS5Padding(plaintext []byte, blockSize int) []byte {
+	padding := blockSize - len(plaintext)%blockSize
+	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(plaintext, padtext...)
+}
+
+func PKCS5UnPadding(origData []byte) []byte {
+	length := len(origData)
+	unpadding := int(origData[length-1])
+	return origData[:(length - unpadding)]
+}
+
+func AesEncrypt(origData, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	blockSize := block.BlockSize()
+	origData = PKCS5Padding(origData, blockSize)
+	blockMode := cipher.NewCBCEncrypter(block, key[:blockSize])
+	crypted := make([]byte, len(origData))
+	blockMode.CryptBlocks(crypted, origData)
+	return crypted, nil
+}
+
+func AesDecrypt(crypted, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	blockSize := block.BlockSize()
+	blockMode := cipher.NewCBCDecrypter(block, key[:blockSize])
+	origData := make([]byte, len(crypted))
+	blockMode.CryptBlocks(origData, crypted)
+	origData = PKCS5UnPadding(origData)
+	return origData, nil
+}
+
+func AesEencryptPrivatekey(data []byte, aeskey []byte) (string, error) {
+	xcode, err := AesEncrypt(data, aeskey)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(xcode), nil
 }

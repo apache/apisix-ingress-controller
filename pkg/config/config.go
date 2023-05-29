@@ -47,8 +47,6 @@ const (
 	// WARNING: ingress.extensions/v1beta1 is deprecated in v1.14+, and will be unavilable
 	// in v1.22.
 	IngressExtensionsV1beta1 = "extensions/v1beta1"
-	// ApisixV2beta3 represents apisix.apache.org/v2beta3
-	ApisixV2beta3 = "apisix.apache.org/v2beta3"
 	// ApisixV2 represents apisix.apache.org/v2
 	ApisixV2 = "apisix.apache.org/v2"
 	// DefaultAPIVersion refers to the default resource version
@@ -62,11 +60,15 @@ const (
 
 	// Process Ingress resources with ingressClass=apisix and all CRDs
 	IngressClassApisixAndAll = "apisix-and-all"
+
+	// Deployment mode
+	DeploymentMode_AdminAPI = "admin-api"
+	DeploymentMode_gRPC     = "grpc"
 )
 
 var (
 	// Description information of API version, including default values and supported API version.
-	APIVersionDescribe = fmt.Sprintf(`the default value of API version is "%s", support "%s" and "%s".`, DefaultAPIVersion, ApisixV2beta3, ApisixV2)
+	APIVersionDescribe = fmt.Sprintf(`the default value of API version is "%s", support "%s".`, DefaultAPIVersion, ApisixV2)
 )
 
 // Config contains all config items which are necessary for
@@ -90,6 +92,14 @@ type Config struct {
 	ApisixResourceSyncInterval   types.TimeDuration `json:"apisix_resource_sync_interval" yaml:"apisix_resource_sync_interval"`
 	ApisixResourceSyncComparison bool               `json:"apisix_resource_sync_comparison" yaml:"apisix_resource_sync_comparison"`
 	PluginMetadataConfigMap      string             `json:"plugin_metadata_cm" yaml:"plugin_metadata_cm"`
+	EtcdServer                   EtcdServerConfig   `json:"etcdserver" yaml:"etcdserver"`
+}
+
+type EtcdServerConfig struct {
+	Enabled           bool   `json:"enabled" yaml:"enabled"`
+	Prefix            string `json:"prefix" yaml:"prefix"`
+	ListenAddress     string `json:"listen_address" yaml:"listen_address"`
+	SSLKeyEncryptSalt string `json:"ssl_key_encrypt_salt" yaml:"ssl_key_encrypt_salt"`
 }
 
 // KubernetesConfig contains all Kubernetes related config items.
@@ -155,6 +165,12 @@ func NewDefaultConfig() *Config {
 			AdminAPIVersion:    "v2",
 			DefaultClusterName: "default",
 		},
+		EtcdServer: EtcdServerConfig{
+			Enabled:           false,
+			Prefix:            "/apisix",
+			ListenAddress:     ":12379",
+			SSLKeyEncryptSalt: "edd1c9f0985e76a2",
+		},
 	}
 }
 
@@ -209,7 +225,7 @@ func (cfg *Config) Validate() error {
 		return errors.New("apisix base url is required")
 	}
 	switch cfg.Kubernetes.IngressVersion {
-	case IngressNetworkingV1, IngressNetworkingV1beta1, IngressExtensionsV1beta1:
+	case IngressNetworkingV1, IngressNetworkingV1beta1:
 		break
 	default:
 		return errors.New("unsupported ingress version")

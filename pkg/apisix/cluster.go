@@ -29,6 +29,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	adapter "github.com/api7/etcd-adapter/pkg/adapter"
+	api7log "github.com/api7/gopkg/pkg/log"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -57,6 +59,9 @@ var (
 	// ErrFunctionDisabled means the APISIX function is disabled
 	ErrFunctionDisabled = errors.New("function disabled")
 
+	// ErrRouteNotFound means the [route, ssl, upstream] was not found.
+	ErrNotFound = cache.ErrNotFound
+
 	_errReadOnClosedResBody = errors.New("http: read on closed response body")
 
 	// Default shared transport for apisix client
@@ -81,9 +86,15 @@ type ClusterOptions struct {
 	BaseURL         string
 	Timeout         time.Duration
 	// SyncInterval is the interval to sync schema.
-	SyncInterval     types.TimeDuration
-	SyncComparison   bool
-	MetricsCollector metrics.Collector
+	SyncInterval      types.TimeDuration
+	SyncComparison    bool
+	MetricsCollector  metrics.Collector
+	EnableEtcdServer  bool
+	Prefix            string
+	ListenAddress     string
+	SchemaSynced      bool
+	CacheSynced       bool
+	SSLKeyEncryptSalt string
 }
 
 type cluster struct {
@@ -92,6 +103,7 @@ type cluster struct {
 	baseURL                 string
 	baseURLHost             string
 	adminKey                string
+	prefix                  string
 	cli                     *http.Client
 	cacheState              int32
 	cache                   cache.Cache
@@ -111,6 +123,10 @@ type cluster struct {
 	metricsCollector        metrics.Collector
 	upstreamServiceRelation UpstreamServiceRelation
 	pluginMetadata          PluginMetadata
+	adapter                 adapter.Adapter
+	waitforCacheSync        bool
+	validator               APISIXSchemaValidator
+	sslKeyEncryptSalt       string
 }
 
 func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
@@ -141,43 +157,89 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 		baseURL:      o.BaseURL,
 		baseURLHost:  u.Host,
 		adminKey:     o.AdminKey,
+		prefix:       o.Prefix,
 		cli: &http.Client{
 			Timeout:   o.Timeout,
 			Transport: _defaultTransport,
 		},
-		cacheState:       _cacheSyncing, // default state
-		cacheSynced:      make(chan struct{}),
-		syncComparison:   o.SyncComparison,
-		metricsCollector: o.MetricsCollector,
-	}
-	c.route = newRouteClient(c)
-	c.upstream = newUpstreamClient(c)
-	c.ssl = newSSLClient(c)
-	c.streamRoute = newStreamRouteClient(c)
-	c.globalRules = newGlobalRuleClient(c)
-	c.consumer = newConsumerClient(c)
-	c.plugin = newPluginClient(c)
-	c.schema = newSchemaClient(c)
-	c.pluginConfig = newPluginConfigClient(c)
-	c.upstreamServiceRelation = newUpstreamServiceRelation(c)
-	c.pluginMetadata = newPluginMetadataClient(c)
-
-	c.cache, err = cache.NewMemDBCache()
-	if err != nil {
-		return nil, err
+		cacheState:        _cacheSyncing, // default state
+		cacheSynced:       make(chan struct{}),
+		syncComparison:    o.SyncComparison,
+		metricsCollector:  o.MetricsCollector,
+		sslKeyEncryptSalt: o.SSLKeyEncryptSalt,
 	}
 
-	if o.SyncComparison {
-		c.generatedObjCache, err = cache.NewMemDBCache()
+	if o.EnableEtcdServer {
+		api7log.DefaultLogger, _ = api7log.NewLogger(
+			api7log.WithSkipFrames(3),
+			api7log.WithLogLevel("info"),
+		)
+		c.adapter = adapter.NewEtcdAdapter(nil)
+		c.route = newRouteMem(c)
+		c.upstream = newUpstreamMem(c)
+		c.ssl = newSSLMem(c)
+		c.streamRoute = newStreamRouteMem(c)
+		c.globalRules = newGlobalRuleMem(c)
+		c.consumer = newConsumerMem(c)
+		c.plugin = newPluginClient(c)
+		c.schema = newSchemaClient(c)
+		c.pluginConfig = newPluginConfigMem(c)
+		c.upstreamServiceRelation = newUpstreamServiceRelation(c)
+		c.pluginMetadata = newPluginMetadataMem(c)
+
+		c.validator, err = NewReferenceFile("conf/apisix-schema.json")
+		if err != nil {
+			return nil, err
+		}
+
+		c.generatedObjCache, _ = cache.NewNoopDBCache()
+		c.cache, err = cache.NewMemDBCache()
+		if err != nil {
+			return nil, err
+		}
+
+		fmt.Println("start etcd server")
+		ln, err := net.Listen("tcp", o.ListenAddress)
+		if err != nil {
+			return nil, err
+		}
+		go c.adapter.Serve(ctx, ln)
 	} else {
-		c.generatedObjCache, err = cache.NewNoopDBCache()
-	}
-	if err != nil {
-		return nil, err
-	}
+		c.route = newRouteClient(c)
+		c.upstream = newUpstreamClient(c)
+		c.ssl = newSSLClient(c)
+		c.streamRoute = newStreamRouteClient(c)
+		c.globalRules = newGlobalRuleClient(c)
+		c.consumer = newConsumerClient(c)
+		c.plugin = newPluginClient(c)
+		c.schema = newSchemaClient(c)
+		c.pluginConfig = newPluginConfigClient(c)
+		c.upstreamServiceRelation = newUpstreamServiceRelation(c)
+		c.pluginMetadata = newPluginMetadataClient(c)
+		c.validator = newDummyValidator()
 
-	go c.syncCache(ctx)
-	go c.syncSchema(ctx, o.SyncInterval.Duration)
+		c.cache, err = cache.NewMemDBCache()
+		if err != nil {
+			return nil, err
+		}
+
+		if o.SyncComparison {
+			c.generatedObjCache, err = cache.NewMemDBCache()
+		} else {
+			c.generatedObjCache, err = cache.NewNoopDBCache()
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		if o.CacheSynced {
+			c.waitforCacheSync = true
+			go c.syncCache(ctx)
+		}
+		if o.SchemaSynced {
+			go c.syncSchema(ctx, o.SyncInterval.Duration)
+		}
+	}
 
 	return c, nil
 }
@@ -346,6 +408,9 @@ func (c *cluster) String() string {
 
 // HasSynced implements Cluster.HasSynced method.
 func (c *cluster) HasSynced(ctx context.Context) error {
+	if !c.waitforCacheSync {
+		return nil
+	}
 	if c.cacheSyncErr != nil {
 		return c.cacheSyncErr
 	}
@@ -504,7 +569,23 @@ func (c *cluster) UpstreamServiceRelation() UpstreamServiceRelation {
 	return c.upstreamServiceRelation
 }
 
+func (c *cluster) Validator() APISIXSchemaValidator {
+	return c.validator
+}
+
 // HealthCheck implements Cluster.HealthCheck method.
+//
+// It checks the health of an APISIX cluster by performing a TCP socket probe
+// against the baseURLHost. It will retry up to 3 times with exponential backoff
+// before returning an error.
+//
+// Parameters:
+//
+//	ctx: The context for the health check.
+//
+// Returns:
+//
+//	err: Any error encountered while performing the health check.
 func (c *cluster) HealthCheck(ctx context.Context) (err error) {
 	// Retry three times in a row, and exit if all of them fail.
 	backoff := wait.Backoff{
@@ -513,7 +594,7 @@ func (c *cluster) HealthCheck(ctx context.Context) (err error) {
 		Steps:    3,
 	}
 
-	err = wait.ExponentialBackoffWithContext(ctx, backoff, func() (done bool, _ error) {
+	err = wait.ExponentialBackoffWithContext(ctx, backoff, func(ctx context.Context) (done bool, _ error) {
 		if lastCheckErr := c.healthCheck(ctx); lastCheckErr != nil {
 			log.Warnf("failed to check health for cluster %s: %s, will retry", c.name, lastCheckErr)
 			return
@@ -1138,4 +1219,37 @@ func (c *cluster) GetSSL(ctx context.Context, baseUrl, id string) (*v1.Ssl, erro
 		return nil, err
 	}
 	return ssl, nil
+}
+
+func (c *cluster) pushEvent(eventType string, key string, value []byte) {
+	log.Debugw("push event to adapter", zap.String("event", eventType), zap.String("key", key), zap.ByteString("value", value))
+	var et types.EventType
+	switch eventType {
+	case "create":
+		et = types.EventAdd
+	case "update":
+		et = types.EventUpdate
+	case "delete":
+		et = types.EventDelete
+	}
+	events := []*adapter.Event{
+		{
+			Type:  adapter.EventType(et),
+			Key:   key,
+			Value: value,
+		},
+	}
+	c.adapter.EventCh() <- events
+}
+
+func (c *cluster) CreateResource(resource string, id string, value []byte) {
+	c.pushEvent("create", c.prefix+"/"+resource+"/"+id, value)
+}
+
+func (c *cluster) UpdateResource(resource string, id string, value []byte) {
+	c.pushEvent("update", c.prefix+"/"+resource+"/"+id, value)
+}
+
+func (c *cluster) DeleteResource(resource string, id string, value []byte) {
+	c.pushEvent("delete", c.prefix+"/"+resource+"/"+id, []byte{})
 }

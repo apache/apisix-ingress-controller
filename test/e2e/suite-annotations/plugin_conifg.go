@@ -28,7 +28,7 @@ import (
 
 func _createAPC(s *scaffold.Scaffold) {
 	apc := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
   name: echo-and-cors-apc
@@ -117,35 +117,6 @@ apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: ingress-v1beta1
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/plugin-config-name: echo-and-cors-apc
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /ip
-        pathType: Exact
-        backend:
-          serviceName: %s
-          servicePort: %d
-`, backendSvc, backendPorts[0])
-		_assert(s, ing)
-	})
-})
-
-var _ = ginkgo.Describe("suite-annotations: annotations.extensions/v1beta1 with ApisixPluginConfig", func() {
-	s := scaffold.NewDefaultScaffold()
-	ginkgo.It("extensions/v1beta1", func() {
-		_createAPC(s)
-
-		backendSvc, backendPorts := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: ingress-ext-v1beta1
   annotations:
     kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/plugin-config-name: echo-and-cors-apc

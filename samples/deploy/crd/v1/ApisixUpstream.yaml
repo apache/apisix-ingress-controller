@@ -516,6 +516,15 @@ spec:
                       type: string
                     send:
                       type: string
+                passHost:
+                  type: string
+                  enum:
+                    - pass
+                    - node
+                    - rewrite
+                upstreamHost:
+                  type: string
+                  pattern: "^\\*?[0-9a-zA-Z-._]+$"
                 tlsSecret:
                   description: ApisixSecret describes the Kubernetes Secret name and
                     namespace.

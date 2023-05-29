@@ -31,7 +31,7 @@ var _ = ginkgo.Describe("suite-ingress-features: secret controller", func() {
 		ginkgo.It("should update SSL if secret referenced by ApisixTls is created later", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -163,7 +163,7 @@ jW4KB95bGOTa7r7DM1Up0MbAIwWoeLBGhOIXk7inurZGg+FNjZMA5Lzm6qo=
 		ginkgo.It("should update SSL if secret referenced by ApisixTls is updated", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -396,7 +396,7 @@ UnBVSIGJ/c0AhVSDuOAJiF36pvsDysTZXMTFE/9i5bkGOiwtzRNe4Hym/SEZUCpn
 		ginkgo.It("should be able to handle a kube style SSL secret", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -1280,9 +1280,6 @@ UnBVSIGJ/c0AhVSDuOAJiF36pvsDysTZXMTFE/9i5bkGOiwtzRNe4Hym/SEZUCpn
 		})
 	}
 
-	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
-		apisixTlsSuites(scaffold.NewDefaultV2beta3Scaffold())
-	})
 	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
 		s := scaffold.NewDefaultV2Scaffold()
 		apisixTlsSuites(s)

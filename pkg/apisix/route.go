@@ -220,3 +220,101 @@ func (r *routeClient) Update(ctx context.Context, obj *v1.Route, shouldCompare b
 	}
 	return route, nil
 }
+
+type routeMem struct {
+	url string
+
+	resource string
+	cluster  *cluster
+}
+
+func newRouteMem(c *cluster) Route {
+	return &routeMem{
+		url:      c.baseURL + "/routes",
+		resource: "routes",
+		cluster:  c,
+	}
+}
+
+func (r *routeMem) Get(ctx context.Context, name string) (*v1.Route, error) {
+	log.Debugw("try to look up route",
+		zap.String("name", name),
+		zap.String("cluster", r.cluster.name),
+	)
+	rid := id.GenID(name)
+	route, err := r.cluster.cache.GetRoute(rid)
+	if err != nil {
+		log.Errorw("failed to find route in cache",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+	return route, nil
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
+func (r *routeMem) List(ctx context.Context) ([]*v1.Route, error) {
+	log.Debugw("try to list resource in APISIX",
+		zap.String("cluster", r.cluster.name),
+		zap.String("resource", r.resource),
+	)
+	routes, err := r.cluster.cache.ListRoutes()
+	if err != nil {
+		log.Errorf("failed to list %s: %s", r.resource, err)
+		return nil, err
+	}
+	return routes, nil
+}
+
+func (r *routeMem) Create(ctx context.Context, obj *v1.Route, shouldCompare bool) (*v1.Route, error) {
+	if ok, err := r.cluster.validator.ValidateHTTPPluginSchema(obj.Plugins); !ok {
+		return nil, err
+	}
+	if shouldCompare && CompareResourceEqualFromCluster(r.cluster, obj.ID, obj) {
+		return obj, nil
+	}
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.CreateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertRoute(obj); err != nil {
+		log.Errorf("failed to reflect route create to cache: %s", err)
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (r *routeMem) Delete(ctx context.Context, obj *v1.Route) error {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	r.cluster.DeleteResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.DeleteRoute(obj); err != nil {
+		log.Errorf("failed to reflect route delete to cache: %s", err)
+		return nil
+	}
+	return nil
+}
+
+func (r *routeMem) Update(ctx context.Context, obj *v1.Route, shouldCompare bool) (*v1.Route, error) {
+	if shouldCompare && CompareResourceEqualFromCluster(r.cluster, obj.ID, obj) {
+		return obj, nil
+	}
+	if ok, err := r.cluster.validator.ValidateHTTPPluginSchema(obj.Plugins); !ok {
+		return nil, err
+	}
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.UpdateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertRoute(obj); err != nil {
+		log.Errorf("failed to reflect route update to cache: %s", err)
+		return nil, err
+	}
+	return obj, nil
+}

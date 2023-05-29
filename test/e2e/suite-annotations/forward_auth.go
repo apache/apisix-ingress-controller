@@ -27,6 +27,7 @@ import (
 
 var _ = ginkgo.Describe("suite-annotations: froward-auth annotations", func() {
 	s := scaffold.NewDefaultScaffold()
+
 	ginkgo.JustBeforeEach(func() {
 		// create an external auth service
 		json := `{
@@ -41,10 +42,6 @@ var _ = ginkgo.Describe("suite-annotations: froward-auth annotations", func() {
 			}
 		}`
 		assert.Nil(ginkgo.GinkgoT(), s.CreateApisixRouteByApisixAdmin("auth", []byte(json)), "create forward-auth serverless route")
-	})
-
-	ginkgo.JustAfterEach(func() {
-		assert.Nil(ginkgo.GinkgoT(), s.DeleteApisixRouteByApisixAdmin("auth"), "clean up forward-auth serverless route")
 	})
 
 	ginkgo.It("enable in ingress networking/v1", func() {
@@ -88,7 +85,7 @@ spec:
 		})
 	})
 
-	ginkgo.It("enable in ingress networking/v1", func() {
+	ginkgo.It("enable in ingress networking/v1beta1", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
@@ -113,47 +110,6 @@ spec:
           servicePort: %d
 `, "http://127.0.0.1:9080/auth", backendSvc, backendPort[0])
 		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
-
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").WithHeader("Authorization", "123").Expect()
-		resp.Status(http.StatusOK)
-		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").WithHeader("Authorization", "321").Expect()
-		resp.Status(http.StatusOK)
-		resp = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
-		resp.Status(http.StatusForbidden)
-		resp.Headers().ContainsMap(map[string]interface{}{
-			"Location": []string{"http://example.com/auth"},
-		})
-	})
-
-	ginkgo.It("enable in ingress networking/v1beta1", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/auth-uri: %s
-    k8s.apisix.apache.org/auth-request-headers: Authorization
-    k8s.apisix.apache.org/auth-upstream-headers: X-User-ID
-    k8s.apisix.apache.org/auth-client-headers: Location
-  name: ingress-extensions-v1beta1
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /ip
-        pathType: Exact
-        backend:
-          serviceName: %s
-          servicePort: %d
-`, "http://127.0.0.1:9080/auth", backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		ginkgo.GinkgoT().Logf("ingress: %s", ing)
-		ginkgo.GinkgoT().Logf("create ingress: %v", err)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 

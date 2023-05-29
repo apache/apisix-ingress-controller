@@ -12,7 +12,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// +k8s:deepcopy-gen=package
 
-// +groupName=apisix.apache.org
-package v1
+//go:build go1.20
+// +build go1.20
+
+package utils
+
+import "unsafe"
+
+// s2b converts string to a byte slice without memory allocation.
+func String2Byte(s string) []byte {
+	return unsafe.Slice(unsafe.StringData(s), len(s))
+}

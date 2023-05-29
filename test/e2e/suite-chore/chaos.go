@@ -49,7 +49,11 @@ spec:
 `, backendSvc, backendSvcPort[0])
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route1))
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "checking number of routes")
-			s.RestartAPISIXDeploy()
+			if s.IsEtcdServer() {
+				s.RestartIngressControllerDeploy()
+			} else {
+				s.RestartAPISIXDeploy()
+			}
 			route2 := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
