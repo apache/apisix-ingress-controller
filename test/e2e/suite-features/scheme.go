@@ -58,7 +58,7 @@ spec:
 `)
 			assert.Nil(ginkgo.GinkgoT(), err)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: grpc-server-service
@@ -68,7 +68,7 @@ spec:
       scheme: grpc
 `))
 			err = s.CreateVersionedApisixResource(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: grpc-route
@@ -130,7 +130,7 @@ spec:
 			assert.NoError(ginkgo.GinkgoT(), err, "create server cert secret")
 
 			assert.NoError(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: test-backend-service-e2e-test
@@ -139,7 +139,7 @@ spec:
 `))
 
 			assert.NoError(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: grpcs-route
@@ -170,9 +170,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
-		//suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})

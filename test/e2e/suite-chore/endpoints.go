@@ -30,7 +30,7 @@ var _ = ginkgo.Describe("suite-chore: endpoints", func() {
 		ginkgo.It("ignore applied only if there is an ApisixRoute referenced", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -56,7 +56,7 @@ spec:
 		ginkgo.It("upstream nodes should be reset to empty when Service/Endpoints was deleted", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -85,7 +85,7 @@ spec:
 		ginkgo.It("when endpoint is 0, upstream nodes is also 0", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -111,9 +111,6 @@ spec:
 			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusServiceUnavailable)
 		})
 	}
-	ginkgo.Describe("suite-chore: scaffold v2beta3", func() {
-		//suites(scaffold.NewDefaultV2beta3Scaffold())
-	})
 	ginkgo.Describe("suite-chore: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})

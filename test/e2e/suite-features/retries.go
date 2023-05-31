@@ -29,7 +29,7 @@ var _ = ginkgo.Describe("suite-features: retries", func() {
 		s := scaffoldFunc()
 
 		routeTpl := `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -53,7 +53,7 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -77,7 +77,7 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -102,7 +102,7 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -120,9 +120,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
@@ -135,7 +132,7 @@ var _ = ginkgo.Describe("suite-features: retries timeout", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -149,7 +146,7 @@ spec:
 			time.Sleep(2 * time.Second)
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -178,9 +175,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
-		//suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})

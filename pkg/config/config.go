@@ -47,8 +47,6 @@ const (
 	// WARNING: ingress.extensions/v1beta1 is deprecated in v1.14+, and will be unavilable
 	// in v1.22.
 	IngressExtensionsV1beta1 = "extensions/v1beta1"
-	// ApisixV2beta3 represents apisix.apache.org/v2beta3
-	ApisixV2beta3 = "apisix.apache.org/v2beta3"
 	// ApisixV2 represents apisix.apache.org/v2
 	ApisixV2 = "apisix.apache.org/v2"
 	// DefaultAPIVersion refers to the default resource version
@@ -70,7 +68,7 @@ const (
 
 var (
 	// Description information of API version, including default values and supported API version.
-	APIVersionDescribe = fmt.Sprintf(`the default value of API version is "%s", support "%s" and "%s".`, DefaultAPIVersion, ApisixV2beta3, ApisixV2)
+	APIVersionDescribe = fmt.Sprintf(`the default value of API version is "%s", support "%s".`, DefaultAPIVersion, ApisixV2)
 )
 
 // Config contains all config items which are necessary for

@@ -27,48 +27,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-ingress-features: apisix.apache.org/v2beta3 CRDs status subresource Testing", func() {
-	suites := func(s *scaffold.Scaffold) {
-		ginkgo.It("check the status is recorded", func() {
-			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
-			apisixRoute := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
-kind: ApisixRoute
-metadata:
-  name: httpbin-route
-spec:
-  http:
-  - name: rule1
-    match:
-      hosts:
-      - httpbin.com
-      paths:
-      - /ip
-    backends:
-    - serviceName: %s
-      servicePort: %d
-`, backendSvc, backendSvcPort[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
-
-			err := s.EnsureNumApisixRoutesCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
-			err = s.EnsureNumApisixUpstreamsCreated(1)
-			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-			// status should be recorded as successful
-			output, err := s.GetOutputFromString("ar", "httpbin-route", "-o", "yaml")
-			assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixRoute resource")
-			hasType := strings.Contains(output, "type: ResourcesAvailable")
-			assert.True(ginkgo.GinkgoT(), hasType, "Status is recorded")
-			hasMsg := strings.Contains(output, "message: Sync Successfully")
-			assert.True(ginkgo.GinkgoT(), hasMsg, "Status is recorded")
-		})
-	}
-
-	ginkgo.Describe("suite-ingress-features: ApisixRoute scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold())
-	})
-})
-
 var _ = ginkgo.Describe("suite-ingress-features: CRDs status subresource Testing", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("check ApisixRoute status is recorded", func() {
@@ -136,7 +94,7 @@ spec:
 	ginkgo.It("check the ApisixUpstream status is recorded", func() {
 		backendSvc, _ := s.DefaultHTTPBackend()
 		apisixUpstream := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: %s

@@ -69,7 +69,7 @@ var _ = ginkgo.Describe("suite-features: sync delay", func() {
 			}
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -90,7 +90,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "checking number of upstreams")
 
 			arStream := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-tcp-route
@@ -116,7 +116,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixTls 'a' error")
 
 			ac := `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
   name: foo
@@ -147,7 +147,7 @@ spec:
 			}()
 
 			apc := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
  name: test-apc-1

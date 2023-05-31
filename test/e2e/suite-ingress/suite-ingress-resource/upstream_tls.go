@@ -46,7 +46,7 @@ var _ = ginkgo.Describe("suite-ingress-resource: ApisixUpstreams mTLS test", fun
 			err = s.NewApisixUpstreamsWithMTLS("test-backend-service-e2e-test", "https", clientSecret)
 			assert.NoError(ginkgo.GinkgoT(), err, "create ApisixUpstreams with client secret")
 			err = s.CreateVersionedApisixResource(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: upstream-is-mtls.httpbin.local
@@ -96,7 +96,7 @@ spec:
 			assert.NoError(ginkgo.GinkgoT(), err, "create ApisixUpstreams with client secret")
 
 			assert.NoError(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: grpcs-route
@@ -123,9 +123,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress-resource: scaffold v2beta3", func() {
-		//suites(scaffold.NewDefaultV2beta3Scaffold())
-	})
 	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})

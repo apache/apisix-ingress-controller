@@ -32,7 +32,7 @@ var _ = ginkgo.Describe("suite-features: route match exprs", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -83,7 +83,7 @@ spec:
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -132,7 +132,7 @@ spec:
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -188,10 +188,6 @@ spec:
 		})
 
 		ginkgo.It("operator is GreaterThanEqual", func() {
-			if s.ApisixResourceVersion() == scaffold.ApisixResourceVersion().V2beta3 {
-				ginkgo.Skip("Not support ApisixRoute v2beta3")
-			}
-
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
@@ -260,7 +256,7 @@ spec:
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -316,10 +312,6 @@ spec:
 		})
 
 		ginkgo.It("operator is LessThanEqual", func() {
-			if s.ApisixResourceVersion() == scaffold.ApisixResourceVersion().V2beta3 {
-				ginkgo.Skip("Not support ApisixRoute v2beta3")
-			}
-
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
@@ -388,7 +380,7 @@ spec:
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -446,7 +438,7 @@ spec:
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -503,7 +495,7 @@ spec:
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -562,7 +554,7 @@ spec:
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -620,7 +612,7 @@ spec:
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -679,7 +671,7 @@ spec:
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -733,9 +725,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})
@@ -748,7 +737,7 @@ var _ = ginkgo.Describe("suite-features: route match exprs bugfixes", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -814,9 +803,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})

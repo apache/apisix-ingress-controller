@@ -31,7 +31,7 @@ var _ = ginkgo.Describe("suite-plugins-transformation: fault-injection plugin", 
 		ginkgo.It("inject code and body to abort request", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -77,7 +77,7 @@ spec:
 		ginkgo.It("delay request", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -124,7 +124,7 @@ spec:
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -169,7 +169,7 @@ spec:
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -204,7 +204,7 @@ spec:
 			resp.Status(http.StatusInternalServerError)
 
 			ar = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -233,9 +233,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-plugins-transformation: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-plugins-transformation: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})

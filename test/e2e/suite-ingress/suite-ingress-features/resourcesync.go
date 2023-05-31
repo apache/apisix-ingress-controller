@@ -36,7 +36,7 @@ var _ = ginkgo.Describe("suite-ingress-features: apisix resource sync", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -48,7 +48,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(au))
 
 			apc := `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
  name: my-echo
@@ -63,7 +63,7 @@ spec:
 
 			// Create ApisixRoute resource
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -87,7 +87,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
 			ar2 := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route2
@@ -312,14 +312,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-ingress-features: scaffold v2beta3", func() {
-		suites(scaffold.NewScaffold(&scaffold.Options{
-			Name:                       "sync",
-			IngressAPISIXReplicas:      1,
-			ApisixResourceVersion:      scaffold.ApisixResourceVersion().V2beta3,
-			ApisixResourceSyncInterval: "100s",
-		}))
-	})
 	ginkgo.Describe("suite-ingress-features: scaffold v2", func() {
 		suites(scaffold.NewScaffold(&scaffold.Options{
 			Name:                       "sync",

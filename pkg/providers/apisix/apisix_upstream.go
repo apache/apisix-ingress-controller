@@ -31,11 +31,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
@@ -143,8 +141,6 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 
 	var multiVersioned kube.ApisixUpstream
 	switch event.GroupVersion {
-	case config.ApisixV2beta3:
-		multiVersioned, err = c.ApisixUpstreamLister.V2beta3(namespace, name)
 	case config.ApisixV2:
 		multiVersioned, err = c.ApisixUpstreamLister.V2(namespace, name)
 	default:
@@ -188,82 +184,6 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 
 	var errRecord error
 	switch event.GroupVersion {
-	case config.ApisixV2beta3:
-		au := multiVersioned.V2beta3()
-
-		var portLevelSettings map[int32]configv2beta3.ApisixUpstreamConfig
-		if au.Spec != nil && len(au.Spec.PortLevelSettings) > 0 {
-			portLevelSettings = make(map[int32]configv2beta3.ApisixUpstreamConfig, len(au.Spec.PortLevelSettings))
-			for _, port := range au.Spec.PortLevelSettings {
-				portLevelSettings[port.Port] = port.ApisixUpstreamConfig
-			}
-		}
-
-		svc, err := c.SvcLister.Services(namespace).Get(name)
-		if err != nil {
-			log.Errorf("failed to get service %s: %s", key, err)
-			errRecord = err
-			goto updateStatus
-		}
-
-		var subsets []configv2beta3.ApisixUpstreamSubset
-		subsets = append(subsets, configv2beta3.ApisixUpstreamSubset{})
-		if au.Spec != nil && len(au.Spec.Subsets) > 0 {
-			subsets = append(subsets, au.Spec.Subsets...)
-		}
-		clusterName := c.Config.APISIX.DefaultClusterName
-		for _, port := range svc.Spec.Ports {
-			for _, subset := range subsets {
-				upsName := apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, "")
-				// TODO: multiple cluster
-				ups, err := c.APISIX.Cluster(clusterName).Upstream().Get(ctx, upsName)
-				if err != nil {
-					if err == apisixcache.ErrNotFound {
-						continue
-					}
-					log.Errorf("failed to get upstream %s: %s", upsName, err)
-					errRecord = err
-					goto updateStatus
-				}
-				var newUps *apisixv1.Upstream
-				if au.Spec != nil && ev.Type != types.EventDelete {
-					cfg, ok := portLevelSettings[port.Port]
-					if !ok {
-						cfg = au.Spec.ApisixUpstreamConfig
-					}
-					// FIXME Same ApisixUpstreamConfig might be translated multiple times.
-					newUps, err = c.translator.TranslateUpstreamConfigV2beta3(&cfg)
-					if err != nil {
-						log.Errorw("found malformed ApisixUpstream",
-							zap.Any("object", au),
-							zap.Error(err),
-						)
-						errRecord = err
-						goto updateStatus
-					}
-				} else {
-					newUps = apisixv1.NewDefaultUpstream()
-				}
-
-				newUps.Metadata = ups.Metadata
-				newUps.Nodes = ups.Nodes
-				log.Debugw("updating upstream since ApisixUpstream changed",
-					zap.String("event", ev.Type.String()),
-					zap.Any("upstream", newUps),
-					zap.Any("ApisixUpstream", au),
-				)
-				if _, err := c.APISIX.Cluster(clusterName).Upstream().Update(ctx, newUps, ev.Type.IsSyncEvent()); err != nil {
-					log.Errorw("failed to update upstream",
-						zap.Error(err),
-						zap.Any("upstream", newUps),
-						zap.Any("ApisixUpstream", au),
-						zap.String("cluster", clusterName),
-					)
-					errRecord = err
-					goto updateStatus
-				}
-			}
-		}
 	case config.ApisixV2:
 		au := multiVersioned.V2()
 		if au.Spec == nil {
@@ -370,8 +290,6 @@ func (c *apisixUpstreamController) updateStatus(obj kube.ApisixUpstream, statusE
 	)
 
 	switch obj.GroupVersion() {
-	case config.ApisixV2beta3:
-		au, err = c.ApisixUpstreamLister.V2beta3(namespace, name)
 	case config.ApisixV2:
 		au, err = c.ApisixUpstreamLister.V2(namespace, name)
 	}
@@ -399,9 +317,6 @@ func (c *apisixUpstreamController) updateStatus(obj kube.ApisixUpstream, statusE
 		eventType = corev1.EventTypeWarning
 	}
 	switch obj.GroupVersion() {
-	case config.ApisixV2beta3:
-		c.RecordEvent(obj.V2beta3(), eventType, reason, statusErr)
-		c.recordStatus(obj.V2beta3(), reason, statusErr, condition, au.GetGeneration())
 	case config.ApisixV2:
 		c.RecordEvent(obj.V2(), eventType, reason, statusErr)
 		c.recordStatus(obj.V2(), reason, statusErr, condition, au.GetGeneration())
@@ -906,24 +821,6 @@ func (c *apisixUpstreamController) recordStatus(at interface{}, reason string, e
 	}
 
 	switch v := at.(type) {
-	case *configv2beta3.ApisixUpstream:
-		// set to status
-		if v.Status.Conditions == nil {
-			conditions := make([]metav1.Condition, 0)
-			v.Status.Conditions = conditions
-		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
-			meta.SetStatusCondition(&v.Status.Conditions, condition)
-			if _, errRecord := apisixClient.ApisixV2beta3().ApisixUpstreams(v.Namespace).
-				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-				log.Errorw("failed to record status change for ApisixUpstream",
-					zap.Error(errRecord),
-					zap.String("name", v.Name),
-					zap.String("namespace", v.Namespace),
-				)
-			}
-		}
-
 	case *configv2.ApisixUpstream:
 		// set to status
 		if v.Status.Conditions == nil {

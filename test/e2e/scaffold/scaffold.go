@@ -95,14 +95,12 @@ type Scaffold struct {
 
 type apisixResourceVersionInfo struct {
 	V2      string
-	V2beta3 string
 	Default string
 }
 
 var (
 	apisixResourceVersion = &apisixResourceVersionInfo{
 		V2:      config.ApisixV2,
-		V2beta3: config.ApisixV2beta3,
 		Default: config.DefaultAPIVersion,
 	}
 
@@ -208,14 +206,8 @@ func NewScaffold(o *Options) *Scaffold {
 	return s
 }
 
-// NewV2beta3Scaffold creates a scaffold with some default options.
+// NewV2Scaffold creates a scaffold with some default options.
 func NewV2Scaffold(o *Options) *Scaffold {
-	o.ApisixResourceVersion = ApisixResourceVersion().V2
-	return NewScaffold(o)
-}
-
-// NewV2beta3Scaffold creates a scaffold with some default options.
-func NewV2beta3Scaffold(o *Options) *Scaffold {
 	o.ApisixResourceVersion = ApisixResourceVersion().V2
 	return NewScaffold(o)
 }
@@ -230,14 +222,6 @@ func NewDefaultScaffold() *Scaffold {
 func NewDefaultV2Scaffold() *Scaffold {
 	opts := &Options{
 		ApisixResourceVersion: ApisixResourceVersion().V2,
-	}
-	return NewScaffold(opts)
-}
-
-// NewDefaultV2beta3Scaffold creates a scaffold with some default options.
-func NewDefaultV2beta3Scaffold() *Scaffold {
-	opts := &Options{
-		ApisixResourceVersion: ApisixResourceVersion().V2beta3,
 	}
 	return NewScaffold(opts)
 }
