@@ -33,7 +33,7 @@ on:
     types: [opened, synchronize, reopened, review_requested]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-dev
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number && github.ref }}-dev
   cancel-in-progress: true
 
 jobs:
