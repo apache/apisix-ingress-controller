@@ -28,7 +28,7 @@ on:
       - v1.6.0
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-dev
+  group: ${{ github.workflow }}-dev
   cancel-in-progress: true
 
 jobs:
