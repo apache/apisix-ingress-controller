@@ -26,19 +26,14 @@ on:
     branches:
       - master
       - v1.6.0
-  pull_request:
-    branches:
-      - master
-      - v1.6.0
-    types: [opened, synchronize, reopened, review_requested]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number && github.ref }}-dev
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-dev
   cancel-in-progress: true
 
 jobs:
   changes:
-    if: ${{ (!github.event.pull_request.draft || github.event.schedule == '0 0 * * *') }}
+    if: ${{ github.event.schedule == '0 0 * * *') }}
     runs-on: ubuntu-20.04
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
