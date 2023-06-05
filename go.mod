@@ -26,7 +26,7 @@ require (
 	k8s.io/client-go v0.27.1
 	k8s.io/code-generator v0.27.1
 	sigs.k8s.io/controller-runtime v0.14.6
-	sigs.k8s.io/gateway-api v0.6.2
+	sigs.k8s.io/gateway-api v0.7.1
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -93,7 +93,6 @@ require (
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.26.3 // indirect
 	k8s.io/gengo v0.0.0-20230306165830-ab3349d207d4 // indirect
 	k8s.io/klog/v2 v2.100.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230515203736-54b630e78af5 // indirect
