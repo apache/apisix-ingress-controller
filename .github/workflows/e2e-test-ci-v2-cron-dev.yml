@@ -33,7 +33,6 @@ concurrency:
 
 jobs:
   changes:
-    if: ${{ github.event.schedule == '0 0 * * *') }}
     runs-on: ubuntu-20.04
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
