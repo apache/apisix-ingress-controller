@@ -264,9 +264,7 @@ func (p *Headers) Remove(headersToRemove []string) {
 	}
 	if headersToRemove != nil {
 		removeHeaders := make([]string, 0)
-		for _, h := range headersToRemove {
-			removeHeaders = append(removeHeaders, h)
-		}
+		removeHeaders = append(removeHeaders, headersToRemove...)
 		(*p)["remove"] = removeHeaders
 	}
 }
