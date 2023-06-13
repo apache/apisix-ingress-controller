@@ -16,6 +16,8 @@ package v1
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/incubator4/go-resty-expr/expr"
 )
@@ -198,4 +200,84 @@ func (p *Headers) DeepCopy() *Headers {
 	out := new(Headers)
 	p.DeepCopyInto(out)
 	return out
+}
+
+func (p *Headers) Add(headersToAdd []string) {
+	if p == nil {
+		return
+	}
+	if headersToAdd != nil {
+		addedHeader := make([]string, 0)
+		for _, h := range headersToAdd {
+			kv := strings.Split(h, ":")
+			if len(kv) < 2 {
+				continue
+			}
+			addedHeader = append(addedHeader, fmt.Sprintf("%s:%s", kv[0], kv[1]))
+		}
+		(*p)["add"] = addedHeader
+	}
+}
+
+func (p *Headers) GetAddedHeaders() []string {
+	if p == nil || (*p)["add"] == nil {
+		return nil
+	}
+	addedheaders, ok := (*p)["add"].([]string)
+	if ok {
+		return addedheaders
+	}
+	return nil
+}
+
+func (p *Headers) Set(headersToSet []string) {
+	if p == nil {
+		return
+	}
+	if headersToSet != nil {
+		setHeaders := make(map[string]string, 0)
+		for _, h := range headersToSet {
+			kv := strings.Split(h, ":")
+			if len(kv) < 2 {
+				continue
+			}
+			setHeaders[kv[0]] = kv[1]
+		}
+		(*p)["set"] = setHeaders
+	}
+}
+
+func (p *Headers) GetSetHeaders() map[string]string {
+	if p == nil || (*p)["set"] == nil {
+		return nil
+	}
+	addedheaders, ok := (*p)["set"].(map[string]string)
+	if ok {
+		return addedheaders
+	}
+	return nil
+}
+
+func (p *Headers) Remove(headersToRemove []string) {
+	if p == nil {
+		return
+	}
+	if headersToRemove != nil {
+		removeHeaders := make([]string, 0)
+		for _, h := range headersToRemove {
+			removeHeaders = append(removeHeaders, h)
+		}
+		(*p)["remove"] = removeHeaders
+	}
+}
+
+func (p *Headers) GetRemovedHeaders() []string {
+	if p == nil || (*p)["remove"] == nil {
+		return nil
+	}
+	removedHeaders, ok := (*p)["remove"].([]string)
+	if ok {
+		return removedHeaders
+	}
+	return nil
 }
