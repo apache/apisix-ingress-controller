@@ -13,7 +13,7 @@ require (
 	github.com/stretchr/testify v1.8.3
 	go.uber.org/zap v1.24.0
 	k8s.io/api v0.27.1
-	k8s.io/apimachinery v0.27.1
+	k8s.io/apimachinery v0.27.3
 	k8s.io/client-go v0.27.1
 )
 
