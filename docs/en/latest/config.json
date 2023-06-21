@@ -17,7 +17,8 @@
         "deployments/azure",
         "deployments/tke",
         "deployments/kubesphere",
-        "deployments/k3s-rke"
+        "deployments/k3s-rke",
+        "deployments/openshift"
       ]
     },
     {
@@ -39,7 +40,9 @@
         "tutorials/using-custom-plugins",
         "tutorials/how-to-use-go-plugin-runner-in-apisix-ingress",
         "tutorials/external-service",
-        "tutorials/external-service-discovery"
+        "tutorials/external-service-discovery",
+        "tutorials/istio-egress-gateway",
+        "tutorials/match-stream-route-by-sni"
       ]
     },
     {
@@ -55,7 +58,8 @@
         "references/apisix_cluster_config_v2beta3",
         "references/apisix_pluginconfig_v2",
         "references/apisix_pluginconfig_v2beta3",
-        "references/v2"
+        "references/v2",
+        "references/apisix_global_rule_v2"
       ]
     },
     {
@@ -67,7 +71,8 @@
         "concepts/apisix_tls",
         "concepts/apisix_cluster_config",
         "concepts/apisix_plugin_config",
-        "concepts/annotations"
+        "concepts/annotations",
+        "concepts/apisix_global_rule"
       ]
     },
     {
@@ -81,6 +86,14 @@
     {
       "type": "doc",
       "id": "FAQ"
+    },
+    {
+      "type": "doc",
+      "id": "monitoring"
+    },
+    {
+      "type": "doc",
+      "id": "upgrade"
     },
     {
       "type": "link",
