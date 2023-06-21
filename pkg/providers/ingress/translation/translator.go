@@ -182,8 +182,12 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 						return nil, err
 					}
 				}
-				if ingress.UpstreamScheme != "" {
-					ups.Scheme = ingress.UpstreamScheme
+				if ingress.Upstream.Scheme != "" {
+					ups.Scheme = ingress.Upstream.Scheme
+				}
+				if ingress.Upstream.Retry > 0 {
+					retry := ingress.Upstream.Retry
+					ups.Retries = &retry
 				}
 				ctx.AddUpstream(ups)
 			}
@@ -287,8 +291,8 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 						return nil, err
 					}
 				}
-				if ingress.UpstreamScheme != "" {
-					ups.Scheme = ingress.UpstreamScheme
+				if ingress.Upstream.Scheme != "" {
+					ups.Scheme = ingress.Upstream.Scheme
 				}
 				ctx.AddUpstream(ups)
 			}
@@ -447,8 +451,30 @@ func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.In
 						return nil, err
 					}
 				}
-				if ingress.UpstreamScheme != "" {
-					ups.Scheme = ingress.UpstreamScheme
+				if ingress.Upstream.Scheme != "" {
+					ups.Scheme = ingress.Upstream.Scheme
+				}
+				if ingress.Upstream.Retry > 0 {
+					retry := ingress.Upstream.Retry
+					ups.Retries = &retry
+				}
+				if ingress.Upstream.TimeoutRead > 0 {
+					if ups.Timeout == nil {
+						ups.Timeout = &apisixv1.UpstreamTimeout{}
+					}
+					ups.Timeout.Read = ingress.Upstream.TimeoutRead
+				}
+				if ingress.Upstream.TimeoutConnect > 0 {
+					if ups.Timeout == nil {
+						ups.Timeout = &apisixv1.UpstreamTimeout{}
+					}
+					ups.Timeout.Connect = ingress.Upstream.TimeoutConnect
+				}
+				if ingress.Upstream.TimeoutSend > 0 {
+					if ups.Timeout == nil {
+						ups.Timeout = &apisixv1.UpstreamTimeout{}
+					}
+					ups.Timeout.Send = ingress.Upstream.TimeoutSend
 				}
 				ctx.AddUpstream(ups)
 			}
