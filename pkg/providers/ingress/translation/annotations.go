@@ -25,7 +25,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/regex"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/servicenamespace"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/upstream"
-
 	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/websocket"
 	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
