@@ -379,38 +379,13 @@ func (t *translator) translateUpstreamPassiveHealthCheckV2(config *configv2.Pass
 
 func (t *translator) translatePassHost(ph *passHostConfig, ups *apisixv1.Upstream) error {
 	switch ph.passHost {
-	case "":
-		if ph.upstreamHost != "" {
-			return &TranslateError{
-				Field:  "upstreamHost",
-				Reason: "show be empty when passHost is not rewrite",
-			}
-		}
-	case apisixv1.PassHostPass, apisixv1.PassHostNode:
-		if ph.upstreamHost != "" {
-			return &TranslateError{
-				Field:  "upstreamHost",
-				Reason: "show be empty when passHost is not rewrite",
-			}
-		}
-
+	case "", apisixv1.PassHostPass, apisixv1.PassHostNode, apisixv1.PassHostRewrite:
 		ups.PassHost = ph.passHost
-	case apisixv1.PassHostRewrite:
-		if ph.upstreamHost == "" {
-			return &TranslateError{
-				Field:  "upstreamHost",
-				Reason: "can not be empty when passHost is rewrite",
-			}
-		}
-
-		ups.PassHost = ph.passHost
-		ups.UpstreamHost = ph.upstreamHost
 	default:
-		return &TranslateError{
-			Field:  "passHost",
-			Reason: "invalid value",
-		}
+		return &TranslateError{Field: "passHost", Reason: "invalid value"}
 	}
+
+	ups.UpstreamHost = ph.upstreamHost
 
 	return nil
 }

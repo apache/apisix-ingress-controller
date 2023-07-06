@@ -436,45 +436,6 @@ func TestUpstreamPassHost(t *testing.T) {
 			},
 		},
 		{
-			name: "should fail when upstreamHost provided but passHost not provided",
-			phc:  &passHostConfig{upstreamHost: "host"},
-			wantFunc: func(t *testing.T, err error, ups *apisixv1.Upstream, phc *passHostConfig) {
-				assert.Equal(t, &TranslateError{
-					Field:  "upstreamHost",
-					Reason: "show be empty when passHost is not rewrite",
-				}, err)
-			},
-		},
-		{
-			name: "should fail when upstreamHost provided but passHost not set to rewrite",
-			phc:  &passHostConfig{upstreamHost: "host", passHost: apisixv1.PassHostPass},
-			wantFunc: func(t *testing.T, err error, ups *apisixv1.Upstream, phc *passHostConfig) {
-				assert.Equal(t, &TranslateError{
-					Field:  "upstreamHost",
-					Reason: "show be empty when passHost is not rewrite",
-				}, err)
-			},
-		},
-		{
-			name: "should set when upstreamHost provided and passHost set to rewrite",
-			phc:  &passHostConfig{upstreamHost: "host", passHost: apisixv1.PassHostRewrite},
-			wantFunc: func(t *testing.T, err error, ups *apisixv1.Upstream, phc *passHostConfig) {
-				assert.Nil(t, err)
-				assert.Equal(t, phc.passHost, ups.PassHost)
-				assert.Equal(t, phc.upstreamHost, ups.UpstreamHost)
-			},
-		},
-		{
-			name: "should fail when upstreamHost not provided but passHost set to rewrite",
-			phc:  &passHostConfig{passHost: apisixv1.PassHostRewrite},
-			wantFunc: func(t *testing.T, err error, ups *apisixv1.Upstream, phc *passHostConfig) {
-				assert.Equal(t, &TranslateError{
-					Field:  "upstreamHost",
-					Reason: "can not be empty when passHost is rewrite",
-				}, err)
-			},
-		},
-		{
 			name: "should fail when passHost set to invalid value",
 			phc:  &passHostConfig{passHost: "unknown"},
 			wantFunc: func(t *testing.T, err error, ups *apisixv1.Upstream, phc *passHostConfig) {

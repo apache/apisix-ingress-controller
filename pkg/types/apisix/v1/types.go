@@ -280,10 +280,12 @@ func (up Upstream) MarshalJSON() ([]byte, error) {
 			Key    string               `json:"key,omitempty" yaml:"key,omitempty"`
 			Checks *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
 			//Nodes   UpstreamNodes        `json:"nodes" yaml:"nodes"`
-			Scheme  string           `json:"scheme,omitempty" yaml:"scheme,omitempty"`
-			Retries *int             `json:"retries,omitempty" yaml:"retries,omitempty"`
-			Timeout *UpstreamTimeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-			TLS     *ClientTLS       `json:"tls,omitempty" yaml:"tls,omitempty"`
+			Scheme       string           `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+			Retries      *int             `json:"retries,omitempty" yaml:"retries,omitempty"`
+			Timeout      *UpstreamTimeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+			HostPass     string           `json:"pass_host,omitempty" yaml:"pass_host,omitempty"`
+			UpstreamHost string           `json:"upstream_host,omitempty" yaml:"upstream_host,omitempty"`
+			TLS          *ClientTLS       `json:"tls,omitempty" yaml:"tls,omitempty"`
 
 			// for Service Discovery
 			ServiceName   string            `json:"service_name,omitempty" yaml:"service_name,omitempty"`
@@ -297,10 +299,12 @@ func (up Upstream) MarshalJSON() ([]byte, error) {
 			Key:    up.Key,
 			Checks: up.Checks,
 			//Nodes:   up.Nodes,
-			Scheme:  up.Scheme,
-			Retries: up.Retries,
-			Timeout: up.Timeout,
-			TLS:     up.TLS,
+			Scheme:       up.Scheme,
+			Retries:      up.Retries,
+			Timeout:      up.Timeout,
+			HostPass:     up.PassHost,
+			UpstreamHost: up.UpstreamHost,
+			TLS:          up.TLS,
 
 			ServiceName:   up.ServiceName,
 			DiscoveryType: up.DiscoveryType,
@@ -310,15 +314,17 @@ func (up Upstream) MarshalJSON() ([]byte, error) {
 		return json.Marshal(&struct {
 			Metadata `json:",inline" yaml:",inline"`
 
-			Type    string               `json:"type,omitempty" yaml:"type,omitempty"`
-			HashOn  string               `json:"hash_on,omitempty" yaml:"hash_on,omitempty"`
-			Key     string               `json:"key,omitempty" yaml:"key,omitempty"`
-			Checks  *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
-			Nodes   UpstreamNodes        `json:"nodes" yaml:"nodes"`
-			Scheme  string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
-			Retries *int                 `json:"retries,omitempty" yaml:"retries,omitempty"`
-			Timeout *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-			TLS     *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
+			Type         string               `json:"type,omitempty" yaml:"type,omitempty"`
+			HashOn       string               `json:"hash_on,omitempty" yaml:"hash_on,omitempty"`
+			Key          string               `json:"key,omitempty" yaml:"key,omitempty"`
+			Checks       *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
+			Nodes        UpstreamNodes        `json:"nodes" yaml:"nodes"`
+			Scheme       string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+			Retries      *int                 `json:"retries,omitempty" yaml:"retries,omitempty"`
+			Timeout      *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+			HostPass     string               `json:"pass_host,omitempty" yaml:"pass_host,omitempty"`
+			UpstreamHost string               `json:"upstream_host,omitempty" yaml:"upstream_host,omitempty"`
+			TLS          *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
 
 			// for Service Discovery
 			//ServiceName   string            `json:"service_name,omitempty" yaml:"service_name,omitempty"`
@@ -327,15 +333,17 @@ func (up Upstream) MarshalJSON() ([]byte, error) {
 		}{
 			Metadata: up.Metadata,
 
-			Type:    up.Type,
-			HashOn:  up.HashOn,
-			Key:     up.Key,
-			Checks:  up.Checks,
-			Nodes:   up.Nodes,
-			Scheme:  up.Scheme,
-			Retries: up.Retries,
-			Timeout: up.Timeout,
-			TLS:     up.TLS,
+			Type:         up.Type,
+			HashOn:       up.HashOn,
+			Key:          up.Key,
+			Checks:       up.Checks,
+			Nodes:        up.Nodes,
+			Scheme:       up.Scheme,
+			Retries:      up.Retries,
+			Timeout:      up.Timeout,
+			HostPass:     up.PassHost,
+			UpstreamHost: up.UpstreamHost,
+			TLS:          up.TLS,
 
 			//ServiceName:   up.ServiceName,
 			//DiscoveryType: up.DiscoveryType,
