@@ -35,7 +35,7 @@ var _ = ginkgo.Describe("suite-ingress-features: single-route", func() {
 		ginkgo.It("/ip should return your ip", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -79,7 +79,7 @@ var _ = ginkgo.Describe("suite-ingress-features: double-routes", func() {
 		ginkgo.It("double routes work independently", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			ar := `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
@@ -192,7 +192,7 @@ var _ = ginkgo.Describe("suite-ingress-features: stream_routes disabled", func()
 		ginkgo.It("/ip should return your ip", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route

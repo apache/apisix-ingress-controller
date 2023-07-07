@@ -278,6 +278,30 @@ This annotation configures the new body in the response.
 k8s.apisix.apache.org/response-rewrite-body: "bar-body"
 ```
 
+### Add header
+
+This annotation configures to append the new headers in the response.
+
+```yaml
+k8s.apisix.apache.org/response-rewrite-add-header: "testkey1:testval1,testkey2:testval2"
+```
+
+### Set header
+
+This annotation configures to rewrite the new headers in the response.
+
+```yaml
+k8s.apisix.apache.org/response-rewrite-set-header: "testkey1:testval1,testkey2:testval2"
+```
+
+### Remove header
+
+This annotation configures to remove headers in the response.
+
+```yaml
+k8s.apisix.apache.org/response-rewrite-remove-header: "testkey1,testkey2"
+```
+
 ### Body Base64
 
 When set, the body of the request will be decoded before writing to the client.
