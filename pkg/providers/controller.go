@@ -27,7 +27,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	extensionsv1beta1 "k8s.io/client-go/listers/extensions/v1beta1"
 	networkingv1 "k8s.io/client-go/listers/networking/v1"
 	networkingv1beta1 "k8s.io/client-go/listers/networking/v1beta1"
 	"k8s.io/client-go/tools/cache"
@@ -225,9 +224,8 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 	var (
 		ingressInformer cache.SharedIndexInformer
 
-		ingressListerV1                networkingv1.IngressLister
-		ingressListerV1beta1           networkingv1beta1.IngressLister
-		ingressListerExtensionsV1beta1 extensionsv1beta1.IngressLister
+		ingressListerV1      networkingv1.IngressLister
+		ingressListerV1beta1 networkingv1beta1.IngressLister
 	)
 
 	var (
@@ -300,7 +298,7 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		ingressListerV1 = kubeFactory.Networking().V1().Ingresses().Lister()
 	}
 
-	ingressLister := kube.NewIngressLister(ingressListerV1, ingressListerV1beta1, ingressListerExtensionsV1beta1)
+	ingressLister := kube.NewIngressLister(ingressListerV1, ingressListerV1beta1)
 
 	listerInformer := &providertypes.ListerInformer{
 		ApisixFactory: apisixFactory,
