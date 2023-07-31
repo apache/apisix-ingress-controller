@@ -92,8 +92,11 @@ You can change the Admin API key in two ways:
 ## Why does my Ingress resource not have an address?
 
 1. **Using the External address of LoadBalancer service.**
+
 You will need to get the apisix-gateway service an external IP assigned for it to reflect on the Ingress's status.
+
 * While installing APISIX helm chart make sure to override gateway type with `--set gateway.type=LoadBalancer`.
+
 * Also make sure to pass ingressPublishService while installing Ingress controller with `--set ingress-controller.config.ingressPublishService=<namespace/service-name>`. If namespace is not specified then `default` namespace will be chosen.
 
 Note: External IP is allocated either by cloud provider or some other controller like metallb(if you're using kind or minikube) so if you're deploying Ingress controller on minikube or kind then make sure to install and configure something like metallb with an address pool which can allocate external IP for service of type LoadBalancer.
