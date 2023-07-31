@@ -89,11 +89,14 @@ You can change the Admin API key in two ways:
 1. Modify the key in both [apisix/values.yaml](https://github.com/apache/apisix-helm-chart/blob/57cdbe461765cd49af2195cc6a1976cc55262e9b/charts/apisix/values.yaml#L181) and [apisix/apisix-ingress-controller/values.yaml](https://github.com/apache/apisix-helm-chart/blob/57cdbe461765cd49af2195cc6a1976cc55262e9b/charts/apisix-ingress-controller/values.yaml#L128) files.
 2. You can also set this imperatively by passing the flag `--set ingress-controller.config.apisix.adminKey=<new key> --set admin.credentials.admin=<new key>` to the `helm install` command.
 
-
 ## Why does my Ingress resource not have an address?
 
+1. **Using the External address of LoadBalancer service.**
 You will need to get the apisix-gateway service an external IP assigned for it to reflect on the Ingress's status.
-1. While installing APISIX helm chart make sure to override gateway type with `--set gateway.type=LoadBalancer`. 
-2. Also make sure to pass ingressPublishService while installing Ingress controller with `--set ingress-controller.config.ingressPublishService=apisix-gateway`
+* While installing APISIX helm chart make sure to override gateway type with `--set gateway.type=LoadBalancer`.
+* Also make sure to pass ingressPublishService while installing Ingress controller with `--set ingress-controller.config.ingressPublishService=<namespace/service-name>`. If namespace is not specified then `default` namespace will be chosen.
 
 Note: External IP is allocated either by cloud provider or some other controller like metallb(if you're using kind or minikube) so if you're deploying Ingress controller on minikube or kind then make sure to install and configure something like metallb with an address pool which can allocate external IP for service of type LoadBalancer.
+
+2. **Using the address given explicitly by `ingress_status_address`**
+In case the gateway `service` is not of type LoadBalancer, this field should be configured in the config-default.yaml used by the Ingress controller. This field takes precedence over ExternalIP of the service so if `ingress_status_address` array has non zero elements(addresses) present then it will used over the ExternalIP of the gateway service.
