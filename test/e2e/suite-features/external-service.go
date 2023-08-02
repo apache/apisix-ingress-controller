@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
@@ -385,7 +386,7 @@ spec:
 						for _, header := range value {
 							switch vv := header.(type) {
 							case string:
-								if vv == "httpbun" {
+								if strings.HasPrefix(vv, "httpbun") {
 									hasPoweredBy = true
 									break forloop
 								}
