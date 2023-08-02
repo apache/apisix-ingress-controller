@@ -19,7 +19,7 @@ default: help
 VERSION ?= 1.6.0
 
 
-TARGET_APISIX_VERSION ?= "3.1.0-centos"
+TARGET_APISIX_VERSION ?= "3.4.1-centos"
 APISIX_ADMIN_API_VERSION ?= "v3"
 
 ifeq ($(APISIX_ADMIN_API_VERSION),"v2")
