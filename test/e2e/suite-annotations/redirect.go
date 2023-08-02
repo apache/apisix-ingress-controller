@@ -224,12 +224,12 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/http-redirect: "https://httpbin.org/get"
+    k8s.apisix.apache.org/http-redirect: "https://httpbun.org/get"
     k8s.apisix.apache.org/http-redirect-code: "308"
   name: ingress-v1
 spec:
   rules:
-  - host: httpbin.org
+  - host: httpbun.org
     http:
       paths:
       - path: /*
@@ -244,12 +244,12 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbun.org").Expect()
 		resp.Status(http.StatusPermanentRedirect)
-		url := resp.Header("Location").Equal("https://httpbin.org/get").Raw()
+		url := resp.Header("Location").Equal("https://httpbun.org/get").Raw()
 
 		body := httpexpect.New(ginkgo.GinkgoT(), url).GET("").Expect().Status(http.StatusOK).Body().Raw()
-		assert.Contains(ginkgo.GinkgoT(), body, "https://httpbin.org/get")
+		assert.Contains(ginkgo.GinkgoT(), body, "https://httpbun.org/get")
 	})
 
 	ginkgo.It("redirect http-redirect external link in ingress networking/v1beta1", func() {
@@ -260,12 +260,12 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/http-redirect: "https://httpbin.org/get"
+    k8s.apisix.apache.org/http-redirect: "https://httpbun.org/get"
     k8s.apisix.apache.org/http-redirect-code: "308"
   name: ingress-v1beta1
 spec:
   rules:
-  - host: httpbin.org
+  - host: httpbun.org
     http:
       paths:
       - path: /*
@@ -278,12 +278,12 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbun.org").Expect()
 		resp.Status(http.StatusPermanentRedirect)
-		url := resp.Header("Location").Equal("https://httpbin.org/get").Raw()
+		url := resp.Header("Location").Equal("https://httpbun.org/get").Raw()
 
 		body := httpexpect.New(ginkgo.GinkgoT(), url).GET("").Expect().Status(http.StatusOK).Body().Raw()
-		assert.Contains(ginkgo.GinkgoT(), body, "https://httpbin.org/get")
+		assert.Contains(ginkgo.GinkgoT(), body, "https://httpbun.org/get")
 	})
 
 	ginkgo.It("redirect http-redirect external link in ingress extensions/v1beta1", func() {
@@ -294,12 +294,12 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/http-redirect: "https://httpbin.org/get"
+    k8s.apisix.apache.org/http-redirect: "https://httpbun.org/get"
     k8s.apisix.apache.org/http-redirect-code: "308"
   name: ingress-extensions-v1beta1
 spec:
   rules:
-  - host: httpbin.org
+  - host: httpbun.org
     http:
       paths:
       - path: /*
@@ -312,11 +312,11 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbun.org").Expect()
 		resp.Status(http.StatusPermanentRedirect)
-		url := resp.Header("Location").Equal("https://httpbin.org/get").Raw()
+		url := resp.Header("Location").Equal("https://httpbun.org/get").Raw()
 
 		body := httpexpect.New(ginkgo.GinkgoT(), url).GET("").Expect().Status(http.StatusOK).Body().Raw()
-		assert.Contains(ginkgo.GinkgoT(), body, "https://httpbin.org/get")
+		assert.Contains(ginkgo.GinkgoT(), body, "https://httpbun.org/get")
 	})
 })
