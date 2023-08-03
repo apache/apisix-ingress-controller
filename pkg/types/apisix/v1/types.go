@@ -453,8 +453,9 @@ type Ssl struct {
 // MutualTLSClientConfig apisix SSL client field
 // +k8s:deepcopy-gen=true
 type MutualTLSClientConfig struct {
-	CA    string `json:"ca,omitempty" yaml:"ca,omitempty"`
-	Depth int    `json:"depth,omitempty" yaml:"depth,omitempty"`
+	CA               string   `json:"ca,omitempty" yaml:"ca,omitempty"`
+	Depth            int      `json:"depth,omitempty" yaml:"depth,omitempty"`
+	SkipMtlsUriRegex []string `json:"skipMtlsUriRegex,omitempty" yaml:"skipMtlsUriRegex, omitempty"`
 }
 
 // StreamRoute represents the stream_route object in APISIX.
