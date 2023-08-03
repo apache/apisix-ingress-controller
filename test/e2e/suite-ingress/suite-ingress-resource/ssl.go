@@ -263,7 +263,7 @@ var _ = ginkgo.Describe("suite-ingress-resource: ApisixTls mTLS Test", func() {
 
 			// create ApisixTls resource
 			tlsName := "tls-with-client-ca"
-			skipMtlsUriRegex := "/hello[0-9]+"
+			skipMtlsUriRegex := "/get"
 			err = s.NewApisixTlsWithClientCA(tlsName, host, serverCertSecret, clientCASecret, skipMtlsUriRegex)
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixTls with client CA error")
 			// check ssl in APISIX
@@ -307,7 +307,7 @@ spec:
 			s.NewAPISIXHttpsClientWithCertificates(host, true, caCertPool, []tls.Certificate{cert}).
 				GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
 
-			s.NewAPISIXHttpsClient(host).GET("/hello1").WithHeader("Host", host).Expect().Status(http.StatusOK)
+			s.NewAPISIXHttpsClient(host).GET("/get").WithHeader("Host", host).Expect().Status(http.StatusOK)
 		})
 	}
 

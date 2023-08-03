@@ -88,7 +88,7 @@ spec:
       name: %s
       namespace: %s
     depth: 10
-    skipMtlsUriRegex:
+    skip_mtls_uri_regex:
     - %s
 `
 )
