@@ -16,6 +16,7 @@
 package annotations
 
 import (
+	"net/http"
 	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -26,136 +27,41 @@ import (
 
 var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1 upstream retry", func() {
 	s := scaffold.NewDefaultScaffold()
-	ginkgo.It("sanity", func() {
-		ing := `
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/retry: 2
-  name: ingress-v1
-spec:
-  rules:
-  - host: e2e.apisix.local
-    http:
-      paths:
-      - path: /helloworld.Greeter/SayHello
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: test-backend-service-e2e-test
-            port:
-              number: 50053
-`
-		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		time.Sleep(2 * time.Second)
-		ups, err := s.ListApisixUpstreams()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), ups, 1)
-		assert.Equal(ginkgo.GinkgoT(), ups[0].Scheme, "grpcs")
-	})
-})
-
-var _ = ginkgo.Describe("suite-annotations-error: annotations.networking/v1 upstream scheme error", func() {
-	s := scaffold.NewDefaultScaffold()
-	ginkgo.It("sanity", func() {
-		ing := `
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/upstream-scheme: nothing
-  name: ingress-v1
-spec:
-  rules:
-  - host: e2e.apisix.local
-    http:
-      paths:
-      - path: /helloworld.Greeter/SayHello
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: test-backend-service-e2e-test
-            port:
-              number: 50053
-`
-		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		time.Sleep(2 * time.Second)
-		ups, err := s.ListApisixUpstreams()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), ups, 1)
-		assert.Equal(ginkgo.GinkgoT(), ups[0].Scheme, "http")
-	})
-})
-
-var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1beta1 upstream scheme", func() {
-	s := scaffold.NewDefaultScaffold()
-	ginkgo.It("sanity", func() {
-		ing := `
-apiVersion: networking.k8s.io/v1beta1
-kind: Ingress
-metadata:
-  name: ingress-v1beta1
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/upstream-scheme: grpcs
-spec:
-  rules:
-  - host: e2e.apisix.local
-    http:
-      paths:
-      - path: /helloworld.Greeter/SayHello
-        pathType: ImplementationSpecific
-        backend:
-          serviceName: test-backend-service-e2e-test
-          servicePort: 50053
-`
-		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
-		time.Sleep(2 * time.Second)
-		ups, err := s.ListApisixUpstreams()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), ups, 1)
-		assert.Equal(ginkgo.GinkgoT(), ups[0].Scheme, "grpcs")
-	})
-})
-
-var _ = ginkgo.Describe("suite-annotations: annotations.extensions/v1beta1 upstream scheme", func() {
-	s := scaffold.NewDefaultScaffold()
-	ginkgo.It("sanity", func() {
+	ginkgo.It("enable upstream retry to 3", func() {
 		ing := `
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/upstream-scheme: grpcs
+    k8s.apisix.apache.org/retry: "3"
   name: ingress-ext-v1beta1
 spec:
   rules:
   - host: e2e.apisix.local
     http:
       paths:
-      - path: /helloworld.Greeter/SayHello
-        pathType: ImplementationSpecific
+      - path: /testupstream/retry
+        pathType: Exact
         backend:
           serviceName: test-backend-service-e2e-test
-          servicePort: 50053
+          servicePort: 8080
 `
 		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 		err := s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 		time.Sleep(2 * time.Second)
-		ups, err := s.ListApisixUpstreams()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), ups, 1)
-		assert.Equal(ginkgo.GinkgoT(), ups[0].Scheme, "grpcs")
+		//first try
+		respGet := s.NewAPISIXClient().GET("/testupstream/retry").WithHeader("Host", "e2e.apisix.local").Expect()
+		respGet.Status(http.StatusInternalServerError)
+
+		//second try
+		respGet = s.NewAPISIXClient().GET("/testupstream/retry").WithHeader("Host", "e2e.apisix.local").Expect()
+		respGet.Status(http.StatusInternalServerError)
+
+		//Should pass on 3rd try
+		respGet = s.NewAPISIXClient().GET("/testupstream/retry").WithHeader("Host", "e2e.apisix.local").Expect()
+		respGet.Status(http.StatusOK)
+		respGet.Body().Contains("successful response after 2 attempts")
 	})
 })

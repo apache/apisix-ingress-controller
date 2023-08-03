@@ -24,6 +24,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"sync/atomic"
 	"syscall"
 
 	"google.golang.org/grpc"
@@ -104,6 +106,31 @@ func main() {
 		log.Fatalln(http.ListenAndServeTLS(":443", "tls/server.pem", "tls/server.key", nil))
 	}()
 
+	go func() {
+		// curl http://e2e.apisix.local:8080/testupstream/* --resolve e2e.apisix.local:8080:127.0.0.1
+		log.Printf("starting http server in 8080")
+		// Here the assumption is that this endpoint will be used by a single client during testing
+		var requestsReceived uint32
+		log.Fatalln(http.ListenAndServe(":8080", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.RequestURI {
+			case "/testupstream/retry":
+				requestsReceived++
+				header := r.Header.Get("success-after-retry")
+				if header == "" { //set default value to succeed after 2 tries
+					header = "2"
+				}
+				succAfter, _ := strconv.Atoi(header)
+				if requestsReceived == uint32(succAfter) {
+					w.Write([]byte("successful response after " + header + " attempts"))
+					w.WriteHeader(200)
+				} else {
+					atomic.AddUint32(&requestsReceived, 1)
+					w.WriteHeader(500)
+				}
+			case "/testupstream/timeout":
+			}
+		})))
+	}()
 	go func() {
 		// curl https://e2e.apisix.local:8443/hello --resolve e2e.apisix.local:8443:127.0.0.1 --cacert ca.pem --cert client.pem --key client.key
 		log.Printf("starting mtls http server in 8443")
