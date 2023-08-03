@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 )
@@ -183,75 +182,4 @@ func TestCompareNetworkingV1beta1LBEqual(t *testing.T) {
 		},
 	}
 	assert.Equal(t, true, CompareNetworkingV1beta1LBEqual(lb1, lb2))
-}
-
-func TestCompareExtensionsV1beta1LBEqual(t *testing.T) {
-	lb1 := []extensionsv1beta1.IngressLoadBalancerIngress{
-		{
-			IP: "0.0.0.0",
-		},
-	}
-	lb2 := []extensionsv1beta1.IngressLoadBalancerIngress{
-		{
-			IP: "0.0.0.0",
-		},
-	}
-	assert.Equal(t, true, CompareExtensionsV1beta1LBEqual(lb1, lb2))
-
-	lb1 = []extensionsv1beta1.IngressLoadBalancerIngress{
-		{
-			IP: "0.0.0.0",
-		},
-	}
-	lb2 = []extensionsv1beta1.IngressLoadBalancerIngress{
-		{
-			IP: "0.0.0.0",
-		},
-		{
-			Hostname: "test.com",
-		},
-	}
-	assert.Equal(t, false, CompareExtensionsV1beta1LBEqual(lb1, lb2))
-
-	lb1 = []extensionsv1beta1.IngressLoadBalancerIngress{
-		{
-			IP: "127.0.0.1",
-		},
-		{
-			IP: "1.1.1.1",
-		},
-	}
-	lb2 = []extensionsv1beta1.IngressLoadBalancerIngress{
-		{
-			IP: "127.0.0.1",
-		},
-		{
-			IP: "0.0.0.0",
-		},
-	}
-	assert.Equal(t, false, CompareExtensionsV1beta1LBEqual(lb1, lb2))
-
-	lb1 = []extensionsv1beta1.IngressLoadBalancerIngress{
-		{
-			Hostname: "test.com",
-		},
-		{
-			IP: "127.0.0.1",
-		},
-		{
-			IP: "0.0.0.0",
-		},
-	}
-	lb2 = []extensionsv1beta1.IngressLoadBalancerIngress{
-		{
-			IP: "0.0.0.0",
-		},
-		{
-			IP: "127.0.0.1",
-		},
-		{
-			Hostname: "test.com",
-		},
-	}
-	assert.Equal(t, true, CompareExtensionsV1beta1LBEqual(lb1, lb2))
 }

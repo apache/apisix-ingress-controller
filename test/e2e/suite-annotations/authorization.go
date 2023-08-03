@@ -123,52 +123,6 @@ spec:
 				Status(http.StatusOK)
 		})
 
-		ginkgo.It("enable keyAuth in ingress extensions/v1beta1", func() {
-			err := s.ApisixConsumerKeyAuthCreated("foo", "bar")
-			assert.Nil(ginkgo.GinkgoT(), err, "creating keyAuth ApisixConsumer")
-
-			// Wait until the ApisixConsumer create event was delivered.
-			time.Sleep(6 * time.Second)
-
-			backendSvc, backendPort := s.DefaultHTTPBackend()
-			ing := fmt.Sprintf(`
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/auth-type: "keyAuth"
-  name: ingress-extensions-v1beta1
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /ip
-        pathType: Exact
-        backend:
-          serviceName: %s
-          servicePort: %d
-`, backendSvc, backendPort[0])
-			err = s.CreateResourceFromString(ing)
-			assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-			time.Sleep(5 * time.Second)
-
-			msg401 := s.NewAPISIXClient().GET("/ip").
-				WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(http.StatusUnauthorized).
-				Body().
-				Raw()
-			assert.Contains(ginkgo.GinkgoT(), msg401, "Missing API key found in request")
-
-			_ = s.NewAPISIXClient().GET("/ip").
-				WithHeader("Host", "httpbin.org").
-				WithHeader("apikey", "bar").
-				Expect().
-				Status(http.StatusOK)
-		})
-
 		ginkgo.It("enable basicAuth in ingress networking/v1", func() {
 			err := s.ApisixConsumerBasicAuthCreated("jack1", "jack1-username", "jack1-password")
 			assert.Nil(ginkgo.GinkgoT(), err, "creating keyAuth ApisixConsumer")
@@ -233,52 +187,6 @@ metadata:
     kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/auth-type: "basicAuth"
   name: ingress-v1beta1
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /ip
-        pathType: Exact
-        backend:
-          serviceName: %s
-          servicePort: %d
-`, backendSvc, backendPort[0])
-			err = s.CreateResourceFromString(ing)
-			assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-			time.Sleep(5 * time.Second)
-
-			msg401 := s.NewAPISIXClient().GET("/ip").
-				WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(http.StatusUnauthorized).
-				Body().
-				Raw()
-			assert.Contains(ginkgo.GinkgoT(), msg401, "Missing authorization in request")
-
-			_ = s.NewAPISIXClient().GET("/ip").
-				WithHeader("Host", "httpbin.org").
-				WithHeader("Authorization", "Basic amFjazEtdXNlcm5hbWU6amFjazEtcGFzc3dvcmQ=").
-				Expect().
-				Status(http.StatusOK)
-		})
-
-		ginkgo.It("enable basicAuth in ingress networking/v1beta1", func() {
-			err := s.ApisixConsumerBasicAuthCreated("jack1", "jack1-username", "jack1-password")
-			assert.Nil(ginkgo.GinkgoT(), err, "creating keyAuth ApisixConsumer")
-
-			// Wait until the ApisixConsumer create event was delivered.
-			time.Sleep(6 * time.Second)
-
-			backendSvc, backendPort := s.DefaultHTTPBackend()
-			ing := fmt.Sprintf(`
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/auth-type: "basicAuth"
-  name: ingress-extensions-v1beta1
 spec:
   rules:
   - host: httpbin.org

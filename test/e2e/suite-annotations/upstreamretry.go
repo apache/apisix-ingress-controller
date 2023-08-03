@@ -24,7 +24,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1 upstream scheme", func() {
+var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1 upstream retry", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("sanity", func() {
 		ing := `
@@ -33,7 +33,7 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/upstream-scheme: grpcs
+    k8s.apisix.apache.org/retry: 2
   name: ingress-v1
 spec:
   rules:
@@ -105,6 +105,39 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/upstream-scheme: grpcs
+spec:
+  rules:
+  - host: e2e.apisix.local
+    http:
+      paths:
+      - path: /helloworld.Greeter/SayHello
+        pathType: ImplementationSpecific
+        backend:
+          serviceName: test-backend-service-e2e-test
+          servicePort: 50053
+`
+		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		time.Sleep(2 * time.Second)
+		ups, err := s.ListApisixUpstreams()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), ups, 1)
+		assert.Equal(ginkgo.GinkgoT(), ups[0].Scheme, "grpcs")
+	})
+})
+
+var _ = ginkgo.Describe("suite-annotations: annotations.extensions/v1beta1 upstream scheme", func() {
+	s := scaffold.NewDefaultScaffold()
+	ginkgo.It("sanity", func() {
+		ing := `
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/upstream-scheme: grpcs
+  name: ingress-ext-v1beta1
 spec:
   rules:
   - host: e2e.apisix.local
