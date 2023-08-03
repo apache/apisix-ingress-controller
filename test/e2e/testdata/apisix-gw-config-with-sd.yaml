@@ -1,0 +1,51 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# PLEASE DO NOT UPDATE THIS FILE!
+# If you want to set the specified configuration value, you can set the new
+# value in the conf/config.yaml file.
+#
+
+apisix:
+  enable_control: true
+  enable_reuseport: true          # Enable nginx SO_REUSEPORT switch if set to true.
+  allow_admin:
+    - 127.0.0.0/24
+    - 0.0.0.0/0
+  port_admin: 9180
+  stream_proxy:                 # TCP/UDP proxy
+    only: false
+    tcp:                        # TCP proxy port list
+      - 9100
+      - addr: 9110
+        tls: true
+    udp:
+      - 9200
+etcd:
+  host:                           # it's possible to define multiple etcd hosts addresses of the same etcd cluster.
+    - "http://{{ .EtcdServiceFQDN }}:2379"     # multiple etcd address
+  prefix: "/apisix"               # apisix configurations prefix
+  timeout: 30                     # 30 seconds
+plugin_attr:
+  prometheus:
+    enable_export_server: false
+
+discovery:
+  dns:
+    servers:
+      - "10.96.0.10:53"          # use the real address of your dns server.
+                                 # currently we use KIND as the standard test environment, so here we can hard-code the default DNS address first.
+                                 # TODO: can be modified to fill dynamically 

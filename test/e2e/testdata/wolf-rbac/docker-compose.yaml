@@ -1,0 +1,77 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+version: '3'
+services:
+  database:
+    container_name: wolf-database
+    image: postgres:10.7
+    restart: always
+    environment:
+      POSTGRES_USER: wolfroot
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: wolf
+    volumes:
+      - ./db-psql.sql:/docker-entrypoint-initdb.d/db.sql:ro
+  server:
+    container_name: wolf-server
+    image: igeeky/wolf-server:0.5.2
+    restart: always
+    ports:
+      - "12180:12180"
+    depends_on:
+      - database
+    environment:
+      RBAC_ROOT_PASSWORD: wolf-123456
+      RBAC_TOKEN_KEY: f40215a5f25cbb6d36df07629aaf1172240fe48d
+      WOLF_CRYPT_KEY: fbd4962351924792cb5e5b131435cd30b24e3570
+      RBAC_SQL_URL:  postgres://wolfroot:123456@database:5432/wolf
+      CLIENT_CHANGE_PWD: "no"
+    command: npm run start
+  agent-or:
+    container_name: wolf-agent-or
+    image: igeeky/wolf-agent:0.5.2
+    restart: always
+    ports:
+     - "12182:12182"
+    depends_on:
+      - server
+    environment:
+      BACKEND_URL: http://openresty.org
+      RBAC_SERVER_URL: http://server:12180
+      RBAC_APP_ID: openresty
+  restful-demo:
+    container_name: restful-demo
+    image: igeeky/restful-demo:0.1.0
+    restart: always
+    ports:
+     - "10090:10090"
+  agent-demo:
+    container_name: wolf-agent-demo
+    image: igeeky/wolf-agent:0.5.2
+    restart: always
+    ports:
+     - "12184:12184"
+    depends_on:
+      - server
+      - restful-demo
+    environment:
+      BACKEND_URL: http://restful-demo:10090
+      RBAC_SERVER_URL: http://server:12180
+      RBAC_APP_ID: restful-demo
+      AGENT_PORT: 12184
+      EXTENSION_CONFIG: include /opt/wolf/agent/conf/no-permission-demo.conf;
