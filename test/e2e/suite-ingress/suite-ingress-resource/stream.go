@@ -62,55 +62,7 @@ spec:
 			resp.Body().Contains("x-my-value")
 		})
 		ginkgo.It("stream udp proxy", func() {
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(`
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: coredns
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: coredns
-  template:
-    metadata:
-      labels:
-        app: coredns
-    spec:
-      containers:
-      - name: coredns
-        image: coredns/coredns:1.8.4
-        livenessProbe:
-          tcpSocket:
-            port: 53
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        readinessProbe:
-          tcpSocket:
-            port: 53
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        ports:    
-        - name: dns
-          containerPort: 53
-          protocol: UDP
-`))
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(`
-kind: Service
-apiVersion: v1
-metadata:
-  name: coredns
-spec:
-  selector:
-    app: coredns
-  type: ClusterIP
-  ports:
-  - port: 53
-    targetPort: 53
-    protocol: UDP
-`))
-
-			s.EnsureNumEndpointsReady(ginkgo.GinkgoT(), "coredns", 1)
+			dnsSvc := s.NewCoreDNSService()
 
 			apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -124,9 +76,9 @@ spec:
     match:
       ingressPort: 9200
     backend:
-      serviceName: coredns
-      servicePort: 53
-`)
+      serviceName: %s
+      servicePort: %d
+`, dnsSvc.Name, dnsSvc.Spec.Ports[0].Port)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
 
 			err := s.EnsureNumApisixStreamRoutesCreated(1)
