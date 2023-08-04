@@ -49,7 +49,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstream")
 		// test dns query
 		r := s.DNSResolver()
-		host := "httpbun.org"
+		host := "httpbin.org"
 		_, err = r.LookupIPAddr(context.Background(), host)
 		assert.Nil(ginkgo.GinkgoT(), err, "dns query error")
 	})
