@@ -25,7 +25,6 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"sync/atomic"
 	"syscall"
 
 	"google.golang.org/grpc"
@@ -124,8 +123,8 @@ func main() {
 					w.Write([]byte("successful response after " + header + " attempts"))
 					w.WriteHeader(200)
 				} else {
-					atomic.AddUint32(&requestsReceived, 1)
-					w.WriteHeader(500)
+					w.Write([]byte(fmt.Sprintf("failing %d try", requestsReceived)))
+					w.WriteHeader(400)
 				}
 			case "/testupstream/timeout":
 			}

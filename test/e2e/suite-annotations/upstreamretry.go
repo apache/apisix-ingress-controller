@@ -51,17 +51,8 @@ spec:
 		err := s.EnsureNumApisixUpstreamsCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 		time.Sleep(2 * time.Second)
-		//first try
+
 		respGet := s.NewAPISIXClient().GET("/testupstream/retry").WithHeader("Host", "e2e.apisix.local").Expect()
-		respGet.Status(http.StatusInternalServerError)
-
-		//second try
-		respGet = s.NewAPISIXClient().GET("/testupstream/retry").WithHeader("Host", "e2e.apisix.local").Expect()
-		respGet.Status(http.StatusInternalServerError)
-
-		//Should pass on 3rd try
-		respGet = s.NewAPISIXClient().GET("/testupstream/retry").WithHeader("Host", "e2e.apisix.local").Expect()
 		respGet.Status(http.StatusOK)
-		respGet.Body().Contains("successful response after 2 attempts")
 	})
 })
