@@ -328,7 +328,7 @@ func (s *Scaffold) DNSResolver() *net.Resolver {
 			d := net.Dialer{
 				Timeout: time.Millisecond * time.Duration(10000),
 			}
-			return d.DialContext(ctx, "udp", s.apisixUDPTunnel.Endpoint())
+			return d.DialContext(ctx, "udp", "apisix-service-e2e-test:9200")
 		},
 	}
 }
