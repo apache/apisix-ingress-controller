@@ -138,7 +138,7 @@ spec:
 			assert.Equal(ginkgo.GinkgoT(), sr[0].ServerPort, int32(9200))
 			// test dns query
 			r := s.DNSResolver()
-			host := "httpbin.org"
+			host := "github.com"
 			_, err = r.LookupIPAddr(context.Background(), host)
 			assert.Nil(ginkgo.GinkgoT(), err, "dns query error")
 		})
