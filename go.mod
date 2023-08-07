@@ -9,7 +9,7 @@ require (
 	github.com/imdario/mergo v0.3.15
 	github.com/incubator4/go-resty-expr v0.1.1
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.15.1
+	github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/client_model v0.4.0
 	github.com/slok/kubewebhook/v2 v2.5.0
 	github.com/spf13/cobra v1.7.0
@@ -74,7 +74,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/common v0.42.0 // indirect
-	github.com/prometheus/procfs v0.9.0 // indirect
+	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
