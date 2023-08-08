@@ -455,7 +455,7 @@ type Ssl struct {
 type MutualTLSClientConfig struct {
 	CA               string   `json:"ca,omitempty" yaml:"ca,omitempty"`
 	Depth            int      `json:"depth,omitempty" yaml:"depth,omitempty"`
-	SkipMtlsUriRegex []string `json:"skip_mtls_uri_regex,omitempty" yaml:"skip_mtls_uri_regex, omitempty"`
+	SkipMTLSUriRegex []string `json:"skip_mtls_uri_regex,omitempty" yaml:"skip_mtls_uri_regex, omitempty"`
 }
 
 // StreamRoute represents the stream_route object in APISIX.

@@ -721,8 +721,8 @@ func (in *ApisixGlobalRuleSpec) DeepCopy() *ApisixGlobalRuleSpec {
 func (in *ApisixMutualTlsClientConfig) DeepCopyInto(out *ApisixMutualTlsClientConfig) {
 	*out = *in
 	out.CASecret = in.CASecret
-	if in.SkipMtlsUriRegex != nil {
-		in, out := &in.SkipMtlsUriRegex, &out.SkipMtlsUriRegex
+	if in.SkipMTLSUriRegex != nil {
+		in, out := &in.SkipMTLSUriRegex, &out.SkipMTLSUriRegex
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
