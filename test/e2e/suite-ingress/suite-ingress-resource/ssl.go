@@ -311,6 +311,7 @@ spec:
 			// update ApisixTls `skip_mtls_uri_regex`
 			skipMtlsUriRegex = "/ip"
 			err = s.NewApisixTlsWithClientCA(tlsName, host, serverCertSecret, clientCASecret, skipMtlsUriRegex)
+			assert.Nil(ginkgo.GinkgoT(), err, "Update ApisixTls with client CA error")
 
 			s.NewAPISIXHttpsClient(host).GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
 		})
