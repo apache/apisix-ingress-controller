@@ -69,42 +69,6 @@ spec:
 			Raw()
 	})
 
-	ginkgo.It("extensions/v1beta1", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/svc-namespace: "%s"	
-  name: ingress-extensions-v1beta1
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /*
-        pathType: Prefix
-        backend:
-          serviceName: %s
-          servicePort: %d
-`, s.Namespace(), backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		if err != nil {
-			assert.Fail(ginkgo.GinkgoT(), err.Error(), "creating ingress")
-		}
-		time.Sleep(5 * time.Second)
-
-		_ = s.NewAPISIXClient().
-			POST("/anything").
-			WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(http.StatusOK).
-			Body().
-			Raw()
-	})
-
 	ginkgo.It("networking/v1beta1", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
@@ -158,48 +122,6 @@ var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations cross-name
 	deleteNamespace := func(namespace string) {
 		_ = k8s.DeleteNamespaceE(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, namespace)
 	}
-
-	ginkgo.It("extensions/v1beta1", func() {
-
-		newNs := fmt.Sprintf("second-svc-namespace-%d", time.Now().Nanosecond())
-		oldNs := s.Namespace()
-		createNamespace(newNs, oldNs)
-		defer deleteNamespace(newNs)
-
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/svc-namespace: %s
-  name: ingress-extensions-v1beta1
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /*
-        pathType: Prefix
-        backend:
-          serviceName: %s
-          servicePort: %d
-`, oldNs, backendSvc, backendPort[0])
-		err := s.CreateResourceFromStringWithNamespace(ing, newNs)
-		if err != nil {
-			assert.Fail(ginkgo.GinkgoT(), err.Error(), "creating ingress")
-		}
-		time.Sleep(5 * time.Second)
-
-		_ = s.NewAPISIXClient().
-			POST("/anything").
-			WithHeader("Host", "httpbin.org").
-			Expect().
-			Status(http.StatusOK).
-			Body().
-			Raw()
-	})
 
 	ginkgo.It("networking/v1beta1", func() {
 

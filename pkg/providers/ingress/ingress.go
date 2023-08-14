@@ -25,7 +25,6 @@ import (
 	"go.uber.org/zap"
 	"gopkg.in/go-playground/pool.v3"
 	corev1 "k8s.io/api/core/v1"
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -122,11 +121,9 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		ing, err = c.IngressLister.V1(namespace, name)
 	case kube.IngressV1beta1:
 		ing, err = c.IngressLister.V1beta1(namespace, name)
-	case kube.IngressExtensionsV1beta1:
-		ing, err = c.IngressLister.ExtensionsV1beta1(namespace, name)
 	default:
-		err = fmt.Errorf("unsupported group version %s, one of (%s/%s/%s) is expected", ingEv.GroupVersion,
-			kube.IngressV1, kube.IngressV1beta1, kube.IngressExtensionsV1beta1)
+		err = fmt.Errorf("unsupported group version %s, one of (%s/%s) is expected", ingEv.GroupVersion,
+			kube.IngressV1, kube.IngressV1beta1)
 	}
 
 	if err != nil {
@@ -161,10 +158,6 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 		}
 	case kube.IngressV1beta1:
 		for _, tls := range ing.V1beta1().Spec.TLS {
-			secrets = append(secrets, tls.SecretName)
-		}
-	case kube.IngressExtensionsV1beta1:
-		for _, tls := range ing.ExtensionsV1beta1().Spec.TLS {
 			secrets = append(secrets, tls.SecretName)
 		}
 	}
@@ -283,8 +276,6 @@ func (c *ingressController) UpdateStatus(obj kube.Ingress) {
 		ing, err = c.IngressLister.V1(namespace, name)
 	case kube.IngressV1beta1:
 		ing, err = c.IngressLister.V1beta1(namespace, name)
-	case kube.IngressExtensionsV1beta1:
-		ing, err = c.IngressLister.ExtensionsV1beta1(namespace, name)
 	}
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
@@ -304,8 +295,6 @@ func (c *ingressController) UpdateStatus(obj kube.Ingress) {
 		c.recordStatus(obj.V1())
 	case kube.IngressV1beta1:
 		c.recordStatus(obj.V1beta1())
-	case kube.IngressExtensionsV1beta1:
-		c.recordStatus(obj.ExtensionsV1beta1())
 	}
 }
 
@@ -360,11 +349,6 @@ func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 		case kube.IngressV1beta1:
 			if reflect.DeepEqual(prev.V1beta1().Spec, curr.V1beta1().Spec) &&
 				!reflect.DeepEqual(prev.V1beta1().Status, curr.V1beta1().Status) {
-				return
-			}
-		case kube.IngressExtensionsV1beta1:
-			if reflect.DeepEqual(prev.ExtensionsV1beta1().Spec, curr.ExtensionsV1beta1().Spec) &&
-				!reflect.DeepEqual(prev.ExtensionsV1beta1().Status, curr.ExtensionsV1beta1().Status) {
 				return
 			}
 		}
@@ -457,10 +441,8 @@ func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 	} else if ing.GroupVersion() == kube.IngressV1beta1 {
 		ic = ing.V1beta1().Spec.IngressClassName
 		ica = ing.V1beta1().GetAnnotations()[_ingressKey]
-	} else {
-		ic = ing.ExtensionsV1beta1().Spec.IngressClassName
-		ica = ing.ExtensionsV1beta1().GetAnnotations()[_ingressKey]
 	}
+
 	if configIngressClass == config.IngressClassApisixAndAll {
 		configIngressClass = config.IngressClass
 	}
@@ -548,27 +530,6 @@ func (c *ingressController) recordStatus(at runtime.Object) {
 			v.Status.LoadBalancer.Ingress = ingressLB
 			if _, errRecord := client.NetworkingV1beta1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 				log.Errorw("failed to record status change for IngressV1beta1",
-					zap.Error(errRecord),
-					zap.String("name", v.Name),
-					zap.String("namespace", v.Namespace),
-				)
-			}
-		}
-	case *extensionsv1beta1.Ingress:
-		// set to status
-		lbips, err := c.ingressLBStatusIPs()
-		if err != nil {
-			log.Errorw("failed to get APISIX gateway external IPs",
-				zap.Error(err),
-			)
-
-		}
-
-		ingressLB := utils.CoreV1ToExtensionsV1beta1LB(lbips)
-		if !utils.CompareExtensionsV1beta1LBEqual(v.Status.LoadBalancer.Ingress, ingressLB) {
-			v.Status.LoadBalancer.Ingress = ingressLB
-			if _, errRecord := client.ExtensionsV1beta1().Ingresses(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-				log.Errorw("failed to record status change for IngressExtensionsv1beta1",
 					zap.Error(errRecord),
 					zap.String("name", v.Name),
 					zap.String("namespace", v.Namespace),

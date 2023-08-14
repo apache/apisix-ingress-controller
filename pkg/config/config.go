@@ -223,7 +223,7 @@ func (cfg *Config) Validate() error {
 		return errors.New("apisix base url is required")
 	}
 	switch cfg.Kubernetes.IngressVersion {
-	case IngressNetworkingV1, IngressNetworkingV1beta1, IngressExtensionsV1beta1:
+	case IngressNetworkingV1, IngressNetworkingV1beta1:
 		break
 	default:
 		return errors.New("unsupported ingress version")

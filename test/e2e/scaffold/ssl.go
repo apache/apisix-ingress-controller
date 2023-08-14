@@ -168,7 +168,7 @@ func (s *Scaffold) GenerateCert(t ginkgo.GinkgoTInterface, dnsNames []string) (c
 			Organization: []string{"Acme Co"},
 		},
 		NotBefore: time.Now(),
-		NotAfter:  time.Now().Add(time.Hour),
+		NotAfter:  time.Now().Add(24 * time.Hour),
 
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
@@ -186,6 +186,100 @@ func (s *Scaffold) GenerateCert(t ginkgo.GinkgoTInterface, dnsNames []string) (c
 	assert.NoError(t, err)
 	err = pem.Encode(&privPemBytes, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes})
 	assert.NoError(t, err)
+
+	return
+}
+
+// GenerateMACert used for generate MutualAuthCerts
+func (s *Scaffold) GenerateMACert(t ginkgo.GinkgoTInterface, dnsNames []string) (caCertBytes, serverCertBytes, serverKeyBytes, clientCertBytes, clientKeyBytes bytes.Buffer) {
+	// CA cert
+	caKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	assert.NoError(t, err)
+	caPub := caKey.Public()
+
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	assert.NoError(t, err)
+
+	caTemplate := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			CommonName:   dnsNames[0] + "-ca",
+			Organization: []string{"Acme Co"},
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().Add(24 * time.Hour),
+
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		BasicConstraintsValid: true,
+	}
+
+	caTemplate.IsCA = true
+	caTemplate.KeyUsage |= x509.KeyUsageCertSign
+
+	caBytes, err := x509.CreateCertificate(rand.Reader, &caTemplate, &caTemplate, caPub, caKey)
+	assert.NoError(t, err)
+	err = pem.Encode(&caCertBytes, &pem.Block{Type: "CERTIFICATE", Bytes: caBytes})
+	assert.NoError(t, err)
+
+	// Server cert
+	serverKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	assert.NoError(t, err)
+
+	serialNumber, err = rand.Int(rand.Reader, serialNumberLimit)
+	assert.NoError(t, err)
+
+	serverTemplate := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			CommonName:   dnsNames[0],
+			Organization: []string{"Acme Co"},
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().Add(24 * time.Hour),
+
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		BasicConstraintsValid: true,
+	}
+
+	serverBytes, err := x509.CreateCertificate(rand.Reader, &serverTemplate, &caTemplate, &serverKey.PublicKey, caKey)
+	assert.NoError(t, err)
+	err = pem.Encode(&serverCertBytes, &pem.Block{Type: "CERTIFICATE", Bytes: serverBytes})
+	assert.NoError(t, err)
+	serverKeyBytesD, err := x509.MarshalPKCS8PrivateKey(serverKey)
+	assert.NoError(t, err)
+	err = pem.Encode(&serverKeyBytes, &pem.Block{Type: "PRIVATE KEY", Bytes: serverKeyBytesD})
+
+	// Client cert
+	clientKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	assert.NoError(t, err)
+
+	serialNumber, err = rand.Int(rand.Reader, serialNumberLimit)
+	assert.NoError(t, err)
+
+	clientTemplate := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			CommonName:   dnsNames[0] + "-client",
+			Organization: []string{"Acme Co"},
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().Add(24 * time.Hour),
+
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		BasicConstraintsValid: true,
+	}
+
+	clientBytes, err := x509.CreateCertificate(rand.Reader, &clientTemplate, &caTemplate, &clientKey.PublicKey, caKey)
+	assert.NoError(t, err)
+	err = pem.Encode(&clientCertBytes, &pem.Block{Type: "CERTIFICATE", Bytes: clientBytes})
+	assert.NoError(t, err)
+	clientKeyBytesD, err := x509.MarshalPKCS8PrivateKey(clientKey)
+	assert.NoError(t, err)
+	err = pem.Encode(&clientKeyBytes, &pem.Block{Type: "PRIVATE KEY", Bytes: clientKeyBytesD})
 
 	return
 }
