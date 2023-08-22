@@ -31,8 +31,7 @@ deployment:
     host:
       - "http://{{ .EtcdServiceFQDN }}:2379"
     prefix: "/apisix"
-    use_grpc: true
-    timeout: 3600
+    timeout: 60
 
 apisix:
   enable_control: true

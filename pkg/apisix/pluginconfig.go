@@ -272,6 +272,12 @@ func (r *pluginConfigMem) List(ctx context.Context) ([]*v1.PluginConfig, error) 
 }
 
 func (r *pluginConfigMem) Create(ctx context.Context, obj *v1.PluginConfig, shouldCompare bool) (*v1.PluginConfig, error) {
+	if shouldCompare && CompareResourceEqualFromCluster(r.cluster, obj.ID, obj) {
+		return obj, nil
+	}
+	if ok, err := r.cluster.validator.ValidateHTTPPluginSchema(obj.Plugins); !ok {
+		return nil, err
+	}
 	data, err := json.Marshal(obj)
 	if err != nil {
 		return nil, err
@@ -302,6 +308,12 @@ func (r *pluginConfigMem) Delete(ctx context.Context, obj *v1.PluginConfig) erro
 }
 
 func (r *pluginConfigMem) Update(ctx context.Context, obj *v1.PluginConfig, shouldCompare bool) (*v1.PluginConfig, error) {
+	if shouldCompare && CompareResourceEqualFromCluster(r.cluster, obj.ID, obj) {
+		return obj, nil
+	}
+	if ok, err := r.cluster.validator.ValidateHTTPPluginSchema(obj.Plugins); !ok {
+		return nil, err
+	}
 	data, err := json.Marshal(obj)
 	if err != nil {
 		return nil, err

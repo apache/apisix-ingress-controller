@@ -30,9 +30,6 @@ var _ = ginkgo.Describe("suite-plugins-authentication: ApisixConsumer with hmacA
 		s := scaffoldFunc()
 
 		ginkgo.It("ApisixRoute with hmacAuth consumer", func() {
-			if s.IsEtcdServer() {
-				ginkgo.Skip("Does not support etcdserver mode, temporarily skipping test cases, waiting for fix")
-			}
 			ac := `
 apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
@@ -45,7 +42,6 @@ spec:
         access_key: papa
         secret_key: fatpa
         algorithm: "hmac-sha256"
-        clock_skew: 0
 `
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ac), "creating hmacAuth ApisixConsumer")
 
@@ -60,7 +56,6 @@ spec:
 			assert.Equal(ginkgo.GinkgoT(), "papa", hmacAuth["access_key"])
 			assert.Equal(ginkgo.GinkgoT(), "fatpa", hmacAuth["secret_key"])
 			assert.Equal(ginkgo.GinkgoT(), "hmac-sha256", hmacAuth["algorithm"])
-			assert.Equal(ginkgo.GinkgoT(), float64(0), hmacAuth["clock_skew"])
 
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
@@ -129,9 +124,6 @@ spec:
 		})
 
 		ginkgo.It("ApisixRoute with hmacAuth consumer using secret", func() {
-			if s.IsEtcdServer() {
-				ginkgo.Skip("Does not support etcdserver mode, temporarily skipping test cases, waiting for fix")
-			}
 			secret := `
 apiVersion: v1
 kind: Secret
@@ -141,7 +133,6 @@ data:
   access_key: cGFwYQ==
   secret_key: ZmF0cGE=
   algorithm: aG1hYy1zaGEyNTY=
-  clock_skew: MA==
 `
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating hmac secret for ApisixConsumer")
 
@@ -169,7 +160,6 @@ spec:
 			assert.Equal(ginkgo.GinkgoT(), "papa", hmacAuth["access_key"])
 			assert.Equal(ginkgo.GinkgoT(), "fatpa", hmacAuth["secret_key"])
 			assert.Equal(ginkgo.GinkgoT(), "hmac-sha256", hmacAuth["algorithm"])
-			assert.Equal(ginkgo.GinkgoT(), float64(0), hmacAuth["clock_skew"])
 
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`

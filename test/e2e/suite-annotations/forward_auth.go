@@ -29,9 +29,6 @@ var _ = ginkgo.Describe("suite-annotations: froward-auth annotations", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.JustBeforeEach(func() {
-		if s.IsEtcdServer() {
-			ginkgo.Skip("Does not support etcdserver mode, temporarily skipping test cases, waiting for fix")
-		}
 		// create an external auth service
 		json := `{
 			"uri":"/auth",
@@ -47,15 +44,7 @@ var _ = ginkgo.Describe("suite-annotations: froward-auth annotations", func() {
 		assert.Nil(ginkgo.GinkgoT(), s.CreateApisixRouteByApisixAdmin("auth", []byte(json)), "create forward-auth serverless route")
 	})
 
-	ginkgo.JustAfterEach(func() {
-		assert.Nil(ginkgo.GinkgoT(), s.DeleteApisixRouteByApisixAdmin("auth"), "clean up forward-auth serverless route")
-	})
-
 	ginkgo.It("enable in ingress networking/v1", func() {
-		//TODO: Need to support etcdserver mode
-		if s.IsEtcdServer() {
-			ginkgo.Skip("Does not support etcdserver mode, temporarily skipping test cases, waiting for fix")
-		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
@@ -97,10 +86,6 @@ spec:
 	})
 
 	ginkgo.It("enable in ingress networking/v1beta1", func() {
-		//TODO: Need to support etcdserver mode
-		if s.IsEtcdServer() {
-			ginkgo.Skip("Does not support etcdserver mode, temporarily skipping test cases, waiting for fix")
-		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1

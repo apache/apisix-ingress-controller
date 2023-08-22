@@ -272,6 +272,12 @@ func (r *streamRouteMem) List(ctx context.Context) ([]*v1.StreamRoute, error) {
 }
 
 func (r *streamRouteMem) Create(ctx context.Context, obj *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
+	if shouldCompare && CompareResourceEqualFromCluster(r.cluster, obj.ID, obj) {
+		return obj, nil
+	}
+	if ok, err := r.cluster.validator.ValidateSteamPluginSchema(obj.Plugins); !ok {
+		return nil, err
+	}
 	data, err := json.Marshal(obj)
 	if err != nil {
 		return nil, err
@@ -298,6 +304,12 @@ func (r *streamRouteMem) Delete(ctx context.Context, obj *v1.StreamRoute) error 
 }
 
 func (r *streamRouteMem) Update(ctx context.Context, obj *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
+	if shouldCompare && CompareResourceEqualFromCluster(r.cluster, obj.ID, obj) {
+		return obj, nil
+	}
+	if ok, err := r.cluster.validator.ValidateSteamPluginSchema(obj.Plugins); !ok {
+		return nil, err
+	}
 	data, err := json.Marshal(obj)
 	if err != nil {
 		return nil, err

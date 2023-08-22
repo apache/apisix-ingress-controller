@@ -285,6 +285,9 @@ func (r *routeMem) List(ctx context.Context) ([]*v1.Route, error) {
 }
 
 func (r *routeMem) Create(ctx context.Context, obj *v1.Route, shouldCompare bool) (*v1.Route, error) {
+	if ok, err := r.cluster.validator.ValidateHTTPPluginSchema(obj.Plugins); !ok {
+		return nil, err
+	}
 	if shouldCompare && CompareResourceEqualFromCluster(r.cluster, obj.ID, obj) {
 		return obj, nil
 	}
@@ -316,6 +319,9 @@ func (r *routeMem) Delete(ctx context.Context, obj *v1.Route) error {
 func (r *routeMem) Update(ctx context.Context, obj *v1.Route, shouldCompare bool) (*v1.Route, error) {
 	if shouldCompare && CompareResourceEqualFromCluster(r.cluster, obj.ID, obj) {
 		return obj, nil
+	}
+	if ok, err := r.cluster.validator.ValidateHTTPPluginSchema(obj.Plugins); !ok {
+		return nil, err
 	}
 	data, err := json.Marshal(obj)
 	if err != nil {

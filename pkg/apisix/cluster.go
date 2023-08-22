@@ -121,6 +121,7 @@ type cluster struct {
 	pluginMetadata          PluginMetadata
 	adapter                 adapter.Adapter
 	waitforCacheSync        bool
+	validator               APISIXSchemaValidator
 }
 
 func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
@@ -180,6 +181,11 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 		c.upstreamServiceRelation = newUpstreamServiceRelation(c)
 		c.pluginMetadata = newPluginMetadataMem(c)
 
+		c.validator, err = NewReferenceFile("conf/apisix-schema.json")
+		if err != nil {
+			return nil, err
+		}
+
 		c.generatedObjCache, _ = cache.NewNoopDBCache()
 		c.cache, err = cache.NewMemDBCache()
 		if err != nil {
@@ -204,6 +210,7 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 		c.pluginConfig = newPluginConfigClient(c)
 		c.upstreamServiceRelation = newUpstreamServiceRelation(c)
 		c.pluginMetadata = newPluginMetadataClient(c)
+		c.validator = newDummyValidator()
 
 		c.cache, err = cache.NewMemDBCache()
 		if err != nil {
@@ -554,6 +561,10 @@ func (c *cluster) PluginMetadata() PluginMetadata {
 
 func (c *cluster) UpstreamServiceRelation() UpstreamServiceRelation {
 	return c.upstreamServiceRelation
+}
+
+func (c *cluster) Validator() APISIXSchemaValidator {
+	return c.validator
 }
 
 // HealthCheck implements Cluster.HealthCheck method.

@@ -43,5 +43,6 @@ RUN yum -y install ca-certificates libc6-compat \
 
 COPY --from=build-env /usr/share/zoneinfo/Hongkong /etc/localtime
 COPY --from=build-env /build/apisix-ingress-controller .
+COPY --from=build-env /build/conf/apisix-schema.json ./conf/apisix-schema.json
 
 ENTRYPOINT ["/ingress-apisix/apisix-ingress-controller", "ingress", "--config-path", "/ingress-apisix/conf/config.yaml"]

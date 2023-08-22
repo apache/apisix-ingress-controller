@@ -30,9 +30,7 @@ import (
 var _ = ginkgo.Describe("suite-ingress-features: CRDs status subresource Testing", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("check ApisixRoute status is recorded", func() {
-		if s.IsEtcdServer() {
-			ginkgo.Skip("Does not support etcdserver mode, temporarily skipping test cases, waiting for fix")
-		}
+		time.Sleep(5 * time.Minute)
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -113,9 +111,6 @@ spec:
 	})
 
 	ginkgo.It("check ApisixPluginConfig status is recorded", func() {
-		if s.IsEtcdServer() {
-			ginkgo.Skip("Does not support etcdserver mode, temporarily skipping test cases, waiting for fix")
-		}
 		apc := `
 apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
