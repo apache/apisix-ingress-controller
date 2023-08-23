@@ -170,7 +170,7 @@ func NewScaffold(o *Options) *Scaffold {
 
 	if o.APISIXConfigPath == "" {
 		if o.EnableEtcdServer {
-			o.APISIXConfigPath = "testdata/apisix-gw-config-v3-grpc.yaml"
+			o.APISIXConfigPath = "testdata/apisix-gw-config-v3-etcd-server.yaml"
 		} else if o.APISIXAdminAPIVersion == "v3" {
 			o.APISIXConfigPath = "testdata/apisix-gw-config-v3.yaml"
 		} else {
