@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/informers"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/record"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
@@ -122,6 +123,8 @@ type Common struct {
 	*config.Config
 	*ListerInformer
 
+	Eletor *leaderelection.LeaderElector
+
 	ControllerNamespace string
 
 	APISIX           apisix.APISIX
@@ -148,6 +151,9 @@ func (c *Common) RecordEventS(object runtime.Object, eventtype, reason string, m
 
 // TODO: Move sync utils to apisix.APISIX interface?
 func (c *Common) SyncManifests(ctx context.Context, added, updated, deleted *utils.Manifest, shouldCompare bool) error {
+	if !c.Eletor.IsLeader() && !c.Config.EtcdServer.Enabled {
+		return nil
+	}
 	return utils.SyncManifests(ctx, c.APISIX, c.Config.APISIX.DefaultClusterName, added, updated, deleted, shouldCompare)
 }
 

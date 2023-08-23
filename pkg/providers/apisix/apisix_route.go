@@ -417,9 +417,10 @@ func (c *apisixRouteController) checkPluginNameIfNotEmptyV2(ctx context.Context,
 }
 
 func (c *apisixRouteController) updateStatus(obj kube.ApisixRoute, statusErr error) {
-	if obj == nil {
+	if obj == nil || c.Kubernetes.DisableStatusUpdates || !c.Eletor.IsLeader() {
 		return
 	}
+
 	var (
 		ar        kube.ApisixRoute
 		err       error
@@ -852,9 +853,6 @@ problem here, and incorrect status may be recorded.(It will only be triggered wh
 	}
 */
 func (c *apisixRouteController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
-	if c.Kubernetes.DisableStatusUpdates {
-		return
-	}
 	// build condition
 	message := utils.CommonSuccessMessage
 	if err != nil {

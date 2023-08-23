@@ -41,11 +41,11 @@ Since apisix strongly relies on the etcd API, the control-plane will simulate th
 
 ### Architecture
 
-![ingress-apisix-composite-architecture.png](../../../assets/images/ingress-apisix-composite-architecture.png)
+![ingress-apisix-composite-architecture.png](../../assets/images/ingress-apisix-composite-architecture.png)
 
 ### Timing diagram
 
-![ingress-apisix-new-architecture-timing-diagram.png](../../../assets/images/ingress-apisix-new-architecture-timing-diagram.png)
+![ingress-apisix-new-architecture-timing-diagram.png](../../assets/images/ingress-apisix-new-architecture-timing-diagram.png)
 
 ## Installation
 

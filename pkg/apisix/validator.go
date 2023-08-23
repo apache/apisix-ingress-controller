@@ -28,8 +28,6 @@ import (
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-const ()
-
 type APISIXSchema struct {
 	Plugins       map[string]SchemaPlugin `json:"plugins"`
 	StreamPlugins map[string]SchemaPlugin `json:"stream_plugins"`
@@ -86,7 +84,6 @@ func NewReferenceFile(source string) (APISIXSchemaValidator, error) {
 func (asv *apisixSchemaReferenceValidator) ValidateHTTPPluginSchema(plugins v1.Plugins) (bool, error) {
 	var resultErrs error
 
-	fmt.Println("hello")
 	for pluginName, pluginConfig := range plugins {
 		schema, ok := asv.HTTPPlugins[pluginName]
 		if !ok {

@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	networkingv1 "k8s.io/client-go/listers/networking/v1"
@@ -88,6 +89,8 @@ type Controller struct {
 	gatewayProvider   *gateway.Provider
 	apisixProvider    apisixprovider.Provider
 	ingressProvider   ingressprovider.Provider
+
+	elector *leaderelection.LeaderElector
 }
 
 // NewController creates an ingress apisix controller object.
@@ -152,6 +155,36 @@ func (c *Controller) Run(stop chan struct{}) error {
 		}
 	}()
 
+	if err := c.setupLeaderElection(); err != nil {
+		return err
+	}
+
+	// ensure that the leader has been elected
+	if err := wait.PollUntilContextTimeout(rootCtx, time.Millisecond, 10*time.Second, false, func(ctx context.Context) (bool, error) {
+		if c.elector.GetLeader() != "" {
+			return true, nil
+		}
+		return false, nil
+	}); err != nil {
+		return err
+	}
+
+	c.run(rootCtx)
+
+	return nil
+}
+
+func (c *Controller) setupLeaderElection() error {
+	var elector *leaderelection.LeaderElector
+
+	ctx := context.Background()
+
+	var newLeaderCtx = func(ctx context.Context) context.CancelFunc {
+		leaderCtx, cancel := context.WithCancel(ctx)
+		go elector.Run(leaderCtx)
+		return cancel
+	}
+
 	lock := &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
 			Namespace: c.namespace,
@@ -169,7 +202,14 @@ func (c *Controller) Run(stop chan struct{}) error {
 		RenewDeadline: 5 * time.Second,
 		RetryPeriod:   2 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: c.run,
+			OnStartedLeading: func(ctx context.Context) {
+				log.Infow("controller now is running as leader",
+					zap.String("namespace", c.namespace),
+					zap.String("pod", c.name),
+				)
+
+				c.MetricsCollector.ResetLeader(true)
+			},
 			OnNewLeader: func(identity string) {
 				log.Warnf("found a new leader %s", identity)
 				if identity != c.name {
@@ -178,10 +218,6 @@ func (c *Controller) Run(stop chan struct{}) error {
 						zap.String("pod", c.name),
 					)
 					c.MetricsCollector.ResetLeader(false)
-					// delete the old APISIX cluster, so that the cached state
-					// like synchronization won't be used next time the candidate
-					// becomes the leader again.
-					c.apisix.DeleteCluster(c.cfg.APISIX.DefaultClusterName)
 				}
 			},
 			OnStoppedLeading: func() {
@@ -189,11 +225,11 @@ func (c *Controller) Run(stop chan struct{}) error {
 					zap.String("namespace", c.namespace),
 					zap.String("pod", c.name),
 				)
+
+				c.leaderContextCancelFunc()
+				c.leaderContextCancelFunc = newLeaderCtx(ctx)
+
 				c.MetricsCollector.ResetLeader(false)
-				// delete the old APISIX cluster, so that the cached state
-				// like synchronization won't be used next time the candidate
-				// becomes the leader again.
-				c.apisix.DeleteCluster(c.cfg.APISIX.DefaultClusterName)
 			},
 		},
 		ReleaseOnCancel: true,
@@ -204,17 +240,9 @@ func (c *Controller) Run(stop chan struct{}) error {
 		log.Errorf("failed to create leader elector: %s", err.Error())
 		return err
 	}
-
-election:
-	curCtx, cancel := context.WithCancel(rootCtx)
-	c.leaderContextCancelFunc = cancel
-	elector.Run(curCtx)
-	select {
-	case <-rootCtx.Done():
-		return nil
-	default:
-		goto election
-	}
+	c.elector = elector
+	c.leaderContextCancelFunc = newLeaderCtx(ctx)
+	return nil
 }
 
 func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
@@ -347,9 +375,6 @@ func (c *Controller) run(ctx context.Context) {
 	ctx, cancelFunc = context.WithCancel(ctx)
 	defer cancelFunc()
 
-	// give up leader
-	defer c.leaderContextCancelFunc()
-
 	clusterOpts := &apisix.ClusterOptions{
 		AdminAPIVersion:  c.cfg.APISIX.AdminAPIVersion,
 		Name:             c.cfg.APISIX.DefaultClusterName,
@@ -395,6 +420,7 @@ func (c *Controller) run(ctx context.Context) {
 		KubeClient:          c.kubeClient,
 		MetricsCollector:    c.MetricsCollector,
 		Recorder:            c.recorder,
+		Eletor:              c.elector,
 	}
 
 	c.namespaceProvider, err = namespace.NewWatchingNamespaceProvider(ctx, c.kubeClient, c.cfg)
@@ -518,12 +544,6 @@ func (c *Controller) run(ctx context.Context) {
 	e.Add(func() {
 		c.resourceSyncLoop(ctx, c.cfg.ApisixResourceSyncInterval.Duration)
 	})
-	c.MetricsCollector.ResetLeader(true)
-
-	log.Infow("controller now is running as leader",
-		zap.String("namespace", c.namespace),
-		zap.String("pod", c.name),
-	)
 
 	<-ctx.Done()
 	e.Wait()
