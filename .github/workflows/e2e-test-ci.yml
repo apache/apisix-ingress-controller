@@ -95,6 +95,8 @@ jobs:
           chmod +x ./kind
           sudo mv kind /usr/local/bin
 
+          sudo apt install pigz -y
+
       - name: Build images
         env:
           TAG: dev
