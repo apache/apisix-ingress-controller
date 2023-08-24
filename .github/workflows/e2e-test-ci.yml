@@ -182,6 +182,7 @@ jobs:
       - name: Load images from cache
         run: |
           echo "loading docker images..."
+          sudo apt install pigz -y
           pigz -dc docker.tar.gz | docker load
           make push-images
 
