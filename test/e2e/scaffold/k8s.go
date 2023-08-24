@@ -781,3 +781,7 @@ func (s *Scaffold) GetKubernetesClient() *kubernetes.Clientset {
 	assert.Nil(ginkgo.GinkgoT(), err, "get kubernetes client")
 	return client
 }
+
+func (s *Scaffold) RunKubectlAndGetOutput(args ...string) (string, error) {
+	return k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, args...)
+}

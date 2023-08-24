@@ -49,3 +49,6 @@ apisix:
 plugin_attr:
   prometheus:
     enable_export_server: false
+
+nginx_config:
+  worker_processes: 1

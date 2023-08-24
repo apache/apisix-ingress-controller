@@ -17,7 +17,6 @@
 package gateway
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/onsi/ginkgo/v2"
@@ -48,9 +47,8 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixStreamRoutesCreated(1), "Checking number of streamroute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstream")
 		// test dns query
-		r := s.DNSResolver()
-		host := "httpbin.org"
-		_, err = r.LookupIPAddr(context.Background(), host)
-		assert.Nil(ginkgo.GinkgoT(), err, "dns query error")
+		output, err := s.RunDigDNSClientFromK8s("apisix-service-e2e-test:9200", "httpbin.org")
+		assert.Nil(ginkgo.GinkgoT(), err, "run dig error")
+		assert.Contains(ginkgo.GinkgoT(), output, "ANSWER SECTION")
 	})
 })

@@ -16,7 +16,6 @@
 package ingress
 
 import (
-	"context"
 	"fmt"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -137,10 +136,9 @@ spec:
 			assert.Len(ginkgo.GinkgoT(), sr, 1)
 			assert.Equal(ginkgo.GinkgoT(), sr[0].ServerPort, int32(9200))
 			// test dns query
-			r := s.DNSResolver()
-			host := "httpbin.org"
-			_, err = r.LookupIPAddr(context.Background(), host)
-			assert.Nil(ginkgo.GinkgoT(), err, "dns query error")
+			output, err := s.RunDigDNSClientFromK8s("apisix-service-e2e-test:9200", "httpbin.org")
+			assert.Nil(ginkgo.GinkgoT(), err, "run dig error")
+			assert.Contains(ginkgo.GinkgoT(), output, "ANSWER SECTION")
 		})
 	}
 	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
