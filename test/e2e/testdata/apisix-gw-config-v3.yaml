@@ -52,3 +52,5 @@ plugin_attr:
 
 nginx_config:
   worker_processes: 1
+  stream:
+    enable_access_log: true

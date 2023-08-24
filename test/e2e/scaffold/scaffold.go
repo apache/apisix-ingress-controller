@@ -687,19 +687,3 @@ func (s *Scaffold) NamespaceSelectorLabelStrings() []string {
 func (s *Scaffold) NamespaceSelectorLabel() map[string]string {
 	return s.label
 }
-
-func (s *Scaffold) RunDigDNSClientFromK8s(args ...string) (string, error) {
-	kubectlArgs := []string{
-		"run",
-		"dig",
-		"-it",
-		"--rm",
-		"--restart=Never",
-		"--image-pull-policy=IfNotPresent",
-		"--image=toolbelt/dig",
-		"--command",
-		"dig",
-	}
-	kubectlArgs = append(kubectlArgs, args...)
-	return s.RunKubectlAndGetOutput(kubectlArgs...)
-}

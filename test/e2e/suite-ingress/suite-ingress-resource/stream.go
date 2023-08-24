@@ -17,6 +17,7 @@ package ingress
 
 import (
 	"fmt"
+	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -61,55 +62,7 @@ spec:
 			resp.Body().Contains("x-my-value")
 		})
 		ginkgo.It("stream udp proxy", func() {
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(`
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: coredns
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: coredns
-  template:
-    metadata:
-      labels:
-        app: coredns
-    spec:
-      containers:
-      - name: coredns
-        image: coredns/coredns:1.8.4
-        livenessProbe:
-          tcpSocket:
-            port: 53
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        readinessProbe:
-          tcpSocket:
-            port: 53
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        ports:    
-        - name: dns
-          containerPort: 53
-          protocol: UDP
-`))
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(`
-kind: Service
-apiVersion: v1
-metadata:
-  name: coredns
-spec:
-  selector:
-    app: coredns
-  type: ClusterIP
-  ports:
-  - port: 53
-    targetPort: 53
-    protocol: UDP
-`))
-
-			s.EnsureNumEndpointsReady(ginkgo.GinkgoT(), "coredns", 1)
+			dnsSvc := s.NewCoreDNSService()
 
 			apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -123,9 +76,9 @@ spec:
     match:
       ingressPort: 9200
     backend:
-      serviceName: coredns
-      servicePort: 53
-`)
+      serviceName: %s
+      servicePort: %d
+`, dnsSvc.Name, dnsSvc.Spec.Ports[0].Port)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
 
 			err := s.EnsureNumApisixStreamRoutesCreated(1)
@@ -136,9 +89,13 @@ spec:
 			assert.Len(ginkgo.GinkgoT(), sr, 1)
 			assert.Equal(ginkgo.GinkgoT(), sr[0].ServerPort, int32(9200))
 			// test dns query
-			output, err := s.RunDigDNSClientFromK8s("apisix-service-e2e-test:9200", "httpbin.org")
+			output, err := s.RunDigDNSClientFromK8s("@apisix-service-e2e-test", "-p", "9200", "github.com")
 			assert.Nil(ginkgo.GinkgoT(), err, "run dig error")
-			assert.Contains(ginkgo.GinkgoT(), output, "ANSWER SECTION")
+			assert.Contains(ginkgo.GinkgoT(), output, "ADDITIONAL SECTION")
+
+			time.Sleep(3 * time.Second)
+			output = s.GetDeploymentLogs(scaffold.CoreDNSDeployment)
+			assert.Contains(ginkgo.GinkgoT(), output, "github.com. udp")
 		})
 	}
 	ginkgo.Describe("suite-ingress-resource: scaffold v2", func() {
