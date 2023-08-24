@@ -755,8 +755,8 @@ func (s *Scaffold) EnsureNumEndpointsReady(t testing.TestingT, endpointsName str
 	message := retry.DoWithRetry(
 		t,
 		statusMsg,
-		20,
-		5*time.Second,
+		30,
+		1*time.Second,
 		func() (string, error) {
 			endpoints, err := e.CoreV1().Endpoints(s.Namespace()).Get(context.Background(), endpointsName, metav1.GetOptions{})
 			if err != nil {
@@ -766,10 +766,11 @@ func (s *Scaffold) EnsureNumEndpointsReady(t testing.TestingT, endpointsName str
 			for _, subset := range endpoints.Subsets {
 				readyNum += len(subset.Addresses)
 			}
+			ginkgo.GinkgoT().Log(endpoints.Subsets)
 			if readyNum == desired {
 				return "Service is now available", nil
 			}
-			return fmt.Sprintf("Endpoints not ready yet, expect %v, actual %v", desired, readyNum), nil
+			return "failed", fmt.Errorf("endpoints not ready yet, expect %v, actual %v", desired, readyNum)
 		},
 	)
 	ginkgo.GinkgoT().Log(message)
