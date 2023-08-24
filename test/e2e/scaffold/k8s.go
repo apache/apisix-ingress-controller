@@ -756,7 +756,7 @@ func (s *Scaffold) EnsureNumEndpointsReady(t testing.TestingT, endpointsName str
 		t,
 		statusMsg,
 		20,
-		5*time.Second,
+		2*time.Second,
 		func() (string, error) {
 			endpoints, err := e.CoreV1().Endpoints(s.Namespace()).Get(context.Background(), endpointsName, metav1.GetOptions{})
 			if err != nil {
@@ -769,7 +769,7 @@ func (s *Scaffold) EnsureNumEndpointsReady(t testing.TestingT, endpointsName str
 			if readyNum == desired {
 				return "Service is now available", nil
 			}
-			return fmt.Sprintf("Endpoints not ready yet, expect %v, actual %v", desired, readyNum), nil
+			return "failed", fmt.Errorf("endpoints not ready yet, expect %v, actual %v", desired, readyNum)
 		},
 	)
 	ginkgo.GinkgoT().Log(message)
@@ -780,4 +780,23 @@ func (s *Scaffold) GetKubernetesClient() *kubernetes.Clientset {
 	client, err := k8s.GetKubernetesClientFromOptionsE(s.t, s.kubectlOptions)
 	assert.Nil(ginkgo.GinkgoT(), err, "get kubernetes client")
 	return client
+}
+
+func (s *Scaffold) RunKubectlAndGetOutput(args ...string) (string, error) {
+	return k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, args...)
+}
+
+func (s *Scaffold) RunDigDNSClientFromK8s(args ...string) (string, error) {
+	kubectlArgs := []string{
+		"run",
+		"dig",
+		"-i",
+		"--rm",
+		"--restart=Never",
+		"--image-pull-policy=IfNotPresent",
+		"--image=toolbelt/dig",
+		"--",
+	}
+	kubectlArgs = append(kubectlArgs, args...)
+	return s.RunKubectlAndGetOutput(kubectlArgs...)
 }
