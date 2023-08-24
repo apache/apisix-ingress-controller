@@ -49,3 +49,7 @@ apisix:
 plugin_attr:
   prometheus:
     enable_export_server: false
+
+nginx_config:                     # config for render the template to generate nginx.conf
+  error_log_level:  debug          # warn,error
+  worker_processes: 1

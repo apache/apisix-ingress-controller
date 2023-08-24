@@ -4075,6 +4075,78 @@
                 }
             }
         },
+        "ldap-auth": {
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "_meta": {
+                        "type": "object",
+                        "properties": {
+                            "filter": {
+                                "description": "filter determines whether the plugin needs to be executed at runtime",
+                                "type": "array"
+                            },
+                            "error_response": {
+                                "oneOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "object"
+                                    }
+                                ]
+                            },
+                            "priority": {
+                                "description": "priority of plugins by customized order",
+                                "type": "integer"
+                            },
+                            "disable": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "base_dn": {
+                        "type": "string"
+                    },
+                    "ldap_uri": {
+                        "type": "string"
+                    },
+                    "use_tls": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "uid": {
+                        "type": "string",
+                        "default": "cn"
+                    },
+                    "tls_verify": {
+                        "type": "boolean",
+                        "default": false
+                    }
+                },
+                "title": "work with route or service object",
+                "$comment": "this is a mark for our injected plugin schema",
+                "required": [
+                    "base_dn",
+                    "ldap_uri"
+                ]
+            },
+            "consumer_schema": {
+                "type": "object",
+                "title": "work with consumer object",
+                "properties": {
+                    "user_dn": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "user_dn"
+                ]
+            },
+            "priority": 2540,
+            "version": 0.1,
+            "type": "auth"
+        },
         "limit-count": {
             "priority": 1002,
             "version": 0.4,
@@ -4092,6 +4164,39 @@
                                 "redis"
                             ]
                         }
+                    },
+                    "required": [
+                        "policy"
+                    ]
+                },
+                "then": {
+                    "required": [
+                        "redis_host"
+                    ],
+                    "properties": {
+                        "redis_host": {
+                            "minLength": 2,
+                            "type": "string"
+                        },
+                        "redis_port": {
+                            "minimum": 1,
+                            "default": 6379,
+                            "type": "integer"
+                        },
+                        "redis_password": {
+                            "minLength": 0,
+                            "type": "string"
+                        },
+                        "redis_database": {
+                            "minimum": 0,
+                            "default": 0,
+                            "type": "integer"
+                        },
+                        "redis_timeout": {
+                            "minimum": 1,
+                            "default": 1000,
+                            "type": "integer"
+                        }
                     }
                 },
                 "else": {
@@ -4102,7 +4207,10 @@
                                     "redis-cluster"
                                 ]
                             }
-                        }
+                        },
+                        "required": [
+                            "policy"
+                        ]
                     },
                     "then": {
                         "required": [
@@ -4139,36 +4247,6 @@
                                 "default": 1000,
                                 "type": "integer"
                             }
-                        }
-                    }
-                },
-                "then": {
-                    "required": [
-                        "redis_host"
-                    ],
-                    "properties": {
-                        "redis_host": {
-                            "minLength": 2,
-                            "type": "string"
-                        },
-                        "redis_port": {
-                            "minimum": 1,
-                            "default": 6379,
-                            "type": "integer"
-                        },
-                        "redis_password": {
-                            "minLength": 0,
-                            "type": "string"
-                        },
-                        "redis_database": {
-                            "minimum": 0,
-                            "default": 0,
-                            "type": "integer"
-                        },
-                        "redis_timeout": {
-                            "minimum": 1,
-                            "default": 1000,
-                            "type": "integer"
                         }
                     }
                 },

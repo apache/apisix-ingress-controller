@@ -132,9 +132,6 @@ spec:
 var _ = ginkgo.Describe("suite-ingress-features: leader election", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("lease check", func() {
-			if s.IsEtcdServer() {
-				ginkgo.Skip("Accessing non leader nodes in etcdserver mode will fail")
-			}
 			pods, err := s.GetIngressPodDetails()
 			assert.Nil(ginkgo.GinkgoT(), err)
 			assert.Len(ginkgo.GinkgoT(), pods, 2)
@@ -147,9 +144,6 @@ var _ = ginkgo.Describe("suite-ingress-features: leader election", func() {
 		})
 
 		ginkgo.It("leader failover", func() {
-			if s.IsEtcdServer() {
-				ginkgo.Skip("Accessing non leader nodes in etcdserver mode will fail")
-			}
 			pods, err := s.GetIngressPodDetails()
 			assert.Nil(ginkgo.GinkgoT(), err)
 			assert.Len(ginkgo.GinkgoT(), pods, 2)
@@ -165,7 +159,7 @@ var _ = ginkgo.Describe("suite-ingress-features: leader election", func() {
 			assert.Nil(ginkgo.GinkgoT(), s.KillPod(pods[leaderIdx].Name))
 
 			// Wait the old leader given up lease and new leader was elected.
-			time.Sleep(3 * time.Second)
+			time.Sleep(6 * time.Second)
 
 			newLease, err := s.WaitGetLeaderLease()
 			assert.Nil(ginkgo.GinkgoT(), err)

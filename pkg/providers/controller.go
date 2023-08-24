@@ -144,6 +144,7 @@ func (c *Controller) Run(stop chan struct{}) error {
 	defer rootCancel()
 	go func() {
 		<-stop
+		c.leaderContextCancelFunc()
 		rootCancel()
 	}()
 	c.MetricsCollector.ResetLeader(false)

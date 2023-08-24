@@ -19,29 +19,33 @@
 # value in the conf/config.yaml file.
 #
 
+deployment:
+  admin:
+    allow_admin:
+      - 127.0.0.0/24
+      - 0.0.0.0/0
+    admin_listen:
+      ip: 0.0.0.0
+      port: 9180
+  etcd:
+    host:
+      - "http://{{ .EtcdServiceFQDN }}:2379"
+    prefix: "/apisix"
+    timeout: 30
+
 apisix:
   enable_control: true
-  enable_reuseport: true          # Enable nginx SO_REUSEPORT switch if set to true.
-  allow_admin:
-    - 127.0.0.0/24
-    - 0.0.0.0/0
-  port_admin: 9180
-  stream_proxy:                 # TCP/UDP proxy
+  enable_reuseport: true
+
+  stream_proxy:
     only: false
-    tcp:                        # TCP proxy port list
+    tcp:
       - 9100
       - addr: 9110
         tls: true
     udp:
       - 9200
-etcd:
-  host:                           # it's possible to define multiple etcd hosts addresses of the same etcd cluster.
-    - "http://{{ .EtcdServiceFQDN }}:2379"     # multiple etcd address
-  prefix: "/apisix"               # apisix configurations prefix
-  timeout: 30                     # 30 seconds
-plugin_attr:
-  prometheus:
-    enable_export_server: false
+
 
 discovery:
   dns:
@@ -49,6 +53,10 @@ discovery:
       - "10.96.0.10:53"          # use the real address of your dns server.
                                  # currently we use KIND as the standard test environment, so here we can hard-code the default DNS address first.
                                  # TODO: can be modified to fill dynamically
+nginx_config:                     # config for render the template to generate nginx.conf
+  error_log_level:  debug          # warn,error
+  worker_processes: 1
+
 plugins:                          # plugin list (sorted by priority)
   - real-ip                        # priority: 23000
   - ai                             # priority: 22900

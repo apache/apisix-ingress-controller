@@ -52,8 +52,8 @@ Since apisix strongly relies on the etcd API, the control-plane will simulate th
 Install the CRDs and ingress-apisix:
 
 ```shell
-$ kubectl create ns apisix
-$ kubectl apply -f samples/deploy/composite.yaml -n apisix
+$ kubectl create ns ingress-apisix
+$ kubectl apply -f samples/deploy/composite.yaml -n ingress-apisix
 configmap/apisix-gw-config.yaml created
 deployment.apps/ingress-apisix-composite-deployment created
 service/ingress-apisix-gateway created
@@ -76,13 +76,13 @@ ingress-apisix-composite-deployment-5df9bc99c7-xxpvq   2/2     Running   0      
 Install the ApisixRoute and httpbin app:
 
 ```shell
-kubectl apply -k samples/httpbin
+kubectl apply -f samples/httpbin/httpbin-route.yaml
 ```
 
 After forwarding the local port 9080 to the service port 80, send a request:
 
 ```shell
-$ kubectl port-forward service/ingress-apisix-gateway 9080:80 -n apisix &
+$ kubectl port-forward service/ingress-apisix-gateway 9080:80 -n ingress-apisix &
 
 $ curl http://127.0.0.1:9080/headers -H 'Host: httpbin.org'
 {

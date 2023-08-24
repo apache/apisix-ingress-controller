@@ -132,7 +132,6 @@ spec:
 		})
 
 		ginkgo.It("allow_origins_by_regex", func() {
-			ginkgo.Skip("APISIX version priors to 2.5 doesn't contain allow_origins_by_regex in cors plugin")
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -156,7 +155,7 @@ spec:
      enable: true
      config:
        allow_origins_by_regex:
-       - foo\\.(bar|baz)\\.org
+       - foo\.(bar|baz)\.org
        allow_methods: "GET,POST"
        max_age: 3600
        expose_headers: x-foo,x-baz
