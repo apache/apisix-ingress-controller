@@ -50,8 +50,7 @@ plugin_attr:
   prometheus:
     enable_export_server: false
 
-nginx_config:                     # config for render the template to generate nginx.conf
-  error_log_level:  debug          # warn,error
+nginx_config:
   worker_processes: 1
   stream:
     enable_access_log: true
