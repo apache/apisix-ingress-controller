@@ -167,6 +167,9 @@ func (c *Controller) Run(stop chan struct{}) error {
 		}
 		return false, nil
 	}); err != nil {
+		if err == context.Canceled {
+			return nil
+		}
 		return err
 	}
 
