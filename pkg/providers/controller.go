@@ -161,7 +161,7 @@ func (c *Controller) Run(stop chan struct{}) error {
 	}
 
 	// ensure that the leader has been elected
-	if err := wait.PollUntilContextTimeout(rootCtx, time.Millisecond, 10*time.Second, false, func(ctx context.Context) (bool, error) {
+	if err := wait.PollUntilContextTimeout(rootCtx, 200*time.Millisecond, 10*time.Second, false, func(ctx context.Context) (bool, error) {
 		if c.elector.GetLeader() != "" {
 			return true, nil
 		}

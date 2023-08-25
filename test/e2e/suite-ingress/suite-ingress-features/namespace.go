@@ -207,6 +207,7 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering disable",
 		})
 
 		ginkgo.It("all resources will be watched", func() {
+			ginkgo.Skip("Does not support etcdserver mode, etcdserver does not support full synchronization")
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			route := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
