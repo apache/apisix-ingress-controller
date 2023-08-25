@@ -17,8 +17,8 @@
 package gateway
 
 import (
-	"context"
 	"fmt"
+	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
@@ -48,9 +48,12 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixStreamRoutesCreated(1), "Checking number of streamroute")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstream")
 		// test dns query
-		r := s.DNSResolver()
-		host := "httpbin.org"
-		_, err = r.LookupIPAddr(context.Background(), host)
-		assert.Nil(ginkgo.GinkgoT(), err, "dns query error")
+		output, err := s.RunDigDNSClientFromK8s("@apisix-service-e2e-test", "-p", "9200", "github.com")
+		assert.Nil(ginkgo.GinkgoT(), err, "run dig error")
+		assert.Contains(ginkgo.GinkgoT(), output, "ADDITIONAL SECTION")
+
+		time.Sleep(3 * time.Second)
+		output = s.GetDeploymentLogs(scaffold.CoreDNSDeployment)
+		assert.Contains(ginkgo.GinkgoT(), output, "github.com. udp")
 	})
 })

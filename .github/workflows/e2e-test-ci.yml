@@ -95,6 +95,8 @@ jobs:
           chmod +x ./kind
           sudo mv kind /usr/local/bin
 
+          sudo apt install -y pigz
+
       - name: Build images
         env:
           TAG: dev
@@ -183,6 +185,7 @@ jobs:
       - name: Load images from cache
         run: |
           echo "loading docker images..."
+          sudo apt install -y pigz
           pigz -dc docker.tar.gz | docker load
           make push-images
 
