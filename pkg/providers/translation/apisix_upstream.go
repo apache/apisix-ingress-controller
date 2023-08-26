@@ -21,6 +21,11 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
+type passHostConfig struct {
+	passHost     string
+	upstreamHost string
+}
+
 func (t *translator) TranslateUpstreamConfigV2(au *configv2.ApisixUpstreamConfig) (*apisixv1.Upstream, error) {
 	ups := apisixv1.NewDefaultUpstream()
 	if err := t.translateUpstreamScheme(au.Scheme, ups); err != nil {
@@ -36,6 +41,9 @@ func (t *translator) TranslateUpstreamConfigV2(au *configv2.ApisixUpstreamConfig
 		return nil, err
 	}
 	if err := t.translateClientTLSV2(au.TLSSecret, ups); err != nil {
+		return nil, err
+	}
+	if err := t.translatePassHost(&passHostConfig{au.PassHost, au.UpstreamHost}, ups); err != nil {
 		return nil, err
 	}
 	if err := t.translateUpstreamDiscovery(au.Discovery, ups); err != nil {
@@ -367,4 +375,17 @@ func (t *translator) translateUpstreamPassiveHealthCheckV2(config *configv2.Pass
 		passive.Unhealthy.HTTPStatuses = config.Unhealthy.HTTPCodes
 	}
 	return &passive, nil
+}
+
+func (t *translator) translatePassHost(ph *passHostConfig, ups *apisixv1.Upstream) error {
+	switch ph.passHost {
+	case "", apisixv1.PassHostPass, apisixv1.PassHostNode, apisixv1.PassHostRewrite:
+		ups.PassHost = ph.passHost
+	default:
+		return &TranslateError{Field: "passHost", Reason: "invalid value"}
+	}
+
+	ups.UpstreamHost = ph.upstreamHost
+
+	return nil
 }
