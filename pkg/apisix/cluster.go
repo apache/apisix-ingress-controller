@@ -83,14 +83,15 @@ type ClusterOptions struct {
 	BaseURL         string
 	Timeout         time.Duration
 	// SyncInterval is the interval to sync schema.
-	SyncInterval     types.TimeDuration
-	SyncComparison   bool
-	MetricsCollector metrics.Collector
-	EnableEtcdServer bool
-	Prefix           string
-	ListenAddress    string
-	SchemaSynced     bool
-	CacheSynced      bool
+	SyncInterval      types.TimeDuration
+	SyncComparison    bool
+	MetricsCollector  metrics.Collector
+	EnableEtcdServer  bool
+	Prefix            string
+	ListenAddress     string
+	SchemaSynced      bool
+	CacheSynced       bool
+	SSLKeyEncryptSalt string
 }
 
 type cluster struct {
@@ -122,6 +123,7 @@ type cluster struct {
 	adapter                 adapter.Adapter
 	waitforCacheSync        bool
 	validator               APISIXSchemaValidator
+	sslKeyEncryptSalt       string
 }
 
 func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
@@ -157,10 +159,11 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 			Timeout:   o.Timeout,
 			Transport: _defaultTransport,
 		},
-		cacheState:       _cacheSyncing, // default state
-		cacheSynced:      make(chan struct{}),
-		syncComparison:   o.SyncComparison,
-		metricsCollector: o.MetricsCollector,
+		cacheState:        _cacheSyncing, // default state
+		cacheSynced:       make(chan struct{}),
+		syncComparison:    o.SyncComparison,
+		metricsCollector:  o.MetricsCollector,
+		sslKeyEncryptSalt: o.SSLKeyEncryptSalt,
 	}
 
 	if o.EnableEtcdServer {

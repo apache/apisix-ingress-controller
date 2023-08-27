@@ -88,9 +88,6 @@ type Scaffold struct {
 	apisixTLSOverTCPTunnel *k8s.Tunnel
 	apisixUDPTunnel        *k8s.Tunnel
 	apisixControlTunnel    *k8s.Tunnel
-
-	// Used for template rendering.
-	EtcdServiceFQDN string
 }
 
 type apisixResourceVersionInfo struct {
@@ -164,9 +161,8 @@ func NewScaffold(o *Options) *Scaffold {
 		}
 	}
 	if enabled := os.Getenv("ENABLED_ETCD_SERVER"); enabled == "true" {
-
+		o.EnableEtcdServer = true
 	}
-	o.EnableEtcdServer = true
 
 	if o.APISIXConfigPath == "" {
 		if o.EnableEtcdServer {
@@ -463,6 +459,20 @@ func (s *Scaffold) beforeEach() {
 	s.nodes, err = k8s.GetReadyNodesE(s.t, s.kubectlOptions)
 	assert.Nil(s.t, err, "querying ready nodes")
 
+	if s.opts.EnableEtcdServer {
+		s.DeployCompositeMode()
+	} else {
+		s.DeployAdminaAPIMode()
+	}
+	s.DeployTestService()
+}
+
+func (s *Scaffold) DeployAdminaAPIMode() {
+	err := s.newAPISIXConfigMap(&APISIXConfig{
+		EtcdServiceFQDN: EtcdServiceName,
+	})
+	assert.Nil(s.t, err, "creating apisix configmap")
+
 	s.etcdService, err = s.newEtcd()
 	assert.Nil(s.t, err, "initializing etcd")
 
@@ -472,6 +482,37 @@ func (s *Scaffold) beforeEach() {
 	s.apisixService, err = s.newAPISIX()
 	assert.Nil(s.t, err, "initializing Apache APISIX")
 
+	err = s.waitAllAPISIXPodsAvailable()
+	assert.Nil(s.t, err, "waiting for apisix ready")
+
+	err = s.newIngressAPISIXController()
+	assert.Nil(s.t, err, "initializing ingress apisix controller")
+
+	err = s.WaitAllIngressControllerPodsAvailable()
+	assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
+
+	err = s.newAPISIXTunnels()
+	assert.Nil(s.t, err, "creating apisix tunnels")
+}
+
+func (s *Scaffold) DeployCompositeMode() {
+	err := s.newAPISIXConfigMap(&APISIXConfig{
+		EtcdServiceFQDN: "127.0.0.1",
+	})
+	assert.Nil(s.t, err, "creating apisix configmap")
+
+	err = s.newIngressAPISIXController()
+	assert.Nil(s.t, err, "initializing ingress apisix controller")
+
+	err = s.WaitAllIngressControllerPodsAvailable()
+	assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
+
+	err = s.newAPISIXTunnels()
+	assert.Nil(s.t, err, "creating apisix tunnels")
+}
+
+func (s *Scaffold) DeployTestService() {
+	var err error
 	s.httpbinService, err = s.newHTTPBIN()
 	assert.Nil(s.t, err, "initializing httpbin")
 
@@ -481,20 +522,6 @@ func (s *Scaffold) beforeEach() {
 	assert.Nil(s.t, err, "initializing test backend")
 
 	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.testBackendService.Name, 3, 2*time.Second)
-
-	err = s.newIngressAPISIXController()
-	assert.Nil(s.t, err, "initializing ingress apisix controller")
-
-	if s.opts.IngressAPISIXReplicas != 0 {
-		err = s.WaitAllIngressControllerPodsAvailable()
-		assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
-	}
-	err = s.waitAllAPISIXPodsAvailable()
-	assert.Nil(s.t, err, "waiting for apisix ready")
-
-	err = s.newAPISIXTunnels()
-	assert.Nil(s.t, err, "creating apisix tunnels")
-
 }
 
 func (s *Scaffold) afterEach() {
@@ -600,7 +627,7 @@ func (s *Scaffold) addFinalizers(f func()) {
 	s.finalizers = append(s.finalizers, f)
 }
 
-func (s *Scaffold) renderConfig(path string) (string, error) {
+func (s *Scaffold) renderConfig(path string, config any) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
@@ -608,7 +635,7 @@ func (s *Scaffold) renderConfig(path string) (string, error) {
 
 	var buf strings.Builder
 	t := template.Must(template.New(path).Parse(string(data)))
-	if err := t.Execute(&buf, s); err != nil {
+	if err := t.Execute(&buf, config); err != nil {
 		return "", err
 	}
 	return buf.String(), nil

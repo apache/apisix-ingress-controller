@@ -58,9 +58,10 @@ func TestNewConfigFromFile(t *testing.T) {
 			DefaultClusterAdminKey: "123456",
 		},
 		EtcdServer: EtcdServerConfig{
-			Enabled:       false,
-			Prefix:        "/apisix",
-			ListenAddress: ":12379",
+			Enabled:           false,
+			Prefix:            "/apisix",
+			ListenAddress:     ":12379",
+			SSLKeyEncryptSalt: "edd1c9f0985e76a2",
 		},
 	}
 
@@ -111,6 +112,7 @@ etcdserver:
   enabled: false
   prefix: /apisix
   listen_address: :12379
+  ssl_key_encrypt_salt: edd1c9f0985e76a2
 `
 	tmpYAML, err := os.CreateTemp("/tmp", "config-*.yaml")
 	assert.Nil(t, err, "failed to create temporary yaml configuration file: ", err)
@@ -160,9 +162,10 @@ func TestConfigWithEnvVar(t *testing.T) {
 			DefaultClusterAdminKey: "123456",
 		},
 		EtcdServer: EtcdServerConfig{
-			Enabled:       false,
-			Prefix:        "/apisix",
-			ListenAddress: ":12379",
+			Enabled:           false,
+			Prefix:            "/apisix",
+			ListenAddress:     ":12379",
+			SSLKeyEncryptSalt: "edd1c9f0985e76a2",
 		},
 	}
 
@@ -205,7 +208,8 @@ func TestConfigWithEnvVar(t *testing.T) {
 	"etcdserver": {
 		"enalbed": false,
 		"prefix": "/apisix",
-		"listen_address": ":12379"
+		"listen_address": ":12379",
+		"ssl_key_encrypt_salt": "edd1c9f0985e76a2"
 	}
 }
 `

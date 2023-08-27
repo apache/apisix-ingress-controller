@@ -195,7 +195,7 @@ updateStatus:
 }
 
 func (c *apisixTlsController) updateStatus(obj kube.ApisixTls, statusErr error) {
-	if obj == nil {
+	if obj == nil || c.Kubernetes.DisableStatusUpdates || !c.Eletor.IsLeader() {
 		return
 	}
 	var (

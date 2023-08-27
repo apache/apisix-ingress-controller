@@ -140,22 +140,29 @@ spec:
 `
 )
 
-func (s *Scaffold) newAPISIX() (*corev1.Service, error) {
-	if s.opts.EnableEtcdServer {
-		s.EtcdServiceFQDN = IngressControllerServiceName
-	} else {
-		s.EtcdServiceFQDN = EtcdServiceName
+type APISIXConfig struct {
+	// Used for template rendering.
+	EtcdServiceFQDN string
+}
+
+func (s *Scaffold) newAPISIXConfigMap(cm *APISIXConfig) error {
+	if cm == nil {
+		return fmt.Errorf("config not allowed to be empty")
 	}
-	data, err := s.renderConfig(s.opts.APISIXConfigPath)
+	data, err := s.renderConfig(s.opts.APISIXConfigPath, cm)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	data = indent(data)
 	configData := fmt.Sprintf(_apisixConfigMap, data)
 	if err := s.CreateResourceFromString(configData); err != nil {
-		return nil, err
+		return err
 	}
-	deployment := fmt.Sprintf(_apisixDeployment, s.EtcdServiceFQDN)
+	return nil
+}
+
+func (s *Scaffold) newAPISIX() (*corev1.Service, error) {
+	deployment := fmt.Sprintf(_apisixDeployment, EtcdServiceName)
 	if err := s.CreateResourceFromString(
 		s.FormatRegistry(deployment),
 	); err != nil {

@@ -96,9 +96,10 @@ type Config struct {
 }
 
 type EtcdServerConfig struct {
-	Enabled       bool   `json:"enabled" yaml:"enabled"`
-	Prefix        string `json:"prefix" yaml:"prefix"`
-	ListenAddress string `json:"listen_address" yaml:"listen_address"`
+	Enabled           bool   `json:"enabled" yaml:"enabled"`
+	Prefix            string `json:"prefix" yaml:"prefix"`
+	ListenAddress     string `json:"listen_address" yaml:"listen_address"`
+	SSLKeyEncryptSalt string `json:"ssl_key_encrypt_salt" yaml:"ssl_key_encrypt_salt"`
 }
 
 // KubernetesConfig contains all Kubernetes related config items.
@@ -165,9 +166,10 @@ func NewDefaultConfig() *Config {
 			DefaultClusterName: "default",
 		},
 		EtcdServer: EtcdServerConfig{
-			Enabled:       false,
-			Prefix:        "/apisix",
-			ListenAddress: ":12379",
+			Enabled:           false,
+			Prefix:            "/apisix",
+			ListenAddress:     ":12379",
+			SSLKeyEncryptSalt: "edd1c9f0985e76a2",
 		},
 	}
 }

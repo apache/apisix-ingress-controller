@@ -279,7 +279,7 @@ updateStatus:
 }
 
 func (c *apisixUpstreamController) updateStatus(obj kube.ApisixUpstream, statusErr error) {
-	if obj == nil {
+	if obj == nil || c.Kubernetes.DisableStatusUpdates || !c.Eletor.IsLeader() {
 		return
 	}
 	var (

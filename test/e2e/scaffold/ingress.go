@@ -247,21 +247,6 @@ spec:
     app: ingress-apisix-controller-deployment-e2e-test
 `
 
-	_ingressAPISIXService = fmt.Sprintf(`
-apiVersion: v1
-kind: Service
-metadata:
-  name: %s
-spec:
-  ports:
-    - name: grpc
-      protocol: TCP
-      port: 2379
-      targetPort: 12379
-  selector:
-    app: ingress-apisix-controller-deployment-e2e-test
-`, IngressControllerServiceName)
-
 	_ingressAPISIXAdmissionWebhook = `
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -310,6 +295,66 @@ var _initContainers = `
         image: localhost:5000/busybox:dev
         imagePullPolicy: IfNotPresent
         command: ['sh', '-c', "until nc -z apisix-service-e2e-test 9180 ; do echo waiting for apisix-admin; sleep 2; done;"]
+`
+
+var _apisixContainer = `
+        - name: apisix-container
+          image: "localhost:5000/apisix:dev"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9080
+              name: "http"
+              protocol: "TCP"
+            - containerPort: 9180
+              name: "http-admin"
+              protocol: "TCP"
+            - containerPort: 9443
+              name: "https"
+              protocol: "TCP"
+          volumeMounts:
+            - mountPath: /usr/local/apisix/conf/config.yaml
+              name: apisix-config-yaml-configmap
+              subPath: config.yaml
+`
+
+var _ingressAPISIXService = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: apisix-service-e2e-test
+spec:
+  selector:
+    app: ingress-apisix-controller-deployment-e2e-test
+  ports:
+    - name: http
+      port: 9080
+      protocol: TCP
+      targetPort: 9080
+    - name: http-admin
+      port: 9180
+      protocol: TCP
+      targetPort: 9180
+    - name: https
+      port: 9443
+      protocol: TCP
+      targetPort: 9443
+    - name: tcp
+      port: 9100
+      protocol: TCP
+      targetPort: 9100
+    - name: tcp-tls
+      port: 9110
+      protocol: TCP
+      targetPort: 9110
+    - name: udp
+      port: 9200
+      protocol: UDP
+      targetPort: 9200
+    - name: http-control
+      port: 9090
+      protocol: TCP
+      targetPort: 9090
+  type: NodePort
 `
 
 var _ingressAPISIXDeploymentTemplate = `
@@ -370,8 +415,8 @@ spec:
             - containerPort: 8443
               name: "https"
               protocol: "TCP"
-            - containerPort: 12379
-              name: "grpc"
+            - containerPort: 2379
+              name: "etcd-server"
               protocol: "TCP"
           command:
             - /ingress-apisix/apisix-ingress-controller
@@ -407,15 +452,21 @@ spec:
             - %s
             - --disable-status-updates=%t
             - --etcd-server-enabled=%t
+            - --etcd-server-listen-address
+            - ":2379"
           volumeMounts:
             - name: admission-webhook
               mountPath: /etc/webhook/certs
               readOnly: true
+        %s
       volumes:
        - name: admission-webhook
          secret:
            secretName: webhook-certs
            optional: true
+       - configMap:
+           name: apisix-gw-config.yaml
+         name: apisix-config-yaml-configmap
       serviceAccount: ingress-apisix-e2e-test-service-account
 `
 
@@ -428,12 +479,17 @@ func init() {
 func (s *Scaffold) genIngressDeployment(replicas int, adminAPIVersion,
 	syncInterval, syncComparison, label, resourceVersion, publishAddr string, webhooks bool,
 	ingressClass string, disableStatus bool, etcdserverEnalbed bool) string {
-	var initContainers string
+	var (
+		initContainers  string
+		apisixContainer string
+	)
 	if !etcdserverEnalbed {
 		initContainers = _initContainers
+	} else {
+		apisixContainer = _apisixContainer
 	}
 	return s.FormatRegistry(fmt.Sprintf(_ingressAPISIXDeploymentTemplate, replicas, initContainers, adminAPIVersion, syncInterval, syncComparison,
-		label, resourceVersion, publishAddr, webhooks, ingressClass, disableStatus, etcdserverEnalbed))
+		label, resourceVersion, publishAddr, webhooks, ingressClass, disableStatus, etcdserverEnalbed, apisixContainer))
 
 }
 
@@ -468,7 +524,10 @@ func (s *Scaffold) newIngressAPISIXController() error {
 
 	if s.opts.EnableEtcdServer {
 		err = s.CreateResourceFromString(_ingressAPISIXService)
-		assert.Nil(s.t, err, "create apisix-ingress-controller service")
+		assert.Nil(s.t, err, "create ingress-apisix service")
+
+		s.apisixService, err = k8s.GetServiceE(s.t, s.kubectlOptions, "apisix-service-e2e-test")
+		assert.Nil(s.t, err, "get ingress-apisix service")
 	}
 
 	ingressAPISIXDeployment := s.genIngressDeployment(s.opts.IngressAPISIXReplicas, s.opts.APISIXAdminAPIVersion,

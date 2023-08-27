@@ -225,13 +225,16 @@ type sslMem struct {
 
 	resource string
 	cluster  *cluster
+
+	keyEncryptSalt string
 }
 
 func newSSLMem(c *cluster) SSL {
 	return &sslMem{
-		url:      c.baseURL + "/ssls",
-		resource: "ssls",
-		cluster:  c,
+		url:            c.baseURL + "/ssls",
+		resource:       "ssls",
+		cluster:        c,
+		keyEncryptSalt: c.sslKeyEncryptSalt,
 	}
 }
 
@@ -271,7 +274,7 @@ func (r *sslMem) Create(ctx context.Context, obj *v1.Ssl, shouldCompare bool) (*
 	if ssl, _ := r.cluster.cache.GetSSL(obj.ID); ssl != nil {
 		return r.Update(ctx, obj, shouldCompare)
 	}
-	pkey, err := AesEencryptPrivatekey([]byte(obj.Key), []byte("edd1c9f0985e76a2"))
+	pkey, err := AesEencryptPrivatekey([]byte(obj.Key), []byte(r.keyEncryptSalt))
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +301,7 @@ func (r *sslMem) Delete(ctx context.Context, obj *v1.Ssl) error {
 }
 
 func (r *sslMem) Update(ctx context.Context, obj *v1.Ssl, shouldCompare bool) (*v1.Ssl, error) {
-	pkey, err := AesEencryptPrivatekey([]byte(obj.Key), []byte("edd1c9f0985e76a2"))
+	pkey, err := AesEencryptPrivatekey([]byte(obj.Key), []byte(r.keyEncryptSalt))
 	if err != nil {
 		return nil, err
 	}

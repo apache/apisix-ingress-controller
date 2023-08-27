@@ -380,17 +380,18 @@ func (c *Controller) run(ctx context.Context) {
 	defer cancelFunc()
 
 	clusterOpts := &apisix.ClusterOptions{
-		AdminAPIVersion:  c.cfg.APISIX.AdminAPIVersion,
-		Name:             c.cfg.APISIX.DefaultClusterName,
-		AdminKey:         c.cfg.APISIX.DefaultClusterAdminKey,
-		BaseURL:          c.cfg.APISIX.DefaultClusterBaseURL,
-		MetricsCollector: c.MetricsCollector,
-		SyncComparison:   c.cfg.ApisixResourceSyncComparison,
-		EnableEtcdServer: c.cfg.EtcdServer.Enabled,
-		Prefix:           c.cfg.EtcdServer.Prefix,
-		ListenAddress:    c.cfg.EtcdServer.ListenAddress,
-		SchemaSynced:     !c.cfg.EtcdServer.Enabled,
-		CacheSynced:      !c.cfg.EtcdServer.Enabled,
+		AdminAPIVersion:   c.cfg.APISIX.AdminAPIVersion,
+		Name:              c.cfg.APISIX.DefaultClusterName,
+		AdminKey:          c.cfg.APISIX.DefaultClusterAdminKey,
+		BaseURL:           c.cfg.APISIX.DefaultClusterBaseURL,
+		MetricsCollector:  c.MetricsCollector,
+		SyncComparison:    c.cfg.ApisixResourceSyncComparison,
+		EnableEtcdServer:  c.cfg.EtcdServer.Enabled,
+		Prefix:            c.cfg.EtcdServer.Prefix,
+		ListenAddress:     c.cfg.EtcdServer.ListenAddress,
+		SchemaSynced:      !c.cfg.EtcdServer.Enabled,
+		CacheSynced:       !c.cfg.EtcdServer.Enabled,
+		SSLKeyEncryptSalt: c.cfg.EtcdServer.SSLKeyEncryptSalt,
 	}
 	err := c.apisix.AddCluster(ctx, clusterOpts)
 	if err != nil && err != apisix.ErrDuplicatedCluster {

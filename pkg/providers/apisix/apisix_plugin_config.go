@@ -222,7 +222,7 @@ updatestatus:
 }
 
 func (c *apisixPluginConfigController) updateStatus(obj kube.ApisixPluginConfig, statusErr error) {
-	if obj == nil {
+	if obj == nil || c.Kubernetes.DisableStatusUpdates || !c.Eletor.IsLeader() {
 		return
 	}
 	var (

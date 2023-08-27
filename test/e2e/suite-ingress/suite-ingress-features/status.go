@@ -30,7 +30,6 @@ import (
 var _ = ginkgo.Describe("suite-ingress-features: CRDs status subresource Testing", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("check ApisixRoute status is recorded", func() {
-		time.Sleep(5 * time.Minute)
 		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 		apisixRoute := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2

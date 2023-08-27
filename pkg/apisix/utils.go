@@ -288,7 +288,6 @@ func AesEncrypt(origData, key []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	//AES分组长度为128位，所以blockSize=16，单位字节
 	blockSize := block.BlockSize()
 	origData = PKCS5Padding(origData, blockSize)
 	blockMode := cipher.NewCBCEncrypter(block, key[:blockSize])

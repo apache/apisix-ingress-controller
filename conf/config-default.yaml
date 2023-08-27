@@ -93,12 +93,8 @@ etcdserver:
   enabled: false  # When enabled, the configuration of apisix will be optional.
   listen_address: ":12379"
   prefix: /apisix 
-  key_encrypt_salt: 
-  - edd1c9f0985e76a2  # Need to be consistent with the apisix.ssl.key_encrypt_salt, ref https://github.com/apache/apisix/blob/release/3.2/conf/config-default.yaml#L115.
-                      # If not set, will save origin ssl key into etcdserver.
-                      # If set this, the key_encrypt_salt should be an array whose elements are string, and the size is also 16, and it will encrypt ssl key with AES-128-CBC
-                      # Only use the first key to encrypt, and decrypt in the order of the array.
-                      #  
+  ssl_key_encrypt_salt: edd1c9f0985e76a2  # Need to be consistent with the apisix.ssl.key_encrypt_salt, ref https://github.com/apache/apisix/blob/release/3.2/conf/config-default.yaml#L115.
+                                          # key_encrypt_salt is used to encrypt SSL keys.
 
 apisix:
   admin_api_version: v3  # the APISIX admin API version. can be "v2" or "v3"

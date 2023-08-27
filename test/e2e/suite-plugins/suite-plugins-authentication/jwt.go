@@ -117,7 +117,6 @@ spec:
 				NotEmpty().
 				Raw()
 
-			time.Sleep(20 * time.Minute)
 			_ = s.NewAPISIXClient().GET("/ip").
 				WithHeader("Host", "httpbin.org").
 				WithHeader("Authorization", string(token)).
