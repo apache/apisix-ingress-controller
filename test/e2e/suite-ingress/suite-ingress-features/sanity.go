@@ -159,7 +159,7 @@ var _ = ginkgo.Describe("suite-ingress-features: leader election", func() {
 			assert.Nil(ginkgo.GinkgoT(), s.KillPod(pods[leaderIdx].Name))
 
 			// Wait the old leader given up lease and new leader was elected.
-			time.Sleep(6 * time.Second)
+			time.Sleep(7 * time.Second)
 
 			newLease, err := s.WaitGetLeaderLease()
 			assert.Nil(ginkgo.GinkgoT(), err)

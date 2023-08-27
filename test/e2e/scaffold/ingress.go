@@ -298,7 +298,23 @@ var _initContainers = `
 `
 
 var _apisixContainer = `
-        - name: apisix-container
+        - livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 2
+            successThreshold: 1
+            tcpSocket:
+              port: 9080
+            timeoutSeconds: 2
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 8
+            periodSeconds: 2
+            successThreshold: 1
+            tcpSocket:
+              port: 9080
+            timeoutSeconds: 1
+          name: apisix-container
           image: "localhost:5000/apisix:dev"
           imagePullPolicy: IfNotPresent
           ports:
@@ -382,7 +398,7 @@ spec:
       containers:
         - livenessProbe:
             failureThreshold: 3
-            initialDelaySeconds: 5
+            initialDelaySeconds: 7
             periodSeconds: 2
             successThreshold: 1
             tcpSocket:
@@ -437,7 +453,7 @@ spec:
             - --default-apisix-cluster-name
             - default
             - --default-apisix-cluster-base-url
-            - http://apisix-service-e2e-test:9180/apisix/admin
+            - %s
             - --default-apisix-cluster-admin-key
             - edd1c9f034335f136f87ad84b625c8f1
             - --namespace-selector
@@ -480,16 +496,19 @@ func (s *Scaffold) genIngressDeployment(replicas int, adminAPIVersion,
 	syncInterval, syncComparison, label, resourceVersion, publishAddr string, webhooks bool,
 	ingressClass string, disableStatus bool, etcdserverEnalbed bool) string {
 	var (
-		initContainers  string
+		initContainers  = _initContainers
+		apisixBaseURL   = "http://apisix-service-e2e-test:9180/apisix/admin"
 		apisixContainer string
 	)
-	if !etcdserverEnalbed {
-		initContainers = _initContainers
-	} else {
+
+	if etcdserverEnalbed {
+		initContainers = ""
+		apisixBaseURL = "http://127.0.0.1:9180/apisix/admin"
 		apisixContainer = _apisixContainer
 	}
+
 	return s.FormatRegistry(fmt.Sprintf(_ingressAPISIXDeploymentTemplate, replicas, initContainers, adminAPIVersion, syncInterval, syncComparison,
-		label, resourceVersion, publishAddr, webhooks, ingressClass, disableStatus, etcdserverEnalbed, apisixContainer))
+		apisixBaseURL, label, resourceVersion, publishAddr, webhooks, ingressClass, disableStatus, etcdserverEnalbed, apisixContainer))
 
 }
 
@@ -584,16 +603,23 @@ func (s *Scaffold) WaitAllIngressControllerPodsAvailable() error {
 		}
 		for _, item := range items {
 			foundPodReady := false
+			foundContainerReady := false
 			for _, cond := range item.Status.Conditions {
-				if cond.Type != corev1.PodReady {
-					continue
+				if cond.Type == corev1.PodReady {
+					foundPodReady = true
+					if cond.Status != "True" {
+						return false, nil
+					}
 				}
-				foundPodReady = true
-				if cond.Status != "True" {
-					return false, nil
+
+				if cond.Type == corev1.ContainersReady {
+					foundContainerReady = true
+					if cond.Status != "True" {
+						return false, nil
+					}
 				}
 			}
-			if !foundPodReady {
+			if !foundPodReady || !foundContainerReady {
 				return false, nil
 			}
 		}

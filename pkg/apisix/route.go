@@ -155,14 +155,6 @@ func (r *routeClient) Create(ctx context.Context, obj *v1.Route, shouldCompare b
 }
 
 func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
-	if r.cluster.adapter != nil {
-		data, err := json.Marshal(obj)
-		if err != nil {
-			return err
-		}
-		r.cluster.DeleteResource("routes", obj.ID, data)
-		return nil
-	}
 	log.Debugw("try to delete route",
 		zap.String("id", obj.ID),
 		zap.String("name", obj.Name),
@@ -192,14 +184,6 @@ func (r *routeClient) Delete(ctx context.Context, obj *v1.Route) error {
 }
 
 func (r *routeClient) Update(ctx context.Context, obj *v1.Route, shouldCompare bool) (*v1.Route, error) {
-	if r.cluster.adapter != nil {
-		data, err := json.Marshal(obj)
-		if err != nil {
-			return nil, err
-		}
-		r.cluster.UpdateResource("routes", obj.ID, data)
-		return obj, nil
-	}
 	if v, skip := skipRequest(r.cluster, shouldCompare, r.url, obj.ID, obj); skip {
 		return v, nil
 	}

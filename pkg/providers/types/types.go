@@ -234,6 +234,15 @@ func (c *Common) SyncUpstreamNodesChangeToCluster(ctx context.Context, cluster a
 	// * Nodes
 	// * Service discovery
 	// When this logic is executed, the Nodes pattern is used.
+	if compareUpstreamNodes(upstream.Nodes, nodes) {
+		log.Debugw("upstream nodes not changed",
+			zap.String("cluster", cluster.String()),
+			zap.String("upstream_name", upsName),
+			zap.Any("old_nodes", upstream.Nodes),
+			zap.Any("new_nodes", nodes),
+		)
+		return nil
+	}
 	upstream.Nodes = nodes
 
 	log.Debugw("upstream binds new nodes",
@@ -245,4 +254,21 @@ func (c *Common) SyncUpstreamNodesChangeToCluster(ctx context.Context, cluster a
 		Upstreams: []*apisixv1.Upstream{upstream},
 	}
 	return c.SyncManifests(ctx, nil, updated, nil, false)
+}
+
+func compareUpstreamNodes(old, new apisixv1.UpstreamNodes) bool {
+	if len(old) != len(new) {
+		return false
+	}
+
+	compare := map[apisixv1.UpstreamNode]struct{}{}
+	for _, node := range old {
+		compare[node] = struct{}{}
+	}
+	for _, node := range new {
+		if _, ok := compare[node]; !ok {
+			return false
+		}
+	}
+	return true
 }

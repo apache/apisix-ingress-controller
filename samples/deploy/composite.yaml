@@ -424,7 +424,7 @@ spec:
             - name: https
               containerPort: 8443
               protocol: TCP
-            - name: grpc
+            - name: etcd
               containerPort: 12379
               protocol: TCP
           env:
