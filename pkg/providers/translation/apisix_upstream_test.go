@@ -409,3 +409,50 @@ func TestUpstreamRetriesAndTimeoutV2(t *testing.T) {
 		Read:    15,
 	}, ups.Timeout)
 }
+
+func TestUpstreamPassHost(t *testing.T) {
+	tr := &translator{}
+	tests := []struct {
+		name     string
+		phc      *passHostConfig
+		wantFunc func(t *testing.T, err error, ups *apisixv1.Upstream, phc *passHostConfig)
+	}{
+		{
+			name: "should be empty when settings not set explicitly",
+			phc:  &passHostConfig{},
+			wantFunc: func(t *testing.T, err error, ups *apisixv1.Upstream, phc *passHostConfig) {
+				assert.Nil(t, err)
+				assert.Empty(t, ups.PassHost)
+				assert.Empty(t, ups.UpstreamHost)
+			},
+		},
+		{
+			name: "should set passHost to pass",
+			phc:  &passHostConfig{passHost: apisixv1.PassHostPass},
+			wantFunc: func(t *testing.T, err error, ups *apisixv1.Upstream, phc *passHostConfig) {
+				assert.Nil(t, err)
+				assert.Equal(t, phc.passHost, ups.PassHost)
+				assert.Empty(t, ups.UpstreamHost)
+			},
+		},
+		{
+			name: "should fail when passHost set to invalid value",
+			phc:  &passHostConfig{passHost: "unknown"},
+			wantFunc: func(t *testing.T, err error, ups *apisixv1.Upstream, phc *passHostConfig) {
+				assert.Equal(t, &TranslateError{
+					Field:  "passHost",
+					Reason: "invalid value",
+				}, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ups := apisixv1.NewDefaultUpstream()
+			err := tr.translatePassHost(tt.phc, ups)
+
+			tt.wantFunc(t, err, ups, tt.phc)
+		})
+	}
+}

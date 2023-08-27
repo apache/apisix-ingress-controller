@@ -544,6 +544,16 @@ type ApisixUpstreamConfig struct {
 	// +optional
 	Subsets []ApisixUpstreamSubset `json:"subsets,omitempty" yaml:"subsets,omitempty"`
 
+	// Configures the host when the request is forwarded to the upstream.
+	// Can be one of pass, node or rewrite.
+	// +optional
+	PassHost string `json:"passHost,omitempty" yaml:"passHost,omitempty"`
+
+	// Specifies the host of the Upstream request. This is only valid if
+	// the pass_host is set to rewrite
+	// +optional
+	UpstreamHost string `json:"upstreamHost,omitempty" yaml:"upstreamHost,omitempty"`
+
 	// Discovery is used to configure service discovery for upstream.
 	// +optional
 	Discovery *Discovery `json:"discovery,omitempty" yaml:"discovery,omitempty"`
