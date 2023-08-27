@@ -513,15 +513,14 @@ func (s *Scaffold) DeployCompositeMode() {
 
 func (s *Scaffold) DeployTestService() {
 	var err error
+
 	s.httpbinService, err = s.newHTTPBIN()
 	assert.Nil(s.t, err, "initializing httpbin")
-
-	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.httpbinService.Name, 3, 2*time.Second)
+	s.EnsureNumEndpointsReady(s.t, s.httpbinService.Name, 1)
 
 	s.testBackendService, err = s.newTestBackend()
 	assert.Nil(s.t, err, "initializing test backend")
-
-	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.testBackendService.Name, 3, 2*time.Second)
+	s.EnsureNumEndpointsReady(s.t, s.testBackendService.Name, 1)
 }
 
 func (s *Scaffold) afterEach() {
