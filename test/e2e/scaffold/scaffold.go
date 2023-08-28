@@ -423,6 +423,9 @@ func (s *Scaffold) RestartAPISIXDeploy() {
 }
 
 func (s *Scaffold) RestartIngressControllerDeploy() {
+	if s.IsEtcdServer() {
+		s.shutdownApisixTunnel()
+	}
 	pods, err := k8s.ListPodsE(s.t, s.kubectlOptions, metav1.ListOptions{
 		LabelSelector: "app=ingress-apisix-controller-deployment-e2e-test",
 	})
@@ -435,8 +438,10 @@ func (s *Scaffold) RestartIngressControllerDeploy() {
 	err = s.WaitAllIngressControllerPodsAvailable()
 	assert.NoError(s.t, err, "waiting for new ingress-controller instance ready")
 
-	err = s.newAPISIXTunnels()
-	assert.NoError(s.t, err, "renew apisix tunnels")
+	if s.IsEtcdServer() {
+		err = s.newAPISIXTunnels()
+		assert.NoError(s.t, err, "renew apisix tunnels")
+	}
 }
 
 func (s *Scaffold) beforeEach() {
