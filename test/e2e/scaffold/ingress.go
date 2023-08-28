@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
@@ -488,7 +487,7 @@ spec:
 
 func init() {
 	if os.Getenv("E2E_ENV") != "ci" {
-		_ingressAPISIXDeploymentTemplate = strings.Replace(_ingressAPISIXDeploymentTemplate, "imagePullPolicy: IfNotPresent", "imagePullPolicy: Always", -1)
+		//_ingressAPISIXDeploymentTemplate = strings.Replace(_ingressAPISIXDeploymentTemplate, "imagePullPolicy: IfNotPresent", "imagePullPolicy: Always", -1)
 	}
 }
 

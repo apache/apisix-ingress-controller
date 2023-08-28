@@ -431,8 +431,12 @@ func (s *Scaffold) RestartIngressControllerDeploy() {
 		err = s.KillPod(pod.Name)
 		assert.NoError(s.t, err, "killing ingress-controller pod")
 	}
+
 	err = s.WaitAllIngressControllerPodsAvailable()
 	assert.NoError(s.t, err, "waiting for new ingress-controller instance ready")
+
+	err = s.newAPISIXTunnels()
+	assert.NoError(s.t, err, "renew apisix tunnels")
 }
 
 func (s *Scaffold) beforeEach() {

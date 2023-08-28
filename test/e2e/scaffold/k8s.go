@@ -701,35 +701,36 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		udpNodePort, udpPort)
 	s.apisixControlTunnel = k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-service-e2e-test",
 		controlNodePort, controlPort)
-
-	if err := s.apisixAdminTunnel.ForwardPortE(s.t); err != nil {
-		return err
-	}
-	s.addFinalizers(s.apisixAdminTunnel.Close)
-	if err := s.apisixHttpTunnel.ForwardPortE(s.t); err != nil {
-		return err
-	}
-	s.addFinalizers(s.apisixHttpTunnel.Close)
-	if err := s.apisixHttpsTunnel.ForwardPortE(s.t); err != nil {
-		return err
-	}
-	s.addFinalizers(s.apisixHttpsTunnel.Close)
-	if err := s.apisixTCPTunnel.ForwardPortE(s.t); err != nil {
-		return err
-	}
-	s.addFinalizers(s.apisixTCPTunnel.Close)
-	if err := s.apisixTLSOverTCPTunnel.ForwardPortE(s.t); err != nil {
-		return err
-	}
-	s.addFinalizers(s.apisixTLSOverTCPTunnel.Close)
-	if err := s.apisixUDPTunnel.ForwardPortE(s.t); err != nil {
-		return err
-	}
-	s.addFinalizers(s.apisixUDPTunnel.Close)
-	if err := s.apisixControlTunnel.ForwardPortE(s.t); err != nil {
-		return err
-	}
-	s.addFinalizers(s.apisixControlTunnel.Close)
+	/*
+		if err := s.apisixAdminTunnel.ForwardPortE(s.t); err != nil {
+			return err
+		}
+		s.addFinalizers(s.apisixAdminTunnel.Close)
+		if err := s.apisixHttpTunnel.ForwardPortE(s.t); err != nil {
+			return err
+		}
+		s.addFinalizers(s.apisixHttpTunnel.Close)
+		if err := s.apisixHttpsTunnel.ForwardPortE(s.t); err != nil {
+			return err
+		}
+		s.addFinalizers(s.apisixHttpsTunnel.Close)
+		if err := s.apisixTCPTunnel.ForwardPortE(s.t); err != nil {
+			return err
+		}
+		s.addFinalizers(s.apisixTCPTunnel.Close)
+		if err := s.apisixTLSOverTCPTunnel.ForwardPortE(s.t); err != nil {
+			return err
+		}
+		s.addFinalizers(s.apisixTLSOverTCPTunnel.Close)
+		if err := s.apisixUDPTunnel.ForwardPortE(s.t); err != nil {
+			return err
+		}
+		s.addFinalizers(s.apisixUDPTunnel.Close)
+		if err := s.apisixControlTunnel.ForwardPortE(s.t); err != nil {
+			return err
+		}
+		s.addFinalizers(s.apisixControlTunnel.Close)
+	*/
 	return nil
 }
 
