@@ -248,10 +248,12 @@ func (r *upstreamMem) Get(ctx context.Context, name string) (*v1.Upstream, error
 	rid := id.GenID(name)
 	upstream, err := r.cluster.cache.GetUpstream(rid)
 	if err != nil {
-		log.Errorw("failed to find upstream in cache",
-			zap.String("name", name),
-			zap.Error(err),
-		)
+		if err != cache.ErrNotFound {
+			log.Errorw("failed to find upstream in cache",
+				zap.String("name", name),
+				zap.Error(err),
+			)
+		}
 		return nil, err
 	}
 	return upstream, nil

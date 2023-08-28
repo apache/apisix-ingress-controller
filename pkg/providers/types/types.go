@@ -215,15 +215,15 @@ func (c *Common) SyncUpstreamNodesChangeToCluster(ctx context.Context, cluster a
 	)
 	upstream, err := cluster.Upstream().Get(ctx, upsName)
 	if err != nil {
-		log.Errorw("failed to get upstream",
-			zap.String("upstream", upsName),
-			zap.String("cluster", cluster.String()),
-			zap.Error(err),
-		)
-		return err
-	}
-	if upstream == nil {
-		log.Warnw("upstream is not referenced",
+		if err != apisix.ErrNotFound {
+			log.Errorw("failed to get upstream",
+				zap.String("upstream", upsName),
+				zap.String("cluster", cluster.String()),
+				zap.Error(err),
+			)
+			return err
+		}
+		log.Debugw("upstream is not referenced",
 			zap.String("cluster", cluster.String()),
 			zap.String("upstream", upsName),
 		)

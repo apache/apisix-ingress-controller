@@ -59,6 +59,9 @@ var (
 	// ErrFunctionDisabled means the APISIX function is disabled
 	ErrFunctionDisabled = errors.New("function disabled")
 
+	// ErrRouteNotFound means the [route, ssl, upstream] was not found.
+	ErrNotFound = cache.ErrNotFound
+
 	_errReadOnClosedResBody = errors.New("http: read on closed response body")
 
 	// Default shared transport for apisix client

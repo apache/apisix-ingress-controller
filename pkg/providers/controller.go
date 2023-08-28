@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -73,10 +74,6 @@ type Controller struct {
 	kubeClient       *kube.KubeClient
 	// recorder event
 	recorder record.EventRecorder
-
-	// leaderContextCancelFunc will be called when apisix-ingress-controller
-	// decides to give up its leader role.
-	leaderContextCancelFunc context.CancelFunc
 
 	translator       translation.Translator
 	apisixTranslator apisixtranslation.ApisixTranslator
@@ -144,7 +141,6 @@ func (c *Controller) Run(stop chan struct{}) error {
 	defer rootCancel()
 	go func() {
 		<-stop
-		c.leaderContextCancelFunc()
 		rootCancel()
 	}()
 	c.MetricsCollector.ResetLeader(false)
@@ -157,8 +153,17 @@ func (c *Controller) Run(stop chan struct{}) error {
 	}()
 
 	if err := c.setupLeaderElection(); err != nil {
+		log.Errorw("failed to setup leader election")
 		return err
 	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		log.Info("start leader election")
+		c.runLeaderElection(rootCtx)
+	}()
 
 	// ensure that the leader has been elected
 	if err := wait.PollUntilContextTimeout(rootCtx, 200*time.Millisecond, 10*time.Second, false, func(ctx context.Context) (bool, error) {
@@ -175,20 +180,11 @@ func (c *Controller) Run(stop chan struct{}) error {
 
 	c.run(rootCtx)
 
+	wg.Wait()
 	return nil
 }
 
 func (c *Controller) setupLeaderElection() error {
-	var elector *leaderelection.LeaderElector
-
-	ctx := context.Background()
-
-	var newLeaderCtx = func(ctx context.Context) context.CancelFunc {
-		leaderCtx, cancel := context.WithCancel(ctx)
-		go elector.Run(leaderCtx)
-		return cancel
-	}
-
 	lock := &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
 			Namespace: c.namespace,
@@ -225,15 +221,11 @@ func (c *Controller) setupLeaderElection() error {
 				}
 			},
 			OnStoppedLeading: func() {
+				c.MetricsCollector.ResetLeader(false)
 				log.Infow("controller now is running as a candidate",
 					zap.String("namespace", c.namespace),
 					zap.String("pod", c.name),
 				)
-
-				c.leaderContextCancelFunc()
-				c.leaderContextCancelFunc = newLeaderCtx(ctx)
-
-				c.MetricsCollector.ResetLeader(false)
 			},
 		},
 		ReleaseOnCancel: true,
@@ -245,8 +237,24 @@ func (c *Controller) setupLeaderElection() error {
 		return err
 	}
 	c.elector = elector
-	c.leaderContextCancelFunc = newLeaderCtx(ctx)
 	return nil
+}
+
+func (c *Controller) runLeaderElection(ctx context.Context) {
+election:
+	leaderCtx, leaderCancel := context.WithCancel(ctx)
+	c.elector.Run(leaderCtx)
+	leaderCancel()
+
+	select {
+	case <-ctx.Done():
+		log.Infow("controller will exit the leader election",
+			zap.String("namespace", c.namespace),
+			zap.String("pod", c.name),
+		)
+	default:
+		goto election
+	}
 }
 
 func (c *Controller) initSharedInformers() *providertypes.ListerInformer {

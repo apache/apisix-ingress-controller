@@ -49,7 +49,7 @@ func (u *upstreamService) Get(ctx context.Context, serviceName string) (*v1.Upst
 		zap.String("cluster", u.cluster.name),
 	)
 	us, err := u.cluster.cache.GetUpstreamServiceRelation(serviceName)
-	if err != nil {
+	if err != nil && err != cache.ErrNotFound {
 		log.Error("failed to find upstreamService in cache",
 			zap.String("service_name", serviceName), zap.Error(err))
 		return nil, err
@@ -105,7 +105,7 @@ func (u *upstreamService) Create(ctx context.Context, upstreamName string) error
 
 	serviceName := args[0] + "_" + args[1]
 	relation, err := u.Get(ctx, serviceName)
-	if err != nil {
+	if err != nil && err != cache.ErrNotFound {
 		return err
 	}
 	if relation == nil {
