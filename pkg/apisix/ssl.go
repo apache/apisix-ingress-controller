@@ -245,7 +245,7 @@ func (r *sslMem) Get(ctx context.Context, name string) (*v1.Ssl, error) {
 	)
 	rid := id.GenID(name)
 	ssl, err := r.cluster.cache.GetSSL(rid)
-	if err != nil && err != cache.ErrNotFound {
+	if err != nil {
 		log.Errorw("failed to find ssl in cache, will try to lookup from APISIX",
 			zap.String("name", name),
 			zap.Error(err),

@@ -241,7 +241,7 @@ func (r *consumerMem) Get(ctx context.Context, name string) (*v1.Consumer, error
 	)
 	rid := id.GenID(name)
 	consumer, err := r.cluster.cache.GetConsumer(rid)
-	if err != nil && err != cache.ErrNotFound {
+	if err != nil {
 		log.Errorw("failed to find consumer in cache, will try to lookup from APISIX",
 			zap.String("name", name),
 			zap.Error(err),

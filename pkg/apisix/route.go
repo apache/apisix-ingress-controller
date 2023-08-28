@@ -243,7 +243,7 @@ func (r *routeMem) Get(ctx context.Context, name string) (*v1.Route, error) {
 	)
 	rid := id.GenID(name)
 	route, err := r.cluster.cache.GetRoute(rid)
-	if err != nil && err != cache.ErrNotFound {
+	if err != nil {
 		log.Errorw("failed to find route in cache",
 			zap.String("name", name),
 			zap.Error(err),

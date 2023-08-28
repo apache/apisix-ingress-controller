@@ -246,7 +246,7 @@ func (r *streamRouteMem) Get(ctx context.Context, name string) (*v1.StreamRoute,
 	)
 	rid := id.GenID(name)
 	route, err := r.cluster.cache.GetStreamRoute(rid)
-	if err != nil && err != cache.ErrNotFound {
+	if err != nil {
 		log.Errorw("failed to find route in cache, will try to lookup from APISIX",
 			zap.String("name", name),
 			zap.Error(err),

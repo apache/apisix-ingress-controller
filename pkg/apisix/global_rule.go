@@ -240,7 +240,7 @@ func (r *globalRuleMem) Get(ctx context.Context, name string) (*v1.GlobalRule, e
 	)
 	rid := id.GenID(name)
 	globalRule, err := r.cluster.cache.GetGlobalRule(rid)
-	if err != nil && err != cache.ErrNotFound {
+	if err != nil {
 		log.Errorw("failed to find globalRule in cache, will try to lookup from APISIX",
 			zap.String("name", name),
 			zap.Error(err),

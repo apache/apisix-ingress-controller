@@ -332,9 +332,6 @@ func (c *apisixUpstreamController) updateUpstream(ctx context.Context, upsName s
 		log.Errorf("failed to get upstream %s: %s", upsName, err)
 		return err
 	}
-	if ups == nil {
-		return nil
-	}
 	var newUps *apisixv1.Upstream
 	if cfg != nil {
 		newUps, err = c.translator.TranslateUpstreamConfigV2(cfg)
@@ -829,6 +826,7 @@ func (c *apisixUpstreamController) recordStatus(at interface{}, reason string, e
 		}
 		if utils.VerifyConditions(&v.Status.Conditions, condition) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			log.Errorw("update status", zap.Any("status", v.Status))
 			if _, errRecord := apisixClient.ApisixV2().ApisixUpstreams(v.Namespace).
 				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 				log.Errorw("failed to record status change for ApisixUpstream",

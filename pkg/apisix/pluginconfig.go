@@ -247,7 +247,7 @@ func (r *pluginConfigMem) Get(ctx context.Context, name string) (*v1.PluginConfi
 	)
 	rid := id.GenID(name)
 	pluginConfig, err := r.cluster.cache.GetPluginConfig(rid)
-	if err != nil && err != cache.ErrNotFound {
+	if err != nil {
 		log.Errorw("failed to find pluginConfig in cache, will try to lookup from APISIX",
 			zap.String("name", name),
 			zap.Error(err),
