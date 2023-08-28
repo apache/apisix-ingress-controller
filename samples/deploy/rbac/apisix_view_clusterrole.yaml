@@ -21,9 +21,9 @@ metadata:
   name: apisix-view-clusterrole
 rules:
   - apiGroups:
-    - ""
+      - ""
     resources:
-    - events
+      - events
     verbs:
       - "*"
   - apiGroups:
@@ -156,38 +156,38 @@ rules:
     verbs:
       - '*'
   - apiGroups:
-    - coordination.k8s.io
+      - coordination.k8s.io
     resources:
-    - leases
+      - leases
     verbs:
-    - '*'
+      - '*'
   - apiGroups:
-    - discovery.k8s.io
+      - discovery.k8s.io
     resources:
-    - endpointslices
+      - endpointslices
     verbs:
-    - get
-    - list
-    - watch
+      - get
+      - list
+      - watch
   - apiGroups:
-    - gateway.networking.k8s.io
+      - gateway.networking.k8s.io
     resources:
-    - httproutes
-    - tlsroutes
-    - tcproutes
-    - gateways
-    - gatewayclasses
-    - udproutes
+      - httproutes
+      - tlsroutes
+      - tcproutes
+      - gateways
+      - gatewayclasses
+      - udproutes
     verbs:
-    - get
-    - list
-    - watch
+      - get
+      - list
+      - watch
   - apiGroups:
-    - gateway.networking.k8s.io
+      - gateway.networking.k8s.io
     resources:
-    - gateways/status
-    - gatewayclasses/status
+      - gateways/status
+      - gatewayclasses/status
     verbs:
-    - get
-    - update
-    - list
+      - get
+      - update
+      - list
