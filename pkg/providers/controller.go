@@ -433,7 +433,7 @@ func (c *Controller) run(ctx context.Context) {
 		KubeClient:          c.kubeClient,
 		MetricsCollector:    c.MetricsCollector,
 		Recorder:            c.recorder,
-		Eletor:              c.elector,
+		Elector:             c.elector,
 	}
 
 	c.namespaceProvider, err = namespace.NewWatchingNamespaceProvider(ctx, c.kubeClient, c.cfg)

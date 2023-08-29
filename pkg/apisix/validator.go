@@ -110,7 +110,7 @@ func (asv *apisixSchemaReferenceValidator) ValidateHTTPPluginSchema(plugins v1.P
 	return true, nil
 }
 
-func (asv *apisixSchemaReferenceValidator) ValidateSteamPluginSchema(plugins v1.Plugins) (bool, error) {
+func (asv *apisixSchemaReferenceValidator) ValidateStreamPluginSchema(plugins v1.Plugins) (bool, error) {
 	var resultErrs error
 
 	for pluginName, pluginConfig := range plugins {

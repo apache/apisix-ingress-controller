@@ -417,7 +417,7 @@ func (c *apisixRouteController) checkPluginNameIfNotEmptyV2(ctx context.Context,
 }
 
 func (c *apisixRouteController) updateStatus(obj kube.ApisixRoute, statusErr error) {
-	if obj == nil || c.Kubernetes.DisableStatusUpdates || !c.Eletor.IsLeader() {
+	if obj == nil || c.Kubernetes.DisableStatusUpdates || !c.Elector.IsLeader() {
 		return
 	}
 

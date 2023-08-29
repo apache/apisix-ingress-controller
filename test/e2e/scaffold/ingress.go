@@ -494,21 +494,21 @@ func init() {
 
 func (s *Scaffold) genIngressDeployment(replicas int, adminAPIVersion,
 	syncInterval, syncComparison, label, resourceVersion, publishAddr string, webhooks bool,
-	ingressClass string, disableStatus bool, etcdserverEnalbed bool) string {
+	ingressClass string, disableStatus bool, etcdserverEnabled bool) string {
 	var (
 		initContainers  = _initContainers
 		apisixBaseURL   = "http://apisix-service-e2e-test:9180/apisix/admin"
 		apisixContainer string
 	)
 
-	if etcdserverEnalbed {
+	if etcdserverEnabled {
 		initContainers = ""
 		apisixBaseURL = "http://127.0.0.1:9180/apisix/admin"
 		apisixContainer = _apisixContainer
 	}
 
 	return s.FormatRegistry(fmt.Sprintf(_ingressAPISIXDeploymentTemplate, replicas, initContainers, adminAPIVersion, syncInterval, syncComparison,
-		apisixBaseURL, label, resourceVersion, publishAddr, webhooks, ingressClass, disableStatus, etcdserverEnalbed, apisixContainer))
+		apisixBaseURL, label, resourceVersion, publishAddr, webhooks, ingressClass, disableStatus, etcdserverEnabled, apisixContainer))
 
 }
 

@@ -188,7 +188,7 @@ func (c *apisixGlobalRuleController) handleSyncErr(obj interface{}, errOrigin er
 		c.workqueue.Forget(event)
 		return
 	}
-	if !c.Kubernetes.DisableStatusUpdates && c.Eletor.IsLeader() {
+	if !c.Kubernetes.DisableStatusUpdates && c.Elector.IsLeader() {
 		namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
 		if errLocal != nil {
 			log.Errorf("invalid resource key: %s", event.Key)

@@ -176,7 +176,7 @@ type UpstreamServiceRelation interface {
 }
 
 type APISIXSchemaValidator interface {
-	ValidateSteamPluginSchema(plugins v1.Plugins) (bool, error)
+	ValidateStreamPluginSchema(plugins v1.Plugins) (bool, error)
 	ValidateHTTPPluginSchema(plugins v1.Plugins) (bool, error)
 }
 

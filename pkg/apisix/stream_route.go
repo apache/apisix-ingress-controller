@@ -275,7 +275,7 @@ func (r *streamRouteMem) Create(ctx context.Context, obj *v1.StreamRoute, should
 	if shouldCompare && CompareResourceEqualFromCluster(r.cluster, obj.ID, obj) {
 		return obj, nil
 	}
-	if ok, err := r.cluster.validator.ValidateSteamPluginSchema(obj.Plugins); !ok {
+	if ok, err := r.cluster.validator.ValidateStreamPluginSchema(obj.Plugins); !ok {
 		return nil, err
 	}
 	data, err := json.Marshal(obj)
@@ -307,7 +307,7 @@ func (r *streamRouteMem) Update(ctx context.Context, obj *v1.StreamRoute, should
 	if shouldCompare && CompareResourceEqualFromCluster(r.cluster, obj.ID, obj) {
 		return obj, nil
 	}
-	if ok, err := r.cluster.validator.ValidateSteamPluginSchema(obj.Plugins); !ok {
+	if ok, err := r.cluster.validator.ValidateStreamPluginSchema(obj.Plugins); !ok {
 		return nil, err
 	}
 	data, err := json.Marshal(obj)

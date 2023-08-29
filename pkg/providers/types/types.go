@@ -123,7 +123,7 @@ type Common struct {
 	*config.Config
 	*ListerInformer
 
-	Eletor *leaderelection.LeaderElector
+	Elector *leaderelection.LeaderElector
 
 	ControllerNamespace string
 
@@ -151,7 +151,7 @@ func (c *Common) RecordEventS(object runtime.Object, eventtype, reason string, m
 
 // TODO: Move sync utils to apisix.APISIX interface?
 func (c *Common) SyncManifests(ctx context.Context, added, updated, deleted *utils.Manifest, shouldCompare bool) error {
-	if !c.Eletor.IsLeader() && !c.Config.EtcdServer.Enabled {
+	if !c.Elector.IsLeader() && !c.Config.EtcdServer.Enabled {
 		return nil
 	}
 	return utils.SyncManifests(ctx, c.APISIX, c.Config.APISIX.DefaultClusterName, added, updated, deleted, shouldCompare)

@@ -78,7 +78,7 @@ func TestValidateHTTPPluginSchema(t *testing.T) {
 	assert.Contains(t, err.Error(), "unknown plugin [non-plugin]")
 }
 
-func TestValidateSteamPluginSchema(t *testing.T) {
+func TestValidateStreamPluginSchema(t *testing.T) {
 	validator, err := NewReferenceFile("../../conf/apisix-schema.json")
 	if err != nil {
 		t.Fatalf("failed to create validator: %v", err)
@@ -90,7 +90,7 @@ func TestValidateSteamPluginSchema(t *testing.T) {
 		},
 	}
 
-	valid, err := validator.ValidateSteamPluginSchema(plugins)
+	valid, err := validator.ValidateStreamPluginSchema(plugins)
 	assert.False(t, valid, "expected schema to be invalid, but it was valid")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown stream plugin [echo]")
@@ -101,7 +101,7 @@ func TestValidateSteamPluginSchema(t *testing.T) {
 		},
 	}
 
-	valid, err = validator.ValidateSteamPluginSchema(plugins)
+	valid, err = validator.ValidateStreamPluginSchema(plugins)
 	assert.False(t, valid, "expected schema to be invalid, but it was valid")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "protocol_level is required")
@@ -113,7 +113,7 @@ func TestValidateSteamPluginSchema(t *testing.T) {
 		},
 	}
 
-	valid, err = validator.ValidateSteamPluginSchema(plugins)
+	valid, err = validator.ValidateStreamPluginSchema(plugins)
 	assert.True(t, valid, "expected schema to be valid, but it was invalid")
 	assert.Nil(t, err, "failed to validate schema")
 }

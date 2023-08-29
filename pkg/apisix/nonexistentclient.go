@@ -291,7 +291,7 @@ func (d *dummyValidator) ValidateHTTPPluginSchema(plugins v1.Plugins) (bool, err
 	return true, nil
 }
 
-func (d *dummyValidator) ValidateSteamPluginSchema(plugins v1.Plugins) (bool, error) {
+func (d *dummyValidator) ValidateStreamPluginSchema(plugins v1.Plugins) (bool, error) {
 	return true, nil
 }
 

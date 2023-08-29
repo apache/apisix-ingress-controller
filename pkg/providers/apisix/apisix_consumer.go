@@ -363,7 +363,7 @@ func (c *apisixConsumerController) ResourceSync(interval time.Duration) {
 }
 
 func (c *apisixConsumerController) updateStatus(obj kube.ApisixConsumer, statusErr error) {
-	if obj == nil || c.Kubernetes.DisableStatusUpdates || !c.Eletor.IsLeader() {
+	if obj == nil || c.Kubernetes.DisableStatusUpdates || !c.Elector.IsLeader() {
 		return
 	}
 	var (

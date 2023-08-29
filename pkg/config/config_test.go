@@ -206,7 +206,7 @@ func TestConfigWithEnvVar(t *testing.T) {
         "default_cluster_name": "{{.DEFAULT_CLUSTER_NAME}}"
     },
 	"etcdserver": {
-		"enalbed": false,
+		"enabled": false,
 		"prefix": "/apisix",
 		"listen_address": ":12379",
 		"ssl_key_encrypt_salt": "edd1c9f0985e76a2"
