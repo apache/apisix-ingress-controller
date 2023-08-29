@@ -29,6 +29,7 @@ updates:
       - "tao12345666333"
       - "lingsamuel"
       - "AlinsRan"
+      - "Gallardot"
   - package-ecosystem: "github-actions"
     directory: "/.github"
     schedule:
@@ -39,6 +40,7 @@ updates:
       - "tao12345666333"
       - "lingsamuel"
       - "AlinsRan"
+      - "Gallardot"
   - package-ecosystem: "gomod"
     directory: "/test/e2e"
     schedule:
@@ -49,3 +51,4 @@ updates:
       - "tao12345666333"
       - "lingsamuel"
       - "AlinsRan"
+      - "Gallardot"
