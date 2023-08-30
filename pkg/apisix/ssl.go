@@ -219,3 +219,101 @@ func (s *sslClient) Update(ctx context.Context, obj *v1.Ssl, shouldCompare bool)
 	}
 	return ssl, nil
 }
+
+type sslMem struct {
+	url string
+
+	resource string
+	cluster  *cluster
+
+	keyEncryptSalt string
+}
+
+func newSSLMem(c *cluster) SSL {
+	return &sslMem{
+		url:            c.baseURL + "/ssls",
+		resource:       "ssls",
+		cluster:        c,
+		keyEncryptSalt: c.sslKeyEncryptSalt,
+	}
+}
+
+func (r *sslMem) Get(ctx context.Context, name string) (*v1.Ssl, error) {
+	log.Debugw("try to look up ssl",
+		zap.String("name", name),
+		zap.String("cluster", r.cluster.name),
+	)
+	rid := id.GenID(name)
+	ssl, err := r.cluster.cache.GetSSL(rid)
+	if err != nil {
+		log.Errorw("failed to find ssl in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+	return ssl, nil
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
+func (r *sslMem) List(ctx context.Context) ([]*v1.Ssl, error) {
+	log.Debugw("try to list resource in APISIX",
+		zap.String("cluster", r.cluster.name),
+		zap.String("resource", r.resource),
+	)
+	ssls, err := r.cluster.cache.ListSSL()
+	if err != nil {
+		log.Errorf("failed to list %s: %s", r.resource, err)
+		return nil, err
+	}
+	return ssls, nil
+}
+
+func (r *sslMem) Create(ctx context.Context, obj *v1.Ssl, shouldCompare bool) (*v1.Ssl, error) {
+	if ssl, _ := r.cluster.cache.GetSSL(obj.ID); ssl != nil {
+		return r.Update(ctx, obj, shouldCompare)
+	}
+	pkey, err := AesEencryptPrivatekey([]byte(obj.Key), []byte(r.keyEncryptSalt))
+	if err != nil {
+		return nil, err
+	}
+	obj.Key = pkey
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.CreateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertSSL(obj); err != nil {
+		log.Errorf("failed to reflect ssl create to cache: %s", err)
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (r *sslMem) Delete(ctx context.Context, obj *v1.Ssl) error {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	r.cluster.DeleteResource(r.resource, obj.ID, data)
+	return nil
+}
+
+func (r *sslMem) Update(ctx context.Context, obj *v1.Ssl, shouldCompare bool) (*v1.Ssl, error) {
+	pkey, err := AesEencryptPrivatekey([]byte(obj.Key), []byte(r.keyEncryptSalt))
+	if err != nil {
+		return nil, err
+	}
+	obj.Key = pkey
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.UpdateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertSSL(obj); err != nil {
+		log.Errorf("failed to reflect ssl update to cache: %s", err)
+		return nil, err
+	}
+	return obj, nil
+}

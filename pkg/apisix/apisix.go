@@ -67,6 +67,8 @@ type Cluster interface {
 	PluginMetadata() PluginMetadata
 	// UpstreamServiceRelation returns a UpstreamServiceRelation interface that can fetch UpstreamServiceRelation of APISIX objects.
 	UpstreamServiceRelation() UpstreamServiceRelation
+
+	Validator() APISIXSchemaValidator
 }
 
 // Route is the specific client interface to take over the create, update,
@@ -160,6 +162,7 @@ type PluginMetadata interface {
 	List(ctx context.Context) ([]*v1.PluginMetadata, error)
 	Delete(ctx context.Context, metadata *v1.PluginMetadata) error
 	Update(ctx context.Context, metadata *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error)
+	Create(ctx context.Context, metadata *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error)
 }
 
 type UpstreamServiceRelation interface {
@@ -170,6 +173,11 @@ type UpstreamServiceRelation interface {
 	Delete(ctx context.Context, svcName string) error
 	// Build relation based on upstream.name
 	Create(ctx context.Context, svcName string) error
+}
+
+type APISIXSchemaValidator interface {
+	ValidateStreamPluginSchema(plugins v1.Plugins) (bool, error)
+	ValidateHTTPPluginSchema(plugins v1.Plugins) (bool, error)
 }
 
 type apisix struct {

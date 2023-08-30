@@ -411,7 +411,7 @@ func (s *Scaffold) ensureAdminOperationIsSuccessful(url, method string, body []b
 			ginkgo.GinkgoT().Logf("failed to delete resources from APISIX: %s", err.Error())
 			return false, nil
 		}
-		if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 			ginkgo.GinkgoT().Logf("got status code %d from APISIX", resp.StatusCode)
 			return false, nil
 		}
@@ -730,6 +730,7 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		return err
 	}
 	s.addFinalizers(s.apisixControlTunnel.Close)
+
 	return nil
 }
 

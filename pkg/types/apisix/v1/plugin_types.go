@@ -88,13 +88,14 @@ type BasicAuthConsumerConfig struct {
 // used in Consumer object.
 // +k8s:deepcopy-gen=true
 type JwtAuthConsumerConfig struct {
-	Key          string `json:"key" yaml:"key"`
-	Secret       string `json:"secret,omitempty" yaml:"secret,omitempty"`
-	PublicKey    string `json:"public_key,omitempty" yaml:"public_key,omitempty"`
-	PrivateKey   string `json:"private_key" yaml:"private_key,omitempty"`
-	Algorithm    string `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`
-	Exp          int64  `json:"exp,omitempty" yaml:"exp,omitempty"`
-	Base64Secret bool   `json:"base64_secret,omitempty" yaml:"base64_secret,omitempty"`
+	Key                 string `json:"key" yaml:"key"`
+	Secret              string `json:"secret,omitempty" yaml:"secret,omitempty"`
+	PublicKey           string `json:"public_key,omitempty" yaml:"public_key,omitempty"`
+	PrivateKey          string `json:"private_key" yaml:"private_key,omitempty"`
+	Algorithm           string `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`
+	Exp                 int64  `json:"exp,omitempty" yaml:"exp,omitempty"`
+	Base64Secret        bool   `json:"base64_secret,omitempty" yaml:"base64_secret,omitempty"`
+	LifetimeGracePeriod int64  `json:"lifetime_grace_period,omitempty" yaml:"lifetime_grace_period,omitempty"`
 }
 
 // HMACAuthConsumerConfig is the rule config for hmac-auth plugin

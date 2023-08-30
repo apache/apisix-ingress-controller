@@ -102,11 +102,10 @@ spec:
 
 		// status should be recorded as successful
 		output, err := s.GetOutputFromString("au", backendSvc, "-o", "yaml")
-		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixUpstream resource"+backendSvc)
-		hasType := strings.Contains(output, "type: ResourcesAvailable")
-		assert.True(ginkgo.GinkgoT(), hasType, "Status is recorded")
-		hasMsg := strings.Contains(output, "message: Sync Successfully")
-		assert.True(ginkgo.GinkgoT(), hasMsg, "Status is recorded")
+		assert.Nil(ginkgo.GinkgoT(), err, "Get output of ApisixRoute resource")
+		assert.Contains(ginkgo.GinkgoT(), output, "type: ResourcesAvailable", "status.conditions.type is recorded")
+		assert.Contains(ginkgo.GinkgoT(), output, "reason: ResourceSyncAborted", "status.conditions.reason  is recorded")
+		assert.Contains(ginkgo.GinkgoT(), output, `status: "False"`, "status.conditions.status  is recorded")
 	})
 
 	ginkgo.It("check ApisixPluginConfig status is recorded", func() {

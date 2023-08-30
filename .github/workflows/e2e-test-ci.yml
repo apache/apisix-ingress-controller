@@ -156,6 +156,7 @@ jobs:
       matrix:
         suite: ${{ fromJson(needs.prepare.outputs.matrix) }}
         ingress-class-values: [ "apisix", "apisix-and-all" ]
+        enabled-etcdserver: [ true, false ]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -195,6 +196,7 @@ jobs:
           E2E_FOCUS: "${{ matrix.suite }}"
           ENABLE_PROXY: "false"
           INGRESS_CLASS: "${{ matrix.ingress-class-values }}"
+          ENABLED_ETCD_SERVER: "${{ matrix.enabled-etcdserver }}"
           E2E_SKIP_BUILD: "1"
           E2E_FLAKE_ATTEMPTS: "2"
           E2E_ENV: "ci"

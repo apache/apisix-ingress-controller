@@ -34,6 +34,10 @@ import (
 )
 
 const (
+	IngressControllerServiceName = "apisix-ingress-controller"
+)
+
+var (
 	_serviceAccount = "ingress-apisix-e2e-test-service-account"
 	_clusterRole    = `
 apiVersion: rbac.authorization.k8s.io/v1
@@ -242,6 +246,7 @@ spec:
   selector:
     app: ingress-apisix-controller-deployment-e2e-test
 `
+
 	_ingressAPISIXAdmissionWebhook = `
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -284,6 +289,90 @@ webhooks:
 `
 )
 
+var _initContainers = `
+      initContainers:
+      - name: wait-apisix-admin
+        image: localhost:5000/busybox:dev
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', "until nc -z apisix-service-e2e-test 9180 ; do echo waiting for apisix-admin; sleep 2; done;"]
+`
+
+var _apisixContainer = `
+        - livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 2
+            successThreshold: 1
+            tcpSocket:
+              port: 9080
+            timeoutSeconds: 2
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 8
+            periodSeconds: 2
+            successThreshold: 1
+            tcpSocket:
+              port: 9080
+            timeoutSeconds: 1
+          name: apisix-container
+          image: "localhost:5000/apisix:dev"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9080
+              name: "http"
+              protocol: "TCP"
+            - containerPort: 9180
+              name: "http-admin"
+              protocol: "TCP"
+            - containerPort: 9443
+              name: "https"
+              protocol: "TCP"
+          volumeMounts:
+            - mountPath: /usr/local/apisix/conf/config.yaml
+              name: apisix-config-yaml-configmap
+              subPath: config.yaml
+`
+
+var _ingressAPISIXService = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: apisix-service-e2e-test
+spec:
+  selector:
+    app: ingress-apisix-controller-deployment-e2e-test
+  ports:
+    - name: http
+      port: 9080
+      protocol: TCP
+      targetPort: 9080
+    - name: http-admin
+      port: 9180
+      protocol: TCP
+      targetPort: 9180
+    - name: https
+      port: 9443
+      protocol: TCP
+      targetPort: 9443
+    - name: tcp
+      port: 9100
+      protocol: TCP
+      targetPort: 9100
+    - name: tcp-tls
+      port: 9110
+      protocol: TCP
+      targetPort: 9110
+    - name: udp
+      port: 9200
+      protocol: UDP
+      targetPort: 9200
+    - name: http-control
+      port: 9090
+      protocol: TCP
+      targetPort: 9090
+  type: NodePort
+`
+
 var _ingressAPISIXDeploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
@@ -305,15 +394,11 @@ spec:
         app: ingress-apisix-controller-deployment-e2e-test
     spec:
       terminationGracePeriodSeconds: 0
-      initContainers:
-      - name: wait-apisix-admin
-        image: localhost:5000/busybox:dev
-        imagePullPolicy: IfNotPresent
-        command: ['sh', '-c', "until nc -z apisix-service-e2e-test.%s.svc.cluster.local 9180 ; do echo waiting for apisix-admin; sleep 2; done;"]
+      %s
       containers:
         - livenessProbe:
             failureThreshold: 3
-            initialDelaySeconds: 5
+            initialDelaySeconds: 7
             periodSeconds: 2
             successThreshold: 1
             tcpSocket:
@@ -346,6 +431,9 @@ spec:
             - containerPort: 8443
               name: "https"
               protocol: "TCP"
+            - containerPort: 2379
+              name: "etcd-server"
+              protocol: "TCP"
           command:
             - /ingress-apisix/apisix-ingress-controller
             - ingress
@@ -365,7 +453,7 @@ spec:
             - --default-apisix-cluster-name
             - default
             - --default-apisix-cluster-base-url
-            - http://apisix-service-e2e-test:9180/apisix/admin
+            - %s
             - --default-apisix-cluster-admin-key
             - edd1c9f034335f136f87ad84b625c8f1
             - --namespace-selector
@@ -378,16 +466,23 @@ spec:
             - --enable-gateway-api=true
             - --ingress-class
             - %s
-            %s
+            - --disable-status-updates=%t
+            - --etcd-server-enabled=%t
+            - --etcd-server-listen-address
+            - ":2379"
           volumeMounts:
             - name: admission-webhook
               mountPath: /etc/webhook/certs
               readOnly: true
+        %s
       volumes:
        - name: admission-webhook
          secret:
            secretName: webhook-certs
            optional: true
+       - configMap:
+           name: apisix-gw-config.yaml
+         name: apisix-config-yaml-configmap
       serviceAccount: ingress-apisix-e2e-test-service-account
 `
 
@@ -397,11 +492,23 @@ func init() {
 	}
 }
 
-func (s *Scaffold) genIngressDeployment(replicas int, namespace, adminAPIVersion,
-	syncInterval, syncComparison, label, resourceVersion, publishAddr string, webhooks bool, ingressClass,
-	disableStatus string) string {
-	return fmt.Sprintf(s.FormatRegistry(_ingressAPISIXDeploymentTemplate), replicas, namespace, adminAPIVersion, syncInterval, syncComparison,
-		label, resourceVersion, publishAddr, webhooks, ingressClass, disableStatus)
+func (s *Scaffold) genIngressDeployment(replicas int, adminAPIVersion,
+	syncInterval, syncComparison, label, resourceVersion, publishAddr string, webhooks bool,
+	ingressClass string, disableStatus bool, etcdserverEnabled bool) string {
+	var (
+		initContainers  = _initContainers
+		apisixBaseURL   = "http://apisix-service-e2e-test:9180/apisix/admin"
+		apisixContainer string
+	)
+
+	if etcdserverEnabled {
+		initContainers = ""
+		apisixBaseURL = "http://127.0.0.1:9180/apisix/admin"
+		apisixContainer = _apisixContainer
+	}
+
+	return s.FormatRegistry(fmt.Sprintf(_ingressAPISIXDeploymentTemplate, replicas, initContainers, adminAPIVersion, syncInterval, syncComparison,
+		apisixBaseURL, label, resourceVersion, publishAddr, webhooks, ingressClass, disableStatus, etcdserverEnabled, apisixContainer))
 
 }
 
@@ -426,24 +533,25 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		assert.Nil(s.t, err, "deleting ClusterRole")
 	})
 
-	var (
-		ingressAPISIXDeployment string
-		disableStatusStr        string
-	)
 	label := `""`
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil && !s.opts.DisableNamespaceSelector {
 		label = labels[0]
-	}
-	if s.opts.DisableStatus {
-		disableStatusStr = "- --disable-status-updates"
 	}
 	if s.opts.EnableWebhooks {
 		s.createAdmissionWebhook()
 	}
 
-	ingressAPISIXDeployment = s.genIngressDeployment(s.opts.IngressAPISIXReplicas, s.namespace, s.opts.APISIXAdminAPIVersion,
-		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label,
-		s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress, s.opts.EnableWebhooks, s.opts.IngressClass, disableStatusStr)
+	if s.opts.EnableEtcdServer {
+		err = s.CreateResourceFromString(_ingressAPISIXService)
+		assert.Nil(s.t, err, "create ingress-apisix service")
+
+		s.apisixService, err = k8s.GetServiceE(s.t, s.kubectlOptions, "apisix-service-e2e-test")
+		assert.Nil(s.t, err, "get ingress-apisix service")
+	}
+
+	ingressAPISIXDeployment := s.genIngressDeployment(s.opts.IngressAPISIXReplicas, s.opts.APISIXAdminAPIVersion,
+		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress,
+		s.opts.EnableWebhooks, s.opts.IngressClass, s.opts.DisableStatus, s.opts.EnableEtcdServer)
 
 	err = s.CreateResourceFromString(ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
@@ -495,16 +603,23 @@ func (s *Scaffold) WaitAllIngressControllerPodsAvailable() error {
 		}
 		for _, item := range items {
 			foundPodReady := false
+			foundContainerReady := false
 			for _, cond := range item.Status.Conditions {
-				if cond.Type != corev1.PodReady {
-					continue
+				if cond.Type == corev1.PodReady {
+					foundPodReady = true
+					if cond.Status != "True" {
+						return false, nil
+					}
 				}
-				foundPodReady = true
-				if cond.Status != "True" {
-					return false, nil
+
+				if cond.Type == corev1.ContainersReady {
+					foundContainerReady = true
+					if cond.Status != "True" {
+						return false, nil
+					}
 				}
 			}
-			if !foundPodReady {
+			if !foundPodReady || !foundContainerReady {
 				return false, nil
 			}
 		}
@@ -547,22 +662,14 @@ func (s *Scaffold) GetIngressPodDetails() ([]corev1.Pod, error) {
 
 // ScaleIngressController scales the number of Ingress Controller pods to desired.
 func (s *Scaffold) ScaleIngressController(desired int) error {
-	var (
-		ingressDeployment string
-		label             string
-		disableStatusStr  string
-	)
-
+	label := `""`
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil {
 		label = labels[0]
 	}
-	if s.opts.DisableStatus {
-		disableStatusStr = "- --disable-status-updates"
-	}
 
-	ingressDeployment = s.genIngressDeployment(desired, s.namespace, s.opts.APISIXAdminAPIVersion,
+	ingressDeployment := s.genIngressDeployment(desired, s.opts.APISIXAdminAPIVersion,
 		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress,
-		s.opts.EnableWebhooks, s.opts.IngressClass, disableStatusStr)
+		s.opts.EnableWebhooks, s.opts.IngressClass, s.opts.DisableStatus, s.opts.EnableEtcdServer)
 
 	if err := s.CreateResourceFromString(ingressDeployment); err != nil {
 		return err

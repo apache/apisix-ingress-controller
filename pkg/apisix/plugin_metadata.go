@@ -142,3 +142,138 @@ func (r *pluginMetadataClient) Update(ctx context.Context, obj *v1.PluginMetadat
 	}
 	return pluginMetadata, nil
 }
+
+func (r *pluginMetadataClient) Create(ctx context.Context, obj *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error) {
+	log.Debugw("try to create pluginMetadata",
+		zap.String("name", obj.Name),
+		zap.Any("metadata", obj.Metadata),
+		zap.String("cluster", r.cluster.name),
+		zap.String("url", r.url),
+	)
+	if err := r.cluster.HasSynced(ctx); err != nil {
+		return nil, err
+	}
+	body, err := json.Marshal(obj.Metadata)
+	if err != nil {
+		return nil, err
+	}
+	url := r.url + "/" + obj.Name
+	resp, err := r.cluster.updateResource(ctx, url, "pluginMetadata", body)
+	if err != nil {
+		return nil, err
+	}
+	pluginMetadata, err := resp.pluginMetadata()
+	if err != nil {
+		return nil, err
+	}
+	return pluginMetadata, nil
+}
+
+type pluginMetadataMem struct {
+	url string
+
+	resource string
+	cluster  *cluster
+}
+
+func newPluginMetadataMem(c *cluster) PluginMetadata {
+	return &pluginMetadataMem{
+		url:      c.baseURL + "/plugin_metadatas",
+		resource: "plugin_metadatas",
+		cluster:  c,
+	}
+}
+
+func (r *pluginMetadataMem) Get(ctx context.Context, name string) (*v1.PluginMetadata, error) {
+	log.Debugw("try to look up pluginMetadata",
+		zap.String("name", name),
+		zap.String("url", r.url),
+		zap.String("cluster", r.cluster.name),
+	)
+
+	// TODO Add mutex here to avoid dog-pile effect.
+	url := r.url + "/" + name
+	resp, err := r.cluster.getResource(ctx, url, "pluginMetadata")
+	if err != nil {
+		log.Errorw("failed to get pluginMetadata from APISIX",
+			zap.String("name", name),
+			zap.String("url", url),
+			zap.String("cluster", r.cluster.name),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+
+	pluginMetadata, err := resp.pluginMetadata()
+	if err != nil {
+		log.Errorw("failed to convert pluginMetadata item",
+			zap.String("url", r.url),
+			zap.String("pluginMetadata_key", resp.Key),
+			zap.String("pluginMetadata_value", string(resp.Value)),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+	return pluginMetadata, nil
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
+func (r *pluginMetadataMem) List(ctx context.Context) ([]*v1.PluginMetadata, error) {
+	log.Debugw("try to list resource in APISIX",
+		zap.String("cluster", r.cluster.name),
+		zap.String("url", r.url),
+		zap.String("resource", r.resource),
+	)
+	pluginMetadataItems, err := r.cluster.listResource(ctx, r.url, r.resource)
+	if err != nil {
+		log.Errorf("failed to list %s: %s", r.resource, err)
+		return nil, err
+	}
+
+	var items []*v1.PluginMetadata
+	for i, item := range pluginMetadataItems {
+		pluginMetadata, err := item.pluginMetadata()
+		if err != nil {
+			log.Errorw("failed to convert pluginMetadata item",
+				zap.String("url", r.url),
+				zap.String("pluginMetadata_key", item.Key),
+				zap.String("pluginMetadata_value", string(item.Value)),
+				zap.Error(err),
+			)
+			return nil, err
+		}
+
+		items = append(items, pluginMetadata)
+		log.Debugf("list pluginMetadata #%d, body: %s", i, string(item.Value))
+	}
+
+	return items, nil
+}
+
+func (r *pluginMetadataMem) Create(ctx context.Context, obj *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error) {
+	data, err := json.Marshal(obj.Metadata)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.CreateResource(r.resource, obj.Name, data)
+	return obj, nil
+}
+
+func (r *pluginMetadataMem) Delete(ctx context.Context, obj *v1.PluginMetadata) error {
+	data, err := json.Marshal(obj.Metadata)
+	if err != nil {
+		return err
+	}
+	r.cluster.DeleteResource(r.resource, obj.Name, data)
+	return nil
+}
+
+func (r *pluginMetadataMem) Update(ctx context.Context, obj *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error) {
+	data, err := json.Marshal(obj.Metadata)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.UpdateResource(r.resource, obj.Name, data)
+	return obj, nil
+}

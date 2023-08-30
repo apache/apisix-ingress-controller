@@ -17,6 +17,7 @@ package apisix
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"go.uber.org/zap"
 
@@ -222,4 +223,128 @@ func (u *upstreamClient) Update(ctx context.Context, obj *v1.Upstream, shouldCom
 		return nil, err
 	}
 	return ups, err
+}
+
+type upstreamMem struct {
+	url string
+
+	resource string
+	cluster  *cluster
+}
+
+func newUpstreamMem(c *cluster) Upstream {
+	return &upstreamMem{
+		url:      c.baseURL + "/upstreams",
+		resource: "upstreams",
+		cluster:  c,
+	}
+}
+
+func (r *upstreamMem) Get(ctx context.Context, name string) (*v1.Upstream, error) {
+	log.Debugw("try to look up upstream",
+		zap.String("name", name),
+		zap.String("cluster", r.cluster.name),
+	)
+	rid := id.GenID(name)
+	upstream, err := r.cluster.cache.GetUpstream(rid)
+	if err != nil {
+		if err != cache.ErrNotFound {
+			log.Errorw("failed to find upstream in cache",
+				zap.String("name", name),
+				zap.Error(err),
+			)
+		}
+		return nil, err
+	}
+	return upstream, nil
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
+func (r *upstreamMem) List(ctx context.Context) ([]*v1.Upstream, error) {
+	log.Debugw("try to list resource in APISIX",
+		zap.String("cluster", r.cluster.name),
+		zap.String("resource", r.resource),
+	)
+	upstreams, err := r.cluster.cache.ListUpstreams()
+	if err != nil {
+		log.Errorf("failed to list %s: %s", r.resource, err)
+		return nil, err
+	}
+	return upstreams, err
+}
+
+func (u *upstreamMem) Create(ctx context.Context, obj *v1.Upstream, shouldCompare bool) (*v1.Upstream, error) {
+	if shouldCompare && CompareResourceEqualFromCluster(u.cluster, obj.ID, obj) {
+		return obj, nil
+	}
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	if err := u.cluster.upstreamServiceRelation.Create(ctx, obj.Name); err != nil {
+		log.Errorf("failed to reflect upstreamService create to cache: %s", err)
+	}
+	u.cluster.CreateResource(u.resource, obj.ID, data)
+	if err := u.cluster.cache.InsertUpstream(obj); err != nil {
+		log.Errorf("failed to reflect upstream create to cache: %s", err)
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (u *upstreamMem) Delete(ctx context.Context, obj *v1.Upstream) error {
+	if ok, err := u.deleteCheck(ctx, obj); !ok {
+		log.Debug("failed to delete upstream", zap.Error(err))
+		return cache.ErrStillInUse
+	}
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	u.cluster.DeleteResource(u.resource, obj.ID, data)
+	if err := u.cluster.cache.DeleteUpstream(obj); err != nil {
+		log.Errorf("failed to reflect upstream delete to cache: %s", err)
+		return err
+	}
+	return nil
+}
+
+func (u *upstreamMem) Update(ctx context.Context, obj *v1.Upstream, shouldCompare bool) (*v1.Upstream, error) {
+	if shouldCompare && CompareResourceEqualFromCluster(u.cluster, obj.ID, obj) {
+		return obj, nil
+	}
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	if err := u.cluster.upstreamServiceRelation.Create(ctx, obj.Name); err != nil {
+		log.Errorf("failed to reflect upstreamService update to cache: %s", err)
+	}
+	u.cluster.UpdateResource(u.resource, obj.ID, data)
+	if err := u.cluster.cache.InsertUpstream(obj); err != nil {
+		log.Errorf("failed to reflect upstream update to cache: %s", err)
+		return nil, err
+	}
+	return obj, nil
+}
+
+// TODO: Maintain a reference count for each object without having to poll each time
+func (u *upstreamMem) deleteCheck(ctx context.Context, obj *v1.Upstream) (bool, error) {
+	routes, _ := u.cluster.route.List(ctx)
+	sroutes, _ := u.cluster.cache.ListStreamRoutes()
+	if routes == nil && sroutes == nil {
+		return true, nil
+	}
+	for _, route := range routes {
+		if route.UpstreamId == obj.ID {
+			return false, fmt.Errorf("can not delete this upstream, route.id=%s is still using it now", route.ID)
+		}
+	}
+	for _, sroute := range sroutes {
+		if sroute.UpstreamId == obj.ID {
+			return false, fmt.Errorf("can not delete this upstream, stream_route.id=%s is still using it now", sroute.ID)
+		}
+	}
+	return true, nil
 }
