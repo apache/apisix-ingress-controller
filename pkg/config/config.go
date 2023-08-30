@@ -60,6 +60,10 @@ const (
 
 	// Process Ingress resources with ingressClass=apisix and all CRDs
 	IngressClassApisixAndAll = "apisix-and-all"
+
+	// Deployment mode
+	DeploymentMode_AdminAPI = "admin-api"
+	DeploymentMode_gRPC     = "grpc"
 )
 
 var (
@@ -88,6 +92,14 @@ type Config struct {
 	ApisixResourceSyncInterval   types.TimeDuration `json:"apisix_resource_sync_interval" yaml:"apisix_resource_sync_interval"`
 	ApisixResourceSyncComparison bool               `json:"apisix_resource_sync_comparison" yaml:"apisix_resource_sync_comparison"`
 	PluginMetadataConfigMap      string             `json:"plugin_metadata_cm" yaml:"plugin_metadata_cm"`
+	EtcdServer                   EtcdServerConfig   `json:"etcdserver" yaml:"etcdserver"`
+}
+
+type EtcdServerConfig struct {
+	Enabled           bool   `json:"enabled" yaml:"enabled"`
+	Prefix            string `json:"prefix" yaml:"prefix"`
+	ListenAddress     string `json:"listen_address" yaml:"listen_address"`
+	SSLKeyEncryptSalt string `json:"ssl_key_encrypt_salt" yaml:"ssl_key_encrypt_salt"`
 }
 
 // KubernetesConfig contains all Kubernetes related config items.
@@ -152,6 +164,12 @@ func NewDefaultConfig() *Config {
 		APISIX: APISIXConfig{
 			AdminAPIVersion:    "v2",
 			DefaultClusterName: "default",
+		},
+		EtcdServer: EtcdServerConfig{
+			Enabled:           false,
+			Prefix:            "/apisix",
+			ListenAddress:     ":12379",
+			SSLKeyEncryptSalt: "edd1c9f0985e76a2",
 		},
 	}
 }

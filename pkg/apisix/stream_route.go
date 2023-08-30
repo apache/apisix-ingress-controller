@@ -223,3 +223,101 @@ func (r *streamRouteClient) Update(ctx context.Context, obj *v1.StreamRoute, sho
 	}
 	return streamRoute, nil
 }
+
+type streamRouteMem struct {
+	url string
+
+	resource string
+	cluster  *cluster
+}
+
+func newStreamRouteMem(c *cluster) StreamRoute {
+	return &streamRouteMem{
+		url:      c.baseURL + "/stream_routes",
+		resource: "stream_routes",
+		cluster:  c,
+	}
+}
+
+func (r *streamRouteMem) Get(ctx context.Context, name string) (*v1.StreamRoute, error) {
+	log.Debugw("try to look up route",
+		zap.String("name", name),
+		zap.String("cluster", r.cluster.name),
+	)
+	rid := id.GenID(name)
+	route, err := r.cluster.cache.GetStreamRoute(rid)
+	if err != nil {
+		log.Errorw("failed to find route in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+	return route, nil
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
+func (r *streamRouteMem) List(ctx context.Context) ([]*v1.StreamRoute, error) {
+	log.Debugw("try to list resource in APISIX",
+		zap.String("cluster", r.cluster.name),
+		zap.String("resource", r.resource),
+	)
+	streamRoutes, err := r.cluster.cache.ListStreamRoutes()
+	if err != nil {
+		log.Errorf("failed to list %s: %s", r.resource, err)
+		return nil, err
+	}
+	return streamRoutes, nil
+}
+
+func (r *streamRouteMem) Create(ctx context.Context, obj *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
+	if shouldCompare && CompareResourceEqualFromCluster(r.cluster, obj.ID, obj) {
+		return obj, nil
+	}
+	if ok, err := r.cluster.validator.ValidateStreamPluginSchema(obj.Plugins); !ok {
+		return nil, err
+	}
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.CreateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertStreamRoute(obj); err != nil {
+		log.Errorf("failed to reflect stream_route create to cache: %s", err)
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (r *streamRouteMem) Delete(ctx context.Context, obj *v1.StreamRoute) error {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	r.cluster.DeleteResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.DeleteStreamRoute(obj); err != nil {
+		log.Errorf("failed to reflect stream_route delete to cache: %s", err)
+		return err
+	}
+	return nil
+}
+
+func (r *streamRouteMem) Update(ctx context.Context, obj *v1.StreamRoute, shouldCompare bool) (*v1.StreamRoute, error) {
+	if shouldCompare && CompareResourceEqualFromCluster(r.cluster, obj.ID, obj) {
+		return obj, nil
+	}
+	if ok, err := r.cluster.validator.ValidateStreamPluginSchema(obj.Plugins); !ok {
+		return nil, err
+	}
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.UpdateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertStreamRoute(obj); err != nil {
+		log.Errorf("failed to reflect stream_route update to cache: %s", err)
+		return nil, err
+	}
+	return obj, nil
+}

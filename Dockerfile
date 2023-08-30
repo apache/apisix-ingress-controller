@@ -1,5 +1,3 @@
-#syntax=docker/dockerfile:1.2
-
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -15,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-FROM golang:1.19 AS build-env
+FROM golang:1.20 AS build-env
 LABEL maintainer="gxthrj@163.com"
 
 ARG ENABLE_PROXY=false
@@ -43,5 +41,6 @@ RUN yum -y install ca-certificates libc6-compat \
 
 COPY --from=build-env /usr/share/zoneinfo/Hongkong /etc/localtime
 COPY --from=build-env /build/apisix-ingress-controller .
+COPY ./conf/apisix-schema.json ./conf/apisix-schema.json
 
 ENTRYPOINT ["/ingress-apisix/apisix-ingress-controller", "ingress", "--config-path", "/ingress-apisix/conf/config.yaml"]

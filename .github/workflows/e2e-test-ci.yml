@@ -78,7 +78,7 @@ jobs:
         id: go
         uses: actions/setup-go@v3 # v3.2.0
         with:
-          go-version: '1.19'
+          go-version: '1.20'
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2 #v2.0.0
@@ -94,6 +94,8 @@ jobs:
           curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
           chmod +x ./kind
           sudo mv kind /usr/local/bin
+
+          sudo apt install -y pigz
 
       - name: Build images
         env:
@@ -154,6 +156,7 @@ jobs:
       matrix:
         suite: ${{ fromJson(needs.prepare.outputs.matrix) }}
         ingress-class-values: [ "apisix", "apisix-and-all" ]
+        enabled-etcdserver: [ true, false ]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -162,7 +165,7 @@ jobs:
       - name: Setup Go Env
         uses: actions/setup-go@v3
         with:
-          go-version: "1.19"
+          go-version: "1.20"
 
       - name: Install ginkgo
         run: |
@@ -183,6 +186,7 @@ jobs:
       - name: Load images from cache
         run: |
           echo "loading docker images..."
+          sudo apt install -y pigz
           pigz -dc docker.tar.gz | docker load
           make push-images
 
@@ -192,6 +196,7 @@ jobs:
           E2E_FOCUS: "${{ matrix.suite }}"
           ENABLE_PROXY: "false"
           INGRESS_CLASS: "${{ matrix.ingress-class-values }}"
+          ENABLED_ETCD_SERVER: "${{ matrix.enabled-etcdserver }}"
           E2E_SKIP_BUILD: "1"
           E2E_FLAKE_ATTEMPTS: "2"
           E2E_ENV: "ci"

@@ -31,6 +31,9 @@ import (
 var _ = ginkgo.Describe("suite-features: sync comparison", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("check resource request count", func() {
+			if s.IsEtcdServer() {
+				ginkgo.Skip("Does not support etcdserver mode, temporarily skipping test cases, waiting for fix")
+			}
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2

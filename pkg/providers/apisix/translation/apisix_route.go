@@ -681,7 +681,7 @@ func (t *translator) translateOldRouteV2(ar *configv2.ApisixRoute) (*translation
 	for _, part := range ar.Spec.Stream {
 		name := apisixv1.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
 		sr, err := t.Apisix.Cluster(t.ClusterName).StreamRoute().Get(context.Background(), name)
-		if err != nil {
+		if err != nil || sr == nil {
 			continue
 		}
 		if sr.UpstreamId != "" {
@@ -694,7 +694,7 @@ func (t *translator) translateOldRouteV2(ar *configv2.ApisixRoute) (*translation
 	for _, part := range ar.Spec.HTTP {
 		name := apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		r, err := t.Apisix.Cluster(t.ClusterName).Route().Get(context.Background(), name)
-		if err != nil {
+		if err != nil || r == nil {
 			continue
 		}
 		if r.UpstreamId != "" {

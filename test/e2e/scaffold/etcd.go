@@ -23,6 +23,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	EtcdServiceName = "etcd-service-e2e-test"
+)
+
 var (
 	etcdDeployment = `
 apiVersion: apps/v1
@@ -74,11 +78,11 @@ spec:
               protocol: "TCP"
 `
 
-	etcdService = `
+	etcdService = fmt.Sprintf(`
 apiVersion: v1
 kind: Service
 metadata:
-  name: etcd-service-e2e-test
+  name: %s
 spec:
   selector:
     app: etcd-deployment-e2e-test
@@ -88,7 +92,7 @@ spec:
       protocol: TCP
       targetPort: 2379
   type: ClusterIP
-`
+`, EtcdServiceName)
 )
 
 func (s *Scaffold) newEtcd() (*corev1.Service, error) {
@@ -98,11 +102,10 @@ func (s *Scaffold) newEtcd() (*corev1.Service, error) {
 	if err := s.CreateResourceFromString(etcdService); err != nil {
 		return nil, err
 	}
-	svc, err := k8s.GetServiceE(s.t, s.kubectlOptions, "etcd-service-e2e-test")
+	svc, err := k8s.GetServiceE(s.t, s.kubectlOptions, EtcdServiceName)
 	if err != nil {
 		return nil, err
 	}
-	s.EtcdServiceFQDN = fmt.Sprintf("etcd-service-e2e-test.%s.svc.cluster.local", svc.Namespace)
 	return svc, nil
 }
 

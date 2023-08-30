@@ -31,7 +31,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
@@ -280,7 +279,7 @@ updateStatus:
 }
 
 func (c *apisixUpstreamController) updateStatus(obj kube.ApisixUpstream, statusErr error) {
-	if obj == nil {
+	if obj == nil || c.Kubernetes.DisableStatusUpdates || !c.Elector.IsLeader() {
 		return
 	}
 	var (
@@ -330,9 +329,6 @@ func (c *apisixUpstreamController) updateUpstream(ctx context.Context, upsName s
 
 	ups, err := c.APISIX.Cluster(clusterName).Upstream().Get(ctx, upsName)
 	if err != nil {
-		if err == apisixcache.ErrNotFound {
-			return nil
-		}
 		log.Errorf("failed to get upstream %s: %s", upsName, err)
 		return err
 	}
@@ -376,14 +372,11 @@ func (c *apisixUpstreamController) updateExternalNodes(ctx context.Context, au *
 	upsName := apisixv1.ComposeExternalUpstreamName(ns, name)
 	ups, err := c.APISIX.Cluster(clusterName).Upstream().Get(ctx, upsName)
 	if err != nil {
-		if err != apisixcache.ErrNotFound {
-			log.Errorf("failed to get upstream %s: %s", upsName, err)
-			c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-			c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
-			return err
-		}
-		// Do nothing if not found
-	} else {
+		log.Errorf("failed to get upstream %s: %s", upsName, err)
+		c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+		c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+		return err
+	} else if ups != nil {
 		nodes, err := c.translator.TranslateApisixUpstreamExternalNodes(au)
 		if err != nil {
 			log.Errorf("failed to translate upstream external nodes %s: %s", upsName, err)
@@ -440,7 +433,7 @@ func (c *apisixUpstreamController) syncRelationship(ev *types.Event, auKey strin
 		oldExternalServices []string
 		newExternalServices []string
 	)
-	if old != nil {
+	if old != nil && old.Spec != nil {
 		for _, node := range old.Spec.ExternalNodes {
 			if node.Type == configv2.ExternalTypeDomain {
 				//oldExternalDomains = append(oldExternalDomains, node.Name)
@@ -449,7 +442,7 @@ func (c *apisixUpstreamController) syncRelationship(ev *types.Event, auKey strin
 			}
 		}
 	}
-	if newObj != nil {
+	if newObj != nil && newObj.Spec != nil {
 		for _, node := range newObj.Spec.ExternalNodes {
 			if node.Type == configv2.ExternalTypeDomain {
 				//newExternalDomains = append(newExternalDomains, node.Name)
@@ -833,6 +826,7 @@ func (c *apisixUpstreamController) recordStatus(at interface{}, reason string, e
 		}
 		if utils.VerifyConditions(&v.Status.Conditions, condition) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
+			log.Errorw("update status", zap.Any("status", v.Status))
 			if _, errRecord := apisixClient.ApisixV2().ApisixUpstreams(v.Namespace).
 				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 				log.Errorw("failed to record status change for ApisixUpstream",

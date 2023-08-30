@@ -358,15 +358,23 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			added = m
 		} else {
 			oldCtx, _ := c.translator.TranslateOldRoute(obj.OldObject)
-			om := &utils.Manifest{
-				Routes:        oldCtx.Routes,
-				Upstreams:     oldCtx.Upstreams,
-				StreamRoutes:  oldCtx.StreamRoutes,
-				PluginConfigs: oldCtx.PluginConfigs,
+			if oldCtx != nil {
+				om := &utils.Manifest{
+					Routes:        oldCtx.Routes,
+					Upstreams:     oldCtx.Upstreams,
+					StreamRoutes:  oldCtx.StreamRoutes,
+					PluginConfigs: oldCtx.PluginConfigs,
+				}
+				added, updated, deleted = m.Diff(om)
 			}
-			added, updated, deleted = m.Diff(om)
 		}
 
+		log.Debugw("sync ApisixRoute to cluster",
+			zap.String("event_type", ev.Type.String()),
+			zap.Any("add", added),
+			zap.Any("update", updated),
+			zap.Any("delete", deleted),
+		)
 		if err = c.SyncManifests(ctx, added, updated, deleted, ev.Type.IsSyncEvent()); err != nil {
 			log.Errorw("failed to sync ApisixRoute to apisix",
 				zap.Error(err),
@@ -409,9 +417,10 @@ func (c *apisixRouteController) checkPluginNameIfNotEmptyV2(ctx context.Context,
 }
 
 func (c *apisixRouteController) updateStatus(obj kube.ApisixRoute, statusErr error) {
-	if obj == nil {
+	if obj == nil || c.Kubernetes.DisableStatusUpdates || !c.Elector.IsLeader() {
 		return
 	}
+
 	var (
 		ar        kube.ApisixRoute
 		err       error
@@ -844,9 +853,6 @@ problem here, and incorrect status may be recorded.(It will only be triggered wh
 	}
 */
 func (c *apisixRouteController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
-	if c.Kubernetes.DisableStatusUpdates {
-		return
-	}
 	// build condition
 	message := utils.CommonSuccessMessage
 	if err != nil {

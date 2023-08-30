@@ -191,6 +191,9 @@ For example, no available LB exists in the bare metal environment.`)
 	cmd.PersistentFlags().DurationVar(&cfg.ApisixResourceSyncInterval.Duration, "apisix-resource-sync-interval", 1*time.Hour, "interval of periodic sync in seconds. Default value is 1h. Set to 0 to disable. Min is 60s.")
 	cmd.PersistentFlags().BoolVar(&cfg.ApisixResourceSyncComparison, "apisix-resource-sync-comparison", true, "enable comparison in periodic sync")
 	cmd.PersistentFlags().StringVar(&cfg.PluginMetadataConfigMap, "plugin-metadata-cm", "plugin-metadata-config-map", "ConfigMap name of plugin metadata.")
+	cmd.PersistentFlags().BoolVar(&cfg.EtcdServer.Enabled, "etcd-server-enabled", false, "enable etcd server")
+	cmd.PersistentFlags().StringVar(&cfg.EtcdServer.ListenAddress, "etcd-server-listen-address", ":12379", "etcd server listen address")
+	cmd.PersistentFlags().StringVar(&cfg.EtcdServer.Prefix, "etcd-server-prefix", "/apisix", "etcd server prefix")
 
 	return cmd
 }

@@ -88,6 +88,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 				AdminKey:         cfg.APISIX.DefaultClusterAdminKey,
 				BaseURL:          cfg.APISIX.DefaultClusterBaseURL,
 				MetricsCollector: metrics.NewPrometheusCollector(),
+				SchemaSynced:     true,
 			})
 
 			srv.admissionServer = &http.Server{
@@ -122,7 +123,7 @@ func (srv *Server) Run(stopCh <-chan struct{}) error {
 				return
 			case <-closed:
 				cnt--
-				log.Debug("close a server")
+				log.Debug("close listen server")
 			}
 		}
 	}()

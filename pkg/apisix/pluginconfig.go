@@ -18,6 +18,7 @@ package apisix
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"go.uber.org/zap"
 
@@ -221,4 +222,120 @@ func (pc *pluginConfigClient) Update(ctx context.Context, obj *v1.PluginConfig, 
 		return nil, err
 	}
 	return pluginConfig, nil
+}
+
+type pluginConfigMem struct {
+	url string
+
+	resource string
+	cluster  *cluster
+}
+
+func newPluginConfigMem(c *cluster) PluginConfig {
+	return &pluginConfigMem{
+		url:      c.baseURL + "/plugin_configs",
+		resource: "plugin_configs",
+		cluster:  c,
+	}
+}
+
+func (r *pluginConfigMem) Get(ctx context.Context, name string) (*v1.PluginConfig, error) {
+	log.Debugw("try to look up pluginConfig",
+		zap.String("name", name),
+		zap.String("url", r.url),
+		zap.String("cluster", r.cluster.name),
+	)
+	rid := id.GenID(name)
+	pluginConfig, err := r.cluster.cache.GetPluginConfig(rid)
+	if err != nil {
+		log.Errorw("failed to find pluginConfig in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+	}
+	return pluginConfig, nil
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
+func (r *pluginConfigMem) List(ctx context.Context) ([]*v1.PluginConfig, error) {
+	log.Debugw("try to list resource in APISIX",
+		zap.String("cluster", r.cluster.name),
+		zap.String("resource", r.resource),
+	)
+	pluginConfigItems, err := r.cluster.cache.ListPluginConfigs()
+	if err != nil {
+		log.Errorf("failed to list %s: %s", r.resource, err)
+		return nil, err
+	}
+	return pluginConfigItems, nil
+}
+
+func (r *pluginConfigMem) Create(ctx context.Context, obj *v1.PluginConfig, shouldCompare bool) (*v1.PluginConfig, error) {
+	if shouldCompare && CompareResourceEqualFromCluster(r.cluster, obj.ID, obj) {
+		return obj, nil
+	}
+	if ok, err := r.cluster.validator.ValidateHTTPPluginSchema(obj.Plugins); !ok {
+		return nil, err
+	}
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.CreateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertPluginConfig(obj); err != nil {
+		log.Errorf("failed to reflect plugin_config create to cache: %s", err)
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (r *pluginConfigMem) Delete(ctx context.Context, obj *v1.PluginConfig) error {
+	if ok, err := r.deleteCheck(ctx, obj); !ok {
+		log.Debug("failed to delete upstream", zap.Error(err))
+		return cache.ErrStillInUse
+	}
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	r.cluster.DeleteResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.DeletePluginConfig(obj); err != nil {
+		log.Errorf("failed to reflect plugin_config delete to cache: %s", err)
+		return err
+	}
+	return nil
+}
+
+func (r *pluginConfigMem) Update(ctx context.Context, obj *v1.PluginConfig, shouldCompare bool) (*v1.PluginConfig, error) {
+	if shouldCompare && CompareResourceEqualFromCluster(r.cluster, obj.ID, obj) {
+		return obj, nil
+	}
+	if ok, err := r.cluster.validator.ValidateHTTPPluginSchema(obj.Plugins); !ok {
+		return nil, err
+	}
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.UpdateResource(r.resource, obj.ID, data)
+	if err := r.cluster.cache.InsertPluginConfig(obj); err != nil {
+		log.Errorf("failed to reflect plugin_config update to cache: %s", err)
+		return nil, err
+	}
+	return obj, nil
+}
+
+// TODO: Maintain a reference count for each object without having to poll each time
+func (u *pluginConfigMem) deleteCheck(ctx context.Context, obj *v1.PluginConfig) (bool, error) {
+	routes, _ := u.cluster.route.List(ctx)
+	if routes == nil {
+		return true, nil
+	}
+	for _, route := range routes {
+		if route.PluginConfigId == obj.ID {
+			return false, fmt.Errorf("can not delete this plugin_config, route.id=%s is still using it now", route.ID)
+		}
+	}
+	return true, nil
 }
