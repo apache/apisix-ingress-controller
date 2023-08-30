@@ -21,7 +21,7 @@ title: Composite Architecture
 #
 -->
 
-**Please note that this is a preview function**
+**Please note that this is a preview feature**
 
 ## Background
 
@@ -52,8 +52,11 @@ Since apisix strongly relies on the etcd API, the control-plane will simulate th
 Install the CRDs and ingress-apisix:
 
 ```shell
-$ kubectl create ns ingress-apisix
-$ kubectl apply -f samples/deploy/composite.yaml -n ingress-apisix
+$ kubectl apply -f samples/deploy/composite.yaml
+namespace/ingress-apisix created
+clusterrole.rbac.authorization.k8s.io/apisix-view-clusterrole created
+serviceaccount/apisix-view-serviceaccount created
+clusterrolebinding.rbac.authorization.k8s.io/apisix-view-clusterrolebinding created
 configmap/apisix-gw-config.yaml created
 deployment.apps/ingress-apisix-composite-deployment created
 service/ingress-apisix-gateway created
