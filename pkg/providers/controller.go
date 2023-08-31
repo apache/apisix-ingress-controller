@@ -93,6 +93,12 @@ type Controller struct {
 // NewController creates an ingress apisix controller object.
 func NewController(cfg *config.Config) (*Controller, error) {
 	podName := os.Getenv("POD_NAME")
+	if podName == "" {
+		podName = os.Getenv("HOSTNAME")
+	}
+	if podName == "" {
+		podName = "apisix-ingress-controller"
+	}
 	podNamespace := os.Getenv("POD_NAMESPACE")
 	if podNamespace == "" {
 		podNamespace = "default"
