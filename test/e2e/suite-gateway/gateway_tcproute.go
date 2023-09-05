@@ -70,7 +70,7 @@ spec:
 
 		time.Sleep(6 * time.Second)
 		// Non existent k8s service, service not found
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixStreamRoutesCreated(0), "The number of stream_routes should be 0")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixStreamRoutesCreated(1), "The number of stream_routes should be 1")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(0), "The number of upstreams should be 0")
 
 		tcpRoute = fmt.Sprintf(`
@@ -85,7 +85,7 @@ spec:
         port: %d
 `, backendSvc, backendPorts[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(tcpRoute), "creating TCPRoute")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixStreamRoutesCreated(1), "The number of stream_routes should be 1")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixStreamRoutesCreated(2), "The number of stream_routes should be 2")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "The number of upstreams should be 1")
 
 		_ = s.NewAPISIXClientWithTCPProxy().
