@@ -25,7 +25,7 @@ on:
   pull_request:
     branches:
       - master
-      - v1.6.0
+      - 1.7.0
     type: [review_requested, ready_for_review]
 
 jobs:
