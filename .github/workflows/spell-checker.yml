@@ -25,7 +25,7 @@ on:
     branches:
       - master
       - 1.7.0
-    type: [review_requested, ready_for_review]
+    types: [review_requested, ready_for_review]
 jobs:
   misspell:
     name: runner / misspell
