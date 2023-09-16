@@ -135,13 +135,17 @@ lint:
 unit-test:
 	go test -cover -coverprofile=coverage.txt ./...
 
-### e2e-test:             Run e2e test cases (in existing clusters directly)
-.PHONY: e2e-test
-e2e-test: ginkgo-check pack-images e2e-wolf-rbac e2e-ldap install install-gateway-api
+### run-e2e-test          Run e2e test cases only
+.PHONY: run-e2e-test
+run-e2e-test:
 	cd test/e2e \
 		&& go mod download \
 		&& export REGISTRY=$(REGISTRY) \
 		&& APISIX_ADMIN_API_VERSION=$(APISIX_ADMIN_API_VERSION) E2E_ENV=$(E2E_ENV) ACK_GINKGO_RC=true ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --nodes=$(E2E_NODES) --focus=$(E2E_FOCUS) --flake-attempts=$(E2E_FLAKE_ATTEMPTS)
+
+### e2e-test:             Run e2e test cases (in existing clusters directly)
+.PHONY: e2e-test
+e2e-test: ginkgo-check pack-images e2e-wolf-rbac e2e-ldap install install-gateway-api run-e2e-test
 
 ### e2e-test-local:       Run e2e test cases (kind is required)
 .PHONY: e2e-test-local
