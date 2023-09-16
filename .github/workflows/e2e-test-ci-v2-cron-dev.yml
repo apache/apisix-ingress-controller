@@ -99,7 +99,7 @@ jobs:
           APISIX_ADMIN_API_VERSION: "v3"
           TAG: dev
           ARCH: amd64
-          REGISTRY: localhost:5000
+          REGISTRY: 127.0.0.1:5000
           ENABLE_PROXY: "false"
         run: |
           echo "building images..."
