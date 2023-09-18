@@ -46,3 +46,6 @@ github:
       v1.6.0:
         required_pull_request_reviews:
           required_approving_review_count: 1
+      1.7.0:
+        required_pull_request_reviews:
+          required_approving_review_count: 1
