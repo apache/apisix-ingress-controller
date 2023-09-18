@@ -76,7 +76,7 @@ kubectl apply -f samples/deploy/composite.yaml
 ```
 
 ```shell
-# install ingress-apisix ouput
+# install ingress-apisix output
 namespace/ingress-apisix created
 clusterrole.rbac.authorization.k8s.io/apisix-view-clusterrole created
 serviceaccount/apisix-view-serviceaccount created
