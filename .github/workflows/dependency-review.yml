@@ -21,8 +21,8 @@ on:
   pull_request:
     branches:
       - master
-      - v1.6.0
-    type: [review_requested, ready_for_review]
+      - 1.7.0
+    types: [review_requested, ready_for_review]
 
 permissions:
   contents: read
@@ -32,6 +32,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v1
+        uses: actions/dependency-review-action@v3
