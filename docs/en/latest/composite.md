@@ -59,7 +59,7 @@ Save the APISIX Ingress version to an environment variable to be used next:
 APISIX_INGRESS_VERSION="1.7.0"
 ```
 
-Clone the APISIX source code of this version into a new directory apisix-APISIX_VERSION:
+Clone the APISIX Ingress source code of this version into a new directory apisix-APISIX_VERSION:
 
 ```bash
 git clone --depth 1 --branch v${APISIX_INGRESS_VERSION} https://github.com/apache/apisix-ingress-controller.git ingress-apisix-${APISIX_INGRESS_VERSION}
