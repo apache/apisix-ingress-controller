@@ -70,13 +70,13 @@ Install the CRDs and ingress-apisix:
 ```bash
 cd ingress-apisix-${APISIX_INGRESS_VERSION}
 # install CRDs
-kubectl apply -f samples/deploy/crd/v1
+kubectl apply -k samples/deploy/crd/v1
 # install ingress-apisix
 kubectl apply -f samples/deploy/composite.yaml
 ```
 
 ```shell
-# ouput
+# install ingress-apisix ouput
 namespace/ingress-apisix created
 clusterrole.rbac.authorization.k8s.io/apisix-view-clusterrole created
 serviceaccount/apisix-view-serviceaccount created
