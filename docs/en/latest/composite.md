@@ -62,7 +62,7 @@ APISIX_INGRESS_VERSION="1.7.0"
 Clone the APISIX Ingress source code of this version into a new directory apisix-APISIX_VERSION:
 
 ```bash
-git clone --depth 1 --branch v${APISIX_INGRESS_VERSION} https://github.com/apache/apisix-ingress-controller.git ingress-apisix-${APISIX_INGRESS_VERSION}
+git clone --depth 1 --branch ${APISIX_INGRESS_VERSION} https://github.com/apache/apisix-ingress-controller.git ingress-apisix-${APISIX_INGRESS_VERSION}
 ```
 
 Install the CRDs and ingress-apisix:
