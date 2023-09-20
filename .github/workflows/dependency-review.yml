@@ -22,7 +22,6 @@ on:
     branches:
       - master
       - 1.7.0
-    types: [review_requested, ready_for_review]
 
 permissions:
   contents: read
