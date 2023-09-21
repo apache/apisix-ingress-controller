@@ -23,7 +23,6 @@ metadata:
     name: ingress-apisix
 
 ---
-
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -136,7 +135,7 @@ rules:
       - ingresses/status
       - networkpolicies
     verbs:
-      - '*'
+      - "*"
   - apiGroups:
       - metrics.k8s.io
     resources:
@@ -163,13 +162,13 @@ rules:
       - apisixglobalrules
       - apisixglobalrules/status
     verbs:
-      - '*'
+      - "*"
   - apiGroups:
       - coordination.k8s.io
     resources:
       - leases
     verbs:
-      - '*'
+      - "*"
   - apiGroups:
       - discovery.k8s.io
     resources:
@@ -202,7 +201,6 @@ rules:
       - list
 
 ---
-
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -210,7 +208,6 @@ metadata:
   namespace: ingress-apisix
 
 ---
-
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -224,9 +221,7 @@ subjects:
     name: apisix-view-serviceaccount
     namespace: ingress-apisix
 
-
 ---
-
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -352,7 +347,6 @@ data:
         enable_export_server: false
 
 ---
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -374,32 +368,48 @@ spec:
             name: apisix-gw-config.yaml
             defaultMode: 420
       containers:
-        - name: ingress-apisix
-          image: apache/apisix-ingress-controller:dev
+        - livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 15
+            timeoutSeconds: 2
+            periodSeconds: 2
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            timeoutSeconds: 2
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          name: ingress-apisix
+          image: apache/apisix-ingress-controller:1.7.0
           command:
             - /ingress-apisix/apisix-ingress-controller
             - ingress
-            - '--log-output'
+            - "--log-output"
             - stdout
-            - '--apisix-resource-sync-interval'
+            - "--apisix-resource-sync-interval"
             - 1h
-            - '--apisix-resource-sync-comparison=true'
-            - '--http-listen'
-            - ':8080'
-            - '--https-listen'
-            - ':8443'
-            - '--default-apisix-cluster-name'
+            - "--apisix-resource-sync-comparison=true"
+            - "--http-listen"
+            - ":8080"
+            - "--https-listen"
+            - ":8443"
+            - "--default-apisix-cluster-name"
             - default
-            - '--default-apisix-cluster-base-url'
+            - "--default-apisix-cluster-base-url"
             - http://127.0.0.1:9180/apisix/admin
-            - '--default-apisix-cluster-admin-key'
+            - "--default-apisix-cluster-admin-key"
             - edd1c9f034335f136f87ad84b625c8f1
-            - '--api-version'
+            - "--api-version"
             - apisix.apache.org/v2
-            - '--ingress-status-address'
-            - ''
-            - '--disable-status-updates=false'
-            - '--etcd-server-enabled=true'
+            - "--ingress-status-address"
+            - ""
+            - "--disable-status-updates=false"
+            - "--etcd-server-enabled=true"
           ports:
             - name: http
               containerPort: 8080
@@ -422,26 +432,26 @@ spec:
                   apiVersion: v1
                   fieldPath: metadata.name
           resources: {}
-          livenessProbe:
-            tcpSocket:
-              port: 8080
-            initialDelaySeconds: 5
-            timeoutSeconds: 2
-            periodSeconds: 2
-            successThreshold: 1
-            failureThreshold: 3
-          readinessProbe:
-            tcpSocket:
-              port: 8080
-            initialDelaySeconds: 5
-            timeoutSeconds: 2
-            periodSeconds: 10
-            successThreshold: 1
-            failureThreshold: 3
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
           imagePullPolicy: IfNotPresent
-        - name: apisix
+        - livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 20
+            periodSeconds: 2
+            successThreshold: 1
+            tcpSocket:
+              port: 9080
+            timeoutSeconds: 2
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 15
+            periodSeconds: 2
+            successThreshold: 1
+            tcpSocket:
+              port: 9080
+            timeoutSeconds: 1
+          name: apisix
           image: apache/apisix:3.2.2-centos
           ports:
             - name: http
@@ -473,9 +483,7 @@ spec:
   revisionHistoryLimit: 10
   progressDeadlineSeconds: 600
 
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
