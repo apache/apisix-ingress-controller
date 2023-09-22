@@ -392,7 +392,7 @@ func (c *apisixPluginConfigController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("PluginConfig", "delete")
 }
 
-func (c *apisixPluginConfigController) ResourceSync(interval time.Duration) {
+func (c *apisixPluginConfigController) ResourceSync(interval time.Duration, namespace string) {
 	objs := c.ApisixPluginConfigInformer.GetIndexer().List()
 	delay := GetSyncDelay(interval, len(objs))
 
@@ -407,6 +407,9 @@ func (c *apisixPluginConfigController) ResourceSync(interval time.Duration) {
 			continue
 		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
+			continue
+		}
+		if namespace != "" && key != namespace {
 			continue
 		}
 		log.Debugw("ResourceSync",

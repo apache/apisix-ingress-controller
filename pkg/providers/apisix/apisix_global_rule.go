@@ -340,7 +340,7 @@ func (c *apisixGlobalRuleController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("GlobalRule", "delete")
 }
 
-func (c *apisixGlobalRuleController) ResourceSync(interval time.Duration) {
+func (c *apisixGlobalRuleController) ResourceSync(interval time.Duration, namespace string) {
 	objs := c.ApisixGlobalRuleInformer.GetIndexer().List()
 	delay := GetSyncDelay(interval, len(objs))
 
@@ -355,6 +355,9 @@ func (c *apisixGlobalRuleController) ResourceSync(interval time.Duration) {
 			continue
 		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
+			continue
+		}
+		if namespace != "" && key != namespace {
 			continue
 		}
 		log.Debugw("ResourceSync",

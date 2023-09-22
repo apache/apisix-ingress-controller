@@ -43,6 +43,7 @@ type WatchingNamespaceProvider interface {
 
 	IsWatchingNamespace(key string) bool
 	WatchingNamespaces() []string
+	//SyncResource(namespace string)
 }
 
 type watchingProvider struct {
@@ -60,7 +61,7 @@ type watchingProvider struct {
 	enableLabelsWatching bool
 }
 
-func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cfg *config.Config) (WatchingNamespaceProvider, error) {
+func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cfg *config.Config, syncCh chan string) (WatchingNamespaceProvider, error) {
 	c := &watchingProvider{
 		kube: kube,
 		cfg:  cfg,
@@ -89,7 +90,7 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 	c.namespaceInformer = kubeFactory.Core().V1().Namespaces().Informer()
 	c.namespaceLister = kubeFactory.Core().V1().Namespaces().Lister()
 
-	c.controller = newNamespaceController(c)
+	c.controller = newNamespaceController(c, syncCh)
 
 	return c, nil
 }
@@ -175,4 +176,6 @@ func (c *watchingProvider) IsWatchingNamespace(key string) (ok bool) {
 	}
 	_, ok = c.watchingNamespaces.Load(ns)
 	return
+}
+func (c *watchingProvider) SyncResource() {
 }

@@ -617,7 +617,7 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("upstream", "delete")
 }
 
-func (c *apisixUpstreamController) ResourceSync(interval time.Duration) {
+func (c *apisixUpstreamController) ResourceSync(interval time.Duration, namespace string) {
 	objs := c.ApisixUpstreamInformer.GetIndexer().List()
 	delay := GetSyncDelay(interval, len(objs))
 	for i, obj := range objs {
@@ -627,6 +627,9 @@ func (c *apisixUpstreamController) ResourceSync(interval time.Duration) {
 			continue
 		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
+			continue
+		}
+		if namespace != "" && key != namespace {
 			continue
 		}
 		au, err := kube.NewApisixUpstream(obj)

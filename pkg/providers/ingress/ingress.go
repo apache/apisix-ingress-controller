@@ -457,7 +457,7 @@ func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 	return false
 }
 
-func (c *ingressController) ResourceSync() {
+func (c *ingressController) ResourceSync(namespace string) {
 	objs := c.IngressInformer.GetIndexer().List()
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
@@ -466,6 +466,9 @@ func (c *ingressController) ResourceSync() {
 			continue
 		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
+			continue
+		}
+		if namespace != "" && key != namespace {
 			continue
 		}
 		ing := kube.MustNewIngress(obj)

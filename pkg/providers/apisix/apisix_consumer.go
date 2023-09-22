@@ -324,7 +324,7 @@ func (c *apisixConsumerController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("consumer", "delete")
 }
 
-func (c *apisixConsumerController) ResourceSync(interval time.Duration) {
+func (c *apisixConsumerController) ResourceSync(interval time.Duration, namespace string) {
 	objs := c.ApisixConsumerInformer.GetIndexer().List()
 	delay := GetSyncDelay(interval, len(objs))
 
@@ -335,6 +335,9 @@ func (c *apisixConsumerController) ResourceSync(interval time.Duration) {
 			continue
 		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
+			continue
+		}
+		if namespace != "" && key != namespace {
 			continue
 		}
 		ac, err := kube.NewApisixConsumer(obj)

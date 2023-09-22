@@ -405,7 +405,7 @@ func (c *apisixTlsController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("TLS", "delete")
 }
 
-func (c *apisixTlsController) ResourceSync(interval time.Duration) {
+func (c *apisixTlsController) ResourceSync(interval time.Duration, namespace string) {
 	objs := c.ApisixTlsInformer.GetIndexer().List()
 	delay := GetSyncDelay(interval, len(objs))
 
@@ -416,6 +416,9 @@ func (c *apisixTlsController) ResourceSync(interval time.Duration) {
 			continue
 		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
+			continue
+		}
+		if namespace != "" && key != namespace {
 			continue
 		}
 		tls, err := kube.NewApisixTls(obj)
