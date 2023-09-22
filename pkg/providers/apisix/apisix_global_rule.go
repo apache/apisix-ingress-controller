@@ -340,7 +340,9 @@ func (c *apisixGlobalRuleController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("GlobalRule", "delete")
 }
 
-func (c *apisixGlobalRuleController) ResourceSync(interval time.Duration) {
+// ResourceSync syncs ApisixGlobalRule resources within namespace to workqueue.
+// If namespace is "", it syncs all namespaces ApisixGlobalRule resources.
+func (c *apisixGlobalRuleController) ResourceSync(interval time.Duration, namespace string) {
 	objs := c.ApisixGlobalRuleInformer.GetIndexer().List()
 	delay := GetSyncDelay(interval, len(objs))
 
@@ -355,6 +357,17 @@ func (c *apisixGlobalRuleController) ResourceSync(interval time.Duration) {
 			continue
 		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
+			continue
+		}
+		ns, _, err := cache.SplitMetaNamespaceKey(key)
+		if err != nil {
+			log.Errorw("split ApisixRoute meta key failed",
+				zap.Error(err),
+				zap.String("key", key),
+			)
+			continue
+		}
+		if namespace != "" && ns != namespace {
 			continue
 		}
 		log.Debugw("ResourceSync",
