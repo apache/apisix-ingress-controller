@@ -19,6 +19,9 @@ package translation
 import (
 	"bytes"
 	"context"
+	"crypto/sha1"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -88,7 +91,6 @@ func (t *translator) TranslateIngressTLS(namespace, ingName, secretName string, 
 			APIVersion: "apisix.apache.org/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%v-%v", ingName, "tls"),
 			Namespace: namespace,
 		},
 		Spec: &kubev2.ApisixTlsSpec{
@@ -101,7 +103,14 @@ func (t *translator) TranslateIngressTLS(namespace, ingName, secretName string, 
 	for _, host := range hosts {
 		apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2.HostType(host))
 	}
-
+	tlsByt, err := json.Marshal(apisixTls)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal Apisix TLS: %s", err.Error())
+	}
+	hasher := sha1.New()
+	hasher.Write(tlsByt)
+	uniqueHash := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+	apisixTls.ObjectMeta.Name = fmt.Sprintf("%v-%v-%v", ingName, "tls", uniqueHash)
 	return t.ApisixTranslator.TranslateSSLV2(&apisixTls)
 }
 
