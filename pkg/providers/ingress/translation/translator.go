@@ -110,7 +110,7 @@ func (t *translator) TranslateIngressTLS(namespace, ingName, secretName string, 
 	hasher := sha1.New()
 	hasher.Write(tlsByt)
 	uniqueHash := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
-	apisixTls.ObjectMeta.Name = fmt.Sprintf("%v-%v-%v", ingName, "tls", uniqueHash)
+	apisixTls.ObjectMeta.Name = fmt.Sprintf("%v-%v-%v", ingName, "tls", uniqueHash[:6])
 	return t.ApisixTranslator.TranslateSSLV2(&apisixTls)
 }
 
