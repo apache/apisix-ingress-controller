@@ -18,13 +18,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
+
+	"github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
 )
 
 const _ingressKey string = "kubernetes.io/ingress.class"
@@ -149,4 +150,5 @@ func TestTranslateIngressTLS(t *testing.T) {
 
 	assert.Equal(t, ssl.Cert, cert)
 	assert.Equal(t, ssl.Key, key)
+	assert.Equal(t, ssl.Snis[0], host)
 }
