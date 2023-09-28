@@ -165,7 +165,8 @@ jobs:
 
       - name: Install ginkgo
         run: |
-          go install github.com/onsi/ginkgo/v2/ginkgo@v2.12.0
+          GINKGO_VERSION=$(cd test/e2e && go list -m  -mod=readonly  -f {{.Version}}  github.com/onsi/ginkgo/v2)
+          go install github.com/onsi/ginkgo/v2/ginkgo@$GINKGO_VERSION
           sudo cp ~/go/bin/ginkgo /usr/local/bin
 
       - name: cache
