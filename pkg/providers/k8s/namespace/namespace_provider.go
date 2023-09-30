@@ -103,7 +103,21 @@ func (c *watchingProvider) Init(ctx context.Context) error {
 }
 
 func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) error {
-	labelSelector := metav1.LabelSelector{MatchLabels: c.watchingLabels}
+	valuesByKey := make(map[string][]string)
+	for key, value := range c.watchingLabels {
+		valuesByKey[key] = append(valuesByKey[key], value)
+	}
+	var matchExpressions []metav1.LabelSelectorRequirement
+	for key, values := range valuesByKey {
+		requirement := metav1.LabelSelectorRequirement{
+			Key:      key,
+			Operator: metav1.LabelSelectorOpIn,
+			Values:   values,
+		}
+		matchExpressions = append(matchExpressions, requirement)
+	}
+
+	labelSelector := metav1.LabelSelector{MatchExpressions: matchExpressions}
 	opts := metav1.ListOptions{
 		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
 	}
