@@ -6,7 +6,7 @@ require (
 	github.com/apache/apisix-ingress-controller v0.0.0-20210105024109-72e53386de5a
 	github.com/apache/apisix-ingress-controller/test/e2e/testbackend v0.0.0
 	github.com/eclipse/paho.mqtt.golang v1.4.3
-	github.com/gavv/httpexpect/v2 v2.15.0
+	github.com/gavv/httpexpect/v2 v2.16.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/gruntwork-io/terratest v0.40.22
 	github.com/onsi/ginkgo/v2 v2.12.1
@@ -18,6 +18,7 @@ require (
 )
 
 require (
+	github.com/TylerBrock/colorjson v0.0.0-20200706003622-8a50f05110d2 // indirect
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/api7/etcd-adapter v0.2.2 // indirect
