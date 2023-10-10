@@ -27,8 +27,9 @@ ifeq ($(APISIX_ADMIN_API_VERSION),"v2")
 endif
 
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
+REPOSITORY="127.0.0.1"
 REGISTRY_PORT ?= "5000"
-REGISTRY ?="localhost:$(REGISTRY_PORT)"
+REGISTRY ?="${REPOSITORY}:$(REGISTRY_PORT)"
 IMAGE_TAG ?= dev
 ENABLE_PROXY ?= true
 
@@ -171,7 +172,8 @@ uninstall:
 ### kind-up:              Launch a Kubernetes cluster with a image registry by Kind.
 .PHONY: kind-up
 kind-up:
-	./utils/kind-with-registry.sh $(REGISTRY_PORT)
+	REPOSITORY=${REPOSITORY} ./utils/kind-with-registry.sh $(REGISTRY_PORT)
+
 ### kind-reset:           Delete the Kubernetes cluster created by "make kind-up"
 .PHONY: kind-reset
 kind-reset:

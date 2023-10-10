@@ -57,7 +57,7 @@ spec:
     protocol: TCP
     targetPort: 8080
 `
-		err := s.CreateResourceFromString(resources)
+		err := s.CreateResourceFromString(s.FormatRegistry(resources))
 		assert.Nil(ginkgo.GinkgoT(), err)
 		time.Sleep(5 * time.Second)
 
@@ -143,7 +143,7 @@ spec:
     protocol: TCP
     targetPort: 8080
 `
-		err := s.CreateResourceFromString(resources)
+		err := s.CreateResourceFromString(s.FormatRegistry(resources))
 		assert.Nil(ginkgo.GinkgoT(), err)
 		time.Sleep(5 * time.Second)
 

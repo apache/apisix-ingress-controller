@@ -23,6 +23,7 @@ set -o pipefail
 # desired cluster name; default is "apisix"
 KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-apisix}"
 K8S_VERSION=${K8S_VERSION:-v1.21.1@sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6}
+REPOSITORY=${REPOSITORY:-localhost}
 
 if kind get clusters | grep -q ^apisix$ ; then
   echo "cluster already exists, moving on"
@@ -66,12 +67,12 @@ nodes:
 - role: worker
 containerdConfigPatches:
 - |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:${reg_port}"]
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."${REPOSITORY}:${reg_port}"]
     endpoint = ["http://${reg_host}:5000"]
 EOF
 
 for node in $(kind get nodes --name "${KIND_CLUSTER_NAME}"); do
-  kubectl annotate node "${node}" tilt.dev/registry=localhost:${reg_port};
+  kubectl annotate node "${node}" tilt.dev/registry=${REPOSITORY}:${reg_port};
 done
 
 if [ "${kind_network}" != "bridge" ]; then
