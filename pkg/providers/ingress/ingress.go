@@ -457,7 +457,9 @@ func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 	return false
 }
 
-func (c *ingressController) ResourceSync() {
+// ResourceSync syncs Ingress resources within namespace to workqueue.
+// If namespace is "", it syncs all namespaces ingress resources.
+func (c *ingressController) ResourceSync(namespace string) {
 	objs := c.IngressInformer.GetIndexer().List()
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
@@ -466,6 +468,17 @@ func (c *ingressController) ResourceSync() {
 			continue
 		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
+			continue
+		}
+		ns, _, err := cache.SplitMetaNamespaceKey(key)
+		if err != nil {
+			log.Errorw("split ApisixRoute meta key failed",
+				zap.Error(err),
+				zap.String("key", key),
+			)
+			continue
+		}
+		if namespace != "" && ns != namespace {
 			continue
 		}
 		ing := kube.MustNewIngress(obj)

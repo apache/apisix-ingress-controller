@@ -617,7 +617,9 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("upstream", "delete")
 }
 
-func (c *apisixUpstreamController) ResourceSync(interval time.Duration) {
+// ResourceSync syncs ApisixUpstream resources within namespace to workqueue.
+// If namespace is "", it syncs all namespaces ApisixUpstream resources.
+func (c *apisixUpstreamController) ResourceSync(interval time.Duration, namespace string) {
 	objs := c.ApisixUpstreamInformer.GetIndexer().List()
 	delay := GetSyncDelay(interval, len(objs))
 	for i, obj := range objs {
@@ -627,6 +629,17 @@ func (c *apisixUpstreamController) ResourceSync(interval time.Duration) {
 			continue
 		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
+			continue
+		}
+		ns, _, err := cache.SplitMetaNamespaceKey(key)
+		if err != nil {
+			log.Errorw("split ApisixRoute meta key failed",
+				zap.Error(err),
+				zap.String("key", key),
+			)
+			continue
+		}
+		if namespace != "" && ns != namespace {
 			continue
 		}
 		au, err := kube.NewApisixUpstream(obj)
