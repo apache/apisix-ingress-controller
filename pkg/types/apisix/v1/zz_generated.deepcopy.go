@@ -330,6 +330,7 @@ func (in *MutualTLSClientConfig) DeepCopy() *MutualTLSClientConfig {
 func (in *PluginConfig) DeepCopyInto(out *PluginConfig) {
 	*out = *in
 	in.Metadata.DeepCopyInto(&out.Metadata)
+	out.Plugins=make(Plugins)
 	in.Plugins.DeepCopyInto(&out.Plugins)
 	return
 }
@@ -477,6 +478,7 @@ func (in *Route) DeepCopyInto(out *Route) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	out.Plugins=make(Plugins)
 	in.Plugins.DeepCopyInto(&out.Plugins)
 	return
 }
