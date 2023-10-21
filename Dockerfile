@@ -13,10 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+ARG ENABLE_PROXY=false
+ARG BASE_IMAGE_TAG=nonroot
+
 FROM golang:1.20 AS build-env
 LABEL maintainer="gxthrj@163.com"
-
-ARG ENABLE_PROXY=false
 
 WORKDIR /build
 COPY go.* ./
@@ -27,7 +28,7 @@ RUN if [ "$ENABLE_PROXY" = "true" ] ; then go env -w GOPROXY=https://goproxy.cn,
 COPY . .
 RUN --mount=type=cache,target=/root/.cache/go-build make build
 
-FROM gcr.io/distroless/static-debian12:debug
+FROM gcr.io/distroless/static-debian12:${BASE_IMAGE_TAG}
 LABEL maintainer="gxthrj@163.com"
 ENV TZ=Hongkong
 
