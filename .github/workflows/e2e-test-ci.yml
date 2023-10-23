@@ -102,6 +102,7 @@ jobs:
           ARCH: amd64
           REGISTRY: 127.0.0.1:5000
           ENABLE_PROXY: "false"
+          BASE_IMAGE_TAG: "debug"
         run: |
           echo "building images..."
           make clean-image build-images

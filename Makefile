@@ -31,6 +31,7 @@ REPOSITORY="127.0.0.1"
 REGISTRY_PORT ?= "5000"
 REGISTRY ?="${REPOSITORY}:$(REGISTRY_PORT)"
 IMAGE_TAG ?= dev
+BASE_IMAGE_TAG ?= nonroot
 ENABLE_PROXY ?= true
 
 GITSHA ?= "no-git-module"
@@ -75,7 +76,7 @@ clean-image: ## Removes local image
 .PHONY: build-image
 build-image:
 ifeq ($(E2E_SKIP_BUILD), 0)
-	DOCKER_BUILDKIT=1 docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
+	DOCKER_BUILDKIT=1 docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) --build-arg BASE_IMAGE_TAG=$(BASE_IMAGE_TAG) .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)
 endif
 
