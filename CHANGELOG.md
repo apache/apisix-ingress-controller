@@ -38,6 +38,39 @@
 - [0.2.0](#020)
 - [0.1.0](#010)
 
+# 1.7.1
+
+Welcome to the v1.7.1 release of apisix-ingress-controller!
+
+This is a Patch version release.
+
+## Highlights
+
+Please try out the release binaries and report any issues at
+https://github.com/apache/apisix-ingress-controller/issues.
+
+### Contributors
+
+* Jintao Zhang
+* Sarasa Kisaragi
+* Xin Rong
+
+### Changes
+<details><summary>3 commits</summary>
+<p>
+
+* [`b42ed7e`](https://github.com/apache/apisix-ingress-controller/commit/b42ed7e3636b0a33e183ff8df17c7c622ae39632) fix: plugin_metadata not populating to the correct etcd key (#2012) (#2021)
+* [`a07a30b`](https://github.com/apache/apisix-ingress-controller/commit/a07a30bef39635fa823fa684b1fe881d62bfdf2f) fix: ingress-apisix version of deploy image tag and document (#1968) (#1972)
+* [`d91757a`](https://github.com/apache/apisix-ingress-controller/commit/d91757a1601e984f6bd0c22753b020a092adfc4e) chore: release v1.7.0 (#1952)
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
+Previous release can be found at [v1.7.0](https://github.com/apache/apisix-ingress-controller/releases/tag/v1.7.0)
+
 # 1.7.0
 
 Welcome to the 1.7.0 release of apisix-ingress-controller!
