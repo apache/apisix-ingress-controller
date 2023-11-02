@@ -144,8 +144,9 @@ See the [Contribute to APISIX](https://apisix.apache.org/docs/general/contributo
 The table below shows the compatibility between APISIX ingress controller and the APISIX proxy.
 
 | APISIX ingress controller | Supported APISIX versions | Recommended APISIX version |
-| ------------------------- | ------------------------- | -------------------------- |
+|---------------------------| ------------------------- |----------------------------|
 | `master`                  | `>= 2.15`, `>=3.0`        | `3.1`                      |
+| `1.7.0`                   | `>= 2.15`, `>=3.0`        | `3.1`                      |
 | `1.6.0`                   | `>= 2.15`, `>=3.0`        | `2.15`, `3.0`              |
 | `1.5.0`                   | `>= 2.7`                  | `2.15`                     |
 | `1.4.0`                   | `>= 2.7`                  | `2.11`                     |
