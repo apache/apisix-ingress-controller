@@ -40,7 +40,7 @@ metadata:
 spec:
   plugins:
   - name: limit-count
-    enabled: true 
+    enable: true 
     config:
       time_window": 60,
       policy: "local",
