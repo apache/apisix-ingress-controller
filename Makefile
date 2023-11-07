@@ -318,14 +318,14 @@ GATEWAY_API_CRDS_LOCAL_PATH = $(PWD)/samples/deploy/gateway-api/$(GATEWAY_API_VE
 go-mod-download-gateway-api:
 	@go mod download $(GATEWAY_API_PACKAGE)
 
-### install:				Install Gateway API into the K8s cluster from go mod.
+### install-gateway-api:				Install Gateway API into the K8s cluster from go mod.
 .PHONY: install-gateway-api
 install-gateway-api: go-mod-download-gateway-api
 	kubectl apply -k $(GATEWAY_API_CRDS_GO_MOD_PATH)/config/crd
 	kubectl apply -k $(GATEWAY_API_CRDS_GO_MOD_PATH)/config/crd/experimental
 	kubectl apply -f $(GATEWAY_API_CRDS_GO_MOD_PATH)/config/webhook
 
-### install:				Install Gateway API into the K8s cluster from repo.
+### install-gateway-api-local:				Install Gateway API into the K8s cluster from repo.
 .PHONY: install-gateway-api-local
 install-gateway-api-local:
 	kubectl apply -f $(GATEWAY_API_CRDS_LOCAL_PATH)
