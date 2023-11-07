@@ -7,7 +7,7 @@ require (
 	github.com/apache/apisix-ingress-controller/test/e2e/testbackend v0.0.0
 	github.com/eclipse/paho.mqtt.golang v1.4.3
 	github.com/gavv/httpexpect/v2 v2.16.0
-	github.com/gorilla/websocket v1.5.0
+	github.com/gorilla/websocket v1.5.1
 	github.com/gruntwork-io/terratest v0.40.22
 	github.com/onsi/ginkgo/v2 v2.13.0
 	github.com/stretchr/testify v1.8.4
