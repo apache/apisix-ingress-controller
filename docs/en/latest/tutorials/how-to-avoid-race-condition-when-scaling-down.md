@@ -30,9 +30,9 @@ Pods that shut down slowly should not continue to serve regular traffic and shou
 
 APISIX ingress controller also watches for pod updates(for upstream pods). And updates the APISIX instance with new upstreams and removes the older upstreams. But this process might take time depending on the latency between Ingress controller and APISIX instance. This latency can be large if APISIX and Ingress controller have a number of network hops between them or it can be low if you're running APISIX ingress controller in [composite mode](../composite.md) where both ingress controller and APISIX instance are running in the same pod. But there is some latency(t) and if the time taken by the Kubelet to terminate those pods is less than t then for some period of time users might get 5xx errors because few of the requests may get routed to the upstreams(terminated pods) that are no longer available.
 
-## Pre-stop hook
+## PreStop hook
 
-If one of the Pod's containers has defined a preStop hook and the terminationGracePeriodSeconds in the Pod spec is not set to 0, the kubelet runs that hook inside of the container. The default terminationGracePeriodSeconds setting is 30 seconds.
+If one of the Pod's containers has defined a `PreStop` hook and the `terminationGracePeriodSeconds` in the Pod spec is not set to 0, the kubelet runs that hook inside of the container. The default `terminationGracePeriodSeconds` setting is 30 seconds.
 
 ## Solution
 
@@ -40,7 +40,7 @@ You can add delay to the termination of the upstream pod by some seconds (for eg
 
 :::note
 
-If the preStop hook needs longer to complete than the default grace period allows, you must modify terminationGracePeriodSeconds to suit this. This is 30 seconds by default. For more information, refer to the [Kubernetes docs](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination).
+If the preStop hook needs longer to complete than the default grace period allows, you must modify `terminationGracePeriodSeconds` to suit this. This is 30 seconds by default. For more information, refer to the [Kubernetes docs](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination).
 
 :::
 
