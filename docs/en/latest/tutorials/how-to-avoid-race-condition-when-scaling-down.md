@@ -21,11 +21,10 @@ title: Best practice to avoid race condition between Kubelet and APISIX
 #
 -->
 
-
 ## Prerequisite
 
 While scaling down the number of pods in your upstream, few of the pods are marked as Terminating. On the node where the Pod is running: as soon as the kubelet sees that a Pod has been marked as terminating (a graceful shutdown duration has been set), the kubelet begins the local Pod shutdown process. At the same time as the kubelet is starting graceful shutdown of the Pod, the control plane evaluates whether to remove that shutting-down Pod from EndpointSlice (and Endpoints) objects, where those objects represent a Service with a configured selector. ReplicaSets and other workload resources no longer treat the shutting-down Pod as a valid, in-service replica.
-Pods that shut down slowly should not continue to serve regular traffic and should start terminating and finish processing open connections. 
+Pods that shut down slowly should not continue to serve regular traffic and should start terminating and finish processing open connections.
 
 ## The race condition
 
