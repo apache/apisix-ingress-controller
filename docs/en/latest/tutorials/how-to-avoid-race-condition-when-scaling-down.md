@@ -58,6 +58,6 @@ spec:
     lifecycle:
       preStop:
         exec:
-          command: ["/bin/sh", "-c", "sleep 5 && kill -SIGTERM $(cat /var/run/webserver.pid)"]
+          command: ["/bin/sh", "-c", "sleep 5"]
 
 ```
