@@ -17,6 +17,7 @@ package apisix
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"go.uber.org/zap"
@@ -274,7 +275,9 @@ func (c *apisixGlobalRuleController) onAdd(obj interface{}) {
 func (c *apisixGlobalRuleController) onUpdate(oldObj, newObj interface{}) {
 	prev := kube.MustNewApisixGlobalRule(oldObj)
 	curr := kube.MustNewApisixGlobalRule(newObj)
-	if prev.ResourceVersion() >= curr.ResourceVersion() {
+	oldRV, _ := strconv.ParseInt(prev.ResourceVersion(), 0, 64)
+	newRV, _ := strconv.ParseInt(curr.ResourceVersion(), 0, 64)
+	if oldRV >= newRV {
 		return
 	}
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
