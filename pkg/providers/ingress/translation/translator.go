@@ -115,7 +115,7 @@ func (t *translator) TranslateIngressTLS(namespace, ingName, secretName string, 
 	}
 	hasher := sha1.New()
 	hasher.Write(tlsByt)
-	uniqueHash := safeEncodeString(base64.URLEncoding.EncodeToString(hasher.Sum(nil)), 6)
+	uniqueHash := SafeEncodeString(base64.URLEncoding.EncodeToString(hasher.Sum(nil)), 6)
 	//The name has to be unique per namespace or the IDs generated for Apisix SSL objects will collide
 	apisixTls.ObjectMeta.Name = fmt.Sprintf("%v-%v-%v", ingName, "tls", uniqueHash)
 	return t.ApisixTranslator.TranslateSSLV2(&apisixTls)
@@ -593,7 +593,7 @@ func composeIngressRouteName(namespace, name, host, path string) string {
 // This reduces the chances of bad words and
 // ensures that strings generated from hash functions appear consistent throughout the API.
 // The returned string doesn't exceed the size limit
-func safeEncodeString(s string, limit int) string {
+func SafeEncodeString(s string, limit int) string {
 	r := make([]byte, len(s))
 	for i, b := range []rune(s) {
 		if i == limit {
