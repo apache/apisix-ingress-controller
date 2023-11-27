@@ -491,8 +491,34 @@ func (t *translator) translateOldIngressTLS(namespace, ingName, secretName strin
 	ssl, err := t.TranslateIngressTLS(namespace, ingName, secretName, hosts)
 	if err != nil && k8serrors.IsNotFound(err) {
 		log.Debug("it should never come here ", err)
+		apisixTls := kubev2.ApisixTls{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ApisixTls",
+				APIVersion: "apisix.apache.org/v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespace,
+			},
+			Spec: &kubev2.ApisixTlsSpec{
+				Secret: kubev2.ApisixSecret{
+					Name:      secretName,
+					Namespace: namespace,
+				},
+			},
+		}
+		for _, host := range hosts {
+			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2.HostType(host))
+		}
+
+		tlsByt, err := json.Marshal(apisixTls)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal Apisix TLS: %s", err.Error())
+		}
+		hasher := sha1.New()
+		hasher.Write(tlsByt)
+		uniqueHash := SafeEncodeString(base64.URLEncoding.EncodeToString(hasher.Sum(nil)), 6)
 		return &apisixv1.Ssl{
-			ID: id.GenID(namespace + "_" + fmt.Sprintf("%v-%v", ingName, "tls")),
+			ID: id.GenID(namespace + "_" + fmt.Sprintf("%v-%v-%v", ingName, "tls", uniqueHash)),
 		}, nil
 	}
 	return ssl, err
