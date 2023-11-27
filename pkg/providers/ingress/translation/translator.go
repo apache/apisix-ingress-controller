@@ -118,6 +118,7 @@ func (t *translator) TranslateIngressTLS(namespace, ingName, secretName string, 
 	uniqueHash := SafeEncodeString(base64.URLEncoding.EncodeToString(hasher.Sum(nil)), 6)
 	//The name has to be unique per namespace or the IDs generated for Apisix SSL objects will collide
 	apisixTls.ObjectMeta.Name = fmt.Sprintf("%v-%v-%v", ingName, "tls", uniqueHash)
+	log.Debug("apisixTLS generated with name", apisixTls.ObjectMeta.Name)
 	return t.ApisixTranslator.TranslateSSLV2(&apisixTls)
 }
 
