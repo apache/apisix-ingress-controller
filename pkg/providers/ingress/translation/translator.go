@@ -127,6 +127,7 @@ func (t *translator) TranslateIngress(ing kube.Ingress, args ...bool) (*translat
 	if len(args) != 0 {
 		skipVerify = args[0]
 	}
+	log.Debug("tramslating ingress")
 	switch ing.GroupVersion() {
 	case kube.IngressV1:
 		return t.translateIngressV1(ing.V1(), skipVerify)
@@ -138,6 +139,7 @@ func (t *translator) TranslateIngress(ing kube.Ingress, args ...bool) (*translat
 }
 
 func (t *translator) TranslateIngressDeleteEvent(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error) {
+	log.Debug("tramslating ingress delete")
 	switch ing.GroupVersion() {
 	case kube.IngressV1:
 		return t.translateOldIngressV1(ing.V1())
@@ -166,6 +168,7 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 			)
 			return nil, err
 		}
+		log.Debug("while translating, created ssl ", ssl.ID)
 		ctx.AddSSL(ssl)
 	}
 	ns := ing.Namespace
@@ -487,6 +490,7 @@ func (t *translator) TranslateOldIngress(ing kube.Ingress) (*translation.Transla
 func (t *translator) translateOldIngressTLS(namespace, ingName, secretName string, hosts []string) (*apisixv1.Ssl, error) {
 	ssl, err := t.TranslateIngressTLS(namespace, ingName, secretName, hosts)
 	if err != nil && k8serrors.IsNotFound(err) {
+		log.Debug("it should never come here ", err)
 		return &apisixv1.Ssl{
 			ID: id.GenID(namespace + "_" + fmt.Sprintf("%v-%v", ingName, "tls")),
 		}, nil
