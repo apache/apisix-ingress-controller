@@ -90,7 +90,7 @@ func NewIngressTranslator(opts *TranslatorOptions,
 	return t
 }
 
-func (t *translator) TranslateIngressTLS(namespace, ingName, secretName string, hosts []string) (*apisixv1.Ssl, error) {
+func createApisixTLS(namespace, ingName, secretName string, hosts []string) (kubev2.ApisixTls, error) {
 	apisixTls := kubev2.ApisixTls{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ApisixTls",
@@ -111,15 +111,22 @@ func (t *translator) TranslateIngressTLS(namespace, ingName, secretName string, 
 	}
 	tlsByt, err := json.Marshal(apisixTls)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal Apisix TLS: %s", err.Error())
+		return apisixTls, fmt.Errorf("failed to marshal Apisix TLS: %s", err.Error())
 	}
 	hasher := sha1.New()
 	hasher.Write(tlsByt)
 	uniqueHash := SafeEncodeString(base64.URLEncoding.EncodeToString(hasher.Sum(nil)), 6)
 	//The name has to be unique per namespace or the IDs generated for Apisix SSL objects will collide
 	apisixTls.ObjectMeta.Name = fmt.Sprintf("%v-%v-%v", ingName, "tls", uniqueHash)
-	log.Debug("apisixTLS generated with name", apisixTls.ObjectMeta.Name)
-	return t.ApisixTranslator.TranslateSSLV2(&apisixTls)
+	return apisixTls, nil
+}
+
+func (t *translator) TranslateIngressTLS(namespace, ingName, secretName string, hosts []string) (*apisixv1.Ssl, error) {
+	apisixTLS, err := createApisixTLS(namespace, ingName, secretName, hosts)
+	if err != nil {
+		return nil, err
+	}
+	return t.ApisixTranslator.TranslateSSLV2(&apisixTLS)
 }
 
 func (t *translator) TranslateIngress(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error) {
@@ -127,7 +134,6 @@ func (t *translator) TranslateIngress(ing kube.Ingress, args ...bool) (*translat
 	if len(args) != 0 {
 		skipVerify = args[0]
 	}
-	log.Debug("tramslating ingress")
 	switch ing.GroupVersion() {
 	case kube.IngressV1:
 		return t.translateIngressV1(ing.V1(), skipVerify)
@@ -139,7 +145,6 @@ func (t *translator) TranslateIngress(ing kube.Ingress, args ...bool) (*translat
 }
 
 func (t *translator) TranslateIngressDeleteEvent(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error) {
-	log.Debug("tramslating ingress delete")
 	switch ing.GroupVersion() {
 	case kube.IngressV1:
 		return t.translateOldIngressV1(ing.V1())
@@ -168,7 +173,6 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 			)
 			return nil, err
 		}
-		log.Debug("while translating, created ssl ", ssl.ID)
 		ctx.AddSSL(ssl)
 	}
 	ns := ing.Namespace
@@ -490,35 +494,12 @@ func (t *translator) TranslateOldIngress(ing kube.Ingress) (*translation.Transla
 func (t *translator) translateOldIngressTLS(namespace, ingName, secretName string, hosts []string) (*apisixv1.Ssl, error) {
 	ssl, err := t.TranslateIngressTLS(namespace, ingName, secretName, hosts)
 	if err != nil && k8serrors.IsNotFound(err) {
-		log.Debug("it should never come here ", err)
-		apisixTls := kubev2.ApisixTls{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "ApisixTls",
-				APIVersion: "apisix.apache.org/v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: namespace,
-			},
-			Spec: &kubev2.ApisixTlsSpec{
-				Secret: kubev2.ApisixSecret{
-					Name:      secretName,
-					Namespace: namespace,
-				},
-			},
-		}
-		for _, host := range hosts {
-			apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2.HostType(host))
-		}
-
-		tlsByt, err := json.Marshal(apisixTls)
+		apisixTLS, err := createApisixTLS(namespace, ingName, secretName, hosts)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal Apisix TLS: %s", err.Error())
+			return nil, err
 		}
-		hasher := sha1.New()
-		hasher.Write(tlsByt)
-		uniqueHash := SafeEncodeString(base64.URLEncoding.EncodeToString(hasher.Sum(nil)), 6)
 		return &apisixv1.Ssl{
-			ID: id.GenID(namespace + "_" + fmt.Sprintf("%v-%v-%v", ingName, "tls", uniqueHash)),
+			ID: id.GenID(namespace + "_" + apisixTLS.Name),
 		}, nil
 	}
 	return ssl, err
