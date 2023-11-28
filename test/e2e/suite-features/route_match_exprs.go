@@ -120,7 +120,7 @@ spec:
 				Status(http.StatusOK)
 
 			msg := s.NewAPISIXClient().GET("/ip").
-				WithHeader("Host", "httpbin.org").
+				WithHeader("Host", "httpbin.org:80").
 				WithHeader("X-Foo", "baz").
 				Expect().
 				Status(http.StatusNotFound).
