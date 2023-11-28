@@ -91,7 +91,7 @@ spec:
  - name: rule1
    match:
      hosts:
-     - httpbin.org:80
+     - httpbin.org
      paths:
        - /ip
      exprs:
@@ -114,13 +114,13 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 
 			_ = s.NewAPISIXClient().GET("/ip").
-				WithHeader("Host", "httpbin.org:80").
+				WithHeader("Host", "httpbin.org").
 				WithHeader("X-Foo", "bar").
 				Expect().
 				Status(http.StatusOK)
 
 			msg := s.NewAPISIXClient().GET("/ip").
-				WithHeader("Host", "httpbin.org:80").
+				WithHeader("Host", "httpbin.org").
 				WithHeader("X-Foo", "baz").
 				Expect().
 				Status(http.StatusNotFound).
