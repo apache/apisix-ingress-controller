@@ -42,7 +42,5 @@ See the [definition](../../../../samples/deploy/crd/v1/ApisixConsumer.yaml) on G
 | authParameter.wolfRBAC.secretRef.name   | string   | You can store plugin configuration in Kubernetes secret and reference here with the secret name.                                    |
 | authParameter.hmacAuth.value   | object   | Plugin configuration for [hmacAuth-auth plugin](https://apisix.apache.org/docs/apisix/plugins/hmac-auth/)
 | authParameter.hmacAuth.secretRef.name   | string   | You can store plugin configuration in Kubernetes secret and reference here with the secret name.                                    |
-| authParameter.hmacAuth.value   | object   | Plugin configuration for [hmacAuth-auth plugin](https://apisix.apache.org/docs/apisix/plugins/hmac-auth/)
-| authParameter.hmacAuth.secretRef.name   | string   | You can store plugin configuration in Kubernetes secret and reference here with the secret name.                                    |
-| authParameter.ldapAuth.value   | object   | Plugin configuration for [hmacAuth-auth plugin](https://apisix.apache.org/docs/apisix/plugins/ldap-auth/)
+| authParameter.ldapAuth.value   | object   | Plugin configuration for [ldapAuth plugin](https://apisix.apache.org/docs/apisix/plugins/ldap-auth/)
 | authParameter.ldapAuth.secretRef.name   | string   | You can store plugin configuration in Kubernetes secret and reference here with the secret name.                                    |
