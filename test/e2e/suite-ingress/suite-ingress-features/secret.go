@@ -1022,7 +1022,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
 			assert.Len(ginkgo.GinkgoT(), routes, 0, "routes number not expect")
 			// check ssl in APISIX
-			time.Sleep(10 * time.Second)
+			time.Sleep(20 * time.Second)
 			ssls, err = s.ListApisixSsl()
 			assert.Nil(ginkgo.GinkgoT(), err, "list tlsUpdate error")
 			assert.Len(ginkgo.GinkgoT(), ssls, 0, "tls number not expect")
