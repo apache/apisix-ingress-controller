@@ -197,8 +197,8 @@ func CoreV1ToNetworkV1beta1LB(lbips []corev1.LoadBalancerIngress) []networkingv1
 	return t
 }
 
-func CoreV1ToGatewayV1beta1Addr(lbips []corev1.LoadBalancerIngress) []gatewayv1beta1.GatewayAddress {
-	t := make([]gatewayv1beta1.GatewayAddress, 0, len(lbips))
+func CoreV1ToGatewayV1beta1Addr(lbips []corev1.LoadBalancerIngress) []gatewayv1beta1.GatewayStatusAddress {
+	t := make([]gatewayv1beta1.GatewayStatusAddress, 0, len(lbips))
 
 	// In the definition, there is also an address type called NamedAddress,
 	// which we currently do not implement
@@ -207,14 +207,14 @@ func CoreV1ToGatewayV1beta1Addr(lbips []corev1.LoadBalancerIngress) []gatewayv1b
 
 	for _, lbip := range lbips {
 		if v := lbip.Hostname; v != "" {
-			t = append(t, gatewayv1beta1.GatewayAddress{
+			t = append(t, gatewayv1beta1.GatewayStatusAddress{
 				Type:  &HostnameAddressType,
 				Value: v,
 			})
 		}
 
 		if v := lbip.IP; v != "" {
-			t = append(t, gatewayv1beta1.GatewayAddress{
+			t = append(t, gatewayv1beta1.GatewayStatusAddress{
 				Type:  &IPAddressType,
 				Value: v,
 			})

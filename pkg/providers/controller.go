@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -25,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	networkingv1 "k8s.io/client-go/listers/networking/v1"
@@ -65,6 +67,7 @@ const (
 type Controller struct {
 	name             string
 	namespace        string
+	resourceSyncCh   chan string
 	cfg              *config.Config
 	apisix           apisix.APISIX
 	apiServer        *api.Server
@@ -72,10 +75,6 @@ type Controller struct {
 	kubeClient       *kube.KubeClient
 	// recorder event
 	recorder record.EventRecorder
-
-	// leaderContextCancelFunc will be called when apisix-ingress-controller
-	// decides to give up its leader role.
-	leaderContextCancelFunc context.CancelFunc
 
 	translator       translation.Translator
 	apisixTranslator apisixtranslation.ApisixTranslator
@@ -88,11 +87,19 @@ type Controller struct {
 	gatewayProvider   *gateway.Provider
 	apisixProvider    apisixprovider.Provider
 	ingressProvider   ingressprovider.Provider
+
+	elector *leaderelection.LeaderElector
 }
 
 // NewController creates an ingress apisix controller object.
 func NewController(cfg *config.Config) (*Controller, error) {
 	podName := os.Getenv("POD_NAME")
+	if podName == "" {
+		podName = os.Getenv("HOSTNAME")
+	}
+	if podName == "" {
+		podName = "apisix-ingress-controller"
+	}
 	podNamespace := os.Getenv("POD_NAMESPACE")
 	if podNamespace == "" {
 		podNamespace = "default"
@@ -120,6 +127,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	c := &Controller{
 		name:             podName,
 		namespace:        podNamespace,
+		resourceSyncCh:   make(chan string),
 		cfg:              cfg,
 		apiServer:        apiSrv,
 		apisix:           client,
@@ -152,6 +160,39 @@ func (c *Controller) Run(stop chan struct{}) error {
 		}
 	}()
 
+	if err := c.setupLeaderElection(); err != nil {
+		log.Errorw("failed to setup leader election")
+		return err
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		log.Info("start leader election")
+		c.runLeaderElection(rootCtx)
+	}()
+
+	// ensure that the leader has been elected
+	if err := wait.PollUntilContextTimeout(rootCtx, 200*time.Millisecond, 10*time.Second, false, func(ctx context.Context) (bool, error) {
+		if c.elector.GetLeader() != "" {
+			return true, nil
+		}
+		return false, nil
+	}); err != nil {
+		if err == context.Canceled {
+			return nil
+		}
+		return err
+	}
+
+	c.run(rootCtx)
+
+	wg.Wait()
+	return nil
+}
+
+func (c *Controller) setupLeaderElection() error {
 	lock := &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
 			Namespace: c.namespace,
@@ -169,7 +210,14 @@ func (c *Controller) Run(stop chan struct{}) error {
 		RenewDeadline: 5 * time.Second,
 		RetryPeriod:   2 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: c.run,
+			OnStartedLeading: func(ctx context.Context) {
+				log.Infow("controller now is running as leader",
+					zap.String("namespace", c.namespace),
+					zap.String("pod", c.name),
+				)
+
+				c.MetricsCollector.ResetLeader(true)
+			},
 			OnNewLeader: func(identity string) {
 				log.Warnf("found a new leader %s", identity)
 				if identity != c.name {
@@ -178,22 +226,14 @@ func (c *Controller) Run(stop chan struct{}) error {
 						zap.String("pod", c.name),
 					)
 					c.MetricsCollector.ResetLeader(false)
-					// delete the old APISIX cluster, so that the cached state
-					// like synchronization won't be used next time the candidate
-					// becomes the leader again.
-					c.apisix.DeleteCluster(c.cfg.APISIX.DefaultClusterName)
 				}
 			},
 			OnStoppedLeading: func() {
+				c.MetricsCollector.ResetLeader(false)
 				log.Infow("controller now is running as a candidate",
 					zap.String("namespace", c.namespace),
 					zap.String("pod", c.name),
 				)
-				c.MetricsCollector.ResetLeader(false)
-				// delete the old APISIX cluster, so that the cached state
-				// like synchronization won't be used next time the candidate
-				// becomes the leader again.
-				c.apisix.DeleteCluster(c.cfg.APISIX.DefaultClusterName)
 			},
 		},
 		ReleaseOnCancel: true,
@@ -204,14 +244,22 @@ func (c *Controller) Run(stop chan struct{}) error {
 		log.Errorf("failed to create leader elector: %s", err.Error())
 		return err
 	}
+	c.elector = elector
+	return nil
+}
 
+func (c *Controller) runLeaderElection(ctx context.Context) {
 election:
-	curCtx, cancel := context.WithCancel(rootCtx)
-	c.leaderContextCancelFunc = cancel
-	elector.Run(curCtx)
+	leaderCtx, leaderCancel := context.WithCancel(ctx)
+	c.elector.Run(leaderCtx)
+	leaderCancel()
+
 	select {
-	case <-rootCtx.Done():
-		return nil
+	case <-ctx.Done():
+		log.Infow("controller will exit the leader election",
+			zap.String("namespace", c.namespace),
+			zap.String("pod", c.name),
+		)
 	default:
 		goto election
 	}
@@ -347,16 +395,19 @@ func (c *Controller) run(ctx context.Context) {
 	ctx, cancelFunc = context.WithCancel(ctx)
 	defer cancelFunc()
 
-	// give up leader
-	defer c.leaderContextCancelFunc()
-
 	clusterOpts := &apisix.ClusterOptions{
-		AdminAPIVersion:  c.cfg.APISIX.AdminAPIVersion,
-		Name:             c.cfg.APISIX.DefaultClusterName,
-		AdminKey:         c.cfg.APISIX.DefaultClusterAdminKey,
-		BaseURL:          c.cfg.APISIX.DefaultClusterBaseURL,
-		MetricsCollector: c.MetricsCollector,
-		SyncComparison:   c.cfg.ApisixResourceSyncComparison,
+		AdminAPIVersion:   c.cfg.APISIX.AdminAPIVersion,
+		Name:              c.cfg.APISIX.DefaultClusterName,
+		AdminKey:          c.cfg.APISIX.DefaultClusterAdminKey,
+		BaseURL:           c.cfg.APISIX.DefaultClusterBaseURL,
+		MetricsCollector:  c.MetricsCollector,
+		SyncComparison:    c.cfg.ApisixResourceSyncComparison,
+		EnableEtcdServer:  c.cfg.EtcdServer.Enabled,
+		Prefix:            c.cfg.EtcdServer.Prefix,
+		ListenAddress:     c.cfg.EtcdServer.ListenAddress,
+		SchemaSynced:      !c.cfg.EtcdServer.Enabled,
+		CacheSynced:       !c.cfg.EtcdServer.Enabled,
+		SSLKeyEncryptSalt: c.cfg.EtcdServer.SSLKeyEncryptSalt,
 	}
 	err := c.apisix.AddCluster(ctx, clusterOpts)
 	if err != nil && err != apisix.ErrDuplicatedCluster {
@@ -390,9 +441,10 @@ func (c *Controller) run(ctx context.Context) {
 		KubeClient:          c.kubeClient,
 		MetricsCollector:    c.MetricsCollector,
 		Recorder:            c.recorder,
+		Elector:             c.elector,
 	}
 
-	c.namespaceProvider, err = namespace.NewWatchingNamespaceProvider(ctx, c.kubeClient, c.cfg)
+	c.namespaceProvider, err = namespace.NewWatchingNamespaceProvider(ctx, c.kubeClient, c.cfg, c.resourceSyncCh)
 	if err != nil {
 		ctx.Done()
 		return
@@ -471,9 +523,11 @@ func (c *Controller) run(ctx context.Context) {
 	log.Info("init providers")
 
 	// Compare resource
-	if err = c.apisixProvider.Init(ctx); err != nil {
-		ctx.Done()
-		return
+	if !c.cfg.EtcdServer.Enabled {
+		if err = c.apisixProvider.Init(ctx); err != nil {
+			ctx.Done()
+			return
+		}
 	}
 
 	// Run Phase
@@ -511,12 +565,6 @@ func (c *Controller) run(ctx context.Context) {
 	e.Add(func() {
 		c.resourceSyncLoop(ctx, c.cfg.ApisixResourceSyncInterval.Duration)
 	})
-	c.MetricsCollector.ResetLeader(true)
-
-	log.Infow("controller now is running as leader",
-		zap.String("namespace", c.namespace),
-		zap.String("pod", c.name),
-	)
 
 	<-ctx.Done()
 	e.Wait()
@@ -560,12 +608,15 @@ func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.
 	}
 }
 
-func (c *Controller) syncAllResources(interval time.Duration) {
+func (c *Controller) syncResources(interval time.Duration, namespace string) {
 	e := utils.ParallelExecutor{}
 
-	e.Add(c.ingressProvider.ResourceSync)
 	e.Add(func() {
-		c.apisixProvider.ResourceSync(interval)
+		c.ingressProvider.ResourceSync(namespace)
+	})
+
+	e.Add(func() {
+		c.apisixProvider.ResourceSync(interval, namespace)
 	})
 
 	e.Wait()
@@ -587,9 +638,10 @@ func (c *Controller) resourceSyncLoop(ctx context.Context, interval time.Duratio
 	defer ticker.Stop()
 	for {
 		select {
+		case namespace := <-c.resourceSyncCh:
+			c.syncResources(0, namespace)
 		case <-ticker.C:
-			c.syncAllResources(interval)
-			continue
+			c.syncResources(interval, "")
 		case <-ctx.Done():
 			return
 		}

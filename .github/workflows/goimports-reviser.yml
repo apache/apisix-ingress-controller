@@ -25,8 +25,7 @@ on:
   pull_request:
     branches:
       - master
-      - v1.6.0
-    type: [review_requested, ready_for_review]
+      - 1.7.0
 jobs:
   changes:
     runs-on: ubuntu-latest
@@ -35,7 +34,7 @@ jobs:
       go: ${{ steps.filter.outputs.go }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -64,11 +63,11 @@ jobs:
       (needs.changes.outputs.go == 'true')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Go Env
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
-          go-version: "1.19"
+          go-version: "1.20"
       - name: Make update-gofmt
         working-directory: ./
         run: |

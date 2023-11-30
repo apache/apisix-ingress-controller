@@ -17,6 +17,7 @@ package apisix
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"go.uber.org/zap"
@@ -188,55 +189,57 @@ func (c *apisixGlobalRuleController) handleSyncErr(obj interface{}, errOrigin er
 		c.workqueue.Forget(event)
 		return
 	}
-	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
-	if errLocal != nil {
-		log.Errorf("invalid resource key: %s", event.Key)
-		c.MetricsCollector.IncrSyncOperation("GlobalRule", "failure")
-		return
-	}
-	var agr kube.ApisixGlobalRule
-	switch event.GroupVersion {
-	case config.ApisixV2:
-		agr, errLocal = c.ApisixGlobalRuleLister.V2(namespace, name)
-	default:
-		errLocal = fmt.Errorf("unsupported ApisixGlobalRule group version %s", event.GroupVersion)
-	}
-	if errOrigin == nil {
-		if ev.Type != types.EventDelete {
-			if errLocal == nil {
-				switch agr.GroupVersion() {
-				case config.ApisixV2:
-					c.RecordEvent(agr.V2(), v1.EventTypeNormal, utils.ResourceSynced, nil)
-					c.recordStatus(agr.V2(), utils.ResourceSynced, nil, metav1.ConditionTrue, agr.GetGeneration())
-				}
-			} else {
-				log.Errorw("failed list ApisixGlobalRule",
-					zap.Error(errLocal),
-					zap.String("name", name),
-					zap.String("namespace", namespace),
-				)
-			}
+	if !c.Kubernetes.DisableStatusUpdates && c.Elector.IsLeader() {
+		namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
+		if errLocal != nil {
+			log.Errorf("invalid resource key: %s", event.Key)
+			c.MetricsCollector.IncrSyncOperation("GlobalRule", "failure")
+			return
 		}
-		c.workqueue.Forget(obj)
-		c.MetricsCollector.IncrSyncOperation("GlobalRule", "success")
-		return
-	}
-	log.Warnw("sync ApisixGlobalRule failed, will retry",
-		zap.Any("object", obj),
-		zap.Error(errOrigin),
-	)
-	if errLocal == nil {
-		switch agr.GroupVersion() {
+		var agr kube.ApisixGlobalRule
+		switch event.GroupVersion {
 		case config.ApisixV2:
-			c.RecordEvent(agr.V2(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
-			c.recordStatus(agr.V2(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, agr.GetGeneration())
+			agr, errLocal = c.ApisixGlobalRuleLister.V2(namespace, name)
+		default:
+			errLocal = fmt.Errorf("unsupported ApisixGlobalRule group version %s", event.GroupVersion)
 		}
-	} else {
-		log.Errorw("failed list ApisixGlobalRule",
-			zap.Error(errLocal),
-			zap.String("name", name),
-			zap.String("namespace", namespace),
+		if errOrigin == nil {
+			if ev.Type != types.EventDelete {
+				if errLocal == nil {
+					switch agr.GroupVersion() {
+					case config.ApisixV2:
+						c.RecordEvent(agr.V2(), v1.EventTypeNormal, utils.ResourceSynced, nil)
+						c.recordStatus(agr.V2(), utils.ResourceSynced, nil, metav1.ConditionTrue, agr.GetGeneration())
+					}
+				} else {
+					log.Errorw("failed list ApisixGlobalRule",
+						zap.Error(errLocal),
+						zap.String("name", name),
+						zap.String("namespace", namespace),
+					)
+				}
+			}
+			c.workqueue.Forget(obj)
+			c.MetricsCollector.IncrSyncOperation("GlobalRule", "success")
+			return
+		}
+		log.Warnw("sync ApisixGlobalRule failed, will retry",
+			zap.Any("object", obj),
+			zap.Error(errOrigin),
 		)
+		if errLocal == nil {
+			switch agr.GroupVersion() {
+			case config.ApisixV2:
+				c.RecordEvent(agr.V2(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
+				c.recordStatus(agr.V2(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, agr.GetGeneration())
+			}
+		} else {
+			log.Errorw("failed list ApisixGlobalRule",
+				zap.Error(errLocal),
+				zap.String("name", name),
+				zap.String("namespace", namespace),
+			)
+		}
 	}
 	c.workqueue.AddRateLimited(obj)
 	c.MetricsCollector.IncrSyncOperation("GlobalRule", "failure")
@@ -272,7 +275,9 @@ func (c *apisixGlobalRuleController) onAdd(obj interface{}) {
 func (c *apisixGlobalRuleController) onUpdate(oldObj, newObj interface{}) {
 	prev := kube.MustNewApisixGlobalRule(oldObj)
 	curr := kube.MustNewApisixGlobalRule(newObj)
-	if prev.ResourceVersion() >= curr.ResourceVersion() {
+	oldRV, _ := strconv.ParseInt(prev.ResourceVersion(), 0, 64)
+	newRV, _ := strconv.ParseInt(curr.ResourceVersion(), 0, 64)
+	if oldRV >= newRV {
 		return
 	}
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
@@ -338,7 +343,9 @@ func (c *apisixGlobalRuleController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("GlobalRule", "delete")
 }
 
-func (c *apisixGlobalRuleController) ResourceSync(interval time.Duration) {
+// ResourceSync syncs ApisixGlobalRule resources within namespace to workqueue.
+// If namespace is "", it syncs all namespaces ApisixGlobalRule resources.
+func (c *apisixGlobalRuleController) ResourceSync(interval time.Duration, namespace string) {
 	objs := c.ApisixGlobalRuleInformer.GetIndexer().List()
 	delay := GetSyncDelay(interval, len(objs))
 
@@ -353,6 +360,17 @@ func (c *apisixGlobalRuleController) ResourceSync(interval time.Duration) {
 			continue
 		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
+			continue
+		}
+		ns, _, err := cache.SplitMetaNamespaceKey(key)
+		if err != nil {
+			log.Errorw("split ApisixRoute meta key failed",
+				zap.Error(err),
+				zap.String("key", key),
+			)
+			continue
+		}
+		if namespace != "" && ns != namespace {
 			continue
 		}
 		log.Debugw("ResourceSync",

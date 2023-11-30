@@ -1,5 +1,3 @@
-#syntax=docker/dockerfile:1.2
-
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -15,14 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-FROM golang:1.19 AS build-env
-LABEL maintainer="gxthrj@163.com"
-
 ARG ENABLE_PROXY=false
+ARG BASE_IMAGE_TAG=nonroot
 
-RUN rm -rf /etc/localtime \
-    && ln -s /usr/share/zoneinfo/Hongkong /etc/localtime \
-    && dpkg-reconfigure -f noninteractive tzdata
+FROM golang:1.20 AS build-env
+LABEL maintainer="gxthrj@163.com"
 
 WORKDIR /build
 COPY go.* ./
@@ -33,15 +28,12 @@ RUN if [ "$ENABLE_PROXY" = "true" ] ; then go env -w GOPROXY=https://goproxy.cn,
 COPY . .
 RUN --mount=type=cache,target=/root/.cache/go-build make build
 
-FROM centos:centos7
+FROM gcr.io/distroless/static-debian12:${BASE_IMAGE_TAG}
 LABEL maintainer="gxthrj@163.com"
+ENV TZ=Hongkong
 
 WORKDIR /ingress-apisix
-RUN yum -y install ca-certificates libc6-compat \
-    && update-ca-trust \
-    && echo "hosts: files dns" > /etc/nsswitch.conf
-
-COPY --from=build-env /usr/share/zoneinfo/Hongkong /etc/localtime
 COPY --from=build-env /build/apisix-ingress-controller .
+COPY ./conf/apisix-schema.json ./conf/apisix-schema.json
 
 ENTRYPOINT ["/ingress-apisix/apisix-ingress-controller", "ingress", "--config-path", "/ingress-apisix/conf/config.yaml"]

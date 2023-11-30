@@ -71,7 +71,7 @@ func (u *upstreamService) Delete(ctx context.Context, serviceName string) error 
 	_ = u.cluster.cache.DeleteUpstreamServiceRelation(relation)
 	for upsName := range relation.UpstreamNames {
 		ups, err := u.cluster.upstream.Get(ctx, upsName)
-		if err != nil {
+		if err != nil || ups == nil {
 			continue
 		}
 		ups.Nodes = make(v1.UpstreamNodes, 0)

@@ -27,6 +27,7 @@ import (
 
 var _ = ginkgo.Describe("suite-annotations: froward-auth annotations", func() {
 	s := scaffold.NewDefaultScaffold()
+
 	ginkgo.JustBeforeEach(func() {
 		// create an external auth service
 		json := `{
@@ -41,10 +42,6 @@ var _ = ginkgo.Describe("suite-annotations: froward-auth annotations", func() {
 			}
 		}`
 		assert.Nil(ginkgo.GinkgoT(), s.CreateApisixRouteByApisixAdmin("auth", []byte(json)), "create forward-auth serverless route")
-	})
-
-	ginkgo.JustAfterEach(func() {
-		assert.Nil(ginkgo.GinkgoT(), s.DeleteApisixRouteByApisixAdmin("auth"), "clean up forward-auth serverless route")
 	})
 
 	ginkgo.It("enable in ingress networking/v1", func() {

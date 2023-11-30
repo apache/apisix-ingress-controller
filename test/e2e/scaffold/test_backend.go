@@ -23,6 +23,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+const (
+	CoreDNSDeployment = "coredns"
+)
+
 var (
 	_testBackendDeploymentTemplate = `
 apiVersion: apps/v1
@@ -127,11 +131,11 @@ spec:
       targetPort: 50053
   type: ClusterIP
 `
-	_udpDeployment = `
+	_udpDeployment = fmt.Sprintf(`
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: coredns
+  name: %s
 spec:
   replicas: 1
   selector:
@@ -153,13 +157,13 @@ spec:
         readinessProbe:
           tcpSocket:
             port: 53
-          initialDelaySeconds: 5
+          initialDelaySeconds: 2
           periodSeconds: 10
         ports:    
         - name: dns
           containerPort: 53
           protocol: UDP
-`
+`, CoreDNSDeployment)
 	_udpService = `
 kind: Service
 apiVersion: v1

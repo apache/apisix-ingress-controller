@@ -56,6 +56,7 @@ type embedDummyResourceImplementer struct {
 	pluginConfig            PluginConfig
 	upstreamServiceRelation UpstreamServiceRelation
 	pluginMetadata          PluginMetadata
+	validator               APISIXSchemaValidator
 }
 
 type dummyRoute struct{}
@@ -276,6 +277,23 @@ func (f *dummyPluginMetadata) Delete(_ context.Context, _ *v1.PluginMetadata) er
 func (f *dummyPluginMetadata) Update(_ context.Context, _ *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error) {
 	return nil, ErrClusterNotExist
 }
+func (f *dummyPluginMetadata) Create(_ context.Context, _ *v1.PluginMetadata, shouldCompare bool) (*v1.PluginMetadata, error) {
+	return nil, ErrClusterNotExist
+}
+
+type dummyValidator struct{}
+
+func newDummyValidator() APISIXSchemaValidator {
+	return &dummyValidator{}
+}
+
+func (d *dummyValidator) ValidateHTTPPluginSchema(plugins v1.Plugins) (bool, error) {
+	return true, nil
+}
+
+func (d *dummyValidator) ValidateStreamPluginSchema(plugins v1.Plugins) (bool, error) {
+	return true, nil
+}
 
 func (nc *nonExistentCluster) Route() Route {
 	return nc.route
@@ -303,6 +321,10 @@ func (nc *nonExistentCluster) Consumer() Consumer {
 
 func (nc *nonExistentCluster) Plugin() Plugin {
 	return nc.plugin
+}
+
+func (nc *nonExistentCluster) Validator() APISIXSchemaValidator {
+	return nc.validator
 }
 
 func (nc *nonExistentCluster) PluginConfig() PluginConfig {

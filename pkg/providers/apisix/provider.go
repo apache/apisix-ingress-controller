@@ -48,7 +48,7 @@ type Provider interface {
 	providertypes.Provider
 
 	Init(ctx context.Context) error
-	ResourceSync(interval time.Duration)
+	ResourceSync(interval time.Duration, namespace string)
 	NotifyServiceAdd(key string)
 	NotifyApisixUpstreamChange(key string)
 
@@ -135,30 +135,30 @@ func (p *apisixProvider) Run(ctx context.Context) {
 	e.Wait()
 }
 
-func (p *apisixProvider) ResourceSync(interval time.Duration) {
+func (p *apisixProvider) ResourceSync(interval time.Duration, namespace string) {
 	e := utils.ParallelExecutor{}
 
 	e.Add(func() {
-		p.apisixUpstreamController.ResourceSync(interval)
+		p.apisixUpstreamController.ResourceSync(interval, namespace)
 	})
 	e.Add(func() {
-		p.apisixRouteController.ResourceSync(interval)
+		p.apisixRouteController.ResourceSync(interval, namespace)
 	})
 	e.Add(func() {
-		p.apisixTlsController.ResourceSync(interval)
+		p.apisixTlsController.ResourceSync(interval, namespace)
 	})
 	e.Add(func() {
 		p.apisixClusterConfigController.ResourceSync(interval)
 	})
 	e.Add(func() {
-		p.apisixConsumerController.ResourceSync(interval)
+		p.apisixConsumerController.ResourceSync(interval, namespace)
 	})
 	e.Add(func() {
-		p.apisixPluginConfigController.ResourceSync(interval)
+		p.apisixPluginConfigController.ResourceSync(interval, namespace)
 	})
 	if p.common.Kubernetes.APIVersion == config.ApisixV2 {
 		e.Add(func() {
-			p.apisixGlobalRuleController.ResourceSync(interval)
+			p.apisixGlobalRuleController.ResourceSync(interval, namespace)
 		})
 	}
 

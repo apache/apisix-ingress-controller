@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"sync"
 	"time"
 
@@ -358,15 +359,23 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			added = m
 		} else {
 			oldCtx, _ := c.translator.TranslateOldRoute(obj.OldObject)
-			om := &utils.Manifest{
-				Routes:        oldCtx.Routes,
-				Upstreams:     oldCtx.Upstreams,
-				StreamRoutes:  oldCtx.StreamRoutes,
-				PluginConfigs: oldCtx.PluginConfigs,
+			if oldCtx != nil {
+				om := &utils.Manifest{
+					Routes:        oldCtx.Routes,
+					Upstreams:     oldCtx.Upstreams,
+					StreamRoutes:  oldCtx.StreamRoutes,
+					PluginConfigs: oldCtx.PluginConfigs,
+				}
+				added, updated, deleted = m.Diff(om)
 			}
-			added, updated, deleted = m.Diff(om)
 		}
 
+		log.Debugw("sync ApisixRoute to cluster",
+			zap.String("event_type", ev.Type.String()),
+			zap.Any("add", added),
+			zap.Any("update", updated),
+			zap.Any("delete", deleted),
+		)
 		if err = c.SyncManifests(ctx, added, updated, deleted, ev.Type.IsSyncEvent()); err != nil {
 			log.Errorw("failed to sync ApisixRoute to apisix",
 				zap.Error(err),
@@ -409,9 +418,10 @@ func (c *apisixRouteController) checkPluginNameIfNotEmptyV2(ctx context.Context,
 }
 
 func (c *apisixRouteController) updateStatus(obj kube.ApisixRoute, statusErr error) {
-	if obj == nil {
+	if obj == nil || c.Kubernetes.DisableStatusUpdates || !c.Elector.IsLeader() {
 		return
 	}
+
 	var (
 		ar        kube.ApisixRoute
 		err       error
@@ -521,7 +531,9 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 	prev := kube.MustNewApisixRoute(oldObj)
 	curr := kube.MustNewApisixRoute(newObj)
-	if prev.ResourceVersion() >= curr.ResourceVersion() {
+	oldRV, _ := strconv.ParseInt(prev.ResourceVersion(), 0, 64)
+	newRV, _ := strconv.ParseInt(curr.ResourceVersion(), 0, 64)
+	if oldRV >= newRV {
 		return
 	}
 	// Updates triggered by status are ignored.
@@ -606,7 +618,9 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("route", "delete")
 }
 
-func (c *apisixRouteController) ResourceSync(interval time.Duration) {
+// ResourceSync syncs ApisixRoute resources within namespace to workqueue.
+// If namespace is "", it syncs all namespaces ApisixRoute resources.
+func (c *apisixRouteController) ResourceSync(interval time.Duration, namespace string) {
 	objs := c.ApisixRouteInformer.GetIndexer().List()
 	delay := GetSyncDelay(interval, len(objs))
 
@@ -627,6 +641,17 @@ func (c *apisixRouteController) ResourceSync(interval time.Duration) {
 			continue
 		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
+			continue
+		}
+		ns, _, err := cache.SplitMetaNamespaceKey(key)
+		if err != nil {
+			log.Errorw("split ApisixRoute meta key failed",
+				zap.Error(err),
+				zap.String("key", key),
+			)
+			continue
+		}
+		if namespace != "" && ns != namespace {
 			continue
 		}
 		ar := kube.MustNewApisixRoute(obj)
@@ -650,15 +675,6 @@ func (c *apisixRouteController) ResourceSync(interval time.Duration) {
 				GroupVersion: ar.GroupVersion(),
 			},
 		}, delay*time.Duration(i))
-
-		ns, _, err := cache.SplitMetaNamespaceKey(key)
-		if err != nil {
-			log.Errorw("split ApisixRoute meta key failed",
-				zap.Error(err),
-				zap.String("key", key),
-			)
-			continue
-		}
 
 		var (
 			backends  []string
@@ -844,9 +860,6 @@ problem here, and incorrect status may be recorded.(It will only be triggered wh
 	}
 */
 func (c *apisixRouteController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
-	if c.Kubernetes.DisableStatusUpdates {
-		return
-	}
 	// build condition
 	message := utils.CommonSuccessMessage
 	if err != nil {

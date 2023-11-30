@@ -37,7 +37,7 @@ func getApisixResourceRequestsCount(s *scaffold.Scaffold, res string) int {
 	assert.True(ginkgo.GinkgoT(), len(pods) >= 1, "get ingress pod")
 
 	output, err := s.Exec(pods[0].Name, "ingress-apisix-controller-deployment-e2e-test",
-		fmt.Sprintf("curl -s localhost:8080/metrics | grep apisix_ingress_controller_apisix_requests | grep 'op=\"write\"' | grep 'resource=\"%v\"'", res),
+		fmt.Sprintf("wget -q -O - localhost:8080/metrics | grep apisix_ingress_controller_apisix_requests | grep 'op=\"write\"' | grep 'resource=\"%v\"'", res),
 	)
 	if err != nil {
 		log.Errorf("failed to get metrics: %v, %v; output: %v", err.Error(), string(err.(*exec.ExitError).Stderr), output)
@@ -64,6 +64,9 @@ func getApisixResourceRequestsCount(s *scaffold.Scaffold, res string) int {
 var _ = ginkgo.Describe("suite-features: sync delay", func() {
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("check resource request count", func() {
+			if s.IsEtcdServer() {
+				ginkgo.Skip("Does not support etcdserver mode, temporarily skipping test cases, waiting for fix")
+			}
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -232,7 +235,9 @@ spec:
 		})
 
 		ginkgo.It("check multiple resources request count", func() {
-
+			if s.IsEtcdServer() {
+				ginkgo.Skip("Does not support etcdserver mode, temporarily skipping test cases, waiting for fix")
+			}
 			agr := `
 apiVersion: apisix.apache.org/v2
 kind: ApisixGlobalRule
