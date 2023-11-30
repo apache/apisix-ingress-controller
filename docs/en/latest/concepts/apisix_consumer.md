@@ -30,7 +30,7 @@ description: Guide to using ApisixConsumer custom Kubernetes resource.
 
 :::note
 
-Currently only authentication plugins are supported with ApisixConsumer CRD.
+Currently only authentication plugins are supported with `ApisixConsumer` CRD.
 
 :::
 
@@ -50,7 +50,7 @@ spec:
         key: "auth-one"
 ```
 
-You can then enable key-auth plugin on a route and use this consumer.
+You can then enable `key-auth` plugin on a route and use this consumer.
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -76,7 +76,7 @@ spec:
 Now if you send a request without the API key, you will get a response with 401 Unauthorized.
 
 ```shell
-   curl http://127.0.0.1:9080/headers -H 'Host: httpbin.org'
+curl http://127.0.0.1:9080/headers -H 'Host: httpbin.org'
 ```
 
 It should output:
@@ -88,12 +88,12 @@ It should output:
 But if you pass the key as configured in the ApisixConsumer resource, the request passes.
 
 ```shell
-   curl -H "Host: httpbin.org" -H "apiKey: auth-one" http://127.0.0.1:9080/headers
+curl -H "Host: httpbin.org" -H "apiKey: auth-one" http://127.0.0.1:9080/headers
 ```
 
 It should output:
 
-```shell
+```json
 {
   "headers": {
     "Accept": "*/*", 
@@ -102,6 +102,7 @@ It should output:
     "User-Agent": "curl/8.1.2", 
     "X-Forwarded-Host": "httpbin.org"
   }
+}
 ```
 
-Similarly you can  use other authentication plugins with ApisixConsumer. See [reference](../references/apisix_consumer_v2.md) for the full API documentation.
+Similarly you can  use other authentication plugins with `ApisixConsumer`. See [reference](../references/apisix_consumer_v2.md) for the full API documentation.
