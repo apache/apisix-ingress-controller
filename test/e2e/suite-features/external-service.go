@@ -271,20 +271,20 @@ spec:
 		})
 		ginkgo.It("should be able to access third-party service with plugins", func() {
 			// -- Data preparation --
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbin.org")
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbun.org")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
 			time.Sleep(time.Second * 6)
 
 			// -- Expect failed --
-			upstreamId := PhaseValidateFirstUpstream(s, 1, "httpbin.org", 80, translation.DefaultWeight)
+			upstreamId := PhaseValidateFirstUpstream(s, 1, "httpbun.org", 80, translation.DefaultWeight)
 			PhaseValidateRouteAccessCode(s, upstreamId, http.StatusBadGateway)
 
 			// -- update --
-			PhaseCreateApisixRouteWithHostRewrite(s, "httpbin-route", "httpbin-upstream", "httpbin.org")
+			PhaseCreateApisixRouteWithHostRewrite(s, "httpbun-route", "httpbin-upstream", "httpbun.org")
 			time.Sleep(time.Second * 6)
 
 			// -- validation --
-			upstreamId = PhaseValidateFirstUpstream(s, 1, "httpbin.org", 80, translation.DefaultWeight)
+			upstreamId = PhaseValidateFirstUpstream(s, 1, "httpbun.org", 80, translation.DefaultWeight)
 			PhaseValidateRouteAccess(s, upstreamId)
 		})
 		ginkgo.It("should be able to access external domain ExternalName service", func() {
@@ -370,7 +370,7 @@ spec:
 		}
 
 		validateHttpbinAndHttpbunAreAccessed := func() {
-			hasPoweredBy := false   // httpbin.org
+			hasPoweredBy := false   // httpbun.org
 			hasNoPoweredBy := false // httpbin.org
 			for i := 0; i < 20; i++ {
 				headers := s.NewAPISIXClient().GET("/ip").
@@ -478,7 +478,7 @@ spec:
 					port:   80,
 					weight: translation.DefaultWeight,
 				},
-				"httpbin.org": {
+				"httpbun.org": {
 					port:   80,
 					weight: translation.DefaultWeight,
 				},
@@ -488,8 +488,8 @@ spec:
 			// -- Data preparation --
 			PhaseCreateHttpbin(s, "httpbin-temp")
 			time.Sleep(time.Second * 10)
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbin.org")
-			PhaseCreateApisixRouteWithHostRewriteAndBackend(s, "httpbin-route", "httpbin-upstream", "httpbin.org", "httpbin-temp", 80)
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbun.org")
+			PhaseCreateApisixRouteWithHostRewriteAndBackend(s, "httpbin-route", "httpbin-upstream", "httpbun.org", "httpbin-temp", 80)
 			time.Sleep(time.Second * 6)
 
 			svc, err := s.GetServiceByName("httpbin-temp")
@@ -505,7 +505,7 @@ spec:
 					port:   80,
 					weight: translation.DefaultWeight,
 				},
-				"httpbin.org": {
+				"httpbun.org": {
 					port:   80,
 					weight: translation.DefaultWeight,
 				},
