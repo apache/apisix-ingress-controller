@@ -29,7 +29,6 @@ import (
 var _ = ginkgo.Describe("suite-ingress-features: secret controller", func() {
 	apisixTlsSuites := func(s *scaffold.Scaffold) {
 		ginkgo.It("should create SSL if secret name referenced by TLS is corrected later", func() {
-			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			secretName := "test-apisix-tls"
 			// create ApisixTls resource
 			tlsName := "tls-name"
