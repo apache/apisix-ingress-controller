@@ -130,8 +130,10 @@ jW4KB95bGOTa7r7DM1Up0MbAIwWoeLBGhOIXk7inurZGg+FNjZMA5Lzm6qo=
 			time.Sleep(10 * time.Second)
 
 			//First attempt. This will return in an error
-			_ = s.NewApisixTls("sample-tls", "httpbin.org", "test-apisix-tls-wrong-name")
+			err = s.NewApisixTls("sample-tls", "httpbin.org", "test-apisix-tls-wrong-name")
+			assert.Error(ginkgo.GinkgoT(), err)
 
+			//Second attempt. This should pass as the name of the secret is correct.
 			assert.Nil(ginkgo.GinkgoT(), s.NewApisixTls("sample-tls", "httpbin.org", "test-apisix-tls"))
 			// verify SSL resource
 			tls, err := s.ListApisixSsl()
