@@ -32,15 +32,15 @@ See the [definition](../../../../samples/deploy/crd/v1/ApisixConsumer.yaml) on G
 | Field            | Type    | Description                                                                                                                                    |
 |------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------|
 | authParameter          | object   | Configuration of one of the available authentication plugins.                                                                                                   |
-| authParameter.basicAuth.value   | object   | Plugin configuration for [basic-auth plugin](https://apisix.apache.org/docs/apisix/plugins/basic-auth/)                                      |
+| authParameter.basicAuth.value   | object   | Plugin configuration for [`basic-auth` plugin](https://apisix.apache.org/docs/apisix/plugins/basic-auth/)                                      |
 | authParameter.basicAuth.secretRef.name   | string   | You can store plugin configuration in Kubernetes secret and reference here with the secret name                                     |
-| authParameter.keyAuth.value   | object   | Plugin configuration for [key-auth plugin](https://apisix.apache.org/docs/apisix/plugins/key-auth/)
+| authParameter.keyAuth.value   | object   | Plugin configuration for [`key-auth` plugin](https://apisix.apache.org/docs/apisix/plugins/key-auth/)
 | authParameter.keyAuth.secretRef.name   | string   | You can store plugin configuration in Kubernetes secret and reference here with the secret name.                                    |
-| authParameter.jwtAuth.value   | object   | Plugin configuration for [jwt-auth plugin](https://apisix.apache.org/docs/apisix/plugins/jwt-auth/)
+| authParameter.jwtAuth.value   | object   | Plugin configuration for [`jwt-auth` plugin](https://apisix.apache.org/docs/apisix/plugins/jwt-auth/)
 | authParameter.jwtAuth.secretRef.name   | string   | You can store plugin configuration in Kubernetes secret and reference here with the secret name.                                    |
-| authParameter.wolfRBAC.value   | object   | Plugin configuration for [wolf-rbac plugin](https://apisix.apache.org/docs/apisix/plugins/wolf-rbac/)
+| authParameter.wolfRBAC.value   | object   | Plugin configuration for [`wolf-rbac` plugin](https://apisix.apache.org/docs/apisix/plugins/wolf-rbac/)
 | authParameter.wolfRBAC.secretRef.name   | string   | You can store plugin configuration in Kubernetes secret and reference here with the secret name.                                    |
-| authParameter.hmacAuth.value   | object   | Plugin configuration for [hmac-auth plugin](https://apisix.apache.org/docs/apisix/plugins/hmac-auth/)
+| authParameter.hmacAuth.value   | object   | Plugin configuration for [`hmac-auth` plugin](https://apisix.apache.org/docs/apisix/plugins/hmac-auth/)
 | authParameter.hmacAuth.secretRef.name   | string   | You can store plugin configuration in Kubernetes secret and reference here with the secret name.                                    |
-| authParameter.ldapAuth.value   | object   | Plugin configuration for [ldap-auth plugin](https://apisix.apache.org/docs/apisix/plugins/ldap-auth/)
+| authParameter.ldapAuth.value   | object   | Plugin configuration for [`ldap-auth` plugin](https://apisix.apache.org/docs/apisix/plugins/ldap-auth/)
 | authParameter.ldapAuth.secretRef.name   | string   | You can store plugin configuration in Kubernetes secret and reference here with the secret name.                                    |
