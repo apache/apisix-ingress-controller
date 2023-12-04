@@ -129,14 +129,17 @@ jW4KB95bGOTa7r7DM1Up0MbAIwWoeLBGhOIXk7inurZGg+FNjZMA5Lzm6qo=
 			// check ssl in APISIX
 			time.Sleep(10 * time.Second)
 
-			//First attempt. This will return in an error
-			err = s.NewApisixTls("sample-tls", "httpbin.org", "test-apisix-tls-wrong-name")
-			assert.Error(ginkgo.GinkgoT(), err)
+			//First attempt
+			_ = s.NewApisixTls("sample-tls", "httpbin.org", "test-apisix-tls-wrong-name")
+			// verify that no SSL resource is created so far
+			tls, err := s.ListApisixSsl()
+			assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
+			assert.Len(ginkgo.GinkgoT(), tls, 0, "tls number not expect")
 
 			//Second attempt. This should pass as the name of the secret is correct.
 			assert.Nil(ginkgo.GinkgoT(), s.NewApisixTls("sample-tls", "httpbin.org", "test-apisix-tls"))
 			// verify SSL resource
-			tls, err := s.ListApisixSsl()
+			tls, err = s.ListApisixSsl()
 			assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
 			assert.Len(ginkgo.GinkgoT(), tls, 1, "tls number not expect")
 			assert.Equal(ginkgo.GinkgoT(), cert, tls[0].Cert, "tls cert not expect")
