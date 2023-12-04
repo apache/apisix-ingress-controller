@@ -280,7 +280,7 @@ spec:
 			PhaseValidateRouteAccessCode(s, upstreamId, http.StatusBadGateway)
 
 			// -- update --
-			PhaseCreateApisixRouteWithHostRewrite(s, "httpbun-route", "httpbin-upstream", "httpbun.org")
+			PhaseCreateApisixRouteWithHostRewrite(s, "httpbin-route", "httpbin-upstream", "httpbun.org")
 			time.Sleep(time.Second * 6)
 
 			// -- validation --
@@ -468,8 +468,8 @@ spec:
 		ginkgo.It("should be able to access multiple external services", func() {
 			// -- Data preparation --
 			PhaseCreateApisixUpstreamWithMultipleExternalNodes(s, "httpbin-upstream",
-				v2.ExternalTypeDomain, "httpbin.org", v2.ExternalTypeDomain, "httpbin.org")
-			PhaseCreateApisixRouteWithHostRewrite(s, "httpbin-route", "httpbin-upstream", "httpbin.org")
+				v2.ExternalTypeDomain, "httpbin.org", v2.ExternalTypeDomain, "httpbun.org")
+			PhaseCreateApisixRouteWithHostRewrite(s, "httpbin-route", "httpbin-upstream", "httpbun.org")
 			time.Sleep(time.Second * 6)
 
 			// -- validation --
