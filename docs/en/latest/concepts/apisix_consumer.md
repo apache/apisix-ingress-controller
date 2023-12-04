@@ -68,9 +68,9 @@ spec:
       backends:
         - serviceName: httpbin
           servicePort: 80
-      plugins:
-        - name: key-auth
-          enable: true
+      authentication:
+        enable: true
+        type: keyAuth
 ```
 
 Now if you send a request without the API key, you will get a response with 401 Unauthorized.
