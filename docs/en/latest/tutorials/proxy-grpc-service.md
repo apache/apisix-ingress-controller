@@ -41,9 +41,9 @@ You could install APISIX and APISIX ingress controller by running:
 #  We use Apisix 3.0 in this example. If you're using Apisix v2.x, please set to v2
 ADMIN_API_VERSION=v3
 helm install apisix apisix/apisix -n ingress-apisix \
-  --set gateway.type=NodePort \
+  --set service.type=NodePort \
   --set ingress-controller.enabled=true \
-  --set gateway.tls.enabled=true \
+  --set apisix.ssl.enabled=true \
   --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix \
   --set ingress-controller.config.apisix.adminAPIVersion=$ADMIN_API_VERSION
 ```

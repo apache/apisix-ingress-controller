@@ -117,7 +117,7 @@ You should now be able to use APISIX ingress controller. You can try running thi
 
 ### Enable SSL
 
-SSL is disabled by default. You can enable it by adding the flag `--set gateway.tls.enabled=true`.
+SSL is disabled by default. You can enable it by adding the flag `--set apisix.ssl.enabled=true`.
 
 ### Change default keys
 

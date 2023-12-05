@@ -79,7 +79,7 @@ Just as an example, the specific configuration needs to be modified by yourself.
 
 ```sh
 helm upgrade apisix apisix/apisix \
-  --set gateway.type=NodePort \
+  --set service.type=NodePort \
   --set ingress-controller.enabled=true \
   --namespace ingress-apisix \
   --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix

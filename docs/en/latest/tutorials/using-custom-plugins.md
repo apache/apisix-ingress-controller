@@ -135,7 +135,7 @@ plugins:
   - custom-response
 ```
 
-Finally you can enable the Ingress controller and configure the gateway to be exposed to external traffic. For this, set `gateway.type=NodePort`, `ingress-controller.enabled=true`, and `ingress-controller.config.apisix.serviceNamespace=ingress-apisix` in your `values.yaml` file.
+Finally you can enable the Ingress controller and configure the gateway to be exposed to external traffic. For this, set `service.type=NodePort`, `ingress-controller.enabled=true`, and `ingress-controller.config.apisix.serviceNamespace=ingress-apisix` in your `values.yaml` file.
 
 Now we can run `helm install` with this [updated values.yaml](https://raw.githubusercontent.com/navendu-pottekkat/apisix-in-kubernetes/master/custom-plugin/values.yaml) file:
 

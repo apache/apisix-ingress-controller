@@ -46,7 +46,7 @@ helm repo update
 #  We use Apisix 3.0 in this example. If you're using Apisix v2.x, please set to v2
 ADMIN_API_VERSION=v3
 helm install apisix apisix/apisix \
-  --set gateway.type=NodePort \
+  --set service.type=NodePort \
   --set ingress-controller.enabled=true \
   --create-namespace \
   --namespace ingress-apisix \
@@ -96,7 +96,7 @@ You should now be able to use APISIX ingress controller. You can try running thi
 
 ### Enable SSL
 
-SSL is disabled by default. You can enable it by adding the flag `--set gateway.tls.enabled=true`.
+SSL is disabled by default. You can enable it by adding the flag `--set apisix.ssl.enabled=true`.
 
 ### Change default keys
 
