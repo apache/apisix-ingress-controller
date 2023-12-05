@@ -3,7 +3,7 @@ module github.com/apache/apisix-ingress-controller
 go 1.20
 
 require (
-	github.com/api7/etcd-adapter v0.2.2
+	github.com/api7/etcd-adapter v0.2.3
 	github.com/api7/gopkg v0.2.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/hashicorp/go-memdb v1.3.4
