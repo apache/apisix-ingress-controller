@@ -482,7 +482,7 @@ spec:
 					port:   80,
 					weight: translation.DefaultWeight,
 				},
-				"httpbin.org": {
+				"postman-echo.com": {
 					port:   80,
 					weight: translation.DefaultWeight,
 				},
