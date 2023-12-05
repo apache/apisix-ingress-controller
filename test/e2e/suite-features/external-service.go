@@ -371,8 +371,10 @@ spec:
 					Headers().Raw()
 				fmt.Println("Look at the headers: ", headers)
 				if _, ok := headers["Etag"]; ok {
+					fmt.Println("setting etag true")
 					hasEtag = true
 				} else {
+					fmt.Println("setting noetag true")
 					hasNoEtag = true
 				}
 				if hasEtag && hasNoEtag {
