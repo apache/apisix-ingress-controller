@@ -8,8 +8,8 @@ github.com/ajg/form v1.5.1/go.mod h1:uL1WgH+h2mgNtvBq0339dVnzXdBETtL2LeUXaIv25UY
 github.com/andybalholm/brotli v1.0.4 h1:V7DdXeJtZscaqfNuAdSRuRFzuiKlHSC/Zh3zl9qY3JY=
 github.com/andybalholm/brotli v1.0.4/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
-github.com/api7/etcd-adapter v0.2.2 h1:TWlqN/4aQEuhYM8B14USBNeAoZuWjdkS7zSg+FzjsM0=
-github.com/api7/etcd-adapter v0.2.2/go.mod h1:JoLtq4IxiIw6Z+k9eRGHL0CDyfRvnNXGI0skV0EsSE8=
+github.com/api7/etcd-adapter v0.2.3 h1:nb2IDli/d9WlhtObhYUtJUXs+IfGMTcXRc5Fu9IBgtk=
+github.com/api7/etcd-adapter v0.2.3/go.mod h1:JoLtq4IxiIw6Z+k9eRGHL0CDyfRvnNXGI0skV0EsSE8=
 github.com/api7/gopkg v0.2.0 h1:+5vw6Rt9IeEpJoL2JMZFDwGDhH4aaeUJize21/3Qdzc=
 github.com/api7/gopkg v0.2.0/go.mod h1:LlplmjGCrkcS3nyCYpTwkdLkuNlYRYAnI8XH1qwsICw=
 github.com/api7/terratest v1.0.0 h1:Grg0xcvNpSRZa7QzjqfTPR3lfiHk13IdIBUrfUrDmw4=

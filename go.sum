@@ -2,8 +2,8 @@ cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMT
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
-github.com/api7/etcd-adapter v0.2.2 h1:TWlqN/4aQEuhYM8B14USBNeAoZuWjdkS7zSg+FzjsM0=
-github.com/api7/etcd-adapter v0.2.2/go.mod h1:JoLtq4IxiIw6Z+k9eRGHL0CDyfRvnNXGI0skV0EsSE8=
+github.com/api7/etcd-adapter v0.2.3 h1:nb2IDli/d9WlhtObhYUtJUXs+IfGMTcXRc5Fu9IBgtk=
+github.com/api7/etcd-adapter v0.2.3/go.mod h1:JoLtq4IxiIw6Z+k9eRGHL0CDyfRvnNXGI0skV0EsSE8=
 github.com/api7/gopkg v0.2.0 h1:+5vw6Rt9IeEpJoL2JMZFDwGDhH4aaeUJize21/3Qdzc=
 github.com/api7/gopkg v0.2.0/go.mod h1:LlplmjGCrkcS3nyCYpTwkdLkuNlYRYAnI8XH1qwsICw=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
