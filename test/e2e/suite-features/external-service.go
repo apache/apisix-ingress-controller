@@ -20,19 +20,15 @@ package features
 import (
 	"fmt"
 	"net/http"
-	"reflect"
-	"strings"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
@@ -379,24 +375,8 @@ spec:
 					Expect().
 					Status(http.StatusOK).
 					Headers().Raw()
-				if val, ok := headers["X-Powered-By"]; ok {
-					switch value := val.(type) {
-					case []interface{}:
-					forloop:
-						for _, header := range value {
-							switch vv := header.(type) {
-							case string:
-								if strings.HasPrefix(vv, "httpbun") {
-									hasEtag = true
-									break forloop
-								}
-							default:
-								log.Errorw("type", zap.Any("type", reflect.TypeOf(val)))
-							}
-						}
-					default:
-						log.Errorw("type", zap.Any("type", reflect.TypeOf(val)))
-					}
+				if _, ok := headers["ETag"]; ok {
+					hasEtag = true
 				} else {
 					hasNoEtag = true
 				}
