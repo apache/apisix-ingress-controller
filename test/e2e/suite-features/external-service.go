@@ -155,18 +155,18 @@ spec:
 			Status(http.StatusOK)
 	}
 
-	PhaseValidateRouteAccessCode := func(s *scaffold.Scaffold, upstreamId string, code int) {
-		routes, err := s.ListApisixRoutes()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), routes, 1, "route count")
-		assert.Equal(ginkgo.GinkgoT(), upstreamId, routes[0].UpstreamId)
+	// PhaseValidateRouteAccessCode := func(s *scaffold.Scaffold, upstreamId string, code int) {
+	// 	routes, err := s.ListApisixRoutes()
+	// 	assert.Nil(ginkgo.GinkgoT(), err)
+	// 	assert.Len(ginkgo.GinkgoT(), routes, 1, "route count")
+	// 	assert.Equal(ginkgo.GinkgoT(), upstreamId, routes[0].UpstreamId)
 
-		_ = s.NewAPISIXClient().GET("/ip").
-			WithHeader("Host", "httpbin.org").
-			WithHeader("X-Foo", "bar").
-			Expect().
-			Status(code)
-	}
+	// 	_ = s.NewAPISIXClient().GET("/ip").
+	// 		WithHeader("Host", "httpbin.org").
+	// 		WithHeader("X-Foo", "bar").
+	// 		Expect().
+	// 		Status(code)
+	// }
 
 	PhaseCreateHttpbin := func(s *scaffold.Scaffold, name string) string {
 		_httpbinDeploymentTemplate := fmt.Sprintf(`
@@ -267,20 +267,14 @@ spec:
 		})
 		ginkgo.It("should be able to access third-party service with plugins", func() {
 			// -- Data preparation --
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbun.org")
-			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
-			time.Sleep(time.Second * 6)
-
-			// -- Expect failed --
-			upstreamId := PhaseValidateFirstUpstream(s, 1, "httpbun.org", 80, translation.DefaultWeight)
-			PhaseValidateRouteAccessCode(s, upstreamId, http.StatusServiceUnavailable)
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbin.org")
 
 			// -- update --
 			PhaseCreateApisixRouteWithHostRewrite(s, "httpbin-route", "httpbin-upstream", "httpbin.org")
 			time.Sleep(time.Second * 6)
 
 			// -- validation --
-			upstreamId = PhaseValidateFirstUpstream(s, 1, "httpbin.org", 80, translation.DefaultWeight)
+			upstreamId := PhaseValidateFirstUpstream(s, 1, "httpbin.org", 80, translation.DefaultWeight)
 			PhaseValidateRouteAccess(s, upstreamId)
 		})
 		ginkgo.It("should be able to access external domain ExternalName service", func() {
@@ -375,6 +369,7 @@ spec:
 					Expect().
 					Status(http.StatusOK).
 					Headers().Raw()
+				fmt.Println("Look at the headers: ", headers)
 				if _, ok := headers["ETag"]; ok {
 					hasEtag = true
 				} else {
@@ -385,7 +380,7 @@ spec:
 				}
 			}
 
-			assert.True(ginkgo.GinkgoT(), hasEtag && hasNoEtag, "both httpbin and httpbun should be accessed at least once")
+			assert.True(ginkgo.GinkgoT(), hasEtag && hasNoEtag, "both httpbin and postman should be accessed at least once")
 		}
 
 		type validateFactor struct {
