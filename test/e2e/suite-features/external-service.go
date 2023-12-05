@@ -370,7 +370,7 @@ spec:
 					Status(http.StatusOK).
 					Headers().Raw()
 				fmt.Println("Look at the headers: ", headers)
-				if _, ok := headers["ETag"]; ok {
+				if _, ok := headers["Etag"]; ok {
 					hasEtag = true
 				} else {
 					hasNoEtag = true
