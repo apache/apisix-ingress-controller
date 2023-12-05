@@ -271,13 +271,13 @@ spec:
 		})
 		ginkgo.It("should be able to access third-party service with plugins", func() {
 			// -- Data preparation --
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbin.org")
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbun.org")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
 			time.Sleep(time.Second * 6)
 
 			// -- Expect failed --
-			upstreamId := PhaseValidateFirstUpstream(s, 1, "httpbin.org", 80, translation.DefaultWeight)
-			PhaseValidateRouteAccessCode(s, upstreamId, http.StatusBadGateway)
+			upstreamId := PhaseValidateFirstUpstream(s, 1, "httpbun.org", 80, translation.DefaultWeight)
+			PhaseValidateRouteAccessCode(s, upstreamId, http.StatusServiceUnavailable)
 
 			// -- update --
 			PhaseCreateApisixRouteWithHostRewrite(s, "httpbin-route", "httpbin-upstream", "httpbin.org")
@@ -369,9 +369,9 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 		}
 
-		validateHttpbinAndHttpbunAreAccessed := func() {
-			hasPoweredBy := false   // httpbun.org
-			hasNoPoweredBy := false // httpbin.org
+		validateHttpbinAndPostmanAreAccessed := func() {
+			hasEtag := false   // postman-echo.com
+			hasNoEtag := false // httpbin.org
 			for i := 0; i < 20; i++ {
 				headers := s.NewAPISIXClient().GET("/ip").
 					WithHeader("Host", "httpbin.org").
@@ -387,7 +387,7 @@ spec:
 							switch vv := header.(type) {
 							case string:
 								if strings.HasPrefix(vv, "httpbun") {
-									hasPoweredBy = true
+									hasEtag = true
 									break forloop
 								}
 							default:
@@ -398,14 +398,14 @@ spec:
 						log.Errorw("type", zap.Any("type", reflect.TypeOf(val)))
 					}
 				} else {
-					hasNoPoweredBy = true
+					hasNoEtag = true
 				}
-				if hasPoweredBy && hasNoPoweredBy {
+				if hasEtag && hasNoEtag {
 					break
 				}
 			}
 
-			assert.True(ginkgo.GinkgoT(), hasPoweredBy && hasNoPoweredBy, "both httpbin and httpbun should be accessed at least once")
+			assert.True(ginkgo.GinkgoT(), hasEtag && hasNoEtag, "both httpbin and httpbun should be accessed at least once")
 		}
 
 		type validateFactor struct {
@@ -436,7 +436,7 @@ spec:
 			assert.Len(ginkgo.GinkgoT(), routes, 1, "route count")
 			assert.Equal(ginkgo.GinkgoT(), ups[0].ID, routes[0].UpstreamId)
 
-			validateHttpbinAndHttpbunAreAccessed()
+			validateHttpbinAndPostmanAreAccessed()
 		}
 
 		// Note: expected nodes has unique host
@@ -462,14 +462,14 @@ spec:
 			assert.Len(ginkgo.GinkgoT(), routes, 1, "route count")
 			assert.Equal(ginkgo.GinkgoT(), upstreamId, routes[0].UpstreamId)
 
-			validateHttpbinAndHttpbunAreAccessed()
+			validateHttpbinAndPostmanAreAccessed()
 		}
 
 		ginkgo.It("should be able to access multiple external services", func() {
 			// -- Data preparation --
 			PhaseCreateApisixUpstreamWithMultipleExternalNodes(s, "httpbin-upstream",
-				v2.ExternalTypeDomain, "httpbin.org", v2.ExternalTypeDomain, "httpbun.org")
-			PhaseCreateApisixRouteWithHostRewrite(s, "httpbin-route", "httpbin-upstream", "httpbun.org")
+				v2.ExternalTypeDomain, "httpbin.org", v2.ExternalTypeDomain, "postman-echo.com")
+			PhaseCreateApisixRouteWithHostRewrite(s, "httpbin-route", "httpbin-upstream", "postman-echo.com")
 			time.Sleep(time.Second * 6)
 
 			// -- validation --
@@ -478,7 +478,7 @@ spec:
 					port:   80,
 					weight: translation.DefaultWeight,
 				},
-				"httpbun.org": {
+				"postman-echo.com": {
 					port:   80,
 					weight: translation.DefaultWeight,
 				},
