@@ -465,8 +465,8 @@ spec:
 			// -- Data preparation --
 			PhaseCreateHttpbin(s, "httpbin-temp")
 			time.Sleep(time.Second * 10)
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbin.org")
-			PhaseCreateApisixRouteWithHostRewriteAndBackend(s, "httpbin-route", "httpbin-upstream", "httpbin.org", "httpbin-temp", 80)
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "postman-echo.com")
+			PhaseCreateApisixRouteWithHostRewriteAndBackend(s, "httpbin-route", "httpbin-upstream", "postman-echo.com", "httpbin-temp", 80)
 			time.Sleep(time.Second * 6)
 
 			svc, err := s.GetServiceByName("httpbin-temp")
