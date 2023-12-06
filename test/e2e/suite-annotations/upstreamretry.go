@@ -30,7 +30,7 @@ var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1 upstream",
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("1 retry and short timeout", func() {
 		ing := `
-apiVersion: v1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
@@ -63,7 +63,7 @@ spec:
 
 	ginkgo.It("1 retry and long timeout", func() {
 		ing := `
-apiVersion: v1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
@@ -97,7 +97,7 @@ spec:
 
 	ginkgo.It("2 retry and short timeout", func() {
 		ing := `
-apiVersion: v1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
