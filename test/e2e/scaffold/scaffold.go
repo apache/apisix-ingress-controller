@@ -530,7 +530,7 @@ func (s *Scaffold) DeployRetryTimeout() {
 	//Testing retry
 	//With 1 retry and a timeout of 5 sec, it should return 504(timeout)
 	//With 2 retry and a timeout of 5 sec, it should success
-	err := s.NewDeploymentForRetryTimeoutTest(2, 1)
+	err := s.NewDeploymentForRetryTimeoutTest()
 	assert.Nil(s.t, err, "error creating deployments for retry and timeout")
 	err = s.NewServiceForRetryTimeoutTest()
 	assert.Nil(s.t, err, "error creating services for retry and timeout")

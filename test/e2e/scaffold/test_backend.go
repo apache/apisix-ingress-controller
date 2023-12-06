@@ -99,7 +99,7 @@ kind: Deployment
 metadata:
   name: gobackend-deployment2
 spec:
-  replicas: 1  # You can adjust the number of replicas as needed
+  replicas: 2  # You can adjust the number of replicas as needed
   selector:
     matchLabels:
       app: gobackend
@@ -123,7 +123,7 @@ kind: Deployment
 metadata:
   name: gobackend-deployment1
 spec:
-  replicas: %d  # You can adjust the number of replicas as needed
+  replicas: 1  # You can adjust the number of replicas as needed
   selector:
     matchLabels:
       app: gobackend
@@ -248,18 +248,11 @@ func (s *Scaffold) NewServiceForRetryTimeoutTest() error {
 	return nil
 }
 
-func (s *Scaffold) NewDeploymentForRetryTimeoutTest(replicasWithTimeout int, replicasWithoutTimeout int) error {
-	if replicasWithTimeout == 0 {
-		replicasWithTimeout = 1
-	}
-	if replicasWithoutTimeout == 0 {
-		replicasWithoutTimeout = 1
-	}
-
-	if err := s.CreateResourceFromString(fmt.Sprintf(_testTimeoutAndRetryDeploymentWithTimeout, replicasWithTimeout)); err != nil {
+func (s *Scaffold) NewDeploymentForRetryTimeoutTest() error {
+	if err := s.CreateResourceFromString(_testTimeoutAndRetryDeploymentWithTimeout); err != nil {
 		return err
 	}
-	if err := s.CreateResourceFromString(fmt.Sprintf(_testTimeoutAndRetryDeploymentWithNoTimeout, replicasWithoutTimeout)); err != nil {
+	if err := s.CreateResourceFromString(_testTimeoutAndRetryDeploymentWithTimeout); err != nil {
 		return err
 	}
 	return nil
