@@ -47,8 +47,10 @@ spec:
       - path: /retry
         pathType: Exact
         backend:
-          serviceName: gobackend-service
-          servicePort: 9280
+		  service:
+		    name: gobackend-service
+			port:
+				number: 9280
 `
 		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 		err := s.EnsureNumApisixUpstreamsCreated(1)
@@ -80,8 +82,10 @@ spec:
       - path: /retry
         pathType: Exact
         backend:
-          serviceName: gobackend-service
-          servicePort: 9280
+		  service:
+		    name: gobackend-service
+			port:
+				number: 9280
 `
 		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 		err := s.EnsureNumApisixUpstreamsCreated(1)
@@ -114,8 +118,10 @@ spec:
       - path: /retry
         pathType: Exact
         backend:
-          serviceName: gobackend-service
-          servicePort: 9280
+          service:
+		  	name: gobackend-service
+			port:
+			  number: 9280
 `
 		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 		err := s.EnsureNumApisixUpstreamsCreated(1)
