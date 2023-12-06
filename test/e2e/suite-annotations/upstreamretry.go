@@ -41,16 +41,16 @@ metadata:
 spec:
   ingressClassName: apisix
   rules:
-  - host: e2e.apisix.local
-    http:
-      paths:
-      - path: /retry
-        pathType: Exact
-        backend:
-		  service:
-		    name: gobackend-service
-			port:
-				number: 9280
+    - host: e2e.apisix.local
+      http:
+        paths:
+         - path: /retry
+           pathType: Exact
+           backend:
+             service:
+               name: gobackend-service
+               port:
+                 number: 9280
 `
 		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 		err := s.EnsureNumApisixUpstreamsCreated(1)
@@ -76,16 +76,16 @@ metadata:
 spec:
   ingressClassName: apisix
   rules:
-  - host: e2e.apisix.local
-    http:
-      paths:
-      - path: /retry
-        pathType: Exact
-        backend:
-		  service:
-		    name: gobackend-service
-			port:
-				number: 9280
+    - host: e2e.apisix.local
+      http:
+        paths:
+         - path: /retry
+           pathType: Exact
+           backend:
+             service:
+               name: gobackend-service
+               port:
+                 number: 9280
 `
 		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 		err := s.EnsureNumApisixUpstreamsCreated(1)
@@ -112,16 +112,16 @@ metadata:
 spec:
   ingressClassName: apisix
   rules:
-  - host: e2e.apisix.local
-    http:
-      paths:
-      - path: /retry
-        pathType: Exact
-        backend:
-          service:
-		  	name: gobackend-service
-			port:
-			  number: 9280
+    - host: e2e.apisix.local
+      http:
+        paths:
+         - path: /retry
+           pathType: Exact
+           backend:
+             service:
+               name: gobackend-service
+               port:
+                 number: 9280
 `
 		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 		err := s.EnsureNumApisixUpstreamsCreated(1)
