@@ -3,7 +3,7 @@ module github.com/apache/apisix-ingress-controller
 go 1.20
 
 require (
-	github.com/api7/etcd-adapter v0.2.2
+	github.com/api7/etcd-adapter v0.2.3
 	github.com/api7/gopkg v0.2.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/hashicorp/go-memdb v1.3.4
@@ -23,8 +23,8 @@ require (
 	gopkg.in/go-playground/pool.v3 v3.1.1
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.28.2
-	k8s.io/apimachinery v0.28.2
+	k8s.io/api v0.28.4
+	k8s.io/apimachinery v0.28.4
 	k8s.io/client-go v0.28.2
 	k8s.io/code-generator v0.28.2
 	sigs.k8s.io/controller-runtime v0.16.2
