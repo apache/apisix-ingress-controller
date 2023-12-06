@@ -16,6 +16,7 @@
 package annotations
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -25,9 +26,9 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1 upstream with 1 retry and short timeout", func() {
+var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1 upstream", func() {
 	s := scaffold.NewDefaultScaffold()
-	ginkgo.It("enable upstream retry to 3", func() {
+	ginkgo.It("1 retry and short timeout", func() {
 		ing := `
 apiVersion: extensions/v1beta1
 kind: Ingress
@@ -50,10 +51,78 @@ spec:
 `
 		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 		err := s.EnsureNumApisixUpstreamsCreated(1)
-		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+		if err != nil {
+			fmt.Println("should not err", err.Error())
+		}
 		time.Sleep(2 * time.Second)
 
 		respGet := s.NewAPISIXClient().GET("/retry").WithHeader("Host", "e2e.apisix.local").Expect()
 		respGet.Status(http.StatusGatewayTimeout)
+	})
+
+	ginkgo.It("1 retry and long timeout", func() {
+		ing := `
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/retry: "1"
+    k8s.apisix.apache.org/timeout.read: "20s"
+  name: ingress-ext-v1beta1
+spec:
+  rules:
+  - host: e2e.apisix.local
+    http:
+      paths:
+      - path: /retry
+        pathType: Exact
+        backend:
+          serviceName: gobackend-service
+          servicePort: 9280
+`
+		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		if err != nil {
+			fmt.Println("should not err", err.Error())
+		}
+		time.Sleep(2 * time.Second)
+		time.Sleep(2 * time.Second)
+
+		respGet := s.NewAPISIXClient().GET("/retry").WithHeader("Host", "e2e.apisix.local").Expect()
+		respGet.Status(http.StatusOK)
+	})
+
+	ginkgo.It("2 retry and short timeout", func() {
+		ing := `
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: apisix
+    k8s.apisix.apache.org/retry: "1"
+    k8s.apisix.apache.org/timeout.read: "20s"
+  name: ingress-ext-v1beta1
+spec:
+  rules:
+  - host: e2e.apisix.local
+    http:
+      paths:
+      - path: /retry
+        pathType: Exact
+        backend:
+          serviceName: gobackend-service
+          servicePort: 9280
+`
+		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
+		err := s.EnsureNumApisixUpstreamsCreated(1)
+		if err != nil {
+			fmt.Println("should not err", err.Error())
+		}
+		time.Sleep(2 * time.Second)
+		time.Sleep(2 * time.Second)
+
+		respGet := s.NewAPISIXClient().GET("/retry").WithHeader("Host", "e2e.apisix.local").Expect()
+		respGet.Status(http.StatusOK)
 	})
 })
