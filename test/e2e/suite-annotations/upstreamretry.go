@@ -34,7 +34,6 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/retry: "1"
     k8s.apisix.apache.org/timeout.read: "2s"
   name: ingress-ext-v1beta1
@@ -69,7 +68,6 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/retry: "1"
     k8s.apisix.apache.org/timeout.read: "20s"
   name: ingress-ext-v1beta1
@@ -105,7 +103,6 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/retry: "2"
     k8s.apisix.apache.org/timeout.read: "2s"
   name: ingress-ext-v1beta1
