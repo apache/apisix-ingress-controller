@@ -39,6 +39,7 @@ metadata:
     k8s.apisix.apache.org/timeout.read: "2s"
   name: ingress-ext-v1beta1
 spec:
+  ingressClassName: apisix
   rules:
   - host: e2e.apisix.local
     http:
@@ -71,6 +72,7 @@ metadata:
     k8s.apisix.apache.org/timeout.read: "20s"
   name: ingress-ext-v1beta1
 spec:
+  ingressClassName: apisix
   rules:
   - host: e2e.apisix.local
     http:
@@ -100,10 +102,11 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/retry: "1"
-    k8s.apisix.apache.org/timeout.read: "20s"
+    k8s.apisix.apache.org/retry: "2"
+    k8s.apisix.apache.org/timeout.read: "2s"
   name: ingress-ext-v1beta1
 spec:
+  ingressClassName: apisix
   rules:
   - host: e2e.apisix.local
     http:
