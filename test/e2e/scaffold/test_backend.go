@@ -92,6 +92,68 @@ spec:
               name: "grpc-mtls"
               protocol: "TCP"
 `
+
+	_testTimeoutAndRetryDeploymentWithTimeout = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gobackend-deployment2
+spec:
+  replicas: 1  # You can adjust the number of replicas as needed
+  selector:
+    matchLabels:
+      app: gobackend
+  template:
+    metadata:
+      labels:
+        app: gobackend
+    spec:
+      containers:
+      - name: gobackend
+        imagePullPolicy: Always
+        image: revoly/gobackend
+        command: ["/app/gobackend", "fail"]
+        ports:
+        - containerPort: 9280
+`
+
+	_testTimeoutAndRetryDeploymentWithNoTimeout = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gobackend-deployment1
+spec:
+  replicas: %d  # You can adjust the number of replicas as needed
+  selector:
+    matchLabels:
+      app: gobackend
+  template:
+    metadata:
+      labels:
+        app: gobackend
+    spec:
+      containers:
+      - name: gobackend
+        imagePullPolicy: Always
+        image: revoly/gobackend
+        ports:
+        - containerPort: 9280
+`
+
+	_testTimeoutAndRetryService = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: gobackend-service
+spec:
+  selector:
+    app: gobackend
+  ports:
+    - protocol: TCP
+      port: 9280  
+      targetPort: 9280
+`
+
 	_testBackendService = `
 apiVersion: v1
 kind: Service
@@ -178,6 +240,30 @@ spec:
     targetPort: 53
 `
 )
+
+func (s *Scaffold) NewServiceForRetryTimeoutTest() error {
+	if err := s.CreateResourceFromString(_testTimeoutAndRetryService); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Scaffold) NewDeploymentForRetryTimeoutTest(replicasWithTimeout int, replicasWithoutTimeout int) error {
+	if replicasWithTimeout == 0 {
+		replicasWithTimeout = 1
+	}
+	if replicasWithoutTimeout == 0 {
+		replicasWithoutTimeout = 1
+	}
+
+	if err := s.CreateResourceFromString(fmt.Sprintf(_testTimeoutAndRetryDeploymentWithTimeout, replicasWithTimeout)); err != nil {
+		return err
+	}
+	if err := s.CreateResourceFromString(fmt.Sprintf(_testTimeoutAndRetryDeploymentWithNoTimeout, replicasWithoutTimeout)); err != nil {
+		return err
+	}
+	return nil
+}
 
 func (s *Scaffold) newTestBackend() (*corev1.Service, error) {
 	backendDeployment := fmt.Sprintf(s.FormatRegistry(_testBackendDeploymentTemplate), 1)

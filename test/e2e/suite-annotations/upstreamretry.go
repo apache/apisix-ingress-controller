@@ -25,7 +25,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1 upstream retry", func() {
+var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1 upstream with 1 retry and short timeout", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("enable upstream retry to 3", func() {
 		ing := `
@@ -34,7 +34,8 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/retry: "3"
+    k8s.apisix.apache.org/retry: "1"
+    k8s.apisix.apache.org/timeout.read: "2s"
   name: ingress-ext-v1beta1
 spec:
   rules:
@@ -44,8 +45,8 @@ spec:
       - path: /testupstream/retry
         pathType: Exact
         backend:
-          serviceName: test-backend-service-e2e-test
-          servicePort: 8080
+          serviceName: gobackend-service
+          servicePort: 9280
 `
 		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
 		err := s.EnsureNumApisixUpstreamsCreated(1)
@@ -53,6 +54,6 @@ spec:
 		time.Sleep(2 * time.Second)
 
 		respGet := s.NewAPISIXClient().GET("/testupstream/retry").WithHeader("Host", "e2e.apisix.local").Expect()
-		respGet.Status(http.StatusOK)
+		respGet.Status(http.StatusGatewayTimeout)
 	})
 })
