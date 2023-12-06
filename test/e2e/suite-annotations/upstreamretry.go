@@ -42,7 +42,7 @@ spec:
   - host: e2e.apisix.local
     http:
       paths:
-      - path: /testupstream/retry
+      - path: /retry
         pathType: Exact
         backend:
           serviceName: gobackend-service
@@ -53,7 +53,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 		time.Sleep(2 * time.Second)
 
-		respGet := s.NewAPISIXClient().GET("/testupstream/retry").WithHeader("Host", "e2e.apisix.local").Expect()
+		respGet := s.NewAPISIXClient().GET("/retry").WithHeader("Host", "e2e.apisix.local").Expect()
 		respGet.Status(http.StatusGatewayTimeout)
 	})
 })
