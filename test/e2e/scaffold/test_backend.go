@@ -252,7 +252,7 @@ func (s *Scaffold) NewDeploymentForRetryTimeoutTest() error {
 	if err := s.CreateResourceFromString(_testTimeoutAndRetryDeploymentWithTimeout); err != nil {
 		return err
 	}
-	if err := s.CreateResourceFromString(_testTimeoutAndRetryDeploymentWithTimeout); err != nil {
+	if err := s.CreateResourceFromString(_testTimeoutAndRetryDeploymentWithNoTimeout); err != nil {
 		return err
 	}
 	return nil
