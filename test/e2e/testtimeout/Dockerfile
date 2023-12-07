@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN make build
+RUN go build -o gobackend .
 
 EXPOSE 9280
 
