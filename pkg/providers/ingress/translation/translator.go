@@ -207,7 +207,6 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 				if ingress.Upstream.Retry > 0 {
 					retry := ingress.Upstream.Retry
 					ups.Retries = &retry
-					fmt.Println("set retries", *ups.Retries)
 				}
 				if ups.Timeout == nil {
 					ups.Timeout = &apisixv1.UpstreamTimeout{
@@ -221,7 +220,6 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 				}
 				if ingress.Upstream.TimeoutRead > 0 {
 					ups.Timeout.Read = ingress.Upstream.TimeoutRead
-					fmt.Println("set read rimeiut", ups.Timeout.Read)
 				}
 				if ingress.Upstream.TimeoutSend > 0 {
 					ups.Timeout.Send = ingress.Upstream.TimeoutSend
@@ -384,7 +382,6 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 			if ingress.Upstream.Retry > 0 {
 				retry := ingress.Upstream.Retry
 				ups.Retries = &retry
-				fmt.Println("set retries", *ups.Retries)
 			}
 			if ups.Timeout == nil {
 				ups.Timeout = &apisixv1.UpstreamTimeout{
@@ -398,7 +395,6 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 			}
 			if ingress.Upstream.TimeoutRead > 0 {
 				ups.Timeout.Read = ingress.Upstream.TimeoutRead
-				fmt.Println("set read rimeiut", ups.Timeout.Read)
 			}
 			if ingress.Upstream.TimeoutSend > 0 {
 				ups.Timeout.Send = ingress.Upstream.TimeoutSend

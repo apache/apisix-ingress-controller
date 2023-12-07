@@ -51,35 +51,29 @@ func (u *Upstream) Parse(e annotations.Extractor) (interface{}, error) {
 
 	retry := e.GetStringAnnotation(annotations.AnnotationsUpstreamRetry)
 	if retry != "" {
-		fmt.Println("GOT THE RETRY ", retry)
 		t, err := strconv.Atoi(retry)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse retry as an integer: %s", err.Error())
 		}
 		u.Retry = t
-		fmt.Println("u.retry ", t)
 	}
 
 	timeoutConnect := strings.TrimSuffix(e.GetStringAnnotation(annotations.AnnotationsUpstreamTimeoutConnect), "s")
 	if timeoutConnect != "" {
-		fmt.Println("GOT THE TIMEOUTCONN ", timeoutConnect)
 		t, err := strconv.Atoi(timeoutConnect)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse timeout as an integer: %s", err.Error())
 		}
 		u.TimeoutConnect = t
-		fmt.Println("u.timcon ", t)
 	}
 
 	timeoutRead := strings.TrimSuffix(e.GetStringAnnotation(annotations.AnnotationsUpstreamTimeoutRead), "s")
 	if timeoutRead != "" {
-		fmt.Println("GOT THE TIMEOUTREAD ", timeoutRead)
 		t, err := strconv.Atoi(timeoutRead)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse timeout as an integer: %s", err.Error())
 		}
 		u.TimeoutRead = t
-		fmt.Println("u.read ", t)
 	}
 
 	timeoutSend := strings.TrimSuffix(e.GetStringAnnotation(annotations.AnnotationsUpstreamTimeoutSend), "s")
