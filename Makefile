@@ -103,6 +103,7 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker tag kennethreitz/httpbin $(REGISTRY)/httpbin:$(IMAGE_TAG)
 
 	docker build -t test-backend:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) ./test/e2e/testbackend
+	docker build -t test-timeout:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) ./test/e2e/testtimeout	
 	docker tag test-backend:$(IMAGE_TAG) $(REGISTRY)/test-backend:$(IMAGE_TAG)
 
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)

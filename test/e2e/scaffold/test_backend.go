@@ -111,7 +111,7 @@ spec:
       containers:
       - name: gobackend
         imagePullPolicy: Always
-        image: revoly/gobackend
+        image: localhost:5000/test-timeout:dev
         command: ["/app/gobackend", "fail"]
         ports:
         - containerPort: 9280
@@ -135,7 +135,7 @@ spec:
       containers:
       - name: gobackend
         imagePullPolicy: Always
-        image: revoly/gobackend
+        image: localhost:5000/test-timeout:dev
         ports:
         - containerPort: 9280
 `

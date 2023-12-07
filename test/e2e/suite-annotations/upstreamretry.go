@@ -16,7 +16,6 @@
 package annotations
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -51,12 +50,11 @@ spec:
                port:
                  number: 9280
 `
-		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		if err != nil {
-			fmt.Println("should not err", err.Error())
-		}
-		time.Sleep(2 * time.Second)
+		err := s.CreateResourceFromString(ing)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		time.Sleep(5 * time.Second)
+		err = s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "checking upstreams")
 		time.Sleep(2 * time.Second)
 
 		respGet := s.NewAPISIXClient().GET("/retry").WithHeader("Host", "e2e.apisix.local").Expect()
@@ -86,12 +84,11 @@ spec:
                port:
                  number: 9280
 `
-		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		if err != nil {
-			fmt.Println("should not err", err.Error())
-		}
-		time.Sleep(2 * time.Second)
+		err := s.CreateResourceFromString(ing)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		time.Sleep(5 * time.Second)
+		err = s.EnsureNumApisixUpstreamsCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "checking upstreams")
 		time.Sleep(2 * time.Second)
 
 		respGet := s.NewAPISIXClient().GET("/retry").WithHeader("Host", "e2e.apisix.local").Expect()
