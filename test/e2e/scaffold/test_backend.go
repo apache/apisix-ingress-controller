@@ -73,9 +73,6 @@ spec:
             - containerPort: 80
               name: "http"
               protocol: "TCP"
-            - containerPort: 8080
-              name: "http2"
-              protocol: "TCP"
             - containerPort: 443
               name: "https"
               protocol: "TCP"
@@ -167,10 +164,6 @@ spec:
       port: 80
       protocol: TCP
       targetPort: 80
-    - name: http2
-      port: 8080
-      protocol: TCP
-      targetPort: 8080
     - name: https
       port: 443
       protocol: TCP
