@@ -51,12 +51,9 @@ spec:
                port:
                  number: 9280
 `
-		assert.NoError(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-		err := s.EnsureNumApisixUpstreamsCreated(1)
-		if err != nil {
-			fmt.Println("should not err", err.Error())
-		}
-		time.Sleep(2 * time.Second)
+		err := s.CreateResourceFromString(ing)
+		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
+		time.Sleep(5 * time.Second)
 
 		respGet := s.NewAPISIXClient().GET("/retry").WithHeader("Host", "e2e.apisix.local").Expect()
 		respGet.Status(http.StatusGatewayTimeout)
