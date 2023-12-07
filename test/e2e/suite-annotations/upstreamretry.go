@@ -28,38 +28,7 @@ import (
 
 var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1 upstream", func() {
 	s := scaffold.NewDefaultScaffold()
-	ginkgo.It("1 retry and short timeout", func() {
-		ing := `
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  annotations:
-    k8s.apisix.apache.org/retry: "1"
-    k8s.apisix.apache.org/timeout.read: "2s"
-  name: ingress-ext-v1beta1
-spec:
-  ingressClassName: apisix
-  rules:
-    - host: e2e.apisix.local
-      http:
-        paths:
-         - path: /retry
-           pathType: Exact
-           backend:
-             service:
-               name: gobackend-service
-               port:
-                 number: 9280
-`
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
-
-		respGet := s.NewAPISIXClient().GET("/retry").WithHeader("Host", "e2e.apisix.local").Expect()
-		respGet.Status(http.StatusGatewayTimeout)
-	})
-
-	ginkgo.It("1 retry and long timeout", func() {
+	ginkgo.It("Test timeout: 1 retry and long timeout", func() {
 		ing := `
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -94,7 +63,7 @@ spec:
 		respGet.Status(http.StatusOK)
 	})
 
-	ginkgo.It("2 retry and short timeout", func() {
+	ginkgo.It("Test retry: 2 retry and short timeout", func() {
 		ing := `
 apiVersion: networking.k8s.io/v1
 kind: Ingress
