@@ -470,6 +470,8 @@ spec:
             - --etcd-server-enabled=%t
             - --etcd-server-listen-address
             - ":2379"
+            - "--ingress-publish-service"
+            - "apisix-service-e2e-test"
           volumeMounts:
             - name: admission-webhook
               mountPath: /etc/webhook/certs
