@@ -111,7 +111,7 @@ spec:
       containers:
       - name: gobackend
         imagePullPolicy: IfNotPresent
-        image: "localhost:5000/test-timeout:dev"
+        image: "127.0.0.1:5000/test-timeout:dev"
         command: ["/app/gobackend", "fail"]
         ports:
         - containerPort: 9280
@@ -135,7 +135,7 @@ spec:
       containers:
       - name: gobackend
         imagePullPolicy: IfNotPresent
-        image: "localhost:5000/test-timeout:dev"
+        image: "127.0.0.1:5000/test-timeout:dev"
         ports:
         - containerPort: 9280
 `
