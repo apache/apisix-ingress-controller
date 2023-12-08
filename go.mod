@@ -3,7 +3,7 @@ module github.com/apache/apisix-ingress-controller
 go 1.20
 
 require (
-	github.com/api7/etcd-adapter v0.2.2
+	github.com/api7/etcd-adapter v0.2.3
 	github.com/api7/gopkg v0.2.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/hashicorp/go-memdb v1.3.4
@@ -18,16 +18,16 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.uber.org/multierr v1.11.0
-	go.uber.org/zap v1.25.0
-	golang.org/x/net v0.14.0
+	go.uber.org/zap v1.26.0
+	golang.org/x/net v0.17.0
 	gopkg.in/go-playground/pool.v3 v3.1.1
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.28.1
-	k8s.io/apimachinery v0.28.1
-	k8s.io/client-go v0.28.1
-	k8s.io/code-generator v0.28.1
-	sigs.k8s.io/controller-runtime v0.16.1
+	k8s.io/api v0.28.4
+	k8s.io/apimachinery v0.28.4
+	k8s.io/client-go v0.28.2
+	k8s.io/code-generator v0.28.2
+	sigs.k8s.io/controller-runtime v0.16.2
 	sigs.k8s.io/gateway-api v0.8.0
 	sigs.k8s.io/yaml v1.3.0
 )
@@ -90,12 +90,12 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.9 // indirect
 	golang.org/x/arch v0.3.0 // indirect
-	golang.org/x/crypto v0.12.0 // indirect
+	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/oauth2 v0.8.0 // indirect
-	golang.org/x/sys v0.11.0 // indirect
-	golang.org/x/term v0.11.0 // indirect
-	golang.org/x/text v0.12.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/term v0.13.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.12.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect

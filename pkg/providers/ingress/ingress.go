@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -335,7 +336,9 @@ func (c *ingressController) onAdd(obj interface{}) {
 func (c *ingressController) onUpdate(oldObj, newObj interface{}) {
 	prev := kube.MustNewIngress(oldObj)
 	curr := kube.MustNewIngress(newObj)
-	if prev.ResourceVersion() >= curr.ResourceVersion() {
+	oldRV, _ := strconv.ParseInt(prev.ResourceVersion(), 0, 64)
+	newRV, _ := strconv.ParseInt(curr.ResourceVersion(), 0, 64)
+	if oldRV >= newRV {
 		return
 	}
 	// Updates triggered by status are ignored.
@@ -457,7 +460,9 @@ func (c *ingressController) isIngressEffective(ing kube.Ingress) bool {
 	return false
 }
 
-func (c *ingressController) ResourceSync() {
+// ResourceSync syncs Ingress resources within namespace to workqueue.
+// If namespace is "", it syncs all namespaces ingress resources.
+func (c *ingressController) ResourceSync(namespace string) {
 	objs := c.IngressInformer.GetIndexer().List()
 	for _, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
@@ -466,6 +471,17 @@ func (c *ingressController) ResourceSync() {
 			continue
 		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
+			continue
+		}
+		ns, _, err := cache.SplitMetaNamespaceKey(key)
+		if err != nil {
+			log.Errorw("split ApisixRoute meta key failed",
+				zap.Error(err),
+				zap.String("key", key),
+			)
+			continue
+		}
+		if namespace != "" && ns != namespace {
 			continue
 		}
 		ing := kube.MustNewIngress(obj)

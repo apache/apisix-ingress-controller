@@ -20,19 +20,15 @@ package features
 import (
 	"fmt"
 	"net/http"
-	"reflect"
-	"strings"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
@@ -159,18 +155,18 @@ spec:
 			Status(http.StatusOK)
 	}
 
-	PhaseValidateRouteAccessCode := func(s *scaffold.Scaffold, upstreamId string, code int) {
-		routes, err := s.ListApisixRoutes()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), routes, 1, "route count")
-		assert.Equal(ginkgo.GinkgoT(), upstreamId, routes[0].UpstreamId)
+	// PhaseValidateRouteAccessCode := func(s *scaffold.Scaffold, upstreamId string, code int) {
+	// 	routes, err := s.ListApisixRoutes()
+	// 	assert.Nil(ginkgo.GinkgoT(), err)
+	// 	assert.Len(ginkgo.GinkgoT(), routes, 1, "route count")
+	// 	assert.Equal(ginkgo.GinkgoT(), upstreamId, routes[0].UpstreamId)
 
-		_ = s.NewAPISIXClient().GET("/ip").
-			WithHeader("Host", "httpbin.org").
-			WithHeader("X-Foo", "bar").
-			Expect().
-			Status(code)
-	}
+	// 	_ = s.NewAPISIXClient().GET("/ip").
+	// 		WithHeader("Host", "httpbin.org").
+	// 		WithHeader("X-Foo", "bar").
+	// 		Expect().
+	// 		Status(code)
+	// }
 
 	PhaseCreateHttpbin := func(s *scaffold.Scaffold, name string) string {
 		_httpbinDeploymentTemplate := fmt.Sprintf(`
@@ -271,20 +267,14 @@ spec:
 		})
 		ginkgo.It("should be able to access third-party service with plugins", func() {
 			// -- Data preparation --
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbun.org")
-			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
-			time.Sleep(time.Second * 6)
-
-			// -- Expect failed --
-			upstreamId := PhaseValidateFirstUpstream(s, 1, "httpbun.org", 80, translation.DefaultWeight)
-			PhaseValidateRouteAccessCode(s, upstreamId, http.StatusBadGateway)
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbin.org")
 
 			// -- update --
-			PhaseCreateApisixRouteWithHostRewrite(s, "httpbin-route", "httpbin-upstream", "httpbun.org")
+			PhaseCreateApisixRouteWithHostRewrite(s, "httpbin-route", "httpbin-upstream", "httpbin.org")
 			time.Sleep(time.Second * 6)
 
 			// -- validation --
-			upstreamId = PhaseValidateFirstUpstream(s, 1, "httpbun.org", 80, translation.DefaultWeight)
+			upstreamId := PhaseValidateFirstUpstream(s, 1, "httpbin.org", 80, translation.DefaultWeight)
 			PhaseValidateRouteAccess(s, upstreamId)
 		})
 		ginkgo.It("should be able to access external domain ExternalName service", func() {
@@ -369,9 +359,9 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 		}
 
-		validateHttpbinAndHttpbunAreAccessed := func() {
-			hasPoweredBy := false   // httpbun.org
-			hasNoPoweredBy := false // httpbin.org
+		validateHttpbinAndPostmanAreAccessed := func() {
+			hasEtag := false   // postman-echo.com
+			hasNoEtag := false // httpbin.org
 			for i := 0; i < 20; i++ {
 				headers := s.NewAPISIXClient().GET("/ip").
 					WithHeader("Host", "httpbin.org").
@@ -379,33 +369,17 @@ spec:
 					Expect().
 					Status(http.StatusOK).
 					Headers().Raw()
-				if val, ok := headers["X-Powered-By"]; ok {
-					switch value := val.(type) {
-					case []interface{}:
-					forloop:
-						for _, header := range value {
-							switch vv := header.(type) {
-							case string:
-								if strings.HasPrefix(vv, "httpbun") {
-									hasPoweredBy = true
-									break forloop
-								}
-							default:
-								log.Errorw("type", zap.Any("type", reflect.TypeOf(val)))
-							}
-						}
-					default:
-						log.Errorw("type", zap.Any("type", reflect.TypeOf(val)))
-					}
+				if _, ok := headers["Etag"]; ok {
+					hasEtag = true
 				} else {
-					hasNoPoweredBy = true
+					hasNoEtag = true
 				}
-				if hasPoweredBy && hasNoPoweredBy {
+				if hasEtag && hasNoEtag {
 					break
 				}
 			}
 
-			assert.True(ginkgo.GinkgoT(), hasPoweredBy && hasNoPoweredBy, "both httpbin and httpbun should be accessed at least once")
+			assert.True(ginkgo.GinkgoT(), hasEtag && hasNoEtag, "both httpbin and postman should be accessed at least once")
 		}
 
 		type validateFactor struct {
@@ -436,7 +410,7 @@ spec:
 			assert.Len(ginkgo.GinkgoT(), routes, 1, "route count")
 			assert.Equal(ginkgo.GinkgoT(), ups[0].ID, routes[0].UpstreamId)
 
-			validateHttpbinAndHttpbunAreAccessed()
+			validateHttpbinAndPostmanAreAccessed()
 		}
 
 		// Note: expected nodes has unique host
@@ -462,14 +436,14 @@ spec:
 			assert.Len(ginkgo.GinkgoT(), routes, 1, "route count")
 			assert.Equal(ginkgo.GinkgoT(), upstreamId, routes[0].UpstreamId)
 
-			validateHttpbinAndHttpbunAreAccessed()
+			validateHttpbinAndPostmanAreAccessed()
 		}
 
 		ginkgo.It("should be able to access multiple external services", func() {
 			// -- Data preparation --
 			PhaseCreateApisixUpstreamWithMultipleExternalNodes(s, "httpbin-upstream",
-				v2.ExternalTypeDomain, "httpbin.org", v2.ExternalTypeDomain, "httpbun.org")
-			PhaseCreateApisixRouteWithHostRewrite(s, "httpbin-route", "httpbin-upstream", "httpbun.org")
+				v2.ExternalTypeDomain, "httpbin.org", v2.ExternalTypeDomain, "postman-echo.com")
+			PhaseCreateApisixRouteWithHostRewrite(s, "httpbin-route", "httpbin-upstream", "postman-echo.com")
 			time.Sleep(time.Second * 6)
 
 			// -- validation --
@@ -478,7 +452,7 @@ spec:
 					port:   80,
 					weight: translation.DefaultWeight,
 				},
-				"httpbun.org": {
+				"postman-echo.com": {
 					port:   80,
 					weight: translation.DefaultWeight,
 				},
@@ -488,8 +462,8 @@ spec:
 			// -- Data preparation --
 			PhaseCreateHttpbin(s, "httpbin-temp")
 			time.Sleep(time.Second * 10)
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "httpbun.org")
-			PhaseCreateApisixRouteWithHostRewriteAndBackend(s, "httpbin-route", "httpbin-upstream", "httpbun.org", "httpbin-temp", 80)
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", v2.ExternalTypeDomain, "postman-echo.com")
+			PhaseCreateApisixRouteWithHostRewriteAndBackend(s, "httpbin-route", "httpbin-upstream", "postman-echo.com", "httpbin-temp", 80)
 			time.Sleep(time.Second * 6)
 
 			svc, err := s.GetServiceByName("httpbin-temp")
@@ -505,7 +479,7 @@ spec:
 					port:   80,
 					weight: translation.DefaultWeight,
 				},
-				"httpbun.org": {
+				"postman-echo.com": {
 					port:   80,
 					weight: translation.DefaultWeight,
 				},

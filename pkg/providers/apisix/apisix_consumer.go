@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"time"
 
 	"go.uber.org/zap"
@@ -243,7 +244,9 @@ func (c *apisixConsumerController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorw("found ApisixConsumer resource with bad type", zap.Error(err))
 		return
 	}
-	if prev.ResourceVersion() >= curr.ResourceVersion() {
+	oldRV, _ := strconv.ParseInt(prev.ResourceVersion(), 0, 64)
+	newRV, _ := strconv.ParseInt(curr.ResourceVersion(), 0, 64)
+	if oldRV >= newRV {
 		return
 	}
 	// Updates triggered by status are ignored.
@@ -324,7 +327,9 @@ func (c *apisixConsumerController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("consumer", "delete")
 }
 
-func (c *apisixConsumerController) ResourceSync(interval time.Duration) {
+// ResourceSync syncs ApisixConsumer resources within namespace to workqueue.
+// If namespace is "", it syncs all namespaces ApisixConsumer resources.
+func (c *apisixConsumerController) ResourceSync(interval time.Duration, namespace string) {
 	objs := c.ApisixConsumerInformer.GetIndexer().List()
 	delay := GetSyncDelay(interval, len(objs))
 
@@ -335,6 +340,17 @@ func (c *apisixConsumerController) ResourceSync(interval time.Duration) {
 			continue
 		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
+			continue
+		}
+		ns, _, err := cache.SplitMetaNamespaceKey(key)
+		if err != nil {
+			log.Errorw("split ApisixRoute meta key failed",
+				zap.Error(err),
+				zap.String("key", key),
+			)
+			continue
+		}
+		if namespace != "" && ns != namespace {
 			continue
 		}
 		ac, err := kube.NewApisixConsumer(obj)

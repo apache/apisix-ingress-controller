@@ -16,21 +16,26 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-name: 'Dependency Review'
-on: 
-  pull_request:
-    branches:
-      - master
-      - 1.7.0
+name-template: 'v$NEXT_PATCH_VERSION 🌈'
+tag-template: 'v$NEXT_PATCH_VERSION'
+categories:
+  - title: '🚀 Features'
+    labels:
+      - 'feature'
+      - 'enhancement'
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'bugfix'
+      - 'bug'
+  - title: '🧰 Maintenance'
+    label: 'area/dependencies'
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+template: |
+  ## What's New
+  $CHANGES
 
-permissions:
-  contents: read
+  ## 👨🏽‍💻 Contributors
 
-jobs:
-  dependency-review:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+  Thank you to our contributors for making this release possible:
+  $CONTRIBUTORS
+  

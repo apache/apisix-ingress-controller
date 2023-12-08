@@ -16,21 +16,23 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-name: 'Dependency Review'
-on: 
-  pull_request:
+name: Release Drafter
+
+on:
+  push:
     branches:
       - master
-      - 1.7.0
-
-permissions:
-  contents: read
-
+    paths-ignore:
+      - '.github/**'
 jobs:
-  dependency-review:
-    runs-on: ubuntu-latest
+  update_release_draft:
+    if: github.repository == 'apache/apisix-ingress-controller'
+    runs-on: ubuntu-22.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v3
+      - name: Drafting release
+        id: release_drafter
+        uses: release-drafter/release-drafter@v5
+        with:
+          config-name: release-drafter.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

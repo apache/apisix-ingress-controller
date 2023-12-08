@@ -30,6 +30,7 @@ updates:
       - "lingsamuel"
       - "AlinsRan"
       - "Gallardot"
+      - "Revolyssup"
   - package-ecosystem: "github-actions"
     directory: "/.github"
     schedule:
@@ -41,6 +42,7 @@ updates:
       - "lingsamuel"
       - "AlinsRan"
       - "Gallardot"
+      - "Revolyssup"
   - package-ecosystem: "gomod"
     directory: "/test/e2e"
     schedule:
@@ -52,3 +54,4 @@ updates:
       - "lingsamuel"
       - "AlinsRan"
       - "Gallardot"
+      - "Revolyssup"

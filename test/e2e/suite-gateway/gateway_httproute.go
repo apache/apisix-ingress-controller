@@ -395,7 +395,7 @@ spec:
     protocol: TCP
     targetPort: 8080
 `
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(echo), "creating echo server")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(s.FormatRegistry(echo)), "creating echo server")
 
 		httproute := fmt.Sprintf(`
 apiVersion: gateway.networking.k8s.io/v1beta1

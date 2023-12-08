@@ -67,6 +67,7 @@ const (
 type Controller struct {
 	name             string
 	namespace        string
+	resourceSyncCh   chan string
 	cfg              *config.Config
 	apisix           apisix.APISIX
 	apiServer        *api.Server
@@ -126,6 +127,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	c := &Controller{
 		name:             podName,
 		namespace:        podNamespace,
+		resourceSyncCh:   make(chan string),
 		cfg:              cfg,
 		apiServer:        apiSrv,
 		apisix:           client,
@@ -442,7 +444,7 @@ func (c *Controller) run(ctx context.Context) {
 		Elector:             c.elector,
 	}
 
-	c.namespaceProvider, err = namespace.NewWatchingNamespaceProvider(ctx, c.kubeClient, c.cfg)
+	c.namespaceProvider, err = namespace.NewWatchingNamespaceProvider(ctx, c.kubeClient, c.cfg, c.resourceSyncCh)
 	if err != nil {
 		ctx.Done()
 		return
@@ -606,12 +608,15 @@ func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.
 	}
 }
 
-func (c *Controller) syncAllResources(interval time.Duration) {
+func (c *Controller) syncResources(interval time.Duration, namespace string) {
 	e := utils.ParallelExecutor{}
 
-	e.Add(c.ingressProvider.ResourceSync)
 	e.Add(func() {
-		c.apisixProvider.ResourceSync(interval)
+		c.ingressProvider.ResourceSync(namespace)
+	})
+
+	e.Add(func() {
+		c.apisixProvider.ResourceSync(interval, namespace)
 	})
 
 	e.Wait()
@@ -633,9 +638,10 @@ func (c *Controller) resourceSyncLoop(ctx context.Context, interval time.Duratio
 	defer ticker.Stop()
 	for {
 		select {
+		case namespace := <-c.resourceSyncCh:
+			c.syncResources(0, namespace)
 		case <-ticker.C:
-			c.syncAllResources(interval)
-			continue
+			c.syncResources(interval, "")
 		case <-ctx.Done():
 			return
 		}
