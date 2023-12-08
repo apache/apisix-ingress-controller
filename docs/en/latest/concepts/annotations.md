@@ -416,7 +416,7 @@ spec:
 
 ## Upstream retries
 
-This annotation can be used to configure retries among multiple nodes in an upstream. You may want the proxy to retry when requests occur faults like transient network errors or service unavailable, by default the retry count is 1. You can change it by specifying the retries field.
+This annotation can be used to configure retries among multiple nodes in an upstream. You may want the proxy to retry when requests occur faults like transient network errors or service unavailable, By default the retry count is 1. You can change it by specifying the retries field.
 
 The following configuration configures the retries to 3, which indicates there'll be at most 3 requests sent to Kubernetes service httpbin's endpoints.
 
@@ -427,7 +427,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    k8s.apisix.apache.org/upstream.retries: "2"
+    k8s.apisix.apache.org/upstream.retries: "3"
   name: ingress-ext-v1beta1
 spec:
   ingressClassName: apisix
@@ -446,18 +446,18 @@ spec:
 
 ## Upstream timeout
 
-This annotation can be used to configure different types of timeout on an upstream. The default connect, read and send timeout are 60s, which might not be proper for some applications, just change them in the timeout field.
+This annotation can be used to configure different types of timeout on an upstream. The default connect, read and send timeout are 60s, which might not be proper for some applications.
 
-The below example sets the connect, read and timeout to 5s, 10s, 10s respectively.
+The below example sets the read, connect and send timeout to 5s, 10s, 10s respectively.
 
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    k8s.apisix.apache.org/upstream.retries: "5s"
-    k8s.apisix.apache.org/upstream.timeout.read: "10s"
-    k8s.apisix.apache.org/upstreamtimeout.connect: "10s"
+    k8s.apisix.apache.org/upstream.timeout.read.: "5s"
+    k8s.apisix.apache.org/upstream.timeout.connect: "10s"
+    k8s.apisix.apache.org/upstream.timeout.send: "10s"
   name: ingress-ext-v1beta1
 spec:
   ingressClassName: apisix
