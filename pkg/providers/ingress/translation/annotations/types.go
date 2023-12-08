@@ -29,10 +29,10 @@ const (
 	AnnotationsUpstreamScheme   = AnnotationsPrefix + "upstream-scheme"
 
 	//support retries and timeouts on upstream
-	AnnotationsUpstreamRetry          = AnnotationsPrefix + "retry"
-	AnnotationsUpstreamTimeoutConnect = AnnotationsPrefix + "timeout.connect"
-	AnnotationsUpstreamTimeoutRead    = AnnotationsPrefix + "timeout.read"
-	AnnotationsUpstreamTimeoutSend    = AnnotationsPrefix + "timeout.send"
+	AnnotationsUpstreamRetry          = AnnotationsPrefix + "upstream.retries"
+	AnnotationsUpstreamTimeoutConnect = AnnotationsPrefix + "upstream.timeout.connect"
+	AnnotationsUpstreamTimeoutRead    = AnnotationsPrefix + "upstream.timeout.read"
+	AnnotationsUpstreamTimeoutSend    = AnnotationsPrefix + "upstream.timeout.send"
 )
 
 const (
