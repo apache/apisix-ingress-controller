@@ -47,7 +47,7 @@ func (t *translator) TranslatePluginConfigV2(config *configv2.ApisixPluginConfig
 						zap.String("secretRef", plugin.SecretRef))
 
 					for key, value := range sec.Data {
-						utils.InsertKeyInMap(key, value, plugin.Config)
+						utils.InsertKeyInMap(key, string(value), plugin.Config)
 					}
 				}
 				pluginMap[plugin.Name] = plugin.Config

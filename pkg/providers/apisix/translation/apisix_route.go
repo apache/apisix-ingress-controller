@@ -104,7 +104,7 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 						zap.String("secretRef", plugin.SecretRef))
 
 					for key, value := range sec.Data {
-						utils.InsertKeyInMap(key, value, plugin.Config)
+						utils.InsertKeyInMap(key, string(value), plugin.Config)
 					}
 				}
 				pluginMap[plugin.Name] = plugin.Config
@@ -538,7 +538,7 @@ func (t *translator) translateStreamRouteV2(ctx *translation.TranslateContext, a
 						zap.Any("plugin", plugin.Name),
 						zap.String("secretRef", plugin.SecretRef))
 					for key, value := range sec.Data {
-						utils.InsertKeyInMap(key, value, plugin.Config)
+						utils.InsertKeyInMap(key, string(value), plugin.Config)
 					}
 				}
 				pluginMap[plugin.Name] = plugin.Config

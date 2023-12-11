@@ -18,7 +18,7 @@ import (
 	"strings"
 )
 
-// InsertKeyInMap takes a dot seperated string and recursively goes inside the destination
+// InsertKeyInMap takes a dot separated string and recursively goes inside the destination
 // to fill the value
 func InsertKeyInMap(key string, value interface{}, dest map[string]interface{}) {
 	if key == "" {
