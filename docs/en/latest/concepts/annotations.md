@@ -427,7 +427,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    k8s.apisix.apache.org/upstream.retries: "3"
+    k8s.apisix.apache.org/upstream-retries: "3"
   name: ingress-ext-v1beta1
 spec:
   ingressClassName: apisix
@@ -455,9 +455,9 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    k8s.apisix.apache.org/upstream.timeout.read.: "5s"
-    k8s.apisix.apache.org/upstream.timeout.connect: "10s"
-    k8s.apisix.apache.org/upstream.timeout.send: "10s"
+    k8s.apisix.apache.org/upstream-read-timeout.: "5s"
+    k8s.apisix.apache.org/upstream-connect-timeout: "10s"
+    k8s.apisix.apache.org/upstream-send-timeout: "10s"
   name: ingress-ext-v1beta1
 spec:
   ingressClassName: apisix
