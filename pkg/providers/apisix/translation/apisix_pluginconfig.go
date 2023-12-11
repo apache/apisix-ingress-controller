@@ -15,12 +15,15 @@
 package translation
 
 import (
+	"encoding/json"
+
 	"go.uber.org/zap"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -33,14 +36,6 @@ func (t *translator) TranslatePluginConfigV2(config *configv2.ApisixPluginConfig
 				continue
 			}
 			if plugin.Config != nil {
-				// Here, it will override same key.
-				if t, ok := pluginMap[plugin.Name]; ok {
-					log.Infow("TranslatePluginConfigV2 override same plugin key",
-						zap.String("key", plugin.Name),
-						zap.Any("old", t),
-						zap.Any("new", plugin.Config),
-					)
-				}
 				if plugin.SecretRef != "" {
 					sec, err := t.SecretLister.Secrets(config.Namespace).Get(plugin.SecretRef)
 					if err != nil {
@@ -52,9 +47,18 @@ func (t *translator) TranslatePluginConfigV2(config *configv2.ApisixPluginConfig
 					log.Debugw("Add new items, then override items with the same plugin key",
 						zap.Any("plugin", plugin.Name),
 						zap.String("secretRef", plugin.SecretRef))
+					dataMap := make(map[string]interface{})
+
 					for key, value := range sec.Data {
-						plugin.Config[key] = string(value)
+						err := json.Unmarshal(value, dataMap[key])
+						if err != nil {
+							log.Errorw("The config secretRef is invalid",
+								zap.Any("plugin", plugin.Name),
+								zap.String("secretRef", plugin.SecretRef))
+							break
+						}
 					}
+					utils.MergeMaps(dataMap, plugin.Config)
 				}
 				pluginMap[plugin.Name] = plugin.Config
 			} else {
