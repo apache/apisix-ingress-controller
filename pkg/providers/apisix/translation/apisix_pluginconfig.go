@@ -15,8 +15,6 @@
 package translation
 
 import (
-	"encoding/json"
-
 	"go.uber.org/zap"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
@@ -47,18 +45,10 @@ func (t *translator) TranslatePluginConfigV2(config *configv2.ApisixPluginConfig
 					log.Debugw("Add new items, then override items with the same plugin key",
 						zap.Any("plugin", plugin.Name),
 						zap.String("secretRef", plugin.SecretRef))
-					dataMap := make(map[string]interface{})
 
 					for key, value := range sec.Data {
-						err := json.Unmarshal(value, dataMap[key])
-						if err != nil {
-							log.Errorw("The config secretRef is invalid",
-								zap.Any("plugin", plugin.Name),
-								zap.String("secretRef", plugin.SecretRef))
-							break
-						}
+						utils.InsertKeyInMap(key, value, plugin.Config)
 					}
-					utils.MergeMaps(dataMap, plugin.Config)
 				}
 				pluginMap[plugin.Name] = plugin.Config
 			} else {

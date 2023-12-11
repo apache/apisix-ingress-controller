@@ -14,22 +14,31 @@
 // limitations under the License.
 package utils
 
-// MergeMaps will iterate recursively in src map and copy the fields over to dest
-func MergeMaps(src, dest map[string]interface{}) {
-	for key, val := range src {
-		//If destination map already has this key then recursively
-		//call merge with src[key] and dest[key]
-		if dest[key] != nil {
-			switch v := val.(type) {
-			case map[string]interface{}:
-				destMap, ok := dest[key].(map[string]interface{})
-				if !ok {
-					destMap = make(map[string]interface{})
-				}
-				MergeMaps(v, destMap)
-			default:
-				dest[key] = src[key]
-			}
-		}
+import (
+	"strings"
+)
+
+// InsertKeyInMap takes a dot seperated string and recursively goes inside the destination
+// to fill the value
+func InsertKeyInMap(key string, value interface{}, dest map[string]interface{}) {
+	if key == "" {
+		return
 	}
+	keys := strings.SplitN(key, ".", 2)
+	//base condition. the length of keys will be atleast 1
+	if len(keys) < 2 {
+		dest[keys[0]] = value
+		return
+	}
+
+	ikey := keys[0]
+	restKey := keys[1]
+	if dest[ikey] == nil {
+		dest[ikey] = make(map[string]interface{})
+	}
+	newDest, ok := dest[ikey].(map[string]interface{})
+	if !ok {
+		newDest = make(map[string]interface{})
+	}
+	InsertKeyInMap(restKey, value, newDest)
 }

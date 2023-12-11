@@ -16,7 +16,6 @@ package translation
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -103,18 +102,10 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 					log.Debugw("Add new items, then override items with the same plugin key",
 						zap.Any("plugin", plugin.Name),
 						zap.String("secretRef", plugin.SecretRef))
-					dataMap := make(map[string]interface{})
 
 					for key, value := range sec.Data {
-						err := json.Unmarshal(value, dataMap[key])
-						if err != nil {
-							log.Errorw("The config secretRef is invalid",
-								zap.Any("plugin", plugin.Name),
-								zap.String("secretRef", plugin.SecretRef))
-							break
-						}
+						utils.InsertKeyInMap(key, value, plugin.Config)
 					}
-					utils.MergeMaps(dataMap, plugin.Config)
 				}
 				pluginMap[plugin.Name] = plugin.Config
 			} else {
@@ -547,7 +538,7 @@ func (t *translator) translateStreamRouteV2(ctx *translation.TranslateContext, a
 						zap.Any("plugin", plugin.Name),
 						zap.String("secretRef", plugin.SecretRef))
 					for key, value := range sec.Data {
-						plugin.Config[key] = string(value)
+						utils.InsertKeyInMap(key, value, plugin.Config)
 					}
 				}
 				pluginMap[plugin.Name] = plugin.Config
