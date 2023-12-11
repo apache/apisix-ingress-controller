@@ -16,6 +16,7 @@ package translation
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -31,6 +32,7 @@ import (
 	_const "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -101,9 +103,18 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 					log.Debugw("Add new items, then override items with the same plugin key",
 						zap.Any("plugin", plugin.Name),
 						zap.String("secretRef", plugin.SecretRef))
+					dataMap := make(map[string]interface{})
+
 					for key, value := range sec.Data {
-						plugin.Config[key] = string(value)
+						err := json.Unmarshal(value, dataMap[key])
+						if err != nil {
+							log.Errorw("The config secretRef is invalid",
+								zap.Any("plugin", plugin.Name),
+								zap.String("secretRef", plugin.SecretRef))
+							break
+						}
 					}
+					utils.MergeMaps(dataMap, plugin.Config)
 				}
 				pluginMap[plugin.Name] = plugin.Config
 			} else {
