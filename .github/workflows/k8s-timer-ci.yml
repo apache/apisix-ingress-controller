@@ -103,6 +103,7 @@ jobs:
             ${REGISTRY}/apisix-ingress-controller:dev \
             ${REGISTRY}/httpbin:dev \
             ${REGISTRY}/test-backend:dev \
+            ${REGISTRY}/test-timeout:dev \
             ${REGISTRY}/echo-server:dev \
             ${REGISTRY}/busybox:dev \
             | pigz > docker.tar.gz

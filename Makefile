@@ -103,8 +103,9 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker tag kennethreitz/httpbin $(REGISTRY)/httpbin:$(IMAGE_TAG)
 
 	docker build -t test-backend:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) ./test/e2e/testbackend
+	docker build -t test-timeout:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) ./test/e2e/testtimeout	
 	docker tag test-backend:$(IMAGE_TAG) $(REGISTRY)/test-backend:$(IMAGE_TAG)
-
+	docker tag test-timeout:$(IMAGE_TAG) $(REGISTRY)/test-timeout:$(IMAGE_TAG)
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)
 
 	docker pull jmalloc/echo-server:latest
@@ -122,6 +123,7 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker push $(REGISTRY)/etcd:$(IMAGE_TAG)
 	docker push $(REGISTRY)/httpbin:$(IMAGE_TAG)
 	docker push $(REGISTRY)/test-backend:$(IMAGE_TAG)
+	docker push $(REGISTRY)/test-timeout:$(IMAGE_TAG)
 	docker push $(REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)
 	docker push $(REGISTRY)/echo-server:$(IMAGE_TAG)
 	docker push $(REGISTRY)/busybox:$(IMAGE_TAG)
@@ -305,6 +307,7 @@ kind-load-images:
             $(REGISTRY)/apisix-ingress-controller:dev \
             $(REGISTRY)/httpbin:dev \
             $(REGISTRY)/test-backend:dev \
+			$(REGISTRY)/test-timeout:dev \
             $(REGISTRY)/echo-server:dev \
             $(REGISTRY)/busybox:dev
 

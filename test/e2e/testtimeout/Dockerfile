@@ -14,20 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+FROM golang:latest
 
-version: '3'
+WORKDIR /app
 
-services:
-  openldap:
-    container_name: openldap
-    image: docker.io/bitnami/openldap:2.6
-    ports:
-      - '1389:1389'
-    environment:
-      - LDAP_PORT_NUMBER=1389
-      - LDAP_ENABLE_TLS=no
-      - LDAP_ADMIN_USERNAME=admin
-      - LDAP_ADMIN_PASSWORD=admin
-      - LDAP_ROOT=dc=ldap,dc=example,dc=org
-      - LDAP_USERS=jack
-      - LDAP_PASSWORDS=jackPassword
+COPY . .
+
+RUN go build -o gobackend .
+
+EXPOSE 9280
+
+ENTRYPOINT [ "/app/gobackend" ]

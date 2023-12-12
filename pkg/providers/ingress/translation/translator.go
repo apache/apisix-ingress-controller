@@ -201,8 +201,28 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 						return nil, err
 					}
 				}
-				if ingress.UpstreamScheme != "" {
-					ups.Scheme = ingress.UpstreamScheme
+				if ingress.Upstream.Scheme != "" {
+					ups.Scheme = ingress.Upstream.Scheme
+				}
+				if ingress.Upstream.Retry > 0 {
+					retry := ingress.Upstream.Retry
+					ups.Retries = &retry
+				}
+				if ups.Timeout == nil {
+					ups.Timeout = &apisixv1.UpstreamTimeout{
+						Read:    60,
+						Send:    60,
+						Connect: 60,
+					}
+				}
+				if ingress.Upstream.TimeoutConnect > 0 {
+					ups.Timeout.Connect = ingress.Upstream.TimeoutConnect
+				}
+				if ingress.Upstream.TimeoutRead > 0 {
+					ups.Timeout.Read = ingress.Upstream.TimeoutRead
+				}
+				if ingress.Upstream.TimeoutSend > 0 {
+					ups.Timeout.Send = ingress.Upstream.TimeoutSend
 				}
 				ctx.AddUpstream(ups)
 			}
@@ -306,8 +326,8 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 						return nil, err
 					}
 				}
-				if ingress.UpstreamScheme != "" {
-					ups.Scheme = ingress.UpstreamScheme
+				if ingress.Upstream.Scheme != "" {
+					ups.Scheme = ingress.Upstream.Scheme
 				}
 				ctx.AddUpstream(ups)
 			}
@@ -359,7 +379,26 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 			if len(ingress.Plugins) > 0 {
 				route.Plugins = *(ingress.Plugins.DeepCopy())
 			}
-
+			if ingress.Upstream.Retry > 0 {
+				retry := ingress.Upstream.Retry
+				ups.Retries = &retry
+			}
+			if ups.Timeout == nil {
+				ups.Timeout = &apisixv1.UpstreamTimeout{
+					Read:    60,
+					Send:    60,
+					Connect: 60,
+				}
+			}
+			if ingress.Upstream.TimeoutConnect > 0 {
+				ups.Timeout.Connect = ingress.Upstream.TimeoutConnect
+			}
+			if ingress.Upstream.TimeoutRead > 0 {
+				ups.Timeout.Read = ingress.Upstream.TimeoutRead
+			}
+			if ingress.Upstream.TimeoutSend > 0 {
+				ups.Timeout.Send = ingress.Upstream.TimeoutSend
+			}
 			if ingress.PluginConfigName != "" {
 				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, ingress.PluginConfigName))
 			}

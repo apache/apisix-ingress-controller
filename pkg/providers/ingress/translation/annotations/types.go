@@ -27,6 +27,12 @@ const (
 	AnnotationsEnableWebSocket  = AnnotationsPrefix + "enable-websocket"
 	AnnotationsPluginConfigName = AnnotationsPrefix + "plugin-config-name"
 	AnnotationsUpstreamScheme   = AnnotationsPrefix + "upstream-scheme"
+
+	//support retries and timeouts on upstream
+	AnnotationsUpstreamRetry          = AnnotationsPrefix + "upstream-retries"
+	AnnotationsUpstreamTimeoutConnect = AnnotationsPrefix + "upstream-connect-timeout"
+	AnnotationsUpstreamTimeoutRead    = AnnotationsPrefix + "upstream-read-timeout"
+	AnnotationsUpstreamTimeoutSend    = AnnotationsPrefix + "upstream-send-timeout"
 )
 
 const (
