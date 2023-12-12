@@ -45,6 +45,18 @@ func TestInsertKeyInMap(t *testing.T) {
 				"f":"g"
 			}
 		}`,
+	}, {
+		dest: `{
+			"a":1,
+			"b":"old"
+		}
+		`,
+		key:   "b",
+		value: "new",
+		merged: `{
+			"a":1,
+			"b":"new"
+		}`,
 	}}
 
 	for _, t0 := range testCases {
