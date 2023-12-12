@@ -137,7 +137,7 @@ spec:
 
 			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
 			resp.Status(http.StatusOK)
-			resp.Header("X-Foo2").Equal("v2")
+			resp.Header("X-Foo").Equal("v2")
 		})
 	}
 
