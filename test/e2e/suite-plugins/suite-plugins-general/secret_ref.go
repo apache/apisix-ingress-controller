@@ -94,9 +94,11 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
- name: httpbin-route
+ name: echo
 data:
  headers.X-Foo: djI=
+ # content is "my custom body"
+ body: Im15IGN1c3RvbSBib2R5Ig==
 `
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating echo secret for ApisixRoute")
 			ar := fmt.Sprintf(`
