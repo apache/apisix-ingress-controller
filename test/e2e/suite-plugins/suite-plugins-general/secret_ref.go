@@ -94,9 +94,9 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: echo
+	name: echo
 data:
-  headers.X-Foo: v2
+	headers.X-Foo: v2
 `
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating echo secret for ApisixRoute")
 			ar := fmt.Sprintf(`
