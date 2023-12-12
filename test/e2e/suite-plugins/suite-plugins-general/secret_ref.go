@@ -96,7 +96,7 @@ kind: Secret
 metadata:
  name: httpbin-route
 data:
- headers.X-Foo: v2
+ headers.X-Foo: djI=
 `
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating echo secret for ApisixRoute")
 			ar := fmt.Sprintf(`
