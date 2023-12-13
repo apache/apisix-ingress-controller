@@ -45,7 +45,7 @@ func (s MultiValueLabels) BuildQuery() string {
 	for k, v := range s {
 		query = append(query, fmt.Sprintf("%s in (%s)", k, strings.Join(v, ",")))
 	}
-	return fmt.Sprintf(strings.Join(query, ","))
+	return strings.Join(query, ",")
 }
 
 // IsSubsetOf checks whether the current Labels is the subset of

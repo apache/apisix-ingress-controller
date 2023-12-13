@@ -105,7 +105,6 @@ func (c *watchingProvider) Init(ctx context.Context) error {
 }
 
 func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) error {
-	fmt.Println("watching namespace ", c.watchingMultiValuedLabels.BuildQuery())
 	opts := metav1.ListOptions{
 		LabelSelector: c.watchingMultiValuedLabels.BuildQuery(),
 	}
