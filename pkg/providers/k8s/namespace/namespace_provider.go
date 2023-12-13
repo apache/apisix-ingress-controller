@@ -24,7 +24,6 @@ import (
 
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 
@@ -106,22 +105,9 @@ func (c *watchingProvider) Init(ctx context.Context) error {
 }
 
 func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) error {
-	fmt.Println("watching namespace")
-	labelSelector := metav1.LabelSelector{MatchLabels: c.watchingLabels}
-	var matchExpressions []metav1.LabelSelectorRequirement
-	for key, values := range c.watchingMultiValuedLabels {
-		requirement := metav1.LabelSelectorRequirement{
-			Key:      key,
-			Operator: metav1.LabelSelectorOpIn,
-			Values:   values,
-		}
-		matchExpressions = append(matchExpressions, requirement)
-	}
-	labelSelectorNew := metav1.LabelSelector{MatchExpressions: matchExpressions}
-	fmt.Println("old", labelSelector.String())
-	fmt.Println("new", labelSelectorNew.String())
+	fmt.Println("watching namespace ", c.watchingMultiValuedLabels.BuildQuery())
 	opts := metav1.ListOptions{
-		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
+		LabelSelector: c.watchingMultiValuedLabels.BuildQuery(),
 	}
 	namespaces, err := c.kube.Client.CoreV1().Namespaces().List(ctx, opts)
 	if err != nil {

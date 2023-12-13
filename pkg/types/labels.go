@@ -14,6 +14,11 @@
 // limitations under the License.
 package types
 
+import (
+	"fmt"
+	"strings"
+)
+
 // Labels contains a series of labels.
 type Labels map[string]string
 
@@ -34,6 +39,14 @@ func (s Labels) IsSubsetOf(f Labels) bool {
 
 // MultiValueLabels contains a series of labels with multiple values.
 type MultiValueLabels map[string][]string
+
+func (s MultiValueLabels) BuildQuery() string {
+	query := []string{}
+	for k, v := range s {
+		query = append(query, fmt.Sprintf("%s in (%s)", k, strings.Join(v, ",")))
+	}
+	return fmt.Sprintf(strings.Join(query, ","))
+}
 
 // IsSubsetOf checks whether the current Labels is the subset of
 // the passed Labels.
