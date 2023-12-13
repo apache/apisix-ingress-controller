@@ -84,6 +84,7 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 		if len(labelSlice) != 2 {
 			return nil, fmt.Errorf("bad namespace-selector format: %s, expected namespace-selector format: xxx=xxx", selector)
 		}
+		c.watchingLabels[labelSlice[0]] = labelSlice[1]
 		c.watchingMultiValuedLabels[labelSlice[0]] = append(c.watchingMultiValuedLabels[labelSlice[0]], labelSlice[1])
 	}
 
