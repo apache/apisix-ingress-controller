@@ -216,7 +216,6 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: httpbin-route
-  namespace: %s
 spec:
   ingressClassName: apisix
   rules:
@@ -232,7 +231,7 @@ spec:
               number: %d
 `, namespace1, backendSvc, backendSvcPort[0])
 			fmt.Println("creating ", route1)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route1), "creating ingress")
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route1, namespace1), "creating ingress")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 			time.Sleep(time.Second * 6)
 			body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()

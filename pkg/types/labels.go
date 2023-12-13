@@ -51,6 +51,8 @@ func (s MultiValueLabels) BuildQuery() []string {
 // IsSubsetOf checks whether the current Labels is the subset of
 // the passed Labels.
 func (s MultiValueLabels) IsSubsetOf(f Labels) bool {
+	fmt.Println("incoming labels ", f)
+	fmt.Println("check against ", s)
 	if len(s) == 0 {
 		// Empty labels matches everything.
 		return true
