@@ -217,9 +217,11 @@ func (s *Scaffold) DeleteResourceFromStringWithNamespace(yaml, namespace string)
 }
 
 func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
+	fmt.Println("Will be checking ", url, " for desired ", desired)
 	condFunc := func() (bool, error) {
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
+			fmt.Println("err forming request", err.Error())
 			return false, err
 		}
 		if s.opts.APISIXAdminAPIKey != "" {
@@ -227,6 +229,7 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 		}
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
+			fmt.Println("error getting response ", err.Error())
 			ginkgo.GinkgoT().Logf("failed to get resources from APISIX: %s", err.Error())
 			return false, nil
 		}
@@ -237,6 +240,7 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 		var count int
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
+			fmt.Println("error reading response ", err.Error())
 			return false, err
 		}
 
@@ -244,6 +248,7 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 			var c counterV3
 			err = json.Unmarshal(b, &c)
 			if err != nil {
+				fmt.Println("could not unmarshal", err.Error())
 				return false, err
 			}
 			count = c.Total.Value
@@ -251,6 +256,7 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 			var c counter
 			err = json.Unmarshal(b, &c)
 			if err != nil {
+				fmt.Println("could not unmarshal 2", err.Error())
 				return false, err
 			}
 			count = c.Count.Value
