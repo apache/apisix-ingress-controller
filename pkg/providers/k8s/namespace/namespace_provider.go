@@ -67,6 +67,7 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 		if len(labelSlice) != 2 {
 			return nil, fmt.Errorf("bad namespace-selector format: %s, expected namespace-selector format: xxx=xxx", selector)
 		}
+		c.watchingLabelsold[labelSlice[0]] = labelSlice[1]
 		c.watchingLabels[labelSlice[0]] = append(c.watchingLabels[labelSlice[0]], labelSlice[1])
 	}
 
@@ -85,9 +86,9 @@ type watchingProvider struct {
 
 	watchingNamespaces *sync.Map
 	watchingLabels     types.MultiValueLabels
-
-	namespaceInformer cache.SharedIndexInformer
-	namespaceLister   listerscorev1.NamespaceLister
+	watchingLabelsold  types.Labels
+	namespaceInformer  cache.SharedIndexInformer
+	namespaceLister    listerscorev1.NamespaceLister
 
 	controller *namespaceController
 
@@ -112,11 +113,15 @@ func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) e
 		}
 		matchExpressions = append(matchExpressions, requirement)
 	}
-
+	labelSelectorold := metav1.LabelSelector{MatchLabels: c.watchingLabelsold}
 	labelSelector := metav1.LabelSelector{MatchExpressions: matchExpressions}
-	fmt.Println("lables will be", labels.Set(labelSelector.MatchLabels).String())
+	fmt.Println("lable selector ", labelSelector.String())
+	fmt.Println("old lable selector ", labelSelectorold.String())
+
+	fmt.Println("old lables will be", labels.Set(labelSelectorold.MatchLabels).String())
+
 	opts := metav1.ListOptions{
-		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
+		LabelSelector: labelSelector.String(),
 	}
 	namespaces, err := c.kube.Client.CoreV1().Namespaces().List(ctx, opts)
 	if err != nil {
