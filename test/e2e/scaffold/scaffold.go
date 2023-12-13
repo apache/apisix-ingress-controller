@@ -474,6 +474,7 @@ func (s *Scaffold) beforeEach() {
 		s.DeployAdminaAPIMode()
 	}
 	s.DeployTestService()
+	s.DeployRetryTimeout()
 }
 
 func (s *Scaffold) DeployAdminaAPIMode() {
@@ -518,6 +519,21 @@ func (s *Scaffold) DeployCompositeMode() {
 
 	err = s.newAPISIXTunnels()
 	assert.Nil(s.t, err, "creating apisix tunnels")
+}
+
+func (s *Scaffold) DeployRetryTimeout() {
+	//Two endpoints are blocking(10 second) and one is non blocking
+	//Testing timeout
+	//With 1 retry and a timeout of 5 sec, it should return 504(timeout)
+	//With 1 retry and a timeout of 15 sec, it should success
+
+	//Testing retry
+	//With 1 retry and a timeout of 5 sec, it should return 504(timeout)
+	//With 2 retry and a timeout of 5 sec, it should success
+	err := s.NewDeploymentForRetryTimeoutTest()
+	assert.Nil(s.t, err, "error creating deployments for retry and timeout")
+	err = s.NewServiceForRetryTimeoutTest()
+	assert.Nil(s.t, err, "error creating services for retry and timeout")
 }
 
 func (s *Scaffold) DeployTestService() {

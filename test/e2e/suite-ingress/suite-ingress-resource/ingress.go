@@ -15,16 +15,22 @@
 package ingress
 
 import (
+	"crypto/sha1"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
+	kubev2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
@@ -197,7 +203,27 @@ spec:
 		apisixSsls, err := s.ListApisixSsl()
 		assert.Nil(ginkgo.GinkgoT(), err, "list SSLs error")
 		assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "SSL number should be 1")
-		assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls"), apisixSsls[0].ID, "SSL name")
+		apisixTLS := kubev2.ApisixTls{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ApisixTls",
+				APIVersion: "apisix.apache.org/v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: s.Namespace(),
+			},
+			Spec: &kubev2.ApisixTlsSpec{
+				Hosts: []kubev2.HostType{kubev2.HostType(host)},
+				Secret: kubev2.ApisixSecret{
+					Name:      serverCertSecret,
+					Namespace: s.Namespace(),
+				},
+			},
+		}
+		tlsByt, _ := json.Marshal(apisixTLS)
+		hasher := sha1.New()
+		hasher.Write(tlsByt)
+		uniqueHash := translation.SafeEncodeString(base64.URLEncoding.EncodeToString(hasher.Sum(nil)), 6)
+		assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls-"+uniqueHash), apisixSsls[0].ID, "SSL name")
 		assert.Equal(ginkgo.GinkgoT(), apisixSsls[0].Snis, []string{host}, "SSL configuration")
 
 		caCertPool := x509.NewCertPool()
@@ -251,7 +277,27 @@ spec:
 		apisixSsls, err := s.ListApisixSsl()
 		assert.Nil(ginkgo.GinkgoT(), err, "list SSLs error")
 		assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "SSL number should be 1")
-		assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls"), apisixSsls[0].ID, "SSL name")
+		apisixTLS := kubev2.ApisixTls{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ApisixTls",
+				APIVersion: "apisix.apache.org/v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: s.Namespace(),
+			},
+			Spec: &kubev2.ApisixTlsSpec{
+				Hosts: []kubev2.HostType{kubev2.HostType(host)},
+				Secret: kubev2.ApisixSecret{
+					Name:      serverCertSecret,
+					Namespace: s.Namespace(),
+				},
+			},
+		}
+		tlsByt, _ := json.Marshal(apisixTLS)
+		hasher := sha1.New()
+		hasher.Write(tlsByt)
+		uniqueHash := translation.SafeEncodeString(base64.URLEncoding.EncodeToString(hasher.Sum(nil)), 6)
+		assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls-"+uniqueHash), apisixSsls[0].ID, "SSL name")
 		assert.Equal(ginkgo.GinkgoT(), apisixSsls[0].Snis, []string{host}, "SSL configuration")
 
 		caCertPool := x509.NewCertPool()
@@ -305,7 +351,28 @@ spec:
 		apisixSsls, err := s.ListApisixSsl()
 		assert.Nil(ginkgo.GinkgoT(), err, "list SSLs error")
 		assert.Len(ginkgo.GinkgoT(), apisixSsls, 1, "SSL number should be 1")
-		assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls"), apisixSsls[0].ID, "SSL name")
+		apisixTLS := kubev2.ApisixTls{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ApisixTls",
+				APIVersion: "apisix.apache.org/v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: s.Namespace(),
+			},
+			Spec: &kubev2.ApisixTlsSpec{
+				Hosts: []kubev2.HostType{kubev2.HostType(host)},
+				Secret: kubev2.ApisixSecret{
+					Name:      serverCertSecret,
+					Namespace: s.Namespace(),
+				},
+			},
+		}
+		tlsByt, _ := json.Marshal(apisixTLS)
+		hasher := sha1.New()
+		hasher.Write(tlsByt)
+		uniqueHash := translation.SafeEncodeString(base64.URLEncoding.EncodeToString(hasher.Sum(nil)), 6)
+		assert.Equal(ginkgo.GinkgoT(), id.GenID(s.Namespace()+"_httpbin-ingress-https-tls-"+uniqueHash), apisixSsls[0].ID, "SSL name")
+
 		assert.Equal(ginkgo.GinkgoT(), apisixSsls[0].Snis, []string{host}, "SSL configuration")
 
 		caCertPool := x509.NewCertPool()

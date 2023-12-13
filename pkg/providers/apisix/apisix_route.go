@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"sync"
 	"time"
 
@@ -530,7 +531,9 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 	prev := kube.MustNewApisixRoute(oldObj)
 	curr := kube.MustNewApisixRoute(newObj)
-	if prev.ResourceVersion() >= curr.ResourceVersion() {
+	oldRV, _ := strconv.ParseInt(prev.ResourceVersion(), 0, 64)
+	newRV, _ := strconv.ParseInt(curr.ResourceVersion(), 0, 64)
+	if oldRV >= newRV {
 		return
 	}
 	// Updates triggered by status are ignored.

@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"time"
 
 	"go.uber.org/zap"
@@ -317,7 +318,9 @@ func (c *apisixPluginConfigController) onAdd(obj interface{}) {
 func (c *apisixPluginConfigController) onUpdate(oldObj, newObj interface{}) {
 	prev := kube.MustNewApisixPluginConfig(oldObj)
 	curr := kube.MustNewApisixPluginConfig(newObj)
-	if prev.ResourceVersion() >= curr.ResourceVersion() {
+	oldRV, _ := strconv.ParseInt(prev.ResourceVersion(), 0, 64)
+	newRV, _ := strconv.ParseInt(curr.ResourceVersion(), 0, 64)
+	if oldRV >= newRV {
 		return
 	}
 	// Updates triggered by status are ignored.

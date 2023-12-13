@@ -37,7 +37,7 @@ func getApisixResourceRequestsCount(s *scaffold.Scaffold, res string) int {
 	assert.True(ginkgo.GinkgoT(), len(pods) >= 1, "get ingress pod")
 
 	output, err := s.Exec(pods[0].Name, "ingress-apisix-controller-deployment-e2e-test",
-		fmt.Sprintf("curl -s localhost:8080/metrics | grep apisix_ingress_controller_apisix_requests | grep 'op=\"write\"' | grep 'resource=\"%v\"'", res),
+		fmt.Sprintf("wget -q -O - localhost:8080/metrics | grep apisix_ingress_controller_apisix_requests | grep 'op=\"write\"' | grep 'resource=\"%v\"'", res),
 	)
 	if err != nil {
 		log.Errorf("failed to get metrics: %v, %v; output: %v", err.Error(), string(err.(*exec.ExitError).Stderr), output)

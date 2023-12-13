@@ -16,42 +16,26 @@
 # specific language governing permissions and limitations
 # under the License.
 #
----
-version: 2
-updates:
-  - package-ecosystem: "gomod"
-    directory: "/"
-    schedule:
-      interval: "weekly"
+name-template: 'v$NEXT_PATCH_VERSION 🌈'
+tag-template: 'v$NEXT_PATCH_VERSION'
+categories:
+  - title: '🚀 Features'
     labels:
-      - "area/dependencies"
-    reviewers:
-      - "tao12345666333"
-      - "lingsamuel"
-      - "AlinsRan"
-      - "Gallardot"
-      - "Revolyssup"
-  - package-ecosystem: "github-actions"
-    directory: "/.github"
-    schedule:
-        interval: "weekly"
+      - 'feature'
+      - 'enhancement'
+  - title: '🐛 Bug Fixes'
     labels:
-      - "area/dependencies"
-    reviewers:
-      - "tao12345666333"
-      - "lingsamuel"
-      - "AlinsRan"
-      - "Gallardot"
-      - "Revolyssup"
-  - package-ecosystem: "gomod"
-    directory: "/test/e2e"
-    schedule:
-      interval: "weekly"
-    labels:
-      - "area/dependencies"
-    reviewers:
-      - "tao12345666333"
-      - "lingsamuel"
-      - "AlinsRan"
-      - "Gallardot"
-      - "Revolyssup"
+      - 'bugfix'
+      - 'bug'
+  - title: '🧰 Maintenance'
+    label: 'area/dependencies'
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+template: |
+  ## What's New
+  $CHANGES
+
+  ## 👨🏽‍💻 Contributors
+
+  Thank you to our contributors for making this release possible:
+  $CONTRIBUTORS
+  

@@ -31,6 +31,7 @@ REPOSITORY="127.0.0.1"
 REGISTRY_PORT ?= "5000"
 REGISTRY ?="${REPOSITORY}:$(REGISTRY_PORT)"
 IMAGE_TAG ?= dev
+BASE_IMAGE_TAG ?= nonroot
 ENABLE_PROXY ?= true
 
 GITSHA ?= "no-git-module"
@@ -75,7 +76,7 @@ clean-image: ## Removes local image
 .PHONY: build-image
 build-image:
 ifeq ($(E2E_SKIP_BUILD), 0)
-	DOCKER_BUILDKIT=1 docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) .
+	DOCKER_BUILDKIT=1 docker build -t apache/apisix-ingress-controller:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) --build-arg BASE_IMAGE_TAG=$(BASE_IMAGE_TAG) .
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)
 endif
 
@@ -102,8 +103,9 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker tag kennethreitz/httpbin $(REGISTRY)/httpbin:$(IMAGE_TAG)
 
 	docker build -t test-backend:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) ./test/e2e/testbackend
+	docker build -t test-timeout:$(IMAGE_TAG) --build-arg ENABLE_PROXY=$(ENABLE_PROXY) ./test/e2e/testtimeout	
 	docker tag test-backend:$(IMAGE_TAG) $(REGISTRY)/test-backend:$(IMAGE_TAG)
-
+	docker tag test-timeout:$(IMAGE_TAG) $(REGISTRY)/test-timeout:$(IMAGE_TAG)
 	docker tag apache/apisix-ingress-controller:$(IMAGE_TAG) $(REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)
 
 	docker pull jmalloc/echo-server:latest
@@ -121,6 +123,7 @@ ifeq ($(E2E_SKIP_BUILD), 0)
 	docker push $(REGISTRY)/etcd:$(IMAGE_TAG)
 	docker push $(REGISTRY)/httpbin:$(IMAGE_TAG)
 	docker push $(REGISTRY)/test-backend:$(IMAGE_TAG)
+	docker push $(REGISTRY)/test-timeout:$(IMAGE_TAG)
 	docker push $(REGISTRY)/apisix-ingress-controller:$(IMAGE_TAG)
 	docker push $(REGISTRY)/echo-server:$(IMAGE_TAG)
 	docker push $(REGISTRY)/busybox:$(IMAGE_TAG)
@@ -304,6 +307,7 @@ kind-load-images:
             $(REGISTRY)/apisix-ingress-controller:dev \
             $(REGISTRY)/httpbin:dev \
             $(REGISTRY)/test-backend:dev \
+			$(REGISTRY)/test-timeout:dev \
             $(REGISTRY)/echo-server:dev \
             $(REGISTRY)/busybox:dev
 
@@ -317,14 +321,14 @@ GATEWAY_API_CRDS_LOCAL_PATH = $(PWD)/samples/deploy/gateway-api/$(GATEWAY_API_VE
 go-mod-download-gateway-api:
 	@go mod download $(GATEWAY_API_PACKAGE)
 
-### install:				Install Gateway API into the K8s cluster from go mod.
+### install-gateway-api:				Install Gateway API into the K8s cluster from go mod.
 .PHONY: install-gateway-api
 install-gateway-api: go-mod-download-gateway-api
 	kubectl apply -k $(GATEWAY_API_CRDS_GO_MOD_PATH)/config/crd
 	kubectl apply -k $(GATEWAY_API_CRDS_GO_MOD_PATH)/config/crd/experimental
 	kubectl apply -f $(GATEWAY_API_CRDS_GO_MOD_PATH)/config/webhook
 
-### install:				Install Gateway API into the K8s cluster from repo.
+### install-gateway-api-local:				Install Gateway API into the K8s cluster from repo.
 .PHONY: install-gateway-api-local
 install-gateway-api-local:
 	kubectl apply -f $(GATEWAY_API_CRDS_LOCAL_PATH)
