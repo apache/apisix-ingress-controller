@@ -105,20 +105,22 @@ func (c *watchingProvider) Init(ctx context.Context) error {
 }
 
 func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) error {
-	opts := metav1.ListOptions{
-		LabelSelector: c.watchingMultiValuedLabels.BuildQuery(),
+	for _, q := range c.watchingMultiValuedLabels.BuildQuery() {
+		opts := metav1.ListOptions{
+			LabelSelector: q,
+		}
+		fmt.Println("query is ", q)
+		namespaces, err := c.kube.Client.CoreV1().Namespaces().List(ctx, opts)
+		if err != nil {
+			return err
+		}
+		var nss []string
+		for _, ns := range namespaces.Items {
+			nss = append(nss, ns.Name)
+			c.watchingNamespaces.Store(ns.Name, struct{}{})
+		}
+		log.Infow("label selector watching namespaces", zap.Strings("namespaces", nss))
 	}
-	namespaces, err := c.kube.Client.CoreV1().Namespaces().List(ctx, opts)
-	if err != nil {
-		return err
-	}
-	var nss []string
-
-	for _, ns := range namespaces.Items {
-		nss = append(nss, ns.Name)
-		c.watchingNamespaces.Store(ns.Name, struct{}{})
-	}
-	log.Infow("label selector watching namespaces", zap.Strings("namespaces", nss))
 	return nil
 }
 
