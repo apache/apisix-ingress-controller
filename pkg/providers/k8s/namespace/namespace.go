@@ -95,7 +95,7 @@ func (c *namespaceController) sync(ctx context.Context, ev *types.Event) error {
 		}
 
 		// if labels of namespace contains the watchingLabels, the namespace should be set to controller.watchingNamespaces
-		if c.controller.watchingLabels.IsSubsetOf(namespace.Labels) {
+		if c.controller.watchingMultiValuedLabels.IsSubsetOf(namespace.Labels) {
 			log.Infow("watching namespace", zap.String("name", namespace.Name))
 			if _, ok := c.controller.watchingNamespaces.Load(namespace.Name); !ok {
 				c.controller.watchingNamespaces.Store(namespace.Name, struct{}{})
