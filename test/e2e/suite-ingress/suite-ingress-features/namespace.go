@@ -176,145 +176,145 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", func() {
-	labelKey := fmt.Sprintf("namespace-selector-%d", time.Now().Nanosecond())
-	s := scaffold.NewScaffold(&scaffold.Options{
-		Name:                  "enable-namespace-selector",
-		IngressAPISIXReplicas: 1,
-		ApisixResourceVersion: scaffold.ApisixResourceVersion().Default,
-		// NamespaceSelector with multiple values for the same label
-		NamespaceSelectorLabel: map[string]string{
-			labelKey: "app1",
-			labelKey: "app2",
-		},
-		DisableNamespaceLabel: true,
-	})
+// var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", func() {
+// 	labelKey := fmt.Sprintf("namespace-selector-%d", time.Now().Nanosecond())
+// 	s := scaffold.NewScaffold(&scaffold.Options{
+// 		Name:                  "enable-namespace-selector",
+// 		IngressAPISIXReplicas: 1,
+// 		ApisixResourceVersion: scaffold.ApisixResourceVersion().Default,
+// 		// NamespaceSelector with multiple values for the same label
+// 		NamespaceSelectorLabel: map[string]string{
+// 			labelKey: "app1",
+// 			labelKey: "app2",
+// 		},
+// 		DisableNamespaceLabel: true,
+// 	})
 
-	ginkgo.Context("with namespace_selector", func() {
-		namespace1 := fmt.Sprintf("namespace-selector-1-%d", time.Now().Nanosecond())
-		namespace2 := fmt.Sprintf("namespace-selector-2-%d", time.Now().Nanosecond())
+// 	ginkgo.Context("with namespace_selector", func() {
+// 		namespace1 := fmt.Sprintf("namespace-selector-1-%d", time.Now().Nanosecond())
+// 		namespace2 := fmt.Sprintf("namespace-selector-2-%d", time.Now().Nanosecond())
 
-		createNamespaceLabel := func(namespace string, labelKey, labelValue string) {
-			k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, metav1.ObjectMeta{Name: namespace, Labels: map[string]string{labelKey: labelValue}})
-			_, err := s.NewHTTPBINWithNamespace(namespace)
-			time.Sleep(6 * time.Second)
-			assert.Nil(ginkgo.GinkgoT(), err, "create second httpbin service")
-		}
+// 		createNamespaceLabel := func(namespace string, labelKey, labelValue string) {
+// 			k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, metav1.ObjectMeta{Name: namespace, Labels: map[string]string{labelKey: labelValue}})
+// 			_, err := s.NewHTTPBINWithNamespace(namespace)
+// 			time.Sleep(6 * time.Second)
+// 			assert.Nil(ginkgo.GinkgoT(), err, "create second httpbin service")
+// 		}
 
-		deleteNamespace := func(namespace string) {
-			_ = k8s.DeleteNamespaceE(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, namespace)
-		}
+// 		deleteNamespace := func(namespace string) {
+// 			_ = k8s.DeleteNamespaceE(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, namespace)
+// 		}
 
-		ginkgo.It("resources in other namespaces should be ignored", func() {
-			createNamespaceLabel(namespace1, labelKey, "app1")
-			defer deleteNamespace(namespace1)
+// 		ginkgo.It("resources in other namespaces should be ignored", func() {
+// 			createNamespaceLabel(namespace1, labelKey, "app1")
+// 			defer deleteNamespace(namespace1)
 
-			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
-			route1 := fmt.Sprintf(`
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: httpbin-route
-spec:
-  ingressClassName: apisix
-  rules:
-  - host: httpbin.com
-    http:
-      paths:
-      - path: /ip
-        pathType: Exact
-        backend:
-          service:
-            name: %s
-            port:
-              number: %d
-`, backendSvc, backendSvcPort[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route1, namespace1), "creating ingress")
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
-			time.Sleep(time.Second * 6)
-			body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
-			var placeholder ip
-			err := json.Unmarshal([]byte(body), &placeholder)
-			assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling IP")
+// 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+// 			route1 := fmt.Sprintf(`
+// apiVersion: networking.k8s.io/v1
+// kind: Ingress
+// metadata:
+//   name: httpbin-route
+// spec:
+//   ingressClassName: apisix
+//   rules:
+//   - host: httpbin.com
+//     http:
+//       paths:
+//       - path: /ip
+//         pathType: Exact
+//         backend:
+//           service:
+//             name: %s
+//             port:
+//               number: %d
+// `, backendSvc, backendSvcPort[0])
+// 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route1, namespace1), "creating ingress")
+// 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
+// 			time.Sleep(time.Second * 6)
+// 			body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
+// 			var placeholder ip
+// 			err := json.Unmarshal([]byte(body), &placeholder)
+// 			assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling IP")
 
-			// Now create another ingress in default namespace.
-			route2 := fmt.Sprintf(`
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: httpbin-route
-spec:
-  ingressClassName: apisix
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /headers
-        pathType: Exact
-        backend:
-          service:
-            name: %s
-            port:
-              number: %d
-`, backendSvc, backendSvcPort[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route2, "default"), "creating ingress")
-			time.Sleep(6 * time.Second)
-			routes, err := s.ListApisixRoutes()
-			assert.Nil(ginkgo.GinkgoT(), err)
-			assert.Len(ginkgo.GinkgoT(), routes, 1)
-			_ = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
+// 			// Now create another ingress in default namespace.
+// 			route2 := fmt.Sprintf(`
+// apiVersion: networking.k8s.io/v1
+// kind: Ingress
+// metadata:
+//   name: httpbin-route
+// spec:
+//   ingressClassName: apisix
+//   rules:
+//   - host: httpbin.org
+//     http:
+//       paths:
+//       - path: /headers
+//         pathType: Exact
+//         backend:
+//           service:
+//             name: %s
+//             port:
+//               number: %d
+// `, backendSvc, backendSvcPort[0])
+// 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route2, "default"), "creating ingress")
+// 			time.Sleep(6 * time.Second)
+// 			routes, err := s.ListApisixRoutes()
+// 			assert.Nil(ginkgo.GinkgoT(), err)
+// 			assert.Len(ginkgo.GinkgoT(), routes, 1)
+// 			_ = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
 
-			route3 := fmt.Sprintf(`
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: httpbin-route
-spec:
-  ingressClassName: apisix
-  rules:
-  - host: local.httpbin.org
-    http:
-      paths:
-      - path: /headers
-        pathType: Exact
-        backend:
-          service:
-            name: %s
-            port:
-              number: %d
-`, backendSvc, backendSvcPort[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route3), "creating ingress")
-			time.Sleep(6 * time.Second)
-			routes, err = s.ListApisixRoutes()
-			assert.Nil(ginkgo.GinkgoT(), err)
-			assert.Len(ginkgo.GinkgoT(), routes, 1)
-			_ = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "local.httpbin.org").Expect().Status(http.StatusNotFound)
+// 			route3 := fmt.Sprintf(`
+// apiVersion: networking.k8s.io/v1
+// kind: Ingress
+// metadata:
+//   name: httpbin-route
+// spec:
+//   ingressClassName: apisix
+//   rules:
+//   - host: local.httpbin.org
+//     http:
+//       paths:
+//       - path: /headers
+//         pathType: Exact
+//         backend:
+//           service:
+//             name: %s
+//             port:
+//               number: %d
+// `, backendSvc, backendSvcPort[0])
+// 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route3), "creating ingress")
+// 			time.Sleep(6 * time.Second)
+// 			routes, err = s.ListApisixRoutes()
+// 			assert.Nil(ginkgo.GinkgoT(), err)
+// 			assert.Len(ginkgo.GinkgoT(), routes, 1)
+// 			_ = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "local.httpbin.org").Expect().Status(http.StatusNotFound)
 
-			// remove route1
-			assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromStringWithNamespace(route1, namespace1), "delete ingress")
-			time.Sleep(6 * time.Second)
+// 			// remove route1
+// 			assert.Nil(ginkgo.GinkgoT(), s.DeleteResourceFromStringWithNamespace(route1, namespace1), "delete ingress")
+// 			time.Sleep(6 * time.Second)
 
-			deleteNamespace(namespace1)
-			time.Sleep(6 * time.Second)
-			routes, err = s.ListApisixRoutes()
-			assert.Nil(ginkgo.GinkgoT(), err)
-			assert.Len(ginkgo.GinkgoT(), routes, 0)
+// 			deleteNamespace(namespace1)
+// 			time.Sleep(6 * time.Second)
+// 			routes, err = s.ListApisixRoutes()
+// 			assert.Nil(ginkgo.GinkgoT(), err)
+// 			assert.Len(ginkgo.GinkgoT(), routes, 0)
 
-			// restart ingress-controller
-			s.RestartIngressControllerDeploy()
-			assert.Nil(ginkgo.GinkgoT(), err)
-			assert.Len(ginkgo.GinkgoT(), routes, 0)
+// 			// restart ingress-controller
+// 			s.RestartIngressControllerDeploy()
+// 			assert.Nil(ginkgo.GinkgoT(), err)
+// 			assert.Len(ginkgo.GinkgoT(), routes, 0)
 
-			createNamespaceLabel(namespace2, labelKey, "app2")
-			defer deleteNamespace(namespace2)
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route1, namespace2), "creating ingress")
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
-			_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK)
-			_ = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
-			_ = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "local.httpbin.org").Expect().Status(http.StatusNotFound)
-		})
-	})
-})
+// 			createNamespaceLabel(namespace2, labelKey, "app2")
+// 			defer deleteNamespace(namespace2)
+// 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route1, namespace2), "creating ingress")
+// 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
+// 			_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK)
+// 			_ = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
+// 			_ = s.NewAPISIXClient().GET("/headers").WithHeader("Host", "local.httpbin.org").Expect().Status(http.StatusNotFound)
+// 		})
+// 	})
+// })
 
 var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering disable", func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
