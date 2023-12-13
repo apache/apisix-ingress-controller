@@ -48,8 +48,9 @@ type watchingProvider struct {
 	kube *kube.KubeClient
 	cfg  *config.Config
 
-	watchingNamespaces *sync.Map
-	watchingLabels     types.MultiValueLabels
+	watchingNamespaces        *sync.Map
+	watchingLabels            types.Labels
+	watchingMultiValuedLabels types.MultiValueLabels
 
 	namespaceInformer cache.SharedIndexInformer
 	namespaceLister   listerscorev1.NamespaceLister
@@ -64,8 +65,9 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 		kube: kube,
 		cfg:  cfg,
 
-		watchingNamespaces: new(sync.Map),
-		watchingLabels:     make(map[string][]string),
+		watchingNamespaces:        new(sync.Map),
+		watchingLabels:            make(map[string]string),
+		watchingMultiValuedLabels: make(map[string][]string),
 
 		enableLabelsWatching: false,
 	}
@@ -81,7 +83,7 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 		if len(labelSlice) != 2 {
 			return nil, fmt.Errorf("bad namespace-selector format: %s, expected namespace-selector format: xxx=xxx", selector)
 		}
-		c.watchingLabels[labelSlice[0]] = append(c.watchingLabels[labelSlice[0]], labelSlice[1])
+		c.watchingMultiValuedLabels[labelSlice[0]] = append(c.watchingMultiValuedLabels[labelSlice[0]], labelSlice[1])
 	}
 
 	kubeFactory := kube.NewSharedIndexInformerFactory()
@@ -102,8 +104,9 @@ func (c *watchingProvider) Init(ctx context.Context) error {
 }
 
 func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) error {
+	fmt.Println("watching namespace")
 	var matchExpressions []metav1.LabelSelectorRequirement
-	for key, values := range c.watchingLabels {
+	for key, values := range c.watchingMultiValuedLabels {
 		requirement := metav1.LabelSelectorRequirement{
 			Key:      key,
 			Operator: metav1.LabelSelectorOpIn,
