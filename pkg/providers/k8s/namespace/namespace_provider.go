@@ -24,7 +24,6 @@ import (
 
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 
@@ -50,7 +49,7 @@ type watchingProvider struct {
 	cfg  *config.Config
 
 	watchingNamespaces *sync.Map
-	watchingLabels     types.Labels
+	watchingLabels     types.MultiValueLabels
 
 	namespaceInformer cache.SharedIndexInformer
 	namespaceLister   listerscorev1.NamespaceLister
@@ -66,7 +65,7 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 		cfg:  cfg,
 
 		watchingNamespaces: new(sync.Map),
-		watchingLabels:     make(map[string]string),
+		watchingLabels:     make(map[string][]string),
 
 		enableLabelsWatching: false,
 	}
@@ -82,7 +81,7 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 		if len(labelSlice) != 2 {
 			return nil, fmt.Errorf("bad namespace-selector format: %s, expected namespace-selector format: xxx=xxx", selector)
 		}
-		c.watchingLabels[labelSlice[0]] = labelSlice[1]
+		c.watchingLabels[labelSlice[0]] = append(c.watchingLabels[labelSlice[0]], labelSlice[1])
 	}
 
 	kubeFactory := kube.NewSharedIndexInformerFactory()
@@ -103,9 +102,18 @@ func (c *watchingProvider) Init(ctx context.Context) error {
 }
 
 func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) error {
-	labelSelector := metav1.LabelSelector{MatchLabels: c.watchingLabels}
+	var matchExpressions []metav1.LabelSelectorRequirement
+	for key, values := range c.watchingLabels {
+		requirement := metav1.LabelSelectorRequirement{
+			Key:      key,
+			Operator: metav1.LabelSelectorOpIn,
+			Values:   values,
+		}
+		matchExpressions = append(matchExpressions, requirement)
+	}
+	labelSelector := metav1.LabelSelector{MatchExpressions: matchExpressions}
 	opts := metav1.ListOptions{
-		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
+		LabelSelector: labelSelector.String(),
 	}
 	namespaces, err := c.kube.Client.CoreV1().Namespaces().List(ctx, opts)
 	if err != nil {

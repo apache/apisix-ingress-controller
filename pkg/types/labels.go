@@ -31,3 +31,27 @@ func (s Labels) IsSubsetOf(f Labels) bool {
 	}
 	return true
 }
+
+// MultiValueLabels contains a series of labels with multiple values.
+type MultiValueLabels map[string][]string
+
+// IsSubsetOf checks whether the current Labels is the subset of
+// the passed Labels.
+func (s MultiValueLabels) IsSubsetOf(f Labels) bool {
+	if len(s) == 0 {
+		// Empty labels matches everything.
+		return true
+	}
+	for key, values := range s {
+		if vv, ok := f[key]; ok {
+			for _, v := range values {
+				if v == vv {
+					return true
+				}
+			}
+
+			return false
+		}
+	}
+	return true
+}
