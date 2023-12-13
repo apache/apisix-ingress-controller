@@ -73,3 +73,27 @@ spec:
                           type: number
                           minimum: 0.00001
                           maximum: 1
+            status:
+              type: object
+              properties:
+                observedGeneration:
+                  type: integer
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+                      reason:
+                        type: string
+                      message:
+                        type: string
+                  required:
+                    - type
+                    - status
+                    - lastTransitionTime
