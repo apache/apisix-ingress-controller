@@ -196,6 +196,7 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", 
 
 		createNamespaceLabel := func(namespace string, labelKey, labelValue string) {
 			k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, metav1.ObjectMeta{Name: namespace, Labels: map[string]string{labelKey: labelValue}})
+			fmt.Println("created ns ", namespace, labelKey, labelValue)
 			_, err := s.NewHTTPBINWithNamespace(namespace)
 			time.Sleep(6 * time.Second)
 			assert.Nil(ginkgo.GinkgoT(), err, "create second httpbin service")
@@ -215,6 +216,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: httpbin-route
+  namespace: %s
 spec:
   ingressClassName: apisix
   rules:
@@ -228,8 +230,9 @@ spec:
             name: %s
             port:
               number: %d
-`, backendSvc, backendSvcPort[0])
-			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route1, namespace1), "creating ingress")
+`, namespace1, backendSvc, backendSvcPort[0])
+			fmt.Println("creating ", route1)
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route1), "creating ingress")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 			time.Sleep(time.Second * 6)
 			body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()

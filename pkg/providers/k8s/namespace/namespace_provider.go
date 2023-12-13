@@ -120,6 +120,18 @@ func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) e
 			c.watchingNamespaces.Store(ns.Name, struct{}{})
 		}
 		log.Infow("label selector watching namespaces", zap.Strings("namespaces", nss))
+
+		//---
+		namespaces, err = c.kube.Client.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return err
+		}
+		var tnss []string
+		for _, ns := range namespaces.Items {
+			tnss = append(tnss, ns.Name)
+			fmt.Println("labels on ", ns.Name, ns.Labels)
+		}
+		log.Infow("total namespaces", zap.Strings("namespaces", tnss))
 	}
 	return nil
 }
