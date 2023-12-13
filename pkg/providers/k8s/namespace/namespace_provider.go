@@ -106,7 +106,7 @@ func (c *watchingProvider) Init(ctx context.Context) error {
 
 func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) error {
 	fmt.Println("watching namespace")
-	labelSelectorNew := metav1.LabelSelector{MatchLabels: c.watchingLabels}
+	labelSelector := metav1.LabelSelector{MatchLabels: c.watchingLabels}
 	var matchExpressions []metav1.LabelSelectorRequirement
 	for key, values := range c.watchingMultiValuedLabels {
 		requirement := metav1.LabelSelectorRequirement{
@@ -116,7 +116,7 @@ func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) e
 		}
 		matchExpressions = append(matchExpressions, requirement)
 	}
-	labelSelector := metav1.LabelSelector{MatchExpressions: matchExpressions}
+	labelSelectorNew := metav1.LabelSelector{MatchExpressions: matchExpressions}
 	fmt.Println("old", labelSelector.String())
 	fmt.Println("new", labelSelectorNew.String())
 	opts := metav1.ListOptions{
