@@ -114,6 +114,7 @@ func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) e
 	}
 
 	labelSelector := metav1.LabelSelector{MatchExpressions: matchExpressions}
+	fmt.Println("lables will be", labels.Set(labelSelector.MatchLabels).String())
 	opts := metav1.ListOptions{
 		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
 	}
