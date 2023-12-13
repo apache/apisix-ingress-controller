@@ -262,7 +262,7 @@ spec:
           secretRef: echo
 ```
 
-## Config with secretRef configuring nested fields
+## Config with secretRef where the secret data contains path to a specific key that needs to be overriden in plugin config
 
 You can also configure specific fields in the plugin configuration that are deeply nested by passing the path to that field. The path is dot-separated keys that lead to that field. The below example overrides the `X-Foo` header field in the plugin configuration from `v1` to `v2`.
 
