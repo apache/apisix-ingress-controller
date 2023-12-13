@@ -219,32 +219,38 @@ func (s *Scaffold) DeleteResourceFromStringWithNamespace(yaml, namespace string)
 func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 	fmt.Println("Will be checking ", url, " for desired ", desired)
 	condFunc := func() (bool, error) {
+		fmt.Println("HERE1")
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			fmt.Println("err forming request", err.Error())
 			return false, err
 		}
+		fmt.Println("HERE2")
 		if s.opts.APISIXAdminAPIKey != "" {
 			req.Header.Set("X-API-Key", s.opts.APISIXAdminAPIKey)
 		}
+		fmt.Println("HERE3")
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			fmt.Println("error getting response ", err.Error())
 			ginkgo.GinkgoT().Logf("failed to get resources from APISIX: %s", err.Error())
 			return false, nil
 		}
+		fmt.Println("HERE4")
 		if resp.StatusCode != http.StatusOK {
 			ginkgo.GinkgoT().Logf("got status code %d from APISIX", resp.StatusCode)
 			return false, nil
 		}
+		fmt.Println("HERE5")
 		var count int
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			fmt.Println("error reading response ", err.Error())
 			return false, err
 		}
-
+		fmt.Println("HERE6")
 		if s.opts.APISIXAdminAPIVersion == "v3" {
+			fmt.Println("HERE7")
 			var c counterV3
 			err = json.Unmarshal(b, &c)
 			if err != nil {
@@ -253,6 +259,7 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 			}
 			count = c.Total.Value
 		} else {
+			fmt.Println("HERE8")
 			var c counter
 			err = json.Unmarshal(b, &c)
 			if err != nil {
@@ -261,10 +268,12 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 			}
 			count = c.Count.Value
 		}
+		fmt.Println("HERE9")
 		if count != desired {
 			ginkgo.GinkgoT().Logf("mismatched number of items, expected %d but found %d", desired, count)
 			return false, nil
 		}
+		fmt.Println("HERE10")
 		return true, nil
 	}
 	return wait.Poll(3*time.Second, 35*time.Second, condFunc)
