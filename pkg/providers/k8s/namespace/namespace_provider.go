@@ -78,6 +78,7 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 
 	// support namespace label-selector
 	c.enableLabelsWatching = true
+	fmt.Println("namespace selector is ", cfg.Kubernetes.NamespaceSelector)
 	for _, selector := range cfg.Kubernetes.NamespaceSelector {
 		labelSlice := strings.Split(selector, "=")
 		if len(labelSlice) != 2 {

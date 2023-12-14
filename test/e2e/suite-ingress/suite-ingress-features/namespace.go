@@ -48,7 +48,6 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", 
 		Name:                  "enable-namespace-selector",
 		IngressAPISIXReplicas: 1,
 		ApisixResourceVersion: scaffold.ApisixResourceVersion().Default,
-		APISIXConfigPath:      "testdata/apisix-gw-config-v3-ns-labels.yaml",
 		NamespaceSelectorLabel: map[string]string{
 			fmt.Sprintf("namespace-selector-%d", time.Now().Nanosecond()): "watch",
 		},
@@ -188,6 +187,7 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", 
 	s := scaffold.NewScaffold(&scaffold.Options{
 		Name:                  "enable-namespace-selector",
 		IngressAPISIXReplicas: 1,
+		APISIXConfigPath:      "testdata/apisix-gw-config-v3-ns-labels.yaml",
 		ApisixResourceVersion: scaffold.ApisixResourceVersion().Default,
 		// NamespaceSelector with multiple values for the same label
 		NamespaceSelectorLabel: map[string]string{
