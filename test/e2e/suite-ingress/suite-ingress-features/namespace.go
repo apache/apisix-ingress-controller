@@ -74,9 +74,8 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", 
 		ginkgo.It("resources in other namespaces should be ignored", func() {
 			createNamespaceLabel(namespace1, nskey, nsval1)
 			defer deleteNamespace(namespace1)
-			time.Sleep(1 * time.Second)
 			createNamespaceLabel(namespace2, nskey, nsval2)
-			defer deleteNamespace(namespace1)
+			defer deleteNamespace(namespace2)
 
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			route1 := fmt.Sprintf(`
@@ -218,9 +217,8 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", 
 		ginkgo.It("resources in other namespaces should be ignored", func() {
 			createNamespaceLabel(namespace1, nskey, nsval1)
 			defer deleteNamespace(namespace1)
-			time.Sleep(1 * time.Second)
 			createNamespaceLabel(namespace2, nskey, nsval2)
-			defer deleteNamespace(namespace1)
+			defer deleteNamespace(namespace2)
 
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			route1 := fmt.Sprintf(`
