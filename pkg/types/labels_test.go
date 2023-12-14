@@ -31,6 +31,10 @@ func TestLabelsIsSubsetOf(t *testing.T) {
 	assert.Equal(t, true, l.IsSubsetOf(f))
 	l["env"] = "qa"
 	assert.Equal(t, false, l.IsSubsetOf(f))
+	l2 := Labels{
+		"a": "b",
+	}
+	assert.Equal(t, false, l2.IsSubsetOf(f))
 }
 
 func TestMultiValueLabelsIsSubsetOf(t *testing.T) {
@@ -46,6 +50,10 @@ func TestMultiValueLabelsIsSubsetOf(t *testing.T) {
 	assert.Equal(t, true, l.IsSubsetOf(f))
 	l["env"] = []string{"qa"}
 	assert.Equal(t, false, l.IsSubsetOf(f))
+	l2 := MultiValueLabels{
+		"env3": []string{"not"},
+	}
+	assert.Equal(t, false, l2.IsSubsetOf(f))
 }
 
 func TestBuildQuery(t *testing.T) {

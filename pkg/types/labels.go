@@ -57,16 +57,19 @@ func (s MultiValueLabels) IsSubsetOf(f Labels) bool {
 		// Empty labels matches everything.
 		return true
 	}
-	for key, values := range s {
-		if vv, ok := f[key]; ok {
-			for _, v := range values {
-				if v == vv {
-					return true
-				}
-			}
-
+	for key, vals := range s {
+		if val, ok := f[key]; !ok || !arrContains(vals, val) {
 			return false
 		}
 	}
 	return true
+}
+
+func arrContains(arr []string, ele string) bool {
+	for _, e := range arr {
+		if e == ele {
+			return true
+		}
+	}
+	return false
 }
