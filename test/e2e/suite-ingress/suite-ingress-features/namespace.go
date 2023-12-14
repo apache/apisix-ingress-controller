@@ -229,7 +229,7 @@ spec:
             name: %s
             port:
               number: %d
-`, namespace1, backendSvc, backendSvcPort[0])
+`, backendSvc, backendSvcPort[0])
 			fmt.Println("creating ", route1)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route1, namespace1), "creating ingress")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
