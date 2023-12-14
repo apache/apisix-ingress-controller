@@ -31,6 +31,10 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
+const nskey = "ns1234"
+const nsval1 = "a"
+const nsval2 = "b"
+
 type headers struct {
 	Headers struct {
 		Accept    string `json:"Accept"`
@@ -44,6 +48,7 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", 
 		Name:                  "enable-namespace-selector",
 		IngressAPISIXReplicas: 1,
 		ApisixResourceVersion: scaffold.ApisixResourceVersion().Default,
+		APISIXConfigPath:      "testdata/apisix-gw-config-v3-ns-labels.yaml",
 		NamespaceSelectorLabel: map[string]string{
 			fmt.Sprintf("namespace-selector-%d", time.Now().Nanosecond()): "watch",
 		},
@@ -54,8 +59,10 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", 
 		namespace1 := fmt.Sprintf("namespace-selector-1-%d", time.Now().Nanosecond())
 		namespace2 := fmt.Sprintf("namespace-selector-2-%d", time.Now().Nanosecond())
 
-		createNamespaceLabel := func(namespace string) {
-			k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, metav1.ObjectMeta{Name: namespace, Labels: s.NamespaceSelectorLabel()})
+		createNamespaceLabel := func(namespace string, labelKey string, labelVal string) {
+			k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, metav1.ObjectMeta{Name: namespace, Labels: map[string]string{
+				labelKey: labelVal,
+			}})
 			_, err := s.NewHTTPBINWithNamespace(namespace)
 			time.Sleep(6 * time.Second)
 			assert.Nil(ginkgo.GinkgoT(), err, "create second httpbin service")
@@ -66,7 +73,9 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", 
 		}
 
 		ginkgo.It("resources in other namespaces should be ignored", func() {
-			createNamespaceLabel(namespace1)
+			createNamespaceLabel(namespace1, nskey, nsval1)
+			defer deleteNamespace(namespace1)
+			createNamespaceLabel(namespace2, nskey, nsval2)
 			defer deleteNamespace(namespace1)
 
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
@@ -165,8 +174,6 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err)
 			assert.Len(ginkgo.GinkgoT(), routes, 0)
 
-			createNamespaceLabel(namespace2)
-			defer deleteNamespace(namespace2)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route1, namespace2), "creating ingress")
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
 			_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK)
