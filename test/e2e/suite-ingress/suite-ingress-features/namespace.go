@@ -201,9 +201,10 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", 
 		namespace1 := fmt.Sprintf("namespace-selector-1-%d", time.Now().Nanosecond())
 		namespace2 := fmt.Sprintf("namespace-selector-2-%d", time.Now().Nanosecond())
 
-		createNamespaceLabel := func(namespace string, labelKey, labelValue string) {
-			k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, metav1.ObjectMeta{Name: namespace, Labels: map[string]string{labelKey: labelValue}})
-			fmt.Println("created ns ", namespace, labelKey, labelValue)
+		createNamespaceLabel := func(namespace string, labelKey string, labelVal string) {
+			k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, metav1.ObjectMeta{Name: namespace, Labels: map[string]string{
+				labelKey: labelVal,
+			}})
 			_, err := s.NewHTTPBINWithNamespace(namespace)
 			time.Sleep(6 * time.Second)
 			assert.Nil(ginkgo.GinkgoT(), err, "create second httpbin service")
@@ -214,7 +215,9 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", 
 		}
 
 		ginkgo.It("resources in other namespaces should be ignored", func() {
-			createNamespaceLabel(namespace1, labelKey, "app1")
+			createNamespaceLabel(namespace1, nskey, nsval1)
+			defer deleteNamespace(namespace1)
+			createNamespaceLabel(namespace2, nskey, nsval2)
 			defer deleteNamespace(namespace1)
 
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
