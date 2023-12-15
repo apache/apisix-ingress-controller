@@ -49,7 +49,6 @@ type watchingProvider struct {
 	cfg  *config.Config
 
 	watchingNamespaces        *sync.Map
-	watchingLabels            types.Labels
 	watchingMultiValuedLabels types.MultiValueLabels
 
 	namespaceInformer cache.SharedIndexInformer
@@ -66,7 +65,6 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 		cfg:  cfg,
 
 		watchingNamespaces:        new(sync.Map),
-		watchingLabels:            make(map[string]string),
 		watchingMultiValuedLabels: make(map[string][]string),
 
 		enableLabelsWatching: false,
@@ -84,7 +82,6 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 		if len(labelSlice) != 2 {
 			return nil, fmt.Errorf("bad namespace-selector format: %s, expected namespace-selector format: xxx=xxx", selector)
 		}
-		c.watchingLabels[labelSlice[0]] = labelSlice[1]
 		c.watchingMultiValuedLabels[labelSlice[0]] = append(c.watchingMultiValuedLabels[labelSlice[0]], labelSlice[1])
 	}
 

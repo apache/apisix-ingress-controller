@@ -749,6 +749,7 @@ func (s *Scaffold) DeleteResource(resourceType, name string) error {
 func (s *Scaffold) NamespaceSelectorLabelStrings() []string {
 	var labels []string
 	if s.opts.NamespaceSelectorLabel != nil {
+		fmt.Println("namespaceselcetorlabel is ", s.opts.NamespaceSelectorLabel)
 		for k, v := range s.opts.NamespaceSelectorLabel {
 			for _, v0 := range v {
 				labels = append(labels, fmt.Sprintf("%s=%s", k, v0))
@@ -759,7 +760,7 @@ func (s *Scaffold) NamespaceSelectorLabelStrings() []string {
 			labels = append(labels, fmt.Sprintf("%s=%s", k, v))
 		}
 	}
-
+	fmt.Println("returning array ", labels)
 	return labels
 }
 
