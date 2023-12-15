@@ -63,7 +63,7 @@ type Options struct {
 	IngressClass                 string
 	EnableEtcdServer             bool
 
-	NamespaceSelectorLabel   map[string]string
+	NamespaceSelectorLabel   map[string][]string
 	DisableNamespaceSelector bool
 	DisableNamespaceLabel    bool
 }
@@ -452,11 +452,17 @@ func (s *Scaffold) beforeEach() {
 		Namespace:  s.namespace,
 	}
 	s.finalizers = nil
-
+	if s.label == nil {
+		s.label = make(map[string]string)
+	}
 	if s.opts.NamespaceSelectorLabel != nil {
-		s.label = s.opts.NamespaceSelectorLabel
+		for k, v := range s.opts.NamespaceSelectorLabel {
+			if len(v) > 0 {
+				s.label[k] = v[0]
+			}
+		}
 	} else {
-		s.label = map[string]string{"apisix.ingress.watch": s.namespace}
+		s.label["apisix.ingress.watch"] = s.namespace
 	}
 
 	var nsLabel map[string]string
@@ -742,12 +748,21 @@ func (s *Scaffold) DeleteResource(resourceType, name string) error {
 
 func (s *Scaffold) NamespaceSelectorLabelStrings() []string {
 	var labels []string
-	for k, v := range s.label {
-		labels = append(labels, fmt.Sprintf("%s=%s", k, v))
+	if s.opts.NamespaceSelectorLabel != nil {
+		for k, v := range s.opts.NamespaceSelectorLabel {
+			for _, v0 := range v {
+				labels = append(labels, fmt.Sprintf("%s=%s", k, v0))
+			}
+		}
+	} else {
+		for k, v := range s.label {
+			labels = append(labels, fmt.Sprintf("%s=%s", k, v))
+		}
 	}
+
 	return labels
 }
 
-func (s *Scaffold) NamespaceSelectorLabel() map[string]string {
-	return s.label
+func (s *Scaffold) NamespaceSelectorLabel() map[string][]string {
+	return s.opts.NamespaceSelectorLabel
 }

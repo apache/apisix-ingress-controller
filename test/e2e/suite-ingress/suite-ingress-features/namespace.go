@@ -52,10 +52,9 @@ var _ = ginkgo.Describe("suite-ingress-features: multiple values for same label 
 		Name:                  "enable-namespace-selector",
 		IngressAPISIXReplicas: 1,
 		ApisixResourceVersion: scaffold.ApisixResourceVersion().Default,
-		NamespaceSelectorLabel: map[string]string{
-			fmt.Sprintf("namespace-selector-%d", time.Now().Nanosecond()): "watch",
+		NamespaceSelectorLabel: map[string][]string{
+			labelKey: {ns1LabelVal, ns2LabelVal},
 		},
-		APISIXConfigPath:      "testdata/apisix-gw-config-v3-ns-labels.yaml",
 		DisableNamespaceLabel: true,
 	})
 	createNamespaceLabel := func(namespace string, labelKey string, labelVal string) {
@@ -140,8 +139,8 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", 
 		Name:                  "enable-namespace-selector",
 		IngressAPISIXReplicas: 1,
 		ApisixResourceVersion: scaffold.ApisixResourceVersion().Default,
-		NamespaceSelectorLabel: map[string]string{
-			fmt.Sprintf("namespace-selector-%d", time.Now().Nanosecond()): "watch",
+		NamespaceSelectorLabel: map[string][]string{
+			fmt.Sprintf("namespace-selector-%d", time.Now().Nanosecond()): {"watch"},
 		},
 		DisableNamespaceLabel: true,
 	})
@@ -151,7 +150,7 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", 
 		namespace2 := fmt.Sprintf("namespace-selector-2-%d", time.Now().Nanosecond())
 
 		createNamespaceLabel := func(namespace string) {
-			k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, metav1.ObjectMeta{Name: namespace, Labels: s.NamespaceSelectorLabel()})
+			k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, metav1.ObjectMeta{Name: namespace, Labels: map[string]string{fmt.Sprintf("namespace-selector-%d", time.Now().Nanosecond()): "watch"}})
 			_, err := s.NewHTTPBINWithNamespace(namespace)
 			time.Sleep(6 * time.Second)
 			assert.Nil(ginkgo.GinkgoT(), err, "create second httpbin service")
@@ -368,8 +367,8 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing un-label", func() {
 		Name:                  "un-label",
 		IngressAPISIXReplicas: 1,
 		ApisixResourceVersion: scaffold.ApisixResourceVersion().Default,
-		NamespaceSelectorLabel: map[string]string{
-			labelName: labelValue,
+		NamespaceSelectorLabel: map[string][]string{
+			labelName: {labelValue},
 		},
 		DisableNamespaceLabel: true,
 	})
@@ -502,8 +501,8 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing from no-label to la
 		Name:                  "from-no-label-to-label",
 		IngressAPISIXReplicas: 1,
 		ApisixResourceVersion: scaffold.ApisixResourceVersion().Default,
-		NamespaceSelectorLabel: map[string]string{
-			labelName: labelValue,
+		NamespaceSelectorLabel: map[string][]string{
+			labelName: {labelValue},
 		},
 		DisableNamespaceLabel: true,
 	})

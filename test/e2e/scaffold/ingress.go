@@ -664,7 +664,7 @@ func (s *Scaffold) GetIngressPodDetails() ([]corev1.Pod, error) {
 func (s *Scaffold) ScaleIngressController(desired int) error {
 	label := `""`
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil {
-		label = labels[0]
+		label = strings.Join(labels, ",")
 	}
 
 	ingressDeployment := s.genIngressDeployment(desired, s.opts.APISIXAdminAPIVersion,
