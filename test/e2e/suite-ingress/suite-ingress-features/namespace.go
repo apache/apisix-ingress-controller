@@ -39,6 +39,102 @@ type headers struct {
 	} `json:"headers"`
 }
 
+var _ = ginkgo.Describe("suite-ingress-features: multiple values for same label key", func() {
+
+	const ns1 = "nstestinga"
+	const labelKey = "nstesting"
+	const ns1LabelVal = "a"
+
+	const ns2 = "nstestingb"
+	const ns2LabelVal = "b"
+
+	s := scaffold.NewScaffold(&scaffold.Options{
+		Name:                  "enable-namespace-selector",
+		IngressAPISIXReplicas: 1,
+		ApisixResourceVersion: scaffold.ApisixResourceVersion().Default,
+		NamespaceSelectorLabel: map[string]string{
+			fmt.Sprintf("namespace-selector-%d", time.Now().Nanosecond()): "watch",
+		},
+		APISIXConfigPath:      "testdata/apisix-gw-config-v3-ns-labels.yaml",
+		DisableNamespaceLabel: true,
+	})
+	createNamespaceLabel := func(namespace string, labelKey string, labelVal string) {
+		k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, metav1.ObjectMeta{Name: namespace, Labels: map[string]string{labelKey: labelVal}})
+		_, err := s.NewHTTPBINWithNamespace(namespace)
+		time.Sleep(6 * time.Second)
+		assert.Nil(ginkgo.GinkgoT(), err, "create second httpbin service")
+	}
+	deleteNamespace := func(namespace string) {
+		_ = k8s.DeleteNamespaceE(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, namespace)
+	}
+	//First create both namespaces with proper lables
+	//It will only watch in namespaces labelled with nstesting=a and nstesting=b
+	//So i can first create some route in default namespace and see that nothing happens
+	// then i can create route in nstestinga and nstestingb namespace and confirm that the route count is 2
+	ginkgo.Context("create resource in namespace other than being watched", func() {
+		ginkgo.It("resources in other namespaces should be ignored", func() {
+			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+			route1 := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: httpbin-route
+spec:
+  ingressClassName: apisix
+  rules:
+  - host: httpbin.com
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, backendSvc, backendSvcPort[0])
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route1, "default"), "creating ingress")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(0))
+		})
+
+		ginkgo.It("resources in other labelled namespaces should take effect", func() {
+			createNamespaceLabel(ns1, labelKey, ns1LabelVal)
+			defer deleteNamespace(ns1)
+			createNamespaceLabel(ns2, labelKey, ns2LabelVal)
+			defer deleteNamespace(ns2)
+			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+			route1 := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: httpbin-route
+spec:
+  ingressClassName: apisix
+  rules:
+  - host: httpbin.com
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, backendSvc, backendSvcPort[0])
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route1, ns1), "creating ingress in namespace "+ns1)
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route1, ns2), "creating ingress in namespace "+ns2)
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(2))
+			time.Sleep(time.Second * 6)
+			body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
+			var placeholder ip
+			err := json.Unmarshal([]byte(body), &placeholder)
+			assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling IP")
+		})
+	})
+})
+
 var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
 		Name:                  "enable-namespace-selector",

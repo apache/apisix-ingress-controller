@@ -48,8 +48,8 @@ apisix:
 
 kubernetes:
   namespace_selector:
-  - "ns1234=a"
-  - "ns1234=b"
+  - "nstesting=a"
+  - "nstesting=b"
 
 plugin_attr:
   prometheus:
