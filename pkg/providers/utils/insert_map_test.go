@@ -16,6 +16,7 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 )
 
@@ -48,6 +49,50 @@ func TestInsertKeyInMap(t *testing.T) {
 	}, {
 		dest: `{
 			"a":1,
+			"b":{
+				"c": 2,
+				"f":"g"
+			}
+		}`,
+		key: `b.c`,
+		value: map[string]string{
+			"d": "e",
+		},
+		merged: `{
+			"a":1,
+			"b":{
+				"c":{
+					"d":"e"
+				},
+				"f":"g"
+			}
+		}`,
+	}, {
+		dest: `{
+			"a":1,
+			"b":{
+				"c": 2,
+				"f":"g"
+			}
+		}`,
+		key: `b.c.d`,
+		value: map[string]string{
+			"x": "y",
+		},
+		merged: `{
+			"a":1,
+			"b":{
+				"c":{
+					"d":{
+						"x":"y"
+					}
+				},
+				"f":"g"
+			}
+		}`,
+	}, {
+		dest: `{
+			"a":1,
 			"b":"old"
 		}
 		`,
@@ -74,7 +119,9 @@ func TestInsertKeyInMap(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		InsertKeyInMap(t0.key, t0.value, destMap)
+		fmt.Println(destMap)
 		merged, err := json.MarshalIndent(destMap, " ", "")
 		if err != nil {
 			t.Fatal(err)

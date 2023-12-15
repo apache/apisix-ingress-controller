@@ -39,6 +39,7 @@ func InsertKeyInMap(key string, value interface{}, dest map[string]interface{}) 
 	newDest, ok := dest[ikey].(map[string]interface{})
 	if !ok {
 		newDest = make(map[string]interface{})
+		dest[ikey] = newDest
 	}
 	InsertKeyInMap(restKey, value, newDest)
 }
