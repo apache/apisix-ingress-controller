@@ -536,6 +536,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 	label := `""`
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil && !s.opts.DisableNamespaceSelector {
 		label = strings.Join(labels, ",")
+		fmt.Println("CHECK LABEL HERE ", label)
 	}
 	if s.opts.EnableWebhooks {
 		s.createAdmissionWebhook()
@@ -553,6 +554,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 		s.opts.ApisixResourceSyncInterval, s.opts.ApisixResourceSyncComparison, label, s.opts.ApisixResourceVersion, s.opts.APISIXPublishAddress,
 		s.opts.EnableWebhooks, s.opts.IngressClass, s.opts.DisableStatus, s.opts.EnableEtcdServer)
 
+	fmt.Println("ingress DEPLOYMENT ", ingressAPISIXDeployment)
 	err = s.CreateResourceFromString(ingressAPISIXDeployment)
 	assert.Nil(s.t, err, "create deployment")
 
