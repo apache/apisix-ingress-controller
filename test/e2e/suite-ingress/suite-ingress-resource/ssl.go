@@ -22,7 +22,6 @@ import (
 	"net/http"
 
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
-	"github.com/onsi/ginkgo/v2"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
