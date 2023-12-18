@@ -148,7 +148,7 @@ var _ = ginkgo.Describe("suite-ingress-features: namespacing filtering enable", 
 
 	ginkgo.Context("with namespace_selector", func() {
 		createNamespaceLabel := func(namespace string) {
-			k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, metav1.ObjectMeta{Name: namespace, Labels: map[string]string{fmt.Sprintf("namespace-selector-%d", time.Now().Nanosecond()): "watch"}})
+			k8s.CreateNamespaceWithMetadata(ginkgo.GinkgoT(), &k8s.KubectlOptions{ConfigPath: scaffold.GetKubeconfig()}, metav1.ObjectMeta{Name: namespace, Labels: map[string]string{watchedNamespace: "watch"}})
 			_, err := s.NewHTTPBINWithNamespace(namespace)
 			time.Sleep(6 * time.Second)
 			assert.Nil(ginkgo.GinkgoT(), err, "create second httpbin service")
