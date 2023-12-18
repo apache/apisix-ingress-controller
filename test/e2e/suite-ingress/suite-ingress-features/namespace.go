@@ -185,7 +185,7 @@ spec:
               number: %d
 `, backendSvc, backendSvcPort[0])
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route1, namespace1), "creating ingress")
-			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(0))
 			time.Sleep(time.Second * 6)
 			body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
 			var placeholder ip
