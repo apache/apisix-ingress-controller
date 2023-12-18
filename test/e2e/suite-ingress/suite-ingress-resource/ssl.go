@@ -22,6 +22,7 @@ import (
 	"net/http"
 
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/onsi/ginkgo/v2"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
@@ -251,6 +252,48 @@ var _ = ginkgo.Describe("suite-ingress-resource: ApisixTls mTLS Test", func() {
 
 	suites := func(scaffoldFunc func() *scaffold.Scaffold) {
 		s := scaffoldFunc()
+		ginkgo.It("create a SSL without client CA and bypass mTLS", func() {
+			// Without client cert
+
+			// When skip_mtls_uri_regex is set for a route, it won't require a client cert
+			// update ApisixTls `skip_mtls_uri_regex`
+			skipMtlsUriRegex := "/ip.*"
+			tlsName := "tls-with-client-ca"
+			// create secrets
+			host := "mtls.httpbin.local"
+			rootCA, serverCert, serverKey, _, _ := s.GenerateMACert(ginkgo.GinkgoT(), []string{host})
+			err := s.NewSecret(serverCertSecret, serverCert.String(), serverKey.String())
+			assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
+			err = s.NewClientCASecret(clientCASecret, rootCA.String(), "")
+			assert.Nil(ginkgo.GinkgoT(), err, "create client CA cert secret error")
+
+			err = s.NewApisixTlsWithClientCA(tlsName, host, serverCertSecret, clientCASecret, skipMtlsUriRegex)
+			assert.Nil(ginkgo.GinkgoT(), err, "Update ApisixTls with client CA error")
+
+			// create route
+			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+			apisixRoute := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - mtls.httpbin.local
+      paths:
+      - /*
+    backends:
+    - serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(apisixRoute))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
+
+			s.NewAPISIXHttpsClient(host).GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
+		})
 		ginkgo.It("create a SSL with client CA", func() {
 			// create secrets
 			host := "mtls.httpbin.local"
@@ -301,19 +344,6 @@ spec:
 
 			s.NewAPISIXHttpsClientWithCertificates(host, true, caCertPool, []tls.Certificate{cert}).
 				GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
-
-			// Without client cert
-
-			// If the client does not carry a certificate request, it will return 400.
-			s.NewAPISIXHttpsClient(host).GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusBadRequest).Body().Raw()
-
-			// When skip_mtls_uri_regex is set for a route, it won't require a client cert
-			// update ApisixTls `skip_mtls_uri_regex`
-			skipMtlsUriRegex = "/ip"
-			err = s.NewApisixTlsWithClientCA(tlsName, host, serverCertSecret, clientCASecret, skipMtlsUriRegex)
-			assert.Nil(ginkgo.GinkgoT(), err, "Update ApisixTls with client CA error")
-
-			s.NewAPISIXHttpsClient(host).GET("/ip").WithHeader("Host", host).Expect().Status(http.StatusOK)
 		})
 	}
 
