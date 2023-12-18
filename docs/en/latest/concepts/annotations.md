@@ -413,3 +413,63 @@ spec:
                 port:
                   number: 80
 ```
+
+## Upstream retries
+
+This annotation can be used to configure retries among multiple nodes in an upstream. You may want the proxy to retry when requests occur faults like transient network errors or service unavailable, By default the retry count is 1. You can change it by specifying the retries field.
+
+The following configuration configures the retries to 3, which indicates there'll be at most 3 requests sent to Kubernetes service httpbin's endpoints.
+
+One should bear in mind that passing a request to the next endpoint is only possible if nothing has been sent to a client yet. That is, if an error or timeout occurs in the middle of the transferring of a response, fixing this is impossible.
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    k8s.apisix.apache.org/upstream-retries: "3"
+  name: ingress-ext-v1beta1
+spec:
+  ingressClassName: apisix
+  rules:
+    - host: httpbin.org
+      http:
+        paths:
+          - path: /ip
+            pathType: Exact
+            backend:
+              service:
+                name: httpbin
+                port:
+                  number: 80
+```
+
+## Upstream timeout
+
+This annotation can be used to configure different types of timeout on an upstream. The default connect, read and send timeout are 60s, which might not be proper for some applications.
+
+The below example sets the read, connect and send timeout to 5s, 10s, 10s respectively.
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    k8s.apisix.apache.org/upstream-read-timeout.: "5s"
+    k8s.apisix.apache.org/upstream-connect-timeout: "10s"
+    k8s.apisix.apache.org/upstream-send-timeout: "10s"
+  name: ingress-ext-v1beta1
+spec:
+  ingressClassName: apisix
+  rules:
+    - host: httpbin.org
+      http:
+        paths:
+          - path: /ip
+            pathType: Exact
+            backend:
+              service:
+                name: httpbin
+                port:
+                  number: 80
+```

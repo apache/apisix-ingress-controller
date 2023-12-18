@@ -399,3 +399,79 @@ spec:
 		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)
 	})
 })
+
+var _ = ginkgo.Describe("suite-ingress-features: namespacing from no-label to label", func() {
+	labelName, labelValue := fmt.Sprintf("namespace-selector-%d", time.Now().Nanosecond()), "watch"
+	s := scaffold.NewScaffold(&scaffold.Options{
+		Name:                  "from-no-label-to-label",
+		IngressAPISIXReplicas: 1,
+		ApisixResourceVersion: scaffold.ApisixResourceVersion().Default,
+		NamespaceSelectorLabel: map[string]string{
+			labelName: labelValue,
+		},
+		DisableNamespaceLabel: true,
+	})
+	namespace1 := fmt.Sprintf("namespace-selector-%d", time.Now().Nanosecond())
+
+	ginkgo.It("from no-label to label", func() {
+		client := s.GetKubernetesClient()
+		ns := fmt.Sprintf(`
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: %s
+`, namespace1)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(ns, namespace1), "creating namespace")
+		//defer s.DeleteResourceFromStringWithNamespace(ns, namespace1)
+		_, err := s.NewHTTPBINWithNamespace(namespace1)
+		assert.Nil(ginkgo.GinkgoT(), err, "create httpbin service in", namespace1)
+
+		backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+		route1 := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: httpbin-route
+spec:
+  ingressClassName: apisix
+  rules:
+  - host: httpbin.com
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: %s
+            port:
+              number: %d
+`, backendSvc, backendSvcPort[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(route1, namespace1), "creating ingress")
+		time.Sleep(time.Second * 6)
+		routes, err := s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), routes, 0)
+		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusNotFound)
+
+		// label
+		_, err = client.CoreV1().Namespaces().Update(
+			context.Background(),
+			&v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+				Name: namespace1,
+				Labels: map[string]string{
+					labelName: labelValue,
+				},
+			}},
+			metav1.UpdateOptions{},
+		)
+		assert.Nil(ginkgo.GinkgoT(), err, "label the namespace")
+		time.Sleep(6 * time.Second)
+		routes, err = s.ListApisixRoutes()
+		assert.Nil(ginkgo.GinkgoT(), err)
+		assert.Len(ginkgo.GinkgoT(), routes, 1)
+		body := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.com").Expect().Status(http.StatusOK).Body().Raw()
+		var placeholder ip
+		err = json.Unmarshal([]byte(body), &placeholder)
+		assert.Nil(ginkgo.GinkgoT(), err, "unmarshalling IP")
+	})
+})

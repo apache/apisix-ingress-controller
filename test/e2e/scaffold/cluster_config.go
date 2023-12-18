@@ -53,7 +53,10 @@ func (s *Scaffold) NewApisixClusterConfig(name string, enable bool, enablePrefer
 	if err := s.CreateResourceFromString(cc); err != nil {
 		return err
 	}
-	time.Sleep(5 * time.Second)
+	s.addFinalizers(func() {
+		_ = s.DeleteResourceFromString(cc)
+	})
+
 	return nil
 }
 

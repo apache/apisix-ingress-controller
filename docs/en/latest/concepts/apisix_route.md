@@ -262,6 +262,46 @@ spec:
           secretRef: echo
 ```
 
+## Config with secretRef where the secret data contains path to a specific key that needs to be overridden in plugin config
+
+You can also configure specific fields in the plugin configuration that are deeply nested by passing the path to that field. The path is dot-separated keys that lead to that field. The below example overrides the `X-Foo` header field in the plugin configuration from `v1` to `v2`.
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+ #content is "v2"
+ name: echo
+data:
+ headers.X-Foo: djI=
+---
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: echo
+     enable: true
+     config:
+       before_body: "This is the preface"
+       after_body: "This is the epilogue"
+       headers:
+         X-Foo: v1
+     secretRef: echo
+```
+
 ## Websocket proxy
 
 You can route requests to [WebSocket](https://en.wikipedia.org/wiki/WebSocket#:~:text=WebSocket%20is%20a%20computer%20communications,WebSocket%20is%20distinct%20from%20HTTP.) services by setting the `websocket` attribute to `true` as shown below:

@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"time"
 
 	"go.uber.org/zap"
@@ -317,7 +318,9 @@ func (c *apisixPluginConfigController) onAdd(obj interface{}) {
 func (c *apisixPluginConfigController) onUpdate(oldObj, newObj interface{}) {
 	prev := kube.MustNewApisixPluginConfig(oldObj)
 	curr := kube.MustNewApisixPluginConfig(newObj)
-	if prev.ResourceVersion() >= curr.ResourceVersion() {
+	oldRV, _ := strconv.ParseInt(prev.ResourceVersion(), 0, 64)
+	newRV, _ := strconv.ParseInt(curr.ResourceVersion(), 0, 64)
+	if oldRV >= newRV {
 		return
 	}
 	// Updates triggered by status are ignored.
@@ -392,7 +395,9 @@ func (c *apisixPluginConfigController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("PluginConfig", "delete")
 }
 
-func (c *apisixPluginConfigController) ResourceSync(interval time.Duration) {
+// ResourceSync syncs ApisixPluginConfig resources within namespace to workqueue.
+// If namespace is "", it syncs all namespaces ApisixPluginConfig resources.
+func (c *apisixPluginConfigController) ResourceSync(interval time.Duration, namespace string) {
 	objs := c.ApisixPluginConfigInformer.GetIndexer().List()
 	delay := GetSyncDelay(interval, len(objs))
 
@@ -407,6 +412,17 @@ func (c *apisixPluginConfigController) ResourceSync(interval time.Duration) {
 			continue
 		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
+			continue
+		}
+		ns, _, err := cache.SplitMetaNamespaceKey(key)
+		if err != nil {
+			log.Errorw("split ApisixRoute meta key failed",
+				zap.Error(err),
+				zap.String("key", key),
+			)
+			continue
+		}
+		if namespace != "" && ns != namespace {
 			continue
 		}
 		log.Debugw("ResourceSync",

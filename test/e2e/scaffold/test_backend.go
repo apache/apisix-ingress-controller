@@ -89,6 +89,68 @@ spec:
               name: "grpc-mtls"
               protocol: "TCP"
 `
+
+	_testTimeoutAndRetryDeploymentWithTimeout = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gobackend-deployment2
+spec:
+  replicas: 2  # You can adjust the number of replicas as needed
+  selector:
+    matchLabels:
+      app: gobackend
+  template:
+    metadata:
+      labels:
+        app: gobackend
+    spec:
+      containers:
+      - name: gobackend
+        imagePullPolicy: IfNotPresent
+        image: "127.0.0.1:5000/test-timeout:dev"
+        command: ["/app/gobackend", "fail"]
+        ports:
+        - containerPort: 9280
+`
+
+	_testTimeoutAndRetryDeploymentWithNoTimeout = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gobackend-deployment1
+spec:
+  replicas: 1  # You can adjust the number of replicas as needed
+  selector:
+    matchLabels:
+      app: gobackend
+  template:
+    metadata:
+      labels:
+        app: gobackend
+    spec:
+      containers:
+      - name: gobackend
+        imagePullPolicy: IfNotPresent
+        image: "127.0.0.1:5000/test-timeout:dev"
+        ports:
+        - containerPort: 9280
+`
+
+	_testTimeoutAndRetryService = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: gobackend-service
+spec:
+  selector:
+    app: gobackend
+  ports:
+    - protocol: TCP
+      port: 9280  
+      targetPort: 9280
+`
+
 	_testBackendService = `
 apiVersion: v1
 kind: Service
@@ -171,6 +233,23 @@ spec:
     targetPort: 53
 `
 )
+
+func (s *Scaffold) NewServiceForRetryTimeoutTest() error {
+	if err := s.CreateResourceFromString(_testTimeoutAndRetryService); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Scaffold) NewDeploymentForRetryTimeoutTest() error {
+	if err := s.CreateResourceFromString(_testTimeoutAndRetryDeploymentWithTimeout); err != nil {
+		return err
+	}
+	if err := s.CreateResourceFromString(_testTimeoutAndRetryDeploymentWithNoTimeout); err != nil {
+		return err
+	}
+	return nil
+}
 
 func (s *Scaffold) newTestBackend() (*corev1.Service, error) {
 	backendDeployment := fmt.Sprintf(s.FormatRegistry(_testBackendDeploymentTemplate), 1)

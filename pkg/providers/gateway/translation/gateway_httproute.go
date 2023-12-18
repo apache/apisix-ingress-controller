@@ -341,7 +341,7 @@ func (t *translator) translateGatewayHTTPRouteMatch(match *gatewayv1beta1.HTTPRo
 		for _, query := range match.QueryParams {
 			var this []apisixv1.StringOrSlice
 			this = append(this, apisixv1.StringOrSlice{
-				StrVal: "arg_" + strings.ToLower(query.Name),
+				StrVal: "arg_" + strings.ToLower(fmt.Sprintf("%v", query.Name)),
 			})
 
 			switch *query.Type {

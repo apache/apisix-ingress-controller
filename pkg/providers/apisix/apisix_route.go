@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"sync"
 	"time"
 
@@ -530,7 +531,9 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 	prev := kube.MustNewApisixRoute(oldObj)
 	curr := kube.MustNewApisixRoute(newObj)
-	if prev.ResourceVersion() >= curr.ResourceVersion() {
+	oldRV, _ := strconv.ParseInt(prev.ResourceVersion(), 0, 64)
+	newRV, _ := strconv.ParseInt(curr.ResourceVersion(), 0, 64)
+	if oldRV >= newRV {
 		return
 	}
 	// Updates triggered by status are ignored.
@@ -615,7 +618,9 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("route", "delete")
 }
 
-func (c *apisixRouteController) ResourceSync(interval time.Duration) {
+// ResourceSync syncs ApisixRoute resources within namespace to workqueue.
+// If namespace is "", it syncs all namespaces ApisixRoute resources.
+func (c *apisixRouteController) ResourceSync(interval time.Duration, namespace string) {
 	objs := c.ApisixRouteInformer.GetIndexer().List()
 	delay := GetSyncDelay(interval, len(objs))
 
@@ -636,6 +641,17 @@ func (c *apisixRouteController) ResourceSync(interval time.Duration) {
 			continue
 		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
+			continue
+		}
+		ns, _, err := cache.SplitMetaNamespaceKey(key)
+		if err != nil {
+			log.Errorw("split ApisixRoute meta key failed",
+				zap.Error(err),
+				zap.String("key", key),
+			)
+			continue
+		}
+		if namespace != "" && ns != namespace {
 			continue
 		}
 		ar := kube.MustNewApisixRoute(obj)
@@ -659,15 +675,6 @@ func (c *apisixRouteController) ResourceSync(interval time.Duration) {
 				GroupVersion: ar.GroupVersion(),
 			},
 		}, delay*time.Duration(i))
-
-		ns, _, err := cache.SplitMetaNamespaceKey(key)
-		if err != nil {
-			log.Errorw("split ApisixRoute meta key failed",
-				zap.Error(err),
-				zap.String("key", key),
-			)
-			continue
-		}
 
 		var (
 			backends  []string

@@ -87,7 +87,62 @@ spec:
 			resp.Body().Contains("This is the epilogue")
 			resp.Body().Contains("my custom body")
 		})
+
+		ginkgo.It("suite-plugins-general: nested plugin config with secretRef", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+			secret := `
+apiVersion: v1
+kind: Secret
+metadata:
+ name: echo
+data:
+ headers.X-Foo: djI=
+ # content is "my custom body"
+ body: Im15IGN1c3RvbSBib2R5Ig==
+`
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating echo secret for ApisixRoute")
+			ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: echo
+     enable: true
+     config:
+       before_body: "This is the preface"
+       after_body: "This is the epilogue"
+       headers:
+         X-Foo: v1
+     secretRef: echo
+       
+`, backendSvc, backendPorts[0])
+
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+			err := s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+			err = s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+			resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+			resp.Status(http.StatusOK)
+			resp.Header("X-Foo").Equal("v2")
+		})
 	}
+
 	ginkgo.Describe("suite-plugins-general: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})

@@ -38,13 +38,15 @@ type EventHandler interface {
 }
 
 type namespaceController struct {
+	syncCh     chan string
 	controller *watchingProvider
 	workqueue  workqueue.RateLimitingInterface
 	workers    int
 }
 
-func newNamespaceController(c *watchingProvider) *namespaceController {
+func newNamespaceController(c *watchingProvider, syncCh chan string) *namespaceController {
 	ctl := &namespaceController{
+		syncCh:     syncCh,
 		controller: c,
 		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "Namespace"),
 		workers:    1,
@@ -95,7 +97,13 @@ func (c *namespaceController) sync(ctx context.Context, ev *types.Event) error {
 		// if labels of namespace contains the watchingLabels, the namespace should be set to controller.watchingNamespaces
 		if c.controller.watchingLabels.IsSubsetOf(namespace.Labels) {
 			log.Infow("watching namespace", zap.String("name", namespace.Name))
-			c.controller.watchingNamespaces.Store(namespace.Name, struct{}{})
+			if _, ok := c.controller.watchingNamespaces.Load(namespace.Name); !ok {
+				c.controller.watchingNamespaces.Store(namespace.Name, struct{}{})
+				if c.syncCh != nil {
+					log.Infof("resync resource in namespace %s", namespace.Name)
+					c.syncCh <- namespace.Name
+				}
+			}
 		} else {
 			log.Infow("un-watching namespace", zap.String("name", namespace.Name))
 			c.controller.watchingNamespaces.Delete(namespace.Name)

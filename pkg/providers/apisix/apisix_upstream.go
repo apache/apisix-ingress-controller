@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"sync"
 	"time"
 
@@ -536,7 +537,9 @@ func (c *apisixUpstreamController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorw("found ApisixUpstream resource with bad type", zap.Error(err))
 		return
 	}
-	if prev.ResourceVersion() >= curr.ResourceVersion() {
+	oldRV, _ := strconv.ParseInt(prev.ResourceVersion(), 0, 64)
+	newRV, _ := strconv.ParseInt(curr.ResourceVersion(), 0, 64)
+	if oldRV >= newRV {
 		return
 	}
 	// Updates triggered by status are ignored.
@@ -617,7 +620,9 @@ func (c *apisixUpstreamController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("upstream", "delete")
 }
 
-func (c *apisixUpstreamController) ResourceSync(interval time.Duration) {
+// ResourceSync syncs ApisixUpstream resources within namespace to workqueue.
+// If namespace is "", it syncs all namespaces ApisixUpstream resources.
+func (c *apisixUpstreamController) ResourceSync(interval time.Duration, namespace string) {
 	objs := c.ApisixUpstreamInformer.GetIndexer().List()
 	delay := GetSyncDelay(interval, len(objs))
 	for i, obj := range objs {
@@ -627,6 +632,17 @@ func (c *apisixUpstreamController) ResourceSync(interval time.Duration) {
 			continue
 		}
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
+			continue
+		}
+		ns, _, err := cache.SplitMetaNamespaceKey(key)
+		if err != nil {
+			log.Errorw("split ApisixRoute meta key failed",
+				zap.Error(err),
+				zap.String("key", key),
+			)
+			continue
+		}
+		if namespace != "" && ns != namespace {
 			continue
 		}
 		au, err := kube.NewApisixUpstream(obj)

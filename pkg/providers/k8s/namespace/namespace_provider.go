@@ -45,7 +45,22 @@ type WatchingNamespaceProvider interface {
 	WatchingNamespaces() []string
 }
 
-func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cfg *config.Config) (WatchingNamespaceProvider, error) {
+type watchingProvider struct {
+	kube *kube.KubeClient
+	cfg  *config.Config
+
+	watchingNamespaces *sync.Map
+	watchingLabels     types.Labels
+
+	namespaceInformer cache.SharedIndexInformer
+	namespaceLister   listerscorev1.NamespaceLister
+
+	controller *namespaceController
+
+	enableLabelsWatching bool
+}
+
+func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cfg *config.Config, syncCh chan string) (WatchingNamespaceProvider, error) {
 	c := &watchingProvider{
 		kube: kube,
 		cfg:  cfg,
@@ -74,24 +89,9 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 	c.namespaceInformer = kubeFactory.Core().V1().Namespaces().Informer()
 	c.namespaceLister = kubeFactory.Core().V1().Namespaces().Lister()
 
-	c.controller = newNamespaceController(c)
+	c.controller = newNamespaceController(c, syncCh)
 
 	return c, nil
-}
-
-type watchingProvider struct {
-	kube *kube.KubeClient
-	cfg  *config.Config
-
-	watchingNamespaces *sync.Map
-	watchingLabels     types.Labels
-
-	namespaceInformer cache.SharedIndexInformer
-	namespaceLister   listerscorev1.NamespaceLister
-
-	controller *namespaceController
-
-	enableLabelsWatching bool
 }
 
 func (c *watchingProvider) Init(ctx context.Context) error {

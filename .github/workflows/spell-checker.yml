@@ -24,15 +24,14 @@ on:
   pull_request:
     branches:
       - master
-      - v1.6.0
-    type: [review_requested, ready_for_review]
+      - 1.7.0
 jobs:
   misspell:
     name: runner / misspell
     runs-on: ubuntu-latest
     steps:
       - name: Check out code.
-        uses: actions/checkout@v1
+        uses: actions/checkout@v4
       - name: Install
         run: |
           wget -O - -q https://git.io/misspell | sh -s -- -b .

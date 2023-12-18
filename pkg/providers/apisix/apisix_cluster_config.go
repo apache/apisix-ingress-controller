@@ -17,6 +17,7 @@ package apisix
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"go.uber.org/zap"
@@ -277,7 +278,9 @@ func (c *apisixClusterConfigController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorw("found ApisixClusterConfig resource with bad type", zap.Error(err))
 		return
 	}
-	if prev.ResourceVersion() >= curr.ResourceVersion() {
+	oldRV, _ := strconv.ParseInt(prev.ResourceVersion(), 0, 64)
+	newRV, _ := strconv.ParseInt(curr.ResourceVersion(), 0, 64)
+	if oldRV >= newRV {
 		return
 	}
 	key, err := cache.MetaNamespaceKeyFunc(newObj)

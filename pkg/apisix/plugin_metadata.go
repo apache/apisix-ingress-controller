@@ -178,8 +178,8 @@ type pluginMetadataMem struct {
 
 func newPluginMetadataMem(c *cluster) PluginMetadata {
 	return &pluginMetadataMem{
-		url:      c.baseURL + "/plugin_metadatas",
-		resource: "plugin_metadatas",
+		url:      c.baseURL + "/plugin_metadata",
+		resource: "plugin_metadata",
 		cluster:  c,
 	}
 }
