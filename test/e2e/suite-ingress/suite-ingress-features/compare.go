@@ -64,7 +64,7 @@ spec:
 			time.Sleep(15 * time.Second)
 			// should find the warn log
 			output := s.GetDeploymentLogs("ingress-apisix-controller-deployment-e2e-test")
-			fmt.Println(output)
+
 			assert.Contains(ginkgo.GinkgoT(), output, "in APISIX but do not in declare yaml")
 		})
 	}
