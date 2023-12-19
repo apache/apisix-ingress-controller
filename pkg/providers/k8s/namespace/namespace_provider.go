@@ -76,7 +76,6 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 
 	// support namespace label-selector
 	c.enableLabelsWatching = true
-	fmt.Println("namespace selector is ", cfg.Kubernetes.NamespaceSelector)
 	for _, selector := range cfg.Kubernetes.NamespaceSelector {
 		labelSlice := strings.Split(selector, "=")
 		if len(labelSlice) != 2 {
@@ -107,7 +106,6 @@ func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) e
 		opts := metav1.ListOptions{
 			LabelSelector: q,
 		}
-		fmt.Println("query is ", q)
 		namespaces, err := c.kube.Client.CoreV1().Namespaces().List(ctx, opts)
 		if err != nil {
 			return err
@@ -127,7 +125,6 @@ func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) e
 		var tnss []string
 		for _, ns := range namespaces.Items {
 			tnss = append(tnss, ns.Name)
-			fmt.Println("labels on ", ns.Name, ns.Labels)
 		}
 		log.Infow("total namespaces", zap.Strings("namespaces", tnss))
 	}
