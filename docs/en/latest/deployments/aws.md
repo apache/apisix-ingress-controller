@@ -70,7 +70,7 @@ helm install apisix apisix/apisix \
   --namespace ingress-apisix \
   --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix \
   --set ingress-controller.config.apisix.adminAPIVersion=$ADMIN_API_VERSION \
-  --set gateway.tls.enabled=true \
+  --set apisix.ssl.enabled=true \
   --set gateway.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"=nlb
 ```
 
@@ -125,7 +125,7 @@ You should now be able to use APISIX ingress controller. You can try running thi
 
 ### Enable SSL
 
-SSL is disabled by default. You can enable it by adding the flag `--set gateway.tls.enabled=true`.
+SSL is disabled by default. You can enable it by adding the flag `--set apisix.ssl.enabled=true`.
 
 ### Change default keys
 

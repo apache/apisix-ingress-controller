@@ -132,7 +132,7 @@ Then install APISIX using helm with the following command in the directory of Ap
 #  We use Apisix 3.0 in this example. If you're using Apisix v2.x, please set to v2
 ADMIN_API_VERSION=v3
 helm install apisix apisix/apisix \
-  --set gateway.type=NodePort \
+  --set service.type=NodePort \
   --set apisix.image.repository=custom/apisix \
   --set apisix.image.tag=v0.1 \
   --set extPlugin.enabled=true \

@@ -30,7 +30,7 @@ To learn more about mTLS, please refer to [Mutual authentication](https://en.wik
 - an available Kubernetes cluster
 - an available APISIX and APISIX Ingress Controller installation
 
-In this guide, we assume that your APISIX is installed in the `apisix` namespace and `ssl` is enabled, which is not enabled by default in the Helm Chart. To enable it, you need to set `gateway.tls.enabled=true` during installation.
+In this guide, we assume that your APISIX is installed in the `apisix` namespace and `ssl` is enabled, which is not enabled by default in the Helm Chart. To enable it, you need to set `apisix.ssl.enabled=true` during installation.
 
 Assuming the SSL port is `9443`.
 

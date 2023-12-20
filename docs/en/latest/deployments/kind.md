@@ -62,7 +62,7 @@ helm repo update
 #  We use Apisix 3.0 in this example. If you're using Apisix v2.x, please set to v2
 ADMIN_API_VERSION=v3
 helm install apisix apisix/apisix \
-  --set gateway.type=NodePort \
+  --set service.type=NodePort \
   --set ingress-controller.enabled=true \
   --create-namespace \
   --namespace ingress-apisix \
