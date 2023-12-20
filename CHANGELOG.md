@@ -19,6 +19,7 @@
 
 # Table of Contents
 
+- [1.8.0](#180)
 - [1.7.0](#170)
 - [1.6.0](#160)
 - [1.6.0-rc1](#160-rc1)
@@ -37,6 +38,50 @@
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 1.8.0
+
+## What's New
+
+- docs: update keys based helm chart version @Revolyssup (#2085)
+- feat: add `skip_mtls_uri_regex` support for ApisixTls @aynp (#1915)
+- feat: add support for multiple labels with same key @Revolyssup (#2099)
+- feat: Allow merging nested values in plugin config secretRef @Revolyssup (#2096)
+- feat: allow configuring timeout and retries for upstream with ingress @Revolyssup (#1876)
+- ci: add workflow to push docker image @Revolyssup (#2081)
+- fix: upgrade etcd-adapter @Revolyssup (#2078)
+- docs: Add doc for ApisixConsumer @Revolyssup (#2074)
+- fix: create unique TLS object for each item in Ingress tls @Revolyssup (#1989)
+- feat: add release-drafter @Revolyssup (#2068)
+- fix: replace string comparison with 64 bit int @Revolyssup (#2062)
+- chore: add Revolyssup in reviewers @Revolyssup (#2059)
+- chore(deps): bump google.golang.org/grpc from 1.42.0 to 1.56.3 in /test/e2e/testbackend @dependabot (#2026)
+- docs: add best practice docs to avoid race condition bw kubelet and apisix @Revolyssup (#2045)
+- chore: correct Makefile comments @jiangfucheng (#2038)
+- Renamed field in examples according to CRD @nayavu (#2032)
+
+## 🐛 Bug Fixes
+
+- fix: Some CRDs missing status sub-resource @Chever-John (#1809)
+
+## 🧰 Maintenance
+
+- chore(deps): bump github.com/onsi/ginkgo/v2 from 2.13.1 to 2.13.2 in /test/e2e @dependabot (#2079)
+- chore(deps): bump golang.org/x/crypto from 0.14.0 to 0.17.0 in /test/e2e @dependabot (#2107)
+- chore(deps): bump k8s.io/client-go from 0.28.4 to 0.29.0 in /test/e2e @dependabot (#2105)
+- chore(deps): bump k8s.io/api from 0.28.2 to 0.28.4 @dependabot (#2056)
+- chore(deps): bump k8s.io/client-go from 0.28.3 to 0.28.4 in /test/e2e @dependabot (#2052)
+- chore(deps): bump github.com/onsi/ginkgo/v2 from 2.13.0 to 2.13.1 in /test/e2e @dependabot (#2041)
+- chore(deps): bump google.golang.org/grpc from 1.57.0 to 1.57.1 in /test/e2e @dependabot (#2024)
+- chore(deps): bump k8s.io/apimachinery from 0.28.3 to 0.28.4 in /test/e2e @dependabot (#2054)
+- chore(deps): bump github.com/gorilla/websocket from 1.5.0 to 1.5.1 in /test/e2e @dependabot (#2035)
+- chore(deps): bump k8s.io/client-go from 0.28.2 to 0.28.3 in /test/e2e @dependabot (#2016)
+- chore(deps): bump k8s.io/api from 0.28.2 to 0.28.3 in /test/e2e @dependabot (#2018)
+
+## 👨🏽‍💻 Contributors
+
+Thank you to our contributors for making this release possible:
+@Chever-John, @Revolyssup, @aynp, @dependabot, @dependabot[bot], @jiangfucheng and @nayavu
 
 # 1.7.0
 
