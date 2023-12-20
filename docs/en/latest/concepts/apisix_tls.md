@@ -60,10 +60,6 @@ This feature is only supported with APISIX version 3.4 or above.
 
 APISIX allows configuring an URI whitelist to bypass MTLS. If the URI of a request is in the whitelist, then the client certificate will not be checked. Note that other URIs of the associated SNI will get HTTP 400 response instead of alert error in the SSL handshake phase, if the client certificate is missing or invalid.
 
-::: note
-This feature is only available in APISIX version 3.4 and above.
-:::
-
 The below example creates an APISIX ssl resource where MTLS is bypassed for any route that starts with `/ip`.
 
 ```yaml
