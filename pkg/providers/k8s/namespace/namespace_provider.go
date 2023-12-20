@@ -24,7 +24,6 @@ import (
 
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 
@@ -49,8 +48,8 @@ type watchingProvider struct {
 	kube *kube.KubeClient
 	cfg  *config.Config
 
-	watchingNamespaces *sync.Map
-	watchingLabels     types.Labels
+	watchingNamespaces        *sync.Map
+	watchingMultiValuedLabels types.MultiValueLabels
 
 	namespaceInformer cache.SharedIndexInformer
 	namespaceLister   listerscorev1.NamespaceLister
@@ -65,8 +64,8 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 		kube: kube,
 		cfg:  cfg,
 
-		watchingNamespaces: new(sync.Map),
-		watchingLabels:     make(map[string]string),
+		watchingNamespaces:        new(sync.Map),
+		watchingMultiValuedLabels: make(map[string][]string),
 
 		enableLabelsWatching: false,
 	}
@@ -82,7 +81,7 @@ func NewWatchingNamespaceProvider(ctx context.Context, kube *kube.KubeClient, cf
 		if len(labelSlice) != 2 {
 			return nil, fmt.Errorf("bad namespace-selector format: %s, expected namespace-selector format: xxx=xxx", selector)
 		}
-		c.watchingLabels[labelSlice[0]] = labelSlice[1]
+		c.watchingMultiValuedLabels[labelSlice[0]] = append(c.watchingMultiValuedLabels[labelSlice[0]], labelSlice[1])
 	}
 
 	kubeFactory := kube.NewSharedIndexInformerFactory()
@@ -103,21 +102,32 @@ func (c *watchingProvider) Init(ctx context.Context) error {
 }
 
 func (c *watchingProvider) initWatchingNamespacesByLabels(ctx context.Context) error {
-	labelSelector := metav1.LabelSelector{MatchLabels: c.watchingLabels}
-	opts := metav1.ListOptions{
-		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
-	}
-	namespaces, err := c.kube.Client.CoreV1().Namespaces().List(ctx, opts)
-	if err != nil {
-		return err
-	}
-	var nss []string
+	for _, q := range c.watchingMultiValuedLabels.BuildQuery() {
+		opts := metav1.ListOptions{
+			LabelSelector: q,
+		}
+		namespaces, err := c.kube.Client.CoreV1().Namespaces().List(ctx, opts)
+		if err != nil {
+			return err
+		}
+		var nss []string
+		for _, ns := range namespaces.Items {
+			nss = append(nss, ns.Name)
+			c.watchingNamespaces.Store(ns.Name, struct{}{})
+		}
+		log.Infow("label selector watching namespaces", zap.Strings("namespaces", nss))
 
-	for _, ns := range namespaces.Items {
-		nss = append(nss, ns.Name)
-		c.watchingNamespaces.Store(ns.Name, struct{}{})
+		//---
+		namespaces, err = c.kube.Client.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return err
+		}
+		var tnss []string
+		for _, ns := range namespaces.Items {
+			tnss = append(tnss, ns.Name)
+		}
+		log.Infow("total namespaces", zap.Strings("namespaces", tnss))
 	}
-	log.Infow("label selector watching namespaces", zap.Strings("namespaces", nss))
 	return nil
 }
 

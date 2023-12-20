@@ -535,7 +535,7 @@ func (s *Scaffold) newIngressAPISIXController() error {
 
 	label := `""`
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil && !s.opts.DisableNamespaceSelector {
-		label = labels[0]
+		label = strings.Join(labels, ",")
 	}
 	if s.opts.EnableWebhooks {
 		s.createAdmissionWebhook()
@@ -664,7 +664,7 @@ func (s *Scaffold) GetIngressPodDetails() ([]corev1.Pod, error) {
 func (s *Scaffold) ScaleIngressController(desired int) error {
 	label := `""`
 	if labels := s.NamespaceSelectorLabelStrings(); labels != nil {
-		label = labels[0]
+		label = strings.Join(labels, ",")
 	}
 
 	ingressDeployment := s.genIngressDeployment(desired, s.opts.APISIXAdminAPIVersion,
