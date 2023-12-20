@@ -96,6 +96,10 @@ spec:
                           minLength: 1
                     depth:
                       type: integer
+                    skip_mtls_uri_regex:
+                      type: array
+                      items:
+                        type: string
                 hosts:
                   type: array
                   minItems: 1

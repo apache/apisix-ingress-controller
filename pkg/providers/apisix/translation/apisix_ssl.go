@@ -57,8 +57,9 @@ func (t *translator) TranslateSSLV2(tls *configv2.ApisixTls) (*apisixv1.Ssl, err
 			return nil, err
 		}
 		ssl.Client = &apisixv1.MutualTLSClientConfig{
-			CA:    string(ca),
-			Depth: tls.Spec.Client.Depth,
+			CA:               string(ca),
+			Depth:            tls.Spec.Client.Depth,
+			SkipMTLSUriRegex: tls.Spec.Client.SkipMTLSUriRegex,
 		}
 	}
 

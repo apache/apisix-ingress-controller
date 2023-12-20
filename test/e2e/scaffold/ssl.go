@@ -88,6 +88,8 @@ spec:
       name: %s
       namespace: %s
     depth: 10
+    skip_mtls_uri_regex:
+    - %s
 `
 )
 
@@ -137,8 +139,8 @@ func (s *Scaffold) NewApisixTls(name, host, secretName string, ingressClassName 
 }
 
 // NewApisixTlsWithClientCA new a ApisixTls CRD
-func (s *Scaffold) NewApisixTlsWithClientCA(name, host, secretName, clientCASecret string) error {
-	tls := fmt.Sprintf(_api6tlsWithClientCATemplate, s.opts.ApisixResourceVersion, name, host, secretName, s.kubectlOptions.Namespace, clientCASecret, s.kubectlOptions.Namespace)
+func (s *Scaffold) NewApisixTlsWithClientCA(name, host, secretName, clientCASecret, skipMtlsUriRegex string) error {
+	tls := fmt.Sprintf(_api6tlsWithClientCATemplate, s.opts.ApisixResourceVersion, name, host, secretName, s.kubectlOptions.Namespace, clientCASecret, s.kubectlOptions.Namespace, skipMtlsUriRegex)
 	if err := s.CreateResourceFromString(tls); err != nil {
 		return err
 	}

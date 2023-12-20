@@ -721,6 +721,11 @@ func (in *ApisixGlobalRuleSpec) DeepCopy() *ApisixGlobalRuleSpec {
 func (in *ApisixMutualTlsClientConfig) DeepCopyInto(out *ApisixMutualTlsClientConfig) {
 	*out = *in
 	out.CASecret = in.CASecret
+	if in.SkipMTLSUriRegex != nil {
+		in, out := &in.SkipMTLSUriRegex, &out.SkipMTLSUriRegex
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
@@ -1340,7 +1345,7 @@ func (in *ApisixTlsSpec) DeepCopyInto(out *ApisixTlsSpec) {
 	if in.Client != nil {
 		in, out := &in.Client, &out.Client
 		*out = new(ApisixMutualTlsClientConfig)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }

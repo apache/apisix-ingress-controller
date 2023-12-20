@@ -784,8 +784,9 @@ type ApisixSecret struct {
 
 // ApisixMutualTlsClientConfig describes the mutual TLS CA and verify depth
 type ApisixMutualTlsClientConfig struct {
-	CASecret ApisixSecret `json:"caSecret,omitempty" yaml:"caSecret,omitempty"`
-	Depth    int          `json:"depth,omitempty" yaml:"depth,omitempty"`
+	CASecret         ApisixSecret `json:"caSecret,omitempty" yaml:"caSecret,omitempty"`
+	Depth            int          `json:"depth,omitempty" yaml:"depth,omitempty"`
+	SkipMTLSUriRegex []string     `json:"skip_mtls_uri_regex,omitempty" yaml:"skip_mtls_uri_regex, omitempty"`
 }
 
 // +genclient

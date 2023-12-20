@@ -51,3 +51,33 @@ Make sure that the `hosts` field is accurate. APISIX uses the `host` field to ma
 :::
 
 APISIX Ingress will watch the secret resources referred by `ApisixTls` objects and re-translates it to APISIX resources if they are changed.
+
+## Bypassing MTLS based on regular expression matching against URI
+
+::: note
+This feature is only supported with APISIX version 3.4 or above.
+:::
+
+APISIX allows configuring an URI whitelist to bypass MTLS. If the URI of a request is in the whitelist, then the client certificate will not be checked. Note that other URIs of the associated SNI will get HTTP 400 response instead of alert error in the SSL handshake phase, if the client certificate is missing or invalid.
+
+The below example creates an APISIX ssl resource where MTLS is bypassed for any route that starts with `/ip`.
+
+```yaml
+apiVersion: %s
+kind: ApisixTls
+metadata:
+  name: my-tls
+spec:
+  hosts:
+  - httpbin.org
+  secret:
+    name: my-secret
+    namespace: default
+  client:
+    caSecret:
+      name: ca-secret
+      namespace: default
+    depth: 10
+    skip_mtls_uri_regex:
+    - /ip.*
+```
