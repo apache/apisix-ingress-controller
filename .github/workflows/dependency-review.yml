@@ -21,7 +21,7 @@ on:
   pull_request:
     branches:
       - master
-      - 1.7.0
+      - 1.8.0
 
 permissions:
   contents: read
