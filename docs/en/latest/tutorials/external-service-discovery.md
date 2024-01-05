@@ -99,7 +99,7 @@ apisix:
     registry:
       dns:
         servers:
-          - "172.17.0.11:53" #Replace servers with your configured servers.
+          - "172.17.0.11:53" # replace with your server addresses
 ```
 
 :::
