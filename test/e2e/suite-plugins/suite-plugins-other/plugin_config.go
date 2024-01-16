@@ -144,7 +144,7 @@ spec:
       servicePort: %d
       weight: 10
     plugin_config_name: echo-and-cors-apc
-	plugin_config_namespace: test
+    plugin_config_namespace: test
 `, backendSvc, backendPorts[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
 
