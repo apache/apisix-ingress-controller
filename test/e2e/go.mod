@@ -1,6 +1,8 @@
 module github.com/apache/apisix-ingress-controller/test/e2e
 
-go 1.20
+go 1.21
+
+toolchain go1.21.1
 
 require (
 	github.com/apache/apisix-ingress-controller v0.0.0-20210105024109-72e53386de5a
