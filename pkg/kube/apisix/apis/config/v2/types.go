@@ -72,10 +72,12 @@ type ApisixRouteHTTP struct {
 	// Upstreams refer to ApisixUpstream CRD
 	Upstreams []ApisixRouteUpstreamReference `json:"upstreams,omitempty" yaml:"upstreams,omitempty"`
 
-	Websocket        bool                      `json:"websocket" yaml:"websocket"`
-	PluginConfigName string                    `json:"plugin_config_name,omitempty" yaml:"plugin_config_name,omitempty"`
-	Plugins          []ApisixRoutePlugin       `json:"plugins,omitempty" yaml:"plugins,omitempty"`
-	Authentication   ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
+	Websocket        bool   `json:"websocket" yaml:"websocket"`
+	PluginConfigName string `json:"plugin_config_name,omitempty" yaml:"plugin_config_name,omitempty"`
+	//By default, PluginConfigNamespace will be the same as the namespace of ApisixRoute
+	PluginConfigNamespace string                    `json:"plugin_config_namespace,omitempty" yaml:"plugin_config_namespace,omitempty"`
+	Plugins               []ApisixRoutePlugin       `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Authentication        ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
 // ApisixRouteHTTPBackend represents an HTTP backend (a Kubernetes Service).

@@ -315,6 +315,46 @@ func TestTranslateApisixRouteV2WithEmptyPluginConfigName(t *testing.T) {
 	assert.Equal(t, "", res.Routes[2].PluginConfigId)
 }
 
+func TestTranslateApisixRouteV2WithPluginConfigNamespace(t *testing.T) {
+	tr, processCh := mockTranslatorV2(t)
+	<-processCh
+	<-processCh
+	pluginConfigNamespace := "test-2"
+	ar := &configv2.ApisixRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ar",
+			Namespace: "test",
+		},
+		Spec: configv2.ApisixRouteSpec{
+			HTTP: []configv2.ApisixRouteHTTP{
+				{
+					Name: "rule1",
+					Match: configv2.ApisixRouteHTTPMatch{
+						Paths: []string{
+							"/*",
+						},
+					},
+					Backends: []configv2.ApisixRouteHTTPBackend{
+						{
+							ServiceName: "svc",
+							ServicePort: intstr.IntOrString{
+								IntVal: 80,
+							},
+						},
+					},
+					PluginConfigName:      "test-PluginConfigName-1",
+					PluginConfigNamespace: pluginConfigNamespace,
+				},
+			},
+		},
+	}
+	res, err := tr.TranslateRouteV2(ar)
+	assert.NoError(t, err)
+	assert.Len(t, res.PluginConfigs, 0)
+	expectedPluginId := id.GenID(apisixv1.ComposePluginConfigName(pluginConfigNamespace, ar.Spec.HTTP[0].PluginConfigName))
+	assert.Equal(t, expectedPluginId, res.Routes[0].PluginConfigId)
+}
+
 func TestGenerateApisixRouteV2DeleteMark(t *testing.T) {
 	tr := &translator{
 		&TranslatorOptions{},

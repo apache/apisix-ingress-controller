@@ -171,7 +171,11 @@ func (t *translator) translateHTTPRouteV2(ctx *translation.TranslateContext, ar 
 		route.FilterFunc = part.Match.FilterFunc
 
 		if part.PluginConfigName != "" {
-			route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, part.PluginConfigName))
+			ns := ar.Namespace
+			if part.PluginConfigNamespace != "" {
+				ns = part.PluginConfigNamespace
+			}
+			route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ns, part.PluginConfigName))
 		}
 
 		for k, v := range ar.ObjectMeta.Labels {
@@ -465,7 +469,11 @@ func (t *translator) generateHTTPRouteV2DeleteMark(ctx *translation.TranslateCon
 		route.Name = apisixv1.ComposeRouteName(ar.Namespace, ar.Name, part.Name)
 		route.ID = id.GenID(route.Name)
 		if part.PluginConfigName != "" {
-			route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ar.Namespace, part.PluginConfigName))
+			ns := ar.Namespace
+			if part.PluginConfigNamespace != "" {
+				ns = part.PluginConfigNamespace
+			}
+			route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ns, part.PluginConfigName))
 		}
 
 		ctx.AddRoute(route)
