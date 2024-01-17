@@ -399,7 +399,7 @@ func (c *apisixRouteController) checkPluginNameIfNotEmptyV2(ctx context.Context,
 		if v.PluginConfigName != "" {
 			ns := in.Namespace
 			if v.PluginConfigNamespace != "" {
-				ns = in.Namespace
+				ns = v.PluginConfigNamespace
 			}
 			_, err := c.APISIX.Cluster(c.Config.APISIX.DefaultClusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(ns, v.PluginConfigName))
 			if err != nil {
