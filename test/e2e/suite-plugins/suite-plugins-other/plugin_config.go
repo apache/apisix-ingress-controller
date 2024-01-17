@@ -632,7 +632,7 @@ spec:
  - name: cors
    enable: true
 `)
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apc))
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(apc, testns))
 
 		err = s.EnsureNumApisixPluginConfigCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
