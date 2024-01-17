@@ -99,6 +99,14 @@ spec:
 	})
 
 	ginkgo.It("ApisixPluginConfig cross namespace", func() {
+		testns := `
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test
+`
+		err := s.CreateResourceFromString(testns)
+		assert.Nil(ginkgo.GinkgoT(), err, "Creating test namespace")
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		apc := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -121,7 +129,7 @@ spec:
 `)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(apc, "test"))
 
-		err := s.EnsureNumApisixPluginConfigCreated(1)
+		err = s.EnsureNumApisixPluginConfigCreated(1)
 		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
 
 		time.Sleep(time.Second * 3)
