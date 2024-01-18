@@ -594,3 +594,93 @@ spec:
 		resp.Status(http.StatusOK)
 	})
 })
+
+var _ = ginkgo.Describe("suite-plugins-other: ApisixPluginConfig cross namespace", func() {
+	s := scaffold.NewScaffold(&scaffold.Options{
+		NamespaceSelectorLabel: map[string][]string{
+			"apisix.ingress.watch": {"test"},
+		},
+	})
+	ginkgo.It("ApisixPluginConfig cross namespace", func() {
+		testns := `
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test
+  labels:
+    apisix.ingress.watch: test
+`
+		err := s.CreateResourceFromString(testns)
+		assert.Nil(ginkgo.GinkgoT(), err, "Creating test namespace")
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		apc := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+ name: echo-and-cors-apc
+ namespace: test
+spec:
+ plugins:
+ - name: echo
+   enable: true
+   config:
+    before_body: "This is the preface"
+    after_body: "This is the epilogue"
+    headers:
+     X-Foo: v1
+     X-Foo2: v2
+ - name: cors
+   enable: true
+`)
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromStringWithNamespace(apc, "test"))
+
+		err = s.EnsureNumApisixPluginConfigCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of pluginConfigs")
+
+		time.Sleep(time.Second * 3)
+
+		ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /ip
+    backends:
+    - serviceName: %s
+      servicePort: %d
+      weight: 10
+    plugin_config_name: echo-and-cors-apc
+    plugin_config_namespace: test
+`, backendSvc, backendPorts[0])
+		assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+		err = s.EnsureNumApisixRoutesCreated(1)
+		assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+
+		time.Sleep(3 * time.Second)
+		pcs, err := s.ListApisixPluginConfig()
+		assert.Nil(ginkgo.GinkgoT(), err, nil, "listing pluginConfigs")
+		assert.Len(ginkgo.GinkgoT(), pcs, 1)
+		assert.Len(ginkgo.GinkgoT(), pcs[0].Plugins, 2)
+
+		resp := s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect()
+		resp.Status(http.StatusOK)
+		resp.Header("X-Foo").Equal("v1")
+		resp.Header("X-Foo2").Equal("v2")
+		resp.Header("Access-Control-Allow-Origin").Equal("*")
+		resp.Header("Access-Control-Allow-Methods").Equal("*")
+		resp.Header("Access-Control-Allow-Headers").Equal("*")
+		resp.Header("Access-Control-Expose-Headers").Equal("*")
+		resp.Header("Access-Control-Max-Age").Equal("5")
+		resp.Body().Contains("This is the preface")
+		resp.Body().Contains("origin")
+		resp.Body().Contains("This is the epilogue")
+	})
+})
