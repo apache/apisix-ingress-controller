@@ -203,9 +203,6 @@ func (c *gatewayClassController) onAdd(obj interface{}) {
 		)
 		return
 	}
-	if !c.controller.NamespaceProvider.IsWatchingNamespace(key) {
-		return
-	}
 	log.Debugw("gateway class add event arrived",
 		zap.Any("object", obj),
 	)

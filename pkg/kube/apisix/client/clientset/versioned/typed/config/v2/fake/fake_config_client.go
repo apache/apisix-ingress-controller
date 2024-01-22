@@ -35,6 +35,10 @@ func (c *FakeApisixV2) ApisixConsumers(namespace string) v2.ApisixConsumerInterf
 	return &FakeApisixConsumers{c, namespace}
 }
 
+func (c *FakeApisixV2) ApisixGlobalRules(namespace string) v2.ApisixGlobalRuleInterface {
+	return &FakeApisixGlobalRules{c, namespace}
+}
+
 func (c *FakeApisixV2) ApisixPluginConfigs(namespace string) v2.ApisixPluginConfigInterface {
 	return &FakeApisixPluginConfigs{c, namespace}
 }

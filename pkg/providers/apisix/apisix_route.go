@@ -17,10 +17,13 @@ package apisix
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strconv"
 	"sync"
 	"time"
 
 	"go.uber.org/zap"
+	"gopkg.in/go-playground/pool.v3"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -33,7 +36,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
@@ -46,6 +48,8 @@ type apisixRouteController struct {
 	workqueue        workqueue.RateLimitingInterface
 	relatedWorkqueue workqueue.RateLimitingInterface
 	workers          int
+
+	pool pool.Pool
 
 	svcLock sync.RWMutex
 	// service key -> apisix route key
@@ -67,6 +71,8 @@ func newApisixRouteController(common *apisixCommon) *apisixRouteController {
 		workqueue:        workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRoute"),
 		relatedWorkqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "ApisixRouteRelated"),
 		workers:          1,
+
+		pool: pool.NewLimited(2),
 
 		svcMap:            make(map[string]map[string]struct{}),
 		apisixUpstreamMap: make(map[string]map[string]struct{}),
@@ -99,6 +105,7 @@ func (c *apisixRouteController) run(ctx context.Context) {
 	defer log.Info("ApisixRoute controller exited")
 	defer c.workqueue.ShutDown()
 	defer c.relatedWorkqueue.ShutDown()
+	defer c.pool.Close()
 
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
@@ -155,37 +162,6 @@ func (c *apisixRouteController) syncRelationship(ev *types.Event, routeKey strin
 		newUpstreams []string
 	)
 	switch obj.GroupVersion {
-	case config.ApisixV2beta3:
-		var (
-			old    *v2beta3.ApisixRoute
-			newObj *v2beta3.ApisixRoute
-		)
-
-		if ev.Type == types.EventUpdate {
-			old = obj.OldObject.V2beta3()
-		} else if ev.Type == types.EventDelete {
-			old = ev.Tombstone.(kube.ApisixRoute).V2beta3()
-		}
-
-		if ev.Type != types.EventDelete {
-			newObj = ar.V2beta3()
-		}
-
-		// calculate diff, so we don't need to care about the event order
-		if old != nil {
-			for _, rule := range old.Spec.HTTP {
-				for _, backend := range rule.Backends {
-					oldBackends = append(oldBackends, old.Namespace+"/"+backend.ServiceName)
-				}
-			}
-		}
-		if newObj != nil {
-			for _, rule := range newObj.Spec.HTTP {
-				for _, backend := range rule.Backends {
-					newBackends = append(newBackends, newObj.Namespace+"/"+backend.ServiceName)
-				}
-			}
-		}
 	case config.ApisixV2:
 		var (
 			old    *v2.ApisixRoute
@@ -289,8 +265,6 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		tctx *translation.TranslateContext
 	)
 	switch obj.GroupVersion {
-	case config.ApisixV2beta3:
-		ar, err = c.ApisixRouteLister.V2beta3(namespace, name)
 	case config.ApisixV2:
 		ar, err = c.ApisixRouteLister.V2(namespace, name)
 	default:
@@ -310,6 +284,10 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 			return err
 		}
 
+		if ev.Type == types.EventSync {
+			// ignore not found error in delay sync
+			return nil
+		}
 		if ev.Type != types.EventDelete {
 			log.Warnw("ApisixRoute was deleted before it can be delivered",
 				zap.String("key", obj.Key),
@@ -334,120 +312,105 @@ func (c *apisixRouteController) sync(ctx context.Context, ev *types.Event) error
 		}
 		ar = ev.Tombstone.(kube.ApisixRoute)
 	}
-
-	switch obj.GroupVersion {
-	case config.ApisixV2beta3:
-		if ev.Type != types.EventDelete {
-			if err = c.checkPluginNameIfNotEmptyV2beta3(ctx, ar.V2beta3()); err == nil {
-				tctx, err = c.translator.TranslateRouteV2beta3(ar.V2beta3())
-			}
-		} else {
-			tctx, err = c.translator.GenerateRouteV2beta3DeleteMark(ar.V2beta3())
-		}
-		if err != nil {
-			log.Errorw("failed to translate ApisixRoute v2beta3",
-				zap.Error(err),
-				zap.Any("object", ar),
-			)
-			return err
-		}
-	case config.ApisixV2:
-		if ev.Type != types.EventDelete {
-			if err = c.checkPluginNameIfNotEmptyV2(ctx, ar.V2()); err == nil {
-				tctx, err = c.translator.TranslateRouteV2(ar.V2())
-			}
-		} else {
-			tctx, err = c.translator.GenerateRouteV2DeleteMark(ar.V2())
-		}
-		if err != nil {
-			log.Errorw("failed to translate ApisixRoute v2",
-				zap.Error(err),
-				zap.Any("object", ar),
-			)
-			return err
-		}
-	default:
-		log.Errorw("unknown ApisixRoute version",
-			zap.String("version", obj.GroupVersion),
-			zap.String("key", obj.Key),
-		)
-		return fmt.Errorf("unknown ApisixRoute version %v", obj.GroupVersion)
-	}
-
-	log.Debugw("translated ApisixRoute",
-		zap.Any("routes", tctx.Routes),
-		zap.Any("upstreams", tctx.Upstreams),
-		zap.Any("apisix_route", ar),
-		zap.Any("pluginConfigs", tctx.PluginConfigs),
-	)
-
-	m := &utils.Manifest{
-		Routes:        tctx.Routes,
-		Upstreams:     tctx.Upstreams,
-		StreamRoutes:  tctx.StreamRoutes,
-		PluginConfigs: tctx.PluginConfigs,
-	}
-
-	var (
-		added   *utils.Manifest
-		updated *utils.Manifest
-		deleted *utils.Manifest
-	)
-
-	if ev.Type == types.EventDelete {
-		deleted = m
-	} else if ev.Type == types.EventAdd {
-		added = m
-	} else {
-		oldCtx, _ := c.translator.TranslateOldRoute(obj.OldObject)
-		om := &utils.Manifest{
-			Routes:        oldCtx.Routes,
-			Upstreams:     oldCtx.Upstreams,
-			StreamRoutes:  oldCtx.StreamRoutes,
-			PluginConfigs: oldCtx.PluginConfigs,
-		}
-		added, updated, deleted = m.Diff(om)
-	}
-
-	return c.SyncManifests(ctx, added, updated, deleted)
-}
-
-func (c *apisixRouteController) checkPluginNameIfNotEmptyV2beta3(ctx context.Context, in *v2beta3.ApisixRoute) error {
-	for _, v := range in.Spec.HTTP {
-		if v.PluginConfigName != "" {
-			_, err := c.APISIX.Cluster(c.Config.APISIX.DefaultClusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName))
-			if err != nil {
-				if err == apisixcache.ErrNotFound {
-					log.Errorw("checkPluginNameIfNotEmptyV2beta3 error: plugin_config not found",
-						zap.String("name", apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName)),
-						zap.Any("obj", in),
-						zap.Error(err))
-				} else {
-					log.Errorw("checkPluginNameIfNotEmptyV2beta3 PluginConfig get failed",
-						zap.String("name", apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName)),
-						zap.Any("obj", in),
-						zap.Error(err))
+	// translator phase: translate resource, construction data plance context
+	{
+		switch obj.GroupVersion {
+		case config.ApisixV2:
+			if ev.Type != types.EventDelete {
+				if err = c.checkPluginNameIfNotEmptyV2(ctx, ar.V2()); err == nil {
+					tctx, err = c.translator.TranslateRouteV2(ar.V2())
 				}
-				return err
+			} else {
+				tctx, err = c.translator.GenerateRouteV2DeleteMark(ar.V2())
+			}
+			if err != nil {
+				log.Errorw("failed to translate ApisixRoute v2",
+					zap.Error(err),
+					zap.Any("object", ar),
+				)
+				goto updateStatus
 			}
 		}
+
+		log.Debugw("translated ApisixRoute",
+			zap.Any("routes", tctx.Routes),
+			zap.Any("upstreams", tctx.Upstreams),
+			zap.Any("apisix_route", ar),
+			zap.Any("pluginConfigs", tctx.PluginConfigs),
+		)
 	}
-	return nil
+	// sync phase: Use context update data palne
+	{
+		m := &utils.Manifest{
+			Routes:        tctx.Routes,
+			Upstreams:     tctx.Upstreams,
+			StreamRoutes:  tctx.StreamRoutes,
+			PluginConfigs: tctx.PluginConfigs,
+		}
+		var (
+			added   *utils.Manifest
+			updated *utils.Manifest
+			deleted *utils.Manifest
+		)
+
+		if ev.Type == types.EventDelete {
+			deleted = m
+		} else if ev.Type.IsAddEvent() {
+			added = m
+		} else {
+			oldCtx, _ := c.translator.TranslateOldRoute(obj.OldObject)
+			if oldCtx != nil {
+				om := &utils.Manifest{
+					Routes:        oldCtx.Routes,
+					Upstreams:     oldCtx.Upstreams,
+					StreamRoutes:  oldCtx.StreamRoutes,
+					PluginConfigs: oldCtx.PluginConfigs,
+				}
+				added, updated, deleted = m.Diff(om)
+			}
+		}
+
+		log.Debugw("sync ApisixRoute to cluster",
+			zap.String("event_type", ev.Type.String()),
+			zap.Any("add", added),
+			zap.Any("update", updated),
+			zap.Any("delete", deleted),
+		)
+		if err = c.SyncManifests(ctx, added, updated, deleted, ev.Type.IsSyncEvent()); err != nil {
+			log.Errorw("failed to sync ApisixRoute to apisix",
+				zap.Error(err),
+			)
+			goto updateStatus
+		}
+	}
+updateStatus:
+	c.pool.Queue(func(wu pool.WorkUnit) (interface{}, error) {
+		if wu.IsCancelled() {
+			return nil, nil
+		}
+		c.updateStatus(ar, err)
+		return true, nil
+	})
+	return err
 }
 
 func (c *apisixRouteController) checkPluginNameIfNotEmptyV2(ctx context.Context, in *v2.ApisixRoute) error {
 	for _, v := range in.Spec.HTTP {
 		if v.PluginConfigName != "" {
-			_, err := c.APISIX.Cluster(c.Config.APISIX.DefaultClusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName))
+			ns := in.Namespace
+			if v.PluginConfigNamespace != "" {
+				ns = v.PluginConfigNamespace
+			}
+			_, err := c.APISIX.Cluster(c.Config.APISIX.DefaultClusterName).PluginConfig().Get(ctx, apisixv1.ComposePluginConfigName(ns, v.PluginConfigName))
 			if err != nil {
 				if err == apisixcache.ErrNotFound {
 					log.Errorw("checkPluginNameIfNotEmptyV2 error: plugin_config not found",
-						zap.String("name", apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName)),
+						zap.String("name", apisixv1.ComposePluginConfigName(ns, v.PluginConfigName)),
 						zap.Any("obj", in),
 						zap.Error(err))
 				} else {
 					log.Errorw("checkPluginNameIfNotEmptyV2 PluginConfig get failed",
-						zap.String("name", apisixv1.ComposePluginConfigName(in.Namespace, v.PluginConfigName)),
+						zap.String("name", apisixv1.ComposePluginConfigName(ns, v.PluginConfigName)),
 						zap.Any("obj", in),
 						zap.Error(err))
 				}
@@ -458,7 +421,58 @@ func (c *apisixRouteController) checkPluginNameIfNotEmptyV2(ctx context.Context,
 	return nil
 }
 
+func (c *apisixRouteController) updateStatus(obj kube.ApisixRoute, statusErr error) {
+	if obj == nil || c.Kubernetes.DisableStatusUpdates || !c.Elector.IsLeader() {
+		return
+	}
+
+	var (
+		ar        kube.ApisixRoute
+		err       error
+		namespace = obj.GetNamespace()
+		name      = obj.GetName()
+	)
+
+	switch obj.GroupVersion() {
+	case config.ApisixV2:
+		ar, err = c.ApisixRouteLister.V2(namespace, name)
+	}
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			log.Warnw("failed to update status, unable to get ApisixRoute",
+				zap.Error(err),
+				zap.String("name", name),
+				zap.String("namespace", namespace),
+			)
+		}
+		return
+	}
+	if ar.ResourceVersion() != obj.ResourceVersion() {
+		return
+	}
+	var (
+		reason    = utils.ResourceSynced
+		condition = metav1.ConditionTrue
+		eventType = v1.EventTypeNormal
+	)
+	if statusErr != nil {
+		reason = utils.ResourceSyncAborted
+		condition = metav1.ConditionFalse
+		eventType = v1.EventTypeWarning
+	}
+	switch obj.GroupVersion() {
+	case config.ApisixV2:
+		c.RecordEvent(obj.V2(), eventType, reason, statusErr)
+		c.recordStatus(obj.V2(), reason, statusErr, condition, ar.GetGeneration())
+	}
+}
+
 func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) {
+	if errOrigin == nil {
+		c.workqueue.Forget(obj)
+		c.MetricsCollector.IncrSyncOperation("route", "success")
+		return
+	}
 	ev := obj.(*types.Event)
 	event := ev.Object.(kube.ApisixRouteEvent)
 	if k8serrors.IsNotFound(errOrigin) && ev.Type != types.EventDelete {
@@ -466,72 +480,23 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 			zap.String("event_type", ev.Type.String()),
 			zap.String("ApisixRoute", event.Key),
 		)
-		c.workqueue.Forget(event)
-		return
-	}
-	namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
-	if errLocal != nil {
-		log.Errorf("invalid resource key: %s", event.Key)
-		c.MetricsCollector.IncrSyncOperation("route", "failure")
-		return
-	}
-	var ar kube.ApisixRoute
-	switch event.GroupVersion {
-	case config.ApisixV2beta3:
-		ar, errLocal = c.ApisixRouteLister.V2beta3(namespace, name)
-	case config.ApisixV2:
-		ar, errLocal = c.ApisixRouteLister.V2(namespace, name)
-	default:
-		log.Errorw("unknown ApisixRoute version",
-			zap.String("version", event.GroupVersion),
-			zap.String("key", event.Key),
-		)
-	}
-	if errOrigin == nil {
-		if ev.Type != types.EventDelete {
-			if errLocal == nil {
-				switch ar.GroupVersion() {
-				case config.ApisixV2beta3:
-					c.RecordEvent(ar.V2beta3(), v1.EventTypeNormal, utils.ResourceSynced, nil)
-					c.recordStatus(ar.V2beta3(), utils.ResourceSynced, nil, metav1.ConditionTrue, ar.V2beta3().GetGeneration())
-				case config.ApisixV2:
-					c.RecordEvent(ar.V2(), v1.EventTypeNormal, utils.ResourceSynced, nil)
-					c.recordStatus(ar.V2(), utils.ResourceSynced, nil, metav1.ConditionTrue, ar.V2().GetGeneration())
-				}
-			} else {
-				log.Errorw("failed list ApisixRoute",
-					zap.Error(errLocal),
-					zap.String("name", name),
-					zap.String("namespace", namespace),
-				)
-			}
-		}
 		c.workqueue.Forget(obj)
-		c.MetricsCollector.IncrSyncOperation("route", "success")
 		return
 	}
 	log.Warnw("sync ApisixRoute failed, will retry",
 		zap.Any("object", obj),
 		zap.Error(errOrigin),
 	)
-	if errLocal == nil {
-		switch ar.GroupVersion() {
-		case config.ApisixV2beta3:
-			c.RecordEvent(ar.V2beta3(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
-			c.recordStatus(ar.V2beta3(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2beta3().GetGeneration())
-		case config.ApisixV2:
-			c.RecordEvent(ar.V2(), v1.EventTypeWarning, utils.ResourceSyncAborted, errOrigin)
-			c.recordStatus(ar.V2(), utils.ResourceSyncAborted, errOrigin, metav1.ConditionFalse, ar.V2().GetGeneration())
-		}
-	} else {
-		log.Errorw("failed list ApisixRoute",
-			zap.Error(errLocal),
-			zap.String("name", name),
-			zap.String("namespace", namespace),
-		)
-	}
 	c.workqueue.AddRateLimited(obj)
 	c.MetricsCollector.IncrSyncOperation("route", "failure")
+}
+
+func (c *apisixRouteController) isEffective(ar kube.ApisixRoute) bool {
+	if ar.GroupVersion() == config.ApisixV2 {
+		return utils.MatchCRDsIngressClass(ar.V2().Spec.IngressClassName, c.Kubernetes.IngressClass)
+	}
+	// Compatible with legacy versions
+	return true
 }
 
 func (c *apisixRouteController) onAdd(obj interface{}) {
@@ -549,6 +514,13 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 	)
 
 	ar := kube.MustNewApisixRoute(obj)
+	if !c.isEffective(ar) {
+		log.Debugw("ignore noneffective ApisixRoute add event",
+			zap.Any("object", obj),
+		)
+		return
+	}
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,
 		Object: kube.ApisixRouteEvent{
@@ -563,8 +535,19 @@ func (c *apisixRouteController) onAdd(obj interface{}) {
 func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 	prev := kube.MustNewApisixRoute(oldObj)
 	curr := kube.MustNewApisixRoute(newObj)
-	if prev.ResourceVersion() >= curr.ResourceVersion() {
+	oldRV, _ := strconv.ParseInt(prev.ResourceVersion(), 0, 64)
+	newRV, _ := strconv.ParseInt(curr.ResourceVersion(), 0, 64)
+	if oldRV >= newRV {
 		return
+	}
+	// Updates triggered by status are ignored.
+	if prev.GetGeneration() == curr.GetGeneration() && prev.GetUID() == curr.GetUID() {
+		switch curr.GroupVersion() {
+		case config.ApisixV2:
+			if reflect.DeepEqual(prev.V2().Spec, curr.V2().Spec) && !reflect.DeepEqual(prev.V2().Status, curr.V2().Status) {
+				return
+			}
+		}
 	}
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
@@ -579,6 +562,13 @@ func (c *apisixRouteController) onUpdate(oldObj, newObj interface{}) {
 		zap.Any("new object", oldObj),
 		zap.Any("old object", newObj),
 	)
+	if !c.isEffective(curr) {
+		log.Debugw("ignore noneffective ApisixRoute update event arrived",
+			zap.Any("new object", curr),
+			zap.Any("old object", prev),
+		)
+		return
+	}
 	c.workqueue.Add(&types.Event{
 		Type: types.EventUpdate,
 		Object: kube.ApisixRouteEvent{
@@ -612,6 +602,14 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 		zap.String("key", key),
 		zap.Any("final state", ar),
 	)
+
+	if !c.isEffective(ar) {
+		log.Debugw("ignore noneffective ApisixRoute delete event arrived",
+			zap.Any("final state", ar),
+		)
+		return
+	}
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixRouteEvent{
@@ -624,8 +622,11 @@ func (c *apisixRouteController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("route", "delete")
 }
 
-func (c *apisixRouteController) ResourceSync() {
+// ResourceSync syncs ApisixRoute resources within namespace to workqueue.
+// If namespace is "", it syncs all namespaces ApisixRoute resources.
+func (c *apisixRouteController) ResourceSync(interval time.Duration, namespace string) {
 	objs := c.ApisixRouteInformer.GetIndexer().List()
+	delay := GetSyncDelay(interval, len(objs))
 
 	c.svcLock.Lock()
 	c.apisixUpstreamLock.Lock()
@@ -635,7 +636,7 @@ func (c *apisixRouteController) ResourceSync() {
 	c.svcMap = make(map[string]map[string]struct{})
 	c.apisixUpstreamMap = make(map[string]map[string]struct{})
 
-	for _, obj := range objs {
+	for i, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
 			log.Errorw("ApisixRoute sync failed, found ApisixRoute resource with bad meta namespace key",
@@ -646,15 +647,6 @@ func (c *apisixRouteController) ResourceSync() {
 		if !c.namespaceProvider.IsWatchingNamespace(key) {
 			continue
 		}
-		ar := kube.MustNewApisixRoute(obj)
-		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
-			Object: kube.ApisixRouteEvent{
-				Key:          key,
-				GroupVersion: ar.GroupVersion(),
-			},
-		})
-
 		ns, _, err := cache.SplitMetaNamespaceKey(key)
 		if err != nil {
 			log.Errorw("split ApisixRoute meta key failed",
@@ -663,18 +655,36 @@ func (c *apisixRouteController) ResourceSync() {
 			)
 			continue
 		}
+		if namespace != "" && ns != namespace {
+			continue
+		}
+		ar := kube.MustNewApisixRoute(obj)
+		if !c.isEffective(ar) {
+			log.Debugw("ignore noneffective ApisixRoute sync event arrived",
+				zap.Any("final state", ar),
+			)
+			continue
+		}
+		log.Debugw("ResourceSync",
+			zap.String("resource", "ApisixRoute"),
+			zap.String("key", key),
+			zap.Duration("calc_delay", delay),
+			zap.Int("i", i),
+			zap.Duration("delay", delay*time.Duration(i)),
+		)
+		c.workqueue.AddAfter(&types.Event{
+			Type: types.EventSync,
+			Object: kube.ApisixRouteEvent{
+				Key:          key,
+				GroupVersion: ar.GroupVersion(),
+			},
+		}, delay*time.Duration(i))
 
 		var (
 			backends  []string
 			upstreams []string
 		)
 		switch ar.GroupVersion() {
-		case config.ApisixV2beta3:
-			for _, rule := range ar.V2beta3().Spec.HTTP {
-				for _, backend := range rule.Backends {
-					backends = append(backends, ns+"/"+backend.ServiceName)
-				}
-			}
 		case config.ApisixV2:
 			for _, rule := range ar.V2().Spec.HTTP {
 				for _, backend := range rule.Backends {
@@ -843,7 +853,16 @@ func (c *apisixRouteController) handleApisixUpstreamErr(ev *routeEvent, errOrigi
 	c.workqueue.AddRateLimited(ev)
 }
 
-// recordStatus record resources status
+/*
+recordStatus record resources status
+
+TODO: The resouceVersion of the sync phase and the recordStatus phase may be different. There is consistency
+problem here, and incorrect status may be recorded.(It will only be triggered when it is updated multiple times in a short time)
+
+	IsUpdateStatus(currentObject, latestObject) bool {
+		return currentObject.resourceVersion >= latestObject.resourceVersion && !Equal(currentObject.status, latestObject.status)
+	}
+*/
 func (c *apisixRouteController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
 	// build condition
 	message := utils.CommonSuccessMessage
@@ -864,30 +883,13 @@ func (c *apisixRouteController) recordStatus(at interface{}, reason string, err 
 	}
 
 	switch v := at.(type) {
-	case *v2beta3.ApisixRoute:
-		// set to status
-		if v.Status.Conditions == nil {
-			conditions := make([]metav1.Condition, 0)
-			v.Status.Conditions = conditions
-		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
-			meta.SetStatusCondition(&v.Status.Conditions, condition)
-			if _, errRecord := apisixClient.ApisixV2beta3().ApisixRoutes(v.Namespace).
-				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-				log.Errorw("failed to record status change for ApisixRoute",
-					zap.Error(errRecord),
-					zap.String("name", v.Name),
-					zap.String("namespace", v.Namespace),
-				)
-			}
-		}
 	case *v2.ApisixRoute:
 		// set to status
 		if v.Status.Conditions == nil {
 			conditions := make([]metav1.Condition, 0)
 			v.Status.Conditions = conditions
 		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+		if utils.VerifyConditions(&v.Status.Conditions, condition) && !meta.IsStatusConditionPresentAndEqual(v.Status.Conditions, condition.Type, condition.Status) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := apisixClient.ApisixV2().ApisixRoutes(v.Namespace).
 				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {

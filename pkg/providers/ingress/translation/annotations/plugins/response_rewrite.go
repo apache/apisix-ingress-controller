@@ -42,5 +42,10 @@ func (c *responseRewrite) Handle(e annotations.Extractor) (interface{}, error) {
 	plugin.StatusCode, _ = strconv.Atoi(e.GetStringAnnotation(annotations.AnnotationsResponseRewriteStatusCode))
 	plugin.Body = e.GetStringAnnotation(annotations.AnnotationsResponseRewriteBody)
 	plugin.BodyBase64 = e.GetBoolAnnotation(annotations.AnnotationsResponseRewriteBodyBase64)
+	headers := make(apisixv1.Headers)
+	headers.Add(e.GetStringsAnnotation(annotations.AnnotationsResponseRewriteHeaderAdd))
+	headers.Set(e.GetStringsAnnotation(annotations.AnnotationsResponseRewriteHeaderSet))
+	headers.Remove(e.GetStringsAnnotation(annotations.AnnotationsResponseRewriteHeaderRemove))
+	plugin.Headers = headers
 	return &plugin, nil
 }

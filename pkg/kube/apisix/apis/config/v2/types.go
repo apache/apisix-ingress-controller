@@ -43,8 +43,9 @@ type ApisixStatus struct {
 
 // ApisixRouteSpec is the spec definition for ApisixRouteSpec.
 type ApisixRouteSpec struct {
-	HTTP   []ApisixRouteHTTP   `json:"http,omitempty" yaml:"http,omitempty"`
-	Stream []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
+	IngressClassName string              `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
+	HTTP             []ApisixRouteHTTP   `json:"http,omitempty" yaml:"http,omitempty"`
+	Stream           []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
 }
 
 // UpstreamTimeout is settings for the read, send and connect to the upstream.
@@ -71,10 +72,12 @@ type ApisixRouteHTTP struct {
 	// Upstreams refer to ApisixUpstream CRD
 	Upstreams []ApisixRouteUpstreamReference `json:"upstreams,omitempty" yaml:"upstreams,omitempty"`
 
-	Websocket        bool                      `json:"websocket" yaml:"websocket"`
-	PluginConfigName string                    `json:"plugin_config_name,omitempty" yaml:"plugin_config_name,omitempty"`
-	Plugins          []ApisixRoutePlugin       `json:"plugins,omitempty" yaml:"plugins,omitempty"`
-	Authentication   ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
+	Websocket        bool   `json:"websocket" yaml:"websocket"`
+	PluginConfigName string `json:"plugin_config_name,omitempty" yaml:"plugin_config_name,omitempty"`
+	//By default, PluginConfigNamespace will be the same as the namespace of ApisixRoute
+	PluginConfigNamespace string                    `json:"plugin_config_namespace,omitempty" yaml:"plugin_config_namespace,omitempty"`
+	Plugins               []ApisixRoutePlugin       `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Authentication        ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
 // ApisixRouteHTTPBackend represents an HTTP backend (a Kubernetes Service).
@@ -199,10 +202,11 @@ func (p *ApisixRoutePluginConfig) DeepCopy() *ApisixRoutePluginConfig {
 // ApisixRouteAuthentication is the authentication-related
 // configuration in ApisixRoute.
 type ApisixRouteAuthentication struct {
-	Enable  bool                             `json:"enable" yaml:"enable"`
-	Type    string                           `json:"type" yaml:"type"`
-	KeyAuth ApisixRouteAuthenticationKeyAuth `json:"keyAuth,omitempty" yaml:"keyAuth,omitempty"`
-	JwtAuth ApisixRouteAuthenticationJwtAuth `json:"jwtAuth,omitempty" yaml:"jwtAuth,omitempty"`
+	Enable   bool                              `json:"enable" yaml:"enable"`
+	Type     string                            `json:"type" yaml:"type"`
+	KeyAuth  ApisixRouteAuthenticationKeyAuth  `json:"keyAuth,omitempty" yaml:"keyAuth,omitempty"`
+	JwtAuth  ApisixRouteAuthenticationJwtAuth  `json:"jwtAuth,omitempty" yaml:"jwtAuth,omitempty"`
+	LDAPAuth ApisixRouteAuthenticationLDAPAuth `json:"ldapAuth,omitempty" yaml:"ldapAuth,omitempty"`
 }
 
 // ApisixRouteAuthenticationKeyAuth is the keyAuth-related
@@ -217,6 +221,15 @@ type ApisixRouteAuthenticationJwtAuth struct {
 	Header string `json:"header,omitempty" yaml:"header,omitempty"`
 	Query  string `json:"query,omitempty" yaml:"query,omitempty"`
 	Cookie string `json:"cookie,omitempty" yaml:"cookie,omitempty"`
+}
+
+// ApisixRouteAuthenticationLDAPAuth is the LDAP auth related
+// configuration in ApisixRouteAuthentication.
+type ApisixRouteAuthenticationLDAPAuth struct {
+	BaseDN  string `json:"base_dn,omitempty" yaml:"base_dn,omitempty"`
+	LDAPURI string `json:"ldap_uri,omitempty" yaml:"ldap_uri,omitempty"`
+	UseTLS  bool   `json:"use_tls,omitempty" yaml:"use_tls,omitempty"`
+	UID     string `json:"uid,omitempty" yaml:"uid,omitempty"`
 }
 
 // ApisixRouteStream is the configuration for level 4 route
@@ -281,6 +294,12 @@ type ApisixClusterConfig struct {
 
 // ApisixClusterConfigSpec defines the desired state of ApisixClusterConfigSpec.
 type ApisixClusterConfigSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// controller implementations use this field to know whether they should be
+	// serving this ApisixClusterConfig resource, by a transitive connection
+	// (controller -> IngressClass -> ApisixClusterConfig resource).
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	// Monitoring categories all monitoring related features.
 	// +optional
 	Monitoring *ApisixClusterMonitoringConfig `json:"monitoring" yaml:"monitoring"`
@@ -303,6 +322,8 @@ type ApisixClusterMonitoringConfig struct {
 type ApisixClusterPrometheusConfig struct {
 	// Enable means whether enable Prometheus or not.
 	Enable bool `json:"enable" yaml:"enable"`
+	// PreferName means whether prints Route/Service name or ID in Prometheus metric
+	PreferName bool `json:"prefer_name" yaml:"prefer_name"`
 }
 
 // ApisixClusterSkywalkingConfig is the config for using Skywalking in APISIX Cluster.
@@ -347,6 +368,13 @@ type ApisixConsumer struct {
 
 // ApisixConsumerSpec defines the desired state of ApisixConsumer.
 type ApisixConsumerSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// controller implementations use this field to know whether they should be
+	// serving this ApisixConsumer resource, by a transitive connection
+	// (controller -> IngressClass -> ApisixConsumer resource).
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
+
 	AuthParameter ApisixConsumerAuthParameter `json:"authParameter" yaml:"authParameter"`
 }
 
@@ -356,6 +384,7 @@ type ApisixConsumerAuthParameter struct {
 	WolfRBAC  *ApisixConsumerWolfRBAC  `json:"wolfRBAC,omitempty" yaml:"wolfRBAC"`
 	JwtAuth   *ApisixConsumerJwtAuth   `json:"jwtAuth,omitempty" yaml:"jwtAuth"`
 	HMACAuth  *ApisixConsumerHMACAuth  `json:"hmacAuth,omitempty" yaml:"hmacAuth"`
+	LDAPAuth  *ApisixConsumerLDAPAuth  `json:"ldapAuth,omitempty" yaml:"ldapAuth"`
 }
 
 // ApisixConsumerBasicAuth defines the configuration for basic auth.
@@ -402,13 +431,14 @@ type ApisixConsumerJwtAuth struct {
 
 // ApisixConsumerJwtAuthValue defines the in-place configuration for jwt auth.
 type ApisixConsumerJwtAuthValue struct {
-	Key          string `json:"key" yaml:"key"`
-	Secret       string `json:"secret,omitempty" yaml:"secret,omitempty"`
-	PublicKey    string `json:"public_key,omitempty" yaml:"public_key,omitempty"`
-	PrivateKey   string `json:"private_key" yaml:"private_key,omitempty"`
-	Algorithm    string `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`
-	Exp          int64  `json:"exp,omitempty" yaml:"exp,omitempty"`
-	Base64Secret bool   `json:"base64_secret,omitempty" yaml:"base64_secret,omitempty"`
+	Key                 string `json:"key" yaml:"key"`
+	Secret              string `json:"secret,omitempty" yaml:"secret,omitempty"`
+	PublicKey           string `json:"public_key,omitempty" yaml:"public_key,omitempty"`
+	PrivateKey          string `json:"private_key" yaml:"private_key,omitempty"`
+	Algorithm           string `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`
+	Exp                 int64  `json:"exp,omitempty" yaml:"exp,omitempty"`
+	Base64Secret        bool   `json:"base64_secret,omitempty" yaml:"base64_secret,omitempty"`
+	LifetimeGracePeriod int64  `json:"lifetime_grace_period,omitempty" yaml:"lifetime_grace_period,omitempty"`
 }
 
 // ApisixConsumerHMACAuth defines the configuration for the hmac auth.
@@ -428,6 +458,17 @@ type ApisixConsumerHMACAuthValue struct {
 	EncodeURIParams     bool     `json:"encode_uri_params,omitempty" yaml:"encode_uri_params,omitempty"`
 	ValidateRequestBody bool     `json:"validate_request_body,omitempty" yaml:"validate_request_body,omitempty"`
 	MaxReqBody          int64    `json:"max_req_body,omitempty" yaml:"max_req_body,omitempty"`
+}
+
+// ApisixConsumerLDAPAuth defines the configuration for the ldap auth.
+type ApisixConsumerLDAPAuth struct {
+	SecretRef *corev1.LocalObjectReference `json:"secretRef" yaml:"secret"`
+	Value     *ApisixConsumerLDAPAuthValue `json:"value,omitempty" yaml:"value,omitempty"`
+}
+
+// ApisixConsumerLDAPAuthValue defines the in-place configuration for ldap auth.
+type ApisixConsumerLDAPAuthValue struct {
+	UserDN string `json:"user_dn" yaml:"user_dn"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -455,6 +496,12 @@ type ApisixUpstream struct {
 
 // ApisixUpstreamSpec describes the specification of ApisixUpstream.
 type ApisixUpstreamSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// controller implementations use this field to know whether they should be
+	// serving this ApisixUpstream resource, by a transitive connection
+	// (controller -> IngressClass -> ApisixUpstream resource).
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	// ExternalNodes contains external nodes the Upstream should use
 	// If this field is set, the upstream will use these nodes directly without any further resolves
 	// +optional
@@ -498,6 +545,16 @@ type ApisixUpstreamConfig struct {
 	// service versions.
 	// +optional
 	Subsets []ApisixUpstreamSubset `json:"subsets,omitempty" yaml:"subsets,omitempty"`
+
+	// Configures the host when the request is forwarded to the upstream.
+	// Can be one of pass, node or rewrite.
+	// +optional
+	PassHost string `json:"passHost,omitempty" yaml:"passHost,omitempty"`
+
+	// Specifies the host of the Upstream request. This is only valid if
+	// the pass_host is set to rewrite
+	// +optional
+	UpstreamHost string `json:"upstreamHost,omitempty" yaml:"upstreamHost,omitempty"`
 
 	// Discovery is used to configure service discovery for upstream.
 	// +optional
@@ -700,6 +757,12 @@ type HostType string
 
 // ApisixTlsSpec is the specification of ApisixSSL.
 type ApisixTlsSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// controller implementations use this field to know whether they should be
+	// serving this ApisixTls resource, by a transitive connection
+	// (controller -> IngressClass -> ApisixTls resource).
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	// +required
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1
@@ -723,8 +786,9 @@ type ApisixSecret struct {
 
 // ApisixMutualTlsClientConfig describes the mutual TLS CA and verify depth
 type ApisixMutualTlsClientConfig struct {
-	CASecret ApisixSecret `json:"caSecret,omitempty" yaml:"caSecret,omitempty"`
-	Depth    int          `json:"depth,omitempty" yaml:"depth,omitempty"`
+	CASecret         ApisixSecret `json:"caSecret,omitempty" yaml:"caSecret,omitempty"`
+	Depth            int          `json:"depth,omitempty" yaml:"depth,omitempty"`
+	SkipMTLSUriRegex []string     `json:"skip_mtls_uri_regex,omitempty" yaml:"skip_mtls_uri_regex, omitempty"`
 }
 
 // +genclient
@@ -744,6 +808,10 @@ type ApisixPluginConfig struct {
 
 // ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
 type ApisixPluginConfigSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// The controller uses this field to decide whether the resource should be managed or not.
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	// Plugins contains a list of ApisixRoutePlugin
 	// +required
 	Plugins []ApisixRoutePlugin `json:"plugins" yaml:"plugins"`
@@ -757,4 +825,40 @@ type ApisixPluginConfigList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
 	metav1.ListMeta `json:"metadata" yaml:"metadata"`
 	Items           []ApisixPluginConfig `json:"items,omitempty" yaml:"items,omitempty"`
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:subresource:status
+
+// ApisixGlobalRule is the Schema for the ApisixGlobalRule resource.
+// An ApisixGlobalRule is used to support a group of plugin configs
+type ApisixGlobalRule struct {
+	metav1.TypeMeta   `json:",inline" yaml:",inline"`
+	metav1.ObjectMeta `json:"metadata" yaml:"metadata"`
+
+	// Spec defines the desired state of ApisixGlobalRuleSpec.
+	Spec   ApisixGlobalRuleSpec `json:"spec" yaml:"spec"`
+	Status ApisixStatus         `json:"status,omitempty" yaml:"status,omitempty"`
+}
+
+// ApisixGlobalRuleSpec defines the desired state of ApisixGlobalRuleSpec.
+type ApisixGlobalRuleSpec struct {
+	// IngressClassName is the name of an IngressClass cluster resource.
+	// The controller uses this field to decide whether the resource should be managed or not.
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
+	// Plugins contains a list of ApisixRoutePlugin
+	// +required
+	Plugins []ApisixRoutePlugin `json:"plugins" yaml:"plugins"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:generate=true
+
+// ApisixGlobalRuleList contains a list of ApisixGlobalRule.
+type ApisixGlobalRuleList struct {
+	metav1.TypeMeta `json:",inline" yaml:",inline"`
+	metav1.ListMeta `json:"metadata" yaml:"metadata"`
+	Items           []ApisixGlobalRule `json:"items,omitempty" yaml:"items,omitempty"`
 }

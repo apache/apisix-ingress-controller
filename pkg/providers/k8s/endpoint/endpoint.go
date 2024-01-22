@@ -144,7 +144,7 @@ func (c *endpointsController) onAdd(obj interface{}) {
 		return
 	}
 	log.Debugw("endpoints add event arrived",
-		zap.String("object-key", key))
+		zap.String("key", key))
 
 	c.workqueue.Add(&types.Event{
 		Type: types.EventAdd,

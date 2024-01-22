@@ -52,13 +52,13 @@ type Cache interface {
 	GetStreamRoute(string) (*v1.StreamRoute, error)
 	// GetGlobalRule finds the global_rule from cache according to the primary index (id).
 	GetGlobalRule(string) (*v1.GlobalRule, error)
-	// GetConsumer finds the consumer from cache according to the primary index (id).
+	// GetConsumer finds the consumer from cache according to the primary index (username).
 	GetConsumer(string) (*v1.Consumer, error)
-	// GetSchema finds the scheme from cache according to the primary index (id).
+	// GetSchema finds the scheme from cache according to the primary index (name).
 	GetSchema(string) (*v1.Schema, error)
 	// GetPluginConfig finds the plugin_config from cache according to the primary index (id).
 	GetPluginConfig(string) (*v1.PluginConfig, error)
-
+	// GetUpstreamServiceRelation finds the upstream_service from cache according to the primary index (service name).
 	GetUpstreamServiceRelation(string) (*v1.UpstreamServiceRelation, error)
 
 	// ListRoutes lists all routes in cache.

@@ -31,7 +31,7 @@ var _ = ginkgo.Describe("suite-plugins-security: fault-injection plugin", func()
 		ginkgo.It("empty config", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -71,7 +71,7 @@ spec:
 		ginkgo.It("finer granularity config", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -132,10 +132,9 @@ spec:
 		})
 
 		ginkgo.It("allow_origins_by_regex", func() {
-			ginkgo.Skip("APISIX version priors to 2.5 doesn't contain allow_origins_by_regex in cors plugin")
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -156,7 +155,7 @@ spec:
      enable: true
      config:
        allow_origins_by_regex:
-       - foo\\.(bar|baz)\\.org
+       - foo\.(bar|baz)\.org
        allow_methods: "GET,POST"
        max_age: 3600
        expose_headers: x-foo,x-baz
@@ -211,7 +210,7 @@ spec:
 		ginkgo.It("disable plugin", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -252,7 +251,7 @@ spec:
 		ginkgo.It("enable plugin and then delete it", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -290,7 +289,7 @@ spec:
 			resp.Body().Contains("origin")
 
 			ar = fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -326,9 +325,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-plugins-security: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-plugins-security: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})

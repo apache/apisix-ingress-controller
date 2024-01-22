@@ -49,11 +49,12 @@ func TestGinLogger(t *testing.T) {
 	t.Run("test log with gin logger", func(t *testing.T) {
 		fws := &fakeWriteSyncer{}
 		logger, err := NewLogger(WithLogLevel("debug"), WithWriteSyncer(fws))
+		DefaultLogger = logger
 		assert.Nil(t, err, "failed to new logger: ", err)
 		defer logger.Close()
 
 		router := gin.New()
-		router.Use(GinLogger(logger))
+		router.Use(GinLogger())
 		router.GET("/healthz", func(c *gin.Context) {})
 		performRequest(router, "GET", "/healthz")
 		res := string(fws.bytes())
@@ -64,11 +65,12 @@ func TestGinLogger(t *testing.T) {
 	t.Run("test log with gin logger 4xx and 5xx", func(t *testing.T) {
 		fws := &fakeWriteSyncer{}
 		logger, err := NewLogger(WithLogLevel("debug"), WithWriteSyncer(fws))
+		DefaultLogger = logger
 		assert.Nil(t, err, "failed to new logger: ", err)
 		defer logger.Close()
 
 		router := gin.New()
-		router.Use(GinLogger(logger))
+		router.Use(GinLogger())
 		router.GET("/healthz", func(c *gin.Context) { c.JSON(500, nil) })
 		performRequest(router, "GET", "/healthz")
 		res := string(fws.bytes())
@@ -90,11 +92,12 @@ func TestGinRecovery(t *testing.T) {
 	t.Run("test log with gin recovery with stack", func(t *testing.T) {
 		fws := &fakeWriteSyncer{}
 		logger, err := NewLogger(WithLogLevel("debug"), WithWriteSyncer(fws))
+		DefaultLogger = logger
 		assert.Nil(t, err, "failed to new logger: ", err)
 		defer logger.Close()
 
 		router := gin.New()
-		router.Use(GinRecovery(logger, true))
+		router.Use(GinRecovery(true))
 		router.GET("/healthz", func(c *gin.Context) { panic("test log with gin recovery") })
 		performRequest(router, "GET", "/healthz")
 		res := string(fws.bytes())
@@ -107,11 +110,12 @@ func TestGinRecovery(t *testing.T) {
 	t.Run("test log with gin recovery", func(t *testing.T) {
 		fws := &fakeWriteSyncer{}
 		logger, err := NewLogger(WithLogLevel("debug"), WithWriteSyncer(fws))
+		DefaultLogger = logger
 		assert.Nil(t, err, "failed to new logger: ", err)
 		defer logger.Close()
 
 		router := gin.New()
-		router.Use(GinRecovery(logger, false))
+		router.Use(GinRecovery(false))
 		router.GET("/healthz", func(c *gin.Context) { panic("test log with gin recovery") })
 		performRequest(router, "GET", "/healthz")
 		res := string(fws.bytes())

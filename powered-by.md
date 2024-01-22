@@ -38,3 +38,4 @@ Users are encouraged to add themselves to this page, [issue](https://github.com/
 1. <a href="https://www.jiakaobaodian.com/" rel="nofollow">Jiakaobaodian(驾考宝典)</a>
 1. <a href="https://www.horizon.ai/" rel="nofollow">Horizon Robotics(地平线)</a>
 1. <a href="https://www.xiaopeng.com/" rel="nofollow">小鹏汽车</a>
+1. <a href="https://laf.run/" rel="nofollow">Laf</a>

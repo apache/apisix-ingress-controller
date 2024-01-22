@@ -19,13 +19,16 @@ package translation
 import (
 	"bytes"
 	"context"
+	"crypto/sha1"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"go.uber.org/zap"
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
@@ -40,6 +43,12 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+)
+
+const (
+	// We omit vowels from the set of available characters to reduce the chances
+	// of "bad words" being formed.
+	alphanums = "bcdfghjklmnpqrstvwxz2456789"
 )
 
 type TranslatorOptions struct {
@@ -65,6 +74,9 @@ type IngressTranslator interface {
 	TranslateOldIngress(kube.Ingress) (*translation.TranslateContext, error)
 	// TranslateSSLV2 translate networkingv1.IngressTLS to APISIX SSL
 	TranslateIngressTLS(namespace, ingName, secretName string, hosts []string) (*apisixv1.Ssl, error)
+	// TranslateIngressDeleteEvent composes a couple of APISIX Routes and upstreams according
+	// to the given Ingress resource.
+	TranslateIngressDeleteEvent(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error)
 }
 
 func NewIngressTranslator(opts *TranslatorOptions,
@@ -78,14 +90,13 @@ func NewIngressTranslator(opts *TranslatorOptions,
 	return t
 }
 
-func (t *translator) TranslateIngressTLS(namespace, ingName, secretName string, hosts []string) (*apisixv1.Ssl, error) {
+func createApisixTLS(namespace, ingName, secretName string, hosts []string) (kubev2.ApisixTls, error) {
 	apisixTls := kubev2.ApisixTls{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ApisixTls",
 			APIVersion: "apisix.apache.org/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%v-%v", ingName, "tls"),
 			Namespace: namespace,
 		},
 		Spec: &kubev2.ApisixTlsSpec{
@@ -98,8 +109,24 @@ func (t *translator) TranslateIngressTLS(namespace, ingName, secretName string, 
 	for _, host := range hosts {
 		apisixTls.Spec.Hosts = append(apisixTls.Spec.Hosts, kubev2.HostType(host))
 	}
+	tlsByt, err := json.Marshal(apisixTls)
+	if err != nil {
+		return apisixTls, fmt.Errorf("failed to marshal Apisix TLS: %s", err.Error())
+	}
+	hasher := sha1.New()
+	hasher.Write(tlsByt)
+	uniqueHash := SafeEncodeString(base64.URLEncoding.EncodeToString(hasher.Sum(nil)), 6)
+	//The name has to be unique per namespace or the IDs generated for Apisix SSL objects will collide
+	apisixTls.ObjectMeta.Name = fmt.Sprintf("%v-%v-%v", ingName, "tls", uniqueHash)
+	return apisixTls, nil
+}
 
-	return t.ApisixTranslator.TranslateSSLV2(&apisixTls)
+func (t *translator) TranslateIngressTLS(namespace, ingName, secretName string, hosts []string) (*apisixv1.Ssl, error) {
+	apisixTLS, err := createApisixTLS(namespace, ingName, secretName, hosts)
+	if err != nil {
+		return nil, err
+	}
+	return t.ApisixTranslator.TranslateSSLV2(&apisixTLS)
 }
 
 func (t *translator) TranslateIngress(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error) {
@@ -112,8 +139,17 @@ func (t *translator) TranslateIngress(ing kube.Ingress, args ...bool) (*translat
 		return t.translateIngressV1(ing.V1(), skipVerify)
 	case kube.IngressV1beta1:
 		return t.translateIngressV1beta1(ing.V1beta1(), skipVerify)
-	case kube.IngressExtensionsV1beta1:
-		return t.translateIngressExtensionsV1beta1(ing.ExtensionsV1beta1(), skipVerify)
+	default:
+		return nil, fmt.Errorf("translator: source group version not supported: %s", ing.GroupVersion())
+	}
+}
+
+func (t *translator) TranslateIngressDeleteEvent(ing kube.Ingress, args ...bool) (*translation.TranslateContext, error) {
+	switch ing.GroupVersion() {
+	case kube.IngressV1:
+		return t.translateOldIngressV1(ing.V1())
+	case kube.IngressV1beta1:
+		return t.translateOldIngressV1beta1(ing.V1beta1())
 	default:
 		return nil, fmt.Errorf("translator: source group version not supported: %s", ing.GroupVersion())
 	}
@@ -144,6 +180,9 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 		ns = ingress.ServiceNamespace
 	}
 	for _, rule := range ing.Spec.Rules {
+		if rule.HTTP == nil {
+			continue
+		}
 		for _, pathRule := range rule.HTTP.Paths {
 			var (
 				ups *apisixv1.Upstream
@@ -162,8 +201,28 @@ func (t *translator) translateIngressV1(ing *networkingv1.Ingress, skipVerify bo
 						return nil, err
 					}
 				}
-				if ingress.UpstreamScheme != "" {
-					ups.Scheme = ingress.UpstreamScheme
+				if ingress.Upstream.Scheme != "" {
+					ups.Scheme = ingress.Upstream.Scheme
+				}
+				if ingress.Upstream.Retry > 0 {
+					retry := ingress.Upstream.Retry
+					ups.Retries = &retry
+				}
+				if ups.Timeout == nil {
+					ups.Timeout = &apisixv1.UpstreamTimeout{
+						Read:    60,
+						Send:    60,
+						Connect: 60,
+					}
+				}
+				if ingress.Upstream.TimeoutConnect > 0 {
+					ups.Timeout.Connect = ingress.Upstream.TimeoutConnect
+				}
+				if ingress.Upstream.TimeoutRead > 0 {
+					ups.Timeout.Read = ingress.Upstream.TimeoutRead
+				}
+				if ingress.Upstream.TimeoutSend > 0 {
+					ups.Timeout.Send = ingress.Upstream.TimeoutSend
 				}
 				ctx.AddUpstream(ups)
 			}
@@ -267,8 +326,8 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 						return nil, err
 					}
 				}
-				if ingress.UpstreamScheme != "" {
-					ups.Scheme = ingress.UpstreamScheme
+				if ingress.Upstream.Scheme != "" {
+					ups.Scheme = ingress.Upstream.Scheme
 				}
 				ctx.AddUpstream(ups)
 			}
@@ -320,7 +379,26 @@ func (t *translator) translateIngressV1beta1(ing *networkingv1beta1.Ingress, ski
 			if len(ingress.Plugins) > 0 {
 				route.Plugins = *(ingress.Plugins.DeepCopy())
 			}
-
+			if ingress.Upstream.Retry > 0 {
+				retry := ingress.Upstream.Retry
+				ups.Retries = &retry
+			}
+			if ups.Timeout == nil {
+				ups.Timeout = &apisixv1.UpstreamTimeout{
+					Read:    60,
+					Send:    60,
+					Connect: 60,
+				}
+			}
+			if ingress.Upstream.TimeoutConnect > 0 {
+				ups.Timeout.Connect = ingress.Upstream.TimeoutConnect
+			}
+			if ingress.Upstream.TimeoutRead > 0 {
+				ups.Timeout.Read = ingress.Upstream.TimeoutRead
+			}
+			if ingress.Upstream.TimeoutSend > 0 {
+				ups.Timeout.Send = ingress.Upstream.TimeoutSend
+			}
 			if ingress.PluginConfigName != "" {
 				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, ingress.PluginConfigName))
 			}
@@ -387,113 +465,6 @@ func (t *translator) translateUpstreamFromIngressV1(namespace string, backend *n
 	return ups, nil
 }
 
-func (t *translator) translateIngressExtensionsV1beta1(ing *extensionsv1beta1.Ingress, skipVerify bool) (*translation.TranslateContext, error) {
-	ctx := translation.DefaultEmptyTranslateContext()
-	ingress := t.TranslateAnnotations(ing.Annotations)
-
-	// add https
-	for _, tls := range ing.Spec.TLS {
-		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
-		if err != nil {
-			log.Errorw("failed to translate ingress tls to apisix tls",
-				zap.Error(err),
-				zap.Any("ingress", ing),
-			)
-			return nil, err
-		}
-		ctx.AddSSL(ssl)
-	}
-	ns := ing.Namespace
-	if ingress.ServiceNamespace != "" {
-		ns = ingress.ServiceNamespace
-	}
-	for _, rule := range ing.Spec.Rules {
-		for _, pathRule := range rule.HTTP.Paths {
-			var (
-				ups *apisixv1.Upstream
-				err error
-			)
-			if pathRule.Backend.ServiceName != "" {
-				// Structure here is same to ingress.extensions/v1beta1, so just use this method.
-				if skipVerify {
-					ups = t.translateDefaultUpstreamFromIngressV1beta1(ns, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
-				} else {
-					ups, err = t.translateUpstreamFromIngressV1beta1(ns, pathRule.Backend.ServiceName, pathRule.Backend.ServicePort)
-					if err != nil {
-						log.Errorw("failed to translate ingress backend to upstream",
-							zap.Error(err),
-							zap.Any("ingress", ing),
-						)
-						return nil, err
-					}
-				}
-				if ingress.UpstreamScheme != "" {
-					ups.Scheme = ingress.UpstreamScheme
-				}
-				ctx.AddUpstream(ups)
-			}
-			uris := []string{pathRule.Path}
-			var nginxVars []kubev2.ApisixRouteHTTPMatchExpr
-			if pathRule.PathType != nil {
-				if *pathRule.PathType == extensionsv1beta1.PathTypePrefix {
-					// As per the specification of Ingress path matching rule:
-					// if the last element of the path is a substring of the
-					// last element in request path, it is not a match, e.g. /foo/bar
-					// matches /foo/bar/baz, but does not match /foo/barbaz.
-					// While in APISIX, /foo/bar matches both /foo/bar/baz and
-					// /foo/barbaz.
-					// In order to be conformant with Ingress specification, here
-					// we create two paths here, the first is the path itself
-					// (exact match), the other is path + "/*" (prefix match).
-					prefix := pathRule.Path
-					if strings.HasSuffix(prefix, "/") {
-						prefix += "*"
-					} else {
-						prefix += "/*"
-					}
-					uris = append(uris, prefix)
-				} else if *pathRule.PathType == extensionsv1beta1.PathTypeImplementationSpecific && ingress.UseRegex {
-					nginxVars = append(nginxVars, kubev2.ApisixRouteHTTPMatchExpr{
-						Subject: kubev2.ApisixRouteHTTPMatchExprSubject{
-							Scope: apisixconst.ScopePath,
-						},
-						Op:    apisixconst.OpRegexMatch,
-						Value: &pathRule.Path,
-					})
-					uris = []string{"/*"}
-				}
-			}
-			route := apisixv1.NewDefaultRoute()
-			route.Name = composeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
-			route.ID = id.GenID(route.Name)
-			route.Host = rule.Host
-			route.Uris = uris
-			route.EnableWebsocket = ingress.EnableWebSocket
-			if len(nginxVars) > 0 {
-				routeVars, err := t.ApisixTranslator.TranslateRouteMatchExprs(nginxVars)
-				if err != nil {
-					return nil, err
-				}
-				route.Vars = routeVars
-				route.Priority = _regexPriority
-			}
-			if len(ingress.Plugins) > 0 {
-				route.Plugins = *(ingress.Plugins.DeepCopy())
-			}
-
-			if ingress.PluginConfigName != "" {
-				route.PluginConfigId = id.GenID(apisixv1.ComposePluginConfigName(ing.Namespace, ingress.PluginConfigName))
-			}
-
-			if ups != nil {
-				route.UpstreamId = ups.ID
-			}
-			ctx.AddRoute(route)
-		}
-	}
-	return ctx, nil
-}
-
 func (t *translator) translateDefaultUpstreamFromIngressV1beta1(namespace string, svcName string, svcPort intstr.IntOrString) *apisixv1.Upstream {
 	var portNumber int32
 	if svcPort.Type == intstr.String {
@@ -554,20 +525,32 @@ func (t *translator) TranslateOldIngress(ing kube.Ingress) (*translation.Transla
 		return t.translateOldIngressV1(ing.V1())
 	case kube.IngressV1beta1:
 		return t.translateOldIngressV1beta1(ing.V1beta1())
-	case kube.IngressExtensionsV1beta1:
-		return t.translateOldIngressExtensionsv1beta1(ing.ExtensionsV1beta1())
 	default:
 		return nil, fmt.Errorf("translator: source group version not supported: %s", ing.GroupVersion())
 	}
+}
+
+func (t *translator) translateOldIngressTLS(namespace, ingName, secretName string, hosts []string) (*apisixv1.Ssl, error) {
+	ssl, err := t.TranslateIngressTLS(namespace, ingName, secretName, hosts)
+	if err != nil && k8serrors.IsNotFound(err) {
+		apisixTLS, err := createApisixTLS(namespace, ingName, secretName, hosts)
+		if err != nil {
+			return nil, err
+		}
+		return &apisixv1.Ssl{
+			ID: id.GenID(namespace + "_" + apisixTLS.Name),
+		}, nil
+	}
+	return ssl, err
 }
 
 func (t *translator) translateOldIngressV1(ing *networkingv1.Ingress) (*translation.TranslateContext, error) {
 	oldCtx := translation.DefaultEmptyTranslateContext()
 
 	for _, tls := range ing.Spec.TLS {
-		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
+		ssl, err := t.translateOldIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
 		if err != nil {
-			log.Debugw("failed to translate ingress tls to apisix tls",
+			log.Errorw("failed to translate ingress tls to apisix tls",
 				zap.Error(err),
 				zap.Any("ingress", ing),
 			)
@@ -602,41 +585,12 @@ func (t *translator) translateOldIngressV1beta1(ing *networkingv1beta1.Ingress) 
 	oldCtx := translation.DefaultEmptyTranslateContext()
 
 	for _, tls := range ing.Spec.TLS {
-		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
+		ssl, err := t.translateOldIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
 		if err != nil {
-			continue
-		}
-		oldCtx.AddSSL(ssl)
-	}
-	for _, rule := range ing.Spec.Rules {
-		for _, pathRule := range rule.HTTP.Paths {
-			name := composeIngressRouteName(ing.Namespace, ing.Name, rule.Host, pathRule.Path)
-			r, err := t.Apisix.Cluster(t.ClusterName).Route().Get(context.Background(), name)
-			if err != nil {
-				continue
-			}
-			if r.UpstreamId != "" {
-				ups := apisixv1.NewDefaultUpstream()
-				ups.ID = r.UpstreamId
-				oldCtx.AddUpstream(ups)
-			}
-			if r.PluginConfigId != "" {
-				pc := apisixv1.NewDefaultPluginConfig()
-				pc.ID = r.PluginConfigId
-				oldCtx.AddPluginConfig(pc)
-			}
-			oldCtx.AddRoute(r)
-		}
-	}
-	return oldCtx, nil
-}
-
-func (t *translator) translateOldIngressExtensionsv1beta1(ing *extensionsv1beta1.Ingress) (*translation.TranslateContext, error) {
-	oldCtx := translation.DefaultEmptyTranslateContext()
-
-	for _, tls := range ing.Spec.TLS {
-		ssl, err := t.TranslateIngressTLS(ing.Namespace, ing.Name, tls.SecretName, tls.Hosts)
-		if err != nil {
+			log.Errorw("failed to translate ingress tls to apisix tls",
+				zap.Error(err),
+				zap.Any("ingress", ing),
+			)
 			continue
 		}
 		oldCtx.AddSSL(ssl)
@@ -685,4 +639,18 @@ func composeIngressRouteName(namespace, name, host, path string) string {
 	buf.WriteString(pID)
 
 	return buf.String()
+}
+
+// This reduces the chances of bad words and
+// ensures that strings generated from hash functions appear consistent throughout the API.
+// The returned string doesn't exceed the size limit
+func SafeEncodeString(s string, limit int) string {
+	r := make([]byte, len(s))
+	for i, b := range []rune(s) {
+		if i == limit {
+			break
+		}
+		r[i] = alphanums[(int(b) % len(alphanums))]
+	}
+	return string(r)
 }

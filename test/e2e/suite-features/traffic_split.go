@@ -33,7 +33,7 @@ var _ = ginkgo.Describe("suite-features: traffic split", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			adminSvc, adminPort := s.ApisixAdminServiceAndPort()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -89,7 +89,7 @@ spec:
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			adminSvc, adminPort := s.ApisixAdminServiceAndPort()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -142,9 +142,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})

@@ -36,8 +36,10 @@ type Collector interface {
 	// RecordAPISIXLatency records the latency for a round trip from ingress apisix
 	// to apisix.
 	RecordAPISIXLatency(time.Duration, string)
-	// IncrAPISIXRequest increases the number of requests to apisix.
-	IncrAPISIXRequest(string)
+	// IncrAPISIXReadRequest increases the number of read requests to apisix.
+	IncrAPISIXReadRequest(string)
+	// IncrAPISIXWriteRequest increases the number of write requests to apisix.
+	IncrAPISIXWriteRequest(string)
 	// IncrCheckClusterHealth increases the number of cluster health check operations
 	// with the cluster name label.
 	IncrCheckClusterHealth(string)
@@ -64,10 +66,17 @@ type collector struct {
 	controllerEvents   *prometheus.CounterVec
 }
 
+var (
+	globalCollector Collector
+)
+
 // NewPrometheusCollector creates the Prometheus metrics collector.
 // It also registers all internal metric collector to prometheus,
 // so do not call this function duplicately.
 func NewPrometheusCollector() Collector {
+	if globalCollector != nil {
+		return globalCollector
+	}
 	podName := os.Getenv("POD_NAME")
 	podNamespace := os.Getenv("POD_NAMESPACE")
 	if podNamespace == "" {
@@ -112,7 +121,7 @@ func NewPrometheusCollector() Collector {
 				Help:        "Number of requests to APISIX",
 				ConstLabels: constLabels,
 			},
-			[]string{"resource"},
+			[]string{"resource", "op"},
 		),
 		checkClusterHealth: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
@@ -174,6 +183,7 @@ func NewPrometheusCollector() Collector {
 		collector.controllerEvents,
 	)
 
+	globalCollector = collector
 	return collector
 }
 
@@ -201,10 +211,16 @@ func (c *collector) RecordAPISIXLatency(latency time.Duration, resource string) 
 	c.apisixLatency.WithLabelValues(resource).Observe(float64(latency.Nanoseconds()))
 }
 
-// IncrAPISIXRequest increases the number of requests for specific
+// IncrAPISIXReadRequest increases the number of requests for specific
 // resource to APISIX.
-func (c *collector) IncrAPISIXRequest(resource string) {
-	c.apisixRequests.WithLabelValues(resource).Inc()
+func (c *collector) IncrAPISIXReadRequest(resource string) {
+	c.apisixRequests.WithLabelValues(resource, "read").Inc()
+}
+
+// IncrAPISIXWriteRequest increases the number of requests for specific
+// resource to APISIX.
+func (c *collector) IncrAPISIXWriteRequest(resource string) {
+	c.apisixRequests.WithLabelValues(resource, "write").Inc()
 }
 
 // IncrCheckClusterHealth increases the number of cluster health check

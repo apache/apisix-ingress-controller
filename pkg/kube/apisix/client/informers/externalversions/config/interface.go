@@ -19,7 +19,6 @@ package config
 
 import (
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v2"
-	v2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v2beta3"
 	internalinterfaces "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/internalinterfaces"
 )
 
@@ -27,8 +26,6 @@ import (
 type Interface interface {
 	// V2 provides access to shared informers for resources in V2.
 	V2() v2.Interface
-	// V2beta3 provides access to shared informers for resources in V2beta3.
-	V2beta3() v2beta3.Interface
 }
 
 type group struct {
@@ -45,9 +42,4 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // V2 returns a new v2.Interface.
 func (g *group) V2() v2.Interface {
 	return v2.New(g.factory, g.namespace, g.tweakListOptions)
-}
-
-// V2beta3 returns a new v2beta3.Interface.
-func (g *group) V2beta3() v2beta3.Interface {
-	return v2beta3.New(g.factory, g.namespace, g.tweakListOptions)
 }

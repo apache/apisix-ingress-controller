@@ -43,13 +43,15 @@ func (t *translator) generatePluginsFromHTTPRouteFilter(namespace string, filter
 		case gatewayv1beta1.HTTPRouteFilterRequestMirror:
 			t.generatePluginFromHTTPRequestMirrorFilter(namespace, plugins, filter.RequestMirror)
 		case gatewayv1beta1.HTTPRouteFilterURLRewrite:
-			// TODO: It is not yet supported by v1beta1 CRDs.
+			// TODO: Supported, to be implemented
+		case gatewayv1beta1.HTTPRouteFilterResponseHeaderModifier:
+			// TODO: Supported, to be implemented
 		}
 	}
 	return plugins
 }
 
-func (t *translator) generatePluginFromHTTPRequestHeaderFilter(plugins apisixv1.Plugins, reqHeaderModifier *gatewayv1beta1.HTTPRequestHeaderFilter) {
+func (t *translator) generatePluginFromHTTPRequestHeaderFilter(plugins apisixv1.Plugins, reqHeaderModifier *gatewayv1beta1.HTTPHeaderFilter) {
 	if reqHeaderModifier == nil {
 		return
 	}
@@ -156,8 +158,8 @@ func (t *translator) TranslateGatewayHTTPRouteV1beta1(httpRoute *gatewayv1beta1.
 		var weightedUpstreams []apisixv1.TrafficSplitConfigRuleWeightedUpstream
 
 		for j, backend := range backends {
-			//TODO: Support filters
-			//filters := backend.Filters
+			// TODO: Support filters
+			// filters := backend.Filters
 			var kind string
 			if backend.Kind == nil {
 				kind = "service"
@@ -192,7 +194,7 @@ func (t *translator) TranslateGatewayHTTPRouteV1beta1(httpRoute *gatewayv1beta1.
 			if err != nil {
 				return nil, errors.Wrap(err, fmt.Sprintf("failed to translate Rules[%v].BackendRefs[%v]", i, j))
 			}
-			name := apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port), types.ResolveGranularity.Endpoint)
+			ups.Name = apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port), types.ResolveGranularity.Endpoint)
 
 			// APISIX limits max length of label value
 			// https://github.com/apache/apisix/blob/5b95b85faea3094d5e466ee2d39a52f1f805abbb/apisix/schema_def.lua#L85
@@ -200,7 +202,12 @@ func (t *translator) TranslateGatewayHTTPRouteV1beta1(httpRoute *gatewayv1beta1.
 			ups.Labels["meta_backend"] = utils.TruncateString(string(backend.Name), 64)
 			ups.Labels["meta_port"] = fmt.Sprintf("%v", int32(*backend.Port))
 
-			ups.ID = id.GenID(name)
+			ups.ID = id.GenID(ups.Name)
+			log.Debugw("translated HTTPRoute upstream",
+				zap.Int("backendRefs_index", j),
+				zap.String("backendRefs_name", string(backend.Name)),
+				zap.String("name", ups.Name),
+			)
 			ctx.AddUpstream(ups)
 			ruleUpstreams = append(ruleUpstreams, ups)
 
@@ -265,8 +272,8 @@ func (t *translator) TranslateGatewayHTTPRouteV1beta1(httpRoute *gatewayv1beta1.
 			ctx.AddRoute(route)
 		}
 
-		//TODO: Support filters
-		//filters := rule.Filters
+		// TODO: Support filters
+		// filters := rule.Filters
 	}
 
 	return ctx, nil
@@ -334,7 +341,7 @@ func (t *translator) translateGatewayHTTPRouteMatch(match *gatewayv1beta1.HTTPRo
 		for _, query := range match.QueryParams {
 			var this []apisixv1.StringOrSlice
 			this = append(this, apisixv1.StringOrSlice{
-				StrVal: "arg_" + strings.ToLower(query.Name),
+				StrVal: "arg_" + strings.ToLower(fmt.Sprintf("%v", query.Name)),
 			})
 
 			switch *query.Type {

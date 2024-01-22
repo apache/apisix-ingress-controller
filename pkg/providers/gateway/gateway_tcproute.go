@@ -94,6 +94,15 @@ func (c *gatewayTCPRouteController) sync(ctx context.Context, ev *types.Event) e
 		}
 		tcpRoute = ev.Tombstone.(*gatewayv1alpha2.TCPRoute)
 	}
+	err = c.controller.validator.ValidateCommonRoute(tcpRoute)
+	if err != nil {
+		log.Errorw("failed to validate gateway TCPRoute",
+			zap.Error(err),
+			zap.Any("object", tcpRoute),
+		)
+		return err
+	}
+
 	tctx, err := c.controller.translator.TranslateGatewayTCPRouteV1Alpha2(tcpRoute)
 	if err != nil {
 		log.Errorw("failed to translate gateway TCPRoute",
@@ -125,25 +134,20 @@ func (c *gatewayTCPRouteController) sync(ctx context.Context, ev *types.Event) e
 	} else {
 		var oldCtx *translation.TranslateContext
 		oldObj := ev.OldObject.(*gatewayv1alpha2.TCPRoute)
-		oldCtx, err = c.controller.translator.TranslateGatewayTCPRouteV1Alpha2(oldObj)
-		if err != nil {
-			log.Errorw("failed to translate old TCPRoute",
-				zap.String("version", oldObj.APIVersion),
-				zap.String("event_type", "update"),
-				zap.Any("TCPRoute", oldObj),
-				zap.Error(err),
-			)
-			return err
+		oldCtx, _ = c.controller.translator.TranslateGatewayTCPRouteV1Alpha2(oldObj)
+		if oldCtx != nil {
+			om := &utils.Manifest{
+				StreamRoutes: oldCtx.StreamRoutes,
+				Upstreams:    oldCtx.Upstreams,
+			}
+			added, updated, deleted = m.Diff(om)
+		} else {
+			added = m
 		}
 
-		om := &utils.Manifest{
-			StreamRoutes: oldCtx.StreamRoutes,
-			Upstreams:    oldCtx.Upstreams,
-		}
-		added, updated, deleted = m.Diff(om)
 	}
 
-	return utils.SyncManifests(ctx, c.controller.APISIX, c.controller.APISIXClusterName, added, updated, deleted)
+	return utils.SyncManifests(ctx, c.controller.APISIX, c.controller.APISIXClusterName, added, updated, deleted, false)
 }
 
 func (c *gatewayTCPRouteController) run(ctx context.Context) {
@@ -237,8 +241,9 @@ func (c *gatewayTCPRouteController) onUpdate(oldObj, newObj interface{}) {
 		zap.Any("new object", newObj),
 	)
 	c.workqueue.Add(&types.Event{
-		Type:   types.EventUpdate,
-		Object: key,
+		Type:      types.EventUpdate,
+		Object:    key,
+		OldObject: oldTCPRoute,
 	})
 }
 

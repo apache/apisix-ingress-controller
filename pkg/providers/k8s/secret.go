@@ -61,7 +61,7 @@ func newSecretController(common *providertypes.Common, namespaceProvider namespa
 
 		namespaceProvider: namespaceProvider,
 		apisixProvider:    apisixProvider,
-		ingressProvider:   apisixProvider,
+		ingressProvider:   ingressProvider,
 	}
 
 	c.secretInformer.AddEventHandler(
@@ -141,6 +141,9 @@ func (c *secretController) sync(ctx context.Context, ev *types.Event) error {
 		sec = ev.Tombstone.(*corev1.Secret)
 	}
 
+	log.Debugw("sync secret change",
+		zap.String("key", key),
+	)
 	secretKey := namespace + "/" + name
 	c.apisixProvider.SyncSecretChange(ctx, ev, sec, secretKey)
 	c.ingressProvider.SyncSecretChange(ctx, ev, sec, secretKey)
@@ -181,7 +184,7 @@ func (c *secretController) onAdd(obj interface{}) {
 	}
 
 	log.Debugw("secret add event arrived",
-		zap.String("object-key", key),
+		zap.String("key", key),
 	)
 	c.workqueue.Add(&types.Event{
 		Type:   types.EventAdd,

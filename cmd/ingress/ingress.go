@@ -80,13 +80,6 @@ For Kubernetes cluster version older than v1.19.0, you should always set the --i
       --kubeconfig /path/to/kubeconfig \
       --ingress-version networking/v1beta1
 
-If your Kubernetes cluster version is prior to v1.14+, only ingress.extensions/v1beta1 can be used.
-
-    apisix-ingress-controller ingress \
-      --default-apisix-cluster-base-url http://apisix-service:9180/apisix/admin \
-      --kubeconfig /path/to/kubeconfig \
-      --ingress-version extensions/v1beta1
-
 If you run apisix-ingress-controller outside the Kubernetes cluster, --kubeconfig option (or kubeconfig item in configuration file) should be specified explicitly,
 or if you run it inside cluster, leave it alone and in-cluster configuration will be discovered and used.
 
@@ -125,7 +118,7 @@ the apisix cluster and others are created`,
 				dief("failed to initialize logging: %s", err)
 			}
 			log.DefaultLogger = logger
-			log.Info("apisix ingress controller started")
+			log.Info("init apisix ingress controller")
 
 			log.Info("version:\n", version.Long())
 
@@ -148,6 +141,9 @@ the apisix cluster and others are created`,
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
+
+				log.Info("start ingress controller")
+
 				if err := ingress.Run(stop); err != nil {
 					dief("failed to run ingress controller: %s", err)
 				}
@@ -180,18 +176,24 @@ For example, no available LB exists in the bare metal environment.`)
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.Kubeconfig, "kubeconfig", "", "Kubernetes configuration file (by default in-cluster configuration will be used)")
 	cmd.PersistentFlags().DurationVar(&cfg.Kubernetes.ResyncInterval.Duration, "resync-interval", time.Minute, "the controller resync (with Kubernetes) interval, the minimum resync interval is 30s")
 	cmd.PersistentFlags().StringSliceVar(&cfg.Kubernetes.NamespaceSelector, "namespace-selector", []string{""}, "labels that controller used to select namespaces which will watch for resources")
-	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.IngressClass, "ingress-class", config.IngressClass, "the class of an Ingress object is set using the field IngressClassName in Kubernetes clusters version v1.18.0 or higher or the annotation \"kubernetes.io/ingress.class\" (deprecated)")
+	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.IngressClass, "ingress-class", config.IngressClassApisixAndAll, "apisix-and-all is a special value, it handles Ingress resources with ingressClassName=apisix and all CRDs, the class of an Ingress object is set using the field IngressClassName in Kubernetes clusters version v1.18.0 or higher or the annotation \"kubernetes.io/ingress.class\" (deprecated)")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ElectionID, "election-id", config.IngressAPISIXLeader, "election id used for campaign the controller leader")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.IngressVersion, "ingress-version", config.IngressNetworkingV1, "the supported ingress api group version, can be \"networking/v1beta1\", \"networking/v1\" (for Kubernetes version v1.19.0 or higher) and \"extensions/v1beta1\"")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.APIVersion, "api-version", config.DefaultAPIVersion, config.APIVersionDescribe)
 	cmd.PersistentFlags().BoolVar(&cfg.Kubernetes.WatchEndpointSlices, "watch-endpointslices", false, "whether to watch endpointslices rather than endpoints")
 	cmd.PersistentFlags().BoolVar(&cfg.Kubernetes.EnableGatewayAPI, "enable-gateway-api", false, "whether to enable support for Gateway API")
+	cmd.PersistentFlags().BoolVar(&cfg.Kubernetes.DisableStatusUpdates, "disable-status-updates", false, "Disable resource status updates")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.AdminAPIVersion, "apisix-admin-api-version", "v2", `the APISIX admin API version. can be "v2" or "v3". Default value is v2.`)
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.DefaultClusterBaseURL, "default-apisix-cluster-base-url", "", "the base URL of admin api / manager api for the default APISIX cluster")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.DefaultClusterAdminKey, "default-apisix-cluster-admin-key", "", "admin key used for the authorization of admin api / manager api for the default APISIX cluster")
 	cmd.PersistentFlags().StringVar(&cfg.APISIX.DefaultClusterName, "default-apisix-cluster-name", "default", "name of the default apisix cluster")
-	cmd.PersistentFlags().DurationVar(&cfg.ApisixResourceSyncInterval.Duration, "apisix-resource-sync-interval", 300*time.Second, "interval between syncs in seconds. Default value is 300s.")
+	cmd.PersistentFlags().BoolVar(&cfg.Kubernetes.EnableAdmission, "enable-admission", false, "can verify crd resources")
+	cmd.PersistentFlags().DurationVar(&cfg.ApisixResourceSyncInterval.Duration, "apisix-resource-sync-interval", 1*time.Hour, "interval of periodic sync in seconds. Default value is 1h. Set to 0 to disable. Min is 60s.")
+	cmd.PersistentFlags().BoolVar(&cfg.ApisixResourceSyncComparison, "apisix-resource-sync-comparison", true, "enable comparison in periodic sync")
 	cmd.PersistentFlags().StringVar(&cfg.PluginMetadataConfigMap, "plugin-metadata-cm", "plugin-metadata-config-map", "ConfigMap name of plugin metadata.")
+	cmd.PersistentFlags().BoolVar(&cfg.EtcdServer.Enabled, "etcd-server-enabled", false, "enable etcd server")
+	cmd.PersistentFlags().StringVar(&cfg.EtcdServer.ListenAddress, "etcd-server-listen-address", ":12379", "etcd server listen address")
+	cmd.PersistentFlags().StringVar(&cfg.EtcdServer.Prefix, "etcd-server-prefix", "/apisix", "etcd server prefix")
 
 	return cmd
 }

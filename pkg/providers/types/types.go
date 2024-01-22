@@ -25,10 +25,10 @@ import (
 	"k8s.io/client-go/informers"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/record"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-	apisixcache "github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
@@ -75,6 +75,7 @@ type ListerInformer struct {
 	ApisixConsumerInformer      cache.SharedIndexInformer
 	ApisixTlsInformer           cache.SharedIndexInformer
 	ApisixClusterConfigInformer cache.SharedIndexInformer
+	ApisixGlobalRuleInformer    cache.SharedIndexInformer
 
 	ApisixRouteLister         kube.ApisixRouteLister
 	ApisixUpstreamLister      kube.ApisixUpstreamLister
@@ -82,6 +83,7 @@ type ListerInformer struct {
 	ApisixConsumerLister      kube.ApisixConsumerLister
 	ApisixTlsLister           kube.ApisixTlsLister
 	ApisixClusterConfigLister kube.ApisixClusterConfigLister
+	ApisixGlobalRuleLister    kube.ApisixGlobalRuleLister
 }
 
 func (c *ListerInformer) StartAndWaitForCacheSync(ctx context.Context) bool {
@@ -121,6 +123,8 @@ type Common struct {
 	*config.Config
 	*ListerInformer
 
+	Elector *leaderelection.LeaderElector
+
 	ControllerNamespace string
 
 	APISIX           apisix.APISIX
@@ -146,19 +150,22 @@ func (c *Common) RecordEventS(object runtime.Object, eventtype, reason string, m
 }
 
 // TODO: Move sync utils to apisix.APISIX interface?
-func (c *Common) SyncManifests(ctx context.Context, added, updated, deleted *utils.Manifest) error {
-	return utils.SyncManifests(ctx, c.APISIX, c.Config.APISIX.DefaultClusterName, added, updated, deleted)
+func (c *Common) SyncManifests(ctx context.Context, added, updated, deleted *utils.Manifest, shouldCompare bool) error {
+	if !c.Elector.IsLeader() && !c.Config.EtcdServer.Enabled {
+		return nil
+	}
+	return utils.SyncManifests(ctx, c.APISIX, c.Config.APISIX.DefaultClusterName, added, updated, deleted, shouldCompare)
 }
 
-// TODO: suppport multiple cluster
-func (c *Common) SyncClusterManifests(ctx context.Context, clusterName string, added, updated, deleted *utils.Manifest) error {
+// TODO: support multiple cluster
+func (c *Common) SyncClusterManifests(ctx context.Context, clusterName string, added, updated, deleted *utils.Manifest, shouldCompare bool) error {
 	if clusterName != c.Config.APISIX.DefaultClusterName {
 		log.Errorw("cluster does not exist",
 			zap.String("cluster_name", clusterName),
 		)
 		return nil
 	}
-	return utils.SyncManifests(ctx, c.APISIX, clusterName, added, updated, deleted)
+	return utils.SyncManifests(ctx, c.APISIX, clusterName, added, updated, deleted, shouldCompare)
 }
 
 func (c *Common) SyncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types.EventType) error {
@@ -169,9 +176,9 @@ func (c *Common) SyncSSL(ctx context.Context, ssl *apisixv1.Ssl, event types.Eve
 	if event == types.EventDelete {
 		err = c.APISIX.Cluster(clusterName).SSL().Delete(ctx, ssl)
 	} else if event == types.EventUpdate {
-		_, err = c.APISIX.Cluster(clusterName).SSL().Update(ctx, ssl)
+		_, err = c.APISIX.Cluster(clusterName).SSL().Update(ctx, ssl, false)
 	} else {
-		_, err = c.APISIX.Cluster(clusterName).SSL().Create(ctx, ssl)
+		_, err = c.APISIX.Cluster(clusterName).SSL().Create(ctx, ssl, event.IsSyncEvent())
 	}
 	return err
 }
@@ -181,9 +188,9 @@ func (c *Common) SyncPluginMetadata(ctx context.Context, pm *apisixv1.PluginMeta
 	if event == types.EventDelete {
 		err = c.APISIX.Cluster(clusterName).PluginMetadata().Delete(ctx, pm)
 	} else if event == types.EventUpdate {
-		_, err = c.APISIX.Cluster(clusterName).PluginMetadata().Update(ctx, pm)
+		_, err = c.APISIX.Cluster(clusterName).PluginMetadata().Update(ctx, pm, false)
 	} else {
-		_, err = c.APISIX.Cluster(clusterName).PluginMetadata().Update(ctx, pm)
+		_, err = c.APISIX.Cluster(clusterName).PluginMetadata().Update(ctx, pm, event.IsSyncEvent())
 	}
 	return err
 }
@@ -193,9 +200,9 @@ func (c *Common) SyncConsumer(ctx context.Context, consumer *apisixv1.Consumer, 
 	if event == types.EventDelete {
 		err = c.APISIX.Cluster(clusterName).Consumer().Delete(ctx, consumer)
 	} else if event == types.EventUpdate {
-		_, err = c.APISIX.Cluster(clusterName).Consumer().Update(ctx, consumer)
+		_, err = c.APISIX.Cluster(clusterName).Consumer().Update(ctx, consumer, false)
 	} else {
-		_, err = c.APISIX.Cluster(clusterName).Consumer().Create(ctx, consumer)
+		_, err = c.APISIX.Cluster(clusterName).Consumer().Create(ctx, consumer, event.IsSyncEvent())
 	}
 	return
 }
@@ -208,13 +215,7 @@ func (c *Common) SyncUpstreamNodesChangeToCluster(ctx context.Context, cluster a
 	)
 	upstream, err := cluster.Upstream().Get(ctx, upsName)
 	if err != nil {
-		if err == apisixcache.ErrNotFound {
-			log.Warnw("upstream is not referenced",
-				zap.String("cluster", cluster.String()),
-				zap.String("upstream", upsName),
-			)
-			return nil
-		} else {
+		if err != apisix.ErrNotFound {
 			log.Errorw("failed to get upstream",
 				zap.String("upstream", upsName),
 				zap.String("cluster", cluster.String()),
@@ -222,12 +223,26 @@ func (c *Common) SyncUpstreamNodesChangeToCluster(ctx context.Context, cluster a
 			)
 			return err
 		}
+		log.Debugw("upstream is not referenced",
+			zap.String("cluster", cluster.String()),
+			zap.String("upstream", upsName),
+		)
+		return nil
 	}
 
 	// Since APISIX's Upstream can support two modes:
 	// * Nodes
 	// * Service discovery
 	// When this logic is executed, the Nodes pattern is used.
+	if compareUpstreamNodes(upstream.Nodes, nodes) {
+		log.Debugw("upstream nodes not changed",
+			zap.String("cluster", cluster.String()),
+			zap.String("upstream_name", upsName),
+			zap.Any("old_nodes", upstream.Nodes),
+			zap.Any("new_nodes", nodes),
+		)
+		return nil
+	}
 	upstream.Nodes = nodes
 
 	log.Debugw("upstream binds new nodes",
@@ -238,5 +253,22 @@ func (c *Common) SyncUpstreamNodesChangeToCluster(ctx context.Context, cluster a
 	updated := &utils.Manifest{
 		Upstreams: []*apisixv1.Upstream{upstream},
 	}
-	return c.SyncManifests(ctx, nil, updated, nil)
+	return c.SyncManifests(ctx, nil, updated, nil, false)
+}
+
+func compareUpstreamNodes(old, new apisixv1.UpstreamNodes) bool {
+	if len(old) != len(new) {
+		return false
+	}
+
+	compare := map[apisixv1.UpstreamNode]struct{}{}
+	for _, node := range old {
+		compare[node] = struct{}{}
+	}
+	for _, node := range new {
+		if _, ok := compare[node]; !ok {
+			return false
+		}
+	}
+	return true
 }

@@ -21,7 +21,7 @@ import (
 
 var (
 	_apisixUpstreamsWithMTLSTemplate = `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: %s

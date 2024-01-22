@@ -184,7 +184,7 @@ If the Plugin is not enabled in APISIX by default, you can enable it by adding i
 
 :::
 
-The example below configures [cors](https://apisix.apache.org/docs/apisix/plugins/cors/) Plugin for the route:
+The example below configures [limit-count](https://apisix.apache.org/docs/apisix/plugins/limit-count) Plugin for the route:
 
 ```yaml
 apiVersion: apisix.apache.org/v2
@@ -193,19 +193,27 @@ metadata:
   name: httpbin-route
 spec:
   http:
-    - name: httpbin
-      match:
-        hosts:
-        - local.httpbin.org
-        paths:
-          - /*
-      backends:
-      - serviceName: foo
-        servicePort: 80
-      plugins:
-        - name: cors
-          enable: true
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: limit-count
+     enable: true
+     config:
+       rejected_code: 503
+       count: 2
+       time_window: 3
+       key: remote_addr
 ```
+
+You can also use the [ApisixPluginConfig](https://apisix.apache.org/docs/ingress-controller/concepts/apisix_plugin_config) CRD to extract and reuse commonly used Plugins and bind them directly to a Route.
 
 ### Config with secretRef
 
@@ -252,6 +260,46 @@ spec:
               X-Foo: v1
               X-Foo2: v2
           secretRef: echo
+```
+
+## Config with secretRef where the secret data contains path to a specific key that needs to be overridden in plugin config
+
+You can also configure specific fields in the plugin configuration that are deeply nested by passing the path to that field. The path is dot-separated keys that lead to that field. The below example overrides the `X-Foo` header field in the plugin configuration from `v1` to `v2`.
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+ #content is "v2"
+ name: echo
+data:
+ headers.X-Foo: djI=
+---
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+     weight: 10
+   plugins:
+   - name: echo
+     enable: true
+     config:
+       before_body: "This is the preface"
+       after_body: "This is the epilogue"
+       headers:
+         X-Foo: v1
+     secretRef: echo
 ```
 
 ## Websocket proxy

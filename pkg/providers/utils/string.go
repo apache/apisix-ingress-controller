@@ -45,3 +45,12 @@ func Equal(a, b []string) bool {
 	}
 	return len(Difference(a, b)) == 0 && len(Difference(b, a)) == 0
 }
+
+func ReverseString(s string) string {
+	buf := make([]byte, len(s))
+	for i, b := range []byte(s) {
+		idx := len(s) - 1 - i
+		buf[idx] = b
+	}
+	return string(buf)
+}

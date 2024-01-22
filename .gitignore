@@ -35,6 +35,7 @@ release
 
 .vscode
 .idea
+vendor/
 .DS_Store
 coverage.txt
 test/e2e/coverage.txt

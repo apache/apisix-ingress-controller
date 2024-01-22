@@ -30,7 +30,7 @@ This tutorial will detail how to manage secrets of ApisixTls using cert-manager.
 * Install [apisix-ingress-controller](https://github.com/apache/apisix-ingress-controller/blob/master/install.md).
 * Install [cert-manager](https://cert-manager.io/docs/installation/#default-static-install).
 
-In this guide, we assume that your APISIX is installed with `ssl` enabled, which is not enabled by default in the Helm Chart. To enable it, you need to set `gateway.tls.enabled=true` during installation.
+In this guide, we assume that your APISIX is installed with `ssl` enabled, which is not enabled by default in the Helm Chart. To enable it, you need to set `apisix.ssl.enabled=true` during installation.
 
 For example, you could install APISIX and APISIX ingress controller by running:
 
@@ -38,9 +38,9 @@ For example, you could install APISIX and APISIX ingress controller by running:
 #  We use Apisix 3.0 in this example. If you're using Apisix v2.x, please set to v2
 ADMIN_API_VERSION=v3
 helm install apisix apisix/apisix \
-  --set gateway.type=NodePort \
+  --set service.type=NodePort \
   --set ingress-controller.enabled=true \
-  --set gateway.tls.enabled=true \
+  --set apisix.ssl.enabled=true \
   --set ingress-controller.config.apisix.serviceNamespace=default \
   --set ingress-controller.config.apisix.adminAPIVersion=$ADMIN_API_VERSION
 ```

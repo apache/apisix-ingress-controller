@@ -64,6 +64,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ApisixClusterConfigList{},
 		&ApisixConsumer{},
 		&ApisixConsumerList{},
+		&ApisixGlobalRule{},
+		&ApisixGlobalRuleList{},
 		&ApisixPluginConfig{},
 		&ApisixPluginConfigList{},
 		&ApisixRoute{},

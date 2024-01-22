@@ -28,7 +28,7 @@ import (
 
 var (
 	_routeConfig = `
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -97,24 +97,6 @@ spec:
           serviceName: %s
           servicePort: %d
 `
-	_ingressExtensionsV1beta1Config = `
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-  name: ingress-extensions-v1beta1
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /*
-        pathType: Prefix
-        backend:
-          serviceName: %s
-          servicePort: %d
-`
 )
 
 var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the CRDs resource of the IngressController", func() {
@@ -156,9 +138,6 @@ var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the CRDs re
 		})
 	}
 
-	ginkgo.Describe("suite-chore: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold())
-	})
 	ginkgo.Describe("suite-chore: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold())
 	})
@@ -237,42 +216,6 @@ var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the Ingress
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 	})
-
-	ginkgo.It("Ingress extensionsV1beta1 and APISIX of route and upstream", func() {
-		httpService := fmt.Sprintf(_httpServiceConfig, "port1", 9080, 9080)
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httpService))
-
-		ing := fmt.Sprintf(_ingressExtensionsV1beta1Config, "httpbin-service-e2e-test", 9080)
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1))
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1))
-
-		upstreams, err := s.ListApisixUpstreams()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), upstreams, 1)
-		assert.Contains(ginkgo.GinkgoT(), upstreams[0].Name, "httpbin-service-e2e-test_9080")
-		// The correct httpbin pod port is 80
-		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusBadGateway)
-
-		httpService = fmt.Sprintf(_httpServiceConfig, "port2", 80, 80)
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httpService))
-
-		ing = fmt.Sprintf(_ingressExtensionsV1beta1Config, "httpbin-service-e2e-test", 80)
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ing))
-
-		time.Sleep(6 * time.Second)
-
-		routes, err := s.ListApisixRoutes()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), routes, 1)
-		upstreams, err = s.ListApisixUpstreams()
-		assert.Nil(ginkgo.GinkgoT(), err)
-		assert.Len(ginkgo.GinkgoT(), upstreams, 1)
-		assert.Contains(ginkgo.GinkgoT(), upstreams[0].Name, "httpbin-service-e2e-test_80")
-
-		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
-	})
 })
 
 var _ = ginkgo.Describe("suite-chore: apisix route labels sync", func() {
@@ -308,6 +251,126 @@ spec:
 			// check if labels exists
 			for _, route := range routes {
 				eq := reflect.DeepEqual(route.Metadata.Labels, labels)
+				assert.True(ginkgo.GinkgoT(), eq)
+			}
+		})
+	}
+
+	ginkgo.Describe("suite-chore: scaffold v2", func() {
+		suites(scaffold.NewScaffold(&scaffold.Options{
+			Name:                  "sync",
+			IngressAPISIXReplicas: 1,
+			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
+		}))
+	})
+})
+
+var _ = ginkgo.Describe("suite-chore: apisix plugin config labels sync", func() {
+	suites := func(s *scaffold.Scaffold) {
+		ginkgo.JustBeforeEach(func() {
+			labels := map[string]string{"key": "value", "foo": "bar"}
+			apc := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+ name: my-echo
+ labels:
+   key: value
+   foo: bar
+spec:
+ plugins:
+ - name: echo
+   enable: true
+   config:
+    body: "my-echo"
+`
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(apc))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixPluginConfigCreated(1), "Checking number of plugin configs")
+
+			pluginConfigs, _ := s.ListApisixPluginConfig()
+			assert.Len(ginkgo.GinkgoT(), pluginConfigs, 1)
+			// check if labels exists
+			for _, pluginConfig := range pluginConfigs {
+				eq := reflect.DeepEqual(pluginConfig.Metadata.Labels, labels)
+				assert.True(ginkgo.GinkgoT(), eq)
+			}
+		})
+	}
+
+	ginkgo.Describe("suite-chore: scaffold v2", func() {
+		suites(scaffold.NewScaffold(&scaffold.Options{
+			Name:                  "sync",
+			IngressAPISIXReplicas: 1,
+			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
+		}))
+	})
+})
+
+var _ = ginkgo.Describe("suite-chore: apisix upstream labels sync", func() {
+	suites := func(s *scaffold.Scaffold) {
+		ginkgo.JustBeforeEach(func() {
+			labels := map[string]string{"key": "value", "foo": "bar"}
+			au := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: foo
+  labels:
+    foo: bar
+	key: value
+spec:
+  timeout:
+    read: 10s
+    send: 10s
+`
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(au))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
+
+			upstreams, _ := s.ListApisixUpstreams()
+			assert.Len(ginkgo.GinkgoT(), upstreams, 1)
+			// check if labels exists
+			for _, route := range upstreams {
+				eq := reflect.DeepEqual(route.Metadata.Labels, labels)
+				assert.True(ginkgo.GinkgoT(), eq)
+			}
+		})
+	}
+
+	ginkgo.Describe("suite-chore: scaffold v2", func() {
+		suites(scaffold.NewScaffold(&scaffold.Options{
+			Name:                  "sync",
+			IngressAPISIXReplicas: 1,
+			ApisixResourceVersion: scaffold.ApisixResourceVersion().V2,
+		}))
+	})
+})
+
+var _ = ginkgo.Describe("suite-chore: apisix consumer labels sync", func() {
+	suites := func(s *scaffold.Scaffold) {
+		ginkgo.JustBeforeEach(func() {
+			labels := map[string]string{"key": "value", "foo": "bar"}
+			ac := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: foo
+  labels:
+    key: value
+	foo: bar
+spec:
+  authParameter:
+    jwtAuth:
+      secretRef:
+        name: jwt
+`
+			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(ac))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixConsumersCreated(1), "Checking number of consumers")
+
+			consumers, _ := s.ListApisixConsumers()
+			assert.Len(ginkgo.GinkgoT(), consumers, 1)
+			// check if labels exists
+			for _, route := range consumers {
+				eq := reflect.DeepEqual(route.Labels, labels)
 				assert.True(ginkgo.GinkgoT(), eq)
 			}
 		})

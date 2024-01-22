@@ -22,7 +22,6 @@ import (
 	"net/http"
 
 	apisixv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2"
-	apisixv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta3"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -31,24 +30,17 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	ApisixV2() apisixv2.ApisixV2Interface
-	ApisixV2beta3() apisixv2beta3.ApisixV2beta3Interface
 }
 
 // Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	apisixV2      *apisixv2.ApisixV2Client
-	apisixV2beta3 *apisixv2beta3.ApisixV2beta3Client
+	apisixV2 *apisixv2.ApisixV2Client
 }
 
 // ApisixV2 retrieves the ApisixV2Client
 func (c *Clientset) ApisixV2() apisixv2.ApisixV2Interface {
 	return c.apisixV2
-}
-
-// ApisixV2beta3 retrieves the ApisixV2beta3Client
-func (c *Clientset) ApisixV2beta3() apisixv2beta3.ApisixV2beta3Interface {
-	return c.apisixV2beta3
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -99,10 +91,6 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 	if err != nil {
 		return nil, err
 	}
-	cs.apisixV2beta3, err = apisixv2beta3.NewForConfigAndClient(&configShallowCopy, httpClient)
-	if err != nil {
-		return nil, err
-	}
 
 	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
@@ -125,7 +113,6 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.apisixV2 = apisixv2.New(c)
-	cs.apisixV2beta3 = apisixv2beta3.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

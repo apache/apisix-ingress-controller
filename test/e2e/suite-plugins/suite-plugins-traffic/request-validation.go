@@ -29,7 +29,7 @@ var _ = ginkgo.Describe("suite-plugins-traffic: redirect plugin", func() {
 		ginkgo.It("sanity", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -110,7 +110,7 @@ spec:
 		ginkgo.It("disable plugin", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -188,9 +188,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-plugins-traffic: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-plugins-traffic: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})

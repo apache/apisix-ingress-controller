@@ -90,13 +90,13 @@ func (t *translator) TranslateGatewayTLSRouteV1Alpha2(tlsRoute *gatewayv1alpha2.
 			if err != nil {
 				return nil, errors.Wrap(err, fmt.Sprintf("failed to translate Rules[%v].BackendRefs[%v]", i, j))
 			}
-			name := apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port), types.ResolveGranularity.Endpoint)
+			ups.Name = apisixv1.ComposeUpstreamName(ns, string(backend.Name), "", int32(*backend.Port), types.ResolveGranularity.Endpoint)
 
 			ups.Labels["meta_namespace"] = utils.TruncateString(ns, 64)
 			ups.Labels["meta_backend"] = utils.TruncateString(string(backend.Name), 64)
 			ups.Labels["meta_port"] = fmt.Sprintf("%v", int32(*backend.Port))
 
-			ups.ID = id.GenID(name)
+			ups.ID = id.GenID(ups.Name)
 			ctx.AddUpstream(ups)
 			ruleUpstreams = append(ruleUpstreams, ups)
 		}

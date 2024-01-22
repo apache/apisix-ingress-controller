@@ -23,7 +23,6 @@ import (
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -34,9 +33,9 @@ type FakeApisixClusterConfigs struct {
 	Fake *FakeApisixV2
 }
 
-var apisixclusterconfigsResource = schema.GroupVersionResource{Group: "apisix.apache.org", Version: "v2", Resource: "apisixclusterconfigs"}
+var apisixclusterconfigsResource = v2.SchemeGroupVersion.WithResource("apisixclusterconfigs")
 
-var apisixclusterconfigsKind = schema.GroupVersionKind{Group: "apisix.apache.org", Version: "v2", Kind: "ApisixClusterConfig"}
+var apisixclusterconfigsKind = v2.SchemeGroupVersion.WithKind("ApisixClusterConfig")
 
 // Get takes name of the apisixClusterConfig, and returns the corresponding apisixClusterConfig object, and an error if there is any.
 func (c *FakeApisixClusterConfigs) Get(ctx context.Context, name string, options v1.GetOptions) (result *v2.ApisixClusterConfig, err error) {

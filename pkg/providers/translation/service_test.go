@@ -25,7 +25,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2beta3"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
@@ -34,12 +33,11 @@ func TestTranslateServiceNoEndpoints(t *testing.T) {
 	informersFactory := informers.NewSharedInformerFactory(client, 0)
 	epLister, _ := kube.NewEndpointListerAndInformer(informersFactory, false)
 	auLister2 := v2.NewApisixUpstreamLister(cache.NewIndexer(func(obj interface{}) (out string, err error) { return }, map[string]cache.IndexFunc{}))
-	auLister2beta3 := v2beta3.NewApisixUpstreamLister(cache.NewIndexer(func(obj interface{}) (out string, err error) { return }, map[string]cache.IndexFunc{}))
 
 	tr := &translator{&TranslatorOptions{
 		APIVersion:           config.ApisixV2,
 		EndpointLister:       epLister,
-		ApisixUpstreamLister: kube.NewApisixUpstreamLister(auLister2beta3, auLister2),
+		ApisixUpstreamLister: kube.NewApisixUpstreamLister(auLister2),
 	}}
 
 	expected := &v1.Upstream{
@@ -56,7 +54,7 @@ func TestTranslateServiceNoEndpoints(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, expected, upstream)
 
-	tr.APIVersion = config.ApisixV2beta3
+	tr.APIVersion = config.ApisixV2
 
 	upstream, err = tr.TranslateService("test", "svc", "", 9080)
 	assert.Nil(t, err)

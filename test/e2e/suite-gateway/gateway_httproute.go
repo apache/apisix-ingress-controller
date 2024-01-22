@@ -185,7 +185,6 @@ spec:
       port: %d
 `, backendSvc, backendPorts[0])
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "update HTTPRoute")
-		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
 
 		time.Sleep(6 * time.Second)
 
@@ -396,7 +395,7 @@ spec:
     protocol: TCP
     targetPort: 8080
 `
-		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(echo), "creating echo server")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(s.FormatRegistry(echo)), "creating echo server")
 
 		httproute := fmt.Sprintf(`
 apiVersion: gateway.networking.k8s.io/v1beta1

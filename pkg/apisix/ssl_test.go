@@ -152,25 +152,26 @@ func TestSSLClient(t *testing.T) {
 	close(closedCh)
 
 	cli := newSSLClient(&cluster{
-		baseURL:          u.String(),
-		cli:              http.DefaultClient,
-		cache:            &dummyCache{},
-		cacheSynced:      closedCh,
-		metricsCollector: metrics.NewPrometheusCollector(),
+		baseURL:           u.String(),
+		cli:               http.DefaultClient,
+		cache:             &dummyCache{},
+		generatedObjCache: &dummyCache{},
+		cacheSynced:       closedCh,
+		metricsCollector:  metrics.NewPrometheusCollector(),
 	})
 
 	// Create
 	obj, err := cli.Create(context.TODO(), &v1.Ssl{
 		ID:   "1",
 		Snis: []string{"bar.com"},
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, "1", obj.ID)
 
 	obj, err = cli.Create(context.TODO(), &v1.Ssl{
 		ID:   "2",
 		Snis: []string{"bar.com"},
-	})
+	}, false)
 	assert.Nil(t, err)
 	assert.Equal(t, "2", obj.ID)
 
@@ -192,7 +193,7 @@ func TestSSLClient(t *testing.T) {
 	_, err = cli.Update(context.Background(), &v1.Ssl{
 		ID:   "2",
 		Snis: []string{"foo.com"},
-	})
+	}, false)
 	assert.Nil(t, err)
 	objs, err = cli.List(context.Background())
 	assert.Nil(t, err)

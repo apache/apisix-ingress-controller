@@ -33,7 +33,7 @@ type schemaClient struct {
 
 func newSchemaClient(c *cluster) Schema {
 	return &schemaClient{
-		url:     c.baseURL + "/schema/",
+		url:     c.baseURL + "/schema",
 		cluster: c,
 	}
 }

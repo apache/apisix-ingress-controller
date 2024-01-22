@@ -87,35 +87,6 @@ spec:
 		_ = s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
 	})
-
-	ginkgo.It("enable in ingress extensions/v1beta1", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/rewrite-target: "/ip"
-  name: ingress-extensions-v1beta1
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /sample
-        pathType: Exact
-        backend:
-          serviceName: %s
-          servicePort: %d
-`, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
-
-		_ = s.NewAPISIXClient().GET("/sample").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
-		_ = s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusNotFound)
-	})
 })
 
 var _ = ginkgo.Describe("suite-annotations: rewrite regex annotations", func() {
@@ -164,36 +135,6 @@ metadata:
     k8s.apisix.apache.org/rewrite-target-regex: "/sample/(.*)"
     k8s.apisix.apache.org/rewrite-target-regex-template: "/$1"
   name: ingress-v1beta1
-spec:
-  rules:
-  - host: httpbin.org
-    http:
-      paths:
-      - path: /sample
-        pathType: Prefix
-        backend:
-          serviceName: %s
-          servicePort: %d
-`, backendSvc, backendPort[0])
-		err := s.CreateResourceFromString(ing)
-		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
-		time.Sleep(5 * time.Second)
-
-		_ = s.NewAPISIXClient().GET("/sample/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
-		_ = s.NewAPISIXClient().GET("/sample/get").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
-	})
-
-	ginkgo.It("enable in ingress extensions/v1beta1", func() {
-		backendSvc, backendPort := s.DefaultHTTPBackend()
-		ing := fmt.Sprintf(`
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: apisix
-    k8s.apisix.apache.org/rewrite-target-regex: "/sample/(.*)"
-    k8s.apisix.apache.org/rewrite-target-regex-template: "/$1"
-  name: ingress-extensions-v1beta1
 spec:
   rules:
   - host: httpbin.org

@@ -109,7 +109,7 @@ for us to fix.
 
 ## Community
 
-* Mailing List: Mail to dev-subscribe@apisix.apache.org, follow the reply to subscribe the mailing list.
+* Mailing List: Mail to <dev-subscribe@apisix.apache.org>, follow the reply to subscribe the mailing list.
 * QQ Group - 578997126
 * ![Twitter Follow](https://img.shields.io/twitter/follow/ApacheAPISIX?style=social) - follow and interact with us using hashtag `#ApacheAPISIX`
 * [Bilibili video](https://space.bilibili.com/551921247)

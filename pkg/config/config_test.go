@@ -27,33 +27,41 @@ import (
 
 func TestNewConfigFromFile(t *testing.T) {
 	cfg := &Config{
-		LogLevel:                   "warn",
-		LogOutput:                  "stdout",
-		LogRotateOutputPath:        "",
-		LogRotationMaxSize:         100,
-		LogRotationMaxAge:          0,
-		LogRotationMaxBackups:      0,
-		HTTPListen:                 ":9090",
-		HTTPSListen:                ":9443",
-		IngressPublishService:      "",
-		IngressStatusAddress:       []string{},
-		CertFilePath:               "/etc/webhook/certs/cert.pem",
-		KeyFilePath:                "/etc/webhook/certs/key.pem",
-		EnableProfiling:            true,
-		ApisixResourceSyncInterval: types.TimeDuration{Duration: 200 * time.Second},
+		LogLevel:                     "warn",
+		LogOutput:                    "stdout",
+		LogRotateOutputPath:          "",
+		LogRotationMaxSize:           100,
+		LogRotationMaxAge:            0,
+		LogRotationMaxBackups:        0,
+		HTTPListen:                   ":9090",
+		HTTPSListen:                  ":9443",
+		IngressPublishService:        "",
+		IngressStatusAddress:         []string{},
+		CertFilePath:                 "/etc/webhook/certs/cert.pem",
+		KeyFilePath:                  "/etc/webhook/certs/key.pem",
+		EnableProfiling:              true,
+		ApisixResourceSyncInterval:   types.TimeDuration{Duration: 200 * time.Second},
+		ApisixResourceSyncComparison: true,
 		Kubernetes: KubernetesConfig{
-			ResyncInterval: types.TimeDuration{Duration: time.Hour},
-			Kubeconfig:     "/path/to/foo/baz",
-			ElectionID:     "my-election-id",
-			IngressClass:   IngressClass,
-			IngressVersion: IngressNetworkingV1,
-			APIVersion:     DefaultAPIVersion,
+			ResyncInterval:       types.TimeDuration{Duration: time.Hour},
+			Kubeconfig:           "/path/to/foo/baz",
+			ElectionID:           "my-election-id",
+			IngressClass:         IngressClass,
+			IngressVersion:       IngressNetworkingV1,
+			APIVersion:           DefaultAPIVersion,
+			DisableStatusUpdates: true,
 		},
 		APISIX: APISIXConfig{
 			AdminAPIVersion:        "v2",
 			DefaultClusterName:     "apisix",
 			DefaultClusterBaseURL:  "http://127.0.0.1:8080/apisix",
 			DefaultClusterAdminKey: "123456",
+		},
+		EtcdServer: EtcdServerConfig{
+			Enabled:           false,
+			Prefix:            "/apisix",
+			ListenAddress:     ":12379",
+			SSLKeyEncryptSalt: "edd1c9f0985e76a2",
 		},
 	}
 
@@ -86,7 +94,7 @@ https_listen: :9443
 ingress_publish_service: ""
 ingress_status_address: []
 enable_profiling: true
-apisix-resource-sync-interval: 200s
+apisix_resource_sync_interval: 200s
 kubernetes:
   kubeconfig: /path/to/foo/baz
   resync_interval: 1h0m0s
@@ -94,11 +102,17 @@ kubernetes:
   ingress_class: apisix
   ingress_version: networking/v1
   api_version: apisix.apache.org/v2
+  disable_status_updates: true
 apisix:
   admin_api_version: v2
   default_cluster_base_url: http://127.0.0.1:8080/apisix
   default_cluster_admin_key: "123456"
   default_cluster_name: "apisix"
+etcdserver:
+  enabled: false
+  prefix: /apisix
+  listen_address: :12379
+  ssl_key_encrypt_salt: edd1c9f0985e76a2
 `
 	tmpYAML, err := os.CreateTemp("/tmp", "config-*.yaml")
 	assert.Nil(t, err, "failed to create temporary yaml configuration file: ", err)
@@ -117,33 +131,41 @@ apisix:
 
 func TestConfigWithEnvVar(t *testing.T) {
 	cfg := &Config{
-		LogLevel:                   "warn",
-		LogOutput:                  "stdout",
-		LogRotateOutputPath:        "",
-		LogRotationMaxSize:         100,
-		LogRotationMaxAge:          0,
-		LogRotationMaxBackups:      0,
-		HTTPListen:                 ":9090",
-		HTTPSListen:                ":9443",
-		IngressPublishService:      "",
-		IngressStatusAddress:       []string{},
-		CertFilePath:               "/etc/webhook/certs/cert.pem",
-		KeyFilePath:                "/etc/webhook/certs/key.pem",
-		EnableProfiling:            true,
-		ApisixResourceSyncInterval: types.TimeDuration{Duration: 200 * time.Second},
+		LogLevel:                     "warn",
+		LogOutput:                    "stdout",
+		LogRotateOutputPath:          "",
+		LogRotationMaxSize:           100,
+		LogRotationMaxAge:            0,
+		LogRotationMaxBackups:        0,
+		HTTPListen:                   ":9090",
+		HTTPSListen:                  ":9443",
+		IngressPublishService:        "",
+		IngressStatusAddress:         []string{},
+		CertFilePath:                 "/etc/webhook/certs/cert.pem",
+		KeyFilePath:                  "/etc/webhook/certs/key.pem",
+		EnableProfiling:              true,
+		ApisixResourceSyncInterval:   types.TimeDuration{Duration: 200 * time.Second},
+		ApisixResourceSyncComparison: true,
 		Kubernetes: KubernetesConfig{
-			ResyncInterval: types.TimeDuration{Duration: time.Hour},
-			Kubeconfig:     "",
-			ElectionID:     "my-election-id",
-			IngressClass:   IngressClass,
-			IngressVersion: IngressNetworkingV1,
-			APIVersion:     DefaultAPIVersion,
+			ResyncInterval:       types.TimeDuration{Duration: time.Hour},
+			Kubeconfig:           "",
+			ElectionID:           "my-election-id",
+			IngressClass:         IngressClass,
+			IngressVersion:       IngressNetworkingV1,
+			APIVersion:           DefaultAPIVersion,
+			DisableStatusUpdates: true,
 		},
 		APISIX: APISIXConfig{
 			AdminAPIVersion:        "v2",
 			DefaultClusterName:     "apisix",
 			DefaultClusterBaseURL:  "http://127.0.0.1:8080/apisix",
 			DefaultClusterAdminKey: "123456",
+		},
+		EtcdServer: EtcdServerConfig{
+			Enabled:           false,
+			Prefix:            "/apisix",
+			ListenAddress:     ":12379",
+			SSLKeyEncryptSalt: "edd1c9f0985e76a2",
 		},
 	}
 
@@ -167,20 +189,28 @@ func TestConfigWithEnvVar(t *testing.T) {
 	"ingress_publish_service": "",
 	"ingress_status_address": [],
     "enable_profiling": true,
-	"apisix-resource-sync-interval": "200s",
+	"apisix_resource_sync_interval": "200s",
+	"apisix_resource_sync_comparison": true,
     "kubernetes": {
         "kubeconfig": "{{.KUBECONFIG}}",
         "resync_interval": "1h0m0s",
         "election_id": "my-election-id",
         "ingress_class": "apisix",
-        "ingress_version": "networking/v1"
+        "ingress_version": "networking/v1",
+        "disable_status_updates": true
     },
     "apisix": {
         "admin_api_version": "v2",
         "default_cluster_base_url": "{{.DEFAULT_CLUSTER_BASE_URL}}",
         "default_cluster_admin_key": "{{.DEFAULT_CLUSTER_ADMIN_KEY}}",
         "default_cluster_name": "{{.DEFAULT_CLUSTER_NAME}}"
-    }
+    },
+	"etcdserver": {
+		"enabled": false,
+		"prefix": "/apisix",
+		"listen_address": ":12379",
+		"ssl_key_encrypt_salt": "edd1c9f0985e76a2"
+	}
 }
 `
 	tmpJSON, err := os.CreateTemp("/tmp", "config-*.json")
@@ -205,13 +235,14 @@ https_listen: :9443
 ingress_publish_service: ""
 ingress_status_address: []
 enable_profiling: true
-apisix-resource-sync-interval: 200s
+apisix_resource_sync_interval: 200s
 kubernetes:
   resync_interval: 1h0m0s
   kubeconfig: "{{.KUBECONFIG}}"
   election_id: my-election-id
   ingress_class: apisix
   ingress_version: networking/v1
+  disable_status_updates: true
 apisix:
   admin_api_version: v2
   default_cluster_base_url: {{.DEFAULT_CLUSTER_BASE_URL}}

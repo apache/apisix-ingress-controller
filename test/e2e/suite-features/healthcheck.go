@@ -31,7 +31,7 @@ var _ = ginkgo.Describe("suite-features: health check", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -51,7 +51,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -88,7 +88,7 @@ spec:
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			au := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: %s
@@ -113,7 +113,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "create ApisixUpstream")
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -143,9 +143,6 @@ spec:
 			assert.Equal(ginkgo.GinkgoT(), ups[0].Checks.Passive.Unhealthy.HTTPStatuses, []int{502})
 		})
 	}
-	ginkgo.Describe("suite-features: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-features: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})

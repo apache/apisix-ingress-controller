@@ -42,3 +42,4 @@ See the [definition](https://github.com/apache/apisix-ingress-controller/blob/ma
 | client.caSecret.name      | string | Name of the Secret related to the certificate provided by the client.                   |
 | client.caSecret.namespace | string | Namespace of the Secret related to the certificate.                                     |
 | client.depth              | int    | The maximum length of the certificate chain.                                            |
+| client.skip_mtls_uri_regex              | array    | List of uri regular expression to skip mtls.                                            |

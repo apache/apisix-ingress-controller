@@ -46,7 +46,7 @@ var _ Provider = (*ingressProvider)(nil)
 type Provider interface {
 	providertypes.Provider
 
-	ResourceSync()
+	ResourceSync(namespace string)
 
 	SyncSecretChange(ctx context.Context, ev *types.Event, secret *corev1.Secret, secretMapKey string)
 }
@@ -88,10 +88,13 @@ func (p *ingressProvider) Run(ctx context.Context) {
 	e.Wait()
 }
 
-func (p *ingressProvider) ResourceSync() {
+func (p *ingressProvider) ResourceSync(namespace string) {
 	e := utils.ParallelExecutor{}
 
-	e.Add(p.ingressController.ResourceSync)
+	e.Add(
+		func() {
+			p.ingressController.ResourceSync(namespace)
+		})
 
 	e.Wait()
 }

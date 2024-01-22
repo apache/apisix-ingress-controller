@@ -28,6 +28,9 @@ updates:
     reviewers:
       - "tao12345666333"
       - "lingsamuel"
+      - "AlinsRan"
+      - "Gallardot"
+      - "Revolyssup"
   - package-ecosystem: "github-actions"
     directory: "/.github"
     schedule:
@@ -37,6 +40,9 @@ updates:
     reviewers:
       - "tao12345666333"
       - "lingsamuel"
+      - "AlinsRan"
+      - "Gallardot"
+      - "Revolyssup"
   - package-ecosystem: "gomod"
     directory: "/test/e2e"
     schedule:
@@ -46,3 +52,6 @@ updates:
     reviewers:
       - "tao12345666333"
       - "lingsamuel"
+      - "AlinsRan"
+      - "Gallardot"
+      - "Revolyssup"

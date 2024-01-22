@@ -46,7 +46,7 @@ spec:
       app: apisix-deployment-e2e-test
   strategy:
     rollingUpdate:
-      maxSurge: 50%
+      maxSurge: 50%%
       maxUnavailable: 1
     type: RollingUpdate
   template:
@@ -55,6 +55,11 @@ spec:
         app: apisix-deployment-e2e-test
     spec:
       terminationGracePeriodSeconds: 0
+      initContainers:
+      - name: wait-etcd
+        image: localhost:5000/busybox:dev
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', "until nc -z %s 2379 ; do echo waiting for wait-etcd; sleep 2; done;"]
       containers:
         - livenessProbe:
             failureThreshold: 3
@@ -135,17 +140,32 @@ spec:
 `
 )
 
-func (s *Scaffold) newAPISIX() (*corev1.Service, error) {
-	data, err := s.renderConfig(s.opts.APISIXConfigPath)
+type APISIXConfig struct {
+	// Used for template rendering.
+	EtcdServiceFQDN string
+}
+
+func (s *Scaffold) newAPISIXConfigMap(cm *APISIXConfig) error {
+	if cm == nil {
+		return fmt.Errorf("config not allowed to be empty")
+	}
+	data, err := s.renderConfig(s.opts.APISIXConfigPath, cm)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	data = indent(data)
 	configData := fmt.Sprintf(_apisixConfigMap, data)
 	if err := s.CreateResourceFromString(configData); err != nil {
-		return nil, err
+		return err
 	}
-	if err := s.CreateResourceFromString(s.FormatRegistry(_apisixDeployment)); err != nil {
+	return nil
+}
+
+func (s *Scaffold) newAPISIX() (*corev1.Service, error) {
+	deployment := fmt.Sprintf(_apisixDeployment, EtcdServiceName)
+	if err := s.CreateResourceFromString(
+		s.FormatRegistry(deployment),
+	); err != nil {
 		return nil, err
 	}
 	if err := s.CreateResourceFromString(_apisixService); err != nil {

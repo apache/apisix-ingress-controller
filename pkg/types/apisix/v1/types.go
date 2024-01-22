@@ -79,6 +79,13 @@ const (
 	// DefaultUpstreamTimeout represents the default connect,
 	// read and send timeout (in seconds) with upstreams.
 	DefaultUpstreamTimeout = 60
+
+	// PassHostPass represents pass option for pass_host Upstream settings.
+	PassHostPass = "pass"
+	// PassHostPass represents node option for pass_host Upstream settings.
+	PassHostNode = "node"
+	// PassHostPass represents rewrite option for pass_host Upstream settings.
+	PassHostRewrite = "rewrite"
 )
 
 var ValidSchemes map[string]struct{} = map[string]struct{}{
@@ -196,15 +203,17 @@ func (p *Plugins) DeepCopy() *Plugins {
 type Upstream struct {
 	Metadata `json:",inline" yaml:",inline"`
 
-	Type    string               `json:"type,omitempty" yaml:"type,omitempty"`
-	HashOn  string               `json:"hash_on,omitempty" yaml:"hash_on,omitempty"`
-	Key     string               `json:"key,omitempty" yaml:"key,omitempty"`
-	Checks  *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
-	Nodes   UpstreamNodes        `json:"nodes" yaml:"nodes"`
-	Scheme  string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
-	Retries *int                 `json:"retries,omitempty" yaml:"retries,omitempty"`
-	Timeout *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-	TLS     *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
+	Type         string               `json:"type,omitempty" yaml:"type,omitempty"`
+	HashOn       string               `json:"hash_on,omitempty" yaml:"hash_on,omitempty"`
+	Key          string               `json:"key,omitempty" yaml:"key,omitempty"`
+	Checks       *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
+	Nodes        UpstreamNodes        `json:"nodes" yaml:"nodes"`
+	Scheme       string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+	Retries      *int                 `json:"retries,omitempty" yaml:"retries,omitempty"`
+	Timeout      *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	TLS          *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
+	PassHost     string               `json:"pass_host,omitempty" yaml:"pass_host,omitempty"`
+	UpstreamHost string               `json:"upstream_host,omitempty" yaml:"upstream_host,omitempty"`
 
 	// for Service Discovery
 	ServiceName   string            `json:"service_name,omitempty" yaml:"service_name,omitempty"`
@@ -271,10 +280,12 @@ func (up Upstream) MarshalJSON() ([]byte, error) {
 			Key    string               `json:"key,omitempty" yaml:"key,omitempty"`
 			Checks *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
 			//Nodes   UpstreamNodes        `json:"nodes" yaml:"nodes"`
-			Scheme  string           `json:"scheme,omitempty" yaml:"scheme,omitempty"`
-			Retries *int             `json:"retries,omitempty" yaml:"retries,omitempty"`
-			Timeout *UpstreamTimeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-			TLS     *ClientTLS       `json:"tls,omitempty" yaml:"tls,omitempty"`
+			Scheme       string           `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+			Retries      *int             `json:"retries,omitempty" yaml:"retries,omitempty"`
+			Timeout      *UpstreamTimeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+			HostPass     string           `json:"pass_host,omitempty" yaml:"pass_host,omitempty"`
+			UpstreamHost string           `json:"upstream_host,omitempty" yaml:"upstream_host,omitempty"`
+			TLS          *ClientTLS       `json:"tls,omitempty" yaml:"tls,omitempty"`
 
 			// for Service Discovery
 			ServiceName   string            `json:"service_name,omitempty" yaml:"service_name,omitempty"`
@@ -288,10 +299,12 @@ func (up Upstream) MarshalJSON() ([]byte, error) {
 			Key:    up.Key,
 			Checks: up.Checks,
 			//Nodes:   up.Nodes,
-			Scheme:  up.Scheme,
-			Retries: up.Retries,
-			Timeout: up.Timeout,
-			TLS:     up.TLS,
+			Scheme:       up.Scheme,
+			Retries:      up.Retries,
+			Timeout:      up.Timeout,
+			HostPass:     up.PassHost,
+			UpstreamHost: up.UpstreamHost,
+			TLS:          up.TLS,
 
 			ServiceName:   up.ServiceName,
 			DiscoveryType: up.DiscoveryType,
@@ -301,15 +314,17 @@ func (up Upstream) MarshalJSON() ([]byte, error) {
 		return json.Marshal(&struct {
 			Metadata `json:",inline" yaml:",inline"`
 
-			Type    string               `json:"type,omitempty" yaml:"type,omitempty"`
-			HashOn  string               `json:"hash_on,omitempty" yaml:"hash_on,omitempty"`
-			Key     string               `json:"key,omitempty" yaml:"key,omitempty"`
-			Checks  *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
-			Nodes   UpstreamNodes        `json:"nodes" yaml:"nodes"`
-			Scheme  string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
-			Retries *int                 `json:"retries,omitempty" yaml:"retries,omitempty"`
-			Timeout *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-			TLS     *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
+			Type         string               `json:"type,omitempty" yaml:"type,omitempty"`
+			HashOn       string               `json:"hash_on,omitempty" yaml:"hash_on,omitempty"`
+			Key          string               `json:"key,omitempty" yaml:"key,omitempty"`
+			Checks       *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
+			Nodes        UpstreamNodes        `json:"nodes" yaml:"nodes"`
+			Scheme       string               `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+			Retries      *int                 `json:"retries,omitempty" yaml:"retries,omitempty"`
+			Timeout      *UpstreamTimeout     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+			HostPass     string               `json:"pass_host,omitempty" yaml:"pass_host,omitempty"`
+			UpstreamHost string               `json:"upstream_host,omitempty" yaml:"upstream_host,omitempty"`
+			TLS          *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
 
 			// for Service Discovery
 			//ServiceName   string            `json:"service_name,omitempty" yaml:"service_name,omitempty"`
@@ -318,15 +333,17 @@ func (up Upstream) MarshalJSON() ([]byte, error) {
 		}{
 			Metadata: up.Metadata,
 
-			Type:    up.Type,
-			HashOn:  up.HashOn,
-			Key:     up.Key,
-			Checks:  up.Checks,
-			Nodes:   up.Nodes,
-			Scheme:  up.Scheme,
-			Retries: up.Retries,
-			Timeout: up.Timeout,
-			TLS:     up.TLS,
+			Type:         up.Type,
+			HashOn:       up.HashOn,
+			Key:          up.Key,
+			Checks:       up.Checks,
+			Nodes:        up.Nodes,
+			Scheme:       up.Scheme,
+			Retries:      up.Retries,
+			Timeout:      up.Timeout,
+			HostPass:     up.PassHost,
+			UpstreamHost: up.UpstreamHost,
+			TLS:          up.TLS,
 
 			//ServiceName:   up.ServiceName,
 			//DiscoveryType: up.DiscoveryType,
@@ -453,8 +470,9 @@ type Ssl struct {
 // MutualTLSClientConfig apisix SSL client field
 // +k8s:deepcopy-gen=true
 type MutualTLSClientConfig struct {
-	CA    string `json:"ca,omitempty" yaml:"ca,omitempty"`
-	Depth int    `json:"depth,omitempty" yaml:"depth,omitempty"`
+	CA               string   `json:"ca,omitempty" yaml:"ca,omitempty"`
+	Depth            int      `json:"depth,omitempty" yaml:"depth,omitempty"`
+	SkipMTLSUriRegex []string `json:"skip_mtls_uri_regex,omitempty" yaml:"skip_mtls_uri_regex, omitempty"`
 }
 
 // StreamRoute represents the stream_route object in APISIX.
@@ -474,8 +492,8 @@ type StreamRoute struct {
 // GlobalRule represents the global_rule object in APISIX.
 // +k8s:deepcopy-gen=true
 type GlobalRule struct {
-	ID      string  `json:"id,omitempty" yaml:"id,omitempty"`
-	Plugins Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	ID      string  `json:"id" yaml:"id"`
+	Plugins Plugins `json:"plugins" yaml:"plugins"`
 }
 
 // Consumer represents the consumer object in APISIX.
@@ -563,6 +581,13 @@ func NewDefaultPluginConfig() *PluginConfig {
 				"managed-by": "apisix-ingress-controller",
 			},
 		},
+		Plugins: make(Plugins),
+	}
+}
+
+// NewDefaultGlobalRule returns an empty PluginConfig with default values.
+func NewDefaultGlobalRule() *GlobalRule {
+	return &GlobalRule{
 		Plugins: make(Plugins),
 	}
 }
@@ -657,8 +682,23 @@ func ComposeConsumerName(namespace, name string) string {
 }
 
 // ComposePluginConfigName uses namespace, name to compose
-// the route name.
+// the plugin_config name.
 func ComposePluginConfigName(namespace, name string) string {
+	// FIXME Use sync.Pool to reuse this buffer if the upstream
+	// name composing code path is hot.
+	p := make([]byte, 0, len(namespace)+len(name)+1)
+	buf := bytes.NewBuffer(p)
+
+	buf.WriteString(namespace)
+	buf.WriteByte('_')
+	buf.WriteString(name)
+
+	return buf.String()
+}
+
+// ComposeGlobalRuleName uses namespace, name to compose
+// the global_rule name.
+func ComposeGlobalRuleName(namespace, name string) string {
 	// FIXME Use sync.Pool to reuse this buffer if the upstream
 	// name composing code path is hot.
 	p := make([]byte, 0, len(namespace)+len(name)+1)

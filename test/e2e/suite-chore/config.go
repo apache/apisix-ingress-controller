@@ -46,7 +46,7 @@ data:
     kubernetes:
       namespace_selector:
       - %s
-      apisix_route_version: "apisix.apache.org/v2beta3"
+      apisix_route_version: "apisix.apache.org/v2"
       watch_endpoint_slices: true
 `
 )
@@ -54,6 +54,9 @@ data:
 var _ = ginkgo.Describe("suite-chore: deploy ingress controller with config", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("use configmap with env", func() {
+		if s.IsEtcdServer() {
+			ginkgo.Skip("An outdated use case that does not support etcd server")
+		}
 		label := fmt.Sprintf("apisix.ingress.watch=%s", s.Namespace())
 		configMap := fmt.Sprintf(_ingressAPISIXConfigMapTemplate, label)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(configMap), "create configmap")

@@ -22,11 +22,13 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/metrics"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 	"github.com/gruntwork-io/terratest/modules/k8s"
@@ -126,8 +128,6 @@ func (s *Scaffold) CreateApisixRoute(name string, rules []ApisixRouteRule) {
 // CreateResourceFromString creates resource from a loaded yaml string.
 func (s *Scaffold) CreateResourceFromString(yaml string) error {
 	err := k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
-	time.Sleep(5 * time.Second)
-
 	// if the error raised, it may be a &shell.ErrWithCmdOutput, which is useless in debug
 	if err != nil {
 		err = fmt.Errorf(err.Error())
@@ -137,6 +137,34 @@ func (s *Scaffold) CreateResourceFromString(yaml string) error {
 
 func (s *Scaffold) DeleteResourceFromString(yaml string) error {
 	return k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, yaml)
+}
+
+func (s *Scaffold) Exec(podName, containerName string, args ...string) (string, error) {
+	cmdArgs := []string{}
+
+	if s.kubectlOptions.ContextName != "" {
+		cmdArgs = append(cmdArgs, "--context", s.kubectlOptions.ContextName)
+	}
+	if s.kubectlOptions.ConfigPath != "" {
+		cmdArgs = append(cmdArgs, "--kubeconfig", s.kubectlOptions.ConfigPath)
+	}
+	if s.kubectlOptions.Namespace != "" {
+		cmdArgs = append(cmdArgs, "--namespace", s.kubectlOptions.Namespace)
+	}
+
+	cmdArgs = append(cmdArgs, "exec")
+	cmdArgs = append(cmdArgs, "-i")
+	cmdArgs = append(cmdArgs, podName)
+	cmdArgs = append(cmdArgs, "-c")
+	cmdArgs = append(cmdArgs, containerName)
+	cmdArgs = append(cmdArgs, "--", "sh", "-c")
+	cmdArgs = append(cmdArgs, args...)
+
+	log.Infof("running command: kubectl %v", strings.Join(cmdArgs, " "))
+
+	output, err := exec.Command("kubectl", cmdArgs...).Output()
+
+	return strings.TrimSuffix(string(output), "\n"), err
 }
 
 func (s *Scaffold) GetOutputFromString(shell ...string) (string, error) {
@@ -234,6 +262,17 @@ func (s *Scaffold) ensureNumApisixCRDsCreated(url string, desired int) error {
 		return true, nil
 	}
 	return wait.Poll(3*time.Second, 35*time.Second, condFunc)
+}
+
+// EnsureNumApisixConsumersCreated waits until desired number of Consumers are created in
+// APISIX cluster.
+func (s *Scaffold) EnsureNumApisixConsumersCreated(desired int) error {
+	u := url.URL{
+		Scheme: "http",
+		Host:   s.apisixAdminTunnel.Endpoint(),
+		Path:   "/apisix/admin/consumers",
+	}
+	return s.ensureNumApisixCRDsCreated(u.String(), desired)
 }
 
 // EnsureNumApisixRoutesCreated waits until desired number of Routes are created in
@@ -372,7 +411,7 @@ func (s *Scaffold) ensureAdminOperationIsSuccessful(url, method string, body []b
 			ginkgo.GinkgoT().Logf("failed to delete resources from APISIX: %s", err.Error())
 			return false, nil
 		}
-		if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 			ginkgo.GinkgoT().Logf("got status code %d from APISIX", resp.StatusCode)
 			return false, nil
 		}
@@ -691,6 +730,7 @@ func (s *Scaffold) newAPISIXTunnels() error {
 		return err
 	}
 	s.addFinalizers(s.apisixControlTunnel.Close)
+
 	return nil
 }
 
@@ -717,7 +757,7 @@ func (s *Scaffold) EnsureNumEndpointsReady(t testing.TestingT, endpointsName str
 		t,
 		statusMsg,
 		20,
-		5*time.Second,
+		2*time.Second,
 		func() (string, error) {
 			endpoints, err := e.CoreV1().Endpoints(s.Namespace()).Get(context.Background(), endpointsName, metav1.GetOptions{})
 			if err != nil {
@@ -730,7 +770,7 @@ func (s *Scaffold) EnsureNumEndpointsReady(t testing.TestingT, endpointsName str
 			if readyNum == desired {
 				return "Service is now available", nil
 			}
-			return fmt.Sprintf("Endpoints not ready yet, expect %v, actual %v", desired, readyNum), nil
+			return "failed", fmt.Errorf("endpoints not ready yet, expect %v, actual %v", desired, readyNum)
 		},
 	)
 	ginkgo.GinkgoT().Log(message)
@@ -741,4 +781,23 @@ func (s *Scaffold) GetKubernetesClient() *kubernetes.Clientset {
 	client, err := k8s.GetKubernetesClientFromOptionsE(s.t, s.kubectlOptions)
 	assert.Nil(ginkgo.GinkgoT(), err, "get kubernetes client")
 	return client
+}
+
+func (s *Scaffold) RunKubectlAndGetOutput(args ...string) (string, error) {
+	return k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, args...)
+}
+
+func (s *Scaffold) RunDigDNSClientFromK8s(args ...string) (string, error) {
+	kubectlArgs := []string{
+		"run",
+		"dig",
+		"-i",
+		"--rm",
+		"--restart=Never",
+		"--image-pull-policy=IfNotPresent",
+		"--image=toolbelt/dig",
+		"--",
+	}
+	kubectlArgs = append(kubectlArgs, args...)
+	return s.RunKubectlAndGetOutput(kubectlArgs...)
 }

@@ -21,6 +21,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/apache/apisix-ingress-controller/pkg/id"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
@@ -63,35 +64,8 @@ func (r *consumerClient) Get(ctx context.Context, name string) (*v1.Consumer, er
 	}
 
 	// TODO Add mutex here to avoid dog-pile effect.
-	url := r.url + "/" + name
-	resp, err := r.cluster.getResource(ctx, url, "consumer")
-	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
+	consumer, err = r.cluster.GetConsumer(ctx, r.url, name)
 	if err != nil {
-		if err == cache.ErrNotFound {
-			log.Warnw("consumer not found",
-				zap.String("name", name),
-				zap.String("url", url),
-				zap.String("cluster", r.cluster.name),
-			)
-		} else {
-			log.Errorw("failed to get consumer from APISIX",
-				zap.String("name", name),
-				zap.String("url", url),
-				zap.String("cluster", r.cluster.name),
-				zap.Error(err),
-			)
-		}
-		return nil, err
-	}
-
-	consumer, err = resp.consumer()
-	if err != nil {
-		log.Errorw("failed to convert consumer item",
-			zap.String("url", r.url),
-			zap.String("consumer_key", resp.Key),
-			zap.String("consumer_value", string(resp.Value)),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
@@ -110,7 +84,6 @@ func (r *consumerClient) List(ctx context.Context) ([]*v1.Consumer, error) {
 		zap.String("url", r.url),
 	)
 	consumerItems, err := r.cluster.listResource(ctx, r.url, "consumer")
-	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err != nil {
 		log.Errorf("failed to list consumers: %s", err)
 		return nil, err
@@ -136,7 +109,11 @@ func (r *consumerClient) List(ctx context.Context) ([]*v1.Consumer, error) {
 	return items, nil
 }
 
-func (r *consumerClient) Create(ctx context.Context, obj *v1.Consumer) (*v1.Consumer, error) {
+func (r *consumerClient) Create(ctx context.Context, obj *v1.Consumer, shouldCompare bool) (*v1.Consumer, error) {
+	if v, skip := skipRequest(r.cluster, shouldCompare, r.url, obj.Username, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to create consumer",
 		zap.String("name", obj.Username),
 		zap.Any("plugins", obj.Plugins),
@@ -155,7 +132,6 @@ func (r *consumerClient) Create(ctx context.Context, obj *v1.Consumer) (*v1.Cons
 	url := r.url + "/" + obj.Username
 	log.Debugw("creating consumer", zap.ByteString("body", data), zap.String("url", url))
 	resp, err := r.cluster.createResource(ctx, url, "consumer", data)
-	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err != nil {
 		log.Errorf("failed to create consumer: %s", err)
 		return nil, err
@@ -167,6 +143,10 @@ func (r *consumerClient) Create(ctx context.Context, obj *v1.Consumer) (*v1.Cons
 	}
 	if err := r.cluster.cache.InsertConsumer(consumer); err != nil {
 		log.Errorf("failed to reflect consumer create to cache: %s", err)
+		return nil, err
+	}
+	if err := r.cluster.generatedObjCache.InsertConsumer(obj); err != nil {
+		log.Errorf("failed to cache generated consumer object: %s", err)
 		return nil, err
 	}
 	return consumer, nil
@@ -183,12 +163,16 @@ func (r *consumerClient) Delete(ctx context.Context, obj *v1.Consumer) error {
 	}
 	url := r.url + "/" + obj.Username
 	if err := r.cluster.deleteResource(ctx, url, "consumer"); err != nil {
-		r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 		return err
 	}
-	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err := r.cluster.cache.DeleteConsumer(obj); err != nil {
 		log.Errorf("failed to reflect consumer delete to cache: %s", err)
+		if err != cache.ErrNotFound {
+			return err
+		}
+	}
+	if err := r.cluster.generatedObjCache.DeleteConsumer(obj); err != nil {
+		log.Errorf("failed to reflect consumer delete to generated cache: %s", err)
 		if err != cache.ErrNotFound {
 			return err
 		}
@@ -196,7 +180,11 @@ func (r *consumerClient) Delete(ctx context.Context, obj *v1.Consumer) error {
 	return nil
 }
 
-func (r *consumerClient) Update(ctx context.Context, obj *v1.Consumer) (*v1.Consumer, error) {
+func (r *consumerClient) Update(ctx context.Context, obj *v1.Consumer, shouldCompare bool) (*v1.Consumer, error) {
+	if v, skip := skipRequest(r.cluster, shouldCompare, r.url, obj.Username, obj); skip {
+		return v, nil
+	}
+
 	log.Debugw("try to update consumer",
 		zap.String("name", obj.Username),
 		zap.Any("plugins", obj.Plugins),
@@ -212,7 +200,6 @@ func (r *consumerClient) Update(ctx context.Context, obj *v1.Consumer) (*v1.Cons
 	}
 	url := r.url + "/" + obj.Username
 	resp, err := r.cluster.updateResource(ctx, url, "consumer", body)
-	r.cluster.metricsCollector.IncrAPISIXRequest("consumer")
 	if err != nil {
 		return nil, err
 	}
@@ -224,5 +211,96 @@ func (r *consumerClient) Update(ctx context.Context, obj *v1.Consumer) (*v1.Cons
 		log.Errorf("failed to reflect consumer update to cache: %s", err)
 		return nil, err
 	}
+	if err := r.cluster.generatedObjCache.InsertConsumer(obj); err != nil {
+		log.Errorf("failed to cache generated consumer object: %s", err)
+		return nil, err
+	}
 	return consumer, nil
+}
+
+type consumerMem struct {
+	url string
+
+	resource string
+	cluster  *cluster
+}
+
+func newConsumerMem(c *cluster) Consumer {
+	return &consumerMem{
+		url:      c.baseURL + "/consumers",
+		resource: "consumers",
+		cluster:  c,
+	}
+}
+
+func (r *consumerMem) Get(ctx context.Context, name string) (*v1.Consumer, error) {
+	log.Debugw("try to look up consumer",
+		zap.String("name", name),
+		zap.String("url", r.url),
+		zap.String("cluster", r.cluster.name),
+	)
+	rid := id.GenID(name)
+	consumer, err := r.cluster.cache.GetConsumer(rid)
+	if err != nil {
+		log.Errorw("failed to find consumer in cache, will try to lookup from APISIX",
+			zap.String("name", name),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+	return consumer, nil
+}
+
+// List is only used in cache warming up. So here just pass through
+// to APISIX.
+func (r *consumerMem) List(ctx context.Context) ([]*v1.Consumer, error) {
+	log.Debugw("try to list resource in APISIX",
+		zap.String("cluster", r.cluster.name),
+		zap.String("resource", r.resource),
+	)
+	consumers, err := r.cluster.cache.ListConsumers()
+	if err != nil {
+		log.Errorf("failed to list %s: %s", r.resource, err)
+		return nil, err
+	}
+	return consumers, nil
+}
+
+func (r *consumerMem) Create(ctx context.Context, obj *v1.Consumer, shouldCompare bool) (*v1.Consumer, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.CreateResource(r.resource, obj.Username, data)
+	if err := r.cluster.cache.InsertConsumer(obj); err != nil {
+		log.Errorf("failed to reflect consumer create to cache: %s", err)
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (r *consumerMem) Delete(ctx context.Context, obj *v1.Consumer) error {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	r.cluster.DeleteResource(r.resource, obj.Username, data)
+	if err := r.cluster.cache.DeleteConsumer(obj); err != nil {
+		log.Errorf("failed to reflect consumer delete to cache: %s", err)
+		return err
+	}
+	return nil
+}
+
+func (r *consumerMem) Update(ctx context.Context, obj *v1.Consumer, shouldCompare bool) (*v1.Consumer, error) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r.cluster.UpdateResource(r.resource, obj.Username, data)
+	if err := r.cluster.cache.InsertConsumer(obj); err != nil {
+		log.Errorf("failed to reflect consumer update to cache: %s", err)
+		return nil, err
+	}
+	return obj, nil
 }

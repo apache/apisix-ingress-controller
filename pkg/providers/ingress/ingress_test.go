@@ -18,7 +18,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -129,45 +128,6 @@ func TestIsIngressEffective(t *testing.T) {
 		},
 	}
 	ing, err = kube.NewIngress(ingV1)
-	assert.Nil(t, err)
-	// Spec.IngressClassName takes the precedence.
-	assert.Equal(t, false, c.isIngressEffective(ing))
-
-	ingExtV1beta1 := &extensionsv1beta1.Ingress{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ingress",
-			APIVersion: "extensions/v1beta1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
-			Name:      "v1extbeta1-ing",
-			Annotations: map[string]string{
-				_ingressKey: "apisix",
-			},
-		},
-		Spec: extensionsv1beta1.IngressSpec{
-			IngressClassName: &cn,
-		},
-	}
-	ing, err = kube.NewIngress(ingExtV1beta1)
-	assert.Nil(t, err)
-	// Annotations takes precedence.
-	assert.Equal(t, true, c.isIngressEffective(ing))
-
-	ingExtV1beta1 = &extensionsv1beta1.Ingress{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ingress",
-			APIVersion: "extensions/v1beta1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
-			Name:      "v1extbeta1-ing",
-		},
-		Spec: extensionsv1beta1.IngressSpec{
-			IngressClassName: &cn,
-		},
-	}
-	ing, err = kube.NewIngress(ingExtV1beta1)
 	assert.Nil(t, err)
 	// Spec.IngressClassName takes the precedence.
 	assert.Equal(t, false, c.isIngressEffective(ing))

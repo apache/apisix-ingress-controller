@@ -207,16 +207,16 @@ spec:
 	}
 
 	adminVersion := os.Getenv("APISIX_ADMIN_API_VERSION")
-	if adminVersion == "v3" {
-		opts.APISIXConfigPath = "testdata/apisix-gw-config-v3-with-sd.yaml"
-	} else {
-		// fallback to v2
+	if adminVersion == "v2" {
 		opts.APISIXConfigPath = "testdata/apisix-gw-config-with-sd.yaml"
+	} else {
+		// default admin-api v3
+		opts.APISIXConfigPath = "testdata/apisix-gw-config-v3-with-sd.yaml"
 	}
 
 	s := scaffold.NewScaffold(opts)
 
-	ginkgo.Describe("basic function: ", func() {
+	ginkgo.Describe("suite-features: basic function: ", func() {
 		ginkgo.It("should be able to access through service discovery", func() {
 			// -- Data preparation --
 			fqdn := PhaseCreateHttpbin(s, "httpbin-temp")
@@ -224,6 +224,7 @@ spec:
 			// We use it for service discovery
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", "dns", "httpbin-temp")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, fqdn, "dns")
@@ -231,15 +232,17 @@ spec:
 		})
 	})
 
-	ginkgo.Describe("update function: ", func() {
+	ginkgo.Describe("suite-features: update function: ", func() {
 		ginkgo.It("should be able to create the ApisixUpstream later", func() {
 			// -- Data preparation --
 			fqdn := PhaseCreateHttpbin(s, "httpbin-temp")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
-			PhaseValidateNoUpstreams(s)
+			time.Sleep(time.Second * 6)
 
+			PhaseValidateNoUpstreams(s)
 			// -- Data Update --
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", "dns", "httpbin-temp")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, fqdn, "dns")
@@ -249,11 +252,13 @@ spec:
 		ginkgo.It("should be able to create the target service later", func() {
 			// -- Data preparation --
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
+			time.Sleep(time.Second * 6)
 			PhaseValidateNoUpstreams(s)
-			PhaseCreateApisixUpstream(s, "httpbin-upstream", "dns", "httpbin-temp")
 
+			PhaseCreateApisixUpstream(s, "httpbin-upstream", "dns", "httpbin-temp")
 			// -- Data Update --
 			fqdn := PhaseCreateHttpbin(s, "httpbin-temp")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, fqdn, "dns")
@@ -261,12 +266,13 @@ spec:
 		})
 	})
 
-	ginkgo.Describe("delete function: ", func() {
+	ginkgo.Describe("suite-features: delete function: ", func() {
 		ginkgo.It("should be able to delete resources", func() {
 			// -- Data preparation --
 			fqdn := PhaseCreateHttpbin(s, "httpbin-temp")
 			PhaseCreateApisixUpstream(s, "httpbin-upstream", "dns", "httpbin-temp")
 			PhaseCreateApisixRoute(s, "httpbin-route", "httpbin-upstream")
+			time.Sleep(time.Second * 6)
 
 			// -- validation --
 			upstreamId := PhaseValidateFirstUpstream(s, 1, fqdn, "dns")

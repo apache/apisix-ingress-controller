@@ -17,6 +17,7 @@ package apisix
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"go.uber.org/zap"
@@ -32,7 +33,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
@@ -95,8 +95,6 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 
 	var multiVersioned kube.ApisixClusterConfig
 	switch event.GroupVersion {
-	case config.ApisixV2beta3:
-		multiVersioned, err = c.ApisixClusterConfigLister.V2beta3(name)
 	case config.ApisixV2:
 		multiVersioned, err = c.ApisixClusterConfigLister.V2(name)
 	default:
@@ -111,6 +109,10 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 				zap.String("version", event.GroupVersion),
 			)
 			return err
+		}
+		if ev.Type == types.EventSync {
+			// ignore not found error in delay sync
+			return nil
 		}
 		if ev.Type != types.EventDelete {
 			log.Warnw("ApisixClusterConfig was deleted before it can be delivered",
@@ -132,80 +134,6 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 	}
 
 	switch event.GroupVersion {
-	case config.ApisixV2beta3:
-		acc := multiVersioned.V2beta3()
-		// Currently we don't handle multiple cluster, so only process
-		// the default apisix cluster.
-		if acc.Name != c.Config.APISIX.DefaultClusterName {
-			log.Infow("ignore non-default apisix cluster config",
-				zap.String("default_cluster_name", c.Config.APISIX.DefaultClusterName),
-				zap.Any("ApisixClusterConfig", acc),
-			)
-			return nil
-		}
-		// Cluster delete is dangerous.
-		// TODO handle delete?
-		if ev.Type == types.EventDelete {
-			log.Error("ApisixClusterConfig delete event for default apisix cluster will be ignored")
-			return nil
-		}
-
-		if acc.Spec.Admin != nil {
-			clusterOpts := &apisix.ClusterOptions{
-				Name:     acc.Name,
-				BaseURL:  acc.Spec.Admin.BaseURL,
-				AdminKey: acc.Spec.Admin.AdminKey,
-			}
-			log.Infow("updating cluster",
-				zap.Any("opts", clusterOpts),
-			)
-			// TODO we may first call AddCluster.
-			// Since we already have the default cluster, we just call UpdateCluster.
-			if err := c.APISIX.UpdateCluster(ctx, clusterOpts); err != nil {
-				log.Errorw("failed to update cluster",
-					zap.String("cluster_name", acc.Name),
-					zap.Error(err),
-					zap.Any("opts", clusterOpts),
-				)
-				c.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-				c.recordStatus(acc, utils.ResourceSyncAborted, err, metav1.ConditionFalse, acc.GetGeneration())
-				return err
-			}
-		}
-
-		globalRule, err := c.translator.TranslateClusterConfigV2beta3(acc)
-		if err != nil {
-			log.Errorw("failed to translate ApisixClusterConfig",
-				zap.Error(err),
-				zap.String("key", key),
-				zap.Any("object", acc),
-			)
-			c.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-			c.recordStatus(acc, utils.ResourceSyncAborted, err, metav1.ConditionFalse, acc.GetGeneration())
-			return err
-		}
-		log.Debugw("translated global_rule",
-			zap.Any("object", globalRule),
-		)
-
-		// TODO multiple cluster support
-		if ev.Type == types.EventAdd {
-			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Create(ctx, globalRule)
-		} else {
-			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Update(ctx, globalRule)
-		}
-		if err != nil {
-			log.Errorw("failed to reflect global_rule changes to apisix cluster",
-				zap.Any("global_rule", globalRule),
-				zap.Any("cluster", acc.Name),
-			)
-			c.RecordEvent(acc, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-			c.recordStatus(acc, utils.ResourceSyncAborted, err, metav1.ConditionFalse, acc.GetGeneration())
-			return err
-		}
-		c.RecordEvent(acc, corev1.EventTypeNormal, utils.ResourceSynced, nil)
-		c.recordStatus(acc, utils.ResourceSynced, nil, metav1.ConditionTrue, acc.GetGeneration())
-		return nil
 	case config.ApisixV2:
 		acc := multiVersioned.V2()
 		// Currently we don't handle multiple cluster, so only process
@@ -263,10 +191,10 @@ func (c *apisixClusterConfigController) sync(ctx context.Context, ev *types.Even
 		)
 
 		// TODO multiple cluster support
-		if ev.Type == types.EventAdd {
-			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Create(ctx, globalRule)
+		if ev.Type.IsAddEvent() {
+			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Create(ctx, globalRule, ev.Type.IsSyncEvent())
 		} else {
-			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Update(ctx, globalRule)
+			_, err = c.APISIX.Cluster(acc.Name).GlobalRule().Update(ctx, globalRule, false)
 		}
 		if err != nil {
 			log.Errorw("failed to reflect global_rule changes to apisix cluster",
@@ -320,6 +248,9 @@ func (c *apisixClusterConfigController) onAdd(obj interface{}) {
 		log.Errorf("found ApisixClusterConfig resource with bad meta key: %s", err.Error())
 		return
 	}
+	if !c.isEffective(acc) {
+		return
+	}
 	log.Debugw("ApisixClusterConfig add event arrived",
 		zap.String("key", key),
 		zap.Any("object", obj),
@@ -347,12 +278,17 @@ func (c *apisixClusterConfigController) onUpdate(oldObj, newObj interface{}) {
 		log.Errorw("found ApisixClusterConfig resource with bad type", zap.Error(err))
 		return
 	}
-	if prev.ResourceVersion() >= curr.ResourceVersion() {
+	oldRV, _ := strconv.ParseInt(prev.ResourceVersion(), 0, 64)
+	newRV, _ := strconv.ParseInt(curr.ResourceVersion(), 0, 64)
+	if oldRV >= newRV {
 		return
 	}
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
 		log.Errorf("found ApisixClusterConfig with bad meta key: %s", err)
+		return
+	}
+	if !c.isEffective(curr) {
 		return
 	}
 	log.Debugw("ApisixClusterConfig update event arrived",
@@ -391,9 +327,13 @@ func (c *apisixClusterConfigController) onDelete(obj interface{}) {
 		log.Errorf("found ApisixClusterConfig resource with bad meta key: %s", err)
 		return
 	}
+	if !c.isEffective(acc) {
+		return
+	}
 	log.Debugw("ApisixClusterConfig delete event arrived",
 		zap.Any("final state", acc),
 	)
+
 	c.workqueue.Add(&types.Event{
 		Type: types.EventDelete,
 		Object: kube.ApisixClusterConfigEvent{
@@ -406,34 +346,46 @@ func (c *apisixClusterConfigController) onDelete(obj interface{}) {
 	c.MetricsCollector.IncrEvents("clusterConfig", "delete")
 }
 
-func (c *apisixClusterConfigController) ResourceSync() {
+func (c *apisixClusterConfigController) ResourceSync(interval time.Duration) {
 	objs := c.ApisixClusterConfigInformer.GetIndexer().List()
-	for _, obj := range objs {
+	delay := GetSyncDelay(interval, len(objs))
+
+	for i, obj := range objs {
 		key, err := cache.MetaNamespaceKeyFunc(obj)
 		if err != nil {
 			log.Errorw("ApisixClusterConfig sync failed, found ApisixClusterConfig resource with bad meta namespace key", zap.String("error", err.Error()))
 			continue
 		}
-		if !c.namespaceProvider.IsWatchingNamespace(key) {
-			continue
-		}
 		acc, err := kube.NewApisixClusterConfig(obj)
 		if err != nil {
 			log.Errorw("found ApisixClusterConfig resource with bad type", zap.String("error", err.Error()))
-			return
+			continue
 		}
-		c.workqueue.Add(&types.Event{
-			Type: types.EventAdd,
+		if !c.isEffective(acc) {
+			continue
+		}
+		log.Debugw("ResourceSync",
+			zap.String("resource", "ApisixClusterConfig"),
+			zap.String("key", key),
+			zap.Duration("calc_delay", delay),
+			zap.Int("i", i),
+			zap.Duration("delay", delay*time.Duration(i)),
+		)
+		c.workqueue.AddAfter(&types.Event{
+			Type: types.EventSync,
 			Object: kube.ApisixClusterConfigEvent{
 				Key:          key,
 				GroupVersion: acc.GroupVersion(),
 			},
-		})
+		}, delay*time.Duration(i))
 	}
 }
 
 // recordStatus record resources status
 func (c *apisixClusterConfigController) recordStatus(at interface{}, reason string, err error, status metav1.ConditionStatus, generation int64) {
+	if c.Kubernetes.DisableStatusUpdates {
+		return
+	}
 	// build condition
 	message := utils.CommonSuccessMessage
 	if err != nil {
@@ -453,29 +405,13 @@ func (c *apisixClusterConfigController) recordStatus(at interface{}, reason stri
 	}
 
 	switch v := at.(type) {
-	case *configv2beta3.ApisixClusterConfig:
-		// set to status
-		if v.Status.Conditions == nil {
-			conditions := make([]metav1.Condition, 0)
-			v.Status.Conditions = conditions
-		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
-			meta.SetStatusCondition(&v.Status.Conditions, condition)
-			if _, errRecord := apisixClient.ApisixV2beta3().ApisixClusterConfigs().
-				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-				log.Errorw("failed to record status change for ApisixClusterConfig",
-					zap.Error(errRecord),
-					zap.String("name", v.Name),
-				)
-			}
-		}
 	case *configv2.ApisixClusterConfig:
 		// set to status
 		if v.Status.Conditions == nil {
 			conditions := make([]metav1.Condition, 0)
 			v.Status.Conditions = conditions
 		}
-		if utils.VerifyGeneration(&v.Status.Conditions, condition) {
+		if utils.VerifyConditions(&v.Status.Conditions, condition) {
 			meta.SetStatusCondition(&v.Status.Conditions, condition)
 			if _, errRecord := apisixClient.ApisixV2().ApisixClusterConfigs().
 				UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
@@ -489,4 +425,20 @@ func (c *apisixClusterConfigController) recordStatus(at interface{}, reason stri
 		// This should not be executed
 		log.Errorf("unsupported resource record: %s", v)
 	}
+}
+
+func (c *apisixClusterConfigController) isEffective(agr kube.ApisixClusterConfig) bool {
+	if agr.GroupVersion() == config.ApisixV2 {
+		ingClassName := agr.V2().Spec.IngressClassName
+		ok := utils.MatchCRDsIngressClass(ingClassName, c.Kubernetes.IngressClass)
+		if !ok {
+			log.Debugw("IngressClass: ApisixClusterConfig ignored",
+				zap.String("key", agr.V2().Name),
+				zap.String("ingressClass", agr.V2().Spec.IngressClassName),
+			)
+		}
+		return ok
+	}
+	// Compatible with legacy versions
+	return true
 }

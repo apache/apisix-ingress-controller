@@ -62,7 +62,7 @@ var _ = ginkgo.Describe("suite-plugins-security: consumer-restriction plugin", f
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -150,7 +150,7 @@ spec:
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 			ar := fmt.Sprintf(`
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: httpbin-route
@@ -222,9 +222,6 @@ spec:
 		})
 	}
 
-	ginkgo.Describe("suite-plugins-security: scaffold v2beta3", func() {
-		suites(scaffold.NewDefaultV2beta3Scaffold)
-	})
 	ginkgo.Describe("suite-plugins-security: scaffold v2", func() {
 		suites(scaffold.NewDefaultV2Scaffold)
 	})

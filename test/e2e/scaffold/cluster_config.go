@@ -33,22 +33,36 @@ spec:
   monitoring:
     prometheus:
       enable: %v
+      prefer_name: %v
+`
+	_apisixClusterConfigV2beta3Template = `
+apiVersion: %s
+kind: ApisixClusterConfig
+metadata:
+  name: %s
+spec:
+  monitoring:
+    prometheus:
+      enable: %v
 `
 )
 
 // NewApisixClusterConfig creates an ApisixClusterConfig CRD
-func (s *Scaffold) NewApisixClusterConfig(name string, enable bool) error {
-	cc := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.ApisixResourceVersion, name, enable)
+func (s *Scaffold) NewApisixClusterConfig(name string, enable bool, enablePreferName bool) error {
+	cc := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.ApisixResourceVersion, name, enable, enablePreferName)
 	if err := s.CreateResourceFromString(cc); err != nil {
 		return err
 	}
-	time.Sleep(5 * time.Second)
+	s.addFinalizers(func() {
+		_ = s.DeleteResourceFromString(cc)
+	})
+
 	return nil
 }
 
 // DeleteApisixClusterConfig removes an ApisixClusterConfig CRD
-func (s *Scaffold) DeleteApisixClusterConfig(name string, enable bool) error {
-	cc := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.ApisixResourceVersion, name, enable)
+func (s *Scaffold) DeleteApisixClusterConfig(name string, enable bool, enablePreferName bool) error {
+	cc := fmt.Sprintf(_apisixClusterConfigTemplate, s.opts.ApisixResourceVersion, name, enable, enablePreferName)
 	if err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, cc); err != nil {
 		return err
 	}

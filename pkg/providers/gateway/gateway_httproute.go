@@ -122,6 +122,14 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 		}
 		httpRoute = ev.Tombstone.(*gatewayv1beta1.HTTPRoute)
 	}
+	err = c.controller.validator.ValidateCommonRoute(httpRoute)
+	if err != nil {
+		log.Errorw("failed to validate gateway HTTPRoute",
+			zap.Error(err),
+			zap.Any("object", httpRoute),
+		)
+		return err
+	}
 
 	tctx, err := c.controller.translator.TranslateGatewayHTTPRouteV1beta1(httpRoute)
 
@@ -155,25 +163,20 @@ func (c *gatewayHTTPRouteController) sync(ctx context.Context, ev *types.Event) 
 	} else {
 		var oldCtx *translation.TranslateContext
 		oldObj := ev.OldObject.(*gatewayv1beta1.HTTPRoute)
-		oldCtx, err = c.controller.translator.TranslateGatewayHTTPRouteV1beta1(oldObj)
-		if err != nil {
-			log.Errorw("failed to translate old HTTPRoute",
-				zap.String("version", oldObj.APIVersion),
-				zap.String("event_type", "update"),
-				zap.Any("HTTPRoute", oldObj),
-				zap.Error(err),
-			)
-			return err
-		}
+		oldCtx, _ = c.controller.translator.TranslateGatewayHTTPRouteV1beta1(oldObj)
+		if oldCtx != nil {
 
-		om := &utils.Manifest{
-			Routes:    oldCtx.Routes,
-			Upstreams: oldCtx.Upstreams,
+			om := &utils.Manifest{
+				Routes:    oldCtx.Routes,
+				Upstreams: oldCtx.Upstreams,
+			}
+			added, updated, deleted = m.Diff(om)
+		} else {
+			added = m
 		}
-		added, updated, deleted = m.Diff(om)
 	}
 
-	return utils.SyncManifests(ctx, c.controller.APISIX, c.controller.APISIXClusterName, added, updated, deleted)
+	return utils.SyncManifests(ctx, c.controller.APISIX, c.controller.APISIXClusterName, added, updated, deleted, false)
 }
 
 func (c *gatewayHTTPRouteController) handleSyncErr(obj interface{}, err error) {
@@ -244,8 +247,9 @@ func (c *gatewayHTTPRouteController) onUpdate(oldObj, newObj interface{}) {
 	)
 
 	c.workqueue.Add(&types.Event{
-		Type:   types.EventUpdate,
-		Object: key,
+		Type:      types.EventUpdate,
+		Object:    key,
+		OldObject: oldHTTPRoute,
 	})
 }
 

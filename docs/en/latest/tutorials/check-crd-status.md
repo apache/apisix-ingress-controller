@@ -29,13 +29,13 @@ description: A guide to check the synchronization status of APISIX CRDs.
 
 APISIX CRDs are applied to a Kubernetes cluster using the `kubectl apply` command. Behind the scenes, Kubernetes verifies the configuration using the [Open API V3 schema](https://swagger.io/specification/) and its validation webhooks (if any).
 
-But this does not mean that the configuration is synchronized and validated by APISIX. APISIX will convert the declared configuration to APISIX specific resources and verify it. If the verification fails, the Ingress controller will log an error message and will retry until the desired state is successfully synchronized to APISIX.
+But this does not mean that the configuration is synchronized and validated by APISIX. APISIX will convert the declared configuration to APISIX-specific resources and verify it. If the verification fails, the Ingress controller will log an error message and will retry until the desired state is successfully synchronized to APISIX.
 
 This guide will show how you can check the synchronization status of the CRDs.
 
 ## Example with ApisixRoute
 
-This example uses [ApisixRoute](https://apisix.apache.org/docs/ingress-controller/references/apisix_route_v2) resources. But, this applies for other APISIX CRDs like [ApisixUpstream](https://apisix.apache.org/docs/ingress-controller/references/apisix_upstream), [ApisixTls](https://apisix.apache.org/docs/ingress-controller/references/apisix_tls_v2), and [ApisixClusterConfig](https://apisix.apache.org/docs/ingress-controller/references/apisix_cluster_config_v2).
+This example uses [ApisixRoute](https://apisix.apache.org/docs/ingress-controller/references/apisix_route_v2) resources. But this also applies to other APISIX CRDs like [ApisixUpstream](https://apisix.apache.org/docs/ingress-controller/references/apisix_upstream), [ApisixTls](https://apisix.apache.org/docs/ingress-controller/references/apisix_tls_v2), and [ApisixClusterConfig](https://apisix.apache.org/docs/ingress-controller/references/apisix_cluster_config_v2).
 
 We can deploy a sample ApisixRoute resource:
 
@@ -56,7 +56,7 @@ spec:
       backends:
         - serviceName: httpbin-service-e2e-test
           servicePort: 80
-  EOF
+EOF
 ```
 
 Once this resource is applied, you can check its synchronization status with its name as shown below:
@@ -67,7 +67,7 @@ kubectl describe ar httpbin-route
 
 This will give the status as shown below:
 
-```yaml title="output"
+```text title="output"
 ...
 Status:
   Conditions:

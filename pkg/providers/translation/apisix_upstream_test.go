@@ -22,394 +22,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	configv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2beta3"
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
-
-func TestTranslateUpstreamHealthCheckV2beta3(t *testing.T) {
-	tr := &translator{}
-	hc := &configv2beta3.HealthCheck{
-		Active: &configv2beta3.ActiveHealthCheck{
-			Type:        apisixv1.HealthCheckHTTP,
-			Timeout:     5 * time.Second,
-			Concurrency: 2,
-			HTTPPath:    "/healthz",
-			Unhealthy: &configv2beta3.ActiveHealthCheckUnhealthy{
-				PassiveHealthCheckUnhealthy: configv2beta3.PassiveHealthCheckUnhealthy{
-					HTTPCodes: []int{500, 502, 504},
-				},
-				Interval: metav1.Duration{Duration: time.Second},
-			},
-			Healthy: &configv2beta3.ActiveHealthCheckHealthy{
-				PassiveHealthCheckHealthy: configv2beta3.PassiveHealthCheckHealthy{
-					HTTPCodes: []int{200},
-					Successes: 2,
-				},
-				Interval: metav1.Duration{Duration: 3 * time.Second},
-			},
-		},
-		Passive: &configv2beta3.PassiveHealthCheck{
-			Type: apisixv1.HealthCheckHTTP,
-			Healthy: &configv2beta3.PassiveHealthCheckHealthy{
-				HTTPCodes: []int{200},
-				Successes: 2,
-			},
-			Unhealthy: &configv2beta3.PassiveHealthCheckUnhealthy{
-				HTTPCodes: []int{500},
-			},
-		},
-	}
-
-	var ups apisixv1.Upstream
-	err := tr.translateUpstreamHealthCheckV2beta3(hc, &ups)
-	assert.Nil(t, err, "translating upstream health check")
-	assert.Equal(t, ups.Checks.Active, &apisixv1.UpstreamActiveHealthCheck{
-		Type:            apisixv1.HealthCheckHTTP,
-		Timeout:         5,
-		Concurrency:     2,
-		HTTPPath:        "/healthz",
-		HTTPSVerifyCert: true,
-		Healthy: apisixv1.UpstreamActiveHealthCheckHealthy{
-			Interval: 3,
-			UpstreamPassiveHealthCheckHealthy: apisixv1.UpstreamPassiveHealthCheckHealthy{
-				HTTPStatuses: []int{200},
-				Successes:    2,
-			},
-		},
-		Unhealthy: apisixv1.UpstreamActiveHealthCheckUnhealthy{
-			Interval: 1,
-			UpstreamPassiveHealthCheckUnhealthy: apisixv1.UpstreamPassiveHealthCheckUnhealthy{
-				HTTPStatuses: []int{500, 502, 504},
-			},
-		},
-	})
-	assert.Equal(t, ups.Checks.Passive, &apisixv1.UpstreamPassiveHealthCheck{
-		Type: apisixv1.HealthCheckHTTP,
-		Healthy: apisixv1.UpstreamPassiveHealthCheckHealthy{
-			Successes:    2,
-			HTTPStatuses: []int{200},
-		},
-		Unhealthy: apisixv1.UpstreamPassiveHealthCheckUnhealthy{
-			HTTPStatuses: []int{500},
-		},
-	})
-}
-
-func TestTranslateUpstreamPassiveHealthCheckUnusuallyV2beta3(t *testing.T) {
-	tr := &translator{}
-
-	// invalid passive health check type
-	hc := &configv2beta3.HealthCheck{
-		Passive: &configv2beta3.PassiveHealthCheck{
-			Type: "redis",
-		},
-	}
-
-	err := tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.passive.Type",
-		Reason: "invalid value",
-	}, err)
-
-	// invalid passive health check healthy successes
-	hc = &configv2beta3.HealthCheck{
-		Passive: &configv2beta3.PassiveHealthCheck{
-			Type: "http",
-			Healthy: &configv2beta3.PassiveHealthCheckHealthy{
-				Successes: -1,
-			},
-		},
-	}
-	err = tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.passive.healthy.successes",
-		Reason: "invalid value",
-	}, err)
-
-	// empty passive health check healthy httpCodes.
-	hc = &configv2beta3.HealthCheck{
-		Passive: &configv2beta3.PassiveHealthCheck{
-			Type: "http",
-			Healthy: &configv2beta3.PassiveHealthCheckHealthy{
-				Successes: 1,
-				HTTPCodes: []int{},
-			},
-		},
-	}
-	err = tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.passive.healthy.httpCodes",
-		Reason: "empty",
-	}, err)
-
-	// empty passive health check unhealthy httpFailures.
-	hc = &configv2beta3.HealthCheck{
-		Passive: &configv2beta3.PassiveHealthCheck{
-			Type: "http",
-			Unhealthy: &configv2beta3.PassiveHealthCheckUnhealthy{
-				HTTPFailures: -1,
-			},
-		},
-	}
-	err = tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.passive.unhealthy.httpFailures",
-		Reason: "invalid value",
-	}, err)
-
-	// empty passive health check unhealthy tcpFailures.
-	hc = &configv2beta3.HealthCheck{
-		Passive: &configv2beta3.PassiveHealthCheck{
-			Type: "http",
-			Unhealthy: &configv2beta3.PassiveHealthCheckUnhealthy{
-				TCPFailures: -1,
-			},
-		},
-	}
-	err = tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.passive.unhealthy.tcpFailures",
-		Reason: "invalid value",
-	}, err)
-
-	// empty passive health check unhealthy httpCodes.
-	hc = &configv2beta3.HealthCheck{
-		Passive: &configv2beta3.PassiveHealthCheck{
-			Type: "http",
-			Unhealthy: &configv2beta3.PassiveHealthCheckUnhealthy{
-				HTTPCodes: []int{},
-			},
-		},
-	}
-	err = tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.passive.unhealthy.httpCodes",
-		Reason: "empty",
-	}, err)
-}
-
-func TestTranslateUpstreamActiveHealthCheckUnusuallyV2beta3(t *testing.T) {
-	tr := &translator{}
-
-	// invalid active health check type
-	hc := &configv2beta3.HealthCheck{
-		Active: &configv2beta3.ActiveHealthCheck{
-			Type: "redis",
-		},
-	}
-	err := tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.active.Type",
-		Reason: "invalid value",
-	}, err)
-
-	// invalid active health check port value
-	hc = &configv2beta3.HealthCheck{
-		Active: &configv2beta3.ActiveHealthCheck{
-			Type: "http",
-			Port: 65536,
-		},
-	}
-	err = tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.active.port",
-		Reason: "invalid value",
-	}, err)
-
-	// invalid active health check concurrency value
-	hc = &configv2beta3.HealthCheck{
-		Active: &configv2beta3.ActiveHealthCheck{
-			Type:        "https",
-			Concurrency: -1,
-		},
-	}
-	err = tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.active.concurrency",
-		Reason: "invalid value",
-	}, err)
-
-	// invalid active health check healthy successes value
-	hc = &configv2beta3.HealthCheck{
-		Active: &configv2beta3.ActiveHealthCheck{
-			Type: "https",
-			Healthy: &configv2beta3.ActiveHealthCheckHealthy{
-				PassiveHealthCheckHealthy: configv2beta3.PassiveHealthCheckHealthy{
-					Successes: -1,
-				},
-			},
-		},
-	}
-	err = tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.active.healthy.successes",
-		Reason: "invalid value",
-	}, err)
-
-	// invalid active health check healthy successes value
-	hc = &configv2beta3.HealthCheck{
-		Active: &configv2beta3.ActiveHealthCheck{
-			Type: "https",
-			Healthy: &configv2beta3.ActiveHealthCheckHealthy{
-				PassiveHealthCheckHealthy: configv2beta3.PassiveHealthCheckHealthy{
-					HTTPCodes: []int{},
-				},
-			},
-		},
-	}
-	err = tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.active.healthy.httpCodes",
-		Reason: "empty",
-	}, err)
-
-	// invalid active health check healthy interval
-	hc = &configv2beta3.HealthCheck{
-		Active: &configv2beta3.ActiveHealthCheck{
-			Type: "https",
-			Healthy: &configv2beta3.ActiveHealthCheckHealthy{
-				Interval: metav1.Duration{Duration: 500 * time.Millisecond},
-			},
-		},
-	}
-	err = tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.active.healthy.interval",
-		Reason: "invalid value",
-	}, err)
-
-	// missing active health check healthy interval
-	hc = &configv2beta3.HealthCheck{
-		Active: &configv2beta3.ActiveHealthCheck{
-			Type:    "https",
-			Healthy: &configv2beta3.ActiveHealthCheckHealthy{},
-		},
-	}
-	err = tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.active.healthy.interval",
-		Reason: "invalid value",
-	}, err)
-
-	// invalid active health check unhealthy httpFailures
-	hc = &configv2beta3.HealthCheck{
-		Active: &configv2beta3.ActiveHealthCheck{
-			Type: "https",
-			Unhealthy: &configv2beta3.ActiveHealthCheckUnhealthy{
-				PassiveHealthCheckUnhealthy: configv2beta3.PassiveHealthCheckUnhealthy{
-					HTTPFailures: -1,
-				},
-			},
-		},
-	}
-	err = tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.active.unhealthy.httpFailures",
-		Reason: "invalid value",
-	}, err)
-
-	// invalid active health check unhealthy tcpFailures
-	hc = &configv2beta3.HealthCheck{
-		Active: &configv2beta3.ActiveHealthCheck{
-			Type: "https",
-			Unhealthy: &configv2beta3.ActiveHealthCheckUnhealthy{
-				PassiveHealthCheckUnhealthy: configv2beta3.PassiveHealthCheckUnhealthy{
-					TCPFailures: -1,
-				},
-			},
-		},
-	}
-	err = tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.active.unhealthy.tcpFailures",
-		Reason: "invalid value",
-	}, err)
-
-	// invalid active health check unhealthy httpCodes
-	hc = &configv2beta3.HealthCheck{
-		Active: &configv2beta3.ActiveHealthCheck{
-			Type: "https",
-			Unhealthy: &configv2beta3.ActiveHealthCheckUnhealthy{
-				PassiveHealthCheckUnhealthy: configv2beta3.PassiveHealthCheckUnhealthy{
-					HTTPCodes: []int{},
-				},
-			},
-		},
-	}
-	err = tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.active.unhealthy.httpCodes",
-		Reason: "empty",
-	}, err)
-
-	// invalid active health check unhealthy interval
-	hc = &configv2beta3.HealthCheck{
-		Active: &configv2beta3.ActiveHealthCheck{
-			Type: "https",
-			Unhealthy: &configv2beta3.ActiveHealthCheckUnhealthy{
-				Interval: metav1.Duration{Duration: 500 * time.Millisecond},
-			},
-		},
-	}
-	err = tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.active.unhealthy.interval",
-		Reason: "invalid value",
-	}, err)
-
-	// missing active health check unhealthy interval
-	hc = &configv2beta3.HealthCheck{
-		Active: &configv2beta3.ActiveHealthCheck{
-			Type:      "https",
-			Unhealthy: &configv2beta3.ActiveHealthCheckUnhealthy{},
-		},
-	}
-	err = tr.translateUpstreamHealthCheckV2beta3(hc, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "healthCheck.active.unhealthy.interval",
-		Reason: "invalid value",
-	}, err)
-}
-
-func TestUpstreamRetriesAndTimeoutV2beta3(t *testing.T) {
-	tr := &translator{}
-	retries := -1
-	err := tr.translateUpstreamRetriesAndTimeoutV2beta3(&retries, nil, nil)
-	assert.Equal(t, &TranslateError{
-		Field:  "retries",
-		Reason: "invalid value",
-	}, err)
-
-	var ups apisixv1.Upstream
-	retries = 3
-	err = tr.translateUpstreamRetriesAndTimeoutV2beta3(&retries, nil, &ups)
-	assert.Nil(t, err)
-	assert.Equal(t, *ups.Retries, 3)
-
-	timeout := &configv2beta3.UpstreamTimeout{
-		Connect: metav1.Duration{Duration: time.Second},
-		Read:    metav1.Duration{Duration: -1},
-	}
-	retries = 3
-	err = tr.translateUpstreamRetriesAndTimeoutV2beta3(&retries, timeout, &ups)
-	assert.Equal(t, &TranslateError{
-		Field:  "timeout.read",
-		Reason: "invalid value",
-	}, err)
-
-	timeout = &configv2beta3.UpstreamTimeout{
-		Connect: metav1.Duration{Duration: time.Second},
-		Read:    metav1.Duration{Duration: 15 * time.Second},
-	}
-	retries = 3
-	err = tr.translateUpstreamRetriesAndTimeoutV2beta3(&retries, timeout, &ups)
-	assert.Nil(t, err)
-	assert.Equal(t, &apisixv1.UpstreamTimeout{
-		Connect: 1,
-		Send:    60,
-		Read:    15,
-	}, ups.Timeout)
-}
 
 func TestTranslateUpstreamHealthCheckV2(t *testing.T) {
 	tr := &translator{}
@@ -794,4 +408,51 @@ func TestUpstreamRetriesAndTimeoutV2(t *testing.T) {
 		Send:    60,
 		Read:    15,
 	}, ups.Timeout)
+}
+
+func TestUpstreamPassHost(t *testing.T) {
+	tr := &translator{}
+	tests := []struct {
+		name     string
+		phc      *passHostConfig
+		wantFunc func(t *testing.T, err error, ups *apisixv1.Upstream, phc *passHostConfig)
+	}{
+		{
+			name: "should be empty when settings not set explicitly",
+			phc:  &passHostConfig{},
+			wantFunc: func(t *testing.T, err error, ups *apisixv1.Upstream, phc *passHostConfig) {
+				assert.Nil(t, err)
+				assert.Empty(t, ups.PassHost)
+				assert.Empty(t, ups.UpstreamHost)
+			},
+		},
+		{
+			name: "should set passHost to pass",
+			phc:  &passHostConfig{passHost: apisixv1.PassHostPass},
+			wantFunc: func(t *testing.T, err error, ups *apisixv1.Upstream, phc *passHostConfig) {
+				assert.Nil(t, err)
+				assert.Equal(t, phc.passHost, ups.PassHost)
+				assert.Empty(t, ups.UpstreamHost)
+			},
+		},
+		{
+			name: "should fail when passHost set to invalid value",
+			phc:  &passHostConfig{passHost: "unknown"},
+			wantFunc: func(t *testing.T, err error, ups *apisixv1.Upstream, phc *passHostConfig) {
+				assert.Equal(t, &TranslateError{
+					Field:  "passHost",
+					Reason: "invalid value",
+				}, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ups := apisixv1.NewDefaultUpstream()
+			err := tr.translatePassHost(tt.phc, ups)
+
+			tt.wantFunc(t, err, ups, tt.phc)
+		})
+	}
 }

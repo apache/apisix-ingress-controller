@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"regexp"
@@ -48,19 +47,23 @@ import (
 )
 
 type Options struct {
-	Name                       string
-	Kubeconfig                 string
-	APISIXAdminAPIVersion      string
-	APISIXConfigPath           string
-	IngressAPISIXReplicas      int
-	HTTPBinServicePort         int
-	APISIXAdminAPIKey          string
-	EnableWebhooks             bool
-	APISIXPublishAddress       string
-	ApisixResourceSyncInterval string
-	ApisixResourceVersion      string
+	Name                         string
+	Kubeconfig                   string
+	APISIXAdminAPIVersion        string
+	APISIXConfigPath             string
+	IngressAPISIXReplicas        int
+	HTTPBinServicePort           int
+	APISIXAdminAPIKey            string
+	EnableWebhooks               bool
+	APISIXPublishAddress         string
+	ApisixResourceSyncInterval   string
+	ApisixResourceSyncComparison string
+	ApisixResourceVersion        string
+	DisableStatus                bool
+	IngressClass                 string
+	EnableEtcdServer             bool
 
-	NamespaceSelectorLabel   map[string]string
+	NamespaceSelectorLabel   map[string][]string
 	DisableNamespaceSelector bool
 	DisableNamespaceLabel    bool
 }
@@ -76,6 +79,7 @@ type Scaffold struct {
 	httpbinService     *corev1.Service
 	testBackendService *corev1.Service
 	finalizers         []func()
+	label              map[string]string
 
 	apisixAdminTunnel      *k8s.Tunnel
 	apisixHttpTunnel       *k8s.Tunnel
@@ -84,21 +88,16 @@ type Scaffold struct {
 	apisixTLSOverTCPTunnel *k8s.Tunnel
 	apisixUDPTunnel        *k8s.Tunnel
 	apisixControlTunnel    *k8s.Tunnel
-
-	// Used for template rendering.
-	EtcdServiceFQDN string
 }
 
 type apisixResourceVersionInfo struct {
 	V2      string
-	V2beta3 string
 	Default string
 }
 
 var (
 	apisixResourceVersion = &apisixResourceVersionInfo{
 		V2:      config.ApisixV2,
-		V2beta3: config.ApisixV2beta3,
 		Default: config.DefaultAPIVersion,
 	}
 
@@ -132,6 +131,12 @@ func GetKubeconfig() string {
 
 // NewScaffold creates an e2e test scaffold.
 func NewScaffold(o *Options) *Scaffold {
+	if o.Name == "" {
+		o.Name = "default"
+	}
+	if o.IngressAPISIXReplicas <= 0 {
+		o.IngressAPISIXReplicas = 1
+	}
 	if o.ApisixResourceVersion == "" {
 		o.ApisixResourceVersion = ApisixResourceVersion().Default
 	}
@@ -139,7 +144,10 @@ func NewScaffold(o *Options) *Scaffold {
 		o.APISIXAdminAPIKey = "edd1c9f034335f136f87ad84b625c8f1"
 	}
 	if o.ApisixResourceSyncInterval == "" {
-		o.ApisixResourceSyncInterval = "60s"
+		o.ApisixResourceSyncInterval = "1h"
+	}
+	if o.ApisixResourceSyncComparison == "" {
+		o.ApisixResourceSyncComparison = "true"
 	}
 	if o.Kubeconfig == "" {
 		o.Kubeconfig = GetKubeconfig()
@@ -152,8 +160,14 @@ func NewScaffold(o *Options) *Scaffold {
 			o.APISIXAdminAPIVersion = "v3"
 		}
 	}
+	if enabled := os.Getenv("ENABLED_ETCD_SERVER"); enabled == "true" {
+		o.EnableEtcdServer = true
+	}
+
 	if o.APISIXConfigPath == "" {
-		if o.APISIXAdminAPIVersion == "v3" {
+		if o.EnableEtcdServer {
+			o.APISIXConfigPath = "testdata/apisix-gw-config-v3-etcd-server.yaml"
+		} else if o.APISIXAdminAPIVersion == "v3" {
 			o.APISIXConfigPath = "testdata/apisix-gw-config-v3.yaml"
 		} else {
 			o.APISIXConfigPath = "testdata/apisix-gw-config.yaml"
@@ -161,6 +175,15 @@ func NewScaffold(o *Options) *Scaffold {
 	}
 	if o.HTTPBinServicePort == 0 {
 		o.HTTPBinServicePort = 80
+	}
+	if o.IngressClass == "" {
+		// Env acts on ci and will be deleted after the release of 1.17
+		ingClass := os.Getenv("INGRESS_CLASS")
+		if ingClass != "" {
+			o.IngressClass = ingClass
+		} else {
+			o.IngressClass = config.IngressClass
+		}
 	}
 	defer ginkgo.GinkgoRecover()
 
@@ -179,35 +202,29 @@ func NewScaffold(o *Options) *Scaffold {
 	return s
 }
 
+// NewV2Scaffold creates a scaffold with some default options.
+func NewV2Scaffold(o *Options) *Scaffold {
+	o.ApisixResourceVersion = ApisixResourceVersion().V2
+	return NewScaffold(o)
+}
+
 // NewDefaultScaffold creates a scaffold with some default options.
 // apisix-version default v2
 func NewDefaultScaffold() *Scaffold {
-	opts := &Options{
-		Name:                  "default",
-		IngressAPISIXReplicas: 1,
-		ApisixResourceVersion: ApisixResourceVersion().Default,
-	}
-	return NewScaffold(opts)
+	return NewScaffold(&Options{})
 }
 
 // NewDefaultV2Scaffold creates a scaffold with some default options.
 func NewDefaultV2Scaffold() *Scaffold {
 	opts := &Options{
-		Name:                  "default",
-		IngressAPISIXReplicas: 1,
 		ApisixResourceVersion: ApisixResourceVersion().V2,
 	}
 	return NewScaffold(opts)
 }
 
-// NewDefaultV2beta3Scaffold creates a scaffold with some default options.
-func NewDefaultV2beta3Scaffold() *Scaffold {
-	opts := &Options{
-		Name:                  "default",
-		IngressAPISIXReplicas: 1,
-		ApisixResourceVersion: ApisixResourceVersion().V2beta3,
-	}
-	return NewScaffold(opts)
+// Skip case if  is not supported etcdserver
+func (s *Scaffold) IsEtcdServer() bool {
+	return s.opts.EnableEtcdServer
 }
 
 // KillPod kill the pod which name is podName.
@@ -325,6 +342,13 @@ func (s *Scaffold) DNSResolver() *net.Resolver {
 	}
 }
 
+func (s *Scaffold) DialTLSOverTcp(serverName string) (*tls.Conn, error) {
+	return tls.Dial("tcp", s.apisixTLSOverTCPTunnel.Endpoint(), &tls.Config{
+		InsecureSkipVerify: true,
+		ServerName:         serverName,
+	})
+}
+
 func (s *Scaffold) UpdateNamespace(ns string) {
 	s.kubectlOptions.Namespace = ns
 }
@@ -399,6 +423,9 @@ func (s *Scaffold) RestartAPISIXDeploy() {
 }
 
 func (s *Scaffold) RestartIngressControllerDeploy() {
+	if s.IsEtcdServer() {
+		s.shutdownApisixTunnel()
+	}
 	pods, err := k8s.ListPodsE(s.t, s.kubectlOptions, metav1.ListOptions{
 		LabelSelector: "app=ingress-apisix-controller-deployment-e2e-test",
 	})
@@ -407,8 +434,14 @@ func (s *Scaffold) RestartIngressControllerDeploy() {
 		err = s.KillPod(pod.Name)
 		assert.NoError(s.t, err, "killing ingress-controller pod")
 	}
+
 	err = s.WaitAllIngressControllerPodsAvailable()
 	assert.NoError(s.t, err, "waiting for new ingress-controller instance ready")
+
+	if s.IsEtcdServer() {
+		err = s.newAPISIXTunnels()
+		assert.NoError(s.t, err, "renew apisix tunnels")
+	}
 }
 
 func (s *Scaffold) beforeEach() {
@@ -419,21 +452,42 @@ func (s *Scaffold) beforeEach() {
 		Namespace:  s.namespace,
 	}
 	s.finalizers = nil
-
-	label := map[string]string{}
-	if !s.opts.DisableNamespaceLabel {
-		if s.opts.NamespaceSelectorLabel == nil {
-			label["apisix.ingress.watch"] = s.namespace
-			s.opts.NamespaceSelectorLabel = label
-		} else {
-			label = s.opts.NamespaceSelectorLabel
+	if s.label == nil {
+		s.label = make(map[string]string)
+	}
+	if s.opts.NamespaceSelectorLabel != nil {
+		for k, v := range s.opts.NamespaceSelectorLabel {
+			if len(v) > 0 {
+				s.label[k] = v[0]
+			}
 		}
+	} else {
+		s.label["apisix.ingress.watch"] = s.namespace
 	}
 
-	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: s.namespace, Labels: label})
+	var nsLabel map[string]string
+	if !s.opts.DisableNamespaceLabel {
+		nsLabel = s.label
+	}
+	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: s.namespace, Labels: nsLabel})
 
 	s.nodes, err = k8s.GetReadyNodesE(s.t, s.kubectlOptions)
 	assert.Nil(s.t, err, "querying ready nodes")
+
+	if s.opts.EnableEtcdServer {
+		s.DeployCompositeMode()
+	} else {
+		s.DeployAdminaAPIMode()
+	}
+	s.DeployTestService()
+	s.DeployRetryTimeout()
+}
+
+func (s *Scaffold) DeployAdminaAPIMode() {
+	err := s.newAPISIXConfigMap(&APISIXConfig{
+		EtcdServiceFQDN: EtcdServiceName,
+	})
+	assert.Nil(s.t, err, "creating apisix configmap")
 
 	s.etcdService, err = s.newEtcd()
 	assert.Nil(s.t, err, "initializing etcd")
@@ -447,39 +501,66 @@ func (s *Scaffold) beforeEach() {
 	err = s.waitAllAPISIXPodsAvailable()
 	assert.Nil(s.t, err, "waiting for apisix ready")
 
+	err = s.newIngressAPISIXController()
+	assert.Nil(s.t, err, "initializing ingress apisix controller")
+
+	err = s.WaitAllIngressControllerPodsAvailable()
+	assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
+
 	err = s.newAPISIXTunnels()
 	assert.Nil(s.t, err, "creating apisix tunnels")
+}
 
-	s.httpbinService, err = s.newHTTPBIN()
-	assert.Nil(s.t, err, "initializing httpbin")
-
-	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.httpbinService.Name, 3, 2*time.Second)
-
-	s.testBackendService, err = s.newTestBackend()
-	assert.Nil(s.t, err, "initializing test backend")
-
-	k8s.WaitUntilServiceAvailable(s.t, s.kubectlOptions, s.testBackendService.Name, 3, 2*time.Second)
-
-	if s.opts.EnableWebhooks {
-		err := generateWebhookCert(s.namespace)
-		assert.Nil(s.t, err, "generate certs and create webhook secret")
-	}
+func (s *Scaffold) DeployCompositeMode() {
+	err := s.newAPISIXConfigMap(&APISIXConfig{
+		EtcdServiceFQDN: "127.0.0.1",
+	})
+	assert.Nil(s.t, err, "creating apisix configmap")
 
 	err = s.newIngressAPISIXController()
 	assert.Nil(s.t, err, "initializing ingress apisix controller")
 
-	if s.opts.IngressAPISIXReplicas != 0 {
-		err = s.WaitAllIngressControllerPodsAvailable()
-		assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
-	}
+	err = s.WaitAllIngressControllerPodsAvailable()
+	assert.Nil(s.t, err, "waiting for ingress apisix controller ready")
+
+	err = s.newAPISIXTunnels()
+	assert.Nil(s.t, err, "creating apisix tunnels")
+}
+
+func (s *Scaffold) DeployRetryTimeout() {
+	//Two endpoints are blocking(10 second) and one is non blocking
+	//Testing timeout
+	//With 1 retry and a timeout of 5 sec, it should return 504(timeout)
+	//With 1 retry and a timeout of 15 sec, it should success
+
+	//Testing retry
+	//With 1 retry and a timeout of 5 sec, it should return 504(timeout)
+	//With 2 retry and a timeout of 5 sec, it should success
+	err := s.NewDeploymentForRetryTimeoutTest()
+	assert.Nil(s.t, err, "error creating deployments for retry and timeout")
+	err = s.NewServiceForRetryTimeoutTest()
+	assert.Nil(s.t, err, "error creating services for retry and timeout")
+}
+
+func (s *Scaffold) DeployTestService() {
+	var err error
+
+	s.httpbinService, err = s.newHTTPBIN()
+	assert.Nil(s.t, err, "initializing httpbin")
+	s.EnsureNumEndpointsReady(s.t, s.httpbinService.Name, 1)
+
+	s.testBackendService, err = s.newTestBackend()
+	assert.Nil(s.t, err, "initializing test backend")
+	s.EnsureNumEndpointsReady(s.t, s.testBackendService.Name, 1)
 }
 
 func (s *Scaffold) afterEach() {
 	defer ginkgo.GinkgoRecover()
 
 	if ginkgo.CurrentSpecReport().Failed() {
-		if os.Getenv("E2E_ENV") == "ci" {
-			// dump and delete related resource
+		// dump and delete related resource
+		env := os.Getenv("E2E_ENV")
+		if env == "ci" {
 			_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, "Dumping namespace contents")
 			output, _ := k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods")
 			if output != "" {
@@ -499,6 +580,14 @@ func (s *Scaffold) afterEach() {
 			if output != "" {
 				_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
 			}
+			if s.opts.EnableWebhooks {
+				output, _ = k8s.RunKubectlAndGetOutputE(ginkgo.GinkgoT(), s.kubectlOptions, "get", "validatingwebhookconfigurations", "-o", "yaml")
+				if output != "" {
+					_, _ = fmt.Fprintln(ginkgo.GinkgoWriter, output)
+				}
+			}
+		}
+		if env != "debug" {
 			err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
 			assert.Nilf(ginkgo.GinkgoT(), err, "deleting namespace %s", s.namespace)
 		}
@@ -568,7 +657,7 @@ func (s *Scaffold) addFinalizers(f func()) {
 	s.finalizers = append(s.finalizers, f)
 }
 
-func (s *Scaffold) renderConfig(path string) (string, error) {
+func (s *Scaffold) renderConfig(path string, config any) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
@@ -576,7 +665,7 @@ func (s *Scaffold) renderConfig(path string) (string, error) {
 
 	var buf strings.Builder
 	t := template.Must(template.New(path).Parse(string(data)))
-	if err := t.Execute(&buf, s); err != nil {
+	if err := t.Execute(&buf, config); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
@@ -616,19 +705,6 @@ func waitExponentialBackoff(condFunc func() (bool, error)) error {
 		Steps:    8,
 	}
 	return wait.ExponentialBackoff(backoff, condFunc)
-}
-
-// generateWebhookCert generates signed certs of webhook and create the corresponding secret by running a script.
-func generateWebhookCert(ns string) error {
-	commandTemplate := `testdata/webhook-create-signed-cert.sh`
-	cmd := exec.Command("/bin/sh", commandTemplate, "--namespace", ns)
-
-	output, err := cmd.Output()
-	if err != nil {
-		ginkgo.GinkgoT().Errorf("%s", output)
-		return fmt.Errorf("failed to execute the script: %v", err)
-	}
-	return nil
 }
 
 func (s *Scaffold) CreateVersionedApisixResource(yml string) error {
@@ -672,12 +748,20 @@ func (s *Scaffold) DeleteResource(resourceType, name string) error {
 
 func (s *Scaffold) NamespaceSelectorLabelStrings() []string {
 	var labels []string
-	for k, v := range s.opts.NamespaceSelectorLabel {
-		labels = append(labels, fmt.Sprintf("%s=%s", k, v))
+	if s.opts.NamespaceSelectorLabel != nil {
+		for k, v := range s.opts.NamespaceSelectorLabel {
+			for _, v0 := range v {
+				labels = append(labels, fmt.Sprintf("%s=%s", k, v0))
+			}
+		}
+	} else {
+		for k, v := range s.label {
+			labels = append(labels, fmt.Sprintf("%s=%s", k, v))
+		}
 	}
 	return labels
 }
 
-func (s *Scaffold) NamespaceSelectorLabel() map[string]string {
+func (s *Scaffold) NamespaceSelectorLabel() map[string][]string {
 	return s.opts.NamespaceSelectorLabel
 }

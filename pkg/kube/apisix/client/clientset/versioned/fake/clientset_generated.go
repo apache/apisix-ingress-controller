@@ -21,8 +21,6 @@ import (
 	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
 	apisixv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2"
 	fakeapisixv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2/fake"
-	apisixv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta3"
-	fakeapisixv2beta3 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2beta3/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -83,9 +81,4 @@ var (
 // ApisixV2 retrieves the ApisixV2Client
 func (c *Clientset) ApisixV2() apisixv2.ApisixV2Interface {
 	return &fakeapisixv2.FakeApisixV2{Fake: &c.Fake}
-}
-
-// ApisixV2beta3 retrieves the ApisixV2beta3Client
-func (c *Clientset) ApisixV2beta3() apisixv2beta3.ApisixV2beta3Interface {
-	return &fakeapisixv2beta3.FakeApisixV2beta3{Fake: &c.Fake}
 }

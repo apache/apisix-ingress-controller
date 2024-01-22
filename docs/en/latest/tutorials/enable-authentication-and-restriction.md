@@ -93,15 +93,15 @@ metadata:
   name: ${name}
 spec:
   authParameter:
-    wolfRbac:
+    jwtAuth:
       value:
-        key: "${key}"                                    #required
-        secret: "${secret}"                              #optional
+        key: "${key}"                                    #required, unique key for a Consumer.
+        secret: "${secret}"                              #optional, the encryption key. If unspecified, auto generated in the background.
         public_key: "${public_key}"                      #optional, required when algorithm attribute selects RS256 algorithm.
         private_key: "{private_key}"                     #optional, required when algorithm attribute selects RS256 algorithm.
-        algorithm: "${HS256 | HS512 | RS256}"            #optional
-        exp: ${ 86400 | token's expire time, in seconds} #optional
-        algorithm: ${true | false}                       #optional
+        algorithm: "${HS256 | HS512 | RS256}"            #optional, encryption algorithm.
+        exp: ${ 86400 | token's expire time, in seconds} #optional, expiry time of the token in seconds.
+        base64_secret: ${true | false}                   #optional, set to true if the secret is base64 encoded.
 ```
 
 </details>
