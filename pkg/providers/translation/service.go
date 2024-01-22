@@ -34,10 +34,16 @@ import (
 
 func (t *translator) TranslateService(namespace, name, subset string, port int32) (*apisixv1.Upstream, error) {
 	endpoint, err := t.EndpointLister.GetEndpoint(namespace, name)
-	if err != nil && !k8serrors.IsNotFound(err) {
-		return nil, &TranslateError{
-			Field:  "endpoints",
-			Reason: err.Error(),
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			//Do not error wrap so that IsNotFound error can be handled separately on upper level
+			//Reference https://github.com/apache/apisix-ingress-controller/issues/1625
+			return nil, err
+		} else {
+			return nil, &TranslateError{
+				Field:  "endpoints",
+				Reason: err.Error(),
+			}
 		}
 	}
 
