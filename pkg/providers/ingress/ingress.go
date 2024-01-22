@@ -176,8 +176,7 @@ func (c *ingressController) sync(ctx context.Context, ev *types.Event) error {
 			tctx, err = c.translator.TranslateIngress(ing)
 		}
 		if err != nil {
-			log.Errorw("failed to translate old ingress",
-				zap.String("event", "update"),
+			log.Errorw("failed to translate ingress",
 				zap.Error(err),
 				zap.Any("ingress", ing),
 			)
