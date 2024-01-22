@@ -25,7 +25,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/listers/config/v2"
-	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 func TestTranslateServiceNoEndpoints(t *testing.T) {
@@ -40,23 +40,7 @@ func TestTranslateServiceNoEndpoints(t *testing.T) {
 		ApisixUpstreamLister: kube.NewApisixUpstreamLister(auLister2),
 	}}
 
-	expected := &v1.Upstream{
-		Metadata: v1.Metadata{
-			Desc:   "Created by apisix-ingress-controller, DO NOT modify it manually",
-			Labels: map[string]string{"managed-by": "apisix-ingress-controller"},
-		},
-		Type:   "roundrobin",
-		Nodes:  v1.UpstreamNodes{},
-		Scheme: "http",
-	}
+	_, err := tr.TranslateService("test", "svc", "", 9080)
+	assert.Equal(t, true, k8serrors.IsNotFound(err))
 
-	upstream, err := tr.TranslateService("test", "svc", "", 9080)
-	assert.Nil(t, err)
-	assert.Equal(t, expected, upstream)
-
-	tr.APIVersion = config.ApisixV2
-
-	upstream, err = tr.TranslateService("test", "svc", "", 9080)
-	assert.Nil(t, err)
-	assert.Equal(t, expected, upstream)
 }
