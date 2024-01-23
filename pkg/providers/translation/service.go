@@ -97,13 +97,10 @@ func (t *translator) translateUpstreamV2(ep *kube.Endpoint, namespace, name, sub
 		}
 	}
 
-	nodes := apisixv1.UpstreamNodes{}
 	// Filter nodes by subset.
-	if *ep != nil {
-		nodes, err = t.TranslateEndpoint(*ep, port, labels)
-		if err != nil {
-			return nil, err
-		}
+	nodes, err := t.TranslateEndpoint(*ep, port, labels)
+	if err != nil {
+		return nil, err
 	}
 	if au == nil || au.V2().Spec == nil {
 		ups.Nodes = nodes
