@@ -133,13 +133,13 @@ func (t *translator) TranslateEndpoint(endpoint kube.Endpoint, port int32, label
 	svcName := endpoint.ServiceName()
 	svc, err := t.ServiceLister.Services(namespace).Get(svcName)
 	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return apisixv1.UpstreamNodes{}, err
+		}
 		return nil, &TranslateError{
 			Field:  "service",
 			Reason: err.Error(),
 		}
-	}
-	if k8serrors.IsNotFound(err) {
-		return apisixv1.UpstreamNodes{}, nil
 	}
 
 	var svcPort *corev1.ServicePort
