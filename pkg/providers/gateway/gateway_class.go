@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -176,15 +175,6 @@ func (c *gatewayClassController) handleSyncErr(obj interface{}, err error) {
 	if err == nil {
 		c.workqueue.Forget(obj)
 		c.controller.MetricsCollector.IncrSyncOperation("gateway_class", "success")
-		return
-	}
-	event := obj.(*types.Event)
-	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
-		log.Infow("sync gateway class but not found, ignore",
-			zap.String("event_type", event.Type.String()),
-			zap.String("GatewayClass", event.Object.(string)),
-		)
-		c.workqueue.Forget(event)
 		return
 	}
 	log.Warnw("sync gateway class failed, will retry",

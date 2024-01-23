@@ -264,18 +264,6 @@ func (c *apisixTlsController) handleSyncErr(obj interface{}, err error) {
 		c.MetricsCollector.IncrSyncOperation("TLS", "success")
 		return
 	}
-
-	event := obj.(*types.Event)
-	ev := event.Object.(kube.ApisixTlsEvent)
-	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
-		log.Infow("sync ApisixTls but not found, ignore",
-			zap.String("event_type", event.Type.String()),
-			zap.String("ApisixTls", ev.Key),
-			zap.String("version", ev.GroupVersion),
-		)
-		c.workqueue.Forget(event)
-		return
-	}
 	log.Warnw("sync ApisixTls failed, will retry",
 		zap.Any("object", obj),
 		zap.Error(err),

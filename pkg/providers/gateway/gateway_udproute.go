@@ -188,15 +188,6 @@ func (c *gatewayUDPRouteController) handleSyncErr(obj interface{}, err error) {
 		c.controller.MetricsCollector.IncrSyncOperation("gateway_udproute", "success")
 		return
 	}
-	event := obj.(*types.Event)
-	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
-		log.Infow("sync gateway UDPRoute but not found, ignore",
-			zap.String("event_type", event.Type.String()),
-			zap.String("UDPRoute ", event.Object.(string)),
-		)
-		c.workqueue.Forget(event)
-		return
-	}
 	log.Warnw("sync gateway UDPRoute failed, will retry",
 		zap.Any("object", obj),
 		zap.Error(err),

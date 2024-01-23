@@ -271,15 +271,6 @@ func (c *apisixPluginConfigController) handleSyncErr(obj interface{}, errOrigin 
 		c.MetricsCollector.IncrSyncOperation("PluginConfig", "success")
 		return
 	}
-	ev := obj.(*types.Event)
-	if k8serrors.IsNotFound(errOrigin) && ev.Type != types.EventDelete {
-		log.Infow("sync ApisixPluginConfig but not found, ignore",
-			zap.String("event_type", ev.Type.String()),
-			zap.String("ApisixPluginConfig", ev.Object.(kube.ApisixPluginConfigEvent).Key),
-		)
-		c.workqueue.Forget(obj)
-		return
-	}
 	log.Warnw("sync ApisixPluginConfig failed, will retry",
 		zap.Any("object", obj),
 		zap.Error(errOrigin),

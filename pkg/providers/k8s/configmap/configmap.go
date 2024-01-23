@@ -208,14 +208,6 @@ func (c *configmapController) sync(ctx context.Context, ev *types.Event) error {
 func (c *configmapController) handleSyncErr(event *types.Event, err error) {
 	key := event.Object.(string)
 	if err != nil {
-		if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
-			log.Infow("sync configmap but not found, ignore",
-				zap.String("event_type", event.Type.String()),
-				zap.Any("key", key),
-			)
-			c.workqueue.Forget(event)
-			return
-		}
 		log.Warnw("sync configmap info failed, will retry",
 			zap.String("key", key),
 			zap.Error(err),
