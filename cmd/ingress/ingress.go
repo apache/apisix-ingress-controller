@@ -43,7 +43,7 @@ func dief(template string, args ...interface{}) {
 }
 
 func contextWithSignalCancel(ctx context.Context, signals ...os.Signal) context.Context {
-	newCtx, cancel := context.WithCancel(context.Background())
+	newCtx, cancel := context.WithCancel(ctx)
 	go func() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, signals...)
