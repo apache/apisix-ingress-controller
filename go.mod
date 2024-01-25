@@ -1,8 +1,6 @@
 module github.com/apache/apisix-ingress-controller
 
-go 1.21
-
-toolchain go1.21.1
+go 1.20
 
 require (
 	github.com/api7/etcd-adapter v0.2.3
