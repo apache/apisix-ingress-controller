@@ -50,6 +50,7 @@ func contextWithSignalCancel(ctx context.Context, signals ...os.Signal) context.
 
 		sig := <-sigCh
 		log.Infof("signal %d (%s) received", sig, sig.String())
+		signal.Stop(sigCh)
 		close(sigCh)
 		cancel()
 	}()
